@@ -869,13 +869,13 @@ test('activation-functions final exercise receives its visible question label', 
       await send('Help with the final question', undefined, {
         activityId: activity.id,
         exerciseId: exercise.id,
-        questionLabel: 'Final question',
+        questionLabel: 'Explain it',
       })
     ).status,
   ).toBe(200);
   expect(captured.at(-1)).toMatchObject({
     exercisePrompt: exercise.prompt,
-    exerciseLabel: 'Final question',
+    exerciseLabel: 'Explain it',
     problem_status: 'unanswered',
   });
 });

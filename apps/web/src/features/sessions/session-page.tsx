@@ -15,7 +15,7 @@ import { FeedbackPanel, FinalRetryNote, isFinalRetryResult } from '../exercises/
 import { HintLadder } from '../exercises/hint-ladder.js';
 import { exerciseQueryOptions } from '../exercises/queries.js';
 import { LessonBlock } from '../lessons/lesson-block.js';
-import { LessonRunner } from '../lessons/lesson-runner.js';
+import { LessonRunner, LessonSteps } from '../lessons/lesson-runner.js';
 import { lessonQueryOptions, lessonRunQueryOptions } from '../lessons/queries.js';
 import { projectQueryOptions } from '../projects/queries.js';
 import { TutorLauncher, useTutorSidebar } from '../tutor/tutor-sidebar.js';
@@ -201,7 +201,7 @@ export function SessionPage() {
       exerciseId,
       questionLabel:
         activity.kind === 'learn' && lesson?.final === exerciseId
-          ? 'Final question'
+          ? 'Explain it'
           : exerciseId && activity.exerciseIds.length > 1
             ? `Question ${activity.exerciseIds.indexOf(exerciseId) + 1} of ${activity.exerciseIds.length}`
             : undefined,
@@ -527,6 +527,11 @@ export function SessionPage() {
     currentResult.status === 'self_check_required' ||
     (currentResult.followUp === true && currentResult.retryAllowed === true) ||
     (Number(currentResult.correct) === 0 && currentResult.retryAllowed === true);
+  const isExplainQuestion = activity.kind === 'learn' && lesson?.final === exerciseId;
+  const explainRun =
+    isExplainQuestion && activity.conceptId
+      ? lessonRunsByConcept.get(activity.conceptId)
+      : undefined;
   const triesLeft = Math.max(0, 2 - Number(currentResult?.attemptNo ?? 1));
   const helpActions =
     mode !== 'assessment' ? (
@@ -695,11 +700,21 @@ export function SessionPage() {
       <SessionActivityHeader
         title={activityTitle}
         label={activityLabel}
-        lessonLink={lessonLink}
-        subtitle={
-          activity.kind === 'learn' && lesson?.final === exerciseId ? 'Final question' : undefined
-        }
+        lessonLink={isExplainQuestion && canSubmitAnswer ? undefined : lessonLink}
+        subtitle={isExplainQuestion ? 'Explain it in your own words' : undefined}
       />
+      {explainRun ? (
+        <LessonSteps
+          state={explainRun}
+          viewingPastStep={false}
+          viewingPointId={null}
+          currentPointId={explainRun.currentPointId ?? undefined}
+          viewStep={() => {}}
+          returnToCurrentStep={() => {}}
+          explain="current"
+          readOnly
+        />
+      ) : null}
       {progressError ? (
         <p role="alert" className="text-sm text-destructive">
           {progressError}
@@ -709,6 +724,12 @@ export function SessionPage() {
         <Card data-testid="session-exercise" data-exercise-container="">
           <CardContent className="space-y-5">
             <QuestionProgress states={questionStates} />
+            {isExplainQuestion ? (
+              <p data-testid="explain-memory-note" className="text-sm text-muted-foreground">
+                Write it from memory, without looking back at the steps. It isn&apos;t part of the
+                quiz score.
+              </p>
+            ) : null}
             <div data-testid="exercise-prompt">
               <Markdown>{exerciseQuery.data.prompt}</Markdown>
             </div>

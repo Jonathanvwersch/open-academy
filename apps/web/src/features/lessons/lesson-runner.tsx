@@ -23,6 +23,8 @@ import { lessonQueryOptions, lessonRunQueryOptions } from './queries.js';
 import { QuizReview } from './quiz-review.js';
 import { StepProgress } from './step-progress.js';
 
+export { LessonSteps };
+
 function problemLabel(problem: { position: number }) {
   return `Question ${problem.position}`;
 }
@@ -667,6 +669,13 @@ export function LessonRunner({
         currentPointId={point?.id}
         viewStep={viewStep}
         returnToCurrentStep={returnToCurrentStep}
+        explain={
+          lesson?.final
+            ? finalAnswered || state.status === 'completed'
+              ? 'done'
+              : 'upcoming'
+            : undefined
+        }
       />
 
       {warmupMode && shownProblem ? (

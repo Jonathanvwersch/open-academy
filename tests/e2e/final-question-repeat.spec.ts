@@ -126,7 +126,9 @@ test('continuing a final question after lesson-run query GC opens the quiz', asy
   await page.reload();
   await expect(page.getByTestId('lesson-steps-complete')).toBeVisible();
   await page.getByRole('button', { name: 'Continue' }).click();
-  await expect(page.getByRole('heading', { name: 'Final question', exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Explain it in your own words', exact: true }),
+  ).toBeVisible();
   await page
     .getByLabel('Your answer')
     .fill(
