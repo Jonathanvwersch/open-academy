@@ -462,6 +462,7 @@ function generateCandidates(state: SchedulerState, content: ContentIndex, now: D
     const hasKnowledgePointLesson = hasKnowledgePointLessonContent(concept.id, content);
     const lessonRunStatus = state.lessonRuns?.find((run) => run.conceptId === concept.id)?.status;
     const shouldResumeLesson =
+      newConceptIds.has(concept.id) &&
       hasKnowledgePointLesson &&
       prereqsReady &&
       (lessonRunStatus === 'in_progress' ||

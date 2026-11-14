@@ -1416,12 +1416,12 @@ test('an unmet external hard prerequisite is offered as a foundation', () => {
 });
 
 test.each(['in_progress', 'quiz'] as const)(
-  'a %s lesson outside the active course still resumes',
+  'a %s lesson in a study course resumes outside the viewed course',
   (status) => {
     const state = {
       ...emptyState(),
       activeCourseId: 'fixture-switching-course',
-      studyCourseIds: ['fixture-switching-course'],
+      studyCourseIds: ['fixture-course'],
       lessonRuns: [
         { conceptId: 'vectors', status: 'completed' as const },
         { conceptId: 'derivatives', status },
@@ -1435,6 +1435,36 @@ test.each(['in_progress', 'quiz'] as const)(
     ).toBe(true);
   },
 );
+
+test('an unfinished lesson from a paused course is not resumed', () => {
+  const state = {
+    ...emptyState(),
+    activeCourseId: 'fixture-switching-course',
+    studyCourseIds: ['fixture-switching-course'],
+    lessonRuns: [
+      { conceptId: 'vectors', status: 'completed' as const },
+      { conceptId: 'derivatives', status: 'in_progress' as const },
+    ],
+  };
+  const plan = planSession(state, content, now, 60);
+
+  expect(
+    plan.activities.some(
+      (activity) => activity.kind === 'learn' && activity.conceptId === 'derivatives',
+    ),
+  ).toBe(false);
+  const resumed = planSession(
+    { ...state, studyCourseIds: ['fixture-course'] },
+    content,
+    now,
+    60,
+  );
+  expect(
+    resumed.activities.some(
+      (activity) => activity.kind === 'learn' && activity.conceptId === 'derivatives',
+    ),
+  ).toBe(true);
+});
 
 test('reviews outside the active course remain planned', () => {
   const state = {
