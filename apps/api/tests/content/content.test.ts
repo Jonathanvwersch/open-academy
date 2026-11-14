@@ -706,7 +706,7 @@ test('avoid patterns ignore code spans, fenced code, code fields, and IDs', asyn
   if (!exercise) throw new Error('Missing fixture derivatives exercise');
   exercise.value.id = 'lr-foo';
   exercise.value.prompt =
-    'Use `lr = 0.1`.\n\n```python\nlr = 0.1\n```\n\n~~~python\nlr = 0.2\n~~~';
+    'Use `lr = 0.1` and the value {{=lr}}.\n\n```python\nlr = 0.1\n```\n\n~~~python\nlr = 0.2\n~~~';
   const codeExercise = data.exercises.find(({ value }) => value.type === 'debug');
   if (codeExercise?.value.type !== 'debug') {
     throw new Error('Missing fixture debug exercise');

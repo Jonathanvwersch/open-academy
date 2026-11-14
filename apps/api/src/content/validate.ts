@@ -1292,6 +1292,7 @@ function validateAvoidedProse(
     }
     for (const entry of prose) {
       const text = entry.text
+        .replace(/\{\{=\s*[^}]+?\s*\}\}/g, ' ')
         .replace(/```[\s\S]*?```/g, ' ')
         .replace(/~~~[\s\S]*?~~~/g, ' ')
         .replace(/(`+)[\s\S]*?\1/g, ' ');
