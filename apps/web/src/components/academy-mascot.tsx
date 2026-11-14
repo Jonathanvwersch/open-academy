@@ -1,16 +1,21 @@
 /** The unnamed academy tortoise, drawn as a vector for crisp rendering at any size. */
 export function AcademyMascot({
   celebrating = false,
+  decorative = false,
   className = '',
 }: {
   celebrating?: boolean;
+  decorative?: boolean;
   className?: string;
 }) {
   return (
     <svg
       viewBox="0 0 160 160"
-      role="img"
-      aria-label={celebrating ? 'Academy tortoise celebrating' : 'Academy tortoise'}
+      role={decorative ? undefined : 'img'}
+      aria-hidden={decorative || undefined}
+      aria-label={
+        decorative ? undefined : celebrating ? 'Academy tortoise celebrating' : 'Academy tortoise'
+      }
       className={className}
     >
       <ellipse cx="79" cy="137" rx="54" ry="5" fill="#e9e7dd" />

@@ -5,7 +5,7 @@ import {
   tutorQuestionTooLongMessage,
 } from '@academy/shared/tutor';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Eye, Plus, Sparkles, X } from 'lucide-react';
+import { ArrowLeft, Eye, Plus, X } from 'lucide-react';
 import {
   createContext,
   lazy,
@@ -19,7 +19,9 @@ import {
 } from 'react';
 import type { StickToBottomContext } from 'use-stick-to-bottom';
 import { apiFetch } from '../../api/authenticated-fetch.js';
+import { AcademyMascot } from '../../components/academy-mascot.js';
 import { ThinkingIndicator } from '../../components/thinking-indicator.js';
+import { TortoiseMark } from '../../components/tortoise-mark.js';
 import {
   Conversation,
   ConversationContent,
@@ -598,7 +600,10 @@ export function TutorContextProvider({
                 <>
                   <SidebarHeader className="border-b p-4">
                     <div className="flex items-center justify-between gap-3">
-                      <h2 className="text-base font-medium">Chats</h2>
+                      <h2 className="flex items-center gap-2 text-base font-medium">
+                        <TortoiseMark className="size-6" />
+                        Chats
+                      </h2>
                       <div className="flex items-center gap-1">
                         {threads.isPending || threads.isError || threadGroups.length > 0 ? (
                           <Button type="button" variant="outline" size="sm" onClick={startNewChat}>
@@ -639,7 +644,8 @@ export function TutorContextProvider({
                       </Alert>
                     ) : null}
                     {!threads.isPending && !threads.isError && threadGroups.length === 0 ? (
-                      <div className="flex flex-col items-center gap-3 px-4 py-12 text-center">
+                      <div className="flex flex-col items-center gap-3 px-4 py-8 text-center">
+                        <AcademyMascot className="size-16" decorative />
                         <p className="text-sm text-muted-foreground">No chats yet</p>
                         <Button type="button" variant="outline" size="sm" onClick={startNewChat}>
                           <Plus aria-hidden="true" />
@@ -703,6 +709,7 @@ export function TutorContextProvider({
                         onClick={() => setView('list')}
                       >
                         <ArrowLeft aria-hidden="true" />
+                        <TortoiseMark className="size-5" />
                         Chats
                       </Button>
                       <h2 data-testid="tutor-conversation-title" className="sr-only">
@@ -925,11 +932,12 @@ export function TutorContextProvider({
               <Button
                 type="button"
                 onClick={() => setOpen(true)}
-                className="fixed bottom-5 right-5 z-40 size-12 rounded-full shadow-lg"
+                variant="outline"
+                className="fixed bottom-5 right-5 z-40 size-11 rounded-full bg-card shadow-md"
                 size="icon-lg"
                 aria-label="Open tutor"
               >
-                <Sparkles aria-hidden="true" className="size-5" />
+                <TortoiseMark className="size-7" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>Tutor</TooltipContent>
@@ -964,6 +972,7 @@ export function TutorLauncher({
       size="sm"
       onClick={() => tutor.startChat(context, greeting)}
     >
+      <TortoiseMark className="size-4" />
       {children}
     </Button>
   );

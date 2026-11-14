@@ -1,9 +1,9 @@
 import { Link, Outlet, useRouterState } from '@tanstack/react-router';
 import { Toaster } from 'sonner';
+import { BrandLockup } from '../components/brand-lockup.js';
 import { useCapturePageLayout } from '../components/page-layout-skeleton.js';
 import { PageSkeleton } from '../components/skeletons.js';
 import { Button } from '../components/ui/button.js';
-import { Logo } from '../components/ui/logo.js';
 import { Skeleton } from '../components/ui/skeleton.js';
 import { TooltipProvider } from '../components/ui/tooltip.js';
 import { TutorContextProvider } from '../features/tutor/tutor-sidebar.js';
@@ -28,8 +28,7 @@ export function AppShellSkeleton() {
       <header className="h-14 border-b bg-card">
         <div className="mx-auto flex h-full w-full max-w-3xl items-center justify-between gap-4 px-4 sm:px-6">
           <div className="hidden items-center gap-2 text-sm font-semibold tracking-tight sm:flex">
-            <Logo className="size-5" />
-            Open Academy
+            <BrandLockup />
           </div>
           <nav className="flex min-w-0 flex-1 items-center justify-between gap-0 sm:w-auto sm:justify-end sm:gap-0.5">
             {navigation.map((item) => (
@@ -101,8 +100,7 @@ export function RootLayout() {
                 to="/"
                 className="hidden items-center gap-2 text-sm font-semibold tracking-tight sm:flex"
               >
-                <Logo className="size-5" />
-                Open Academy
+                <BrandLockup />
               </Link>
               <nav
                 aria-label="Main navigation"

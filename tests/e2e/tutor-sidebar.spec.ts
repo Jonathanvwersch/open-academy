@@ -591,7 +591,13 @@ test('tutor chat sends optimistically and supports chat-list navigation', async 
   await expect(
     tutor.getByTestId('tutor-thinking-bubble').locator('[data-slot="skeleton"]'),
   ).toHaveCount(0);
-  await expect(tutor.getByTestId('tutor-thinking-bubble').locator('svg')).toHaveCount(0);
+  await expect(
+    tutor.getByTestId('tutor-thinking-bubble').getByRole('status', { name: 'Thinking' }),
+  ).toBeVisible();
+  await expect(tutor.getByTestId('tutor-thinking-bubble').locator('svg')).toHaveAttribute(
+    'aria-hidden',
+    'true',
+  );
   await expect(sendButton).toHaveAttribute('aria-busy', 'true');
   await expect(sendButton).toHaveAttribute('data-loading', 'true');
   await expect(sendButton.getByTestId('button-spinner')).toBeVisible();

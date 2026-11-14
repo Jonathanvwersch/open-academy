@@ -48,8 +48,10 @@ test('The tortoise and the streak reflect persisted XP on Home and Progress at b
   await expect(page.getByRole('heading', { name: '1-day streak' })).toBeVisible();
   await expect(page.getByText('Earn XP today to keep your streak going.')).toBeVisible();
   await expect(page.getByRole('img', { name: 'Academy tortoise', exact: true })).toBeVisible();
+  expect((await page.getByTestId('streak-card').boundingBox())?.height).toBeLessThan(140);
   await page.screenshot({ path: `${screenshots}/home-desktop.png`, fullPage: true });
   await page.setViewportSize({ width: 375, height: 812 });
+  expect((await page.getByTestId('streak-card').boundingBox())?.height).toBeLessThan(210);
   await page.screenshot({ path: `${screenshots}/home-mobile.png`, fullPage: true });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
@@ -66,8 +68,30 @@ test('The tortoise and the streak reflect persisted XP on Home and Progress at b
   await page.reload();
   await expect(page.getByRole('heading', { name: '2-day streak' })).toBeVisible();
   await expect(page.getByRole('img', { name: 'Academy tortoise celebrating' })).toBeVisible();
-  await expect(page.getByText('You showed up today. See you tomorrow!')).toBeVisible();
+  await expect(page.getByText("Today's streak is complete.")).toBeVisible();
   await page.goto('/progress');
   await expect(page.getByRole('heading', { name: '2-day streak' })).toBeVisible();
   await page.screenshot({ path: `${screenshots}/progress-mobile.png`, fullPage: true });
+  await page.route('**/api/progress', async (route) => {
+    const response = await route.fetch();
+    const payload = await response.json();
+    await route.fulfill({
+      response,
+      json: { ...payload, streak: { ...payload.streak, current: 1000, longest: 1000 } },
+    });
+  });
+  await page.setViewportSize({ width: 320, height: 812 });
+  await page.reload();
+  await expect(page.getByRole('heading', { name: '1000-day streak' })).toBeVisible();
+  expect((await page.getByTestId('streak-card').boundingBox())?.height).toBeLessThan(230);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
+  await page.screenshot({ path: `${screenshots}/progress-small-mobile.png`, fullPage: true });
+  await page.evaluate(() => document.documentElement.classList.add('dark'));
+  await page.screenshot({
+    path: `${screenshots}/progress-dark-mobile.png`,
+    fullPage: true,
+    animations: 'disabled',
+  });
 });
