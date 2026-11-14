@@ -98,6 +98,7 @@ concepts:
     prereqs: []
     objectives:
       - { text: "Compute expectations and conditional probabilities", dimension: math }
+    projects: [gaussian-mle]
     status: authored
   - id: gaussian-distribution
     title: Gaussian distribution
@@ -109,6 +110,7 @@ concepts:
     prereqs: [{ id: probability-basics }]
     objectives:
       - { text: "Relate mean and variance to the normal density", dimension: math }
+    projects: [gaussian-mle]
     status: authored
   - id: maximum-likelihood
     title: Maximum likelihood
@@ -125,6 +127,7 @@ concepts:
       ]
     objectives:
       - { text: "Derive MSE as Gaussian maximum likelihood", dimension: math }
+    projects: [gaussian-mle]
     status: authored
   - id: information-theory
     title: Entropy, cross-entropy and KL divergence
@@ -137,6 +140,7 @@ concepts:
     objectives:
       - { text: "Compute entropy and cross-entropy for a small distribution", dimension: math }
       - { text: "Explain why cross-entropy is the loss for classification", dimension: conceptual }
+    projects: [gaussian-mle]
     status: authored
   - id: descriptive-statistics
     title: Mean, variance and confidence intervals
@@ -152,6 +156,7 @@ concepts:
           text: "Judge whether two small-sample success rates really differ",
           dimension: conceptual,
         }
+    projects: [gaussian-mle]
     status: authored
   - id: rotation-matrices
     title: Rotation matrices

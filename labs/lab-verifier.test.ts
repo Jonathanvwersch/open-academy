@@ -186,3 +186,58 @@ test('reference two-layer neural network solution passes deterministic verifier 
     rmSync(directory, { recursive: true, force: true });
   }
 });
+
+const gaussianSolution = resolve('labs/gaussian-mle/_solution/gaussian.py');
+const gaussianStarter = resolve('labs/gaussian-mle/starter/gaussian.py');
+const gaussianBuggy = resolve('labs/gaussian-mle/_solution/buggy.py');
+
+type VerifierResults = {
+  tests: Array<{ id: string; passed: boolean; message: string }>;
+  metrics: Record<string, number>;
+};
+
+function runGaussianVerifier(implementation: string, expectPass: boolean): VerifierResults {
+  const directory = mkdtempSync(join(tmpdir(), 'academy-lab-gaussian-'));
+  try {
+    const output = join(directory, 'results.json');
+    const run = () =>
+      execFileSync(
+        'python3',
+        [nnVerifier, 'gaussian-mle', '--implementation', implementation, '--output', output],
+        { encoding: 'utf8' },
+      );
+    if (expectPass) run();
+    else expect(run).toThrow();
+    return JSON.parse(readFileSync(output, 'utf8')) as VerifierResults;
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+}
+
+test('reference Gaussian fitting solution passes every check and metric', () => {
+  const result = runGaussianVerifier(gaussianSolution, true);
+  expect(result.tests).toHaveLength(11);
+  expect(result.tests.every((check) => check.passed)).toBe(true);
+  expect(result.metrics.mean_error).toBeLessThan(0.5);
+  expect(result.metrics.sigma_error).toBeLessThan(0.3);
+  expect(result.metrics.held_out_log_likelihood).toBeGreaterThan(-2.25);
+});
+
+test('untouched Gaussian starter fails every check', () => {
+  const result = runGaussianVerifier(gaussianStarter, false);
+  expect(result.tests).toHaveLength(11);
+  expect(result.tests.some((check) => check.passed)).toBe(false);
+});
+
+test('Gaussian verifier catches a log density without its front factor', () => {
+  const result = runGaussianVerifier(gaussianBuggy, false);
+  const failed = result.tests.filter((check) => !check.passed).map((check) => check.id);
+  expect(failed).toEqual([
+    'test_log_density_matches_formula',
+    'test_sigma_search_agrees_with_fit',
+    'test_fit_beats_worse_fits_on_held_out',
+  ]);
+  expect(
+    result.tests.find((check) => check.id === 'test_log_density_matches_formula')?.message,
+  ).toContain('front factor');
+});

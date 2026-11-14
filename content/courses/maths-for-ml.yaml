@@ -20,6 +20,7 @@ units:
       - gradients
   - title: Probability and statistics
     intro: "Probability, the Gaussian, statistics, maximum likelihood and information theory: the language of uncertainty that losses are built on."
+    project: gaussian-mle
     concepts:
       - probability-basics
       - descriptive-statistics

@@ -148,6 +148,32 @@ test('real authored papers load and are attached to course units', async () => {
   ).toHaveLength(content.papers.length);
 });
 
+test('authored Gaussian project loads with unit prerequisites and reflection exercises', async () => {
+  const content = await loadContent('content');
+  const project = required(content.projectsById.get('gaussian-mle'), 'Gaussian project');
+  const course = required(
+    content.courses.find((candidate) => candidate.id === 'maths-for-ml'),
+    'maths course',
+  );
+  const unit = required(
+    course.units.find((candidate) => candidate.project === 'gaussian-mle'),
+    'probability unit',
+  );
+
+  expect(project.status).toBe('authored');
+  expect(project.prereqs).toEqual(unit.concepts);
+  expect(project.tests).toHaveLength(11);
+  expect(project.reflection).toEqual([
+    'lab-gauss-front-factor',
+    'lab-gauss-held-out-gap',
+    'lab-gauss-forecast-gap',
+  ]);
+  for (const id of project.reflection) {
+    const exercise = required(content.exercisesById.get(id), id);
+    expect(exercise.lesson_only).toBeFalsy();
+  }
+});
+
 test('authored neural-network project loads with its reflection exercises', async () => {
   const content = await loadContent('content');
   const project = required(content.projectsById.get('nn-from-scratch'), 'neural-network project');

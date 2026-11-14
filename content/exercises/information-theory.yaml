@@ -611,3 +611,19 @@ exercises:
     solution:
       The loss rewards probability on the correct class, not merely a correct pick. With fixed
       observed outcomes, reducing average cross-entropy also reduces the extra surprise measured by KL.
+  - id: lab-gauss-forecast-gap
+    dimension: math
+    type: numeric
+    role: core
+    difficulty: 2
+    est_minutes: 3
+    prompt:
+      A distance sensor's readings land in the bins 99, 100 and 101 cm with fractions $1/4$, $1/2$ and
+      $1/4$. A forecast gives the same bins probabilities $1/2$, $1/4$ and $1/4$. How many bits larger is
+      the cross-entropy of this forecast than the entropy of the readings?
+    answer: 0.25
+    tolerance:
+      abs: 0.001
+    solution:
+      The entropy is $\frac14\times2+\frac12\times1+\frac14\times2=1.5$ bits. The cross-entropy is
+      $\frac14\times1+\frac12\times2+\frac14\times2=1.75$ bits, so it is 0.25 bits larger.
