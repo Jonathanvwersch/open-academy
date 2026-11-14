@@ -5,12 +5,14 @@ import { Button } from '../../components/ui/button.js';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card.js';
 import { papersQueryOptions } from '../papers/queries.js';
 import { todayQueryOptions } from '../sessions/queries.js';
-import { courseQueryOptions, learnQueryOptions } from './queries.js';
+import { courseQueryKeyRoot, learnQueryOptions } from './queries.js';
 
 export function CourseStartCard({
+  courseId,
   courseTitle,
   placementRunId,
 }: {
+  courseId: string;
   courseTitle: string;
   placementRunId: string | null;
 }) {
@@ -20,13 +22,13 @@ export function CourseStartCard({
       const response = await apiFetch('/api/course/start', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ method: 'beginning' }),
+        body: JSON.stringify({ method: 'beginning', courseId }),
       });
       if (!response.ok) throw new Error('Could not start this course');
     },
     onSuccess: async () => {
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: courseQueryOptions().queryKey }),
+        queryClient.invalidateQueries({ queryKey: courseQueryKeyRoot }),
         queryClient.invalidateQueries({ queryKey: learnQueryOptions().queryKey }),
         queryClient.invalidateQueries({ queryKey: todayQueryOptions().queryKey }),
         queryClient.invalidateQueries({ queryKey: papersQueryOptions().queryKey }),

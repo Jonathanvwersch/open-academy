@@ -49,28 +49,50 @@ test('desktop sidebar collapse persists across reload', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Next up', exact: true })).toBeVisible();
+  const navigation = page.getByRole('navigation', { name: 'Main navigation' });
+  const header = navigation.locator('[data-sidebar="header"]');
+  const footer = navigation.locator('[data-sidebar="footer"]');
+  await expect(header.getByRole('button', { name: 'Collapse navigation' })).toBeVisible();
+  await expect(
+    footer.getByRole('button', { name: /Collapse navigation|Expand navigation/ }),
+  ).toHaveCount(0);
   await expect(
     page.getByRole('link', { name: /Fixture course.*0 of 9 topics done/ }),
   ).toBeVisible();
   await expect(
-    page.getByRole('button', { name: 'Switch to Fixture switching course' }),
+    page.getByRole('link', { name: 'Switch to Fixture switching course' }),
   ).toBeVisible();
+  const navRows = ['Home', 'Courses', 'Reviews', 'Progress'].map((name) =>
+    navigation.getByRole('link', { name, exact: true }),
+  );
+  const navBoxes = await Promise.all(navRows.map((row) => row.boundingBox()));
+  for (let index = 1; index < navBoxes.length; index += 1) {
+    const previous = navBoxes[index - 1];
+    const next = navBoxes[index];
+    expect(previous).not.toBeNull();
+    expect(next).not.toBeNull();
+    expect((next?.y ?? 0) - ((previous?.y ?? 0) + (previous?.height ?? 0))).toBeGreaterThanOrEqual(
+      4,
+    );
+  }
+  await page.getByRole('link', { name: 'Switch to Fixture switching course' }).hover();
   await page.screenshot({
     path: 'test-results/sidebar-home-expanded.png',
     animations: 'disabled',
   });
-  await page.getByRole('button', { name: 'Collapse navigation' }).click();
-  await expect(page.getByRole('button', { name: 'Expand navigation' })).toBeVisible();
+  await header.getByRole('button', { name: 'Collapse navigation' }).click();
+  await expect(header.getByRole('button', { name: 'Expand navigation' })).toBeVisible();
+  await expect(header.getByRole('link', { name: 'Open Academy home' })).toHaveCount(0);
   await page.screenshot({
     path: 'test-results/sidebar-home-collapsed.png',
     animations: 'disabled',
   });
   await page.reload();
-  await expect(page.getByRole('button', { name: 'Expand navigation' })).toBeVisible();
-  await page.getByRole('button', { name: 'Expand navigation' }).click();
-  await expect(page.getByRole('button', { name: 'Collapse navigation' })).toBeVisible();
+  await expect(header.getByRole('button', { name: 'Expand navigation' })).toBeVisible();
+  await header.getByRole('button', { name: 'Expand navigation' }).click();
+  await expect(header.getByRole('button', { name: 'Collapse navigation' })).toBeVisible();
   await page.reload();
-  await expect(page.getByRole('button', { name: 'Collapse navigation' })).toBeVisible();
+  await expect(header.getByRole('button', { name: 'Collapse navigation' })).toBeVisible();
 });
 
 test('mobile sidebar closes after navigating to Reviews', async ({ page }) => {
@@ -80,6 +102,11 @@ test('mobile sidebar closes after navigating to Reviews', async ({ page }) => {
   const navigation = page.getByRole('navigation', { name: 'Main navigation' });
   await expect(navigation).toBeVisible();
   expect((await navigation.boundingBox())?.width).toBeCloseTo(288, 1);
+  await expect(
+    navigation
+      .locator('[data-sidebar="header"]')
+      .getByRole('button', { name: /Collapse navigation|Expand navigation/ }),
+  ).toHaveCount(0);
   await expect(navigation.locator('[data-active="true"]')).toHaveCount(0);
   await expect(navigation.getByRole('link', { name: 'Open Academy home' })).not.toHaveAttribute(
     'data-sidebar',
@@ -117,11 +144,48 @@ test('mobile sidebar closes after navigating to Reviews', async ({ page }) => {
 test('switching a My courses entry opens that course', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/');
-  await page.getByRole('button', { name: 'Switch to Fixture switching course' }).click();
+  await page.getByRole('link', { name: 'Switch to Fixture switching course' }).click();
   await expect(
     page.getByRole('heading', { name: 'Fixture switching course', exact: true }),
   ).toBeVisible();
   await page.screenshot({ path: 'test-results/sidebar-course.png', animations: 'disabled' });
+});
+
+test('course switching shows the new course before the active-course request resolves', async ({
+  page,
+}) => {
+  let putResolved = false;
+  await page.route('**/api/course/active', async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+    const response = await route.fetch();
+    await route.fulfill({ response });
+    putResolved = true;
+  });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/');
+  await page.getByRole('link', { name: 'Switch to Fixture switching course' }).click();
+  await expect(page).toHaveURL(/\/course\?course=fixture-switching-course$/, { timeout: 1000 });
+  await expect(
+    page.getByRole('heading', { name: 'Fixture switching course', exact: true }),
+  ).toBeVisible({ timeout: 1000 });
+  expect(putResolved).toBe(false);
+
+  const courseRows = page
+    .getByRole('navigation', { name: 'Main navigation' })
+    .locator('[data-sidebar="menu-button"]')
+    .filter({ hasText: /Fixture/ });
+  await expect(courseRows).toHaveCount(2);
+  for (const row of await courseRows.all()) {
+    expect(await row.getAttribute('disabled')).toBeNull();
+    expect(await row.getAttribute('aria-disabled')).toBeNull();
+  }
+
+  await expect.poll(() => putResolved, { timeout: 5000 }).toBe(true);
+  await page.goto('/course');
+  await page.reload();
+  await expect(
+    page.getByRole('heading', { name: 'Fixture switching course', exact: true }),
+  ).toBeVisible();
 });
 
 test('Reviews badge and Start reviews work from the sidebar', async ({ page }) => {

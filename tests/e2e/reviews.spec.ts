@@ -114,29 +114,19 @@ test('Reviews page shows due and upcoming topics at desktop and mobile widths', 
   await expect(page.getByText('Maths', { exact: true }).first()).toBeVisible();
   await expect(page.getByRole('button', { name: /Later · 1/ })).toBeVisible();
   await expect(page.getByText(/recall|reviewed/i)).toHaveCount(0);
-  const dayStrip = page.getByRole('group', {
-    name: 'Upcoming reviews for the next seven days',
-  });
-  await expect(dayStrip.getByRole('button', { name: /Fri.*0/ })).toBeDisabled();
+  await expect(
+    page.getByRole('group', { name: 'Upcoming reviews for the next seven days' }),
+  ).toHaveCount(0);
   await expect(page.locator('#reviews-2026-01-03').getByRole('button')).toHaveAttribute(
     'aria-expanded',
     'false',
   );
 
-  const sunday = dayStrip.getByRole('button', { name: /Sun.*1/ });
-  await sunday.click();
-  await expect(page.getByText('Apply it', { exact: true })).toBeVisible();
-  await page.goto('/reviews');
-  const saturday = dayStrip.getByRole('button', { name: /Sat.*1/ });
+  const saturday = page.locator('#reviews-2026-01-03').getByRole('button');
   await saturday.click();
-  await expect(saturday).toHaveAttribute('aria-pressed', 'true');
-  await expect(page.locator('#reviews-2026-01-03')).toBeInViewport();
   await expect(page.getByRole('heading', { name: /Fixture course/ }).first()).toBeVisible();
   await page.goto('/reviews');
-  await page
-    .getByRole('group', { name: 'Upcoming reviews for the next seven days' })
-    .getByRole('button', { name: /Sun.*1/ })
-    .click();
+  await page.locator('#reviews-2026-01-04').getByRole('button').click();
   await expect(
     page.getByRole('heading', { name: /Fixture switching course/ }).first(),
   ).toBeVisible();
@@ -145,10 +135,9 @@ test('Reviews page shows due and upcoming topics at desktop and mobile widths', 
   await page.goto('/reviews');
   await expect(page.getByRole('heading', { name: 'Due now · 1' })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
-  await page
-    .getByRole('group', { name: 'Upcoming reviews for the next seven days' })
-    .getByRole('button', { name: /Sat.*1/ })
-    .click();
+  await expect(
+    page.getByRole('group', { name: 'Upcoming reviews for the next seven days' }),
+  ).toHaveCount(0);
 
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/');
@@ -194,6 +183,47 @@ test('Reviews labels topics due tomorrow as Tomorrow', async ({ page }) => {
   await page.goto('/reviews');
 
   await expect(page.getByRole('button', { name: 'Tomorrow · 1', exact: true })).toBeVisible();
+});
+
+test('Later today appears before Tomorrow in Coming up', async ({ page }) => {
+  for (const card of [
+    {
+      conceptId: 'supervised-learning',
+      dimension: 'math',
+      dueAt: '2026-01-01T20:00:00.000Z',
+    },
+    {
+      conceptId: 'derivatives',
+      dimension: 'math',
+      dueAt: '2026-01-02T12:00:00.000Z',
+    },
+  ]) {
+    await db.insert(reviewCards).values({
+      userId,
+      conceptId: card.conceptId,
+      dimension: card.dimension,
+      fsrs: newReviewCard(new Date('2026-01-01T12:00:00.000Z')),
+      dueAt: new Date(card.dueAt),
+      reps: 0,
+      lapses: 0,
+    });
+  }
+
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/reviews');
+
+  const comingUp = page
+    .locator('[data-slot="card"]')
+    .filter({ has: page.getByRole('heading', { name: 'Coming up', exact: true }) });
+  const groups = comingUp.getByRole('button');
+  await expect(groups).toHaveCount(2);
+  await expect(groups.nth(0)).toHaveAccessibleName('Later today · 1');
+  await expect(groups.nth(1)).toHaveAccessibleName('Tomorrow · 1');
+  await page.screenshot({
+    path: 'test-results/sidebar-polish-reviews.png',
+    animations: 'disabled',
+    fullPage: true,
+  });
 });
 
 test('Reviews empty state explains how topics return', async ({ page }) => {

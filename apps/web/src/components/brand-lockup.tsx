@@ -2,8 +2,10 @@ import { Logo } from './ui/logo.js';
 
 export function BrandLockup({
   hideNameWhenSidebarCollapsed = false,
+  size = 'default',
 }: {
   hideNameWhenSidebarCollapsed?: boolean;
+  size?: 'default' | 'sm';
 }) {
   return (
     <span
@@ -12,12 +14,14 @@ export function BrandLockup({
       }`}
     >
       <Logo
-        className={`size-7 ${
+        className={`${size === 'sm' ? 'size-5' : 'size-7'} ${
           hideNameWhenSidebarCollapsed ? 'group-data-[collapsible=icon]:size-6' : ''
         }`}
       />
       <span
-        className={`font-heading text-[1.375rem] leading-none font-medium tracking-tight ${
+        className={`font-heading ${
+          size === 'sm' ? 'text-lg' : 'text-[1.375rem]'
+        } leading-none font-medium tracking-tight ${
           hideNameWhenSidebarCollapsed ? 'group-data-[collapsible=icon]:hidden' : ''
         }`}
       >

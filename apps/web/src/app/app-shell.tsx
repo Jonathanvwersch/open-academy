@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { Link, Outlet, useNavigate, useRouterState } from '@tanstack/react-router';
+import { Link, Outlet, useRouterState } from '@tanstack/react-router';
 import { Activity, BookOpen, House, RotateCcw, Settings } from 'lucide-react';
 import { useCallback, useState } from 'react';
 import { Toaster } from 'sonner';
@@ -49,18 +49,24 @@ function initialSidebarOpen() {
 
 function AppSidebar() {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const searchCourseId = useRouterState({
+    select: (state) => {
+      const search = state.location.search as Record<string, unknown>;
+      return typeof search.course === 'string' ? search.course : undefined;
+    },
+  });
   const { isMobile, state, setOpenMobile } = useSidebar();
-  const navigate = useNavigate();
   const { data: courseData } = useQuery(courseQueryOptions());
   const { data: reviewsData } = useQuery(reviewsQueryOptions());
   const startedCourses = courseData?.courses.filter((course) => course.started) ?? [];
+  const selectedCourseId =
+    pathname === '/course' && courseData?.courses.some((course) => course.id === searchCourseId)
+      ? searchCourseId
+      : courseData?.courses.find((course) => course.active)?.id;
   const closeMobile = () => {
     if (isMobile) setOpenMobile(false);
   };
-  const switchCourse = useSwitchCourse(async () => {
-    await navigate({ to: '/course' });
-    closeMobile();
-  });
+  const switchCourse = useSwitchCourse(closeMobile);
 
   return (
     <Sidebar
@@ -70,20 +76,43 @@ function AppSidebar() {
       role="navigation"
       aria-label="Main navigation"
     >
-      <SidebarHeader className="h-14 shrink-0 border-b border-sidebar-border p-0">
-        <Link
-          to="/"
-          aria-label="Open Academy home"
-          onClick={closeMobile}
-          className="flex h-full w-full items-center rounded-md px-3 text-primary outline-none focus-visible:ring-2 focus-visible:ring-ring group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
-        >
-          <BrandLockup hideNameWhenSidebarCollapsed />
-        </Link>
+      <SidebarHeader
+        className={`h-14 shrink-0 border-b border-sidebar-border p-0 ${
+          !isMobile && state === 'collapsed'
+            ? 'items-center justify-center'
+            : 'flex-row items-center justify-between'
+        }`}
+      >
+        {!isMobile && state === 'collapsed' ? (
+          <SidebarTrigger
+            aria-label="Expand navigation"
+            title="Expand navigation"
+            className="shrink-0"
+          />
+        ) : (
+          <>
+            <Link
+              to="/"
+              aria-label="Open Academy home"
+              onClick={closeMobile}
+              className="flex h-full min-w-0 flex-1 items-center rounded-md px-3 text-primary outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <BrandLockup size="sm" />
+            </Link>
+            {!isMobile ? (
+              <SidebarTrigger
+                aria-label="Collapse navigation"
+                title="Collapse navigation"
+                className="shrink-0"
+              />
+            ) : null}
+          </>
+        )}
       </SidebarHeader>
       <SidebarContent className="py-2">
         <SidebarGroup className="px-2 py-1">
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className="gap-1">
               {navigation.map(({ label, to, icon: Icon }) => (
                 <SidebarMenuItem key={to}>
                   <SidebarMenuButton
@@ -111,8 +140,9 @@ function AppSidebar() {
           <SidebarGroup className="px-2 py-1">
             <SidebarGroupLabel>My courses</SidebarGroupLabel>
             <SidebarGroupContent>
-              <SidebarMenu>
+              <SidebarMenu className="gap-1">
                 {startedCourses.map((course) => {
+                  const isActive = course.id === selectedCourseId;
                   const content = (
                     <>
                       <span className="min-w-0 flex-1 truncate text-sm">{course.title}</span>
@@ -123,7 +153,7 @@ function AppSidebar() {
                   );
                   return (
                     <SidebarMenuItem key={course.id}>
-                      {course.active ? (
+                      {isActive ? (
                         <SidebarMenuButton
                           asChild
                           isActive={!isMobile}
@@ -131,6 +161,7 @@ function AppSidebar() {
                         >
                           <Link
                             to="/course"
+                            search={{ course: course.id }}
                             aria-label={`${course.title}, ${course.topicsDone} of ${course.topicsTotal} topics done`}
                             onClick={closeMobile}
                           >
@@ -138,18 +169,20 @@ function AppSidebar() {
                           </Link>
                         </SidebarMenuButton>
                       ) : (
-                        <SidebarMenuButton
-                          asChild
-                          disabled={switchCourse.isPending}
-                          className="items-center text-sm"
-                        >
-                          <button
-                            type="button"
+                        <SidebarMenuButton asChild className="items-center text-sm">
+                          <Link
+                            to="/course"
+                            search={{ course: course.id }}
+                            preload="intent"
                             aria-label={`Switch to ${course.title}`}
-                            onClick={() => switchCourse.mutate(course.id)}
+                            onClick={(event) => {
+                              event.preventDefault();
+                              closeMobile();
+                              switchCourse.mutate(course.id);
+                            }}
                           >
                             {content}
-                          </button>
+                          </Link>
                         </SidebarMenuButton>
                       )}
                     </SidebarMenuItem>
@@ -166,7 +199,7 @@ function AppSidebar() {
         ) : null}
       </SidebarContent>
       <SidebarFooter className="border-t border-sidebar-border p-2">
-        <SidebarMenu>
+        <SidebarMenu className="gap-1">
           <SidebarMenuItem>
             <SidebarMenuButton
               asChild
@@ -180,15 +213,6 @@ function AppSidebar() {
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
-          {!isMobile ? (
-            <SidebarMenuItem>
-              <SidebarTrigger
-                aria-label={state === 'expanded' ? 'Collapse navigation' : 'Expand navigation'}
-                title={state === 'expanded' ? 'Collapse navigation' : 'Expand navigation'}
-                className="w-full justify-start"
-              />
-            </SidebarMenuItem>
-          ) : null}
         </SidebarMenu>
       </SidebarFooter>
     </Sidebar>
@@ -200,7 +224,7 @@ function MobileAppHeader() {
     <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-3 border-b bg-card px-3 md:hidden">
       <SidebarTrigger aria-label="Open navigation" title="Open navigation" />
       <Link to="/" aria-label="Open Academy home" className="min-w-0">
-        <BrandLockup />
+        <BrandLockup size="sm" />
       </Link>
     </header>
   );
@@ -218,14 +242,19 @@ export function AppShellSkeleton() {
     >
       <aside
         data-collapsible={sidebarOpen ? '' : 'icon'}
-        className={`group hidden shrink-0 flex-col border-r bg-card py-4 md:flex ${
-          sidebarOpen ? 'w-64 px-3' : 'w-12 items-center px-1'
+        className={`group hidden shrink-0 flex-col border-r bg-card md:flex ${
+          sidebarOpen ? 'w-64' : 'w-12 items-center'
         }`}
       >
-        <div className={`flex h-12 items-center ${sidebarOpen ? 'px-3' : 'justify-center'}`}>
-          <BrandLockup hideNameWhenSidebarCollapsed />
+        <div
+          className={`flex h-14 w-full shrink-0 items-center border-b ${
+            sidebarOpen ? 'justify-between px-3' : 'justify-center'
+          }`}
+        >
+          {sidebarOpen ? <BrandLockup size="sm" /> : null}
+          <Skeleton className="size-8 rounded-md" />
         </div>
-        <nav className="mt-4 w-full space-y-1">
+        <nav className="mt-2 w-full space-y-1 px-2">
           {navigation.map(({ label }) => (
             <div
               key={label}
@@ -245,15 +274,14 @@ export function AppShellSkeleton() {
             </div>
           ) : null}
         </nav>
-        <div className="mt-auto w-full space-y-2 border-t pt-3">
+        <div className="mt-auto w-full border-t p-2">
           <Skeleton className={`h-8 ${sidebarOpen ? 'w-full' : 'w-8'}`} />
-          <Skeleton className="h-8 w-8" />
         </div>
       </aside>
       <main className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-3 border-b bg-card px-3 md:hidden">
           <Skeleton className="size-8 rounded-md" />
-          <BrandLockup />
+          <BrandLockup size="sm" />
         </header>
         <div
           data-page-frame

@@ -16,7 +16,7 @@ import {
 } from '../../components/ui/card.js';
 import { Input } from '../../components/ui/input.js';
 import { Label } from '../../components/ui/label.js';
-import { courseQueryOptions, learnQueryOptions } from '../course/queries.js';
+import { courseQueryKeyRoot, learnQueryOptions } from '../course/queries.js';
 import { todayQueryOptions } from '../sessions/queries.js';
 import { settingsQueryOptions } from './queries.js';
 
@@ -49,7 +49,7 @@ export function SettingsPage() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: learnQueryOptions().queryKey }),
         queryClient.invalidateQueries({ queryKey: todayQueryOptions().queryKey }),
-        queryClient.invalidateQueries({ queryKey: courseQueryOptions().queryKey }),
+        queryClient.invalidateQueries({ queryKey: courseQueryKeyRoot }),
       ]);
       setSaved(true);
     } catch {

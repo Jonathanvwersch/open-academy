@@ -1,6 +1,6 @@
 import type { CourseTopic } from '@academy/contracts/course';
 import { useSuspenseQuery } from '@tanstack/react-query';
-import { Link } from '@tanstack/react-router';
+import { getRouteApi, Link } from '@tanstack/react-router';
 import { ChevronDown, ChevronRight, FileText, Wrench } from 'lucide-react';
 import { Collapsible } from 'radix-ui';
 import { useEffect, useState } from 'react';
@@ -21,8 +21,11 @@ import {
   writeCourseUnitOpenOverrides,
 } from './week-open-state.js';
 
+const CourseRoute = getRouteApi('/course');
+
 export function CoursePage() {
-  const { data } = useSuspenseQuery(courseQueryOptions());
+  const { course: courseId } = CourseRoute.useSearch();
+  const { data } = useSuspenseQuery(courseQueryOptions(courseId));
   const tutorSidebar = useTutorSidebar();
   const [unitOpenOverrides, setUnitOpenOverrides] = useState(readCourseUnitOpenOverrides);
   const [coursesOpen, setCoursesOpen] = useState(false);
@@ -95,6 +98,7 @@ export function CoursePage() {
       </Dialog>
       {data.courseStart.needed ? (
         <CourseStartCard
+          courseId={data.course.id}
           courseTitle={data.course.title}
           placementRunId={data.courseStart.placementRunId}
         />

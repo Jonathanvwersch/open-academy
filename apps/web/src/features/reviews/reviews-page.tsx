@@ -2,7 +2,7 @@ import type { ReviewTopic } from '@academy/contracts/reviews';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { Collapsible } from 'radix-ui';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Badge } from '../../components/ui/badge.js';
 import { Button } from '../../components/ui/button.js';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card.js';
@@ -34,7 +34,6 @@ export function ReviewsPage() {
   const { data: today } = useSuspenseQuery(todayQueryOptions());
   const startSession = useStartSession(today.sessionKind);
   const [openDates, setOpenDates] = useState<Set<string>>(() => new Set());
-  const [scrollDate, setScrollDate] = useState<string>();
   const todayDate = shiftDate(data.upcoming[0]?.date ?? new Date().toISOString().slice(0, 10), -1);
   const topicsByDate = useMemo(() => {
     const grouped = new Map<string, typeof data.topics>();
@@ -55,14 +54,6 @@ export function ReviewsPage() {
     .filter(([date]) => !upcomingDates.has(date) && date !== todayDate)
     .flatMap(([, topics]) => topics);
   const dueDateGroups = groupByCourse(dueTopics);
-  useEffect(() => {
-    if (!scrollDate || !openDates.has(scrollDate)) return;
-    document.getElementById(`reviews-${scrollDate}`)?.scrollIntoView({
-      behavior: 'smooth',
-      block: 'start',
-    });
-    setScrollDate(undefined);
-  }, [openDates, scrollDate]);
 
   const toggleDate = (date: string) => {
     setOpenDates((current) => {
@@ -110,31 +101,20 @@ export function ReviewsPage() {
           )}
         </CardContent>
       </Card>
-      <fieldset className="grid grid-cols-7 gap-2">
-        <legend className="sr-only">Upcoming reviews for the next seven days</legend>
-        {data.upcoming.map((day) => (
-          <Button
-            key={day.date}
-            type="button"
-            variant="outline"
-            disabled={day.count === 0}
-            aria-pressed={openDates.has(day.date)}
-            className="h-auto min-h-20 flex-col gap-1 px-1 py-3"
-            onClick={() => {
-              setOpenDates((current) => new Set(current).add(day.date));
-              setScrollDate(day.date);
-            }}
-          >
-            <span className="text-xs">{dateLabel(day.date, { weekday: 'short' })}</span>
-            <span className="text-xl font-semibold tabular-nums">{day.count}</span>
-          </Button>
-        ))}
-      </fieldset>
       <Card>
         <CardHeader>
           <CardTitle>Coming up</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
+          {todayTopics.length > 0 ? (
+            <ReviewDay
+              id={`reviews-${todayDate}`}
+              title={`Later today · ${todayTopics.length}`}
+              groups={groupByCourse(todayTopics)}
+              open={openDates.has(todayDate)}
+              onOpenChange={() => toggleDate(todayDate)}
+            />
+          ) : null}
           {upcomingTopics.map(([date, topics]) => (
             <ReviewDay
               key={date}
@@ -145,15 +125,6 @@ export function ReviewsPage() {
               onOpenChange={() => toggleDate(date)}
             />
           ))}
-          {todayTopics.length > 0 ? (
-            <ReviewDay
-              id={`reviews-${todayDate}`}
-              title={`Later today · ${todayTopics.length}`}
-              groups={groupByCourse(todayTopics)}
-              open={openDates.has(todayDate)}
-              onOpenChange={() => toggleDate(todayDate)}
-            />
-          ) : null}
           {laterTopics.length > 0 ? (
             <ReviewDay
               id="reviews-later"

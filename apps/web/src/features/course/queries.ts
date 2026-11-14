@@ -9,15 +9,21 @@ export const learnQueryOptions = () =>
     queryFn: () => getJson<LearnPayload>('/api/learn', 'Could not load Learn'),
   });
 
-export const courseQueryOptions = () =>
+export const courseQueryKeyRoot = ['course'] as const;
+
+export const courseQueryOptions = (courseId?: string) =>
   queryOptions({
-    queryKey: ['course'] as const,
-    queryFn: () => getJson<CoursePayload>('/api/course', 'Could not load Course'),
+    queryKey: ['course', courseId ?? null] as const,
+    queryFn: () =>
+      getJson<CoursePayload>(
+        courseId ? `/api/course?course=${encodeURIComponent(courseId)}` : '/api/course',
+        'Could not load Course',
+      ),
   });
 
 export function invalidateSidebarQueries(queryClient: QueryClient) {
   return Promise.all([
-    queryClient.invalidateQueries({ queryKey: courseQueryOptions().queryKey }),
+    queryClient.invalidateQueries({ queryKey: courseQueryKeyRoot }),
     queryClient.invalidateQueries({ queryKey: reviewsQueryOptions().queryKey }),
   ]);
 }

@@ -7,6 +7,7 @@ import type { ContentIndex } from '../../src/content/types.js';
 import { createDb } from '../../src/db/client.js';
 import {
   attempts,
+  courseEnrollments,
   lessonProblems,
   lessonRuns,
   mastery,
@@ -94,6 +95,17 @@ async function put(path: string, body: unknown) {
   });
 }
 
+async function post(path: string, body: unknown) {
+  return app.request(`/api${path}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Now': '2026-01-07T12:00:00.000Z',
+    },
+    body: JSON.stringify(body),
+  });
+}
+
 test('learners can switch to a listed course', async () => {
   const response = await put('/course/active', { courseId: 'robotics' });
   expect(response.status).toBe(200);
@@ -123,6 +135,42 @@ test('learners can switch to a listed course', async () => {
       0,
     ),
   });
+});
+
+test('course query views a requested course without changing the stored active course', async () => {
+  await put('/course/active', { courseId: 'robotics' });
+
+  const response = await get('/course?course=deep-learning');
+  expect(response.status).toBe(200);
+  const payload = await response.json();
+  expect(payload.course).toMatchObject({ id: 'deep-learning' });
+  expect(
+    payload.courses.find((course: { id: string }) => course.id === 'deep-learning'),
+  ).toMatchObject({ active: true });
+  const [user] = await db.select().from(users).where(eq(users.id, userId));
+  expect(user?.activeCourseId).toBe('robotics');
+
+  const unknownCourse = await (await get('/course?course=missing-course')).json();
+  expect(unknownCourse.course).toMatchObject({ id: 'robotics' });
+});
+
+test('starting a course uses a valid requested courseId instead of the active course', async () => {
+  await put('/course/active', { courseId: 'robotics' });
+
+  const response = await post('/course/start', {
+    method: 'beginning',
+    courseId: 'deep-learning',
+  });
+  expect(response.status).toBe(200);
+  expect(await response.json()).toEqual({ courseId: 'deep-learning', method: 'beginning' });
+
+  const enrollments = await db
+    .select()
+    .from(courseEnrollments)
+    .where(eq(courseEnrollments.userId, userId));
+  expect(enrollments.some((enrollment) => enrollment.courseId === 'deep-learning')).toBe(true);
+  const [user] = await db.select().from(users).where(eq(users.id, userId));
+  expect(user?.activeCourseId).toBe('robotics');
 });
 
 test('switching to an unknown course returns 404 without changing learner state', async () => {
