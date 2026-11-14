@@ -1,7 +1,94 @@
 id: image-classifier
-title: "Train and debug an image classifier"
-status: stub
+title: "Image classifier"
+status: authored
 est_hours: 5
 objective: "Train a small CNN on a provided image dataset in PyTorch, diagnose overfitting, and compare regularisation strategies."
-background: ""
-prereqs: [convolutions, sgd-minibatch, overfitting]
+background: |
+  A small convolutional network can learn to tell horizontal bars from vertical bars. You will train one on 400 generated grayscale images. Each image has one channel and measures 12 by 12 pixels. The bars move between images, and each background contains noise.
+
+  You already know how convolutions share weights, how mini-batches estimate gradients, and how validation curves guide training choices. Here you will put those ideas together in PyTorch. You will also fix a planted evaluation bug and compare two weight-decay settings. This simple dataset can reveal training mistakes, but success here says little about performance on photographs.
+
+  The generator, split, optimizer setup, checkpoint storage and final test scoring are provided. Everything runs locally on a laptop CPU. The verifier needs no network access after installation. The app records your results without running your code.
+
+  **Setup**
+  ```bash
+  python3 -m pip install -r labs/image-classifier/requirements.txt
+  python3 labs/image-classifier/setup.py
+  # edit labs/image-classifier/work/classifier.py
+  python3 labs/verify.py image-classifier
+  ```
+  Upload `labs/image-classifier/work/results.json` below. Read `labs/image-classifier/README.md` for the function contracts and debugging workflow.
+prereqs:
+  [
+    pytorch-basics,
+    convolutions,
+    images-as-tensors,
+    sgd-minibatch,
+    momentum-adam,
+    weight-init-normalization,
+    overfitting,
+    regularization,
+    debugging-training,
+    experimental-design,
+  ]
+tasks:
+  - id: t-normalize
+    title: Scale the images
+    md: |
+      Inspect `data.py`. It creates independent training, validation and test sets of 240, 80 and 80 images. Each split has equal numbers of both classes. Label 0 means horizontal; label 1 means vertical. The image layout is `(batch, channel, height, width)`.
+
+      Implement `normalize(train, validation, test)`. Compute a single mean and population standard deviation from training pixels. Clamp the standard deviation to at least `1e-6`. Use those two values to scale all three splits. Return three new tensors in the same order and leave the inputs unchanged. You are done when the training pixels have mean near zero and standard deviation near one, and `test_train_only_normalization` passes.
+  - id: t-cnn
+    title: Build a small network
+    md: |
+      Implement `build_model(seed)` using the seeded initialization in the starter. Return a `Sequential` model with `Conv2d(1, 8, 3, padding=1)`, `ReLU`, `MaxPool2d(2)`, `Flatten`, `Dropout(0.25)` and `Linear(8 * 6 * 6, 1)` in that order. Pooling halves each spatial dimension, so the linear layer receives 288 values per image.
+
+      Return raw logits of shape `(batch, 1)`. A logit at least zero predicts label 1. The binary loss used next handles the sigmoid internally. You are done when batches of 1 and 5 images produce finite outputs with the required shape and `test_cnn_shapes_and_seed` passes.
+  - id: t-minibatch
+    title: Train one epoch
+    md: |
+      Implement `train_epoch` with the supplied optimizer and seeded shuffled order. Call `model.train()` so dropout is active. For every group in `order.split(batch_size)`, clear gradients, calculate mean `binary_cross_entropy_with_logits`, call `backward()`, then call `step()`. Use `.squeeze(1)` to match the target shape `(batch,)`.
+
+      Keep the last partial batch. The verifier checks that 65 images at batch size 32 cause three updates. You are done when `test_minibatch_updates` passes, including its numerical comparison with the expected parameter updates.
+  - id: t-debug
+    title: Fix changing evaluation scores
+    md: |
+      The starter's `evaluate` contains a planted bug. Run `test_evaluation_mode` through the verifier and read its failure message. Why could the same weights and images give different validation scores? Inspect which layers behave differently during training and evaluation.
+
+      Fix `evaluate` so it returns mean binary loss and accuracy without changing weights or recording gradients. Call it twice on the same inputs and check that the results agree. You are done when `test_evaluation_mode` passes. In `work/notes.md`, record the symptom, its cause, and why disabling gradients alone would leave part of the bug in place.
+  - id: t-select
+    title: Keep the best validation score
+    md: |
+      Implement `choose_checkpoint(records)`. Return the index of the smallest `validation_loss`, keeping the first record on ties. Each record also contains `train_loss`, so check which field your code uses. An empty list should raise `ValueError`.
+
+      Read `experiment.py`. It trains for 12 epochs with Adam at learning rate 0.01 and batch size 32. It compares weight decay 0 and 0.01 with the same initialization and batch-order seeds. It saves each checkpoint, asks your function to select one across both runs, restores that checkpoint, and scores test images once. You are done when `test_validation_selection` passes.
+  - id: t-compare
+    title: Compare the training curves
+    md: |
+      Run the full verifier. Open `work/history.json`, which records training loss, validation loss and validation accuracy after each epoch for both weight-decay settings. Make a small table or plot of both loss curves. Find the best validation epoch for each setting, then compare their validation losses in `work/notes.md`.
+
+      If training loss falls while validation loss rises, explain what that suggests and which checkpoint you would keep. If you see no such interval, say so. Regularisation can help on harder data without improving this easy task. Keep the setting with the lowest validation loss even when it is the run without weight decay. All choices are finished before the final test score. You are done when all seven checks pass and the reported metrics meet the acceptance limits.
+acceptance:
+  - "All seven public verifier checks pass."
+  - "Training-only normalization, seeded initialization and mini-batch updates match the function contracts."
+  - "Evaluation disables dropout and gradient recording, and repeated scores agree."
+  - "Both weight-decay runs use the same split, initialization and batch orders. Validation loss selects the checkpoint before test scoring."
+  - "Validation and test accuracy are at least 0.90, and test binary loss is below 0.30."
+  - "Your notes explain the planted bug and compare the two validation curves."
+tests:
+  - { id: test_train_only_normalization, concepts: [images-as-tensors], dimension: implementation }
+  - { id: test_cnn_shapes_and_seed, concepts: [convolutions], dimension: implementation }
+  - { id: test_minibatch_updates, concepts: [debugging-training], dimension: implementation }
+  - { id: test_evaluation_mode, concepts: [debugging-training], dimension: implementation }
+  - { id: test_validation_selection, concepts: [overfitting], dimension: transfer }
+  - { id: test_regularization_comparison, concepts: [regularization], dimension: conceptual }
+  - { id: test_held_out_accuracy, concepts: [convolutions], dimension: implementation }
+metrics:
+  - { id: validation_accuracy, label: "Validation accuracy", threshold: 0.90, direction: above }
+  - { id: test_accuracy, label: "Test accuracy", threshold: 0.90, direction: above }
+  - { id: test_loss, label: "Test binary loss", threshold: 0.30, direction: below }
+reflection:
+  [lab-image-classifier-dropout, lab-image-classifier-selection, lab-image-classifier-decay]
+follow_up:
+  - "Generate noisier images and compare the validation curves with the same training budget. Keep a fresh test split for the final experiment."
+  - "Compare dropout probabilities 0 and 0.25 while holding weight decay fixed. Choose by validation loss."

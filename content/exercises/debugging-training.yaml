@@ -1,5 +1,33 @@
 concept: debugging-training
 exercises:
+  - id: lab-image-classifier-dropout
+    dimension: transfer
+    type: explain
+    role: core
+    difficulty: 2
+    est_minutes: 3
+    prompt: "A PyTorch image model has dropout. Its weights stay fixed, but repeated validation calls give different losses. The evaluator uses `torch.no_grad()` and calls `model.train()`. Explain the likely cause, the change you would make, and how you would check the fix."
+    rubric:
+      - {
+          id: cause,
+          criterion: "Connects train mode to fresh dropout masks during each validation call.",
+          weight: 1,
+          required: true,
+        }
+      - {
+          id: fix,
+          criterion: "Calls `model.eval()` for evaluation and retains `no_grad()`, explaining their distinct roles.",
+          weight: 1,
+          required: true,
+        }
+      - {
+          id: check,
+          criterion: "Repeats evaluation on unchanged inputs and weights and checks that scores agree.",
+          weight: 1,
+          required: true,
+        }
+    exemplar: "Training mode keeps dropout active, so each call can use a different mask. I would call `model.eval()` to disable dropout during evaluation and keep `no_grad()` to avoid recording gradients. Then I would evaluate the same images twice with fixed weights and check that both losses agree. Training should call `model.train()` again for the next epoch."
+    solution: "Dropout remains active in train mode even inside `no_grad()`. Use `eval()` with `no_grad()` and compare repeated scores on unchanged data."
   - id: dx-dl-5
     dimension: transfer
     type: debug
