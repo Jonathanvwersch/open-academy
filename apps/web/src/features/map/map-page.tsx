@@ -5,7 +5,6 @@ import {
   Controls,
   Handle,
   type NodeProps,
-  Panel,
   Position,
   ReactFlow,
   ReactFlowProvider,
@@ -174,6 +173,48 @@ function GroupNavigation({ groups }: { groups: GroupNode[] }) {
   );
 }
 
+function StatusLegend({ className }: { className: string }) {
+  return (
+    <ul aria-label="Topic status legend" className={className}>
+      {(['complete', 'in_progress', 'quiz', 'not_started', 'locked'] as const).map((status) => (
+        <li key={status}>
+          <Badge variant="secondary" className={`text-[10px] ${topicStatusClasses(status)}`}>
+            {topicStatusLabels[status]}
+          </Badge>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function MapKey() {
+  return (
+    <div className="flex justify-end px-2 py-1">
+      <StatusLegend className="hidden flex-nowrap gap-1 rounded-lg border border-border bg-card p-1 sm:flex" />
+      <div className="sm:hidden">
+        <Popover.Root>
+          <Popover.Trigger asChild>
+            <Button type="button" variant="outline" size="sm" className="bg-card">
+              Key
+            </Button>
+          </Popover.Trigger>
+          <Popover.Portal>
+            <Popover.Content
+              aria-label="Map key"
+              align="end"
+              sideOffset={8}
+              collisionPadding={8}
+              className="z-50 max-w-72 rounded-lg border border-border bg-card p-2 shadow-md"
+            >
+              <StatusLegend className="flex flex-wrap gap-1" />
+            </Popover.Content>
+          </Popover.Portal>
+        </Popover.Root>
+      </div>
+    </div>
+  );
+}
+
 export function MapPage() {
   const { data } = useSuspenseQuery(studyMapQueryOptions());
   const graph = useMemo(() => (data.nodes.length ? layoutStudyMap(data) : null), [data]);
@@ -202,7 +243,7 @@ export function MapPage() {
           <GroupNavigation groups={graph.nodes.filter((node) => node.type === 'courseGroup')} />
           <section
             aria-label="Study map graph"
-            className="study-map relative min-h-[560px] w-full border-y border-border"
+            className="study-map relative grid min-h-[560px] w-full grid-rows-[auto_minmax(0,1fr)] border-y border-border"
             onTouchStartCapture={(event) => {
               const touch = event.touches[0];
               touchOrigin.current =
@@ -220,6 +261,7 @@ export function MapPage() {
                 event.stopPropagation();
             }}
           >
+            <MapKey />
             <TopicFocusContext.Provider value={setFocused}>
               <ReactFlow
                 nodes={emphasized.nodes}
@@ -239,25 +281,6 @@ export function MapPage() {
                 defaultEdgeOptions={{ zIndex: 1 }}
               >
                 <MapViewport groups={graph.nodes.filter((node) => node.type === 'courseGroup')} />
-                <Panel
-                  position="top-right"
-                  className="pointer-events-none max-w-32 rounded-lg border border-border bg-card/95 p-2 shadow-sm sm:max-w-xs"
-                >
-                  <ul aria-label="Topic status legend" className="flex flex-wrap justify-end gap-1">
-                    {(['complete', 'in_progress', 'quiz', 'not_started', 'locked'] as const).map(
-                      (status) => (
-                        <li key={status}>
-                          <Badge
-                            variant="secondary"
-                            className={`text-[10px] sm:text-xs ${topicStatusClasses(status)}`}
-                          >
-                            {topicStatusLabels[status]}
-                          </Badge>
-                        </li>
-                      ),
-                    )}
-                  </ul>
-                </Panel>
               </ReactFlow>
             </TopicFocusContext.Provider>
           </section>

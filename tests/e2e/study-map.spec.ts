@@ -105,6 +105,27 @@ test('study map groups shared topics once and opens available lessons', async ({
 test('desktop canvas is full-width with an overlay legend and the page scrolls past it', async ({
   page,
 }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.route('**/api/study-map', (route) =>
+    route.fulfill({
+      json: {
+        groups: [{ id: 'wide', title: 'Fixture course', kind: 'course' }],
+        nodes: Array.from({ length: 6 }, (_, index) => ({
+          id: `topic-${index}`,
+          groupId: 'wide',
+          title: `Topic ${index}`,
+          status: 'not_started',
+          placedOut: false,
+          lessonAvailable: false,
+          missingPrereqTitles: [],
+        })),
+        edges: Array.from({ length: 5 }, (_, index) => ({
+          from: `topic-${index}`,
+          to: `topic-${index + 1}`,
+        })),
+      },
+    }),
+  );
   await page.goto('/map');
   const viewport = page.locator('.react-flow__viewport');
   await expect(viewport).toHaveAttribute('style', /scale\(0.9\)/);
@@ -119,10 +140,76 @@ test('desktop canvas is full-width with an overlay legend and the page scrolls p
   expect(legend.y).toBeGreaterThan(graph.y);
   expect(legend.x + legend.width).toBeLessThan(graph.x + graph.width);
   expect(legend.y + legend.height).toBeLessThan(graph.y + graph.height);
+  const legendContent = page.getByRole('list', { name: 'Topic status legend' });
+  await expect(legendContent.getByRole('listitem')).toHaveCount(5);
+  expect(
+    await legendContent
+      .getByRole('listitem')
+      .evaluateAll((items) => new Set(items.map((item) => item.getBoundingClientRect().top)).size),
+  ).toBe(1);
+  expect(
+    await legendContent.evaluate((element) => {
+      const color = getComputedStyle(element).backgroundColor;
+      const probe = document.createElement('canvas').getContext('2d');
+      if (!probe) throw new Error('Expected canvas context');
+      probe.fillStyle = color;
+      probe.fillRect(0, 0, 1, 1);
+      return probe.getImageData(0, 0, 1, 1).data[3];
+    }),
+  ).toBe(255);
+  expect(
+    await legendContent.evaluate((element) => {
+      const key = element.getBoundingClientRect();
+      const canvas = document.querySelector('.react-flow')?.getBoundingClientRect();
+      if (!canvas) throw new Error('Expected canvas bounds');
+      return [...document.querySelectorAll('.react-flow__node-topic, [data-map-title]')]
+        .filter((node) => {
+          const r = node.getBoundingClientRect();
+          return (
+            r.left < canvas.right &&
+            r.right > canvas.left &&
+            r.top < canvas.bottom &&
+            r.bottom > canvas.top
+          );
+        })
+        .filter((node) => {
+          const r = node.getBoundingClientRect();
+          return (
+            key.left < r.right && key.right > r.left && key.top < r.bottom && key.bottom > r.top
+          );
+        })
+        .map((node) => node.textContent);
+    }),
+  ).toEqual([]);
   await page.getByRole('navigation', { name: 'Jump to group' }).hover();
   await page.mouse.wheel(0, 900);
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
   await expect(page.getByRole('heading', { name: 'Fixture course', exact: true })).toBeInViewport();
+});
+
+test('mobile Key keeps statuses hidden until activated and supports the keyboard', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/map');
+  await expect(page.locator('.react-flow__viewport')).toHaveAttribute('style', /scale\(0.8\)/);
+  const legend = page.getByRole('list', { name: 'Topic status legend' });
+  await expect(legend).toBeHidden();
+  const key = page.getByRole('button', { name: 'Key', exact: true });
+  await key.click();
+  await expect(legend.getByRole('listitem')).toHaveText([
+    'Complete',
+    'In progress',
+    'Quiz not passed',
+    'Not started',
+    'Locked',
+  ]);
+  await page.keyboard.press('Escape');
+  await expect(legend).toBeHidden();
+  await expect(key).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('dialog', { name: 'Map key' })).toBeVisible();
+  await expect(legend.getByRole('listitem')).toHaveCount(5);
 });
 
 test('Jump to buttons follow payload order and LLM Inference supports click and keyboard navigation', async ({
