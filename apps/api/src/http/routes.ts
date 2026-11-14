@@ -35,6 +35,7 @@ export function createApiRoutes(deps: {
   content?: ContentIndex;
   tutorProvider?: TutorProvider | null;
   paperFetcher?: PaperFetcher;
+  demo?: { ttlHours: number } | null;
 }) {
   const api = new Hono<ApiEnv>();
   let contentPromise: Promise<ContentIndex> | undefined;
@@ -52,11 +53,9 @@ export function createApiRoutes(deps: {
         : createTutorProvider({ apiKey: env.OPENAI_API_KEY, model: env.OPENAI_MODEL })
       : deps.tutorProvider;
   api.use('*', async (context, next) => {
-    const [user] = await db
-      .select()
-      .from(users)
-      .orderBy(asc(users.createdAt), asc(users.id))
-      .limit(1);
+    const [user] = deps.demo
+      ? [context.get('user')]
+      : await db.select().from(users).orderBy(asc(users.createdAt), asc(users.id)).limit(1);
     if (!user) {
       return context.json({ error: 'Seed the default learner before using the API.' }, 503);
     }

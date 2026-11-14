@@ -9,7 +9,7 @@ interface RouterContext {
 export const Route = createRootRouteWithContext<RouterContext>()({
   pendingComponent: AppShellSkeleton,
   beforeLoad: async ({ context, location }) => {
-    if (location.pathname === '/login') return;
+    if (location.pathname === '/login') return { auth: undefined };
     const auth = await context.queryClient.ensureQueryData(authQueryOptions());
     if (auth.authRequired && !auth.authenticated && location.pathname !== '/login') {
       throw redirect({
@@ -17,6 +17,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
         search: { redirect: `${location.pathname}${location.searchStr}` },
       });
     }
+    return { auth };
   },
   component: RootLayout,
 });

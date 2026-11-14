@@ -54,6 +54,8 @@ Your source files stay on your machine and aren't committed. [Writing your first
 
 Both are covered in [Self-hosting](docs/self-hosting.md). Each instance is for one learner and is protected by a password you set (`ACADEMY_PASSWORD`).
 
+A [public demo mode](docs/self-hosting.md#public-demo) gives each visitor temporary browser-based progress.
+
 ## Project layout
 
 | Path                                    | What's there                                                    |
