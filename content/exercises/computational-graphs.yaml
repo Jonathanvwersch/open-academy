@@ -9,21 +9,21 @@ exercises:
     prompt: "What does a computational graph show?"
     options:
       - id: a
-        text: "The values and operations used in a calculation."
+        text: "Each simple operation, and which values it uses."
         correct: true
         feedback: "Nodes and arrows make dependencies explicit."
       - id: b
-        text: "The input values listed from smallest to largest."
+        text: "How the output changes as one input changes."
         correct: false
-        feedback: "A graph shows which operations use each input, not an ordering by size."
+        feedback: "That's a plot of the function. A graph shows the operations that compute the output and which values each one uses."
       - id: c
-        text: "The output values plotted against each input."
+        text: "The inputs and the output, joined by one arrow."
         correct: false
-        feedback: "A plot shows values but not the operations producing them."
+        feedback: "A computational graph splits the calculation into small operations, each with its own node, between the inputs and the output."
       - id: d
-        text: "The derivative values sorted by their sizes."
+        text: "The lines of code, in the order they were written."
         correct: false
-        feedback: "A graph records dependencies, not a ranking of slopes."
+        feedback: "A graph records which operation uses which value. Two lines of code can be in either order if neither uses the other's result."
     solution: "A computational graph connects inputs and simple operations with arrows showing which values each operation uses."
   - id: cgp-why-order
     lesson_only: true
@@ -232,11 +232,22 @@ exercises:
     role: "practice"
     difficulty: 2
     est_minutes: 2
-    prompt: "At a multiply node $p=w\\cdot x$, $w={{= w}}$ and $x={{= x}}$. What is the local derivative $\\partial p/\\partial w$?"
+    prompt: "A multiply node computes $p=w\\cdot x$. At $w={{= w}}$ it outputs $p={{= w*x}}$. What is the local derivative $\\partial p/\\partial w$?"
     params: { "w": { "min": 2, "max": 4 }, "x": { "min": 5, "max": 8 } }
     answer_expr: "x"
     tolerance: { abs: 0.001 }
-    solution: "Hold $x$ fixed: the derivative of $w\\cdot x$ with respect to $w$ is the other input, $x={{= x}}$."
+    common_wrong:
+      - {
+          answer_expr: "w",
+          category: misunderstood_definition,
+          feedback: "Holding $x$ fixed, each unit of $w$ adds $x$ to $p$. The local derivative is the other input, $x$.",
+        }
+      - {
+          answer_expr: "w*x",
+          category: misunderstood_definition,
+          feedback: "That's the node's output. The local derivative is how much $p$ changes per unit change in $w$.",
+        }
+    solution: "Hold $x$ fixed: the derivative of $w\\cdot x$ with respect to $w$ is the other input, $x$. Since $p={{= w*x}}$ and $w={{= w}}$, $x={{= w*x}}/{{= w}}={{= x}}$."
   - id: cgp-local-not-total
     dimension: "conceptual"
     type: "mc"

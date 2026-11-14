@@ -375,23 +375,31 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt:
-      "A calculation has adjustable inputs and outputs. Inputs: {{=inputs}}. Outputs: {{=outputs}}.
-      How many ordinary forward-mode derivative passes find every input-output derivative?"
-    params:
-      inputs:
-        min: 2
-        max: 6
-      outputs:
-        min: 1
-        max: 4
-    answer_expr: inputs
+    prompt: "A drone's planner takes four adjustable inputs: its position east, north and up, and its heading angle. It returns two outputs: the distance to a landing pad and the battery the flight will use. How many ordinary forward-mode derivative passes find every input-output derivative?"
+    answer: 4
     tolerance: { abs: 0 }
+    common_wrong:
+      - {
+          answer: 2,
+          tolerance: { abs: 0 },
+          category: misunderstood_definition,
+          feedback: "One pass per output is reverse mode's backward count. A forward-mode pass follows one input to every output.",
+        }
+      - {
+          answer: 8,
+          tolerance: { abs: 0 },
+          category: misunderstood_definition,
+          feedback: "One forward pass carries a chosen input's effect to all the outputs at once, so you need one pass per input, not one per pair.",
+        }
+      - {
+          answer: 3,
+          tolerance: { abs: 0 },
+          category: misunderstood_definition,
+          feedback: "That's reverse mode's total: one recording pass plus one backward pass per output. Forward mode needs one pass per input.",
+        }
     hints:
       - "Each forward pass follows one chosen input."
-    solution:
-      Forward mode chooses one input per pass and carries that input's effects to all outputs.
-      The number of passes is therefore the number of inputs.
+    solution: "Forward mode chooses one input per pass and carries that input's effects to all outputs. The planner has 4 inputs, so it needs 4 passes."
   - id: ad-modes-same-slopes
     dimension: conceptual
     type: mc
