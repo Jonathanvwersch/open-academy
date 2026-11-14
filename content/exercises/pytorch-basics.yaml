@@ -40,33 +40,27 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "Why does the worked example use `[[1.0], [2.0]]` rather than `[1.0, 2.0]`?"
+    prompt: In the worked example, what changes if `[[1.0], [2.0]]` is replaced by `[1.0, 2.0]`?
     options:
-      - {
-          id: a,
-          text: "It gives each example its own row with one input.",
-          correct: true,
-          feedback: "The nested lists preserve the two-example table.",
-        }
-      - {
-          id: b,
-          text: "It gives each example its own separate data type.",
-          correct: false,
-          feedback: "All entries share the tensor's data type; nesting specifies shape.",
-        }
-      - {
-          id: c,
-          text: "It gives each example a slope without further setup.",
-          correct: false,
-          feedback: "Nesting does not enable gradient tracking.",
-        }
-      - {
-          id: d,
-          text: "It gives each example two copies in the result.",
-          correct: false,
-          feedback: "There is still one value per row; no values are duplicated.",
-        }
-    solution: "Each inner list is one row containing one input. That makes a `(2, 1)` table: two examples with one input each."
+      - id: a
+        text: The shape changes from `(2, 1)` to `(2,)`, removing the explicit input-column axis.
+        correct: true
+        feedback: Nested rows create a second axis; the flat list has only one.
+      - id: b
+        text: The shape changes from `(2, 1)` to `(1, 2)`, making one row with two inputs.
+        correct: false
+        feedback: A flat list has shape `(2,)`; a one-row table would need `[[1.0, 2.0]]`.
+      - id: c
+        text: The shape stays `(2, 1)`, since the two stored values have not changed.
+        correct: false
+        feedback: Equal values and equal entry counts can have different shapes.
+      - id: d
+        text: The shape changes from `(1, 2)` to `(2,)`, removing the example-row axis.
+        correct: false
+        feedback: The nested table starts with two rows and one column, so its shape is `(2, 1)`.
+    solution:
+      The nested version has two axes, with two rows and one column. Removing the inner lists
+      produces shape `(2,)`, so the explicit column axis is lost.
   - id: ptb-tensor-complete
     dimension: implementation
     type: code_complete
@@ -87,15 +81,21 @@ exercises:
     difficulty: 2
     est_minutes: 2
     params:
-      x: { min: 1, max: 4 }
-      w: { min: 1, max: 3 }
-    prompt: "A one-row input table is `[[{{= x }}.0]]` and its weight table `w` is `[[{{= w }}.0]]`. Matrix multiplication pairs the entries: ${{= x }}\\times{{= w }}$. What number is in the result?"
-    answer_expr: "x * w"
-    tolerance: { abs: 0.000001 }
-    solution: |
-      The row has one entry, so multiply it by the matching weight.
-
-      $${{= x }}\times{{= w }}={{= x * w }}.$$
+      x:
+        min: 2
+        max: 4
+      w:
+        min: 2
+        max: 3
+    prompt:
+      Tensor `x` is `[[{{= x }}.0, 2.0]]` and tensor `w` is `[[{{= w }}.0], [-1.0]]`. What number
+      does `(x @ w).item()` return?
+    answer_expr: x*w-2
+    tolerance:
+      abs: 1.0e-06
+    solution:
+      "Matrix multiplication pairs each row entry with its matching weight and adds the products:
+      ${{= x }}({{= w }})+2(-1)={{= x*w-2 }}$. The result has one entry, which `.item()` extracts."
   - id: ptb-tensor-nesting
     dimension: implementation
     type: mc
@@ -258,12 +258,21 @@ exercises:
     difficulty: 2
     est_minutes: 2
     params:
-      x: { min: 1, max: 4 }
-      w: { min: 1, max: 3 }
-      b: { min: 0, max: 2 }
-    prompt: "A one-input linear module has weight {{= w }}, bias {{= b }} and input {{= x }}. Its weighted contribution is {{= w * x }}. What is its output after adding the bias?"
-    answer_expr: "w * x + b"
-    tolerance: { abs: 0.000001 }
+      x:
+        min: 1
+        max: 4
+      w:
+        min: 1
+        max: 3
+      b:
+        min: 0
+        max: 2
+    prompt:
+      A one-input linear module has weight {{= w }}, bias {{= b }} and input {{= x }}. What output
+      does the module produce?
+    answer_expr: w * x + b
+    tolerance:
+      abs: 1.0e-06
     solution: |
       The same linear rule multiplies the input by its weight, then adds the bias.
 
@@ -381,33 +390,27 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "Why does the worked example call `loss.backward()` before `optimizer.step()`?"
+    prompt: In the worked update, what does `loss.backward()` supply for `optimizer.step()`?
     options:
-      - {
-          id: a,
-          text: "The update needs the slopes that backward stores for the parameters.",
-          correct: true,
-          feedback: "SGD reads each stored slope when it updates the weight and bias.",
-        }
-      - {
-          id: b,
-          text: "The update needs the target to become a trainable parameter.",
-          correct: false,
-          feedback: "The targets stay fixed; the optimiser updates the weight and bias.",
-        }
-      - {
-          id: c,
-          text: "The update needs the loss to become an ordinary Python number.",
-          correct: false,
-          feedback: "Backward operates on the tensor loss; item is only for inspection.",
-        }
-      - {
-          id: d,
-          text: "The update needs the parameters to move before their slopes are calculated.",
-          correct: false,
-          feedback: "That reverses the dependency: calculate the current slope first.",
-        }
-    solution: "Backward supplies the current gradient. Step then uses it to subtract a scaled slope from the parameter."
+      - id: a
+        text: It stores the current loss gradients in the parameters' `.grad` fields.
+        correct: true
+        feedback: Step reads the gradients that backward calculated for the current loss.
+      - id: b
+        text: It updates the parameters, leaving step to calculate their new gradients.
+        correct: false
+        feedback: Backward calculates gradients; step uses them to change parameters.
+      - id: c
+        text: It clears the previous gradients, leaving step to calculate fresh ones.
+        correct: false
+        feedback: "`zero_grad()` clears gradients, and backward calculates and adds the fresh ones."
+      - id: d
+        text: It converts the loss to a number, leaving step to differentiate that number.
+        correct: false
+        feedback: Step reads `.grad`; extracting a Python number with `.item()` does not provide gradients.
+    solution:
+      Backward calculates the current loss gradients and stores them in `.grad`. The optimiser
+      step then reads those gradients to update the parameters.
   - id: ptb-loss-complete
     dimension: implementation
     type: code_complete
@@ -558,33 +561,38 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "Why does this step's worked loop call `model(x)` again inside `torch.no_grad()` to measure `new_loss` after the loop?"
+    prompt: The worked loop ends with `model(x)` inside `torch.no_grad()` to measure `new_loss`. Why
+      are fresh predictions needed?
     options:
-      - {
-          id: a,
-          text: "It needs predictions using the parameters after all the updates.",
-          correct: true,
-          feedback: "The last pass measured its loss before its update, so a fresh loss needs fresh predictions.",
-        }
-      - {
-          id: b,
-          text: "It needs to apply a second update without another gradient.",
-          correct: false,
-          feedback: "A model call calculates outputs; only step applies updates.",
-        }
-      - {
-          id: c,
-          text: "It needs to replace the target with the latest prediction.",
-          correct: false,
-          feedback: "The correct target remains fixed throughout training.",
-        }
-      - {
-          id: d,
-          text: "It needs to clear stored gradients by repeating the prediction.",
-          correct: false,
-          feedback: "Model calls do not clear gradients; `zero_grad()` does that.",
-        }
-    solution: "After the loop, `model(x)` makes fresh predictions with the final parameters so `new_loss` measures the trained model. The last pass's loss was measured before its update. Existing prediction and loss tensors do not automatically recalculate when parameters change."
+      - id: a
+        text:
+          The saved predictions use earlier parameters, so the final parameters need a new forward
+          pass.
+        correct: true
+        feedback: Changing parameters does not recalculate existing prediction tensors.
+      - id: b
+        text: The saved predictions are current, but `no_grad()` must convert them into Python numbers.
+        correct: false
+        feedback: "`no_grad()` pauses gradient recording; `.item()` extracts a number."
+      - id: c
+        text:
+          The saved predictions update with the parameters, but the loss must be given the targets
+          again.
+        correct: false
+        feedback:
+          Existing predictions keep their old values, so passing them to the loss again would
+          still use old outputs.
+      - id: d
+        text:
+          The saved predictions update only after `zero_grad()`, which the new forward pass calls
+          internally.
+        correct: false
+        feedback:
+          A forward pass neither clears gradients nor refreshes earlier tensors; it calculates
+          new predictions.
+    solution:
+      The last stored predictions were calculated before the final update. A new forward pass
+      uses the final parameters, allowing the new loss to measure that model.
   - id: ptb-loop-complete
     dimension: implementation
     type: code_complete
