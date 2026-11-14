@@ -93,7 +93,7 @@ concepts:
       prereqs: [{ id: attention }],
       objectives:
         [{ text: "Build a causal mask and explain its effect", dimension: implementation }],
-      status: stub,
+      status: authored,
     }
   - {
       id: autoregressive-lm,
