@@ -44,6 +44,37 @@ function repairBacktickedMath(markdown: string): string {
     .join('```');
 }
 
+function replaceTextDashes(markdown: string): string {
+  return markdown
+    .replace(/^([ \t]*)—[ \t]*/gm, '$1')
+    .replace(/[ \t]*—[ \t]*(?=$|[.,;:!?])/gm, '')
+    .replace(/(?<=,)[ \t]*—[ \t]*(?=\S)/g, ' ')
+    .replace(/(?<=\S)[ \t]*—[ \t]*(?=\S)/g, ', ')
+    .replace(/(?<=,)[ \t]+–[ \t]+(?=[^\d\s])/g, ' ')
+    .replace(/(?<=[^\d\s])[ \t]+–[ \t]+(?=[^\d\s])/g, ', ');
+}
+
+function replaceTutorDashesOutsideInlineCodeAndMath(markdown: string): string {
+  const protectedSpan = /(`+)[\s\S]*?\1|\$\$[\s\S]*?\$\$|\$(?!\$)[^$]*\$(?!\$)/g;
+  let result = '';
+  let cursor = 0;
+  for (const match of markdown.matchAll(protectedSpan)) {
+    const start = match.index ?? cursor;
+    result += replaceTextDashes(markdown.slice(cursor, start)) + match[0];
+    cursor = start + match[0].length;
+  }
+  return result + replaceTextDashes(markdown.slice(cursor));
+}
+
+export function replaceTutorDashes(md: string): string {
+  return md
+    .split('```')
+    .map((segment, index) =>
+      index % 2 === 1 ? segment : replaceTutorDashesOutsideInlineCodeAndMath(segment),
+    )
+    .join('```');
+}
+
 export function repairTutorMarkdown(md: string): string {
   const repaired = md
     .replace(/([\s\S])([0-9a-fA-F]{2})/g, (match, control: string, hex: string) => {
@@ -64,5 +95,5 @@ export function repairTutorMarkdown(md: string): string {
         : character;
     })
     .replace(/(?<!\$)\$\$([^$\n]+)\$(?!\$)/g, (_match, math: string) => `$${math}$`);
-  return repairBacktickedMath(repairedMath);
+  return replaceTutorDashes(repairBacktickedMath(repairedMath));
 }

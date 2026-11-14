@@ -1,4 +1,4 @@
-import { repairTutorMarkdown } from '@academy/shared/tutor';
+import { repairTutorMarkdown, replaceTutorDashes } from '@academy/shared/tutor';
 import { expect, test } from 'vitest';
 
 test('repairs a double-dollar opener paired with a single-dollar closer', () => {
@@ -93,3 +93,25 @@ test.each(['`\\n`', '`np.log2(p)`', '`print(1)`', '`x = 1`'])(
     expect(repairTutorMarkdown(markdown)).toBe(markdown);
   },
 );
+
+test.each([
+  ['Exactly—it can be; a — b', 'Exactly, it can be; a, b'],
+  ['  —  Start the list\n—Continue', '  Start the list\nContinue'],
+  [
+    'This —\nThat —. Next —, then —; okay —: maybe —! yes —?',
+    'This\nThat. Next, then; okay: maybe! yes?',
+  ],
+  ['No, — really.', 'No, really.'],
+  ['A – B', 'A, B'],
+  ['Keep 0–1 and pages 3–5 unchanged.', 'Keep 0–1 and pages 3–5 unchanged.'],
+  ['Keep 0 – 1 and 3 – 5 unchanged.', 'Keep 0 – 1 and 3 – 5 unchanged.'],
+  ['Keep $a — b$ and $$x – y$$ unchanged.', 'Keep $a — b$ and $$x – y$$ unchanged.'],
+  ['Keep `a — b` and ``x – y`` unchanged.', 'Keep `a — b` and ``x – y`` unchanged.'],
+  ['```\na — b\n```', '```\na — b\n```'],
+])('replaces tutor dashes without changing protected or retained cases: %s', (input, output) => {
+  expect(replaceTutorDashes(input)).toBe(output);
+});
+
+test('repairs dashes in Markdown after the other tutor repairs', () => {
+  expect(repairTutorMarkdown('Exactly—it can be')).toBe('Exactly, it can be');
+});

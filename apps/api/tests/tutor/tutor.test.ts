@@ -88,6 +88,9 @@ describe('buildTutorInput', () => {
     expect(prompt).toContain(
       'The chat panel is narrow (about 45 characters). Keep each display equation short; split a long one over several lines with `$$\\begin{aligned} … \\\\ … \\end{aligned}$$`, one step per line.',
     );
+    expect(prompt).toContain(
+      `12. Write the way a friendly human tutor talks: short, plain sentences. Never use em dashes (—) or spaced en dashes ( – ); use a full stop, comma, colon or brackets instead. Don't frame points as "X, not Y" or "it's not X, it's Y" unless you are correcting a specific mistake the learner made. No filler openers ("Great question!") or closing offers ("Let me know if…").`,
+    );
     expect(tutorPromptVersion('tutor-system', tutorContent)).toBe(
       createHash('sha256').update(prompt).digest('hex').slice(0, 12),
     );
