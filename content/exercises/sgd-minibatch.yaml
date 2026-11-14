@@ -73,12 +73,19 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "A batch has two loss slopes, ${{= a }}$ and ${{= b }}$, calculated at the same parameter value. What is their average slope?"
+    prompt: A minibatch of two examples gives loss slopes ${{= a }}$ and ${{= b }}$ at the current parameter value. What slope does the minibatch update use?
     params:
-      a: { min: -8, max: 8, step: 2 }
-      b: { min: -8, max: 8, step: 2 }
-    answer_expr: "(a+b)/2"
-    tolerance: { abs: 0.001 }
+      a:
+        min: -8
+        max: 8
+        step: 2
+      b:
+        min: -8
+        max: 8
+        step: 2
+    answer_expr: (a+b)/2
+    tolerance:
+      abs: 0.001
     solution: "Add the two slopes and divide by the two examples: $({{= a }}+({{= b }}))/2={{= (a+b)/2 }}$. This is the slope used for one batch update."
   - id: sgm-sum-trap
     dimension: math
@@ -86,33 +93,28 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "A batch has loss slopes $2$ and $6$. Starting at $w=5$ with $\\eta=0.1$, what is the new $w$ when we lower the average loss?"
+    prompt: A minibatch of two examples gives loss slopes $2$ and $6$ at $w=5$. With $\eta=0.1$, what is $w$ after one minibatch update?
     options:
-      - {
-          id: a,
-          text: "$4.2$, from subtracting $0.1$ times the sum.",
-          correct: false,
-          feedback: "The sum is 8, but the average slope is 4. Divide by the two examples first.",
-        }
-      - {
-          id: b,
-          text: "$5.4$, from adding $0.1$ times the average.",
-          correct: false,
-          feedback: "Gradient descent subtracts the average gradient; adding it goes uphill locally.",
-        }
-      - {
-          id: c,
-          text: "$4.6$, from subtracting $0.1$ times the average.",
-          correct: true,
-          feedback: "The average slope is 4, so the update is 5 minus 0.4.",
-        }
-      - {
-          id: d,
-          text: "$4.8$, from subtracting $0.1$ times the first slope.",
-          correct: false,
-          feedback: "Using only the first slope ignores the second example in this batch.",
-        }
-    solution: "The batch slope is $(2+6)/2=4$, so $w_{\\text{new}}=5-0.1\\times4=4.6$. Using the sum would incorrectly double this average-loss update."
+      - id: a
+        text: $4.2$
+        correct: false
+        category: misapplied_technique
+        feedback: This subtracts $0.1$ times the sum, 8. The update uses the average slope, 4.
+      - id: b
+        text: $5.4$
+        correct: false
+        category: incorrect_reasoning
+        feedback: This adds $0.1$ times the average. Gradient descent subtracts it to go downhill.
+      - id: c
+        text: $4.6$
+        correct: true
+        feedback: The average slope is 4, and $5-0.1\times4=4.6$.
+      - id: d
+        text: $4.8$
+        correct: false
+        category: misapplied_technique
+        feedback: This uses only the first slope. The update uses the average over the batch.
+    solution: The batch slope is $(2+6)/2=4$, so $w_{\text{new}}=5-0.1\times4=4.6$. Using the sum would incorrectly double this average-loss update.
   - id: sgm-update-template
     dimension: math
     type: numeric
@@ -133,32 +135,27 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: "A robot's prediction model has two adjustable weights, currently $(2,3)$. At these weights, two examples give gradients $(4,-2)$ and $(0,6)$, listing slopes in the same weight order. With $\\eta=0.1$, what are the weights after one average-loss batch update?"
+    prompt: A robot's prediction model has two adjustable weights, currently $(2,3)$. At these weights, a minibatch of two examples gives gradients $(4,-2)$ and $(0,6)$, listing slopes in the same weight order. With $\eta=0.1$, what are the weights after one minibatch update?
     options:
-      - {
-          id: a,
-          text: "$(1.6,2.6)$, using the summed gradient.",
-          correct: false,
-          feedback: "The sum is (4,4), but averaging two examples gives (2,2).",
-        }
-      - {
-          id: b,
-          text: "$(2.2,3.2)$, adding the average gradient.",
-          correct: false,
-          feedback: "Adding goes with the gradient; descent subtracts it from each weight.",
-        }
-      - {
-          id: c,
-          text: "$(1.6,3.2)$, using only the first gradient.",
-          correct: false,
-          feedback: "A batch update includes both examples before changing either weight.",
-        }
-      - {
-          id: d,
-          text: "$(1.8,2.8)$, subtracting the average gradient.",
-          correct: true,
-          feedback: "Each coordinate averages to 2, so subtract 0.2 from each weight.",
-        }
+      - id: a
+        text: $(1.6,2.6)$
+        correct: false
+        category: misapplied_technique
+        feedback: This uses the summed gradient $(4,4)$. The update uses the average, $(2,2)$.
+      - id: b
+        text: $(2.2,3.2)$
+        correct: false
+        category: incorrect_reasoning
+        feedback: This adds the average gradient. Gradient descent subtracts it.
+      - id: c
+        text: $(1.6,3.2)$
+        correct: false
+        category: misapplied_technique
+        feedback: This uses only the first example's gradient. The update averages over the batch.
+      - id: d
+        text: $(1.8,2.8)$
+        correct: true
+        feedback: The average gradient is $(2,2)$, and $(2,3)-0.1(2,2)=(1.8,2.8)$.
     solution: "Average corresponding entries: $((4+0)/2,(-2+6)/2)=(2,2)$. Subtracting $0.1(2,2)$ from $(2,3)$ gives $(1.8,2.8)$."
   - id: sgm-epoch-basics
     dimension: conceptual
@@ -437,33 +434,28 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: "At $w=4$, our targets $1,3,5,7$ give slopes $6,2,-2,-6$, so the full gradient is zero. Which statement about a batch containing targets $1$ and $7$ is correct?"
+    prompt: At $w=4$, our targets $1,3,5,7$ give slopes $6,2,-2,-6$, so the full gradient is zero. Which statement about a batch containing targets $1$ and $7$ is correct?
     options:
-      - {
-          id: a,
-          text: "Its average is zero here, so it always matches the full gradient in any dataset.",
-          correct: false,
-          feedback: "This pair matches here because its slopes cancel. That does not make arbitrary pairs representative.",
-        }
-      - {
-          id: b,
-          text: "Its average is four here, so it moves just like the pair of targets 1 and 3.",
-          correct: false,
-          feedback: "Target 7 supplies slope -6, not the slope 2 supplied by target 3.",
-        }
-      - {
-          id: c,
-          text: "Its average is six here, because one must ignore the negative slope.",
-          correct: false,
-          feedback: "Negative slopes count too; averaging 6 and -6 gives zero.",
-        }
-      - {
-          id: d,
-          text: "Its average is zero here, though a small batch need not match in general.",
-          correct: true,
-          feedback: "The two slopes cancel exactly in this pair, showing that not every small batch is noisy.",
-        }
-    solution: "Targets $1,7$ give $(6+(-6))/2=0$, exactly the full gradient at this setting. Larger batches are generally more reliable, not necessarily closer on every particular draw."
+      - id: a
+        text: Its average slope is $0$, so an update on this batch leaves $w$ at $4$.
+        correct: true
+        feedback: The slopes $6$ and $-6$ average to $0$, matching the full gradient here, so the update leaves $w$ unchanged.
+      - id: b
+        text: Its average slope is $4$, the same as the batch with targets $1$ and $3$.
+        correct: false
+        category: math_error
+        feedback: Targets $1$ and $3$ give $(6+2)/2=4$, but targets $1$ and $7$ give $(6+(-6))/2=0$.
+      - id: c
+        text: Its average slope is $6$, because only the positive slope counts.
+        correct: false
+        category: math_error
+        feedback: "Both slopes count with their signs: $(6+(-6))/2=0$."
+      - id: d
+        text: Its average slope is $0$, so every batch of two of these targets gives $0$.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Targets $1$ and $3$ give an average slope of $4$, so a small batch need not match the full gradient.
+    solution: "Targets $1$ and $7$ give $(6+(-6))/2=0$, so this batch's update leaves $w$ at $4$, matching the full gradient. Other pairs need not match: targets $1$ and $3$ give $4$."
   - id: sgm-timing-application
     dimension: conceptual
     type: mc

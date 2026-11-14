@@ -31,34 +31,33 @@ exercises:
     solution: "A filter multiplies matching pixels and weights, adds them and a bias, then repeats at another position."
   - id: conv-slide-why-zero
     lesson_only: true
-    dimension: "conceptual"
-    type: "mc"
-    role: "practice"
+    dimension: conceptual
+    type: mc
+    role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "Why is the worked example's score at (0,2) zero even though the patch is bright?"
+    prompt: In the worked all-bright patch, which calculation explains the zero score before ReLU?
     options:
-      [
-        {
-          "id": "a",
-          "text": "Equal left and right brightness contributions cancel.",
-          "correct": true,
-          "feedback": "Each row contributes minus one plus one.",
-        },
-        {
-          "id": "b",
-          "text": "ReLU changes every positive score into zero.",
-          "correct": false,
-          "feedback": "ReLU keeps positive scores. This score was already zero before ReLU.",
-        },
-        {
-          "id": "c",
-          "text": "The filter skips patches containing bright pixels.",
-          "correct": false,
-          "feedback": "It evaluates this patch just like any other.",
-        },
-      ]
-    solution: "Each all-bright row contributes −1 + 0 + 1 = 0, so all three rows sum to zero."
+      - id: a
+        text: Each row has equal left and right values, so its negative and positive weighted terms
+          cancel.
+        correct: true
+        feedback: With row weights (-1, 0, 1), an all-bright row contributes -1 + 0 + 1 = 0.
+      - id: b
+        text:
+          Each row is first reduced to its brightest value, which is then multiplied by the middle
+          weight.
+        correct: false
+        feedback:
+          A convolution uses the sum of all matching pixel-weight products, not a maximum followed
+          by the middle weight.
+      - id: c
+        text: Each row gives a positive sum, but the filter's zero bias replaces that sum.
+        correct: false
+        feedback: A zero bias adds nothing to the weighted sum; it does not replace it.
+    solution:
+      Every all-bright row pairs equal pixel values with weights -1 and 1. Their contributions
+      cancel, so adding the three rows and zero bias gives a zero score.
   - id: conv-score
     dimension: "math"
     type: "numeric"
@@ -140,34 +139,28 @@ exercises:
       ]
     solution: "The shared filter responds when a patch has greater right-hand brightness than left-hand brightness."
   - id: conv-code-patch
-    dimension: "implementation"
-    type: "mc"
-    role: "practice"
+    dimension: implementation
+    type: mc
+    role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: "In the NumPy loop, what patch is selected when i=1 and j=2?"
+    prompt:
+      A NumPy convolution selects `x[i:i+3, j:j+3]`. With `i=1` and `j=2`, which rows and columns
+      belong to the patch?
     options:
-      [
-        {
-          "id": "a",
-          "text": "Rows 1–3 and columns 2–4.",
-          "correct": true,
-          "feedback": "Slices include their start but exclude their end.",
-        },
-        {
-          "id": "b",
-          "text": "Rows 1–4 and columns 2–5.",
-          "correct": false,
-          "feedback": "The upper slice endpoints are excluded.",
-        },
-        {
-          "id": "c",
-          "text": "Rows 0–2 and columns 0–2.",
-          "correct": false,
-          "feedback": "Those would be the patch at i=0, j=0.",
-        },
-      ]
-    solution: "The slices 1:4 and 2:5 each select three entries, starting at the requested row and column."
+      - id: a
+        text: Rows 1–3 and columns 2–4.
+        correct: true
+        feedback: Slices include their start but exclude their end.
+      - id: b
+        text: Rows 1–4 and columns 2–5.
+        correct: false
+        feedback: The upper slice endpoints are excluded.
+      - id: c
+        text: Rows 0–2 and columns 0–2.
+        correct: false
+        feedback: Those would be the patch at i=0, j=0.
+    solution: The slices 1:4 and 2:5 each select three entries, starting at the requested row and column.
   - id: conv-size-basics
     dimension: "conceptual"
     type: "mc"
@@ -199,34 +192,30 @@ exercises:
     solution: "Stride controls how far the patch moves before computing the next output."
   - id: conv-size-why-floor
     lesson_only: true
-    dimension: "conceptual"
-    type: "mc"
-    role: "practice"
+    dimension: conceptual
+    type: mc
+    role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "Why does the 32×32 worked example give 16 output rows rather than 17?"
+    prompt:
+      In the worked size calculation, the padded side is 36, the filter side is 5 and stride is
+      2. Why does rounding the patch count up include an invalid position?
     options:
-      [
-        {
-          "id": "a",
-          "text": "Start 32 would extend the patch beyond the padded height 36.",
-          "correct": true,
-          "feedback": "A size-five patch at 32 would need indices up to 36.",
-        },
-        {
-          "id": "b",
-          "text": "The bias removes the last output row.",
-          "correct": false,
-          "feedback": "Bias changes values, never the number of positions.",
-        },
-        {
-          "id": "c",
-          "text": "Padding always removes one row at the end.",
-          "correct": false,
-          "feedback": "Padding enlarges the available grid, while stride determines which starts we reach.",
-        },
-      ]
-    solution: "Allowed stride-two starts are 0 through 30. A start at 32 would need an extra pixel beyond the padded grid."
+      - id: a
+        text: It includes start 32, whose five-pixel patch extends past the padded side.
+        correct: true
+        feedback: Indices for that patch would run from 32 through 36, beyond the last valid index 35.
+      - id: b
+        text: It includes start 30, which is invalid because a five-pixel filter needs an odd start.
+        correct: false
+        feedback: Filter side and start parity are independent; the stride-two start at 30 is valid.
+      - id: c
+        text: It excludes start 31, which must be reached because it is the last fitting start.
+        correct: false
+        feedback: Stride two reaches only even starts from zero, so fitting start 31 is not reached.
+    solution:
+      Stride two reaches starts 0 through 30. Rounding up adds start 32, whose patch would require
+      a pixel beyond the 36-pixel padded side.
   - id: conv-size-template
     dimension: "math"
     type: "numeric"
@@ -354,34 +343,33 @@ exercises:
     solution: "One filter has weights for all input channels and produces one score at each position."
   - id: conv-channels-why-small
     lesson_only: true
-    dimension: "conceptual"
-    type: "mc"
-    role: "practice"
+    dimension: conceptual
+    type: mc
+    role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "Why does the worked convolution use only 448 parameters despite producing 16,384 numbers?"
+    prompt:
+      In the worked RGB convolution, what makes the 448-parameter count independent of the number
+      of spatial output positions?
     options:
-      [
-        {
-          "id": "a",
-          "text": "It reads local patches and reuses weights across positions.",
-          "correct": true,
-          "feedback": "Many output values can use the same weights and bias.",
-        },
-        {
-          "id": "b",
-          "text": "It uses a new weight for every output-input pair.",
-          "correct": false,
-          "feedback": "That describes the much larger fully connected layer.",
-        },
-        {
-          "id": "c",
-          "text": "It stores only one parameter per output number.",
-          "correct": false,
-          "feedback": "A filter has weights and a bias, shared across many outputs.",
-        },
-      ]
-    solution: "Each of 16 filters needs only 27 weights and one bias, independent of the number of positions."
+      - id: a
+        text: Each filter reuses its weights and bias at every spatial position.
+        correct: true
+        feedback: Spatial positions add uses of a filter, so they add no new parameters.
+      - id: b
+        text: Each filter reads a local patch but learns separate weights at each spatial position.
+        correct: false
+        feedback:
+          Local patches limit inputs per use, but separate position-specific weights would still
+          grow the parameter count.
+      - id: c
+        text: Each filter keeps separate spatial weights but shares one set across the RGB channels.
+        correct: false
+        feedback: A filter has weights for all input channels and shares them across positions, not
+          across colour channels.
+    solution:
+      Each filter has a fixed set of weights spanning the input channels plus one bias. Reusing
+      that set at every position makes the count independent of spatial output size.
   - id: conv-params-template
     dimension: "math"
     type: "numeric"
@@ -497,64 +485,57 @@ exercises:
       ]
     solution: "Subtracting three and adding one gives sides eight and twelve. The six filters give six output channels."
   - id: conv-pool-basics
-    dimension: "conceptual"
-    type: "mc"
-    role: "basics"
+    dimension: conceptual
+    type: mc
+    role: basics
     difficulty: 1
     est_minutes: 2
-    prompt: "What does max pooling return for each patch?"
+    prompt:
+      A feature map has several channels. How does 2×2 max pooling group the values that compete
+      for one output?
     options:
-      [
-        {
-          "id": "a",
-          "text": "Its largest value, with no weights or biases.",
-          "correct": true,
-          "feedback": "Pooling selects an existing value.",
-        },
-        {
-          "id": "b",
-          "text": "A weighted sum plus a bias.",
-          "correct": false,
-          "feedback": "That describes a convolutional score.",
-        },
-        {
-          "id": "c",
-          "text": "Its average value, with one bias.",
-          "correct": false,
-          "feedback": "Max pooling takes the largest value and has no bias.",
-        },
-      ]
-    solution: "Max pooling selects the maximum independently in each channel. It has no weights or biases."
+      - id: a
+        text: Four neighbouring spatial values from one channel compete for that channel's output.
+        correct: true
+        feedback: Pooling works separately inside each channel's spatial map.
+      - id: b
+        text: All channel values at one pixel compete for one channel-combined output.
+        correct: false
+        feedback: That would reduce the channel axis; spatial max pooling preserves it.
+      - id: c
+        text: Every value in one channel competes for one output for that entire channel.
+        correct: false
+        feedback: A 2×2 pool uses local patches, not the whole map unless the map itself is 2×2.
+    solution:
+      Spatial max pooling compares the four values in a 2×2 patch within one channel. It repeats
+      independently across positions and channels.
   - id: conv-pool-why-four
     lesson_only: true
-    dimension: "conceptual"
-    type: "mc"
-    role: "practice"
+    dimension: conceptual
+    type: mc
+    role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "Why is the worked example's top-left pooled value 4?"
+    prompt: In the worked pooling example, swapping the top-left patch's largest value with another
+      value inside that same patch leaves its pooled output unchanged. Why?
     options:
-      [
-        {
-          "id": "a",
-          "text": "The largest value in that patch is 4.",
-          "correct": true,
-          "feedback": "The patch contains 1, 3, 4 and 2, so max pooling keeps 4.",
-        },
-        {
-          "id": "b",
-          "text": "The top-left entry is copied unchanged.",
-          "correct": false,
-          "feedback": "The top-left entry is 1, but pooling compares all four values.",
-        },
-        {
-          "id": "c",
-          "text": "Four weights produce a score of 4.",
-          "correct": false,
-          "feedback": "Max pooling selects an existing value and has no weights.",
-        },
-      ]
-    solution: "The top-left patch contains 1, 3, 4 and 2. Its maximum is 4, so that value becomes one output cell."
+      - id: a
+        text: Pooling keeps the maximum value without recording its position inside the patch.
+        correct: true
+        feedback: Permuting the same four patch values leaves their maximum unchanged.
+      - id: b
+        text: Pooling keeps the patch's top-left value, so movements elsewhere cannot affect it.
+        correct: false
+        feedback:
+          The output compares all four patch values, including any value moved into the top-left
+          position.
+      - id: c
+        text: Pooling sums weighted positions, so changing a value's position changes its weight.
+        correct: false
+        feedback: Max pooling selects the largest value and has no position-specific weights.
+    solution:
+      The set of four patch values is unchanged, so its maximum is unchanged. Max pooling keeps
+      that value and discards which within-patch position supplied it.
   - id: conv-pool-value
     dimension: "math"
     type: "numeric"
@@ -617,34 +598,30 @@ exercises:
       ]
     solution: "The side starts at one and grows by two per layer, so it is 1 + 2·2 = 5."
   - id: conv-pool-robot
-    dimension: "conceptual"
-    type: "mc"
-    role: "practice"
+    dimension: conceptual
+    type: mc
+    role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: "A robot must report an edge's exact location within a 2×2 area. Why might it skip max pooling there?"
+    prompt:
+      A robot needs an edge's exact position within a 2×2 area. Which two patterns show why keeping
+      only that area's max-pooled value can lose needed information?
     options:
-      [
-        {
-          "id": "a",
-          "text": "The maximum alone does not retain which pixel supplied it.",
-          "correct": true,
-          "feedback": "Different within-patch positions can give the same pooled value.",
-        },
-        {
-          "id": "b",
-          "text": "Pooling adds too many filter weights.",
-          "correct": false,
-          "feedback": "Pooling has no weights or biases.",
-        },
-        {
-          "id": "c",
-          "text": "Pooling always removes every positive response.",
-          "correct": false,
-          "feedback": "It keeps the largest response, including positive ones.",
-        },
-      ]
-    solution: "Max pooling loses within-patch position, so keeping the map without pooling can preserve information needed for precise location."
+      - id: a
+        text: A response of 5 in the top-left or 5 in the bottom-right, with all other entries 0.
+        correct: true
+        feedback: Both pool to 5, so the pooled value cannot distinguish their different response positions.
+      - id: b
+        text: A response of 5 or 3 in the same top-left pixel, with all other entries 0.
+        correct: false
+        feedback: These pool to different values, 5 and 3, so the maximum distinguishes this pair.
+      - id: c
+        text: Four entries equal to 5 or four entries equal to 0.
+        correct: false
+        feedback: These pool to 5 and 0, so their maxima are different.
+    solution:
+      Putting the same largest response at two different positions gives the same pooled value.
+      The maximum alone therefore cannot recover the edge's exact within-patch position.
   - id: conv-explain
     dimension: "conceptual"
     type: "explain"

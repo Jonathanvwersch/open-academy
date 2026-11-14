@@ -10,27 +10,28 @@ exercises:
     options:
       - {
           id: a,
-          text: "It runs the learned policy, asks the expert to label the states the policy actually visits, adds those to the dataset and retrains",
+          text: "It collects learner rollouts, asks the expert for actions at the visited states, and retrains on those labels plus earlier data",
           correct: true,
         }
       - {
           id: b,
-          text: "It adds Gaussian noise to the expert's actions during data collection",
+          text: "It collects noisy expert rollouts, retains the perturbed actions as labels, and retrains on those labels plus earlier data",
           correct: false,
           category: misunderstood_definition,
-          feedback: "Noise injection (e.g. DART) is a related idea, but DAgger aggregates expert labels on the learner's own states.",
+          feedback: "DAgger asks for expert actions at states visited by the learner. A perturbed action is not necessarily the expert's correction for that state.",
         }
       - {
           id: c,
-          text: "It replaces the supervised loss with a reward signal",
+          text: "It collects learner rollouts, uses the learner's executed actions as labels, and retrains on those labels plus earlier data",
           correct: false,
           category: misunderstood_definition,
+          feedback: "Labelling a mistake with the learner's own action reinforces it. DAgger obtains expert action labels for those states.",
         }
       - {
           id: d,
-          text: "It trains on longer action sequences",
+          text: "It collects learner rollouts, asks the expert for actions at the visited states, and retrains after discarding all earlier data",
           correct: false,
           category: misunderstood_definition,
-          feedback: "That describes action chunking.",
+          feedback: "DAgger aggregates the new expert-labelled states with earlier data. Discarding earlier data can lose coverage of previously visited states.",
         }
     solution: "DAgger (Dataset Aggregation) iteratively collects data under the learner's state distribution, labels it with expert actions, and retrains on the aggregate, which closes the train/deploy distribution gap."

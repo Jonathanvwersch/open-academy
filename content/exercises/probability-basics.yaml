@@ -63,7 +63,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "In 10 past house sales, 4 were above asking. Use the fraction of these sales to estimate the probability that a sale was above asking."
+    prompt: "In 10 past house sales, 4 were above asking. Estimate the probability that a sale was above asking."
     hints: ["Divide the number of above-asking sales by the total number of sales."]
     solution: |
       Divide the count in the event by all ten sales:
@@ -267,8 +267,8 @@ exercises:
     answer_expr: "(10 - a - b) / 10"
     params:
       a: { min: 1, max: 6 }
-      b: { min: 1, max: 6 }
-    constraints: ["a + b <= 9", "a + b != 5"]
+      b: { min: 1, max: 4 }
+    constraints: ["a + b <= 9", "a + b != 5", "2*a + b != 10", "a + 2*b != 10"]
     tolerance: { abs: 0.000001 }
     common_wrong:
       - answer_expr: "(a + b) / 10"
@@ -568,9 +568,9 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "Among ${{=above_and_many + not_above_and_many}}$ houses with at least two offers, ${{=above_and_many}}$ sold above asking. Estimate the probability of selling above asking given at least two offers."
+    prompt: "Of ${{=above_and_many + not_above_and_many + 10}}$ house sales, ${{=above_and_many + not_above_and_many}}$ received at least two offers. Of those, ${{=above_and_many}}$ sold above asking. Among sales with fewer than two offers, 4 sold above asking and 6 did not. Estimate the probability of selling above asking given at least two offers."
     hints: ["Divide the above-asking count by all houses that meet the condition."]
-    solution: "Among houses with at least two offers, the share above asking is ${{=above_and_many}}/{{=above_and_many + not_above_and_many}} = {{=above_and_many / (above_and_many + not_above_and_many)}}$."
+    solution: "Conditioning on at least two offers restricts the population to ${{=above_and_many + not_above_and_many}}$ sales. The ${{=above_and_many}}$ above-asking sales in that group give ${{=above_and_many}}/{{=above_and_many + not_above_and_many}}={{=above_and_many / (above_and_many + not_above_and_many)}}$."
     answer_expr: "above_and_many / (above_and_many + not_above_and_many)"
     params:
       above_and_many: { min: 1, max: 5 }

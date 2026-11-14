@@ -99,7 +99,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: A word-level tokenizer splits "the cat sat on the mat" into $T=6$ tokens. Each embedding has width $d=4$. How many numbers are in the sentence's $T\times d$ grid?
+    prompt: A word-level tokenizer turns each word of "the cat sat on the mat" into one token, and each token is looked up in an embedding table of width $d=4$. How many numbers are in the grid of embeddings for the sentence?
     answer: 24
     tolerance: { abs: 0.001 }
     common_wrong:
@@ -109,7 +109,7 @@ exercises:
           feedback: "There are five distinct words, but six positions. Each position gets a row.",
         }
     hints: ["Include both occurrences of 'the'."]
-    solution: The grid contains six rows of four entries, giving $6\times4=24$ numbers.
+    solution: The sentence has $6$ tokens, counting "the" twice, and each gets a row of $4$ numbers, giving $6\times4=24$ numbers.
   - id: embp-why-not-ids
     dimension: conceptual
     type: mc
@@ -120,25 +120,32 @@ exercises:
     options:
       - {
           id: a,
-          text: "Consecutive IDs guarantee similar word meanings.",
+          text: "Neighbouring IDs already mean similar words, and vectors keep that order.",
           correct: false,
           category: misunderstood_definition,
           feedback: "Vocabulary IDs are labels; their spacing does not encode meaning.",
         }
       - {
           id: b,
-          text: "Each ID measures its token's importance.",
+          text: "A vector takes less memory to store than a single integer ID.",
           correct: false,
-          category: misunderstood_definition,
-          feedback: "An ID identifies a token and supplies no importance measurement.",
+          category: incorrect_reasoning,
+          feedback: "A vector of $d$ numbers takes more memory than one ID. The vector is useful for what its numbers can express.",
         }
       - {
           id: c,
-          text: "Vectors provide adjustable numerical representations for tokens.",
+          text: "An ID is only a label, and a vector gives the token numbers training can adjust.",
           correct: true,
         }
+      - {
+          id: d,
+          text: "Each vector counts how often its token appears in the training text.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "The entries are learned numbers that training adjusts. They aren't counts.",
+        }
     hints: ["Think about what renumbering a vocabulary would mean."]
-    solution: An ID is a vocabulary label. A learned vector gives the model adjustable numbers to use in its calculations.
+    solution: An ID is a vocabulary label, and renumbering the vocabulary wouldn't change what any token means. A learned vector gives the model adjustable numbers to use in its calculations.
   - id: embp-same-token
     dimension: conceptual
     type: mc
@@ -287,21 +294,24 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "IDs 1 to 4 stand for cat, on, sat, the. Their rows in $E$ are $(2,1),(1,3),(0,2),({{= a }},{{= b }})$. For $u_4=(0,0,0,1)$, what is the second entry of $u_4E$?"
+    prompt: "IDs 1 to 4 stand for cat, on, sat, the. Their rows in the $4\\times2$ embedding table $E$ are $(4,2),(1,5),(3,0),(2,3)$. For the one-hot row $u=({{= i == 1 ? 1 : 0 }},{{= i == 2 ? 1 : 0 }},{{= i == 3 ? 1 : 0 }},{{= i == 4 ? 1 : 0 }})$, what is the second entry of $uE$?"
     params:
-      a: { min: 1, max: 4 }
-      b: { min: 1, max: 4 }
-    constraints: ["not (a == 2 and b == 1) and not (a == 1 and b == 3) and not (a == 0 and b == 2)"]
-    answer_expr: b
+      i: { min: 1, max: 4 }
+    answer_expr: "i == 1 ? 2 : (i == 2 ? 5 : (i == 3 ? 0 : 3))"
     tolerance: { abs: 0.001 }
     common_wrong:
       - {
-          answer_expr: b+6,
-          category: misunderstood_definition,
-          feedback: "Only row 4 survives; the other second-column entries are multiplied by zero.",
+          answer_expr: "i == 1 ? 4 : (i == 2 ? 1 : (i == 3 ? 3 : 2))",
+          category: math_error,
+          feedback: "That is the first entry of the row. The question asks for the second.",
         }
-    hints: ["Compute $0\\times1+0\\times3+0\\times2+1\\times b$."]
-    solution: The second entry is $0\times1+0\times3+0\times2+1\times{{= b }}={{= b }}$.
+      - {
+          answer_expr: "10",
+          category: misunderstood_definition,
+          feedback: "Only one row survives; the other second-column entries are multiplied by zero.",
+        }
+    hints: ["Find where the $1$ sits in $u$."]
+    solution: "The $1$ in $u$ is in place {{= i }}, so every other row of $E$ is multiplied by zero and $uE$ is row {{= i }}, $({{= i == 1 ? 4 : (i == 2 ? 1 : (i == 3 ? 3 : 2)) }},{{= i == 1 ? 2 : (i == 2 ? 5 : (i == 3 ? 0 : 3)) }})$. Its second entry is ${{= i == 1 ? 2 : (i == 2 ? 5 : (i == 3 ? 0 : 3)) }}$."
   - id: embp-product-shape
     dimension: math
     type: mc
@@ -513,7 +523,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "Two token embeddings are $a=(3,4)$ and $b=(0,5)$. Compute their cosine similarity $(a\\cdot b)/(\\|a\\|\\,\\|b\\|)$."
+    prompt: "Two token embeddings are $a=(3,4)$ and $b=(0,5)$. What is their cosine similarity?"
     answer: 0.8
     tolerance: { abs: 0.001 }
     common_wrong:

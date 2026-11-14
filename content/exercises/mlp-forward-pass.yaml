@@ -879,16 +879,16 @@ exercises:
         }
       - {
           id: c,
-          text: "A linear classifier has no parameters that gradient descent can update.",
+          text: "The linear classifier has fewer parameters, so it needs more training steps to fit.",
           correct: false,
           category: incorrect_reasoning,
-          feedback: "The baseline has weights and a bias that can be trained. It still cannot bend its single separating line around the moons.",
+          feedback: "Training it longer doesn't help. Its best possible boundary is still one straight line, which can't follow the moons.",
         }
       - {
           id: d,
-          text: "The baseline sees only validation examples, while the network sees training examples.",
+          text: "A linear classifier weighs both features equally, so it can't favour the useful one.",
           correct: false,
-          category: incorrect_reasoning,
-          feedback: "Both models train on the same training split and are measured on the same validation split.",
+          category: misunderstood_definition,
+          feedback: "A linear classifier learns a separate weight for each feature. Its limit is that the boundary those weights make is straight.",
         }
     solution: "The two classes form interleaved curved bands, so one straight line cannot separate them well. A hidden layer combines several ReLU regions and can form a more flexible boundary."

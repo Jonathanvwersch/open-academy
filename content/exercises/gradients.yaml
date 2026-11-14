@@ -441,29 +441,29 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 1
-    prompt: "At $P$, a learner computes $\\nabla f(P)\\cdot(2,0)=6$ and calls 6 the slope per unit distance. What should they correct?"
+    prompt: "At $P$, a learner computes $\\nabla f(P)\\cdot(2,0)=6$. What is the slope per unit distance along the positive x-axis?"
     options:
       - id: a
-        text: "The vector $(2,0)$ has length 2, so 6 is the change estimate for a two-unit step; the slope per unit distance is 3."
+        text: "3, dividing the change estimate by the step length."
         correct: true
         category: misunderstood_definition
-        feedback: "Divide the two-unit change estimate by 2, or use the unit direction $(1,0)$."
+        feedback: "The step has length 2, so the slope per unit distance is 6/2."
       - id: b
-        text: "The vector $(2,0)$ has length 2, so 6 is the slope per unit distance."
+        text: "6, using the dot product without rescaling the step."
         correct: false
         category: misunderstood_definition
-        feedback: "The dot product scales with step length; use a unit vector for the slope per unit distance."
+        feedback: "The dot product uses a step of length 2; divide by that length."
       - id: c
-        text: "A direction cannot have a zero second component, so the calculation is invalid."
+        text: "12, multiplying the change estimate by the step length."
         correct: false
         category: misunderstood_definition
-        feedback: "$(1,0)$ is a valid unit direction along the x-axis."
+        feedback: "Multiplying by the length scales the estimate up again; divide by 2."
       - id: d
-        text: "The gradient should be added to the step, giving $(5,4)$."
+        text: "-3, reversing the sign when normalising the step."
         correct: false
         category: math_error
-        feedback: "The dot product, not vector addition, combines slopes with a step."
-    solution: "The vector $(2,0)$ is twice as long as the unit direction $(1,0)$, so the dot product 6 is twice the per-unit slope 3."
+        feedback: "Normalising preserves the positive x direction, so the sign stays positive."
+    solution: "The step $(2,0)$ has length 2. Dividing the change estimate 6 by 2 gives a slope of 3 per unit distance along the positive x-axis."
   - id: gradp-target-drop
     dimension: transfer
     type: numeric
@@ -561,25 +561,25 @@ exercises:
     prompt: "For $f(x,y)=x^2+2y^2$, compare $P=(1.5,1)$ and $Q=(0,1)$. Where is the steepest uphill slope larger?"
     options:
       - id: a
-        text: "At P, because its gradient has length 5 rather than 4."
+        text: "At P: the steepest slopes are 5 at P and 4 at Q."
         correct: true
-        feedback: "The gradient lengths are $\\sqrt{3^2+4^2}=5$ at P and 4 at Q."
+        feedback: "The gradient lengths are 5 at P and 4 at Q."
       - id: b
-        text: "At Q, because its y-coordinate is larger than P's."
+        text: "At P: the steepest slopes are 4.25 at P and 2 at Q."
         correct: false
         category: misunderstood_definition
-        feedback: "Height and steepness are different; compare the gradient lengths."
+        feedback: "These are function values. Steepest slope is measured by the gradient length."
       - id: c
-        text: "They are equal because every gradient is a unit vector."
+        text: "They are equal: the largest partial derivative is 4 at both."
         correct: false
         category: misunderstood_definition
-        feedback: "Gradients are not necessarily unit vectors; their lengths measure steepest slope."
+        feedback: "Combining both partial derivatives can give a larger slope than either component."
       - id: d
-        text: "At Q, because its gradient has two non-zero components."
+        text: "At Q: its slope is 4, while P has slope $5/\\sqrt{3.25}$."
         correct: false
         category: math_error
-        feedback: "At Q the gradient is $(0,4)$, with length 4; at P it is $(3,4)$, with length 5."
-    solution: "At P the gradient length is 5; at Q the gradient is $(0,4)$ with length 4. The steepest uphill slope is therefore larger at P."
+        feedback: "The position vector length does not normalise a slope; compare the gradient lengths directly."
+    solution: "The gradient is $(2x,4y)$, giving $(3,4)$ at P and $(0,4)$ at Q. Their lengths are 5 and 4, so the steepest uphill slope is larger at P."
   - id: gradp-descent-unit
     dimension: conceptual
     type: mc
@@ -654,29 +654,29 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: "For $f(x,y)=x^2+2y^2$ at $(1.5,1)$, the negative gradient is $(-3,-4)$, but the direction to the bottom $(0,0)$ is $(-1.5,-1)$. What does this show?"
+    prompt: "For $f(x,y)=x^2+2y^2$ at $P=(1.5,1)$, which vector points in the steepest local descent direction?"
     options:
       - id: a
-        text: "The steepest downhill direction nearby need not point straight at the minimum."
+        text: "$(-3,-4)$, taking the negative of each partial derivative."
         correct: true
         category: misunderstood_definition
-        feedback: "The negative gradient uses the local slopes; it is not a route to the minimum."
+        feedback: "The negative gradient points in the direction of steepest local decrease."
       - id: b
-        text: "The gradient must be wrong because it should point directly at the bottom."
+        text: "$(-1.5,-1)$, taking the vector from P to the minimum."
         correct: false
         category: math_error
-        feedback: "The partials are $(3,4)$; their opposite gives the steepest local decrease."
+        feedback: "The vector to the minimum can differ from the steepest local descent direction."
       - id: c
-        text: "A step along the negative gradient increases the function."
+        text: "$(-4,-3)$, swapping the two negative partial derivatives."
         correct: false
         category: incorrect_reasoning
-        feedback: "The dot product with $(-3,-4)$ is negative, so a small step lowers the function."
+        feedback: "Each partial belongs to its matching input; swapping components changes the direction."
       - id: d
-        text: "The function has no minimum because the two directions differ."
+        text: "$(3,4)$, taking the positive values of the partial derivatives."
         correct: false
         category: incorrect_reasoning
-        feedback: "The function's minimum is still at $(0,0)$; the local steepest direction need not point there."
-    solution: "The negative gradient is the steepest local downhill direction, while the vector to the minimum depends on where the minimum is."
+        feedback: "The positive gradient points in the direction of steepest local increase."
+    solution: "The gradient at P is $(3,4)$, so steepest local descent points along $(-3,-4)$. The vector to the minimum $(0,0)$ is $(-1.5,-1)$, which is not parallel: steepest descent need not point straight at the minimum."
   - id: gradp-robot-descent
     dimension: transfer
     type: mc

@@ -396,35 +396,30 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "Why does keeping 200 of an estate agent's 1,000 sales out of training give a better check on predictions for new houses than checking all 1,000 after training on them?"
+    prompt:
+      Why does keeping 200 of an estate agent's 1,000 sales out of training give a better check on predictions
+      for new houses than checking all 1,000 after training on them?
     options:
-      - {
-          id: a,
-          text: "The model cannot pass the held-out check just by remembering its training prices",
-          correct: true,
-        }
-      - {
-          id: b,
-          text: "Using fewer training sales guarantees more accurate predictions",
-          correct: false,
-          category: incorrect_reasoning,
-          feedback: "Holding out sales makes the check fairer; it does not guarantee a better model. It leaves prices that were not available for memorising during training.",
-        }
-      - {
-          id: c,
-          text: "Prices are not needed to check predictions on held-out houses",
-          correct: false,
-          category: incorrect_reasoning,
-          feedback: "You still compare predictions with actual prices to calculate error. Those prices are hidden during training, not during evaluation.",
-        }
-      - {
-          id: d,
-          text: "Held-out sales must always have lower error than training sales",
-          correct: false,
-          category: incorrect_reasoning,
-          feedback: "Error on unfamiliar houses can be higher. That is useful evidence about the predictions, not a failure of the check.",
-        }
-    solution: "A model can remember the 800 training prices. The 200 held-out prices did not guide its training, so it must make predictions without having learned those answers. This better matches pricing new houses, provided the held-out houses resemble the ones it will actually encounter."
+      - id: a
+        text: The model must predict sales whose prices were unavailable during fitting
+        correct: true
+        feedback: Unseen prices test performance beyond remembering fitted sales.
+      - id: b
+        text: Fewer training sales make the model simpler, so it predicts new houses better
+        correct: false
+        feedback: Fewer examples do not guarantee a simpler or more accurate model.
+      - id: c
+        text: Checking 200 sales gives a less noisy average than checking 1,000 sales
+        correct: false
+        feedback: A smaller independent sample generally gives a noisier average.
+      - id: d
+        text: The held-out sales are more recent, so they resemble future houses more closely
+        correct: false
+        feedback: Holding sales out does not imply that they are more recent.
+    solution:
+      A model can remember the 800 training prices. The 200 held-out prices did not guide its training, so
+      it must make predictions without having learned those answers. This better matches pricing new houses, provided
+      the held-out houses resemble the ones it will actually encounter.
   - id: ttsp-robot-heldout
     dimension: transfer
     type: mc
@@ -497,66 +492,59 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "You trained three versions of a house-price model. Which set should you use to choose the version with the lowest error?"
+    prompt:
+      You trained three versions of a house-price model. Which set should you use to choose the version with
+      the lowest error?
     options:
-      - {
-          id: a,
-          text: "The training set, because it ranks fitted versions",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "Training error can favour a version that memorises the examples used to fit it.",
-        }
-      - { id: b, text: "The validation set, because it chooses between versions", correct: true }
-      - {
-          id: c,
-          text: "The test set, because it chooses between versions",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "Choosing with test results uses the final check to make a decision, making its estimate optimistic.",
-        }
-      - {
-          id: d,
-          text: "Averaged training and test sets, because both rank versions",
-          correct: false,
-          category: incorrect_reasoning,
-          feedback: "The test set must stay out of selection, and training error is not a fair measure of new-house performance.",
-        }
-    solution: "Use validation error to choose between trained versions. Save the test set for a final estimate after the choice is made."
+      - id: a
+        text: The training set, because it contains the most sales
+        correct: false
+        feedback: More examples do not remove the optimism of evaluating fitted sales.
+      - id: b
+        text: The validation set, because it was kept out of fitting for this job
+        correct: true
+        feedback: Validation sales compare versions without reusing fitted examples.
+      - id: c
+        text: The test set, because it gives the unseen-data score
+        correct: false
+        feedback: Keep test sales for a final score after selecting a version.
+      - id: d
+        text: The training and test sets together, because they give a larger sample
+        correct: false
+        feedback: This reuses fitted examples and spends the final test on model selection.
+    solution:
+      Use validation error to choose between trained versions. Save the test set for a final estimate after
+      the choice is made.
   - id: ttsp-why-separate-test
     dimension: conceptual
     type: mc
     role: practice
     difficulty: 3
     est_minutes: 1
-    prompt: "What goes wrong if an estate agent repeatedly chooses among three models using the 150 test sales, then reports the lowest test error?"
+    prompt:
+      What goes wrong if an estate agent repeatedly chooses among three models using the 150 test sales, then
+      reports the lowest test error?
     options:
-      - {
-          id: a,
-          text: "The models can no longer learn parameters from the training sales",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "The models can still learn from training sales. The problem is that test results are now guiding which version is chosen.",
-        }
-      - {
-          id: b,
-          text: "Every test price must have been used directly to fit the parameters",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "The prices need not enter parameter training to influence the outcome. Choosing versions by test error already lets test information guide the final model.",
-        }
-      - {
-          id: c,
-          text: "The chosen version may suit those test houses by chance, making its reported error look too low",
-          correct: true,
-        }
-      - {
-          id: d,
-          text: "Nothing changes because test houses were kept out of parameter training",
-          correct: false,
-          category: incorrect_reasoning,
-          feedback: "Keeping houses out of parameter training is not enough. They must also stay out of model selection to provide a final check.",
-        }
-    solution: "Choosing by test error gives those houses the job of validation data. A model that happens to suit them can win, so its score may look better than its error on other houses. Compare versions on validation sales instead, then check the final choice on untouched test sales."
+      - id: a
+        text: The reported error comes out too high, since the test set is small
+        correct: false
+        feedback: A small test set adds uncertainty. Selecting the lowest test error makes the reported score optimistic.
+      - id: b
+        text: The training error rises, since test sales leak into training
+        correct: false
+        feedback: Selection uses test results without necessarily changing the fitted parameters.
+      - id: c
+        text: The reported error looks too low, since selection favours lucky test results
+        correct: true
+        feedback: Choosing the best test result makes that result optimistic.
+      - id: d
+        text: Nothing changes, since the test sales never adjusted any weights
+        correct: false
+        feedback: Model selection also uses information and must stay separate from the final test.
+    solution:
+      Choosing by test error gives those houses the job of validation data. A model that happens to suit them
+      can win, so its score may look better than its error on other houses. Compare versions on validation sales instead,
+      then check the final choice on untouched test sales.
   - id: ttsp-split-counts
     dimension: math
     type: numeric
@@ -784,15 +772,37 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "An estate agent's chosen price model has validation error {{=v}} and final test error {{=t}}. How much higher is the test error than the validation error?"
-    hints: ["Subtract the validation error from the test error."]
-    solution: "The gap is test error minus validation error: {{=t}} − {{=v}} = {{=t-v}}. A positive gap is consistent with the chosen validation score being optimistic."
-    answer_expr: "t - v"
+    prompt:
+      A chosen house-price model has training error {{=tr}}, validation error {{=v}} used to select it among
+      several models, and test error {{=t}} checked once at the end. By how much does the validation error understate
+      the error to expect on new houses?
+    hints:
+      - Use the error measured after model selection as the estimate for new houses.
+    solution: The final test supplies the unseen-house estimate. The understatement is ${{=t}}-{{=v}}={{=t-v}}$.
+    answer_expr: t - v
     params:
-      v: { min: 300, max: 800, step: 10 }
-      t: { min: 310, max: 900, step: 10 }
-    constraints: ["t > v", "t <= v + 100"]
-    tolerance: { abs: 0.000001 }
+      tr:
+        min: 100
+        max: 200
+        step: 50
+      v:
+        min: 300
+        max: 400
+        step: 50
+      t:
+        min: 350
+        max: 500
+        step: 25
+    constraints:
+      - tr < v
+      - v < t
+      - t <= v + 100
+    tolerance:
+      abs: 1.0e-06
+    common_wrong:
+      - answer_expr: t-tr
+        category: misunderstood_definition
+        feedback: The reported estimate was the validation error, so compare the test error with validation error.
   - id: ttsp-duplicate-leak
     dimension: conceptual
     type: mc
@@ -989,10 +999,16 @@ exercises:
     role: review
     difficulty: 1
     est_minutes: 1
-    prompt: "A house-price model has average squared error 12 on training sales and 20 on test sales. How much higher is the test error?"
-    answer: 8
-    tolerance: { abs: 0.000001 }
-    solution: "Subtract training error from test error: 20 − 12 = 8."
+    prompt:
+      A house-price model has training error 12, validation error 18 used to choose among five models, and test
+      error 20 checked once at the end. An agent reports 18 as the error to expect on new houses. By how much is that
+      too low?
+    answer: 2
+    tolerance:
+      abs: 1.0e-06
+    solution:
+      The untouched test error estimates new-house error after selection. Reporting 18 understates that estimate
+      by $20-18=2$.
   - id: ttsp-heldout-procedure
     dimension: conceptual
     type: mc

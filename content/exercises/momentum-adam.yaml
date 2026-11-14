@@ -6,33 +6,27 @@ exercises:
     role: basics
     difficulty: 1
     est_minutes: 1
-    prompt: "What does momentum use to choose a parameter's update?"
+    prompt: Which quantity supplies momentum's direction for one parameter update?
     options:
-      - {
-          id: a,
-          text: "A weighted average of recent signed gradients.",
-          correct: true,
-          feedback: "The stored average keeps part of earlier gradients and includes the latest one.",
-        }
-      - {
-          id: b,
-          text: "Only the largest gradient seen during training.",
-          correct: false,
-          feedback: "Momentum weights recent history; it does not select the largest gradient.",
-        }
-      - {
-          id: c,
-          text: "An average of the targets instead of gradients.",
-          correct: false,
-          feedback: "Targets help determine loss, but momentum's memory stores loss gradients.",
-        }
-      - {
-          id: d,
-          text: "The first gradient, reused without any changes.",
-          correct: false,
-          feedback: "A fresh gradient enters the average on every update.",
-        }
-    solution: "Momentum combines the current gradient with a stored average of earlier gradients. This lets more than one batch influence the move."
+      - id: a
+        text: A weighted average of recent signed gradients for that parameter.
+        correct: true
+        feedback: Momentum retains signed gradient history and adds the new signed gradient.
+      - id: b
+        text: The current gradient for that parameter, with earlier gradients discarded.
+        correct: false
+        feedback: That omits momentum's stored history.
+      - id: c
+        text: A weighted average of recent gradient magnitudes for that parameter.
+        correct: false
+        feedback: Taking magnitudes loses the signs that momentum needs for direction.
+      - id: d
+        text: The current gradient averaged across all of the model's parameters.
+        correct: false
+        feedback: Momentum keeps a separate history for each parameter.
+    solution:
+      Momentum combines each parameter's current signed gradient with its stored signed average.
+      This lets recent history influence the update direction.
   - id: mad-memory-why
     lesson_only: true
     dimension: conceptual
@@ -40,33 +34,31 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "In the worked example, why is the second move only $+0.05$ when the new gradient is $-4$? Use $m_1=1$, $\\beta_1=0.75$ and $\\eta=0.2$."
+    prompt:
+      In the worked example, $m_1=1$, the next gradient is $-4$, $\beta_1=0.75$ and $\eta=0.2$.
+      Which statement explains how momentum combines the two directions?
     options:
-      - {
-          id: a,
-          text: "The learning rate switches sign when a gradient reverses.",
-          correct: false,
-          feedback: "The rate stays positive; subtracting the negative average raises the parameter.",
-        }
-      - {
-          id: b,
-          text: "The old positive average partly offsets the new negative gradient.",
-          correct: true,
-          feedback: "The average is 0.75 times 1 plus 0.25 times -4, which is -0.25.",
-        }
-      - {
-          id: c,
-          text: "The negative gradient is discarded before updating the average.",
-          correct: false,
-          feedback: "The negative gradient contributes -1, so its sign is retained.",
-        }
-      - {
-          id: d,
-          text: "The prediction is reset to its starting value before each move.",
-          correct: false,
-          feedback: "The next update starts at the prediction left by the preceding update.",
-        }
-    solution: "The new average is $0.75(1)+0.25(-4)=-0.25$, so the move is $-0.2(-0.25)=+0.05$. The old positive average softened this reversal."
+      - id: a
+        text: The old average is kept in full, then three quarters of the new gradient is added.
+        correct: false
+        feedback: The old average receives weight 0.75 and the new gradient receives weight 0.25.
+      - id: b
+        text:
+          Three quarters of the old positive average partly offsets one quarter of the new negative
+          gradient.
+        correct: true
+        feedback: The contributions are 0.75 and -1, giving the new signed average -0.25.
+      - id: c
+        text: The two signed values receive equal weights, so their arithmetic mean sets the move.
+        correct: false
+        feedback: The coefficient 0.75 gives unequal weights to the stored average and new gradient.
+      - id: d
+        text: Three quarters of each magnitude is combined, with the latest gradient supplying the sign.
+        correct: false
+        feedback: Momentum averages signed values directly, using complementary weights.
+    solution:
+      The new average is $0.75(1)+0.25(-4)=-0.25$. Its old positive contribution partly offsets
+      the fresh negative one, so the move is $-0.2(-0.25)=+0.05$.
   - id: mad-memory-template
     dimension: math
     type: numeric
@@ -133,33 +125,30 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: "A robot's training gradients have recently changed direction consistently. Its momentum average still points the old way. What is a reasonable explanation?"
+    prompt:
+      A robot model's gradients have settled into the opposite direction from its stored momentum.
+      Holding the learning rate fixed, how would reducing $\beta_1$ usually affect its response?
     options:
-      - {
-          id: a,
-          text: "The averaging arithmetic must be wrong whenever signs disagree.",
-          correct: false,
-          feedback: "A weighted history can temporarily disagree with the latest gradients even with correct arithmetic.",
-        }
-      - {
-          id: b,
-          text: "The gradient's sign no longer matters after the first update.",
-          correct: false,
-          feedback: "Every new signed gradient enters the average and can eventually reverse it.",
-        }
-      - {
-          id: c,
-          text: "The batch targets must have been replaced by old predictions.",
-          correct: false,
-          feedback: "No target replacement is implied by momentum; the explanation lies in the stored gradients.",
-        }
-      - {
-          id: d,
-          text: "A long memory can delay responding to a useful change in direction.",
-          correct: true,
-          feedback: "Earlier gradients retain weight, especially with a large beta one.",
-        }
-    solution: "Momentum retains old direction information, so a useful reversal can take several updates to dominate. A larger $\\beta_1$ generally keeps that influence longer."
+      - id: a
+        text: It would preserve the old direction longer by giving old gradients more weight.
+        correct: false
+        feedback: Reducing beta one reduces the old average's weight.
+      - id: b
+        text: It would leave the direction unchanged because beta one only rescales the final move.
+        correct: false
+        feedback: Beta one changes the balance of old and new signed gradients inside the average.
+      - id: c
+        text: It would remove gradient signs, making the response depend only on their sizes.
+        correct: false
+        feedback: The gradients remain signed at every beta one setting.
+      - id: d
+        text: It would respond sooner by giving the fresh opposite gradients more weight.
+        correct: true
+        feedback: A smaller beta one gives the stored direction less influence and the new gradient
+          more.
+    solution:
+      A smaller $\beta_1$ retains less of the old signed average and gives more weight to the
+      new gradient. A sustained new direction therefore usually takes over sooner.
   - id: mad-scale-basics
     dimension: conceptual
     type: mc
@@ -279,14 +268,25 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: "Before starting-value correction, a parameter has signed average $m_t={{= k*s }}$ and squared-gradient average $v_t={{= s^2 }}$. What is the scaled value $m_t/\\sqrt{v_t}$?"
+    prompt:
+      Before starting-value correction, a parameter has signed average $m_t={{= k*s }}$ and squared-gradient
+      average $v_t={{= s^2 }}$. Ignoring epsilon, what scaled direction does Adam use before multiplying
+      by the learning rate?
     params:
-      k: { min: -3, max: 3 }
-      s: { min: 1, max: 4 }
-    constraints: ["k != 0"]
-    answer_expr: "k"
-    tolerance: { abs: 0.001 }
-    solution: "The denominator is $\\sqrt{{{= s^2 }}}={{= s }}$, so the ratio is ${{= k*s }}/{{= s }}={{= k }}$. Take the square root of the size average, and keep the numerator's sign."
+      k:
+        min: -3
+        max: 3
+      s:
+        min: 1
+        max: 4
+    constraints:
+      - k != 0
+    answer_expr: k
+    tolerance:
+      abs: 0.001
+    solution:
+      The denominator is $\sqrt{{{= s^2 }}}={{= s }}$, so the ratio is ${{= k*s }}/{{= s }}={{=
+      k }}$. Take the square root of the size average, and keep the numerator's sign.
   - id: mad-scale-new-model
     dimension: conceptual
     type: mc
@@ -393,13 +393,20 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "On update $t=1$, use $\\beta_1=0.75$ and stored signed average $m_1={{= g/4 }}$, obtained from a first gradient of ${{= g }}$. What is the corrected average $\\hat m_1$?"
+    prompt: On update $t=2$, the stored signed average is $m_2={{= q/16 }}$. With $\beta_1=0.75$ and
+      a zero initial average, what is the corrected average $\hat m_2$? Give three decimal places.
     params:
-      g: { min: -8, max: 8, step: 2 }
-    constraints: ["g != 0"]
-    answer_expr: "g"
-    tolerance: { abs: 0.001 }
-    solution: "Divide by $1-0.75^1=0.25$: $\\hat m_1=({{= g/4 }})/0.25={{= g }}$. With only one real gradient, the correction recovers that gradient exactly."
+      q:
+        min: -21
+        max: 21
+        step: 3
+    constraints:
+      - q != 0
+    answer_expr: q/7
+    tolerance:
+      abs: 0.001
+    solution: The correction divides by $1-0.75^2=7/16$. Thus $\hat m_2=({{= q/16 }})/(7/16)={{= q/7
+      }}$ before rounding.
   - id: mad-correction-clock
     dimension: conceptual
     type: mc
@@ -505,33 +512,29 @@ exercises:
     role: basics
     difficulty: 1
     est_minutes: 1
-    prompt: "Which describes Adam's parameter move after updating and correcting its two averages?"
+    prompt: After Adam updates and corrects its averages, which rule gives the new parameter value?
     options:
-      - {
-          id: a,
-          text: "Add the squared average times the learning rate to the parameter.",
-          correct: false,
-          feedback: "Adam subtracts a scaled signed direction; the squared average supplies a denominator.",
-        }
-      - {
-          id: b,
-          text: "Subtract the rate times the corrected direction divided by corrected size plus epsilon.",
-          correct: true,
-          feedback: "The direction is m hat, and the corrected size is the square root of v hat.",
-        }
-      - {
-          id: c,
-          text: "Subtract the rate times the loss divided by the number of parameters.",
-          correct: false,
-          feedback: "The update uses gradient histories, not the numerical loss itself.",
-        }
-      - {
-          id: d,
-          text: "Replace the parameter with its squared-gradient average after each batch.",
-          correct: false,
-          feedback: "The parameter is updated after each batch and remains distinct from the gradient averages.",
-        }
-    solution: "Adam uses $w_t=w_{t-1}-\\eta\\hat m_t/(\\sqrt{\\hat v_t}+\\epsilon)$. The signed average chooses direction, while the denominator scales the move separately for each parameter."
+      - id: a
+        text: $w_t=w_{t-1}-\eta\hat m_t/(\hat v_t+\epsilon)$
+        correct: false
+        feedback: The squared-gradient average needs a square root before it serves as a size estimate.
+      - id: b
+        text: $w_t=w_{t-1}-\eta\hat m_t/(\sqrt{\hat v_t}+\epsilon)$
+        correct: true
+        feedback:
+          The corrected signed average supplies direction and the corrected size plus epsilon
+          divides it.
+      - id: c
+        text: $w_t=w_{t-1}+\eta\hat m_t/(\sqrt{\hat v_t}+\epsilon)$
+        correct: false
+        feedback: The scaled signed direction is subtracted from the parameter.
+      - id: d
+        text: $w_t=w_{t-1}-\eta\hat m_t/\sqrt{\hat v_t+\epsilon}$
+        correct: false
+        feedback: Adam adds epsilon after taking the square root.
+    solution:
+      Adam subtracts the learning rate times the corrected signed average divided by corrected
+      size plus epsilon. The size is $\sqrt{\hat v_t}$, with epsilon outside that square root.
   - id: mad-adam-why
     lesson_only: true
     dimension: conceptual
@@ -587,33 +590,29 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "Suppose $\\hat m_t=0$, $\\hat v_t=0$ and $\\epsilon>0$. What does Adam's fraction $\\hat m_t/(\\sqrt{\\hat v_t}+\\epsilon)$ become?"
+    prompt:
+      An Adam parameter has zero signed and squared-gradient averages. How does a positive epsilon
+      affect its next update?
     options:
-      - {
-          id: a,
-          text: "$0$, since its denominator is the positive epsilon.",
-          correct: true,
-          feedback: "Zero divided by a positive number is defined and equals zero.",
-        }
-      - {
-          id: b,
-          text: "Undefined, since epsilon does not affect the denominator.",
-          correct: false,
-          feedback: "Epsilon is added to the denominator specifically to keep it positive.",
-        }
-      - {
-          id: c,
-          text: "$1$, since the two zero averages cancel each other.",
-          correct: false,
-          feedback: "Zero over zero cannot be cancelled; here the denominator is epsilon instead.",
-        }
-      - {
-          id: d,
-          text: "$\\epsilon$, since it is added to the signed average.",
-          correct: false,
-          feedback: "Epsilon is in the denominator, not the numerator.",
-        }
-    solution: "The fraction is $0/(0+\\epsilon)=0$. A positive epsilon avoids the undefined division $0/0$ and produces no move in this case."
+      - id: a
+        text: It keeps the denominator positive while the zero signed average gives no move.
+        correct: true
+        feedback: Epsilon prevents a zero denominator, and the zero numerator still produces no change.
+      - id: b
+        text: It replaces the zero signed average, giving a small positive direction.
+        correct: false
+        feedback: Epsilon is added to the denominator; it does not replace the signed average.
+      - id: c
+        text: It cancels the two zero averages, giving a unit direction before scaling.
+        correct: false
+        feedback: Zero averages do not cancel into a unit direction; epsilon leaves a positive denominator.
+      - id: d
+        text: It leaves the denominator at zero because it is only added when the gradient is nonzero.
+        correct: false
+        feedback: Epsilon is included even when both averages are zero.
+    solution:
+      Adam adds epsilon to the square-root size in its denominator. When both averages are zero,
+      the denominator is positive and the numerator is zero, so the parameter does not move.
   - id: mad-adam-store
     lesson_only: true
     dimension: math
@@ -654,33 +653,29 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: "A new model trained with Adam shows growing loss after very large parameter moves. A teammate says adaptive scaling makes the learning rate irrelevant. What should you conclude?"
+    prompt: Two Adam runs have the same current parameter, corrected averages $\hat m_t=2$ and $\hat
+      v_t=9$, and $\epsilon=1$. Their learning rates are 0.4 and 0.2. What are their next parameter
+      changes?
     options:
-      - {
-          id: a,
-          text: "Growing loss proves that the squared-gradient averages are negative.",
-          correct: false,
-          feedback: "Correct squared averages remain nonnegative; too-large moves can raise loss anyway.",
-        }
-      - {
-          id: b,
-          text: "Adaptive scaling still multiplies by the rate, so try reducing an excessive rate.",
-          correct: true,
-          feedback: "The global learning rate scales every Adam move even though each parameter has its own denominator.",
-        }
-      - {
-          id: c,
-          text: "Every Adam update must lower loss, so the measured loss can be ignored.",
-          correct: false,
-          feedback: "Adam makes no per-update decrease guarantee, especially with noisy batches or excessive rates.",
-        }
-      - {
-          id: d,
-          text: "The rate should increase until it cancels every parameter's size estimate.",
-          correct: false,
-          feedback: "Increasing an excessive rate makes overshooting worse; it does not fix scale adaptation.",
-        }
-    solution: "Adam adapts relative scales, but the learning rate still multiplies the entire move. Watch the loss and reduce an excessive rate rather than assuming adaptation guarantees progress."
+      - id: a
+        text: $-0.8$ and $-0.4$, using only the corrected signed average.
+        correct: false
+        feedback: Adam also divides the signed average by the corrected size plus epsilon.
+      - id: b
+        text: $-0.2$ and $-0.1$, so halving the rate halves this move.
+        correct: true
+        feedback: The common denominator is square root of 9 plus 1, which is 4.
+      - id: c
+        text: $-0.5$ and $-0.5$, since adaptive scaling removes the learning-rate dependence.
+        correct: false
+        feedback: The learning rate still multiplies the whole scaled direction.
+      - id: d
+        text: $-0.08$ and $-0.04$, dividing by the corrected squared average plus epsilon.
+        correct: false
+        feedback: Take the square root of 9 before adding epsilon to form the denominator.
+    solution:
+      The shared scaled direction is $2/(\sqrt9+1)=0.5$. Multiplying by each learning rate and
+      subtracting gives changes -0.2 and -0.1, showing that Adam retains the global rate\'s effect.
   - id: mad-explain-adam
     dimension: math
     type: explain

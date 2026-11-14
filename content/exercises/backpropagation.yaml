@@ -423,10 +423,17 @@ exercises:
     role: "practice"
     difficulty: 1
     est_minutes: 3
-    prompt: "A check measures $L(w+0.1)=10.24$ and $L(w-0.1)=7.84$. The loss difference is 2.4 and the weight distance is 0.2. What is the estimated derivative?"
+    prompt: "A gradient check measures $L(w+0.1)=10.24$ and $L(w-0.1)=7.84$. What derivative does the central difference estimate?"
     answer: 12
     tolerance: { "abs": 0.001 }
-    solution: "Divide change in loss by change in weight: $2.4/0.2=12$."
+    common_wrong:
+      - {
+          answer: 24,
+          tolerance: { abs: 0.001 },
+          category: math_error,
+          feedback: "The two weights are $0.2$ apart, not $0.1$. Divide the loss difference by $2\\varepsilon=0.2$.",
+        }
+    solution: "The central difference divides the change in loss by the distance between the two weights: $(10.24-7.84)/0.2=2.4/0.2=12$."
   - id: "bp-check-template"
     dimension: "math"
     type: "numeric"
@@ -648,22 +655,29 @@ exercises:
     options:
       - {
           id: a,
-          text: "The backward pass needs the forward pass's intermediate answers, so they are saved until the gradients are calculated",
+          text: "The backward pass needs values saved during the forward pass",
           correct: true,
         }
       - {
           id: b,
-          text: "Gradients are larger than parameters",
+          text: "Training keeps every earlier version of the weights to undo bad steps",
           correct: false,
           category: misunderstood_definition,
-          feedback: "Each gradient has the same shape as its parameter.",
+          feedback: "Training overwrites the weights at each step. The extra memory holds the forward pass's intermediate values for the backward pass.",
         }
       - {
           id: c,
-          text: "Training always stores every number with twice as many digits as prediction does",
+          text: "Gradients take more memory than the parameters they belong to",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Each gradient has the same shape as its parameter. The extra memory holds the forward pass's intermediate values.",
+        }
+      - {
+          id: d,
+          text: "Prediction throws away the inputs as soon as it reads them",
           correct: false,
           category: incorrect_reasoning,
-          feedback: "Saving twice as many digits is not a general rule for training; the extra memory comes from keeping intermediate values for the backward pass. Think about which values the chain rule needs.",
+          feedback: "Both keep the inputs while computing. Training also keeps each layer's intermediate values, because the local derivatives need them.",
         }
     solution: "Local derivative rules use values from the forward pass. For example, a multiplication needs its inputs and ReLU needs to know which inputs were positive. Training saves those values for the batch until the backward pass has used them. Prediction alone does not need that later derivative calculation."
   - id: "bp-explain"

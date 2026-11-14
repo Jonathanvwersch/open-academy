@@ -17,9 +17,9 @@ exercises:
         correct: false
         feedback: Role labels format messages, but fine-tuning also trains the model's weights.
       - id: c
-        text: It replaces learned weights with random ones before each request.
+        text: It trains a new model from random weights on demonstration pairs.
         correct: false
-        feedback: Fine-tuning starts from pretrained weights and retains the changes made during training.
+        feedback: SFT starts from pretrained weights. Training from random weights would discard the pretrained model.
     solution: SFT continues training from pretrained weights on prompt–response demonstrations. The supplied answers show the behaviour training should encourage.
   - id: sft-pair-self-explain
     dimension: conceptual
@@ -34,13 +34,13 @@ exercises:
         text: The model must generate the answer after seeing the request.
         correct: true
       - id: b
-        text: The model must forget the desired answer after training ends.
+        text: The assistant marker supplies the answer through a lookup table.
         correct: false
-        feedback: Training retains weight changes; omitting the answer from the later input does not erase learning.
+        feedback: The marker identifies where the response starts. The learned model must predict the response tokens.
       - id: c
-        text: Training never supplies a desired response for the model to learn from.
+        text: The desired response is supplied separately as hidden input at inference.
         correct: false
-        feedback: During training the desired response is supplied as the answer to learn from; the later request leaves it for the model to produce.
+        feedback: The desired response supplies training targets. At inference the model receives the request and generates its answer.
     solution: The complete pair is available during training, but a later request supplies only the prompt and answer boundary. The model has to produce the response itself.
   - id: sft-role-boundary
     dimension: conceptual
@@ -78,9 +78,9 @@ exercises:
         correct: false
         feedback: Arranging stored text does not update model weights; training must use those demonstrations.
       - id: c
-        text: The model's pretrained weights have been removed by the role markers.
+        text: The model has learned the response format but still needs training on answer content.
         correct: false
-        feedback: Changing the dataset's format does not erase or replace the model's weights.
+        feedback: Formatting stored examples teaches neither format nor content until training uses them to update weights.
     solution: A chat template arranges the text so the model can distinguish message roles. Weight changes require training on the formatted examples.
   - id: sft-behaviour-change
     dimension: conceptual
@@ -94,13 +94,13 @@ exercises:
         text: They train the model to make direct answers more likely after requests.
         correct: true
       - id: b
-        text: They guarantee correct answers to every request after a single example.
+        text: They replace next-token prediction with selecting the nearest stored answer.
         correct: false
-        feedback: Demonstrations encourage behaviour, but do not guarantee correctness or generalisation to every request.
+        feedback: SFT updates next-token probabilities. It does not turn the model into a nearest-example lookup system.
       - id: c
-        text: They remove the need to predict tokens while producing an answer.
+        text: They teach the request format while only prompt tokens contribute training loss.
         correct: false
-        feedback: The model still predicts the next token; the examples change which continuations training encourages.
+        feedback: Desired response tokens must supply training targets to encourage the demonstrated answers.
     solution: The demonstrations specify the behaviour desired after a request. The model produces its answers through next-token prediction.
   - id: sft-bad-demonstration
     dimension: conceptual
@@ -114,13 +114,13 @@ exercises:
         text: The model may be learning the wrong answer; fix the demonstrations and test unseen prompts.
         correct: true
       - id: b
-        text: The answer must be correct because a smaller training loss measures factual truth.
+        text: The lower loss shows that pretraining has overridden the incorrect targets.
         correct: false
-        feedback: Training loss measures agreement with supplied targets, which can themselves be wrong.
+        feedback: Lower training loss means closer agreement with the supplied targets, including the incorrect answers.
       - id: c
-        text: The template must be invalid because training cannot learn incorrect demonstrations.
+        text: More training on these pairs will teach the model to correct their labels.
         correct: false
-        feedback: A valid template can carry an incorrect answer, and training can make that answer more likely.
+        feedback: These targets reward predicting “dog”. More training does not supply evidence that the label should be “cat”.
     solution: A falling training loss shows closer agreement with the demonstrated answers, including incorrect ones. Check the targets and evaluate behaviour on prompts excluded from training.
   - id: sft-new-task
     dimension: conceptual
@@ -131,16 +131,16 @@ exercises:
     prompt: A team wants a pretrained model to answer maintenance requests with short numbered instructions. Which SFT dataset most directly teaches that behaviour?
     options:
       - id: a
-        text: Maintenance requests paired with checked answers written as short numbered instructions.
+        text: Maintenance requests paired with reviewed, task-specific numbered procedures.
         correct: true
       - id: b
-        text: Unpaired manuals with no examples of requests or numbered answers to those requests.
+        text: Maintenance requests paired with copied manual chapters covering each machine.
         correct: false
         feedback: Manuals supply useful text, but do not directly demonstrate the requested input–output behaviour.
       - id: c
-        text: Maintenance requests paired with unrelated numbered answers from a different task.
+        text: Numbered maintenance procedures paired with requests to summarise each procedure.
         correct: false
-        feedback: Each desired response must address its paired request as well as demonstrate the requested format.
+        feedback: Those pairs teach summarisation. The desired deployment behaviour needs requests paired with procedures as responses.
     solution: Prompt–response pairs should demonstrate both the requested task and the desired answer format. Checked numbered answers teach that combination directly.
   - id: sft-mask-basics
     dimension: conceptual
@@ -210,24 +210,27 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "A response has {{=n}} selected targets, each with cross-entropy loss {{=a/10}}. All prompt losses are excluded. What is the mean response-only loss?"
+    prompt: "A training sequence has {{=n}} prompt targets, each with cross-entropy loss 1.2, followed by two response targets with losses {{=a/10}} and {{=(a+2)/10}}. What is the response-only mean loss?"
     params:
       n: { min: 2, max: 4, step: 1 }
       a: { min: 2, max: 9, step: 1 }
-    answer_expr: a / 10
+    answer_expr: (a + 1) / 10
     tolerance: { abs: 0.001 }
     common_wrong:
-      - answer_expr: n * a / 10
+      - answer_expr: (2*a + 2) / 10
         category: math_error
-        feedback: That is the sum; divide by the number of selected targets to get the mean.
-    solution: 'The sum is ${{=n}}\times{{=a/10}}={{=n*a/10}}$. Dividing by the {{=n}} selected targets gives ${{=a/10}}$, because every selected loss is the same.'
+        feedback: That sums the response losses. Divide by the two response targets to get their mean.
+      - answer_expr: (1.2*n + (2*a+2)/10) / (n+2)
+        category: misunderstood_definition
+        feedback: That includes prompt losses. Select only response-target losses before taking the mean.
+    solution: "Select the two response losses and average them: $({{=a/10}}+{{=(a+2)/10}})/2={{=(a+1)/10}}$. The prompt targets supply context but contribute no loss to this mean."
   - id: sft-mask-code
     dimension: implementation
     type: code_complete
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "The nonempty list `losses` contains only selected response-target losses. Fill the blank with the name of Python's built-in function that returns the number of items in a list. Enter only the function name."
+    prompt: "The nonempty list `losses` contains only selected response-target losses. Complete the denominator to compute the response-only mean loss. Enter only the missing Python function name."
     code: |
       loss = sum(losses) / ____(losses)
     accept:

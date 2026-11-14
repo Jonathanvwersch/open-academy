@@ -528,7 +528,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 3
-    prompt: A model $\hat y=wx+b$ has $w=1$, $b=0$, and two examples, $(x,y)=(1,3)$ and $(2,2)$. With MSE as the loss, what is $\partial L/\partial w$, the average of $2ex$ over the two examples?
+    prompt: A model $\hat y=wx+b$ has $w=1$, $b=0$, and two examples, $(x,y)=(1,3)$ and $(2,2)$. With MSE as the loss, what is $\partial L/\partial w$?
     answer: -2
     tolerance:
       abs: 0.001
@@ -653,18 +653,18 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: Continue a gradient-descent loop for $x=2$, $y=7$. Pass 4 starts at $w=2.4$, $b=1.7$ with slopes $(-2,-1)$ and uses $\eta=0.05$. What is $w$ after pass 4's update?
+    prompt: A model $\hat y=wx+b$ is trained by gradient descent on one example, $x=2$, $y=7$, with squared-error loss and $\eta=0.05$. Pass 4 starts at $w=2.4$, $b=1.7$. What is $w$ after pass 4's update?
     answer: 2.5
     tolerance:
       abs: 0.001
     common_wrong:
       - answer: 2.3
         category: math_error
-        feedback: "Subtracting a negative slope raises $w$: $2.4-0.05\\times(-2)$."
+        feedback: 'Subtracting a negative slope raises $w$: $2.4-0.05\times(-2)$.'
       - answer: 2.45
         category: math_error
         feedback: That used the bias's slope $-1$; the weight's slope is $-2$.
-    solution: $w=2.4-0.05\times(-2)=2.4+0.1=2.5$.
+    solution: The prediction is $2.4\times2+1.7=6.5$, so the error is $e=6.5-7=-0.5$. The weight's slope is $2ex=2(-0.5)(2)=-2$, so $w=2.4-0.05\times(-2)=2.5$.
   - id: gdp-code-slope
     dimension: implementation
     type: code_complete
@@ -712,24 +712,24 @@ exercises:
     prompt: A loss curve has two dips. Gradient descent reaches the shallower dip, where the slope is $0$, while a deeper dip lies elsewhere. Why does it stop there, unlike getting to the bottom of our linear model's bowl-shaped squared-error loss?
     options:
       - id: a
-        text: A zero slope gives a zero update, even if another dip is lower; on the bowl, a point where all slopes are zero is already as low as the loss gets.
+        text: Its update is $\eta$ times a zero slope, so it can't move; the bowl's only zero-slope point is its bottom.
         correct: true
-        feedback: The update uses only the slopes at the current point, not the heights of other dips.
+        feedback: A zero slope gives a zero step wherever it is, and on the bowl that point is the lowest.
       - id: b
-        text: A zero slope proves this dip is the lowest point of any loss curve.
+        text: A zero slope means it has reached the lowest point of the curve, just as at the bottom of the bowl.
+        correct: false
+        category: misunderstood_definition
+        feedback: A zero slope only means the curve is flat there; the deeper dip shows this point is not the lowest.
+      - id: c
+        text: Its learning rate is too small to climb out; any larger rate would carry it to the deeper dip.
         correct: false
         category: incorrect_reasoning
-        feedback: The other dip is lower. Zero slope alone does not tell us which dip is deepest.
-      - id: c
-        text: The learning rate is too small; increasing it will move the model out of the zero-slope dip.
-        correct: false
-        category: misunderstood_definition
-        feedback: Any learning rate times a zero slope is still zero, so changing the rate alone cannot move it.
+        feedback: With a zero slope the step is zero for every learning rate, so a larger rate doesn't move it either.
       - id: d
-        text: Gradient descent compares both dips and deliberately chooses the nearer one.
+        text: It compares the two dips and keeps the nearer one; the bowl has only one dip to choose.
         correct: false
         category: misunderstood_definition
-        feedback: Gradient descent only uses the current slopes; it does not search the whole curve before taking a step.
+        feedback: Gradient descent never compares dips; it only uses the slope where it currently is.
     solution: At the shallower dip, the update is $-\eta\times0=0$, so gradient descent stays there even though another dip is lower. Our linear model's squared-error loss is bowl-shaped, so any point where all slopes are zero is already as low as it gets. For a loss with several dips, try a few different starting points and keep the run that ends lowest.
   - id: gdp-robot-loop
     dimension: transfer
@@ -854,23 +854,24 @@ exercises:
     prompt: While training a small layered model, its error goes 2.30 → 1.90 → 3.10 → 8.70 → 41.2 → not a number over five steps. What is the most likely cause, and what is the first fix to try?
     options:
       - id: a
-        text: The learning rate is too high and updates overshoot and diverge; reduce it (e.g. ×0.1)
+        text: The learning rate is too high, so steps overshoot and grow; cut it, for example to a tenth
         correct: true
+        feedback: An error that falls once and then grows faster and faster is overshooting that gets worse each step.
       - id: b
-        text: The model is underfitting; add more layers
-        correct: false
-        category: misapplied_technique
-        feedback: Adding layers does not explain a loss that starts rising rapidly to NaN. A sharp rise after an initial decrease points to update steps that are too aggressive.
-      - id: c
-        text: The loss is improving slowly; increase the step size
-        correct: false
-        category: misapplied_technique
-        feedback: The loss first decreases, then grows rapidly, so the steps are too large rather than too small.
-      - id: d
-        text: The learning rate is too low
+        text: The learning rate is too low, so training has stalled; raise it, for example tenfold
         correct: false
         category: incorrect_reasoning
-        feedback: A low learning rate gives a slow, smooth decrease, not growth.
+        feedback: A rate that is too low makes the error fall slowly; here it grows, which a higher rate would make worse.
+      - id: c
+        text: The model is too small to fit the data; add more layers and train it again
+        correct: false
+        category: incorrect_reasoning
+        feedback: A model that is too small stops improving; it doesn't make the error blow up.
+      - id: d
+        text: One example has a huge error that grows each step; remove it and train again
+        correct: false
+        category: incorrect_reasoning
+        feedback: A single bad example can't make the error multiply step after step; that pattern comes from steps that are too large.
     solution: A loss that decreases once and then grows geometrically is the signature of $|1 - 2a\eta| > 1$ in the steepest direction. Lower the learning rate, and check the input scaling.
   - id: gd-curve-slow
     dimension: transfer
@@ -878,22 +879,28 @@ exercises:
     role: review
     difficulty: 2
     est_minutes: 2
-    prompt: A loss curve decreases smoothly but very slowly and almost linearly, still far from converged after 10,000 steps; doubling the learning rate makes it noticeably faster and still smooth. What is going on?
+    prompt: After 10,000 steps a loss curve is still decreasing smoothly but very slowly, almost in a straight line, and it is far above the loss other runs reach. What is going on, and what should you try?
     options:
       - id: a
-        text: The learning rate is too small; keep increasing it until just below where it becomes unstable
+        text: The learning rate is too small; raise it while checking that the loss still falls smoothly
         correct: true
+        feedback: Smooth, steady, slow progress means each step is safe but short.
       - id: b
-        text: The learning rate is too large
+        text: The learning rate is too large; lower it so each step stops overshooting
         correct: false
         category: incorrect_reasoning
-        feedback: A learning rate that is too large tends to produce oscillation or instability, not a smooth, very slow decrease. Compare the curve with what happens when a small step is doubled.
+        feedback: Overshooting makes the loss zigzag or grow, not fall smoothly.
       - id: c
-        text: The gradient computation is wrong
+        text: The gradient has the wrong sign; flip the update so each step goes downhill
         correct: false
         category: incorrect_reasoning
-        feedback: A wrong gradient usually fails to decrease the loss at all, or behaves erratically.
-    solution: Smooth and slow means you are far inside the stable region. Raise the learning rate.
+        feedback: With the wrong sign the loss would rise, but here it is falling.
+      - id: d
+        text: The loss has reached its minimum; stop training and keep these parameters
+        correct: false
+        category: incorrect_reasoning
+        feedback: The loss is still falling and is far above what other runs reach, so it hasn't reached its minimum.
+    solution: A loss that falls smoothly but slowly means the steps are stable but too short. Raise the learning rate, stopping before the loss starts to zigzag or grow.
   - id: gd-code-complete
     dimension: implementation
     type: code_complete
@@ -949,18 +956,24 @@ exercises:
     prompt: In your lab, you trained with learning rate $\eta = 0.01$ and it converged smoothly. **Before running it**, predict what happens with $\eta$ 10× larger, then 100× larger (the lab data has feature variance ≈ 1).
     options:
       - id: a
-        text: "10×: converges faster, maybe with slight oscillation; 100×: likely diverges (loss grows, may become NaN)"
+        text: "10×: converges faster, maybe with a slight zigzag; 100×: likely diverges, with the loss growing"
         correct: true
+        feedback: With unit-variance features the stability limit is near $\eta\approx1$, so 0.1 is safe and 1.0 sits at the edge.
       - id: b
-        text: Both converge 10× and 100× faster
+        text: "10×: converges about 10 times faster; 100×: converges about 100 times faster"
         correct: false
         category: incorrect_reasoning
-        feedback: "There is a stability limit: past it the error grows each step."
+        feedback: Larger rates only speed things up below the stability limit; beyond it the steps overshoot.
       - id: c
-        text: Both diverge
+        text: "10×: diverges, with the loss growing; 100×: diverges even faster"
         correct: false
         category: incorrect_reasoning
-        feedback: A 10× rate gives 0.1 here, which can still be stable with unit-variance features. Distinguish that from the much more aggressive 100× rate.
+        feedback: 0.1 is well below the limit of about 1 for unit-variance features, so it still converges.
+      - id: d
+        text: "10×: converges more slowly, since bigger steps overshoot; 100×: stops moving"
+        correct: false
+        category: incorrect_reasoning
+        feedback: Below the limit a larger rate takes bigger useful steps, and far above it the loss grows rather than freezing.
     solution: With unit-variance features, MSE curvature is about 2, so the stability limit is around $\eta \approx 1$. Then 0.1 is fast and safe, while 1.0 sits right at the edge and typically oscillates or diverges once noise and correlated features are included. Check this against your experiment.
   - id: lab-linreg-explain-divergence
     dimension: transfer
@@ -991,18 +1004,24 @@ exercises:
     prompt: In the lab your train MSE is 0.24 and validation MSE is 0.27, with noise variance 0.25. What does this tell you?
     options:
       - id: a
-        text: The model is close to the noise floor and generalises well; the small gap is normal sampling variation
+        text: It is close to the noise floor and generalises well; the small gap is normal
         correct: true
+        feedback: No model can beat the noise variance of 0.25 on new data, and 0.27 is close to it.
       - id: b
-        text: The prediction error on new examples is far above the noise level
+        text: It fits new data badly, because the validation MSE is higher than the train MSE
         correct: false
         category: incorrect_reasoning
-        feedback: The validation error is 0.27, close to the noise level of 0.25 rather than far above it.
+        feedback: Validation MSE is almost always a little higher; a model that fits new data badly shows a large gap, and 0.03 is small.
       - id: c
-        text: The model is underfitting and needs more features
+        text: It is underfitting, because both errors are well above zero and need more features
         correct: false
         category: incorrect_reasoning
-        feedback: The two errors are close to each other and to the stated noise variance. Check whether this suggests a large gap or a model already near the measurement limit.
+        feedback: With noise variance 0.25, an MSE near 0.25 is the best any model can do.
+      - id: d
+        text: Its predictions are worse than guessing, because 0.27 is above the noise variance
+        correct: false
+        category: misunderstood_definition
+        feedback: The noise variance is the lowest MSE possible on new data, so being just above it is good.
     solution: With noise variance 0.25, no model can do much better than MSE ≈ 0.25 on new data.
   - id: gd-explain-training
     dimension: conceptual

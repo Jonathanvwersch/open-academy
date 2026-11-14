@@ -501,30 +501,23 @@ exercises:
     solution: "Power rule: bring the 3 down and lower the power to 2, so $(x^3)' = 3x^2$."
   - id: derp-constant-term
     dimension: conceptual
-    type: mc
+    type: expression
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "Why does the added constant 10 in $f(x) = x^2 + 10$ contribute 0 to the derivative?"
-    options:
-      - id: a
-        text: "Changing $x$ never changes the added 10, so that term contributes no change in output"
-        correct: true
-      - id: b
-        text: "The 10 multiplies $x$, so its derivative should be 10"
-        correct: false
+    prompt: "What is the derivative of $f(x) = x^2 + 10$?"
+    answer: "2*x"
+    variables: { x: [-3, 3] }
+    common_wrong:
+      - answer: "2*x + 10"
         category: misunderstood_definition
-        feedback: "The expression adds 10; it does not multiply $x$ by 10. An added constant stays fixed as $x$ changes."
-      - id: c
-        text: "The 10 cancels the derivative of $x^2$"
-        correct: false
+        feedback: "Differentiation measures how the output changes with $x$. The added 10 stays fixed, so it contributes 0."
+      - answer: "2*x + 1"
+        category: misapplied_technique
+        feedback: "The constant 10 is not $10x$ or $x$. It doesn't change with $x$, so its derivative is 0."
+      - answer: "20*x"
         category: misunderstood_definition
-        feedback: "The sum rule differentiates each term separately. The constant contributes 0; it does not cancel $2x$."
-      - id: d
-        text: "The derivative keeps every term unchanged, including the 10"
-        correct: false
-        category: misunderstood_definition
-        feedback: "Differentiation measures how the output changes with $x$. The added 10 stays fixed, so only $x^2$ contributes."
+        feedback: "The expression adds 10. It does not multiply $x^2$ by 10. Each term is differentiated separately."
     solution: "The value 10 stays fixed for every $x$, so it contributes no change in output. Thus $f'(x) = 2x$."
   - id: derp-drone-climb
     dimension: math
@@ -583,7 +576,7 @@ exercises:
     answer_expr: "a / x0"
     params:
       a: { min: 2, max: 9, step: 1 }
-      x0: { min: 1, max: 5, step: 1 }
+      x0: { min: 2, max: 5, step: 1 }
     tolerance: { abs: 0.01 }
     common_wrong:
       - {
@@ -711,23 +704,24 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "Why can't you find the derivative of $x^2 e^x$ by multiplying the derivatives of its two parts?"
+    prompt: "A student differentiates $x^2 e^x$ by multiplying the derivatives of its two parts, $2x$ and $e^x$, and gets $2x e^x$. Which statement about this is correct?"
     options:
       - id: a
-        text: "Both parts can change, so the product changes from each part's contribution; the product rule adds both"
+        text: "It misses a part: both factors change, so the derivative is $2x e^x + x^2 e^x$."
         correct: true
+        feedback: "The product rule adds the change from each part times the other part."
       - id: b
-        text: "Nothing; the derivative of a product is the product of the derivatives"
+        text: "It is correct: the derivative of a product is the product of the derivatives."
         correct: false
         category: misunderstood_definition
         feedback: 'Test it on $x \cdot x = x^2$: multiplying derivatives gives 1, but the true derivative is $2x$.'
       - id: c
-        text: "They should have added the derivatives to get $2x + e^x$"
+        text: "It is wrong: the derivatives should be added instead, giving $2x + e^x$."
         correct: false
         category: misapplied_technique
         feedback: "Adding derivatives is the sum rule, for $u + v$. A product needs $u'v + uv'$."
       - id: d
-        text: 'The derivative of $e^x$ should have been $x\,e^{x-1}$'
+        text: "It is wrong: by the power rule the derivative of $e^x$ is $x e^{x-1}$."
         correct: false
         category: misapplied_technique
         feedback: "The power rule does not apply when $x$ is the exponent. $e^x$ is its own derivative."

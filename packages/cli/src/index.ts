@@ -226,6 +226,12 @@ async function init(directory: string, title: string) {
     join(repoRoot, '.agents/skills/write-lesson/SKILL.md'),
     join(writeLessonDirectory, 'SKILL.md'),
   );
+  const writeQuestionsDirectory = join(directory, '.agents/skills/write-questions');
+  mkdirSync(writeQuestionsDirectory, { recursive: true });
+  copyFileSync(
+    join(repoRoot, '.agents/skills/write-questions/SKILL.md'),
+    join(writeQuestionsDirectory, 'SKILL.md'),
+  );
   for (const [source, target] of [
     ['content/lessons/gradient-descent.yaml', 'lesson.yaml'],
     ['content/exercises/gradient-descent.yaml', 'exercises.yaml'],

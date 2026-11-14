@@ -303,22 +303,21 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 1
-    prompt: A model gives the correct class probability zero. What is the mathematical cross-entropy loss?
+    prompt: "A model gives the correct class probability zero. What is the mathematical cross-entropy loss?"
     options:
       - id: a
-        text: The loss is one bit because every wrong prediction receives the same penalty.
+        text: "One bit, assigning a fixed penalty to an incorrect prediction."
         correct: false
-        feedback: Cross-entropy depends on confidence and is not a fixed error count.
+        feedback: "Cross-entropy depends on the probability assigned to the observed class; it has no fixed penalty for all wrong predictions."
       - id: b
-        text: The loss is infinite, although training software can replace zero with a tiny positive probability.
+        text: "Infinite, as surprise grows without bound when probability approaches zero."
         correct: true
-        feedback: Zero probability for an observed event gives unbounded surprise.
+        feedback: "The negative base-two logarithm grows without bound as the assigned probability approaches zero."
       - id: c
-        text: The loss is zero because the model gives the observed class no probability.
+        text: "Zero bits, assigning a loss equal to the predicted probability."
         correct: false
-        feedback: The loss is the observed class's surprise, which grows as its forecast probability shrinks.
-    solution: A zero probability for the observed class means infinite surprise. Replacing zero with
-      a tiny positive probability makes the numerical calculation finite.
+        feedback: "Cross-entropy takes the negative logarithm of the observed-class probability; zero probability produces unbounded loss."
+    solution: "For one labelled example, cross-entropy is $-\\log_2 q$ for its correct-class probability $q$. As $q$ approaches zero the loss grows without bound, giving infinite mathematical loss at zero."
   - id: it-cross-robot
     dimension: math
     type: numeric

@@ -180,26 +180,35 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: "A house's features are $(4,1)$ in the order (area in tens of square metres, bedrooms). A model stores weights $(2,0.5)$ in the reverse order (bedrooms, area), in thousand pounds per feature unit. What should it do before calculating their dot product?"
-    solution: "The dot product pairs components by position. Reorder one list so each feature is matched to its own weight."
+    prompt: "A house's features are $(4,1)$ in the order (area in tens of square metres, bedrooms). A model stores its weights as $(2,0.5)$ in the reverse order (bedrooms, area), in thousand pounds per feature unit. What price should the model predict, in thousand pounds?"
+    solution: "The dot product pairs components by meaning, so each feature must meet its own weight. Area 4 takes weight 0.5 and bedrooms 1 take weight 2: $4\\times0.5+1\\times2=4$."
     options:
       - {
           id: a,
-          text: "It should reorder the weights to match the house's features.",
+          text: "4, pairing the area with 0.5 and the bedrooms with 2.",
           correct: true,
-          feedback: "Each weight must multiply its intended feature.",
+          feedback: "Each weight multiplies the feature it belongs to, then the products are added.",
         }
       - {
           id: b,
-          text: "It should add the two vectors first.",
+          text: "8.5, pairing the entries in the order they are stored.",
           correct: false,
-          feedback: "Adding components does not fix which feature each weight belongs to.",
+          category: misapplied_technique,
+          feedback: "That multiplies the area by the bedroom weight. Reorder the weights to (area, bedrooms) = $(0.5,2)$ first.",
         }
       - {
           id: c,
-          text: "It should keep the order because addition ignores order.",
+          text: "7.5, adding all four numbers together.",
           correct: false,
-          feedback: "Reordering one vector alone changes the paired products.",
+          category: misunderstood_definition,
+          feedback: "A dot product multiplies matching components before adding them.",
+        }
+      - {
+          id: d,
+          text: "1, multiplying the two weights together.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Each weight multiplies a feature of the house, and the products are added.",
         }
   - id: dotp-negative-weight
     dimension: conceptual
@@ -413,26 +422,35 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "Arrows $(2,0)$ and $(-2,0)$ both have length 2. Why can't lengths alone measure how much they point the same way?"
-    solution: "Their equal lengths do not record their opposite directions. Their dot product is $2\\times(-2)+0\\times0=-4$, which records that opposition."
+    prompt: "Arrows $(2,0)$ and $(-2,0)$ both have length 2. Which statement about how they point is correct?"
+    solution: "Their equal lengths do not record their directions. Their dot product is $2\\times(-2)+0\\times0=-4$, and the negative sign shows they point opposite ways."
     options:
       - {
           id: a,
-          text: "Equal lengths can belong to opposite arrows, which a negative dot product distinguishes.",
+          text: "Their dot product is $-4$, so they point in opposite directions.",
           correct: true,
-          feedback: "Length measures how far an arrow reaches, not which way it points.",
+          feedback: "A negative dot product means the arrows are more than a right angle apart. These are exactly opposite.",
         }
       - {
           id: b,
-          text: "Equal lengths force the arrows to point the same way.",
+          text: "Their dot product is $4$, so they point in the same direction.",
           correct: false,
-          feedback: "Reversing an arrow preserves its length but gives the opposite direction.",
+          category: math_error,
+          feedback: "The first components are $2$ and $-2$, so their product is $-4$, not $4$.",
         }
       - {
           id: c,
-          text: "Multiplying the lengths gives a negative number for opposite arrows.",
+          text: "Their dot product is $0$, so they meet at a right angle.",
           correct: false,
-          feedback: "Non-zero lengths are positive, so their product is always positive and cannot show opposite directions.",
+          category: math_error,
+          feedback: "Only the second components give $0\\times0=0$. The first components give $2\\times(-2)=-4$.",
+        }
+      - {
+          id: d,
+          text: "They have equal lengths, so they point in the same direction.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Length says how far an arrow reaches, not which way it points. Reversing an arrow keeps its length.",
         }
   - id: dotp-cosine
     dimension: math
@@ -688,24 +706,24 @@ exercises:
         }
       - {
           id: b,
-          text: "Its score stays unchanged because dot products depend only on direction.",
+          text: "The dot product stays the same, because a dot product depends only on the angle.",
           correct: false,
           category: misunderstood_definition,
           feedback: "Cosine similarity would stay unchanged. In a dot product, every multiplied pair now gives three times its previous value.",
         }
       - {
           id: c,
-          text: "Its score becomes nine times larger.",
+          text: "The dot product becomes nine times larger, since every product gains a factor of three twice.",
           correct: false,
           category: math_error,
           feedback: "Only one vector triples. The other stays fixed, so each product gains one factor of three.",
         }
       - {
           id: d,
-          text: "Its score becomes negative.",
+          text: "The dot product turns negative, because the longer arrow now reaches past the other one.",
           correct: false,
           category: incorrect_reasoning,
-          feedback: "Multiplying a positive score by three keeps it positive.",
+          feedback: "The sign depends on the angle, which hasn't changed. Multiplying a positive score by three keeps it positive.",
         }
     hints: ["What happens to each product if only one vector's component triples?"]
     solution: "Every matching product becomes three times as large, so the total triples. The angle has not changed. Cosine similarity divides by both lengths to compare direction alone."

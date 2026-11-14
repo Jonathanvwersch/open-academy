@@ -393,17 +393,17 @@ exercises:
         correct: true
         feedback: Each output entry is one row dotted with $v_1$, so the entries are $1$ and $0$.
       - id: b
-        text: $V^\top$ is a stretch by $s_1=10$ along the first axis.
+        text: $V^\top$ stretches $v_1$ by $s_1=10$ and then divides by $10$, which leaves a length-1 arrow along the first axis.
         correct: false
         category: misunderstood_definition
         feedback: The stretch is $S$; $V^\top$ is a turn and keeps lengths, which is why the length stays $1$.
       - id: c
-        text: Every vector of length $1$ comes out as $(1,0)$.
+        text: $V^\top$ turns every vector of length $1$ onto the first axis, so any length-1 input comes out as $(1,0)$.
         correct: false
         category: incorrect_reasoning
         feedback: A turn sends different arrows to different places; $v_2$ comes out as $(0,1)$.
       - id: d
-        text: The entries $0.6$ and $0.8$ add up to more than $1$.
+        text: The first output entry is $0.6+0.8$ rounded down to $1$, and the second is $0.8-0.8=0$ from the other row.
         correct: false
         category: incorrect_reasoning
         feedback: The sum of the entries plays no part; the first output is $0.6^2+0.8^2=1$, the squared length.
@@ -417,21 +417,21 @@ exercises:
     prompt: Can a singular value be negative?
     options:
       - id: a
-        text: Yes, when the matrix flips arrows round.
+        text: Yes. A matrix that flips arrows round has a negative singular value for that flip.
         correct: false
         category: misunderstood_definition
         feedback: A flip goes into $U$ or $V$, which keep lengths and may flip arrows over like a mirror, so the stretch stays a length.
       - id: b
-        text: No. Singular values are output lengths of length-1 inputs, so they are never negative.
+        text: No. Each singular value is the length of an output for a length-1 input, and lengths aren't negative.
         correct: true
         feedback: $Av_i=s_iu_i$ with $u_i$ of length $1$, so $s_i$ is the length of $Av_i$.
       - id: c
-        text: Yes, whenever the matrix has a negative eigenvalue.
+        text: Yes. Every negative eigenvalue of the matrix is also one of its singular values.
         correct: false
         category: misunderstood_definition
         feedback: $\begin{bmatrix}3&0\\0&-1\end{bmatrix}$ has eigenvalue $-1$, but its singular values are $3$ and $1$.
       - id: d
-        text: Only for matrices that aren't square.
+        text: Yes, but only for matrices that aren't square, because they have no eigenvalues.
         correct: false
         category: misunderstood_definition
         feedback: For every matrix, square or not, singular values are lengths and can't be negative.
@@ -510,21 +510,21 @@ exercises:
     prompt: A $2\times2$ matrix turns small joint movements of a robot arm into movements of its hand. Its singular values are $2$ and $0.01$. What does that say about the hand?
     options:
       - id: a
-        text: The hand moves easily along one direction but barely moves along the perpendicular one, whatever the joints do.
+        text: The hand moves easily along one direction but can barely move along the perpendicular one.
         correct: true
         feedback: A length-1 joint movement moves the hand at most $2$ in one direction and at most $0.01$ in the other.
       - id: b
-        text: The hand moves equally well in every direction.
+        text: The hand moves about 2 units for every unit of joint movement, in whatever direction it goes.
         correct: false
         category: incorrect_reasoning
-        feedback: Equal movement in every direction needs equal singular values; here one is $200$ times the other.
+        feedback: $2$ is only the largest stretch. In the second output direction the hand moves just $0.01$ per unit.
       - id: c
-        text: The hand moves backwards along one direction, because $0.01$ is small.
+        text: The hand moves backwards along one direction, because one of the singular values is close to $0$.
         correct: false
         category: misunderstood_definition
         feedback: Singular values are lengths; a small one means a short movement, and direction comes from $U$.
       - id: d
-        text: Nothing, because only eigenvalues describe how a matrix moves things.
+        text: Nothing yet, because only the eigenvalues of the matrix describe how far it moves things.
         correct: false
         category: misunderstood_definition
         feedback: The singular values are exactly the longest and shortest output lengths for length-1 inputs.
@@ -571,17 +571,17 @@ exercises:
         correct: true
         feedback: $v_1^\top v_2=0.6\times(-0.8)+0.8\times0.6=0$, so the whole output is $0$.
       - id: b
-        text: $B_1$ has a row of zeros.
+        text: $B_1$ has a row of zeros, and a matrix with a row of zeros sends every input to $(0,0)$.
         correct: false
         category: incorrect_reasoning
         feedback: The zero row only makes the first entry $0$; the second entry is $0$ because $6\times(-0.8)+8\times0.6=0$.
       - id: c
-        text: $v_2$ has length $1$.
+        text: $v_2$ has length $1$, and $B_1$ sends every length-1 input it is given to $(0,0)$.
         correct: false
         category: incorrect_reasoning
         feedback: $v_1$ also has length $1$, and $B_1v_1=(0,10)$.
       - id: d
-        text: The rank-1 copy sends every input to zero.
+        text: $B_1$ is a rank-1 copy, and a rank-1 copy of a matrix sends every input to $(0,0)$.
         correct: false
         category: misunderstood_definition
         feedback: It keeps the first direction exactly, $B_1v_1=(0,10)$.

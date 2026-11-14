@@ -61,9 +61,10 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "A house had $x=3$ viewings in its first week, and the model has weight $w=2$ and bias $b=-2$. The weighted input $wx$ is 6. Complete the score $z=6+b$."
+    prompt: A house had $x=3$ viewings. The model has weight $w=2$ and bias $b=-2$. What is the model's score?
     answer: 4
-    tolerance: { abs: 0.000001 }
+    tolerance:
+      abs: 1.0e-06
     solution: Add the bias once after the weighted input, giving $6-2=4$.
   - id: lr-classification-template
     dimension: math
@@ -71,13 +72,22 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "A house had $x={{=x}}$ viewings in its first week. The model has weight $w={{=w}}$ and bias $b={{=b}}$. Find the score $z=wx+b$."
+    prompt:
+      A house had $x={{=x}}$ viewings in its first week. The model has weight $w={{=w}}$ and bias $b={{=b}}$.
+      What is the model's score?
     params:
-      x: { min: 0, max: 4 }
-      w: { min: 1, max: 3 }
-      b: { min: -3, max: 0 }
+      x:
+        min: 0
+        max: 4
+      w:
+        min: 1
+        max: 3
+      b:
+        min: -3
+        max: 0
     answer_expr: w*x+b
-    tolerance: { abs: 0.000001 }
+    tolerance:
+      abs: 1.0e-06
     solution: Multiply the input by its weight and add the bias once; the score is ${{=w*x+b}}$, not yet a probability.
   - id: lr-classification-confusion
     dimension: conceptual
@@ -85,36 +95,39 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 1
-    prompt: A house gets a score of 0. Does that mean the model gives it zero chance of selling within a month?
+    prompt: Two houses get scores $z=0$ and $z=-3$. Which statement is correct?
     options:
-      - {
-          id: a,
-          text: "No; a score has not yet been converted to a probability.",
-          correct: true,
-          feedback: "Being in the probability range does not make a score a chance.",
-        }
-      - {
-          id: b,
-          text: "Yes; every zero in a model denotes an impossible outcome.",
-          correct: false,
-          feedback: "Zero can be a score or a label as well as a probability.",
-        }
-      - {
-          id: c,
-          text: "No; a zero score means the target label is missing.",
-          correct: false,
-          feedback: "The score does not tell you whether a target was recorded.",
-        }
-    solution: A score and a probability have different meanings, even when their numerical ranges overlap.
+      - id: a
+        text: Neither score is a probability yet, since a score can be any number.
+        correct: true
+        feedback: The score must be converted to a probability.
+      - id: b
+        text: The first house has zero chance of selling, since its score is zero.
+        correct: false
+        feedback: A zero score becomes probability 0.5 under the sigmoid.
+      - id: c
+        text: The second house has a negative chance of selling, so the model is broken.
+        correct: false
+        feedback: A negative score is valid and becomes a probability between zero and one.
+      - id: d
+        text: Both houses have zero chance of selling, since neither score is positive.
+        correct: false
+        feedback: A nonpositive score still gives a positive sigmoid probability.
+    solution:
+      A weighted score can be any real number. Convert each score to a probability before interpreting it
+      as a chance of selling.
   - id: lr-classification-transfer
     dimension: transfer
     type: numeric
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: "A robot predicts whether a doorway is blocked. With sensor reading $x=2$ and weight $w=3$, its score is $z=-1$. Find the bias in $z=wx+b$."
+    prompt:
+      A robot predicts whether a doorway is blocked. With sensor reading $x=2$ and weight $w=3$, its score is
+      $z=-1$. Find the bias.
     answer: -7
-    tolerance: { abs: 0.000001 }
+    tolerance:
+      abs: 1.0e-06
     solution: The weighted input is 6, so the bias must be $-1-6=-7$ to give the stated score.
   - id: lr-sigmoid-basics
     dimension: conceptual
@@ -177,10 +190,11 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "For score $z=0$, $e^{-z}=1$. Complete $p=1/(1+1)$."
+    prompt: A house has score $z=0$. What probability of selling does the sigmoid give it?
     answer: 0.5
-    tolerance: { abs: 0.000001 }
-    solution: The denominator is 2, so the estimated chance of label 1 is one half.
+    tolerance:
+      abs: 1.0e-06
+    solution: At score zero, the sigmoid gives $1/(1+e^0)=1/2$, so the estimated chance of selling is 0.5.
   - id: lr-sigmoid-template
     dimension: math
     type: numeric
@@ -199,27 +213,25 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 1
-    prompt: "A model gives label 1 probability $3/4$ and predicts label 1. Which interpretation is justified?"
+    prompt: A model gives label 1 probability $3/4$ and predicts label 1. Which interpretation is justified?
     options:
-      - {
-          id: a,
-          text: "Label 1 is the decision but label 0 remains possible.",
-          correct: true,
-          feedback: "A thresholded decision does not remove uncertainty.",
-        }
-      - {
-          id: b,
-          text: "Label 1 is certain because its chance exceeds one half.",
-          correct: false,
-          feedback: "Exceeding the threshold is not the same as certainty.",
-        }
-      - {
-          id: c,
-          text: "Label 0 is certain because one quarter remains unused.",
-          correct: false,
-          feedback: "One quarter is the estimated chance of label 0, not certainty.",
-        }
-    solution: A probability of three quarters leaves one quarter for the other label, even though the decision is label 1.
+      - id: a
+        text: Label 1 is the decision but label 0 remains possible.
+        correct: true
+        feedback: A thresholded decision does not remove uncertainty.
+      - id: b
+        text: Label 1 is certain because its chance exceeds one half.
+        correct: false
+        feedback: Exceeding the threshold is not the same as certainty.
+      - id: c
+        text: Label 0 should be predicted one time in four because its probability is $1/4$.
+        correct: false
+        feedback:
+          The threshold rule picks label 1 here each time; it does not sample labels in proportion to their
+          probabilities.
+    solution:
+      A probability of three quarters leaves one quarter for the other label, even though the decision is
+      label 1.
   - id: lr-sigmoid-transfer
     dimension: transfer
     type: numeric
@@ -291,9 +303,12 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: 'For $y=1$ and $p=1/2$, the loss is $-\ln(1/2)$. Evaluate it to four decimal places.'
+    prompt:
+      A house sold ($y=1$), and the model gave it probability $p=1/2$ of selling. Find the binary cross-entropy
+      loss to four decimal places.
     answer: 0.69314718056
-    tolerance: { abs: 0.0001 }
+    tolerance:
+      abs: 0.0001
     solution: The observed label selects $p$, giving $-\ln(1/2)=\ln2\approx0.6931$.
   - id: lr-bce-template
     dimension: math
@@ -433,9 +448,12 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "A house with $x=4$ viewings sold, so $y=1$, and the model gave it $p=1/2$. The score slope is $-1/2$. Complete the weight slope $(p-y)x$."
+    prompt:
+      A house with $x=4$ viewings sold ($y=1$), and the model gave it $p=1/2$. The loss slope with respect to
+      the score is $-1/2$. What is the loss slope with respect to the weight $w$?
     answer: -2
-    tolerance: { abs: 0.000001 }
+    tolerance:
+      abs: 1.0e-06
     solution: Multiply the score slope by the input, giving $(-1/2)(4)=-2$.
   - id: lr-gradient-template
     dimension: math
@@ -443,14 +461,25 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "For one example, $p={{=k}}/4$, $y={{=y}}$ and $x={{=x}}$. Find the weight gradient $(p-y)x$."
+    prompt:
+      For one example, the model gives label 1 probability $p={{=k}}/4$, the observed label is $y={{=y}}$ and
+      the input is $x={{=x}}$. Find the loss gradient with respect to the weight.
     params:
-      k: { min: 1, max: 3 }
-      y: { min: 0, max: 1 }
-      x: { min: -2, max: 4 }
+      k:
+        min: 1
+        max: 3
+      y:
+        min: 0
+        max: 1
+      x:
+        min: -2
+        max: 4
     answer_expr: (k/4-y)*x
-    tolerance: { abs: 0.000001 }
+    tolerance:
+      abs: 1.0e-06
     solution: Subtract the observed label from the probability, then multiply by the input; the weight slope is ${{=(k/4-y)*x}}$.
+    constraints:
+      - x != 0
   - id: lr-gradient-confusion
     dimension: conceptual
     type: mc

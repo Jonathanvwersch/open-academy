@@ -10,25 +10,28 @@ exercises:
     options:
       - {
           id: a,
-          text: "It reduces the number of independent decisions over an episode, which limits compounding error and copes better with pauses and other non-Markovian behaviour in human demonstrations",
+          text: "It models coordinated action sequences, shortening the effective decision horizon and capturing timing patterns in demonstrations",
           correct: true,
         }
       - {
           id: b,
-          text: "It lets the model skip the observation encoder",
+          text: "It makes actions within each chunk conditionally independent, so the policy can ignore correlations between consecutive actions",
           correct: false,
           category: incorrect_reasoning,
+          feedback: "Chunk prediction can model correlations among consecutive actions, including coordinated movements and pauses.",
         }
       - {
           id: c,
-          text: "It guarantees the policy never sees out-of-distribution states",
+          text: "It corrects disturbances within a chunk without new observations, because later predicted actions already incorporate those disturbances",
           correct: false,
           category: incorrect_reasoning,
+          feedback: "Predicted actions cannot incorporate an unforeseen disturbance. Correcting it needs new feedback and replanning.",
         }
       - {
           id: d,
-          text: "It turns imitation learning into reinforcement learning",
+          text: "It supplies recovery labels for states reached after mistakes, because expert actions later in a demonstration cover those states",
           correct: false,
           category: misunderstood_definition,
+          feedback: "Demonstrations show the expert's states. Predicting chunks does not label new states reached after the learner makes a mistake.",
         }
     solution: "Predicting $k$ actions at once shrinks the effective decision horizon by a factor of $k$, so errors have fewer opportunities to compound. Temporal ensembling of overlapping chunks smooths execution."

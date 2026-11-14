@@ -160,11 +160,12 @@ exercises:
     role: transfer
     difficulty: 3
     est_minutes: 3
-    prompt: "A change in a calculation is multiplied by 0.25 at each of 10 steps. By what factor does the original change become overall? (Scientific notation is fine, e.g. `9.5e-7`.)"
+    prompt: "Ten sigmoids are applied one after another, each to the previous one's output. A small change at the start is multiplied by each sigmoid's slope as it passes through. What is the largest factor the change can end up multiplied by? (Scientific notation is fine, e.g. `9.5e-7`.)"
     answer: 9.5367e-7
     tolerance: { rel: 0.01 }
-    hints: ["Multiply the ten factors together."]
-    solution: "$0.25^{10} \\approx 9.5\\times10^{-7}$. Repeatedly multiplying by a number below 1 makes the result very small."
+    hints:
+      ["Each factor is at most the sigmoid's largest slope, at $z = 0$, where its output is 0.5."]
+    solution: "The sigmoid's largest slope is $0.5(1-0.5) = 0.25$, at $z = 0$. Each of the ten factors is at most that, so the total is at most $0.25^{10} \\approx 9.5\\times10^{-7}$. Even in the best case the change almost disappears."
   - id: act-review-deriv
     dimension: math
     type: mc
@@ -408,17 +409,24 @@ exercises:
         }
       - {
           id: b,
-          text: "Nothing; three layers are enough for a curve",
+          text: "Three layers can bend, but each needs more neurons to follow this curve",
           correct: false,
           category: misunderstood_definition,
-          feedback: "Depth only helps with a nonlinear activation between layers. Without it, the layers multiply out into one weighted sum plus bias.",
+          feedback: "Without an activation, more neurons per layer still multiply out into one weighted sum plus bias, which is straight.",
         }
       - {
           id: c,
-          text: "It needs more layers of the same kind",
+          text: "Each layer adds one bend, so it needs as many layers as the curve has bends",
           correct: false,
           category: incorrect_reasoning,
-          feedback: "More layers of the same kind still collapse into a single straight line.",
+          feedback: "Layers of weighted sums plus biases add no bends at all. Any number of them collapses into a single straight line.",
+        }
+      - {
+          id: d,
+          text: "The biases bend the rule, so only curves with one bend can be learned",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Adding a bias shifts a straight line up or down. It doesn't bend it.",
         }
     solution: "Without activations, the stack equals one weighted sum plus bias, so grip strength can only rise at a constant rate. Adding a nonlinear activation such as ReLU between the layers lets it bend."
   - id: actp-relu-values
@@ -493,11 +501,11 @@ exercises:
     difficulty: 2
     est_minutes: 2
     prompt: |
-      A neuron's score is $z = {{=z}}$. What is its sigmoid output $\sigma(z) = \dfrac{1}{1 + e^{-z}}$? Give 3 decimal places.
+      A neuron's score is $z = {{=z}}$. What is its sigmoid output $\sigma(z)$? Give 3 decimal places.
     hints:
-      - "Work out $e^{-z}$ first (for $z = {{=z}}$ that's $e^{ {{=-z}} }$), add 1, then take 1 divided by the result."
+      - "$\\sigma(z) = \\dfrac{1}{1 + e^{-z}}$. Work out $e^{-z}$ first (for $z = {{=z}}$ that's $e^{ {{=-z}} }$), add 1, then take 1 divided by the result."
     solution: |
-      $e^{-({{=z}})} \approx {{=round(exp(-z), 4)}}$, so $\sigma({{=z}}) = \dfrac{1}{1 + {{=round(exp(-z), 4)}}} \approx {{=round(1 / (1 + exp(-z)), 3)}}$.
+      $\sigma(z) = \dfrac{1}{1 + e^{-z}}$. Here $e^{-({{=z}})} \approx {{=round(exp(-z), 4)}}$, so $\sigma({{=z}}) = \dfrac{1}{1 + {{=round(exp(-z), 4)}}} \approx {{=round(1 / (1 + exp(-z)), 3)}}$.
 
       A positive score gives an output above 0.5 and a negative score gives one below 0.5.
     answer_expr: "1 / (1 + exp(-z))"
@@ -576,26 +584,29 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "How does tanh differ from sigmoid?"
+    prompt: "Between which values do tanh's outputs lie, and what is $\\tanh(0)$?"
     options:
-      - {
-          id: a,
-          text: "tanh outputs between $-1$ and $1$ with $\\tanh(0) = 0$; sigmoid outputs between 0 and 1 with $\\sigma(0) = 0.5$",
-          correct: true,
-        }
+      - { id: a, text: "Between $-1$ and $1$, with $\\tanh(0) = 0$", correct: true }
       - {
           id: b,
-          text: "tanh has a corner at 0 like ReLU",
+          text: "Between 0 and 1, with $\\tanh(0) = 0.5$",
           correct: false,
           category: recall_failure,
-          feedback: "tanh is a smooth S-shaped curve. ReLU is the one with a corner.",
+          feedback: "That's the sigmoid. tanh has the same S shape but is centred on 0 and runs from $-1$ to $1$.",
         }
       - {
           id: c,
-          text: "tanh has no upper limit",
+          text: "From 0 upwards with no limit, with $\\tanh(0) = 0$",
           correct: false,
           category: recall_failure,
-          feedback: "tanh levels off at 1 for large scores. ReLU is the one with no upper limit.",
+          feedback: "That's ReLU. tanh levels off at $-1$ for very negative scores and at 1 for large ones.",
+        }
+      - {
+          id: d,
+          text: "Between $-1$ and $1$, with $\\tanh(0) = 0.5$",
+          correct: false,
+          category: recall_failure,
+          feedback: "tanh is centred on 0: halfway between $-1$ and $1$ is 0, so $\\tanh(0) = 0$.",
         }
     solution: "Both are S-shaped, but tanh is centred on 0 and runs from $-1$ to $1$, while sigmoid runs from 0 to 1 and is 0.5 at $z = 0$."
   - id: actp-relu-slope
@@ -711,7 +722,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "At some score, $\\tanh(z) = 0.5$. Using $\\tanh'(z) = 1 - \\tanh^2(z)$, what is the slope there?"
+    prompt: "At some score, a tanh neuron outputs $\\tanh(z) = 0.5$. What is tanh's slope there?"
     answer: 0.75
     tolerance: { abs: 0.001 }
     common_wrong:
@@ -727,8 +738,8 @@ exercises:
           category: incomplete_explanation,
           feedback: "$0.25$ is $\\tanh^2(z)$. Subtract it from 1.",
         }
-    hints: ["$\\tanh^2(z)$ means $\\tanh(z)$ squared."]
-    solution: "$1 - 0.5^2 = 1 - 0.25 = 0.75$."
+    hints: ["tanh's slope is $1 - \\tanh^2(z)$, where $\\tanh^2(z)$ means $\\tanh(z)$ squared."]
+    solution: "tanh's slope is $\\tanh'(z) = 1 - \\tanh^2(z) = 1 - 0.5^2 = 1 - 0.25 = 0.75$."
   - id: actp-dead-unit
     dimension: transfer
     type: mc
@@ -739,7 +750,7 @@ exercises:
     options:
       - {
           id: a,
-          text: "It always outputs 0 and its slope is always 0, so small changes to its weights change nothing",
+          text: "It always outputs 0 with slope 0, so weight changes have no effect",
           correct: true,
         }
       - {
@@ -751,7 +762,7 @@ exercises:
         }
       - {
           id: c,
-          text: "It saturates near 1, like a sigmoid",
+          text: "It levels off near 1 and stops changing, like a sigmoid",
           correct: false,
           category: recall_failure,
           feedback: "ReLU doesn't level off at 1. For negative scores it's flat at 0.",
