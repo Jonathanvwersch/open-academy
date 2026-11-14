@@ -12,10 +12,7 @@ function repairMathControlCharacters(markdown: string): string {
       const delimiter = '$'.repeat(delimiterLength);
       const content = displayMath ?? inlineMath ?? '';
       let repaired = content
-        .replace(
-          /\t(heta|imes|ext|anh|au|an|o)(?![A-Za-z])/g,
-          (_match, command: string) => `\\t${command}`,
-        )
+        .replace(/\t([A-Za-z])/g, (_match, letter: string) => `\\t${letter}`)
         .replace(
           /\n(abla|leq|geq|mid|neq|eq|eg|ot)(?![A-Za-z])/g,
           (_match, command: string) => `\\n${command}`,

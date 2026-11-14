@@ -53,15 +53,20 @@ test.each([
 test.each([
   ['$$\u000ae^x\u000a$$', '$$\u000ae^x\u000a$$'],
   ['$$\u000au_t = 1\u000a$$', '$$\u000au_t = 1\u000a$$'],
-  ['$$\u0009x + 1$$', '$$\u0009x + 1$$'],
+  ['$$a\u0009 + 1$$', '$$a\u0009 + 1$$'],
   ['$\u000au$', '$\\nu$'],
   ['$$\u000aabla f$$', '$$\\nabla f$$'],
   ['$$\u0009heta$$', '$$\\theta$$'],
-  ['$$\u0009hetax$$', '$$\u0009hetax$$'],
+  ['$A^\u0009op$', '$A^\\top$'],
+  ['$\u0009frac{1}{2}$', '$\\tfrac{1}{2}$'],
+  ['$$\u0009ilde{x} + \u0009extbf{v}$$', '$$\\tilde{x} + \\textbf{v}$$'],
   ['$\u000aunder$', '$\u000aunder$'],
-])('repairs only the specified math control-character escapes: %s', (markdown, expected) => {
-  expect(repairTutorMarkdown(markdown)).toBe(expected);
-});
+])(
+  'repairs math control-character escapes without changing display formatting: %s',
+  (markdown, expected) => {
+    expect(repairTutorMarkdown(markdown)).toBe(expected);
+  },
+);
 
 test('repairs tabs before letters only inside math', () => {
   expect(repairTutorMarkdown('a \u0009heta')).toBe('a \u0009heta');
