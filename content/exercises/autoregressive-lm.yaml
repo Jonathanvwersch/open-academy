@@ -586,7 +586,7 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: A robot's command model gets a prompt of 5 tokens and writes one new token per run until the text is 12 tokens long. How many runs of the model does it take?
+    prompt: A robot's command model gets a prompt of 5 tokens and uses autoregressive generation until the text is 12 tokens long. How many runs of the model are needed after receiving the prompt?
     answer: 7
     tolerance:
       abs: 0.5

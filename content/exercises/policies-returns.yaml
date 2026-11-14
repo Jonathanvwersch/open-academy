@@ -6,7 +6,7 @@ exercises:
     role: diagnostic
     difficulty: 2
     est_minutes: 2
-    prompt: "An episode yields rewards $r_0 = 1$, $r_1 = 0$, $r_2 = 2$ and then ends. With discount $\\gamma = 0.9$, what is the return $G_0 = r_0 + \\gamma r_1 + \\gamma^2 r_2$?"
+    prompt: "An episode yields rewards $r_0 = 1$, $r_1 = 0$, $r_2 = 2$ and then ends. With discount $\\gamma = 0.9$, what is the discounted return $G_0$?"
     answer: 2.62
     tolerance: { abs: 0.005 }
     common_wrong:
