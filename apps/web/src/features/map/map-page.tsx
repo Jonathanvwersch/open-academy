@@ -5,8 +5,10 @@ import {
   Controls,
   Handle,
   type NodeProps,
+  Panel,
   Position,
   ReactFlow,
+  ReactFlowProvider,
   useNodesInitialized,
   useReactFlow,
   useStore,
@@ -15,6 +17,7 @@ import { Popover } from 'radix-ui';
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { topicStatusClasses, topicStatusLabels } from '../../components/topic-status.js';
 import { Badge } from '../../components/ui/badge.js';
+import { Button } from '../../components/ui/button.js';
 import { Card, CardContent } from '../../components/ui/card.js';
 import { emphasizeStudyMap } from './emphasis.js';
 import { type GroupNode, type GroupTitleNode, layoutStudyMap, type TopicNode } from './layout.js';
@@ -138,15 +141,36 @@ function MapViewport({ groups }: { groups: GroupNode[] }) {
     positioned.current = true;
     void setViewport(viewport);
   }, [groups, height, initialized, setViewport, width]);
+  return <Controls showInteractive={false} fitViewOptions={mapFitViewOptions} />;
+}
+
+function GroupNavigation({ groups }: { groups: GroupNode[] }) {
+  const { fitBounds } = useReactFlow();
+  const initialized = useNodesInitialized({ includeHiddenNodes: true });
   return (
-    <Controls
-      showInteractive={false}
-      fitViewOptions={mapFitViewOptions}
-      onFitView={() => {
-        const viewport = initialMapViewport(groups, width, height);
-        if (viewport) void setViewport(viewport);
-      }}
-    />
+    <nav aria-label="Jump to group" className="flex flex-wrap gap-2 px-4 sm:px-6">
+      {groups.map((group) => (
+        <Button
+          key={group.id}
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={!initialized}
+          onClick={() =>
+            void fitBounds(
+              {
+                ...group.position,
+                width: Number(group.style?.width),
+                height: Number(group.style?.height),
+              },
+              { padding: 0.1, duration: 400 },
+            )
+          }
+        >
+          {group.data.title}
+        </Button>
+      ))}
+    </nav>
   );
 }
 
@@ -162,7 +186,7 @@ export function MapPage() {
   const touchOrigin = useRef<{ x: number; y: number } | null>(null);
   if (!graph || !emphasized)
     return (
-      <section className="space-y-3">
+      <section className="space-y-3 px-4 sm:px-6">
         <h1 className="sr-only">Map</h1>
         <p>Add a course to see your map.</p>
         <Link to="/courses" className="text-sm text-primary underline-offset-4 hover:underline">
@@ -173,60 +197,73 @@ export function MapPage() {
   return (
     <section className="space-y-5">
       <h1 className="sr-only">Map</h1>
-      <Card className="overflow-hidden p-0">
-        <section
-          aria-label="Study map graph"
-          className="study-map h-[520px] w-full sm:h-[600px]"
-          onTouchStartCapture={(event) => {
-            const touch = event.touches[0];
-            touchOrigin.current =
-              event.touches.length === 1 && touch ? { x: touch.clientX, y: touch.clientY } : null;
-          }}
-          onTouchMoveCapture={(event) => {
-            const touch = event.touches[0];
-            const origin = touchOrigin.current;
-            if (
-              event.touches.length === 1 &&
-              touch &&
-              origin &&
-              Math.abs(touch.clientY - origin.y) > Math.abs(touch.clientX - origin.x)
-            )
-              event.stopPropagation();
-          }}
-        >
-          <TopicFocusContext.Provider value={setFocused}>
-            <ReactFlow
-              nodes={emphasized.nodes}
-              edges={emphasized.edges}
-              nodeTypes={nodeTypes}
-              onNodeMouseEnter={(_, node) => {
-                if (node.type === 'topic') setHovered(node.id);
-              }}
-              onNodeMouseLeave={() => setHovered(null)}
-              fitViewOptions={mapFitViewOptions}
-              minZoom={0.01}
-              preventScrolling={false}
-              nodesDraggable={false}
-              nodesConnectable={false}
-              elementsSelectable={false}
-              zIndexMode="manual"
-              defaultEdgeOptions={{ zIndex: 1 }}
-            >
-              <MapViewport groups={graph.nodes.filter((node) => node.type === 'courseGroup')} />
-            </ReactFlow>
-          </TopicFocusContext.Provider>
-        </section>
-      </Card>
-      <ul aria-label="Topic status legend" className="flex flex-wrap gap-2 text-xs">
-        {(['complete', 'in_progress', 'quiz', 'not_started', 'locked'] as const).map((status) => (
-          <li key={status}>
-            <Badge variant="secondary" className={topicStatusClasses(status)}>
-              {topicStatusLabels[status]}
-            </Badge>
-          </li>
-        ))}
-      </ul>
-      <div className="grid gap-4 md:grid-cols-2">
+      <ReactFlowProvider>
+        <div className="grid h-[calc(100dvh-5.5rem)] min-h-min grid-rows-[auto_minmax(560px,1fr)] gap-3 md:h-[calc(100dvh-2rem)]">
+          <GroupNavigation groups={graph.nodes.filter((node) => node.type === 'courseGroup')} />
+          <section
+            aria-label="Study map graph"
+            className="study-map relative min-h-[560px] w-full border-y border-border"
+            onTouchStartCapture={(event) => {
+              const touch = event.touches[0];
+              touchOrigin.current =
+                event.touches.length === 1 && touch ? { x: touch.clientX, y: touch.clientY } : null;
+            }}
+            onTouchMoveCapture={(event) => {
+              const touch = event.touches[0];
+              const origin = touchOrigin.current;
+              if (
+                event.touches.length === 1 &&
+                touch &&
+                origin &&
+                Math.abs(touch.clientY - origin.y) > Math.abs(touch.clientX - origin.x)
+              )
+                event.stopPropagation();
+            }}
+          >
+            <TopicFocusContext.Provider value={setFocused}>
+              <ReactFlow
+                nodes={emphasized.nodes}
+                edges={emphasized.edges}
+                nodeTypes={nodeTypes}
+                onNodeMouseEnter={(_, node) => {
+                  if (node.type === 'topic') setHovered(node.id);
+                }}
+                onNodeMouseLeave={() => setHovered(null)}
+                fitViewOptions={mapFitViewOptions}
+                minZoom={0.01}
+                maxZoom={1}
+                nodesDraggable={false}
+                nodesConnectable={false}
+                elementsSelectable={false}
+                zIndexMode="manual"
+                defaultEdgeOptions={{ zIndex: 1 }}
+              >
+                <MapViewport groups={graph.nodes.filter((node) => node.type === 'courseGroup')} />
+                <Panel
+                  position="top-right"
+                  className="pointer-events-none max-w-32 rounded-lg border border-border bg-card/95 p-2 shadow-sm sm:max-w-xs"
+                >
+                  <ul aria-label="Topic status legend" className="flex flex-wrap justify-end gap-1">
+                    {(['complete', 'in_progress', 'quiz', 'not_started', 'locked'] as const).map(
+                      (status) => (
+                        <li key={status}>
+                          <Badge
+                            variant="secondary"
+                            className={`text-[10px] sm:text-xs ${topicStatusClasses(status)}`}
+                          >
+                            {topicStatusLabels[status]}
+                          </Badge>
+                        </li>
+                      ),
+                    )}
+                  </ul>
+                </Panel>
+              </ReactFlow>
+            </TopicFocusContext.Provider>
+          </section>
+        </div>
+      </ReactFlowProvider>
+      <div className="grid gap-4 px-4 sm:px-6 md:grid-cols-2">
         {data.groups.map((group) => (
           <Card key={group.id}>
             <CardContent>

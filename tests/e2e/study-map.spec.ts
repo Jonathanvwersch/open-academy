@@ -1,14 +1,11 @@
-import { mkdirSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
 import { env } from '../../apps/api/src/config.js';
 import { createDb } from '../../apps/api/src/db/client.js';
 import { courseEnrollments, users } from '../../apps/api/src/db/schema.js';
 
 const db = createDb(env.TEST_DATABASE_URL);
-const screenshots = '/home/ubuntu/study-map-screenshots';
 
 test.beforeEach(async () => {
-  mkdirSync(screenshots, { recursive: true });
   await db.delete(users);
   const [user] = await db
     .insert(users)
@@ -31,9 +28,10 @@ test.afterAll(async () => {
 test('study map groups shared topics once and opens available lessons', async ({ page }) => {
   const payloadResponse = page.waitForResponse('**/api/study-map');
   await page.goto('/map');
-  const payload: { nodes: Array<{ id: string; groupId: string }> } = await (
-    await payloadResponse
-  ).json();
+  const payload: {
+    groups: Array<{ title: string }>;
+    nodes: Array<{ id: string; groupId: string }>;
+  } = await (await payloadResponse).json();
   const graph = page.getByRole('region', { name: 'Study map graph', exact: true });
   await expect(graph.getByText('Fixture course', { exact: true })).toBeVisible();
   await expect(graph.getByText('Fixture switching course', { exact: true })).toBeVisible();
@@ -43,28 +41,13 @@ test('study map groups shared topics once and opens available lessons', async ({
   await expect(page.getByRole('heading', { name: 'Fixture course', exact: true })).toBeVisible();
   const frames = graph.locator('.react-flow__node-courseGroup');
   await expect(frames).toHaveCount(2);
+  await expect(
+    page.getByRole('navigation', { name: 'Jump to group' }).getByRole('button'),
+  ).toHaveText(payload.groups.map((group) => group.title));
   await expect(graph.locator('[data-map-title]')).toHaveCount(2);
   for (const title of await graph.locator('[data-map-title]').all())
     await expect(title).toBeInViewport();
-  await expect
-    .poll(async () =>
-      frames.evaluateAll((elements) => {
-        const viewport = document.querySelector('.react-flow')?.getBoundingClientRect();
-        return (
-          !!viewport &&
-          elements.every((element) => {
-            const r = element.getBoundingClientRect();
-            return (
-              r.left >= viewport.left &&
-              r.right <= viewport.right &&
-              r.top >= viewport.top &&
-              r.bottom <= viewport.bottom
-            );
-          })
-        );
-      }),
-    )
-    .toBe(true);
+  await expect(page.locator('.react-flow__viewport')).toHaveAttribute('style', /scale\(0.9\)/);
   const geometryErrors = await graph.locator('.react-flow__node').evaluateAll(
     (elements, parents) => {
       const groups = new Map(
@@ -114,10 +97,113 @@ test('study map groups shared topics once and opens available lessons', async ({
   await locked.click();
   await expect(page.getByRole('dialog')).toContainText('Needs:');
   await expect(page.getByRole('dialog')).toContainText('Vectors');
-  await page.screenshot({ path: `${screenshots}/desktop-needs.png`, fullPage: true });
   await page.keyboard.press('Escape');
   await graph.getByRole('link', { name: 'Vectors: Not started', exact: true }).click();
   await expect(page).toHaveURL(/\/lessons\/vectors$/);
+});
+
+test('desktop canvas is full-width with an overlay legend and the page scrolls past it', async ({
+  page,
+}) => {
+  await page.goto('/map');
+  const viewport = page.locator('.react-flow__viewport');
+  await expect(viewport).toHaveAttribute('style', /scale\(0.9\)/);
+  const graph = await page.getByRole('region', { name: 'Study map graph' }).boundingBox();
+  const main = await page.getByRole('main').boundingBox();
+  const legend = await page.getByRole('list', { name: 'Topic status legend' }).boundingBox();
+  if (!graph || !main || !legend) throw new Error('Expected canvas, main and legend bounds');
+  expect(graph.width).toBeCloseTo(main.width, 0);
+  expect(graph.x).toBeCloseTo(main.x, 0);
+  expect(graph.height).toBeGreaterThanOrEqual(560);
+  expect(legend.x).toBeGreaterThan(graph.x);
+  expect(legend.y).toBeGreaterThan(graph.y);
+  expect(legend.x + legend.width).toBeLessThan(graph.x + graph.width);
+  expect(legend.y + legend.height).toBeLessThan(graph.y + graph.height);
+  await page.getByRole('navigation', { name: 'Jump to group' }).hover();
+  await page.mouse.wheel(0, 900);
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+  await expect(page.getByRole('heading', { name: 'Fixture course', exact: true })).toBeInViewport();
+});
+
+test('Jump to buttons follow payload order and LLM Inference supports click and keyboard navigation', async ({
+  page,
+}) => {
+  const payload = {
+    groups: [
+      { id: 'foundations', title: 'Foundations', kind: 'foundations' },
+      { id: 'ml', title: 'Machine Learning Foundations', kind: 'course' },
+      { id: 'llm', title: 'LLM Inference', kind: 'course' },
+    ],
+    nodes: [
+      { id: 'foundation', groupId: 'foundations' },
+      ...Array.from({ length: 10 }, (_, i) => ({ id: `ml-${i}`, groupId: 'ml' })),
+      { id: 'inference', groupId: 'llm' },
+    ].map((node) => ({
+      ...node,
+      title: node.id,
+      status: 'not_started',
+      placedOut: false,
+      lessonAvailable: false,
+      missingPrereqTitles: [],
+    })),
+    edges: [],
+  };
+  await page.route('**/api/study-map', (route) => route.fulfill({ json: payload }));
+  await page.goto('/map');
+  const nav = page.getByRole('navigation', { name: 'Jump to group' });
+  await expect(nav.getByRole('button')).toHaveText(payload.groups.map((group) => group.title));
+  const title = page.locator('[data-id="title:llm"] [data-map-title]');
+  await expect(page.locator('.react-flow__viewport')).toHaveAttribute('style', /scale\(0.9\)/);
+  await expect(title).not.toBeInViewport();
+  const centered = async (id: string) => {
+    await expect
+      .poll(() =>
+        page.locator(`[data-id="group:${id}"]`).evaluate((element) => {
+          const frame = element.getBoundingClientRect();
+          const canvas = element.closest('.react-flow')?.getBoundingClientRect();
+          if (!canvas) throw new Error('Expected canvas');
+          return (
+            Math.abs(frame.x + frame.width / 2 - canvas.x - canvas.width / 2) +
+            Math.abs(frame.y + frame.height / 2 - canvas.y - canvas.height / 2)
+          );
+        }),
+      )
+      .toBeLessThan(2);
+    const zoom = await page
+      .locator('.react-flow__viewport')
+      .evaluate((element) => new DOMMatrix(getComputedStyle(element).transform).a);
+    expect(zoom).toBeLessThanOrEqual(1);
+  };
+  const llm = nav.getByRole('button', { name: 'LLM Inference', exact: true });
+  await llm.click();
+  await centered('llm');
+  await expect(title).toBeInViewport({ ratio: 1 });
+  await nav.getByRole('button', { name: 'Foundations', exact: true }).click();
+  await centered('foundations');
+  await llm.focus();
+  await page.keyboard.press('Enter');
+  await centered('llm');
+  await expect(title).toBeInViewport({ ratio: 1 });
+  await page.getByRole('button', { name: 'Fit View', exact: true }).click();
+  await expect
+    .poll(() =>
+      page.locator('.react-flow__node-courseGroup').evaluateAll((elements) => {
+        const canvas = elements[0]?.closest('.react-flow')?.getBoundingClientRect();
+        return (
+          !!canvas &&
+          elements.every((element) => {
+            const r = element.getBoundingClientRect();
+            return (
+              r.left >= canvas.left &&
+              r.right <= canvas.right &&
+              r.top >= canvas.top &&
+              r.bottom <= canvas.bottom
+            );
+          })
+        );
+      }),
+    )
+    .toBe(true);
 });
 
 test('map supports keyboard activation and a mobile topic list', async ({ page }) => {
@@ -135,7 +221,6 @@ test('map supports keyboard activation and a mobile topic list', async ({ page }
   await locked.focus();
   await page.keyboard.press('Space');
   await expect(page.getByRole('dialog')).toContainText('Vectors');
-  await page.screenshot({ path: `${screenshots}/mobile-needs.png`, fullPage: true });
   await page.keyboard.press('Escape');
   const lesson = page.getByRole('link', { name: 'Vectors: Not started', exact: true }).last();
   await lesson.focus();
@@ -146,7 +231,7 @@ test('map supports keyboard activation and a mobile topic list', async ({ page }
 test.describe('touch navigation', () => {
   test.use({ hasTouch: true });
 
-  test('mobile fits the first group width, pans by touch and lets vertical swipes reach the list', async ({
+  test('mobile opens at readable zoom, pans by touch and lets vertical swipes reach the list', async ({
     page,
   }) => {
     await page.setViewportSize({ width: 390, height: 844 });
@@ -155,15 +240,15 @@ test.describe('touch navigation', () => {
     const topic = page.locator('.react-flow__node-topic').first();
     await expect(topic).toBeVisible();
     const graph = await page.getByRole('region', { name: 'Study map graph' }).boundingBox();
-    if (!graph) throw new Error('Expected graph bounds');
+    const canvas = await page.locator('.react-flow').boundingBox();
+    if (!graph || !canvas) throw new Error('Expected graph bounds');
     const viewport = page.locator('.react-flow__viewport');
     const firstGroup = page.locator('.react-flow__node-courseGroup').first();
-    await expect
-      .poll(async () => (await firstGroup.boundingBox())?.width ?? Infinity)
-      .toBeLessThanOrEqual(graph.width - 16);
-    expect((await firstGroup.boundingBox())?.width).toBeGreaterThanOrEqual(graph.width * 0.8);
-    expect((await firstGroup.boundingBox())?.x).toBeCloseTo(graph.x + 16, 0);
-    expect((await firstGroup.boundingBox())?.y).toBeCloseTo(graph.y + 16, 0);
+    await expect(viewport).toHaveAttribute('style', /scale\(0.8\)/);
+    expect((await topic.boundingBox())?.width).toBeCloseTo(176, 0);
+    expect((await firstGroup.boundingBox())?.x).toBeCloseTo(canvas.x + 24, 0);
+    expect((await firstGroup.boundingBox())?.y).toBeCloseTo(canvas.y + 24, 0);
+    expect(graph.height).toBeGreaterThanOrEqual(560);
     await expect(page.locator('[data-map-title]').first()).toBeInViewport();
     const before = await viewport.getAttribute('style');
     const start = { x: graph.x + graph.width - 12, y: graph.y + graph.height - 35 };
@@ -220,17 +305,14 @@ test('map loading, long titles and errors use the shared route surfaces', async 
   });
   await page.goto('/map');
   await expect(page.getByRole('status', { name: 'Loading page', exact: true })).toBeVisible();
-  await page.screenshot({ path: `${screenshots}/loading.png`, fullPage: true });
   release();
   await expect(page.getByRole('region', { name: 'Study map graph' })).toBeVisible();
-  await page.screenshot({ path: `${screenshots}/long-titles.png`, fullPage: true });
   await page.unroute('**/api/study-map');
   await page.route('**/api/study-map', (route) =>
     route.fulfill({ status: 500, json: { error: 'Unavailable' } }),
   );
   await page.reload();
   await expect(page.getByText('The study map is unavailable.')).toBeVisible();
-  await page.screenshot({ path: `${screenshots}/error.png`, fullPage: true });
 });
 
 test('empty study map links to the course catalogue', async ({ page }) => {

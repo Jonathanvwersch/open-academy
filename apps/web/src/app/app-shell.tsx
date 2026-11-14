@@ -274,7 +274,9 @@ export function AppShellSkeleton() {
           className={
             isPaperReader
               ? 'flex min-h-0 min-w-0 w-full flex-1 px-0 py-0'
-              : 'mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 pt-6 pb-20 sm:px-6 sm:py-8'
+              : pathname === '/map'
+                ? 'flex w-full flex-1 flex-col py-4'
+                : 'mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 pt-6 pb-20 sm:px-6 sm:py-8'
           }
         >
           <PageSkeleton />
@@ -331,7 +333,9 @@ export function RootLayout() {
               className={
                 isPaperReader
                   ? 'flex min-h-0 min-w-0 w-full flex-1 px-0 py-0'
-                  : 'mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 pt-6 pb-20 sm:px-6 sm:py-8'
+                  : pathname === '/map'
+                    ? 'flex w-full flex-1 flex-col py-4'
+                    : 'mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 pt-6 pb-20 sm:px-6 sm:py-8'
               }
             >
               <Outlet />
