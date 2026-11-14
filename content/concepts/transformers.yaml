@@ -80,7 +80,7 @@ concepts:
         ],
       objectives:
         [{ text: "Draw and explain a pre-norm transformer block", dimension: conceptual }],
-      status: stub,
+      status: authored,
     }
   - {
       id: causal-masking,

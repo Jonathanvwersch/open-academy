@@ -1,0 +1,418 @@
+concept: transformer-block
+version: 1
+objective: |
+  **Goal:** draw a pre-norm transformer block and explain what each part does: LayerNorm before each sublayer, attention that mixes the tokens, an MLP that processes each token on its own, and the residual connections that add each sublayer's output back to its input.
+recap:
+  - concept: mlp-forward-pass
+    text: "A layer computes $h=\\phi(Wx+b)$: one weighted sum per neuron, then an activation such as ReLU on each score. An MLP runs layers like this in order, using the same weights for every example in a batch."
+  - concept: weight-init-normalization
+    text: "LayerNorm subtracts an example's mean $\\mu$, divides by its standard deviation $s$, then applies a learned gain $\\gamma$ and shift $\\beta$. A slope passing back through many layers is multiplied at each one, so it can vanish."
+where_this_fits: |
+  ### What is a transformer block?
+
+  A transformer block updates each token's width-$d$ vector using attention, an MLP, shortcuts and normalization. Repeating blocks builds a model.
+
+  Attention uses $h$ heads of width $d_k=d/h$. Each token makes a query $q_t$, key $k_t$ and value $v_t$ using $W_Q,W_K,W_V$. Scores are $s_{tj}=q_t\cdot k_j/\sqrt{d_k}$. Softmax turns each row of scores into weights $a_{tj}$ that sum to $1$, giving $o_t=\sum_j a_{tj}v_j$. The heads' outputs are joined and mixed by $W_O$.
+
+  In the original design, position information is added to each token's vector before the first block; some models use rotary encodings, which apply it inside attention instead. The MLP applies a nonlinearity such as ReLU to process each token separately.
+knowledge_points:
+  - id: tb-residual
+    title: "Add a layer's output to its input"
+    explain: |
+      ### A shortcut around each part
+
+      A transformer block has two parts, attention and an MLP, and a language model stacks dozens of blocks. A slope passing back through many layers is multiplied at each one, so it can shrink to almost nothing. The block keeps it alive by adding each part's output to that part's input.
+
+      Take one token whose vector is $x=(1,-2)$, so the width is $d=2$. Some part of the block, which we'll call $f$, reads $x$, and we'll say it outputs $f(x)=(1,3)$. In the picture, $x$ travels two ways, up through $f$ along the blue path and straight along the grey shortcut. At the plus sign the two are added, giving $(2,1)$.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 210" aria-label="A residual connection for one token. The input x = (1, -2) goes two ways: up through the sublayer f, which outputs f(x) = (1, 3), and straight along a grey shortcut around it. At the plus sign the two are added, giving y = (2, 1)">
+      <defs><marker id="tb1-grey" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker><marker id="tb1-blue" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#3b82f6"/></marker></defs>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <rect x="20" y="130" width="120" height="44" rx="6" fill="#ffffff" stroke="#171717" stroke-width="1.5"/>
+      <text x="80" y="157" text-anchor="middle">x = (1, −2)</text>
+      <path d="M140 152 H452" stroke="#737373" stroke-width="2.5" fill="#ffffff" fill-opacity="0" marker-end="url(#tb1-grey)"/>
+      <text x="297" y="176" text-anchor="middle" fill="#737373">shortcut: x itself</text>
+      <path d="M150 152 V70 H228" stroke="#3b82f6" stroke-width="2.5" fill="#ffffff" fill-opacity="0" marker-end="url(#tb1-blue)"/>
+      <rect x="230" y="48" width="160" height="44" rx="6" fill="#ffffff" stroke="#3b82f6" stroke-width="2"/>
+      <text x="310" y="75" text-anchor="middle">sublayer f</text>
+      <path d="M390 70 H470 V134" stroke="#3b82f6" stroke-width="2.5" fill="#ffffff" fill-opacity="0" marker-end="url(#tb1-blue)"/>
+      <text x="480" y="108" fill="#3b82f6">f(x) = (1, 3)</text>
+      <circle cx="470" cy="152" r="16" fill="#ffffff" stroke="#171717" stroke-width="1.5"/>
+      <text x="470" y="158" text-anchor="middle" font-size="18">+</text>
+      <path d="M486 152 H518.2" stroke="#737373" stroke-width="2" fill="#ffffff" fill-opacity="0" marker-end="url(#tb1-grey)"/>
+      <rect x="520" y="130" width="110" height="44" rx="6" fill="#ffffff" stroke="#171717" stroke-width="1.5"/>
+      <text x="575" y="157" text-anchor="middle">y = (2, 1)</text>
+      </g>
+      </svg>
+      ```
+
+      ### The residual connection
+
+      A **residual connection** adds a layer's output to the layer's own input:
+
+      $$y=x+f(x).$$
+
+      Here $x$ is the input vector, $f$ is the layer and $y$ is the result. A layer inside a block is often called a **sublayer**. Because $x$ already reaches the output along the shortcut, the sublayer only has to learn how to change $x$, and the sum only works when $f(x)$ has the same width $d$ as $x$. So every sublayer in a transformer block returns vectors of width $d$.
+
+      ### Why the shortcut keeps slopes alive
+
+      Let's go back to one number per layer, as in the initialization lesson. Call the number going into a layer $z$, and say each sublayer is $f(z)=0.1z$, with a local slope of $0.1$. A slope passing through such a sublayer is multiplied by $0.1$. With a shortcut, the layer computes $z+0.1z$, whose local slope is $1+0.1=1.1$. The $1$ comes from the shortcut, and it's there whatever the sublayer's weights are. Over four layers:
+
+      - with no shortcuts, the slope is multiplied by $0.1^4=0.0001$;
+      - with shortcuts, it's multiplied by $1.1^4\approx1.46$;
+      - with shortcuts and a sublayer whose slope is $0$, it's multiplied by exactly $1$.
+
+      So when each sublayer's slope is small, every factor is close to $1$, and the slope reaching the first layers stays usable.
+
+      Be careful not to read "shortcut" as "the sublayer is skipped". Both paths run on every forward pass, and their results are added.
+    worked: |
+      Let's add the shortcut for the token $x=(1,-2)$, and then follow a slope back through four layers that each compute $z+0.1z$.
+
+      1. **Add the sublayer's output to its input.** The sublayer gave $f(x)=(1,3)$, and we add it entry by entry.
+         $$y=x+f(x)=(1+1,\ -2+3)=(2,1)$$
+
+      2. **Find one layer's local slope.** Each layer outputs $z+0.1z$, so nudging $z$ moves the output by $1$ from the shortcut plus $0.1$ from the sublayer.
+         $$\frac{d}{dz}(z+0.1z)=1+0.1=1.1$$
+
+      3. **Pass a slope of $1$ back through four layers.** It's multiplied by $1.1$ at each one.
+         $$1\times1.1\times1.1\times1.1\times1.1=1.4641$$
+
+      4. **Compare with no shortcuts.** Each layer would then be $0.1z$, with local slope $0.1$.
+         $$0.1^4=0.0001$$
+
+      With shortcuts, the slope that reaches the first layer is about $1.46$. Without them it's $0.0001$, more than ten thousand times smaller, so the first layers would barely learn.
+    problems:
+      - tb-residual-basics
+      - tbp-residual-self-explain
+      - tbp-residual-add-template
+      - tbp-residual-width
+      - tbp-residual-slope-template
+      - tbp-residual-zero-sublayer
+      - tbp-residual-skip-myth
+      - tbp-residual-robot
+  - id: tb-two-sublayers
+    title: "Run attention, then an MLP"
+    explain: |
+      ### Two sublayers with different jobs
+
+      A transformer block has two sublayers, each with its own shortcut: first attention, which lets the tokens share information, then an MLP, which works on each token's vector by itself. For now we leave normalization out, and step 3 adds it.
+
+      Let's take the first two words of the sentence "the cat sat on the mat", with one token per word and width $d=2$. "the" has the vector $x_1=(2,0)$ and "cat" has $x_2=(1,-2)$. We use a single attention head and leave out the output matrix $W_O$. We also skip the queries and keys and simply give the attention weights and the value vectors, $v_1=(4,0)$ and $v_2=(0,4)$. Attention gives "cat" weights $0.25$ on "the" and $0.75$ on itself, so its output is $(1,3)$, and the shortcut turns it into $u_2=(2,1)$. "the" gets weights $0.5$ and $0.5$, so its output is $(2,2)$ and $u_1=(4,2)$. Then each token goes through the MLP separately.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 320" aria-label="Two tokens, the and cat, pass through one block from top to bottom. The blue attention box spans both tokens: it gives cat 0.25 of the value vector of the and 0.75 of its own, (1, 3). After the shortcut is added, the tokens hold u1 = (4, 2) and u2 = (2, 1). Each then goes through its own orange MLP box, and both boxes use the same weights, giving y1 = (6, 0) and y2 = (3, 0)">
+      <defs><marker id="tb2-dark" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#171717"/></marker></defs>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <text x="170" y="30" text-anchor="middle">the: x₁ = (2, 0)</text>
+      <text x="470" y="30" text-anchor="middle">cat: x₂ = (1, −2)</text>
+      <path d="M170 40 V68" stroke="#171717" stroke-width="2" marker-end="url(#tb2-dark)"/><path d="M470 40 V68" stroke="#171717" stroke-width="2" marker-end="url(#tb2-dark)"/>
+      <rect x="60" y="70" width="520" height="60" rx="6" fill="#ffffff" stroke="#3b82f6" stroke-width="2"/>
+      <text x="320" y="95" text-anchor="middle" fill="#3b82f6">attention: each token reads every token</text>
+      <text x="320" y="118" text-anchor="middle">cat’s output: 0.25 × v₁ + 0.75 × v₂ = (1, 3)</text>
+      <path d="M170 130 V148" stroke="#171717" stroke-width="2" marker-end="url(#tb2-dark)"/><path d="M470 130 V148" stroke="#171717" stroke-width="2" marker-end="url(#tb2-dark)"/>
+      <text x="170" y="168" text-anchor="middle">u₁ = x₁ + (2, 2) = (4, 2)</text>
+      <text x="470" y="168" text-anchor="middle">u₂ = x₂ + (1, 3) = (2, 1)</text>
+      <path d="M170 176 V194" stroke="#171717" stroke-width="2" marker-end="url(#tb2-dark)"/><path d="M470 176 V194" stroke="#171717" stroke-width="2" marker-end="url(#tb2-dark)"/>
+      <rect x="100" y="196" width="140" height="44" rx="6" fill="#ffffff" stroke="#f59e0b" stroke-width="2"/>
+      <text x="170" y="223" text-anchor="middle" fill="#f59e0b">MLP</text>
+      <rect x="400" y="196" width="140" height="44" rx="6" fill="#ffffff" stroke="#f59e0b" stroke-width="2"/>
+      <text x="470" y="223" text-anchor="middle" fill="#f59e0b">MLP</text>
+      <path d="M248 218 H392" stroke="#d4d4d4" stroke-width="2" stroke-dasharray="5 4"/>
+      <text x="320" y="210" text-anchor="middle" fill="#737373">same weights</text>
+      <path d="M170 240 V268" stroke="#171717" stroke-width="2" marker-end="url(#tb2-dark)"/><path d="M470 240 V268" stroke="#171717" stroke-width="2" marker-end="url(#tb2-dark)"/>
+      <text x="170" y="290" text-anchor="middle">y₁ = u₁ + MLP(u₁) = (6, 0)</text>
+      <text x="470" y="290" text-anchor="middle">y₂ = u₂ + MLP(u₂) = (3, 0)</text>
+      </g>
+      </svg>
+      ```
+
+      ### The block's two sums
+
+      For a sequence of $T$ tokens with vectors $x_1,\dots,x_T$, the block computes, at each position $t$,
+
+      $$u_t=x_t+\text{Attn}(x_1,\dots,x_T)_t$$
+
+      $$y_t=u_t+\text{MLP}(u_t).$$
+
+      $\text{Attn}(\dots)_t$ is attention's output at position $t$, and it depends on every token. The MLP is a two-layer network with a nonlinearity such as ReLU, and it reads only $u_t$. GPT-2 uses GELU, a smooth version of ReLU. Our examples use $\text{MLP}(u)=W_2\,\text{ReLU}(W_1u+b_1)+b_2$. The hidden layer is usually $4d$ wide; our example uses $4$ neurons, fewer than $4d=8$, and zero biases.
+
+      The MLP uses the same weights at every position, just as an MLP uses the same weights for every example in a batch. Stacked together, the $T$ token vectors form a $T\times d$ matrix, and the MLP treats each row as one example.
+
+      An average can only blend value vectors the tokens already have. The MLP's nonlinearity lets each token compute new features from what it gathered.
+
+      Be careful not to expect the MLP to move information between tokens. If we changed "the", the MLP's output for "cat" would only change through $u_2$, which attention computed. Attention is the only place where tokens read each other.
+    worked: |
+      Let's run "cat" through the block, from $x_2=(1,-2)$, using the attention weights $0.25$ and $0.75$ and the value vectors $v_1=(4,0)$ and $v_2=(0,4)$.
+
+      1. **Mix the value vectors.** Attention's output is the weighted sum of the values.
+         $$0.25\times(4,0)+0.75\times(0,4)=(1,3)$$
+
+      2. **Add the first shortcut.** We add attention's output to the token's own vector.
+         $$u_2=(1,-2)+(1,3)=(2,1)$$
+
+      3. **Run the MLP's hidden layer.** We make up small weights, $W_1=\begin{pmatrix}1&0\\0&1\\1&-1\\-1&1\end{pmatrix}$, so the scores are $(2,1,2-1,-2+1)$, and ReLU turns the negative one into $0$.
+         $$\text{ReLU}\big((2,1,1,-1)\big)=(2,1,1,0)$$
+
+      4. **Run the MLP's output layer.** The weights are $W_2=\begin{pmatrix}1&0&-1&0\\0&-1&0&1\end{pmatrix}$.
+         $$\text{MLP}(u_2)=(2-1,\ -1+0)=(1,-1)$$
+
+      5. **Add the second shortcut.** We add the MLP's output to $u_2$.
+         $$y_2=(2,1)+(1,-1)=(3,0)$$
+
+      For "the", the same $W_1$ and $W_2$ turn $u_1=(4,2)$ into $\text{MLP}(u_1)=(2,-2)$, so $y_1=(6,0)$.
+    problems:
+      - tb-two-sublayers-basics
+      - tbp-sublayers-self-explain
+      - tbp-sublayers-mix-template
+      - tbp-sublayers-order
+      - tbp-sublayers-mlp-value
+      - tbp-sublayers-which-mixes
+      - tbp-sublayers-hidden-width
+      - tbp-sublayers-robot
+  - id: tb-pre-norm
+    title: "Rescale each sublayer's input"
+    explain: |
+      ### Keeping the inputs a steady size
+
+      Each shortcut adds something to a token's vector, so as the vector passes through block after block its entries can grow much larger. The sublayers' weights are tuned during training to inputs of a steady size, so the block normalizes what goes into each sublayer. In the initialization lesson, LayerNorm rescaled one example's outputs to mean $0$ and standard deviation $1$. In a transformer it does that to one token's vector at a time.
+
+      To watch LayerNorm work on more than two numbers, we give one token four, $x=(-6,0,2,8)$, so here $d=4$. LayerNorm turns them into four numbers with mean $0$ and standard deviation $1$, and the worked example finds them.
+
+      ### Where the LayerNorm goes
+
+      In the picture below, on the left, the green LayerNorm boxes sit just before each sublayer, so each sublayer reads a normalized copy of the vector, and its output is added to the vector itself. This layout is called **pre-norm**, and it's what "transformer block" usually means today. Writing $\text{LN}$ for LayerNorm, the block computes
+
+      $$u_t=x_t+\text{Attn}\big(\text{LN}(x_1),\dots,\text{LN}(x_T)\big)_t$$
+
+      $$y_t=u_t+\text{MLP}\big(\text{LN}(u_t)\big).$$
+
+      On the right is **post-norm**, the layout of the original 2017 transformer, where LayerNorm comes after each addition, as in $u_t=\text{LN}\big(x_t+\text{Attn}(x_1,\dots,x_T)_t\big)$.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 400" aria-label="Two block layouts side by side, each read from top to bottom. Left, pre-norm: x goes into a green LayerNorm box, then the blue attention box, and the result is added to x carried by a grey shortcut; that sum goes into a second LayerNorm, then the orange MLP, and is added to the sum by a second shortcut, giving y. Nothing sits on the shortcuts. Right, post-norm: x goes into attention, is added to x by a shortcut, and only then goes through LayerNorm; the same happens with the MLP, so a LayerNorm sits on the shortcut path after each addition">
+      <defs><marker id="tb3-grey" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker><marker id="tb3-dark" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#171717"/></marker></defs>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <text x="170" y="22" text-anchor="middle" font-weight="600">pre-norm</text>
+      <text x="470" y="22" text-anchor="middle" font-weight="600">post-norm (2017)</text>
+      <text x="170" y="52" text-anchor="middle">x</text>
+      <path d="M170 58 V68" stroke="#171717" stroke-width="2" marker-end="url(#tb3-dark)"/>
+      <path d="M170 62 H60 V180 H152" stroke="#737373" stroke-width="2.5" fill="#ffffff" fill-opacity="0" marker-end="url(#tb3-grey)"/>
+      <rect x="100" y="70" width="140" height="30" rx="6" fill="#ffffff" stroke="#10b981" stroke-width="2"/>
+      <text x="170" y="90" text-anchor="middle" fill="#10b981">LayerNorm</text>
+      <path d="M170 100 V113" stroke="#171717" stroke-width="2" marker-end="url(#tb3-dark)"/>
+      <rect x="100" y="115" width="140" height="30" rx="6" fill="#ffffff" stroke="#3b82f6" stroke-width="2"/>
+      <text x="170" y="135" text-anchor="middle" fill="#3b82f6">attention</text>
+      <path d="M170 145 V162" stroke="#171717" stroke-width="2" marker-end="url(#tb3-dark)"/>
+      <circle cx="170" cy="180" r="16" fill="#ffffff" stroke="#171717" stroke-width="1.5"/>
+      <text x="170" y="186" text-anchor="middle" font-size="18">+</text>
+      <path d="M170 196 V208" stroke="#171717" stroke-width="2" marker-end="url(#tb3-dark)"/>
+      <path d="M170 203 H60 V320 H152" stroke="#737373" stroke-width="2.5" fill="#ffffff" fill-opacity="0" marker-end="url(#tb3-grey)"/>
+      <rect x="100" y="210" width="140" height="30" rx="6" fill="#ffffff" stroke="#10b981" stroke-width="2"/>
+      <text x="170" y="230" text-anchor="middle" fill="#10b981">LayerNorm</text>
+      <path d="M170 240 V253" stroke="#171717" stroke-width="2" marker-end="url(#tb3-dark)"/>
+      <rect x="100" y="255" width="140" height="30" rx="6" fill="#ffffff" stroke="#f59e0b" stroke-width="2"/>
+      <text x="170" y="275" text-anchor="middle" fill="#f59e0b">MLP</text>
+      <path d="M170 285 V302" stroke="#171717" stroke-width="2" marker-end="url(#tb3-dark)"/>
+      <circle cx="170" cy="320" r="16" fill="#ffffff" stroke="#171717" stroke-width="1.5"/>
+      <text x="170" y="326" text-anchor="middle" font-size="18">+</text>
+      <path d="M170 336 V356" stroke="#171717" stroke-width="2" marker-end="url(#tb3-dark)"/>
+      <text x="170" y="376" text-anchor="middle">y</text>
+      <text x="470" y="52" text-anchor="middle">x</text>
+      <path d="M470 58 V68" stroke="#171717" stroke-width="2" marker-end="url(#tb3-dark)"/>
+      <path d="M470 62 H360 V135 H452" stroke="#737373" stroke-width="2.5" fill="#ffffff" fill-opacity="0" marker-end="url(#tb3-grey)"/>
+      <rect x="400" y="70" width="140" height="30" rx="6" fill="#ffffff" stroke="#3b82f6" stroke-width="2"/>
+      <text x="470" y="90" text-anchor="middle" fill="#3b82f6">attention</text>
+      <path d="M470 100 V117" stroke="#171717" stroke-width="2" marker-end="url(#tb3-dark)"/>
+      <circle cx="470" cy="135" r="16" fill="#ffffff" stroke="#171717" stroke-width="1.5"/>
+      <text x="470" y="141" text-anchor="middle" font-size="18">+</text>
+      <path d="M470 151 V163" stroke="#171717" stroke-width="2" marker-end="url(#tb3-dark)"/>
+      <rect x="400" y="165" width="140" height="30" rx="6" fill="#ffffff" stroke="#10b981" stroke-width="2"/>
+      <text x="470" y="185" text-anchor="middle" fill="#10b981">LayerNorm</text>
+      <path d="M470 195 V213" stroke="#171717" stroke-width="2" marker-end="url(#tb3-dark)"/>
+      <path d="M470 205 H360 V280 H452" stroke="#737373" stroke-width="2.5" fill="#ffffff" fill-opacity="0" marker-end="url(#tb3-grey)"/>
+      <rect x="400" y="215" width="140" height="30" rx="6" fill="#ffffff" stroke="#f59e0b" stroke-width="2"/>
+      <text x="470" y="235" text-anchor="middle" fill="#f59e0b">MLP</text>
+      <path d="M470 245 V262" stroke="#171717" stroke-width="2" marker-end="url(#tb3-dark)"/>
+      <circle cx="470" cy="280" r="16" fill="#ffffff" stroke="#171717" stroke-width="1.5"/>
+      <text x="470" y="286" text-anchor="middle" font-size="18">+</text>
+      <path d="M470 296 V308" stroke="#171717" stroke-width="2" marker-end="url(#tb3-dark)"/>
+      <rect x="400" y="310" width="140" height="30" rx="6" fill="#ffffff" stroke="#10b981" stroke-width="2"/>
+      <text x="470" y="330" text-anchor="middle" fill="#10b981">LayerNorm</text>
+      <path d="M470 340 V356" stroke="#171717" stroke-width="2" marker-end="url(#tb3-dark)"/>
+      <text x="470" y="376" text-anchor="middle">y</text>
+      </g>
+      </svg>
+      ```
+
+      ### Why pre-norm is used
+
+      In pre-norm, follow the route from $x$ to $y$ along the grey shortcuts and the main line through the plus signs. It passes through only additions. So a slope can travel from the last block to the first along the shortcuts, as in step 1. In post-norm, every LayerNorm sits on that route. Xiong and colleagues showed in 2020 that in post-norm the slopes for the layers near the output are large at the start of training, so big early steps can throw training off, and it needs a learning rate that starts small and rises, while pre-norm doesn't need that. GPT-2, an OpenAI language model from 2019, used pre-norm, and most language models since have too.
+
+      Because nothing normalizes the shortcut path, a pre-norm model adds one final LayerNorm after its last block, so the output layer also reads normalized vectors.
+
+      Be careful not to add the sublayer's output to the normalized copy. The normalized copy only feeds the sublayer, and the sum uses the original $x$.
+    worked: |
+      Let's run the attention half of a pre-norm block for the token $x=(-6,0,2,8)$. Attention reads $\text{LN}(x)$ along with the other tokens' normalized vectors, and we'll skip that part and say its output for this token is $(1,1,-1,-1)$.
+
+      1. **Find the mean.** We add the four numbers and divide by $4$.
+         $$\mu=\frac{-6+0+2+8}{4}=1$$
+
+      2. **Find the standard deviation.** The differences from the mean are $-7,-1,1,7$, and we average their squares.
+         $$s=\sqrt{\frac{49+1+1+49}{4}}=\sqrt{25}=5$$
+
+      3. **Normalize the copy for attention.** With gain $1$ and shift $0$, we subtract the mean and divide by $s$.
+         $$\text{LN}(x)=\left(\tfrac{-7}{5},\tfrac{-1}{5},\tfrac{1}{5},\tfrac{7}{5}\right)=(-1.4,-0.2,0.2,1.4)$$
+
+      4. **Add attention's output to the original vector.** The shortcut carries $x$ itself.
+         $$u=(-6,0,2,8)+(1,1,-1,-1)=(-5,1,1,7)$$
+
+      The result $u$ still has the large entries of $x$, and that's fine, because what LayerNorm keeps steady is the input each sublayer reads. Only attention's input was rescaled, and the MLP half does the same with $\text{LN}(u)$.
+    problems:
+      - tb-pre-norm-basics
+      - tbp-prenorm-self-explain
+      - tbp-prenorm-mean-template
+      - tbp-prenorm-std
+      - tbp-prenorm-add-original
+      - tbp-prenorm-placement
+      - tbp-prenorm-final-ln
+      - tbp-prenorm-post-vs-pre
+  - id: tb-stack
+    title: "Stack blocks and count their weights"
+    explain: |
+      ### Same shape in, same shape out
+
+      A single block takes $T$ vectors of width $d$ and returns $T$ vectors of width $d$. So the output of one block can be the input of the next, and a model is just many blocks in a row, each with its own weights.
+
+      The picture shows a whole model. The tokens "the cat sat on" become $T=4$ vectors of width $d$, from the embedding table plus position information. They pass through block 1, block 2 and so on to the last block, keeping the shape $T\times d$ all the way. The final LayerNorm from step 3 follows, and then an output layer turns each token's vector into one score for each of the $N$ tokens in the vocabulary, which a later lesson uses to predict the next token.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 400" aria-label="A whole model read from top to bottom. The tokens the cat sat on become T vectors of width d in the embedding and position box. They pass through block 1, block 2, and so on to the last block, each taking and returning T vectors of width d. A green final LayerNorm follows, then an output layer that gives each token one score per vocabulary token, T rows of N scores">
+      <defs><marker id="tb4-dark" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#171717"/></marker></defs>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <text x="320" y="26" text-anchor="middle">tokens: the cat sat on</text>
+      <path d="M320 34 V48" stroke="#171717" stroke-width="2" marker-end="url(#tb4-dark)"/>
+      <rect x="180" y="50" width="280" height="34" rx="6" fill="#ffffff" stroke="#171717" stroke-width="1.5"/>
+      <text x="320" y="72" text-anchor="middle">embedding + position</text>
+      <path d="M320 84 V102" stroke="#171717" stroke-width="2" marker-end="url(#tb4-dark)"/>
+      <text x="332" y="98" fill="#737373">T × d</text>
+      <rect x="180" y="104" width="280" height="34" rx="6" fill="#ffffff" stroke="#3b82f6" stroke-width="2"/>
+      <text x="320" y="126" text-anchor="middle">block 1</text>
+      <path d="M320 138 V156" stroke="#171717" stroke-width="2" marker-end="url(#tb4-dark)"/>
+      <text x="332" y="152" fill="#737373">T × d</text>
+      <rect x="180" y="158" width="280" height="34" rx="6" fill="#ffffff" stroke="#3b82f6" stroke-width="2"/>
+      <text x="320" y="180" text-anchor="middle">block 2</text>
+      <text x="320" y="216" text-anchor="middle" font-size="18">⋮</text>
+      <rect x="180" y="230" width="280" height="34" rx="6" fill="#ffffff" stroke="#3b82f6" stroke-width="2"/>
+      <text x="320" y="252" text-anchor="middle">last block</text>
+      <path d="M320 264 V282" stroke="#171717" stroke-width="2" marker-end="url(#tb4-dark)"/>
+      <text x="332" y="278" fill="#737373">T × d</text>
+      <rect x="180" y="284" width="280" height="34" rx="6" fill="#ffffff" stroke="#10b981" stroke-width="2"/>
+      <text x="320" y="306" text-anchor="middle" fill="#10b981">final LayerNorm</text>
+      <path d="M320 318 V336" stroke="#171717" stroke-width="2" marker-end="url(#tb4-dark)"/>
+      <text x="332" y="332" fill="#737373">T × d</text>
+      <rect x="140" y="338" width="360" height="34" rx="6" fill="#ffffff" stroke="#171717" stroke-width="1.5"/>
+      <text x="320" y="360" text-anchor="middle">output layer: one score per vocabulary token</text>
+      <text x="320" y="392" text-anchor="middle" fill="#737373">T × N scores</text>
+      </g>
+      </svg>
+      ```
+
+      ### Counting a block's weights
+
+      How big is one block? Counting its parameters (weights, biases, gains and shifts) tells us how much memory a model needs and which part holds most of them. Attention has four $d\times d$ weight matrices, each with a bias vector of length $d$. $W_Q$, $W_K$ and $W_V$ make the queries, keys and values for all $h$ heads together, since $h$ heads of width $d/h$ fill $d$ columns. A fourth matrix, $W_O$, mixes the joined heads' outputs back into width $d$. The MLP has $W_1$, of shape $4d\times d$, and $W_2$, of shape $d\times4d$. So the weight matrices hold
+
+      $$4d^2+8d^2=12d^2$$
+
+      numbers. The biases add $4d$ for attention and $4d+d$ for the MLP. The two LayerNorms add a gain and a shift each, $4d$ more. So a block whose MLP has $4d$ hidden neurons has $12d^2+13d$ parameters in total.
+
+      The $d^2$ term dominates at real sizes. GPT-2 small has $d=768$ and $12$ blocks, so each block has $7{,}087{,}872$ parameters and the blocks hold about $85$ million. The whole model has about $124$ million, and most of the rest is the embedding table, with one row of width $768$ for each of the $50{,}257$ tokens in its vocabulary. GPT-2 reuses that table as its output layer.
+
+      Be careful not to count a head's weights once per head at full width. Each head's $W_Q$ is only $d\times d/h$, so the $h$ heads together fill $d\times d$.
+    worked: |
+      Let's count the parameters of one block with width $d=4$, the size the code below uses.
+
+      1. **Count attention's weights and biases.** There are four $4\times4$ matrices and four bias vectors of length $4$.
+         $$4\times16+4\times4=80$$
+
+      2. **Count the MLP's weights and biases.** The hidden layer has $4d=16$ neurons, so $W_1$ is $16\times4$ with $16$ biases, and $W_2$ is $4\times16$ with $4$ biases.
+         $$64+16+64+4=148$$
+
+      3. **Count the two LayerNorms.** Each has a gain and a shift for every one of the $4$ entries.
+         $$2\times(4+4)=16$$
+
+      4. **Add them up.** This matches the formula $12d^2+13d$.
+         $$80+148+16=244=12\times16+13\times4$$
+
+      Here is a pre-norm block in Python with NumPy, using one attention head. Four random token vectors stand in for "the cat sat on", and `rng.normal(0, 0.5, shape)` fills each weight array with random numbers of spread $0.5$. `x @ W` is a matrix product, `.T` transposes, `axis=-1` works along each row (one token), and `keepdims=True` keeps the result as a column so it lines up with each row. `x.var` is the variance, the square of the standard deviation, and the tiny `1e-5` stops a division by zero. `np.maximum(z, 0)` is ReLU. `make_block` returns a dictionary of named arrays, `p["Wq"]` looks one up, and `w.size` counts the numbers in an array.
+
+      ```python
+      import numpy as np
+
+      rng = np.random.default_rng(0)
+      T, d = 4, 4  # 4 tokens, width 4
+
+      def layer_norm(x, gain, shift):
+          mu = x.mean(axis=-1, keepdims=True)
+          var = x.var(axis=-1, keepdims=True)
+          s = np.sqrt(var + 1e-5)
+          return gain * (x - mu) / s + shift
+
+      def softmax(z):
+          e = np.exp(z - z.max(axis=-1, keepdims=True))
+          return e / e.sum(axis=-1, keepdims=True)
+
+      def make_block():
+          shapes = {
+              "Wq": (d, d), "bq": (d,),
+              "Wk": (d, d), "bk": (d,),
+              "Wv": (d, d), "bv": (d,),
+              "Wo": (d, d), "bo": (d,),
+              "W1": (d, 4 * d), "b1": (4 * d,),
+              "W2": (4 * d, d), "b2": (d,),
+          }
+          p = {}
+          for name, shape in shapes.items():
+              p[name] = rng.normal(0, 0.5, shape)
+          p["g1"], p["g2"] = np.ones(d), np.ones(d)
+          p["c1"], p["c2"] = np.zeros(d), np.zeros(d)
+          return p
+
+      def block(x, p):
+          n = layer_norm(x, p["g1"], p["c1"])
+          q = n @ p["Wq"] + p["bq"]
+          k = n @ p["Wk"] + p["bk"]
+          v = n @ p["Wv"] + p["bv"]
+          a = softmax(q @ k.T / np.sqrt(d))
+          u = x + (a @ v) @ p["Wo"] + p["bo"]
+          n = layer_norm(u, p["g2"], p["c2"])
+          hid = np.maximum(n @ p["W1"] + p["b1"], 0)
+          return u + hid @ p["W2"] + p["b2"]
+
+      x = rng.normal(0, 1, (T, d))
+      blocks = [make_block() for _ in range(3)]
+      for p in blocks:
+          x = block(x, p)
+      print(x.shape)
+      print(sum(w.size for w in blocks[0].values()))
+      # prints (4, 4), then 244
+      ```
+
+      The MLP's matrices are stored here as `W1` of shape $d\times4d$ and `W2` of shape $4d\times d$, transposed from $W_1$ and $W_2$ in the count, because each token is a row of `x`. The shape stays $(4,4)$ through all three blocks, and each block has the $244$ parameters we counted.
+    problems:
+      - tb-stack-basics
+      - tbp-stack-self-explain
+      - tbp-stack-count-template
+      - tbp-stack-shape
+      - tbp-stack-mlp-share
+      - tbp-stack-heads-count
+      - tbp-stack-code-read
+      - tbp-stack-robot
+final: tb-explain-block
+summary: |
+  - A residual connection adds a sublayer's output to its input, $y=x+f(x)$, so every sublayer returns width $d$ and a slope can pass back through the shortcut with a factor near $1$.
+  - A transformer block has two sublayers, each with its own shortcut. Attention lets each token read every token, giving $u_t=x_t+\text{Attn}(x_1,\dots,x_T)_t$. Then an MLP with the same weights at every position processes each token's vector on its own, giving $y_t=u_t+\text{MLP}(u_t)$.
+  - In a pre-norm block, LayerNorm rescales only the copy that goes into each sublayer, so $u_t=x_t+\text{Attn}(\text{LN}(x_1),\dots,\text{LN}(x_T))_t$ and $y_t=u_t+\text{MLP}(\text{LN}(u_t))$. The shortcuts carry only additions, so the model adds one final LayerNorm after its last block.
+  - Each block maps $T\times d$ to $T\times d$, so blocks stack, and one block has $12d^2+13d$ parameters: $4d^2$ in attention's weights and $8d^2$ in the MLP's.
+
+  **Next:** The causal masking lesson stops each token's attention from reading the tokens after it, so a stack of these blocks can learn to predict the next token.

@@ -1,0 +1,712 @@
+concept: transformer-block
+exercises:
+  - id: tb-residual-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What does a residual connection compute for input $x$ and sublayer $f$?
+    options:
+      - {
+          id: a,
+          text: "The sum $x+f(x)$.",
+          correct: true,
+          feedback: "The shortcut adds the input to the sublayer output.",
+        }
+      - {
+          id: b,
+          text: "The product $x f(x)$.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "The shortcut combines matching entries by addition.",
+        }
+      - {
+          id: c,
+          text: "The difference $f(x)-x$.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "The input is added with a positive sign.",
+        }
+    solution: The shortcut carries the input to an addition with the sublayer output, giving $x+f(x)$.
+  - id: tbp-residual-self-explain
+    dimension: conceptual
+    type: mc
+    lesson_only: true
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: Why does the worked example use $1+0.1$ for one residual layer's slope?
+    options:
+      - {
+          id: a,
+          text: "The shortcut and sublayer each contribute a slope to the sum.",
+          correct: true,
+        }
+      - {
+          id: b,
+          text: "The shortcut replaces the sublayer slope with a fixed value.",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "Both paths contribute; the sublayer slope remains present.",
+        }
+      - {
+          id: c,
+          text: "The input value is always one before the sublayer runs.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "The one is the derivative of the shortcut, independent of the input value.",
+        }
+    solution: The derivative of a sum adds the derivatives of its two paths, so the shortcut contributes $1$ and the sublayer contributes $0.1$.
+  - id: tbp-residual-add-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A residual sublayer receives $x=({{= a}},-3)$ and returns $f(x)=({{= b}},2)$. What is the first entry of $y=x+f(x)$?"
+    params:
+      a: { min: -8, max: 8, step: 1 }
+      b: { min: 2, max: 7, step: 1 }
+    constraints: ["a != 0"]
+    answer_expr: a+b
+    tolerance: { abs: 0.000001 }
+    common_wrong:
+      - {
+          answer_expr: b,
+          category: misunderstood_definition,
+          feedback: "Include the input carried by the shortcut.",
+        }
+    solution: "Add the matching entries from both paths: ${{= a}}+{{= b}}={{= a+b}}$."
+  - id: tbp-residual-width
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: A token vector has width $d$. Why must the sublayer output also have width $d$ for a residual sum?
+    options:
+      - {
+          id: a,
+          text: "Every input entry needs a matching output entry for addition.",
+          correct: true,
+        }
+      - {
+          id: b,
+          text: "Every input entry must become a separate token for attention.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Width counts entries within a token, not the number of tokens.",
+        }
+      - {
+          id: c,
+          text: "Every output entry must equal its matching input entry exactly.",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "The entries may have different values; only their vector widths must match.",
+        }
+    solution: Residual addition pairs the corresponding entries of two vectors, so their widths must match.
+  - id: tbp-residual-slope-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: "Each of {{= n}} scalar residual layers maps its input to itself plus {{= a}} times itself. By what factor is a slope multiplied through the full stack? Round only your final answer to two decimal places."
+    params:
+      a: { min: 0.1, max: 0.4, step: 0.1 }
+      n: { min: 2, max: 5, step: 1 }
+    constraints: ["n > 1"]
+    answer_expr: round((1+a)^n, 2)
+    tolerance: { abs: 0.005 }
+    common_wrong:
+      - {
+          answer_expr: "round(a^n, 2)",
+          category: misunderstood_definition,
+          feedback: "Each shortcut contributes one to the local slope before the factors multiply.",
+        }
+    solution: 'Each layer has slope $1+{{= a}}$, so multiplying {{= n}} factors gives $({{= 1+a}})^{{= n}}\approx{{= round((1+a)^n,2)}}$.'
+  - id: tbp-residual-zero-sublayer
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: A residual layer computes $y=x+f(x)$, where $f$ is identically zero for every input. What happens to the input and its slope through this layer?
+    options:
+      - { id: a, text: "The input passes unchanged and the slope factor is one.", correct: true }
+      - {
+          id: b,
+          text: "The input becomes zero and the slope factor is zero.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "The shortcut still carries the input and has derivative one.",
+        }
+      - {
+          id: c,
+          text: "The input passes unchanged and the slope factor is zero.",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "An identity mapping has derivative one even when the sublayer derivative is zero.",
+        }
+    solution: Adding an identically zero function gives $y=x$, whose derivative is $1$.
+  - id: tbp-residual-skip-myth
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: A learner says a residual shortcut saves computation because the sublayer is skipped on each forward pass. Which account describes $y=x+f(x)$?
+    options:
+      - { id: a, text: "Both paths run, and their outputs are added together.", correct: true }
+      - {
+          id: b,
+          text: "Only the shortcut runs, and the sublayer stays unused.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Computing the sum requires computing the sublayer output too.",
+        }
+      - {
+          id: c,
+          text: "Only the sublayer runs, and the shortcut sets its weights.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "The shortcut carries the input directly to the addition.",
+        }
+    solution: A residual connection uses the computed sublayer output and the original input in the same sum.
+  - id: tbp-residual-robot
+    dimension: transfer
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A robot policy's sensor token starts at $(3,-4)$. Two consecutive residual sublayers return corrections $(2,1)$ and $(-1,5)$ respectively. What is the second entry after both additions?
+    answer: 2
+    tolerance: { abs: 0.000001 }
+    solution: The shortcut preserves each intermediate vector, so the second entry becomes $-4+1+5=2$.
+  - id: tb-two-sublayers-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What are the two sublayers in a transformer block, in their forward order?
+    options:
+      - {
+          id: a,
+          text: "Attention mixes tokens, then an MLP processes each token.",
+          correct: true,
+          feedback: "Attention shares information across positions before the MLP transforms each vector separately.",
+        }
+      - {
+          id: b,
+          text: "An MLP mixes tokens, then attention processes each alone.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Attention shares information between tokens; the MLP operates on one token vector at a time.",
+        }
+      - {
+          id: c,
+          text: "Attention mixes tokens, then another attention mixes tokens.",
+          correct: false,
+          category: recall_failure,
+          feedback: "The second sublayer is an MLP with shared weights across positions.",
+        }
+    solution: Attention first lets tokens read one another, and the following MLP transforms each token's updated vector.
+  - id: tbp-sublayers-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    lesson_only: true
+    difficulty: 2
+    est_minutes: 1
+    prompt: Why does the worked example apply ReLU to $(2,1,1,-1)$ before the MLP output layer?
+    options:
+      - {
+          id: a,
+          text: "The hidden activation keeps positive scores and sets negative scores to zero.",
+          correct: true,
+        }
+      - {
+          id: b,
+          text: "The hidden activation rescales the scores until their sum equals one.",
+          correct: false,
+          category: misapplied_technique,
+          feedback: "That describes a property of softmax; ReLU replaces negative scores with zero.",
+        }
+      - {
+          id: c,
+          text: "The hidden activation adds the original token directly to each hidden score.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "The residual addition happens after the MLP returns to the token width.",
+        }
+    solution: ReLU is the MLP's hidden activation, so the score $-1$ becomes $0$ before multiplication by the output weights.
+  - id: tbp-sublayers-mix-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "An attention head gives two tokens weights {{= w}} and {{= 1-w}}, with value vectors $({{= a}},2)$ and $({{= b}},-2)$. What is the first entry of their weighted sum?"
+    params:
+      w: { min: 0.25, max: 0.75, step: 0.25 }
+      a: { min: 2, max: 8, step: 2 }
+      b: { min: -6, max: -2, step: 2 }
+    constraints: ["a != b", "w*a+(1-w)*b != a+b"]
+    answer_expr: w*a+(1-w)*b
+    tolerance: { abs: 0.000001 }
+    common_wrong:
+      - {
+          answer_expr: a+b,
+          category: misapplied_technique,
+          feedback: "Multiply each value entry by its attention weight before adding.",
+        }
+    solution: 'The first entry is ${{= w}}\times{{= a}}+{{= 1-w}}\times({{= b}})={{= w*a+(1-w)*b}}$, using the same weights for every entry.'
+  - id: tbp-sublayers-order
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: Ignoring normalization, which pair of equations describes a transformer block?
+    options:
+      - { id: a, text: '$u=x+\text{Attn}(x)$, then $y=u+\text{MLP}(u)$.', correct: true }
+      - {
+          id: b,
+          text: '$u=\text{Attn}(x)$, then $y=x+\text{MLP}(u)$.',
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Each sublayer has its own shortcut, including the attention sublayer.",
+        }
+      - {
+          id: c,
+          text: '$u=x+\text{MLP}(x)$, then $y=u+\text{Attn}(u)$.',
+          correct: false,
+          category: recall_failure,
+          feedback: "Attention precedes the MLP in the block described here.",
+        }
+    solution: The attention sum produces $u$, which is the input carried around the MLP by the second shortcut.
+  - id: tbp-sublayers-mlp-value
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: 'A token has $u=(3,-2)$. Its MLP has zero biases, $W_1=((1,0),(0,1))$ and $W_2=((2,0),(0,3))$ (tuples give rows), with ReLU between them. What is the first entry of $y=u+W_2\text{ReLU}(W_1u)$?'
+    answer: 9
+    tolerance: { abs: 0.000001 }
+    solution: ReLU turns $W_1u=(3,-2)$ into $(3,0)$, so the MLP returns $(6,0)$. Adding $u$ gives $(9,-2)$.
+  - id: tbp-sublayers-which-mixes
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: Which part of a transformer block directly reads information from other token vectors?
+    options:
+      - { id: a, text: "Attention, through its weighted sums of token values.", correct: true }
+      - {
+          id: b,
+          text: "The MLP, through using the same weights at each position.",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "Shared weights apply the same function separately; they do not combine token inputs.",
+        }
+      - {
+          id: c,
+          text: "The shortcut, through adding vectors from all positions.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "A shortcut adds the current token input to its own sublayer output.",
+        }
+    solution: Attention combines value vectors across positions; the MLP and residual addition operate on each position separately.
+  - id: tbp-sublayers-hidden-width
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: A transformer block has width $d=192$ and an MLP hidden layer of width $4d$. How many hidden neurons does that MLP have?
+    answer: 768
+    tolerance: { abs: 0.000001 }
+    solution: The hidden width is $4\times192=768$, before the output layer returns it to width $192$.
+  - id: tbp-sublayers-robot
+    dimension: transfer
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: 'A robot policy has a sensor token with vector $(2,-1)$. Attention reads two value vectors $(4,0)$ and $(0,8)$ with weights $0.5$ each and returns their weighted sum. After adding the attention shortcut to obtain $u$, the MLP returns $(\max(u_1,0),-\max(u_2,0))$. What is the first entry after the MLP shortcut is added?'
+    answer: 8
+    tolerance: { abs: 0.000001 }
+    solution: Attention returns $(2,4)$, so its shortcut gives $u=(4,3)$. The MLP returns $(4,-3)$, and the second sum gives $(8,0)$.
+  - id: tb-pre-norm-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: Where is LayerNorm applied in a pre-norm transformer block?
+    options:
+      - {
+          id: a,
+          text: "To the input copy read by each sublayer before its computation.",
+          correct: true,
+          feedback: "Pre-norm prepares a normalized copy for each sublayer while preserving the shortcut input.",
+        }
+      - {
+          id: b,
+          text: "To the result of every residual sum after its addition.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Normalization after each residual addition describes post-norm.",
+        }
+      - {
+          id: c,
+          text: "To the attention weights before combining the value vectors.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "LayerNorm rescales each token vector before attention; softmax produces attention weights.",
+        }
+    solution: Pre-norm feeds a normalized copy into each sublayer while keeping the original vector on its shortcut.
+  - id: tbp-prenorm-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    lesson_only: true
+    difficulty: 2
+    est_minutes: 1
+    prompt: Why does the worked example add attention's output to $(-6,0,2,8)$ after normalizing a copy?
+    options:
+      - {
+          id: a,
+          text: "The shortcut carries the original input around the normalized sublayer.",
+          correct: true,
+        }
+      - {
+          id: b,
+          text: "The normalized copy is used only to choose the number of tokens.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "The normalized copy is the actual input read by attention.",
+        }
+      - {
+          id: c,
+          text: "The original input must be normalized again before the residual addition.",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "Pre-norm leaves the shortcut input unchanged at this addition.",
+        }
+    solution: The pre-norm shortcut preserves $x$ itself, so the sum uses the original input and the output of attention on normalized inputs.
+  - id: tbp-prenorm-mean-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "LayerNorm receives the token vector $({{= m-7}},{{= m-1}},{{= m+1}},{{= m+7}})$. What is its mean before normalization?"
+    params:
+      m: { min: -5, max: 6, step: 1 }
+    constraints: ["m != 0"]
+    answer_expr: m
+    tolerance: { abs: 0.000001 }
+    common_wrong:
+      - {
+          answer_expr: 4*m,
+          category: math_error,
+          feedback: "Divide the sum by the number of entries to obtain the mean.",
+        }
+    solution: "The four entries sum to ${{= 4*m}}$, so their mean is ${{= 4*m}}/4={{= m}}$."
+  - id: tbp-prenorm-std
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "For the token vector $(-4,2,4,10)$, the mean is $3$. LayerNorm uses the square root of the mean squared deviation, dividing by $4$. What is that standard deviation? Ignore the small numerical stabilizer."
+    answer: 5
+    tolerance: { abs: 0.000001 }
+    solution: The deviations are $(-7,-1,1,7)$, whose squared mean is $(49+1+1+49)/4=25$. Its square root is $5$.
+  - id: tbp-prenorm-add-original
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: "In pre-norm attention, $x=(-4,2,4,10)$ has normalized copy $(-1.4,-0.2,0.2,1.4)$ with gain $1$ and shift $0$. Attention on normalized tokens returns $(2,-1,3,-2)$ for this token. What is the first entry of the residual sum $u$?"
+    answer: -2
+    tolerance: { abs: 0.000001 }
+    solution: Pre-norm adds attention's output to the original $x$, giving first entry $-4+2=-2$.
+  - id: tbp-prenorm-placement
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: Which pair correctly locates LayerNorm relative to a sublayer and its residual addition?
+    options:
+      - {
+          id: a,
+          text: "Pre-norm normalizes before the sublayer; post-norm normalizes after the sum.",
+          correct: true,
+        }
+      - {
+          id: b,
+          text: "Pre-norm normalizes after the sum; post-norm normalizes before the sublayer.",
+          correct: false,
+          category: recall_failure,
+          feedback: "These are the two layouts with their names reversed.",
+        }
+      - {
+          id: c,
+          text: "Pre-norm normalizes before the sublayer; post-norm normalizes only the shortcut.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Post-norm acts on the combined result of the sublayer and shortcut.",
+        }
+    solution: Pre-norm prepares each sublayer's input, while post-norm rescales the output of each residual sum.
+  - id: tbp-prenorm-final-ln
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: Why does a pre-norm model add a final LayerNorm after its last block?
+    options:
+      - {
+          id: a,
+          text: "Residual additions leave the shortcut path without normalization of its own.",
+          correct: true,
+        }
+      - {
+          id: b,
+          text: "Residual additions have removed all information about the token positions.",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "Residual addition does not inherently erase position information; the final LayerNorm controls scale.",
+        }
+      - {
+          id: c,
+          text: "Residual additions have reduced each token vector to a single scalar.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "The vector carried along the shortcuts retains width d throughout the blocks.",
+        }
+    solution: Normalizing each sublayer's input copy leaves the vector carried along the shortcuts free to change scale, so a final LayerNorm rescales that vector.
+  - id: tbp-prenorm-post-vs-pre
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A robot policy transformer reads sensor and action tokens through a deep stack. Why can a pre-norm layout ease training compared with post-norm at initialization?
+    options:
+      - {
+          id: a,
+          text: "Its shortcut path has only additions; post-norm puts LayerNorm on that path and needs a learning rate that starts small and rises.",
+          correct: true,
+        }
+      - {
+          id: b,
+          text: "Its shortcut path skips attention entirely; post-norm computes attention repeatedly and needs extra heads.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Both layouts compute each sublayer; pre-norm preserves a direct additive shortcut for slopes.",
+        }
+      - {
+          id: c,
+          text: "Its shortcut path sets every slope to zero; post-norm keeps slopes nonzero and needs fewer layers.",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "Training needs usable slopes; the additive path contributes a factor of one rather than zero.",
+        }
+    solution: Pre-norm keeps a route for slopes through additions alone. Post-norm places LayerNorm on that route and uses a learning rate that starts small and rises to handle badly sized initial slopes.
+  - id: tb-stack-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: Why can transformer blocks of width $d$ be stacked directly for a sequence of $T$ tokens?
+    options:
+      - {
+          id: a,
+          text: 'Each block returns the same $T\times d$ shape it receives.',
+          correct: true,
+          feedback: "Preserving token count and width makes the result a valid input to the following block.",
+        }
+      - {
+          id: b,
+          text: "Each block doubles the width so the following block fits.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "The hidden MLP expands internally, but the block output returns to width d.",
+        }
+      - {
+          id: c,
+          text: "Each block reduces the token count so the following block fits.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "A transformer block preserves the number of token vectors.",
+        }
+    solution: A block preserves both token count and width, so its output has the input shape required by the next block.
+  - id: tbp-stack-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    lesson_only: true
+    difficulty: 2
+    est_minutes: 1
+    prompt: Why does the worked example count $2\times(4+4)$ parameters for its two LayerNorms?
+    options:
+      - {
+          id: a,
+          text: "Each LayerNorm learns one gain and one shift per vector entry.",
+          correct: true,
+        }
+      - {
+          id: b,
+          text: "Each LayerNorm learns one separate weight for every pair of tokens.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "LayerNorm parameters depend on width, not token-pair count.",
+        }
+      - {
+          id: c,
+          text: "Each LayerNorm learns the mean and variance as two width-four vectors.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Mean and variance are computed from the current token; gain and shift are learned.",
+        }
+    solution: At width $4$, each LayerNorm has four gains and four shifts, so two LayerNorms contribute $16$ learned parameters.
+  - id: tbp-stack-count-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A transformer block has width $d={{= d}}$ and an MLP hidden layer of width $4d$. How many parameters does it have, including all attention and MLP weights and biases and two LayerNorms with learned gains and shifts?"
+    params:
+      d: { min: 6, max: 24, step: 2 }
+    answer_expr: 12*d^2+13*d
+    tolerance: { abs: 0.000001 }
+    common_wrong:
+      - {
+          answer_expr: 12*d^2,
+          category: incomplete_explanation,
+          feedback: "Include the biases and LayerNorm gains and shifts represented by 13d.",
+        }
+    solution: 'Substituting the width gives $12\times{{= d}}^2+13\times{{= d}}={{= 12*d^2+13*d}}$, including all the stated parameters.'
+  - id: tbp-stack-shape
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: A sequence of $T=7$ tokens, each of width $d=12$, passes through five transformer blocks of that width. What is the output shape before the output layer?
+    options:
+      - { id: a, text: '$7\times12$, keeping token count and width.', correct: true }
+      - {
+          id: b,
+          text: '$7\times60$, multiplying width by block count.',
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Successive blocks preserve width rather than concatenating their outputs.",
+        }
+      - {
+          id: c,
+          text: '$35\times12$, multiplying tokens by block count.',
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Blocks update the existing token vectors without adding tokens.",
+        }
+    solution: Each block maps $T\times d$ to $T\times d$, so all five preserve the shape $7\times12$.
+  - id: tbp-stack-mlp-share
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: A block's weight matrices contain $12d^2$ parameters, of which $8d^2$ belong to its MLP. What fraction of these weight parameters belongs to the MLP? Give a decimal rounded to two decimal places, excluding biases and LayerNorm parameters.
+    answer: 0.67
+    tolerance: { abs: 0.005 }
+    solution: Dividing the MLP count by the weight total gives $8d^2/(12d^2)=2/3$, which rounds to $0.67$.
+  - id: tbp-stack-heads-count
+    dimension: math
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: At width $d=24$, attention uses $h=6$ heads of width $d_k=d/h=4$. How many query weight parameters do all heads together use, excluding biases?
+    options:
+      - { id: a, text: '$576$, from six matrices of shape $24\times4$.', correct: true }
+      - {
+          id: b,
+          text: '$3456$, from six matrices of shape $24\times24$.',
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Each head produces d/h query entries, so each head has only d times d/h query weights.",
+        }
+      - {
+          id: c,
+          text: '$96$, from one matrix of shape $24\times4$.',
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "That counts only one head; include all six heads.",
+        }
+    solution: Each head has $24\times4=96$ query weights, giving $6\times96=576=24^2$ across the heads.
+  - id: tbp-stack-code-read
+    dimension: implementation
+    type: code_read
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "This NumPy fragment constructs the MLP weights for a width-four transformer block, using rows for token vectors. What integer does it print?"
+    code: |
+      import numpy as np
+      d = 4
+      shapes = {"W1": (d, 4 * d), "b1": (4 * d,),
+                "W2": (4 * d, d), "b2": (d,)}
+      p = {k: np.zeros(s) for k, s in shapes.items()}
+      print(sum(w.size for w in p.values()))
+    answer: 148
+    tolerance: { abs: 0.000001 }
+    solution: The two matrices each hold $64$ numbers, and the bias vectors hold $16$ and $4$, so the printed total is $148$.
+  - id: tbp-stack-robot
+    dimension: transfer
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A robot policy reads ten sensor and action tokens of width $d=8$ through three transformer blocks, each with its own weights. Each block has $12d^2+13d$ parameters. How many parameters do the three blocks have together, excluding embeddings, the final LayerNorm and the output layer?
+    answer: 2616
+    tolerance: { abs: 0.000001 }
+    solution: One block has $12\times8^2+13\times8=872$ parameters, and three have $3\times872=2616$. The token count does not change the number of learned block parameters.
+  - id: tb-explain-block
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 3
+    est_minutes: 4
+    prompt: Describe a pre-norm transformer block from input to output. Explain the jobs of attention and the MLP, how LayerNorm and the shortcuts are arranged, and why blocks can be stacked.
+    rubric:
+      - {
+          id: sublayers,
+          criterion: "Describes attention mixing tokens followed by an MLP applied separately with shared weights at every position.",
+          weight: 1,
+          required: true,
+        }
+      - {
+          id: layout,
+          criterion: "Places LayerNorm before each sublayer on a copy and adds each output to the original sublayer input through a shortcut.",
+          weight: 1,
+          required: true,
+        }
+      - {
+          id: stack,
+          criterion: "Explains preservation of T by d shape and the final LayerNorm after the pre-norm stack.",
+          weight: 1,
+        }
+    exemplar: A pre-norm block normalizes each token vector for attention, which shares information between tokens, and adds attention's output to the original token vector. It then normalizes that sum for an MLP with shared weights applied separately at each position, and adds the MLP output to the sum through another shortcut. Every block preserves the token count and width, so its output can feed the next block, and a final LayerNorm rescales the vector carried along the shortcuts after the last block.
+    solution: Each sublayer gets a normalized input copy and contributes an update through a residual addition. Attention mixes information across tokens, the MLP transforms each token separately, and preserving $T\times d$ lets these blocks be repeated.
