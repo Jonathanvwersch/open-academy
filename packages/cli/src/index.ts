@@ -177,6 +177,7 @@ async function init(directory: string, title: string) {
     copyFileSync(join(repoRoot, source), join(referenceDirectory, target));
   }
   const courseId = `${slug(title)}-basics`;
+  const topicId = `${slug(title)}-first-topic`;
   writeYaml(join(directory, 'curriculum.yaml'), {
     schedule: { mon: 45, tue: 45, wed: 45, thu: 45, fri: 45, sat: 120, sun: 60 },
     domains: [{ id: 'main', title, description: `Topics in ${title}.` }],
@@ -189,13 +190,13 @@ async function init(directory: string, title: string) {
     id: courseId,
     title: `${title} basics`,
     description: `A first path through ${title}.`,
-    units: [{ title: 'Basics', concepts: ['first-topic'] }],
+    units: [{ title: 'Basics', concepts: [topicId] }],
   });
   writeYaml(join(directory, 'concepts', 'main.yaml'), {
     domain: 'main',
     concepts: [
       {
-        id: 'first-topic',
+        id: topicId,
         title: 'First topic',
         description: `The first topic in ${title}.`,
         difficulty: 1,
@@ -408,7 +409,7 @@ async function newCourse(id: string, title: string, directory: string) {
   if (content.coursesById.has(id)) fail(`Course "${id}" already exists.`);
   const domain = content.curriculum?.domains[0]?.id;
   if (!domain) fail('The curriculum must define a domain.');
-  const placeholderId = content.conceptsById.has('first-topic') ? 'first-topic' : `${id}-topic`;
+  const placeholderId = `${id}-first-topic`;
   if (!content.conceptsById.has(placeholderId)) {
     const conceptFile = join(directory, 'concepts', `${domain}.yaml`);
     const concept = {

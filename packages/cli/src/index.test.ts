@@ -63,6 +63,9 @@ describe('academy CLI', () => {
     try {
       const pack = join(parent, 'my-pack');
       expect(run(['init', pack, '--title', 'Applied Science']).status).toBe(0);
+      expect(readFileSync(join(pack, 'concepts/main.yaml'), 'utf8')).toContain(
+        'id: applied-science-first-topic',
+      );
       const result = run(['check', pack]);
       expect(result.status).toBe(0);
       expect(result.stdout).toContain('1 topics, 0 lessons, 0 questions, 1 courses');
@@ -118,7 +121,7 @@ describe('academy CLI', () => {
           '--title',
           'Second topic',
           '--requires',
-          'first-topic',
+          'applied-science-first-topic',
           '--course',
           'applied-science-basics',
           '--unit',
@@ -180,7 +183,7 @@ describe('academy CLI', () => {
         run(['new', 'course', 'advanced-path', '--title', 'Advanced path', '--pack', pack]).status,
       ).toBe(0);
       expect(readFileSync(join(pack, 'concepts/main.yaml'), 'utf8')).toContain(
-        'id: advanced-path-topic',
+        'id: advanced-path-first-topic',
       );
       expect(run(['check', pack]).status).toBe(0);
     } finally {
@@ -193,7 +196,7 @@ describe('academy CLI', () => {
     try {
       const pack = join(parent, 'pack');
       run(['init', pack, '--title', 'Applied Science']);
-      const created = run(['new', 'lesson', 'first-topic', '--pack', pack]);
+      const created = run(['new', 'lesson', 'applied-science-first-topic', '--pack', pack]);
       expect(created.status).toBe(0);
       expect(created.stdout.trim()).toBe(
         'Write it with .agents/skills/write-lesson/SKILL.md, then run academy check.',
