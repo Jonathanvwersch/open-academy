@@ -69,7 +69,7 @@ function saveLayout(key: string, layout: Layout) {
 }
 
 const blocks =
-  'button, [data-slot=button], input:not([type=hidden]), textarea, select, [data-slot=badge], [data-slot=progress], [role=radio], [role=checkbox], [role=img], pre, img, canvas, svg, .katex';
+  '[data-slot=button], input:not([type=hidden]), textarea, select, [data-slot=badge], [data-slot=progress], [role=radio], [role=checkbox], [role=img], pre, img, canvas, svg, .katex';
 
 function measureLayout(element: HTMLElement): Layout {
   const bounds = element.getBoundingClientRect();

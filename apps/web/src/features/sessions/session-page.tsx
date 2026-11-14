@@ -111,7 +111,13 @@ export function SessionPage() {
     lessonRunsByConcept,
     requestedActivityId,
   );
-  const showingRequestedCompletedActivity = activity?.id === requestedCompletedActivity?.id;
+  const showingLessonQuiz =
+    activity?.kind === 'learn' &&
+    Boolean(activity.conceptId) &&
+    lessonRunsByConcept.get(activity.conceptId ?? '')?.status === 'quiz';
+  const showingRequestedCompletedActivity = Boolean(
+    activity && activity.id === requestedCompletedActivity?.id && !showingLessonQuiz,
+  );
   const showingCompletedFinal = activity?.id === completedFinal?.id;
   const labProjectId = activity?.kind === 'lab' ? activity.projectId : undefined;
   const labProjectQuery = useQuery({

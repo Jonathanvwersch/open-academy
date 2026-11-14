@@ -47,6 +47,13 @@ test('completed deep links load their own activity without pulling in other futu
   expect(selectSessionActivity([prior, current, later], runs, prior.id).activity).toBe(prior);
 });
 
+test('planned lesson deep links take priority over the active project', () => {
+  const lesson = activity('lesson');
+  const project = activity('project', { kind: 'lab', status: 'in_progress' });
+  expect(sessionActivityCandidates([lesson, project], lesson.id)).toEqual([lesson, project]);
+  expect(selectSessionActivity([lesson, project], runs, lesson.id).activity).toBe(lesson);
+});
+
 test('an uncontinued completed quiz takes priority until its Continue action is acknowledged', () => {
   const quiz = activity('quiz', {
     status: 'completed',

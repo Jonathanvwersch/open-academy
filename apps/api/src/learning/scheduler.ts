@@ -37,16 +37,12 @@ export type ActivityKind =
 export const SCHEDULER_CONFIG = {
   weights: { goal: 1, week_fit: 1, project: 1, unlock: 1, gap: 1, review: 1, cost: 1 },
   weekday: {
-    reviewBudgetRatio: 0.25,
+    reviewBudgetRatio: 0.3,
     maxNewConcepts: 2,
     maxActivities: 6,
   },
   repeatWindowDays: 7,
   consolidationMinutes: 5,
-  saturdayReviewMinutes: 10,
-  saturdayReflectionMinutes: 10,
-  sundayCheckMinutes: 20,
-  sundayTeachbackMinutes: 10,
 } as const;
 
 export interface PriorityTerms {
@@ -223,16 +219,9 @@ export function planSession(
   content: ContentIndex,
   now: Date,
   budgetMinutes: number,
-  kind: SessionKind = 'weekday',
+  _kind: SessionKind = 'weekday',
 ): SessionPlan {
-  const budget = Math.max(0, budgetMinutes);
-  if (kind === 'saturday') {
-    return planSaturday(state, content, now, budget);
-  }
-  if (kind === 'sunday') {
-    return planSunday(state, content, now, budget);
-  }
-  return packWeekday(state, content, now, budget);
+  return packWeekday(state, content, now, Math.max(0, budgetMinutes));
 }
 
 export function replan(
@@ -273,7 +262,7 @@ function packWeekday(
   let usedMinutes = 0;
   let newConceptCount = 0;
   const selectedConcepts = new Set<string>();
-  const canAdd = (candidate: Candidate, limit = budget) => {
+  const canAdd = (candidate: Candidate) => {
     const reviewAlongsideLesson =
       candidate.activity.kind === 'review' &&
       Boolean(candidate.activity.conceptId) &&
@@ -284,15 +273,15 @@ function packWeekday(
       );
     return (
       selected.length < SCHEDULER_CONFIG.weekday.maxActivities &&
-      usedMinutes + candidate.adjustedMinutes <= limit &&
+      usedMinutes + candidate.adjustedMinutes <= budget &&
       !usesSelectedExercise(candidate, selected) &&
       (!candidate.activity.conceptId ||
         !selectedConcepts.has(candidate.activity.conceptId) ||
         reviewAlongsideLesson)
     );
   };
-  const add = (candidate: Candidate, limit = budget) => {
-    if (!canAdd(candidate, limit)) return false;
+  const add = (candidate: Candidate) => {
+    if (!canAdd(candidate)) return false;
     selected.push(candidate);
     usedMinutes += candidate.adjustedMinutes;
     if (candidate.activity.conceptId) selectedConcepts.add(candidate.activity.conceptId);
@@ -333,17 +322,10 @@ function packWeekday(
     .filter((candidate) => candidate.activity.kind === 'review')
     .sort((left, right) => right.score - left.score);
   const reviewCap = Math.floor(budget * SCHEDULER_CONFIG.weekday.reviewBudgetRatio);
-  const reviewLimit =
-    reviewCandidates.length > 0 ? Math.max(reviewCap, Math.min(budget, 1)) : reviewCap;
+  let reviewMinutes = 0;
   for (const candidate of reviewCandidates) {
-    add(candidate, reviewLimit);
-  }
-  if (
-    reviewCandidates.length > 0 &&
-    !selected.some((candidate) => candidate.activity.kind === 'review')
-  ) {
-    const first = reviewCandidates.find((candidate) => canAdd(candidate));
-    if (first) add(first);
+    if (reviewMinutes + candidate.adjustedMinutes > reviewCap) continue;
+    if (add(candidate)) reviewMinutes += candidate.adjustedMinutes;
   }
   const learnCandidates = candidates
     .filter((candidate) => candidate.activity.kind === 'learn')
@@ -353,45 +335,19 @@ function packWeekday(
     if (add(candidate)) newConceptCount += 1;
   }
 
-  const learnTargets = new Set(
-    selected
-      .filter((candidate) => candidate.activity.kind === 'learn')
-      .map((candidate) => candidate.activity.conceptId)
-      .filter((id): id is string => Boolean(id)),
-  );
-  const prerequisiteIds = new Set(
-    [...learnTargets].flatMap(
-      (id) =>
-        content.conceptsById
-          .get(id)
-          ?.prereqs.filter((prerequisite) => prerequisite.strength === 'hard')
-          .map((prerequisite) => prerequisite.id) ?? [],
-    ),
-  );
-  for (const candidate of candidates
-    .filter(
-      (entry) =>
-        entry.activity.kind === 'quick_check' &&
-        Boolean(entry.activity.conceptId && prerequisiteIds.has(entry.activity.conceptId)),
-    )
-    .sort((left, right) => right.score - left.score)) {
-    const dependent = [...learnTargets]
-      .map((id) => content.conceptsById.get(id))
-      .find((concept) =>
-        concept?.prereqs.some((prerequisite) => prerequisite.id === candidate.activity.conceptId),
-      );
-    if (dependent) {
-      candidate.activity.reason.summary = `Confirm placement result before ${dependent.title}.`;
-    }
-    if (selected.length < SCHEDULER_CONFIG.weekday.maxActivities - 1) add(candidate);
-  }
-
   const otherCandidates = candidates
-    .filter((candidate) => !['review', 'learn', 'quick_check'].includes(candidate.activity.kind))
+    .filter((candidate) => !['review', 'learn'].includes(candidate.activity.kind))
     .sort((left, right) => right.score - left.score);
   for (const candidate of otherCandidates) add(candidate);
 
-  return toPlan(selected);
+  const optionalActivities = optionalProjectAndPaperActivities(
+    state,
+    content,
+    Math.max(0, budget - usedMinutes),
+    selected.length,
+  );
+  const activities = [...selected.map((candidate) => candidate.activity), ...optionalActivities];
+  return { activities, reasons: activities.map((activity) => activity.reason) };
 }
 
 function generateCandidates(state: SchedulerState, content: ContentIndex, now: Date): Candidate[] {
@@ -411,9 +367,6 @@ function generateCandidates(state: SchedulerState, content: ContentIndex, now: D
     if (concept.status === 'stub') {
       continue;
     }
-    const conceptRecords = concept.dimensions
-      .map((dimension) => masteryByKey.get(masteryKey(concept.id, dimension)))
-      .filter((record): record is MasteryRecord => Boolean(record));
     const states = concept.dimensions.map((dimension) =>
       masteryByKey.get(masteryKey(concept.id, dimension)),
     );
@@ -482,76 +435,6 @@ function generateCandidates(state: SchedulerState, content: ContentIndex, now: D
             project,
             isNew,
             isNew ? 0 : 1,
-          ),
-        );
-      }
-    }
-
-    if (conceptRecords.some((record) => record.provisional && record.state === 'independent')) {
-      const dimension = concept.dimensions.find((candidate) => {
-        const record = masteryByKey.get(masteryKey(concept.id, candidate));
-        return record?.inferred || record?.provisional;
-      });
-      const exercise = chooseExercise(
-        state,
-        content,
-        concept,
-        dimension,
-        ['check', 'core'],
-        now,
-        recentIds,
-      );
-      if (exercise) {
-        candidates.push(
-          makeCandidate(
-            state,
-            content,
-            concept,
-            'quick_check',
-            [exercise],
-            courseContext,
-            project,
-            false,
-            2,
-          ),
-        );
-      }
-    }
-
-    const primaryDimensions = concept.dimensions.filter((dimension) => dimension !== 'transfer');
-    const independentlyKnown =
-      primaryDimensions.length > 0 &&
-      primaryDimensions.every((dimension) => {
-        const record = masteryByKey.get(masteryKey(concept.id, dimension));
-        return (
-          record && !record.provisional && masteryRank(record.state) >= masteryRank('independent')
-        );
-      });
-    const hasTransfer = state.recentAttempts.some(
-      (attempt) => attempt.conceptId === concept.id && attempt.itemRole === 'transfer',
-    );
-    if (independentlyKnown && !hasTransfer) {
-      const exercise = chooseExercise(
-        state,
-        content,
-        concept,
-        'transfer',
-        ['transfer'],
-        now,
-        recentIds,
-      );
-      if (exercise) {
-        candidates.push(
-          makeCandidate(
-            state,
-            content,
-            concept,
-            'transfer',
-            [exercise],
-            courseContext,
-            project,
-            false,
-            3,
           ),
         );
       }
@@ -710,7 +593,6 @@ function candidateSummary(
   project: { id: string; prereqs: string[] } | undefined,
   content: ContentIndex,
 ): string {
-  if (kind === 'quick_check') return `Confirm the placement result for ${concept.title}.`;
   const parts: string[] = [];
   if (
     terms.week_fit > 0 &&
@@ -724,7 +606,7 @@ function candidateSummary(
   }
   if (terms.project > 0 && project) {
     const projectTitle = content.projectsById.get(project.id)?.title ?? project.id;
-    parts.push(`needed for the Saturday lab (${projectTitle})`);
+    parts.push(`needed for the optional project (${projectTitle})`);
   }
   if (terms.goal > 0 && parts.length === 0) parts.push('supports your learning goal');
   if (terms.gap > 0) parts.push('addresses a learning gap');
@@ -770,41 +652,30 @@ function chooseExercise(
   return undefined;
 }
 
-function planSaturday(
+function optionalProjectAndPaperActivities(
   state: SchedulerState,
   content: ContentIndex,
-  now: Date,
   budget: number,
-): SessionPlan {
-  const plan: PlannedActivity[] = [];
-  const dueReview = generateCandidates(state, content, now).find(
-    (candidate) => candidate.activity.kind === 'review',
-  );
-  const usedExerciseIds = new Set([
-    ...(state.usedExerciseIds ?? []),
-    ...(dueReview?.activity.exerciseIds ?? []),
-  ]);
-  if (dueReview && budget > 0) {
-    plan.push({ ...dueReview.activity, plannedMinutes: Math.min(10, budget) });
-  }
-  const warmupMinutes = dueReview ? Math.min(10, budget) : 0;
-  const reflectionMinutes = budget >= 20 ? 10 : 0;
+  activityCount: number,
+): PlannedActivity[] {
+  if (budget <= 0 || activityCount >= SCHEDULER_CONFIG.weekday.maxActivities) return [];
   const courseContext = schedulerCourseContext(state, content);
   const currentUnit = courseContext.course?.units[courseContext.currentUnit - 1];
-  const remainingMinutes = Math.max(0, budget - warmupMinutes - reflectionMinutes);
   const hasUnreadPaper = (currentUnit?.papers ?? []).some(
     (paperId) => !state.completedPaperIds.includes(paperId),
   );
-  const paperMinutes = hasUnreadPaper ? Math.min(90, remainingMinutes) : 0;
+  const paperMinutes = hasUnreadPaper ? Math.min(90, budget) : 0;
+  const activities: PlannedActivity[] = [];
+  let remainingMinutes = budget;
   if (paperMinutes >= 30) {
-    plan.push({
+    activities.push({
       kind: 'paper',
       exerciseIds: [],
       plannedMinutes: paperMinutes,
       reason: staticReason(`Optional paper for ${courseContext.unitTitle}.`),
     });
+    remainingMinutes -= paperMinutes;
   }
-  const projectMinutes = Math.max(0, remainingMinutes - (paperMinutes >= 30 ? paperMinutes : 0));
   const availableProjects = content.projects.filter(
     (project) => project.status === 'authored' && project.tests.length > 0,
   );
@@ -832,177 +703,21 @@ function planSaturday(
     state.projectProgress.some(
       (item) => item.projectId === currentProject && item.status === 'completed',
     );
-  if (currentProject && !projectDone && projectMinutes > 0) {
-    plan.push({
+  if (
+    currentProject &&
+    !projectDone &&
+    remainingMinutes > 0 &&
+    activityCount + activities.length < SCHEDULER_CONFIG.weekday.maxActivities
+  ) {
+    activities.push({
       kind: 'lab',
       projectId: currentProject,
       exerciseIds: [],
-      plannedMinutes: projectMinutes,
+      plannedMinutes: remainingMinutes,
       reason: staticReason(`Lab activity references project ${currentProject}.`),
     });
   }
-  if (projectDone && projectMinutes > 0) {
-    const extensionConceptId = content.projectsById.get(currentProject)?.prereqs[0];
-    const extensionConcept = extensionConceptId
-      ? content.conceptsById.get(extensionConceptId)
-      : undefined;
-    const extension = extensionConcept
-      ? chooseExercise(
-          state,
-          content,
-          extensionConcept,
-          'implementation',
-          ['core', 'transfer'],
-          now,
-        )
-      : undefined;
-    if (extension) {
-      plan.push(
-        staticCandidate(
-          'practice',
-          extension.concept,
-          [extension.id],
-          projectMinutes,
-          'Extend the completed lab with a fresh implementation item.',
-        ),
-      );
-    }
-  }
-  if (reflectionMinutes > 0) {
-    const reflection = content.projectsById
-      .get(currentProject ?? '')
-      ?.reflection.map((id) => content.exercisesById.get(id))
-      .find((exercise) => exercise !== undefined && !usedExerciseIds.has(exercise.id));
-    plan.push(
-      staticCandidate(
-        'reflect',
-        reflection?.concept,
-        reflection ? [reflection.id] : [],
-        10,
-        'Reflect on the project and its evidence.',
-      ),
-    );
-  }
-  return toPlan(plan.filter((activity) => activity.plannedMinutes > 0));
-}
-
-function planSunday(
-  state: SchedulerState,
-  content: ContentIndex,
-  now: Date,
-  budget: number,
-): SessionPlan {
-  const plan: PlannedActivity[] = [];
-  const learnedConceptIds = new Set([
-    ...state.mastery
-      .filter((record) => masteryRank(record.state) >= masteryRank('assisted'))
-      .map((record) => record.conceptId),
-    ...(state.lessonRuns ?? [])
-      .filter((run) => run.status === 'completed')
-      .map((run) => run.conceptId),
-  ]);
-  const known = [...learnedConceptIds]
-    .map((conceptId) => content.conceptsById.get(conceptId))
-    .filter((concept): concept is IndexedConcept => Boolean(concept && concept.status !== 'stub'));
-  const recallByConcept = (conceptId: string) => {
-    const recalls = state.cards
-      .filter((card) => card.conceptId === conceptId)
-      .flatMap((card) => (typeof card.retrievability === 'number' ? [card.retrievability] : []));
-    return recalls.length ? recalls.reduce((sum, recall) => sum + recall, 0) / recalls.length : 1;
-  };
-  const teachback =
-    budget > 40
-      ? content.exercises
-          .filter(
-            (exercise) =>
-              exercise.type === 'explain' &&
-              learnedConceptIds.has(exercise.concept) &&
-              content.conceptsById.get(exercise.concept)?.status !== 'stub' &&
-              !(state.usedExerciseIds ?? []).includes(exercise.id),
-          )
-          .sort(
-            (left, right) =>
-              recallByConcept(left.concept) - recallByConcept(right.concept) ||
-              left.id.localeCompare(right.id),
-          )[0]
-      : undefined;
-  const checkExercises = known
-    .map((concept) => chooseExercise(state, content, concept, undefined, ['core', 'transfer'], now))
-    .filter(
-      (exercise): exercise is IndexedExercise =>
-        exercise !== undefined && exercise.id !== teachback?.id,
-    );
-  const uniqueCheckExercises = [
-    ...new Map(checkExercises.map((exercise) => [exercise.id, exercise])).values(),
-  ];
-  const usedExerciseIds = new Set([
-    ...(state.usedExerciseIds ?? []),
-    ...(teachback ? [teachback.id] : []),
-  ]);
-  if (budget > 0 && uniqueCheckExercises.length > 0) {
-    plan.push(
-      staticCandidate(
-        'quick_check',
-        undefined,
-        uniqueCheckExercises.slice(0, 6).map((item) => item.id),
-        Math.min(20, budget),
-        'Cumulative independent check.',
-      ),
-    );
-    for (const exercise of uniqueCheckExercises.slice(0, 6)) usedExerciseIds.add(exercise.id);
-  }
-  if (teachback) {
-    plan.push(
-      staticCandidate(
-        'teachback',
-        teachback.concept,
-        [teachback.id],
-        Math.min(10, budget - 40),
-        'Summarize a concept without notes.',
-      ),
-    );
-    usedExerciseIds.add(teachback.id);
-  }
-  if (budget > 50) {
-    const courseContext = schedulerCourseContext(state, content);
-    const courseProjectIds = (
-      courseContext.course?.units.slice(0, courseContext.currentUnit) ?? []
-    ).flatMap((unit) => (unit.project ? [unit.project] : []));
-    const currentProject =
-      state.currentProjectId && courseProjectIds.includes(state.currentProjectId)
-        ? state.currentProjectId
-        : courseContext.course?.units[courseContext.currentUnit - 1]?.project;
-    const reflection = content.projectsById
-      .get(currentProject ?? '')
-      ?.reflection.map((id) => content.exercisesById.get(id))
-      .find((exercise) => exercise !== undefined && !usedExerciseIds.has(exercise.id));
-    plan.push(
-      staticCandidate(
-        'reflect',
-        reflection?.concept,
-        reflection ? [reflection.id] : [],
-        budget - 50,
-        "Review progress and plan what's next.",
-      ),
-    );
-  }
-  return toPlan(plan.filter((activity) => activity.plannedMinutes > 0));
-}
-
-function staticCandidate(
-  kind: ActivityKind,
-  conceptId: string | undefined,
-  exerciseIds: string[],
-  plannedMinutes: number,
-  summary: string,
-): PlannedActivity {
-  return {
-    kind,
-    ...(conceptId ? { conceptId } : {}),
-    exerciseIds,
-    plannedMinutes,
-    reason: staticReason(summary),
-  };
+  return activities;
 }
 
 function staticReason(summary: string): ActivityReason {
@@ -1012,13 +727,6 @@ function staticReason(summary: string): ActivityReason {
 function usesSelectedExercise(candidate: Candidate, selected: Candidate[]): boolean {
   const used = new Set(selected.flatMap((entry) => entry.activity.exerciseIds));
   return candidate.activity.exerciseIds.some((exerciseId) => used.has(exerciseId));
-}
-
-function toPlan(candidates: Candidate[] | PlannedActivity[]): SessionPlan {
-  const activities = candidates.map((candidate) =>
-    'activity' in candidate ? candidate.activity : candidate,
-  );
-  return { activities, reasons: activities.map((activity) => activity.reason) };
 }
 
 function scoreTerms(terms: PriorityTerms, minutes: number): number {

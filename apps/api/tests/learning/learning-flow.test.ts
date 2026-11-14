@@ -719,6 +719,21 @@ test('/api/reviews returns the local upcoming schedule and skips stub topics', a
     (concept) => concept.id !== 'vectors' && concept.status !== 'stub',
   );
   if (!otherConcept) throw new Error('Expected another authored concept for review topics');
+  const laterTodayConcept = content.concepts.find(
+    (concept) =>
+      concept.id !== 'vectors' && concept.id !== otherConcept.id && concept.status !== 'stub',
+  );
+  if (!laterTodayConcept) throw new Error('Expected a third authored concept for review topics');
+  const secondVectorsCard = newReviewCard(new Date(now));
+  await db.insert(reviewCards).values({
+    userId,
+    conceptId: 'vectors',
+    dimension: 'conceptual',
+    fsrs: secondVectorsCard,
+    dueAt: new Date('2026-01-01T00:00:00.000Z'),
+    reps: secondVectorsCard.reps,
+    lapses: secondVectorsCard.lapses,
+  });
   const futureCard = newReviewCard(new Date(now));
   await db.insert(reviewCards).values({
     userId,
@@ -732,7 +747,7 @@ test('/api/reviews returns the local upcoming schedule and skips stub topics', a
   const laterTodayCard = newReviewCard(new Date(now));
   await db.insert(reviewCards).values({
     userId,
-    conceptId: otherConcept.id,
+    conceptId: laterTodayConcept.id,
     dimension: 'implementation',
     fsrs: laterTodayCard,
     dueAt: new Date('2026-01-01T20:00:00.000Z'),
@@ -772,17 +787,17 @@ test('/api/reviews returns the local upcoming schedule and skips stub topics', a
   expect(body.topics[0]).toMatchObject({
     conceptId: 'vectors',
     title: expect.any(String),
-    dimension: 'math',
+    courseId: expect.any(String),
+    courseTitle: expect.any(String),
+    kinds: ['conceptual', 'math'],
     dueAt: '2026-01-01T00:00:00.000Z',
     due: true,
     dueInDays: 0,
-    lastReviewAt: null,
-    reps: 0,
-    lapses: 0,
-    recall: expect.any(Number),
   });
   expect(body.topics[1]).toMatchObject({ due: false, dueInDays: 0 });
   expect(body.topics[2]).toMatchObject({ due: false, dueInDays: 2 });
+  expect(body.topics[0]).not.toHaveProperty('recall');
+  expect(body.topics[0]).not.toHaveProperty('reps');
 });
 
 test('debug answer option ids identify the selected and correct line and fix', () => {

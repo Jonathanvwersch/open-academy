@@ -12,7 +12,6 @@ import {
   mastery,
   masteryEvents,
   reviewCards,
-  sessionActivities,
   users,
 } from '../../src/db/schema.js';
 import { initialMastery } from '../../src/learning/types.js';
@@ -80,16 +79,6 @@ function correctAnswer(exercise: IndexedExercise): unknown {
   }
   if (exercise.type === 'numeric' && 'answer' in exercise) return exercise.answer;
   if (exercise.type === 'expression') return exercise.answer;
-  throw new Error(`Unexpected placement exercise type ${exercise.type}`);
-}
-
-function incorrectAnswer(exercise: IndexedExercise): unknown {
-  if (exercise.type === 'mc') {
-    return exercise.options.find((option) => !option.correct)?.id ?? '';
-  }
-  if (exercise.type === 'numeric' && 'answer' in exercise) return exercise.answer + 100;
-  if (exercise.type === 'expression') return exercise.answer === '0' ? '999' : '0';
-  if (exercise.type === 'explain') return 'wrong answer';
   throw new Error(`Unexpected placement exercise type ${exercise.type}`);
 }
 
@@ -335,67 +324,21 @@ test('mixed placement credits placed-out topics, creates reviews, and keeps unkn
       topic.conceptId !== 'vectors' &&
       content.conceptsById.get(topic.conceptId)?.dimensions.includes('math'),
   )?.conceptId;
-  const baseCheckExercise = content.exercises.find(
-    (exercise): exercise is Extract<IndexedExercise, { type: 'mc' }> => exercise.type === 'mc',
-  );
-  if (!placedOutConceptId || !baseCheckExercise) {
-    throw new Error('Missing fixture for a deterministic placement review');
-  }
-  const placementCheck = {
-    ...baseCheckExercise,
-    id: 'placement-provisional-check',
-    concept: placedOutConceptId,
-    dimension: 'math' as const,
-    role: 'check' as const,
-  };
-  content.exercises.push(placementCheck);
-  content.exercisesById.set(placementCheck.id, placementCheck);
-  content.exercisesByConcept.set(placedOutConceptId, [
-    ...(content.exercisesByConcept.get(placedOutConceptId) ?? []),
-    placementCheck,
-  ]);
-  content.exercisesByRole.set('check', [
-    ...(content.exercisesByRole.get('check') ?? []),
-    placementCheck,
-  ]);
-  content.exercisesByDimension.set('math', [
-    ...(content.exercisesByDimension.get('math') ?? []),
-    placementCheck,
-  ]);
+  if (!placedOutConceptId) throw new Error('Missing a placed-out topic');
 
   const sessionResponse = await post('/sessions', {});
   expect(sessionResponse.status).toBe(201);
   const session = await sessionResponse.json();
-  const quickCheck = session.activities.find(
-    (activity: { kind: string }) => activity.kind === 'quick_check',
-  );
-  expect(quickCheck).toBeTruthy();
-  const quickCheckExercise = content.exercisesById.get('placement-provisional-check');
-  if (!quickCheckExercise) throw new Error('Missing quick-check exercise');
-  await db
-    .update(sessionActivities)
-    .set({ conceptId: placedOutConceptId, exerciseIds: [quickCheckExercise.id] })
-    .where(eq(sessionActivities.id, quickCheck.id));
-  const failed = await post('/attempts', {
-    exerciseId: quickCheckExercise.id,
-    activityId: quickCheck.id,
-    answer: incorrectAnswer(quickCheckExercise),
-    mode: 'diagnostic',
-  });
-  expect(failed.status).toBe(200);
-  const courseAfterFailure = await get('/course').then((response) => response.json());
-  const topicAfterFailure = courseAfterFailure.units
+  expect(
+    session.activities.some((activity: { kind: string }) =>
+      ['quick_check', 'transfer', 'teachback', 'reflect'].includes(activity.kind),
+    ),
+  ).toBe(false);
+  const courseAfterSession = await get('/course').then((response) => response.json());
+  const topicAfterSession = courseAfterSession.units
     .flatMap((unit: { topics: Array<{ conceptId: string; status: string }> }) => unit.topics)
     .find((topic: { conceptId: string }) => topic.conceptId === placedOutConceptId);
-  expect(topicAfterFailure).toBeDefined();
-  expect(topicAfterFailure.status).not.toBe('complete');
-  const todayAfterFailure = await (await get('/today')).json();
-  expect(
-    todayAfterFailure.plan.activities.some(
-      (activity: { kind: string; conceptId?: string }) =>
-        activity.kind === 'learn' && activity.conceptId === placedOutConceptId,
-    ),
-  ).toBe(true);
+  expect(topicAfterSession).toMatchObject({ status: 'complete', placedOut: true });
 });
 
 test('placement results separate known foundations from course topics', async () => {

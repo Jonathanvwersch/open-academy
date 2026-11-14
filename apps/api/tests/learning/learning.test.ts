@@ -591,50 +591,43 @@ test('weekday plans avoid duplicate concepts, cap activities, and never add empt
 
   expect(new Set(conceptIds).size).toBe(conceptIds.length);
   expect(plan.activities.length).toBeLessThanOrEqual(6);
-  expect(plan.activities.every((activity) => activity.exerciseIds.length > 0)).toBe(true);
-});
-
-test('quick checks are limited to placement-provisional prerequisites of planned learn targets', () => {
-  const state = emptyState();
-  state.mastery = [
-    {
-      ...initialMastery('vectors', 'math'),
-      state: 'independent',
-      provisional: true,
-    },
-    {
-      ...initialMastery('linear-algebra', 'math'),
-      state: 'independent',
-      provisional: true,
-    },
-  ];
-  const plan = planSession(state, content, now, 60);
-  const learnIds = new Set(
-    plan.activities
-      .filter((activity) => activity.kind === 'learn')
-      .map((activity) => activity.conceptId)
-      .filter((id): id is string => typeof id === 'string'),
-  );
-  const prerequisites = new Set(
-    [...learnIds].flatMap(
-      (id) =>
-        content.conceptsById
-          .get(id)
-          ?.prereqs.filter((prerequisite) => prerequisite.strength === 'hard')
-          .map((prerequisite) => prerequisite.id) ?? [],
-    ),
-  );
-  const quickChecks = plan.activities.filter((activity) => activity.kind === 'quick_check');
-
-  expect(learnIds.has('derivatives')).toBe(true);
-  expect(quickChecks.length).toBeGreaterThan(0);
   expect(
-    quickChecks.every(
-      (activity) => activity.conceptId !== undefined && prerequisites.has(activity.conceptId),
+    plan.activities.every(
+      (activity) => ['lab', 'paper'].includes(activity.kind) || activity.exerciseIds.length > 0,
     ),
   ).toBe(true);
-  expect(quickChecks.every((activity) => activity.reason.summary.includes('before'))).toBe(true);
-  expect(quickChecks.some((activity) => activity.conceptId === 'linear-algebra')).toBe(false);
+});
+
+test.each(['weekday', 'saturday', 'sunday', 'custom'] as const)(
+  'the %s plan omits quick checks, standalone transfer, teachback, and reflection',
+  (kind) => {
+    const state = emptyState();
+    state.mastery = [
+      {
+        ...initialMastery('vectors', 'math'),
+        state: 'independent',
+        provisional: true,
+      },
+    ];
+    state.lessonRuns = [{ conceptId: 'linear-models', status: 'completed' }];
+    state.cards = [{ conceptId: 'vectors', dimension: 'math', dueAt: now.toISOString() }];
+    const plan = planSession(state, content, now, 300, kind);
+
+    expect(
+      plan.activities.some((activity) =>
+        ['quick_check', 'transfer', 'teachback', 'reflect'].includes(activity.kind),
+      ),
+    ).toBe(false);
+  },
+);
+
+test('a placed-out topic has no quick check candidate', () => {
+  const state = emptyState();
+  state.mastery = [
+    { ...initialMastery('vectors', 'math'), state: 'independent', provisional: true },
+  ];
+  const plan = planSession(state, content, now, 60);
+  expect(plan.activities.some((activity) => activity.kind === 'quick_check')).toBe(false);
 });
 
 test('Knowledgeable user skips mastered prerequisites', () => {
@@ -989,7 +982,7 @@ test('Project prerequisites receive a priority term', () => {
   const plan = planSession(state, content, new Date('2026-01-06T12:00:00.000Z'), 60);
   const prerequisite = plan.activities.find((activity) => activity.conceptId === 'linear-models');
   expect(prerequisite?.reason.terms.project).toBe(3);
-  expect(prerequisite?.reason.summary).toContain('needed for the Saturday lab');
+  expect(prerequisite?.reason.summary).toContain('needed for the optional project');
   if (prerequisite?.reason.terms.week_fit) {
     expect(prerequisite.reason.summary).toContain('ML fundamentals focus');
   }
@@ -998,7 +991,7 @@ test('Project prerequisites receive a priority term', () => {
   }
 });
 
-test('weekday plan omits the practice filler and leaves unused budget', () => {
+test('weekday plan omits practice filler and respects the budget', () => {
   const state = emptyState();
   state.mastery = ['vectors', 'linear-algebra'].flatMap((conceptId) => {
     const concept = content.conceptsById.get(conceptId);
@@ -1160,24 +1153,29 @@ test('Exercise assignment avoids items seen within seven days', () => {
   expect(vectors?.exerciseIds).not.toContain('vectors-magnitude');
 });
 
-test('Saturday allocates a 300-minute lab with a capped review warm-up and reflection', () => {
-  const plan = planSession(emptyState(), content, now, 300, 'saturday');
-  expect(plan.activities.reduce((sum, activity) => sum + activity.plannedMinutes, 0)).toBe(300);
+test('planner schedules optional paper and project after reviews and lessons', () => {
+  const plan = planSession(emptyState(), content, now, 200);
+  const paperIndex = plan.activities.findIndex((activity) => activity.kind === 'paper');
+  const labIndex = plan.activities.findIndex((activity) => activity.kind === 'lab');
+  const requiredIndexes = plan.activities.flatMap((activity, index) =>
+    activity.kind === 'review' || activity.kind === 'learn' ? [index] : [],
+  );
+
+  expect(paperIndex).toBeGreaterThan(Math.max(-1, ...requiredIndexes));
+  expect(labIndex).toBeGreaterThan(paperIndex);
   expect(
-    plan.activities.find((activity) => activity.kind === 'review')?.plannedMinutes ?? 0,
-  ).toBeLessThanOrEqual(20);
-  expect(plan.activities.some((activity) => activity.kind === 'lab')).toBe(true);
-  expect(plan.activities.some((activity) => activity.kind === 'reflect')).toBe(true);
+    plan.activities.reduce((sum, activity) => sum + activity.plannedMinutes, 0),
+  ).toBeLessThanOrEqual(200);
 });
 
-test('Saturday skips a stub project and falls back to the latest available project', () => {
-  const plan = planSession(emptyState(), content, now, 300, 'saturday');
+test('scheduler skips an unavailable current project and falls back to the latest available project', () => {
+  const plan = planSession(emptyState(), content, now, 300);
   expect(plan.activities.find((activity) => activity.kind === 'lab')?.projectId).toBe(
     'linreg-numpy',
   );
 });
 
-test('Saturday omits labs when no available project has verifier tests', () => {
+test('scheduler omits labs when no available project has verifier tests', () => {
   const projects = content.projects.map((project) =>
     project.id === 'linreg-numpy' ? { ...project, tests: [] } : project,
   );
@@ -1186,16 +1184,17 @@ test('Saturday omits labs when no available project has verifier tests', () => {
     projects,
     projectsById: new Map(projects.map((project) => [project.id, project])),
   };
-  const plan = planSession(emptyState(), testlessContent, now, 300, 'saturday');
+  const plan = planSession(emptyState(), testlessContent, now, 300);
   expect(plan.activities.some((activity) => activity.kind === 'lab')).toBe(false);
 });
 
-test('Saturday skips a completed project when no extension exercise exists', () => {
+test('a completed project does not add practice filler', () => {
   const state = emptyState();
   state.currentProjectId = 'linreg-numpy';
   state.projectProgress = [{ projectId: 'linreg-numpy', status: 'completed' }];
-  const plan = planSession(state, content, now, 300, 'saturday');
+  const plan = planSession(state, content, now, 300);
   expect(plan.activities.some((activity) => activity.kind === 'lab')).toBe(false);
+  expect(plan.activities.some((activity) => activity.kind === 'practice')).toBe(false);
   expect(plan.activities.some((activity) => activity.kind === 'remediate')).toBe(false);
 });
 
@@ -1364,86 +1363,61 @@ test('reviews outside the active course remain planned', () => {
   ).toBe(true);
 });
 
-test('Saturday uses progress for the next unit paper regardless of start date', () => {
-  const fixtureCourse = required(content.coursesById.get('fixture-course'), 'fixture course');
-  const lessonRuns = (fixtureCourse.units[0]?.concepts ?? []).map((conceptId) => ({
-    conceptId,
-    status: 'completed' as const,
-  }));
-  for (const startDate of ['2000-01-01T00:00:00.000Z', '2026-01-15T00:00:00.000Z']) {
-    const state = { ...emptyState(), startDate, lessonRuns };
-    const plan = planSession(state, content, now, 200, 'saturday');
-    const paper = plan.activities.find((activity) => activity.kind === 'paper');
-    expect(paper?.reason.summary).toBe('Optional paper for Optimization.');
-  }
-});
+test.each(['weekday', 'saturday', 'sunday'] as const)(
+  'planner uses progress for the next unit paper on %s',
+  (kind) => {
+    const fixtureCourse = required(content.coursesById.get('fixture-course'), 'fixture course');
+    const lessonRuns = (fixtureCourse.units[0]?.concepts ?? []).map((conceptId) => ({
+      conceptId,
+      status: 'completed' as const,
+    }));
+    for (const startDate of ['2000-01-01T00:00:00.000Z', '2026-01-15T00:00:00.000Z']) {
+      const state = { ...emptyState(), startDate, lessonRuns };
+      const plan = planSession(state, content, now, 200, kind);
+      const paper = plan.activities.find((activity) => activity.kind === 'paper');
+      expect(paper?.reason.summary).toBe('Optional paper for Optimization.');
+    }
+  },
+);
 
-test('Saturday reserves up to 90 minutes for the current week paper', () => {
+test('planner caps optional paper time and uses the remaining time for a project', () => {
   const state = emptyState();
-  const plan = planSession(state, content, now, 200, 'saturday');
+  const plan = planSession(state, content, now, 200);
   const paper = plan.activities.find((activity) => activity.kind === 'paper');
   expect(paper?.plannedMinutes).toBe(90);
   expect(paper?.reason.summary).toBe('Optional paper for ML fundamentals.');
-  expect(plan.activities.find((activity) => activity.kind === 'lab')?.plannedMinutes).toBe(100);
+  expect(
+    plan.activities.find((activity) => activity.kind === 'lab')?.plannedMinutes,
+  ).toBeGreaterThan(0);
 });
 
-test('Saturday omits paper reading when all current-week papers are completed', () => {
+test('planner omits paper reading when all current-unit papers are completed', () => {
   const papers = content.coursesById.get('fixture-course')?.units[0]?.papers ?? [];
   const state = {
     ...emptyState(),
     completedPaperIds: papers,
   };
-  const plan = planSession(state, content, now, 200, 'saturday');
+  const plan = planSession(state, content, now, 200);
   expect(plan.activities.some((activity) => activity.kind === 'paper')).toBe(false);
 });
 
-test('Saturday omits paper reading when less than 30 minutes remain', () => {
+test('planner omits paper reading when less than 30 minutes remain', () => {
   const state = emptyState();
-  const plan = planSession(state, content, now, 35, 'saturday');
+  const plan = planSession(state, content, now, 35);
   expect(plan.activities.some((activity) => activity.kind === 'paper')).toBe(false);
 });
 
-test('Sunday creates its cumulative assessment and leaves remediation minutes unused', () => {
+test.each([10, 60])('due reviews use at most 30%% of a %d-minute budget', (budget) => {
   const state = emptyState();
-  state.mastery = [
-    { ...initialMastery('vectors', 'math'), state: 'independent' },
-    { ...initialMastery('linear-models', 'conceptual'), state: 'independent' },
-  ];
-  const plan = planSession(state, content, now, 60, 'sunday');
-  const assessment = plan.activities.find((activity) => activity.kind === 'quick_check');
-  expect(assessment?.exerciseIds.length).toBeGreaterThan(0);
-  expect(plan.activities.reduce((sum, activity) => sum + activity.plannedMinutes, 0)).toBe(40);
-});
+  state.cards = ['vectors', 'derivatives', 'linear-models'].map((conceptId) => ({
+    conceptId,
+    dimension: 'math',
+    dueAt: now.toISOString(),
+  }));
+  const plan = planSession(state, content, now, budget);
+  const reviewMinutes = plan.activities
+    .filter((activity) => activity.kind === 'review')
+    .reduce((sum, activity) => sum + activity.plannedMinutes, 0);
 
-test('Sunday omits recap activities when the learner has not learned any concepts', () => {
-  const plan = planSession(emptyState(), content, now, 60, 'sunday');
-  expect(plan.activities.some((activity) => activity.kind === 'teachback')).toBe(false);
-  expect(plan.activities.some((activity) => activity.kind === 'quick_check')).toBe(false);
-});
-
-test('Sunday recap and quick check use learned concepts and prioritize low recall', () => {
-  const state = emptyState();
-  state.lessonRuns = [
-    { conceptId: 'vectors', status: 'completed' },
-    { conceptId: 'derivatives', status: 'completed' },
-  ];
-  state.cards = [
-    { conceptId: 'vectors', dimension: 'math', dueAt: now.toISOString(), retrievability: 0.2 },
-    {
-      conceptId: 'derivatives',
-      dimension: 'math',
-      dueAt: now.toISOString(),
-      retrievability: 0.8,
-    },
-  ];
-
-  const plan = planSession(state, content, now, 90, 'sunday');
-  const teachback = plan.activities.find((activity) => activity.kind === 'teachback');
-  const quickCheck = plan.activities.find((activity) => activity.kind === 'quick_check');
-  expect(teachback?.conceptId).toBe('vectors');
-  expect(
-    quickCheck?.exerciseIds.every((id) =>
-      ['vectors', 'derivatives'].includes(content.exercisesById.get(id)?.concept ?? ''),
-    ),
-  ).toBe(true);
+  expect(reviewMinutes).toBeLessThanOrEqual(Math.floor(budget * 0.3));
 });

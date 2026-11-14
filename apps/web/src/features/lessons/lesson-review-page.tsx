@@ -6,7 +6,11 @@ import { Markdown } from '../../components/markdown.js';
 import { Button } from '../../components/ui/button.js';
 import { Card, CardContent } from '../../components/ui/card.js';
 import { exerciseQueryOptions } from '../exercises/queries.js';
-import { activeSessionQueryOptions, todayQueryOptions } from '../sessions/queries.js';
+import {
+  activeSessionQueryOptions,
+  sessionQueryOptions,
+  todayQueryOptions,
+} from '../sessions/queries.js';
 import { useTutorSidebar } from '../tutor/tutor-sidebar.js';
 import { LessonBlock } from './lesson-block.js';
 import { lessonReviewQueryOptions, lessonRunQueryOptions } from './queries.js';
@@ -61,8 +65,24 @@ export function LessonReviewPage() {
           (activity.status === 'in_progress' || activity.status === 'planned'),
       );
       if (activeSession && activeLesson) {
-        await navigate({ to: '/session/$id', params: { id: activeSession.id } });
-        return;
+        const session = await queryClient.fetchQuery({
+          ...sessionQueryOptions(activeSession.id),
+          staleTime: 0,
+        });
+        const lessonActivity = session.activities.find(
+          (activity) =>
+            activity.kind === 'learn' &&
+            activity.conceptId === conceptId &&
+            (activity.status === 'in_progress' || activity.status === 'planned'),
+        );
+        if (lessonActivity) {
+          await navigate({
+            to: '/session/$id',
+            params: { id: activeSession.id },
+            search: { activity: lessonActivity.id },
+          });
+          return;
+        }
       }
 
       const today = await queryClient.fetchQuery({ ...todayQueryOptions(), staleTime: 0 });
