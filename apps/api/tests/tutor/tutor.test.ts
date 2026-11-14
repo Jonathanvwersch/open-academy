@@ -189,7 +189,7 @@ describe('tutor contracts', () => {
   });
 
   it('returns no provider when the API key is absent', () => {
-    expect(createTutorProvider({ model: 'gpt-5.4-mini' })).toBeNull();
+    expect(createTutorProvider({ model: 'gpt-6.1-terra' })).toBeNull();
   });
 
   it('logs budget exhaustion without calling the provider', async () => {
