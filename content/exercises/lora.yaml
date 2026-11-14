@@ -63,7 +63,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: A layer computes $h=Wx+\Delta Wx$, where $W$ is frozen. Which numbers does a gradient-descent update change?
+    prompt: A pretrained layer with weight matrix $W$ is adapted using a separate change $\Delta W$ under LoRA's freezing rule. Which numbers does a gradient-descent update change?
     options:
       - id: a
         text: The entries of $\Delta W$ only.
@@ -114,7 +114,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 1
-    prompt: A layer computes $h=Wx+\Delta Wx$ with $W$ frozen, and $\Delta W$ starts as all zeros. Before the first training update, how do the model's answers compare with the pretrained model's?
+    prompt: A pretrained model is given LoRA changes, each initialised to zero, while its original weights are frozen. Before the first training update, how do its answers compare with the pretrained model's?
     options:
       - id: a
         text: They are exactly the same, because $\Delta Wx$ is all zeros.
@@ -547,15 +547,15 @@ exercises:
         correct: true
         feedback: The needed change is mostly a few large scaled column-times-row tables, and a rank-$r$ change can match those.
       - id: b
-        text: Freezing the weights makes the pretrained model already correct for every new task it meets.
+        text: The product of two thin matrices can express any full-rank change once both matrices are trained.
         correct: false
         category: incorrect_reasoning
-        feedback: The frozen model still needs a change, otherwise there would be nothing to train.
+        feedback: Training can change the entries, but the rank of the product is still at most the inner size $r$.
       - id: c
-        text: A low-rank change has more trainable numbers than the full matrix, so it can express more.
+        text: The full weight matrix is usually low rank, so the task's change must have that same rank.
         correct: false
         category: math_error
-        feedback: For large matrices, $r(d+k)$ is far smaller than $dk$.
+        feedback: LoRA relies on the change needed for adaptation being close to low rank. The full pretrained matrix need not be low rank.
     solution: Any matrix is a sum of column-times-row tables, each scaled by a number, and keeping the few with the largest numbers gives a close low-rank approximation when the rest are small. The change fine-tuning needs is usually close to low rank, so a rank-$r$ change $BA$ can match most of it with far fewer numbers.
   - id: lorp-raise-rank
     dimension: transfer
@@ -566,19 +566,19 @@ exercises:
     prompt: A team adapts a robot's language model to a new task with rank-2 LoRA changes. Full fine-tuning of the same model reaches a clearly lower loss on the task. What is a sensible next step?
     options:
       - id: a
-        text: Raise the rank or put LoRA on more matrices, so the change can capture more of what the task needs.
+        text: Try a higher rank, then compare its loss with rank 2 under matched training conditions.
         correct: true
         feedback: A rank-2 change may be too small to express this task's change. A larger rank allows more.
       - id: b
-        text: Lower the rank to 1, because a smaller change makes training reach a lower loss.
+        text: Use rank 1 to give the adapter access to more independent directions of change.
         correct: false
         category: incorrect_reasoning
         feedback: A smaller rank allows even less change, so it can only make the gap wider.
       - id: c
-        text: Unfreeze nothing and keep training at rank 2, since the rank never limits what LoRA can learn.
+        text: Keep rank 2 and increase both factor magnitudes to obtain a higher-rank product.
         correct: false
         category: misunderstood_definition
-        feedback: The rank caps how complex $BA$ can be. That cap is the likely reason for the gap.
+        feedback: Scaling the factors changes the size of the change, but its rank remains at most 2.
     solution: A rank-2 change can't express every change. When full fine-tuning does clearly better, the needed change is probably not close to rank 2, so people raise $r$ or adapt more matrices.
   - id: lora-merge-basics
     dimension: conceptual
@@ -722,7 +722,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 3
-    prompt: A model has 7 billion weights. One LoRA adapter for it has 4.2 million numbers. To serve 5 tasks, you keep one frozen copy of the model and 5 adapters. How many numbers is that in total, in billions? Give your answer to 2 decimal places.
+    prompt: A model has 7 billion weights. One LoRA adapter for it has 4.2 million numbers. You need to store adaptations for 5 tasks, keeping the adapters separate and sharing weights wherever LoRA permits. How many numbers must you store in total, in billions? Give your answer to 2 decimal places.
     answer: 7.02
     tolerance:
       abs: 0.006
@@ -740,7 +740,7 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: A robot model's layer was merged with a LoRA change for a sorting task, $W'=W+BA$, and the original $W$ was not saved. The team still has $B$ and $A$. How can they get the original layer back?
+    prompt: A robot model's layer was merged with a LoRA change for a sorting task. Only the merged matrix $W'$ and the adapter matrices $B$ and $A$ were saved. How can the team recover the original matrix $W$?
     options:
       - id: a
         text: Subtract the change from the merged matrix, $W=W'-BA$.

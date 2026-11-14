@@ -10,26 +10,28 @@ exercises:
     options:
       - {
           id: a,
-          text: "Small errors take the robot into states unlike those in the demonstrations, where its predictions are worse, and the errors compound",
+          text: "Small errors change the visited states, taking the robot away from the expert-data distribution and causing further errors",
           correct: true,
         }
       - {
           id: b,
-          text: "The validation set was too large",
+          text: "Holding out expert examples for validation removes the recovery states, so training on the full expert dataset would resolve the failures",
           correct: false,
           category: incorrect_reasoning,
+          feedback: "The expert may never visit the states caused by learner mistakes. Restoring held-out expert examples need not supply those recovery states.",
         }
       - {
           id: c,
-          text: "The policy is overfitting the training set, which validation loss cannot detect",
+          text: "The policy has ordinary training-set overfitting, which remains hidden even when validation examples represent its deployment states",
           correct: false,
           category: misapplied_technique,
           feedback: "Validation loss would detect ordinary overfitting. The problem is that validation data comes from the *expert's* state distribution, not the policy's.",
         }
       - {
           id: d,
-          text: "The update step was too small",
+          text: "The policy has not fitted expert actions well enough, so low held-out loss establishes that more training on expert data will fix the drift",
           correct: false,
           category: incorrect_reasoning,
+          feedback: "Low held-out loss measures prediction on expert states. It does not establish that more fitting there will fix mistakes on states visited by the learner.",
         }
     solution: "Covariate shift: the training and validation states come from the expert's distribution. At deployment the policy's own mistakes change the distribution of visited states, and errors compound over the horizon."

@@ -91,21 +91,21 @@ exercises:
     prompt: Why do teams remove duplicate copies of text before pretraining?
     options:
       - id: a
-        text: Copies are hard to tokenize, because the tokenizer has already seen those words.
+        text: Repeats make the vocabulary larger, requiring a new token for each copied occurrence.
         correct: false
         category: incorrect_reasoning
-        feedback: The tokenizer handles a repeated page exactly like the first copy. The trouble is what repeats do to training.
+        feedback: Repeated occurrences reuse the same vocabulary entries. The concern is their influence on training.
       - id: b
         text: A model that sees one passage many times tends to memorise it, and the repeats add no new text.
         correct: true
         feedback: Repeats push the model to memorise that passage word for word, and repeated copies add no new text to learn from.
       - id: c
-        text: Duplicate text makes the loss negative, which stops gradient descent from working.
+        text: Removing copies guarantees that the model cannot memorise any remaining passage.
         correct: false
         category: math_error
-        feedback: Cross-entropy loss is never negative. Duplicates still give ordinary losses; they encourage memorising the repeated passage.
+        feedback: Deduplication reduces repeated exposure, but a model can still memorise text it sees only once.
       - id: d
-        text: Copies take up too much disk space to store alongside the rest of the data.
+        text: Repeats count as new examples because each copy provides independent evidence.
         correct: false
         category: incorrect_reasoning
         feedback: "The main risk is what the model learns: repeated passages encourage memorising them word for word."
@@ -116,7 +116,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "A pretraining stream is cut into ${{= n }}$ windows of $T={{= T }}$ tokens each. In each window, every token after the first is predicted from the ones before it. How many next-token predictions do the windows give in total?"
+    prompt: "A pretraining stream is cut into ${{= n }}$ separate windows of $T={{= T }}$ tokens each. No context is carried between windows. How many next-token predictions can be scored in total?"
     hints:
       - How many tokens in one window have at least one token before them?
     params:
@@ -142,7 +142,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "Three documents have ${{= a }}$, ${{= b }}$ and ${{= c }}$ word tokens. One end-of-text token is added after each document, the documents are joined into one stream, and the stream is cut into windows of $T=4$ tokens. How many full windows are there?"
+    prompt: "Three documents have ${{= a }}$, ${{= b }}$ and ${{= c }}$ word tokens. Pack them into a single pretraining stream with an end-of-text marker after each document. Each marker occupies one token. For windows of $T=4$ tokens, how many full windows are there?"
     hints:
       - Count the end-of-text tokens as well as the words.
       - "Divide the total by $4$ and keep only the whole windows."
@@ -210,15 +210,15 @@ exercises:
         correct: true
         feedback: "The model learns to imitate whatever it is trained on, so spam teaches patterns we don't want."
       - id: b
-        text: "Spam pages can't be tokenized, so they would crash the training run if kept."
+        text: Spam can stay if exact duplicates are removed, since unique text always improves useful predictions.
         correct: false
         category: incorrect_reasoning
-        feedback: A tokenizer can turn any text into tokens. The problem is what training on it teaches and what it costs.
+        feedback: Unique spam still teaches spam patterns. Deduplication and quality filtering address different problems.
       - id: c
-        text: Filtering is needed only to make every document the same length.
+        text: Spam can stay if its training loss is low, since that proves it teaches useful patterns.
         correct: false
         category: misunderstood_definition
-        feedback: Documents can have different lengths. Packing joins them into a stream and cuts that stream into fixed-length windows.
+        feedback: A low loss on spam measures prediction of spam. It does not show usefulness on the text the model should handle.
       - id: d
         text: "The teammate is right: more tokens of any kind always lower the loss on real text."
         correct: false
@@ -238,20 +238,20 @@ exercises:
         correct: true
         feedback: Seeing the same passage thousands of times encourages memorising it word for word, and each copy repeats the same text.
       - id: b
-        text: The tokenizer will refuse to split text that repeats into tokens.
+        text: The copies supply independent evidence that improves coverage of rare robot behaviours.
         correct: false
         category: incorrect_reasoning
-        feedback: A tokenizer can process repeated text. The cost comes during training.
+        feedback: These copies all show the same behaviour. They overweight it without adding coverage of other behaviours.
       - id: c
-        text: "The copies will make every window shorter than $T$ tokens."
+        text: The copies have no training effect because identical passages receive no further loss.
         correct: false
         category: misunderstood_definition
-        feedback: "Packing always cuts the stream into full windows of $T$ tokens, however the text repeats."
+        feedback: Repeated targets are still scored. Each copy gives that demonstration more influence on training.
       - id: d
-        text: The model can no longer use cross-entropy, because the targets repeat.
+        text: The copies reduce the demonstration's influence because its loss is divided by its copy count.
         correct: false
         category: misunderstood_definition
-        feedback: Cross-entropy works for any targets. Repeats give the same losses again, which pushes the model towards memorising.
+        feedback: Ordinary next-token training does not divide a passage's contribution by how many times it was copied.
     solution: This is a duplication problem. Training on thousands of copies pushes the model to memorise that one demonstration without teaching anything new, so the logs should be deduplicated first.
   - id: pt-training-compute-basics
     dimension: conceptual
@@ -344,7 +344,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "A model has $P={{= a }}\\times10^8$ parameters and is trained on $D={{= b }}\\times10^{10}$ tokens. Using $C\\approx6PD$, what is its training compute in units of $10^{18}$ FLOPs? (For example, $3\\times10^{18}$ FLOPs is entered as $3$.)"
+    prompt: "A model has $P={{= a }}\\times10^8$ parameters and is trained on $D={{= b }}\\times10^{10}$ tokens. What is its training compute in units of $10^{18}$ FLOPs? (For example, $3\\times10^{18}$ FLOPs is entered as $3$.)"
     hints:
       - "Multiply the numbers in front, then add the powers of ten: $10^8\\times10^{10}=10^{18}$."
     params:
@@ -445,7 +445,7 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: "A team pretrains a model for a robot with $5\\times10^8$ parameters on $4\\times10^{10}$ tokens of text and robot logs. Using $C\\approx6PD$, what is its training compute in units of $10^{18}$ FLOPs?"
+    prompt: "A team pretrains a model for a robot with $5\\times10^8$ parameters on $4\\times10^{10}$ tokens of text and robot logs. What is its training compute in units of $10^{18}$ FLOPs?"
     answer: 120
     tolerance:
       abs: 0.01
@@ -578,7 +578,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "A team splits its compute at about $20$ training tokens per parameter. Its model has ${{= a }}$ billion parameters. How many billion tokens should it be trained on?"
+    prompt: "A team wants the compute-optimal training split described by the Chinchilla rule of thumb. Its model has ${{= a }}$ billion parameters. How many billion training tokens should it budget?"
     params:
       a:
         min: 1
@@ -626,7 +626,7 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: "A team has a compute budget of $C={{= 12*a^2/10 }}\\times10^{16}$ FLOPs. It will train on $D=20P$ tokens, where $P$ is the number of parameters. Using $C\\approx6PD$, how many parameters should the model have, in units of $10^7$?"
+    prompt: "A team has a compute budget of $C={{= 12*a^2/10 }}\\times10^{16}$ FLOPs. It will train on $D=20P$ tokens, where $P$ is the number of parameters. How many parameters should the model have, in units of $10^7$?"
     hints:
       - "Put $D=20P$ into $C\\approx6PD$ to get a formula in $P$ alone."
       - "$C=120P^2$, so divide by $120$ and take the square root."
@@ -656,12 +656,12 @@ exercises:
         correct: true
         feedback: Training costs are paid once, but running the model costs compute on every use, so a small, well-trained model can be the better deal.
       - id: b
-        text: "The $20$ tokens per parameter rule applies only to models that use Wikipedia."
+        text: The extra tokens let the lab minimise training compute for the same target loss.
         correct: false
         category: incorrect_reasoning
-        feedback: "The rule comes from comparing runs at fixed compute. It isn't tied to any data source."
+        feedback: The compute-optimal split already aims for the best loss per training budget. Overtraining trades extra training for cheaper deployment.
       - id: c
-        text: "Training past $20$ tokens per parameter makes the compute formula stop applying."
+        text: Once the model has enough data, additional training tokens cost no more FLOPs.
         correct: false
         category: misunderstood_definition
         feedback: "$C\\approx6PD$ holds for any number of tokens. The lab just spends more compute than the compute-optimal split would."
@@ -677,7 +677,7 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: "A lab's scaling law predicts that its next model will reach a test loss of $2.1$. Which question can that prediction answer?"
+    prompt: "A lab fits a scaling law to several small training runs and uses it to plan a larger run. Which question can that prediction answer?"
     options:
       - id: a
         text: Whether the new model will be able to solve a particular kind of maths problem.
@@ -879,20 +879,20 @@ exercises:
         correct: true
         feedback: Evaluation needs tests the model never trained on. Seeing the answers during pretraining lets memory stand in for skill.
       - id: b
-        text: Web pages are filtered out of pretraining data, so the result must be a scoring error.
+        text: The score is reliable if those pages appeared only once in the training data.
         correct: false
         category: misunderstood_definition
-        feedback: Web pages are the main source of pretraining data. Only low-quality pages are filtered out.
+        feedback: Even one exposure can leak test answers. Deduplication does not establish that a test is unseen.
       - id: c
-        text: "Quiz questions are too short to be tokenized, so they don't count as data."
+        text: The score is reliable because pretraining had no human-written correctness labels.
         correct: false
         category: incorrect_reasoning
-        feedback: Any text can be tokenized, however short. The problem is that the model may have seen the answers.
+        feedback: Next-token prediction can learn the answers from ordinary text without separate correctness labels.
       - id: d
-        text: "A model can't be evaluated until post-training is finished."
+        text: The score is reliable if the evaluation uses a different chat format from the pages.
         correct: false
         category: incorrect_reasoning
-        feedback: Teams evaluate throughout, including during pretraining. The problem is that these test questions were in the training data.
+        feedback: Changing the format does not remove knowledge of test answers acquired during training.
     solution: Evaluation only tells us about new questions if the model never trained on the test. Here the test was in the pretraining data, so a high score may come from memorised answers.
   - id: ptp-robot-pipeline
     dimension: transfer

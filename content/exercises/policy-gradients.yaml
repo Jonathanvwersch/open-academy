@@ -22,14 +22,16 @@ exercises:
         }
       - {
           id: c,
-          text: "It turns the method into Q-learning",
+          text: "It reduces variance by omitting the gradient contributions from actions whose returns fall below the baseline",
           correct: false,
           category: misunderstood_definition,
+          feedback: "Returns below the baseline give negative weights. Their gradient contributions remain in the estimate.",
         }
       - {
           id: d,
-          text: "It guarantees that all returns are positive",
+          text: "It trades a biased gradient estimate for lower variance, so the expected update optimises a different objective",
           correct: false,
           category: incorrect_reasoning,
+          feedback: "A state-only baseline has zero expected contribution to the policy gradient. Subtracting it does not change the expected gradient.",
         }
     solution: "Because $\\mathbb E_{a\\sim\\pi}[\\nabla_\\theta \\log\\pi_\\theta(a\\mid s)] = 0$, subtracting any action-independent $b(s)$ keeps the estimator unbiased while centring the returns, which greatly reduces variance. Using $b(s) \\approx V(s)$ gives the advantage."
