@@ -625,8 +625,10 @@ test('tutor chat sends optimistically and supports chat-list navigation', async 
   const tutorRequestGate = new Promise<void>((resolve) => {
     releaseTutorRequest = resolve;
   });
+  let requestBody: Record<string, unknown> | undefined;
   await page.route('**/api/tutor/threads**', async (route) => {
     if (route.request().method() === 'POST') {
+      requestBody = route.request().postDataJSON() as Record<string, unknown>;
       markTutorRequestStarted();
       await tutorRequestGate;
     }
@@ -659,19 +661,6 @@ test('tutor chat sends optimistically and supports chat-list navigation', async 
   const conversationHeader = tutor.locator('[data-slot="sidebar-header"]');
   await expect(conversationHeader.getByTestId('tutor-conversation-title')).toHaveClass(/sr-only/);
   await expect(conversationHeader.getByText('Supervised learning', { exact: true })).toHaveCount(0);
-  const contextLine = tutor.getByTestId('tutor-reading-context');
-  await expect(contextLine).toContainText(/^Context: Supervised learning · step 1 of \d+$/);
-  await expect(contextLine).toHaveAttribute('title', /^Context: /);
-  const contextFollowsSend = await tutor.evaluate((element) => {
-    const sendButton = element.querySelector<HTMLButtonElement>('[aria-label="Send"]');
-    const line = element.querySelector('[data-testid="tutor-reading-context"]');
-    return Boolean(
-      sendButton &&
-        line &&
-        (sendButton.compareDocumentPosition(line) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
-    );
-  });
-  expect(contextFollowsSend).toBe(true);
   await tutor.getByRole('button', { name: 'New chat' }).click();
   await expect(tutor.getByTestId('tutor-conversation-title')).toHaveText('New chat');
   await expect(tutor.getByText('Start a conversation')).toHaveCount(0);
@@ -683,6 +672,11 @@ test('tutor chat sends optimistically and supports chat-list navigation', async 
   if (!sendButtonBefore) throw new Error('Tutor Send button is not visible');
   await textarea.press('Enter');
   await tutorRequestStarted;
+  expect(requestBody).toMatchObject({
+    page: 'session',
+    conceptId: 'supervised-learning',
+  });
+  expect(requestBody?.knowledgePointId).toBeTruthy();
   await expect(textarea).toHaveValue('');
   await expect(
     tutor.getByTestId('tutor-user-message').filter({ hasText: 'Explain the first step' }),
@@ -755,12 +749,20 @@ test('tutor chat sends optimistically and supports chat-list navigation', async 
   await restoredTutor.getByRole('button', { name: 'New chat' }).click();
   await expect(restoredTutor.getByTestId('tutor-conversation-title')).toHaveText('New chat');
   await expect(restoredTutor.getByText('Start a conversation')).toHaveCount(0);
-  await expect(restoredTutor.getByTestId('tutor-reading-context')).toContainText(
-    /^Context: Supervised learning/,
-  );
   const secondTextarea = restoredTutor.getByLabel('Ask the tutor');
   await secondTextarea.fill('Why are targets useful?');
+  const secondResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'POST' && response.url().includes('/api/tutor/threads'),
+  );
   await restoredTutor.getByRole('button', { name: 'Send' }).click();
+  const secondRequest = await secondResponse;
+  const secondRequestBody = secondRequest.request().postDataJSON() as Record<string, unknown>;
+  expect(secondRequestBody).toMatchObject({
+    page: 'session',
+    conceptId: 'supervised-learning',
+  });
+  expect(secondRequestBody.knowledgePointId).toBeTruthy();
   await expect(
     restoredTutor.getByTestId('tutor-user-message').filter({ hasText: 'Why are targets useful?' }),
   ).toHaveCount(1);
@@ -776,13 +778,10 @@ test('tutor chat sends optimistically and supports chat-list navigation', async 
   await expect(threadRows.nth(1).locator('[data-slot="badge"]')).toHaveText('Supervised learning');
   await page.screenshot({ path: `${screenshotDir}/tutor-chats.png` });
 
-  const firstThreadRow = restoredTutor.locator(
-    '[data-testid^="tutor-thread-"]:not([aria-pressed="true"])',
-  );
-  await expect(firstThreadRow).toHaveCount(1);
-  const firstThreadTestId = await firstThreadRow.getAttribute('data-testid');
-  if (!firstThreadTestId) throw new Error('Could not identify the first tutor thread');
-  const firstThread = restoredTutor.getByTestId(firstThreadTestId);
+  const firstThread = restoredTutor
+    .locator('[data-testid^="tutor-thread-"]')
+    .filter({ hasText: 'Explain the first step' });
+  await expect(firstThread).toHaveCount(1);
   await firstThread.click();
   await expect(restoredTutor.getByTestId('tutor-conversation-title')).toHaveText(
     'Explain the first step',
@@ -793,11 +792,22 @@ test('tutor chat sends optimistically and supports chat-list navigation', async 
   await restoredTutor.getByRole('button', { name: 'Chats' }).click();
   await restoredTutor.getByRole('button', { name: 'New chat' }).first().click();
   await expect(restoredTutor.getByTestId('tutor-conversation-title')).toHaveText('New chat');
-  await expect(restoredTutor.getByTestId('tutor-reading-context')).toContainText(
-    /^Context: Supervised learning/,
-  );
   await expect(restoredTutor.getByTestId('tutor-user-message')).toHaveCount(0);
   await expect(restoredTutor.getByText('Start a conversation')).toHaveCount(0);
+  const switchedTextarea = restoredTutor.getByLabel('Ask the tutor');
+  await switchedTextarea.fill('How does this step connect to the concept?');
+  const switchedResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'POST' && response.url().includes('/api/tutor/threads'),
+  );
+  await restoredTutor.getByRole('button', { name: 'Send' }).click();
+  const switchedRequest = await switchedResponse;
+  const switchedRequestBody = switchedRequest.request().postDataJSON() as Record<string, unknown>;
+  expect(switchedRequestBody).toMatchObject({
+    page: 'session',
+    conceptId: 'supervised-learning',
+  });
+  expect(switchedRequestBody.knowledgePointId).toBeTruthy();
 
   await restoredTutor.getByRole('button', { name: 'Chats' }).click();
   await firstThread.click();
@@ -1409,8 +1419,6 @@ test('tutor Context follows the session, lesson, and home pages', async ({ page 
   await expect(page.getByRole('heading', { name: 'Supervised learning' })).toBeVisible();
   await page.getByRole('button', { name: 'Ask the tutor' }).click();
   const tutor = page.getByRole('complementary', { name: 'Tutor' });
-  const contextLine = tutor.getByTestId('tutor-reading-context');
-  await expect(contextLine).toHaveText(/^Context: Supervised learning · step 1 of \d+$/);
   await page.screenshot({
     path: `${pageContextScreenshotDir}/tutor-session.png`,
     fullPage: true,
@@ -1432,6 +1440,7 @@ test('tutor Context follows the session, lesson, and home pages', async ({ page 
   await sendResponse;
   expect(requestBody).toMatchObject({
     page: 'session',
+    conceptId: 'supervised-learning',
     knowledgePointId,
   });
   expect(requestBody).not.toHaveProperty('pageLabel');
@@ -1446,7 +1455,22 @@ test('tutor Context follows the session, lesson, and home pages', async ({ page 
   });
   await expect(page).toHaveURL(/\/lessons\/supervised-learning$/);
   await expect(page.getByRole('heading', { name: 'Supervised learning' })).toBeVisible();
-  await expect(contextLine).toHaveText('Context: Supervised learning · full lesson');
+  const lessonTextarea = tutor.getByLabel('Ask the tutor');
+  await lessonTextarea.fill('What does the full lesson explain?');
+  const lessonResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'POST' && response.url().includes('/api/tutor/threads'),
+  );
+  await lessonTextarea.press('Enter');
+  const lessonRequest = await lessonResponse;
+  expect(lessonRequest.request().postDataJSON()).toMatchObject({
+    page: 'lesson',
+    conceptId: 'supervised-learning',
+  });
+  expect(lessonRequest.request().postDataJSON()).not.toHaveProperty('pageLabel');
+  await expect(tutor.getByTestId('tutor-assistant-message').last()).toContainText(
+    'Tutor reply to: What does the full lesson explain?',
+  );
   await page.screenshot({ path: `${headerScreenshotDir}/desktop.png` });
   await page.setViewportSize({ width: 390, height: 844 });
   const mobileTutor = page.locator('[data-slot="sidebar"][data-mobile="true"]');
@@ -1463,7 +1487,6 @@ test('tutor Context follows the session, lesson, and home pages', async ({ page 
 
   await page.getByRole('link', { name: 'Home', exact: true }).click();
   await expect(page).toHaveURL('/');
-  await expect(tutor.getByTestId('tutor-reading-context')).toHaveCount(0);
 });
 
 test('long tutor drafts keep the composer controls in view on desktop and mobile', async ({

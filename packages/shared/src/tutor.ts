@@ -44,6 +44,42 @@ function repairBacktickedMath(markdown: string): string {
     .join('```');
 }
 
+function replaceTextDashes(markdown: string): string {
+  return markdown
+    .replace(/^([ \t]*)—[ \t]*/gm, '$1')
+    .replace(/[ \t]*—[ \t]*(?=$|[.,;:!?])/gm, '')
+    .replace(/(?<=,)[ \t]*—[ \t]*(?=\S)/g, ' ')
+    .replace(/(?<=\S)[ \t]*—[ \t]*(?=\S)/g, ', ')
+    .replace(/(?<=,)[ \t]+–[ \t]+(?=[^\d\s])/g, ' ')
+    .replace(/(?<=[^\d\s])[ \t]+–[ \t]+(?=[^\d\s])/g, ', ');
+}
+
+function replaceTutorDashesOutsideProtectedSpans(markdown: string): string {
+  const protectedSpan =
+    /(`+)[\s\S]*?\1|\$\$[\s\S]*?\$\$|\$(?!\$)[^$]*\$(?!\$)|(?<=\])\([^)]*\)|<https?:\/\/[^>]*>|https?:\/\/\S+/g;
+  let placeholderPrefix = '\uE000';
+  while (markdown.includes(placeholderPrefix)) placeholderPrefix += '\uE000';
+  const protectedSpans: string[] = [];
+  const tokenized = markdown.replace(protectedSpan, (span) => {
+    const index = protectedSpans.push(span) - 1;
+    return `${placeholderPrefix}${index}\uE001`;
+  });
+  const placeholderPattern = new RegExp(`${placeholderPrefix}(\\d+)\\uE001`, 'g');
+  return replaceTextDashes(tokenized).replace(
+    placeholderPattern,
+    (placeholder, index: string) => protectedSpans[Number(index)] ?? placeholder,
+  );
+}
+
+export function replaceTutorDashes(md: string): string {
+  return md
+    .split('```')
+    .map((segment, index) =>
+      index % 2 === 1 ? segment : replaceTutorDashesOutsideProtectedSpans(segment),
+    )
+    .join('```');
+}
+
 export function repairTutorMarkdown(md: string): string {
   const repaired = md
     .replace(/([\s\S])([0-9a-fA-F]{2})/g, (match, control: string, hex: string) => {
@@ -64,5 +100,5 @@ export function repairTutorMarkdown(md: string): string {
         : character;
     })
     .replace(/(?<!\$)\$\$([^$\n]+)\$(?!\$)/g, (_match, math: string) => `$${math}$`);
-  return repairBacktickedMath(repairedMath);
+  return replaceTutorDashes(repairBacktickedMath(repairedMath));
 }

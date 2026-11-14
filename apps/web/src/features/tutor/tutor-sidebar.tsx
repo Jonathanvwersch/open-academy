@@ -5,7 +5,7 @@ import {
   tutorQuestionTooLongMessage,
 } from '@academy/shared/tutor';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Eye, Plus, X } from 'lucide-react';
+import { ArrowLeft, Plus, X } from 'lucide-react';
 import {
   createContext,
   lazy,
@@ -188,19 +188,6 @@ function relativeThreadTime(value: string): string {
   if (elapsedHours < 24) return formatter.format(-elapsedHours, 'hour');
   const daysAgo = localDayOrdinal(new Date()) - localDayOrdinal(date);
   return formatter.format(-Math.max(1, daysAgo), 'day');
-}
-
-function ContextLine({ pageLabel }: { pageLabel?: string }) {
-  return pageLabel ? (
-    <div
-      data-testid="tutor-reading-context"
-      title={`Context: ${pageLabel}`}
-      className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground"
-    >
-      <Eye aria-hidden="true" className="size-3.5 shrink-0" />
-      <span className="truncate">Context: {pageLabel}</span>
-    </div>
-  ) : null;
 }
 
 export function TutorContextProvider({
@@ -945,7 +932,6 @@ export function TutorContextProvider({
                         ) : null}
                       </div>
                     </PromptInput>
-                    <ContextLine pageLabel={context.pageLabel} />
                   </SidebarFooter>
                 </>
               )
