@@ -12,6 +12,7 @@ import { answerOptionsFor } from '../../learning/answer-options.js';
 import { initialLearnProgress } from '../../learning/initial-learn-progress.js';
 import { recordLessonViewed } from '../../learning/mastery.js';
 import {
+  activeCourseFor,
   compareOutlinePosition,
   masteryKey,
   prerequisiteMet,
@@ -19,7 +20,7 @@ import {
 import { attemptAllowsRetry } from '../../learning/retry.js';
 import type { PlannedActivity, SessionPreferences } from '../../learning/scheduler.js';
 import {
-  currentLearnerWeek,
+  currentLearnerUnit,
   planSession,
   replan,
   sessionBudget,
@@ -45,15 +46,17 @@ export async function getToday(deps: FeatureServices, request: FeatureRequest) {
   const plan = planSession(state, index, now, budget, sessionKind);
   const active = await repo.activeSession(now);
   const diagnostic = await repo.latestDiagnosticRun();
-  const week = currentLearnerWeek(state, index);
-  const weekFocus = index.curriculum?.weeks.find((entry) => entry.week === week);
+  const course = activeCourseFor(index, state.activeCourseId);
+  const unit = currentLearnerUnit(state, index);
+  const unitFocus = course?.units[unit - 1];
   return serviceResult({
     needsDiagnostic: (!diagnostic || diagnostic.status === 'active') && Boolean(index.diagnostic),
     diagnosticActive: diagnostic?.status === 'active',
     diagnosticRunId: diagnostic?.status === 'active' ? diagnostic.id : null,
-    objective: weekFocus?.title ?? prefs.goal ?? 'Build a steady foundation in machine learning.',
-    weekTitle: weekFocus?.title ?? `Week ${week}`,
-    week,
+    objective: unitFocus?.title ?? prefs.goal ?? 'Build a steady foundation in machine learning.',
+    courseTitle: course?.title ?? '',
+    unitTitle: unitFocus?.title ?? `Unit ${unit}`,
+    unit,
     dueReviews: plan.activities.filter((activity) => activity.kind === 'review').length,
     budgetMinutes: budget,
     sessionKind,
@@ -108,7 +111,7 @@ export async function postSessions(deps: FeatureServices, request: FeatureReques
     const unmetPrerequisite = focusConcept.prereqs
       .filter((prerequisite) => prerequisite.strength === 'hard')
       .slice()
-      .sort((left, right) => compareOutlinePosition(left.id, right.id, index))
+      .sort((left, right) => compareOutlinePosition(left.id, right.id, index, state.activeCourseId))
       .find(
         (prerequisite) =>
           !prerequisiteMet(prerequisite.id, masteryByKey, state.lessonRuns ?? [], index),

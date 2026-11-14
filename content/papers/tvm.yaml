@@ -2,7 +2,6 @@ id: tvm
 title: "TVM: An Automated End-to-End Optimizing Compiler for Deep Learning"
 authors: Chen et al.
 year: 2018
-week: 6
 est_minutes: 60
 source:
   arxiv: 1802.04799v3

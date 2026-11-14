@@ -209,7 +209,6 @@ export function validateContent(data: ContentSourceData): ContentIssue[] {
   const seenPaperIds = new Set<string>();
   const domains = new Set(data.curriculum?.value.domains.map((domain) => domain.id) ?? []);
   const seenGoals = new Set<string>();
-  const seenWeeks = new Set<number>();
   const seenProjects = new Set<string>();
   const seenExercises = new Set<string>();
   const seenConcepts = new Set<string>();
@@ -358,14 +357,10 @@ export function validateContent(data: ContentSourceData): ContentIssue[] {
     }
   }
 
-  const curriculumWeeks = new Set(data.curriculum?.value.weeks.map((week) => week.week) ?? []);
   const questionKinds = ['claim', 'method', 'evidence', 'limitations'];
   for (const { value, file } of data.papers) {
     if (seenPaperIds.has(value.id)) addIssue(issues, file, value.id, 'duplicate paper id');
     seenPaperIds.add(value.id);
-    if (!curriculumWeeks.has(value.week)) {
-      addIssue(issues, file, value.id, `week ${value.week} is not in the curriculum`);
-    }
     for (const conceptId of value.concepts) {
       if (!concepts.has(conceptId)) {
         addIssue(issues, file, value.id, `unknown concept "${conceptId}"`);
@@ -575,7 +570,6 @@ export function validateContent(data: ContentSourceData): ContentIssue[] {
 
   if (data.curriculum) {
     const curriculum = data.curriculum.value;
-    const outlinedConceptWeeks = new Map<string, number>();
     for (const goal of curriculum.goals) {
       if (seenGoals.has(goal.id)) {
         addIssue(issues, data.curriculum.file, goal.id, 'duplicate goal id');
@@ -592,96 +586,160 @@ export function validateContent(data: ContentSourceData): ContentIssue[] {
         }
       }
     }
-    for (const week of curriculum.weeks) {
-      if (seenWeeks.has(week.week)) {
-        addIssue(issues, data.curriculum.file, String(week.week), 'duplicate curriculum week');
-      }
-      seenWeeks.add(week.week);
-      for (const conceptId of week.concepts) {
-        const concept = concepts.get(conceptId);
-        if (concept && concept.value.week !== week.week) {
-          addIssue(
-            issues,
-            data.curriculum.file,
-            conceptId,
-            `concept week field (${concept.value.week}) does not match curriculum week (${week.week})`,
-          );
-        }
-        const outlinedWeek = outlinedConceptWeeks.get(conceptId);
-        if (outlinedWeek !== undefined) {
-          addIssue(
-            issues,
-            data.curriculum.file,
-            conceptId,
-            `concept listed more than once in the curriculum (weeks ${outlinedWeek} and ${week.week})`,
-          );
-        } else {
-          outlinedConceptWeeks.set(conceptId, week.week);
-        }
-        if (!concepts.has(conceptId)) {
-          addIssue(
-            issues,
-            data.curriculum.file,
-            String(week.week),
-            `references unknown concept "${conceptId}"`,
-          );
-        }
-      }
-      if (week.project && !projects.has(week.project)) {
-        addIssue(
-          issues,
-          data.curriculum.file,
-          String(week.week),
-          `references unknown project "${week.project}"`,
-        );
-      }
-    }
-    const outlinePosition = new Map<string, [number, number]>();
-    for (const week of curriculum.weeks) {
-      week.concepts.forEach((conceptId, index) => {
-        const current = outlinePosition.get(conceptId);
-        if (
-          !current ||
-          week.week < current[0] ||
-          (week.week === current[0] && index < current[1])
-        ) {
-          outlinePosition.set(conceptId, [week.week, index]);
-        }
-      });
-    }
-    for (const { value, file } of data.concepts) {
-      const conceptPosition = outlinePosition.get(value.id);
-      if (!conceptPosition) continue;
-      for (const prerequisite of value.prereqs) {
-        if (prerequisite.strength !== 'hard') continue;
-        const prerequisitePosition = outlinePosition.get(prerequisite.id);
-        if (!prerequisitePosition) {
-          addIssue(
-            issues,
-            file,
-            value.id,
-            `hard prerequisite "${prerequisite.id}" is missing from the curriculum outline`,
-          );
-        } else if (
-          prerequisitePosition[0] > conceptPosition[0] ||
-          (prerequisitePosition[0] === conceptPosition[0] &&
-            prerequisitePosition[1] > conceptPosition[1])
-        ) {
-          addIssue(
-            issues,
-            file,
-            value.id,
-            `hard prerequisite "${prerequisite.id}" appears later in the curriculum outline`,
-          );
-        }
-      }
-    }
+    validateCourses(data, issues, concepts, projects);
   }
 
   validateKnowledgePointContent(data, issues);
   validateNotationUsage(data, issues);
   findCycles(data, issues);
   return issues;
+}
+
+function validateCourses(
+  data: ContentSourceData,
+  issues: ContentIssue[],
+  concepts: Map<string, { value: ContentSourceData['concepts'][number]['value']; file: string }>,
+  projects: Map<string, { value: ContentSourceData['projects'][number]['value']; file: string }>,
+) {
+  const curriculum = data.curriculum?.value;
+  if (!curriculum) return;
+
+  const courseFiles = new Map<
+    string,
+    { value: ContentSourceData['courses'][number]['value']; file: string }
+  >();
+  for (const course of data.courses) {
+    if (courseFiles.has(course.value.id)) {
+      addIssue(issues, course.file, course.value.id, 'duplicate course id');
+    } else {
+      courseFiles.set(course.value.id, course);
+    }
+  }
+
+  const listedCourses = new Set<string>();
+  for (const courseId of curriculum.courses) {
+    if (listedCourses.has(courseId)) {
+      addIssue(
+        issues,
+        data.curriculum?.file ?? 'curriculum.yaml',
+        courseId,
+        'duplicate course in curriculum',
+      );
+    }
+    listedCourses.add(courseId);
+    if (!courseFiles.has(courseId)) {
+      addIssue(
+        issues,
+        data.curriculum?.file ?? 'curriculum.yaml',
+        courseId,
+        'course is listed but has no course file',
+      );
+    }
+  }
+  for (const course of data.courses) {
+    if (!listedCourses.has(course.value.id)) {
+      addIssue(issues, course.file, course.value.id, 'course id is not listed in curriculum');
+    }
+  }
+  if (
+    !courseFiles.has(curriculum.default_course) ||
+    !listedCourses.has(curriculum.default_course)
+  ) {
+    addIssue(
+      issues,
+      data.curriculum?.file ?? 'curriculum.yaml',
+      curriculum.default_course,
+      'default_course is not a listed course',
+    );
+  }
+
+  const outlinedConcepts = new Set<string>();
+  const assignedProjects = new Set<string>();
+  const assignedPapers = new Set<string>();
+  for (const course of data.courses) {
+    const positions = new Map<string, [number, number]>();
+    course.value.units.forEach((unit, unitIndex) => {
+      unit.concepts.forEach((conceptId, topicIndex) => {
+        if (!concepts.has(conceptId)) {
+          addIssue(
+            issues,
+            course.file,
+            course.value.id,
+            `unit ${unitIndex + 1} references unknown concept "${conceptId}"`,
+          );
+        }
+        if (positions.has(conceptId)) {
+          addIssue(
+            issues,
+            course.file,
+            course.value.id,
+            `concept "${conceptId}" appears more than once in this course`,
+          );
+        } else {
+          positions.set(conceptId, [unitIndex, topicIndex]);
+        }
+        outlinedConcepts.add(conceptId);
+      });
+      if (unit.project) {
+        if (!projects.has(unit.project)) {
+          addIssue(
+            issues,
+            course.file,
+            course.value.id,
+            `unit ${unitIndex + 1} references unknown project "${unit.project}"`,
+          );
+        }
+        assignedProjects.add(unit.project);
+      }
+      for (const paperId of unit.papers ?? []) {
+        if (!data.papers.some(({ value }) => value.id === paperId)) {
+          addIssue(
+            issues,
+            course.file,
+            course.value.id,
+            `unit ${unitIndex + 1} references unknown paper "${paperId}"`,
+          );
+        }
+        assignedPapers.add(paperId);
+      }
+    });
+    for (const conceptId of positions.keys()) {
+      const concept = concepts.get(conceptId);
+      const conceptPosition = positions.get(conceptId);
+      if (!concept || !conceptPosition) continue;
+      for (const prerequisite of concept.value.prereqs) {
+        if (prerequisite.strength !== 'hard') continue;
+        const prerequisitePosition = positions.get(prerequisite.id);
+        if (
+          prerequisitePosition &&
+          (prerequisitePosition[0] > conceptPosition[0] ||
+            (prerequisitePosition[0] === conceptPosition[0] &&
+              prerequisitePosition[1] > conceptPosition[1]))
+        ) {
+          addIssue(
+            issues,
+            course.file,
+            conceptId,
+            `hard prerequisite "${prerequisite.id}" appears later in course outline`,
+          );
+        }
+      }
+    }
+  }
+
+  for (const { value, file } of data.concepts) {
+    if (!outlinedConcepts.has(value.id)) {
+      addIssue(issues, file, value.id, 'concept is not listed in any course');
+    }
+  }
+  for (const { value, file } of data.projects) {
+    if (!assignedProjects.has(value.id))
+      addIssue(issues, file, value.id, 'project is not assigned to a course unit');
+  }
+  for (const { value, file } of data.papers) {
+    if (!assignedPapers.has(value.id))
+      addIssue(issues, file, value.id, 'paper is not assigned to a course unit');
+  }
 }
 
 function validateKnowledgePointContent(data: ContentSourceData, issues: ContentIssue[]) {

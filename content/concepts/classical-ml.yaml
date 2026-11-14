@@ -5,7 +5,6 @@ concepts:
     description: What learning from examples means, the house-price problem behind Weeks 1–4, and how the course leads to robot learning.
     difficulty: 1
     est_minutes: 15
-    week: 1
     goal_weight: 3
     dimensions: [conceptual]
     prereqs: []
@@ -24,7 +23,6 @@ concepts:
     description: Inputs, targets, a model family, a loss, and learning from examples.
     difficulty: 1
     est_minutes: 15
-    week: 1
     goal_weight: 3
     dimensions: [conceptual]
     prereqs: [{ id: what-is-ml, strength: soft }]
@@ -39,7 +37,6 @@ concepts:
     description: Predicting a real value as a weighted sum of features plus bias.
     difficulty: 2
     est_minutes: 30
-    week: 1
     goal_weight: 3
     dimensions: [conceptual, math, implementation]
     prereqs: [{ id: supervised-learning }, { id: dot-product }, { id: matrices }]
@@ -54,7 +51,6 @@ concepts:
     description: Measuring prediction error; MSE vs MAE and their gradients.
     difficulty: 2
     est_minutes: 25
-    week: 1
     goal_weight: 3
     dimensions: [conceptual, math, transfer]
     prereqs: [{ id: supervised-learning }, { id: derivatives }]
@@ -68,7 +64,6 @@ concepts:
     description: Iteratively stepping parameters against the gradient of the loss; learning rate.
     difficulty: 2
     est_minutes: 35
-    week: 1
     goal_weight: 3
     dimensions: [conceptual, math, implementation, transfer]
     prereqs: [{ id: gradients }, { id: loss-functions }, { id: linear-regression }]
@@ -84,7 +79,6 @@ concepts:
     description: Train/validation/test sets; why we evaluate on held-out data.
     difficulty: 1
     est_minutes: 20
-    week: 1
     goal_weight: 3
     dimensions: [conceptual, transfer]
     prereqs: [{ id: supervised-learning }, { id: gradient-descent }]
@@ -98,7 +92,6 @@ concepts:
     description: Binary classification with a sigmoid output and cross-entropy loss.
     difficulty: 3
     est_minutes: 35
-    week: 2
     goal_weight: 2
     dimensions: [conceptual, math, implementation]
     prereqs:
@@ -115,7 +108,6 @@ concepts:
     description: Bias/variance intuition; diagnosing from train vs validation curves.
     difficulty: 2
     est_minutes: 25
-    week: 4
     goal_weight: 3
     dimensions: [conceptual, transfer]
     prereqs: [{ id: train-test-split }]
@@ -127,7 +119,6 @@ concepts:
     description: L2/L1 penalties, weight decay, dropout, early stopping.
     difficulty: 3
     est_minutes: 30
-    week: 4
     goal_weight: 2
     dimensions: [conceptual, math]
     prereqs: [{ id: overfitting }, { id: loss-functions }]
@@ -139,7 +130,6 @@ concepts:
     description: What it means for a model to work on unseen data; distribution assumptions.
     difficulty: 3
     est_minutes: 20
-    week: 4
     goal_weight: 3
     dimensions: [conceptual, transfer]
     prereqs: [{ id: overfitting }]
@@ -151,7 +141,6 @@ concepts:
     description: Accuracy, precision/recall, confusion matrices, regression metrics.
     difficulty: 2
     est_minutes: 25
-    week: 2
     goal_weight: 2
     dimensions: [conceptual, math]
     prereqs: [{ id: train-test-split }]

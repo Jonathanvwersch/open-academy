@@ -85,6 +85,13 @@
       "when": 1794594389706,
       "tag": "0011_mixed_multiple_man",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1794627922662,
+      "tag": "0012_jittery_timeslip",
+      "breakpoints": true
     }
   ]
 }

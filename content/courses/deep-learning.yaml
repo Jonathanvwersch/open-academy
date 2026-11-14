@@ -1,0 +1,37 @@
+id: deep-learning
+title: Deep Learning
+description: "Neural networks from single neurons to convolutional networks and autoencoders: backpropagation, PyTorch, and how to train deep models well."
+units:
+  - title: Neural networks
+    intro: A straight-line model can't capture every pattern. You'll build a neural network from neurons and layers, and learn backpropagation, the method that trains every modern network.
+    project: nn-from-scratch
+    papers:
+      - baydin-autodiff-survey
+      - pytorch-paper
+    concepts:
+      - perceptron
+      - activation-functions
+      - mlp-forward-pass
+      - computational-graphs
+      - backpropagation
+      - autodiff
+      - pytorch-basics
+  - title: Deep learning practice
+    intro: "Training deep networks that work: minibatches and Adam, initialisation and normalisation, overfitting and regularisation, debugging and fair experiments, then convolutional networks and autoencoders for images."
+    project: image-classifier
+    papers:
+      - adam
+      - batch-normalization
+      - resnet
+    concepts:
+      - sgd-minibatch
+      - momentum-adam
+      - weight-init-normalization
+      - overfitting
+      - regularization
+      - generalization
+      - debugging-training
+      - experimental-design
+      - images-as-tensors
+      - convolutions
+      - autoencoders

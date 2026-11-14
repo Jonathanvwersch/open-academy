@@ -1,0 +1,15 @@
+id: fixture-course
+title: Fixture course
+description: Main content fixture.
+units:
+  - title: ML fundamentals
+    intro: "You'll build the simplest model that learns: predicting a house's price from its measurements, trained on past sales. The maths topics are the tools this model needs, taught in the order it needs them."
+    concepts: [vectors, derivatives, linear-algebra, supervised-learning, linear-models]
+    project: linreg-numpy
+    papers: [fixture-paper-one]
+    saturday: Build a simple model.
+    sunday: Review foundational ideas.
+  - title: Optimization
+    concepts: [gradients, loss-functions, gradient-descent, matrix-products]
+    project: optimization-project
+    papers: [fixture-paper-two]

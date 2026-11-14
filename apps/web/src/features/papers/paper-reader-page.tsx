@@ -24,7 +24,7 @@ const paperReadingGuide = `1. **First pass, about 10 minutes.** Read the title, 
 2. **Second pass.** Read the method and the experiments. For each result, ask what it is compared against, on which data, with which metric, and whether the gap is bigger than run-to-run noise.
 3. **Third pass, only if you need it.** Work through the maths and details until you could reimplement the idea.
 
-Skip what you don't understand yet; later weeks often explain it. Then answer the four questions below: claim, method, evidence and limitations.`;
+Skip what you don't understand yet; later topics often explain it. Then answer the four questions below: claim, method, evidence and limitations.`;
 
 function readPaperGuideOpen(): boolean {
   if (typeof window === 'undefined') return true;

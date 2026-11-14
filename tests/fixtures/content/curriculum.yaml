@@ -2,18 +2,8 @@ schedule: { mon: 45, tue: 45, wed: 45, thu: 45, fri: 45, sat: 120, sun: 60 }
 domains:
   - { id: math, title: Mathematics, description: "Vectors, derivatives, and linear algebra." }
   - { id: ml, title: Machine learning, description: "Models, losses, and optimization." }
-weeks:
-  - week: 1
-    title: ML fundamentals
-    intro: "You'll build the simplest model that learns: predicting a house's price from its measurements, trained on past sales. The maths topics are the tools this model needs, taught in the order it needs them."
-    concepts: [vectors, derivatives, linear-algebra, supervised-learning, linear-models]
-    project: linreg-numpy
-    saturday: Build a simple model.
-    sunday: Review foundational ideas.
-  - week: 2
-    title: Optimization
-    concepts: [gradients, loss-functions, gradient-descent, matrix-products]
-    project: optimization-project
+courses: [fixture-course, fixture-switching-course]
+default_course: fixture-course
 goals:
   - id: g-model-training
     text: Explain how a simple model learns from data.

@@ -36,6 +36,27 @@ const ScheduleSchema = z
   })
   .strict();
 
+export const CourseUnitSchema = z
+  .object({
+    title: z.string().min(1),
+    intro: z.string().optional(),
+    project: IdSchema.optional(),
+    papers: z.array(IdSchema).optional(),
+    saturday: z.string().optional(),
+    sunday: z.string().optional(),
+    concepts: z.array(IdSchema).min(1),
+  })
+  .strict();
+
+export const CourseSchema = z
+  .object({
+    id: IdSchema,
+    title: z.string().min(1),
+    description: z.string(),
+    units: z.array(CourseUnitSchema).min(1),
+  })
+  .strict();
+
 export const CurriculumSchema = z
   .object({
     schedule: ScheduleSchema,
@@ -50,21 +71,8 @@ export const CurriculumSchema = z
           .strict(),
       )
       .min(1),
-    weeks: z
-      .array(
-        z
-          .object({
-            week: z.number().int().positive(),
-            title: z.string().min(1),
-            concepts: z.array(IdSchema),
-            project: IdSchema.optional(),
-            intro: z.string().optional(),
-            saturday: z.string().optional(),
-            sunday: z.string().optional(),
-          })
-          .strict(),
-      )
-      .default([]),
+    courses: z.array(IdSchema).min(1),
+    default_course: IdSchema,
     goals: z
       .array(
         z
@@ -86,7 +94,6 @@ export const ConceptSchema = z
     description: z.string(),
     difficulty: z.number().int().min(1).max(5),
     est_minutes: z.number().positive(),
-    week: z.number().int().positive(),
     goal_weight: z.number().min(0).max(3),
     dimensions: z.array(DimensionSchema).min(1),
     prereqs: z
@@ -464,7 +471,6 @@ export const ProjectSchema = z
   .object({
     id: IdSchema,
     title: z.string().min(1),
-    week: z.number().int().positive(),
     status: z.enum(['authored', 'stub']),
     est_hours: z.number().positive(),
     objective: z.string().min(1),
@@ -533,7 +539,6 @@ export const PaperSchema = z
     title: z.string().min(1),
     authors: z.string().min(1),
     year: z.number().int().positive(),
-    week: z.number().int().positive(),
     est_minutes: z.number().int().min(30).max(180),
     source: z.union([
       z.object({ arxiv: z.string().regex(/^\d{4}\.\d{4,5}v\d+$/) }).strict(),
@@ -554,6 +559,7 @@ export const PaperSchema = z
   .strict();
 
 export type Curriculum = z.infer<typeof CurriculumSchema>;
+export type Course = z.infer<typeof CourseSchema>;
 export type Concept = z.infer<typeof ConceptSchema>;
 export type NotationRegistry = z.infer<typeof NotationSchema>;
 export type Exercise = z.infer<typeof ExerciseSchema>;

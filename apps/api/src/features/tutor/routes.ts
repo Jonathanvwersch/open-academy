@@ -23,7 +23,7 @@ import {
 } from '../../db/schema.js';
 import type { ApiEnv } from '../../http/context.js';
 import { attemptAllowsRetry } from '../../learning/retry.js';
-import { buildCourseWeeks } from '../course/service.js';
+import { buildCoursePayload } from '../course/service.js';
 import { extractPaperPages } from '../papers/service.js';
 import {
   formatGraderFeedback,
@@ -284,23 +284,27 @@ export function registerTutorThreadRoutes(
     const concept = conceptId ? index.conceptsById.get(conceptId) : undefined;
     const lesson = conceptId ? index.lessonsByConcept.get(conceptId) : undefined;
     const pageConceptId = exercise?.concept ?? input.conceptId ?? null;
-    const courseWeeks =
+    const courseState =
       input.page === 'course'
-        ? buildCourseWeeks(
-            index,
-            (await deps.withRepo(c).schedulerState(deps.requestNow(c))).mastery,
-            await db
-              .select()
-              .from(lessonRuns)
-              .where(eq(lessonRuns.userId, c.get('userId'))),
-          )
+        ? await deps.withRepo(c).schedulerState(deps.requestNow(c))
         : undefined;
+    const courseUnits = courseState
+      ? buildCoursePayload(
+          index,
+          courseState.activeCourseId,
+          courseState.mastery,
+          await db
+            .select()
+            .from(lessonRuns)
+            .where(eq(lessonRuns.userId, c.get('userId'))),
+        ).units
+      : undefined;
     const pageContent = buildTutorPageContent({
       page: input.page,
       index,
       conceptId: pageConceptId,
       knowledgePointId: lessonProblem?.knowledgePointId ?? input.knowledgePointId,
-      courseWeeks,
+      courseUnits,
       ...(input.page === 'paper'
         ? await (async () => {
             const paper = input.paperId ? index.papersById.get(input.paperId) : undefined;

@@ -5,7 +5,6 @@ concepts:
     description: Represent quantities with magnitude and direction.
     difficulty: 1
     est_minutes: 20
-    week: 1
     goal_weight: 3
     dimensions: [conceptual, math, transfer]
     prereqs: []
@@ -21,7 +20,6 @@ concepts:
     description: Describe local rates of change.
     difficulty: 2
     est_minutes: 25
-    week: 1
     goal_weight: 3
     dimensions: [conceptual, math, transfer]
     prereqs: [{ id: vectors }]
@@ -37,7 +35,6 @@ concepts:
     description: Combine partial derivatives into a direction of change.
     difficulty: 3
     est_minutes: 30
-    week: 2
     goal_weight: 3
     dimensions: [conceptual, math, implementation, transfer]
     prereqs: [{ id: derivatives }]
@@ -53,7 +50,6 @@ concepts:
     description: Use matrix notation to represent transformations.
     difficulty: 2
     est_minutes: 25
-    week: 1
     goal_weight: 2
     dimensions: [conceptual, math, implementation]
     prereqs: [{ id: vectors }]
@@ -69,7 +65,6 @@ concepts:
     description: A graph node reserved for a later lesson.
     difficulty: 3
     est_minutes: 30
-    week: 2
     goal_weight: 1
     dimensions: [math, implementation]
     prereqs: [{ id: linear-algebra }]

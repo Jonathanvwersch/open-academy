@@ -1,6 +1,7 @@
 export interface PapersPayload {
-  weeks: Array<{
-    week: number;
+  units: Array<{
+    unit: number;
+    title: string;
     papers: Array<{
       id: string;
       title: string;

@@ -14,6 +14,7 @@ export interface LearnPayload {
     week: Array<{ date: string; xp: number; goal: number }>;
   };
   course: {
+    title: string;
     percentComplete: number;
     topicsDone: number;
     topicsTotal: number;
@@ -46,9 +47,19 @@ export interface LearnPayload {
 }
 
 export interface CoursePayload {
-  currentWeek: number;
-  weeks: Array<{
-    week: number;
+  course: { id: string; title: string; description: string };
+  courses: Array<{
+    id: string;
+    title: string;
+    description: string;
+    topicsDone: number;
+    topicsTotal: number;
+    active: boolean;
+  }>;
+  currentUnit: number;
+  foundations: CourseTopic[];
+  units: Array<{
+    unit: number;
     title: string;
     intro: string;
     project: {
@@ -65,17 +76,19 @@ export interface CoursePayload {
       estMinutes: number;
       status: 'not_started' | 'reading' | 'completed';
     }>;
-    topics: Array<{
-      number: string;
-      conceptId: string;
-      title: string;
-      hasLesson: boolean;
-      status: 'locked' | 'not_started' | 'in_progress' | 'quiz' | 'complete';
-      mastery: 'Not started' | 'Attempted' | 'Familiar' | 'Proficient' | 'Mastered';
-      needs?: Array<{ id: string; title: string; quiz?: boolean }>;
-      buildsOn: Array<{ id: string; title: string }>;
-      leadsTo: Array<{ id: string; title: string }>;
-      leadsToMore: number;
-    }>;
+    topics: CourseTopic[];
   }>;
+}
+
+export interface CourseTopic {
+  number: string;
+  conceptId: string;
+  title: string;
+  hasLesson: boolean;
+  status: 'locked' | 'not_started' | 'in_progress' | 'quiz' | 'complete';
+  mastery: 'Not started' | 'Attempted' | 'Familiar' | 'Proficient' | 'Mastered';
+  needs?: Array<{ id: string; title: string; quiz?: boolean }>;
+  buildsOn: Array<{ id: string; title: string }>;
+  leadsTo: Array<{ id: string; title: string }>;
+  leadsToMore: number;
 }

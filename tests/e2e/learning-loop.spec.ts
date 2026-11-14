@@ -90,14 +90,14 @@ test('diagnostic to KP runner starts point one and preserves progress', async ({
   await page.evaluate(() => window.sessionStorage.clear());
   await page.goto(`/diagnostic/results?id=${runId}`);
   await expect(page.getByText('unassessed · 0 answers', { exact: false }).first()).toBeVisible();
-  await expect(page.getByText('First week: ML fundamentals')).toBeVisible();
+  await expect(page.getByText('Unit 1: ML fundamentals')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'First session' })).toBeVisible();
   await expect(
     page.getByRole('heading', { name: 'First session' }).locator('..').locator('li').first(),
   ).toBeVisible();
   await page.evaluate(() => window.sessionStorage.clear());
   await page.goto('/diagnostic/results');
-  await expect(page.getByText('First week: ML fundamentals')).toBeVisible();
+  await expect(page.getByText('Unit 1: ML fundamentals')).toBeVisible();
 
   await page.getByRole('link', { name: 'View Learn' }).click();
   await expect(page.getByRole('heading', { name: 'Home', exact: true })).toBeVisible();
@@ -219,7 +219,7 @@ test('route loaders keep content stable under 300ms latency', async ({ page }) =
   for (const route of [
     { name: 'Progress', path: '/progress', heading: 'Progress' },
     { name: 'Settings', path: '/settings', heading: 'Settings' },
-    { name: 'Course', path: '/course', heading: 'Course' },
+    { name: 'Course', path: '/course', heading: 'Fixture course' },
   ]) {
     await page.getByRole('link', { name: route.name }).click();
     await expect(page.getByRole('heading', { name: route.heading })).toBeVisible();

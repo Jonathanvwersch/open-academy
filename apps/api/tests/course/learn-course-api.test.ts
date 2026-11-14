@@ -83,14 +83,107 @@ async function get(path: string) {
   });
 }
 
+async function put(path: string, body: unknown) {
+  return app.request(`/api${path}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Now': '2026-01-07T12:00:00.000Z',
+    },
+    body: JSON.stringify(body),
+  });
+}
+
+test('learners can switch to a listed course', async () => {
+  const response = await put('/course/active', { courseId: 'robotics' });
+  expect(response.status).toBe(200);
+  expect(await response.json()).toEqual({ courseId: 'robotics' });
+  const [user] = await db.select().from(users).where(eq(users.id, userId));
+  expect(user?.activeCourseId).toBe('robotics');
+  const coursePayload = await (await get('/course')).json();
+  expect(coursePayload.course).toMatchObject({ id: 'robotics', title: 'Robotics' });
+  expect(
+    coursePayload.courses.find((course: { id: string }) => course.id === 'robotics'),
+  ).toMatchObject({
+    active: true,
+    topicsTotal: expect.any(Number),
+  });
+  const learnPayload = await (await get('/learn')).json();
+  expect(learnPayload.streak).toMatchObject({
+    current: expect.any(Number),
+    longest: expect.any(Number),
+    todayComplete: expect.any(Boolean),
+    days: expect.any(Array),
+  });
+  expect(learnPayload.streak.days).toHaveLength(7);
+  expect(learnPayload.course).toMatchObject({
+    title: 'Robotics',
+    topicsTotal: coursePayload.units.reduce(
+      (total: number, unit: { topics: unknown[] }) => total + unit.topics.length,
+      0,
+    ),
+  });
+});
+
+test('switching to an unknown course returns 404 without changing learner state', async () => {
+  const response = await put('/course/active', { courseId: 'missing-course' });
+  expect(response.status).toBe(404);
+  const [user] = await db.select().from(users).where(eq(users.id, userId));
+  expect(user?.activeCourseId).toBeNull();
+});
+
+test('course outlines list shared-course dependents once', async () => {
+  const fixtureContent = await loadContent('tests/fixtures/content');
+  const fixtureApp = createApp({ db, content: fixtureContent, tutorProvider: null });
+  const response = await fixtureApp.request('/api/course', {
+    headers: { 'X-Now': '2026-01-07T12:00:00.000Z' },
+  });
+  expect(response.status).toBe(200);
+  expect(
+    fixtureContent.courses.filter((course) =>
+      course.units.some((unit) => unit.concepts.includes('linear-models')),
+    ),
+  ).toHaveLength(2);
+  const coursePayload = (await response.json()) as {
+    units: Array<{
+      topics: Array<{
+        conceptId: string;
+        leadsTo: Array<{ id: string }>;
+        leadsToMore: number;
+      }>;
+    }>;
+  };
+  const topics = coursePayload.units.flatMap((unit) => unit.topics);
+  const vectorDependents = [
+    ...new Set(
+      fixtureContent.courses
+        .flatMap((course) => course.units.flatMap((unit) => unit.concepts))
+        .filter((conceptId) =>
+          fixtureContent.conceptsById
+            .get(conceptId)
+            ?.prereqs.some((prerequisite) => prerequisite.id === 'vectors'),
+        ),
+    ),
+  ];
+  const vectors = topics.find((topic) => topic.conceptId === 'vectors');
+  expect(vectors?.leadsTo.map(({ id }) => id)).toEqual(vectorDependents.slice(0, 3));
+  expect(vectors?.leadsToMore).toBe(Math.max(0, vectorDependents.length - 3));
+
+  const supervisedLearning = topics.find((topic) => topic.conceptId === 'supervised-learning');
+  expect(supervisedLearning?.leadsTo.map(({ id }) => id)).toEqual(['linear-models']);
+  expect(supervisedLearning?.leadsToMore).toBe(0);
+});
+
 test('paper completion changes only its reading status, not learner progress', async () => {
-  const paper = content.papers[0];
+  const defaultCourse = content.coursesById.get(content.curriculum?.default_course ?? '');
+  const paperId = defaultCourse?.units.flatMap((unit) => unit.papers ?? [])[0];
+  const paper = paperId ? content.papersById.get(paperId) : undefined;
   if (!paper) throw new Error('Expected paper content');
 
   const beforeLearn = await (await get('/learn')).json();
   const beforeCourse = (await (await get('/course')).json()) as {
-    currentWeek: number;
-    weeks: Array<{
+    currentUnit: number;
+    units: Array<{
       papers: Array<{ id: string; status: string }>;
       topics: Array<{ conceptId: string; status: string }>;
     }>;
@@ -105,12 +198,12 @@ test('paper completion changes only its reading status, not learner progress', a
   const afterLearn = await (await get('/learn')).json();
   const afterCourse = (await (await get('/course')).json()) as typeof beforeCourse;
   const paperStatus = (course: typeof beforeCourse) =>
-    course.weeks
-      .flatMap((week) => week.papers)
+    course.units
+      .flatMap((unit) => unit.papers)
       .find((entry: { id: string }) => entry.id === paper.id)?.status;
   const topicProgress = (course: typeof beforeCourse) =>
-    course.weeks.flatMap((week) =>
-      week.topics.map((topic: { conceptId: string; status: string }) => [
+    course.units.flatMap((unit) =>
+      unit.topics.map((topic: { conceptId: string; status: string }) => [
         topic.conceptId,
         topic.status,
       ]),
@@ -120,7 +213,7 @@ test('paper completion changes only its reading status, not learner progress', a
   expect(paperStatus(afterCourse)).toBe('completed');
   expect(afterLearn.xp).toEqual(beforeLearn.xp);
   expect(afterLearn.course).toEqual(beforeLearn.course);
-  expect(afterCourse.currentWeek).toBe(beforeCourse.currentWeek);
+  expect(afterCourse.currentUnit).toBe(beforeCourse.currentUnit);
   expect(topicProgress(afterCourse)).toEqual(topicProgress(beforeCourse));
 });
 
@@ -202,7 +295,20 @@ test('planned Learn tasks and Course numbering are read-only', async () => {
   const courseResponse = await get('/course');
   expect(courseResponse.status).toBe(200);
   const course: {
-    weeks: Array<{
+    course: { id: string; title: string; description: string };
+    courses: Array<{
+      id: string;
+      title: string;
+      description: string;
+      topicsDone: number;
+      topicsTotal: number;
+      active: boolean;
+    }>;
+    currentUnit: number;
+    foundations: Array<{ number: string; conceptId: string; title: string }>;
+    units: Array<{
+      unit: number;
+      title: string;
       intro: string;
       project: {
         id: string;
@@ -224,14 +330,27 @@ test('planned Learn tasks and Course numbering are read-only', async () => {
       }>;
     }>;
   } = await courseResponse.json();
-  expect(course.weeks[0].topics[0]).toMatchObject({
+  expect(course.course).toMatchObject({
+    id: 'ml-foundations',
+    title: 'Machine Learning Foundations',
+    description: expect.any(String),
+  });
+  expect(course.courses.find((entry) => entry.id === course.course.id)).toMatchObject({
+    active: true,
+    topicsDone: 0,
+    topicsTotal: expect.any(Number),
+  });
+  expect(course.currentUnit).toBe(1);
+  expect(course.foundations).toEqual(expect.any(Array));
+  expect(course.courses.some((entry) => entry.active)).toBe(true);
+  expect(course.units[0].topics[0]).toMatchObject({
     number: '1.1',
     conceptId: 'what-is-ml',
     title: 'What machine learning is, and how this course fits together',
     status: expect.stringMatching(/^(locked|not_started|in_progress|complete)$/),
     mastery: 'Not started',
   });
-  expect(course.weeks[0]).toMatchObject({
+  expect(course.units[0]).toMatchObject({
     intro:
       "You'll build the simplest model that learns: predicting a house's price from its measurements, trained on past sales. The maths topics are the tools this model needs, taught in the order it needs them.",
     project: {
@@ -242,7 +361,7 @@ test('planned Learn tasks and Course numbering are read-only', async () => {
     },
   });
   expect(
-    course.weeks[0].topics.find((topic) => topic.conceptId === 'supervised-learning'),
+    course.units[0].topics.find((topic) => topic.conceptId === 'supervised-learning'),
   ).toMatchObject({
     buildsOn: [
       {
@@ -253,8 +372,8 @@ test('planned Learn tasks and Course numbering are read-only', async () => {
     leadsTo: expect.arrayContaining([expect.objectContaining({ id: 'linear-regression' })]),
     leadsToMore: expect.any(Number),
   });
-  const dotProduct = course.weeks
-    .flatMap((week) => week.topics)
+  const dotProduct = course.units
+    .flatMap((unit) => unit.topics)
     .find((topic) => topic.conceptId === 'dot-product');
   expect(dotProduct).toMatchObject({
     needs: [{ id: 'vectors', title: 'Vectors and vector operations' }],
@@ -264,7 +383,7 @@ test('planned Learn tasks and Course numbering are read-only', async () => {
     conceptId: string;
     status: 'in_progress' | 'needs_retry' | 'completed';
   }> = [];
-  for (const topic of course.weeks.flatMap((week) => week.topics)) {
+  for (const topic of course.units.flatMap((unit) => unit.topics)) {
     const concept = content.conceptsById.get(topic.conceptId);
     const locked = Boolean(
       concept?.prereqs.some(
@@ -313,12 +432,7 @@ test('session creation matches the local-day preview kind and activities', async
 
 test('lesson choices exclude locked, completed and stub concepts and retain the recommended lesson past five', async () => {
   const outlineIds = Array.from(
-    new Set(
-      (content.curriculum?.weeks ?? [])
-        .slice()
-        .sort((left, right) => left.week - right.week)
-        .flatMap((week) => week.concepts),
-    ),
+    new Set(content.courses.flatMap((course) => course.units.flatMap((unit) => unit.concepts))),
   );
   const initial = await (await get('/learn')).json();
   expect(initial.choices.map((choice: { conceptId: string }) => choice.conceptId)).not.toContain(
@@ -455,8 +569,8 @@ test('Course project status reflects the learner project-progress row', async ()
   const response = await get('/course');
   expect(response.status).toBe(200);
   const course = await response.json();
-  expect(course.currentWeek).toBe(1);
-  expect(course.weeks[0].project).toMatchObject({
+  expect(course.currentUnit).toBe(1);
+  expect(course.units[0].project).toMatchObject({
     id: 'linreg-numpy',
     available: true,
     status: 'in_progress',

@@ -8,7 +8,10 @@ test('locates curriculum from nested source, compiled, and flattened serverless 
   const directory = mkdtempSync(join(tmpdir(), 'academy-layout-'));
   try {
     mkdirSync(join(directory, 'content'));
-    writeFileSync(join(directory, 'content/curriculum.yaml'), 'weeks: []');
+    writeFileSync(
+      join(directory, 'content/curriculum.yaml'),
+      'courses: []\ndefault_course: fixture',
+    );
     for (const entry of ['apps/api/src', 'apps/api/dist', '.']) {
       expect(findRepositoryRoot(join(directory, entry))).toBe(directory);
     }

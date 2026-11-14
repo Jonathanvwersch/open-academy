@@ -2,7 +2,6 @@ id: statistical-precipice
 title: Deep Reinforcement Learning at the Edge of the Statistical Precipice
 authors: Agarwal, Schwarzer, Castro, Courville and Bellemare
 year: 2021
-week: 15
 est_minutes: 75
 source:
   arxiv: 2108.13264v4

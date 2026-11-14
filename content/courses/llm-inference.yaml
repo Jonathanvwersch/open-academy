@@ -1,0 +1,21 @@
+id: llm-inference
+title: LLM Inference
+description: "A trained model is only useful if it runs fast enough. You'll learn what makes inference slow, from memory bandwidth to the KV cache, and the techniques serving systems use to speed it up: caching, quantisation, speculative decoding and batching, and how ML compilers turn a model into fast GPU kernels."
+units:
+  - title: Inference
+    intro: "A trained model is only useful if it runs fast enough. You'll learn what makes inference slow, from memory bandwidth to the KV cache, and the techniques serving systems use to speed it up: caching, quantisation, speculative decoding and batching, and how ML compilers turn a model into fast GPU kernels."
+    project: inference-engine
+    papers:
+      - egg-equality-saturation
+      - tvm
+    concepts:
+      - inference-metrics
+      - prefill-decode
+      - arithmetic-intensity
+      - gpu-inference-basics
+      - kv-cache
+      - fast-attention
+      - quantization
+      - speculative-decoding
+      - llm-serving
+      - ml-compilers

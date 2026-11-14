@@ -2,7 +2,6 @@ id: egg-equality-saturation
 title: "egg: Fast and Extensible Equality Saturation"
 authors: Willsey et al.
 year: 2021
-week: 6
 est_minutes: 60
 source:
   arxiv: 2004.03082v3

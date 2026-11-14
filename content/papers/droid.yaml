@@ -2,7 +2,6 @@ id: droid
 title: "DROID: A Large-Scale In-The-Wild Robot Manipulation Dataset"
 authors: Khazatsky et al.
 year: 2024
-week: 15
 est_minutes: 60
 source:
   arxiv: 2403.12945v2

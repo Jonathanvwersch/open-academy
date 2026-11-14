@@ -1,6 +1,5 @@
 id: planar-arm
 title: "Simulated planar robot arm"
-week: 10
 status: stub
 est_hours: 5
 objective: "Build a 2-link planar arm simulation with forward and inverse kinematics and drive the end effector along a path."

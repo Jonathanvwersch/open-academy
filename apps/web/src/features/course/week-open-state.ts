@@ -1,25 +1,26 @@
-export type WeekOpenOverrides = Record<number, boolean>;
+export type UnitOpenOverrides = Record<string, boolean>;
 
-export const COURSE_WEEK_OPEN_STORAGE_KEY = 'course:weeks-open';
+export const COURSE_UNIT_OPEN_STORAGE_KEY = 'course:units-open';
 
-export function isWeekOpen(
-  week: number,
-  currentWeek: number,
-  overrides: WeekOpenOverrides,
+export function isUnitOpen(
+  courseId: string,
+  unit: number,
+  currentUnit: number,
+  overrides: UnitOpenOverrides,
 ): boolean {
-  return overrides[week] ?? week === currentWeek;
+  return overrides[`${courseId}:${unit}`] ?? unit === currentUnit;
 }
 
-export function readCourseWeekOpenOverrides(): WeekOpenOverrides {
+export function readCourseUnitOpenOverrides(): UnitOpenOverrides {
   if (typeof window === 'undefined') return {};
   try {
-    const stored = window.localStorage.getItem(COURSE_WEEK_OPEN_STORAGE_KEY);
+    const stored = window.localStorage.getItem(COURSE_UNIT_OPEN_STORAGE_KEY);
     if (!stored) return {};
     const parsed: unknown = JSON.parse(stored);
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
     return Object.fromEntries(
-      Object.entries(parsed).flatMap(([week, open]) =>
-        /^\d+$/.test(week) && typeof open === 'boolean' ? [[Number(week), open]] : [],
+      Object.entries(parsed).flatMap(([courseUnit, open]) =>
+        /^.+:\d+$/.test(courseUnit) && typeof open === 'boolean' ? [[courseUnit, open]] : [],
       ),
     );
   } catch {
@@ -27,10 +28,10 @@ export function readCourseWeekOpenOverrides(): WeekOpenOverrides {
   }
 }
 
-export function writeCourseWeekOpenOverrides(overrides: WeekOpenOverrides): void {
+export function writeCourseUnitOpenOverrides(overrides: UnitOpenOverrides): void {
   if (typeof window === 'undefined') return;
   try {
-    window.localStorage.setItem(COURSE_WEEK_OPEN_STORAGE_KEY, JSON.stringify(overrides));
+    window.localStorage.setItem(COURSE_UNIT_OPEN_STORAGE_KEY, JSON.stringify(overrides));
   } catch {
     return;
   }

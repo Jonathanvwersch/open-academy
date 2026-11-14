@@ -2,7 +2,6 @@ id: gpt-3
 title: Language Models are Few-Shot Learners
 authors: Brown et al.
 year: 2020
-week: 5
 est_minutes: 90
 source:
   arxiv: 2005.14165v4

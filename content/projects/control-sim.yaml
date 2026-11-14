@@ -1,6 +1,5 @@
 id: control-sim
 title: "Control and observation processing"
-week: 11
 status: stub
 est_hours: 5
 objective: "Implement PID joint control and noisy-sensor processing in a small simulation."

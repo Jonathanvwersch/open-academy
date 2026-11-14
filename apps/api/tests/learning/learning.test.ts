@@ -32,7 +32,7 @@ import {
 } from '../../src/learning/prerequisites.js';
 import type { PlannedActivity, SchedulerState } from '../../src/learning/scheduler.js';
 import {
-  currentLearnerWeek,
+  currentLearnerUnit,
   planSession,
   replan,
   SCHEDULER_CONFIG,
@@ -57,6 +57,7 @@ beforeAll(async () => {
 
 function emptyState(): SchedulerState {
   return {
+    activeCourseId: null,
     mastery: [],
     cards: [],
     recentAttempts: [],
@@ -435,21 +436,23 @@ test('new lessons follow outline order even when a later candidate has a higher 
     ...fullContent.exercises.filter((exercise) => ids.has(exercise.concept)),
     probabilityExercise,
   ];
-  const curriculum = fullContent.curriculum;
-  if (!curriculum) throw new Error('Missing curriculum outline');
-  const outlineWeek = curriculum.weeks.find((week) => week.week === 1);
-  if (!outlineWeek) throw new Error('Missing first curriculum week');
+  const defaultCourse = fullContent.coursesById.get('ml-foundations');
+  const firstUnit = defaultCourse?.units[0];
+  if (!defaultCourse || !firstUnit) throw new Error('Missing default course unit');
+  const rankedCourse = {
+    ...defaultCourse,
+    units: [
+      { ...firstUnit, concepts: firstUnit.concepts.filter((id) => ids.has(id)) },
+      { title: 'Later unit', concepts: ['probability-basics'] },
+    ],
+  };
+  const courses = fullContent.courses.map((course) =>
+    course.id === rankedCourse.id ? rankedCourse : course,
+  );
   const rankedContent: ContentIndex = {
     ...fullContent,
-    curriculum: {
-      ...curriculum,
-      weeks: [
-        {
-          ...outlineWeek,
-          concepts: outlineWeek.concepts.filter((conceptId) => ids.has(conceptId)),
-        },
-      ],
-    },
+    courses,
+    coursesById: new Map(courses.map((course) => [course.id, course])),
     concepts,
     conceptsById,
     exercises,
@@ -528,7 +531,7 @@ test('new lessons follow outline order even when a later candidate has a higher 
 
 test('outline positions place missing concepts last', async () => {
   const fullContent = await loadContent();
-  expect(outlinePosition('vectors', fullContent)).toEqual([1, 2]);
+  expect(outlinePosition('vectors', fullContent)).toEqual([0, 2]);
   expect(compareOutlinePosition('vectors', 'not-in-outline', fullContent)).toBeLessThan(0);
 });
 
@@ -1036,7 +1039,7 @@ test('Project prerequisites receive a priority term', () => {
   expect(prerequisite?.reason.terms.project).toBe(3);
   expect(prerequisite?.reason.summary).toContain('needed for the Saturday lab');
   if (prerequisite?.reason.terms.week_fit) {
-    expect(prerequisite.reason.summary).toContain('Week 1 focus');
+    expect(prerequisite.reason.summary).toContain('ML fundamentals focus');
   }
   if (prerequisite?.reason.terms.unlock) {
     expect(prerequisite.reason.summary).toContain('unlocks');
@@ -1075,6 +1078,7 @@ test('a due review selects up to three distinct exercises for its concept and di
       (exercise) =>
         exercise.dimension === 'math' &&
         ['review', 'core', 'practice', 'transfer', 'basics'].includes(exercise.role) &&
+        !exercise.lesson_only &&
         !isTemplate(exercise),
     )
     .slice(0, 3);
@@ -1243,80 +1247,174 @@ test('Saturday skips a completed project when no extension exercise exists', () 
   expect(plan.activities.some((activity) => activity.kind === 'remediate')).toBe(false);
 });
 
-test('fresh learners start in week 1', () => {
-  expect(currentLearnerWeek(emptyState(), courseContent)).toBe(1);
+test('fresh learners start in unit 1', () => {
+  expect(currentLearnerUnit(emptyState(), courseContent)).toBe(1);
 });
 
-test('paper read state does not change the current learner week', () => {
-  const papers = content.papersByWeek.get(1) ?? [];
-  if (papers.length === 0) throw new Error('Expected week-one paper fixture');
+test('paper read state does not change the current learner unit', () => {
+  const firstUnit = content.coursesById.get('fixture-course')?.units[0];
+  if (!firstUnit?.papers?.length) throw new Error('Expected first-unit paper fixture');
   const unreadState = emptyState();
   const readState = {
     ...unreadState,
-    completedPaperIds: papers.map((paper) => paper.id),
+    completedPaperIds: firstUnit.papers,
   };
 
-  expect(currentLearnerWeek(readState, content)).toBe(currentLearnerWeek(unreadState, content));
+  expect(currentLearnerUnit(readState, content)).toBe(currentLearnerUnit(unreadState, content));
 });
 
-test('an uncompleted trailing stub does not hold back the current learner week', () => {
-  const curriculum = courseContent.curriculum;
+test('an uncompleted trailing stub does not hold back the current learner unit', () => {
   const sourceStub = courseContent.conceptsById.get('statistical-evaluation');
-  if (!curriculum || !sourceStub) throw new Error('Expected curriculum and stub fixture');
+  const defaultCourse = courseContent.coursesById.get('ml-foundations');
+  if (!defaultCourse || !sourceStub) throw new Error('Expected course and stub fixture');
 
-  const stubId = 'week-one-fixture-stub';
-  const stub = { ...sourceStub, id: stubId, week: 1, prereqs: [] };
-  const curriculumWithStub = {
-    ...curriculum,
-    weeks: curriculum.weeks.map((week) =>
-      week.week === 1 ? { ...week, concepts: [...week.concepts, stubId] } : week,
+  const stubId = 'unit-one-fixture-stub';
+  const stub = { ...sourceStub, id: stubId, prereqs: [] };
+  const courseWithStub = {
+    ...defaultCourse,
+    units: defaultCourse.units.map((unit, index) =>
+      index === 0 ? { ...unit, concepts: [...unit.concepts, stubId] } : unit,
     ),
   };
+  const courses = courseContent.courses.map((course) =>
+    course.id === courseWithStub.id ? courseWithStub : course,
+  );
   const contentWithStub: ContentIndex = {
     ...courseContent,
+    courses,
+    coursesById: new Map(courses.map((course) => [course.id, course])),
     concepts: [...courseContent.concepts, stub],
     conceptsById: new Map(courseContent.conceptsById).set(stubId, stub),
-    curriculum: curriculumWithStub,
   };
   const state = emptyState();
-  state.lessonRuns = curriculumWithStub.weeks
-    .flatMap((week) => week.concepts)
+  state.lessonRuns = courseWithStub.units
+    .flatMap((unit) => unit.concepts)
     .filter((id) => id !== stubId && contentWithStub.conceptsById.get(id)?.status !== 'stub')
     .map((conceptId) => ({ conceptId, status: 'completed' as const }));
-  expect(currentLearnerWeek(state, contentWithStub)).toBe(curriculum.weeks.at(-1)?.week);
+  expect(currentLearnerUnit(state, contentWithStub)).toBe(courseWithStub.units.length);
 });
 
-test('an incomplete week-1 concept remains current when later concepts are complete', () => {
-  const conceptIds = courseContent.curriculum?.weeks.flatMap((week) => week.concepts) ?? [];
+test('an incomplete first-unit concept remains current when later topics are complete', () => {
+  const course = required(courseContent.coursesById.get('ml-foundations'), 'default course');
+  const conceptIds = course.units.flatMap((unit) => unit.concepts);
   const state = emptyState();
   state.lessonRuns = conceptIds
     .filter((conceptId) => conceptId !== 'what-is-ml')
     .map((conceptId) => ({ conceptId, status: 'completed' as const }));
-  expect(currentLearnerWeek(state, courseContent)).toBe(1);
+  expect(currentLearnerUnit(state, courseContent)).toBe(1);
 });
 
-test('all completed concepts put the learner in the last curriculum week', () => {
-  const weeks = courseContent.curriculum?.weeks ?? [];
+test('all completed course concepts put the learner in the last unit', () => {
+  const course = required(courseContent.coursesById.get('ml-foundations'), 'default course');
   const state = emptyState();
-  state.lessonRuns = weeks.flatMap((week) =>
-    week.concepts.map((conceptId) => ({ conceptId, status: 'completed' as const })),
+  state.lessonRuns = course.units.flatMap((unit) =>
+    unit.concepts.map((conceptId) => ({ conceptId, status: 'completed' as const })),
   );
-  expect(currentLearnerWeek(state, courseContent)).toBe(weeks.at(-1)?.week);
+  expect(currentLearnerUnit(state, courseContent)).toBe(course.units.length);
 });
 
-test('diagnostic-inferred mastery counts as met for the current week', () => {
-  const week1 = courseContent.curriculum?.weeks.find((week) => week.week === 1);
+test('diagnostic-inferred mastery counts as met for the current unit', () => {
+  const firstUnit = required(
+    courseContent.coursesById.get('ml-foundations')?.units[0],
+    'first default unit',
+  );
   const state = emptyState();
-  state.lessonRuns = (week1?.concepts ?? [])
+  state.lessonRuns = firstUnit.concepts
     .filter((id) => id !== 'what-is-ml')
     .map((conceptId) => ({ conceptId, status: 'completed' as const }));
   state.mastery = [{ ...initialMastery('what-is-ml', 'conceptual'), inferred: true }];
-  expect(currentLearnerWeek(state, courseContent)).toBe(2);
+  expect(currentLearnerUnit(state, courseContent)).toBe(2);
 });
 
-test('Saturday uses progress for a week-2 paper regardless of start date', () => {
-  const week1Concepts = content.curriculum?.weeks.find((week) => week.week === 1)?.concepts ?? [];
-  const lessonRuns = week1Concepts.map((conceptId) => ({
+test('current unit is computed per active course, with null and unknown falling back to default', () => {
+  const fixtureCourse = required(content.coursesById.get('fixture-course'), 'fixture course');
+  const firstUnitRuns =
+    fixtureCourse.units[0]?.concepts.map((conceptId) => ({
+      conceptId,
+      status: 'completed' as const,
+    })) ?? [];
+  const state = { ...emptyState(), lessonRuns: firstUnitRuns };
+  expect(currentLearnerUnit(state, content)).toBe(2);
+  expect(
+    currentLearnerUnit({ ...state, activeCourseId: 'fixture-switching-course' }, content),
+  ).toBe(1);
+  expect(currentLearnerUnit({ ...state, activeCourseId: 'missing-course' }, content)).toBe(2);
+  expect(currentLearnerUnit(state, content)).toBe(2);
+});
+
+test('a new concept only in another course is not offered', () => {
+  const plan = planSession(
+    { ...emptyState(), activeCourseId: 'fixture-switching-course' },
+    content,
+    now,
+    60,
+  );
+  expect(plan.activities.some((activity) => activity.conceptId === 'derivatives')).toBe(false);
+});
+
+test('an unmet external hard prerequisite is offered as a foundation', () => {
+  const fixtureCourse = required(content.coursesById.get('fixture-course'), 'fixture course');
+  const courseWithoutVectors = {
+    ...fixtureCourse,
+    units: fixtureCourse.units.map((unit) => ({
+      ...unit,
+      concepts: unit.concepts.filter((conceptId) => conceptId !== 'vectors'),
+    })),
+  };
+  const courses = content.courses.map((course) =>
+    course.id === courseWithoutVectors.id ? courseWithoutVectors : course,
+  );
+  const foundationContent: ContentIndex = {
+    ...content,
+    courses,
+    coursesById: new Map(courses.map((course) => [course.id, course])),
+  };
+  const plan = planSession(emptyState(), foundationContent, now, 60);
+  expect(
+    plan.activities.some(
+      (activity) => activity.kind === 'learn' && activity.conceptId === 'vectors',
+    ),
+  ).toBe(true);
+});
+
+test.each(['in_progress', 'quiz'] as const)(
+  'a %s lesson outside the active course still resumes',
+  (status) => {
+    const state = {
+      ...emptyState(),
+      activeCourseId: 'fixture-switching-course',
+      lessonRuns: [
+        { conceptId: 'vectors', status: 'completed' as const },
+        { conceptId: 'derivatives', status },
+      ],
+    };
+    const plan = planSession(state, content, now, 60);
+    expect(
+      plan.activities.some(
+        (activity) => activity.kind === 'learn' && activity.conceptId === 'derivatives',
+      ),
+    ).toBe(true);
+  },
+);
+
+test('reviews outside the active course remain planned', () => {
+  const state = {
+    ...emptyState(),
+    activeCourseId: 'fixture-switching-course',
+    mastery: [{ ...initialMastery('derivatives', 'math'), state: 'independent' as const }],
+    cards: [{ conceptId: 'derivatives', dimension: 'math' as const, dueAt: now.toISOString() }],
+  };
+  const plan = planSession(state, content, now, 60);
+  expect(
+    plan.activities.some(
+      (activity) => activity.kind === 'review' && activity.conceptId === 'derivatives',
+    ),
+  ).toBe(true);
+});
+
+test('Saturday uses progress for the next unit paper regardless of start date', () => {
+  const fixtureCourse = required(content.coursesById.get('fixture-course'), 'fixture course');
+  const lessonRuns = (fixtureCourse.units[0]?.concepts ?? []).map((conceptId) => ({
     conceptId,
     status: 'completed' as const,
   }));
@@ -1324,7 +1422,7 @@ test('Saturday uses progress for a week-2 paper regardless of start date', () =>
     const state = { ...emptyState(), startDate, lessonRuns };
     const plan = planSession(state, content, now, 200, 'saturday');
     const paper = plan.activities.find((activity) => activity.kind === 'paper');
-    expect(paper?.reason.summary).toBe('Optional paper for week 2.');
+    expect(paper?.reason.summary).toBe('Optional paper for Optimization.');
   }
 });
 
@@ -1333,14 +1431,15 @@ test('Saturday reserves up to 90 minutes for the current week paper', () => {
   const plan = planSession(state, content, now, 200, 'saturday');
   const paper = plan.activities.find((activity) => activity.kind === 'paper');
   expect(paper?.plannedMinutes).toBe(90);
-  expect(paper?.reason.summary).toBe('Optional paper for week 1.');
+  expect(paper?.reason.summary).toBe('Optional paper for ML fundamentals.');
   expect(plan.activities.find((activity) => activity.kind === 'lab')?.plannedMinutes).toBe(100);
 });
 
 test('Saturday omits paper reading when all current-week papers are completed', () => {
+  const papers = content.coursesById.get('fixture-course')?.units[0]?.papers ?? [];
   const state = {
     ...emptyState(),
-    completedPaperIds: (content.papersByWeek.get(1) ?? []).map((paper) => paper.id),
+    completedPaperIds: papers,
   };
   const plan = planSession(state, content, now, 200, 'saturday');
   expect(plan.activities.some((activity) => activity.kind === 'paper')).toBe(false);

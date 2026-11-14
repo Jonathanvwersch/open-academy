@@ -23,7 +23,7 @@ export function PaperActivity({
   const [error, setError] = useState('');
   const { data: papersData } = useSuspenseQuery(papersQueryOptions());
   const { data: today } = useSuspenseQuery(todayQueryOptions());
-  const papers = papersData.weeks.find((week) => week.week === today.week)?.papers ?? [];
+  const papers = papersData.units.find((unit) => unit.unit === today.unit)?.papers ?? [];
   const skip = async () => {
     setSkipping(true);
     setError('');
@@ -40,7 +40,7 @@ export function PaperActivity({
   }
   return (
     <div className="space-y-4">
-      <p>Pick one of this week&apos;s papers to read.</p>
+      <p>Pick one of this unit&apos;s papers to read.</p>
       <ul className="divide-y rounded-md border">
         {papers.map((paper) => (
           <li key={paper.id}>

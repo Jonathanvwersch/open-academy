@@ -800,7 +800,7 @@ test('map page context uses the current concept instead of the thread concept', 
 test('course page context includes outline topics and statuses', async () => {
   expect((await send('What should I study next?', undefined, { page: 'course' })).status).toBe(200);
   const pageContent = captured.at(-1)?.page_content ?? '';
-  expect(pageContent).toMatch(/^## Week \d+ · .+$/m);
+  expect(pageContent).toMatch(/^## Unit \d+ · .+$/m);
   expect(pageContent).toContain(
     "You'll build the simplest model that learns: predicting a house's price from its measurements, trained on past sales. The maths topics are the tools this model needs, taught in the order it needs them.",
   );

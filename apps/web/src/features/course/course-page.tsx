@@ -1,24 +1,53 @@
-import { useSuspenseQuery } from '@tanstack/react-query';
+import type { CourseTopic } from '@academy/contracts/course';
+import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { ChevronDown, ChevronRight, FileText, Wrench } from 'lucide-react';
 import { Collapsible } from 'radix-ui';
 import { useEffect, useState } from 'react';
+import { apiFetch } from '../../api/authenticated-fetch.js';
 import { Badge } from '../../components/ui/badge.js';
+import { Button } from '../../components/ui/button.js';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card.js';
-import { paperStatusLabel } from '../papers/queries.js';
+import { Dialog, DialogContent, DialogTitle } from '../../components/ui/dialog.js';
+import { paperStatusLabel, papersQueryOptions } from '../papers/queries.js';
+import { todayQueryOptions } from '../sessions/queries.js';
 import { useTutorSidebar } from '../tutor/tutor-sidebar.js';
 import { CourseMetadata } from './course-metadata.js';
-import { courseQueryOptions } from './queries.js';
+import { foundationsHeading } from './foundations-heading.js';
+import { courseQueryOptions, learnQueryOptions } from './queries.js';
 import {
-  isWeekOpen,
-  readCourseWeekOpenOverrides,
-  writeCourseWeekOpenOverrides,
+  isUnitOpen,
+  readCourseUnitOpenOverrides,
+  writeCourseUnitOpenOverrides,
 } from './week-open-state.js';
 
 export function CoursePage() {
   const { data } = useSuspenseQuery(courseQueryOptions());
+  const queryClient = useQueryClient();
   const tutorSidebar = useTutorSidebar();
-  const [weekOpenOverrides, setWeekOpenOverrides] = useState(readCourseWeekOpenOverrides);
+  const [unitOpenOverrides, setUnitOpenOverrides] = useState(readCourseUnitOpenOverrides);
+  const [coursesOpen, setCoursesOpen] = useState(false);
+  const [foundationsOpen, setFoundationsOpen] = useState(false);
+  const activeCourse = data.courses.find((course) => course.id === data.course.id);
+  const changeCourse = useMutation({
+    mutationFn: async (courseId: string) => {
+      const response = await apiFetch('/api/course/active', {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ courseId }),
+      });
+      if (!response.ok) throw new Error('Could not switch courses');
+    },
+    onSuccess: async () => {
+      setCoursesOpen(false);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: courseQueryOptions().queryKey }),
+        queryClient.invalidateQueries({ queryKey: learnQueryOptions().queryKey }),
+        queryClient.invalidateQueries({ queryKey: todayQueryOptions().queryKey }),
+        queryClient.invalidateQueries({ queryKey: papersQueryOptions().queryKey }),
+      ]);
+    },
+  });
   useEffect(() => {
     tutorSidebar.setContext({
       page: 'course',
@@ -30,29 +59,113 @@ export function CoursePage() {
   }, [tutorSidebar]);
   return (
     <section className="space-y-6">
-      <h1 className="sr-only">Course</h1>
+      <header className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-semibold tracking-tight">{data.course.title}</h1>
+          <p className="max-w-[70ch] text-sm text-muted-foreground">{data.course.description}</p>
+          <p className="text-sm font-medium">
+            {activeCourse?.topicsDone ?? 0} of {activeCourse?.topicsTotal ?? 0} topics done
+          </p>
+        </div>
+        <Button type="button" variant="outline" onClick={() => setCoursesOpen(true)}>
+          Change course
+        </Button>
+      </header>
+      <Dialog open={coursesOpen} onOpenChange={setCoursesOpen}>
+        <DialogContent aria-describedby={undefined}>
+          <DialogTitle>Courses</DialogTitle>
+          <div className="mt-4 space-y-3">
+            {data.courses.map((course) => (
+              <Card key={course.id} size="sm">
+                <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0 space-y-1">
+                    <h3 className="font-medium">{course.title}</h3>
+                    <p className="line-clamp-2 text-sm text-muted-foreground">
+                      {course.description}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {course.topicsDone} of {course.topicsTotal} topics
+                    </p>
+                  </div>
+                  {course.active ? (
+                    <Badge variant="secondary">Current</Badge>
+                  ) : (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={changeCourse.isPending}
+                      loading={changeCourse.isPending && changeCourse.variables === course.id}
+                      onClick={() => changeCourse.mutate(course.id)}
+                    >
+                      Switch
+                    </Button>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+          {changeCourse.isError ? (
+            <p role="alert" className="mt-3 text-sm text-destructive">
+              {changeCourse.error.message}
+            </p>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+      {data.foundations.length > 0 ? (
+        <Collapsible.Root open={foundationsOpen} onOpenChange={setFoundationsOpen}>
+          <Card className="gap-0">
+            <CardHeader className="p-0">
+              <CardTitle className="w-full">
+                <Collapsible.Trigger
+                  aria-label={`${foundationsOpen ? 'Collapse' : 'Expand'} foundations`}
+                  className="flex w-full items-center justify-between gap-3 rounded-t-xl px-(--card-spacing) pt-(--card-spacing) text-left data-[state=open]:pb-3 data-[state=closed]:pb-(--card-spacing) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+                >
+                  <span>{foundationsHeading(data.foundations.length)}</span>
+                  <ChevronDown
+                    aria-hidden="true"
+                    className={`size-4 shrink-0 text-muted-foreground transition-transform duration-200 ${foundationsOpen ? 'rotate-180' : ''}`}
+                  />
+                </Collapsible.Trigger>
+              </CardTitle>
+            </CardHeader>
+            <Collapsible.Content>
+              <CardContent className="first:pt-0 p-0 last:pb-0">
+                <p className="px-(--card-spacing) pb-4 text-sm text-muted-foreground">
+                  Topics from other courses that this course needs. They&apos;re scheduled when a
+                  unit needs them.
+                </p>
+                <TopicRows topics={data.foundations} />
+              </CardContent>
+            </Collapsible.Content>
+          </Card>
+        </Collapsible.Root>
+      ) : null}
       <div className="space-y-4">
-        {data.weeks.map((week) => {
-          const open = isWeekOpen(week.week, data.currentWeek, weekOpenOverrides);
+        {data.units.map((unit) => {
+          const open = isUnitOpen(data.course.id, unit.unit, data.currentUnit, unitOpenOverrides);
           return (
             <Collapsible.Root
-              key={week.week}
+              key={unit.unit}
               open={open}
               onOpenChange={(nextOpen) => {
-                const next = { ...weekOpenOverrides, [week.week]: nextOpen };
-                setWeekOpenOverrides(next);
-                writeCourseWeekOpenOverrides(next);
+                const next = {
+                  ...unitOpenOverrides,
+                  [`${data.course.id}:${unit.unit}`]: nextOpen,
+                };
+                setUnitOpenOverrides(next);
+                writeCourseUnitOpenOverrides(next);
               }}
             >
               <Card className="gap-0">
                 <CardHeader className="p-0">
-                  <CardTitle aria-label={`Week ${week.week} · ${week.title}`} className="w-full">
+                  <CardTitle aria-label={`Unit ${unit.unit} · ${unit.title}`} className="w-full">
                     <Collapsible.Trigger
-                      aria-label={`${open ? 'Collapse' : 'Expand'} week ${week.week}`}
+                      aria-label={`${open ? 'Collapse' : 'Expand'} unit ${unit.unit}`}
                       className="flex w-full items-center justify-between gap-3 rounded-t-xl px-(--card-spacing) pt-(--card-spacing) text-left data-[state=open]:pb-3 data-[state=closed]:pb-(--card-spacing) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
                     >
                       <span>
-                        Week {week.week} · {week.title}
+                        Unit {unit.unit} · {unit.title}
                       </span>
                       <ChevronDown
                         aria-hidden="true"
@@ -63,13 +176,13 @@ export function CoursePage() {
                 </CardHeader>
                 <Collapsible.Content>
                   <CardContent className="first:pt-0 p-0 last:pb-0">
-                    {week.intro ? (
+                    {unit.intro ? (
                       <p className="px-(--card-spacing) pb-4 text-sm text-muted-foreground">
-                        {week.intro}
+                        {unit.intro}
                       </p>
                     ) : null}
                     <ol className="divide-y">
-                      {week.topics.map((topic) => {
+                      {unit.topics.map((topic) => {
                         const row = (
                           <>
                             <div className="flex min-w-0 items-start gap-3">
@@ -203,13 +316,13 @@ export function CoursePage() {
                         );
                       })}
                     </ol>
-                    {week.papers.length > 0 ? (
+                    {unit.papers.length > 0 ? (
                       <section className="border-t" aria-label="Optional reading">
                         <h3 className="px-(--card-spacing) pt-4 pb-1 text-sm font-medium text-muted-foreground">
                           Optional reading
                         </h3>
                         <ul className="divide-y">
-                          {week.papers.map((paper) => (
+                          {unit.papers.map((paper) => (
                             <li key={paper.id}>
                               <Link
                                 to="/papers/$paperId"
@@ -254,17 +367,17 @@ export function CoursePage() {
                         </ul>
                       </section>
                     ) : null}
-                    {week.project ? (
+                    {unit.project ? (
                       <section className="border-t" aria-label="Project">
                         <h3 className="px-(--card-spacing) pt-4 pb-1 text-sm font-medium text-muted-foreground">
                           Project
                         </h3>
                         <ul className="divide-y">
                           <li>
-                            {week.project.available ? (
+                            {unit.project.available ? (
                               <Link
                                 to="/projects/$projectId"
-                                params={{ projectId: week.project.id }}
+                                params={{ projectId: unit.project.id }}
                                 className="flex items-center justify-between gap-3 px-(--card-spacing) py-3 hover:bg-muted/60"
                               >
                                 <span className="flex w-9 shrink-0 items-center">
@@ -275,19 +388,19 @@ export function CoursePage() {
                                 </span>
                                 <span className="min-w-0 flex-1">
                                   <span className="block font-medium">
-                                    <CourseMetadata>{week.project.title}</CourseMetadata>
+                                    <CourseMetadata>{unit.project.title}</CourseMetadata>
                                   </span>
                                 </span>
-                                {week.project.status !== 'not_started' ? (
+                                {unit.project.status !== 'not_started' ? (
                                   <Badge
                                     variant="secondary"
                                     className={
-                                      week.project.status === 'completed'
+                                      unit.project.status === 'completed'
                                         ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'
                                         : ''
                                     }
                                   >
-                                    {week.project.status === 'completed'
+                                    {unit.project.status === 'completed'
                                       ? 'Complete'
                                       : 'In progress'}
                                   </Badge>
@@ -307,7 +420,7 @@ export function CoursePage() {
                                 </span>
                                 <span className="min-w-0 flex-1">
                                   <span className="block font-medium text-muted-foreground">
-                                    <CourseMetadata>{week.project.title}</CourseMetadata>
+                                    <CourseMetadata>{unit.project.title}</CourseMetadata>
                                   </span>
                                   <span className="block text-xs text-muted-foreground">
                                     Project coming soon
@@ -336,3 +449,72 @@ const COURSE_STATUS_LABEL = {
   quiz: 'Quiz not passed',
   complete: 'Complete',
 } as const;
+
+function TopicRows({ topics }: { topics: CourseTopic[] }) {
+  return (
+    <ol className="divide-y">
+      {topics.map((topic) => {
+        const row = (
+          <>
+            <span className="w-9 shrink-0 pt-0.5 text-sm tabular-nums text-muted-foreground">
+              {topic.number}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span
+                className={`block font-medium ${topic.hasLesson ? '' : 'text-muted-foreground'}`}
+              >
+                {topic.title}
+              </span>
+              {topic.status === 'locked' ? (
+                <span className="text-xs text-muted-foreground">
+                  Needs {topic.needs?.map((prerequisite) => prerequisite.title).join(', ')}
+                </span>
+              ) : topic.status !== 'not_started' ? (
+                <Badge
+                  variant="secondary"
+                  className={
+                    topic.status === 'complete'
+                      ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'
+                      : topic.status === 'quiz'
+                        ? 'bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300'
+                        : ''
+                  }
+                >
+                  {COURSE_STATUS_LABEL[topic.status]}
+                </Badge>
+              ) : null}
+            </span>
+            {topic.hasLesson ? (
+              <ChevronRight aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
+            ) : null}
+          </>
+        );
+        const className = `flex items-center justify-between gap-3 px-(--card-spacing) py-3 ${
+          topic.status === 'locked' && topic.hasLesson
+            ? 'text-muted-foreground opacity-60'
+            : topic.status === 'complete'
+              ? 'bg-emerald-50/70 text-emerald-800 dark:bg-emerald-950/20 dark:text-emerald-200'
+              : topic.status === 'quiz'
+                ? 'bg-amber-50/70 dark:bg-amber-950/20'
+                : ''
+        }`;
+        return (
+          <li key={topic.conceptId}>
+            {topic.hasLesson ? (
+              <Link
+                to="/lessons/$conceptId"
+                params={{ conceptId: topic.conceptId }}
+                search={{ from: undefined }}
+                className={`group ${className} hover:bg-muted/60`}
+              >
+                {row}
+              </Link>
+            ) : (
+              <div className={className}>{row}</div>
+            )}
+          </li>
+        );
+      })}
+    </ol>
+  );
+}

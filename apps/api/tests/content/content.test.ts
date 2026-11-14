@@ -33,8 +33,14 @@ test('loads the fixture graph and builds lookup indexes', async () => {
   );
   expect(content.conceptsById.get('matrix-products')?.status).toBe('stub');
   expect(content.projectsById.has('linreg-numpy')).toBe(true);
-  expect(content.papersByWeek.get(1)).toHaveLength(1);
-  expect(content.papersByWeek.get(2)).toHaveLength(1);
+  expect(content.courses.map(({ id }) => id)).toEqual([
+    'fixture-course',
+    'fixture-switching-course',
+  ]);
+  expect(content.coursesById.get('fixture-course')?.units[0]?.papers).toEqual([
+    'fixture-paper-one',
+  ]);
+  expect(content.papersById.has('fixture-paper-two')).toBe(true);
   expect(content.diagnostic?.domains).toHaveLength(2);
   expect(content.edges).toContainEqual({
     conceptId: 'gradient-descent',
@@ -60,17 +66,19 @@ test('loads the fixture graph and builds lookup indexes', async () => {
   expect(content.concepts[0]?.contentVersion).toMatch(/^[a-f0-9]{12}$/);
 });
 
-test('real authored paper content loads and indexes by ID and week', async () => {
+test('real authored papers load and are attached to course units', async () => {
   const content = await loadContent('content');
 
   expect(content.papers.length).toBeGreaterThan(0);
   expect(content.papersById.size).toBe(content.papers.length);
-  expect([...content.papersByWeek.values()].flat()).toHaveLength(content.papers.length);
+  expect(
+    content.courses.flatMap((course) => course.units.flatMap((unit) => unit.papers ?? [])),
+  ).toHaveLength(content.papers.length);
 });
 
-test('authored week-two neural-network project loads with its reflection exercises', async () => {
+test('authored neural-network project loads with its reflection exercises', async () => {
   const content = await loadContent('content');
-  const project = required(content.projectsById.get('nn-from-scratch'), 'week-two project');
+  const project = required(content.projectsById.get('nn-from-scratch'), 'neural-network project');
 
   expect(project.status).toBe('authored');
   expect(project.prereqs).toEqual(['mlp-forward-pass', 'backpropagation']);
@@ -183,14 +191,6 @@ test('paper validation rejects unsafe sources, malformed identifiers, invalid qu
     validateContent(unknownConcept).some((issue) => issue.message.includes('unknown concept')),
   ).toBe(true);
 
-  const missingWeek = structuredClone(data);
-  firstPaper(missingWeek).value.week = 99;
-  expect(
-    validateContent(missingWeek).some((issue) =>
-      issue.message.includes('week 99 is not in the curriculum'),
-    ),
-  ).toBe(true);
-
   const duplicateId = structuredClone(data);
   duplicateId.papers.push({ ...firstPaper(duplicateId), file: 'papers/duplicate.yaml' });
   expect(validateContent(duplicateId).some((issue) => issue.message === 'duplicate paper id')).toBe(
@@ -253,6 +253,7 @@ test('an empty content directory is valid', async () => {
 
 test('lessons start with an objective and end with a summary', () => {
   const issues = validateContent({
+    courses: [],
     concepts: [],
     lessons: [
       {
@@ -476,85 +477,154 @@ test('knowledge-point lessons may include check-role exercises', async () => {
   );
 });
 
-test('hard prerequisites must precede concepts in the curriculum outline', async () => {
+test('in-course hard prerequisites must precede concepts in the course outline', async () => {
   const data = await notationFixture();
-  const week = data.curriculum?.value.weeks[0];
-  if (!week) throw new Error('Missing fixture curriculum week');
-  week.concepts = [
+  const course = data.courses.find(({ value }) => value.id === 'fixture-course')?.value;
+  const unit = course?.units[0];
+  if (!unit) throw new Error('Missing fixture course unit');
+  unit.concepts = [
     'derivatives',
     'vectors',
-    ...week.concepts.filter((id) => !['vectors', 'derivatives'].includes(id)),
+    ...unit.concepts.filter((id) => !['vectors', 'derivatives'].includes(id)),
   ];
 
   expect(validateContent(data)).toEqual(
     expect.arrayContaining([
       expect.objectContaining({
         id: 'derivatives',
-        message: 'hard prerequisite "vectors" appears later in the curriculum outline',
+        message: 'hard prerequisite "vectors" appears later in course outline',
       }),
     ]),
   );
 });
 
-test('an outlined concept requires its hard prerequisites in the outline', async () => {
+test('a hard prerequisite outside a course is allowed as a foundation', async () => {
   const data = await notationFixture();
-  const week = data.curriculum?.value.weeks[0];
-  if (!week) throw new Error('Missing fixture curriculum week');
-  week.concepts = week.concepts.filter((id) => id !== 'vectors');
+  const course = data.courses.find(({ value }) => value.id === 'fixture-course')?.value;
+  if (!course) throw new Error('Missing fixture course');
+  course.units = course.units.map((unit) => ({
+    ...unit,
+    concepts: unit.concepts.filter((id) => id !== 'vectors'),
+  }));
 
-  expect(validateContent(data)).toEqual(
+  expect(validateContent(data)).not.toEqual(
     expect.arrayContaining([
       expect.objectContaining({
         id: 'derivatives',
-        message: 'hard prerequisite "vectors" is missing from the curriculum outline',
+        message: expect.stringContaining('prerequisite'),
       }),
     ]),
   );
 });
 
-test('a concept cannot appear in multiple curriculum weeks', async () => {
+test('a concept cannot appear more than once within one course', async () => {
   const data = await notationFixture();
-  const curriculum = data.curriculum?.value;
-  const firstWeek = curriculum?.weeks[0];
-  if (!curriculum || !firstWeek?.concepts.includes('vectors')) {
-    throw new Error('Missing fixture curriculum week');
-  }
-  curriculum.weeks.push({
-    ...firstWeek,
-    week: firstWeek.week + 1,
-    concepts: ['vectors'],
+  const course = data.courses.find(({ value }) => value.id === 'fixture-course')?.value;
+  const unit = course?.units[1];
+  if (!unit) throw new Error('Missing fixture second unit');
+  unit.concepts.push('vectors');
+
+  expect(validateContent(data)).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        id: 'fixture-course',
+        message: 'concept "vectors" appears more than once in this course',
+      }),
+    ]),
+  );
+});
+
+test('course files have unique IDs and must be listed by the curriculum', async () => {
+  const data = await notationFixture();
+  const firstCourse = data.courses.find(({ value }) => value.id === 'fixture-course');
+  if (!firstCourse) throw new Error('Missing fixture course');
+  data.courses.push({ ...firstCourse, file: 'courses/duplicate.yaml' });
+  data.courses.push({
+    value: {
+      id: 'unlisted-course',
+      title: 'Unlisted',
+      description: '',
+      units: [{ title: 'Unlisted', concepts: ['vectors'] }],
+    },
+    file: 'courses/unlisted-course.yaml',
   });
+  data.curriculum?.value.courses.push('missing-file-course', 'fixture-course');
 
-  expect(validateContent(data)).toEqual(
+  const issues = validateContent(data);
+  expect(issues).toEqual(
     expect.arrayContaining([
+      expect.objectContaining({ id: 'fixture-course', message: 'duplicate course id' }),
       expect.objectContaining({
-        id: 'vectors',
-        message: `concept listed more than once in the curriculum (weeks ${firstWeek.week} and ${firstWeek.week + 1})`,
+        id: 'unlisted-course',
+        message: 'course id is not listed in curriculum',
       }),
+      expect.objectContaining({
+        id: 'missing-file-course',
+        message: 'course is listed but has no course file',
+      }),
+      expect.objectContaining({ id: 'fixture-course', message: 'duplicate course in curriculum' }),
     ]),
   );
 });
 
-test('an outlined concept must match its week field', async () => {
+test('the default course must exist in the listed course files', async () => {
   const data = await notationFixture();
-  const concept = data.concepts.find(({ value }) => value.id === 'vectors');
-  const week = data.curriculum?.value.weeks.find(({ concepts }) => concepts.includes('vectors'));
-  if (!concept || !week) throw new Error('Missing fixture vectors concept or curriculum week');
-  concept.value.week = week.week + 1;
-
+  if (!data.curriculum) throw new Error('Missing fixture curriculum');
+  data.curriculum.value.default_course = 'missing-course';
   expect(validateContent(data)).toEqual(
     expect.arrayContaining([
       expect.objectContaining({
-        id: 'vectors',
-        message: `concept week field (${week.week + 1}) does not match curriculum week (${week.week})`,
+        id: 'missing-course',
+        message: 'default_course is not a listed course',
       }),
     ]),
   );
 });
 
-test('real content has no duplicate or mismatched curriculum weeks', async () => {
+test('course units must reference existing concepts, projects, and papers', async () => {
+  const data = await notationFixture();
+  const course = data.courses.find(({ value }) => value.id === 'fixture-course')?.value;
+  const unit = course?.units[0];
+  if (!unit) throw new Error('Missing fixture course unit');
+  unit.concepts.push('missing-concept');
+  unit.project = 'missing-project';
+  unit.papers?.push('missing-paper');
+
+  const messages = validateContent(data).map(({ message }) => message);
+  expect(messages).toContain('unit 1 references unknown concept "missing-concept"');
+  expect(messages).toContain('unit 1 references unknown project "missing-project"');
+  expect(messages).toContain('unit 1 references unknown paper "missing-paper"');
+});
+
+test('every concept, project, and paper must appear in at least one course unit', async () => {
+  const data = await notationFixture();
+  for (const { value } of data.courses) {
+    value.units = value.units.map((unit) => ({
+      ...unit,
+      concepts: unit.concepts.filter((id) => id !== 'vectors'),
+      project: unit.project === 'linreg-numpy' ? 'optimization-project' : unit.project,
+      papers: (unit.papers ?? []).filter((id) => id !== 'fixture-paper-one'),
+    }));
+  }
+  const issues = validateContent(data);
+  expect(issues).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ id: 'vectors', message: 'concept is not listed in any course' }),
+      expect.objectContaining({
+        id: 'linreg-numpy',
+        message: 'project is not assigned to a course unit',
+      }),
+      expect.objectContaining({
+        id: 'fixture-paper-one',
+        message: 'paper is not assigned to a course unit',
+      }),
+    ]),
+  );
+});
+
+test('real content has a valid course graph', async () => {
   const content = await loadContent('content');
-  expect(content.curriculum).toBeDefined();
+  expect(content.courses).toHaveLength(8);
 });
 
 test('notation used without an introducing hard prerequisite is an issue', async () => {
@@ -1200,6 +1270,10 @@ function sourceDataFromIndex(content: ContentIndex): ContentSourceData {
     ...(content.curriculum
       ? { curriculum: { value: content.curriculum, file: 'curriculum.yaml' } }
       : {}),
+    courses: content.courses.map(({ contentVersion, ...value }) => ({
+      value,
+      file: `courses/${value.id}.yaml`,
+    })),
     concepts: content.concepts.map(({ domain, contentVersion, ...value }) => ({
       value,
       domain,

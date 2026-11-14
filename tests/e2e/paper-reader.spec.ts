@@ -336,7 +336,7 @@ test('scrolling through PDF pages does not show the route loading skeleton', asy
   expect(await page.evaluate(() => window.__routeSkeletonSeen)).toBe(false);
 });
 
-test('Saturday session offers the current week papers and a skip action', async ({ page }) => {
+test('Saturday session offers the current unit papers and a skip action', async ({ page }) => {
   await db.insert(lessonRuns).values(
     ['vectors', 'derivatives', 'linear-algebra', 'supervised-learning', 'linear-models'].map(
       (conceptId) => ({
@@ -359,7 +359,7 @@ test('Saturday session offers the current week papers and a skip action', async 
   const sessionId = session.id as string;
   await page.goto(`/session/${sessionId}`);
   await expect(page.getByRole('heading', { name: 'Paper reading' })).toBeVisible();
-  await expect(page.getByText("Pick one of this week's papers to read.")).toBeVisible();
+  await expect(page.getByText("Pick one of this unit's papers to read.")).toBeVisible();
   const sessionPaper = page.getByRole('link', { name: /Fixture Paper Two/ });
   await expect(sessionPaper).toBeVisible();
   await expect(sessionPaper).toContainText('Not started');

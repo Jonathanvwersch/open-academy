@@ -1,7 +1,13 @@
 import type { LessonPrerequisite } from '@academy/contracts/lessons';
 import { contentVersion } from './hash.js';
 import type { Dimension, ExerciseRole } from './schemas.js';
-import type { ContentIndex, ContentSourceData, IndexedExercise, IndexedPaper } from './types.js';
+import type {
+  ContentIndex,
+  ContentSourceData,
+  IndexedCourse,
+  IndexedExercise,
+  IndexedPaper,
+} from './types.js';
 
 function appendToMap<Key, Value>(map: Map<Key, Value[]>, key: Key, value: Value) {
   const values = map.get(key) ?? [];
@@ -33,6 +39,15 @@ export function getLessonPrerequisites(
 }
 
 export function buildContentIndex(data: ContentSourceData): ContentIndex {
+  const courses: IndexedCourse[] = data.courses.map(({ value }) => ({
+    ...value,
+    contentVersion: contentVersion(value),
+  }));
+  const coursesById = new Map(courses.map((course) => [course.id, course]));
+  const orderedCourses = (data.curriculum?.value.courses ?? []).flatMap((courseId) => {
+    const course = coursesById.get(courseId);
+    return course ? [course] : [];
+  });
   const concepts = data.concepts.map(({ value, domain }) => ({
     ...value,
     domain,
@@ -78,13 +93,13 @@ export function buildContentIndex(data: ContentSourceData): ContentIndex {
     contentVersion: contentVersion(value),
   }));
   const papersById = new Map(papers.map((paper) => [paper.id, paper]));
-  const papersByWeek = new Map<number, IndexedPaper[]>();
-  for (const paper of papers) appendToMap(papersByWeek, paper.week, paper);
 
   return {
     curriculum: data.curriculum
       ? { ...data.curriculum.value, contentVersion: contentVersion(data.curriculum.value) }
       : undefined,
+    courses: orderedCourses,
+    coursesById,
     concepts,
     conceptsById,
     edges,
@@ -100,6 +115,5 @@ export function buildContentIndex(data: ContentSourceData): ContentIndex {
     projectsById,
     papers,
     papersById,
-    papersByWeek,
   };
 }

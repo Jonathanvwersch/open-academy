@@ -226,7 +226,7 @@ export function LearnPage() {
           <CardContent className="space-y-6">
             <div className="space-y-2">
               <div className="flex items-baseline justify-between gap-4">
-                <span className="text-sm text-muted-foreground">Course</span>
+                <span className="text-sm font-medium">{data.course.title}</span>
                 <span className="text-sm font-medium">
                   {data.course.topicsDone} of {data.course.topicsTotal} topics
                 </span>

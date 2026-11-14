@@ -1,8 +1,7 @@
 id: inference-engine
 title: "Fast inference for your transformer"
-week: 6
 status: stub
 est_hours: 6
-objective: "Add a KV cache to your week 5 character-level transformer, measure time to first token and tokens per second with and without it, then quantise its weights to INT8 and compare speed and quality. Finally, write a tiny graph compiler in Python: record elementwise operations lazily, fuse each chain into one kernel and measure the speedup."
+objective: "Add a KV cache to your character-level transformer from Transformers and LLMs, measure time to first token and tokens per second with and without it, then quantise its weights to INT8 and compare speed and quality. Finally, write a tiny graph compiler in Python: record elementwise operations lazily, fuse each chain into one kernel and measure the speedup."
 background: ""
 prereqs: [kv-cache, quantization, inference-metrics, ml-compilers]
