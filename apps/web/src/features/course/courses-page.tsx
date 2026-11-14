@@ -16,11 +16,6 @@ export function CoursesPage() {
   return (
     <section className="space-y-8">
       <h1 className="sr-only">Courses</h1>
-      <div className="flex justify-end">
-        <Link to="/map" className="text-sm text-primary underline-offset-4 hover:underline">
-          View map
-        </Link>
-      </div>
       {data.subjects.map((subject) => (
         <section key={subject.title} className="space-y-4">
           {data.subjects.length > 1 ? (

@@ -114,7 +114,7 @@ test('learners can switch to a listed course', async () => {
   const [user] = await db.select().from(users).where(eq(users.id, userId));
   expect(user?.activeCourseId).toBe('robotics');
   const coursePayload = await (await get('/course')).json();
-  expect(coursePayload.course).toMatchObject({ id: 'robotics', title: 'Robotics' });
+  expect(coursePayload.course).toMatchObject({ id: 'robotics', title: 'Classical Robotics' });
   expect(
     coursePayload.courses.find((course: { id: string }) => course.id === 'robotics'),
   ).toMatchObject({
@@ -130,7 +130,7 @@ test('learners can switch to a listed course', async () => {
   });
   expect(learnPayload.streak.days).toHaveLength(7);
   expect(learnPayload.course).toMatchObject({
-    title: 'Robotics',
+    title: 'Classical Robotics',
     topicsTotal: coursePayload.units.reduce(
       (total: number, unit: { topics: unknown[] }) => total + unit.topics.length,
       0,

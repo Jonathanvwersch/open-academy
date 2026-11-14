@@ -15,3 +15,6 @@ export function topicStatusClasses(status: CourseTopicStatus) {
       ? 'bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300'
       : 'bg-secondary text-secondary-foreground';
 }
+
+export const completeTopicNodeClasses =
+  'border-emerald-700 bg-emerald-50 text-emerald-700 dark:border-emerald-300 dark:bg-emerald-950/40 dark:text-emerald-300';

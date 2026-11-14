@@ -5,8 +5,8 @@ import { layoutStudyMap } from './layout.js';
 
 const payload: StudyMapPayload = {
   groups: [
-    { id: 'one', title: 'One', kind: 'course' },
-    { id: 'two', title: 'Two', kind: 'course' },
+    { id: 'one', title: 'One', kind: 'course', sharedTopicGroupIds: [] },
+    { id: 'two', title: 'Two', kind: 'course', sharedTopicGroupIds: [] },
   ],
   nodes: ['a', 'b', 'c', 'd'].map((id) => ({
     id,

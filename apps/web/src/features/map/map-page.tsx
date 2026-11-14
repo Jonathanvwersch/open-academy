@@ -14,30 +14,45 @@ import {
 } from '@xyflow/react';
 import { Popover } from 'radix-ui';
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { topicStatusClasses, topicStatusLabels } from '../../components/topic-status.js';
+import {
+  completeTopicNodeClasses,
+  topicStatusClasses,
+  topicStatusLabels,
+} from '../../components/topic-status.js';
 import { Badge } from '../../components/ui/badge.js';
 import { Button } from '../../components/ui/button.js';
 import { Card, CardContent } from '../../components/ui/card.js';
 import { emphasizeStudyMap } from './emphasis.js';
-import { type GroupNode, type GroupTitleNode, layoutStudyMap, type TopicNode } from './layout.js';
+import {
+  type GroupNode,
+  type GroupTitleNode,
+  layoutStudyMap,
+  mapGroupSpacing,
+  sharedTopicMessage,
+  type TopicNode,
+} from './layout.js';
+import { filterStudyMap, type MapStatus, mapStatus, mapStatuses } from './map-status.js';
 import { studyMapQueryOptions } from './queries.js';
-import { initialMapViewport, mapFitViewOptions } from './viewport.js';
+import { groupJumpView, initialMapViewport, mapFitViewOptions } from './viewport.js';
 import '@xyflow/react/dist/style.css';
 import './map.css';
 
 type Topic = StudyMapPayload['nodes'][number];
 const topicLabel = (topic: Topic) =>
-  topic.placedOut ? 'Placed out' : topicStatusLabels[topic.status];
+  topic.placedOut ? 'Placed out' : topicStatusLabels[mapStatus(topic.status)];
 const canOpen = (topic: Topic) => topic.status !== 'locked' && topic.lessonAvailable;
 const TopicFocusContext = createContext<((id: string | null) => void) | null>(null);
 
 function TopicAction({ topic, graph = false }: { topic: Topic; graph?: boolean }) {
   const label = topicLabel(topic);
-  const className = `nodrag nopan pointer-events-auto flex w-full min-w-0 flex-col items-start justify-center gap-2 rounded-lg text-left outline-none focus-visible:ring-2 focus-visible:ring-ring ${graph ? `h-full border bg-card p-3 shadow-sm ${topic.status === 'locked' ? 'border-dashed text-muted-foreground' : 'border-border hover:border-primary/50'}` : 'px-1 py-3'}`;
+  const className = `nodrag nopan pointer-events-auto flex w-full min-w-0 flex-col items-start justify-center gap-2 rounded-lg text-left outline-none focus-visible:ring-2 focus-visible:ring-ring ${graph ? `h-full border p-3 shadow-sm ${topic.status === 'complete' ? completeTopicNodeClasses : `bg-card ${topic.status === 'locked' ? 'border-dashed text-muted-foreground' : 'border-border hover:border-primary/50'}`}` : 'px-1 py-3'}`;
   const children = (
     <>
       <span className="line-clamp-2 font-medium leading-5">{topic.title}</span>
-      <Badge variant="secondary" className={`text-xs ${topicStatusClasses(topic.status)}`}>
+      <Badge
+        variant="secondary"
+        className={`text-xs ${topicStatusClasses(mapStatus(topic.status))}`}
+      >
         {label}
       </Badge>
     </>
@@ -110,13 +125,32 @@ function TopicGraphNode({ id, data }: NodeProps<TopicNode>) {
   );
 }
 
-function CourseGroupNode() {
-  return <div className="h-full rounded-xl border border-border bg-muted/30" />;
+function CourseGroupNode({ data }: NodeProps<GroupNode>) {
+  return (
+    <div className="relative h-full rounded-xl border border-border bg-muted/30">
+      {data.sharedTopicMessage ? (
+        <p
+          className="absolute text-sm leading-5 text-muted-foreground"
+          style={{
+            left: mapGroupSpacing.padding,
+            right: mapGroupSpacing.padding,
+            top: (data.titleStrip ?? mapGroupSpacing.titleStrip) + mapGroupSpacing.padding,
+          }}
+        >
+          {data.sharedTopicMessage}
+        </p>
+      ) : null}
+    </div>
+  );
 }
 
 function CourseGroupTitleNode({ data }: NodeProps<GroupTitleNode>) {
   return (
-    <div className="h-full truncate text-lg font-semibold" data-map-title title={data.title}>
+    <div
+      className="h-full break-words text-lg font-semibold leading-6"
+      data-map-title
+      title={data.title}
+    >
       {data.title}
     </div>
   );
@@ -144,27 +178,29 @@ function MapViewport({ groups }: { groups: GroupNode[] }) {
 }
 
 function GroupNavigation({ groups }: { groups: GroupNode[] }) {
-  const { fitBounds } = useReactFlow();
+  const { fitBounds, setViewport } = useReactFlow();
+  const width = useStore((state) => state.width);
+  const height = useStore((state) => state.height);
   const initialized = useNodesInitialized({ includeHiddenNodes: true });
   return (
-    <nav aria-label="Jump to group" className="flex flex-wrap gap-2 px-4 sm:px-6">
+    <nav
+      aria-label="Jump to group"
+      className="flex min-w-0 flex-1 basis-full flex-wrap gap-2 sm:basis-0"
+    >
       {groups.map((group) => (
         <Button
           key={group.id}
           type="button"
           variant="outline"
           size="sm"
+          className="h-auto min-h-7 max-w-full whitespace-normal break-words py-1 text-left"
           disabled={!initialized}
-          onClick={() =>
-            void fitBounds(
-              {
-                ...group.position,
-                width: Number(group.style?.width),
-                height: Number(group.style?.height),
-              },
-              { padding: 0.1, duration: 400 },
-            )
-          }
+          onClick={() => {
+            const view = groupJumpView(group, width, height);
+            if (!view) return;
+            if (view.kind === 'anchor') void setViewport(view.viewport, { duration: 400 });
+            else void fitBounds(view.bounds, { padding: mapFitViewOptions.padding, duration: 400 });
+          }}
         >
           {group.data.title}
         </Button>
@@ -173,56 +209,51 @@ function GroupNavigation({ groups }: { groups: GroupNode[] }) {
   );
 }
 
-function StatusLegend({ className }: { className: string }) {
+function StatusFilters({
+  selected,
+  onChange,
+}: {
+  selected: ReadonlySet<MapStatus>;
+  onChange: (selected: Set<MapStatus>) => void;
+}) {
   return (
-    <ul aria-label="Topic status legend" className={className}>
-      {(['complete', 'in_progress', 'quiz', 'not_started', 'locked'] as const).map((status) => (
-        <li key={status}>
-          <Badge variant="secondary" className={`text-[10px] ${topicStatusClasses(status)}`}>
-            {topicStatusLabels[status]}
-          </Badge>
-        </li>
+    <fieldset aria-label="Filter by status" className="flex flex-wrap items-center gap-1">
+      {mapStatuses.map((status) => (
+        <Button
+          key={status}
+          type="button"
+          variant="outline"
+          size="sm"
+          aria-pressed={selected.has(status)}
+          className={`h-auto rounded-full border-transparent px-2 py-1 text-xs ${topicStatusClasses(status)} ${selected.has(status) ? 'ring-2 ring-ring ring-offset-1' : ''}`}
+          onClick={() => {
+            const next = new Set(selected);
+            if (next.has(status)) next.delete(status);
+            else next.add(status);
+            onChange(next);
+          }}
+        >
+          {topicStatusLabels[status]}
+        </Button>
       ))}
-    </ul>
-  );
-}
-
-function MapKey() {
-  return (
-    <div className="flex justify-end px-2 py-1">
-      <StatusLegend className="hidden flex-nowrap gap-1 rounded-lg border border-border bg-card p-1 sm:flex" />
-      <div className="sm:hidden">
-        <Popover.Root>
-          <Popover.Trigger asChild>
-            <Button type="button" variant="outline" size="sm" className="bg-card">
-              Key
-            </Button>
-          </Popover.Trigger>
-          <Popover.Portal>
-            <Popover.Content
-              aria-label="Map key"
-              align="end"
-              sideOffset={8}
-              collisionPadding={8}
-              className="z-50 max-w-72 rounded-lg border border-border bg-card p-2 shadow-md"
-            >
-              <StatusLegend className="flex flex-wrap gap-1" />
-            </Popover.Content>
-          </Popover.Portal>
-        </Popover.Root>
-      </div>
-    </div>
+      {selected.size ? (
+        <Button type="button" variant="ghost" size="sm" onClick={() => onChange(new Set())}>
+          Clear
+        </Button>
+      ) : null}
+    </fieldset>
   );
 }
 
 export function MapPage() {
   const { data } = useSuspenseQuery(studyMapQueryOptions());
-  const graph = useMemo(() => (data.nodes.length ? layoutStudyMap(data) : null), [data]);
+  const graph = useMemo(() => (data.groups.length ? layoutStudyMap(data) : null), [data]);
   const [hovered, setHovered] = useState<string | null>(null);
   const [focused, setFocused] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Set<MapStatus>>(new Set());
   const emphasized = useMemo(
-    () => (graph ? emphasizeStudyMap(graph, hovered ?? focused) : null),
-    [graph, hovered, focused],
+    () => (graph ? filterStudyMap(emphasizeStudyMap(graph, hovered ?? focused), selected) : null),
+    [graph, hovered, focused, selected],
   );
   const touchOrigin = useRef<{ x: number; y: number } | null>(null);
   if (!graph || !emphasized)
@@ -240,10 +271,13 @@ export function MapPage() {
       <h1 className="sr-only">Map</h1>
       <ReactFlowProvider>
         <div className="grid h-[calc(100dvh-5.5rem)] min-h-min grid-rows-[auto_minmax(560px,1fr)] gap-3 md:h-[calc(100dvh-2rem)]">
-          <GroupNavigation groups={graph.nodes.filter((node) => node.type === 'courseGroup')} />
+          <div className="flex flex-wrap items-center justify-between gap-3 px-4 sm:px-6">
+            <GroupNavigation groups={graph.nodes.filter((node) => node.type === 'courseGroup')} />
+            <StatusFilters selected={selected} onChange={setSelected} />
+          </div>
           <section
             aria-label="Study map graph"
-            className="study-map relative grid min-h-[560px] w-full grid-rows-[auto_minmax(0,1fr)] border-y border-border"
+            className="study-map relative grid min-h-[560px] w-full border-y border-border"
             onTouchStartCapture={(event) => {
               const touch = event.touches[0];
               touchOrigin.current =
@@ -261,7 +295,6 @@ export function MapPage() {
                 event.stopPropagation();
             }}
           >
-            <MapKey />
             <TopicFocusContext.Provider value={setFocused}>
               <ReactFlow
                 nodes={emphasized.nodes}
@@ -286,14 +319,30 @@ export function MapPage() {
           </section>
         </div>
       </ReactFlowProvider>
-      <div className="grid gap-4 px-4 sm:px-6 md:grid-cols-2">
-        {data.groups.map((group) => (
+      <section aria-label="Topics by group" className="grid gap-4 px-4 sm:px-6 md:grid-cols-2">
+        {graph.groups.map((group) => (
           <Card key={group.id}>
             <CardContent>
               <h2 className="font-semibold">{group.title}</h2>
+              {!data.nodes.some((topic) => topic.groupId === group.id) ? (
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {sharedTopicMessage(group, graph.groups)}
+                </p>
+              ) : null}
+              {selected.size > 0 &&
+              data.nodes.some((topic) => topic.groupId === group.id) &&
+              !data.nodes.some(
+                (topic) => topic.groupId === group.id && selected.has(mapStatus(topic.status)),
+              ) ? (
+                <p className="mt-2 text-sm text-muted-foreground">No topics match the filter.</p>
+              ) : null}
               <ul className="mt-2 divide-y">
                 {data.nodes
-                  .filter((topic) => topic.groupId === group.id)
+                  .filter(
+                    (topic) =>
+                      topic.groupId === group.id &&
+                      (!selected.size || selected.has(mapStatus(topic.status))),
+                  )
                   .map((topic) => (
                     <li key={topic.id}>
                       <TopicAction topic={topic} />
@@ -303,7 +352,7 @@ export function MapPage() {
             </CardContent>
           </Card>
         ))}
-      </div>
+      </section>
     </section>
   );
 }

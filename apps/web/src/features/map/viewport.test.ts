@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest';
 import type { GroupNode } from './layout.js';
-import { initialMapViewport, mapFitViewOptions } from './viewport.js';
+import { groupJumpView, initialMapViewport, mapFitViewOptions } from './viewport.js';
 
 const group = (width: number, height: number): GroupNode => ({
   id: 'first',
@@ -33,6 +33,35 @@ test.each([
 
 test('Fit view can still zoom out to show the whole graph', () => {
   expect(mapFitViewOptions).toEqual({ padding: 0.1, minZoom: 0.01, maxZoom: 1 });
+});
+
+test.each([
+  [3000, 200],
+  [300, 5000],
+  [1251, 188],
+])('jumps to oversized %i by %i groups at readable 0.8 zoom with 24px insets', (width, height) => {
+  const target = group(width, height);
+  expect(groupJumpView(target, 1100, 600)).toEqual({
+    kind: 'anchor',
+    viewport: { x: 24 - 700 * 0.8, y: 24 - 1400 * 0.8, zoom: 0.8 },
+  });
+});
+
+test('groups that fit readably keep fitBounds, including the 0.8 threshold', () => {
+  for (const width of [268, 1000, 1250]) {
+    const target = group(width, 188);
+    expect(groupJumpView(target, 1100, 600)).toEqual({
+      kind: 'fit',
+      bounds: { ...target.position, width, height: 188 },
+    });
+  }
+});
+
+test('unmeasured or empty group jumps have no viewport decision', () => {
+  expect(groupJumpView(group(300, 200), 0, 600)).toBeUndefined();
+  expect(groupJumpView(group(300, 200), 1100, 0)).toBeUndefined();
+  expect(groupJumpView(group(0, 200), 1100, 600)).toBeUndefined();
+  expect(groupJumpView(group(300, 0), 1100, 600)).toBeUndefined();
 });
 
 test('empty maps and unmeasured containers have no initial viewport', () => {
