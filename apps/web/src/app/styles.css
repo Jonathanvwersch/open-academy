@@ -143,59 +143,10 @@ label[for],
   padding: 0;
 }
 
-.bg-background {
-  --katex-cover: var(--background);
-}
-
-.bg-sidebar {
-  --katex-cover: var(--sidebar);
-}
-
-.bg-secondary {
-  --katex-cover: var(--secondary);
-}
-
-.bg-muted {
-  --katex-cover: var(--muted);
-}
-
-.bg-muted\/50 {
-  --katex-cover: color-mix(in oklab, var(--muted) 50%, var(--card));
-}
-
-.bg-green-50 {
-  --katex-cover: var(--color-green-50);
-}
-
-.bg-amber-50 {
-  --katex-cover: var(--color-amber-50);
-}
-
-.bg-red-50 {
-  --katex-cover: var(--color-red-50);
-}
-
 .katex-display {
   overflow-x: auto;
   overflow-y: hidden;
   padding-block: 0.25rem;
-  background:
-    linear-gradient(to right, var(--katex-cover, var(--card)) 30%, transparent) left / 2rem 100%
-    no-repeat local,
-    linear-gradient(to left, var(--katex-cover, var(--card)) 30%, transparent) right / 2rem 100%
-    no-repeat local,
-    radial-gradient(
-      farthest-side at 0 50%,
-      color-mix(in oklch, var(--foreground) 18%, transparent),
-      transparent
-    )
-    left / 0.75rem 100% no-repeat scroll,
-    radial-gradient(
-      farthest-side at 100% 50%,
-      color-mix(in oklch, var(--foreground) 18%, transparent),
-      transparent
-    )
-    right / 0.75rem 100% no-repeat scroll;
 }
 
 .tutor-display-math {
