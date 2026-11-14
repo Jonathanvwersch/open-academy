@@ -209,18 +209,25 @@ exercises:
     difficulty: 2
     est_minutes: 2
     prompt:
-      A camera flags 20 parts. Of these, {{= 5 * k }} are actually faulty and {{= 20 - 5 * k }}
-      are actually fine. What is precision as a decimal?
+      "A camera checks 100 parts. Its counts are: true positives {{=5*k}}, false positives {{=20-5*k}}, false
+      negatives 10 and true negatives {{=100-5*k-(20-5*k)-10}}. What is precision as a decimal?"
     params:
       k:
         min: 1
         max: 4
         step: 1
+    constraints:
+      - k != 2
     answer_expr: 5 * k / 20
     tolerance:
-      abs: 0.000001
-    solution: Of 20 flagged parts, {{= 5 * k }} are actually faulty. Precision is {{= 5 * k }} /
-      20 = {{= 5 * k / 20 }}.
+      abs: 1.0e-06
+    solution:
+      Of 20 flagged parts, {{= 5 * k }} are actually faulty. Precision is {{= 5 * k }} / 20 = {{= 5 * k /
+      20 }}.
+    common_wrong:
+      - answer_expr: 5*k/(5*k+10)
+        category: misunderstood_definition
+        feedback: That uses all actual positives and gives recall. Precision uses all predicted positives.
   - id: evm-recall-template
     dimension: math
     type: numeric
@@ -228,8 +235,8 @@ exercises:
     difficulty: 2
     est_minutes: 2
     prompt:
-      A camera catches {{= 5 * k }} faulty parts and misses {{= 20 - 5 * k }} faulty parts. What
-      is recall as a decimal?
+      "A camera checks 100 parts. Its counts are: true positives {{=5*k}}, false negatives {{=20-5*k}}, false
+      positives 6 and true negatives {{=100-5*k-(20-5*k)-6}}. What is recall as a decimal?"
     params:
       k:
         min: 1
@@ -237,10 +244,10 @@ exercises:
         step: 1
     answer_expr: 5 * k / 20
     tolerance:
-      abs: 0.000001
+      abs: 1.0e-06
     solution:
-      There are 20 actually faulty parts, including the misses. Recall is {{= 5 * k }} / 20 = {{= 5 * k
-      / 20 }}.
+      There are 20 actually faulty parts, including the misses. Recall is {{= 5 * k }} / 20 = {{= 5 * k /
+      20 }}.
   - id: evm-swapped-denominator
     dimension: math
     type: mc
@@ -402,23 +409,25 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 1
-    prompt: Two price errors are +20 and −20 thousand pounds. A learner says the model is perfect
-      because their average is zero. What is the mistake?
+    prompt:
+      Two price errors are +20 and −20 thousand pounds. A learner says the model is perfect because their average
+      is zero. What is the mistake?
     options:
       - id: a
-        text: They should divide the signed sum by four rather than two.
+        text: Nothing; errors of +20 and −20 balance, so the model is accurate on average.
         correct: false
-        feedback: There are two errors. The problem is cancellation, not the number of examples.
+        feedback: A zero signed average hides two misses of 20; it does not mean accurate individual predictions.
       - id: b
         text: Opposite signed errors cancel even when both predictions miss.
         correct: true
         feedback: Both predictions miss by 20, so both error scores are 20.
       - id: c
-        text: Negative errors mean the actual prices must also be negative.
+        text: They should average the predictions, which would differ from the average actual price.
         correct: false
-        feedback: A negative error just means the prediction was below the actual price.
-    solution: Signed error averages can cancel overpricing against underpricing. Absolute or squared
-      errors reveal both misses, giving MAE = RMSE = 20.
+        feedback: With signed errors summing to zero, the two averages are equal. Measure each miss before averaging.
+    solution:
+      Signed error averages can cancel overpricing against underpricing. Absolute or squared errors reveal
+      both misses, giving MAE = RMSE = 20.
   - id: evm-units
     dimension: conceptual
     type: mc

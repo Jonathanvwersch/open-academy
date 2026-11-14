@@ -72,26 +72,29 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: The straight line cannot follow a bend in prices and makes large mistakes on its training houses. What does this suggest?
+    prompt:
+      A straight line is fitted to house prices that rise steeply for large houses. It misses most training
+      prices by about 40 thousand dollars and validation prices by about the same. What does this suggest?
     options:
-      - {
-          id: a,
-          text: "A good fit, because the straight line is always reliable.",
-          correct: false,
-          feedback: "Reliability must be checked against errors, not the shape's simplicity.",
-        }
-      - {
-          id: b,
-          text: "Overfitting, because every wrong prediction means excessive flexibility.",
-          correct: false,
-          feedback: "The straight line is missing a pattern, not following training quirks too closely.",
-        }
-      - {
-          id: c,
-          text: "Underfitting, because the straight line misses a useful training pattern.",
-          correct: true,
-        }
-    solution: The straight line underfits because its shape cannot follow the useful bend even in its training examples.
+      - id: a
+        text: Underfitting, because the line misses the pattern in training prices
+        correct: true
+        feedback: The shape is too simple to capture the steep rise.
+      - id: b
+        text: A good fit, because training and validation errors are close
+        correct: false
+        feedback: Close errors can both be too large to be useful.
+      - id: c
+        text: Overfitting, because validation error is not lower than training error
+        correct: false
+        feedback: Overfitting is suggested by low training error and much higher validation error.
+      - id: d
+        text: Overfitting, because the prediction misses are large on both sets
+        correct: false
+        feedback: Large errors on both sets suggest a failure to learn the pattern.
+    solution:
+      The line misses the price pattern even on training houses. Large, similar training and validation errors
+      suggest underfitting.
   - id: ovfp-average-miss
     dimension: conceptual
     type: numeric
@@ -99,12 +102,27 @@ exercises:
     difficulty: 2
     est_minutes: 2
     params:
-      a: { min: 4, max: 12, step: 2 }
-      b: { min: 14, max: 22, step: 2 }
-    prompt: "A house-price model's two validation predictions miss the true prices by {{= a }} and {{= b }} thousand dollars. Both numbers are distances, ignoring above or below. What is its mean absolute error in thousands of dollars?"
-    answer_expr: "(a + b) / 2"
-    tolerance: { abs: 0.01 }
-    solution: "Add the two absolute misses and divide by two houses: ({{= a }} + {{= b }}) / 2 = {{= (a + b) / 2 }} thousand dollars. Squaring is not part of mean absolute error."
+      a:
+        min: 4
+        max: 12
+        step: 2
+      b:
+        min: 14
+        max: 22
+        step: 2
+    prompt:
+      Two validation houses sold for 300 and 250 thousand dollars. A model predicted {{=300+a}} and {{=250-b}}
+      thousand dollars respectively. What is its mean absolute error in thousands of dollars?
+    answer_expr: (a + b) / 2
+    tolerance:
+      abs: 0.01
+    solution:
+      "Add the two absolute misses and divide by two houses: ({{= a }} + {{= b }}) / 2 = {{= (a + b) / 2 }}
+      thousand dollars. Squaring is not part of mean absolute error."
+    common_wrong:
+      - answer_expr: (a-b)/2
+        category: misunderstood_definition
+        feedback: Take the absolute value of each prediction error before averaging.
   - id: ovf-choose-fit
     dimension: transfer
     type: mc
@@ -137,52 +155,53 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: A model matches every training house exactly. No validation predictions have been checked yet. What can we conclude?
+    prompt:
+      A model matches every training house exactly. No validation predictions have been checked yet. What can
+      we conclude?
     options:
-      - {
-          id: a,
-          text: "It certainly overfits because exact training fit is always harmful.",
-          correct: false,
-          feedback: "Exact fit alone is not proof. We need to check validation predictions too.",
-        }
-      - {
-          id: b,
-          text: "It certainly predicts validation houses well because training prices were predicted exactly.",
-          correct: false,
-          feedback: "Training success alone does not tell us how validation houses will be predicted.",
-        }
-      - {
-          id: c,
-          text: "Its training fit is perfect, but validation predictions still need checking.",
-          correct: true,
-        }
-    solution: Perfect training fit does not by itself prove either success or overfitting. Compare validation predictions before making that diagnosis.
+      - id: a
+        text: It overfits, since zero training error means it memorised noise.
+        correct: false
+        feedback: Exact fit alone is not proof. We need to check validation predictions too.
+      - id: b
+        text: It generalises well, since it has learned every training pattern.
+        correct: false
+        feedback: Training success alone does not tell us how validation houses will be predicted.
+      - id: c
+        text: Its training fit is perfect, but validation predictions still need checking.
+        correct: true
+    solution:
+      Perfect training fit does not by itself prove either success or overfitting. Compare validation predictions
+      before making that diagnosis.
   - id: ovf-robot-fit
     dimension: transfer
     type: mc
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: A robot predicts travel time from distance. One model memorises all training trips but misses held-out trips badly; another follows the broad pattern and predicts held-out trips well. What is the first model doing?
+    prompt:
+      A robot predicts travel time. Model A has mean absolute errors of 0 minutes on training trips and 9 on
+      held-out trips. Model B has errors of 3 and 4 minutes respectively. What is A doing?
     options:
-      - {
-          id: a,
-          text: "Underfitting, because it cannot match the training trips.",
-          correct: false,
-          feedback: "It matches training trips exactly; the failure is on held-out trips.",
-        }
-      - {
-          id: b,
-          text: "Overfitting, because its exact training fit does not carry over.",
-          correct: true,
-        }
-      - {
-          id: c,
-          text: "Fitting well, because memorised trips are the final goal.",
-          correct: false,
-          feedback: "The robot needs to predict trips it has not already taken.",
-        }
-    solution: "The first model overfits: it follows training trips so closely that its predictions fail on held-out trips."
+      - id: a
+        text: Overfitting, since its training success fails to carry over
+        correct: true
+        feedback: A has a large training to held-out error gap.
+      - id: b
+        text: Underfitting, since its held-out error is high
+        correct: false
+        feedback: Underfitting would also show a poor training fit.
+      - id: c
+        text: Fitting well, since its training error is zero
+        correct: false
+        feedback: Held-out trips reveal poor predictions beyond training.
+      - id: d
+        text: Showing high bias, since it misses held-out trips
+        correct: false
+        feedback: Held-out misses alone do not establish high bias; A fits its training trips exactly.
+    solution:
+      A fits training trips exactly but has much worse held-out error. This is evidence of overfitting, especially
+      compared with B's better held-out predictions.
   - id: ovfp-validation-choice
     dimension: transfer
     type: numeric
@@ -190,12 +209,23 @@ exercises:
     difficulty: 3
     est_minutes: 2
     params:
-      v: { min: 10, max: 20, step: 2 }
-      d: { min: 3, max: 9, step: 3 }
-    prompt: "Three house models have validation errors {{= v + d }}, {{= v }}, and {{= v + 2 * d }} thousand dollars. Their training errors are 8, 6 and 0. What is the validation error of the model we should choose, in thousands of dollars?"
-    answer_expr: v
-    tolerance: { abs: 0.01 }
-    solution: "Choose the lowest validation error, {{= v }}, from the second model. The third model's zero training error is not a reason to prefer its higher validation error."
+      v:
+        min: 10
+        max: 20
+        step: 2
+      d:
+        min: 3
+        max: 9
+        step: 3
+    prompt:
+      Three house models have validation errors {{=v+d}}, {{=v}} and {{=v+2*d}} thousand dollars. Their training
+      errors are 8, 6 and 0 respectively. What is the error gap of the model we should choose, in thousands of dollars?
+    answer_expr: v-6
+    tolerance:
+      abs: 0.01
+    solution:
+      The second model has the lowest validation error, {{=v}}. Its error gap is ${{=v}}-6={{=v-6}}$ thousand
+      dollars.
   - id: ovf-gap-basics
     dimension: conceptual
     type: mc
@@ -257,12 +287,23 @@ exercises:
     difficulty: 2
     est_minutes: 2
     params:
-      t: { min: 2, max: 10, step: 2 }
-      g: { min: 5, max: 25, step: 5 }
-    prompt: "A house model has training error {{= t }} and validation error {{= t + g }}, both mean absolute errors in thousands of dollars. What is validation error minus training error, in those units?"
+      t:
+        min: 2
+        max: 10
+        step: 2
+      g:
+        min: 5
+        max: 25
+        step: 5
+    prompt:
+      A house model has training error {{=t}}, validation error {{=t+g}} and test error {{=t+g+2}} checked once
+      at the end. All are mean absolute errors in thousands of dollars. What is its error gap, in those units?
     answer_expr: g
-    tolerance: { abs: 0.01 }
-    solution: "Subtract training error from validation error: {{= t + g }} - {{= t }} = {{= g }} thousand dollars. Reversing the subtraction would give the wrong sign."
+    tolerance:
+      abs: 0.01
+    solution:
+      "Subtract training error from validation error: {{= t + g }} - {{= t }} = {{= g }} thousand dollars.
+      Reversing the subtraction would give the wrong sign."
   - id: ovf-small-gap
     dimension: transfer
     type: mc
@@ -295,26 +336,29 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: The wiggly curve changes shape dramatically when we pick a different six training houses from all the sales we know about. Which idea describes that sensitivity?
+    prompt:
+      A flexible house-price curve changes shape dramatically when fitted to a different sample of six training
+      sales from the same market. Which idea describes that sensitivity?
     options:
-      - {
-          id: a,
-          text: "High bias, meaning the model refuses to change its predictions.",
-          correct: false,
-          feedback: "High bias means repeating mistakes because the shape cannot follow the pattern. Here the shape changes when the training houses change.",
-        }
-      - {
-          id: b,
-          text: "Low error, meaning both training sets must be predicted accurately.",
-          correct: false,
-          feedback: "A big shape change does not tell us whether either set is predicted accurately.",
-        }
-      - {
-          id: c,
-          text: "High variance, meaning the fitted model depends strongly on the training set.",
-          correct: true,
-        }
-    solution: Variance describes how much the fitted model changes when we pick different training houses. Large changes suggest high variance.
+      - id: a
+        text: High variance
+        correct: true
+        feedback: Large changes across training samples indicate high variance.
+      - id: b
+        text: High bias
+        correct: false
+        feedback: Bias concerns persistent errors from the model's assumptions.
+      - id: c
+        text: Underfitting
+        correct: false
+        feedback: Sensitivity to the sample does not establish a poor training fit.
+      - id: d
+        text: A good fit
+        correct: false
+        feedback: Sensitivity alone does not show accurate held-out predictions.
+    solution:
+      Variance describes how much the fitted model changes when we pick different training houses. Large changes
+      suggest high variance.
   - id: ovfp-gap-choice
     dimension: transfer
     type: numeric
@@ -322,12 +366,24 @@ exercises:
     difficulty: 3
     est_minutes: 2
     params:
-      t: { min: 4, max: 10, step: 2 }
-      g: { min: 2, max: 6, step: 2 }
-    prompt: "A model using size and location has training/validation errors {{= t }}/{{= t + g }}. A model using only size has errors {{= t + 20 }}/{{= t + 21 }}. All errors are in thousands of dollars. Choose by validation error. What is the gap of the chosen model?"
+      t:
+        min: 4
+        max: 10
+        step: 2
+      g:
+        min: 2
+        max: 6
+        step: 2
+    prompt:
+      House model A uses size and location and has training/validation errors {{=t}}/{{=t+g}}. Model B uses
+      size only and has errors 2/{{=t+g+5}}. All errors are in thousands of dollars. What is the error gap of the
+      model we should use for new houses?
     answer_expr: g
-    tolerance: { abs: 0.01 }
-    solution: "The model using size and location has lower validation error ({{= t + g }} rather than {{= t + 21 }}), even though the model using only size has the smaller gap. The chosen gap is {{= t + g }} - {{= t }} = {{= g }}."
+    tolerance:
+      abs: 0.01
+    solution:
+      A has the lower validation error, {{=t+g}}, even though B has lower training error. A's error gap is
+      ${{=t+g}}-{{=t}}={{=g}}$.
   - id: ovf-delivery-diagnosis
     dimension: transfer
     type: mc
@@ -360,22 +416,29 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: The straight line cannot follow the bend in prices. Its mistakes keep following a similar pattern even if we pick different training houses from all the sales we know about. Which description fits?
+    prompt:
+      A straight-line house-price model cannot follow a bend in prices. Its mistakes keep following a similar
+      pattern when fitted to different training sales from the same market. Which description fits?
     options:
-      - { id: a, text: "High bias because its shape cannot follow the pattern.", correct: true }
-      - {
-          id: b,
-          text: "High variance because it changes wildly between training sets.",
-          correct: false,
-          feedback: "The mistake persists across training sets. The model does not change wildly.",
-        }
-      - {
-          id: c,
-          text: "A good fit because a repeated mistake is a stable prediction.",
-          correct: false,
-          feedback: "Consistently wrong predictions are still wrong; stability alone is not accuracy.",
-        }
-    solution: The straight line repeats the same kind of mistake because it cannot bend, illustrating high bias. Its poor training fit suggests underfitting.
+      - id: a
+        text: High bias
+        correct: true
+        feedback: The rigid shape repeatedly misses the same pattern.
+      - id: b
+        text: High variance
+        correct: false
+        feedback: High variance would show large changes across training samples.
+      - id: c
+        text: Overfitting
+        correct: false
+        feedback: This line is too rigid to capture the training pattern.
+      - id: d
+        text: A good fit
+        correct: false
+        feedback: A stable mistake is still a mistake.
+    solution:
+      The straight line repeats the same kind of mistake because it cannot bend, illustrating high bias. Its
+      poor training fit suggests underfitting.
   - id: ovf-curve-basics
     dimension: conceptual
     type: mc
@@ -437,12 +500,24 @@ exercises:
     difficulty: 2
     est_minutes: 2
     params:
-      e: { min: 2, max: 6, step: 1 }
-      v: { min: 10, max: 18, step: 2 }
-    prompt: "Saved house models at epochs {{= e - 1 }}, {{= e }}, and {{= e + 1 }} have validation errors {{= v + 3 }}, {{= v }}, and {{= v + 5 }}. Their training errors keep falling. Which epoch has the lowest validation error? Give its epoch number."
+      e:
+        min: 2
+        max: 6
+        step: 1
+      v:
+        min: 10
+        max: 18
+        step: 2
+    prompt:
+      Saved house models at epochs {{=e-1}}, {{=e}} and {{=e+1}} have validation errors {{=v+3}}, {{=v}} and
+      {{=v+5}}. Their training errors are 8, 5 and 2 respectively, all in thousands of dollars. Which saved epoch
+      should we keep? Give its epoch number.
     answer_expr: e
-    tolerance: { abs: 0.01 }
-    solution: "Keep epoch {{= e }}, whose validation error {{= v }} is the lowest of the three. Falling training errors do not make the last version the best choice."
+    tolerance:
+      abs: 0.01
+    solution:
+      Keep epoch {{= e }}, whose validation error {{= v }} is the lowest of the three. Falling training errors
+      do not make the last version the best choice.
   - id: ovfp-late-gap
     dimension: conceptual
     type: numeric
@@ -450,12 +525,28 @@ exercises:
     difficulty: 2
     est_minutes: 2
     params:
-      t: { min: 1, max: 5, step: 1 }
-      g: { min: 18, max: 30, step: 3 }
-    prompt: "Late in house-model training, training error is {{= t }} and validation error is {{= t + g }}, in thousands of dollars. What is the gap at this epoch?"
-    answer_expr: g
-    tolerance: { abs: 0.01 }
-    solution: "The gap is validation minus training error: {{= t + g }} - {{= t }} = {{= g }} thousand dollars. A wide gap alongside low training error suggests overfitting."
+      t:
+        min: 1
+        max: 5
+        step: 1
+      v:
+        min: 12
+        max: 20
+        step: 2
+      g:
+        min: 6
+        max: 12
+        step: 3
+    prompt:
+      At epochs 5, 10 and 15, a house model has training errors {{=t+6}}, {{=t+3}} and {{=t}} and validation
+      errors {{=v+4}}, {{=v}} and {{=v+g}} respectively. All errors are in thousands of dollars. What is the error
+      gap at the epoch we should keep?
+    answer_expr: v-(t+3)
+    tolerance:
+      abs: 0.01
+    solution:
+      Keep epoch 10 because it has the lowest validation error, {{=v}}. Its error gap is ${{=v}}-{{=t+3}}={{=v-(t+3)}}$
+      thousand dollars.
   - id: ovf-flat-high
     dimension: transfer
     type: mc
@@ -488,26 +579,24 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: A house model's training and validation errors are both still high but falling each epoch. What is a reasonable next experiment?
+    prompt:
+      A house model's training and validation errors are both still high but falling each epoch. What is a reasonable
+      next experiment?
     options:
-      - {
-          id: a,
-          text: "Train longer while monitoring validation error for continued improvement.",
-          correct: true,
-        }
-      - {
-          id: b,
-          text: "Stop because any high validation error proves further training harms it.",
-          correct: false,
-          feedback: "The validation error is improving, so more training may help.",
-        }
-      - {
-          id: c,
-          text: "Ignore validation from now on and keep the final epoch regardless.",
-          correct: false,
-          feedback: "Validation can later worsen; keep monitoring and save the best version.",
-        }
-    solution: Further training may help while both errors keep falling. Monitor validation and keep the best observed version rather than assuming the final epoch will win.
+      - id: a
+        text: Train longer while monitoring validation error for continued improvement.
+        correct: true
+      - id: b
+        text: Stop now and keep this epoch, since training longer leads to overfitting.
+        correct: false
+        feedback: Validation error is still falling, so more training may help. Watch for it to turn upward.
+      - id: c
+        text: Switch to a simpler model, since both errors are high.
+        correct: false
+        feedback: Both errors are improving with training; a simpler model may make the remaining fit worse.
+    solution:
+      Further training may help while both errors keep falling. Monitor validation and keep the best observed
+      version.
   - id: ovf-speech-curves
     dimension: transfer
     type: mc
