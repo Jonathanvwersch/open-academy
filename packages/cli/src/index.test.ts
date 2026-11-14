@@ -271,13 +271,27 @@ describe('academy CLI', () => {
           concept: topicId,
           exercises: [
             {
-              id: `${topicId}-problem-1`,
+              id: `${topicId}-diagnostic`,
               dimension: 'conceptual',
               type: 'mc',
               role: 'diagnostic',
               difficulty: 1,
               est_minutes: 1,
               prompt: 'Existing diagnostic question.',
+              options: [
+                { id: 'a', text: 'Correct', correct: true, feedback: 'Correct.' },
+                { id: 'b', text: 'Incorrect', correct: false, feedback: 'Incorrect.' },
+              ],
+              solution: 'The first option is correct.',
+            },
+            {
+              id: `${topicId}-problem-1`,
+              dimension: 'conceptual',
+              type: 'mc',
+              role: 'basics',
+              difficulty: 1,
+              est_minutes: 1,
+              prompt: 'Existing basics question.',
               options: [
                 { id: 'a', text: 'Correct', correct: true, feedback: 'Correct.' },
                 { id: 'b', text: 'Incorrect', correct: false, feedback: 'Incorrect.' },
@@ -296,18 +310,33 @@ describe('academy CLI', () => {
         exercises: Array<{ id: string; role: string; prompt: string }>;
       };
       const existingDiagnostic = exercises.exercises.filter(
-        (exercise) => exercise.id === `${topicId}-problem-1`,
+        (exercise) => exercise.id === `${topicId}-diagnostic`,
       );
       expect(existingDiagnostic).toHaveLength(1);
       expect(existingDiagnostic[0]).toMatchObject({
-        id: `${topicId}-problem-1`,
+        id: `${topicId}-diagnostic`,
         role: 'diagnostic',
         prompt: 'Existing diagnostic question.',
       });
-      const checked = run(['check', pack]);
+      const existingBasics = exercises.exercises.filter(
+        (exercise) => exercise.id === `${topicId}-problem-1`,
+      );
+      expect(existingBasics).toHaveLength(1);
+      expect(existingBasics[0]).toMatchObject({
+        id: `${topicId}-problem-1`,
+        role: 'basics',
+        prompt: 'Existing basics question.',
+      });
+      const checked = runWithInitCwd(['check', pack], parent);
       expect(checked.status).toBe(1);
       expect(checked.stderr).toContain('TODO field at .objective');
-      expect(checked.stderr).toContain('TODO field at .exercises[0].prompt');
+      expect(checked.stderr).toContain('TODO field at .exercises[2].prompt');
+      expect(
+        checked.stderr
+          .trim()
+          .split('\n')
+          .every((issue) => issue.includes('TODO field at ')),
+      ).toBe(true);
     } finally {
       rmSync(parent, { recursive: true, force: true });
     }
