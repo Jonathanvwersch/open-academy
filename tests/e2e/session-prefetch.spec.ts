@@ -1,4 +1,3 @@
-import { mkdirSync } from 'node:fs';
 import { expect, type Page, test } from '@playwright/test';
 import { env } from '../../apps/api/src/config.js';
 import { createDb } from '../../apps/api/src/db/client.js';
@@ -105,7 +104,7 @@ test('prefetches the next review topic before continuing and keeps the page moun
   for (const id of nextIds) expect(requests.filter((request) => request === id)).toHaveLength(1);
 });
 
-test('a delayed next question loads only its card', async ({ page }) => {
+test('a delayed next question loads only its card', async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   let release!: () => void;
   const gate = new Promise<void>((resolve) => {
@@ -125,8 +124,7 @@ test('a delayed next question loads only its card', async ({ page }) => {
   await expect(page.getByTestId('question-loading')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Review', exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: 'View full lesson' })).toBeVisible();
-  mkdirSync('/home/ubuntu/shots/session-prefetch', { recursive: true });
-  await page.screenshot({ path: '/home/ubuntu/shots/session-prefetch/delayed-question.png' });
+  await page.screenshot({ path: testInfo.outputPath('delayed-question.png') });
   await expect(page.getByTestId('session-exercise')).toBeVisible();
   expect(await page.evaluate(() => Reflect.get(window, 'transitionState').skeleton)).toBe(false);
 });
