@@ -27,15 +27,25 @@ function firstPaper(data: ContentSourceData) {
 test('loads the fixture graph and builds lookup indexes', async () => {
   const content = await loadContent('tests/fixtures/content');
 
-  expect(content.concepts).toHaveLength(9);
+  expect(content.concepts).toHaveLength(10);
   expect(new Set(content.concepts.map((concept) => concept.domain))).toEqual(
     new Set(['math', 'ml']),
   );
   expect(content.conceptsById.get('matrix-products')?.status).toBe('stub');
+  expect(content.conceptsById.get('switching-topic')).toMatchObject({
+    id: 'switching-topic',
+    title: 'Switching topic',
+    domain: 'ml',
+    status: 'authored',
+  });
   expect(content.projectsById.has('linreg-numpy')).toBe(true);
   expect(content.courses.map(({ id }) => id)).toEqual([
     'fixture-course',
     'fixture-switching-course',
+    'fixture-third-course',
+  ]);
+  expect(content.coursesById.get('fixture-third-course')?.units[0]?.concepts).toEqual([
+    'switching-topic',
   ]);
   expect(content.coursesById.get('fixture-course')?.units[0]?.papers).toEqual([
     'fixture-paper-one',
@@ -65,7 +75,11 @@ test('loads the fixture graph and builds lookup indexes', async () => {
   expect(content.exercisesByConcept.get('vectors')).toHaveLength(15);
   expect(content.exercisesById.get('vectors-magnitude')?.lesson_only).toBe(false);
   expect(content.exercisesByDimension.get('math')?.length).toBeGreaterThan(0);
-  expect(content.exercisesByRole.get('diagnostic')?.length).toBe(8);
+  expect(content.exercisesByRole.get('diagnostic')?.length).toBe(9);
+  expect(content.exercisesById.get('switching-topic-1')).toMatchObject({
+    concept: 'switching-topic',
+    role: 'diagnostic',
+  });
   expect(new Set(content.exercises.map((exercise) => exercise.type))).toEqual(
     new Set([
       'mc',
