@@ -47,6 +47,7 @@ test.each([
   ['reference', '_solution/policy.py', []],
   ['starter', 'starter/policy.py', ids],
   ['unclipped', '_solution/buggy.py', ['ppo-objective', 'ppo-ratio-clip']],
+  ['undiscounted', '_solution/buggy_no_discount.py', ['returns-to-go']],
 ] as const)('%s produces diagnostic evidence', (_name, implementation, failures) => {
   const directory = mkdtempSync(join(tmpdir(), 'academy-rl-'));
   try {
@@ -94,6 +95,11 @@ test.each([
     if (_name === 'unclipped') {
       expect(result.metrics['ppo-probe-ratio']).toBeGreaterThan(3);
       expect(result.tests.at(-1)?.message).toContain('zero the clipped gradient');
+    }
+    if (_name === 'undiscounted') {
+      expect(result.tests.find(({ id }) => id === 'returns-to-go')?.message).toContain(
+        'Did you forget to discount?',
+      );
     }
   } finally {
     rmSync(directory, { recursive: true, force: true });
