@@ -48,6 +48,7 @@ export const courseDetailQueryOptions = (courseId: string) =>
 export function invalidateSidebarQueries(queryClient: QueryClient) {
   return Promise.all([
     queryClient.invalidateQueries({ queryKey: courseQueryKeyRoot }),
+    queryClient.invalidateQueries({ queryKey: coursesQueryKeyRoot }),
     queryClient.invalidateQueries({ queryKey: reviewsQueryOptions().queryKey }),
   ]);
 }
