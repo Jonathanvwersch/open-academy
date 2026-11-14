@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte, lte } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, lte, sql } from 'drizzle-orm';
 import type { Card } from 'ts-fsrs';
 import type { Dimension } from '../content/schemas.js';
 import type { ContentIndex } from '../content/types.js';
@@ -28,15 +28,25 @@ import {
 } from './schema.js';
 
 export class LearnerRepository {
+  private userPromise: Promise<typeof users.$inferSelect | undefined> | undefined;
+  private courseEnrollmentsPromise: Promise<(typeof courseEnrollments.$inferSelect)[]> | undefined;
+  private studyCourseIdsPromise: Promise<string[]> | undefined;
+  private studySetInitialized = false;
+
   constructor(
     readonly db: Database,
     readonly userId: string,
     private readonly requestUser?: typeof users.$inferSelect,
   ) {}
 
-  async user() {
+  user() {
     // HTTP middleware has already read this row. Reuse it only within that request.
-    if (this.requestUser) return this.requestUser;
+    if (this.requestUser) return Promise.resolve(this.requestUser);
+    this.userPromise ??= this.loadUser();
+    return this.userPromise;
+  }
+
+  private async loadUser() {
     const [user] = await this.db.select().from(users).where(eq(users.id, this.userId)).limit(1);
     return user;
   }
@@ -49,18 +59,20 @@ export class LearnerRepository {
     await this.db.update(users).set({ activeCourseId: courseId }).where(eq(users.id, this.userId));
   }
 
-  async studyCourseIds(content: ContentIndex): Promise<string[]> {
-    const [user] = await this.db
-      .select({
-        activeCourseId: users.activeCourseId,
-        studySetInitializedAt: users.studySetInitializedAt,
-      })
-      .from(users)
-      .where(eq(users.id, this.userId))
-      .limit(1);
-    if (!user) return [];
+  studyCourseIds(content: ContentIndex): Promise<string[]> {
+    this.studyCourseIdsPromise ??= this.loadStudyCourseIds(content).catch((error: unknown) => {
+      this.invalidateEnrollmentCaches();
+      throw error;
+    });
+    return this.studyCourseIdsPromise;
+  }
 
-    if (!user.studySetInitializedAt) {
+  private async loadStudyCourseIds(content: ContentIndex): Promise<string[]> {
+    const user = await this.user();
+    if (!user) return [];
+    if (user.studySetInitializedAt) this.studySetInitialized = true;
+
+    if (!this.studySetInitialized) {
       const [enrollments, masteryRows, lessonRunRows] = await Promise.all([
         this.courseEnrollments(),
         this.db
@@ -99,20 +111,20 @@ export class LearnerRepository {
             })),
           )
           .onConflictDoNothing();
+        this.courseEnrollmentsPromise = undefined;
       }
       await this.db
         .update(users)
         .set({ studySetInitializedAt: new Date() })
         .where(eq(users.id, this.userId));
+      this.studySetInitialized = true;
     }
 
-    const activeEnrollments = await this.db
-      .select({ courseId: courseEnrollments.courseId })
-      .from(courseEnrollments)
-      .where(
-        and(eq(courseEnrollments.userId, this.userId), eq(courseEnrollments.status, 'active')),
-      );
-    const activeCourseIds = new Set(activeEnrollments.map((enrollment) => enrollment.courseId));
+    const activeCourseIds = new Set(
+      (await this.courseEnrollments())
+        .filter((enrollment) => enrollment.status === 'active')
+        .map((enrollment) => enrollment.courseId),
+    );
     const courseOrder = content.curriculum?.courses ?? content.courses.map((course) => course.id);
     return courseOrder.filter((courseId) => activeCourseIds.has(courseId));
   }
@@ -228,7 +240,7 @@ export class LearnerRepository {
       this.db
         .select({
           conceptId: sessionActivities.conceptId,
-          plannedMinutes: sessionActivities.plannedMinutes,
+          plannedMinutes: sql<number>`coalesce(sum(${sessionActivities.plannedMinutes}), 0)::int`,
         })
         .from(sessionActivities)
         .innerJoin(studySessions, eq(sessionActivities.sessionId, studySessions.id))
@@ -240,7 +252,8 @@ export class LearnerRepository {
             gte(sessionActivities.completedAt, new Date(now.getTime() - 7 * 86_400_000)),
             lte(sessionActivities.completedAt, now),
           ),
-        ),
+        )
+        .groupBy(sessionActivities.conceptId),
     ]);
     const recentLearnMinutesByConcept: Record<string, number> = {};
     for (const activity of recentLearnActivities) {
@@ -408,11 +421,21 @@ export class LearnerRepository {
       .orderBy(desc(diagnosticRuns.startedAt));
   }
 
-  async courseEnrollments() {
+  courseEnrollments() {
+    this.courseEnrollmentsPromise ??= this.loadCourseEnrollments();
+    return this.courseEnrollmentsPromise;
+  }
+
+  private async loadCourseEnrollments() {
     return this.db
       .select()
       .from(courseEnrollments)
       .where(eq(courseEnrollments.userId, this.userId));
+  }
+
+  private invalidateEnrollmentCaches() {
+    this.courseEnrollmentsPromise = undefined;
+    this.studyCourseIdsPromise = undefined;
   }
 
   async courseEnrollment(courseId: string) {
@@ -436,6 +459,7 @@ export class LearnerRepository {
         startedAt,
       })
       .onConflictDoNothing();
+    this.invalidateEnrollmentCaches();
   }
 
   async setCourseEnrollmentStatus(
@@ -449,6 +473,7 @@ export class LearnerRepository {
       .where(
         and(eq(courseEnrollments.userId, this.userId), eq(courseEnrollments.courseId, courseId)),
       );
+    this.invalidateEnrollmentCaches();
   }
 
   async completeCourses(courseIds: readonly string[], completedAt: Date) {
@@ -468,6 +493,7 @@ export class LearnerRepository {
         target: [courseEnrollments.userId, courseEnrollments.courseId],
         set: { status: 'completed', completedAt },
       });
+    this.invalidateEnrollmentCaches();
   }
 
   async logs(cardId: string) {

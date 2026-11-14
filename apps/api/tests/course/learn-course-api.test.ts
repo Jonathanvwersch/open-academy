@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest';
 import { createApp } from '../../src/app.js';
 import { env } from '../../src/config.js';
@@ -166,11 +166,17 @@ test('study set backfill includes started courses and later respects removal', a
     ),
   );
 
-  await db
-    .update(courseEnrollments)
-    .set({ status: 'paused' })
-    .where(and(eq(courseEnrollments.userId, userId), eq(courseEnrollments.courseId, courseB.id)));
+  await repository.setCourseEnrollmentStatus(courseB.id, 'paused');
   expect(await repository.studyCourseIds(content)).toEqual([courseA.id]);
+});
+
+test('study-course membership refreshes after a course is started in the same repository', async () => {
+  const repository = new LearnerRepository(db, userId);
+  expect(await repository.studyCourseIds(content)).toEqual([]);
+
+  await repository.startCourse('deep-learning', 'beginning', new Date('2026-01-07T12:00:00.000Z'));
+
+  expect(await repository.studyCourseIds(content)).toEqual(['deep-learning']);
 });
 
 test('course query views a requested course without changing the stored active course', async () => {
