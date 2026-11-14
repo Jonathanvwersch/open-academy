@@ -13,13 +13,13 @@ exercises:
         correct: true
         feedback: A fixed task collection and scoring rules let us repeat the comparison.
       - id: b
-        text: The tasks are included in every compared model's training data.
+        text: The tasks are representative, while each model chooses its own scoring rule.
         correct: false
-        feedback: Training exposure can contaminate the benchmark; it is not a requirement.
+        feedback: Shared scoring rules are needed for comparable results. Each model choosing its own rules would change what the scores mean.
       - id: c
-        text: The tasks are chosen after seeing which answers a model gets right.
+        text: The tasks change between models, while their total difficulty is estimated to match.
         correct: false
-        feedback: Selecting tasks to favour a model would undermine the comparison.
+        feedback: A benchmark fixes the task collection so that model results can be compared on the same questions.
     solution: A benchmark fixes both the tasks and the scoring rules. Its score describes performance on those tasks.
   - id: lev-benchmark-why
     lesson_only: true
@@ -56,9 +56,9 @@ exercises:
         correct: false
         feedback: Test material can enter training during fine-tuning as well as pretraining.
       - id: b
-        text: The model must now fail those questions because they are familiar.
+        text: Exposure matters only if the benchmark's scoring program was also in training.
         correct: false
-        feedback: Familiarity can help the model answer; it does not force failure.
+        feedback: Learning question–answer content can raise the score without any exposure to the scoring code.
       - id: c
         text: Training exposure may raise the score without showing ability on new questions.
         correct: true
@@ -73,7 +73,7 @@ exercises:
     params:
       seen: { min: 2, max: 6, step: 2 }
       fresh: { min: 2, max: 8, step: 2 }
-    prompt: "A benchmark has {{=seen}} questions seen in training and 10 fresh questions. A model answers every one of the {{=seen}} seen questions and {{=fresh}} fresh questions correctly. What percentage of the 10 fresh questions did it answer correctly? Enter a number from 0 to 100."
+    prompt: "A benchmark has {{=seen}} questions seen in training and 10 fresh questions. A model answers every seen question and {{=fresh}} fresh questions correctly. Using only evidence about performance on unseen material, what accuracy percentage should be reported? Enter a number from 0 to 100."
     answer_expr: "100 * fresh / 10"
     tolerance: { abs: 0.01 }
     hints:
@@ -97,9 +97,9 @@ exercises:
         correct: false
         feedback: The search may miss paraphrases, close copies or inaccessible training data.
       - id: c
-        text: The remaining questions are unusable unless their answers enter training first.
+        text: The remaining score is clean if all remaining questions use different wording from training.
         correct: false
-        feedback: Keeping test answers out of training helps preserve the evaluation's usefulness.
+        feedback: Rewording can leave the same questions and answers recognisable. Different wording does not rule out contamination.
     solution: Removing known copies reduces a known source of contamination, but does not certify that all remaining material is unseen. Report how exposure was checked and what remains unknown.
   - id: lev-clean-design
     dimension: transfer
@@ -118,9 +118,9 @@ exercises:
         correct: true
         feedback: A separate untouched set better tests the chosen model on requests not used to guide changes.
       - id: c
-        text: Add the public answers to fine-tuning, then describe that same benchmark as a test of unseen requests.
+        text: Paraphrase the public questions after the changes, then use those paraphrases as the final unseen test.
         correct: false
-        feedback: Training on the answers directly contaminates the claimed unseen evaluation.
+        feedback: Paraphrases retain content already used to guide development. They are not an independent test of new requests.
     solution: Keep development questions separate from the final test and avoid choosing model changes from final-test results. Fresh, representative questions reduce known exposure and task-coverage problems, though no finite set proves universal ability.
   - id: lev-domain-limit
     dimension: transfer
@@ -135,9 +135,9 @@ exercises:
         correct: false
         feedback: Different text tasks can require very different abilities and checks.
       - id: b
-        text: Reject the reading result because any high score must come from contamination.
+        text: Check that the reading questions mention robots, then reuse their score for deployment.
         correct: false
-        feedback: A high score can be genuine; the problem here is what tasks it covers.
+        feedback: Shared subject matter does not make reading comprehension a test of code-writing ability or control errors.
       - id: c
         text: Evaluate representative code-writing tasks with checks for the mistakes that matter.
         correct: true
@@ -152,17 +152,17 @@ exercises:
     prompt: What does pairwise evaluation compare?
     options:
       - id: a
-        text: Two training datasets by counting how many words each contains.
+        text: Two answers to different prompts that have the same estimated difficulty.
         correct: false
-        feedback: Dataset size is not a judgment of two answers to a request.
+        feedback: Pairwise response evaluation holds the prompt fixed so both answers address the same request.
       - id: b
         text: Two answers to the same prompt under a stated judging rule.
         correct: true
         feedback: Holding the prompt fixed lets the judge compare the answers against the same task.
       - id: c
-        text: Two unrelated prompts by choosing whichever is easier to answer.
+        text: Two models' independent accuracy scores on different collections of prompts.
         correct: false
-        feedback: Comparing prompt difficulty is different from comparing model responses.
+        feedback: Pairwise evaluation judges paired answers to the same prompt, rather than comparing separate aggregate scores.
     solution: Pairwise evaluation compares two answers to one prompt under explicit criteria. It can allow a tie when the answers are equally good under those criteria.
   - id: lev-pairwise-why
     lesson_only: true
@@ -257,13 +257,13 @@ exercises:
         correct: true
         feedback: A pairwise rate is tied to the models, prompts and judging rule actually used.
       - id: b
-        text: Yes; any pairwise lead transfers unchanged to every opponent and every task.
+        text: Yes; reading and programming both use text, so the measured lead should carry over.
         correct: false
         feedback: A lead on one comparison is not a universal ranking or task guarantee.
       - id: c
-        text: Yes; changing both the opponent and the task cancels their effects on the rate.
+        text: Yes; a pairwise win rate estimates an opponent-independent quality score for A.
         correct: false
-        feedback: There is no rule that these changes cancel; they can each change the outcome.
+        feedback: A win rate depends on the opponent as well as the tasks. It does not assign A an opponent-independent quality score.
     solution: The original result is evidence only for the evaluated setting. Compare A and C on representative programming prompts before drawing that new conclusion.
   - id: lev-report-counts
     dimension: transfer
@@ -295,17 +295,17 @@ exercises:
     prompt: What is position bias in an LLM judge?
     options:
       - id: a
-        text: Preferring an answer because it follows the task's factual requirements.
+        text: Letting an answer's length influence its rating beyond what the rubric rewards.
         correct: false
-        feedback: Following the rubric is the intended basis for judging answer quality.
+        feedback: That is length bias. Position bias concerns where an answer is displayed.
       - id: b
         text: Letting an answer's displayed position influence its quality rating.
         correct: true
         feedback: A preference for the first or left answer can distort the model comparison.
       - id: c
-        text: Preferring an answer because a human checked its support from the source.
+        text: Letting the displayed model name influence the answer's quality rating.
         correct: false
-        feedback: Checking evidence is not a preference for a displayed position.
+        feedback: That is identity bias. Position bias can occur even when model names are hidden.
     solution: Position bias means the answer's placement influences the preference independently of quality. Swapping the same answers helps expose sensitivity to placement.
   - id: lev-judge-why
     lesson_only: true
@@ -356,7 +356,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: A study predeclares that disagreements between answer orders go to a human. One order says A wins, and the swapped order says tie. The human has not reviewed it. How should the prompt be reported now?
+    prompt: A study compares the same answer pair in both display orders. One order says A wins, and the swapped order says tie. How should the prompt be reported before human resolution of the two judgments?
     options:
       - id: a
         text: As a final tie, since one tie vote overrides any preference for a model.
@@ -388,9 +388,9 @@ exercises:
         correct: false
         feedback: Swapping checks how changes in placement affect ratings. Other judging errors can persist.
       - id: c
-        text: The concise answer must be wrong because it contains fewer words than its opponent.
+        text: Agreement in both orders establishes that the longer answer better meets the brevity requirement.
         correct: false
-        feedback: Fewer words do not imply factual error, especially when brevity is requested.
+        feedback: The judge may consistently misapply the rubric. Agreement across positions does not establish that repetition is useful.
     solution: A judge can consistently favour length in both orders. Compare its judgments with the rubric and human checks to see whether the extra detail helps meet the task's requirements.
   - id: lev-order-design
     dimension: transfer
@@ -401,13 +401,13 @@ exercises:
     prompt: A team wants to compare two assistants using an LLM judge. Which plan best checks position bias while preserving one final decision per prompt?
     options:
       - id: a
-        text: Put A first on every prompt, show model names, and accept every decision as final.
+        text: Hide names, randomise one display per prompt, and treat randomisation as a check of each pair's order sensitivity.
         correct: false
-        feedback: Always putting A first confounds model quality with position, and names add another influence.
+        feedback: Randomisation can reduce aggregate confounding, but one display cannot reveal whether that pair's judgment changes when swapped.
       - id: b
-        text: Swap both answers and the rubric together, then count the two calls as separate prompts.
+        text: Hide names, fix the rubric, judge both orders, and count both mapped votes as independent prompt outcomes.
         correct: false
-        feedback: Changing the rubric prevents an isolated order check, and two calls are not two independent prompts.
+        feedback: Both calls concern one prompt and answer pair. Resolve them into one final outcome rather than doubling the prompt count.
       - id: c
         text: Hide names, fix the rubric, randomise then swap each pair, map votes to models, and resolve disagreements.
         correct: true
@@ -430,9 +430,9 @@ exercises:
         correct: true
         feedback: Agreement across orders shows these choices survived the position check. Human checks can still reveal factual errors or other biases.
       - id: c
-        text: Every selected answer is wrong, because a reliable judge must sometimes change its choice.
+        text: Position bias is absent on future prompts because it was absent on these comparisons.
         correct: false
-        feedback: A reliable judge should keep preferring the better answer when that answer moves to the other position.
+        feedback: Stability on the tested pairs does not guarantee stability on different prompts or answer pairs.
     solution: The observed choices did not change model preference under these swaps. Human-reviewed samples are still needed because stable choices can reflect other biases or factual mistakes.
   - id: lev-explain-evaluation
     dimension: transfer

@@ -9,24 +9,24 @@ exercises:
     est_minutes: 1
     prompt: "In the worked example, why is the output 1 rather than 3?"
     options:
-      - { id: a, text: "The positive score becomes 1 through the step.", correct: true }
+      - { id: a, text: "The step gives 1 for any positive score.", correct: true }
       - {
           id: b,
-          text: "The bias is ignored after weighting the inputs.",
+          text: "The step caps the score at 1, its largest output.",
           correct: false,
-          feedback: "The bias was included to get the score 3; the step changes that score into a decision.",
+          feedback: "The step doesn't cap scores. A score of 0.4 would also give 1, because the step only checks whether the score is positive.",
         }
       - {
           id: c,
-          text: "The step divides each score by itself.",
+          text: "The step rounds the score to the nearest whole number.",
           correct: false,
-          feedback: "The step tests the sign; dividing a negative score by itself would incorrectly give 1 too.",
+          feedback: "Rounding would keep 3 as 3. The step only checks the sign of the score and outputs 0 or 1.",
         }
       - {
           id: d,
-          text: "The output copies the first input's weight.",
+          text: "The step counts the inputs with positive weights.",
           correct: false,
-          feedback: "The output depends on the score's sign, not one chosen weight.",
+          feedback: "The step acts on the whole score, which was 3 here. It doesn't look at the weights one by one.",
         }
     solution: "The weighted sum plus the bias is 3. Since 3 is positive, the step gives the decision 1 rather than returning the score."
   - id: percp-boundary-reason
@@ -126,31 +126,31 @@ exercises:
     role: basics
     difficulty: 1
     est_minutes: 1
-    prompt: "What is a decision boundary?"
+    prompt: "What is a perceptron's decision boundary?"
     options:
       - {
           id: a,
-          text: "The inputs where the score is exactly zero, between the yes and no sides",
+          text: "The inputs whose score is exactly 0",
           correct: true,
-          feedback: "At score zero the perceptron's step output changes across the boundary.",
+          feedback: "On one side the score is positive and the step gives 1; on the other it's negative and gives 0.",
         }
       - {
           id: b,
-          text: "The line connecting the nearest recorded yes input and recorded no input.",
+          text: "The inputs whose score equals the bias",
           correct: false,
-          feedback: "The boundary comes from the score rule, not a line joining two nearby inputs.",
+          feedback: "The score equals the bias wherever the weighted inputs add to 0. The boundary is where the whole score, bias included, is 0.",
         }
       - {
           id: c,
-          text: "The average squared prediction error across a set of recorded inputs and answers.",
+          text: "The inputs for which the perceptron outputs 1",
           correct: false,
-          feedback: "An average error measures how wrong predictions are, not where the score is zero.",
+          feedback: "Those inputs fill the whole yes side. The boundary is the edge of that side, where the score is 0.",
         }
       - {
           id: d,
-          text: "The range of input values recorded, rather than the place where the answer changes.",
+          text: "The line joining the closest yes and no inputs",
           correct: false,
-          feedback: "That is the data range, not where model predictions switch.",
+          feedback: "The boundary comes from the weights and bias, as the inputs where the score is 0, not from particular data points.",
         }
     solution: "A perceptron's decision boundary contains the inputs scoring zero. It separates positive-score yes answers from non-positive-score no answers."
   - id: perc-and-or-xor-basics
@@ -159,31 +159,31 @@ exercises:
     role: basics
     difficulty: 1
     est_minutes: 1
-    prompt: "Why can't one straight boundary give every XOR input its required answer?"
+    prompt: "XOR of two yes/no inputs outputs 1 when exactly one input is 1, and 0 otherwise. Why can't a single perceptron compute it?"
     options:
       - {
           id: a,
-          text: "Because XOR needs more different output values than a perceptron can give.",
+          text: "XOR needs negative weights, which a perceptron can't have.",
           correct: false,
-          feedback: "XOR only needs outputs 0 and 1, exactly the two outputs a perceptron can give.",
+          feedback: "Negative weights are allowed. The problem is where XOR's yes and no inputs sit.",
         }
       - {
           id: b,
-          text: "Because XOR's diagonally opposite yes corners cannot be split from both no corners by one line.",
+          text: "XOR's yes inputs are diagonal corners, and no straight line separates them.",
           correct: true,
           feedback: "No straight line puts both yes corners on one side and both no corners on the other.",
         }
       - {
           id: c,
-          text: "Because a straight boundary gives every input the same yes-or-no answer.",
+          text: "XOR needs a third output value besides 0 and 1.",
           correct: false,
-          feedback: "The boundary separates a yes side from a no side; it does not make all answers identical.",
+          feedback: "XOR only needs outputs 0 and 1, exactly the two outputs a perceptron can give.",
         }
       - {
           id: d,
-          text: "Because a perceptron is limited to using a single input feature.",
+          text: "XOR needs both inputs, and a perceptron reads only one.",
           correct: false,
-          feedback: "A perceptron can use multiple input features.",
+          feedback: "A perceptron can read any number of inputs, each with its own weight.",
         }
     solution: "XOR is not separable by one straight boundary, so a single perceptron cannot give all four inputs their required answers."
   - id: perc-check-1
@@ -223,22 +223,29 @@ exercises:
     options:
       - {
           id: a,
-          text: "Its decision boundary is a single line, and XOR's positive points (0,1) and (1,0) cannot be separated from (0,0) and (1,1) by one line",
+          text: "Its boundary is one straight line, and XOR's yes points are diagonal",
           correct: true,
         }
       - {
           id: b,
-          text: "XOR needs more than two inputs",
+          text: "XOR needs more than two inputs to tell the cases apart",
           correct: false,
           category: misunderstood_definition,
           feedback: "XOR is defined on exactly two inputs, so the number of inputs is not the limit. Plot the four input points and try to separate yes from no with one straight line.",
         }
       - {
           id: c,
-          text: "Because the weights would need to be negative",
+          text: "The weights would need to be negative, which isn't allowed",
           correct: false,
           category: incorrect_reasoning,
           feedback: "Negative weights are allowed; the limitation is geometric.",
+        }
+      - {
+          id: d,
+          text: "The step can output 1 for only one input pattern",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "With $w = (1, 1)$ and $b = -0.5$ a perceptron outputs 1 for three of the four patterns (OR), so that isn't the limit.",
         }
     solution: "XOR is not linearly separable: its two yes corners are diagonally opposite, and no single straight boundary separates them from both no corners. Changing the weights or bias cannot remove this limit."
   - id: perc-boundary
@@ -337,9 +344,9 @@ exercises:
     difficulty: 2
     est_minutes: 2
     prompt: |
-      A neuron has weights $w = ({{=w1}}, {{=w2}})$ and bias $b = {{=b}}$. A house has size $x_1 = {{=x1}}$ (hundreds of m²) and is $x_2 = {{=x2}}$ km from the station.
+      A perceptron has weights $w = ({{=w1}}, {{=w2}})$ and bias $b = {{=b}}$. A house has size $x_1 = {{=x1}}$ (hundreds of m²) and is $x_2 = {{=x2}}$ km from the station.
 
-      What is the score $z = w \cdot x + b$?
+      What is the perceptron's score for this house, before the step?
     hints:
       - "Multiply each input by its weight, add the two results, then add the bias."
     solution: |
@@ -372,31 +379,31 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 1
-    prompt: "A perceptron uses the step rule: output 1 if $z > 0$, otherwise 0. A house's score comes out at exactly $z = 0$. What does the perceptron output?"
+    prompt: "A perceptron with the step activation scores a house at exactly $z = 0$. What does it output?"
     options:
-      - { id: a, text: "0, because the rule needs a score above 0", correct: true }
+      - { id: a, text: "0, because the step needs a positive score", correct: true }
       - {
           id: b,
           text: "1, because a score of 0 reaches the bar",
           correct: false,
           category: misunderstood_definition,
-          feedback: "The rule is strict: only a score greater than 0 gives 1.",
+          feedback: "The step is strict: only a score greater than 0 gives 1.",
         }
       - {
           id: c,
           text: "0.5, because the house is halfway",
           correct: false,
           category: misunderstood_definition,
-          feedback: "The step rule only ever outputs 0 or 1.",
+          feedback: "The step only ever outputs 0 or 1.",
         }
       - {
           id: d,
           text: "Nothing, because a score of 0 is undefined",
           correct: false,
           category: misunderstood_definition,
-          feedback: "A score of 0 is fine. The rule says what to do with it: not above 0, so output 0.",
+          feedback: "A score of 0 is fine. The step gives 1 only for a positive score, so 0 gives 0.",
         }
-    solution: "The step rule outputs 1 only when $z > 0$. A score of exactly 0 isn't above 0, so the output is 0; zero is included in the non-positive case."
+    solution: "The step outputs 1 only when $z > 0$. A score of exactly 0 isn't above 0, so the output is 0; zero is included in the non-positive case."
   - id: percp-weight-sign
     dimension: conceptual
     type: mc
@@ -434,35 +441,31 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 1
-    prompt: "Why does a neuron choosing houses to visit need a bias as well as weights when you want to make a yes harder without changing how much size or distance matters?"
+    prompt: "A neuron choosing houses to visit reads two inputs, size and distance to the station. You lower its bias by 2 and leave both weights as they are. How do the scores of different houses change?"
     options:
-      - {
-          id: a,
-          text: "The bias shifts every score equally without changing how much either input counts",
-          correct: true,
-        }
+      - { id: a, text: "Every house's score drops by 2", correct: true }
       - {
           id: b,
-          text: "The bias multiplies both inputs so larger houses matter more",
+          text: "Bigger houses' scores drop more, because size has the larger weight",
           correct: false,
           category: misunderstood_definition,
-          feedback: "Weights multiply inputs. The bias is added once and does not change either input's weight.",
+          feedback: "Weights multiply inputs. The bias is added once, the same for every house, so it doesn't interact with size.",
         }
       - {
           id: c,
-          text: "The bias lets the straight boundary bend around exceptions",
+          text: "Only the scores of houses near the boundary change",
           correct: false,
           category: misunderstood_definition,
-          feedback: "Adding a constant can only shift a straight boundary; it cannot introduce a bend.",
+          feedback: "The bias is part of every house's score, so every score changes, not only those near the boundary.",
         }
       - {
           id: d,
-          text: "The bias stores a separate yes/no answer for every house",
+          text: "Every score is divided by 2",
           correct: false,
           category: misunderstood_definition,
-          feedback: "One bias is shared across all houses. The inputs and weights determine how their scores differ.",
+          feedback: "The bias is added to the weighted sum, so changing it adds or subtracts the same amount. It doesn't scale the score.",
         }
-    solution: "Lowering the bias from $-1$ to $-3$ subtracts 2 from every score while keeping both weights fixed. A house scoring 1 would now score $-1$ and switch to no; the trade-off between size and distance is unchanged."
+    solution: "The bias is added to every house's score, so lowering it by 2 subtracts 2 from every score while keeping both weights fixed. A house scoring 1 would now score $-1$ and switch to no; the trade-off between size and distance is unchanged."
   - id: percp-robot-gripper
     dimension: transfer
     type: mc
@@ -626,7 +629,7 @@ exercises:
     options:
       - {
           id: a,
-          text: "The boundary is where the weighted sum plus bias equals zero, and that equation still describes a straight line",
+          text: "The boundary is where $w_1 x_1 + w_2 x_2 + b = 0$, a straight line for any values",
           correct: true,
         }
       - {

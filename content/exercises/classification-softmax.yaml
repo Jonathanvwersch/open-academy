@@ -61,15 +61,16 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "The robot's cup, ball and box scores are 2, 1 and 0. Using the given e-powers 7.39, 2.72 and 1, the total is 11.11. Finish the ball probability, $2.72/11.11$, to 2 decimal places."
+    prompt:
+      A robot gives cup, ball and box scores 2, 1 and 0. Their e-powers are 7.39, 2.72 and 1. What softmax probability
+      does ball receive? Give 2 decimal places.
     answer: 0.2448244824482448
-    tolerance: { abs: 0.005 }
+    tolerance:
+      abs: 0.005
     common_wrong:
-      - {
-          answer: 2.72,
-          category: incomplete_explanation,
-          feedback: "This is the e-power; divide it by the total to get a probability.",
-        }
+      - answer: 2.72
+        category: incomplete_explanation
+        feedback: This is the e-power; divide it by the total to get a probability.
     solution: The ball gets its share of the total, $2.72/11.11\approx0.24$.
   - id: sm-softmax-template
     dimension: math
@@ -160,27 +161,29 @@ exercises:
     role: basics
     difficulty: 1
     est_minutes: 1
-    prompt: If the object is really a ball, which probability goes inside the negative natural log for this example's cross-entropy loss?
+    prompt:
+      A robot gives cup, ball and box probabilities 0.67, 0.24 and 0.09. The object is really a ball. Which
+      number goes inside the $-\ln$ for the cross-entropy loss?
     options:
-      - {
-          id: a,
-          text: "The probability of whichever class has the highest score.",
-          correct: false,
-          feedback: "Loss checks the actual label, not just the model's favourite.",
-        }
-      - {
-          id: b,
-          text: "The probability of the ball, which is the true class.",
-          correct: true,
-          feedback: "The loss measures the surprise of the class that actually happened.",
-        }
-      - {
-          id: c,
-          text: "The probability of whichever class has the lowest score.",
-          correct: false,
-          feedback: "The least likely class matters directly only if it is the true class.",
-        }
-    solution: For one labelled example, cross-entropy is $-\ln p_{\text{true}}$, so a ball label selects the ball probability.
+      - id: a
+        text: "0.24"
+        correct: true
+        feedback: Use the probability of the observed ball class.
+      - id: b
+        text: "0.67"
+        correct: false
+        feedback: This is the highest probability, but cup is not the true class.
+      - id: c
+        text: "0.76"
+        correct: false
+        feedback: This is one minus the ball probability; use the true-class probability itself.
+      - id: d
+        text: "1"
+        correct: false
+        feedback: The one-hot label identifies ball; its predicted probability goes inside the logarithm.
+    solution:
+      Cross-entropy takes the negative natural log of the true class's probability, so use the ball probability
+      0.24.
   - id: sm-ce-reason
     lesson_only: true
     dimension: conceptual
@@ -215,15 +218,16 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "The robot gives the true class, ball, probability 0.25. The loss is $-\\ln(0.25)$. Use a calculator and finish to 2 decimal places."
+    prompt:
+      A robot gives the true class, ball, probability 0.25. Find the natural-log cross-entropy loss to 2 decimal
+      places.
     answer: 1.3862943611198906
-    tolerance: { abs: 0.005 }
+    tolerance:
+      abs: 0.005
     common_wrong:
-      - {
-          answer: -1.3862943611198906,
-          category: math_error,
-          feedback: "The log is negative; the loss includes an extra minus sign.",
-        }
+      - answer: -1.3862943611198906
+        category: math_error
+        feedback: The log is negative; the loss includes an extra minus sign.
     solution: Taking the negative natural log gives $-\ln(0.25)=\ln4\approx1.39$, a positive loss.
   - id: sm-ce-template
     dimension: math
@@ -276,17 +280,17 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "A true-class probability of 1/4 gives 2 bits of surprise. Convert to natural-log loss using $\\ln2\\approx0.693147$, so each bit contributes 0.693147. Give 2 decimal places."
-    answer: 1.386294
-    tolerance: { abs: 0.005 }
+    prompt:
+      Measured with base-2 logs, a prediction's cross-entropy loss is 3 bits. What is the natural-log loss,
+      to 2 decimal places?
+    answer: 2.0794415416798357
+    tolerance:
+      abs: 0.005
     common_wrong:
-      - {
-          answer: 2,
-          category: misapplied_technique,
-          feedback: "That is the value in bits; multiply by ln 2 to change units.",
-        }
-    solution: >-
-      Multiply by the natural-log value of one bit: $L=2\times0.693147\approx1.39$, which also equals $-\ln(1/4)$.
+      - answer: 3
+        category: misapplied_technique
+        feedback: That is the value in bits; multiply by ln 2 to change units.
+    solution: Changing from base-2 logs to natural logs multiplies by $\ln2$, giving $3\ln2\approx2.08$.
   - id: sm-ce-transfer
     dimension: math
     type: numeric
@@ -364,15 +368,16 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "Use the robot's rounded probabilities (0.67, 0.24, 0.09) for cup, ball and box. The true object is ball, so the one-hot label is (0, 1, 0). Finish the ball slope, $0.24-1$, to 2 decimal places."
+    prompt:
+      A robot gives cup, ball and box probabilities (0.67, 0.24, 0.09). The true object is ball. What is the
+      cross-entropy loss slope with respect to the ball score? Give 2 decimal places.
     answer: -0.76
-    tolerance: { abs: 0.005 }
+    tolerance:
+      abs: 0.005
     common_wrong:
-      - {
-          answer: 0.24,
-          category: misunderstood_definition,
-          feedback: "For the true class, subtract its label 1 rather than 0.",
-        }
+      - answer: 0.24
+        category: misunderstood_definition
+        feedback: For the true class, subtract its label 1 from its predicted probability.
     solution: The ball label is 1, so its slope is $0.24-1=-0.76$; subtracting this negative slope raises its score.
   - id: sm-grad-template
     dimension: math
@@ -380,18 +385,23 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "The true object is ball and its probability is ${{=k}}/10$. Its bias is {{=b}} and the learning rate is 0.1. Update only this bias using $b_{\\text{new}}=b-0.1(p-1)$. Give 2 decimal places."
+    prompt:
+      The true object is ball and its probability is ${{=k}}/10$. Its bias is {{=b}}. What is this bias after
+      one gradient-descent step with learning rate 0.1? Give 2 decimal places.
     params:
-      k: { min: 2, max: 8 }
-      b: { min: -1, max: 2 }
+      k:
+        min: 2
+        max: 8
+      b:
+        min: -1
+        max: 2
     answer_expr: b-0.1*(k/10-1)
-    tolerance: { abs: 0.005 }
+    tolerance:
+      abs: 0.005
     common_wrong:
-      - {
-          answer_expr: b+0.1*(k/10-1),
-          category: math_error,
-          feedback: "Gradient descent subtracts the scaled slope; adding it lowers the true-class bias.",
-        }
+      - answer_expr: b+0.1*(k/10-1)
+        category: math_error
+        feedback: Gradient descent subtracts the scaled slope; adding it lowers the true-class bias.
     solution: "The true-class slope is ${{=k/10}}-1={{=k/10-1}}$, so subtract it times 0.1: ${{=b}}-0.1({{=k/10-1}})={{=b-0.1*(k/10-1)}}$."
   - id: sm-grad-confusion
     dimension: conceptual
@@ -426,16 +436,19 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "For a three-class prediction, two score slopes are 0.50 and -0.70. Since the score slopes sum to zero, find the missing slope to 2 decimal places."
+    prompt:
+      For a three-class softmax prediction with cross-entropy loss, two loss slopes with respect to the scores
+      are 0.50 and -0.70. Find the missing slope to 2 decimal places.
     answer: 0.2
-    tolerance: { abs: 0.005 }
+    tolerance:
+      abs: 0.005
     common_wrong:
-      - {
-          answer: -0.2,
-          category: math_error,
-          feedback: "The known slopes sum to -0.20, so the missing one must cancel that sum.",
-        }
-    solution: Both probabilities and the one-hot label sum to one, so the slopes sum to zero; the missing slope is $-(0.50-0.70)=0.20$.
+      - answer: -0.2
+        category: math_error
+        feedback: The known slopes sum to -0.20, so the missing one must cancel that sum.
+    solution:
+      Both probabilities and the one-hot label sum to one, so the slopes sum to zero; the missing slope is
+      $-(0.50-0.70)=0.20$.
   - id: sm-grad-transfer
     dimension: math
     type: numeric

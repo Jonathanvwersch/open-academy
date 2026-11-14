@@ -108,6 +108,7 @@ describe('academy CLI', () => {
         '.agents/skills/write-lesson/reference/exercises.yaml',
         '.agents/skills/write-lesson/reference/CONTENT_FORMAT.md',
         '.agents/skills/write-lesson/reference/lesson-standard.md',
+        '.agents/skills/write-questions/SKILL.md',
       ];
       expect(readFileSync(join(pack, 'AGENTS.md'), 'utf8')).toBe(
         readFileSync(join(root, 'packages/cli/template/AGENTS.md'), 'utf8'),
@@ -119,6 +120,7 @@ describe('academy CLI', () => {
         ['content/exercises/gradient-descent.yaml', templateFiles[4]],
         ['docs/CONTENT_FORMAT.md', templateFiles[5]],
         ['docs/design/lesson-standard.md', templateFiles[6]],
+        ['.agents/skills/write-questions/SKILL.md', '.agents/skills/write-questions/SKILL.md'],
       ] as const;
       for (const [source, target] of templateCopies) {
         expect(readFileSync(join(pack, target), 'utf8')).toBe(

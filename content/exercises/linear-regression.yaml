@@ -105,10 +105,11 @@ exercises:
     role: check
     difficulty: 1
     est_minutes: 1
-    prompt: "An estate agent uses $3\\cdot\\text{area} + 10\\cdot\\text{bedrooms} + 50$ to predict a house's price in thousands of pounds, with area in m². What price does the model predict for a 120 m² house with 3 bedrooms?"
+    prompt: An estate agent's model predicts a house's price in thousands of pounds. Its weights are 3 per m² of area and 10 per bedroom, and its bias is 50. What price does it predict for a 120 m² house with 3 bedrooms?
     answer: 440
-    tolerance: { abs: 0.01 }
-    solution: "The area contributes $3\\times120=360$ and the bedrooms contribute $10\\times3=30$. Adding the bias gives $360+30+50=440$ thousand pounds, or £440,000."
+    tolerance:
+      abs: 0.01
+    solution: The area contributes $3\times120=360$ and the bedrooms contribute $10\times3=30$. Adding the bias gives $360+30+50=440$ thousand pounds, or £440,000.
   - id: dx-ml-5
     dimension: implementation
     type: code_read
@@ -234,18 +235,24 @@ exercises:
     prompt: Why does the house-price model use a bias of 50 as well as weights of 3 for area and 10 for bedroom count?
     options:
       - id: a
-        text: It lets every prediction shift by the same amount without changing how much an extra square metre or bedroom adds
+        text: It shifts every prediction by the same amount without changing what an extra square metre or bedroom adds
         correct: true
+        feedback: The bias raises every prediction by 50, while the weights still say how much each extra unit adds.
       - id: b
-        text: It makes the area weight grow as a house gets larger
+        text: It adds a share of the price for each feature, so larger houses with more bedrooms get more of it
         correct: false
-        category: incorrect_reasoning
-        feedback: The area weight stays fixed in this model. A bias adds the same offset regardless of the house's area.
+        category: misunderstood_definition
+        feedback: The bias is added once to every prediction, whatever the house's area or bedroom count.
       - id: c
-        text: It guarantees that every real house sells for at least the bias value
+        text: It sets the lowest price any real house can sell for, so no prediction drops below 50
+        correct: false
+        category: misunderstood_definition
+        feedback: The bias is the prediction when every feature is zero; it says nothing about real sale prices.
+      - id: d
+        text: It makes up for the bedroom weight being smaller than the area weight, so bedrooms count fully
         correct: false
         category: incorrect_reasoning
-        feedback: A bias is part of a prediction rule, not a guaranteed minimum sale price. Real prices can differ from predictions.
+        feedback: The bias doesn't belong to any feature; changing it moves every prediction by the same amount.
     solution: Without a bias, setting area and bedroom count to zero forces a prediction of zero. Adding 50 raises every prediction by 50 thousand pounds while leaving the weights at 3 and 10. The model can therefore change its starting price without changing how much each extra square metre or bedroom adds. A house with no area or bedrooms does not need to be realistic for this calculation to describe the rule.
   - id: lrp-price-template
     dimension: math
@@ -253,9 +260,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt:
-      Price in thousands of pounds is $3\cdot\text{area}+10\cdot\text{bedrooms}+50$. A house has
-      area {{=a}} m² and {{=k}} bedrooms. What is its predicted price?
+    prompt: A house-price model, in thousands of pounds, has weights 3 per m² of area and 10 per bedroom, and a bias of 50. A house has area {{=a}} m² and {{=k}} bedrooms. What is its predicted price?
     params:
       a:
         min: 60
@@ -268,8 +273,7 @@ exercises:
     answer_expr: 3*a+10*k+50
     tolerance:
       abs: 0.001
-    solution: Area contributes {{=3*a}} and bedrooms contribute {{=10*k}}. Adding the bias gives
-      {{=3*a}} + {{=10*k}} + 50 = {{=3*a+10*k+50}} thousand pounds.
+    solution: Area contributes {{=3*a}} and bedrooms contribute {{=10*k}}. Adding the bias gives {{=3*a}} + {{=10*k}} + 50 = {{=3*a+10*k+50}} thousand pounds.
     common_wrong:
       - answer_expr: 3*a+10*k
         category: math_error
@@ -302,78 +306,60 @@ exercises:
         feedback: That includes an extra bias of 50; this question asks for the weighted sum alone.
   - id: lrp-order
     dimension: conceptual
-    type: mc
+    type: numeric
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: The house-price model uses features (area, bedrooms) and weights (3, 10). You swap the
-      feature order to (bedrooms, area). How do you keep the predictions unchanged?
-    options:
-      - id: a
-        text: Change the weight order from (3, 10) to (10, 3)
-        correct: true
-      - id: b
-        text: Keep the weight order at (3, 10) and change nothing
-        correct: false
+    prompt: A house-price model, in thousands of pounds, has weight 3 for area in m² and 10 for bedroom count, and bias 50. A program stores a 120 m², 2-bedroom house as the vector $(2,120)$, bedrooms first, but uses the weight vector $(3,10)$. What price, in thousands of pounds, does the program compute?
+    solution: The dot product pairs entries by position, so the program computes $3\times2+10\times120+50=6+1200+50=1256$. To keep the predictions unchanged after swapping the features, swap the weights too, to $(10,3)$.
+    answer: 1256
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer: 430
         category: incorrect_reasoning
-        feedback: That would apply the area weight to bedrooms and the bedroom weight to area.
-      - id: c
-        text: Keep the weight order but subtract 50 from the bias
-        correct: false
-        category: incorrect_reasoning
-        feedback: A constant bias adjustment cannot correct swapped contributions for every house.
-    solution: The weight 3 must still multiply area, and 10 must still multiply bedrooms. If you swap the feature order, swap the weights too, so each feature keeps its matching weight.
+        feedback: That is the correct price, but the program pairs entries by position, so 3 multiplies the bedroom count and 10 multiplies the area.
   - id: lrp-bias-once
     dimension: conceptual
     type: mc
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt:
-      The model's area weight times a house's area gives 300 thousand pounds. Its bedroom weight
-      times the bedroom count gives 20 thousand pounds. The bias adds 50 thousand pounds. What is
-      the house's predicted price, in thousands of pounds?
+    prompt: A house-price model, in thousands of pounds, has weights 3 per m² of area and 10 per bedroom, and a bias of 50. What price does it predict for a 100 m² house with 2 bedrooms, in thousands of pounds?
     options:
       - id: a
-        text: 370, from adding both contributions and one bias
+        text: "370"
         correct: true
+        feedback: '$3\times100+10\times2+50=370$: both contributions plus one bias.'
       - id: b
-        text: 420, from adding a separate bias for each feature
+        text: "420"
         correct: false
-        category: incorrect_reasoning
-        feedback: The bias is a single offset for the whole prediction, not one offset per feature.
+        category: misapplied_technique
+        feedback: This adds the bias once for each feature. A linear model adds its bias once per prediction.
       - id: c
-        text: 320, from adding just the two feature contributions
+        text: "320"
         correct: false
-        category: incorrect_reasoning
-        feedback: That leaves out the separate offset of 50.
-    solution: The prediction is 300 + 20 + 50 = 370 thousand pounds; the bias is included exactly once.
+        category: recall_failure
+        feedback: This leaves out the bias. Every prediction adds the bias of 50.
+    solution: Area contributes $3\times100=300$ and bedrooms $10\times2=20$. The bias is added once, so the prediction is $300+20+50=370$ thousand pounds.
   - id: lrp-new-task
     dimension: transfer
-    type: mc
+    type: numeric
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt:
-      A delivery robot estimates how long a trip will take so it can give an arrival time. Its rule
-      adds 2 minutes per kilometre, 0.5 minute per parcel, and 1 extra minute. Which part is the bias?
-    options:
-      - id: a
-        text: The constant 1 minute added after the weighted inputs
-        correct: true
-      - id: b
-        text: The distance weight of 2 minutes per kilometre
-        correct: false
-        category: incorrect_reasoning
-        feedback: That is a weight multiplying a changing feature, not a constant offset.
-      - id: c
-        text: The parcel count multiplied by 0.5 minute per parcel
-        correct: false
-        category: incorrect_reasoning
-        feedback: That is a feature contribution that changes with the number of parcels.
-    solution:
-      The extra 1 minute is added on every trip, regardless of distance or parcel count. That makes
-      it the bias, just as the house-price model adds 50 to every prediction.
+    prompt: A delivery robot predicts trip times in minutes with a linear rule in distance (km) and parcel count. It predicts 5 minutes for a 2 km trip with no parcels, 7 minutes for a 3 km trip with no parcels, and 9 minutes for a 3 km trip with 4 parcels. What is the rule's bias, in minutes?
+    solution: One extra km adds $7-5=2$ minutes, so the distance weight is 2. A 3 km trip with no parcels is $2\times3=6$ minutes of distance, so the bias is $7-6=1$ minute. (Four parcels add 2 minutes, so the parcel weight is 0.5.)
+    answer: 1
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer: 5
+        category: misunderstood_definition
+        feedback: 5 minutes is the prediction for a 2 km trip. The bias is the prediction when distance and parcels are both zero.
+      - answer: 2
+        category: misunderstood_definition
+        feedback: 2 minutes per km is the distance weight. The bias is what's left when every input is zero.
   - id: lrp-why-hold-fixed
     dimension: conceptual
     type: mc
@@ -478,24 +464,28 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: A linear model has weight −2 for distance from a town centre, in thousands of pounds per
-      kilometre. What does the model predict if only that distance rises by 1 km?
+    prompt: A house-price model has weight −2 for distance from the town centre, in thousands of pounds per kilometre. House A is 3 km from the centre and house B is 5 km. In every other feature they are the same. How does B's predicted price compare with A's?
     options:
       - id: a
-        text: A price lower by £2,000, with other features fixed
+        text: B's is £4,000 lower
         correct: true
+        feedback: B is 2 km further out, and each km changes the prediction by −2 thousand pounds.
       - id: b
-        text: A price higher by £2,000, because the minus sign can be ignored
+        text: B's is £4,000 higher
         correct: false
         category: incorrect_reasoning
-        feedback: "The negative sign matters: the contribution decreases as distance increases."
+        feedback: The weight is negative, so moving further from the centre lowers the predicted price.
       - id: c
-        text: An invalid result, because linear weights cannot be negative
+        text: B's is £10,000 lower
         correct: false
-        category: incorrect_reasoning
-        feedback: Negative weights are valid; they describe decreasing predictions for increasing inputs.
-    solution: The predicted change is −2 × 1 = −2 thousand pounds; this describes the model, not a
-      guaranteed real-world effect.
+        category: math_error
+        feedback: $-2\times5=-10$ is B's whole distance contribution; A's is $-6$, so the difference is 4 thousand pounds.
+      - id: d
+        text: B's is £2,000 lower
+        correct: false
+        category: math_error
+        feedback: −2 is the change per kilometre, and B is 2 km further out.
+    solution: Only distance differs, by $5-3=2$ km. Each km changes the prediction by $-2$ thousand pounds, so B's prediction is $-2\times2=-4$ thousand pounds, £4,000 lower, with the other features fixed.
   - id: lrp-zero-input
     dimension: conceptual
     type: mc

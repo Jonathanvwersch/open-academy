@@ -102,7 +102,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: In one attention head of width $d_k=4$, a token's query is $q=({{=a}},1,0,2)$ and another token's key is $k=(2,{{=b}},5,1)$. What is the scaled score $q\cdot k/\sqrt{d_k}$?
+    prompt: A multi-head attention layer has embedding width $d=16$ and $h=4$ heads. In one head, a token's query is $q=({{=a}},1,0,2)$ and another token's key is $k=(2,{{=b}},5,1)$. What is this head's scaled score for the pair?
     params:
       a: { min: 1, max: 4 }
       b: { min: 1, max: 4 }
@@ -111,11 +111,11 @@ exercises:
     common_wrong:
       - answer_expr: 2 * a + b + 2
         category: misunderstood_definition
-        feedback: Divide the dot product by $\sqrt{d_k}=\sqrt4=2$.
+        feedback: Divide the dot product by $\sqrt{d_k}$, the square root of the head's width.
       - answer_expr: (2 * a + b + 2) / 4
         category: misunderstood_definition
-        feedback: The score is divided by $\sqrt{d_k}=2$, the square root of the width.
-    solution: The dot product is ${{=a}}\times2+1\times{{=b}}+0\times5+2\times1={{=2*a+b+2}}$. Dividing by $\sqrt4=2$ gives ${{=(2*a+b+2)/2}}$.
+        feedback: That divides by $\sqrt{d}=\sqrt{16}$. Each head scales by its own width, $d_k=16/4=4$, so the divisor is $2$.
+    solution: Each head has width $d_k=16/4=4$. The dot product is ${{=a}}\times2+1\times{{=b}}+0\times5+2\times1={{=2*a+b+2}}$, and dividing by $\sqrt4=2$ gives ${{=(2*a+b+2)/2}}$.
   - id: mhap-whole-embedding
     dimension: conceptual
     type: mc
@@ -425,7 +425,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: A multi-head attention layer with $h={{=h}}$ heads runs over $T={{=T}}$ tokens. Each head gives every token one weight for every token. How many attention weights does the layer work out in total, across all heads?
+    prompt: A multi-head attention layer with $h={{=h}}$ heads runs over $T={{=T}}$ tokens. How many attention weights does the layer work out in total, across all heads?
     params:
       h: { min: 2, max: 8 }
       T: { min: 3, max: 10 }
@@ -439,7 +439,7 @@ exercises:
       - answer_expr: h * T
         category: misunderstood_definition
         feedback: Each token has $T$ weights in each head, one per token, so multiply by $T$ again.
-    solution: Each head has a ${{=T}}\times{{=T}}$ weight matrix, so ${{=h}}$ heads give ${{=h}}\times{{=T}}\times{{=T}}={{=h*T*T}}$ weights.
+    solution: Each head gives every token one weight for every token, a ${{=T}}\times{{=T}}$ weight matrix, so ${{=h}}$ heads give ${{=h}}\times{{=T}}\times{{=T}}={{=h*T*T}}$ weights.
   - id: mhap-param-count-template
     dimension: implementation
     type: numeric

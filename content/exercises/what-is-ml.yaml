@@ -144,28 +144,28 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 1
-    prompt: "The rule is price $=w\\times$ area (price in £ thousands, area in m²). With $w=4$, a 60 m² house is predicted at 240, but it sold for 180. How should $w$ change?"
+    prompt: The rule is price $=w\times$ area (price in £ thousands, area in m²). With $w=4$, a 60 m² house is predicted at 240, but it sold for 180. How should $w$ change?
     options:
       - id: a
-        text: "Lower $w$, because the prediction is too high"
+        text: Lower $w$, because the prediction is above the sale price
         correct: true
-        feedback: "A smaller $w$ gives a smaller prediction; $w=3$ gives exactly 180."
+        feedback: A smaller $w$ gives a smaller prediction; $w=3$ gives exactly 180.
       - id: b
-        text: "Raise $w$, because the prediction is too far off"
+        text: Raise $w$, because the miss $240-180=60$ is positive
         correct: false
         category: incorrect_reasoning
-        feedback: "Raising $w$ makes the prediction even larger, so further from 180."
+        feedback: A positive miss means the prediction is too high, and raising $w$ would push it even higher.
       - id: c
-        text: "Keep $w$, because 240 and 180 are both prices"
-        correct: false
-        category: incorrect_reasoning
-        feedback: "The prediction is 60 too high, so the rule does not fit this sale yet."
-      - id: d
-        text: "Change the area to 45 m² so that it matches"
+        text: Change the area to 45 m², because $4\times45=180$
         correct: false
         category: misunderstood_definition
-        feedback: "The area is part of the example and stays fixed; only the weight is adjusted."
-    solution: "$4\\times60=240$ is above the target 180, so $w$ must go down. $w=3$ gives $3\\times60=180$."
+        feedback: The area is part of the example and stays fixed; only the weight is adjusted.
+      - id: d
+        text: Keep $w$ at 4, because one sale is too few to change the rule
+        correct: false
+        category: incorrect_reasoning
+        feedback: Every sale the rule misses is evidence to adjust it, and this one shows the rule predicts too high.
+    solution: $4\times60=240$ is above the target 180, so $w$ must go down. $w=3$ gives $3\times60=180$.
   - id: ml-fit-weight
     dimension: conceptual
     type: numeric
@@ -270,28 +270,28 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "The model predicts £310k, but the house sold for £330k. What does training do next?"
+    prompt: A model multiplies each of a house's measurements by a positive weight and adds the results. The measurements are all positive. It predicts £310k for a house that sold for £330k. What does training do next?
     options:
       - id: a
-        text: "Change the weights so the prediction moves closer to £330k"
+        text: Raise the weights a little, so the prediction moves up towards £330k
         correct: true
-        feedback: "Training adjusts the weights to make the gap, and so the loss, smaller."
+        feedback: The prediction is too low, and with positive measurements, larger weights give a larger prediction.
       - id: b
-        text: "Change the recorded sale price to £310k"
+        text: Lower the weights a little, because the error of £310k minus £330k is negative
         correct: false
         category: incorrect_reasoning
-        feedback: "The sale price is the known answer; training changes the model, not the data."
+        feedback: A negative error means the prediction is too low, so the weights must go up to raise it.
       - id: c
-        text: "Remove this house from the set of examples"
+        text: Change the recorded sale price to £310k, so the data matches the model
         correct: false
-        category: incorrect_reasoning
-        feedback: "Mistakes are exactly what training learns from."
+        category: misunderstood_definition
+        feedback: The sale price is the known answer; training changes the model's weights and leaves the data alone.
       - id: d
-        text: "Nothing, since £20k is close enough already"
+        text: Remove this house from the examples, since the model gets it wrong
         correct: false
         category: incorrect_reasoning
-        feedback: "Training keeps reducing the loss across all houses."
-    solution: "Training changes the model's weights to bring its prediction closer to the known sale price."
+        feedback: Mistakes are exactly what training learns from, so the house stays in.
+    solution: The prediction is £20k too low. Every measurement is positive, so raising the weights raises the prediction, and training nudges them up to bring it closer to £330k.
   - id: ml-predict-house
     dimension: math
     type: numeric

@@ -486,25 +486,21 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt:
-      One electrical fault raises every sensor reading in a batch by the same unknown amount. Can
-      we justify a Gaussian model by treating that fault as many independent effects?
+    prompt: "A sensor error is the sum of 30 contributions. Which description supports the simple central limit theorem approximation for the total?"
     options:
       - id: a
-        text: No; the shared cause links the changes across readings.
+        text: "The contributions are independent, with the same distribution and a limited range of sizes."
         correct: true
-        feedback: A shared disturbance does not become independent by appearing repeatedly.
+        feedback: "These are the conditions of the simple version: many independent effects with the same distribution and bounded sizes."
       - id: b
-        text: Yes; every repeated effect is automatically independent.
+        text: "The contributions share a random offset, with the same distribution and a limited range of sizes."
         correct: false
-        feedback: Repetition does not imply independence.
+        feedback: "A shared random offset links the contributions, so their changes carry information about each other."
       - id: c
-        text: Yes; adding readings always produces an exact Gaussian.
+        text: "The contributions are independent, with different distributions and one dominating the total variation."
         correct: false
-        feedback: The theorem is approximate and needs conditions.
-    solution:
-      The same fault affects all readings together, so those contributions are dependent. The
-      simple independent-effects justification does not apply.
+        feedback: "One dominant contribution can preserve its own shape in the total; many small contributions must combine for the bell argument."
+    solution: "The simple central limit theorem approximation uses many independent effects with the same distribution and a limited range of possible sizes. A shared cause breaks independence, while a dominant contribution can keep the total from becoming bell-shaped."
   - id: gauss-count-limit
     dimension: conceptual
     type: mc
@@ -535,23 +531,21 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: A Gaussian noise model predicts that about 0.3% of errors lie beyond three standard
-      deviations. A large dataset has 8% there. What should you do?
+    prompt: "A Gaussian noise model predicts that about 0.3% of errors lie beyond three standard deviations. A large dataset has 8% there, even after fitting the mean and standard deviation. Which model feature is most directly contradicted?"
     options:
       - id: a
-        text: Investigate the extreme errors and consider a model with more tail probability.
+        text: "The probability it assigns to extreme errors."
         correct: true
-        feedback: The observed extreme-error rate is much larger than the Gaussian rule predicts.
+        feedback: "The model assigns much less probability to extreme errors than the data show."
       - id: b
-        text: Keep the Gaussian because matching mean and spread proves its shape.
+        text: "The location it assigns to the central error."
         correct: false
-        feedback: The same mean and spread can occur with different shapes.
+        feedback: "The mismatch concerns errors far from the fitted centre; the centre alone cannot describe tail frequency."
       - id: c
-        text: Delete the extreme errors because Gaussian models forbid them.
+        text: "The measurement units it uses for the errors."
         correct: false
-        feedback: Gaussian models allow extreme errors, but predict them to be rare.
-    solution: The data has many more extreme errors than the Gaussian predicts. Check the cause and
-      choose a model that represents these tails rather than discarding inconvenient data.
+        feedback: "Changing units scales errors and standard deviation together, preserving the fraction beyond three standard deviations."
+    solution: "The observed fraction beyond three standard deviations is much larger than the Gaussian prediction. Investigate the extreme errors and consider a model that assigns more probability to the tails."
   - id: gauss-explain
     dimension: conceptual
     type: explain

@@ -72,9 +72,16 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: A query and a key each have four components. Their dot product is 6. What is the scaled score $s=6/\sqrt4$?
+    prompt: A query and a key each have four components, and their dot product is 6. What is their scaled attention score?
     answer: 3
     tolerance: { abs: 0.001 }
+    common_wrong:
+      - answer: 6
+        category: incomplete_explanation
+        feedback: That is the dot product. Attention divides it by the square root of the key width.
+      - answer: 1.5
+        category: misunderstood_definition
+        feedback: That divides by the key width, 4. The divisor is its square root, 2.
     solution: The key width is 4, so the divisor is $\sqrt4=2$. The scaled score is $6/2=3$.
   - id: attn-score-template
     dimension: math
@@ -82,7 +89,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: 'For $q=({{=u}},{{=v}},0,0)$ and $k=({{=r}},{{=b}},0,0)$, calculate the scaled score $q\cdot k/\sqrt{d_k}$. Both vectors have four components.'
+    prompt: "A query is $q=({{=u}},{{=v}},0,0)$ and a key is $k=({{=r}},{{=b}},0,0)$. What is their scaled attention score?"
     params:
       u: { min: 1, max: 3 }
       v: { min: 1, max: 2 }
@@ -95,7 +102,10 @@ exercises:
       - answer_expr: u*r+v*b
         category: misunderstood_definition
         feedback: You found the dot product; divide by the square root of the key width, which is 2.
-    solution: 'Multiplying matching components and adding gives ${{=u*r+v*b}}$. The divisor is $\sqrt4=2$, so the score is ${{=(u*r+v*b)/2}}$.'
+      - answer_expr: (u*r+v*b)/4
+        category: misunderstood_definition
+        feedback: That divides by the key width, 4. The divisor is its square root, 2.
+    solution: 'Multiplying matching components and adding gives ${{=u*r+v*b}}$. The vectors have four components, so the divisor is $\sqrt4=2$ and the score is ${{=(u*r+v*b)/2}}$.'
   - id: attn-score-cosine
     dimension: conceptual
     type: mc
@@ -134,10 +144,17 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: 'A robot compares a query $q=(2,-2,0,0)$ with two object keys $k_1=(1,1,0,0)$ and $k_2=(0,2,0,0)$. Using $s_j=q\cdot k_j/\sqrt4$, how much larger is the first score than the second? Give $s_1-s_2$.'
+    prompt: "A robot compares a query $q=(2,-2,0,0)$ with two object keys $k_1=(1,1,0,0)$ and $k_2=(0,2,0,0)$ using scaled attention scores. How much larger is the first object's score than the second's?"
     answer: 2
     tolerance: { abs: 0.001 }
-    solution: The dot products are $0$ and $-4$, so the scaled scores are $0$ and $-2$. Their difference is $0-(-2)=2$; a zero score can still beat a negative one.
+    common_wrong:
+      - answer: 4
+        category: incomplete_explanation
+        feedback: That is the difference between the dot products. Divide each by $\sqrt4=2$ first.
+      - answer: 1
+        category: misunderstood_definition
+        feedback: That divides by the key width, 4. The divisor is its square root, 2.
+    solution: The dot products are $0$ and $-4$, and the keys have four components, so dividing by $\sqrt4=2$ gives scores $0$ and $-2$. Their difference is $0-(-2)=2$; a zero score can still beat a negative one.
   - id: attn-weight-basics
     dimension: conceptual
     type: mc
@@ -206,10 +223,19 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: For one query, exponentiating three source scores gives $(2,3,5)$. What attention weight is assigned to the second source?
-    answer: 0.3
-    tolerance: { abs: 0.001 }
-    solution: Softmax divides the second positive number by their shared total, $2+3+5=10$. The second weight is $3/10=0.3$.
+    prompt: For one query, the scaled scores of three sources are $(1,0,0)$. What attention weight goes to the first source? Round to two decimals.
+    answer: 0.5761
+    tolerance: { abs: 0.006 }
+    common_wrong:
+      - answer: 1
+        tolerance: { abs: 0.01 }
+        category: misunderstood_definition
+        feedback: Softmax doesn't give all the weight to the largest score. Raise $e$ to every score, including the zeros, then divide by the total.
+      - answer: 0.33
+        tolerance: { abs: 0.006 }
+        category: misunderstood_definition
+        feedback: Equal weights would need equal scores. The first score is larger, so its weight is larger.
+    solution: Softmax raises $e$ to each score, giving $e$, $1$ and $1$, with total $e+2\approx4.72$. The first weight is $e/(e+2)\approx2.72/4.72\approx0.58$.
   - id: attn-weight-template
     dimension: math
     type: numeric

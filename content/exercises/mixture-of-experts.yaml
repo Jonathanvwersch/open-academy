@@ -60,7 +60,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "A four-expert top-2 router gives A probability ${{= a }}/10$, B probability ${{= b }}/10$, and C and D probability $(10-{{= a }}-{{= b }})/20$ each. It keeps A and B. After rescaling the kept probabilities to add to 1, what is A's weight?"
+    prompt: "A four-expert top-2 router gives A probability ${{= a }}/10$, B probability ${{= b }}/10$, and C and D probability $(10-{{= a }}-{{= b }})/20$ each. What weight does A receive in the layer's output? Give two decimal places."
     params:
       a: { min: 3, max: 4 }
       b: { min: 3, max: 4 }
@@ -88,9 +88,9 @@ exercises:
         }
       - {
           id: c,
-          text: "Every token vector must now have four times as many entries.",
+          text: "Each token still runs two experts, but the router may choose from four.",
           correct: false,
-          feedback: "Each expert returns the same width as its input, and adding outputs preserves that width.",
+          feedback: "The layer already had four experts. Raising k to four changes how many run for each token.",
         }
     solution: With k equal to the expert count, all experts run for each token. Their weighted sum can still have unequal weights and keeps the original vector width.
   - id: moe-route-output
@@ -99,7 +99,7 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: "A robot's layer selects two experts with weights $1/4$ and $3/4$, which add to 1. Their outputs are $({{= u }},2)$ and $({{= v }},0)$. What is the first entry of their weighted sum?"
+    prompt: "A robot's mixture-of-experts layer selects two experts with routing weights $1/4$ and $3/4$. Their outputs are $({{= u }},2)$ and $({{= v }},0)$. What is the first entry returned by the layer?"
     params:
       u: { min: 2, max: 6, step: 2 }
       v: { min: 4, max: 8, step: 2 }
@@ -282,7 +282,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: 'A two-expert top-1 layer sends every token to expert 1. Every token has router probabilities $({{= a }}/10,1-{{= a }}/10)$. Compute $L_{\text{aux}}=2(f_1P_1+f_2P_2)$, where f is the assignment fraction and P is the mean probability before selection.'
+    prompt: 'Every token in a batch has router probabilities $({{= a }}/10,1-{{= a }}/10)$ in a two-expert top-1 layer. What is the load-balancing loss $L_{\text{aux}}$ for this batch?'
     params:
       a: { min: 6, max: 9 }
     answer_expr: a/5
@@ -320,7 +320,7 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: Two routers for a robot have the same total and active parameter counts. Router A sends almost everything to one device; B spreads work evenly. Why might B finish faster, without this being guaranteed?
+    prompt: Two routers for a robot have the same total and active parameter counts. Router A sends almost everything to one device; B spreads work evenly. Which prediction about their running times is justified?
     options:
       - {
           id: a,
@@ -329,13 +329,13 @@ exercises:
         }
       - {
           id: b,
-          text: "B must have fewer stored parameters because its assignments are more balanced.",
+          text: "Their times should match because equal active counts imply equal device utilisation.",
           correct: false,
-          feedback: "The prompt fixes the parameter counts; routing distribution does not change how many parameters exist.",
+          feedback: "Equal active counts can still leave one device overloaded while others wait.",
         }
       - {
           id: c,
-          text: "B always eliminates communication because every device receives equal work.",
+          text: "B must be faster because equal device loads make communication cost negligible.",
           correct: false,
           feedback: "Balanced devices may still exchange token vectors; equal work does not remove communication.",
         }

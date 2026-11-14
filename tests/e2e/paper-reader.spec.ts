@@ -213,10 +213,9 @@ test('Course opens a paper reader with PDF pages, persisted notes/summary, tutor
   const selectedPreview = `${selectedText.slice(0, 120)}${selectedText.length > 120 ? '…' : ''}`;
   const quoteChip = tutor.getByText(`Selected: “${selectedPreview}”`, { exact: true });
   await expect(quoteChip).toBeVisible();
-  await expect(tutor.getByText('No chats yet')).toBeVisible();
-  await expect(tutor.getByTestId('tutor-reading-context')).toHaveText(
-    'Context: Fixture Paper One · page 1 of 3 · selected passage',
-  );
+  await expect(
+    tutor.getByText('No chats yet. Ask a question below.', { exact: true }),
+  ).toBeVisible();
   await input.fill('What does this passage mean?');
   const sendButton = tutor.getByRole('button', { name: 'Send' });
   await expect(sendButton).toBeEnabled();
@@ -237,10 +236,10 @@ test('Course opens a paper reader with PDF pages, persisted notes/summary, tutor
   expect(response.request().postDataJSON()).toMatchObject({
     page: 'paper',
     paperId: 'fixture-paper-one',
+    pageNumber: 1,
     selection: selectedText,
   });
   await expect(quoteChip).toHaveCount(0);
-  await expect(tutor.getByTestId('tutor-reading-context')).not.toContainText('selected passage');
   await page.screenshot({ path: `${tutorHeaderScreenshotDir}/paper.png` });
   const conversationTitle =
     (await tutor.getByTestId('tutor-conversation-title').textContent()) ?? '';
@@ -256,7 +255,21 @@ test('Course opens a paper reader with PDF pages, persisted notes/summary, tutor
   await expect(continuedChip).toBeVisible();
   await tutor.getByRole('button', { name: 'Clear selected passage' }).click();
   await expect(continuedChip).toHaveCount(0);
-  await expect(tutor.getByTestId('tutor-reading-context')).not.toContainText('selected passage');
+  await input.fill('What context remains on this page?');
+  const clearedSelection = page.waitForResponse(
+    (nextResponse) =>
+      nextResponse.request().method() === 'POST' &&
+      nextResponse.url().includes('/api/tutor/threads'),
+  );
+  await sendButton.click();
+  const clearedSelectionResponse = await clearedSelection;
+  const clearedSelectionBody = clearedSelectionResponse.request().postDataJSON();
+  expect(clearedSelectionBody).toMatchObject({
+    page: 'paper',
+    paperId: 'fixture-paper-one',
+    pageNumber: 1,
+  });
+  expect(clearedSelectionBody).not.toHaveProperty('selection');
   await page.getByRole('link', { name: 'Back to Course' }).click();
   const completedPaperLink = page.getByRole('link', { name: /Fixture Paper One/ }).first();
   await expect(completedPaperLink.locator('[data-slot="badge"]')).toHaveText('Completed');

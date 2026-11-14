@@ -93,10 +93,10 @@ exercises:
         category: misunderstood_definition
         feedback: The three products are added into one dot product, so they do not stay separate.
       - id: c
-        text: None, because a product needs at least two houses.
+        text: Three numbers, one for each column of the matrix.
         correct: false
         category: misunderstood_definition
-        feedback: A matrix with one row is allowed; it gives one answer.
+        feedback: Each row gives one output. The columns are added together inside that row's dot product.
       - id: d
         text: Nine numbers, one for each measurement and weight pair.
         correct: false
@@ -278,21 +278,28 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: Why can't a $2\times3$ matrix multiply a $2\times4$ matrix in that order, even though both have two rows?
+    prompt: Why can't a $2\times3$ matrix multiply a $2\times4$ matrix in that order?
     solution: Each left row has three entries but each right column has two. Their dot product is undefined, so this matrix product is undefined.
     options:
       - id: a
-        text: Each left row has three entries, but each right column has only two.
+        text: The left matrix has 3 columns, but the right matrix has only 2 rows.
         correct: true
-        feedback: A dot product needs a matching partner for every entry. These lists have different lengths.
+        feedback: Each entry of the product dots a left row (3 entries) with a right column (2 entries), and those lengths must match.
       - id: b
-        text: Both matrices have two rows, and the row counts must differ.
+        text: The left matrix has 2 rows, but the right matrix has 4 columns.
         correct: false
-        feedback: Equal row counts don't matter. What must match is the columns on the left and the rows on the right.
+        category: misunderstood_definition
+        feedback: The outer sizes only set the shape of the answer. What must match is the columns on the left and the rows on the right.
       - id: c
-        text: The answer would need shape 3 by 4, which is too large.
+        text: The left matrix has 3 columns, but the right matrix has 4 columns.
         correct: false
-        feedback: The outer sizes only give a shape once the inner sizes match, and here they are 3 and 2.
+        category: misunderstood_definition
+        feedback: The right matrix's column count sets the answer's width. Its row count, 2, is what must match the left's 3 columns.
+      - id: d
+        text: Both matrices have 2 rows, and matching row counts aren't allowed.
+        correct: false
+        category: misunderstood_definition
+        feedback: Equal row counts don't matter either way. What must match is the columns on the left and the rows on the right.
   - id: matp-entry-template
     dimension: math
     type: numeric
@@ -429,21 +436,28 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: A NumPy product holds sale-price and monthly-rent predictions for five houses, shape (5, 2). You add b, an array of two biases (one per prediction), shape (2,). What does broadcasting do?
-    solution: NumPy reuses the two bias entries across the five rows. The output shape stays (5, 2).
+    prompt: A NumPy product holds sale-price and monthly-rent predictions for five houses, shape (5, 2). You add b, an array of shape (2,) holding a sale-price bias and a rent bias. What does broadcasting do?
+    solution: NumPy reuses the two bias entries across the five rows, so every house's sale price gets the first bias and every rent gets the second. The output shape stays (5, 2).
     options:
       - id: a
-        text: It adds the two adjustments to every house row.
+        text: It adds the first bias to every house's sale price and the second to every house's rent.
         correct: true
         feedback: Each output column receives its matching bias for every house.
       - id: b
-        text: It adds two new columns to every row.
+        text: It adds the first bias to house 1's row and the second bias to house 2's row.
         correct: false
-        feedback: Bias addition changes values, not the number of output columns.
+        category: misunderstood_definition
+        feedback: b has one entry per column, so it lines up with the columns and is reused for all five rows.
       - id: c
-        text: It adds the adjustments only to the first row.
+        text: It adds the sum of both biases to every entry of the (5, 2) array.
         correct: false
-        feedback: The shorter array is reused for all five rows.
+        category: misunderstood_definition
+        feedback: The biases stay separate. Each column gets its own bias.
+      - id: d
+        text: It raises an error, because b has 2 entries and the array has 5 rows.
+        correct: false
+        category: misunderstood_definition
+        feedback: NumPy matches the last axis, which has size 2 in both, and repeats b across the rows.
   - id: matp-code
     dimension: implementation
     type: mc
