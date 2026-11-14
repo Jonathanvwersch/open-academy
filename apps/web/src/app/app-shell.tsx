@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link, Outlet, useRouterState } from '@tanstack/react-router';
-import { Activity, BookOpen, House, RotateCcw, Settings } from 'lucide-react';
+import { Activity, BookOpen, House, Network, RotateCcw, Settings } from 'lucide-react';
 import { useCallback, useState } from 'react';
 import { Toaster } from 'sonner';
 import { BrandLockup } from '../components/brand-lockup.js';
@@ -34,6 +34,7 @@ const SIDEBAR_STORAGE_KEY = 'academy.app-sidebar.open';
 const navigation = [
   { label: 'Home', to: '/', icon: House },
   { label: 'Courses', to: '/courses', icon: BookOpen },
+  { label: 'Map', to: '/map', icon: Network },
   { label: 'Reviews', to: '/reviews', icon: RotateCcw },
   { label: 'Progress', to: '/progress', icon: Activity },
 ] as const;

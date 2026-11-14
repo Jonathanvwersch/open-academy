@@ -4,6 +4,10 @@ import { getRouteApi, Link } from '@tanstack/react-router';
 import { ChevronDown, ChevronRight, FileText, Wrench } from 'lucide-react';
 import { Collapsible } from 'radix-ui';
 import { useEffect, useState } from 'react';
+import {
+  topicStatusLabels as COURSE_STATUS_LABEL,
+  topicStatusClasses,
+} from '../../components/topic-status.js';
 import { Badge } from '../../components/ui/badge.js';
 import { Button } from '../../components/ui/button.js';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card.js';
@@ -442,13 +446,6 @@ export function CoursePage() {
   );
 }
 
-const COURSE_STATUS_LABEL = {
-  not_started: 'Not started',
-  in_progress: 'In progress',
-  quiz: 'Quiz not passed',
-  complete: 'Complete',
-} as const;
-
 function TopicRows({ topics }: { topics: CourseTopic[] }) {
   return (
     <ol className="divide-y">
@@ -469,16 +466,7 @@ function TopicRows({ topics }: { topics: CourseTopic[] }) {
                   Needs {topic.needs?.map((prerequisite) => prerequisite.title).join(', ')}
                 </span>
               ) : topic.status !== 'not_started' ? (
-                <Badge
-                  variant="secondary"
-                  className={
-                    topic.status === 'complete'
-                      ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'
-                      : topic.status === 'quiz'
-                        ? 'bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300'
-                        : ''
-                  }
-                >
+                <Badge variant="secondary" className={topicStatusClasses(topic.status)}>
                   {COURSE_STATUS_LABEL[topic.status]}
                 </Badge>
               ) : null}

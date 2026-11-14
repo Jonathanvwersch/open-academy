@@ -48,6 +48,28 @@ test('tutor availability does not read any learning state', async () => {
   expect(statements).toHaveLength(1); // The request's learner lookup only.
 });
 
+test('study map reads shared progress once for multiple courses', async () => {
+  const content = await loadContent();
+  await db
+    .update(schema.users)
+    .set({ studySetInitializedAt: new Date() })
+    .where(eq(schema.users.id, userId));
+  await db
+    .insert(schema.courseEnrollments)
+    .values(
+      content.courses
+        .slice(0, 2)
+        .map((course) => ({ userId, courseId: course.id, startMethod: 'beginning' as const })),
+    )
+    .onConflictDoNothing();
+  statements = [];
+  const response = await app.request('/api/study-map');
+  expect(response.status).toBe(200);
+  expect((await response.json()).nodes.length).toBeGreaterThan(0);
+  expect(statements.length).toBe(5);
+  expect(statements.join('\n')).not.toMatch(/"review_cards"|"attempts"|"remediation_flags"/);
+});
+
 test('full lesson review avoids building quiz history and XP summaries', async () => {
   await db.insert(schema.lessonRuns).values({ userId, conceptId: 'supervised-learning' });
   statements = [];

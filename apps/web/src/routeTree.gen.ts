@@ -14,6 +14,7 @@ import { Route as CourseRouteImport } from './routes/course'
 import { Route as CoursesRouteImport } from './routes/courses'
 import { Route as LabRouteImport } from './routes/lab'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as MapRouteImport } from './routes/map'
 import { Route as PlacementRouteImport } from './routes/placement'
 import { Route as ProgressRouteImport } from './routes/progress'
 import { Route as ReviewsRouteImport } from './routes/reviews'
@@ -50,6 +51,11 @@ const LabRoute = LabRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MapRoute = MapRouteImport.update({
+  id: '/map',
+  path: '/map',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PlacementRoute = PlacementRouteImport.update({
@@ -119,6 +125,7 @@ export interface FileRoutesByFullPath {
   '/courses': typeof CoursesRouteWithChildren
   '/lab': typeof LabRoute
   '/login': typeof LoginRoute
+  '/map': typeof MapRoute
   '/placement': typeof PlacementRouteWithChildren
   '/progress': typeof ProgressRoute
   '/reviews': typeof ReviewsRoute
@@ -137,6 +144,7 @@ export interface FileRoutesByTo {
   '/course': typeof CourseRoute
   '/lab': typeof LabRoute
   '/login': typeof LoginRoute
+  '/map': typeof MapRoute
   '/progress': typeof ProgressRoute
   '/reviews': typeof ReviewsRoute
   '/settings': typeof SettingsRoute
@@ -156,6 +164,7 @@ export interface FileRoutesById {
   '/courses': typeof CoursesRouteWithChildren
   '/lab': typeof LabRoute
   '/login': typeof LoginRoute
+  '/map': typeof MapRoute
   '/placement': typeof PlacementRouteWithChildren
   '/progress': typeof ProgressRoute
   '/reviews': typeof ReviewsRoute
@@ -177,6 +186,7 @@ export interface FileRouteTypes {
     | '/courses'
     | '/lab'
     | '/login'
+    | '/map'
     | '/placement'
     | '/progress'
     | '/reviews'
@@ -195,6 +205,7 @@ export interface FileRouteTypes {
     | '/course'
     | '/lab'
     | '/login'
+    | '/map'
     | '/progress'
     | '/reviews'
     | '/settings'
@@ -213,6 +224,7 @@ export interface FileRouteTypes {
     | '/courses'
     | '/lab'
     | '/login'
+    | '/map'
     | '/placement'
     | '/progress'
     | '/reviews'
@@ -233,6 +245,7 @@ export interface RootRouteChildren {
   CoursesRoute: typeof CoursesRouteWithChildren
   LabRoute: typeof LabRoute
   LoginRoute: typeof LoginRoute
+  MapRoute: typeof MapRoute
   PlacementRoute: typeof PlacementRouteWithChildren
   ProgressRoute: typeof ProgressRoute
   ReviewsRoute: typeof ReviewsRoute
@@ -278,6 +291,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/map': {
+      id: '/map'
+      path: '/map'
+      fullPath: '/map'
+      preLoaderRoute: typeof MapRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/placement': {
@@ -400,6 +420,7 @@ const rootRouteChildren: RootRouteChildren = {
   CoursesRoute: CoursesRouteWithChildren,
   LabRoute: LabRoute,
   LoginRoute: LoginRoute,
+  MapRoute: MapRoute,
   PlacementRoute: PlacementRouteWithChildren,
   ProgressRoute: ProgressRoute,
   ReviewsRoute: ReviewsRoute,

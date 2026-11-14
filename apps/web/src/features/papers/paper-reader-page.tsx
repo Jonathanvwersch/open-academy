@@ -14,6 +14,7 @@ import { Button } from '../../components/ui/button.js';
 import { Input } from '../../components/ui/input.js';
 import { Textarea } from '../../components/ui/textarea.js';
 import { FeedbackPanel } from '../exercises/feedback-panel.js';
+import { studyMapQueryOptions } from '../map/queries.js';
 import { useTutorSidebar } from '../tutor/tutor-sidebar.js';
 import { paperQueryOptions } from './queries.js';
 
@@ -362,6 +363,7 @@ export function PaperReaderPage() {
         queryClient.invalidateQueries({ queryKey: ['paper', paperId] }),
         queryClient.invalidateQueries({ queryKey: ['papers'] }),
         queryClient.invalidateQueries({ queryKey: ['course'] }),
+        queryClient.invalidateQueries({ queryKey: studyMapQueryOptions().queryKey }),
       ]);
     } finally {
       setSubmitting(false);

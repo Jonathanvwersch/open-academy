@@ -60,7 +60,7 @@ test('desktop sidebar collapse persists across reload', async ({ page }) => {
   ).toHaveCount(0);
   await expect(page.getByRole('link', { name: 'Open Fixture course' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Open Fixture switching course' })).toBeVisible();
-  const navRows = ['Home', 'Courses', 'Reviews', 'Progress'].map((name) =>
+  const navRows = ['Home', 'Courses', 'Map', 'Reviews', 'Progress'].map((name) =>
     navigation.getByRole('link', { name, exact: true }),
   );
   const navBoxes = await Promise.all(navRows.map((row) => row.boundingBox()));

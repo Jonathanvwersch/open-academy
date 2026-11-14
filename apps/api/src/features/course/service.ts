@@ -1,4 +1,4 @@
-import type { ContentIndex, IndexedCourse } from '../../content/types.js';
+import type { ContentIndex, IndexedConcept, IndexedCourse } from '../../content/types.js';
 import type { LearnerRepository } from '../../db/repository.js';
 import type { lessonRuns } from '../../db/schema.js';
 import { lowestMasteryState, masteryLabel, topicStatus } from '../../learning/course-status.js';
@@ -16,6 +16,19 @@ type RunRecords = Array<typeof lessonRuns.$inferSelect>;
 type PaperStatuses = Map<string, 'not_started' | 'reading' | 'completed'>;
 type ProjectStatuses = Map<string, 'not_started' | 'in_progress' | 'completed'>;
 type EnrollmentStatus = 'not_started' | 'active' | 'paused' | 'completed';
+
+export function placedOutConceptsFromRuns(runs: readonly { state: unknown }[]): Set<string> {
+  const conceptIds = new Set<string>();
+  for (const run of runs) {
+    if (typeof run.state !== 'object' || run.state === null) continue;
+    const known = (run.state as { known?: unknown }).known;
+    if (!Array.isArray(known)) continue;
+    for (const conceptId of known) {
+      if (typeof conceptId === 'string') conceptIds.add(conceptId);
+    }
+  }
+  return conceptIds;
+}
 
 export function suggestedNextCourses(
   index: ContentIndex,
@@ -61,6 +74,38 @@ export function suggestedNextCourses(
     }));
 }
 
+export function courseTopicState(
+  index: ContentIndex,
+  masteryRecords: MasteryRecords,
+  runs: RunRecords,
+  placedOutConcepts: ReadonlySet<string>,
+) {
+  const masteryByKey = new Map(
+    masteryRecords.map((record) => [masteryKey(record.conceptId, record.dimension), record]),
+  );
+  const runsByConcept = new Map(runs.map((run) => [run.conceptId, run]));
+  return (concept: IndexedConcept) => {
+    const dimensionStates = concept.dimensions.map(
+      (dimension) => masteryByKey.get(masteryKey(concept.id, dimension))?.state ?? 'not_assessed',
+    );
+    const runStatus = runsByConcept.get(concept.id)?.status;
+    const prerequisites = concept.prereqs.map((prerequisite) => ({
+      ...prerequisite,
+      done: prerequisiteMet(prerequisite.id, masteryByKey, runs, index),
+    }));
+    const status = topicStatus({ lessonRunStatus: runStatus, dimensionStates, prerequisites });
+    return {
+      status,
+      dimensionStates,
+      placedOut:
+        status === 'complete' && runStatus === undefined && placedOutConcepts.has(concept.id),
+      missingPrereqs: prerequisites.filter(
+        (prerequisite) => prerequisite.strength === 'hard' && !prerequisite.done,
+      ),
+    };
+  };
+}
+
 function buildUnits(
   index: ContentIndex,
   course: IndexedCourse,
@@ -70,17 +115,8 @@ function buildUnits(
   projectStatuses: ProjectStatuses,
   placedOutConcepts: ReadonlySet<string>,
 ) {
-  const masteryByConcept = new Map<string, typeof masteryRecords>();
-  for (const record of masteryRecords) {
-    const records = masteryByConcept.get(record.conceptId) ?? [];
-    records.push(record);
-    masteryByConcept.set(record.conceptId, records);
-  }
+  const topicState = courseTopicState(index, masteryRecords, runs, placedOutConcepts);
   const runsByConcept = new Map(runs.map((run) => [run.conceptId, run]));
-  const masteryByKey = new Map(
-    masteryRecords.map((record) => [masteryKey(record.conceptId, record.dimension), record]),
-  );
-  const lessonRunState = runs.map(({ conceptId, status }) => ({ conceptId, status }));
   const outlineConcepts = [
     ...new Set(index.courses.flatMap((entry) => entry.units.flatMap((unit) => unit.concepts))),
   ].flatMap((id) => {
@@ -133,26 +169,8 @@ function buildUnits(
             leadsToMore: 0,
           };
         }
-        const records = masteryByConcept.get(concept.id) ?? [];
-        const dimensionStates = concept.dimensions.map(
-          (dimension) =>
-            records.find((record) => record.dimension === dimension)?.state ?? 'not_assessed',
-        );
-        const runStatus = runsByConcept.get(concept.id)?.status;
-        const status = topicStatus({
-          lessonRunStatus: runStatus,
-          dimensionStates,
-          prerequisites: concept.prereqs.map((prerequisite) => ({
-            strength: prerequisite.strength,
-            done: prerequisiteMet(prerequisite.id, masteryByKey, lessonRunState, index),
-          })),
-        });
-        const needs = concept.prereqs
-          .filter(
-            (prerequisite) =>
-              prerequisite.strength === 'hard' &&
-              !prerequisiteMet(prerequisite.id, masteryByKey, lessonRunState, index),
-          )
+        const { status, dimensionStates, placedOut, missingPrereqs } = topicState(concept);
+        const needs = missingPrereqs
           .sort((left, right) => compareOutlinePosition(left.id, right.id, index, course.id))
           .map((prerequisite) => ({
             id: prerequisite.id,
@@ -175,8 +193,7 @@ function buildUnits(
           hasLesson: index.lessonsByConcept.has(concept.id),
           status,
           mastery: masteryLabel(lowestMasteryState(dimensionStates)),
-          placedOut:
-            status === 'complete' && runStatus === undefined && placedOutConcepts.has(concept.id),
+          placedOut,
           buildsOn,
           leadsTo: nextConcepts.slice(0, 3).map((candidate) => ({
             id: candidate.id,
@@ -238,35 +255,10 @@ export function buildCoursePayload(
       started: startedCourseIds.has(course.id),
     };
   });
+  const topicState = courseTopicState(index, masteryRecords, runs, placedOutConcepts);
   const foundations = activeCourse
     ? courseFoundations(index, resolvedCourseId)
-        .filter((concept) => {
-          const records = masteryRecords.filter((record) => record.conceptId === concept.id);
-          const states = concept.dimensions.map(
-            (dimension) =>
-              records.find((record) => record.dimension === dimension)?.state ?? 'not_assessed',
-          );
-          return (
-            topicStatus({
-              lessonRunStatus: runs.find((run) => run.conceptId === concept.id)?.status,
-              dimensionStates: states,
-              prerequisites: concept.prereqs.map((prerequisite) => ({
-                strength: prerequisite.strength,
-                done: prerequisiteMet(
-                  prerequisite.id,
-                  new Map(
-                    masteryRecords.map((record) => [
-                      masteryKey(record.conceptId, record.dimension),
-                      record,
-                    ]),
-                  ),
-                  runs.map(({ conceptId, status }) => ({ conceptId, status })),
-                  index,
-                ),
-              })),
-            }) !== 'complete'
-          );
-        })
+        .filter((concept) => topicState(concept).status !== 'complete')
         .map((concept, indexInFoundations) => {
           const source = index.courses.find((course) =>
             course.units.some((unit) => unit.concepts.includes(concept.id)),
