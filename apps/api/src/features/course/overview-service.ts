@@ -1,62 +1,83 @@
+import type { StudyMapPayload } from '@academy/contracts/course';
+import { and, eq } from 'drizzle-orm';
 import { serializeConcept } from '../../content/serialize.js';
+import { diagnosticRuns, lessonRuns } from '../../db/schema.js';
 import { deriveLearningDebt } from '../../learning/debt.js';
-import { activeCourseFor } from '../../learning/prerequisites.js';
-import { currentLearnerUnit } from '../../learning/scheduler.js';
+import {
+  activeCourseFor,
+  compareOutlinePosition,
+  courseFoundationIds,
+} from '../../learning/prerequisites.js';
 import type { MasteryRecord } from '../../learning/types.js';
-import { initialMastery, masteryRank } from '../../learning/types.js';
 import { type FeatureRequest, type FeatureServices, serviceResult } from '../../service-context.js';
+import { courseTopicState, placedOutConceptsFromRuns } from './service.js';
 
-export async function getMap(deps: FeatureServices, request: FeatureRequest) {
-  const { content } = deps;
-  const index = await content();
-  const requestedDomain = request.query.domain;
-  const state = await request.repo.schedulerState(request.now(), index);
-  const courseId = state.studyCourseIds[0] ?? state.activeCourseId;
-  const activeCourse = activeCourseFor(index, courseId);
-  const currentUnit = currentLearnerUnit({ ...state, activeCourseId: courseId }, index);
-  const currentUnitDomain =
-    activeCourse?.units[currentUnit - 1]?.concepts
-      .map((id) => index.conceptsById.get(id)?.domain)
-      .find((value): value is string => Boolean(value)) ??
-    index.curriculum?.domains[0]?.id ??
-    '';
-  const domain = requestedDomain === 'all' ? '' : (requestedDomain ?? currentUnitDomain);
-  const concepts = domain
-    ? index.concepts.filter((concept) => concept.domain === domain)
-    : index.concepts;
-  const byKey = new Map(
-    state.mastery.map((record) => [`${record.conceptId}:${record.dimension}`, record]),
+export async function getStudyMap(deps: FeatureServices, request: FeatureRequest) {
+  const index = await deps.content();
+  const courseIds = await request.repo.studyCourseIds(index);
+  const payload: StudyMapPayload = { groups: [], nodes: [], edges: [] };
+  if (courseIds.length === 0) return serviceResult(payload);
+  const [mastery, runs, placements] = await Promise.all([
+    request.repo.masteryRecords(),
+    deps.db.select().from(lessonRuns).where(eq(lessonRuns.userId, request.userId)),
+    deps.db
+      .select({ state: diagnosticRuns.state })
+      .from(diagnosticRuns)
+      .where(
+        and(
+          eq(diagnosticRuns.userId, request.userId),
+          eq(diagnosticRuns.kind, 'placement'),
+          eq(diagnosticRuns.status, 'completed'),
+        ),
+      ),
+  ]);
+  const topicState = courseTopicState(index, mastery, runs, placedOutConceptsFromRuns(placements));
+  const groupByConcept = new Map<string, string>();
+  for (const courseId of courseIds) {
+    const course = index.coursesById.get(courseId);
+    if (!course) continue;
+    payload.groups.push({ id: courseId, title: course.title, kind: 'course' });
+    for (const id of course.units.flatMap((unit) => unit.concepts)) {
+      if (!groupByConcept.has(id)) groupByConcept.set(id, courseId);
+    }
+  }
+  const foundationIds = new Set(courseIds.flatMap((id) => [...courseFoundationIds(index, id)]));
+  for (const id of foundationIds) {
+    if (!groupByConcept.has(id)) groupByConcept.set(id, 'foundations');
+  }
+  if ([...groupByConcept.values()].includes('foundations')) {
+    payload.groups.unshift({ id: 'foundations', title: 'Foundations', kind: 'foundations' });
+  }
+  for (const [id, groupId] of groupByConcept) {
+    const concept = index.conceptsById.get(id);
+    if (!concept) continue;
+    const state = topicState(concept);
+    payload.nodes.push({
+      id,
+      title: concept.title,
+      groupId,
+      status: state.status,
+      placedOut: state.placedOut,
+      lessonAvailable: index.lessonsByConcept.has(id),
+      missingPrereqTitles: state.missingPrereqs
+        .sort((left, right) =>
+          compareOutlinePosition(
+            left.id,
+            right.id,
+            index,
+            groupId === 'foundations' ? courseIds[0] : groupId,
+          ),
+        )
+        .map((prerequisite) => index.conceptsById.get(prerequisite.id)?.title ?? prerequisite.id),
+    });
+  }
+  const nodeIds = new Set(payload.nodes.map((node) => node.id));
+  payload.edges = payload.nodes.flatMap((node) =>
+    (index.conceptsById.get(node.id)?.prereqs ?? [])
+      .filter((prerequisite) => prerequisite.strength === 'hard' && nodeIds.has(prerequisite.id))
+      .map((prerequisite) => ({ from: prerequisite.id, to: node.id })),
   );
-  const nodes = concepts.map((concept) => {
-    const dimensions = Object.fromEntries(
-      concept.dimensions.map((dimension) => [
-        dimension,
-        byKey.get(`${concept.id}:${dimension}`) ?? initialMastery(concept.id, dimension),
-      ]),
-    );
-    const prereqs = concept.prereqs.filter((prereq) => prereq.strength === 'hard');
-    const available = prereqs.every((prereq) =>
-      index.conceptsById.get(prereq.id)?.dimensions.some((dimension) => {
-        const record = byKey.get(`${prereq.id}:${dimension}`);
-        return (
-          record?.inferred ||
-          masteryRank(record?.state ?? 'not_assessed') >= masteryRank('assisted')
-        );
-      }),
-    );
-    return {
-      ...serializeConcept(concept),
-      dimensions,
-      available,
-      hasLesson: index.lessonsByConcept.has(concept.id),
-    };
-  });
-  return serviceResult({
-    nodes,
-    edges: index.edges.filter((edge) => concepts.some((concept) => concept.id === edge.conceptId)),
-    domains: (index.curriculum?.domains ?? []).map(({ id, title }) => ({ id, title })),
-    currentWeekDomain: currentUnitDomain,
-  });
+  return serviceResult(payload);
 }
 
 export async function getConceptsById(deps: FeatureServices, request: FeatureRequest) {

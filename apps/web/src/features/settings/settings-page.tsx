@@ -17,6 +17,7 @@ import {
 import { Input } from '../../components/ui/input.js';
 import { Label } from '../../components/ui/label.js';
 import { courseQueryKeyRoot, learnQueryOptions } from '../course/queries.js';
+import { studyMapQueryOptions } from '../map/queries.js';
 import { todayQueryOptions } from '../sessions/queries.js';
 import { settingsQueryOptions } from './queries.js';
 
@@ -50,6 +51,7 @@ export function SettingsPage() {
         queryClient.invalidateQueries({ queryKey: learnQueryOptions().queryKey }),
         queryClient.invalidateQueries({ queryKey: todayQueryOptions().queryKey }),
         queryClient.invalidateQueries({ queryKey: courseQueryKeyRoot }),
+        queryClient.invalidateQueries({ queryKey: studyMapQueryOptions().queryKey }),
       ]);
       setSaved(true);
     } catch {

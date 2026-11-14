@@ -6,6 +6,7 @@ import type {
 } from '@academy/contracts/course';
 import { type QueryClient, queryOptions } from '@tanstack/react-query';
 import { getJson } from '../../api/query-client.js';
+import { studyMapQueryOptions } from '../map/queries.js';
 import { papersQueryOptions } from '../papers/queries.js';
 import { reviewsQueryOptions } from '../reviews/queries.js';
 import { todayQueryOptions } from '../sessions/queries.js';
@@ -47,6 +48,7 @@ export const courseDetailQueryOptions = (courseId: string) =>
 
 export function invalidateSidebarQueries(queryClient: QueryClient) {
   return Promise.all([
+    queryClient.invalidateQueries({ queryKey: studyMapQueryOptions().queryKey }),
     queryClient.invalidateQueries({ queryKey: courseQueryKeyRoot }),
     queryClient.invalidateQueries({ queryKey: coursesQueryKeyRoot }),
     queryClient.invalidateQueries({ queryKey: reviewsQueryOptions().queryKey }),
@@ -55,6 +57,7 @@ export function invalidateSidebarQueries(queryClient: QueryClient) {
 
 export function invalidateCourseStudyQueries(queryClient: QueryClient) {
   return Promise.all([
+    queryClient.invalidateQueries({ queryKey: studyMapQueryOptions().queryKey }),
     queryClient.invalidateQueries({ queryKey: courseQueryKeyRoot }),
     queryClient.invalidateQueries({ queryKey: coursesQueryKeyRoot }),
     queryClient.invalidateQueries({ queryKey: learnQueryOptions().queryKey }),

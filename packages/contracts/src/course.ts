@@ -3,6 +3,22 @@ import type { TodayPayload } from './sessions.js';
 
 export type CourseEnrollmentStatus = 'active' | 'paused' | 'completed';
 
+export type CourseTopicStatus = CourseTopic['status'];
+
+export interface StudyMapPayload {
+  groups: Array<{ id: string; title: string; kind: 'course' | 'foundations' }>;
+  nodes: Array<{
+    id: string;
+    title: string;
+    groupId: string;
+    status: CourseTopicStatus;
+    placedOut: boolean;
+    lessonAvailable: boolean;
+    missingPrereqTitles: string[];
+  }>;
+  edges: Array<{ from: string; to: string }>;
+}
+
 export interface CourseCatalogPayload {
   subjects: Array<{
     title: string;

@@ -1,0 +1,3 @@
+.study-map .react-flow__pane {
+  touch-action: pan-y;
+}

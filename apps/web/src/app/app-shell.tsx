@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link, Outlet, useRouterState } from '@tanstack/react-router';
-import { Activity, BookOpen, House, RotateCcw, Settings } from 'lucide-react';
+import { Activity, BookOpen, House, Network, RotateCcw, Settings } from 'lucide-react';
 import { useCallback, useState } from 'react';
 import { Toaster } from 'sonner';
 import { BrandLockup } from '../components/brand-lockup.js';
@@ -34,6 +34,7 @@ const SIDEBAR_STORAGE_KEY = 'academy.app-sidebar.open';
 const navigation = [
   { label: 'Home', to: '/', icon: House },
   { label: 'Courses', to: '/courses', icon: BookOpen },
+  { label: 'Map', to: '/map', icon: Network },
   { label: 'Reviews', to: '/reviews', icon: RotateCcw },
   { label: 'Progress', to: '/progress', icon: Activity },
 ] as const;
@@ -273,7 +274,9 @@ export function AppShellSkeleton() {
           className={
             isPaperReader
               ? 'flex min-h-0 min-w-0 w-full flex-1 px-0 py-0'
-              : 'mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 pt-6 pb-20 sm:px-6 sm:py-8'
+              : pathname === '/map'
+                ? 'flex w-full flex-1 flex-col py-4'
+                : 'mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 pt-6 pb-20 sm:px-6 sm:py-8'
           }
         >
           <PageSkeleton />
@@ -330,7 +333,9 @@ export function RootLayout() {
               className={
                 isPaperReader
                   ? 'flex min-h-0 min-w-0 w-full flex-1 px-0 py-0'
-                  : 'mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 pt-6 pb-20 sm:px-6 sm:py-8'
+                  : pathname === '/map'
+                    ? 'flex w-full flex-1 flex-col py-4'
+                    : 'mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 pt-6 pb-20 sm:px-6 sm:py-8'
               }
             >
               <Outlet />

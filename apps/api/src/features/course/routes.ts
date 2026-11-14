@@ -46,23 +46,10 @@ import {
   weekXp,
   xpGoalFor,
 } from '../../learning/xp.js';
-import { buildCoursePayload, suggestedNextCourses } from './service.js';
+import { buildCoursePayload, placedOutConceptsFromRuns, suggestedNextCourses } from './service.js';
 
 type RouteContext = Context<ApiEnv>;
 type ActivityRecord = typeof sessionActivities.$inferSelect;
-
-function placedOutConceptsFromRuns(runs: readonly { state: unknown }[]): Set<string> {
-  const conceptIds = new Set<string>();
-  for (const run of runs) {
-    if (typeof run.state !== 'object' || run.state === null) continue;
-    const known = (run.state as { known?: unknown }).known;
-    if (!Array.isArray(known)) continue;
-    for (const conceptId of known) {
-      if (typeof conceptId === 'string') conceptIds.add(conceptId);
-    }
-  }
-  return conceptIds;
-}
 
 export function registerLearnCourseRoutes(
   api: Hono<ApiEnv>,

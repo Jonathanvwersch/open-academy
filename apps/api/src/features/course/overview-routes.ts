@@ -1,10 +1,10 @@
 import type { Hono } from 'hono';
 import type { ApiEnv, ApiServices } from '../../http/context.js';
 import { featureRequest } from '../../http/feature-service.js';
-import { getConceptsById, getMap, getPlanWeek } from './overview-service.js';
+import { getConceptsById, getPlanWeek, getStudyMap } from './overview-service.js';
 export function registerCourseRoutes(api: Hono<ApiEnv>, deps: ApiServices) {
-  api.get('/map', async (context) => {
-    const response = await getMap(deps, featureRequest(context, deps));
+  api.get('/study-map', async (context) => {
+    const response = await getStudyMap(deps, featureRequest(context, deps));
     return context.json(response.body, response.status);
   });
   api.get('/concepts/:id', async (context) => {
