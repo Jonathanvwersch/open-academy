@@ -82,26 +82,34 @@ export function registerPaperRoutes(
       .from(users)
       .where(eq(users.id, c.get('userId')))
       .limit(1);
-    const course = activeCourseFor(index, studyCourseIds[0] ?? user?.activeCourseId);
-    const grouped = (course?.units ?? []).map((unit, unitIndex) => ({
-      unit: unitIndex + 1,
-      title: unit.title,
-      papers: (unit.papers ?? []).flatMap((paperId) => {
-        const paper = index.papersById.get(paperId);
-        if (!paper) return [];
-        const row = progress.get(paper.id);
-        return [
-          {
-            id: paper.id,
-            title: paper.title,
-            authors: paper.authors,
-            year: paper.year,
-            est_minutes: paper.est_minutes,
-            status: !row ? 'not_started' : row.completedAt ? 'completed' : 'reading',
-          },
-        ];
-      }),
-    }));
+    const courseIds = studyCourseIds.length ? studyCourseIds : [user?.activeCourseId ?? ''];
+    const seen = new Set<string>();
+    const grouped = courseIds.flatMap((courseId) => {
+      const course = activeCourseFor(index, courseId);
+      return (course?.units ?? []).map((unit, unitIndex) => ({
+        courseId: course?.id ?? courseId,
+        courseTitle: course?.title ?? '',
+        unit: unitIndex + 1,
+        title: unit.title,
+        papers: (unit.papers ?? []).flatMap((paperId) => {
+          if (seen.has(paperId)) return [];
+          seen.add(paperId);
+          const paper = index.papersById.get(paperId);
+          if (!paper) return [];
+          const row = progress.get(paper.id);
+          return [
+            {
+              id: paper.id,
+              title: paper.title,
+              authors: paper.authors,
+              year: paper.year,
+              est_minutes: paper.est_minutes,
+              status: !row ? 'not_started' : row.completedAt ? 'completed' : 'reading',
+            },
+          ];
+        }),
+      }));
+    });
     return c.json({ units: grouped });
   });
 

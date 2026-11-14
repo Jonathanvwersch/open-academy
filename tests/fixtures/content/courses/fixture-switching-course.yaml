@@ -4,3 +4,4 @@ description: A second course for switching tests.
 units:
   - title: Linear models
     concepts: [linear-models, switching-topic]
+    papers: [fixture-paper-three]
