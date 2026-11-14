@@ -1,5 +1,28 @@
 concept: multi-head-attention
 exercises:
+  - id: lab-char-transformer-head-order
+    dimension: implementation
+    type: explain
+    role: core
+    difficulty: 2
+    est_minutes: 3
+    prompt: |
+      A tensor has shape (batch, time, features) = (1, 2, 4). Its two token vectors are [0, 1, 2, 3] and [4, 5, 6, 7]. We want two heads with shape (1, 2, 2, 2), ordered as batch, head, time, feature. A learner reshapes directly to that shape. What two token vectors should head zero receive, and why can the direct reshape pass a shape check while giving the wrong attention inputs?
+    rubric:
+      - id: values
+        criterion: Gives head zero the vectors [0, 1] and [4, 5].
+        weight: 1
+        required: true
+      - id: order
+        criterion: Explains that a direct reshape assigns [0, 1] and [2, 3] to head zero, mixing feature groups with token positions.
+        weight: 1
+        required: true
+      - id: correction
+        criterion: Splits the feature axis first and then transposes the time and head axes.
+        weight: 1
+        required: true
+    exemplar: Head zero should receive [0, 1] from the first token and [4, 5] from the second. A direct reshape preserves flat storage order, so it gives that head [0, 1] and [2, 3]. The shape is legal but the second vector belongs to the first token's other feature group. Reshape to (1, 2, 2, 2) interpreted as batch, time, head, feature, then transpose time and head.
+    solution: Head zero needs [0, 1] and [4, 5]. Splitting the feature axis and then transposing puts the two token positions within each head in the correct order.
   - id: mha-heads-basics
     dimension: conceptual
     type: mc

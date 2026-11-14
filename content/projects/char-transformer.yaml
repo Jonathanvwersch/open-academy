@@ -1,7 +1,116 @@
 id: char-transformer
 title: "Character-level transformer"
-status: stub
+status: authored
 est_hours: 5
 objective: "Implement and train a small decoder-only character-level transformer and sample from it."
-background: ""
-prereqs: [attention, causal-masking, transformer-block]
+background: |
+  A decoder-only transformer predicts the next token from the tokens we have already seen. Here each token is one character. We will turn a small story into IDs, mix earlier characters with attention, and train a one-block model to predict the next character.
+
+  We use 32-character windows, 32 embedding features and four attention heads. The original story in `text.txt` is committed with the code. Training and verification run offline after setup. The loss checks learning on this story. It gives no estimate of performance on new books, and samples may repeat familiar phrases.
+
+  Work in your own editor. The Academy server reads your results file and never runs your Python code. Run these commands from the repository root. Installing the CPU dependency requires internet once.
+
+  ```bash
+  python3 -m venv ~/ct-venv
+  source ~/ct-venv/bin/activate
+  pip install -r labs/char-transformer/requirements.txt
+  python3 labs/char-transformer/setup.py
+  # Edit labs/char-transformer/work/model.py
+  python3 labs/verify.py char-transformer
+  python3 labs/char-transformer/run.py
+  ```
+
+  Upload `labs/char-transformer/work/results.json` below. The README has shape notes and debugging commands.
+prereqs:
+  [
+    tokenization,
+    embeddings,
+    attention,
+    multi-head-attention,
+    positional-encoding,
+    transformer-block,
+    causal-masking,
+    autoregressive-lm,
+  ]
+tasks:
+  - id: t-tokenize
+    title: Give each character an ID
+    md: |
+      Implement `vocabulary`, `encode` and `decode`. Sort the unique characters so their IDs stay stable. Encode each character by its index in that list, and decode by joining the selected characters. Empty input gives an empty result. An unknown character must raise `ValueError`.
+
+      We are done when a string containing repeated letters and a newline survives a round trip with exactly the same spacing and letters.
+  - id: t-embed
+    title: Add token and position vectors
+    md: |
+      Implement `embed(ids, tokens, positions)` with the supplied embedding tables. For input shape `(B,T)`, look up each token and add the learned position vector for positions `0` through `T-1`. PyTorch adds the same position table to each batch row.
+
+      The result has shape `(B,T,32)` in our model. Repeating a character at two positions should give different vectors, and both tables must receive gradients.
+  - id: t-attention
+    title: Mix values using attention
+    md: |
+      Implement `attention(q,k,v)` for tensors shaped `(B,H,T,D)`. Compute query-key dot products and divide by the square root of `D`. Each row describes one query; its columns describe the keys.
+
+      Apply softmax across the key columns and multiply the weights by `v`. Return both the mixed values and the weights. The values keep shape `(B,H,T,D)`; the weights have shape `(B,H,T,T)`. The next step adds the restriction that makes this safe for next-character prediction.
+  - id: t-mask
+    title: Hide future characters
+    md: |
+      Finish `attention` by filling the scores above the diagonal with negative infinity before softmax. Keep the diagonal. Position zero then has one allowed key, so its output equals the first value vector.
+
+      We are done when future weights are exactly zero, every row sums to one, and changing later keys or values leaves earlier outputs unchanged. A one-character sequence must stay finite.
+  - id: t-heads
+    title: Split and rejoin the heads
+    md: |
+      Implement `split_heads` and `merge_heads`. Split the feature axis of `(B,T,C)` into `(H,C/H)`, then move the head axis before time to get `(B,H,T,C/H)`. Each head receives a contiguous slice of the original features. Reverse these operations when merging.
+
+      Check the actual values as well as the shapes. Splitting and merging a numbered tensor must recover it exactly. The supplied projection layers then turn four head outputs into one vector per character.
+  - id: t-block
+    title: Add both residual paths
+    md: |
+      Implement `block_forward`. First add `attn(norm1(x))` to `x`. Then normalize that updated state with `norm2`, pass it through `mlp`, and add the result to the updated state.
+
+      The supplied block contains the projections, layer normalization and a two-layer ReLU MLP. We are done when the output matches these two pre-norm updates and gradients reach the input and the attention parameters.
+  - id: t-train
+    title: Train the tiny decoder
+    md: |
+      Keep the supplied module constructors, initialization and training scaffold unchanged. They create one block with width 32, four heads of width 8, and an MLP hidden width of 128. Linear and embedding weights use a normal distribution with mean zero and standard deviation 0.02; linear biases are zero. Layer normalization uses PyTorch defaults, with scale one and bias zero.
+
+      The scaffold sets one CPU thread and calls `torch.manual_seed(seed)` before constructing the model. Its separate batch generator uses `seed + 1000`. It runs 250 AdamW updates with batch size 16, context length 32, step size 0.003 and weight decay 0.01. Each target window is the input window shifted one character forward. Cross-entropy averages over all batch positions.
+
+      Run `python3 labs/char-transformer/run.py`. The verifier uses seed 7 and compares the same fixed 16 windows before and after training. We are done when loss is below 2.1 and final loss divided by initial loss is below 0.7. These are learning checks on the training story.
+  - id: t-sample
+    title: Draw the next character
+    md: |
+      Implement `sample_next`. Divide logits by a positive temperature, take softmax across vocabulary entries, and use `torch.multinomial` to draw one ID per row with the supplied generator. Raise `ValueError` for zero or negative temperature. Avoid resetting the generator inside this function.
+
+      The supplied `generate` loop keeps the last 32 IDs as context and appends one sampled ID at a time. We are done when a fixed seed reproduces a sample longer than the context, the prompt is preserved, and every ID belongs to the vocabulary. Run the training command again to read a 200-character sample. Compare temperatures 0.5 and 1.0 by calling `generate` in your editor.
+acceptance:
+  - "All nine public verifier checks pass."
+  - "Attention has the expected values and shapes, future weights are zero, and each row sums to one."
+  - "Changing a future input leaves earlier decoder logits unchanged."
+  - "Final fixed-batch cross-entropy is below 2.1 and the final-to-initial loss ratio is below 0.7."
+  - "Sampling is seeded, respects temperature, preserves the prompt and works beyond the context length."
+tests:
+  - { id: test_tokenization, concepts: [tokenization], dimension: conceptual }
+  - { id: test_attention_values, concepts: [attention], dimension: implementation }
+  - { id: test_causal_mask, concepts: [causal-masking], dimension: implementation }
+  - { id: test_head_split_merge, concepts: [multi-head-attention], dimension: implementation }
+  - { id: test_position_add, concepts: [embeddings, positional-encoding], dimension: conceptual }
+  - { id: test_block_residuals, concepts: [transformer-block], dimension: implementation }
+  - {
+      id: test_decoder_shapes,
+      concepts: [transformer-block, causal-masking],
+      dimension: implementation,
+    }
+  - { id: test_training_loss, concepts: [autoregressive-lm], dimension: implementation }
+  - { id: test_sampling, concepts: [autoregressive-lm], dimension: implementation }
+metrics:
+  - { id: final_loss, label: "Final fixed-batch cross-entropy", threshold: 2.1, direction: below }
+  - { id: loss_ratio, label: "Final / initial fixed-batch loss", threshold: 0.7, direction: below }
+reflection:
+  - lab-char-transformer-mask-leak
+  - lab-char-transformer-head-order
+  - lab-char-transformer-loss-and-samples
+follow_up:
+  - "Compare learned positions with sinusoidal position vectors while keeping the other settings fixed."
+  - "Hold out a separate original paragraph and compare its loss with the fixed training windows."
+  - "Change the number of heads while keeping width 32. Compare training time and samples."
