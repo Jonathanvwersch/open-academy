@@ -16,7 +16,8 @@ import { useEffect, useMemo, useRef } from 'react';
 import { topicStatusClasses, topicStatusLabels } from '../../components/topic-status.js';
 import { Badge } from '../../components/ui/badge.js';
 import { Card, CardContent } from '../../components/ui/card.js';
-import { type GroupNode, layoutStudyMap, type TopicNode } from './layout.js';
+import { ColumnGraphEdge } from './column-edge.js';
+import { type GroupNode, type GroupTitleNode, layoutStudyMap, type TopicNode } from './layout.js';
 import { studyMapQueryOptions } from './queries.js';
 import { initialMapViewport, mapFitViewOptions } from './viewport.js';
 import '@xyflow/react/dist/style.css';
@@ -101,16 +102,26 @@ function TopicGraphNode({ data }: NodeProps<TopicNode>) {
   );
 }
 
-function CourseGroupNode({ data }: NodeProps<GroupNode>) {
+function CourseGroupNode() {
+  return <div className="h-full rounded-xl border border-border bg-muted/30" />;
+}
+
+function CourseGroupTitleNode({ data }: NodeProps<GroupTitleNode>) {
   return (
-    <div className="h-full rounded-xl border border-border bg-muted/30 px-5 py-3">
-      <span className="block truncate text-lg font-semibold" title={data.title}>
-        {data.title}
-      </span>
+    <div
+      className="h-full truncate rounded-md bg-card px-2 py-1 text-lg font-semibold"
+      title={data.title}
+    >
+      {data.title}
     </div>
   );
 }
-const nodeTypes = { topic: TopicGraphNode, courseGroup: CourseGroupNode };
+const nodeTypes = {
+  topic: TopicGraphNode,
+  courseGroup: CourseGroupNode,
+  groupTitle: CourseGroupTitleNode,
+};
+const edgeTypes = { column: ColumnGraphEdge };
 
 function MapViewport({ groups }: { groups: GroupNode[] }) {
   const initialized = useNodesInitialized({ includeHiddenNodes: true });
@@ -179,6 +190,7 @@ export function MapPage() {
             nodes={graph.nodes}
             edges={graph.edges}
             nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
             fitViewOptions={mapFitViewOptions}
             minZoom={0.1}
             preventScrolling={false}
