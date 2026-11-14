@@ -1881,6 +1881,15 @@ test('lesson quiz results are hidden until submit, resume after reload, and allo
     ),
   ).toBe(true);
   await page.getByRole('button', { name: 'Do this later', exact: true }).click();
+  await page.getByRole('button', { name: /Step 1 of \d+, passed/ }).click();
+  await expect(page.getByTestId('lesson-step-content')).toBeVisible();
+  await page.getByRole('button', { name: 'Practise this step', exact: true }).click();
+  await expect(page.getByTestId('lesson-quiz-warmup')).toHaveCount(0);
+  practiceRun = await waitForPracticeRun();
+  await answerPracticeQuestion(practiceRun.pendingPracticeProblem, false, 'Another question');
+  await expect(warmupProgress).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Back', exact: true })).toBeVisible();
+  await page.reload();
   const completedReviewResults = page.getByTestId('lesson-quiz-results');
   await expect(
     completedReviewResults.getByRole('button', { name: 'Continue retry' }),

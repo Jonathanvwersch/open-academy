@@ -89,6 +89,7 @@ export function LessonRunner({
   const [error, setError] = useState('');
   const [viewingPointId, setViewingPointId] = useState<string | null>(null);
   const [practicePointId, setPracticePointId] = useState<string | null>(null);
+  const [warmupActive, setWarmupActive] = useState(false);
   const [quizReview, setQuizReview] = useState<QuizReviewPayload | null>(null);
   const activePoint = state
     ? (lesson?.knowledge_points?.find((point) => point.id === state.currentPointId) ?? undefined)
@@ -126,7 +127,8 @@ export function LessonRunner({
   );
   const warmupReview = reviewRequired.find((review) => review.pointId === practicePointId);
   const warmupMode = Boolean(
-    state?.quiz.last &&
+    warmupActive &&
+      state?.quiz.last &&
       !state.quiz.last.passed &&
       !state.quiz.current &&
       practiceMode &&
@@ -262,6 +264,7 @@ export function LessonRunner({
     setBusyAction('next');
     setError('');
     setQuizReview(null);
+    setWarmupActive(false);
     setPracticePointId(null);
     setViewingPointId(null);
     window.scrollTo({ top: 0 });
@@ -336,6 +339,7 @@ export function LessonRunner({
   };
 
   const startPractice = async (pointId: string, warmup = false) => {
+    setWarmupActive(warmup);
     setBusy(true);
     setError('');
     try {
@@ -371,6 +375,7 @@ export function LessonRunner({
   };
 
   const leaveQuizWarmup = () => {
+    setWarmupActive(false);
     setPracticePointId(null);
     setViewingPointId(null);
     window.scrollTo({ top: 0 });
