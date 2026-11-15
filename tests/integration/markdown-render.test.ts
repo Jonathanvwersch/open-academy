@@ -1,7 +1,7 @@
 import { repairTutorMarkdown } from '@academy/shared/tutor';
 import { type ComponentProps, createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { expect, test } from 'vitest';
+import { beforeAll, expect, test } from 'vitest';
 import { loadContent } from '../../apps/api/src/content/load.js';
 import { instantiateExercise, isTemplate } from '../../apps/api/src/content/templates.js';
 import { Markdown } from '../../apps/web/src/components/markdown.js';
@@ -51,9 +51,12 @@ test('backtick-wrapped tutor inline math renders as KaTeX, not code', () => {
   expect(html).not.toContain('<code>');
 });
 
-test('all authored lesson Markdown and exercise prompts render without errors', async () => {
+const corpusBatchCount = 10;
+let authoredSamples: Array<{ id: string; md: string }> = [];
+
+beforeAll(async () => {
   const content = await loadContent();
-  const samples = [
+  authoredSamples = [
     ...content.lessons.flatMap((lesson) => [
       ...lesson.blocks.flatMap((block) =>
         'md' in block && block.md ? [{ id: `${lesson.concept} lesson`, md: block.md }] : [],
@@ -94,10 +97,20 @@ test('all authored lesson Markdown and exercise prompts render without errors', 
       ];
     }),
   ];
+  expect(authoredSamples.length).toBeGreaterThan(0);
+}, 30_000);
 
-  for (const sample of samples) {
-    const html = renderToStaticMarkup(createElement(Markdown, null, sample.md));
-    expect(html, sample.id).not.toContain('katex-error');
-    expect(html, sample.id).not.toContain('|---|');
-  }
-}, 40_000); // Renders all lesson Markdown, exercise prompts, and five samples per template.
+// Round-robin batches retain every sample while spreading expensive math across bounded tests.
+test.each(Array.from({ length: corpusBatchCount }, (_, index) => index))(
+  'authored lesson Markdown and exercise prompts render without errors (batch %i)',
+  (batch) => {
+    for (let index = batch; index < authoredSamples.length; index += corpusBatchCount) {
+      const sample = authoredSamples[index];
+      if (!sample) throw new Error(`Missing authored Markdown sample ${index}`);
+      const html = renderToStaticMarkup(createElement(Markdown, null, sample.md));
+      expect(html, sample.id).not.toContain('katex-error');
+      expect(html, sample.id).not.toContain('|---|');
+    }
+  },
+  20_000,
+);
