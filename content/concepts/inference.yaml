@@ -164,7 +164,7 @@ concepts:
             dimension: conceptual,
           },
         ],
-      status: stub,
+      status: authored,
     }
   - {
       id: llm-serving,

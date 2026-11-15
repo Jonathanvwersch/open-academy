@@ -1,0 +1,830 @@
+concept: speculative-decoding
+exercises:
+  - id: sd-mechanism-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What does a speculative-decoding round do?
+    options:
+      - {
+          id: a,
+          text: A draft proposes several tokens for one target check.,
+          correct: true,
+          feedback: The cheap draft supplies a block that the target verifies together.,
+        }
+      - {
+          id: b,
+          text: Several target copies vote on each next token.,
+          correct: false,
+          category: misunderstood_definition,
+          feedback: Verification uses the target's predictions rather than a vote.,
+        }
+      - {
+          id: c,
+          text: A draft replaces the target after the prompt.,
+          correct: false,
+          category: misunderstood_definition,
+          feedback: The target continues to check every draft block.,
+        }
+    solution: A cheap draft proposes several tokens and the target checks them in one pass.
+  - id: sdp-mechanism-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    lesson_only: true
+    difficulty: 1
+    est_minutes: 1
+    prompt: Why do the diagram and its explanation discard the draft's final "is", even though that prediction matches the target?
+    options:
+      - {
+          id: a,
+          text: It was predicted after It instead of the corrected The.,
+          correct: true,
+          feedback: The first mismatch invalidates the later draft prefix.,
+        }
+      - {
+          id: b,
+          text: The target can accept at most two drafts per round.,
+          correct: false,
+          category: misunderstood_definition,
+          feedback: Any number up to $k$ can pass if every earlier draft passes.,
+        }
+      - {
+          id: c,
+          text: The final draft is always reserved as a bonus token.,
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: A bonus is a new target prediction after all drafts pass.,
+        }
+    solution: The final draft used It as part of its prefix. After replacing It with The, that later draft must be discarded.
+  - id: sdp-first-mismatch
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: A greedy draft proposes A, B, C, D. Target top choices at those draft prefixes are A, X, C, D. How many output tokens does this round produce?
+    answer: 2
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer: 4,
+          category: incorrect_reasoning,
+          feedback: Later matches follow the wrong prefix. Stop at the first mismatch and include its correction.,
+        }
+      - {
+          answer: 3,
+          category: incorrect_reasoning,
+          feedback: Counting all three matches ignores the first mismatch.,
+        }
+    solution: Keep A and replace B with X. The round produces two tokens, then stops.
+  - id: sdp-all-accepted
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: A speculative round proposes ${{=k}}$ tokens. All are accepted, and generation continues. How many tokens does the round produce including the target's extra prediction?
+    params:
+      k: { min: 2, max: 6, step: 1 }
+    answer_expr: k + 1
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer_expr: k,
+          category: recall_failure,
+          feedback: Include the bonus token after all drafts pass.,
+        }
+    solution: All ${{=k}}$ drafts survive and the target supplies one bonus, giving ${{=k+1}}$ tokens.
+  - id: sdp-weight-read
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: Why can checking a few drafts at batch size one cost roughly one ordinary target decode pass?
+    options:
+      - {
+          id: a,
+          text: Several positions share a weight read while computation remains small.,
+          correct: true,
+          feedback: The check can still be limited by weight-transfer time.,
+        }
+      - {
+          id: b,
+          text: The target reads only the weights for the proposed vocabulary entries.,
+          correct: false,
+          category: misunderstood_definition,
+          feedback: The target still runs its full layers and reads their weights.,
+        }
+      - {
+          id: c,
+          text: The draft has already computed the target's hidden vectors exactly.,
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: The target must compute its own predictions to verify the guesses.,
+        }
+    solution: Checking a short block reuses the target weights across positions, while memory transfer can still dominate the pass.
+  - id: sdp-round-time
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A draft pass takes ${{=td}}$ ms and a target check takes ${{=t}}$ ms. A round drafts ${{=k}}$ tokens and produces 3 tokens after verification. What is its average time per produced token in ms? Give two decimal places.
+    params:
+      td: { min: 0.2, max: 0.4, step: 0.2 }
+      t: { min: 4, max: 6, step: 2 }
+      k: { min: 3, max: 5, step: 1 }
+    answer_expr: (k*td+t)/3
+    tolerance: { abs: 0.006 }
+    common_wrong:
+      - {
+          answer_expr: (td+t)/3,
+          category: incorrect_reasoning,
+          feedback: Pay for every draft pass before dividing by produced tokens.,
+        }
+    solution: The round costs ${{=k}}\times{{=td}}+{{=t}}$ ms because we pay for every draft pass and the check. Dividing by its three produced tokens gives ${{=(k*td+t)/3}}$ ms per token before rounding.
+  - id: sdp-intensity-limit
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A GPU delivers a rounded 1,000 TFLOP/s and 3.35 TB/s of memory bandwidth. A short-text target check uses 16-bit weights, each contributing one multiply-add per processed position. Counting only weight traffic, how many positions can one check process before the maths takes as long as reading the weights? Give a whole number.
+    answer: 299
+    tolerance: { abs: 1.01 }
+    common_wrong:
+      - {
+          answer: 149,
+          category: math_error,
+          feedback: Each weight takes two bytes. Counting it as one byte halves the position count.,
+        }
+    solution: Each position adds 2 FLOPs per two-byte weight, so its weight-only intensity equals the position count in FLOPs per byte. The crossover is $10^{15}/(3.35\times10^{12})\approx298.51$, or about 299 positions. Using the rounded ratio of about 300 FLOPs per byte gives 300, which is also accepted.
+  - id: sdp-tokenizer
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 1
+    prompt: A team connects a cheap draft to a target for a code assistant. Why must the proposed tokens use the target's tokenizer and vocabulary meanings?
+    options:
+      - {
+          id: a,
+          text: The target needs to score exactly the tokens the draft proposes.,
+          correct: true,
+          feedback: The target must score the exact proposed token. A different token meaning would make the check invalid.,
+        }
+      - {
+          id: b,
+          text: Shared token meanings force every proposed token to be accepted.,
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: Models can give the same token different probabilities.,
+        }
+      - {
+          id: c,
+          text: Shared token meanings make their parameter counts equal.,
+          correct: false,
+          category: misunderstood_definition,
+          feedback: Vocabulary compatibility says nothing about the number of model layers or weights.,
+        }
+    solution: Verification compares probabilities for the exact proposed tokens. Different token meanings would make that comparison invalid.
+  - id: sd-speed-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What does the acceptance rate $\alpha$ describe in a speculative-decoding estimate?
+    options:
+      - {
+          id: a,
+          text: The chance that a draft token passes verification.,
+          correct: true,
+          feedback: The estimate treats this chance as constant across positions.,
+        }
+      - {
+          id: b,
+          text: The draft's time divided by the target's time.,
+          correct: false,
+          category: misunderstood_definition,
+          feedback: The draft-to-target time ratio is $c$. The acceptance chance is $\alpha$.,
+        }
+      - {
+          id: c,
+          text: The number of drafts proposed in each round.,
+          correct: false,
+          category: misunderstood_definition,
+          feedback: The draft length is $k$. The acceptance chance is $\alpha$.,
+        }
+    solution: The acceptance rate $\alpha$ is a draft token's probability of passing verification.
+  - id: sdp-speed-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    lesson_only: true
+    difficulty: 1
+    est_minutes: 1
+    prompt: Why does the worked example divide 3.3616 by 1.4 to get speed-up?
+    options:
+      - {
+          id: a,
+          text: Ordinary decoding needs 3.3616 passes on average for tokens this round produces in 1.4 target-pass times.,
+          correct: true,
+          feedback: The ratio compares times for the same expected token count.,
+        }
+      - {
+          id: b,
+          text: Exactly 3.3616 tokens are emitted by every round of length 1.4.,
+          correct: false,
+          category: misunderstood_definition,
+          feedback: Expected token count is an average. Individual rounds emit whole tokens.,
+        }
+      - {
+          id: c,
+          text: The acceptance rate is 3.3616 and the draft length is 1.4.,
+          correct: false,
+          category: misunderstood_definition,
+          feedback: Those are expected tokens and cost in target-pass times.,
+        }
+    solution: Ordinary decoding needs one target pass per token, so the ratio of 3.3616 passes to 1.4 passes measures speed-up.
+  - id: sdp-expectation
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A speculative decoder drafts ${{=k}}$ tokens with independent acceptance probability ${{=a}}$ per token. How many tokens does it produce per target check on average? Give two decimal places.
+    params:
+      k: { min: 2, max: 4, step: 1 }
+      a: { min: 0.5, max: 0.8, step: 0.1 }
+    answer_expr: (1-a^(k+1))/(1-a)
+    tolerance: { abs: 0.006 }
+    common_wrong:
+      - {
+          answer_expr: k*a+1,
+          category: incorrect_reasoning,
+          feedback: Later drafts survive only if all preceding drafts also survive.,
+        }
+    solution: We add the guaranteed token and the probabilities of consecutive accepted prefixes. This gives $\frac{1-{{=a}}^{({{=k}}+1)}}{1-{{=a}}}={{=(1-a^(k+1))/(1-a)}}$ tokens before rounding.
+  - id: sdp-speed-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A decoder drafts ${{=k}}$ tokens with independent acceptance probability ${{=a}}$. Each draft pass costs ${{=c}}$ target-pass times. The check costs one target-pass time. What is the expected speed-up over plain decoding? Give two decimal places.
+    params:
+      k: { min: 2, max: 4, step: 1 }
+      a: { min: 0.6, max: 0.8, step: 0.1 }
+      c: { min: 0.1, max: 0.2, step: 0.1 }
+    answer_expr: ((1-a^(k+1))/(1-a))/(k*c+1)
+    tolerance: { abs: 0.011 }
+    common_wrong:
+      - {
+          answer_expr: (1-a^(k+1))/(1-a),
+          category: incorrect_reasoning,
+          feedback: Divide expected tokens by round cost including the draft passes.,
+        }
+    solution: The expected token count is $\frac{1-{{=a}}^{({{=k}}+1)}}{1-{{=a}}}$. Dividing by round cost ${{=k}}\times{{=c}}+1$ gives a speed-up of ${{=((1-a^(k+1))/(1-a))/(k*c+1)}}$ before rounding.
+  - id: sdp-zero-acceptance
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: A decoder drafts 4 tokens, each costing 0.25 target-pass times. The target rejects the first draft token in every round. The check costs one target-pass time. What is the speed-up relative to plain decoding?
+    answer: 0.5
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer: 0,
+          category: misunderstood_definition,
+          feedback: Rejection still produces one target correction token.,
+        }
+    solution: The round produces one token and costs $4\times0.25+1=2$ target-pass times. Its speed-up is therefore $1/2=0.5$, so it takes twice as long as plain decoding.
+  - id: sdp-longer-draft
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: With acceptance below one, why can increasing speculative draft length eventually reduce speed-up?
+    options:
+      - {
+          id: a,
+          text: Late guesses rarely survive but still cost draft passes.,
+          correct: true,
+          feedback: Useful tokens approach a limit while drafting time keeps growing.,
+        }
+      - {
+          id: b,
+          text: The guaranteed correction token disappears for long drafts.,
+          correct: false,
+          category: misunderstood_definition,
+          feedback: Every round still supplies at least one token.,
+        }
+      - {
+          id: c,
+          text: The target switches to the draft's output distribution.,
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: Exact verification preserves the target distribution for any draft length.,
+        }
+    solution: A late draft requires every earlier one to survive. Its extra expected output becomes small while its drafting cost remains.
+  - id: sdp-large-batch
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: At batch size 64 and draft length 4, a check processes about 320 positions. A GPU's ops:byte ratio is about 300. What happens to the assumption that checking costs about one ordinary decode pass?
+    options:
+      - {
+          id: a,
+          text: It weakens because checking can become computation-bound.,
+          correct: true,
+          feedback: Weight-only intensity is about 320 FLOPs per byte and can exceed the GPU ratio.,
+        }
+      - {
+          id: b,
+          text: It improves because every position uses a separate weight read.,
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: Reusing weights across positions raises intensity. Those positions still need computation.,
+        }
+      - {
+          id: c,
+          text: It becomes exact because batch size fixes acceptance at one.,
+          correct: false,
+          category: misunderstood_definition,
+          feedback: Batch size does not force the draft to agree with the target.,
+        }
+    solution: More positions increase computation per weight read. The check can become computation-bound, reducing the speculative gain.
+  - id: sdp-speech-budget
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A speech assistant's text model takes 6 ms per ordinary token. A speculative round drafts 2 tokens at 0.6 ms per draft pass and takes 6 ms to check. Acceptance is independently 0.5 per position. What is its long-run average ms per output token? Give two decimal places.
+    answer: 4.114285714285714
+    tolerance: { abs: 0.006 }
+    common_wrong:
+      - {
+          answer: 2.4,
+          category: incorrect_reasoning,
+          feedback: Three tokens is the maximum. Use the expected count when acceptance is 0.5.,
+        }
+    solution: The expected token count is $1+0.5+0.25=1.75$. The round costs $2\times0.6+6=7.2$ ms, giving $7.2/1.75\approx4.11$ ms per token.
+  - id: sd-sampling-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What does exact speculative sampling preserve?
+    options:
+      - {
+          id: a,
+          text: It preserves the target's probabilities for possible outputs.,
+          correct: true,
+          feedback: Acceptance and correction reconstruct the target distribution.,
+        }
+      - {
+          id: b,
+          text: It preserves the draft's probabilities for possible outputs.,
+          correct: false,
+          category: misunderstood_definition,
+          feedback: The draft proposes guesses. The target distribution determines the final probabilities.,
+        }
+      - {
+          id: c,
+          text: It preserves the same random output on every run.,
+          correct: false,
+          category: misunderstood_definition,
+          feedback: Equal distributions still allow different random samples.,
+        }
+    solution: Exactness means the output distribution matches sampling directly from the target.
+  - id: sdp-sampling-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    lesson_only: true
+    difficulty: 1
+    est_minutes: 1
+    prompt: Why does every rejection in the A, B, C worked example produce A?
+    options:
+      - {
+          id: a,
+          text: Only A has target probability left after accepted mass.,
+          correct: true,
+          feedback: "The leftover vector is $(0.3, 0, 0)$, which normalises to $(1, 0, 0)$.",
+        }
+      - {
+          id: b,
+          text: Rejection always selects the most probable target token.,
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "In general rejection samples the leftover distribution, which can contain several tokens.",
+        }
+      - {
+          id: c,
+          text: A was the least probable token under the draft.,
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: C has the smallest draft probability. The leftover target probability determines the replacement.,
+        }
+    solution: B and C have all their target mass supplied by accepted drafts. Only A has positive leftover probability.
+  - id: sdp-accept-ratio
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: A proposed token has target probability ${{=p}}$ and draft probability ${{=q}}$. What is its exact speculative acceptance probability? Give two decimal places.
+    params:
+      p: { min: 0.1, max: 0.3, step: 0.1 }
+      q: { min: 0.4, max: 0.6, step: 0.1 }
+    answer_expr: p/q
+    tolerance: { abs: 0.006 }
+    common_wrong:
+      - {
+          answer_expr: q/p,
+          category: math_error,
+          feedback: "Divide target probability by draft probability, then cap at one.",
+        }
+    solution: Here $p$ is smaller than $q$, so the acceptance probability is ${{=p}}/{{=q}}={{=p/q}}$ before rounding.
+  - id: sdp-cap-probability
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: A draft proposes a token with draft probability 0.2 and target probability 0.6. What is its exact acceptance probability?
+    answer: 1
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer: 3,
+          category: misunderstood_definition,
+          feedback: An acceptance probability is capped at one.,
+        }
+    solution: The ratio is $0.6/0.2=3$, so the acceptance probability is $\min(1,3)=1$.
+  - id: sdp-overlap
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A two-token target distribution is $({{=a}}, {{=1-a}})$, and the draft distribution is $({{=b}}, {{=1-b}})$. What is the total acceptance rate?
+    params:
+      a: { min: 0.5, max: 0.9, step: 0.1 }
+      b: { min: 0.1, max: 0.4, step: 0.1 }
+    constraints:
+      - abs((1-a+b)-a) > 0.000001
+      - abs((1-a+b)-(1-b)) > 0.000001
+    answer_expr: 1-abs(a-b)
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer_expr: 1+abs(a-b),
+          category: incorrect_reasoning,
+          feedback: That sums the larger probabilities. Acceptance sums the smaller probabilities.,
+        }
+    solution: We sum the smaller probability for each token because only the overlap is accepted. This gives ${{=b}}+{{=1-a}}={{=1-abs(a-b)}}$.
+  - id: sdp-residual
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A target has probabilities $(0.5, 0.3, 0.2)$ for A, B, C. The draft has $(0.2, 0.5, 0.3)$. After a speculative rejection, what is the probability that the replacement is A?
+    answer: 1
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer: 0.5,
+          category: misapplied_technique,
+          feedback: "Sample from the normalised leftover, not the original target distribution.",
+        }
+      - {
+          answer: 0.3,
+          category: math_error,
+          feedback: Divide the leftover for A by the total leftover probability.,
+        }
+    solution: The positive target-minus-draft probabilities are $(0.3,0,0)$. Normalising gives $(1,0,0)$, so A is certain after rejection.
+  - id: sdp-wrong-resample
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A developer accepts drafts with $\min(1,p/q)$, but samples every rejection directly from $p$. What goes wrong?
+    options:
+      - {
+          id: a,
+          text: Some tokens get extra probability after acceptance already filled their share.,
+          correct: true,
+          feedback: Replacement must fill only the missing target probability.,
+        }
+      - {
+          id: b,
+          text: Every proposal becomes accepted because $p$ is the target distribution.,
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: The acceptance decision still uses the probability ratio.,
+        }
+      - {
+          id: c,
+          text: The replacement distribution fails to sum to one.,
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "$p$ sums to one, but combining it with acceptance gives the wrong final probabilities.",
+        }
+    solution: Accepted drafts already supply $\min(p,q)$. Rejections must fill the leftover. Sampling from $p$ adds probability to tokens whose target share is already full.
+  - id: sdp-worse-draft
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 1
+    prompt: A medical text assistant switches to a cheaper draft that overlaps less with its target. Exact verification is unchanged. What can change?
+    options:
+      - {
+          id: a,
+          text: Acceptance falls and speed can fall while output probabilities stay the same.,
+          correct: true,
+          feedback: Exact correction preserves $p$ even when the proposal is poor.,
+        }
+      - {
+          id: b,
+          text: Acceptance falls and output probabilities move toward the cheaper draft.,
+          correct: false,
+          category: misunderstood_definition,
+          feedback: Rejection correction restores the target distribution.,
+        }
+      - {
+          id: c,
+          text: Acceptance rises because cheaper drafts require fewer target corrections.,
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: Less overlap means fewer accepted drafts regardless of draft cost.,
+        }
+    solution: Less overlap lowers acceptance. Runtime can change, but exact verification still reconstructs the target distribution.
+  - id: sd-sources-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: Where does n-gram speculation obtain its guesses?
+    options:
+      - {
+          id: a,
+          text: It copies tokens following an earlier matching phrase.,
+          correct: true,
+          feedback: It looks up a continuation in text already available.,
+        }
+      - {
+          id: b,
+          text: It uses extra output heads trained on the target.,
+          correct: false,
+          category: misunderstood_definition,
+          feedback: Extra prediction heads describe Medusa.,
+        }
+      - {
+          id: c,
+          text: It uses a network predicting target internal vectors.,
+          correct: false,
+          category: misunderstood_definition,
+          feedback: Predicting internal vectors describes EAGLE.,
+        }
+    solution: N-gram speculation copies the continuation of an earlier occurrence of the current ending.
+  - id: sdp-sources-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    lesson_only: true
+    difficulty: 1
+    est_minutes: 1
+    prompt: Why does the code-edit worked example produce + fee, then stop?
+    options:
+      - {
+          id: a,
+          text: The first guess matches and the second needs a target correction.,
+          correct: true,
+          feedback: The first mismatch ends the usable draft prefix.,
+        }
+      - {
+          id: b,
+          text: Lookup always produces exactly two output tokens per round.,
+          correct: false,
+          category: misunderstood_definition,
+          feedback: Output count depends on how many consecutive drafts pass.,
+        }
+      - {
+          id: c,
+          text: The prompt allows a plus sign but forbids semicolons.,
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: The semicolon is discarded because the prefix changed at tax.,
+        }
+    solution: The target keeps +, replaces tax with fee, and discards the later semicolon.
+  - id: sdp-medusa
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: Which design describes Medusa's source of speculative guesses?
+    options:
+      - {
+          id: a,
+          text: Extra heads predict further tokens from the target's final vector.,
+          correct: true,
+          feedback: Medusa adds prediction heads to the target.,
+        }
+      - {
+          id: b,
+          text: A lookup copies text following an earlier matching phrase.,
+          correct: false,
+          category: misunderstood_definition,
+          feedback: That is n-gram speculation.,
+        }
+      - {
+          id: c,
+          text: A separate full model replaces every target check permanently.,
+          correct: false,
+          category: misunderstood_definition,
+          feedback: Medusa guesses still require target verification.,
+        }
+    solution: Medusa attaches extra output heads that predict tokens further ahead from the target's last layer.
+  - id: sdp-eagle
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: What does EAGLE's small draft network predict before using the target output head?
+    options:
+      - {
+          id: a,
+          text: It predicts the next final internal vector guided by token embeddings.,
+          correct: true,
+          feedback: The target's output head converts the predicted vector into token scores.,
+        }
+      - {
+          id: b,
+          text: It predicts a new set of trained weights for every target layer.,
+          correct: false,
+          category: misunderstood_definition,
+          feedback: EAGLE drafts internal vectors rather than replacing target weights.,
+        }
+      - {
+          id: c,
+          text: It predicts a matching phrase's location in the original prompt.,
+          correct: false,
+          category: misunderstood_definition,
+          feedback: Text lookup is the n-gram approach.,
+        }
+    solution: EAGLE predicts a target internal vector and uses the target's output head to obtain token scores.
+  - id: sdp-lookup-count
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: A lookup finds the earlier phrase `set x = a + b ;`. The current answer ends `set x`, so it proposes `= a + b ;`. Treat each word or symbol as a token. The greedy target agrees on `=` and `a`, then wants `-` instead of `+`. How many output tokens does this round produce?
+    answer: 3
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer: 2,
+          category: recall_failure,
+          feedback: Include the target's correction at the first mismatch.,
+        }
+      - {
+          answer: 5,
+          category: incorrect_reasoning,
+          feedback: Later lookup tokens must be discarded after the first mismatch.,
+        }
+    solution: We keep `=` and `a`, then output the target's `-` correction, producing three tokens.
+  - id: sdp-exact-lookup
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A deterministic lookup proposes one token with probability one. What permits exact target sampling from these guesses?
+    options:
+      - {
+          id: a,
+          text: The verifier uses its proposal probability in the exact correction rules.,
+          correct: true,
+          feedback: A deterministic proposal is a valid distribution with probability one on one token.,
+        }
+      - {
+          id: b,
+          text: The verifier accepts every copied token because it occurs in the prompt.,
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: Occurring in the prompt does not give a token target probability one.,
+        }
+      - {
+          id: c,
+          text: The verifier accepts only the target's top token and discards sampling probabilities.,
+          correct: false,
+          category: misapplied_technique,
+          feedback: Greedy matching would not preserve a general sampled target distribution.,
+        }
+    solution: Exact verification can use a deterministic proposal distribution, but it must account for its true probabilities and correct rejections.
+  - id: sdp-quote-task
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 1
+    prompt: Which workload is especially promising for n-gram speculation?
+    options:
+      - {
+          id: a,
+          text: The model quotes long passages already present in the prompt.,
+          correct: true,
+          feedback: The answer can reuse continuations of earlier phrases.,
+        }
+      - {
+          id: b,
+          text: The model invents new names absent from the available text.,
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: Lookup cannot supply unseen continuations from earlier text.,
+        }
+      - {
+          id: c,
+          text: The model generates random strings with no repeated phrases.,
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: Without repeats there are few useful lookup matches.,
+        }
+    solution: Copy-heavy tasks offer earlier matching phrases with useful continuations.
+  - id: sdp-no-match
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 1
+    prompt: A story-writing assistant repeatedly finds no useful earlier phrase for n-gram guesses. What is a reasonable response?
+    options:
+      - {
+          id: a,
+          text: The assistant skips lookup and lets the target continue normally.,
+          correct: true,
+          feedback: A missing useful proposal removes the benefit of lookup for that round.,
+        }
+      - {
+          id: b,
+          text: The assistant forces an unrelated copied phrase into the output unchecked.,
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: Unchecked copied text would change the target's output distribution.,
+        }
+      - {
+          id: c,
+          text: The assistant treats the missing phrase as proof that generation must end.,
+          correct: false,
+          category: misunderstood_definition,
+          feedback: Lookup failure says nothing about whether the target wants to end the answer.,
+        }
+    solution: Lookup is optional. When it offers no useful continuation, ordinary target decoding remains available.
+  - id: sd-explain-final
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 3
+    est_minutes: 4
+    prompt: Explain why speculative decoding can speed up generation, how to estimate its speed-up, and how exact verification preserves the target's output distribution.
+    rubric:
+      - {
+          id: shared-check,
+          criterion: Explain that cheap drafts let one target check produce several tokens while sharing a weight read.,
+          weight: 1,
+          required: true,
+        }
+      - {
+          id: estimate,
+          criterion: 'Explain that expected tokens are $1+\alpha+\cdots+\alpha^k$ under independent acceptance and speed-up divides this by $kc+1$.',
+          weight: 1,
+          required: true,
+        }
+      - {
+          id: correction,
+          criterion: 'Explain that acceptance supplies $\min(p,q)$ probability and normalised positive $p-q$ leftovers fill the missing target probability on rejection.',
+          weight: 1,
+          required: true,
+        }
+    exemplar: A cheap draft proposes several tokens that the target checks together while sharing a weight read. At small batch sizes this can produce several tokens for roughly one target pass plus drafting time. With independent acceptance $\alpha$, the expected token count is $1+\alpha+\cdots+\alpha^k$, and dividing by $kc+1$ gives the estimated speed-up. Accepting $x$ with probability $\min(1,p(x)/q(x))$ supplies probability $\min(p(x),q(x))$. Rejection samples the normalised positive leftover $p-q$, so the two routes add to $p$ for each token. Repeating this at every prefix preserves the target distribution over outputs.
+    solution: Compare expected useful tokens with total draft-and-check time. Exactness follows by adding accepted probability and the leftover correction probability to recover $p$.
