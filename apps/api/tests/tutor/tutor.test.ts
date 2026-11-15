@@ -234,8 +234,28 @@ describe('OpenAIProvider', () => {
 
     await provider.respond(tutorContext(), 'hint', tutorContent, controller.signal);
 
-    expect(parse).toHaveBeenCalledWith(expect.objectContaining({ model: 'test-model' }), {
-      signal: controller.signal,
+    expect(parse).toHaveBeenCalledWith(
+      expect.objectContaining({ model: 'test-model', max_output_tokens: 4000 }),
+      { signal: controller.signal },
+    );
+  });
+
+  it('throws when the Responses API returns an incomplete reply', async () => {
+    const parse = vi.fn().mockResolvedValue({
+      status: 'incomplete',
+      incomplete_details: { reason: 'max_output_tokens' },
+      output_parsed: null,
+      usage: null,
+    });
+    const provider = new OpenAIProvider('test-key', 'test-model', {
+      responses: { parse },
+    } as never);
+
+    await expect(provider.respond(tutorContext(), 'hint', tutorContent)).rejects.toThrow(
+      'max_output_tokens',
+    );
+    expect(parse).toHaveBeenCalledWith(expect.objectContaining({ max_output_tokens: 4000 }), {
+      signal: undefined,
     });
   });
 });
@@ -265,9 +285,13 @@ describe('tutor contracts', () => {
   it('supports a provider error fallback path', async () => {
     const provider = new FakeProvider(undefined, undefined, new Error('offline'));
     const service = new TutorService(testDatabase().db, provider, 'user', 200, 'UTC');
-    await expect(service.respond({} as never, 'hint', tutorContent)).resolves.toMatchObject({
+    const result = await service.respond({} as never, 'hint', tutorContent);
+
+    expect(result).toMatchObject({
       status: 'fallback',
+      failure: { name: 'Error' },
     });
+    expect(result.failure).not.toHaveProperty('message');
   });
 
   it('returns no provider when the API key is absent', () => {

@@ -115,7 +115,7 @@ export class OpenAIProvider implements TutorProvider {
     readonly model: string,
     client?: OpenAI,
   ) {
-    this.client = client ?? new OpenAI({ apiKey, timeout: 20_000, maxRetries: 0 });
+    this.client = client ?? new OpenAI({ apiKey, timeout: 100_000, maxRetries: 0 });
   }
 
   async respond(
@@ -129,10 +129,18 @@ export class OpenAIProvider implements TutorProvider {
         model: this.model,
         input: buildTutorInput(ctx, level, content),
         text: { format: zodTextFormat(TutorReplySchema, 'tutor_reply') },
-        max_output_tokens: 900,
+        max_output_tokens: 4000,
       },
       { signal },
     );
+    if (response.status === 'incomplete' || response.output_parsed === null) {
+      const reason = response.incomplete_details?.reason;
+      const error = new Error(
+        reason ? `Tutor response incomplete: ${reason}` : 'Tutor response incomplete',
+      );
+      Object.assign(error, { reason });
+      throw error;
+    }
     return {
       value: TutorReplySchema.parse(response.output_parsed),
       usage: response.usage

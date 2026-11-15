@@ -11,6 +11,33 @@ import {
 } from './provider.js';
 import type { ExplanationContext, TutorContext, TutorLevel } from './schemas.js';
 
+export type TutorFailureDetails = {
+  name: string;
+  status?: number | string;
+  code?: string;
+  reason?: string;
+};
+
+export function tutorFailureDetails(error: unknown, fallbackStatus?: string): TutorFailureDetails {
+  const failure =
+    error && typeof error === 'object'
+      ? (error as {
+          name?: unknown;
+          status?: unknown;
+          code?: unknown;
+          reason?: unknown;
+          incomplete_details?: { reason?: unknown } | null;
+        })
+      : null;
+  const reason = failure?.reason ?? failure?.incomplete_details?.reason;
+  return {
+    name: typeof failure?.name === 'string' ? failure.name : 'ProviderError',
+    status: typeof failure?.status === 'number' ? failure.status : fallbackStatus,
+    code: typeof failure?.code === 'string' ? failure.code : undefined,
+    reason: typeof reason === 'string' ? reason : fallbackStatus,
+  };
+}
+
 export function tutorCallAllowed(dailyCount: number, dailyCap: number) {
   return dailyCount < dailyCap;
 }
@@ -66,7 +93,12 @@ export class TutorService {
     promptId: TutorPromptId,
     call: () => Promise<TutorResult<T>>,
     content?: ContentIndex,
-  ): Promise<{ value?: T; status: 'ok' | 'fallback' | 'budget_exceeded'; callId?: string }> {
+  ): Promise<{
+    value?: T;
+    status: 'ok' | 'fallback' | 'budget_exceeded';
+    callId?: string;
+    failure?: TutorFailureDetails;
+  }> {
     const startedAt = performance.now();
     const promptVersion = tutorPromptVersion(promptId, content);
     // Reserve a call before contacting the provider. The learner row serializes
@@ -111,15 +143,16 @@ export class TutorService {
         .where(eq(llmCalls.id, callId));
       return { value: result.value, status: 'ok', callId };
     } catch (error) {
+      const failure = tutorFailureDetails(error);
       await this.db
         .update(llmCalls)
         .set({
           status: 'fallback',
           latencyMs: Math.round(performance.now() - startedAt),
-          error: error instanceof Error ? error.name : 'ProviderError',
+          error: failure.name,
         })
         .where(eq(llmCalls.id, callId));
-      return { status: 'fallback', callId };
+      return { status: 'fallback', callId, failure };
     }
   }
 

@@ -34,7 +34,7 @@ import {
   tutorSolutionFor,
 } from './feedback-context.js';
 import { buildTutorPageContent } from './page-context.js';
-import type { TutorService } from './service.js';
+import { type TutorService, tutorFailureDetails } from './service.js';
 
 type Ctx = Context<ApiEnv>;
 const optionalNullable = <T extends z.ZodTypeAny>(schema: T) =>
@@ -576,13 +576,14 @@ export function registerTutorThreadRoutes(
         index,
         signal,
       );
-    } catch {
+    } catch (cause) {
       if (signal.aborted) {
         return c.json({
           superseded: true,
           thread: request.thread,
         });
       }
+      console.error('tutor reply failed', tutorFailureDetails(cause));
       await rollbackFailedMessage();
       if (signal.aborted) {
         return c.json({
@@ -599,6 +600,13 @@ export function registerTutorThreadRoutes(
       });
     }
     if (result.status !== 'ok' || !result.value) {
+      if (signal.aborted) {
+        return c.json({
+          superseded: true,
+          thread: request.thread,
+        });
+      }
+      console.error('tutor reply failed', tutorFailureDetails(result.failure, result.status));
       await rollbackFailedMessage();
       if (signal.aborted) {
         return c.json({

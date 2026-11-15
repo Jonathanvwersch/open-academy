@@ -26,6 +26,8 @@ const tutorMathScreenshotDir = 'test-results/screenshots/screenshots/tutor-math'
 mkdirSync(tutorMathScreenshotDir, { recursive: true });
 const tutorSidebarScreenshotDir = 'test-results/screenshots/shots/tutor-sidebar';
 mkdirSync(tutorSidebarScreenshotDir, { recursive: true });
+const tutorSteerScreenshotDir = 'test-results/screenshots/shots/tutor-steer';
+mkdirSync(tutorSteerScreenshotDir, { recursive: true });
 let sessionId = '';
 
 async function waitForTutorSidebarToSettle(page: Page, panelSelector: string) {
@@ -153,6 +155,14 @@ type MockedTutorMessage = {
   content: string;
   createdAt: string;
 };
+
+function deferred() {
+  let resolve!: () => void;
+  const promise = new Promise<void>((resolvePromise) => {
+    resolve = resolvePromise;
+  });
+  return { promise, resolve };
+}
 
 async function openMockedLongTutorThread(page: Page, threadId: string) {
   const question = 'Open the long tutor thread.';
@@ -969,15 +979,102 @@ test('Chat lists expose one New chat action and focus the composer', async ({ pa
   }
 });
 
-test('tutor send failure restores the draft and removes the optimistic message', async ({
-  page,
-}) => {
+test('tutor send failure stays in a retryable bubble and retry sends it once', async ({ page }) => {
+  let failFirstSend = true;
+  let firstThreadId = '';
+  await page.route('**/api/tutor/threads**', async (route) => {
+    if (route.request().method() === 'POST') {
+      const body = route.request().postDataJSON() as { threadId: string };
+      if (failFirstSend) {
+        failFirstSend = false;
+        firstThreadId = body.threadId;
+        await route.fulfill({
+          status: 503,
+          contentType: 'application/json',
+          body: JSON.stringify({ error: 'The tutor could not respond. Try again.' }),
+        });
+        return;
+      }
+      expect(new URL(route.request().url()).pathname).toBe('/api/tutor/threads');
+      expect(body.threadId).toBe(firstThreadId);
+      await route.continue();
+      return;
+    }
+    await route.continue();
+  });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto(`/session/${sessionId}`);
+  await page.getByRole('button', { name: 'Ask the tutor' }).click();
+  const tutor = page.getByRole('complementary', { name: 'Tutor' });
+  const textarea = tutor.getByLabel('Ask the tutor');
+  const question = 'What does the target represent?';
+  await textarea.fill(question);
+  await textarea.press('Enter');
+  const failedBubble = tutor.getByTestId('tutor-failed-message');
+  await expect(failedBubble).toHaveCount(1);
+  await expect(failedBubble).toContainText(question);
+  await expect(failedBubble).toContainText("Didn't send.");
+  await expect(failedBubble.getByRole('button', { name: 'Retry' })).toBeVisible();
+  await expect(failedBubble.getByRole('button', { name: 'Edit' })).toBeVisible();
+  await expect(textarea).toHaveValue('');
+  await expect(tutor.getByRole('alert')).toHaveCount(0);
+  await expect(tutor.getByTestId('tutor-thinking-bubble')).toHaveCount(0);
+  await page.screenshot({ path: `${tutorSteerScreenshotDir}/failed-retry-edit-1440.png` });
+
+  await textarea.fill('new draft');
+  await failedBubble.getByRole('button', { name: 'Retry' }).click();
+  await expect(textarea).toHaveValue('new draft');
+  await expect(
+    tutor.getByTestId('tutor-assistant-message').filter({
+      hasText: `Tutor reply to: ${question}`,
+    }),
+  ).toHaveCount(1);
+  await expect(tutor.getByTestId('tutor-user-message').filter({ hasText: question })).toHaveCount(
+    1,
+  );
+  await expect(tutor.getByTestId('tutor-failed-message')).toHaveCount(0);
+});
+
+test('a failed tutor message can be edited into the draft', async ({ page }) => {
   await page.route('**/api/tutor/threads**', async (route) => {
     if (route.request().method() === 'POST') {
       await route.fulfill({
-        status: 500,
+        status: 503,
         contentType: 'application/json',
-        body: JSON.stringify({ error: 'The tutor could not respond. Try again.' }),
+        body: JSON.stringify({ error: 'Tutor unavailable' }),
+      });
+      return;
+    }
+    await route.continue();
+  });
+  await page.setViewportSize({ width: 390, height: 900 });
+  await page.goto(`/session/${sessionId}`);
+  await page.getByRole('button', { name: 'Ask the tutor' }).click();
+  const tutor = page.getByRole('complementary', { name: 'Tutor' });
+  const textarea = tutor.getByLabel('Ask the tutor');
+  const question = 'Can you explain this step?';
+  await textarea.fill(question);
+  await textarea.press('Enter');
+
+  const failedBubble = tutor.getByTestId('tutor-failed-message');
+  await expect(failedBubble).toContainText("Didn't send.");
+  await expect(failedBubble).not.toContainText('Tutor unavailable');
+  await expect(textarea).toHaveValue('');
+  await page.screenshot({ path: `${tutorSteerScreenshotDir}/failed-retry-edit-390.png` });
+
+  await failedBubble.getByRole('button', { name: 'Edit' }).click();
+  await expect(textarea).toHaveValue(question);
+  await expect(tutor.getByTestId('tutor-failed-message')).toHaveCount(0);
+  await expect(tutor.getByRole('alert')).toHaveCount(0);
+});
+
+test('a failed tutor bubble shows a non-generic server reason', async ({ page }) => {
+  await page.route('**/api/tutor/threads**', async (route) => {
+    if (route.request().method() === 'POST') {
+      await route.fulfill({
+        status: 429,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: 'Daily tutor limit reached' }),
       });
       return;
     }
@@ -987,16 +1084,387 @@ test('tutor send failure restores the draft and removes the optimistic message',
   await page.getByRole('button', { name: 'Ask the tutor' }).click();
   const tutor = page.getByRole('complementary', { name: 'Tutor' });
   const textarea = tutor.getByLabel('Ask the tutor');
-  await textarea.fill('What does the target represent?');
-  await textarea.press('Shift+Enter');
-  await textarea.type('Please show the next line.');
-  await expect(textarea).toHaveValue('What does the target represent?\nPlease show the next line.');
-  await textarea.fill('What does the target represent?');
+  await textarea.fill('What should I do next?');
   await textarea.press('Enter');
-  await expect(textarea).toHaveValue('What does the target represent?');
-  await expect(tutor.getByRole('alert')).toContainText('The tutor could not respond. Try again.');
-  await expect(tutor.getByTestId('tutor-user-message')).toHaveCount(0);
-  await expect(tutor.getByTestId('tutor-thinking-bubble')).toHaveCount(0);
+
+  const failedBubble = tutor.getByTestId('tutor-failed-message');
+  await expect(failedBubble).toContainText("Didn't send. Daily tutor limit reached");
+  await expect(failedBubble.getByRole('button', { name: 'Retry' })).toBeVisible();
+  await expect(failedBubble.getByRole('button', { name: 'Edit' })).toBeVisible();
+});
+
+test('a repeated tutor question stays visible once while the second reply is pending', async ({
+  page,
+}) => {
+  let threadId = '';
+  let sendCount = 0;
+  const messages: MockedTutorMessage[] = [];
+  const secondRequestStarted = deferred();
+  const releaseSecondRequest = deferred();
+  const thread = () => ({
+    id: threadId,
+    conceptId: 'supervised-learning',
+    title: 'Repeated question',
+    updatedAt: '2026-01-01T12:00:00.004Z',
+  });
+  const detail = () => ({
+    thread: {
+      ...thread(),
+      conceptTitle: 'Supervised learning',
+      messageCount: messages.length,
+      lastMessagePreview: messages.at(-1)?.content ?? '',
+    },
+    messages: [...messages],
+  });
+
+  await page.addInitScript(() => {
+    localStorage.removeItem('academy.tutor.open');
+    localStorage.removeItem('academy.tutor.thread');
+  });
+  await page.route('**/api/tutor/status', (route) =>
+    route.fulfill({ json: { tutorEnabled: true } }),
+  );
+  await page.route('**/api/tutor/threads**', async (route) => {
+    const url = new URL(route.request().url());
+    if (route.request().method() === 'POST') {
+      const body = route.request().postDataJSON() as { question: string; threadId?: string };
+      expect(body.question).toBe('please');
+      sendCount += 1;
+      if (sendCount === 1) {
+        expect(url.pathname).toBe('/api/tutor/threads');
+        expect(body.threadId).toBeTruthy();
+        threadId = body.threadId ?? '';
+      } else {
+        expect(url.pathname).toBe(`/api/tutor/threads/${threadId}/messages`);
+      }
+      const userMessage: MockedTutorMessage = {
+        id: `user-please-${sendCount}`,
+        role: 'user',
+        content: body.question,
+        createdAt: `2026-01-01T12:00:00.00${sendCount * 2 - 1}Z`,
+      };
+      messages.push(userMessage);
+      if (sendCount === 2) {
+        secondRequestStarted.resolve();
+        await releaseSecondRequest.promise;
+      }
+      const assistantMessage: MockedTutorMessage = {
+        id: `assistant-please-${sendCount}`,
+        role: 'assistant',
+        content: `Tutor reply ${sendCount}`,
+        createdAt: `2026-01-01T12:00:00.00${sendCount * 2}Z`,
+      };
+      messages.push(assistantMessage);
+      await route.fulfill({
+        json: { thread: thread(), messages: [userMessage, assistantMessage] },
+      });
+      return;
+    }
+
+    if (url.pathname === '/api/tutor/threads') {
+      await route.fulfill({ json: threadId ? [detail().thread] : [] });
+      return;
+    }
+    if (url.pathname === `/api/tutor/threads/${threadId}`) {
+      await route.fulfill({ json: detail() });
+      return;
+    }
+    await route.continue();
+  });
+
+  await page.goto(`/session/${sessionId}`);
+  await page.getByRole('button', { name: 'Ask the tutor' }).click();
+  const tutor = page.getByRole('complementary', { name: 'Tutor' });
+  const textarea = tutor.getByLabel('Ask the tutor');
+  await tutor.getByRole('button', { name: 'New chat', exact: true }).click();
+
+  await textarea.fill('please');
+  await textarea.press('Enter');
+  await expect(tutor.getByTestId('tutor-assistant-message')).toContainText('Tutor reply 1');
+
+  await textarea.fill('please');
+  await textarea.press('Enter');
+  await secondRequestStarted.promise;
+  const userMessages = tutor.getByTestId('tutor-user-message');
+  await expect(userMessages).toHaveCount(2);
+  await expect(userMessages.nth(0)).toContainText('please');
+  await expect(userMessages.nth(1)).toContainText('please');
+  await expect(tutor.getByTestId('tutor-thinking-bubble')).toHaveCount(1);
+  await expect(tutor.getByTestId('tutor-assistant-message')).toHaveCount(1);
+
+  releaseSecondRequest.resolve();
+  await expect(tutor.getByTestId('tutor-assistant-message')).toHaveCount(2);
+  await expect(userMessages).toHaveCount(2);
+});
+
+test('a saved reply after a lost POST response does not show a failed bubble', async ({ page }) => {
+  const threadId = '11111111-1111-4111-8111-111111111111';
+  const question = 'Please explain this again.';
+  const reply = 'Here is the explanation.';
+  let postAborted = false;
+  const messages: MockedTutorMessage[] = [];
+  const thread = () => ({
+    id: threadId,
+    conceptId: 'supervised-learning',
+    title: 'Lost response',
+    updatedAt: '2026-01-01T12:00:00.002Z',
+  });
+  const detail = () => ({
+    thread: {
+      ...thread(),
+      conceptTitle: 'Supervised learning',
+      messageCount: messages.length,
+      lastMessagePreview: messages.at(-1)?.content ?? '',
+    },
+    messages: [...messages],
+  });
+
+  await page.addInitScript((id) => {
+    localStorage.setItem('academy.tutor.open', 'true');
+    localStorage.setItem('academy.tutor.thread', id);
+  }, threadId);
+  await page.route('**/api/tutor/status', (route) =>
+    route.fulfill({ json: { tutorEnabled: true } }),
+  );
+  await page.route('**/api/tutor/threads**', async (route) => {
+    const url = new URL(route.request().url());
+    if (route.request().method() === 'POST') {
+      expect(url.pathname).toBe(`/api/tutor/threads/${threadId}/messages`);
+      expect(route.request().postDataJSON()).toMatchObject({ question });
+      messages.push(
+        {
+          id: 'user-saved-before-disconnect',
+          role: 'user',
+          content: question,
+          createdAt: '2026-01-01T12:00:00.001Z',
+        },
+        {
+          id: 'assistant-saved-before-disconnect',
+          role: 'assistant',
+          content: reply,
+          createdAt: '2026-01-01T12:00:00.002Z',
+        },
+      );
+      postAborted = true;
+      await route.abort('failed');
+      return;
+    }
+    if (url.pathname === '/api/tutor/threads') {
+      await route.fulfill({ json: [detail().thread] });
+      return;
+    }
+    if (url.pathname === `/api/tutor/threads/${threadId}`) {
+      await route.fulfill({ json: detail() });
+      return;
+    }
+    await route.continue();
+  });
+
+  await page.goto(`/session/${sessionId}`);
+  const tutor = page.getByRole('complementary', { name: 'Tutor' });
+  await expect(tutor).toBeVisible();
+  const textarea = tutor.getByLabel('Ask the tutor');
+  await textarea.fill(question);
+  await textarea.press('Enter');
+
+  await expect(tutor.getByTestId('tutor-failed-message')).toHaveCount(0);
+  await expect(tutor.getByTestId('tutor-user-message').filter({ hasText: question })).toHaveCount(
+    1,
+  );
+  await expect(tutor.getByTestId('tutor-assistant-message').filter({ hasText: reply })).toHaveCount(
+    1,
+  );
+  expect(postAborted).toBe(true);
+});
+
+test('a failed steered message is rolled back before retrying once', async ({ page }) => {
+  const firstQuestion = 'Sorry, can you explain this to me step by step? What is this page about?';
+  const steeredQuestion = 'please';
+  let threadId = '';
+  let detailReads = 0;
+  let bRequestReceived = false;
+  let bFailureCompleted = false;
+  const firstRequestStarted = deferred();
+  const bRequestStarted = deferred();
+  const firstDetailRead = deferred();
+  const releaseFirstRequest = deferred();
+  const firstResponseFinished = deferred();
+  const messages: MockedTutorMessage[] = [];
+  const thread = () => ({
+    id: threadId,
+    conceptId: 'supervised-learning',
+    title: 'Eigenvalue decomposition',
+    updatedAt: '2026-01-01T12:00:00.005Z',
+  });
+  const detail = () => ({
+    thread: {
+      ...thread(),
+      conceptTitle: 'Supervised learning',
+      messageCount: messages.length,
+      lastMessagePreview: messages.at(-1)?.content ?? '',
+    },
+    messages: [...messages],
+  });
+
+  await page.route('**/api/tutor/status', (route) =>
+    route.fulfill({ json: { tutorEnabled: true } }),
+  );
+  await page.route('**/api/tutor/threads**', async (route) => {
+    const url = new URL(route.request().url());
+    if (route.request().method() === 'POST') {
+      const body = route.request().postDataJSON() as { question: string; threadId: string };
+      expect(url.pathname).toBe('/api/tutor/threads');
+      if (!threadId) threadId = body.threadId;
+      else expect(body.threadId).toBe(threadId);
+
+      if (body.question === firstQuestion) {
+        messages.push({
+          id: 'user-a',
+          role: 'user',
+          content: body.question,
+          createdAt: '2026-01-01T12:00:00.001Z',
+        });
+        firstRequestStarted.resolve();
+        await releaseFirstRequest.promise;
+        try {
+          await route.fulfill({ json: { superseded: true, thread: thread() } });
+        } catch {
+          firstResponseFinished.resolve();
+          return;
+        }
+        firstResponseFinished.resolve();
+        return;
+      }
+
+      expect(body.question).toBe(steeredQuestion);
+      if (!bRequestReceived) {
+        bRequestReceived = true;
+        messages.push({
+          id: 'user-b-failed',
+          role: 'user',
+          content: body.question,
+          createdAt: '2026-01-01T12:00:00.002Z',
+        });
+        bRequestStarted.resolve();
+        await firstDetailRead.promise;
+        const failedMessageIndex = messages.findIndex((message) => message.id === 'user-b-failed');
+        if (failedMessageIndex >= 0) messages.splice(failedMessageIndex, 1);
+        bFailureCompleted = true;
+        await route.fulfill({
+          status: 503,
+          contentType: 'application/json',
+          body: JSON.stringify({ error: 'Tutor unavailable' }),
+        });
+        return;
+      }
+
+      const userMessage: MockedTutorMessage = {
+        id: 'user-b-retried',
+        role: 'user',
+        content: body.question,
+        createdAt: '2026-01-01T12:00:00.003Z',
+      };
+      const assistantMessage: MockedTutorMessage = {
+        id: 'assistant-b-retried',
+        role: 'assistant',
+        content: `Tutor reply to: ${body.question}`,
+        createdAt: '2026-01-01T12:00:00.004Z',
+      };
+      messages.push(userMessage, assistantMessage);
+      await route.fulfill({
+        json: { thread: thread(), messages: [userMessage, assistantMessage] },
+      });
+      return;
+    }
+
+    if (url.pathname === '/api/tutor/threads') {
+      if (!threadId) {
+        await route.fulfill({ json: [] });
+        return;
+      }
+      if (!bRequestReceived) await bRequestStarted.promise;
+      const snapshot = detail();
+      if (bFailureCompleted) {
+        expect(snapshot.messages.some((message) => message.id === 'user-b-failed')).toBe(false);
+      }
+      try {
+        await route.fulfill({ json: [snapshot.thread] });
+      } catch {
+        return;
+      }
+      return;
+    }
+
+    if (url.pathname === `/api/tutor/threads/${threadId}`) {
+      if (detailReads === 0 && !bRequestReceived) await bRequestStarted.promise;
+      const snapshot = detail();
+      if (detailReads === 0) {
+        expect(snapshot.messages.some((message) => message.id === 'user-b-failed')).toBe(true);
+      } else if (bFailureCompleted) {
+        expect(snapshot.messages.some((message) => message.id === 'user-b-failed')).toBe(false);
+      }
+      detailReads += 1;
+      try {
+        await route.fulfill({ json: snapshot });
+      } catch {
+        if (detailReads === 1) firstDetailRead.resolve();
+        return;
+      }
+      if (detailReads === 1) firstDetailRead.resolve();
+      return;
+    }
+
+    await route.continue();
+  });
+
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.addInitScript(() => {
+    localStorage.removeItem('academy.tutor.open');
+    localStorage.removeItem('academy.tutor.thread');
+  });
+  await page.goto(`/session/${sessionId}`);
+  await page.getByRole('button', { name: 'Ask the tutor' }).click();
+  const tutor = page.getByRole('complementary', { name: 'Tutor' });
+  const textarea = tutor.getByLabel('Ask the tutor');
+  await tutor.getByRole('button', { name: 'New chat', exact: true }).click();
+  await textarea.fill(firstQuestion);
+  await textarea.press('Enter');
+  await firstRequestStarted.promise;
+  await expect(tutor.getByTestId('tutor-thinking-bubble')).toBeVisible();
+
+  await textarea.fill(steeredQuestion);
+  await textarea.press('Enter');
+  await bRequestStarted.promise;
+
+  const failedBubble = tutor.getByTestId('tutor-failed-message');
+  await expect(failedBubble).toHaveCount(1);
+  await expect(failedBubble).toContainText(steeredQuestion);
+  await expect(failedBubble).toContainText("Didn't send.");
+  await expect(
+    tutor.getByTestId('tutor-user-message').filter({ hasText: steeredQuestion }),
+  ).toHaveCount(0);
+  await expect(
+    tutor.getByTestId('tutor-user-message').filter({ hasText: firstQuestion }),
+  ).toHaveCount(1);
+  await expect(tutor.getByRole('alert')).toHaveCount(0);
+  await expect(textarea).toHaveValue('');
+  await page.screenshot({ path: `${tutorSteerScreenshotDir}/failed-retry-edit-1440.png` });
+
+  releaseFirstRequest.resolve();
+  await firstResponseFinished.promise;
+  await failedBubble.getByRole('button', { name: 'Retry' }).click();
+  await expect(
+    tutor.getByTestId('tutor-assistant-message').filter({
+      hasText: `Tutor reply to: ${steeredQuestion}`,
+    }),
+  ).toHaveCount(1);
+  await expect(
+    tutor.getByTestId('tutor-user-message').filter({ hasText: steeredQuestion }),
+  ).toHaveCount(1);
+  await expect(
+    tutor.getByTestId('tutor-user-message').filter({ hasText: firstQuestion }),
+  ).toHaveCount(1);
+  await expect(tutor.getByTestId('tutor-failed-message')).toHaveCount(0);
 });
 
 test('Stop and steering keep tutor messages server-backed at desktop and mobile widths', async ({
@@ -1099,7 +1567,14 @@ test('Stop and steering keep tutor messages server-backed at desktop and mobile 
     await textarea.press('Enter');
     await firstRequestStarted;
     await expect(textarea).toBeEnabled();
-    await expect(tutor.getByRole('button', { name: 'Stop' })).toBeVisible();
+    const stopButton = tutor.getByRole('button', { name: 'Stop' });
+    await expect(stopButton).toBeVisible();
+    await expect(stopButton).toHaveClass(/rounded-full/);
+    await expect(stopButton).toHaveClass(/bg-primary/);
+    await expect(stopButton.locator('svg')).toHaveClass(/fill-current/);
+    await page.screenshot({
+      path: `${tutorSteerScreenshotDir}/pending-stop-${width}.png`,
+    });
 
     await textarea.fill('Please show the next line.');
     await expect(tutor.getByRole('button', { name: 'Send' })).toBeEnabled();
@@ -1143,6 +1618,188 @@ test('Stop and steering keep tutor messages server-backed at desktop and mobile 
       ).toHaveCount(1);
     }
     releaseFirstRequest();
+    await page.unroute('**/api/tutor/status');
+    await page.unroute('**/api/tutor/threads**');
+  }
+});
+
+test('three quick tutor messages stay once each while the latest reply is pending', async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    localStorage.removeItem('academy.tutor.open');
+    localStorage.removeItem('academy.tutor.thread');
+  });
+
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+
+    let threadId = '';
+    const messages: MockedTutorMessage[] = [];
+    const thirdMessageStored = deferred();
+    const firstRequestStarted = deferred();
+    const secondRequestStarted = deferred();
+    const thirdRequestStarted = deferred();
+    const releaseFirstRequest = deferred();
+    const releaseSecondRequest = deferred();
+    const releaseThirdRequest = deferred();
+    const firstResponseFinished = deferred();
+    const secondResponseFinished = deferred();
+    const serverSnapshotLoaded = deferred();
+    const thread = () => ({
+      id: threadId,
+      conceptId: 'supervised-learning',
+      title: 'Steering sequence',
+      updatedAt: '2026-01-01T12:00:00.006Z',
+    });
+    const detail = () => ({
+      thread: {
+        ...thread(),
+        conceptTitle: 'Supervised learning',
+        messageCount: messages.length,
+        lastMessagePreview: messages.at(-1)?.content ?? '',
+      },
+      messages: [...messages],
+    });
+    const addMessage = (message: MockedTutorMessage) => {
+      messages.push(message);
+      if (messages.length >= 3) thirdMessageStored.resolve();
+    };
+
+    await page.route('**/api/tutor/status', (route) =>
+      route.fulfill({ json: { tutorEnabled: true } }),
+    );
+    await page.route('**/api/tutor/threads**', async (route) => {
+      const url = new URL(route.request().url());
+      if (route.request().method() === 'POST') {
+        const body = route.request().postDataJSON() as { question: string; threadId: string };
+        expect(url.pathname).toBe('/api/tutor/threads');
+        if (!threadId) threadId = body.threadId;
+        else expect(body.threadId).toBe(threadId);
+        const index = body.question.charCodeAt(0) - 'A'.charCodeAt(0);
+        expect(index).toBeGreaterThanOrEqual(0);
+        expect(index).toBeLessThan(3);
+        const userMessage: MockedTutorMessage = {
+          id: `user-${body.question}`,
+          role: 'user',
+          content: body.question,
+          createdAt: `2026-01-01T12:00:00.00${index + 1}Z`,
+        };
+        addMessage(userMessage);
+
+        if (index === 0) {
+          firstRequestStarted.resolve();
+          await releaseFirstRequest.promise;
+          try {
+            await route.fulfill({ json: { superseded: true, thread: thread() } });
+          } catch {
+            firstResponseFinished.resolve();
+            return;
+          }
+          firstResponseFinished.resolve();
+          return;
+        }
+        if (index === 1) {
+          secondRequestStarted.resolve();
+          await releaseSecondRequest.promise;
+          try {
+            await route.fulfill({ json: { superseded: true, thread: thread() } });
+          } catch {
+            secondResponseFinished.resolve();
+            return;
+          }
+          secondResponseFinished.resolve();
+          return;
+        }
+
+        thirdRequestStarted.resolve();
+        await releaseThirdRequest.promise;
+        const assistantMessage: MockedTutorMessage = {
+          id: 'assistant-C',
+          role: 'assistant',
+          content: 'Tutor reply to: C',
+          createdAt: '2026-01-01T12:00:00.005Z',
+        };
+        addMessage(assistantMessage);
+        await route.fulfill({
+          json: { thread: thread(), messages: [userMessage, assistantMessage] },
+        });
+        return;
+      }
+
+      if (url.pathname === '/api/tutor/threads') {
+        if (messages.length === 0) {
+          try {
+            await route.fulfill({ json: [] });
+          } catch {
+            return;
+          }
+          return;
+        }
+        if (messages.length < 3) await thirdMessageStored.promise;
+        try {
+          await route.fulfill({ json: [detail().thread] });
+        } catch {
+          return;
+        }
+        return;
+      }
+
+      if (url.pathname === `/api/tutor/threads/${threadId}`) {
+        if (messages.length < 3) await thirdMessageStored.promise;
+        try {
+          await route.fulfill({ json: detail() });
+        } catch {
+          return;
+        }
+        serverSnapshotLoaded.resolve();
+        return;
+      }
+
+      await route.continue();
+    });
+
+    await page.goto(`/session/${sessionId}`);
+    await page.getByRole('button', { name: 'Ask the tutor' }).click();
+    const tutor = page.getByRole('complementary', { name: 'Tutor' });
+    await tutor.getByRole('button', { name: 'New chat', exact: true }).click();
+    const textarea = tutor.getByLabel('Ask the tutor');
+
+    await textarea.fill('A');
+    await textarea.press('Enter');
+    await firstRequestStarted.promise;
+    await expect(tutor.getByRole('button', { name: 'Stop' })).toBeVisible();
+
+    await textarea.fill('B');
+    await textarea.press('Enter');
+    await secondRequestStarted.promise;
+
+    await textarea.fill('C');
+    await textarea.press('Enter');
+    await thirdRequestStarted.promise;
+    await serverSnapshotLoaded.promise;
+
+    const userMessages = tutor.getByTestId('tutor-user-message');
+    await expect(userMessages).toHaveCount(3);
+    await expect(userMessages.nth(0)).toContainText('A');
+    await expect(userMessages.nth(1)).toContainText('B');
+    await expect(userMessages.nth(2)).toContainText('C');
+    await expect(tutor.getByTestId('tutor-thinking-bubble')).toHaveCount(1);
+    await expect(tutor.getByTestId('tutor-assistant-message')).toHaveCount(0);
+    await page.screenshot({
+      path: `${tutorSteerScreenshotDir}/steering-three-pending-${width}.png`,
+    });
+
+    releaseFirstRequest.resolve();
+    releaseSecondRequest.resolve();
+    await Promise.all([firstResponseFinished.promise, secondResponseFinished.promise]);
+    releaseThirdRequest.resolve();
+    await expect(
+      tutor.getByTestId('tutor-assistant-message').filter({ hasText: 'Tutor reply to: C' }),
+    ).toHaveCount(1);
+    await expect(tutor.getByTestId('tutor-thinking-bubble')).toHaveCount(0);
+    await expect(tutor.getByTestId('tutor-user-message')).toHaveCount(3);
+
     await page.unroute('**/api/tutor/status');
     await page.unroute('**/api/tutor/threads**');
   }
