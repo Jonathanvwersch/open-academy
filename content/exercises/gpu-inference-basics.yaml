@@ -1,0 +1,672 @@
+concept: gpu-inference-basics
+exercises:
+  - id: gib-model-memory-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: How do you estimate the GPU memory a model's weights take?
+    options:
+      - id: a
+        text: Multiply the number of parameters by the bytes per number.
+        correct: true
+        feedback: Each parameter is one number stored in $b$ bytes, so the weights take $N\times b$ bytes.
+      - id: b
+        text: Multiply the number of parameters by the bits per number.
+        correct: false
+        category: math_error
+        feedback: That gives bits, which is 8 times too many. Use bytes per number, such as 2 for FP16.
+      - id: c
+        text: Multiply the number of layers by the model's width.
+        correct: false
+        category: misunderstood_definition
+        feedback: Layers and width help count the parameters, but memory is the parameter count times the bytes per number.
+      - id: d
+        text: Multiply the number of parameters by the prompt's length.
+        correct: false
+        category: misunderstood_definition
+        feedback: The weights are stored once, whatever the prompt's length. Their memory is parameters times bytes per number.
+    solution: The weights take the number of parameters times the bytes per number, $N\times b$.
+  - id: gibp-memory-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example, why does going from FP16 to INT8 halve the memory of Llama 3 8B's weights?
+    options:
+      - id: a
+        text: INT8 stores each of the 8 billion parameters in 1 byte instead of 2.
+        correct: true
+        feedback: The parameter count stays at 8 billion and $b$ halves, so $N\times b$ halves from 16 GB to 8 GB.
+      - id: b
+        text: INT8 keeps only half of the 8 billion parameters and drops the rest.
+        correct: false
+        category: misunderstood_definition
+        feedback: Every parameter is kept. Only the bytes used to store each one change.
+      - id: c
+        text: INT8 can only store positive numbers, so half the weights become zero.
+        correct: false
+        category: misunderstood_definition
+        feedback: INT8 stores negative whole numbers too, and zeros would still take a byte each.
+      - id: d
+        text: The H100 compresses INT8 numbers to half their size as it reads them.
+        correct: false
+        category: incorrect_reasoning
+        feedback: There is no compression here. An INT8 number simply takes 1 byte, half of FP16's 2 bytes.
+    solution: INT8 uses 1 byte per number and FP16 uses 2, while the model still has 8 billion parameters, so the weights go from 16 GB to 8 GB.
+  - id: gibp-int4-bytes
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: How many bytes does one number take in the INT4 format?
+    answer: 0.5
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer: 4
+        category: misunderstood_definition
+        feedback: INT4 uses 4 bits. A byte is 8 bits, so that is half a byte.
+      - answer: 1
+        category: misunderstood_definition
+        feedback: One byte is INT8. INT4 uses 4 bits, which is half of that.
+    solution: INT4 uses 4 bits, and a byte is 8 bits, so each number takes $4/8=0.5$ bytes.
+  - id: gibp-fp16-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A language model has {{= n }} billion parameters stored in FP16. How many GB do its weights take, where 1 GB is $10^9$ bytes?"
+    params:
+      n: { min: 1, max: 15, step: 1 }
+    answer_expr: "2 * n"
+    tolerance:
+      abs: 0.01
+    common_wrong:
+      - answer_expr: "16 * n"
+        category: math_error
+        feedback: That counts 16 bits per number as 16 bytes. FP16 takes 2 bytes per number.
+      - answer_expr: "4 * n"
+        category: misunderstood_definition
+        feedback: 4 bytes per number is FP32. FP16 takes 2.
+      - answer_expr: "n"
+        category: misunderstood_definition
+        feedback: 1 byte per number is INT8. FP16 takes 2.
+    solution: "Each parameter takes 2 bytes, so the weights take ${{= n }}\\times10^9\\times2={{= 2 * n }}\\times10^9$ bytes, which is ${{= 2 * n }}$ GB."
+  - id: gibp-int4-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A language model has {{= n }} billion parameters stored in INT4. How many GB do its weights take, where 1 GB is $10^9$ bytes?"
+    params:
+      n: { min: 2, max: 40, step: 2 }
+    answer_expr: "n / 2"
+    tolerance:
+      abs: 0.01
+    common_wrong:
+      - answer_expr: "4 * n"
+        category: math_error
+        feedback: That counts 4 bits per number as 4 bytes. INT4 takes half a byte per number.
+      - answer_expr: "n"
+        category: misunderstood_definition
+        feedback: 1 byte per number is INT8. INT4 takes half a byte.
+      - answer_expr: "2 * n"
+        category: misunderstood_definition
+        feedback: 2 bytes per number is FP16. INT4 takes half a byte.
+    solution: "Each parameter takes 0.5 bytes, so the weights take ${{= n }}\\times10^9\\times0.5$ bytes, which is ${{= n / 2 }}$ GB."
+  - id: gibp-fit-precision
+    dimension: math
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A model has 70 billion parameters, and its weights must fit on one GPU with 80 GB of memory. Of these formats, which has the most bytes per number while still letting the weights fit?
+    options:
+      - id: a
+        text: FP32
+        correct: false
+        category: math_error
+        feedback: At 4 bytes each, the weights take $70\times4=280$ GB, far more than 80 GB.
+      - id: b
+        text: BF16
+        correct: false
+        category: math_error
+        feedback: At 2 bytes each, the weights take $70\times2=140$ GB, which is still more than 80 GB.
+      - id: c
+        text: INT8
+        correct: true
+        feedback: At 1 byte each, the weights take 70 GB, which fits with 10 GB to spare.
+      - id: d
+        text: INT4
+        correct: false
+        category: incorrect_reasoning
+        feedback: INT4 fits too, at 35 GB, but INT8 also fits and uses more bytes per number.
+    solution: The weights take $70\times b$ GB. FP32 gives 280 GB and BF16 gives 140 GB, which don't fit, while INT8 gives 70 GB, which does.
+  - id: gibp-bits-mistake
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A learner estimates that a model with 7 billion parameters in FP16 needs $7\times10^9\times16=112\times10^9$ bytes, or 112 GB. What went wrong?
+    options:
+      - id: a
+        text: They multiplied by 16 bits instead of 2 bytes, so the right answer is 14 GB.
+        correct: true
+        feedback: FP16 uses 16 bits, which is 2 bytes, so the weights take $7\times2=14$ GB.
+      - id: b
+        text: They should have used 4 bytes per number, so the right answer is 28 GB.
+        correct: false
+        category: misunderstood_definition
+        feedback: 4 bytes per number is FP32. FP16 takes 2 bytes.
+      - id: c
+        text: They should have divided by the number of layers, so the answer is much smaller.
+        correct: false
+        category: misapplied_technique
+        feedback: The parameter count already includes every layer. Memory is parameters times bytes per number.
+      - id: d
+        text: Nothing went wrong, because 112 GB is the right size for those weights.
+        correct: false
+        category: math_error
+        feedback: Multiplying by 16 counts bits. Divide by 8 to get bytes, which gives 14 GB.
+    solution: FP16 takes 16 bits, which is 2 bytes, per number. The weights take $7\times10^9\times2=14\times10^9$ bytes, or 14 GB.
+  - id: gibp-leftover-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: "A GPU has 48 GB of memory, where 1 GB is $10^9$ bytes. A model with {{= n }} billion parameters is loaded onto it in BF16. How many GB of memory are left for everything else?"
+    params:
+      n: { min: 2, max: 20, step: 2 }
+    constraints: ["n != 12"]
+    answer_expr: "48 - 2 * n"
+    tolerance:
+      abs: 0.01
+    common_wrong:
+      - answer_expr: "48 - n"
+        category: misunderstood_definition
+        feedback: That uses 1 byte per number. BF16 takes 2 bytes.
+      - answer_expr: "48 - 4 * n"
+        category: misunderstood_definition
+        feedback: That uses 4 bytes per number, which is FP32. BF16 takes 2 bytes.
+      - answer_expr: "2 * n"
+        category: incorrect_reasoning
+        feedback: That's the memory the weights take. Subtract it from 48 GB to find what's left.
+    solution: "The weights take ${{= n }}\\times2={{= 2 * n }}$ GB, so $48-{{= 2 * n }}={{= 48 - 2 * n }}$ GB are left."
+  - id: gibp-robot-memory
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: A delivery robot's computer has 8 GB of memory, where 1 GB is $10^9$ bytes, and its other software already uses 3 GB. It must run a language model in FP16, and the weights may use all the memory that's left. What is the largest number of parameters the model can have, in billions?
+    answer: 2.5
+    tolerance:
+      abs: 0.01
+    common_wrong:
+      - answer: 4
+        category: incorrect_reasoning
+        feedback: That uses all 8 GB. The other software already takes 3 GB, so only 5 GB is free.
+      - answer: 5
+        category: misunderstood_definition
+        feedback: That uses 1 byte per number. FP16 takes 2 bytes.
+      - answer: 1.25
+        category: misunderstood_definition
+        feedback: That uses 4 bytes per number, which is FP32. FP16 takes 2 bytes.
+    solution: The model can use $8-3=5$ GB. At 2 bytes per parameter that's $5/2=2.5$ billion parameters.
+  - id: gib-memory-hierarchy-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What is a GPU's memory bandwidth?
+    options:
+      - id: a
+        text: The number of bytes per second that can move between its main memory and its chip.
+        correct: true
+        feedback: Bandwidth is a rate, such as about 3.35 TB/s on an H100, and it sets how fast data reaches the SMs.
+      - id: b
+        text: The number of bytes that its main memory can hold at one time.
+        correct: false
+        category: misunderstood_definition
+        feedback: That's the memory's size, such as 80 GB. Bandwidth is how fast bytes can be read or written.
+      - id: c
+        text: The number of floating-point operations per second that its Tensor Cores can do.
+        correct: false
+        category: misunderstood_definition
+        feedback: That's the GPU's FLOP/s. Bandwidth measures bytes moved per second.
+      - id: d
+        text: The number of tokens per second that it can generate for one conversation.
+        correct: false
+        category: misunderstood_definition
+        feedback: Tokens per second depends on bandwidth, but bandwidth itself is bytes moved per second.
+    solution: Memory bandwidth is how many bytes per second can move between the GPU's main memory (HBM) and its chip.
+  - id: gibp-hierarchy-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example, why do Llama 3 8B's weights have to be read from HBM each time the model uses them?
+    options:
+      - id: a
+        text: The 16 GB of weights is over a hundred times the chip's 0.12 GB of SRAM.
+        correct: true
+        feedback: The weights can't stay on the chip, so they stay in HBM and must be read through the 3.35 TB/s link each time.
+      - id: b
+        text: HBM is faster than SRAM, so the SMs prefer to read weights from it.
+        correct: false
+        category: misunderstood_definition
+        feedback: SRAM on the chip is much faster than HBM. The weights stay in HBM because they don't fit in SRAM.
+      - id: c
+        text: The weights change after every token, so stored copies go out of date.
+        correct: false
+        category: incorrect_reasoning
+        feedback: During inference the weights stay fixed. They're re-read because they're too big to keep on the chip.
+      - id: d
+        text: The L2 cache is only used for prompts, so it can't hold any weights.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The L2 cache keeps copies of any recently used data, but at 50 MB it's far too small for 16 GB.
+    solution: The chip's SRAM adds up to about 0.12 GB, and the weights take 16 GB, about 138 times as much, so they can only stay in HBM.
+  - id: gibp-where-weights
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: A language model with 8 billion parameters in BF16 is served on one H100 GPU. Where are its weights kept between one pass through the model and the next?
+    options:
+      - id: a
+        text: In HBM, the GPU's 80 GB main memory beside the chip.
+        correct: true
+        feedback: HBM is the only GPU memory big enough to hold 16 GB of weights.
+      - id: b
+        text: In the L2 cache, the 50 MB memory shared by all SMs.
+        correct: false
+        category: misunderstood_definition
+        feedback: The L2 cache holds 50 MB, and the weights take 16 GB, so it can only hold copies of small pieces.
+      - id: c
+        text: In the registers, the fastest memory inside each SM.
+        correct: false
+        category: misunderstood_definition
+        feedback: Registers hold only the numbers an SM is working on right now, a tiny fraction of a megabyte.
+      - id: d
+        text: In the Tensor Cores, the circuits that do the matrix maths.
+        correct: false
+        category: misunderstood_definition
+        feedback: Tensor Cores do arithmetic. They don't store the model.
+    solution: The weights take 16 GB, so they live in HBM, the GPU's 80 GB main memory, and are read onto the chip when needed.
+  - id: gibp-read-time-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A GPU's memory bandwidth is {{= bw }} TB/s. At least how many milliseconds does it take to read {{= g }} GB from its memory once? Here 1 GB is $10^9$ bytes and 1 TB is $10^{12}$ bytes."
+    params:
+      bw: { min: 2, max: 5, step: 1 }
+      g: { min: 4, max: 40, step: 4 }
+    constraints: ["mod(g, bw) == 0", "g != bw * bw"]
+    answer_expr: "g / bw"
+    tolerance:
+      abs: 0.01
+    common_wrong:
+      - answer_expr: "g * bw"
+        category: math_error
+        feedback: Time is bytes divided by bandwidth. Multiplying gives the wrong units.
+      - answer_expr: "g / bw / 1000"
+        category: math_error
+        feedback: That's the time in seconds. Multiply by 1000 to get milliseconds.
+      - answer_expr: "g / bw * 1000"
+        category: math_error
+        feedback: A GB is a thousandth of a TB, so GB divided by TB/s gives thousandths of a second, which is milliseconds.
+    solution: "Time is bytes over bandwidth: $\\frac{ {{= g }}\\times10^9}{ {{= bw }}\\times10^{12}}={{= g / bw }}\\times10^{-3}$ s, which is ${{= g / bw }}$ ms."
+  - id: gibp-units-mistake
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A learner works out that reading 16 GB of weights from memory with a bandwidth of 3.35 TB/s takes $16/3.35\approx4.8$ seconds. What went wrong?
+    options:
+      - id: a
+        text: A GB is a thousandth of a TB, so the time is 4.8 milliseconds.
+        correct: true
+        feedback: $16\times10^9/(3.35\times10^{12})\approx0.0048$ s, which is 4.8 ms.
+      - id: b
+        text: They should multiply 16 by 3.35, so the time is about 54 seconds.
+        correct: false
+        category: math_error
+        feedback: Time is bytes divided by bandwidth, so dividing was right. The units were wrong.
+      - id: c
+        text: They should use the GPU's 80 GB instead of the 16 GB of weights.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Only the bytes actually read count. The size of the memory doesn't change the time.
+      - id: d
+        text: Nothing went wrong, because 4.8 seconds is the right time.
+        correct: false
+        category: math_error
+        feedback: GB over TB/s gives thousandths of a second, so the answer is 4.8 ms.
+    solution: The bytes are $16\times10^9$ and the bandwidth is $3.35\times10^{12}$ bytes per second, so the time is about $0.0048$ s, or 4.8 ms.
+  - id: gibp-capacity-vs-bandwidth
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: GPU A has 80 GB of memory with a bandwidth of 2 TB/s. GPU B has 48 GB with a bandwidth of 4 TB/s. A model's weights take 16 GB, so they fit on both. On which GPU is one read of all the weights faster, and how long does it take at least?
+    options:
+      - id: a
+        text: GPU B, in 4 ms.
+        correct: true
+        feedback: $16\times10^9/(4\times10^{12})=0.004$ s. The higher bandwidth wins, whatever the memory size.
+      - id: b
+        text: GPU A, in 8 ms.
+        correct: false
+        category: misunderstood_definition
+        feedback: GPU A has more memory, but reading speed is set by bandwidth. On A the read takes 8 ms, slower than B's 4 ms.
+      - id: c
+        text: GPU A, in 0.2 ms.
+        correct: false
+        category: misunderstood_definition
+        feedback: That divides the weights by the memory size, 16/80. Time is bytes divided by bandwidth.
+      - id: d
+        text: Neither, both take 8 ms.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The two GPUs have different bandwidths, so their read times differ. A takes 8 ms and B takes 4 ms.
+    solution: Read time is bytes over bandwidth. On GPU B it's $16\times10^9/(4\times10^{12})=4$ ms, and on GPU A it's 8 ms, so B is faster.
+  - id: gibp-reuse-interpret
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A GPU kernel loads a block of numbers from HBM into an SM's shared memory once, then uses each number many times before loading the next block. Why is this faster than reading each number from HBM every time it's used?
+    options:
+      - id: a
+        text: Fewer bytes cross the slow link from HBM, and the repeated reads come from fast SRAM.
+        correct: true
+        feedback: Each number crosses the HBM bandwidth once, and every later use reads the much faster on-chip memory.
+      - id: b
+        text: Shared memory is larger than HBM, so the whole model fits in it at once.
+        correct: false
+        category: misunderstood_definition
+        feedback: Shared memory is tiny, well under a megabyte per SM. HBM is far larger.
+      - id: c
+        text: Using numbers from shared memory needs fewer FLOPs than using them from HBM.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The maths is the same either way. What changes is how many bytes are read from HBM.
+      - id: d
+        text: Loading a block into shared memory raises the bandwidth of HBM itself.
+        correct: false
+        category: misunderstood_definition
+        feedback: HBM's bandwidth is fixed by the hardware. Reuse means fewer bytes have to cross it.
+    solution: Time spent on memory is bytes moved over bandwidth. Reusing numbers from fast on-chip SRAM cuts the bytes read from HBM.
+  - id: gibp-laptop-read
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A laptop runs a small language model whose weights take 4 GB. Its memory bandwidth is 100 GB/s. At least how many milliseconds does it take to read all the weights once?
+    answer: 40
+    tolerance:
+      abs: 0.1
+    common_wrong:
+      - answer: 0.04
+        category: math_error
+        feedback: That's the time in seconds. Multiply by 1000 to get milliseconds.
+      - answer: 25
+        category: math_error
+        feedback: That's bandwidth divided by bytes. Time is bytes divided by bandwidth.
+    solution: The time is $4/100=0.04$ s, which is 40 ms.
+  - id: gib-decode-bound-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: When a GPU decodes for a single conversation, why is its speed limited by memory bandwidth?
+    options:
+      - id: a
+        text: Each token needs every weight read from GPU memory, but only about 2 FLOPs per weight.
+        correct: true
+        feedback: Reading the weights takes far longer than the little maths done with them, so the reading sets the pace.
+      - id: b
+        text: The weights don't fit in GPU memory, so they're copied in for each token.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The weights do fit in HBM. The limit is how fast they can be read from it.
+      - id: c
+        text: The maths for each token takes longer than reading the weights it uses.
+        correct: false
+        category: incorrect_reasoning
+        feedback: That's the wrong way round. For one conversation the maths is hundreds of times quicker than the reading.
+      - id: d
+        text: Each new token must be saved to disk before the next pass can start.
+        correct: false
+        category: misunderstood_definition
+        feedback: Tokens aren't written to disk. Each pass waits for the weights to be read from HBM.
+    solution: Every decode pass reads all the weights from HBM but does only about 2 FLOPs per weight, so it spends its time waiting for memory.
+  - id: gibp-floor-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example, why is each decode step taken to last 4.78 ms and not 0.128 ms?
+    options:
+      - id: a
+        text: The GPU reads and computes at the same time, so the slower part, reading the weights, sets the time.
+        correct: true
+        feedback: The 0.128 ms of maths happens while the 4.78 ms read is still going, so the step lasts 4.78 ms.
+      - id: b
+        text: The maths has to wait until all the reading is done, so the two times are added.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The two overlap, so the step lasts as long as the slower one. Adding would give 4.91 ms.
+      - id: c
+        text: The 0.128 ms is the maths for one conversation, and there are 8 conversations.
+        correct: false
+        category: math_error
+        feedback: The 0.128 ms already covers all 8 tokens, $8\times2\times8\times10^9$ FLOPs.
+      - id: d
+        text: Reading the weights takes 8 times longer with 8 conversations than with one.
+        correct: false
+        category: incorrect_reasoning
+        feedback: One read of the weights serves the whole batch, so it takes 4.78 ms whatever the batch size.
+    solution: Reading and computing overlap, so the step takes as long as the slower one. Reading 16 GB takes 4.78 ms and the maths only 0.128 ms.
+  - id: gibp-faster-maths
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A new GPU can do twice as many FLOP/s as an old one and has the same memory bandwidth. Roughly what happens to the top decode speed for a single conversation with a 16-bit model?
+    options:
+      - id: a
+        text: It stays about the same, because reading the weights still takes as long.
+        correct: true
+        feedback: The top speed is bandwidth divided by weight bytes, and neither has changed.
+      - id: b
+        text: It doubles, because the GPU can now do the maths twice as fast.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The maths was already far quicker than the reading, so making it quicker doesn't shorten each step.
+      - id: c
+        text: It halves, because the faster GPU needs twice as many bytes.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The model and its weight bytes are the same on both GPUs, so the reading time doesn't change.
+    solution: One conversation's decode is limited by bandwidth over weight bytes. Doubling FLOP/s leaves both the same, so the top speed barely moves.
+  - id: gibp-ceiling-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A GPU has a memory bandwidth of {{= bw }} TB/s, and a language model's weights take {{= g }} GB. Ignoring all memory traffic except the weights, what is the most tokens per second one conversation can decode? Here 1 GB is $10^9$ bytes and 1 TB is $10^{12}$ bytes."
+    params:
+      bw: { min: 1, max: 4, step: 1 }
+      g: { min: 2, max: 20, step: 2 }
+    constraints: ["mod(1000 * bw, g) == 0"]
+    answer_expr: "1000 * bw / g"
+    tolerance:
+      abs: 0.5
+    common_wrong:
+      - answer_expr: "g / bw"
+        category: math_error
+        feedback: That's the time per token in milliseconds. Tokens per second is bandwidth divided by weight bytes.
+      - answer_expr: "bw / g"
+        category: math_error
+        feedback: Convert units first. A TB is 1000 GB, so divide $1000\times$ the bandwidth in TB/s by the GB.
+    solution: "Each token reads all the weights, so tokens/s is at most $\\frac{ {{= bw }}\\times10^{12}}{ {{= g }}\\times10^9}={{= 1000 * bw / g }}$."
+  - id: gibp-int8-ceiling
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: Llama 3 8B, with about 8 billion parameters, is stored in INT8 on an H100 SXM GPU with a memory bandwidth of 3.35 TB/s. Ignoring all memory traffic except the weights, what is the most tokens per second one conversation can decode, to the nearest whole number?
+    answer: 419
+    tolerance:
+      abs: 1
+    common_wrong:
+      - answer: 209
+        category: misunderstood_definition
+        feedback: That uses 2 bytes per number, which is BF16. INT8 takes 1 byte, so the weights are 8 GB.
+      - answer: 0.42
+        category: math_error
+        feedback: Convert units first. $3.35\times10^{12}$ bytes/s divided by $8\times10^9$ bytes gives about 419.
+    solution: At 1 byte per number the weights take 8 GB, so tokens/s is at most $3.35\times10^{12}/(8\times10^9)\approx419$.
+  - id: gibp-batch-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt: "Llama 3 8B in BF16, with 16 GB of weights, runs on a GPU with a memory bandwidth of 3.35 TB/s and an ops:byte ratio of about 300 FLOPs per byte. {{= b }} conversations decode together. Ignoring all memory traffic except the weights, what is the most tokens per second the GPU can produce in total, to the nearest whole number?"
+    params:
+      b: { min: 2, max: 32, step: 2 }
+    answer_expr: "b * 3350 / 16"
+    tolerance:
+      rel: 0.003
+    common_wrong:
+      - answer_expr: "3350 / 16"
+        category: incorrect_reasoning
+        feedback: That's the speed for one conversation. One read of the weights serves every conversation in the batch.
+      - answer_expr: "3350 / 16 / b"
+        category: incorrect_reasoning
+        feedback: The batch shares each read of the weights, so it multiplies the total tokens per second.
+    solution: "Each step reads 16 GB in about 4.78 ms and makes {{= b }} tokens, so the total is ${{= b }}\\times3.35\\times10^{12}/(16\\times10^9)\\approx{{= round(b * 3350 / 16) }}$ tokens/s. The batch's intensity, {{= b }} FLOPs per byte, is still below 300."
+  - id: gibp-flops-mistake
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: "A learner estimates how fast an H100 decodes Llama 3 8B in BF16 for one conversation: $2\\times8\\times10^9$ FLOPs per token at $10^{15}$ FLOP/s takes $0.016$ ms, so about 62,500 tokens per second. What went wrong?"
+    options:
+      - id: a
+        text: They left out reading the 16 GB of weights, which takes about 4.78 ms, so the top speed is about 209.
+        correct: true
+        feedback: The reading is about 300 times slower than the maths, so it sets the time per token.
+      - id: b
+        text: They should count 1 FLOP per parameter, so the top speed is about 125,000.
+        correct: false
+        category: misunderstood_definition
+        feedback: A multiply-add counts as 2 FLOPs. The real error is leaving out memory.
+      - id: c
+        text: They should multiply the FLOPs by the 32 layers, so the top speed is about 1,950.
+        correct: false
+        category: misapplied_technique
+        feedback: The 8 billion parameters already include every layer. The missing piece is the time to read them.
+      - id: d
+        text: Nothing went wrong, because the H100 can decode 62,500 tokens per second.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Each token also needs all 16 GB read from HBM, which takes about 4.78 ms.
+    solution: The maths takes 0.016 ms but reading the 16 GB of weights takes about 4.78 ms. The slower one sets the pace, so the top speed is about 209 tokens/s.
+  - id: gibp-int8-crossover
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "A GPU's ops:byte ratio for the maths it uses is {{= r }} FLOPs per byte. A model's weights are stored in INT8, and each token costs 2 FLOPs per parameter. Ignoring all memory traffic except the weights, at what batch size does decoding's arithmetic intensity reach the ops:byte ratio?"
+    params:
+      r: { min: 200, max: 600, step: 40 }
+    answer_expr: "r / 2"
+    tolerance:
+      abs: 0.01
+    common_wrong:
+      - answer_expr: "r"
+        category: misapplied_technique
+        feedback: Batch size equals intensity only for 2-byte weights. INT8 weights take 1 byte, so each byte does 2 FLOPs per conversation.
+      - answer_expr: "2 * r"
+        category: math_error
+        feedback: Intensity is $2B$ FLOPs per byte with 1-byte weights, so set $2B$ equal to the ratio and divide by 2.
+    solution: "With $N$ parameters, a batch of $B$ does $2BN$ FLOPs and reads $N$ bytes, so $I=2B$. Setting $2B={{= r }}$ gives $B={{= r / 2 }}$."
+  - id: gibp-robot-decode
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: A robot's onboard computer has a memory bandwidth of 200 GB/s. It runs a language model with 1 billion parameters in FP16 to talk to people. Ignoring all memory traffic except the weights, what is the most tokens per second it can generate for one conversation?
+    answer: 100
+    tolerance:
+      abs: 0.5
+    common_wrong:
+      - answer: 200
+        category: misunderstood_definition
+        feedback: That uses 1 byte per number. FP16 takes 2 bytes, so the weights are 2 GB.
+      - answer: 50
+        category: misunderstood_definition
+        feedback: That uses 4 bytes per number, which is FP32. FP16 takes 2 bytes.
+    solution: The weights take $1\times10^9\times2=2$ GB, so tokens/s is at most $200/2=100$.
+  - id: gib-explain-gpu
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 2
+    est_minutes: 5
+    prompt: For a language model served on one GPU, explain how to check whether its weights fit in the GPU's memory at a given precision, and why the GPU's memory bandwidth limits how fast it can decode for one conversation.
+    rubric:
+      - id: weight-memory
+        criterion: Explain that the weights take the number of parameters times the bytes per number, such as 2 bytes at FP16, and compare that with the GPU's memory.
+        weight: 1
+        required: true
+      - id: reads-every-weight
+        criterion: Explain that each decoded token needs every weight read from the GPU's main memory (HBM), with only about 2 FLOPs done per weight.
+        weight: 1
+        required: true
+      - id: ceiling
+        criterion: Explain that each token therefore takes at least the weight bytes divided by the memory bandwidth, so tokens per second is at most bandwidth divided by weight bytes.
+        weight: 1
+        required: true
+      - id: room-left
+        criterion: Mention that memory must also be left over beyond the weights, such as for each conversation's KV cache.
+        weight: 1
+        required: false
+      - id: batch-or-precision
+        criterion: Mention that fewer bytes per number, or decoding a batch of conversations that share each read, raises the tokens per second.
+        weight: 1
+        required: false
+    exemplar: "The weights take the number of parameters times the bytes per number, for example 8 billion times 2 bytes, or 16 GB, at FP16. That has to fit in the GPU's memory with room left for other working memory. When decoding, each new token needs every weight read from HBM, but only about 2 FLOPs are done with each one, so the maths waits on memory. Each token takes at least the weight bytes divided by the bandwidth, so one conversation gets at most bandwidth over weight bytes, about 209 tokens/s for 16 GB at 3.35 TB/s."
+    solution: "The weights take the number of parameters times the bytes per number, which must fit in GPU memory with room to spare. Each decoded token reads every weight from HBM but does only about 2 FLOPs per weight, so a token takes at least weight bytes over bandwidth, and tokens/s is at most bandwidth over weight bytes."

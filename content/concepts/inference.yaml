@@ -75,7 +75,7 @@ concepts:
           { text: "Estimate a model's memory at fp32, fp16 and int8", dimension: math },
           { text: "Explain why memory bandwidth bounds decode speed", dimension: conceptual },
         ],
-      status: stub,
+      status: authored,
     }
   - {
       id: kv-cache,
