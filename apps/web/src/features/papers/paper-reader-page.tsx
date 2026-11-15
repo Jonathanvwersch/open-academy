@@ -407,8 +407,8 @@ export function PaperReaderPage() {
   );
 
   return (
-    <section className="flex h-[calc(100dvh-3.5rem)] min-h-0 w-full min-w-0 flex-col md:h-[calc(100dvh-4.5rem)]">
-      <header className="sticky top-0 z-20 flex min-h-12 shrink-0 flex-wrap items-center gap-2 border-b bg-background px-4 py-1 sm:h-12 sm:flex-nowrap">
+    <section className="flex min-h-0 w-full min-w-0 flex-1 flex-col">
+      <header className="sticky top-0 z-20 flex min-h-14 shrink-0 flex-wrap items-center gap-2 border-b bg-background px-4 py-1 sm:h-14 sm:flex-nowrap">
         {from ? (
           <Button asChild variant="ghost" size="sm">
             <Link
@@ -496,7 +496,7 @@ export function PaperReaderPage() {
           </Button>
         </div>
       </header>
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-hidden px-4 pb-4 md:flex-row">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-hidden px-4 md:flex-row">
         <section
           ref={viewer}
           onMouseUp={onSelection}

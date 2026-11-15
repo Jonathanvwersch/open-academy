@@ -566,7 +566,7 @@ export function TutorContextProvider({
       style={{ '--sidebar-width': `${sidebarWidth}px` } as React.CSSProperties}
     >
       <TutorContext.Provider value={value}>
-        <SidebarInset as="div" className="min-w-0">
+        <SidebarInset as="div" className="min-h-0 min-w-0">
           {children}
         </SidebarInset>
         {routeAllowed && context.allowed && (!shouldPushSidebar || visibleOpen) ? (
