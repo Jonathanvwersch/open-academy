@@ -86,23 +86,27 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: A robot moves in a corridor of 4 cells, numbered 1 to 4 from left to right, and starts in cell 1. Moving into a wall leaves it where it is. Reaching cell 4 gives $+10$ and ends the episode, and every other step gives $-1$. The agent moves left {{=k}} times, then moves right until the episode ends. What is the episode's total reward?
+    prompt: A robot moves in a corridor of 4 cells, numbered 1 to 4 from left to right, and starts in cell 1. Moving into a wall leaves it where it is. Reaching cell 4 gives $+{{=goal}}$ and ends the episode, and every other step gives $-1$. The agent moves left {{=k}} times, then moves right until the episode ends. What is the episode's total reward?
     params:
+      goal:
+        min: 14
+        max: 18
+        step: 2
       k:
-        min: 2
-        max: 5
+        min: 0
+        max: 1
         step: 1
-    answer_expr: 8 - k
+    answer_expr: goal - k - 2
     tolerance:
       abs: 0.001
     common_wrong:
-      - answer_expr: "8"
+      - answer_expr: goal - k - 1
         category: incorrect_reasoning
-        feedback: The moves into the left wall still count as steps, and each gives $-1$.
-      - answer_expr: 7 - k
+        feedback: Count every move into the wall as a step with reward $-1$.
+      - answer_expr: goal - k - 3
         category: math_error
-        feedback: The last step reaches cell 4, so it gives $+10$ and no $-1$.
-    solution: The left moves ({{=k}} of them) bump the wall, so the robot is still in cell 1 after them. Then it takes 3 steps right to reach cell 4. That is {{=k+2}} steps at $-1$ and one at $+10$, so the total is $10-{{=k+2}}={{=8-k}}$.
+        feedback: The move into cell 4 gives the goal reward and no step cost.
+    solution: The left moves ({{=k}} of them) bump the wall, so the robot is still in cell 1 after them. Then it takes 3 steps right to reach cell 4. That is {{=k+2}} steps at $-1$ and one at $+{{=goal}}$, so the total is ${{=goal}}-{{=k+2}}={{=goal-k-2}}$.
   - id: sim-step-after-end
     dimension: conceptual
     type: mc
@@ -190,10 +194,10 @@ exercises:
         correct: true
         feedback: The whole reply is a single action, so one step ends each episode.
       - id: b
-        text: The scoring model is the policy, because it decides the reward.
+        text: The scoring model is the rule that picks actions, because it decides the reward.
         correct: false
         category: misunderstood_definition
-        feedback: The policy is the chat model, which chooses the action. The scoring model is part of the environment.
+        feedback: The chat model is the rule that picks actions. The scoring model is part of the environment and supplies the reward.
       - id: c
         text: step must leave the episode running, because an episode always lasts many steps.
         correct: false
@@ -204,7 +208,7 @@ exercises:
         correct: false
         category: misunderstood_definition
         feedback: reset starts a new episode and returns its start state, here a prompt. The score comes back from step.
-    solution: reset returns the start state, a prompt. The policy, the chat model, picks one action, a reply. step returns the reward from the scoring model and reports that the episode has ended. So each episode is one step.
+    solution: reset returns the start state, a prompt. The rule that picks actions is the chat model, and it picks one action, a reply. step returns the reward from the scoring model and reports that the episode has ended. So each episode is one step.
   - id: sim-loop-basics
     dimension: conceptual
     type: mc
@@ -309,17 +313,21 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: A robot moves in a corridor of 4 cells, numbered 1 to 4 from left to right, and starts in cell 1. Moving into a wall leaves it where it is. Reaching cell 4 gives $+10$ and ends the episode, and every other step gives $-1$. The environment also truncates an episode after {{=n}} steps. The policy moves left for its first {{=k}} steps, then moves right until the episode ends. What is the episode's total reward?
+    prompt: A robot moves in a corridor of 4 cells, numbered 1 to 4 from left to right, and starts in cell 1. Moving into a wall leaves it where it is. Reaching cell 4 gives $+{{=goal}}$ and ends the episode, and every other step gives $-1$. The environment also truncates an episode after {{=n}} steps. The rule moves left for its first {{=k}} steps, then moves right until the episode ends. What is the episode's total reward?
     params:
+      goal:
+        min: 14
+        max: 18
+        step: 2
       n:
-        min: 4
-        max: 7
-        step: 1
-      k:
-        min: 2
+        min: 3
         max: 4
         step: 1
-    answer_expr: "k + 3 <= n ? 8 - k : -n"
+      k:
+        min: 0
+        max: 1
+        step: 1
+    answer_expr: "k + 3 <= n ? goal - k - 2 : -n"
     tolerance:
       abs: 0.001
     common_wrong:
@@ -328,8 +336,8 @@ exercises:
         feedback: Count the steps first. The robot needs {{=k+3}} steps to reach cell 4, and the time limit is {{=n}} steps. Compare the two to see whether the task ends or the time limit cuts it off.
       - answer_expr: "k + 3 <= n ? 7 - k : 11 - n"
         category: misunderstood_definition
-        feedback: Check the last step. Reaching cell 4 gives $+10$ and no $-1$. A time-limit cutoff gives no $+10$, just the usual $-1$.
-    solution: "The robot needs {{=k}} steps bumping the left wall plus 3 steps right, so {{=k+3}} steps, to reach cell 4. The time limit is {{=n}} steps. If the robot needs no more steps than the limit, it reaches cell 4 and the episode terminates: {{=k+2}} steps at $-1$ and one at $+10$ give $10-{{=k+2}}={{=8-k}}$. Otherwise the time limit truncates the episode after {{=n}} steps, all at $-1$, giving ${{=-n}}$. Here the robot needs {{=k+3}} steps and the limit is {{=n}}, so the total is ${{=k + 3 <= n ? 8 - k : -n}}$."
+        feedback: Check the last step. Reaching cell 4 gives $+{{=goal}}$ and no $-1$. A time-limit cutoff gives no goal reward, just the usual $-1$.
+    solution: "The robot needs {{=k}} steps bumping the left wall plus 3 steps right, so {{=k+3}} steps, to reach cell 4. The time limit is {{=n}} steps. If the robot needs no more steps than the limit, it reaches cell 4 and the episode terminates: {{=k+2}} steps at $-1$ and one at $+{{=goal}}$ give ${{=goal}}-{{=k+2}}={{=goal-k-2}}$. Otherwise the time limit truncates the episode after {{=n}} steps, all at $-1$, giving ${{=-n}}$. Here the robot needs {{=k+3}} steps and the limit is {{=n}}, so the total is ${{=k + 3 <= n ? goal - k - 2 : -n}}$."
   - id: sim-loop-reset-bug
     dimension: implementation
     type: mc
@@ -427,12 +435,12 @@ exercises:
     role: basics
     difficulty: 1
     est_minutes: 1
-    prompt: What does one call to step do in a vectorised environment with $N$ copies?
+    prompt: What does one call to step do in a vectorised environment with $N$ copies, when each copy is active?
     options:
       - id: a
         text: It takes $N$ actions, one for each copy, and returns $N$ next states, $N$ rewards and $N$ of each ending flag.
         correct: true
-        feedback: Each copy takes one step, so each call gives $N$ transitions.
+        feedback: Each active copy takes one step. With Gymnasium's default next-step autoreset, the call after a copy finishes only resets it, so that entry is left out of experience.
       - id: b
         text: It applies one action to a single copy $N$ times in a row.
         correct: false
@@ -484,7 +492,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: A vectorised environment runs {{=n}} copies of a simulator. A training run calls its step function {{=c}} times. How many transitions does it collect?
+    prompt: A vectorised environment runs {{=n}} copies of a simulator. A finished copy restarts within the same call, so every copy applies an action on every call. A training run calls its step function {{=c}} times. How many transitions does it collect?
     params:
       n:
         min: 4
@@ -500,8 +508,31 @@ exercises:
     common_wrong:
       - answer_expr: c
         category: incorrect_reasoning
-        feedback: Each call steps every copy, so it gives {{=n}} transitions, one per copy.
-    solution: Each call gives one transition per copy, so {{=n}} per call. Over {{=c}} calls that's ${{=n}}\times{{=c}}={{=n*c}}$.
+        feedback: The same-call restart means each copy applies an action on every call, giving {{=n}} transitions per call.
+    solution: Each copy applies one action on every call, so each call gives {{=n}} transitions. Over {{=c}} calls that is ${{=n}}\times{{=c}}={{=n*c}}$.
+  - id: sim-why-vector
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: Training a walking-robot policy is slow. Its simulator runs on one of the computer's 16 processor cores while the rest sit idle. Which change speeds up collecting experience most directly?
+    options:
+      - id: a
+        text: Use a multi-process vectorised environment, such as Gymnasium's AsyncVectorEnv, with 16 copies, one per core.
+        correct: true
+        feedback: Each copy runs in its own process, so up to 16 copies can step at once. With Gymnasium's default next-step mode, the call after a copy finishes only resets it, so that entry is left out of experience.
+      - id: b
+        text: Make the time limit longer, so each episode has more steps.
+        correct: false
+        category: misapplied_technique
+        feedback: Longer episodes don't make steps any faster. One core still does all the work.
+      - id: c
+        text: Call reset less often, so less time goes on restarting.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Each episode needs one reset, and that's a small part of the time. Putting the 15 idle cores to work helps far more.
+    solution: A multi-process vectorised environment can run each copy of the simulator in its own process, so all 16 cores can work at once. With same-call resets, one call gives 16 transitions. With Gymnasium's default next-step mode, the call after a copy finishes only resets it, so that entry is left out of experience.
   - id: sim-episodes-template
     dimension: implementation
     type: numeric
@@ -560,29 +591,6 @@ exercises:
         category: misunderstood_definition
         feedback: Copies finish at different times, so each is reset on its own while the others carry on.
     solution: A finished copy is reset at once, so step returns its new start state. The transition's next state should be the terminal state the action reached, and the terminated flag says the episode ended there.
-  - id: sim-why-vector
-    dimension: conceptual
-    type: mc
-    role: practice
-    difficulty: 2
-    est_minutes: 2
-    prompt: Training a walking-robot policy is slow. Its simulator runs on one of the computer's 16 processor cores while the rest sit idle. Which change speeds up collecting experience most directly?
-    options:
-      - id: a
-        text: Use a multi-process vectorised environment, such as Gymnasium's AsyncVectorEnv, with 16 copies, one per core.
-        correct: true
-        feedback: Each copy runs in its own process, so all 16 cores step a copy at once, and each call gives 16 transitions.
-      - id: b
-        text: Make the time limit longer, so each episode has more steps.
-        correct: false
-        category: misapplied_technique
-        feedback: Longer episodes don't make steps any faster. One core still does all the work.
-      - id: c
-        text: Call reset less often, so less time goes on restarting.
-        correct: false
-        category: incorrect_reasoning
-        feedback: Each episode needs one reset, and that's a small part of the time. Putting the 15 idle cores to work helps far more.
-    solution: A multi-process vectorised environment runs each copy of the simulator in its own process, so the 16 copies can run on the 16 cores at once. One call then does 16 steps instead of one.
   - id: sim-walker-fall
     dimension: conceptual
     type: mc
@@ -764,7 +772,7 @@ exercises:
         correct: false
         category: misapplied_technique
         feedback: Training less doesn't fix a mismatch between simulator and world.
-    solution: A policy can earn its top score by using a flaw in the simulator, like a jump that never fails there. Only testing on the real robot, or training across a range of settings, shows how it does in the world.
+    solution: A policy can earn its top score by using a flaw in the simulator, like a jump that never fails there. Training across varied simulated settings can improve transfer. Testing on the real robot measures how well the policy actually works there.
   - id: sim-range-outside
     dimension: conceptual
     type: mc
@@ -776,7 +784,7 @@ exercises:
       - id: a
         text: It may still fail, because 0.3 lies outside the range the policy trained on.
         correct: true
-        feedback: Randomisation helps only if the range covers the real world.
+        feedback: Choose a range that covers plausible real-world conditions. Outside the training range, transfer is uncertain.
       - id: b
         text: It will work, because domain randomisation makes a policy work on any floor.
         correct: false
@@ -835,5 +843,5 @@ exercises:
         criterion: Explains the sim-to-real gap and at least one fix, such as domain randomisation, matching the simulator to measurements or practice on the real robot
         weight: 1
         required: true
-    exemplar: "I call reset, which starts an episode and returns the start state. Then I loop: the policy picks an action from the current state, step applies it and returns the next state, the reward and two flags, and I add up the reward. I stop when terminated is true, because a terminal state ended the task, or when truncated is true, because the time limit cut the episode short. With a vectorised environment, each call steps N copies, so I get N transitions, and any copy that finishes is reset by itself while the others carry on. A simulator never matches the world exactly, so a policy can score well by using its flaws and then fail on the real robot. Randomising the simulator's settings at each reset, measuring the real robot to set the simulator, and a little practice on the real robot help."
-    solution: "reset starts an episode and returns the start state. The loop then repeats: the policy picks an action, step applies it and returns the next state, the reward and the terminated and truncated flags, and the reward is added. It stops when either flag is true: terminated means a terminal state ended the task, truncated means the time limit cut it short. A vectorised environment steps N copies per call and resets each finished copy on its own. Because simulators are never exact, a policy can do worse on the real robot. Domain randomisation, matching the simulator to measurements and brief real practice help."
+    exemplar: "I call reset, which starts an episode and returns the start state. Then I loop: the policy picks an action from the current state, step applies it and returns the next state, the reward and two flags, and I add up the reward. I stop when terminated is true, because a terminal state ended the task, or when truncated is true, because the time limit cut the episode short. With a vectorised environment, each call can step N active copies. With same-call resets, that gives N transitions, and any copy that finishes is reset by itself while the others carry on. With Gymnasium's default next-step autoreset, the call after a copy finishes only resets it, so that entry is left out of experience. A simulator never matches the world exactly, so a policy can score well by using its flaws and then fail on the real robot. Randomising the simulator's settings at each reset, measuring the real robot to set the simulator, and a little practice on the real robot help."
+    solution: "reset starts an episode and returns the start state. The loop then repeats: the policy picks an action, step applies it and returns the next state, the reward and the terminated and truncated flags, and the reward is added. It stops when either flag is true: terminated means a terminal state ended the task, truncated means the time limit cut it short. With same-call resets, a vectorised environment gives N transitions per call and resets each finished copy on its own. With Gymnasium's default next-step autoreset, the call after a copy finishes only resets it, so that entry is left out of experience. Because simulators are never exact, a policy can do worse on the real robot. Domain randomisation, matching the simulator to measurements and brief real practice help."

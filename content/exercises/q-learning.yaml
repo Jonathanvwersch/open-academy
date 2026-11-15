@@ -479,7 +479,7 @@ exercises:
         max: 3
         step: 1
       eps:
-        min: 0.1
+        min: 0.2
         max: 0.5
         step: 0.1
     answer_expr: 1 - eps + eps / k
@@ -492,7 +492,7 @@ exercises:
       - answer_expr: eps / k
         category: misunderstood_definition
         feedback: That is the chance of one particular action from the random pick alone. Add the greedy share, $1-\varepsilon$.
-    solution: "The greedy action comes from the greedy choice, $1-{{=eps}}={{=1-eps}}$, plus its share of random picks, ${{=eps}}/{{=k}}={{=eps/k}}$. In total ${{=1-eps+eps/k}}$."
+    solution: "The greedy action contributes $1-\\varepsilon={{=1-eps}}$. Its share from the random pick is $\\varepsilon/k\\approx{{=round(eps/k, 2)}}$. In total about ${{=round(1-eps+eps/k, 2)}}$."
   - id: qlp-explore-target
     dimension: math
     type: numeric

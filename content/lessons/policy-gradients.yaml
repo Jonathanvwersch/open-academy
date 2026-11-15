@@ -282,7 +282,7 @@ knowledge_points:
 
       $$E\big[b\,\nabla_\theta\ln\pi_\theta(a)\big]=b\sum_a\pi_\theta(a)\,\nabla_\theta\ln\pi_\theta(a)=b\sum_a\nabla_\theta\pi_\theta(a)=0.$$
 
-      The last sum is $0$ because the probabilities always add up to $1$, so their changes cancel. Any number that doesn't depend on the action keeps the average right. A baseline near the typical return, kept up to date as the policy learns, usually cuts the noise a lot, and $G-b$ then says whether things went better or worse than usual. A badly chosen baseline can add noise.
+      The last sum is $0$ because the probabilities always add up to $1$, so their changes cancel. Any number that doesn't depend on the action keeps the average right. A baseline near the typical return, kept up to date as the policy learns, usually cuts the noise, and $G-b$ then says whether things went better or worse than usual. A badly chosen baseline can add noise.
 
       ### Limitations
 
@@ -318,6 +318,6 @@ summary: |
   - A policy gradient method gives the policy parameters $\theta$ and climbs its expected return $J(\theta)=E[G_0]$ by gradient ascent, $\theta_{\text{new}}=\theta+\eta\,\nabla_\theta J(\theta)$.
   - The log-derivative trick, $\nabla_\theta\pi_\theta(a)=\pi_\theta(a)\,\nabla_\theta\ln\pi_\theta(a)$, turns the slope into an average, $\nabla_\theta J=E[G\,\nabla_\theta\ln\pi_\theta(a)]$, which we can estimate from played episodes.
   - REINFORCE plays an episode and steps $\theta_{\text{new}}=\theta+\eta\,G_0\sum_t\nabla_\theta\ln\pi_\theta(a_t\mid s_t)$. The world's transition probabilities drop out, so the agent never needs to know them.
-  - Subtracting a baseline $b$ from the return leaves the average estimate unchanged, because $E[\nabla_\theta\ln\pi_\theta(a)]=0$, and a baseline near the typical return usually makes each estimate much less noisy.
+  - Subtracting a baseline $b$ from the return leaves the average estimate unchanged, because $E[\nabla_\theta\ln\pi_\theta(a)]=0$, and a baseline near the typical return usually makes each estimate less noisy.
 
   **Next:** The PPO lesson builds on these estimates and limits how far each update can move the policy, so one big step can't wreck it.

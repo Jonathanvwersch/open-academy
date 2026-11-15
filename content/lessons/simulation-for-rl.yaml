@@ -17,9 +17,7 @@ knowledge_points:
     explain: |
       ### The corridor as a program
 
-      Our example is a robot in a corridor of 4 cells, numbered 1 to 4 from left to right. It starts in cell 1 and can move left or right, and moving into a wall leaves it where it is. Reaching cell 4 gives a reward of $+10$ and ends the task. Every step that doesn't reach cell 4 gives $-1$, so the robot does best by getting there in few steps.
-
-      We write the corridor as a program with two commands, shown in the picture.
+      Our example is a corridor of 4 cells, numbered 1 to 4. The robot starts in cell 1 and moves left or right; walls keep it in place. Reaching cell 4 gives $+10$ and ends the task. Every other step gives $-1$, so the robot does best by reaching cell 4 quickly.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" aria-label="Top: a corridor of four cells numbered 1 to 4, with the robot as a green dot in cell 1, the start. Cell 4 is marked plus 10, episode ends, and every other step gives minus 1. Bottom: an agent box and an environment box. A blue arrow from the agent to the environment is labelled step with an action. A blue arrow back is labelled next state, reward and whether the episode ended. A note says reset puts the robot in cell 1 and returns state 1">
@@ -52,15 +50,17 @@ knowledge_points:
 
       ### One try is an episode
 
-      One try, from a reset until the task ends, is called an **episode**. A state where the episode ends, like cell 4, is a **terminal state**. Then we call reset to start a new one.
+      A try from reset until the task ends is an **episode**. A state where it ends, like cell 4, is a **terminal state**.
 
       So a **simulation environment** is a program that holds a task's current state and offers reset, to start an episode, and step, to apply one action. Inside step it follows the MDP. It finds the next state $s'$ from $p(s'\mid s,a)$ and works out the reward $r$. In our corridor each move has one result, which has probability 1.
 
       ### When a move can fail
 
-      Suppose instead the floor is slippery, so a move works with probability $0.8$ and otherwise the robot stays put. Then step draws a random number between 0 and 1 and moves the robot only if it's below $0.8$. Now a move away from a wall has two possible next states, so two runs of the same actions can give different episodes. A computer's random numbers come from a fixed rule that starts from a number called the **seed**, so the same seed gives the same numbers. Fixing the seed, usually by passing it to reset, makes a run repeat exactly, which helps in hunting bugs.
+      Suppose the floor is slippery: a move works with probability $0.8$, otherwise the robot stays put. Step draws a random number from 0 to 1 and moves only if it is below $0.8$. A move away from a wall now has two possible next states, so identical actions can give different episodes. A computer's random numbers follow a fixed rule that starts from a **seed**. The same seed gives the same numbers and repeats a run, which helps find bugs.
 
-      Be careful not to call step again once an episode has ended. Its answers mean nothing, and many environments warn or raise an error. The next call must be reset.
+      Each fresh random draw is independent, so the chance of a sequence of outcomes is the product of their chances. If several different sequences lead to the same result, add their chances. For example, one slip and one successful move in either order has probability $(1-p)p+p(1-p)=2p(1-p)$.
+
+      Do not call step again after an episode ends. Its answers mean nothing, and many environments warn or raise an error. The next call must be reset.
     worked: |
       Let's run one episode by hand in the corridor where moves always work, with the actions left, right, right, right.
 
@@ -209,13 +209,15 @@ knowledge_points:
     explain: |
       ### Why one copy is slow
 
-      Our loop runs one episode at a time. Training can take millions of steps, and while one simulator runs, most of a computer's processor cores, which can each run a program, sit idle. Also, the steps of one episode follow on from each other, so they show the agent much the same situation again and again. Steps from many episodes at once are more varied, because real policies often pick actions at random, so the copies soon reach different points in their episodes.
+      Training takes millions of steps, but one simulator leaves most processor cores idle. Running episodes together gives varied situations because policies often pick actions at random.
 
       ### Many corridors side by side
 
-      A **vectorised environment** runs $N$ copies of the same environment side by side, so one call does $N$ steps. Gymnasium's `AsyncVectorEnv` runs each copy in its own process, so each can use its own core. Its inputs and outputs are lists, or vectors, with one entry per copy. Its reset returns $N$ start states. Its step takes $N$ actions and returns $N$ next states, $N$ rewards, $N$ terminated flags and $N$ truncated flags. The loop is unchanged, with lists in place of single values.
+      A **vectorised environment** runs $N$ copies side by side. Each active copy gets one action per call. Gymnasium's `AsyncVectorEnv` runs copies in separate processes. Reset returns $N$ start states; step returns a next state, reward, terminated flag and truncated flag for each copy.
 
-      So each call gives $N$ **transitions**, where a transition is the record of one step: the state, the action, the reward and the next state. Agents learn from transitions, so more per second means faster learning.
+      The loop still chooses actions and calls step repeatedly, but it checks the ending flags separately for each copy. A finished copy restarts while the others carry on.
+
+      With a same-call reset, each call gives $N$ **transitions**, where a transition is the record of one step: the state, the action, the reward and the next state. In Gymnasium's default next-step mode, the call after a copy finishes only resets it, so that entry is left out of experience. Agents learn from transitions, so more per second means faster learning.
 
       The picture shows two copies of the corridor over four calls. Normally all copies share one policy, but here they differ so their episodes end at different times. In copy A the policy always moves right, and in copy B it always moves left.
 
@@ -257,11 +259,11 @@ knowledge_points:
 
       ### Finished copies restart on their own
 
-      The copies' episodes don't end together, so a vectorised environment resets each finished copy alone and keeps stepping the others.
+      A vectorised environment resets each finished copy alone and keeps stepping the others.
 
-      Here a finished copy is reset straight away, so step returns its new start state. Gymnasium by default resets it on its next call instead, and ignores that call's action.
+      Here a finished copy is reset straight away, so step returns its new start state. Gymnasium's default next-step autoreset waits until the next call to reset it and ignores that call's action. That call produces no transition for the finished copy, so its entry is left out of experience.
 
-      Don't read the cell 1 returned for a finished copy as where the action led. Copy A moved from cell 3 into cell 4, and cell 1 starts its next episode. So an environment that resets straight away also returns the real last state, cell 4, letting the loop record the true transition. Gymnasium puts it in `info["final_obs"]` in its same-call reset mode.
+      The returned cell 1 starts a new episode, not the result of A's move. A moved from cell 3 to terminal cell 4, the transition's true next state. In same-call reset mode, Gymnasium records it in `info["final_obs"]`.
     worked: |
       Let's follow the two copies call by call. Each corridor has a 5-step time limit, copy A always moves right and copy B always moves left.
 
@@ -280,7 +282,7 @@ knowledge_points:
       5. **Call 4, same actions.** A starts its second episode by moving to cell 2. B has now taken 4 steps.
          $$\text{states }(2,1),\quad\text{rewards }(-1,-1)$$
 
-      6. **Count what we collected.** Each call gave one transition per copy. For A on call 3, the transition records cell 4 as the next state, because that's where the move led.
+      6. **Count what we collected.** The same-call reset mode gave one transition per copy on each call. With Gymnasium's default next-step mode, the call after a copy finishes only resets it, so that entry is left out of experience. For A on call 3, the transition records cell 4 as the next state, because that's where the move led.
          $$4\times2=8\text{ transitions}$$
 
       After four calls, only A's first episode has finished. B's episode will be truncated on call 5, when it reaches the time limit.
@@ -297,7 +299,7 @@ knowledge_points:
     explain: |
       ### No simulator is exact
 
-      A simulator's friction, masses, motor delays and sensor errors are never quite right. The drop in performance when a policy trained in simulation runs on the real robot is called the **sim-to-real gap**.
+      A simulator's friction, masses, delays and sensor errors are imperfect. The drop in performance when a policy trained in simulation runs on the real robot is called the **sim-to-real gap**.
 
       ### A jump that works only in the simulator
 
@@ -331,9 +333,9 @@ knowledge_points:
 
       ### Closing the gap
 
-      The most common fix is **domain randomisation**. At every reset, the simulator draws its uncertain settings at random from a range. Here that's the jump's chance of working, and for a real robot, things like friction, masses and delays. The policy is trained to do well on average across the whole range, and if the real world lies inside it, the real world is just one more variation. In 2018, OpenAI trained a five-fingered robot hand this way, entirely in simulation, to turn a cube in its palm until it faced a chosen way, then used the policy on the real hand.
+      A common fix is **domain randomisation**. At every reset, the simulator draws its uncertain settings at random from a range. Here that's the jump's chance of working, and for a real robot, things like friction, masses and delays. The policy is trained to do well on average across the whole range, and if the real world lies inside it, the real world is just one more variation. In 2018, OpenAI trained a five-fingered robot hand this way, entirely in simulation, to turn a cube in its palm until it faced a chosen way, then used the policy on the real hand.
 
-      Other fixes are measuring the real robot to set the simulator, and practising briefly on the real robot at the end. Randomisation only helps if the range covers reality, and a policy that copes with everything can be more cautious than it needs to be in any one setting, like our robot walking even on a floor where the jump would work.
+      Other fixes are measuring the real robot to set the simulator, and practising briefly on the real robot at the end. Choose a range that covers plausible real-world conditions. Outside the training range, transfer is uncertain. A policy that copes with everything can be more cautious than it needs to be in any one setting, like our robot walking even on a floor where the jump would work.
     worked: |
       Let's compare the two policies, jumping and walking, using the expected value. That's the average total reward over many episodes. Each outcome is weighted by its probability, so an outcome that happens half the time counts for half.
 
@@ -368,7 +370,7 @@ final: sim-explain-loop
 summary: |
   - A simulation environment is an MDP written as code. reset starts an episode and returns the start state, and step applies one action and returns the next state, the reward and whether the episode has ended.
   - The interaction loop calls reset once, then repeats "the policy picks an action, step applies it, add up the reward" until step says terminated (a terminal state was reached) or truncated (the time limit cut the episode short).
-  - A vectorised environment steps $N$ copies at once, so each call gives $N$ transitions, and it resets each finished copy by itself while the others carry on.
+  - With same-call resets, a vectorised environment gives $N$ transitions per call. In Gymnasium's default next-step mode, the call after a copy finishes only resets it, so that entry is left out of experience while the other copies carry on.
   - A policy trained in simulation can do worse on the real robot, which is the sim-to-real gap. Domain randomisation, matching the simulator to measurements and brief practice on the real robot help close it.
 
   **Next:** The sim-to-real transfer lesson goes deeper into these fixes and how they're used on real robots.

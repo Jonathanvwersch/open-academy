@@ -10,7 +10,7 @@ recap:
 where_this_fits: |
   ### What is PPO?
 
-  PPO (proximal policy optimization) trains a policy. It makes actions that did better than usual more likely, and limits how far one batch of experience can move the policy. Proximal means near. Experience is slow to collect, so we want several updates per batch, and the limit stops them wrecking the policy. PPO is standard in robotics and in RLHF for language models.
+  PPO (proximal policy optimization) trains a policy. It makes actions that did better than usual more likely, and limits how far one batch of experience can move the policy. Proximal means near. Experience is slow to collect, so we want several updates per batch, and the limit stops them wrecking the policy. PPO is standard in robotics and in reinforcement learning from human feedback (RLHF) for language models.
 
 knowledge_points:
   - id: ppo-advantage

@@ -6,36 +6,28 @@ exercises:
     role: diagnostic
     difficulty: 2
     est_minutes: 2
-    prompt: Which item specifies how the agent chooses actions within a given Markov decision process?
+    prompt: "A robot's move command sometimes fails and leaves it where it was. Which part of a Markov decision process describes how often that happens?"
     options:
-      - {
-          id: a,
-          text: "The agent's policy",
-          correct: true,
-          feedback: A policy specifies how the agent chooses actions within the task described by the MDP.,
-        }
-      - {
-          id: b,
-          text: "The transition probabilities $p(s' \\mid s, a)$",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: These describe which next state follows an action that has already been chosen.,
-        }
-      - {
-          id: c,
-          text: "The reward function",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: This assigns numerical rewards to the outcomes of actions.,
-        }
-      - {
-          id: d,
-          text: "The set of actions",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: This lists available choices; a policy specifies which choice to make.,
-        }
-    solution: "An MDP is $(S, A, p, R, \\gamma)$ and describes the task. The agent's policy specifies how it chooses actions within that task."
+      - id: a
+        text: "The transition probabilities $p(s' \\mid s, a)$"
+        correct: true
+        feedback: "They give the chance of each next state after an action, including staying put."
+      - id: b
+        text: The reward function
+        correct: false
+        category: misunderstood_definition
+        feedback: "It gives the number received for an outcome, not how likely the outcome is."
+      - id: c
+        text: "The discount factor $\\gamma$"
+        correct: false
+        category: misunderstood_definition
+        feedback: It weights later rewards.
+      - id: d
+        text: The set of states
+        correct: false
+        category: misunderstood_definition
+        feedback: "It lists the situations; it says nothing about how likely each move is."
+    solution: "Transition probabilities give the chance of each next state $s'$ after action $a$ in state $s$, so a failed move is a transition back to the same cell."
   - id: mdpp-state-basics
     dimension: conceptual
     type: mc
@@ -67,9 +59,9 @@ exercises:
     prompt: In the worked example, why does the left command from cell 1 still produce reward $-1$?
     options:
       - id: a
-        text: A wall collision always cancels the ordinary step cost and gives zero reward.
+        text: Any command toward a wall is penalised by $-1$, whatever cell the robot is in.
         correct: false
-        feedback: The step still occurs when the robot stays in place, so the ordinary reward $-1$ applies.
+        feedback: There is no wall-specific penalty. Every step that doesn't reach the goal gives $-1$.
       - id: b
         text: The command still uses one time step, and it ends outside the goal cell.
         correct: true
@@ -402,10 +394,13 @@ exercises:
       factor: { min: 5, max: 9, step: 4 }
       reward: { min: 12, max: 20, step: 4 }
       delay: { min: 1, max: 2, step: 1 }
-    prompt: A robot task uses $\gamma={{= factor / 10 }}$. A reward of ${{= reward }}$ arrives ${{= delay }}$ extra time steps beyond the next reward. What is its weighted amount when viewed from now? Give an exact decimal.
+    constraints:
+      - "abs((factor / 10)^delay * reward - factor) > 0.001"
+      - "abs((factor / 10)^delay * reward - (delay + 1)) > 0.001"
+    prompt: A robot task uses $\gamma={{= factor / 10 }}$. A reward of ${{= reward }}$ arrives after command {{= delay + 1 }} from now. What is its weighted amount from before the next command? Give an exact decimal.
     answer_expr: (factor / 10)^delay * reward
     tolerance: { abs: 0.001 }
-    solution: Each extra step contributes one discount factor, so the weighted amount is ${{= factor / 10 }}^{ {{= delay }} }\times{{= reward }}={{= (factor / 10)^delay * reward }}$.
+    solution: The reward arrives after command {{= delay + 1 }}, so there are {{= delay }} extra steps after the next reward. From before the next command, its weighted amount is ${{= factor / 10 }}^{{= delay }}\times{{= reward }}={{= (factor / 10)^delay * reward }}$.
   - id: mdpp-zero-meaning
     dimension: conceptual
     type: mc

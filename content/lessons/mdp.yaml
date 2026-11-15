@@ -10,7 +10,7 @@ where_this_fits: |
 
   A **Markov decision process**, or **MDP**, is a mathematical description of a task with repeated choices and numerical rewards. A decision maker, called the **agent**, chooses an action, then receives a reward and arrives in the next state.
 
-  An MDP helps us describe a robot's commands and movement, define what counts as progress and predict the consequences of choices. Probability lets us describe the uncertain outcomes of one action. An MDP connects choices and outcomes over a whole **run**, meaning one attempt at the task. It also includes a rule for how much later rewards count when we score a run.
+  An MDP helps us describe a robot's commands and movement, define what counts as progress and predict the consequences of choices. Probability lets us describe the uncertain outcomes of one action. An MDP connects choices and outcomes over a whole **run**, meaning one attempt at the task. It also includes a rule for how much later rewards count.
 knowledge_points:
   - id: mdp-task
     title: Describe a robot's task
@@ -176,7 +176,7 @@ knowledge_points:
       - With $\gamma=0.9$, later rewards have smaller weights.
       - With $\gamma=1$, every reward has weight 1.
 
-      Be careful: discounting also makes delayed penalties count less strongly, which can encourage delaying costs. A very small discount factor can almost ignore a distant goal. The agent still receives the reward specified by the task; discounting changes how we weight it.
+      Be careful: discounting also makes delayed penalties count less strongly, which can encourage delaying costs. A very small discount factor can almost ignore a distant goal. Discounting changes only the weight we give a reward when we evaluate it.
 
       ### The complete task description
 
@@ -219,6 +219,6 @@ summary: |
   - Transition probabilities $p(s'\mid s,a)$ add to 1 over next states for each fixed state and action; expected next reward weights each possible reward by its probability.
   - The next reward has weight 1. The discount factor $\gamma$ gives a later reward weight $\gamma^k$ for $k\ge1$ extra steps of delay.
 
-  The MDP defines which runs can occur and how to score them.
+  The MDP defines which runs can occur and how their rewards are weighted.
 
   **Next:** The next lesson introduces policies, rules for choosing actions, and combines weighted rewards into a discounted return.

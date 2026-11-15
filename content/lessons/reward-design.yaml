@@ -78,7 +78,7 @@ knowledge_points:
     explain: |
       ### Rewards along the way
 
-      A robot rewarded only at the goal may wander a long time before it learns anything. Why not also reward progress? Adding rewards like this, so the agent gets useful feedback before it reaches the goal, is called **reward shaping**.
+      A robot rewarded only at the goal may wander a long time before it learns anything. Why not reward progress? Adding rewards like this, so the agent gets useful feedback before it reaches the goal, is called **reward shaping**.
 
       But extra rewards change what the agent maximises. We want a bonus that speeds up learning and leaves the best behaviour the same.
 
@@ -119,7 +119,7 @@ knowledge_points:
 
       Now add up the bonuses along any path from cell 1 to cell 4. Each cell's score is added when the robot moves into it and taken away again when it moves out. So everything in the middle cancels, and the total is always the last score minus the first, $\Psi(4)-\Psi(1)=3$. Every complete path gets the same extra $3$, so the path that was best before is still best. But now a move right short of the goal nets $-1+1=0$, and a move left from cell 2 or 3 nets $-1-1=-2$, so the robot can tell the better way before reaching the goal.
 
-      This is **potential-based shaping**. Ng, Harada and Russell proved in 1999 that bonuses of this form never change the best behaviour, that is, the best action in each state. With a discount below 1, the bonus is written $\gamma\Psi(s')-\Psi(s)$, so that it cancels in the same way inside the discounted return, and the guarantee still holds.
+      This is **potential-based shaping**. Ng, Harada and Russell proved in 1999 that bonuses of this form never change the best behaviour, that is, the best action in each state. With a discount below 1, the bonus is written $\gamma\Psi(s')-\Psi(s)$, and the guarantee still holds as long as the state where the episode ends has potential $0$.
     worked: |
       Let's add up the shaped return for two paths from cell 1. We use the step-cost rewards with $\gamma=1$. On top of them, each move earns the bonus $\Psi(s')-\Psi(s)$, where $\Psi$ is the cell number.
 
@@ -220,7 +220,7 @@ knowledge_points:
 final: rd-explain-reward-design
 summary: |
   - A sparse reward, such as $+10$ only for reaching the goal, is easy to write and says exactly what we want, but an agent acting at random may almost never reach it, so at first it has nothing to learn from.
-  - Reward shaping adds rewards along the way. A potential-based bonus $F=\Psi(s')-\Psi(s)$ (with $\gamma=1$) adds the same total, $\Psi(\text{end})-\Psi(\text{start})$, to every path, so it speeds up learning without changing which behaviour is best. With a discount, the bonus is $\gamma\Psi(s')-\Psi(s)$.
+  - Reward shaping adds rewards along the way. A potential-based bonus $F=\Psi(s')-\Psi(s)$ (with $\gamma=1$) adds the same total, $\Psi(\text{end})-\Psi(\text{start})$, to every path, so it speeds up learning without changing which behaviour is best. With a discount below 1, the bonus is $\gamma\Psi(s')-\Psi(s)$, and the guarantee still holds as long as the state where the episode ends has potential $0$.
   - Reward hacking is an agent earning high reward in a way the designer didn't intend. A bonus that can be collected again and again, like $+3$ for every move right with nothing taken back, can make looping forever the best behaviour.
   - To find the risks, ask what the easiest way to earn the reward is, look for loops, faked signs of success and bonuses never taken back, and watch what the trained agent actually does.
 

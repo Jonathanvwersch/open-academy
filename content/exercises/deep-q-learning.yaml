@@ -343,8 +343,9 @@ exercises:
         "abs(((pA-(-1+0.9*max(a1,a2)))^2+(pB-10)^2)/2-a2) > 0.000001",
         "abs(((pA-(-1+0.9*max(a1,a2)))^2+(pB-10)^2)/2-pA) > 0.000001",
         "abs(((pA-(-1+0.9*max(a1,a2)))^2+(pB-10)^2)/2-pB) > 0.000001",
+        "abs(((pA-(-1+0.9*max(a1,a2)))^2+(pB-10)^2)/2-4.625) > 0.000001",
       ]
-    prompt: "A DQN minibatch has 2 moves and $\\gamma=0.9$. Move A has reward $(-1)$ and continues the episode. Its next-state Q-values are ${{= a1 }}$ and ${{= a2 }}$, and its selected-action prediction is ${{= pA }}$. Move B ends its episode with reward 10 and selected-action prediction ${{= pB }}$. What is the mean squared-error loss, to two decimal places?"
+    prompt: "A DQN minibatch has 2 moves and $\\gamma=0.9$. Move A has reward $(-1)$ and continues the episode. Its next-state Q-values are ${{= a1 }}$ and ${{= a2 }}$, and its selected-action prediction is ${{= pA }}$. Move B ends its episode with reward 10 and selected-action prediction is ${{= pB }}$. What is the mean squared-error loss, rounded to two decimal places?"
     answer_expr: ((pA-(-1+0.9*max(a1,a2)))^2+(pB-10)^2)/2
     tolerance: { abs: 0.0051 }
     common_wrong:

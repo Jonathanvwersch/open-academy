@@ -4,9 +4,7 @@ objective: |
   **Goal:** perform a Q-learning update, by building the TD target from one move's reward and the next state's best value and moving the stored value part of the way toward it, and run the update with epsilon-greedy exploration until the table holds the best action values.
 recap:
   - concept: value-functions
-    text: "The best action value $Q^*(s,a)$ adds reward $r_{t+1}$ to the best next-action value, discounted by factor $\\gamma$. After an episode ends, the next value is zero."
-  - concept: policies-returns
-    text: "The return $G_t$ sums rewards from $r_{t+1}$ onward; a reward $k$ steps later gets weight $\\gamma^k$. With discount factor $\\gamma=0.9$, later rewards count less."
+    text: "The best action value $Q^*(s,a)$ is the return from taking $a$ in $s$ and then acting as well as possible: reward $r_{t+1}$ plus $\\gamma$ times the best next action value, or zero once the episode ends."
 where_this_fits: |
   ### What is Q-learning?
 
@@ -239,7 +237,7 @@ knowledge_points:
       4. **Update $Q(1,\text{right})$.** It was $-0.75$, so the TD error is $0.35-(-0.75)=1.1$, and we move half of it.
          $$Q(1,\text{right})\leftarrow-0.75+0.5\times1.1=-0.2.$$
 
-      The random move let the robot try right in cell 1, and the target still used the best value in cell 2. That is why the table keeps learning the best values while the robot explores.
+      The random move let the robot try right in cell 1. The target uses the best value in cell 2, whichever move the robot makes there next.
     problems:
       - ql-explore-basics
       - qlp-greedy-chance-self-explain

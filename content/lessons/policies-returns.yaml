@@ -99,7 +99,7 @@ knowledge_points:
 
       ### A score for the remaining trip
 
-      The **discounted return** adds the rewards still to come, each multiplied by a **weight** that sets how much it counts. At time $t$, we write it $G_t$ and start with $r_{t+1}$ from the action at time $t$. Reward $r_t$ has already arrived and is left out. The discount factor $\gamma$ (gamma) sets these weights.
+      The **discounted return** adds the rewards still to come, each multiplied by a **weight** that sets how much it counts. At time $t$, we write it $G_t$ and start with $r_{t+1}$ from the action at time $t$. Rewards up to $r_t$ have already arrived and are left out. The discount factor $\gamma$ (gamma) sets these weights.
 
       The next reward gets weight $1$, the following reward gets $\gamma$, and the one after that gets $\gamma^2$. For our three moves this gives
 

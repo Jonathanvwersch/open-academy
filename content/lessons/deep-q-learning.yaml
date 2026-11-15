@@ -14,7 +14,7 @@ where_this_fits: |
 
   Deep Q-learning is Q-learning with a neural network in place of the table of Q-values. The network reads a state and outputs one Q-value for each action.
 
-  A table needs a row for every state, and it learns nothing about a state until the agent visits it. A video game can show more screens than any table could hold. A network reads any screen as pixel values and gives similar screens similar values. But a network trained the obvious way is unstable, because it learns from its own changing guesses. So we'll also learn the two fixes in DeepMind's DQN (deep Q-network). Its first paper, in 2013, used experience replay, and the 2015 version added a target network.
+  A table needs a row for every state, and it learns nothing about a state until the agent visits it. A video game can show more screens than any table could hold. A network reads any screen as pixel values and tends to give similar screens similar values. But a network trained the obvious way is unstable, because it learns from its own changing guesses. So we'll also learn the two fixes in DeepMind's DQN (deep Q-network). Its first paper, in 2013, used experience replay, and the 2015 version added a target network.
 knowledge_points:
   - id: dqn-q-network
     title: "Replace the table with a network"
@@ -98,7 +98,7 @@ knowledge_points:
 
       We can now train a Q-network on one move. The simplest plan is to take a gradient step on each move as soon as the robot makes it, but that has two problems.
 
-      First, moves that come one after another are alike. Our robot starts in cell 1 of the 4-cell corridor. Early in training its Q-values are poor guesses and it explores a lot, so its first moves are spent in cells 1 and 2. Moving at random, it takes 6 moves on average to first reach cell 3. In a video game, screens a moment apart look almost the same. Since each step changes the values for every cell, a long run of steps on cells 1 and 2 can drag cell 3's values off, so the network forgets what earlier episodes taught it about cell 3.
+      First, moves that come one after another are alike. Our robot starts in cell 1 of the 4-cell corridor. Early in training its Q-values are poor guesses and it explores a lot, so its first moves are spent in cells 1 and 2. Moving at random, it takes 6 moves on average to first reach cell 3. In a video game, screens a moment apart look almost the same. Since each step changes the values for every cell, several steps on cells 1 and 2 can drag cell 3's values off, so the network forgets what earlier episodes taught it about cell 3.
 
       Second, each move is used for one step and then thrown away. Real moves take real time, so that's wasteful.
 
