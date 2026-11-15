@@ -1036,55 +1036,25 @@ exercises:
     role: core
     difficulty: 3
     est_minutes: 5
-    prompt:
-      Explain how REINFORCE improves a policy. What does it climb? Where does the log-derivative trick
-      enter? Why are the world transition probabilities unnecessary, and how does the choice of baseline affect noise?
+    prompt: "Explain what REINFORCE optimises, give one episode's gradient estimate, and show how an action-independent baseline changes that estimate."
     rubric:
       - id: objective
-        criterion: Explain climbing expected return $J(\theta)=E[G_0]$ by adding a gradient-ascent step.
+        criterion: Explain climbing expected return $J(\theta)=E[G_0]$ by gradient ascent.
         weight: 1
         required: true
-      - id: estimate
-        criterion:
-          Use $\nabla_\theta\pi_\theta=\pi_\theta\nabla_\theta\ln\pi_\theta$ to turn the slope into an average
-          over played episodes.
-        weight: 0.5
-        required: true
       - id: episode
-        criterion: Estimate that slope from an episode using $G_0\sum_t\nabla_\theta\ln\pi_\theta(a_t\mid s_t)$.
-        weight: 0.5
-        required: true
-      - id: world
-        criterion: Explain that world transition terms have zero parameter slope because they do not depend on $\theta$.
-        weight: 0.5
+        criterion: Give the episode estimate $G_0\sum_t\nabla_\theta\ln\pi_\theta(a_t\mid s_t)$.
+        weight: 1
         required: true
       - id: baseline
-        criterion: Describe replacing the return $G_0$ with $G_0-b$ in the episode's gradient estimate.
-        weight: 0.25
+        criterion: Replace $G_0$ with $G_0-b$ for an action-independent baseline $b$.
+        weight: 1
         required: true
       - id: noise
         criterion:
           Explain that a baseline near the typical return usually reduces noise, while a badly chosen one can
           add noise.
-        weight: 0.75
-        required: true
-      - id: average
-        criterion:
-          Mention that an action-independent baseline preserves the average estimate because the policy's log-probability
-          gradient averages to zero.
-        weight: 0.5
+        weight: 0.25
         required: false
-    exemplar:
-      REINFORCE climbs expected return $J(\theta)=E[G_0]$ by gradient ascent. The log-derivative
-      trick $\nabla_\theta\pi_\theta=\pi_\theta\nabla_\theta\ln\pi_\theta$ turns the slope into an average
-      estimated by $G_0\sum_t\nabla_\theta\ln\pi_\theta(a_t\mid s_t)$; world transition log terms have zero
-      slope because they do not depend on $\theta$. An action-independent baseline replaces $G_0$ with $G_0-b$
-      while preserving the average estimate, since the policy log-probability gradient averages to zero.
-      A baseline near the typical return usually reduces noise a lot, but a bad one can add noise.
-    solution:
-      REINFORCE climbs expected return $J(\theta)=E[G_0]$ by gradient ascent. The log-derivative
-      trick $\nabla_\theta\pi_\theta=\pi_\theta\nabla_\theta\ln\pi_\theta$ turns the slope into an average
-      estimated by $G_0\sum_t\nabla_\theta\ln\pi_\theta(a_t\mid s_t)$; world transition log terms have zero
-      slope because they do not depend on $\theta$. An action-independent baseline replaces $G_0$ with $G_0-b$
-      while preserving the average estimate, since the policy log-probability gradient averages to zero.
-      A baseline near the typical return usually reduces noise a lot, but a bad one can add noise.
+    exemplar: "REINFORCE uses gradient ascent on expected return $J(\\theta)=E[G_0]$. One episode gives the estimate $G_0\\sum_t\\nabla_\\theta\\ln\\pi_\\theta(a_t\\mid s_t)$. An action-independent baseline replaces $G_0$ with $G_0-b$. A baseline near the typical return usually reduces noise, while a bad choice can add noise."
+    solution: "REINFORCE uses gradient ascent on expected return $J(\\theta)=E[G_0]$. One episode gives the estimate $G_0\\sum_t\\nabla_\\theta\\ln\\pi_\\theta(a_t\\mid s_t)$. An action-independent baseline replaces $G_0$ with $G_0-b$. A baseline near the typical return usually reduces noise, while a bad choice can add noise."

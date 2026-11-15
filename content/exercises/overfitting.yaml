@@ -683,43 +683,21 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 4
-    prompt: "On the six-house fit, the straight line has rounded training/validation errors of 50/62 and the wiggly curve has 0/93. Errors are in thousands of dollars, and errors below 30 would be useful. In the illustrated training run on more houses, the wiggly curve had its lowest validation error at epoch 5. After that, training error fell but validation error rose. Explain the likely problems with the straight line and the wiggly curve, which saved copy to keep, and one change you could compare for each problem. Say how to use validation houses and the test houses we set aside at the start."
+    prompt: "A straight line's training and validation errors are $50$ and $62$; a wiggly curve's are $0$ and $93$. All errors are in thousands of dollars, and errors below $30$ would be useful. Explain each model's likely problem and one change you would test for the wiggly curve."
     rubric:
       - id: diagnoses
         criterion:
-          Identify the straight line as likely underfitting because even its training error of $50$ exceeds the
-          useful-error target of $30$.
-        weight: 0.5
+          Identify likely underfitting because the straight line's training error of $50$ exceeds the useful-error
+          target of $30$.
+        weight: 1
         required: true
       - id: overfit
-        criterion:
-          Identify the wiggly curve as likely overfitting because training error is $0$ while validation error
-          is $93$.
-        weight: 0.5
-        required: true
-      - id: curves
-        criterion: Explain that falling training error with rising validation error after epoch $5$ suggests overfitting.
-        weight: 0.5
-        required: true
-      - id: checkpoint
-        criterion: Keep the copy saved at epoch $5$ because its validation error is lowest.
-        weight: 0.5
-        required: true
-      - id: choices
-        criterion: Propose comparing a more flexible model for the underfitting straight line.
-        weight: 0.25
+        criterion: Identify likely overfitting because the wiggly curve has training error $0$ and validation error $93$.
+        weight: 1
         required: true
       - id: overfit-change
-        criterion: Propose comparing a simpler model, more training data or earlier stopping for the overfitting curve.
-        weight: 0.25
+        criterion: Propose testing a simpler model, more training data or earlier stopping for the overfitting curve.
+        weight: 1
         required: true
-      - id: validation
-        criterion: Use validation houses to choose between model or training changes.
-        weight: 0.25
-        required: true
-      - id: test
-        criterion: Reserve the test houses for one final score after fixing all choices.
-        weight: 0.25
-        required: true
-    exemplar: "The straight line likely underfits because even its training error of 50 is too high to be useful. The wiggly curve likely overfits because zero training error comes with validation error 93. I would compare a more flexible model instead of the straight line, and a simpler model or more training data instead of the wiggly curve. The wiggly curve starts fitting training details too closely after epoch 5, so I would keep that saved copy. I would compare changes on validation houses and score the final choice once on the test houses we set aside at the start."
-    solution: "The straight line's high errors suggest underfitting. The wiggly curve's low training error and high validation error suggest overfitting. Keep the wiggly curve's copy from epoch 5, compare changes using validation error, and use the test houses we set aside at the start for the final score."
+    exemplar: "The straight line likely underfits because even its training error of $50$ is too high to be useful. The wiggly curve likely overfits because training error is $0$ while validation error is $93$. I would test a simpler model for the wiggly curve."
+    solution: "The straight line likely underfits because even its training error of $50$ is too high to be useful. The wiggly curve likely overfits because training error is $0$ while validation error is $93$. I would test a simpler model for the wiggly curve."

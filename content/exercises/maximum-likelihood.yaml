@@ -631,47 +631,26 @@ exercises:
     role: core
     difficulty: 3
     est_minutes: 5
-    prompt: "Explain what the likelihood of a guess is and how maximum likelihood chooses a guess, why we usually work with the log-likelihood, and why assuming Gaussian noise turns maximum likelihood into minimising the mean squared error."
+    prompt: "For independent measured readings, explain what a parameter guess's likelihood is, how maximum likelihood chooses a guess, and why Gaussian noise with fixed standard deviation $\\sigma$ leads to minimising MSE."
     rubric:
       - id: likelihood
         criterion:
-          Define likelihood as the observed data's probability under a guess for discrete outcomes, or a product
-          of density heights for measured readings.
+          Define likelihood for independent measured readings as the product of their density heights under the
+          parameter guess.
         weight: 1
         required: true
       - id: estimate
-        criterion: Explain that maximum likelihood chooses the guess that makes the observed data's likelihood largest.
+        criterion: Explain choosing the parameter guess with the largest likelihood.
         weight: 1
-        required: true
-      - id: logs
-        criterion: Explain that logs turn the product over independent readings into a sum.
-        weight: 0.5
-        required: true
-      - id: numbers
-        criterion: Explain that summing log values avoids products too tiny for a computer to store accurately.
-        weight: 0.25
-        required: false
-      - id: ordering
-        criterion: Explain that the log always rises, so taking it keeps the same best guess.
-        weight: 0.25
         required: true
       - id: mse
         criterion:
-          Explain that each Gaussian log height is a constant minus squared error over $2\sigma^2$, so independent
-          Gaussian noise with fixed $\sigma$ makes maximum likelihood equivalent to minimising MSE.
+          Explain that the Gaussian log-likelihood is a constant minus the sum of squared errors over $2\sigma^2$,
+          so maximising it minimises MSE.
         weight: 1
         required: true
-      - id: limits
-        criterion:
-          Mention a limitation such as wild erroneous readings dominating squared error, or yes-or-no outcomes
-          needing another loss.
-        weight: 0.5
-        required: false
-    exemplar: "For discrete outcomes, likelihood is the probability of the observed data if a guess were true; for measured readings we use a product of density heights. Maximum likelihood picks the guess that makes this largest. Independent readings multiply, giving tiny numbers, so we take logs to turn the product into a sum; the log always rises, so the best guess stays the same. With independent Gaussian noise of fixed $\\sigma$, each log height is a constant minus squared error over $2\\sigma^2$, so maximising their sum minimises the sum of squared errors and hence MSE. Wild erroneous readings can dominate squared error, and yes-or-no data need another loss."
-    solution:
-      Maximum likelihood ranks guesses by how probable they make the data. Logs keep that ranking
-      while turning products into sums, and with Gaussian noise the log-likelihood is a constant minus
-      the sum of squared errors over $2\sigma^2$.
+    exemplar: "For independent measured readings, likelihood multiplies their density heights under the parameter guess. Maximum likelihood chooses the guess making that product largest. With Gaussian noise of fixed $\\sigma$, log-likelihood is a constant minus the sum of squared errors over $2\\sigma^2$, so maximising it minimises MSE."
+    solution: "For independent measured readings, likelihood multiplies their density heights under the parameter guess. Maximum likelihood chooses the guess making that product largest. With Gaussian noise of fixed $\\sigma$, log-likelihood is a constant minus the sum of squared errors over $2\\sigma^2$, so maximising it minimises MSE."
   - id: lab-gauss-front-factor
     dimension: transfer
     type: mc

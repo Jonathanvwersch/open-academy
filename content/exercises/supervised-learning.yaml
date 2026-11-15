@@ -237,29 +237,21 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 4
-    prompt: "A delivery company has records of 5,000 journeys and wants to tell customers how many minutes a delivery will take. Describe this, or another real problem you care about, as a supervised-learning problem. Name the inputs, the targets, a possible prediction rule, a loss measure and where the training examples would come from."
+    prompt: "A delivery company has records of $5000$ journeys and wants to predict delivery time in minutes. Explain which inputs it could use, what the training target is, and how to score a prediction's error."
     rubric:
       - id: r1
-        criterion: Identify the inputs available when making a prediction.
+        criterion: Identify inputs available when making a prediction, such as distance and time of day.
         weight: 1
         required: true
       - id: target
-        criterion: Identify the desired target, known for the recorded training examples.
+        criterion: Identify the recorded delivery time in minutes as the training target.
         weight: 1
         required: true
       - id: r2
-        criterion: Choose a loss suited to the target, such as squared error for predicted minutes.
-        weight: 2
+        criterion: Choose a loss suited to predicting minutes, such as squared prediction error.
+        weight: 1
         required: true
-      - id: r3
-        criterion: Give a possible rule for turning inputs into the predicted target.
-        weight: 0.5
-        required: true
-      - id: data
-        criterion: Identify where examples pairing inputs with known targets would come from.
-        weight: 0.5
-        required: true
-    exemplar: "A delivery company wants to tell customers how many minutes their orders will take. It has records of 5,000 deliveries. The inputs are distance and time of day, and the target is the recorded delivery time. A model multiplies each input by an adjustable setting and adds the results to predict minutes. Squared error measures how far each predicted time is from the recorded time. The past delivery records provide the training data."
+    exemplar: "Use inputs available when predicting, such as distance and time of day. The training target is the recorded delivery time in minutes. Squared prediction error scores how far the predicted minutes are from the recorded minutes."
   - id: slp-predict
     dimension: math
     type: numeric

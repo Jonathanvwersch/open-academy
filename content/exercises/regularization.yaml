@@ -793,17 +793,11 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 4
-    prompt: A model is trained by gradient descent with squared error plus an L2 penalty $\lambda\sum_j w_j^2$. Explain how the penalty changes each update, why that can reduce overfitting, and how you would choose $\lambda$.
+    prompt: "A model uses gradient descent on squared error plus $\\lambda\\sum_jw_j^2$. Explain how this penalty changes a weight's update, why it can reduce overfitting, and how to choose $\\lambda$."
     rubric:
-      - id: update
-        criterion: Give $2\lambda w$ as the penalty's added slope for one weight.
-        weight: 0.5
-        required: true
       - id: decay
-        criterion:
-          Give $w_{\text{new}}=(1-2\eta\lambda)w-\eta\,\partial L_{\text{data}}/\partial w$ to show weight decay
-          alongside the data step.
-        weight: 0.5
+        criterion: Give $w_{\text{new}}=(1-2\eta\lambda)w-\eta\,\partial L_{\text{data}}/\partial w$ as the update.
+        weight: 1
         required: true
       - id: why
         criterion:
@@ -815,17 +809,5 @@ exercises:
         criterion: Train with several values of $\lambda$ and keep the one with lowest validation error.
         weight: 1
         required: true
-      - id: too-small
-        criterion: Mention that too small a $\lambda$ can leave the model overfitting.
-        weight: 0.25
-        required: false
-      - id: too-large
-        criterion: Mention that too large a $\lambda$ can make the model underfit.
-        weight: 0.25
-        required: false
-      - id: test
-        criterion: Mention keeping test examples aside for one final score.
-        weight: 0.5
-        required: false
-    exemplar: "The penalty $\\lambda w^2$ has slope $2\\lambda w$, so the update is $w_{\\text{new}}=(1-2\\eta\\lambda)w-\\eta\\,\\partial L_{\\text{data}}/\\partial w$. This supplies weight decay alongside the usual data step. A weight settles where the data's pull balances the decay, so it stays large only if that lowers training error enough. Smaller weights make predictions change more gently, limiting how closely the model can copy noise. I would train with several values of $\\lambda$, such as $0.01$, $0.1$, $1$ and $10$, and keep the one with lowest validation error. Too small a value can still overfit, while too large a value can underfit. The test examples stay untouched until one final score."
-    solution: "The penalty adds $2\\lambda w$ to each weight's slope, so each update multiplies the weight by $1-2\\eta\\lambda$ before the data step. Weights only stay large where that lowers the data loss enough, which makes copying training quirks costly. Choose $\\lambda$ by validation error and keep the test examples for the final score."
+    exemplar: "The update becomes $w_{\\text{new}}=(1-2\\eta\\lambda)w-\\eta\\,\\partial L_{\\text{data}}/\\partial w$. Smaller weights make predictions change more gently, limiting how closely the model can copy training quirks. Train with several values of $\\lambda$ and keep the one with lowest validation error."
+    solution: "The update becomes $w_{\\text{new}}=(1-2\\eta\\lambda)w-\\eta\\,\\partial L_{\\text{data}}/\\partial w$. Smaller weights make predictions change more gently, limiting how closely the model can copy training quirks. Train with several values of $\\lambda$ and keep the one with lowest validation error."

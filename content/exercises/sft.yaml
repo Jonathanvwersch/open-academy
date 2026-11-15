@@ -322,45 +322,27 @@ exercises:
     role: core
     difficulty: 3
     est_minutes: 4
-    prompt: Explain how you would turn a pretrained language model into an assistant using prompt–response demonstrations, a chat template and response-only loss. Say which targets count, how their mean is computed, and why the prompt still matters.
+    prompt: "A pretrained model receives chat-formatted prompt-response demonstrations. Explain which tokens count as response-only loss targets, how their loss is averaged, and why the prompt tokens still matter."
     rubric:
-      - id: sft-demonstrations
-        criterion: Start from pretrained weights and continue training on desired prompt–response demonstrations.
-        weight: 0.5
-        required: true
-      - id: chat-template
-        criterion: Format messages with the roles and endings expected by the model.
-        weight: 0.5
-        required: true
       - id: sft-target-mask
-        criterion: Select response-token targets, including the first response token predicted from the last prompt position.
-        weight: 0.3
-        required: true
-      - id: ending
-        criterion: Include the response ending marker among the selected targets.
-        weight: 0.2
+        criterion:
+          Select response-token targets from the first response token, predicted by the last prompt position,
+          through the response ending marker.
+        weight: 1
         required: true
       - id: mean
         criterion:
           Average the selected targets' negative log probabilities by dividing their sum by the selected-target
           count.
-        weight: 0.5
+        weight: 1
         required: true
       - id: sft-prompt-context
         criterion: Keep prompt tokens as context that helps predict the response.
         weight: 1
         required: true
       - id: empty
-        criterion: Mention rejecting examples with no selected targets to avoid dividing by zero.
-        weight: 0.5
+        criterion: Reject examples with no selected targets to avoid dividing by zero.
+        weight: 0.25
         required: false
-      - id: prompt-weights
-        criterion: Mention that response losses can update weights that also process the prompt.
-        weight: 0.5
-        required: false
-      - id: mistakes
-        criterion: Mention that demonstrations can teach mistakes, so lower training loss can mean learning those mistakes.
-        weight: 0.5
-        required: false
-    exemplar: I continue training from pretrained weights on checked prompt–response pairs, formatted with the roles and endings that model expects. I select response targets, including the first response token and the response ending, and average their negative log probabilities over the selected-target count, rejecting examples with no targets. The prompt remains available to predict the response, so weights processing it can still learn; excluding its own target losses does not remove that context, and a lower loss can still mean learning mistakes in the demonstrations.
-    solution: SFT trains pretrained weights to make demonstrated answers more likely in the expected chat format. Response-only masking averages the selected response-target losses while preserving prompt context, and cannot guarantee that the demonstrations themselves are correct.
+    exemplar: "Select response targets, including the first response token predicted by the last prompt position and the response ending marker. Divide the sum of their negative log probabilities by the selected-target count. Prompt tokens remain context for predicting the response. Reject examples with no selected targets before taking the mean."
+    solution: "Select response targets, including the first response token predicted by the last prompt position and the response ending marker. Divide the sum of their negative log probabilities by the selected-target count. Prompt tokens remain context for predicting the response. Reject examples with no selected targets before taking the mean."

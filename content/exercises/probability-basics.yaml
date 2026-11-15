@@ -610,38 +610,20 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 4
-    prompt: "Use house-sale data to explain the difference between an event probability, a distribution of offer counts, an expected number of offers and a conditional probability. Include how a complement is estimated and how you would check whether selling above asking is independent of receiving at least two offers."
+    prompt: "Use house-sale data to explain what a distribution of offer counts records, how to find the expected number of offers, and how to estimate the probability of selling above asking given at least two offers."
     rubric:
-      - id: event-and-complement
-        criterion: Estimate the probability of selling above asking from the fraction of past sales that did so.
-        weight: 0.5
-        required: true
-      - id: complement
-        criterion: Estimate the complement by subtracting that fraction from $1$.
-        weight: 0.5
-        required: true
       - id: distribution-and-expectation
-        criterion:
-          Describe a distribution as each possible offer count paired with its probability, with probabilities
-          adding to $1$.
-        weight: 0.5
+        criterion: Describe each possible offer count paired with its probability, with probabilities adding to $1$.
+        weight: 1
         required: true
       - id: expectation
-        criterion:
-          Compute expected offers by multiplying each count by its probability and adding to find the long-run
-          average.
-        weight: 0.5
+        criterion: Multiply each offer count by its probability and add to find the long-run average.
+        weight: 1
         required: true
       - id: conditional-and-independent
         criterion:
           Keep only sales with at least two offers and find the fraction above asking to estimate the conditional
           probability.
-        weight: 0.5
+        weight: 1
         required: true
-      - id: independence
-        criterion:
-          Compare that conditional rate with the overall above-asking rate to check whether knowing the offer
-          condition changes the probability.
-        weight: 0.5
-        required: true
-    exemplar: "An event is a set of outcomes, such as a sale going above asking. The fraction of past sales in the event estimates its probability, and the complement gets $1$ minus that fraction. A distribution pairs each possible offer count with its probability, and those probabilities add to $1$; expected offers multiplies each count by its probability and adds, giving the long-run average. To estimate above-asking probability given at least two offers, keep only sales with at least two offers and find the fraction above asking. Compare that rate with the overall above-asking rate to check independence. Equal true probabilities mean independence; rates from past sales are estimates and can differ a little by chance."
+    exemplar: "A distribution lists each possible offer count with its probability, and those probabilities add to $1$. Expected offers multiplies each count by its probability and adds, giving the long-run average. To estimate above-asking probability given at least two offers, keep only sales with at least two offers and find the fraction above asking."

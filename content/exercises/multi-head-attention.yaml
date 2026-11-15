@@ -579,43 +579,21 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 4
-    prompt: Explain how multi-head attention turns $T$ token embeddings of width $d$ into $T$ outputs of width $d$, giving the shape at each stage, and why running $h$ heads is useful.
+    prompt: "Multi-head attention uses $h$ heads with width $d_k=d/h$ on $T$ tokens of model width $d$. Explain how the heads can learn different views, how their outputs are joined, and how the joined result is mixed."
     rubric:
       - id: r1
         criterion:
-          Give each head its own $d\times d_k$ query, key and value matrices, with $d_k=d/h$, producing $T\times
-          d_k$ queries, keys and values.
-        weight: 0.4
-        required: true
-      - id: weights
-        criterion: Compute $QK^\top/\sqrt{d_k}$ and apply a row-wise softmax to get $T\times T$ attention weights.
-        weight: 0.3
-        required: true
-      - id: head-output
-        criterion: Multiply each head's weights by its values to give a $T\times d_k$ output.
-        weight: 0.3
-        required: true
-      - id: r2
-        criterion: Concatenate the $h$ head outputs side by side to make $T\times d$.
-        weight: 0.5
-        required: true
-      - id: output-mix
-        criterion:
-          Multiply by a learned $d\times d$ matrix $W_O$, keeping $T\times d$ while letting each output entry
-          use every head.
-        weight: 0.5
-        required: true
-      - id: r3
-        criterion:
-          Explain that each head gives each token a separate set of weights, so different heads can attend to
-          different tokens.
+          Explain that giving each head its own learned query, key and value matrices lets heads learn different
+          token relationships.
         weight: 1
         required: true
-      - id: parameters
-        criterion:
-          Mention that sharing the width among heads keeps the learned parameter count at $4d^2$ whatever $h$
-          is.
-        weight: 0.5
-        required: false
-    exemplar: "We stack the embeddings into a $T\\times d$ matrix $X$. Each of the $h$ heads multiplies $X$ by its own $d\\times d_k$ query, key and value matrices, with $d_k=d/h$, giving $T\\times d_k$ queries, keys and values. Its scores $QK^\\top/\\sqrt{d_k}$ form a $T\\times T$ matrix, a softmax along each row turns them into weights, and multiplying by the values gives a $T\\times d_k$ output. Writing the $h$ outputs side by side gives $T\\times d$, and the $d\\times d$ output matrix $W_O$ mixes the heads and keeps the shape $T\\times d$. It's useful because one head's weights for a token add up to 1, so whatever it needs from the sentence has to share that total; with several heads each token gets several separate sets of weights, for example one on its subject and one on itself. Since the heads share out the width, the layer still learns four $d\\times d$ matrices, $4d^2$ numbers."
-    solution: "We stack the embeddings into a $T\\times d$ matrix $X$. Each of the $h$ heads multiplies $X$ by its own $d\\times d_k$ query, key and value matrices, with $d_k=d/h$, giving $T\\times d_k$ queries, keys and values. Its scores $QK^\\top/\\sqrt{d_k}$ form a $T\\times T$ matrix, a softmax along each row turns them into weights, and multiplying by the values gives a $T\\times d_k$ output. Writing the $h$ outputs side by side gives $T\\times d$, and the $d\\times d$ output matrix $W_O$ mixes the heads and keeps the shape $T\\times d$. It's useful because one head's weights for a token add up to 1, so whatever it needs from the sentence has to share that total; with several heads each token gets several separate sets of weights, for example one on its subject and one on itself. Since the heads share out the width, the layer still learns four $d\\times d$ matrices, $4d^2$ numbers."
+      - id: r2
+        criterion: Concatenate the $h$ outputs of shape $T\times d_k$ side by side to make $T\times d$.
+        weight: 1
+        required: true
+      - id: output-mix
+        criterion: Multiply by a learned $d\times d$ matrix $W_O$ so each output entry can use every head.
+        weight: 1
+        required: true
+    exemplar: "Each head has its own learned query, key and value matrices, so heads can learn different token relationships. Concatenating their $T\\times d_k$ outputs side by side gives $T\\times d$. A learned $d\\times d$ matrix $W_O$ mixes that joined result so each output entry can use every head."
+    solution: "Each head has its own learned query, key and value matrices, so heads can learn different token relationships. Concatenating their $T\\times d_k$ outputs side by side gives $T\\times d$. A learned $d\\times d$ matrix $W_O$ mixes that joined result so each output entry can use every head."

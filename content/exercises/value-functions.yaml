@@ -701,7 +701,7 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 4
-    prompt: 'Explain what $V^\pi(s)$ and $Q^\pi(s,a)$ measure, how a Bellman backup works out a state''s value from the next states, and how the optimality backup is different.'
+    prompt: "Explain what $V^\\pi(s)$ measures, what $Q^\\pi(s,a)$ measures, and how a Bellman expectation backup updates a state's value from current next-state estimates."
     rubric:
       - id: r1
         criterion: Define $V^\pi(s)$ as expected return from state $s$ while following policy $\pi$.
@@ -712,15 +712,9 @@ exercises:
         weight: 1
         required: true
       - id: r2
-        criterion: Build a one-action backup from its reward plus the discounted current estimate for the next state.
+        criterion:
+          Explain replacing the state's value with expected reward plus discounted current next-state value,
+          averaged over the policy's actions and possible next states.
         weight: 1
         required: true
-      - id: average
-        criterion: Average those totals over the policy's actions and possible next states, using their probabilities.
-        weight: 1
-        required: true
-      - id: r3
-        criterion: Take the largest expected action total for the optimality backup.
-        weight: 1
-        required: true
-    exemplar: '$V^\pi(s)$ is the return an agent expects from state $s$ if it follows policy $\pi$, and $Q^\pi(s,a)$ is the return it expects if it takes action $a$ first and then follows $\pi$. A Bellman backup takes current estimates and sets a state''s value to the expected one-step reward plus $\gamma$ times the next state''s value, averaged over the policy''s actions and where the moves land. In the 4-cell corridor under "always move right", cell 2 gets $-1+0.9\times10=8$. The optimality backup instead takes the largest of those one-step values over the actions, and repeating it gives $V^*$, from which the best move is the one with the largest $Q^*$.'
+    exemplar: "The value $V^\\pi(s)$ is expected return from state $s$ while following $\\pi$. The value $Q^\\pi(s,a)$ is expected return after taking action $a$ first and then following $\\pi$. A Bellman expectation backup averages $r+\\gamma V^\\pi(s')$ over the policy's actions and possible next states, using their probabilities and current value estimates."
