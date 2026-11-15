@@ -854,17 +854,29 @@ exercises:
     prompt: "Explain to a colleague what PPO's clipped objective prevents. Say what goes wrong when several gradient steps reuse one batch with the plain ratio objective, how the clipped objective behaves for positive and negative advantages, and why it takes the minimum of the plain and clipped terms."
     rubric:
       - id: r1
-        criterion: "Reusing a batch with the plain objective keeps rewarding bigger changes, so noisy advantage estimates can push the policy far from the one that collected the data and make it much worse"
+        criterion:
+          Explain that repeated plain-ratio updates keep rewarding larger changes, so noisy advantages can push
+          the policy far from the one that collected the batch.
         weight: 2
         required: true
       - id: r2
-        criterion: "With a positive advantage the term stops rising once the ratio passes $1+c$; with a negative advantage it stops rising once the ratio falls below $1-c$"
-        weight: 2
+        criterion: Explain that a positive-advantage sample's objective goes flat once its probability ratio exceeds $1+c$.
+        weight: 1
+        required: true
+      - id: negative
+        criterion:
+          Explain that a negative-advantage sample's objective goes flat once its probability ratio falls below
+          $1-c$.
+        weight: 1
         required: true
       - id: r3
-        criterion: "The minimum keeps the plain term when it is lower, so a change in the wrong direction is still corrected"
+        criterion:
+          Explain that the minimum keeps the plain term when it is lower, so changes in the wrong direction can
+          still be corrected.
         weight: 1
+        required: true
       - id: r4
-        criterion: "This makes several passes per batch safe, so each batch of experience is used more fully"
+        criterion: Mention that clipping helps reuse each batch for several passes.
         weight: 1
-    exemplar: "If we take many gradient steps on one batch using ratio times advantage, the objective keeps rewarding bigger changes. The advantages are noisy and were measured under the old policy, so the policy can move far from where the data are useful and suddenly get worse. PPO clips the ratio to between $1-c$ and $1+c$. For a good action the term goes flat once the action is $1+c$ times as likely as before, and for a bad action it goes flat once it is $1-c$ times as likely, so that sample stops pushing. Taking the minimum keeps the plain term when it is lower, so if a good action became less likely the update can still pull it back up. That makes it safe to do several passes over each batch."
+        required: false
+    exemplar: "Several gradient steps on one batch using ratio times advantage keep rewarding larger changes. The noisy advantages were measured under the old policy, so the new policy can move far from where the data are useful and get much worse. PPO takes the minimum of the plain term and the term whose ratio is clipped to $[1-c,1+c]$. For positive advantage the objective goes flat above $1+c$, and for negative advantage it goes flat below $1-c$, so that sample stops pushing further in that direction. The minimum keeps the plain term when it is lower, allowing a good action that became less likely to be pushed back up. This helps reuse each batch for several passes, though the limit is soft because samples share parameters."

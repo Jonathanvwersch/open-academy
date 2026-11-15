@@ -704,14 +704,23 @@ exercises:
     prompt: 'Explain what $V^\pi(s)$ and $Q^\pi(s,a)$ measure, how a Bellman backup works out a state''s value from the next states, and how the optimality backup is different.'
     rubric:
       - id: r1
-        criterion: 'Says that $V^\pi(s)$ is the expected return from $s$ under $\pi$, and $Q^\pi(s,a)$ the expected return from taking $a$ first and then following $\pi$'
-        weight: 2
+        criterion: Define $V^\pi(s)$ as expected return from state $s$ while following policy $\pi$.
+        weight: 1
+        required: true
+      - id: action-value
+        criterion: Define $Q^\pi(s,a)$ as expected return after taking action $a$ in state $s$ and then following $\pi$.
+        weight: 1
         required: true
       - id: r2
-        criterion: "Describes a backup as one step of reward plus the discounted value of the next state, averaged over actions and next states, using current estimates"
-        weight: 2
+        criterion: Build a one-action backup from its reward plus the discounted current estimate for the next state.
+        weight: 1
+        required: true
+      - id: average
+        criterion: Average those totals over the policy's actions and possible next states, using their probabilities.
+        weight: 1
         required: true
       - id: r3
-        criterion: The optimality backup takes the best action's value (a max), which leads to the optimal values
+        criterion: Take the largest expected action total for the optimality backup.
         weight: 1
+        required: true
     exemplar: '$V^\pi(s)$ is the return an agent expects from state $s$ if it follows policy $\pi$, and $Q^\pi(s,a)$ is the return it expects if it takes action $a$ first and then follows $\pi$. A Bellman backup takes current estimates and sets a state''s value to the expected one-step reward plus $\gamma$ times the next state''s value, averaged over the policy''s actions and where the moves land. In the 4-cell corridor under "always move right", cell 2 gets $-1+0.9\times10=8$. The optimality backup instead takes the largest of those one-step values over the actions, and repeating it gives $V^*$, from which the best move is the one with the largest $Q^*$.'

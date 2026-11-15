@@ -1041,21 +1041,39 @@ exercises:
       enter? Why are the world transition probabilities unnecessary, and how does the choice of baseline affect noise?
     rubric:
       - id: objective
-        criterion: States that REINFORCE climbs expected return by adding an ascent step.
+        criterion: Explain climbing expected return $J(\theta)=E[G_0]$ by adding a gradient-ascent step.
         weight: 1
         required: true
       - id: estimate
         criterion:
-          Uses the log-derivative trick to obtain return times a sum of log-policy gradients and
-          explains that world transition terms have zero parameter slope.
-        weight: 1
+          Use $\nabla_\theta\pi_\theta=\pi_\theta\nabla_\theta\ln\pi_\theta$ to turn the slope into an average
+          over played episodes.
+        weight: 0.5
+        required: true
+      - id: episode
+        criterion: Estimate that slope from an episode using $G_0\sum_t\nabla_\theta\ln\pi_\theta(a_t\mid s_t)$.
+        weight: 0.5
+        required: true
+      - id: world
+        criterion: Explain that world transition terms have zero parameter slope because they do not depend on $\theta$.
+        weight: 0.5
         required: true
       - id: baseline
-        criterion:
-          Explains that an action-independent baseline preserves the average because the average log-policy
-          gradient is zero. A baseline near the typical return usually reduces noise a lot, while a bad one can add noise.
-        weight: 1
+        criterion: Describe replacing the return $G_0$ with $G_0-b$ in the episode's gradient estimate.
+        weight: 0.25
         required: true
+      - id: noise
+        criterion:
+          Explain that a baseline near the typical return usually reduces noise, while a badly chosen one can
+          add noise.
+        weight: 0.75
+        required: true
+      - id: average
+        criterion:
+          Mention that an action-independent baseline preserves the average estimate because the policy's log-probability
+          gradient averages to zero.
+        weight: 0.5
+        required: false
     exemplar:
       REINFORCE climbs expected return $J(\theta)=E[G_0]$ by gradient ascent. The log-derivative
       trick $\nabla_\theta\pi_\theta=\pi_\theta\nabla_\theta\ln\pi_\theta$ turns the slope into an average

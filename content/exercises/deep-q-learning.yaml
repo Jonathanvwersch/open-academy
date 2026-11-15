@@ -884,22 +884,54 @@ exercises:
     est_minutes: 5
     prompt: Explain how DQN trains a Q-network from stored moves. Why can training a Q-network without any fixes diverge, and how do experience replay and a target network help?
     rubric:
-      - {
-          id: training,
-          criterion: "Describes state input, one Q-value per action, selected-action prediction, reward plus discounted best next value, reward-only ended targets, and a gradient step on mean squared error.",
-          weight: 1,
-          required: true,
-        }
-      - {
-          id: replay,
-          criterion: "Explains that a replay buffer stores transitions and random minibatches mix similar consecutive experiences and reuse data.",
-          weight: 1,
-          required: true,
-        }
-      - {
-          id: stability,
-          criterion: "Explains how shared weights can move both predictions and targets and lead to divergence, and how a frozen target copy with no target gradients and periodic weight copies holds labels steady.",
-          weight: 1,
-          required: true,
-        }
+      - id: training
+        criterion: Describe a Q-network reading a state and outputting one Q-value per action.
+        weight: 0.2
+        required: true
+      - id: prediction
+        criterion: Use the network output for the action recorded in each stored move as its prediction.
+        weight: 0.2
+        required: true
+      - id: target
+        criterion:
+          Build a nonterminal target from the reward plus the discounted largest next-action value from the target
+          network.
+        weight: 0.2
+        required: true
+      - id: terminal
+        criterion: Use only the reward as the target for an ended episode.
+        weight: 0.2
+        required: true
+      - id: loss
+        criterion: Take a gradient step on the minibatch's mean squared prediction error.
+        weight: 0.2
+        required: true
+      - id: replay
+        criterion: Store transitions $(s,a,r,s',\text{done})$ in a replay buffer.
+        weight: 0.3
+        required: true
+      - id: mixing
+        criterion:
+          Explain that random minibatches mix moves from different places and times, reducing runs of similar
+          updates.
+        weight: 0.4
+        required: true
+      - id: reuse
+        criterion: Explain that replay reuses each stored move in several updates.
+        weight: 0.3
+        required: true
+      - id: stability
+        criterion:
+          Explain that shared weights can move both predictions and targets after an update, letting the estimates
+          diverge.
+        weight: 0.5
+        required: true
+      - id: frozen
+        criterion: Use a frozen network copy to supply targets without gradient steps on that copy.
+        weight: 0.25
+        required: true
+      - id: copies
+        criterion: Copy the trained network's weights into the target network every $C$ gradient steps.
+        weight: 0.25
+        required: true
     exemplar: "A Q-network reads a state and outputs one Q-value per action. DQN stores each transition and samples random minibatches from the buffer. Random replay mixes experiences from different times and reuses each move. For each move, the prediction is the output for the action taken. The target is the reward plus the discounted largest next-action value from the target network. An ended episode has target equal to its final reward. DQN takes gradient steps on the mean squared prediction error. If the trained network also supplies targets, shared weights can move both sides after each update and the estimates can diverge. A frozen target copy supplies labels without gradients. Copying the trained weights every C updates keeps labels steady between copies."

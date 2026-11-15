@@ -534,16 +534,32 @@ exercises:
     prompt: Describe how you would turn a robot navigation task into an MDP. Explain what the state must contain, how actions lead to next states and rewards, and how the discount factor affects a delayed reward's weight.
     rubric:
       - id: state
-        criterion: Chooses state information sufficient to predict next-state and reward probabilities given an action, without earlier history.
+        criterion:
+          Choose state information that, together with the action, predicts next-state and reward probabilities
+          without earlier history.
         weight: 1
         required: true
       - id: task
-        criterion: Specifies available actions, transition probabilities totalling 1, a reward rule and how an episode ends.
-        weight: 1
+        criterion: List the actions available to the robot.
+        weight: 0.25
+        required: true
+      - id: transitions
+        criterion: Give next-state probabilities for each state and action, adding to $1$.
+        weight: 0.5
+        required: true
+      - id: rewards
+        criterion: Specify the reward received after each transition.
+        weight: 0.25
         required: true
       - id: delay
-        criterion: Explains that the next reward has weight 1 and each extra step of delay multiplies a later reward's weight by the discount factor.
+        criterion:
+          Explain that the next reward has weight $1$ and each extra step of delay multiplies a later reward's
+          weight by $\gamma$.
         weight: 1
         required: true
-    exemplar: I choose a state such as the robot's position and velocity if both affect its motion. I list available commands, give the chance of every next state for each command so those chances total 1, assign rewards to transitions and mark which arrivals end the episode. The discount factor gives the next reward weight 1 and multiplies a later reward's weight once per extra step of delay.
+      - id: ending
+        criterion: Mention which arrivals end the episode.
+        weight: 0.25
+        required: false
+    exemplar: "I record the robot's cell and whether its battery is charged if that changes how it moves. I list available commands, give the chance of each next state for each command so those chances total $1$, and assign rewards to transitions. I can also mark which arrivals end the episode. The discount factor gives the next reward weight $1$ and multiplies a later reward's weight once per extra step of delay."
     solution: A complete task description needs sufficient state information, available actions, transition probabilities, rewards and a discount factor, with the start and termination specified for an episodic task. Discounting specifies how delay changes the weight of a reward.
