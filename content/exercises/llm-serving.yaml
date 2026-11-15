@@ -593,7 +593,7 @@ exercises:
       - id: a
         text: Caches whole prompts so all later requests can skip processing their prompt tokens.
         correct: false
-        feedback: Chunking divides prompt processing. It does not guarantee prompt-cache reuse.
+        feedback: Chunking divides prompt processing over several steps. It does not let later requests skip their prompts.
         category: incorrect_reasoning
       - id: b
         text: Splits a long prompt into pieces processed one per step alongside decoding sequences.
@@ -705,7 +705,7 @@ exercises:
     prompt: Disaggregated serving runs prefill and decode on separate GPUs. Llama 3 8B, an 8-billion-parameter language model, uses 131,072 bytes of KV cache per token at 16-bit precision. After a 1,000-token prompt is processed, how many GB of KV cache must be copied to the decode GPU? Use GB = $10^9$ bytes.
     answer: 0.131072
     tolerance:
-      abs: 0.001
+      abs: 0.002
     common_wrong:
       - answer: 0.065536
         category: math_error
@@ -799,7 +799,7 @@ exercises:
     prompt: Explain how continuous batching raises a chat server's throughput, why storing the KV cache in blocks lets the batch grow, and what you would change if inter-token latency jumped whenever a long prompt arrived.
     rubric:
       - id: r1
-        criterion: Explain that continuous batching replaces finished sequences after every decode step so slots do not sit idle, while each step still costs about the same.
+        criterion: Explain that continuous batching replaces finished sequences after every decode step so slots do not sit idle.
         weight: 1
         required: true
       - id: r2

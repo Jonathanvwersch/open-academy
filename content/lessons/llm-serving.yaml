@@ -10,7 +10,7 @@ where_this_fits: |
 
   Serving an LLM means running it for many users at the same time. The server takes in their requests, decides which ones the GPU works on at each moment, and streams each reply back token by token. The program that does this is called an inference engine.
 
-  A GPU that answers one user at a time leaves most of its power unused, because making one token for one user takes about as long as making one token each for dozens of users. Our example is a chat assistant serving Llama 3 8B on one NVIDIA H100 GPU. We'll see how engines keep that GPU busy, how to spread the work over several GPUs, and how to stop long prompts slowing replies.
+  A GPU that answers one user at a time leaves most of its power unused, because making one token for one user takes about as long as making one token each for dozens of users. Our example is a chat assistant serving Llama 3 8B on one NVIDIA H100 SXM GPU. We'll see how engines keep that GPU busy, how to spread the work over several GPUs, and how to stop long prompts slowing replies.
 knowledge_points:
   - id: lsv-batching
     title: "Make many replies at once"
@@ -21,7 +21,7 @@ knowledge_points:
 
       As the prefill and decode lesson showed, after processing the prompt, each decode step makes one reply token and reads all the model's weights from GPU memory. For Llama 3 8B the weights take about 16 GB. The H100 reads its memory at about 3.35 TB/s, its memory bandwidth, so one step takes about 4.8 ms, which we'll round to 5 ms. The maths for one token takes far less time than that.
 
-      Each request's prompt plus its reply so far is called a **sequence**. If we put several sequences into a **batch** and decode them together, the weights are read once for all of them, and the step still takes about 5 ms, so each user's ITL stays about 5 ms. A batch of 32 sequences makes 32 tokens per step.
+      Each request's prompt plus its reply so far is called a **sequence**. If we put several sequences into a **batch** and decode them together, the weights are read once for all of them. Ignoring KV-cache reads, the step still takes about 5 ms, so each user's ITL stays about 5 ms. A batch of 32 sequences makes 32 tokens per step.
 
       ### Two ways to fill the batch
 
