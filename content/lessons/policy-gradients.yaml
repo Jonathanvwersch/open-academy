@@ -23,7 +23,7 @@ knowledge_points:
 
       Our policy has one parameter, $\theta$. The policy ignores which cell the robot is in, and in every cell it moves right with probability
 
-      $$\pi_\theta(\text{right}\mid s)=\frac{e^\theta}{e^\theta+1},$$
+      $$p=\pi_\theta(\text{right}\mid s)=\frac{e^\theta}{e^\theta+1},$$
 
       and left otherwise. This is a common way to turn any number into a probability. At $\theta=0$ this is $0.5$, at $\theta=2$ it's about $0.88$, and at $\theta=-2$ it's about $0.12$. So raising $\theta$ makes right more likely, and the formula always gives a probability between $0$ and $1$.
 
@@ -43,7 +43,7 @@ knowledge_points:
       <path d="M70 168 H600" stroke="#d4d4d4" stroke-dasharray="3 4"/>
       <path d="M70 68.8 H600" stroke="#737373" stroke-dasharray="6 5"/>
       <path d="M70.0 328.0 96.0 328.0 122.0 327.8 148.0 327.5 174.0 326.5 200.0 323.8 213.0 321.1 226.0 316.8 239.0 310.4 252.0 301.2 265.0 288.7 278.0 272.9 291.0 254.1 304.0 233.3 317.0 211.7 330.0 190.8 343.0 171.4 356.0 154.1 369.0 139.2 382.0 126.6 395.0 116.1 408.0 107.5 421.0 100.4 434.0 94.6 447.0 89.8 460.0 86.0 473.0 82.8 486.0 80.2 499.0 78.1 512.0 76.4 525.0 75.0 538.0 73.9 551.0 73.0 564.0 72.2 577.0 71.6 590.0 71.1" fill="#ffffff" fill-opacity="0" stroke="#10b981" stroke-width="2.5"/>
-      <path d="M330 190.8 L366 142.5" stroke="#f59e0b" stroke-width="3" marker-end="url(#pg1-amber)"/>
+      <path d="M330 190.8 L366 133.6" stroke="#f59e0b" stroke-width="3" marker-end="url(#pg1-amber)"/>
       <circle cx="330" cy="190.8" r="4.5" fill="#171717"/>
       <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="342" y="206">θ = 0, J ≈ −1.42</text>
       <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="380" y="148" fill="#f59e0b">raising θ raises J</text>
@@ -109,7 +109,7 @@ knowledge_points:
 
       $$\nabla_\theta J=3\,\nabla_\theta\pi_\theta(B)+1\,\nabla_\theta\pi_\theta(A).$$
 
-      We can't estimate this by pulling arms. Averaging what we see over many pulls estimates a sum whose terms are weighted by how often each arm is pulled. Here the terms are weighted by slopes of probabilities instead.
+      We can't estimate this by pulling arms. Averaging what we see over many pulls estimates a sum whose terms are weighted by how often each arm is pulled. Here each term is weighted by the slope of a probability.
 
       ### The log-derivative trick
 
@@ -192,7 +192,7 @@ knowledge_points:
 
       ### What the update does
 
-      Each action the robot took becomes more likely when $G_0$ is positive, and less likely when it's negative, by an amount scaled by the return. Every action in the episode is weighted by the same $G_0$, even actions that didn't affect the result, and over many episodes their extra pushes cancel on average. The picture shows the episode right, right, right at $\theta=0$.
+      Each action the robot took becomes more likely when $G_0$ is positive, and less likely when it's negative, by an amount scaled by the return. Every action in the episode is weighted by the same $G_0$, even though an action can't change the rewards that came before it. Over many episodes, those extra pushes cancel on average. The picture shows the episode right, right, right at $\theta=0$.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 230" aria-label="The corridor of cells 1 to 4. The robot starts in cell 1 and moves right three times, with rewards minus 1, minus 1 and plus 10. Under each move, its log-probability slope is 0.5. The return is 6.2 and the sum of the slopes is 1.5">
@@ -282,27 +282,27 @@ knowledge_points:
 
       $$E\big[b\,\nabla_\theta\ln\pi_\theta(a)\big]=b\sum_a\pi_\theta(a)\,\nabla_\theta\ln\pi_\theta(a)=b\sum_a\nabla_\theta\pi_\theta(a)=0.$$
 
-      The last sum is $0$ because the probabilities always add up to $1$, so their changes cancel. Any number that doesn't depend on the action works. A good choice is close to the average return, kept up to date as the policy learns, so $G-b$ says whether things went better or worse than usual.
+      The last sum is $0$ because the probabilities always add up to $1$, so their changes cancel. Any number that doesn't depend on the action keeps the average right. A baseline near the typical return, kept up to date as the policy learns, usually cuts the noise a lot, and $G-b$ then says whether things went better or worse than usual. A badly chosen baseline can add noise.
 
       ### Limitations
 
       Even with a baseline, REINFORCE needs many episodes. Its average is over the episodes the current policy plays. So it only holds for episodes played with the current $\theta$, and after every update the old episodes are thrown away. And one step that's too big can wreck a good policy, for example by making the robot almost never move right.
     worked: |
-      Let's see what a baseline of $b=5$ does in the corridor at $\theta=0$, where the policy moves right with probability $0.5$. We picked $5$ to show what happens to an episode whose return falls below the baseline. It's above the true average return $J(0)\approx-1.42$, which is fine: any baseline keeps the average estimate right, though one near $-1.42$ would cut the noise most. We use two episodes. Right, right, right has return $6.2$, and left, right, right, right has return $4.58$.
+      Let's compare a good baseline and a bad one on the slot machine, where arm A pays $11$, arm B pays $13$ and $\theta=0$, so the policy pulls B with probability $p=0.5$.
 
-      1. **Compare the first return with the baseline.** Right, right, right did better than $5$.
-         $$G_0-b=6.2-5=1.2.$$
+      1. **Find each arm's slope.** For arm B, $\nabla_\theta\ln\pi_\theta(B)=1-p$, and for arm A it is $-p$.
+         $$\nabla_\theta\ln\pi_\theta(B)=0.5,\qquad\nabla_\theta\ln\pi_\theta(A)=-0.5.$$
 
-      2. **Find its estimate.** Each right move has slope $1-0.5=0.5$, so the sum is $1.5$.
-         $$1.2\times1.5=1.8.$$
+      2. **Use the baseline $b=10$.** This is close to the typical payout of $12$, and each estimate is $(G-b)$ times the arm's slope.
+         $$\text{B: }(13-10)\times0.5=1.5,\qquad\text{A: }(11-10)\times(-0.5)=-0.5.$$
 
-      3. **Find the second episode's sum of slopes.** The left move has slope $-p=-0.5$ and the three right moves have $0.5$ each.
-         $$-0.5+0.5+0.5+0.5=1.$$
+      3. **Use the baseline $b=30$.** This is far above both payouts.
+         $$\text{B: }(13-30)\times0.5=-8.5,\qquad\text{A: }(11-30)\times(-0.5)=9.5.$$
 
-      4. **Find its estimate.** Its return $4.58$ is below the baseline, so the factor is negative.
-         $$(4.58-5)\times1=-0.42.$$
+      4. **Check the averages.** Each arm is pulled half the time, so we average each pair of estimates.
+         $$0.5\times1.5+0.5\times(-0.5)=0.5,\qquad0.5\times(-8.5)+0.5\times9.5=0.5.$$
 
-      Without a baseline, the estimates would be $6.2\times1.5=9.3$ and $4.58\times1=4.58$, both positive, so both episodes would become more likely. With $b=5$, the worse episode gets a negative estimate, so the update makes it less likely. Each episode now counts by how its return compares with the baseline.
+      Both baselines keep the average at the true slope $0.5$. Without a baseline the two estimates are $6.5$ and $-5.5$, which are $12$ apart. With $b=10$ they are only $2$ apart, so the noise shrinks a lot. With $b=30$ they are $18$ apart, so this badly chosen baseline adds noise.
     problems:
       - pg-baseline-basics
       - pgp-baseline-self-explain
@@ -318,6 +318,6 @@ summary: |
   - A policy gradient method gives the policy parameters $\theta$ and climbs its expected return $J(\theta)=E[G_0]$ by gradient ascent, $\theta_{\text{new}}=\theta+\eta\,\nabla_\theta J(\theta)$.
   - The log-derivative trick, $\nabla_\theta\pi_\theta(a)=\pi_\theta(a)\,\nabla_\theta\ln\pi_\theta(a)$, turns the slope into an average, $\nabla_\theta J=E[G\,\nabla_\theta\ln\pi_\theta(a)]$, which we can estimate from played episodes.
   - REINFORCE plays an episode and steps $\theta_{\text{new}}=\theta+\eta\,G_0\sum_t\nabla_\theta\ln\pi_\theta(a_t\mid s_t)$. The world's transition probabilities drop out, so the agent never needs to know them.
-  - Subtracting a baseline $b$ from the return leaves the average estimate unchanged, because $E[\nabla_\theta\ln\pi_\theta(a)]=0$, and makes each estimate much less noisy.
+  - Subtracting a baseline $b$ from the return leaves the average estimate unchanged, because $E[\nabla_\theta\ln\pi_\theta(a)]=0$, and a baseline near the typical return usually makes each estimate much less noisy.
 
   **Next:** The PPO lesson builds on these estimates and limits how far each update can move the policy, so one big step can't wreck it.

@@ -338,7 +338,7 @@ exercises:
     est_minutes: 2
     prompt:
       One slot-machine pull pays $G={{=g}}$. The chosen action has log-probability slope $\nabla_\theta\ln\pi_\theta(a)={{=s}}$.
-      What one-pull estimate of the slope of expected payout does REINFORCE give?
+      What is the one-pull estimate of the slope of expected payout?
     solution: Multiply payout by the chosen action's log-probability slope. The estimate is ${{=g}}\times{{=s}}={{=g*s}}$.
     tolerance:
       abs: 0.001
@@ -367,7 +367,7 @@ exercises:
     est_minutes: 2
     prompt:
       A slot machine has arms A and B. Its policy pulls B with probability $p=e^\theta/(e^\theta+1)$
-      and A otherwise. Currently $p={{=p}}$. A pull of A pays ${{=g}}$. What is the one-pull REINFORCE estimate
+      and A otherwise. Currently $p={{=p}}$. A pull of A pays ${{=g}}$. What is the one-pull estimate
       of the slope of expected payout?
     solution: A's log-probability slope is $-p$. The estimate is ${{=g}}\times(-{{=p}})=({{=-g*p}})$.
     tolerance:
@@ -403,7 +403,7 @@ exercises:
     prompt:
       A slot machine has arms A and B. Its policy pulls B with probability $p=e^\theta/(e^\theta+1)$
       and A otherwise. A always pays 2 and B always pays 6. At $\theta=0$, what is the average one-pull
-      REINFORCE estimate of the slope of expected payout?
+      estimate of the slope of expected payout?
     solution:
       Both arms have chance $0.5$ and log-probability slopes $-0.5$ and $0.5$. Their estimates average
       $0.5\times2\times(-0.5)+0.5\times6\times0.5=1$.
@@ -424,7 +424,7 @@ exercises:
     difficulty: 2
     est_minutes: 2
     prompt:
-      A slot-machine policy has true expected-payout slope $+0.5$. One pull gives a REINFORCE estimate
+      A slot-machine policy has true expected-payout slope $+0.5$. One pull gives a slope estimate
       of $-0.5$. A learner says the method is broken. What explains this?
     solution:
       A single estimate can point the wrong way. Averaging estimates drawn from the current policy
@@ -441,10 +441,10 @@ exercises:
         category: incorrect_reasoning
         feedback: A positive payout can multiply a negative log-probability slope.
       - id: c
-        text: The parameter must be negative; the trick only works for $\theta>0$.
+        text: The parameter must be positive; the trick only works for $\theta>0$.
         correct: false
         category: incorrect_reasoning
-        feedback: The identity holds wherever the probability is positive and differentiable.
+        feedback: The identity works for negative and zero parameters too, wherever the probability is positive and differentiable.
       - id: d
         text: Single estimates can point the wrong way; their average gives the slope.
         correct: true
@@ -645,6 +645,7 @@ exercises:
       gives $-1$, with $\gamma=0.9$. In every cell the policy chooses right with probability $p=e^\theta/(e^\theta+1)$
       and left otherwise. Start at $\theta=0$. The episode right, right, right has return $6.2$. With learning
       rate $\eta={{=eta}}$, what is the new $\theta$ after one whole-episode REINFORCE update?
+      Give the exact value.
     solution: Each right has log-probability slope $0.5$, so their sum is $1.5$. The new parameter is $0+{{=eta}}\times6.2\times1.5={{=9.3*eta}}$.
     tolerance:
       abs: 0.001
@@ -792,26 +793,26 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: In the worked example, why does left, right, right, right give a negative estimate with $b=5$?
-    solution: Its return is $4.58$, so $G_0-b=-0.42$. Its slope sum is 1, giving a negative estimate.
+    prompt: In the worked example, why does $b=30$ make the estimates noisier than having no baseline?
+    solution: Thirty is far above both payouts, so both centred returns have large magnitudes. The estimates are $-8.5$ and $9.5$, which are 18 apart, compared with 12 without a baseline.
     options:
       - id: a
-        text: Its first action is left, so that action makes the whole estimate negative.
+        text: It changes the average estimate, so the estimates drift away from the true slope.
         correct: false
         category: incorrect_reasoning
-        feedback: The other actions also contribute. The slope sum is positive.
+        feedback: Both pairs of estimates average 0.5. An action-independent baseline preserves the average.
       - id: b
-        text: Its log-probability slopes sum to a negative number, while its return exceeds 5.
+        text: It exceeds both payouts, so it reverses the sign of the true expected-payout slope.
         correct: false
         category: incorrect_reasoning
-        feedback: The slope sum is 1 and the return is 4.58.
+        feedback: The true slope stays 0.5. A baseline changes individual estimates without changing their average.
       - id: c
-        text: Its baseline of 5 exceeds the goal reward of 10, making the weight negative.
+        text: Larger baselines always remove more noise, so the apparent extra spread is misleading.
         correct: false
         category: incorrect_reasoning
-        feedback: Five is below ten. The weight compares the return with the baseline.
+        feedback: A poorly chosen baseline can add noise. Here the estimates spread farther apart.
       - id: d
-        text: Its return 4.58 is below 5, while its log-probability slopes sum to 1.
+        text: It is far above both payouts, giving large centred returns and estimates 18 apart instead of 12.
         correct: true
     lesson_only: true
   - id: pgp-baseline-simple-template
@@ -1035,7 +1036,7 @@ exercises:
     est_minutes: 5
     prompt:
       Explain how REINFORCE improves a policy. What does it climb? Where does the log-derivative trick
-      enter? Why are the world transition probabilities unnecessary, and why does a baseline help?
+      enter? Why are the world transition probabilities unnecessary, and how does the choice of baseline affect noise?
     rubric:
       - id: objective
         criterion: States that REINFORCE climbs expected return by adding an ascent step.
@@ -1049,8 +1050,8 @@ exercises:
         required: true
       - id: baseline
         criterion:
-          Explains that an action-independent baseline reduces noise while preserving the average
-          because the average log-policy gradient is zero.
+          Explains that an action-independent baseline preserves the average because the average log-policy
+          gradient is zero. A baseline near the typical return usually reduces noise a lot, while a bad one can add noise.
         weight: 1
         required: true
     exemplar:
@@ -1058,12 +1059,12 @@ exercises:
       trick $\nabla_\theta\pi_\theta=\pi_\theta\nabla_\theta\ln\pi_\theta$ turns the slope into an average
       estimated by $G_0\sum_t\nabla_\theta\ln\pi_\theta(a_t\mid s_t)$; world transition log terms have zero
       slope because they do not depend on $\theta$. An action-independent baseline replaces $G_0$ with $G_0-b$
-      to reduce noise while preserving the average estimate, since the policy log-probability gradient averages
-      to zero.
+      while preserving the average estimate, since the policy log-probability gradient averages to zero.
+      A baseline near the typical return usually reduces noise a lot, but a bad one can add noise.
     solution:
       REINFORCE climbs expected return $J(\theta)=E[G_0]$ by gradient ascent. The log-derivative
       trick $\nabla_\theta\pi_\theta=\pi_\theta\nabla_\theta\ln\pi_\theta$ turns the slope into an average
       estimated by $G_0\sum_t\nabla_\theta\ln\pi_\theta(a_t\mid s_t)$; world transition log terms have zero
       slope because they do not depend on $\theta$. An action-independent baseline replaces $G_0$ with $G_0-b$
-      to reduce noise while preserving the average estimate, since the policy log-probability gradient averages
-      to zero.
+      while preserving the average estimate, since the policy log-probability gradient averages to zero.
+      A baseline near the typical return usually reduces noise a lot, but a bad one can add noise.
