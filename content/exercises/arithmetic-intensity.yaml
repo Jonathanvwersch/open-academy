@@ -284,9 +284,9 @@ exercises:
     prompt: An operation is compute-bound in a roofline model, but a measurement is well below peak compute. Which explanation is consistent with the model?
     options:
       - id: a
-        text: The small product leaves some computing units idle.
+        text: The implementation leaves some computing units idle.
         correct: true
-        feedback: A compute ceiling is an upper bound, and small products may fail to use all computing units.
+        feedback: A compute ceiling is an upper bound, and an implementation may fail to use all computing units.
       - id: b
         text: Compute-bound means every run must reach peak compute.
         correct: false
@@ -457,7 +457,7 @@ exercises:
     est_minutes: 3
     prompt: 'A vision model processes 16 image rows together with a product $(16\times64)(64\times64)$. Each number occupies 2 bytes. Each input is read once from GPU memory and the fresh output is written once. A toy device has peak 160 FLOP/s and bandwidth 10 bytes/s. What is this product''s roofline ceiling in FLOP/s, rounded to two decimal places?'
     answer: 106.67
-    tolerance: { abs: 0.005 }
+    tolerance: { abs: 0.05 }
     solution: 'Intensity is $16\times64/(64+2\times16)=32/3$ FLOPs per byte. Memory supports $(32/3)\times10\approx106.67$ FLOP/s, below the compute ceiling of 160 FLOP/s.'
   - id: aip-explain-serving
     dimension: conceptual
