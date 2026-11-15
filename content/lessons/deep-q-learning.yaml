@@ -10,7 +10,7 @@ where_this_fits: |
 
   Deep Q-learning is Q-learning with a neural network in place of the table of Q-values. The network reads a state and outputs one Q-value for each action.
 
-  A table needs a row for every state, and it learns nothing about a state until the agent visits it. A video game's screen can show more different pictures than any table could hold. A network reads any screen as a list of pixel values, and it tends to give similar screens similar values. But a network trained the obvious way is unstable, because it learns from its own changing guesses. So we'll also learn the two fixes used by DeepMind's 2015 method DQN (deep Q-network): experience replay and a target network.
+  A table needs a row for every state, and it learns nothing about a state until the agent visits it. A video game can show more screens than any table could hold. A network reads any screen as pixel values and gives similar screens similar values. But a network trained the obvious way is unstable, because it learns from its own changing guesses. So we'll also learn the two fixes in DeepMind's DQN (deep Q-network). Its first paper, in 2013, used experience replay, and the 2015 version added a target network.
 knowledge_points:
   - id: dqn-q-network
     title: "Replace the table with a network"
@@ -96,9 +96,9 @@ knowledge_points:
 
       We can now train a Q-network on one move. The simplest plan is to take a gradient step on each move as soon as the robot makes it, but that has two problems.
 
-      First, moves that come one after another are alike. Our robot starts in cell 1 of the 4-cell corridor. Early in training its Q-values are poor guesses and it explores a lot, so it can spend dozens of moves wandering between cells 1 and 2 before it first reaches cell 3. In a video game, screens a moment apart look almost the same. Since each step changes the values for every cell, a long run of steps on cells 1 and 2 can drag cell 3's values off, so the network forgets what earlier episodes taught it about cell 3.
+      First, moves that come one after another are alike. Our robot starts in cell 1 of the 4-cell corridor. Early in training its Q-values are poor guesses and it explores a lot, so its first moves are spent in cells 1 and 2. Moving at random, it takes 6 moves on average to first reach cell 3. In a video game, screens a moment apart look almost the same. Since each step changes the values for every cell, a long run of steps on cells 1 and 2 can drag cell 3's values off, so the network forgets what earlier episodes taught it about cell 3.
 
-      Second, each move is used for one step and then thrown away. In a real game or robot, each move takes real time, so throwing moves away is wasteful.
+      Second, each move is used for one step and then thrown away. Real moves take real time, so that's wasteful.
 
       ### A store of past moves
 
@@ -255,7 +255,7 @@ knowledge_points:
     explain: |
       ### The DQN loop
 
-      We now have all the pieces of **DQN**, short for deep Q-network, the method in DeepMind's 2015 paper by Mnih and colleagues. Each pass of its loop does six things, as the picture shows.
+      We now have all the pieces of **DQN**, short for deep Q-network, the method DeepMind first showed in 2013 and refined in its 2015 Nature paper by Mnih and colleagues. Each pass of its loop does six things, as the picture shows.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 230" aria-label="The DQN loop as six boxes in a cycle. 1, act epsilon-greedily with the Q-network. 2, store the transition s, a, r, s prime, done. 3, sample a random minibatch. 4, compute targets with the target network. 5, take a gradient step on the Q-network. 6, every C steps, copy theta into theta minus. Then back to 1">
@@ -291,7 +291,7 @@ knowledge_points:
 
       Be careful to pick actions with the Q-network, which has the newest values.
 
-      In the 2015 paper, learning started after $50{,}000$ random moves had filled the buffer, with one gradient step every $4$ moves. The network read the last four screens, since one screen can't show which way things move. With one design and one set of settings, DQN learned 49 Atari 2600 games (a 1980s console) from the screen and score alone, and it scored at least $75\%$ of a professional human games tester's score on more than half of them.
+      In the 2015 paper, learning started after $50{,}000$ random moves had filled the buffer, with one gradient step every $4$ moves. The network read the last four screens, since one screen can't show which way things move. With one design and one set of settings, DQN learned 49 Atari 2600 games (a late-1970s games console) from the screen and score alone, and it scored at least $75\%$ of a professional human games tester's score on more than half of them.
 
       ### Limitations
 

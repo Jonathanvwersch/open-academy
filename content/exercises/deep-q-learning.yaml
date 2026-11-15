@@ -75,7 +75,7 @@ exercises:
     est_minutes: 2
     params:
       e: { min: 0.1, max: 0.5, step: 0.1 }
-    prompt: "An ε-greedy agent has 3 actions and a unique highest Q-value. It explores with probability $ε={{= e }}$ and picks uniformly among all 3 actions when it explores. What is the total probability that it picks the action with the highest Q-value? Give a probability between 0 and 1, to two decimal places."
+    prompt: "An epsilon-greedy agent has 3 actions and a unique highest Q-value. It explores with probability $\\varepsilon={{= e }}$ and picks uniformly among all 3 actions when it explores. What is the total probability that it picks the action with the highest Q-value? Give a probability between 0 and 1, rounded to two decimal places."
     answer_expr: 1-e+e/3
     tolerance: { abs: 0.0051 }
     common_wrong:
@@ -89,7 +89,7 @@ exercises:
           category: incorrect_reasoning,
           feedback: "This counts only exploration choices. Include the greedy branch too.",
         }
-    solution: "The greedy branch contributes $1-{{= e }}$ and exploration contributes ${{= e }}/3$. Their sum is ${{= 1-e+e/3 }}$."
+    solution: "The greedy branch contributes $1-{{= e }}$ and exploration contributes ${{= e }}/3$. Their sum is ${{= 1-e+e/3 }}$, which rounds to ${{= round(1-e+e/3, 2) }}$."
   - id: dqnq-target-template
     dimension: implementation
     type: numeric
@@ -420,7 +420,7 @@ exercises:
           id: a,
           text: "Nearby frames look alike; store transitions and sample random minibatches.",
           correct: true,
-          feedback: "Random replay mixes experiences across times instead of training on a run of similar frames.",
+          feedback: "Random replay mixes experiences from many times, so a minibatch is rarely a run of similar frames.",
         }
       - {
           id: b,
@@ -647,7 +647,7 @@ exercises:
         }
       - {
           id: d,
-          text: "The exploration probability ε is too high; remove random action choices.",
+          text: "The exploration probability $\\varepsilon$ is too high; remove random action choices.",
           correct: false,
           feedback: "This confuses exploration with the scale of valid returns. Every policy still obeys the bound 10.",
         }
@@ -827,7 +827,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 1
-    prompt: Which network supplies action values when a DQN agent acts ε-greedily in the environment?
+    prompt: Which network supplies action values when a DQN agent acts epsilon-greedily in the environment?
     options:
       - {
           id: a,
@@ -847,7 +847,7 @@ exercises:
           correct: false,
           feedback: "This confuses exploration with random network weights. Exploration randomises the action choice.",
         }
-    solution: The trained Q-network supplies the values for ε-greedy action selection. Its greedy branch picks the largest output.
+    solution: The trained Q-network supplies the values for epsilon-greedy action selection. Its greedy branch picks the largest output.
   - id: dqnl-robot-arm
     dimension: conceptual
     type: mc
