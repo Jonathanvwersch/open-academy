@@ -77,6 +77,7 @@ export function InlineLessonCheck({
             {!result || result.status === 'invalid' || result.retryAllowed ? (
               <ExerciseForm
                 key={`${activityId}:${exerciseId}`}
+                autoFocus={false}
                 exercise={exercise}
                 onSubmit={submit}
                 loading={submitting}

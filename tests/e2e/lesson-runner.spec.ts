@@ -32,6 +32,7 @@ const failedQuizScreenshotDir = 'test-results/screenshots/failed-quiz';
 const quizRetryScreenshotDir = 'test-results/screenshots/quiz-retry';
 const quizReviseScreenshotDir = 'test-results/screenshots/quiz-revise';
 const explainItScreenshotDir = 'test-results/screenshots/explain-it';
+const answerAutofocusScreenshotDir = 'test-results/screenshots/answer-autofocus';
 mkdirSync(screenshotDir, { recursive: true });
 mkdirSync(lessonCardScreenshotDir, { recursive: true });
 mkdirSync(stepReviewScreenshotDir, { recursive: true });
@@ -48,6 +49,7 @@ mkdirSync(failedQuizScreenshotDir, { recursive: true });
 mkdirSync(quizRetryScreenshotDir, { recursive: true });
 mkdirSync(quizReviseScreenshotDir, { recursive: true });
 mkdirSync(explainItScreenshotDir, { recursive: true });
+mkdirSync(answerAutofocusScreenshotDir, { recursive: true });
 
 type QuizItemForForm = {
   id: string;
@@ -1151,6 +1153,111 @@ test('Enter advances a correct knowledge-point answer without another answer POS
   );
   await expect(page.getByText('Not quite', { exact: true })).toHaveCount(0);
   expect(answerPostCount).toBe(1);
+});
+
+test('Next focuses the next typed lesson answer', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  const sessionId = await createLessonActivitySession(
+    'loss-functions',
+    'loss-functions-fixture-1',
+    'loss-functions-fixture-1-basics',
+  );
+  await page.goto(`/session/${sessionId}`);
+  await expect
+    .poll(async () => (await currentRun(page, 'loss-functions'))?.pendingProblem?.id)
+    .toBeTruthy();
+  let run = await currentRun(page, 'loss-functions');
+  expect(run.pendingProblem.exercise.type).toBe('mc');
+  await answerAndReload(page, false, 'loss-functions');
+  run = await nextProblemAndReload(page, 'loss-functions');
+  expect(run.pendingProblem.exercise.id).toBe('loss-functions-fixture-practice-1');
+  expect(run.pendingProblem.exercise.type).toBe('numeric');
+  const answer = await page.evaluate(async (problemId: string) => {
+    const response = await fetch(`/api/test/lesson-problems/${problemId}/answer`);
+    return (await response.json()).answer;
+  }, run.pendingProblem.id);
+
+  const answerField = page.getByLabel('Your answer');
+  await expect(answerField).toBeFocused();
+  await answerField.fill(String(answer));
+  const answerResponse = page.waitForResponse(
+    (response) =>
+      response.url().endsWith('/api/lessons/loss-functions/run/answer') &&
+      response.request().method() === 'POST',
+  );
+  await page.getByRole('button', { name: 'Submit answer' }).click();
+  expect((await answerResponse).status()).toBe(200);
+  await expect(page.getByText(/^Correct(?: · \+\d+ XP)?$/)).toBeVisible();
+
+  const nextButton = page.getByTestId('lesson-problem').getByRole('button', { name: /^Next/ });
+  const nextResponse = page.waitForResponse(
+    (response) =>
+      response.url().endsWith('/api/lessons/loss-functions/run') &&
+      response.request().method() === 'POST',
+  );
+  await nextButton.click();
+  expect((await nextResponse).status()).toBe(200);
+  await expect
+    .poll(async () => (await currentRun(page, 'loss-functions'))?.pendingProblem?.id)
+    .not.toBe(run.pendingProblem.id);
+  const nextRun = await currentRun(page, 'loss-functions');
+  expect(nextRun.pendingProblem.exercise.type).toBe('numeric');
+
+  const nextAnswerField = page.getByLabel('Your answer');
+  await expect(nextAnswerField).toBeFocused();
+  await page.screenshot({ path: `${answerAutofocusScreenshotDir}/after-next.png` });
+  await nextAnswerField.fill('typed into the focused answer');
+  await expect(nextAnswerField).toHaveValue('typed into the focused answer');
+});
+
+test('Next preserves focus in the tutor composer', async ({ page }) => {
+  const sessionId = await createLessonActivitySession(
+    'loss-functions',
+    'loss-functions-fixture-1',
+    'loss-functions-fixture-practice-1',
+  );
+  await page.goto(`/session/${sessionId}`);
+  await expect
+    .poll(async () => (await currentRun(page, 'loss-functions'))?.pendingProblem?.id)
+    .toBeTruthy();
+  const run = await currentRun(page, 'loss-functions');
+  expect(run.pendingProblem.exercise.type).toBe('numeric');
+
+  const problemCard = page.getByTestId('lesson-problem');
+  await problemCard.getByRole('button', { name: 'Ask the tutor' }).click();
+  const tutorComposer = page
+    .getByRole('complementary', { name: 'Tutor' })
+    .getByLabel('Ask the tutor');
+  await expect(tutorComposer).toBeFocused();
+
+  const answer = await page.evaluate(async (problemId: string) => {
+    const response = await fetch(`/api/test/lesson-problems/${problemId}/answer`);
+    return (await response.json()).answer;
+  }, run.pendingProblem.id);
+  await page.getByLabel('Your answer').fill(String(answer));
+  const answerResponse = page.waitForResponse(
+    (response) =>
+      response.url().endsWith('/api/lessons/loss-functions/run/answer') &&
+      response.request().method() === 'POST',
+  );
+  await page.getByRole('button', { name: 'Submit answer' }).click();
+  expect((await answerResponse).status()).toBe(200);
+  await expect(page.getByText(/^Correct(?: · \+\d+ XP)?$/)).toBeVisible();
+
+  await tutorComposer.focus();
+  await expect(tutorComposer).toBeFocused();
+  const nextButton = page.getByTestId('lesson-problem').getByRole('button', { name: /^Next/ });
+  const nextResponse = page.waitForResponse(
+    (response) =>
+      response.url().endsWith('/api/lessons/loss-functions/run') &&
+      response.request().method() === 'POST',
+  );
+  await nextButton.evaluate((button) => (button as HTMLButtonElement).click());
+  expect((await nextResponse).status()).toBe(200);
+  await expect
+    .poll(async () => (await currentRun(page, 'loss-functions'))?.pendingProblem?.id)
+    .not.toBe(run.pendingProblem.id);
+  await expect(tutorComposer).toBeFocused();
 });
 
 test('LessonRunner advances from a locked expression textarea with Enter', async ({ page }) => {
