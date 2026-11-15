@@ -10,7 +10,7 @@ concepts:
       dimensions: [conceptual, math],
       prereqs: [{ id: probability-basics }],
       objectives: [{ text: "Formalise a task as an MDP", dimension: conceptual }],
-      status: stub,
+      status: authored,
     }
   - {
       id: policies-returns,
