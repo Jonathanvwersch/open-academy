@@ -262,7 +262,7 @@ knowledge_points:
 
       An arrow of length 1 is called a **unit vector**. We shrink a non-zero arrow to one, without turning it, by dividing each component by its length. In the left panel, $(3,4)$ becomes $(0.6,0.8)$, which divides every product $a_ib_i$ by 5, and $(4,0)$ becomes $(1,0)$, which divides every product by 4. So the dot product falls from 12 to 0.6, just as dividing by both lengths does.
 
-      Drop a perpendicular from one unit vector's tip onto the other's line. The signed length from the origin to that landing point is its **projection**, or shadow. For unit vectors, the dot product equals this shadow. Its length depends only on the angle, so it's called the **cosine** of $\theta$, written $\cos\theta$. It's 1 when the arrows point the same way, 0 at a right angle and $-1$ when they point opposite ways. So
+      Drop a perpendicular from one unit vector's tip onto the other's line. The signed length from the origin to where it lands is its **projection**, or shadow, equal to their dot product. Two unit vectors at the same angle look the same, just turned, so the shadow depends only on the angle. This is the **cosine** of $\theta$, written $\cos\theta$: 1 for matching directions, 0 at a right angle and $-1$ for opposite directions. So
 
       $$\frac{a\cdot b}{\|a\|\,\|b\|}=\cos\theta,$$
 

@@ -101,7 +101,7 @@ knowledge_points:
 
       ### Three merges on our sentence
 
-      Let's pretend "the cat sat on the mat" is our whole training text. We first split it at the spaces and only join tokens inside a word, so no token ever contains a space. A **tokenizer**, the program that cuts text into tokens and gives them ids, keeps spaces so **decoding**, turning ids back into text, recovers the exact text. We drop them here only to keep the example small. That leaves $17$ letters, and the starting vocabulary is the $9$ different letters, a, c, e, h, m, n, o, s and t.
+      Let's use "the cat sat on the mat" as our training text. We split at spaces and join tokens only inside words, so no token contains a space. Real **tokenizers** (programs that cut text into tokens and give them ids) keep the spaces, usually as part of the next word's token, so **decoding** (turning ids back into text) gives back the exact text. We drop spaces to keep this example small, leaving $17$ letters. The starting vocabulary has $9$ letters, a, c, e, h, m, n, o, s and t.
 
       Now we count every pair of neighbouring tokens. "a" followed by "t" appears $3$ times, in cat, sat and mat, which is more than any other pair. So the first merge joins them, "at" becomes a token, and the text shrinks from $17$ tokens to $14$. Two more rounds of counting give th and then the. Each orange box is the token made in that row.
 
