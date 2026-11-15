@@ -446,7 +446,7 @@ knowledge_points:
 
       $$1+L(k-1).$$
 
-      For the picture, $L=2,k=3$ gives $1+2(3-1)=5$. This rule assumes stride 1 without pooling between convolutions.
+      For the picture, $L=2,k=3$ gives $1+2(3-1)=5$. This rule assumes stride 1 without pooling between convolutions, where pooling shrinks a map by keeping the largest nearby values.
 
       ### Keep the strongest nearby response
 
