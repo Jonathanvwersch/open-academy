@@ -154,7 +154,7 @@ knowledge_points:
 
       ### How spread out a policy is
 
-      The **entropy** of a policy in a state measures how spread out its action probabilities are. It's largest when every action is equally likely, and $0$ when one action has probability $1$. For two actions its maximum is about $0.69$. Here we use supplied entropy values. The chart shows three policies over two actions, with entropies rounded to two decimal places.
+      The **entropy** of a policy in a state measures how spread out its action probabilities are. It's largest when every action is equally likely, and $0$ when one action has probability $1$. For two actions its maximum is about $0.69$. We only need its values here, so we'll skip how it's calculated. The chart shows three policies over two actions, with entropies rounded to two decimal places.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" aria-label="Three policies over two actions A and B, drawn as blue probability bars. Probabilities 0.5 and 0.5 have entropy 0.69, the largest. Probabilities 0.9 and 0.1 have entropy 0.33. Probabilities 0.99 and 0.01 have entropy 0.06, close to 0">
@@ -176,7 +176,7 @@ knowledge_points:
 
       ### Limitations
 
-      **Epsilon-greedy** picks an equally random action with a chosen probability and otherwise takes the best estimated action. Like the entropy bonus, it explores through random actions. This works when a few random actions can stumble on a reward, but fails when the first reward needs a long, exact sequence. The 2015 DQN agent used epsilon-greedy and scored $0$ on the Atari game Montezuma's Revenge, where scoring takes many precise moves. On a real robot, random actions can cause damage, so much exploring happens in simulation.
+      **Epsilon-greedy** picks an action at random with a chosen probability $\varepsilon$ and otherwise takes the action with the best estimate. Like the entropy bonus, it explores through random actions. This works when a few random actions can stumble on a reward, but fails when the first reward needs a long, exact sequence. The 2015 DQN agent used epsilon-greedy and scored $0$ on the Atari game Montezuma's Revenge, where scoring takes many precise moves. On a real robot, random actions can cause damage, so much exploring happens in simulation.
     worked: |
       Let's see an entropy bonus change which policy the agent prefers, on the slot machine with arms A and B. Suppose the agent has pulled B only a few times and got unlucky, so every pull of B has paid $0$, and every pull of A has paid $1$. Each pull is complete on its own, so a pull's return is just its reward. We compare two policies. Policy X pulls A with probability $0.99$, and policy Y pulls A with probability $0.9$. To make the effect easy to see we use a large weight, $\beta=0.5$.
 
