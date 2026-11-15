@@ -79,7 +79,7 @@ knowledge_points:
     explain: |
       ### Rewards arrive after actions
 
-      A policy tells our robot how to choose actions. Let's score the trip produced by three right moves, using the rewards that arrive after each action.
+      A policy tells a robot how to choose actions. Our robot starts in cell 1 of a four-cell corridor and can move left or right; a wall bump leaves it in place. Reaching cell 4 earns $+10$ and ends the trip; every other move earns $-1$. Let's score three right moves.
 
       An **episode** is one complete trip. It starts at time $t=0$. Each action advances time by one. After $T$ actions, the episode ends at time $T$. We label rewards by their arrival time, so the action at time $0$ earns reward $r_1$ at time $1$. Let's follow three right moves on the timeline. This episode has $T=3$.
 
@@ -143,13 +143,13 @@ knowledge_points:
     explain: |
       ### The same trip with different weights
 
-      Changing the discount factor lets us score the same trip in different ways. Keep the three rewards $-1$, $-1$, then $+10$ fixed as we change $\gamma$.
+      A **return** adds future rewards, weighted for delay; $G_0$ is its value at the start. Our robot starts in cell 1 of a four-cell corridor. Left and right move one cell; wall bumps leave it in place. Reaching cell 4 earns $+10$ and ends the trip. Other moves earn $-1$. Three rights earn $-1$, $-1$, then $+10$.
 
-      The **discount factor** $\gamma$ controls the weight given to each extra step of delay. It lies between $0$ and $1$, including both ends. The first three weights are
+      The **discount factor** $\gamma$, between $0$ and $1$ inclusive, weights each extra step of delay. The first three weights are
 
       $$1,\quad\gamma,\quad\gamma^2.$$
 
-      Let's compare three values of $\gamma$. The rewards and movements stay fixed.
+      Let's compare three values of $\gamma$ for those same rewards.
 
       | $\gamma$ | Weights | $G_0$ |
       | --- | --- | --- |
@@ -157,7 +157,7 @@ knowledge_points:
       | $0.9$ | $(1,0.9,0.81)$ | $6.2$ |
       | $1$ | $(1,1,1)$ | $8$ |
 
-      With $\gamma=0$, only the next reward counts. The delayed success has no weight in the starting score. With $\gamma=1$, all remaining rewards count fully, so a finite trip's return is their ordinary sum. Between these ends, a larger $\gamma$ gives distant rewards more weight.
+      With $\gamma=0$, only the next reward counts. With $\gamma=1$, all remaining rewards count fully, so a finite trip's return is their ordinary sum. Between these ends, a larger $\gamma$ gives distant rewards more weight.
 
       ### Delayed gains and penalties
 
@@ -167,7 +167,7 @@ knowledge_points:
 
       ### Limitations
 
-      A single trip's return gives limited evidence about a policy. Suppose left and right each have probability $0.5$ in cells 1 to 3. With $\gamma=0.9$, three rights give return $6.2$. A left wall bump followed by three rights gives $4.58$. Both trips can occur under this policy. Judging it requires considering the possible trips and how often they occur.
+      One return gives limited evidence about a **policy**, a rule for choosing actions in each state. Suppose left and right each have probability $0.5$ in cells 1 to 3. With $\gamma=0.9$, three rights give return $6.2$. A left wall bump followed by three rights gives $4.58$. Both trips can occur under this policy. Judging it requires considering possible trips and their frequency.
 
       We use $\gamma=1$ only for finite episodes here. Some tasks have no set end, such as a robot that keeps patrolling. If it keeps earning $+1$ each step, the totals after one, two and three actions are $1$, $2$ and $3$. The total keeps growing without a finite limit. Choosing $\gamma<1$ makes the total finite in this example.
     worked: |

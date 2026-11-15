@@ -98,7 +98,7 @@ knowledge_points:
     explain: |
       ### Two sublayers with different jobs
 
-      A transformer block has two sublayers, each with its own shortcut: first attention, which lets the tokens share information, then an MLP, which works on each token's vector by itself. For now we leave normalization out, and step 3 adds it.
+      A transformer block has two parts called **sublayers**. First comes attention, which lets tokens share information, then an MLP, which works on each token's vector by itself. Each has a **shortcut** that adds its input to its output. For now we leave normalization out, and step 3 adds it.
 
       Let's take the first two words of the sentence "the cat sat on the mat", with one token per word and width $d=2$. "the" has the vector $x_1=(2,0)$ and "cat" has $x_2=(1,-2)$. We use a single attention head and leave out the output matrix $W_O$. We also skip the queries and keys and simply give the attention weights and the value vectors, $v_1=(4,0)$ and $v_2=(0,4)$. Attention gives "cat" weights $0.25$ on "the" and $0.75$ on itself, so its output is $(1,3)$, and the shortcut turns it into $u_2=(2,1)$. "the" gets weights $0.5$ and $0.5$, so its output is $(2,2)$ and $u_1=(4,2)$. Then each token goes through the MLP separately.
 
@@ -177,13 +177,13 @@ knowledge_points:
     explain: |
       ### Keeping the inputs a steady size
 
-      Each shortcut adds something to a token's vector, so as the vector passes through block after block its entries can grow much larger. The sublayers' weights are tuned during training to inputs of a steady size, so the block normalizes what goes into each sublayer. In the initialization lesson, LayerNorm rescaled one example's outputs to mean $0$ and standard deviation $1$. In a transformer it does that to one token's vector at a time.
+      A block has two **sublayers**, attention and an MLP. Each has a **shortcut** adding its input to its output, so token vectors can grow as they pass through many blocks. The sublayers' weights are tuned to inputs of a steady size, so the block normalizes each sublayer's input. In the initialization lesson, LayerNorm rescaled one example's outputs to mean $0$ and standard deviation $1$. Here it rescales one token's vector at a time.
 
       To watch LayerNorm work on more than two numbers, we give one token four, $x=(-6,0,2,8)$, so here $d=4$. LayerNorm turns them into four numbers with mean $0$ and standard deviation $1$, and the worked example finds them.
 
       ### Where the LayerNorm goes
 
-      In the picture below, on the left, the green LayerNorm boxes sit just before each sublayer, so each sublayer reads a normalized copy of the vector, and its output is added to the vector itself. This layout is called **pre-norm**, and it's what "transformer block" usually means today. Writing $\text{LN}$ for LayerNorm, the block computes
+      On the left, the green LayerNorm boxes sit before each sublayer. Each reads a normalized copy, and its output is added to the original vector. This is **pre-norm**. Writing $\text{LN}$ for LayerNorm and $\text{Attn}(\dots)_t$ for attention's output at token position $t$, the block computes
 
       $$u_t=x_t+\text{Attn}\big(\text{LN}(x_1),\dots,\text{LN}(x_T)\big)_t$$
 
@@ -286,7 +286,7 @@ knowledge_points:
 
       A single block takes $T$ vectors of width $d$ and returns $T$ vectors of width $d$. So the output of one block can be the input of the next, and a model is just many blocks in a row, each with its own weights.
 
-      The picture shows a whole model. The tokens "the cat sat on" become $T=4$ vectors of width $d$, from the embedding table plus position information. They pass through block 1, block 2 and so on to the last block, keeping the shape $T\times d$ all the way. The final LayerNorm from step 3 follows, and then an output layer turns each token's vector into one score for each of the $N$ tokens in the vocabulary, which a later lesson uses to predict the next token.
+      The picture shows a whole model. The tokens "the cat sat on" become $T=4$ vectors of width $d$, from the embedding table plus position information. They pass through blocks keeping shape $T\times d$. A final LayerNorm rescales each token's vector before an output layer turns it into one score per vocabulary token, $N$ scores, to predict the next token.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 400" aria-label="A whole model read from top to bottom. The tokens the cat sat on become T vectors of width d in the embedding and position box. They pass through block 1, block 2, and so on to the last block, each taking and returning T vectors of width d. A green final LayerNorm follows, then an output layer that gives each token one score per vocabulary token, T rows of N scores">
@@ -326,7 +326,7 @@ knowledge_points:
 
       $$4d^2+8d^2=12d^2$$
 
-      numbers. The biases add $4d$ for attention and $4d+d$ for the MLP. The two LayerNorms add a gain and a shift each, $4d$ more. So a block whose MLP has $4d$ hidden neurons has $12d^2+13d$ parameters in total.
+      numbers. The biases add $4d$ for attention and $4d+d$ for the MLP. In the **pre-norm** layout, one LayerNorm rescales the input to attention and another rescales the input to the MLP. Each has a gain and shift, adding $4d$ more. A block with $4d$ hidden neurons therefore has $12d^2+13d$ parameters.
 
       The $d^2$ term dominates at real sizes. GPT-2 small has $d=768$ and $12$ blocks, so each block has $7{,}087{,}872$ parameters and the blocks hold about $85$ million. The whole model has about $124$ million, and most of the rest is the embedding table, with one row of width $768$ for each of the $50{,}257$ tokens in its vocabulary. GPT-2 reuses that table as its output layer.
 

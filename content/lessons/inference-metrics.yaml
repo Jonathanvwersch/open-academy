@@ -104,7 +104,7 @@ knowledge_points:
 
       Our chat assistant answers thousands of requests, and their times differ, because some prompts are longer and some arrive when the server is busy and have to wait their turn. How do we describe all of them with a few numbers?
 
-      The picture shows ten made-up times to first token from our assistant, as orange bars sorted from fastest to slowest. We'll come to the labels p50 and p90 in a moment.
+      The picture shows ten made-up times to first token from our assistant, as orange bars sorted from fastest to slowest. The labels p50 and p90 mark waits at least 50% and 90% of these requests met or beat.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 340" aria-label="Ten orange bars, the times to first token of ten requests sorted from fastest to slowest: 180, 190, 200, 200, 210, 220, 230, 250, 400 and 1200 ms. A red line across the chart marks the mean, 328 ms, which is higher than eight of the ten bars. Bar 5, 210 ms, is labelled p50, and bar 9, 400 ms, is labelled p90">
@@ -179,11 +179,11 @@ knowledge_points:
 
       Why doesn't a run with $B$ sequences take $B$ times as long? The model's parameters, called weights, live in the GPU's main memory. They're too big for the chip's on-chip storage, so each run reads all 8 billion of them again. Then it does maths with them for each sequence.
 
-      At 2 bytes (16 bits) per weight that's about 16 GB, where 1 GB is $10^9$ bytes. The H100's main memory delivers about 3.35 TB, or 3,350 GB, per second, where 1 TB is $10^{12}$ bytes, so one read takes about $16/3350\approx0.0048$ s, or 4.8 ms. The maths grows with $B$, but the read is the same for any batch. For our assistant, the read is still most of each run even with 64 sequences.
+      At 2 bytes (16 bits) per weight that's about 16 GB, where 1 GB is $10^9$ bytes. On an H100, an NVIDIA GPU, main memory delivers about 3.35 TB, or 3,350 GB, per second, where 1 TB is $10^{12}$ bytes. One read takes about $16/3350\approx0.0048$ s, or 4.8 ms. The maths grows with $B$, but the read stays the same and still takes most of each run with 64 sequences.
 
       ### Throughput and each user's wait
 
-      The table below uses a made-up server whose maths is much slower, so its maths catches up with the read. These are the runs after the first token, so each run's time is each user's ITL.
+      The table uses a made-up server whose maths is much slower, so it catches up with the read. These runs follow the first token, so each run's time is each user's **inter-token latency (ITL)**, the gap between consecutive output tokens.
 
       | $B$ | Time per run (ITL) | Each user's tokens/s | Throughput (tokens/s) |
       | --- | --- | --- | --- |
@@ -228,7 +228,7 @@ knowledge_points:
 
       3. **Pick the highest throughput.** $B=32$ gives 1,600 tokens/s, sixteen times the throughput of $B=1$.
 
-      Each user pays for this in waiting time. To keep things simple, suppose the TTFT is 0.3 s at both sizes. A 101-token reply then takes $0.3+100\times0.02=2.3$ s at $B=32$, against $0.3+100\times0.01=1.3$ s at $B=1$.
+      Each user pays for this in waiting time. Suppose the **time to first token (TTFT)**, the wait from sending a request until its first output token arrives, is 0.3 s at both sizes. A 101-token reply then takes $0.3+100\times0.02=2.3$ s at $B=32$, against $0.3+100\times0.01=1.3$ s at $B=1$.
     problems:
       - infm-batch-basics
       - infm-batch-self-explain

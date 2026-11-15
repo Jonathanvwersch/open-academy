@@ -22,7 +22,7 @@ knowledge_points:
 
       A weight says how much the prediction changes when its input rises by one. To copy a quirk, a model's prediction has to jump between examples that look almost the same, and only large weights turn a small change in the inputs into a big change in the prediction. Say a model has two inputs that almost always rise and fall together, with weights $+50$ and $-49$. When the two inputs are equal, the weights nearly cancel. If the first input is $0.1$ higher than the second, the prediction rises by an extra $50\times0.1=5$. A model with small weights changes its predictions more gently, and gentle changes are more likely to hold up on new examples.
 
-      So instead of the loss alone, we train the model to make the loss plus a penalty as small as possible.
+      So we add a **penalty**, an amount that grows with the weights, to the loss and make their total as small as possible.
 
       ### The L2 penalty
 
@@ -109,13 +109,13 @@ knowledge_points:
     explain: |
       ### What the penalty does to one update
 
-      Most models have too many weights to solve for the lowest point directly, as step 1 did. Instead, they're trained by gradient descent, which improves the weights in small updates. Each update moves a weight against the slope of the loss, scaled by a small number we choose called the learning rate $\eta$ (eta):
+      Most models have too many weights to solve for the lowest point directly. Gradient descent improves them in small updates. Each update moves a weight against the loss's slope, scaled by a number we choose called the learning rate $\eta$ (eta):
 
       $$w_{\text{new}}=w-\eta\,\frac{\partial L}{\partial w}.$$
 
       Here $\partial L/\partial w$ is the slope of $L$ as $w$ alone changes. The curly $\partial$ reminds us that the other weights are held still.
 
-      With a penalty, $L$ is the total loss, so its slope has two parts. The data part is the slope of the data loss. For one weight, the penalty is $\lambda w^2$, with slope $2\lambda w$. That slope has the same sign as $w$, so stepping against it always moves the weight towards $0$. The update becomes
+      We add a **penalty**, a cost for large weights, to the **data loss** $L_{\text{data}}$, which measures prediction errors on training examples. For one weight, the penalty is $\lambda w^2$, where $\lambda\geq0$ sets its strength. The total loss's slope has two parts. The penalty's slope $2\lambda w$ has the same sign as $w$, so stepping against it moves the weight towards $0$. The update becomes
 
       $$w_{\text{new}}=w-\eta\Big(\frac{\partial L_{\text{data}}}{\partial w}+2\lambda w\Big).$$
 
@@ -193,7 +193,7 @@ knowledge_points:
     explain: |
       ### Too little, too much
 
-      The penalty strength $\lambda$ is a **hyperparameter**, a setting that training doesn't learn, so we choose it ourselves. Too small a $\lambda$ changes little, and the model can still copy its training examples' quirks. Too large a $\lambda$ pushes every weight close to $0$, so the model can't follow even the real pattern and underfits.
+      A **penalty** adds a cost for large weights to the training loss. Its strength $\lambda$ is a **hyperparameter**, a setting training doesn't learn, so we choose it ourselves. Too small a $\lambda$ changes little, and the model can still copy training quirks. Too large a $\lambda$ pushes weights close to $0$, so the model can't follow even the real pattern and underfits.
 
       ### Choosing it with validation error
 
@@ -211,7 +211,7 @@ knowledge_points:
 
       Neural networks are models built from layers of simple **units**, each passing a number on to the next layer. They often use **dropout**. On each training update, dropout sets each unit's output to $0$ with some probability, such as $0.5$, and scales up the outputs it keeps so their average stays the same. With $0.5$, an output of $3$ becomes $0$ or $6$, which averages $3$. The network can't rely on any one unit, so it spreads what it learns across many. Dropout is switched off when the trained network makes predictions.
     worked: |
-      Let's choose $\lambda$ for our example. Say the true pattern is $y=2x$ and only our training target picked up noise, so a fair validation example is $x=2$, $y=4$. There the prediction is $2w$, and its squared error is $(2w-4)^2$. Real validation examples are noisy too, but we've kept this one clean. We also try $\lambda=0$, $0.5$, $2$ and $5$ instead of factors of ten, so the numbers stay small.
+      Let's choose $\lambda$ for the one-weight model $\hat y=wx$, trained on $x=1$, $y=3$. Say the true pattern is $y=2x$ and only our training target picked up noise, so a fair validation example is $x=2$, $y=4$. There the prediction is $2w$, and its squared error is $(2w-4)^2$. Real validation examples are noisy too, but we've kept this one clean. We also try $\lambda=0$, $0.5$, $2$ and $5$ instead of factors of ten, so the numbers stay small.
 
       1. **Find the trained weight.** Training finds the lowest point of the total loss, which step 1 found at $w=3/(1+\lambda)$. For $\lambda=2$, that is
          $$w=\frac{3}{1+2}=1.$$
@@ -248,7 +248,7 @@ knowledge_points:
     explain: |
       ### The L1 penalty
 
-      The **L1 penalty** charges each weight's absolute size instead of its square:
+      A **penalty** adds a cost for large weights to the data loss $L_{\text{data}}$, the prediction error on training examples. Its strength is $\lambda\geq0$. The **L2 penalty** charges squared weights; the **L1 penalty** charges their absolute sizes:
 
       $$L_{\text{total}}=L_{\text{data}}+\lambda\sum_j |w_j|.$$
 
@@ -258,7 +258,7 @@ knowledge_points:
 
       ### Shrinking towards zero, update by update
 
-      Say a model has an input that has nothing to do with the target, such as a random number, and its weight happens to start at $1$. The data doesn't pull on that weight, so only the penalty acts. The picture follows it with $\eta=0.1$. We use $\lambda=0.5$ for L2 and $\lambda=2$ for L1, which both move our running example's weight from $3$ to $2$, so the two penalties are equally strong there. Under L2, in orange, the weight is multiplied by $0.9$ each update and is still $0.53$ after six. It gets ever closer to $0$ but never reaches it. Under L1, in red, it loses $0.2$ each update and reaches exactly $0$ after five. If an update would carry a weight past $0$, we set it to exactly $0$ instead, because on the other side L1 would only pull it back.
+      Say an input is unrelated to the target and its weight starts at $1$. The data doesn't pull on it, so only the penalty acts. The picture uses learning rate $\eta=0.1$. We use $\lambda=0.5$ for L2 and $\lambda=2$ for L1. Both move the best weight from $3$ to $2$ for our one-weight model $\hat y=wx$, trained on $x=1$, $y=3$, so they are equally strong there. Under L2, in orange, the weight is multiplied by $0.9$ each update and is still $0.53$ after six. It approaches $0$ without reaching it. Under L1, in red, it loses $0.2$ each update and reaches $0$ after five. If an update would cross $0$, we set it to $0$, because L1 would only pull it back.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 380" aria-label="A weight starting at 1, followed for six updates with no pull from the data and learning rate 0.1. Under L2 with λ = 0.5, in orange, it is multiplied by 0.9 each update: 0.9, 0.81, 0.73, 0.66, 0.59 and 0.53. Under L1 with λ = 2, in red, it falls by 0.2 each update: 0.8, 0.6, 0.4, 0.2, then 0 at update 5, where it stays.">
@@ -311,7 +311,7 @@ knowledge_points:
 
       So L1 sets weights that don't help enough to exactly $0$, and the worked example shows what "enough" means. A weight of $0$ means the model ignores that input, so L1 also tells us which inputs the model can do without. L2 makes weights small but leaves almost all of them nonzero.
 
-      Neither penalty is better in general. L1 suits problems where we expect only a few inputs to matter. L2 is the usual default, and it's the penalty that weight decay comes from.
+      L1 suits problems where we expect few inputs to matter. L2 is the usual default and gives **weight decay**, the fractional shrinkage of each weight on every gradient-descent update.
     worked: |
       Let's compare the penalties on two one-weight problems. The first is our running example, where the data wants $w=3$. The second has one training example $x=1$, $y=0.5$, so the data wants $w=0.5$. We use L1 with $\lambda=2$ and L2 with $\lambda=0.5$.
 

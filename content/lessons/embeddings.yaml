@@ -92,7 +92,7 @@ knowledge_points:
     explain: |
       ### Picking out a row with zeros and a one
 
-      A language model does most of its work by multiplying matrices, and it learns by adjusting the numbers in them, which are called its **weights**. If the lookup is a matrix product too, the table becomes one more matrix of weights that the model can learn. Can a matrix product pick out one row of the table?
+      An **embedding table** stores one vector of numbers, an **embedding**, for each token. A lookup reads the row for a token's ID. A language model learns by adjusting numbers called **weights** in matrix products. Can a matrix product also pick out a row, so the table can be learned as weights?
 
       Yes, if we multiply by a vector of zeros with a single 1. We keep the table from the last step. For cat, ID 1, we write $u=(1,0,0,0)$, with the 1 in place 1. As a $1\times4$ matrix, $u$ times the $4\times2$ table $E$ gives a $1\times2$ answer.
 
@@ -173,7 +173,7 @@ knowledge_points:
     explain: |
       ### Where the numbers come from
 
-      So far, our table has held made-up numbers. In a real model, $E$ starts out as small random numbers. Then **training** adjusts them. Training nudges all of a model's weights little by little so it gets better at its task, such as guessing the next token of a text. Nobody decides what each of the $d$ numbers means.
+      An **embedding** is a vector of $d$ numbers representing a token; $d$ is its width. The **embedding table** $E$ stores one vector per token, starting as small random numbers. **Training** nudges these and the model's other weights to improve its task, such as guessing the next token. Nobody decides what each number means.
 
       What does that do to the vectors? Suppose the vocabulary also had dog. Cat and dog appear in similar places, as in "the cat sat" and "the dog sat", so the model should make similar guesses after each. Similar vectors give similar guesses, so training tends to give cat and dog similar vectors, while the word on, which is used differently, points elsewhere.
 

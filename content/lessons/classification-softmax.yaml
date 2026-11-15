@@ -25,7 +25,7 @@ knowledge_points:
 
       ### Make them positive, then divide by the total
 
-      Softmax fixes this in two moves. First it raises $e\approx2.72$ to the power of each score, which makes every number positive and keeps the biggest score biggest. Squaring would also make numbers positive, but it would wrongly rank a score of $-3$ above a score of 2. Then it divides each result by their total, so the results add up to 1.
+      **Softmax** turns scores into probabilities in two moves. First it raises $e\approx2.72$ to the power of each score, which makes every number positive and keeps the biggest score biggest. Squaring would also make numbers positive, but it would wrongly rank a score of $-3$ above a score of 2. Then it divides each result by their total, so the results add up to 1.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 320" aria-label="Softmax in two moves for a cup, a ball and a box. Left, the blue scores are 2, 1 and 0. Middle, raising e to the power of each score gives 7.39, 2.72 and 1, which add up to 11.11. Right, dividing each by 11.11 gives the green probabilities 0.67, 0.24 and 0.09, which add up to 1">
@@ -72,7 +72,7 @@ knowledge_points:
       </g></svg>
       ```
 
-      **Softmax** does both moves in one formula:
+      In one formula, this gives:
 
       $$p_k=\frac{e^{z_k}}{e^{z_1}+e^{z_2}+\dots+e^{z_K}}$$
 
@@ -119,7 +119,7 @@ knowledge_points:
 
       $$L=-\ln p_{\text{true}}$$
 
-      Here $p_{\text{true}}$ is the softmax probability of the class the object really is. Averaging $L$ over many labelled examples gives the cross-entropy from the information theory lesson, measured with $\ln$. With two classes, it's the binary cross-entropy from logistic regression.
+      Here $p_{\text{true}}$ is the probability of the class the object really is. We get the probabilities with **softmax**, which raises $e$ to each class's score and divides by the total. Averaging $L$ over many labelled examples gives cross-entropy in natural-log units. With two classes, it's binary cross-entropy.
 
       ### Three possible answers for the same scores
 
@@ -183,7 +183,7 @@ knowledge_points:
     explain: |
       ### Which way should each score move?
 
-      Now that we can measure how wrong the probabilities are, training can lower that loss with gradient descent, which subtracts each slope times a small learning rate $\eta$. In logistic regression, the slope of the loss against the score was $p-y$, the probability minus the label. With softmax, each class's slope is just as simple.
+      Training lowers the loss with gradient descent, which subtracts each slope times a small learning rate $\eta$. In logistic regression, the slope against the score was $p-y$, the probability minus the label. **Softmax** turns class scores into probabilities by raising $e$ to each score and dividing by the total. With cross-entropy loss, each class's slope is just as simple.
 
       To use it, we write the label as one number per class: $y_k=1$ for the true class and $y_k=0$ for every other class. For a ball, the label is $(0,1,0)$ for cup, ball and box. This way of writing a label is called **one-hot**, because exactly one entry is 1.
 
