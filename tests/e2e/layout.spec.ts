@@ -129,6 +129,72 @@ test('course route skeleton displays beside the app navigation', async ({ page }
   await navigation;
 });
 
+test('course skeleton replays visible decorative icons', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/courses/fixture-course');
+  await expect(page.getByRole('heading', { name: /Unit 1/ })).toBeVisible();
+  const unitToggle = page.getByRole('button', { name: /^(Expand|Collapse) unit 1/ });
+  if ((await unitToggle.getAttribute('aria-expanded')) !== 'true') await unitToggle.click();
+  await expect(unitToggle).toHaveAttribute('aria-expanded', 'true');
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+  });
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        Object.keys(sessionStorage).some((key) => key.startsWith('academy.page-layout.')),
+      ),
+    )
+    .toBe(true);
+
+  const firstUnitCard = page.locator('[data-page-frame] [data-slot=card]').first();
+  await expect(firstUnitCard).toBeVisible();
+  const firstUnitBounds = await firstUnitCard.boundingBox();
+  if (!firstUnitBounds) throw new Error('Expected the first unit card to have a bounding box');
+
+  let release: () => void = () => {};
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route('**/api/courses/fixture-course', async (route) => {
+    await gate;
+    await route.continue({
+      headers: { ...route.request().headers(), 'x-now': '2026-01-01T12:00:00.000Z' },
+    });
+  });
+  const reload = page.reload();
+  try {
+    const skeleton = page.getByTestId('route-skeleton');
+    await expect(skeleton).toBeVisible();
+    const ruleShape = skeleton.locator('[data-layout-shape="rule"]').first();
+    await expect(ruleShape).toBeVisible();
+    expect((await ruleShape.boundingBox())?.height).toBe(1);
+    const iconShapes = await skeleton.locator('[data-layout-shape="content"]').evaluateAll(
+      (shapes, card) =>
+        shapes.filter((shape) => {
+          const bounds = shape.getBoundingClientRect();
+          const rightGap = card.x + card.width - bounds.right;
+          return (
+            bounds.width >= 12 &&
+            bounds.width <= 24 &&
+            bounds.height >= 12 &&
+            bounds.height <= 24 &&
+            bounds.y >= card.y &&
+            bounds.bottom <= card.y + card.height &&
+            rightGap >= 4 &&
+            rightGap <= 32
+          );
+        }).length,
+      firstUnitBounds,
+    );
+    expect(iconShapes).toBeGreaterThan(0);
+  } finally {
+    release();
+  }
+  await reload;
+  await expect(firstUnitCard).toBeVisible();
+});
+
 test('root auth pending renders the app-shell skeleton', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.route('**/api/auth/me', async (route) => {

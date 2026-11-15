@@ -2,10 +2,12 @@ import type { CourseCatalogPayload } from '@academy/contracts/course';
 import { useQuery } from '@tanstack/react-query';
 import { Link, Outlet, useRouterState } from '@tanstack/react-router';
 import { Activity, BookOpen, House, ListOrdered, RotateCcw, Settings } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
 import { Toaster } from 'sonner';
 import { BrandLockup } from '../components/brand-lockup.js';
-import { useCapturePageLayout } from '../components/page-layout-skeleton.js';
+import { isLayout, LayoutShapeLayer } from '../components/layout-shapes.js';
+import type { Layout } from '../components/page-layout-skeleton.js';
+import { measureLayout, useCapturePageLayout } from '../components/page-layout-skeleton.js';
 import { PageSkeleton } from '../components/skeletons.js';
 import {
   Sidebar,
@@ -35,6 +37,7 @@ import { useCurrentCourseId } from '../lib/current-course.js';
 
 const SIDEBAR_STORAGE_KEY = 'academy.app-sidebar.open';
 const SIDEBAR_COURSE_GROUPS_KEY = 'academy.sidebar-course-groups';
+const SIDEBAR_COURSE_LAYOUT_KEY = `academy.sidebar-course-layout.${import.meta.env.PROD ? new URL(import.meta.url).pathname : 'dev-3'}`;
 const DEFAULT_SIDEBAR_COURSE_GROUP_COUNTS = [1, 3];
 const COURSE_SKELETON_TITLE_WIDTHS = ['w-3/4', 'w-3/5', 'w-[68%]'];
 const COURSE_SKELETON_GROUP_KEYS = Array.from({ length: 12 }, (_, index) => `group-${index + 1}`);
@@ -71,6 +74,33 @@ function readSidebarCourseGroupCounts(): number[] {
 function writeSidebarCourseGroupCounts(counts: number[]) {
   try {
     window.localStorage.setItem(SIDEBAR_COURSE_GROUPS_KEY, JSON.stringify(counts));
+  } catch {}
+}
+
+function readSidebarCourseLayout(width: number): Layout | undefined {
+  if (width <= 0) return undefined;
+  try {
+    const stored = JSON.parse(
+      window.localStorage.getItem(SIDEBAR_COURSE_LAYOUT_KEY) ?? '{}',
+    ) as Record<string, unknown> | null;
+    const layout = stored?.[String(Math.round(width))];
+    return isLayout(layout) ? layout : undefined;
+  } catch {}
+  return undefined;
+}
+
+function writeSidebarCourseLayout(width: number, layout: Layout) {
+  if (width <= 0) return;
+  try {
+    const stored = JSON.parse(window.localStorage.getItem(SIDEBAR_COURSE_LAYOUT_KEY) ?? '{}');
+    const layouts =
+      stored && typeof stored === 'object' && !Array.isArray(stored)
+        ? (stored as Record<string, unknown>)
+        : {};
+    window.localStorage.setItem(
+      SIDEBAR_COURSE_LAYOUT_KEY,
+      JSON.stringify({ ...layouts, [String(Math.round(width))]: layout }),
+    );
   } catch {}
 }
 
@@ -127,6 +157,8 @@ function AppSidebarView({
       .filter((subject) => subject.courses.length > 0) ?? [];
   const activeCourses = activeCourseGroups.flatMap((subject) => subject.courses);
   const [loadingCourseGroupCounts] = useState(readSidebarCourseGroupCounts);
+  const [courseSection, setCourseSection] = useState<HTMLDivElement | null>(null);
+  const [sidebarCourseLayout, setSidebarCourseLayout] = useState<Layout>();
   useEffect(() => {
     if (loadingCourses || !courses) return;
     const counts = courses.subjects
@@ -134,6 +166,53 @@ function AppSidebarView({
       .filter((count) => count > 0);
     if (counts.length) writeSidebarCourseGroupCounts(counts);
   }, [courses, loadingCourses]);
+  useLayoutEffect(() => {
+    const element = courseSection;
+    if (!element || !showCourseSection) return;
+    const update = () => {
+      const width = element.getBoundingClientRect().width;
+      if (width > 0) setSidebarCourseLayout(readSidebarCourseLayout(width));
+    };
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [courseSection, showCourseSection]);
+  useEffect(() => {
+    const element = courseSection;
+    const hasActiveCourses =
+      courses?.subjects.some((subject) =>
+        subject.courses.some((course) => course.status === 'active'),
+      ) ?? false;
+    if (!element || loadingCourses || !showCourseSection || !hasActiveCourses) return;
+    let timer: ReturnType<typeof setTimeout>;
+    let active = true;
+    const capture = () => {
+      if (!active) return;
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        if (!active || !element.isConnected || document.fonts.status !== 'loaded') return;
+        const width = element.getBoundingClientRect().width;
+        const layout = measureLayout(element);
+        if (layout.shapes.length) {
+          writeSidebarCourseLayout(width, layout);
+          setSidebarCourseLayout(layout);
+        }
+      }, 120);
+    };
+    const resize = new ResizeObserver(capture);
+    const mutations = new MutationObserver(capture);
+    resize.observe(element);
+    mutations.observe(element, { childList: true, subtree: true, characterData: true });
+    void document.fonts.ready.then(capture);
+    capture();
+    return () => {
+      active = false;
+      clearTimeout(timer);
+      resize.disconnect();
+      mutations.disconnect();
+    };
+  }, [courseSection, courses, loadingCourses, showCourseSection]);
   const closeMobile = () => {
     if (isMobile) setOpenMobile(false);
   };
@@ -273,68 +352,90 @@ function AppSidebarView({
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-        {showCourseSection && loadingCourses ? (
-          loadingCourseGroupCounts.length > 1 ? (
-            COURSE_SKELETON_GROUP_KEYS.slice(0, loadingCourseGroupCounts.length).map(
-              (groupKey, groupIndex) => (
+        {showCourseSection ? (
+          <div
+            ref={setCourseSection}
+            data-testid="sidebar-course-section"
+            className="w-full min-w-0"
+          >
+            {loadingCourses ? (
+              sidebarCourseLayout ? (
+                <div
+                  data-testid="sidebar-course-layout-skeleton"
+                  aria-hidden="true"
+                  className="relative w-full"
+                  style={{ height: sidebarCourseLayout.height }}
+                >
+                  <LayoutShapeLayer
+                    shapes={sidebarCourseLayout.shapes}
+                    ruleColor="sidebar-border"
+                  />
+                </div>
+              ) : loadingCourseGroupCounts.length > 1 ? (
+                COURSE_SKELETON_GROUP_KEYS.slice(0, loadingCourseGroupCounts.length).map(
+                  (groupKey, groupIndex) => (
+                    <SidebarGroup
+                      key={groupKey}
+                      data-testid="sidebar-course-skeleton-group"
+                      aria-hidden="true"
+                      className="px-2 pt-3 pb-1"
+                    >
+                      <SidebarGroupLabel className="text-sm font-semibold text-sidebar-foreground">
+                        <Skeleton className="h-4 w-20" />
+                      </SidebarGroupLabel>
+                      <SidebarGroupContent>
+                        <SidebarMenu className="ml-2 w-auto gap-0.5 border-l border-sidebar-border pl-2">
+                          {renderCourseSkeletons(
+                            loadingCourseGroupCounts[groupIndex] ?? 1,
+                            groupKey,
+                          )}
+                        </SidebarMenu>
+                      </SidebarGroupContent>
+                    </SidebarGroup>
+                  ),
+                )
+              ) : (
                 <SidebarGroup
-                  key={groupKey}
                   data-testid="sidebar-course-skeleton-group"
                   aria-hidden="true"
-                  className="px-2 pt-3 pb-1"
+                  className="px-2 py-1"
                 >
-                  <SidebarGroupLabel className="text-sm font-semibold text-sidebar-foreground">
+                  <SidebarGroupLabel>
                     <Skeleton className="h-4 w-20" />
                   </SidebarGroupLabel>
                   <SidebarGroupContent>
-                    <SidebarMenu className="ml-2 gap-0.5 border-l border-sidebar-border pl-2">
-                      {renderCourseSkeletons(loadingCourseGroupCounts[groupIndex] ?? 1, groupKey)}
+                    <SidebarMenu className="gap-1">
+                      {renderCourseSkeletons(loadingCourseGroupCounts[0] ?? 1, 'group-1')}
                     </SidebarMenu>
                   </SidebarGroupContent>
                 </SidebarGroup>
-              ),
-            )
-          ) : (
-            <SidebarGroup
-              data-testid="sidebar-course-skeleton-group"
-              aria-hidden="true"
-              className="px-2 py-1"
-            >
-              <SidebarGroupLabel>
-                <Skeleton className="h-4 w-20" />
-              </SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu className="gap-1">
-                  {renderCourseSkeletons(loadingCourseGroupCounts[0] ?? 1, 'group-1')}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          )
-        ) : null}
-        {showCourseSection && !loadingCourses && activeCourses.length > 0 ? (
-          activeCourseGroups.length > 1 ? (
-            activeCourseGroups.map((subject) => (
-              <SidebarGroup key={subject.id} className="px-2 pt-3 pb-1">
-                <SidebarGroupLabel className="text-sm font-semibold text-sidebar-foreground">
-                  {subject.title}
-                </SidebarGroupLabel>
-                <SidebarGroupContent>
-                  <SidebarMenu className="ml-2 gap-0.5 border-l border-sidebar-border pl-2">
-                    {subject.courses.map(renderCourse)}
-                  </SidebarMenu>
-                </SidebarGroupContent>
-              </SidebarGroup>
-            ))
-          ) : (
-            <SidebarGroup className="px-2 py-1">
-              <SidebarGroupLabel>My courses</SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu className="gap-1">
-                  {activeCourseGroups.flatMap((subject) => subject.courses.map(renderCourse))}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          )
+              )
+            ) : activeCourses.length > 0 ? (
+              activeCourseGroups.length > 1 ? (
+                activeCourseGroups.map((subject) => (
+                  <SidebarGroup key={subject.id} className="px-2 pt-3 pb-1">
+                    <SidebarGroupLabel className="text-sm font-semibold text-sidebar-foreground">
+                      {subject.title}
+                    </SidebarGroupLabel>
+                    <SidebarGroupContent>
+                      <SidebarMenu className="ml-2 w-auto gap-0.5 border-l border-sidebar-border pl-2">
+                        {subject.courses.map(renderCourse)}
+                      </SidebarMenu>
+                    </SidebarGroupContent>
+                  </SidebarGroup>
+                ))
+              ) : (
+                <SidebarGroup className="px-2 py-1">
+                  <SidebarGroupLabel>My courses</SidebarGroupLabel>
+                  <SidebarGroupContent>
+                    <SidebarMenu className="gap-1">
+                      {activeCourseGroups.flatMap((subject) => subject.courses.map(renderCourse))}
+                    </SidebarMenu>
+                  </SidebarGroupContent>
+                </SidebarGroup>
+              )
+            ) : null}
+          </div>
         ) : null}
       </SidebarContent>
       <SidebarFooter className="border-t border-sidebar-border p-2">

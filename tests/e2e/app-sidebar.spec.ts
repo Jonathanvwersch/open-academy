@@ -130,7 +130,9 @@ test('desktop sidebar collapse persists across reload', async ({ page }) => {
   await expect(header.getByRole('button', { name: 'Collapse navigation' })).toBeVisible();
 });
 
-test('sidebar skeleton remembers three subject groups on reload', async ({ page }, testInfo) => {
+test('sidebar skeleton replays captured course geometry after a loaded visit', async ({
+  page,
+}, testInfo) => {
   await db.insert(courseEnrollments).values({
     userId,
     courseId: 'fixture-third-course',
@@ -162,15 +164,44 @@ test('sidebar skeleton remembers three subject groups on reload', async ({ page 
   await expect
     .poll(() => page.evaluate(() => localStorage.getItem('academy.sidebar-course-groups')))
     .toBe('[1,1,1]');
+  const loadedCourseSection = navigation.getByTestId('sidebar-course-section');
+  const loadedSectionHeight = await loadedCourseSection.evaluate(
+    (element) => element.getBoundingClientRect().height,
+  );
+  const loadedCourseRows = await navigation.locator('a[href^="/courses/"]').count();
+  expect(loadedCourseRows).toBeGreaterThan(0);
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        Object.keys(localStorage).some((key) => key.startsWith('academy.sidebar-course-layout.')),
+      ),
+    )
+    .toBe(true);
 
   const previousCoursesRequests = coursesRequests;
   delayCourses = true;
   coursesGate = createGate();
   await page.reload();
   await expect.poll(() => coursesRequests > previousCoursesRequests).toBe(true);
-  const skeletonGroups = navigation.getByTestId('sidebar-course-skeleton-group');
-  await expect(skeletonGroups).toHaveCount(3);
-  await expect(navigation.getByTestId('sidebar-course-skeleton')).toHaveCount(3);
+  const replayedSkeleton = navigation.getByTestId('sidebar-course-layout-skeleton');
+  await expect(replayedSkeleton).toBeVisible();
+  await expect(navigation.getByTestId('sidebar-course-skeleton-group')).toHaveCount(0);
+  const replayedShapeCount = await replayedSkeleton.locator('[data-layout-shape]').count();
+  expect(replayedShapeCount).toBeGreaterThanOrEqual(loadedCourseRows);
+  const verticalRuleCount = await replayedSkeleton
+    .locator('[data-layout-shape="rule"]')
+    .evaluateAll(
+      (rules) =>
+        rules.filter((rule) => {
+          const bounds = rule.getBoundingClientRect();
+          return bounds.height > bounds.width;
+        }).length,
+    );
+  expect(verticalRuleCount).toBeGreaterThanOrEqual(3);
+  const replayedSectionHeight = await navigation
+    .getByTestId('sidebar-course-section')
+    .evaluate((element) => element.getBoundingClientRect().height);
+  expect(Math.abs(replayedSectionHeight - loadedSectionHeight)).toBeLessThanOrEqual(4);
   await expect(navigation.getByText('My courses', { exact: true })).toHaveCount(0);
   mkdirSync(testInfo.outputDir, { recursive: true });
   await page.screenshot({
@@ -180,7 +211,87 @@ test('sidebar skeleton remembers three subject groups on reload', async ({ page 
   });
 
   coursesGate.release();
-  await expect(skeletonGroups).toHaveCount(0);
+  await expect(replayedSkeleton).toHaveCount(0);
+  for (const subject of ['Mathematics', 'AI', 'Robotics']) {
+    await expect(navigation.getByText(subject, { exact: true })).toBeVisible();
+  }
+});
+
+test('mobile sidebar replays captured course geometry after closing and reopening the sheet', async ({
+  page,
+}) => {
+  await db.insert(courseEnrollments).values({
+    userId,
+    courseId: 'fixture-third-course',
+    status: 'active',
+    startMethod: 'beginning',
+  });
+  let coursesRequests = 0;
+  let delayCourses = false;
+  const createGate = () => {
+    let release = () => {};
+    const promise = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    return { promise, release: () => release() };
+  };
+  let coursesGate = createGate();
+  await page.route('**/api/courses', async (route) => {
+    coursesRequests += 1;
+    if (delayCourses) await coursesGate.promise;
+    await fulfillCoursesWithThreeSubjects(route);
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: 'Next up', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Open navigation' }).click();
+
+  const navigation = page.getByRole('navigation', { name: 'Main navigation' });
+  for (const subject of ['Mathematics', 'AI', 'Robotics']) {
+    await expect(navigation.getByText(subject, { exact: true })).toBeVisible();
+  }
+  const storedMobileLayoutShapeCount = () =>
+    page.evaluate(() => {
+      const section = document.querySelector('[data-testid="sidebar-course-section"]');
+      if (!section) return 0;
+      const width = String(Math.round(section.getBoundingClientRect().width));
+      const key = Object.keys(localStorage).find((item) =>
+        item.startsWith('academy.sidebar-course-layout.'),
+      );
+      if (!key) return 0;
+      const layouts = JSON.parse(localStorage.getItem(key) ?? '{}') as Record<
+        string,
+        { shapes?: unknown[] }
+      >;
+      return layouts[width]?.shapes?.length ?? 0;
+    });
+  await expect.poll(storedMobileLayoutShapeCount).toBeGreaterThan(0);
+  await page.keyboard.press('Escape');
+  await expect(navigation).not.toBeVisible();
+
+  const previousCoursesRequests = coursesRequests;
+  delayCourses = true;
+  coursesGate = createGate();
+  const replayedSkeleton = navigation.getByTestId('sidebar-course-layout-skeleton');
+  try {
+    await page.reload();
+    await expect.poll(() => coursesRequests > previousCoursesRequests).toBe(true);
+    await page.getByRole('button', { name: 'Open navigation' }).click();
+    await expect(replayedSkeleton).toBeVisible();
+    const verticalRuleCount = await replayedSkeleton
+      .locator('[data-layout-shape="rule"]')
+      .evaluateAll(
+        (rules) =>
+          rules.filter((rule) => {
+            const bounds = rule.getBoundingClientRect();
+            return bounds.height > bounds.width;
+          }).length,
+      );
+    expect(verticalRuleCount).toBeGreaterThanOrEqual(3);
+  } finally {
+    coursesGate.release();
+  }
+  await expect(replayedSkeleton).toHaveCount(0);
   for (const subject of ['Mathematics', 'AI', 'Robotics']) {
     await expect(navigation.getByText(subject, { exact: true })).toBeVisible();
   }
@@ -460,13 +571,21 @@ test('sidebar shows first-load course and review skeletons before real data', as
     .toBe(true);
   await page.getByRole('button', { name: 'Open navigation' }).click();
   const mobileNavigation = page.getByRole('navigation', { name: 'Main navigation' });
-  await expect(mobileNavigation.getByTestId('sidebar-course-skeleton-group')).toHaveCount(1);
-  await expect(mobileNavigation.getByTestId('sidebar-course-skeleton')).toHaveCount(2);
+  const mobileReplay = mobileNavigation.getByTestId('sidebar-course-layout-skeleton');
+  const mobileFallback = mobileNavigation.getByTestId('sidebar-course-skeleton');
+  if (await mobileReplay.count()) {
+    expect(await mobileReplay.locator('[data-layout-shape]').count()).toBeGreaterThan(0);
+  } else {
+    await expect(mobileNavigation.getByTestId('sidebar-course-skeleton-group')).toHaveCount(1);
+    await expect(mobileFallback).toHaveCount(2);
+  }
   await expect(mobileNavigation.getByTestId('reviews-due-skeleton')).toBeVisible();
-  const mobileSkeletonRowHeights = await mobileNavigation
-    .getByTestId('sidebar-course-skeleton')
-    .evaluateAll((rows) => rows.map((row) => row.getBoundingClientRect().height));
-  expect(mobileSkeletonRowHeights[0]).toBe(mobileSkeletonRowHeights[1]);
+  if (await mobileFallback.count()) {
+    const mobileSkeletonRowHeights = await mobileFallback.evaluateAll((rows) =>
+      rows.map((row) => row.getBoundingClientRect().height),
+    );
+    expect(mobileSkeletonRowHeights[0]).toBe(mobileSkeletonRowHeights[1]);
+  }
   const mobileWidths = await mobileNavigation.evaluate((element) => ({
     clientWidth: element.clientWidth,
     scrollWidth: element.scrollWidth,
