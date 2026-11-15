@@ -84,7 +84,7 @@ knowledge_points:
     explain: |
       ### Choosing from the scores
 
-      Prefill and each later decode pass supply scores for choosing a token. Sampling lets the assistant vary its wording across requests. Let's use a toy vocabulary, Yes and No, with scores $\ln4$ and $0$. These give clean softmax weights: the natural logarithm $\ln4$ is the number whose exponential is $4$. Scores before softmax are called **logits**. Softmax exponentiates them to $4$ and $1$, then divides by their total, giving probabilities $0.8$ and $0.2$.
+      Prefill and each later decode pass supply scores for choosing a token. **Sampling**, drawing a token according to its probability, lets the assistant vary its wording across requests. Let's use a toy vocabulary, Yes and No, with scores $\ln4$ and $0$. These give clean softmax weights: the natural logarithm $\ln4$ is the number whose exponential is $4$. Scores before softmax are called **logits**. Softmax exponentiates them to $4$ and $1$, then divides by their total, giving probabilities $0.8$ and $0.2$.
 
       **Temperature** is a positive number that divides the logits before softmax. A lower temperature concentrates probability on higher scores; a higher one spreads it more evenly. For example, No is drawn more often at higher temperatures. The blue bars show Yes's probability, rounded to two decimals.
 
@@ -109,7 +109,7 @@ knowledge_points:
 
       ### Random draws and greedy choices
 
-      **Sampling** draws a token according to its probability. Lay the probabilities along a strip from 0 to 1. Pick a random point $u$ on it, with $0\le u<1$, and choose the token covering that point. In code, add probabilities until the total first exceeds $u$. Below, at $\tau=2$, Yes covers two thirds and No covers the rest. The orange line marks $u=0.70$.
+      Lay the probabilities along a strip from 0 to 1. Pick a random point $u$ on it, with $0\le u<1$, and choose the token covering that point. In code, add probabilities until the total first exceeds $u$. Below, at $\tau=2$, Yes covers two thirds and No covers the rest. The orange line marks $u=0.70$.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 165" aria-label="At temperature 2, Yes covers 0 to 2/3 and No covers 2/3 to 1. A draw u equals 0.70 lies in No's interval.">
