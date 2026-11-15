@@ -207,7 +207,7 @@ exercises:
         text: Every $3\times3$ matrix loses one pivot during elimination.
         correct: false
         category: incorrect_reasoning
-        feedback: A full-rank $3\times3$ matrix has three pivots.
+        feedback: A $3\times3$ matrix with three independent columns has three pivots.
       - id: c
         text: A negative entry in row 3 removes one independent direction.
         correct: false

@@ -5,6 +5,10 @@ objective: |
 recap:
   - concept: matrices
     text: "A matrix times a vector dots each row with the vector. The transpose $A^\\top$ swaps rows and columns. A vector's squared length is its dot product with itself; perpendicular vectors have dot product $0$."
+  - concept: rank-span
+    text: "Rank counts a matrix's independent columns. An $m\\times k$ matrix times a $k\\times n$ matrix has rank at most $k$."
+  - concept: orthogonality-projections
+    text: "Vectors are orthogonal when their dot product is $0$. A square matrix $Q$ with orthonormal columns has $Q^\\top Q=I$, so $Q^{-1}=Q^\\top$, and it keeps lengths and angles."
 where_this_fits: |
   ### What are eigenvectors and the SVD?
 

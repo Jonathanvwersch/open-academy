@@ -576,7 +576,7 @@ exercises:
       A = np.array([[0.1, 0.2], [0.3, 0.5]])
       b = np.array([0.1, 0.1])
       x = np.linalg.solve(A, b)
-      print((A @ x == b).all())
+      print(A @ x == b)
     buggy_line: 5
     fix_options:
       - id: a

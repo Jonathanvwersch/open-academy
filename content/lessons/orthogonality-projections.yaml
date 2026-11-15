@@ -177,7 +177,7 @@ knowledge_points:
 
       Here $A^\top A$ has determinant $6$, so there's one solution.
 
-      ### What least squares makes smallest
+      ### What the closest point makes smallest
 
       The squared length of $e$ is the sum of the squared errors. The closest point makes $e$ as short as possible, so $\hat x$ gives the line with the smallest such sum. That's why this is called **least squares**. In the picture, the orange line is the fit, $y=2+0.5t$, and the red dashes are the errors.
 

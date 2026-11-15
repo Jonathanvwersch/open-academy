@@ -364,7 +364,7 @@ exercises:
       - answer_expr: -0.6 * (0.8 * p + 0.6 * q) + 0.8 * (-0.6 * p + 0.8 * q)
         category: misapplied_technique
         feedback: That multiplies $b$ by $Q$. To undo $Q$, multiply $b$ by $Q^\top$.
-    solution: Since $Q^{-1}=Q^\top$, $x=Q^\top b$. The second entry is column 2 of $Q$ dotted with $b$, $0.6\times{{=0.8*p+0.6*q}}+0.8\times({{=-0.6*p+0.8*q}})={{=q}}$.
+    solution: Since $Q^{-1}=Q^\top$, $x=Q^\top b$. The second entry is column 2 of $Q$ dotted with $b$, $0.6\times({{=0.8*p+0.6*q}})+0.8\times({{=-0.6*p+0.8*q}})={{=q}}$.
   - id: orthp-scaled-columns
     dimension: math
     type: numeric
@@ -847,16 +847,16 @@ exercises:
       u = np.array([1, 1, 0])
       p = (u @ x) / (u @ u) * u
       print(np.linalg.norm(x - p))
-    answer: 2.449
+    answer: 2.45
     tolerance:
       abs: 0.01
     common_wrong:
-      - answer: 2.828
+      - answer: 2.83
         tolerance:
           abs: 0.01
         category: implementation_error
         feedback: That is the length of `p`, the projection. The code prints the length of the leftover `x - p`.
-      - answer: 3.742
+      - answer: 3.74
         tolerance:
           abs: 0.01
         category: implementation_error

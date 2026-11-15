@@ -50,7 +50,7 @@ knowledge_points:
       </g></svg>
       ```
 
-      The **inverse** of $A$, written $A^{-1}$, sends every output back to its input. A matrix with an inverse is **invertible**. Every vector $y$ then comes from exactly one input. Applying $A^{-1}$ to $y$ finds that input, and applying $A$ returns $y$. In a product like $A^{-1}Ax$, the matrix next to $x$ acts first. Here $x$ is a vector written as a column. Both orders give $I$:
+      The **inverse** of $A$, written $A^{-1}$, sends every output back to its input. A matrix with an inverse is **invertible**. Every vector $y$ then comes from exactly one input. Applying $A^{-1}$ to $y$ finds that input, and applying $A$ returns $y$. Here $x$ is a vector written as a column. In a product like $A^{-1}Ax$, the matrix next to $x$ acts first. Both orders give $I$:
 
       $$AA^{-1}=A^{-1}A=I$$
 
@@ -132,7 +132,7 @@ knowledge_points:
 
       Here, subtracting the second equation from the first removes $x_2$ and leaves $x_1=3$. Then $x_1+x_2=5$ gives $x_2=2$, so a coffee costs £3 and a tea £2.
 
-      Sometimes elimination removes every unknown at once. Suppose a careless till gives $2x_1+2x_2=8$ and $x_1+x_2=5$. Their matrix has rows $(2,2)$ and $(1,1)$, with determinant zero. Subtracting twice the second equation from the first leaves $0=-2$. That's false, so no prices fit both orders. Dividing the first equation by 2 gives $x_1+x_2=4$. Both left sides are $x_1+x_2$, but they must equal 4 and 5. The lines have the same slope and different totals, so they are parallel and never cross.
+      Sometimes elimination removes every unknown at once. Suppose a careless till gives $2x_1+2x_2=8$ and $x_1+x_2=5$. Their matrix has rows $(2,2)$ and $(1,1)$, with determinant zero. Subtracting twice the second equation from the first leaves $0=-2$. That's false, so no prices fit both orders. Dividing the first equation by 2 gives $x_1+x_2=4$. Both left sides are $x_1+x_2$, but they must equal 4 and 5. Both lines go in the same direction but sit at different heights, so they are parallel and never cross.
     worked: |
       Let's add juice to the café menu and solve for three prices from three orders. One coffee, one tea and one juice cost £9. One coffee, two teas and three juices cost £19. One coffee, three teas and six juices cost £33. With $x_3$ for the price of a juice:
 
