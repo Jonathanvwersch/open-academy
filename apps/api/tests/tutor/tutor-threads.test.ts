@@ -37,12 +37,14 @@ const headers = { 'content-type': 'application/json', 'X-Now': '2026-01-04T12:00
 let content: ContentIndex;
 let captured: TutorContext[] = [];
 let failing = false;
+let respondWith: TutorProvider['respond'] | undefined;
 let explanationGrade: RubricJudgement = { criteria: [], feedback_md: '' };
 
 const provider: TutorProvider = {
   model: 'thread-test',
-  async respond(ctx): Promise<TutorResult<TutorReply>> {
+  async respond(ctx, level, providerContent, signal): Promise<TutorResult<TutorReply>> {
     captured.push(ctx);
+    if (respondWith) return respondWith(ctx, level, providerContent, signal);
     if (failing) throw new Error('provider offline');
     return {
       value: {
@@ -66,6 +68,7 @@ beforeAll(async () => {
 beforeEach(async () => {
   captured = [];
   failing = false;
+  respondWith = undefined;
   explanationGrade = { criteria: [], feedback_md: '' };
   await db.delete(users);
   await db.insert(users).values({
@@ -80,12 +83,33 @@ afterAll(async () => {
   await db.$client.end();
 });
 
-async function send(question: string, threadId?: string, extra: Record<string, unknown> = {}) {
+async function send(
+  question: string,
+  threadId?: string,
+  extra: Record<string, unknown> = {},
+  signal?: AbortSignal,
+) {
   return app.request(threadId ? `/api/tutor/threads/${threadId}/messages` : '/api/tutor/threads', {
     method: 'POST',
     headers,
     body: JSON.stringify({ question, ...extra }),
+    signal,
   });
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((resolvePromise) => {
+    resolve = resolvePromise;
+  });
+  return { promise, resolve };
+}
+
+function tutorReply(message: string): TutorResult<TutorReply> {
+  return {
+    value: { message_md: message, misconception: null, suggests_review_of: [] },
+    usage: null,
+  };
 }
 
 test('tutor availability needs neither curriculum loading nor a provider call', async () => {
@@ -101,6 +125,7 @@ test('tutor availability needs neither curriculum loading nor a provider call', 
 test('tutor request body normalizes null optional context fields', () => {
   const parsed = tutorThreadBodySchema.parse({
     question: 'Help me understand this practice question.',
+    threadId: null,
     conceptId: null,
     activityId: null,
     exerciseId: null,
@@ -115,6 +140,7 @@ test('tutor request body normalizes null optional context fields', () => {
   expect(parsed.question).toBe('Help me understand this practice question.');
   for (const key of [
     'conceptId',
+    'threadId',
     'activityId',
     'exerciseId',
     'lessonProblemId',
@@ -261,6 +287,104 @@ test('create-on-first-send persists messages and list/detail preserve newest-fir
     conceptId: null,
     title: 'general question',
   });
+});
+
+test('does not save a stale reply after a newer learner message and keeps unanswered history', async () => {
+  const firstStarted = deferred<boolean>();
+  const lateReply = deferred<TutorResult<TutorReply>>();
+  respondWith = async (ctx) => {
+    if (ctx.question === 'first') {
+      firstStarted.resolve(true);
+      return lateReply.promise;
+    }
+    return tutorReply(`Tutor reply to: ${ctx.question}`);
+  };
+
+  const firstRequest = send('first');
+  await firstStarted.promise;
+  const [thread] = await (await app.request('/api/tutor/threads', { headers })).json();
+  const secondResponse = await send('second', thread.id);
+  expect(secondResponse.status).toBe(200);
+  expect(captured.at(-1)?.history).toEqual([{ role: 'learner', content: 'first' }]);
+
+  lateReply.resolve(tutorReply('Late first reply'));
+  const firstResponse = await firstRequest;
+  expect(firstResponse.status).toBe(200);
+  expect(await firstResponse.json()).toMatchObject({ superseded: true });
+
+  const detail = await (await app.request(`/api/tutor/threads/${thread.id}`, { headers })).json();
+  expect(
+    detail.messages.map((message: { role: string; content: string }) => [
+      message.role,
+      message.content,
+    ]),
+  ).toEqual([
+    ['user', 'first'],
+    ['user', 'second'],
+    ['assistant', 'Tutor reply to: second'],
+  ]);
+});
+
+test('keeps an aborted learner message and includes it in the next request history', async () => {
+  const controller = new AbortController();
+  const providerStarted = deferred<boolean>();
+  respondWith = async (_ctx, _level, _content, signal) => {
+    providerStarted.resolve(true);
+    await new Promise<void>((resolve) => {
+      if (signal?.aborted) resolve();
+      else signal?.addEventListener('abort', () => resolve(), { once: true });
+    });
+    throw new DOMException('The operation was aborted.', 'AbortError');
+  };
+
+  const abortedRequest = send('show me the derivation', undefined, {}, controller.signal);
+  await providerStarted.promise;
+  const [thread] = await (await app.request('/api/tutor/threads', { headers })).json();
+  controller.abort();
+  const response = await abortedRequest;
+  expect(response.status).toBe(200);
+  expect(await response.json()).toMatchObject({ superseded: true });
+
+  const detail = await (await app.request(`/api/tutor/threads/${thread.id}`, { headers })).json();
+  expect(
+    detail.messages.map((message: { role: string; content: string }) => [
+      message.role,
+      message.content,
+    ]),
+  ).toEqual([['user', 'show me the derivation']]);
+
+  respondWith = undefined;
+  expect((await send('show every line', thread.id)).status).toBe(200);
+  expect(captured.at(-1)?.history).toEqual([
+    { role: 'learner', content: 'show me the derivation' },
+  ]);
+});
+
+test('skips saving a reply when the request signal aborts before the provider returns', async () => {
+  const controller = new AbortController();
+  const providerStarted = deferred<boolean>();
+  const releaseProvider = deferred<TutorResult<TutorReply>>();
+  respondWith = async () => {
+    providerStarted.resolve(true);
+    return releaseProvider.promise;
+  };
+
+  const pendingRequest = send('explain the page', undefined, {}, controller.signal);
+  await providerStarted.promise;
+  const [thread] = await (await app.request('/api/tutor/threads', { headers })).json();
+  controller.abort();
+  releaseProvider.resolve(tutorReply('This reply must not be saved'));
+
+  const response = await pendingRequest;
+  expect(response.status).toBe(200);
+  expect(await response.json()).toMatchObject({ superseded: true });
+  const detail = await (await app.request(`/api/tutor/threads/${thread.id}`, { headers })).json();
+  expect(
+    detail.messages.map((message: { role: string; content: string }) => [
+      message.role,
+      message.content,
+    ]),
+  ).toEqual([['user', 'explain the page']]);
 });
 
 test('thread titles collapse whitespace and truncate the first user message to 80 characters', async () => {
@@ -921,12 +1045,13 @@ test('explain tutor context accepts an omitted solution', async () => {
   expect(captured.at(-1)).toMatchObject({ solution: '', problem_status: 'unanswered' });
 });
 
-test('provider failure stores no thread or messages; another user cannot read a thread', async () => {
+test('provider failure leaves the learner message saved; another user cannot read a thread', async () => {
   const llmCallsBefore = await db.select().from(llmCalls);
   failing = true;
   expect((await send('fail')).status).toBe(503);
-  expect(await db.select().from(tutorThreads)).toHaveLength(0);
-  expect(await db.select().from(tutorMessages)).toHaveLength(0);
+  const failedThreads = await db.select().from(tutorThreads);
+  expect(failedThreads).toHaveLength(1);
+  expect(await db.select().from(tutorMessages)).toMatchObject([{ role: 'user', content: 'fail' }]);
   const callsAfter = await db.select().from(llmCalls);
   expect(callsAfter).toHaveLength(llmCallsBefore.length + 1);
   const previousIds = new Set(llmCallsBefore.map((call) => call.id));

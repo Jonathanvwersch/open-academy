@@ -1,11 +1,12 @@
 import { createHash } from 'node:crypto';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { ContentIndex } from '../../src/content/types.js';
 import type { Database } from '../../src/db/client.js';
 import {
   buildTutorInput as buildTutorInputWithContent,
   createTutorProvider,
   FakeProvider,
+  OpenAIProvider,
   tutorPromptVersion,
 } from '../../src/features/tutor/provider.js';
 import {
@@ -104,6 +105,12 @@ describe('buildTutorInput', () => {
     );
     expect(prompt).toContain(
       `12. Write the way a friendly human tutor talks: short, plain sentences. Never use em dashes (—) or spaced en dashes ( – ); use a full stop, comma, colon or brackets instead. Don't frame points as "X, not Y" or "it's not X, it's Y" unless you are correcting a specific mistake the learner made. No filler openers ("Great question!") or closing offers ("Let me know if…").`,
+    );
+    expect(prompt).toContain(
+      'Never switch to a different or simpler example unless the learner asks for one.',
+    );
+    expect(prompt).toContain(
+      '14. The learner may send more than one message before you reply, for example to correct or steer a question while you were still answering.',
     );
     expect(tutorPromptVersion('tutor-system', tutorContent)).toBe(
       createHash('sha256').update(prompt).digest('hex').slice(0, 12),
@@ -207,6 +214,29 @@ describe('buildTutorInput', () => {
       { role: 'assistant', content: 'Consider the slope.' },
       { role: 'user', content: 'I see it now.' },
     ]);
+  });
+});
+
+describe('OpenAIProvider', () => {
+  it('passes the request abort signal to the Responses API', async () => {
+    const parse = vi.fn().mockResolvedValue({
+      output_parsed: {
+        message_md: 'Try the first step.',
+        misconception: null,
+        suggests_review_of: [],
+      },
+      usage: null,
+    });
+    const provider = new OpenAIProvider('test-key', 'test-model', {
+      responses: { parse },
+    } as never);
+    const controller = new AbortController();
+
+    await provider.respond(tutorContext(), 'hint', tutorContent, controller.signal);
+
+    expect(parse).toHaveBeenCalledWith(expect.objectContaining({ model: 'test-model' }), {
+      signal: controller.signal,
+    });
   });
 });
 

@@ -102,6 +102,7 @@ export interface TutorProvider {
     ctx: TutorContext,
     level: TutorLevel,
     content: ContentIndex,
+    signal?: AbortSignal,
   ): Promise<TutorResult<TutorReply>>;
   gradeExplanation(ctx: ExplanationContext): Promise<TutorResult<RubricJudgement>>;
 }
@@ -121,13 +122,17 @@ export class OpenAIProvider implements TutorProvider {
     ctx: TutorContext,
     level: TutorLevel,
     content: ContentIndex,
+    signal?: AbortSignal,
   ): Promise<TutorResult<TutorReply>> {
-    const response = await this.client.responses.parse({
-      model: this.model,
-      input: buildTutorInput(ctx, level, content),
-      text: { format: zodTextFormat(TutorReplySchema, 'tutor_reply') },
-      max_output_tokens: 900,
-    });
+    const response = await this.client.responses.parse(
+      {
+        model: this.model,
+        input: buildTutorInput(ctx, level, content),
+        text: { format: zodTextFormat(TutorReplySchema, 'tutor_reply') },
+        max_output_tokens: 900,
+      },
+      { signal },
+    );
     return {
       value: TutorReplySchema.parse(response.output_parsed),
       usage: response.usage
@@ -181,6 +186,7 @@ export class FakeProvider implements TutorProvider {
     _ctx: TutorContext,
     _level: TutorLevel,
     _content: ContentIndex,
+    _signal?: AbortSignal,
   ): Promise<TutorResult<TutorReply>> {
     if (this.failure) throw this.failure;
     return { value: TutorReplySchema.parse(this.reply), usage: null };
@@ -199,6 +205,7 @@ export class E2ETutorProvider implements TutorProvider {
     ctx: TutorContext,
     _level: TutorLevel,
     _content: ContentIndex,
+    _signal?: AbortSignal,
   ): Promise<TutorResult<TutorReply>> {
     return {
       value: TutorReplySchema.parse({

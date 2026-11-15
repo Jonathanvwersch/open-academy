@@ -25,6 +25,8 @@ const tutorMathScreenshotDir = 'test-results/screenshots/screenshots/tutor-math'
 mkdirSync(tutorMathScreenshotDir, { recursive: true });
 const tutorSidebarScreenshotDir = 'test-results/screenshots/shots/tutor-sidebar';
 mkdirSync(tutorSidebarScreenshotDir, { recursive: true });
+const tutorStopScreenshotDir = '/home/ubuntu/briefs/tutor/shots';
+mkdirSync(tutorStopScreenshotDir, { recursive: true });
 let sessionId = '';
 
 async function waitForTutorSidebarToSettle(page: Page, panelSelector: string) {
@@ -668,8 +670,6 @@ test('tutor chat sends optimistically and supports chat-list navigation', async 
   const textarea = tutor.getByLabel('Ask the tutor');
   await textarea.fill('Explain the first step');
   const sendButton = tutor.locator('form button[type="submit"]');
-  const sendButtonBefore = await sendButton.boundingBox();
-  if (!sendButtonBefore) throw new Error('Tutor Send button is not visible');
   await textarea.press('Enter');
   await tutorRequestStarted;
   expect(requestBody).toMatchObject({
@@ -693,20 +693,12 @@ test('tutor chat sends optimistically and supports chat-list navigation', async 
     'aria-hidden',
     'true',
   );
-  await expect(sendButton).toHaveAttribute('aria-busy', 'true');
-  await expect(sendButton).toHaveAttribute('data-loading', 'true');
-  await expect(sendButton.getByTestId('button-spinner')).toBeVisible();
-  await expect(sendButton.getByText('Send', { exact: true })).toHaveCSS('opacity', '0');
-  const sendButtonAfter = await sendButton.boundingBox();
-  if (!sendButtonAfter) throw new Error('Loading Tutor Send button is not visible');
-  expect(Math.abs(sendButtonAfter.width - sendButtonBefore.width)).toBeLessThanOrEqual(0.5);
-  expect(Math.abs(sendButtonAfter.height - sendButtonBefore.height)).toBeLessThanOrEqual(0.5);
-  await expect
-    .poll(() => sendButton.evaluate((element) => getComputedStyle(element).opacity))
-    .toBe('1');
+  await expect(sendButton).toHaveAttribute('aria-label', 'Stop');
+  await expect(sendButton.locator('svg')).toBeVisible();
   await textarea.fill('Draft while waiting');
   await expect(textarea).toHaveValue('Draft while waiting');
-  await expect(sendButton).toBeDisabled();
+  await expect(sendButton).toHaveAttribute('aria-label', 'Send');
+  await expect(sendButton).toBeEnabled();
   await textarea.fill('');
   await expect(textarea).toHaveValue('');
   await page.screenshot({ path: `${screenshotDir}/tutor-pending.png` });
@@ -1001,6 +993,139 @@ test('tutor send failure restores the draft and removes the optimistic message',
   await expect(tutor.getByRole('alert')).toContainText('The tutor could not respond. Try again.');
   await expect(tutor.getByTestId('tutor-user-message')).toHaveCount(0);
   await expect(tutor.getByTestId('tutor-thinking-bubble')).toHaveCount(0);
+});
+
+test('Stop and steering keep tutor messages server-backed at desktop and mobile widths', async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    localStorage.removeItem('academy.tutor.open');
+    localStorage.removeItem('academy.tutor.thread');
+  });
+
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+
+    let threadId = '';
+    let messageCount = 0;
+    let releaseFirstRequest = () => {};
+    let firstRequestReceived = () => {};
+    const firstRequestBlocked = new Promise<void>((resolve) => {
+      releaseFirstRequest = resolve;
+    });
+    const firstRequestStarted = new Promise<void>((resolve) => {
+      firstRequestReceived = resolve;
+    });
+    const messages: MockedTutorMessage[] = [];
+    const thread = () => ({
+      id: threadId,
+      conceptId: 'supervised-learning',
+      title: 'First question',
+      updatedAt: '2026-01-01T12:00:00.003Z',
+    });
+    const detail = () => ({
+      thread: {
+        ...thread(),
+        conceptTitle: 'Supervised learning',
+        messageCount: messages.length,
+        lastMessagePreview: messages[0]?.content ?? '',
+      },
+      messages: [...messages],
+    });
+
+    await page.route('**/api/tutor/status', (route) =>
+      route.fulfill({ json: { tutorEnabled: true } }),
+    );
+    await page.route('**/api/tutor/threads**', async (route) => {
+      const url = route.request().url();
+      if (route.request().method() === 'POST') {
+        const body = route.request().postDataJSON() as { question: string; threadId: string };
+        threadId = body.threadId;
+        messageCount += 1;
+        const userMessage: MockedTutorMessage = {
+          id: `user-${messageCount}`,
+          role: 'user',
+          content: body.question,
+          createdAt: `2026-01-01T12:00:00.00${messageCount}Z`,
+        };
+        messages.push(userMessage);
+        if (messageCount === 1) {
+          firstRequestReceived();
+          await firstRequestBlocked;
+          try {
+            await route.fulfill({ json: { thread: thread(), messages: [userMessage] } });
+          } catch {
+            return;
+          }
+          return;
+        }
+        const assistantMessage: MockedTutorMessage = {
+          id: `assistant-${messageCount}`,
+          role: 'assistant',
+          content: `Tutor reply to: ${body.question}`,
+          createdAt: '2026-01-01T12:00:00.004Z',
+        };
+        messages.push(assistantMessage);
+        await route.fulfill({
+          json: { thread: thread(), messages: [userMessage, assistantMessage] },
+        });
+        return;
+      }
+      if (url.endsWith('/api/tutor/threads')) {
+        await route.fulfill({ json: threadId ? [detail().thread] : [] });
+        return;
+      }
+      if (url.endsWith(`/api/tutor/threads/${threadId}`)) {
+        await route.fulfill({ json: detail() });
+        return;
+      }
+      await route.continue();
+    });
+
+    await page.goto(`/session/${sessionId}`);
+    await page.getByRole('button', { name: 'Ask the tutor' }).click();
+    const tutor = page.getByRole('complementary', { name: 'Tutor' });
+    await tutor.getByRole('button', { name: 'New chat', exact: true }).click();
+    const textarea = tutor.getByLabel('Ask the tutor');
+    await textarea.fill('Show me the first step.');
+    await textarea.press('Enter');
+    await firstRequestStarted;
+    await expect(textarea).toBeEnabled();
+    await expect(tutor.getByRole('button', { name: 'Stop' })).toBeVisible();
+    await page.screenshot({
+      path: `${tutorStopScreenshotDir}/${width === 390 ? 'mobile-390' : 'desktop-1440'}-pending-stop.png`,
+    });
+
+    await textarea.fill('Please show the next line.');
+    await expect(tutor.getByRole('button', { name: 'Send' })).toBeEnabled();
+    await page.screenshot({
+      path: `${tutorStopScreenshotDir}/${width === 390 ? 'mobile-390' : 'desktop-1440'}-pending-draft.png`,
+    });
+
+    if (width === 1440) {
+      await textarea.fill('');
+      await tutor.getByRole('button', { name: 'Stop' }).click();
+      await expect(tutor.getByTestId('tutor-user-message')).toHaveCount(1);
+      await expect(tutor.getByTestId('tutor-thinking-bubble')).toHaveCount(0);
+      await expect(tutor.getByRole('alert')).toHaveCount(0);
+    } else {
+      await textarea.press('Enter');
+      await expect(
+        tutor.getByTestId('tutor-user-message').filter({ hasText: 'Show me the first step.' }),
+      ).toHaveCount(1);
+      await expect(
+        tutor.getByTestId('tutor-user-message').filter({ hasText: 'Please show the next line.' }),
+      ).toHaveCount(1);
+      await expect(
+        tutor.getByTestId('tutor-assistant-message').filter({
+          hasText: 'Tutor reply to: Please show the next line.',
+        }),
+      ).toHaveCount(1);
+    }
+    releaseFirstRequest();
+    await page.unroute('**/api/tutor/status');
+    await page.unroute('**/api/tutor/threads**');
+  }
 });
 
 test('Practice activity without a concept can send a tutor message', async ({ page }) => {
