@@ -17,3 +17,724 @@ exercises:
           feedback: "5.5 is the TD target. The update only moves $Q$ a fraction $\\alpha$ of the way toward it.",
         }
     solution: "Target $= r + \\gamma \\max Q(s',\\cdot) = 1 + 4.5 = 5.5$. $Q \\leftarrow 2 + 0.5\\,(5.5 - 2) = 3.75$."
+  - id: ql-q-table-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What does the entry $Q(s,a)$ in a Q-table hold?
+    options:
+      - id: a
+        text: The reward the agent gets for that one move.
+        correct: false
+        category: misunderstood_definition
+        feedback: The reward of the move is only the first part. $Q(s,a)$ also counts the discounted rewards that come after it.
+      - id: b
+        text: The return expected after taking action $a$ in state $s$.
+        correct: true
+        feedback: $Q(s,a)$ is the expected return, the move's reward plus the discounted rewards that follow.
+      - id: c
+        text: The probability that the agent picks action $a$ in state $s$.
+        correct: false
+        category: misunderstood_definition
+        feedback: That is the policy $\pi(a\mid s)$. A Q-table holds values, which can be any size and sign.
+      - id: d
+        text: The number of times the agent has tried action $a$ in $s$.
+        correct: false
+        category: misunderstood_definition
+        feedback: A Q-table stores how good each action is, not how often it was tried.
+    solution: Each entry $Q(s,a)$ is the agent's estimate of the return it can expect after taking action $a$ in state $s$, counting the move's reward and the discounted rewards after it.
+  - id: qlp-wall-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example, why does $Q^*(1,\text{left})$ use the best value of cell 1 itself, $6.2$?
+    options:
+      - id: a
+        text: Moving left from cell 1 hits the wall, so the robot stays in cell 1.
+        correct: true
+        feedback: The next state after bumping the wall is cell 1, so its best value, $6.2$, goes after the reward.
+      - id: b
+        text: Left is the worse move, so it borrows the value of the better one.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The formula always uses the best value of the state the move lands in. Here that state happens to be cell 1.
+      - id: c
+        text: Every episode starts in cell 1, so every move counts cell 1's value.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The start cell plays no part. Moving right from cell 2 uses cell 3's value, for example.
+      - id: d
+        text: Cell 1 gives a reward of $6.2$ whenever the robot is in it.
+        correct: false
+        category: misunderstood_definition
+        feedback: Every move except the last gives $-1$. The $6.2$ is a value, the return still to come from cell 1.
+    solution: The best value of a move is its reward plus $\gamma$ times the best value of the state it lands in. Moving left from cell 1 hits the wall and lands back in cell 1, so $Q^*(1,\text{left})=-1+0.9\times6.2=4.58$.
+  - id: qlp-greedy-pick
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A robot's Q-table for its current state holds $Q(s,\\text{up})=3$, $Q(s,\\text{down})=-2$ and $Q(s,\\text{stay})=5$. Which action does it take if it acts greedily?"
+    options:
+      - id: a
+        text: Stay, because its value is the biggest.
+        correct: true
+        feedback: Acting greedily means taking the action with the biggest value, and $5$ is the biggest.
+      - id: b
+        text: Down, because its value is the smallest.
+        correct: false
+        category: misunderstood_definition
+        feedback: Values are returns, so bigger is better. Picking the smallest treats them like costs.
+      - id: c
+        text: Up, because its value is the only positive one.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Stay's value, $5$, is positive too and bigger. Greedy compares the values and takes the largest.
+    solution: Greedy takes the action with the largest value. Of $3$, $-2$ and $5$, the largest is $5$, so the robot stays.
+  - id: qlp-bellman-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "An agent takes an action that gives a reward of ${{=r}}$ and lands in a state whose two actions have best values $Q^*={{=q1}}$ and $Q^*={{=q2}}$. With discount $\\gamma=0.9$, what is $Q^*$ of the action it took?"
+    params:
+      r:
+        min: -2
+        max: 2
+        step: 1
+      q1:
+        min: 0
+        max: 10
+        step: 2
+      q2:
+        min: 0
+        max: 10
+        step: 2
+    constraints:
+      - "r != 0"
+      - "q1 != q2"
+      - "abs(r + 0.9 * max(q1, q2) - q1) > 0.001"
+      - "abs(r + 0.9 * max(q1, q2) - q2) > 0.001"
+    answer_expr: r + 0.9 * max(q1, q2)
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer_expr: r + 0.9 * min(q1, q2)
+        category: misunderstood_definition
+        feedback: Use the best value of the next state, the larger of the two.
+      - answer_expr: r + max(q1, q2)
+        category: math_error
+        feedback: The next state's value is one step in the future, so multiply it by $\gamma=0.9$.
+      - answer_expr: 0.9 * (r + max(q1, q2))
+        category: math_error
+        feedback: The reward comes straight away and is not discounted. Only the next state's value is multiplied by $\gamma$.
+    solution: "The best value is the reward plus $\\gamma$ times the larger next value: ${{=r}}+0.9\\times{{=max(q1,q2)}}={{=r+0.9*max(q1,q2)}}$."
+  - id: qlp-two-moves
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "On a short path, moving from A to B gives reward $-1$, and moving from B to C gives reward $+5$ and ends the episode. A and B each have only this one action. With $\\gamma=0.9$, what is the best value of moving from A?"
+    answer: 3.5
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer: 4
+        category: math_error
+        feedback: The reward from B to C comes one step later, so multiply it by $\gamma=0.9$.
+      - answer: 4.5
+        category: incorrect_reasoning
+        feedback: Add the reward of the move from A, which is $-1$.
+      - answer: 3.6
+        category: math_error
+        feedback: The first reward, $-1$, comes straight away, so it is not discounted.
+    solution: Moving from B is worth $5$, since nothing follows. Moving from A is worth $-1+0.9\times5=3.5$.
+  - id: qlp-reward-vs-value
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A robot in a 4-cell corridor gets $-1$ per move and $+10$ for reaching cell 4, with $\\gamma=0.9$. Its best values say moving right from cell 2 is worth $8$, but that move only earns $-1$. A learner says the value must be wrong. What is the mistake?"
+    options:
+      - id: a
+        text: The value also counts the discounted rewards after the move.
+        correct: true
+        feedback: "$8=-1+0.9\\times10$: the move's $-1$ plus the discounted value of moving on from cell 3."
+      - id: b
+        text: The move really earns $+8$, so the reward is wrong.
+        correct: false
+        category: misunderstood_definition
+        feedback: The move does earn $-1$. The rest of the $8$ comes from what happens after it.
+      - id: c
+        text: The value is the average reward per move over the episode.
+        correct: false
+        category: misunderstood_definition
+        feedback: An action value is a discounted sum of rewards, not an average.
+    solution: An action value is the return, the move's reward plus the discounted rewards after it. Here $-1+0.9\times10=8$, so the value is right.
+  - id: qlp-aisle-choice
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "A warehouse robot at a junction has the values $Q(\\text{junction},\\text{aisle A})=14$ and $Q(\\text{junction},\\text{aisle B})=15$. Entering aisle A gives reward $-1$ and entering aisle B gives $-3$. Which aisle should a greedy robot enter?"
+    options:
+      - id: a
+        text: Aisle B, because its value is bigger and already includes the $-3$.
+        correct: true
+        feedback: An action value already counts that move's own reward, so we compare $15$ with $14$.
+      - id: b
+        text: Aisle A, because $14-1=13$ is more than $15-3=12$.
+        correct: false
+        category: incorrect_reasoning
+        feedback: This counts each move's reward twice. The values already include it.
+      - id: c
+        text: Aisle A, because entering it costs less right now.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Looking only at the next reward ignores everything after it. The values weigh both.
+    solution: Each value already includes the reward for entering the aisle, so the robot just compares the values. $15>14$, so it enters aisle B.
+  - id: ql-update-rule-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: In Q-learning, what is the TD target for a move from $s$ to $s'$ with reward $r$, when the episode doesn't end?
+    options:
+      - id: a
+        text: $r+\gamma\max_{a'}Q(s',a')$
+        correct: true
+        feedback: The reward plus the discounted best current guess for the next state.
+      - id: b
+        text: $Q(s,a)+r$
+        correct: false
+        category: misunderstood_definition
+        feedback: The target is built from what came after the move, the reward and the next state's values.
+      - id: c
+        text: $r+\gamma\max_{a'}Q(s,a')$
+        correct: false
+        category: misunderstood_definition
+        feedback: This takes the max over the state the move left. The target looks at the state it landed in, $s'$.
+      - id: d
+        text: The sum of all rewards until the episode ends
+        correct: false
+        category: misunderstood_definition
+        feedback: Q-learning doesn't wait for the episode to end. It uses one reward and the table's guess for $s'$.
+    solution: The TD target is $r+\gamma\max_{a'}Q(s',a')$, one real reward plus the discounted best guess for the state the move landed in.
+  - id: qlp-second-target-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example, why does the second target use $5$ for cell 3, and not $0$?
+    options:
+      - id: a
+        text: The target takes the larger of cell 3's values, $0$ and $5$.
+        correct: true
+        feedback: The max over the next state's actions picks $Q(3,\text{right})=5$.
+      - id: b
+        text: The robot moved right from cell 3 last time, so it uses that move.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The target uses the max over the next state's actions, whatever the robot did before.
+      - id: c
+        text: Five is half of the reward of $10$, because $\eta=0.5$.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The $5$ is what the table held after the first update. The target reads it from the table.
+    solution: The target is $-1+0.9\times\max(Q(3,\text{left}),Q(3,\text{right}))$. After the first episode those were $0$ and $5$, so the max is $5$.
+  - id: qlp-update-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt: "An agent has $Q(s,a)={{=q}}$. It takes action $a$, gets reward ${{=r}}$ and lands in $s'$, where the largest value is $\\max_{a'}Q(s',a')={{=m}}$. With $\\gamma=0.9$ and learning rate $\\eta={{=eta}}$, what is $Q(s,a)$ after one Q-learning update? Give 2 decimal places."
+    params:
+      q:
+        min: 1
+        max: 4
+        step: 1
+      r:
+        min: -1
+        max: 2
+        step: 1
+      m:
+        min: 1
+        max: 6
+        step: 1
+      eta:
+        min: 0.1
+        max: 0.5
+        step: 0.4
+    constraints:
+      - "r != 0"
+      - "r + 0.9 * m != q"
+      - "abs(q + eta * (r + 0.9 * m - q) - 0.9) > 0.001"
+      - "abs(q + eta * (r + 0.9 * m - q) - q) > 0.001"
+      - "abs(q + eta * (r + 0.9 * m - q) - m) > 0.001"
+      - "abs(q + eta * (r + 0.9 * m - q) - r) > 0.001"
+      - "abs(q + eta * (r + 0.9 * m - q) - eta) > 0.001"
+    answer_expr: q + eta * (r + 0.9 * m - q)
+    tolerance:
+      abs: 0.005
+    common_wrong:
+      - answer_expr: r + 0.9 * m
+        category: misunderstood_definition
+        feedback: That is the TD target. The update only moves $\eta$ of the way toward it.
+      - answer_expr: q + eta * (r + m - q)
+        category: math_error
+        feedback: Multiply the next state's value by $\gamma=0.9$ before adding the reward.
+      - answer_expr: eta * (r + 0.9 * m)
+        category: math_error
+        feedback: The update starts from the old value and adds $\eta$ times the TD error.
+    solution: "The target is ${{=r}}+0.9\\times{{=m}}={{=r+0.9*m}}$, so $\\delta={{=r+0.9*m}}-{{=q}}={{=r+0.9*m-q}}$. Then $Q(s,a)={{=q}}+{{=eta}}\\times({{=r+0.9*m-q}})={{=q+eta*(r+0.9*m-q)}}$."
+  - id: qlp-final-move-update
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: An agent has $Q(s,a)=1$. Taking $a$ gives reward $4$ and ends the episode. With $\gamma=0.9$ and learning rate $\eta=0.5$, what is $Q(s,a)$ after one Q-learning update?
+    answer: 2.5
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer: 4
+        category: misunderstood_definition
+        feedback: That is the target. The update only moves half of the gap toward it.
+      - answer: 2
+        category: math_error
+        feedback: The update starts from the old value, $1$, and adds $\eta$ times the gap $4-1$.
+      - answer: 2.3
+        category: math_error
+        feedback: The reward isn't discounted. When the episode ends, the target is just $r=4$.
+    solution: The episode ends, so the target is just $4$. The TD error is $4-1=3$, and $Q(s,a)=1+0.5\times3=2.5$.
+  - id: qlp-wrong-state
+    dimension: math
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt: "A robot in cell 2 moves right to cell 3 and gets reward $-1$. Its table has $Q(2,\\text{left})=1$, $Q(2,\\text{right})=2$, $Q(3,\\text{left})=0$ and $Q(3,\\text{right})=6$, and $\\gamma=0.9$. A learner writes the TD target as $-1+0.9\\times2=0.8$. What went wrong?"
+    options:
+      - id: a
+        text: They used cell 2's best value; the target uses cell 3's, giving $4.4$.
+        correct: true
+        feedback: The max is over the state the move lands in, so the target is $-1+0.9\times6=4.4$.
+      - id: b
+        text: They should have used $Q(3,\text{left})=0$, giving a target of $-1$.
+        correct: false
+        category: misunderstood_definition
+        feedback: The target takes the largest value in cell 3, which is $6$, not the smallest.
+      - id: c
+        text: They forgot to add $Q(2,\text{right})$, giving a target of $2.8$.
+        correct: false
+        category: misunderstood_definition
+        feedback: The old value isn't part of the target. It is subtracted later to get the TD error.
+    solution: The target is $r+\gamma\max_{a'}Q(s',a')$ with $s'$ = cell 3, so it is $-1+0.9\times6=4.4$. The learner used the max over cell 2, the state the move left.
+  - id: qlp-rate-one
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "In the Q-learning update $Q(s,a)\\leftarrow Q(s,a)+\\eta\\,\\delta$, what does one update do when the learning rate is $\\eta=1$?"
+    options:
+      - id: a
+        text: It replaces $Q(s,a)$ with the TD target.
+        correct: true
+        feedback: "With $\\eta=1$ the update adds the whole gap: $Q+(\\text{target}-Q)=\\text{target}$."
+      - id: b
+        text: It leaves $Q(s,a)$ unchanged.
+        correct: false
+        category: misunderstood_definition
+        feedback: That happens with $\eta=0$. With $\eta=1$ the whole gap is closed.
+      - id: c
+        text: It moves $Q(s,a)$ halfway to the TD target.
+        correct: false
+        category: misunderstood_definition
+        feedback: Halfway is $\eta=0.5$. The learning rate is the fraction of the gap closed.
+    solution: The update adds $\eta$ times the gap between target and old value. With $\eta=1$ it adds the whole gap, so the new value equals the TD target.
+  - id: qlp-delivery-path
+    dimension: transfer
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 4
+    prompt: "A delivery robot moves along a path B, then C, then the goal, with one action, forward, in each place. Moving into the goal gives $+6$ and ends the episode, and the move from B to C gives $-1$. Every value starts at $0$, with $\\eta=0.5$ and $\\gamma=0.9$. Episode 1 starts in C and moves to the goal. Episode 2 starts in B and moves to C, then to the goal. What is $Q(\\text{B},\\text{forward})$ at the end of episode 2? Give 2 decimal places."
+    answer: 0.85
+    tolerance:
+      abs: 0.005
+    common_wrong:
+      - answer: 1.525
+        tolerance:
+          abs: 0.005
+        category: incorrect_reasoning
+        feedback: The move from B happens before C's second update, so its target uses C's value after episode 1, which is $3$.
+      - answer: -0.5
+        category: incorrect_reasoning
+        feedback: Episode 1 already raised $Q(\text{C},\text{forward})$ to $3$, so the target uses $3$ for C.
+      - answer: 1.7
+        category: misunderstood_definition
+        feedback: That is the TD target. The update moves only half of the gap toward it.
+    solution: Episode 1 gives $Q(\text{C})=0+0.5\times6=3$. In episode 2, the move from B has target $-1+0.9\times3=1.7$, so $Q(\text{B})=0+0.5\times1.7=0.85$. C's second update comes afterwards and doesn't change B.
+  - id: ql-explore-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: How does an epsilon-greedy agent choose each action?
+    options:
+      - id: a
+        text: With probability $\varepsilon$ it picks at random; otherwise it picks the biggest value.
+        correct: true
+        feedback: Most moves are greedy, and a small share are random, so every action keeps being tried.
+      - id: b
+        text: With probability $\varepsilon$ it picks the biggest value; otherwise it picks at random.
+        correct: false
+        category: misunderstood_definition
+        feedback: This swaps the two. $\varepsilon$ is the small chance of a random move.
+      - id: c
+        text: With probability $\varepsilon$ it picks the action with the smallest value.
+        correct: false
+        category: misunderstood_definition
+        feedback: The random pick is from all actions, so it can land on any of them, the greedy one included.
+      - id: d
+        text: It always picks the biggest value after adding $\varepsilon$ to every value.
+        correct: false
+        category: misunderstood_definition
+        feedback: Adding the same number to every value changes nothing. Exploring needs some random moves.
+    solution: Epsilon-greedy picks an action at random from all actions with probability $\varepsilon$, and otherwise takes the action with the biggest value.
+  - id: qlp-greedy-chance-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example, why is the chance of moving left $0.95$ and not $0.9$?
+    options:
+      - id: a
+        text: The random pick, made with probability $0.1$, also lands on left half the time.
+        correct: true
+        feedback: Left comes from the greedy choice, $0.9$, plus half of the random picks, $0.05$.
+      - id: b
+        text: Left's value of $0.5$ adds a little to its chance of being picked.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Epsilon-greedy doesn't use the size of the values, only which one is biggest.
+      - id: c
+        text: The robot always explores, so it moves left whenever right fails.
+        correct: false
+        category: misunderstood_definition
+        feedback: The robot explores only with probability $0.1$, and moves never fail in this corridor.
+    solution: With probability $0.9$ the robot moves greedily, which is left. With probability $0.1$ it picks at random between two actions, which is left half of that time, $0.05$. So $P(\text{left})=0.95$.
+  - id: qlp-greedy-stuck
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "A robot learns with Q-learning but always moves greedily. In one state, action A always gives reward $+1$ and ends the episode. The robot has tried A once, so $Q(s,\\text{A})=0.5$, and has never tried action B, so $Q(s,\\text{B})=0$. Action B is really much better. What happens?"
+    options:
+      - id: a
+        text: It keeps choosing A, so it never learns how good B is.
+        correct: true
+        feedback: B's value only changes when B is tried, and greedy never tries it while A's value is bigger.
+      - id: b
+        text: It switches to B once A's value has settled at its true value.
+        correct: false
+        category: incorrect_reasoning
+        feedback: A's value only rises toward $1$, and B's stays at $0$ while it isn't tried, so A keeps looking better.
+      - id: c
+        text: B's value rises on its own as A's value is updated.
+        correct: false
+        category: misunderstood_definition
+        feedback: Each update changes only the entry of the move just made.
+    solution: An entry changes only when its move is made. A's value only rises toward $1$, so greedy keeps picking A over B's $0$, so B is never tried and its value stays wrong. Exploration fixes this.
+  - id: qlp-greedy-chance-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "An epsilon-greedy agent has {{=k}} actions and $\\varepsilon={{=eps}}$. What is the probability that it takes the action with the biggest value? Give 2 decimal places."
+    params:
+      k:
+        min: 2
+        max: 5
+        step: 1
+      eps:
+        min: 0.2
+        max: 0.6
+        step: 0.2
+    constraints:
+      - "k != 3"
+    answer_expr: 1 - eps + eps / k
+    tolerance:
+      abs: 0.005
+    common_wrong:
+      - answer_expr: 1 - eps
+        category: incorrect_reasoning
+        feedback: The random pick can also land on the greedy action, which adds $\varepsilon/k$.
+      - answer_expr: eps / k
+        category: misunderstood_definition
+        feedback: That is the chance of one particular action from the random pick alone. Add the greedy share, $1-\varepsilon$.
+    solution: "The greedy action comes from the greedy choice, $1-{{=eps}}={{=1-eps}}$, plus its share of random picks, ${{=eps}}/{{=k}}={{=eps/k}}$. In total ${{=1-eps+eps/k}}$."
+  - id: qlp-explore-target
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt: "An agent has $Q(s,a)=4$. It takes $a$, gets reward $2$ and lands in $s'$, whose two actions have values $3$ and $7$. Its next move from $s'$ will be a random one, the action with value $3$. With $\\gamma=0.9$ and learning rate $\\eta=0.5$, what is $Q(s,a)$ after the Q-learning update? Give 2 decimal places."
+    answer: 6.15
+    tolerance:
+      abs: 0.005
+    common_wrong:
+      - answer: 4.35
+        tolerance:
+          abs: 0.005
+        category: misunderstood_definition
+        feedback: Q-learning's target uses the best value in $s'$, $7$, whatever the next move turns out to be.
+      - answer: 8.3
+        category: math_error
+        feedback: That is the TD target. The update only moves half of the gap toward it.
+    solution: The target uses the max, $2+0.9\times7=8.3$. The TD error is $8.3-4=4.3$, so $Q(s,a)=4+0.5\times4.3=6.15$.
+  - id: qlp-off-policy-meaning
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: Q-learning is called off-policy. What does that mean?
+    options:
+      - id: a
+        text: It learns the values of acting greedily while it follows an exploring policy.
+        correct: true
+        feedback: The max in the target is the greedy choice, so the table learns greedy values while the agent explores.
+      - id: b
+        text: It learns without any policy, so its actions don't affect what it learns.
+        correct: false
+        category: misunderstood_definition
+        feedback: Its actions decide which entries get updated. It just doesn't need its behaviour to be greedy.
+      - id: c
+        text: It learns the values of the epsilon-greedy policy it is following.
+        correct: false
+        category: misunderstood_definition
+        feedback: That describes SARSA, which puts the next action actually taken into its target.
+    solution: Q-learning follows an exploring policy, such as epsilon-greedy, but its target uses the max over next actions. So it learns the values of acting greedily, the best values.
+  - id: qlp-vacuum-deploy
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: A robot vacuum learned its Q-table with Q-learning, moving epsilon-greedily with $\varepsilon=0.2$. Training has finished, and now it should collect as much reward as it can. How should it choose its moves?
+    options:
+      - id: a
+        text: Greedily, because the table holds the values of acting greedily.
+        correct: true
+        feedback: Q-learning's targets used the max, so the table estimates the best values, and greedy moves use them fully.
+      - id: b
+        text: Keep $\varepsilon=0.2$, because the values assume some random moves.
+        correct: false
+        category: misunderstood_definition
+        feedback: That would be true for SARSA. Q-learning's values assume greedy moves after each action.
+      - id: c
+        text: Pick each move with probability in proportion to its value.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Values can be negative, and picking a worse move on purpose loses reward once learning is done.
+    solution: Because Q-learning's target uses the max, its table estimates the values of acting greedily. Once training is over, exploring only costs reward, so the vacuum should act greedily.
+  - id: ql-full-run-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: In Q-learning with a table, which entries change after the agent makes one move from $s$ with action $a$?
+    options:
+      - id: a
+        text: Only $Q(s,a)$, the entry for the move just made.
+        correct: true
+        feedback: Each update changes one entry. Other values change only when their own moves are made.
+      - id: b
+        text: Every action's value in state $s$.
+        correct: false
+        category: misunderstood_definition
+        feedback: The other actions in $s$ weren't taken, so the move tells us nothing new about them.
+      - id: c
+        text: Every action's value in the next state $s'$.
+        correct: false
+        category: misunderstood_definition
+        feedback: The next state's values are read to build the target. Only the entry for the move just made is changed.
+      - id: d
+        text: Every entry in the table, by a small amount.
+        correct: false
+        category: misunderstood_definition
+        feedback: A Q-table entry changes only when its own move is made.
+    solution: One move gives one reward and one next state, which are used to update only $Q(s,a)$. The next state's values are read to build the target.
+  - id: qlp-old-guess-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example, why does $Q(1,\text{right})$ rise only from $4$ to $4.2$, when its best value is $6.2$?
+    options:
+      - id: a
+        text: Its target uses cell 2's guess of $6$, which is still too low.
+        correct: true
+        feedback: The target is $-1+0.9\times6=4.4$, and the update moves halfway to it.
+      - id: b
+        text: Cell 1 is far from the goal, so its updates are always small.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The size of an update is $\eta$ times the gap, wherever the cell is.
+      - id: c
+        text: The robot explored on that move, so the update was smaller.
+        correct: false
+        category: incorrect_reasoning
+        feedback: In this episode the robot moved right every time, and exploring doesn't shrink updates anyway.
+    solution: The target $-1+0.9\times6=4.4$ is built from cell 2's current guess, $6$, which is below its best value, $8$. Moving halfway from $4$ to $4.4$ gives $4.2$. As cell 2's value rises, cell 1's targets rise too.
+  - id: qlp-move-order
+    dimension: implementation
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: Which order is right for one move of Q-learning?
+    options:
+      - id: a
+        text: Choose epsilon-greedily, make the move, update $Q(s,a)$, set $s$ to $s'$.
+        correct: true
+        feedback: The update needs the reward and $s'$ from the move, and it must change the entry for the old state $s$.
+      - id: b
+        text: Choose epsilon-greedily, update $Q(s,a)$, make the move, set $s$ to $s'$.
+        correct: false
+        category: implementation_error
+        feedback: The update needs the reward and next state, which only exist after the move.
+      - id: c
+        text: Choose epsilon-greedily, make the move, set $s$ to $s'$, update $Q(s,a)$.
+        correct: false
+        category: implementation_error
+        feedback: Setting $s$ to $s'$ first makes the update change the entry of the wrong state.
+    solution: The agent chooses, moves and sees $r$ and $s'$, then updates $Q(s,a)$ for the state it left, and only then moves on to $s'$.
+  - id: qlp-code-read-update
+    dimension: implementation
+    type: code_read
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt: What does this code print?
+    code: |
+      Q = {("A", "go"): 2.0, ("B", "go"): 4.0, ("B", "stop"): 6.0}
+      gamma, eta = 0.9, 0.5
+      s, a, r, s2 = "A", "go", 1.0, "B"
+      best_next = max(Q[(s2, "go")], Q[(s2, "stop")])
+      Q[(s, a)] += eta * (r + gamma * best_next - Q[(s, a)])
+      print(round(Q[(s, a)], 2))
+    answer: 4.2
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer: 6.4
+        category: misunderstood_definition
+        feedback: That is the TD target. The code moves only half of the gap toward it.
+      - answer: 3.3
+        category: incorrect_reasoning
+        feedback: "`max` picks B's larger value, $6$, not the value of `go`, $4$."
+    solution: The best next value is $6$, so the target is $1+0.9\times6=6.4$. The new value is $2+0.5\times(6.4-2)=4.2$.
+  - id: qlp-code-terminal
+    dimension: implementation
+    type: code_complete
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "In a 4-cell corridor, reaching cell 4 ends the episode. Fill in the blank so the update uses the right best next value."
+    code: |
+      best_next = ____ if s2 == 4 else max(Q[(s2, "left")], Q[(s2, "right")])
+      Q[(s, a)] += eta * (r + gamma * best_next - Q[(s, a)])
+    accept:
+      - "0"
+      - "0.0"
+    solution: After the episode ends nothing more can be earned, so the best next value is `0` and the target is just the reward `r`.
+  - id: qlp-grid-table-size
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A robot moves on a grid of 5 by 4 cells and can go up, down, left or right. One cell is the goal, where the episode ends. How many entries does its Q-table need?
+    answer: 76
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer: 80
+        category: incorrect_reasoning
+        feedback: The goal ends the episode, so no actions are taken there and it needs no entries.
+      - answer: 19
+        category: misunderstood_definition
+        feedback: The table has one entry per state and action, so multiply the 19 states by 4 actions.
+    solution: There are $5\times4=20$ cells, and the goal needs no entries, so 19 states. With 4 actions each, that is $19\times4=76$ entries.
+  - id: qlp-arm-states
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: A robot arm's state is its joint angles, measured precisely as real numbers. Why is a Q-table a poor way to learn its action values?
+    options:
+      - id: a
+        text: There are far too many states, and each would almost never be seen twice.
+        correct: true
+        feedback: A table learns each entry only from its own moves, so with so many states, almost no entry gets updated.
+      - id: b
+        text: Q-learning needs to know in advance where each move of the arm leads.
+        correct: false
+        category: misunderstood_definition
+        feedback: Q-learning learns from experience and never needs to know where moves lead.
+      - id: c
+        text: A Q-table can't store negative values, which the arm's rewards need.
+        correct: false
+        category: misunderstood_definition
+        feedback: Table entries can be any number, positive or negative.
+    solution: A table needs one entry per state and action, and each entry learns only when that exact move is made. Real-valued joint angles give far too many states to store or revisit, so a model that predicts values, such as a neural network, is used instead.
+  - id: ql-explain-learning
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 2
+    est_minutes: 4
+    prompt: "Explain how a robot that doesn't know where its moves lead can learn the best move in each state with Q-learning: what it stores, how one move changes what it stores, and why it sometimes moves at random."
+    rubric:
+      - id: r1
+        criterion: "Says it stores a table of action values $Q(s,a)$, one per state and action, and acts by picking the biggest value"
+        weight: 1
+        required: true
+      - id: r2
+        criterion: "Describes the update: the TD target $r+\\gamma\\max_{a'}Q(s',a')$ (just $r$ at the end), and moving $Q(s,a)$ a fraction $\\eta$ of the way toward it"
+        weight: 1
+        required: true
+      - id: r3
+        criterion: "Explains epsilon-greedy exploration: without random moves some actions are never tried, and the max in the target still learns the best values while exploring"
+        weight: 1
+        required: true
+    exemplar: "The robot keeps a Q-table with one value $Q(s,a)$ for each state and action, its guess of the return from taking that action there. After each move it sees the reward $r$ and the next state $s'$, and builds the target $r+\\gamma\\max_{a'}Q(s',a')$, or just $r$ if the episode ended. It then moves $Q(s,a)$ a fraction $\\eta$ of the way toward that target, so over many episodes the goal's reward spreads back through the table. It moves at random with a small probability $\\varepsilon$, because a greedy robot would never try an action that looked bad early and might miss a better one. Because the target uses the max, the table still learns the values of acting greedily, and once learning is done the robot acts greedily."
+    solution: "The robot keeps a Q-table with one value $Q(s,a)$ for each state and action, its guess of the return from taking that action there. After each move it sees the reward $r$ and the next state $s'$, and builds the target $r+\\gamma\\max_{a'}Q(s',a')$, or just $r$ if the episode ended. It then moves $Q(s,a)$ a fraction $\\eta$ of the way toward that target, so over many episodes the goal's reward spreads back through the table. It moves at random with a small probability $\\varepsilon$, because a greedy robot would never try an action that looked bad early and might miss a better one. Because the target uses the max, the table still learns the values of acting greedily, and once learning is done the robot acts greedily."

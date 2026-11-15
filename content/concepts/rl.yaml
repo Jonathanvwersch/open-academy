@@ -46,7 +46,7 @@ concepts:
       dimensions: [math, implementation],
       prereqs: [{ id: value-functions }],
       objectives: [{ text: "Perform a Q-learning update", dimension: math }],
-      status: stub,
+      status: authored,
     }
   - {
       id: exploration,

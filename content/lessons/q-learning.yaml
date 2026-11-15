@@ -1,0 +1,335 @@
+concept: q-learning
+version: 1
+objective: |
+  **Goal:** perform a Q-learning update, by building the TD target from one move's reward and the next state's best value and moving the stored value part of the way toward it, and run the update with epsilon-greedy exploration until the table holds the best action values.
+where_this_fits: |
+  ### What is Q-learning?
+
+  Q-learning is a way for a robot or a program to learn, by trial and error, how good each move is in each situation. It keeps a table of these numbers and corrects one after every move.
+
+  Each number is the total reward the robot expects to collect, on average, from that move onward, with rewards further in the future counting a little less.
+
+  Why is that useful? We can only work these values out by hand if we know where each action leads, and a robot in a new place doesn't. Q-learning learns them from experience, and then the biggest value marks the best action.
+knowledge_points:
+  - id: ql-q-table
+    title: "Score every move in every cell"
+    explain: |
+      ### A robot in a corridor
+
+      Our robot lives in a corridor of 4 cells, numbered 1 to 4 from the left. It starts in cell 1 and can move left or right, and moving into the wall at the left end leaves it where it is. The move into cell 4 gives a reward of $+10$ and ends the **episode**, one run from start to finish. Every other move gives a reward of $-1$.
+
+      In reinforcement learning, learning by trial and reward, the robot is the **agent**, each cell is a **state** $s$, and each move is an **action** $a$. The **return** adds up the rewards from now on, with a reward $k$ steps ahead multiplied by $\gamma^k$. The **discount factor** $\gamma=0.9$ makes later rewards count less.
+
+      ### One number for each state and action
+
+      Q-learning stores a **Q-table**, one number $Q(s,a)$ for every state $s$ and action $a$, its current guess of that value. The corridor has 3 cells where the robot can act, and 2 actions, so the table has 6 entries. Cell 4 ends the episode, so it needs none.
+
+      The picture shows the values the robot is aiming for. These are the **best values** $Q^*(s,a)$, the returns we get by taking action $a$ in state $s$ and then always choosing the moves that collect the most reward.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 250" aria-label="A corridor of four cells in a row. Cells 1, 2 and 3 each show two best values, moving left and moving right. Cell 1: left 4.58, right 6.2. Cell 2: left 4.58, right 8. Cell 3: left 6.2, right 10. The right value is bigger in every cell and is shown in orange. Cell 4 is the goal, worth plus 10, and the robot starts in cell 1">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <text x="320" y="40" text-anchor="middle">Best values Q*(s, a): moving left (←) and moving right (→)</text>
+      <rect x="40" y="70" width="140" height="100" fill="#ffffff" stroke="#737373" stroke-width="1.5"/>
+      <rect x="180" y="70" width="140" height="100" fill="#ffffff" stroke="#737373" stroke-width="1.5"/>
+      <rect x="320" y="70" width="140" height="100" fill="#ffffff" stroke="#737373" stroke-width="1.5"/>
+      <rect x="460" y="70" width="140" height="100" fill="#ffffff" stroke="#10b981" stroke-width="2.5"/>
+      <text x="110" y="98" text-anchor="middle">cell 1</text>
+      <text x="250" y="98" text-anchor="middle">cell 2</text>
+      <text x="390" y="98" text-anchor="middle">cell 3</text>
+      <text x="530" y="98" text-anchor="middle">cell 4: goal</text>
+      <text x="52" y="140" fill="#737373">← 4.58</text>
+      <text x="168" y="140" text-anchor="end" fill="#f59e0b">6.2 →</text>
+      <text x="192" y="140" fill="#737373">← 4.58</text>
+      <text x="308" y="140" text-anchor="end" fill="#f59e0b">8 →</text>
+      <text x="332" y="140" fill="#737373">← 6.2</text>
+      <text x="448" y="140" text-anchor="end" fill="#f59e0b">10 →</text>
+      <text x="530" y="140" text-anchor="middle" fill="#10b981">+10, episode ends</text>
+      <text x="110" y="195" text-anchor="middle">start</text>
+      <text x="320" y="235" text-anchor="middle" fill="#f59e0b">orange: the bigger value in each cell</text>
+      </g>
+      </svg>
+      ```
+
+      ### Choosing from the table
+
+      In each state the robot takes the action with the biggest value, which is called acting **greedily**. Here right, in orange, wins in every cell.
+
+      ### Where the values come from
+
+      Each value is the move's reward plus the discounted best value of the cell it lands in. Let $r$ be the move's reward, $s'$ the state it lands in, and $a'$ a fresh name for an action taken there. Then
+
+      $$Q^*(s,a)=r+\gamma\max_{a'}Q^*(s',a').$$
+
+      Here $\max_{a'}$ means the largest value over the actions we could take in $s'$. After the move into cell 4 the episode is over, so nothing follows and that max counts as $0$.
+
+      Be careful not to read $Q$ as the reward of one move. Moving right from cell 2 earns only $-1$, but it is worth $8$, because $Q$ counts what comes after.
+    worked: |
+      Let's work out the best values of the corridor, with $\gamma=0.9$. We start next to the goal, because nothing comes after the goal, and then move left one cell at a time.
+
+      1. **Start next to the goal.** Moving right from cell 3 reaches the goal for $+10$, and nothing comes after it.
+         $$Q^*(3,\text{right})=10+0.9\times0=10.$$
+
+      2. **Step back to cell 2.** Moving right gives $-1$ and lands in cell 3, where the best value is $10$.
+         $$Q^*(2,\text{right})=-1+0.9\times10=8.$$
+
+      3. **Step back to cell 1.** Moving right gives $-1$ and lands in cell 2, where the best value is $8$.
+         $$Q^*(1,\text{right})=-1+0.9\times8=6.2.$$
+
+      4. **Try left in cell 1.** Moving left bumps into the wall, gives $-1$ and leaves the robot in cell 1. Its best move there is right, worth $6.2$ from step 3, because bumping the wall again only wastes a step.
+         $$Q^*(1,\text{left})=-1+0.9\times6.2=4.58.$$
+
+      In cell 1, right is worth $6.2$ and left only $4.58$, so the greedy choice there is right, as the picture shows. The left values in cells 2 and 3 come the same way, $Q^*(2,\text{left})=-1+0.9\times6.2=4.58$ and $Q^*(3,\text{left})=-1+0.9\times8=6.2$.
+    problems:
+      - ql-q-table-basics
+      - qlp-wall-self-explain
+      - qlp-greedy-pick
+      - qlp-bellman-template
+      - qlp-two-moves
+      - qlp-reward-vs-value
+      - qlp-aisle-choice
+  - id: ql-update-rule
+    title: "Update one value after each move"
+    explain: |
+      ### Learning from one move
+
+      The robot doesn't know the best values when it starts, so its table begins at $0$ everywhere. Each time it moves, it sees its reward $r$ and the state $s'$ it lands in, and it can read its own current guesses for $s'$ from the table. That's enough to improve the one entry $Q(s,a)$ for the move it just made.
+
+      ### The target: a better guess
+
+      The best values satisfy $Q^*(s,a)=r+\gamma\max_{a'}Q^*(s',a')$. We don't know $Q^*$ yet, so we put in the table's current guesses instead. That gives the **TD target**
+
+      $$r+\gamma\max_{a'}Q(s',a').$$
+
+      TD stands for temporal difference, because the target mixes a real reward with the table's guess for one step later in time. If the move ends the episode, the target is just $r$.
+
+      ### Moving part of the way
+
+      The target comes from a single move and from guesses that may still be wrong, so we don't jump all the way to it. We call the gap the **TD error**,
+
+      $$\delta=r+\gamma\max_{a'}Q(s',a')-Q(s,a),$$
+
+      and we move the entry a fraction of that gap:
+
+      $$Q(s,a)\leftarrow Q(s,a)+\eta\,\delta.$$
+
+      The arrow means "replace with". The Greek letter $\eta$ (eta) is the **learning rate**, a number between $0$ and $1$ that sets how far each update goes. Reinforcement learning books often write it $\alpha$. With $\eta=0.5$, each update closes half the gap.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 200" aria-label="A number line from 0 to 10. The old value Q(3, right) is 0, shown as a grey dot at 0. The TD target is 10, a green dot at 10. With learning rate 0.5, an orange arrow moves the value halfway, to an orange dot at 5, the new value">
+      <defs><marker id="ql2-amber" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#f59e0b"/></marker></defs>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <path d="M60 120 H560" stroke="#d4d4d4" stroke-width="2"/>
+      <path d="M60 120 v6 M110 120 v6 M160 120 v6 M210 120 v6 M260 120 v6 M310 120 v6 M360 120 v6 M410 120 v6 M460 120 v6 M510 120 v6 M560 120 v6" stroke="#737373"/>
+      <text x="60" y="145" text-anchor="middle" fill="#737373">0</text>
+      <text x="160" y="145" text-anchor="middle" fill="#737373">2</text>
+      <text x="260" y="145" text-anchor="middle" fill="#737373">4</text>
+      <text x="360" y="145" text-anchor="middle" fill="#737373">6</text>
+      <text x="460" y="145" text-anchor="middle" fill="#737373">8</text>
+      <text x="560" y="145" text-anchor="middle" fill="#737373">10</text>
+      <path d="M66 90 L300 90" stroke="#f59e0b" stroke-width="2.5" marker-end="url(#ql2-amber)"/>
+      <circle cx="60" cy="120" r="6" fill="#737373"/>
+      <circle cx="310" cy="120" r="6" fill="#f59e0b"/>
+      <circle cx="560" cy="120" r="6" fill="#10b981"/>
+      <text x="50" y="60" fill="#737373">old value 0</text>
+      <text x="310" y="60" text-anchor="middle" fill="#f59e0b">new value 5</text>
+      <text x="575" y="60" text-anchor="end" fill="#10b981">TD target 10</text>
+      <text x="310" y="180" text-anchor="middle">the update closes half the gap of 10</text>
+      </g>
+      </svg>
+      ```
+
+      The picture shows the update when the robot first reaches the goal. From cell 3 it moves right, earns $+10$ and the episode ends, so the target is $10$, and $Q(3,\text{right})$ moves halfway from $0$ to $5$.
+
+      ### The reward spreads back along the corridor
+
+      Only the entry for the move just made changes. The next time the robot moves right from cell 2, it lands in cell 3, where $Q(3,\text{right})$ is now $5$, so part of the goal's reward reaches cell 2. Over many episodes the reward spreads back along the corridor.
+
+      Be careful to take the max over the actions of $s'$, the state the robot landed in, and not of $s$, the state it just left.
+    worked: |
+      Let's follow the robot through its first two episodes in the corridor. The table starts at $0$ everywhere, with $\eta=0.5$ and $\gamma=0.9$, and to keep the example short, the robot happens to move right every time.
+
+      1. **Update the first two moves.** From cells 1 and 2 the robot earns $-1$ and lands in a cell whose values are all $0$, so each target is $-1$. Cell 3's values are still $0$ then, because its move comes later.
+         $$Q(1,\text{right})=Q(2,\text{right})=0+0.5\times(-1-0)=-0.5.$$
+
+      2. **Update the move into the goal.** From cell 3 it earns $+10$ and the episode ends, so the target is just $10$.
+         $$Q(3,\text{right})\leftarrow0+0.5\times(10-0)=5.$$
+
+      3. **Build cell 2's target in episode 2.** The robot moves right from cell 2 again and lands in cell 3, where the larger of $Q(3,\text{left})=0$ and $Q(3,\text{right})=5$ is $5$.
+         $$\text{target}=-1+0.9\times5=3.5.$$
+
+      4. **Update $Q(2,\text{right})$.** The TD error is $3.5-(-0.5)=4$, and we move half of it.
+         $$Q(2,\text{right})\leftarrow-0.5+0.5\times4=1.5.$$
+
+      Cell 3's value is still below its best value of $10$, and cell 2's is below $8$, but the goal's reward has already started to reach cell 2.
+    problems:
+      - ql-update-rule-basics
+      - qlp-second-target-self-explain
+      - qlp-update-template
+      - qlp-final-move-update
+      - qlp-wrong-state
+      - qlp-rate-one
+      - qlp-delivery-path
+  - id: ql-explore
+    title: "Try other moves now and then"
+    explain: |
+      ### Always picking the best can get stuck
+
+      While the robot learns, it has to choose its moves somehow. The obvious choice is greedy, the move with the biggest value so far. But early on, that value can be wrong.
+
+      To see this, let's add a charger to the corridor, just left of cell 1, in place of the left wall. Everything to the right of cell 1 stays the same. Moving left from cell 1 now docks the robot, gives $+1$ and ends the episode. Say the table is all $0$, and on its first move the robot happens to go left. With $\eta=0.5$, $Q(1,\text{left})$ becomes $0+0.5\times(1-0)=0.5$.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 240" aria-label="The corridor with a charger to the left of cell 1. From cell 1, an orange arrow points left to the charger, labelled Q(1, left) = 0.5 after one try. A grey arrow points right to cell 2, labelled Q(1, right) = 0, never tried. Cell 4 is the goal, worth plus 10, never found by a greedy robot">
+      <defs><marker id="ql3-amber" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#f59e0b"/></marker><marker id="ql3-muted" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker></defs>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <rect x="20" y="60" width="80" height="80" fill="#ffffff" stroke="#10b981" stroke-width="2.5"/>
+      <rect x="100" y="60" width="130" height="80" fill="#ffffff" stroke="#737373" stroke-width="1.5"/>
+      <rect x="230" y="60" width="130" height="80" fill="#ffffff" stroke="#737373" stroke-width="1.5"/>
+      <rect x="360" y="60" width="130" height="80" fill="#ffffff" stroke="#737373" stroke-width="1.5"/>
+      <rect x="490" y="60" width="130" height="80" fill="#ffffff" stroke="#10b981" stroke-width="2.5"/>
+      <text x="60" y="95" text-anchor="middle">charger</text>
+      <text x="60" y="115" text-anchor="middle" fill="#10b981">+1</text>
+      <text x="165" y="105" text-anchor="middle">cell 1</text>
+      <text x="295" y="105" text-anchor="middle">cell 2</text>
+      <text x="425" y="105" text-anchor="middle">cell 3</text>
+      <text x="555" y="95" text-anchor="middle">cell 4: goal</text>
+      <text x="555" y="115" text-anchor="middle" fill="#10b981">+10</text>
+      <path d="M150 170 L70 170" stroke="#f59e0b" stroke-width="2.5" marker-end="url(#ql3-amber)"/>
+      <path d="M180 170 L280 170" stroke="#737373" stroke-width="2" marker-end="url(#ql3-muted)"/>
+      <text x="20" y="200" fill="#f59e0b">Q(1, left) = 0.5</text>
+      <text x="20" y="220" fill="#f59e0b">after one try</text>
+      <text x="200" y="200">Q(1, right) = 0</text>
+      <text x="200" y="220" fill="#737373">never tried</text>
+      <text x="620" y="170" text-anchor="end" fill="#737373">never found</text>
+      </g>
+      </svg>
+      ```
+
+      Now left looks better than right, so a greedy robot goes left every time. $Q(1,\text{left})$ climbs toward $1$, and the robot never learns that right is really worth $6.2$, the same as without the charger, because it never tries it.
+
+      ### Epsilon-greedy
+
+      The usual fix is **epsilon-greedy**. On each move, with a small probability $\varepsilon$ (epsilon), such as $0.1$, the robot picks an action at random from all of them. Otherwise it moves greedily. The random pick can land on the greedy action too, so with $k$ actions,
+
+      $$P(\text{greedy action})=1-\varepsilon+\frac{\varepsilon}{k}.$$
+
+      Because every action keeps being tried now and then, the robot can eventually find cell 4, and the $+10$ starts to spread back.
+
+      ### Learning the best values while exploring
+
+      Q-learning's target always uses $\max_{a'}Q(s',a')$, the greedy choice in $s'$, even when the robot's next move will be a random one. So the table learns the values of acting greedily, the best values, while the robot behaves with some randomness. The rule a robot uses to choose its moves is called its **policy**. Q-learning learns the values of acting greedily. Meanwhile it follows a different policy, epsilon-greedy. So it is called **off-policy**.
+
+      Be careful not to put the value of the next move the robot actually makes into the target. A related method called SARSA does that. Its values count the reward lost to the robot's future random moves, so they come out lower than the best values.
+    worked: |
+      Let's look at an epsilon-greedy robot in the corridor with the charger, using $\varepsilon=0.1$, $\eta=0.5$ and $\gamma=0.9$.
+
+      1. **Find the chance of the greedy move.** In cell 1, left has the bigger value, $0.5$ against $0$. The robot picks left greedily with probability $0.9$, and its random pick, made with probability $0.1$, lands on left half the time.
+         $$P(\text{left})=0.9+0.1\times\tfrac12=0.95.$$
+
+      2. **Find the chance of exploring right.** Right only happens through the random pick.
+         $$P(\text{right})=0.1\times\tfrac12=0.05.$$
+
+      3. **Build a target while exploring.** Later in this run, when the table holds $Q(2,\text{right})=1$, the robot moves right from cell 2, earns $-1$ and lands in cell 3, where $Q(3,\text{left})=2$ and $Q(3,\text{right})=6$. The target uses the larger value, $6$, even if the robot's next move from cell 3 turns out to be a random left.
+         $$\text{target}=-1+0.9\times6=4.4.$$
+
+      4. **Update $Q(2,\text{right})$.** It was $1$, so the TD error is $4.4-1=3.4$, and we move half of it.
+         $$Q(2,\text{right})\leftarrow1+0.5\times3.4=2.7.$$
+
+      The random left move changed what the robot did next, but not the target, which is why the table keeps learning the best values.
+    problems:
+      - ql-explore-basics
+      - qlp-greedy-chance-self-explain
+      - qlp-greedy-stuck
+      - qlp-greedy-chance-template
+      - qlp-explore-target
+      - qlp-off-policy-meaning
+      - qlp-vacuum-deploy
+  - id: ql-full-run
+    title: "Run Q-learning on the corridor"
+    explain: |
+      ### The whole algorithm
+
+      We now have every piece, the table, the update and epsilon-greedy moves. Q-learning puts them together like this:
+
+      1. Set every entry of the Q-table to $0$.
+      2. Start an episode in cell 1.
+      3. Choose a move with epsilon-greedy, make it, and see the reward $r$ and the new state $s'$.
+      4. Update $Q(s,a)\leftarrow Q(s,a)+\eta\,\delta$, using the TD target from $r$ and $s'$.
+      5. Make $s'$ the current state. If the episode has ended, go back to step 2, otherwise go back to step 3.
+
+      After enough episodes, the robot picks the move with the biggest value in its cell.
+
+      ### What the table ends up as
+
+      On the corridor without the charger, with $\eta=0.5$, $\varepsilon=0.1$ and $\gamma=0.9$, the code below needs 500 episodes for the table to settle on the best values. Right is worth $6.2$, $8$ and $10$ in cells 1, 2 and 3, and left is worth $4.58$, $4.58$ and $6.2$. The left values are only learned from random moves, so they need the most episodes.
+
+      Chris Watkins introduced Q-learning in his 1989 PhD thesis. In 1992, Watkins and Peter Dayan proved that it reaches the best values in any problem with a finite number of states and actions, as long as every action keeps being tried in every state and the learning rate shrinks toward $0$ at the right speed. On a small, predictable problem like the corridor, a fixed rate such as $0.5$ also works.
+
+      ### Limitations: one entry per state
+
+      A Q-table needs one entry for every state and action, and each entry only learns when that exact move is made. With 3 cells, that's only 6 entries. But a robot arm's state is its joint angles, which are real numbers, and a video game's state is the whole screen. There are far too many such states to store, and the robot would almost never see the same one twice, so nothing it learned would carry over.
+
+      A later lesson on deep Q-learning replaces the table with a neural network, a model that predicts the values from the state. That is how DQN (deep Q-network) learned to play Atari video games from screen pixels (Mnih and colleagues, 2013).
+    worked: |
+      Let's follow one episode late in training, when the robot always moves right and its table holds $Q(1,\text{right})=4$, $Q(2,\text{right})=6$ and $Q(3,\text{right})=9$, with every left value below these. We use $\eta=0.5$ and $\gamma=0.9$.
+
+      1. **Move from cell 1 to cell 2.** The target uses cell 2's current guess, $6$, so the TD error is $4.4-4=0.4$.
+         $$Q(1,\text{right})\leftarrow4+0.5\times(-1+0.9\times6-4)=4.2.$$
+
+      2. **Move from cell 2 to cell 3.** The target uses cell 3's current guess, $9$, so the TD error is $7.1-6=1.1$.
+         $$Q(2,\text{right})\leftarrow6+0.5\times(-1+0.9\times9-6)=6.55.$$
+
+      3. **Move from cell 3 to the goal.** The episode ends, so the target is just the reward, $10$.
+         $$Q(3,\text{right})\leftarrow9+0.5\times(10-9)=9.5.$$
+
+      Each value moved toward its best value, $6.2$, $8$ and $10$. Cell 1's target used cell 2's old guess of $6$, which is still too low, so cell 1 will keep improving as cell 2 does.
+
+      Here is the whole algorithm in Python, running 500 episodes. `Q` is a dictionary that maps a (cell, action) pair to its value. `random.random()` gives a number between $0$ and $1$, so it is below `eps` with probability $\varepsilon$, and `random.choice` picks an action at random. `lambda b: Q[(s, b)]` is a small unnamed function that gives the value of action `b`. So `max(..., key=...)` picks the action whose value is biggest. `eta` is the learning rate. The `while` loop runs one episode, and `+=` adds to a value.
+
+      ```python
+      import random
+
+      random.seed(0)
+      gamma, eta, eps = 0.9, 0.5, 0.1
+      Q = {(s, a): 0.0 for s in (1, 2, 3) for a in ("left", "right")}
+
+      def step(s, a):
+          s2 = max(s - 1, 1) if a == "left" else s + 1
+          return s2, (10 if s2 == 4 else -1)
+
+      for episode in range(500):
+          s = 1
+          while s != 4:
+              if random.random() < eps:
+                  a = random.choice(["left", "right"])
+              else:
+                  a = max(["left", "right"], key=lambda b: Q[(s, b)])
+              s2, r = step(s, a)
+              if s2 == 4:
+                  best_next = 0
+              else:
+                  best_next = max(Q[(s2, "left")], Q[(s2, "right")])
+              Q[(s, a)] += eta * (r + gamma * best_next - Q[(s, a)])
+              s = s2
+
+      for s in (1, 2, 3):
+          print(s, round(Q[(s, "left")], 2), round(Q[(s, "right")], 2))
+      # prints three lines: 1 4.58 6.2, then 2 4.58 8.0, then 3 6.2 10.0
+      ```
+    problems:
+      - ql-full-run-basics
+      - qlp-old-guess-self-explain
+      - qlp-move-order
+      - qlp-code-read-update
+      - qlp-code-terminal
+      - qlp-grid-table-size
+      - qlp-arm-states
+final: ql-explain-learning
+summary: |
+  - A Q-table stores one value $Q(s,a)$ for every state and action. The best values satisfy $Q^*(s,a)=r+\gamma\max_{a'}Q^*(s',a')$, and acting greedily means taking the action with the biggest value.
+  - After each move, Q-learning builds the TD target $r+\gamma\max_{a'}Q(s',a')$, or just $r$ if the episode ended, and updates $Q(s,a)\leftarrow Q(s,a)+\eta\,\delta$, where $\delta$ is the target minus the old value.
+  - Epsilon-greedy picks a random action with probability $\varepsilon$, so every action keeps being tried. Because the target uses the max, Q-learning still learns the best values while it explores, which makes it off-policy.
+  - Repeating this over many episodes fills the table with the best values, but a table only works when there are few enough states to visit each one many times.
+
+  **Next:** The exploration lesson looks at how much an agent should explore, and deep Q-learning replaces the table with a neural network so the same update works on huge numbers of states.
