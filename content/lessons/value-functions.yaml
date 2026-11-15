@@ -1,0 +1,308 @@
+concept: value-functions
+version: 1
+objective: |
+  **Goal:** say what the state value $V^\pi(s)$ and the action value $Q^\pi(s,a)$ measure, and apply one Bellman backup, for a given policy and for the best policy, to work out a state's value from the values of the states that come after it.
+where_this_fits: |
+  ### What is a value function?
+
+  A value function gives each state a number for how much reward an agent can expect to collect from there on. That reward is the return, $G_t=r_{t+1}+\gamma r_{t+2}+\gamma^2 r_{t+3}+\dots$, which adds up the rewards to come and shrinks each later one by the discount factor $\gamma$. The agent follows its policy $\pi(a\mid s)$, the chance of taking action $a$ in state $s$.
+
+  Why is it useful? The big reward is often many steps away. A value turns all that future reward into one number, so an agent can compare states and actions and pick the better one. The Bellman equations link each state's value to the next state's value, so we can find values without listing whole paths.
+knowledge_points:
+  - id: vf-state-value
+    title: "Measure how good each state is"
+    explain: |
+      ### A robot in a corridor
+
+      A robot moves along a corridor of 4 cells, numbered 1 to 4 from left to right, and it starts in cell 1. It can move left or right, and moving into a wall leaves it where it is. Reaching cell 4 ends the episode with a reward of $+10$, and every other step gives $-1$. We'll use a discount factor of $\gamma=0.9$.
+
+      Each cell is a state. We'll start with the simplest policy, "always move right". When a policy always picks one action, we just write that action, so here $\pi(s)=\text{right}$. That's the same as $\pi(\text{right}\mid s)=1$.
+
+      ### Adding up the reward to come
+
+      From cell 1, the robot gets $-1$ for the step to cell 2, $-1$ for the step to cell 3 and $+10$ for reaching cell 4. Each later reward is shrunk by one more factor of $0.9$, and the total comes to $6.2$. Starting in cell 2 skips the first step and gives $-1+0.9\times10=8$. From cell 3, the next step pays $+10$, so the value is $10$. In cell 4 the episode is over, so its value is $0$.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 230" aria-label="A corridor of four cells in a row. Orange arrows show the policy always moving right, with reward minus 1 for the moves from cell 1 to 2 and from 2 to 3, and plus 10 for the move from 3 to 4. Under that policy the values are 6.2 in cell 1, where the robot starts, 8 in cell 2, 10 in cell 3 and 0 in cell 4, the goal, where the episode ends">
+      <defs><marker id="vf1-amber" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#f59e0b"/></marker></defs>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <rect x="25" y="70" width="140" height="90" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/>
+      <rect x="175" y="70" width="140" height="90" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/>
+      <rect x="325" y="70" width="140" height="90" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/>
+      <rect x="475" y="70" width="140" height="90" rx="6" fill="#ffffff" stroke="#10b981" stroke-width="2.5"/>
+      <text x="95" y="100" text-anchor="middle" fill="#737373">cell 1</text>
+      <text x="245" y="100" text-anchor="middle" fill="#737373">cell 2</text>
+      <text x="395" y="100" text-anchor="middle" fill="#737373">cell 3</text>
+      <text x="545" y="100" text-anchor="middle" fill="#737373">cell 4</text>
+      <text x="95" y="136" text-anchor="middle" font-size="18">V = 6.2</text>
+      <text x="245" y="136" text-anchor="middle" font-size="18">V = 8</text>
+      <text x="395" y="136" text-anchor="middle" font-size="18">V = 10</text>
+      <text x="545" y="136" text-anchor="middle" font-size="18">V = 0</text>
+      <path d="M115 65 Q170 25 225 65" fill="#ffffff" fill-opacity="0" stroke="#f59e0b" stroke-width="2.5" marker-end="url(#vf1-amber)"/>
+      <path d="M265 65 Q320 25 375 65" fill="#ffffff" fill-opacity="0" stroke="#f59e0b" stroke-width="2.5" marker-end="url(#vf1-amber)"/>
+      <path d="M415 65 Q470 25 525 65" fill="#ffffff" fill-opacity="0" stroke="#f59e0b" stroke-width="2.5" marker-end="url(#vf1-amber)"/>
+      <text x="170" y="34" text-anchor="middle" fill="#f59e0b">−1</text>
+      <text x="320" y="34" text-anchor="middle" fill="#f59e0b">−1</text>
+      <text x="470" y="34" text-anchor="middle" fill="#f59e0b">+10</text>
+      <text x="95" y="184" text-anchor="middle">start</text>
+      <text x="545" y="184" text-anchor="middle" fill="#10b981">goal: episode ends</text>
+      <text x="25" y="218" fill="#737373">Policy: always move right. Discount γ = 0.9</text>
+      </g>
+      </svg>
+      ```
+
+      ### The state value
+
+      The **state value** $V^\pi(s)$ is the expected return when the agent starts in state $s$ and follows the policy $\pi$ from then on:
+
+      $$V^\pi(s)=E\big[G_t \mid s_t=s\big].$$
+
+      Here $s_t$ is the state at step $t$, $E$ is the expected value, and the bar means "given that", so we average only over times the agent is in state $s$. Here nothing is random, so each start has one path, and the value is that path's return.
+
+      ### Values depend on the policy
+
+      A value belongs to a cell and a policy together. Under "always move left", the robot never reaches cell 4 and gets $-1$ on every step. Its return, $-1-0.9-0.81-\dots$, is a sum of shrinking terms that adds up to $-1/(1-0.9)=-10$. So cells 1 to 3 are worth $-10$.
+
+      Be careful not to read a value as the next reward. In cell 2 the next reward is $-1$ whichever way the robot moves, but the value under "always move right" is $8$, because it counts the $+10$ that's coming.
+    worked: |
+      Let's work out $V^\pi(1)$, the value of the start cell under "always move right", with $\gamma=0.9$.
+
+      1. **List the rewards along the path.** The robot starts at step $t=0$, so its rewards are $r_1$, $r_2$ and so on. The policy has no chance in it, so from cell 1 there's only one path: to cell 2, to cell 3, then to cell 4, where the episode ends.
+         $$r_1=-1,\qquad r_2=-1,\qquad r_3=+10.$$
+
+      2. **Shrink each later reward.** The reward $k$ steps after the first is multiplied by $\gamma^k$, so the factors are $1$, $0.9$ and $0.9^2=0.81$.
+         $$-1,\qquad 0.9\times(-1)=-0.9,\qquad 0.81\times10=8.1.$$
+
+      3. **Add them up.** With only one path, its return is the expected return, so it's the value.
+         $$V^\pi(1)=-1-0.9+8.1=6.2.$$
+
+      Starting one cell further from the goal lowers the value from $8$ to $6.2$, because the robot pays one more $-1$ and the $+10$ is shrunk once more.
+    problems:
+      - vf-state-value-basics
+      - vfp-start-self-explain
+      - vfp-goal-cell-value
+      - vfp-start-value-template
+      - vfp-policy-changes-value
+      - vfp-discount-first-reward
+      - vfp-game-two-outcomes
+  - id: vf-action-value
+    title: "Measure how good each move is"
+    explain: |
+      ### Asking about one move
+
+      A state value says how good a cell is when the robot follows its policy. To choose between moves, we'd like to know how good each one is. What would happen if the robot made one different move and then went back to its policy?
+
+      We'll keep the same corridor and $\gamma=0.9$. Under "always move right", we found the values are $6.2$, $8$, $10$ and $0$ for cells 1 to 4.
+
+      ### Two moves from cell 2
+
+      In cell 2, moving right costs $-1$ and puts the robot in cell 3, which is worth $10$ from there on. Moving left also costs $-1$, but puts the robot in cell 1. From cell 1 it goes back to always moving right, which is worth $6.2$. Those values count rewards from the next cell on, which all arrive one step later, so we shrink each value by $0.9$.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 240" aria-label="The four-cell corridor with values 6.2, 8, 10 and 0 under the policy always move right. From cell 2, an orange arrow moves right to cell 3 and is worth minus 1 plus 0.9 times 10, which is 8. A blue arrow moves left to cell 1 and is worth minus 1 plus 0.9 times 6.2, which is 4.58">
+      <defs><marker id="vf2-amber" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#f59e0b"/></marker><marker id="vf2-blue" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#3b82f6"/></marker></defs>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <rect x="25" y="70" width="140" height="90" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/>
+      <rect x="175" y="70" width="140" height="90" rx="6" fill="#ffffff" stroke="#171717" stroke-width="2.5"/>
+      <rect x="325" y="70" width="140" height="90" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/>
+      <rect x="475" y="70" width="140" height="90" rx="6" fill="#ffffff" stroke="#10b981" stroke-width="2.5"/>
+      <text x="95" y="100" text-anchor="middle" fill="#737373">cell 1</text>
+      <text x="245" y="100" text-anchor="middle" fill="#737373">cell 2</text>
+      <text x="395" y="100" text-anchor="middle" fill="#737373">cell 3</text>
+      <text x="545" y="100" text-anchor="middle" fill="#737373">cell 4</text>
+      <text x="95" y="136" text-anchor="middle" font-size="18">V = 6.2</text>
+      <text x="245" y="136" text-anchor="middle" font-size="18">V = 8</text>
+      <text x="395" y="136" text-anchor="middle" font-size="18">V = 10</text>
+      <text x="545" y="136" text-anchor="middle" font-size="18">V = 0</text>
+      <path d="M265 65 Q320 25 375 65" fill="#ffffff" fill-opacity="0" stroke="#f59e0b" stroke-width="2.5" marker-end="url(#vf2-amber)"/>
+      <text x="320" y="34" text-anchor="middle" fill="#f59e0b">right: −1 + 0.9 × 10 = 8</text>
+      <path d="M225 165 Q170 205 115 165" fill="#ffffff" fill-opacity="0" stroke="#3b82f6" stroke-width="2.5" marker-end="url(#vf2-blue)"/>
+      <text x="170" y="222" text-anchor="middle" fill="#3b82f6">left: −1 + 0.9 × 6.2 = 4.58</text>
+      </g>
+      </svg>
+      ```
+
+      ### The action value
+
+      The **action value** $Q^\pi(s,a)$, the value function for moves, is the expected return when the agent starts in state $s$, takes action $a$ first, and follows the policy $\pi$ after that. When an action always gives reward $r$ and lands in the same next state $s'$, its value is that reward plus the shrunk value of the next state:
+
+      $$Q^\pi(s,a)=r+\gamma V^\pi(s').$$
+
+      So in cell 2, moving right is worth $8$ and moving left is worth $4.58$, and the right move is better.
+
+      ### Back from moves to the cell
+
+      The state value is the average of the action values, each weighted by the chance $\pi(a\mid s)$ that the policy picks it. With two actions,
+
+      $$V^\pi(s)=\pi(\text{left}\mid s)\,Q^\pi(s,\text{left})+\pi(\text{right}\mid s)\,Q^\pi(s,\text{right}).$$
+
+      "Always move right" picks right with probability $1$, so $V^\pi(2)$ is just $Q^\pi(2,\text{right})=8$.
+
+      Comparing action values shows where a policy can do better. Take a worse policy, "always move left", where cells 1 to 3 are worth $-10$. For it, $Q^\pi(3,\text{right})=10$, because that one move reaches cell 4 and earns $+10$. That's far above $-10$, so moving right in cell 3 would help.
+
+      Be careful with what happens after the first move. $Q^\pi(2,\text{left})$ moves left once and then follows $\pi$ again. It doesn't mean moving left forever, which would be worth $-10$.
+    worked: |
+      Let's find both action values in cell 1 under "always move right", with $\gamma=0.9$ and values $V^\pi(1)=6.2$ and $V^\pi(2)=8$.
+
+      1. **Move right.** The robot pays $-1$ and lands in cell 2, then follows the policy from there.
+         $$Q^\pi(1,\text{right})=-1+0.9\times8=6.2.$$
+
+      2. **Move left.** Cell 1 has a wall on its left, so the robot pays $-1$ and stays in cell 1, then follows the policy from there.
+         $$Q^\pi(1,\text{left})=-1+0.9\times6.2=4.58.$$
+
+      3. **Check against the state value.** The policy always moves right, so the state value should equal the action value for right.
+         $$V^\pi(1)=Q^\pi(1,\text{right})=6.2.$$
+
+      Bumping into the wall wastes a step, so it's worth $6.2-4.58=1.62$ less than moving right.
+    problems:
+      - vf-action-value-basics
+      - vfp-wall-self-explain
+      - vfp-q-one-step-template
+      - vfp-v-from-q-template
+      - vfp-q-reveals-better
+      - vfp-q-left-forever
+      - vfp-arm-three-actions
+  - id: vf-bellman-expectation
+    title: "Get a state's value from the next state"
+    explain: |
+      ### One step plus the rest
+
+      In the same corridor, take "always move right" from cell 2. The robot pays $-1$ and lands in cell 3. Everything after that is the return from cell 3, which is worth $10$, just one step later. So $V^\pi(2)=-1+0.9\times10=8$.
+
+      This works because the return splits into the next reward plus the discounted return from the next step on:
+
+      $$G_t=r_{t+1}+\gamma\,G_{t+1}.$$
+
+      ### The Bellman expectation equation
+
+      When the policy or the moves are random, we average. The **Bellman expectation equation** says that a state's value is the expected reward for one step plus the discounted value of the next state:
+
+      $$V^\pi(s)=E\big[\,r+\gamma V^\pi(s')\,\big].$$
+
+      The average is over the action $a$, picked with probability $\pi(a\mid s)$. If moves can fail, it's also over the next state $s'$, and $p(s'\mid s,a)$ is the chance of landing in $s'$ after action $a$ in state $s$. Here's what gets averaged in three corridors:
+
+      - With "always move right" and reliable moves, there's only one outcome.
+      - With a policy that goes right with probability $0.8$ and left with $0.2$, the two moves get weights $0.8$ and $0.2$.
+      - On a slippery floor, a move right from cell 1 might work with probability $0.8$ and otherwise leave it in place. Then $p(2\mid 1,\text{right})=0.8$ and $p(1\mid 1,\text{right})=0.2$ weight the two landing cells.
+
+      ### One Bellman backup
+
+      Usually we don't know the values, so we start from guesses, called estimates, and write them as plain $V(s)$. Putting them into the right-hand side gives a new estimate for one state. That's one **Bellman backup**. The new estimate is better because its first reward is exact, and only the shrunk part rests on the old guesses. Repeating backups for every state brings the estimates to $V^\pi$ when $\gamma<1$, because each round shrinks the largest gap from the true values to at most $\gamma$ times its size.
+
+      The picture sets up a backup for cell 2 under the policy that goes right with probability $0.8$, from made-up estimates $V(1)=5$ and $V(3)=9$.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="40 10 560 260" aria-label="A backup for cell 2. From the cell 2 box at the top, an orange arrow goes down to cell 3, labelled right, probability 0.8, reward minus 1, where the current estimate is V of 3 equals 9. A blue arrow goes down to cell 1, labelled left, probability 0.2, reward minus 1, where the current estimate is V of 1 equals 5">
+      <defs><marker id="vf3-amber" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#f59e0b"/></marker><marker id="vf3-blue" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#3b82f6"/></marker></defs>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="16" fill="#171717">
+      <rect x="210" y="25" width="220" height="50" rx="6" fill="#ffffff" stroke="#171717" stroke-width="2.5"/>
+      <text x="320" y="55" text-anchor="middle">cell 2: new estimate</text>
+      <rect x="80" y="175" width="160" height="50" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/>
+      <text x="160" y="205" text-anchor="middle">cell 1</text>
+      <rect x="400" y="175" width="160" height="50" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/>
+      <text x="480" y="205" text-anchor="middle">cell 3</text>
+      <path d="M320 75 L172 170" stroke="#3b82f6" stroke-width="2.5" marker-end="url(#vf3-blue)"/>
+      <path d="M320 75 L468 170" stroke="#f59e0b" stroke-width="2.5" marker-end="url(#vf3-amber)"/>
+      <text x="215" y="115" text-anchor="end" fill="#3b82f6">left: chance 0.2</text>
+      <text x="215" y="135" text-anchor="end" fill="#3b82f6">reward −1</text>
+      <text x="425" y="115" fill="#f59e0b">right: chance 0.8</text>
+      <text x="425" y="135" fill="#f59e0b">reward −1</text>
+      <text x="160" y="250" text-anchor="middle">estimate V(1) = 5</text>
+      <text x="480" y="250" text-anchor="middle">estimate V(3) = 9</text>
+      </g>
+      </svg>
+      ```
+
+      Be careful with the goal cell. Its value is $0$, because the $+10$ is paid on the step that reaches it. So in a backup, moving right from cell 3 gives $10+0.9\times0=10$.
+    worked: |
+      Let's do the backup in the picture: one new estimate for cell 2, under a policy that moves right with probability $0.8$ and left with probability $0.2$. Moves always work, $\gamma=0.9$, and the current estimates are $V(1)=5$ and $V(3)=9$.
+
+      1. **Look one step ahead to the right.** Moving right pays $-1$ and lands in cell 3, whose estimate we shrink by $0.9$.
+         $$-1+0.9\times9=7.1.$$
+
+      2. **Look one step ahead to the left.** Moving left pays $-1$ and lands in cell 1.
+         $$-1+0.9\times5=3.5.$$
+
+      3. **Average with the policy's probabilities.** The equation averages over the actions, weighted by how often the policy picks each one.
+         $$V(2)\leftarrow0.8\times7.1+0.2\times3.5=5.68+0.7=6.38.$$
+
+      The arrow $\leftarrow$ means "replace with", since this is a new estimate built from old ones. We'd do the same for cells 1 and 3, then repeat.
+    problems:
+      - vf-bellman-expectation-basics
+      - vfp-backup-self-explain
+      - vfp-next-cell-value-template
+      - vfp-backup-policy-template
+      - vfp-first-backup-meaning
+      - vfp-slippery-backup
+      - vfp-goal-value-mistake
+      - vfp-arm-retry-backup
+  - id: vf-bellman-optimality
+    title: "Find the most reward the robot can get"
+    explain: |
+      ### The best the robot can do
+
+      Now we want the most return any policy could collect from each cell. We'll keep the corridor and $\gamma=0.9$, and we know where each move leads and what it pays.
+
+      The **optimal state value** $V^*(s)$ is the largest value any policy can reach from state $s$. The **optimal action value** $Q^*(s,a)$ is the expected return from taking action $a$ in state $s$ and acting as well as possible after that.
+
+      ### The Bellman optimality equation
+
+      Here we take the best action instead of averaging over actions. The **Bellman optimality equation** is
+
+      $$V^*(s)=\max_a E\big[\,r+\gamma V^*(s')\,\big].$$
+
+      Here $\max_a$ means "the largest over all actions $a$", and $E$ averages over the next state. For a move with one outcome,
+
+      $$Q^*(s,a)=r+\gamma V^*(s').$$
+
+      ### Backups that spread the reward
+
+      One **sweep** backs up every cell once from the previous sweep's estimates. Cell 4 stays at $0$, because the episode ends there. Starting every other estimate at $0$, we get:
+
+      | Sweep | $V(1)$ | $V(2)$ | $V(3)$ |
+      | --- | --- | --- | --- |
+      | 0 | $0$ | $0$ | $0$ |
+      | 1 | $-1$ | $-1$ | $10$ |
+      | 2 | $-1.9$ | $8$ | $10$ |
+      | 3 | $6.2$ | $8$ | $10$ |
+      | 4 | $6.2$ | $8$ | $10$ |
+
+      In sweep 1, only cell 3 can reach the goal, so it gets $10$, and every other move gives $-1+0.9\times0=-1$. In sweep 2, cell 2 sees cell 3's $10$ and gets $8$, while cell 1 gets $-1+0.9\times(-1)=-1.9$. Each sweep carries the $+10$ one cell further back. After sweep 3 nothing changes, so these are $V^*$. These are the values of "always move right", so it's a best policy.
+
+      Repeating sweeps like this is called **value iteration**.
+
+      ### Reading off the best move
+
+      With $V^*$ known, the best action in each state is the one with the largest $Q^*$. In cell 2, $Q^*(2,\text{right})=-1+0.9\times10=8$ and $Q^*(2,\text{left})=-1+0.9\times6.2=4.58$, so the best move is right.
+
+      Be careful not to pick a move by its next reward alone. In cell 2 both moves give $-1$, and only the values of the cells they lead to tell them apart.
+    worked: |
+      Let's do the backup that fills in $V(1)$ in sweep 3. The estimates from sweep 2 are $V(1)=-1.9$ and $V(2)=8$, with $\gamma=0.9$.
+
+      1. **Look one step ahead to the right.** Moving right pays $-1$ and lands in cell 2.
+         $$-1+0.9\times8=6.2.$$
+
+      2. **Look one step ahead to the left.** The wall keeps the robot in cell 1, so it pays $-1$ and uses cell 1's own estimate.
+         $$-1+0.9\times(-1.9)=-2.71.$$
+
+      3. **Take the larger.** The optimality equation keeps the best action's value.
+         $$V(1)\leftarrow\max(6.2,\,-2.71)=6.2.$$
+
+      After sweep 2, cell 2's estimate of $8$ already includes the $+10$. So this backup carries the $+10$ one more cell back, to cell 1.
+    problems:
+      - vf-bellman-optimality-basics
+      - vfp-sweep-self-explain
+      - vfp-average-or-max
+      - vfp-optimal-backup-template
+      - vfp-slow-spread
+      - vfp-wall-q-star
+      - vfp-greedy-reward-mistake
+      - vfp-drone-land-or-fly
+final: vf-explain-values
+summary: |
+  - The state value $V^\pi(s)$ is the expected return from state $s$ when the agent follows policy $\pi$, so it changes when the policy changes.
+  - The action value $Q^\pi(s,a)$ is the expected return from taking action $a$ in state $s$ and then following $\pi$. For a move with one outcome it's $r+\gamma V^\pi(s')$, and $V^\pi(s)$ is the average of the $Q^\pi(s,a)$, weighted by $\pi(a\mid s)$.
+  - The Bellman expectation equation, $V^\pi(s)=E\big[r+\gamma V^\pi(s')\big]$, links each value to the next state's value. A Bellman backup puts current estimates into its right-hand side to get a new estimate.
+  - The Bellman optimality equation, $V^*(s)=\max_a E\big[r+\gamma V^*(s')\big]$, takes the best action instead of averaging. Repeating its backups is value iteration, and the best move in each state is the one with the largest $Q^*(s,a)$.
+
+  **Next:** The Q-learning lesson learns $Q^*$ from the robot's own experience, without knowing in advance where each move leads.

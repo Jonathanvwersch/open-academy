@@ -34,7 +34,7 @@ concepts:
       dimensions: [conceptual, math],
       prereqs: [{ id: policies-returns }],
       objectives: [{ text: "Apply one Bellman backup", dimension: math }],
-      status: stub,
+      status: authored,
     }
   - {
       id: q-learning,

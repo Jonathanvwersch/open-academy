@@ -1,0 +1,707 @@
+concept: value-functions
+exercises:
+  - id: vf-state-value-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: 'What does the state value $V^\pi(s)$ measure?'
+    options:
+      - id: a
+        text: The reward the agent gets on its very next step from state $s$.
+        correct: false
+        category: misunderstood_definition
+        feedback: The value counts every reward still to come, each shrunk by the discount, so it is more than the next reward.
+      - id: b
+        text: The expected discounted return from state $s$ when the agent follows policy $\pi$.
+        correct: true
+        feedback: That is the definition. It averages the return over everything that can happen from $s$ under $\pi$.
+      - id: c
+        text: The probability that policy $\pi$ reaches the goal when it starts from state $s$.
+        correct: false
+        category: misunderstood_definition
+        feedback: A value is measured in reward, and it can be negative. It is an expected return, not a probability.
+      - id: d
+        text: The largest discounted return that any policy at all could collect from state $s$.
+        correct: false
+        category: misunderstood_definition
+        feedback: That is the optimal value $V^*(s)$. The value $V^\pi(s)$ belongs to one policy $\pi$.
+    solution: '$V^\pi(s)$ is the expected return, $E[G_t\mid s_t=s]$, when the agent starts in $s$ and follows $\pi$ from then on.'
+  - id: vfp-start-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: 'In the worked example, why is the $+10$ multiplied by $0.81$ when we find $V^\pi(1)$?'
+    options:
+      - id: a
+        text: It arrives two steps after the first reward, so it is shrunk by $\gamma$ twice.
+        correct: true
+        feedback: 'The factors are $1$, $\gamma$ and $\gamma^2$ for the first, second and third rewards, and $0.9^2=0.81$.'
+      - id: b
+        text: The robot reaches cell 4 with probability $0.81$, so the reward is weighted by it.
+        correct: false
+        category: incorrect_reasoning
+        feedback: "Every move works in this corridor, so the robot is sure to reach cell 4. The $0.81$ is the discount, $0.9^2$."
+      - id: c
+        text: The policy picks right with probability $0.81$ in each of the cells it passes.
+        correct: false
+        category: misunderstood_definition
+        feedback: '"Always move right" picks right with probability $1$. The $0.81$ comes from $\gamma=0.9$.'
+    solution: 'The $+10$ is the third reward, two steps after the first, so it is multiplied by $\gamma^2=0.9^2=0.81$, giving $8.1$.'
+  - id: vfp-goal-cell-value
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: 'A robot moves in a corridor of 4 cells. Reaching cell 4 ends the episode and gives reward $+10$; every other step gives $-1$. For any policy $\pi$, what is $V^\pi(4)$?'
+    answer: 0
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer: 10
+        category: misunderstood_definition
+        feedback: The $+10$ is paid on the step that reaches cell 4. Once the robot is in cell 4 the episode is over, so no reward is left.
+    solution: A value counts the rewards still to come. In cell 4 the episode has ended, so there are none, and $V^\pi(4)=0$.
+  - id: vfp-start-value-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: 'A robot moves in a corridor of 4 cells, numbered 1 to 4 from left to right, and every move works. Reaching cell 4 ends the episode with reward $+{{=R}}$; every other step gives $-1$. The discount is $\gamma={{=g}}$ and the policy always moves right. What is $V^\pi(1)$? Give two decimals.'
+    params:
+      R: { min: 5, max: 20, step: 5 }
+      g: { min: 0.5, max: 0.9, step: 0.1 }
+    answer_expr: "-1 - g + g^2 * R"
+    tolerance:
+      abs: 0.005
+    common_wrong:
+      - answer_expr: "R - 2"
+        category: math_error
+        feedback: That adds the rewards without the discount. The second reward is multiplied by $\gamma$ and the third by $\gamma^2$.
+      - answer_expr: "-g - g^2 + g^3 * R"
+        category: math_error
+        feedback: The first reward is not discounted. The factors are $1$, $\gamma$ and $\gamma^2$.
+    solution: 'From cell 1 the rewards are $-1$, $-1$ and $+{{=R}}$, so $V^\pi(1)=-1+{{=g}}\times(-1)+{{=g^2}}\times{{=R}}={{=-1-g+g^2*R}}$.'
+  - id: vfp-policy-changes-value
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: 'In a corridor of 4 cells, where reaching cell 4 gives $+10$ and ends the episode, every other step gives $-1$ and $\gamma=0.9$, cell 1 has value $6.2$ under "always move right" and $-10$ under "always move left". What does this show?'
+    options:
+      - id: a
+        text: A state's value depends on the policy that is followed from that state.
+        correct: true
+        feedback: The value is the expected return under a policy, and the two policies collect very different rewards.
+      - id: b
+        text: One of the two numbers is wrong, because each state has a single value.
+        correct: false
+        category: misunderstood_definition
+        feedback: '$V^\pi(s)$ belongs to a state and a policy together, so two policies can give the same cell two values.'
+      - id: c
+        text: Cell 1 pays a different reward each time the robot leaves it.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Leaving cell 1 always pays $-1$. The difference comes from what the policy does in all the later steps.
+    solution: '"Always move right" reaches the $+10$, and "always move left" pays $-1$ forever. The value is the expected return under a policy, so it changes with the policy.'
+  - id: vfp-discount-first-reward
+    dimension: math
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: 'A robot in a 4-cell corridor always moves right, and every move works. From cell 2 it gets $-1$, then $+10$ on reaching cell 4. With $\gamma=0.9$, a learner writes $V^\pi(2)=0.9\times(-1)+0.81\times10=7.2$. What went wrong?'
+    options:
+      - id: a
+        text: The first reward should not be discounted, so the value is $-1+0.9\times10=8$.
+        correct: true
+        feedback: The next reward counts in full. Only the rewards after it are shrunk by $\gamma$, $\gamma^2$ and so on.
+      - id: b
+        text: The $+10$ should not be discounted at all, so the value is $-0.9+10=9.1$.
+        correct: false
+        category: misapplied_technique
+        feedback: The $+10$ comes one step after the first reward, so it is multiplied by $\gamma$.
+      - id: c
+        text: Nothing; each reward is multiplied by one more $\gamma$, starting from the first.
+        correct: false
+        category: misunderstood_definition
+        feedback: The return starts with $r_{t+1}$ undiscounted. The learner multiplied every reward by one $\gamma$ too many.
+    solution: 'The return is $r_{t+1}+\gamma r_{t+2}$, so $V^\pi(2)=-1+0.9\times10=8$. The learner discounted the first reward as well.'
+  - id: vfp-game-two-outcomes
+    dimension: transfer
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: 'In a card game, an agent in state $s$ follows its policy. Half the time the episode gives reward $4$ and then reward $10$, and ends. The other half it gives $4$ and then $-2$, and ends. With $\gamma=0.5$, what is $V^\pi(s)$?'
+    answer: 6
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer: 8
+        category: math_error
+        feedback: That averages the returns without the discount. The second reward is multiplied by $\gamma=0.5$.
+      - answer: 4
+        category: misunderstood_definition
+        feedback: That is only the next reward. The value counts the later reward too.
+      - answer: 9
+        category: incorrect_reasoning
+        feedback: That is the return of the better outcome only. The value averages both outcomes by their probabilities.
+    solution: 'The two returns are $4+0.5\times10=9$ and $4+0.5\times(-2)=3$. Each happens half the time, so $V^\pi(s)=0.5\times9+0.5\times3=6$.'
+  - id: vf-action-value-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: 'What does the action value $Q^\pi(s,a)$ measure?'
+    options:
+      - id: a
+        text: The expected return from taking action $a$ in every state from $s$ onwards.
+        correct: false
+        category: misunderstood_definition
+        feedback: Action $a$ is taken only once, in $s$. After that the agent follows $\pi$.
+      - id: b
+        text: The expected return from taking $a$ in state $s$ and then following $\pi$.
+        correct: true
+        feedback: That is the definition. It scores one first move, with the policy taking over afterwards.
+      - id: c
+        text: The probability that policy $\pi$ picks action $a$ when it is in state $s$.
+        correct: false
+        category: misunderstood_definition
+        feedback: 'That is $\pi(a\mid s)$. The action value is an expected return.'
+      - id: d
+        text: The reward the agent receives right after taking action $a$ in state $s$.
+        correct: false
+        category: misunderstood_definition
+        feedback: The action value includes the discounted rewards after that first one too.
+    solution: '$Q^\pi(s,a)$ is the expected return when the agent takes $a$ in $s$ first and follows $\pi$ after that.'
+  - id: vfp-wall-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: 'In the worked example, why does $Q^\pi(1,\text{left})$ use $V^\pi(1)=6.2$?'
+    options:
+      - id: a
+        text: Moving into the wall leaves the robot in cell 1, and it follows the policy from there.
+        correct: true
+        feedback: The next state is cell 1 again, so the rest of the return is worth $V^\pi(1)$, one step later.
+      - id: b
+        text: The robot keeps moving left after the first step, and cell 1 is where it ends up.
+        correct: false
+        category: misunderstood_definition
+        feedback: After the first move the robot follows "always move right" again.
+      - id: c
+        text: An action value always uses the value of the state it starts in.
+        correct: false
+        category: incorrect_reasoning
+        feedback: It uses the value of the next state. Here the next state happens to be cell 1, because of the wall.
+    solution: 'The wall keeps the robot in cell 1, so $Q^\pi(1,\text{left})=-1+0.9\times V^\pi(1)=-1+0.9\times6.2=4.58$.'
+  - id: vfp-q-one-step-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: 'A warehouse robot follows a policy $\pi$. In its current state $s$, the action "pick up" always gives reward ${{=r}}$ and leads to a state $s''$ with $V^\pi(s'')={{=v}}$. With $\gamma=0.9$, what is $Q^\pi(s,\text{pick up})$?'
+    params:
+      r: { min: -2, max: 3, step: 1 }
+      v: { min: 2, max: 10, step: 2 }
+    constraints: ["r != 0"]
+    answer_expr: "r + 0.9 * v"
+    tolerance:
+      abs: 0.005
+    common_wrong:
+      - answer_expr: "r + v"
+        category: math_error
+        feedback: The next state's value comes one step later, so multiply it by $\gamma=0.9$.
+      - answer_expr: "0.9 * (r + v)"
+        category: math_error
+        feedback: The reward for this step counts in full. Only the next state's value is discounted.
+    solution: '$Q^\pi(s,\text{pick up})=r+\gamma V^\pi(s'')=({{=r}})+0.9\times{{=v}}={{=r+0.9*v}}$.'
+  - id: vfp-v-from-q-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: 'In state $s$, a policy $\pi$ moves right with probability ${{=p}}$ and left otherwise. The action values are $Q^\pi(s,\text{right})={{=a}}$ and $Q^\pi(s,\text{left})={{=b}}$. What is $V^\pi(s)$?'
+    params:
+      p: { min: 0.6, max: 0.9, step: 0.1 }
+      a: { min: 4, max: 10, step: 2 }
+      b: { min: -4, max: 2, step: 2 }
+    answer_expr: "p * a + (1 - p) * b"
+    tolerance:
+      abs: 0.005
+    common_wrong:
+      - answer_expr: "a"
+        category: incorrect_reasoning
+        feedback: That is the better action's value. The policy sometimes moves left, so the value is a weighted average.
+      - answer_expr: "(a + b) / 2"
+        category: math_error
+        feedback: That weights both actions equally. Weight each by the chance that the policy picks it.
+      - answer_expr: "p * b + (1 - p) * a"
+        category: math_error
+        feedback: The weights are swapped. Right has probability ${{=p}}$.
+    solution: '$V^\pi(s)={{=p}}\times{{=a}}+{{=1-p}}\times({{=b}})={{=p*a+(1-p)*b}}$.'
+  - id: vfp-q-reveals-better
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: 'A robot in a 4-cell corridor follows "always move left" and never reaches the goal, so $V^\pi(3)=-10$. Moving right from cell 3 reaches the goal, so $Q^\pi(3,\text{right})=10$. What does this tell us?'
+    options:
+      - id: a
+        text: Moving right in cell 3 would collect more return than the policy does, so the policy can be improved.
+        correct: true
+        feedback: An action value above the state value means that action beats what the policy currently does there.
+      - id: b
+        text: The action value must be wrong, because the policy never moves right.
+        correct: false
+        category: misunderstood_definition
+        feedback: An action value can be worked out for any action, including one the policy never picks.
+      - id: c
+        text: The state value should be the larger of the two, so $V^\pi(3)$ is really $10$.
+        correct: false
+        category: misunderstood_definition
+        feedback: '$V^\pi(3)$ averages the actions the policy takes, and it always moves left, so it stays $-10$.'
+    solution: '$Q^\pi(3,\text{right})=10$ is far above $V^\pi(3)=-10$, so switching to right in cell 3 gives a better return than the policy gets now.'
+  - id: vfp-q-left-forever
+    dimension: math
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: 'A robot in a 4-cell corridor follows "always move right". Reaching cell 4 gives $+10$ and ends the episode, every other step gives $-1$, $\gamma=0.9$, and $V^\pi(1)=6.2$. A learner says $Q^\pi(2,\text{left})=-10$, because moving left forever never reaches the goal. What went wrong?'
+    options:
+      - id: a
+        text: After the first move left, the robot follows "always move right" again, so the value is $-1+0.9\times6.2=4.58$.
+        correct: true
+        feedback: The action value takes the action once and then follows the policy.
+      - id: b
+        text: Moving left from cell 2 hits the wall, so the robot stays in cell 2 and the value is $-1+0.9\times8=6.2$.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The wall is on the left of cell 1. From cell 2, moving left reaches cell 1.
+      - id: c
+        text: Nothing; an action value assumes the agent keeps taking that action, so it is $-10$.
+        correct: false
+        category: misunderstood_definition
+        feedback: That would be the value of a different policy, "always move left".
+    solution: '$Q^\pi(2,\text{left})$ moves left once, to cell 1, and then follows $\pi$, so it is $-1+0.9\times V^\pi(1)=-1+0.9\times6.2=4.58$.'
+  - id: vfp-arm-three-actions
+    dimension: transfer
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: 'A robot arm in state $s$ grasps with probability $0.5$, pushes with probability $0.3$ and waits with probability $0.2$. The action values are $Q^\pi(s,\text{grasp})=6$, $Q^\pi(s,\text{push})=2$ and $Q^\pi(s,\text{wait})=-1$. What is $V^\pi(s)$?'
+    answer: 3.4
+    tolerance:
+      abs: 0.005
+    common_wrong:
+      - answer: 6
+        category: incorrect_reasoning
+        feedback: That is the best action's value. The policy also pushes and waits, so weight every action by its probability.
+      - answer: 2.3333
+        tolerance:
+          abs: 0.01
+        category: math_error
+        feedback: That is the plain average of the three. Weight each action value by how often the policy picks it.
+    solution: '$V^\pi(s)=0.5\times6+0.3\times2+0.2\times(-1)=3+0.6-0.2=3.4$.'
+  - id: vf-bellman-expectation-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What does the Bellman expectation equation say about a state's value under a policy?
+    options:
+      - id: a
+        text: It is the plain average of the values of the states next to it.
+        correct: false
+        category: misunderstood_definition
+        feedback: The equation adds the reward for the step and discounts the next value, weighting outcomes by their probabilities.
+      - id: b
+        text: It is the expected one-step reward plus the discounted value of the next state.
+        correct: true
+        feedback: 'That is $V^\pi(s)=E[r+\gamma V^\pi(s'')]$, averaged over the actions and next states.'
+      - id: c
+        text: It is the reward of the best action plus the value of the next state.
+        correct: false
+        category: misunderstood_definition
+        feedback: Taking the best action is the optimality equation. The expectation equation averages over the policy's actions.
+      - id: d
+        text: It is the one-step reward for the action the policy takes most often.
+        correct: false
+        category: misunderstood_definition
+        feedback: The value also includes the discounted value of where the agent goes next.
+    solution: '$V^\pi(s)=E[r+\gamma V^\pi(s'')]$: one step of reward plus the discounted value of the next state, averaged over what the policy and the moves can do.'
+  - id: vfp-backup-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: In the worked example, why are $7.1$ and $3.5$ weighted by $0.8$ and $0.2$ in step 3?
+    options:
+      - id: a
+        text: Those are the chances that the policy moves right and left in cell 2.
+        correct: true
+        feedback: The equation averages over the actions, each weighted by $\pi(a\mid s)$.
+      - id: b
+        text: Those are the discounts for the two cells, with the further cell shrunk more.
+        correct: false
+        category: misunderstood_definition
+        feedback: 'The discount is $\gamma=0.9$, already applied in steps 1 and 2.'
+      - id: c
+        text: Those are the chances that each move works, since the corridor is slippery.
+        correct: false
+        category: incorrect_reasoning
+        feedback: In this example every move works. The $0.8$ and $0.2$ come from the policy.
+    solution: 'The policy moves right with probability $0.8$ and left with $0.2$, so $V(2)\leftarrow0.8\times7.1+0.2\times3.5=6.38$.'
+  - id: vfp-next-cell-value-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: 'A robot in a corridor follows "always move right", and every move works. The step from cell 1 to cell 2 gives reward $-1$. Cell 2 has value $V^\pi(2)={{=c}}$ and $\gamma={{=g}}$. What is $V^\pi(1)$?'
+    params:
+      c: { min: 4, max: 12, step: 2 }
+      g: { min: 0.5, max: 0.9, step: 0.1 }
+    answer_expr: "-1 + g * c"
+    tolerance:
+      abs: 0.005
+    common_wrong:
+      - answer_expr: "c - 1"
+        category: math_error
+        feedback: Cell 2's value comes one step later, so multiply it by $\gamma$.
+      - answer_expr: "g * (c - 1)"
+        category: math_error
+        feedback: The reward for this step counts in full. Only cell 2's value is discounted.
+    solution: 'One step pays $-1$, then the rest is worth $V^\pi(2)$ one step later: $V^\pi(1)=-1+{{=g}}\times{{=c}}={{=-1+g*c}}$.'
+  - id: vfp-backup-policy-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt: 'A robot in a corridor is in cell 2. Its policy moves right, to cell 3, with probability ${{=p}}$, and left, to cell 1, otherwise. Both moves always work and give reward $-1$. The current estimates are $V(1)={{=a}}$ and $V(3)={{=c}}$, and $\gamma=0.9$. What is the new estimate of $V(2)$ after one Bellman backup? Give two decimals.'
+    params:
+      p: { min: 0.6, max: 0.9, step: 0.1 }
+      a: { min: 0, max: 4, step: 2 }
+      c: { min: 6, max: 10, step: 2 }
+    answer_expr: "p * (-1 + 0.9 * c) + (1 - p) * (-1 + 0.9 * a)"
+    tolerance:
+      abs: 0.005
+    common_wrong:
+      - answer_expr: "p * (c - 1) + (1 - p) * (a - 1)"
+        category: math_error
+        feedback: The next cell's estimate comes one step later, so multiply it by $\gamma=0.9$.
+      - answer_expr: "-1 + 0.9 * c"
+        category: incorrect_reasoning
+        feedback: That only follows the move right. The policy moves left some of the time, so weight both moves.
+      - answer_expr: "(1 - p) * (-1 + 0.9 * c) + p * (-1 + 0.9 * a)"
+        category: math_error
+        feedback: The weights are swapped. Right has probability ${{=p}}$.
+    solution: 'Right gives $-1+0.9\times{{=c}}={{=-1+0.9*c}}$ and left gives $-1+0.9\times{{=a}}={{=-1+0.9*a}}$. So $V(2)\leftarrow{{=p}}\times{{=-1+0.9*c}}+{{=1-p}}\times{{=-1+0.9*a}}={{=p*(-1+0.9*c)+(1-p)*(-1+0.9*a)}}$.'
+  - id: vfp-first-backup-meaning
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: 'In a 4-cell corridor where reaching cell 4 gives $+10$ and other steps give $-1$, every estimate starts at $0$. One Bellman backup for cell 2 under "always move right", with $\gamma=0.9$, gives $V(2)=-1$. The true value is $V^\pi(2)=8$. Why is the new estimate so far off?'
+    options:
+      - id: a
+        text: The backup used cell 3's estimate of $0$, which hasn't learned about the $+10$ yet.
+        correct: true
+        feedback: A backup is only as good as the estimates it uses. Repeated backups bring the $+10$ back to cell 2.
+      - id: b
+        text: The Bellman equation doesn't hold for this policy, so backups can't find its values.
+        correct: false
+        category: misunderstood_definition
+        feedback: 'The true values do satisfy it: $-1+0.9\times10=8$. The problem is the starting estimates.'
+      - id: c
+        text: The backup should have used cell 2's own estimate, since the robot starts there.
+        correct: false
+        category: incorrect_reasoning
+        feedback: A backup looks one step ahead, to the state the robot lands in, which is cell 3.
+    solution: 'The backup gave $-1+0.9\times0=-1$ because cell 3 was still estimated at $0$. Once cell 3 is backed up to $10$, the next backup gives $-1+0.9\times10=8$.'
+  - id: vfp-slippery-backup
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: 'A robot is in cell 3 of a slippery corridor and always moves right. With probability $0.8$ the move works: it reaches cell 4, gets $+10$ and the episode ends. Otherwise it stays in cell 3 and gets $-1$. The current estimate is $V(3)=5$ and $\gamma=0.9$. What is the new estimate of $V(3)$ after one Bellman backup?'
+    answer: 8.7
+    tolerance:
+      abs: 0.005
+    common_wrong:
+      - answer: 8.8
+        category: math_error
+        feedback: The estimate for the cell the robot lands in comes one step later, so multiply it by $\gamma=0.9$.
+      - answer: 10
+        category: incorrect_reasoning
+        feedback: That ignores the chance that the move fails. Weight both landing cells by their probabilities.
+      - answer: 15.9
+        category: misunderstood_definition
+        feedback: That treats cell 4 as worth $10$ after the $+10$ is paid. The episode ends there, so its value is $0$.
+    solution: 'Success gives $10+0.9\times0=10$ and failure gives $-1+0.9\times5=3.5$. So $V(3)\leftarrow0.8\times10+0.2\times3.5=8+0.7=8.7$.'
+  - id: vfp-goal-value-mistake
+    dimension: math
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: 'A robot in a 4-cell corridor always moves right, and every move works. Reaching cell 4 gives $+10$ and ends the episode. With $\gamma=0.9$, a learner backs up cell 3 as $V(3)\leftarrow10+0.9\times10=19$. What went wrong?'
+    options:
+      - id: a
+        text: The value of cell 4 is $0$, because the episode ends there, so the backup gives $10$.
+        correct: true
+        feedback: The $+10$ is paid on the step into cell 4. After that nothing more is collected.
+      - id: b
+        text: The reward should be discounted too, so the backup gives $0.9\times10+0.9\times10=18$.
+        correct: false
+        category: misapplied_technique
+        feedback: The reward for the step counts in full, and the real mistake is the value used for cell 4.
+      - id: c
+        text: The step should cost $-1$ as well, so the backup gives $-1+10+0.9\times10=18$.
+        correct: false
+        category: misunderstood_definition
+        feedback: The step into cell 4 pays $+10$ instead of $-1$, and cell 4 is worth $0$.
+    solution: 'Cell 4 ends the episode, so $V(4)=0$ and $V(3)\leftarrow10+0.9\times0=10$. The learner counted the $+10$ twice.'
+  - id: vfp-arm-retry-backup
+    dimension: transfer
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: 'A robot arm tries to grasp a part. With probability $0.6$ it succeeds, gets reward $5$ and the episode ends. Otherwise it gets reward $0$ and is back in the same state, whose current estimate is $V(s)=4$. With $\gamma=0.5$, what is the new estimate of $V(s)$ after one Bellman backup?'
+    answer: 3.8
+    tolerance:
+      abs: 0.005
+    common_wrong:
+      - answer: 4.6
+        category: math_error
+        feedback: The estimate for the state after a failure comes one step later, so multiply it by $\gamma=0.5$.
+      - answer: 3
+        category: incorrect_reasoning
+        feedback: That only counts success. After a failure the arm can still try again, which is worth the discounted estimate.
+    solution: 'Success gives $5+0.5\times0=5$ and failure gives $0+0.5\times4=2$. So $V(s)\leftarrow0.6\times5+0.4\times2=3+0.8=3.8$.'
+  - id: vf-bellman-optimality-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What does the optimal state value $V^*(s)$ measure?"
+    options:
+      - id: a
+        text: The expected return from state $s$ under the policy the agent follows now.
+        correct: false
+        category: misunderstood_definition
+        feedback: 'That is $V^\pi(s)$ for the current policy. $V^*(s)$ is the best any policy can do.'
+      - id: b
+        text: The largest expected return that any policy can collect from state $s$.
+        correct: true
+        feedback: 'That is the definition. It satisfies $V^*(s)=\max_a E[r+\gamma V^*(s'')]$.'
+      - id: c
+        text: The largest reward that any single action can give in state $s$.
+        correct: false
+        category: misunderstood_definition
+        feedback: The optimal value counts the whole discounted return, not just the next reward.
+      - id: d
+        text: The expected return from state $s$, averaged over every possible policy.
+        correct: false
+        category: misunderstood_definition
+        feedback: It takes the best policy. Averaging over policies would mix in bad ones.
+    solution: "$V^*(s)$ is the most expected return any policy can get from $s$."
+  - id: vfp-sweep-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: In the worked example, why does the backup for cell 1 keep $6.2$ and drop $-2.71$?
+    options:
+      - id: a
+        text: The optimality equation keeps the value of the best action, and moving right is worth more.
+        correct: true
+        feedback: An optimal agent takes its best move, so the backup takes the larger of the two.
+      - id: b
+        text: Negative values are dropped, because the robot can always avoid losing reward.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Values can be negative. The backup simply keeps the larger of the two.
+      - id: c
+        text: Moving left is impossible in cell 1, because a wall is in the way.
+        correct: false
+        category: misunderstood_definition
+        feedback: Moving left is allowed. It just leaves the robot in cell 1, which is worth less.
+    solution: 'The optimality backup takes $\max(6.2,-2.71)=6.2$, the value of the better move, right.'
+  - id: vfp-average-or-max
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "You want the best possible values for a task, rather than the values of one fixed policy. Which backup do you repeat?"
+    options:
+      - id: a
+        text: 'The optimality backup, which takes the largest of $E[r+\gamma V(s'')]$ over the actions.'
+        correct: true
+        feedback: The max picks the best action at every state, which leads to $V^*$.
+      - id: b
+        text: 'The expectation backup, which averages $E[r+\gamma V(s'')]$ over the policy''s actions.'
+        correct: false
+        category: misapplied_technique
+        feedback: That finds $V^\pi$ for one policy, which is only the best if the policy already is.
+      - id: c
+        text: "A backup that takes the largest one-step reward $r$ over the actions."
+        correct: false
+        category: incorrect_reasoning
+        feedback: The best action depends on where it leads too, so the backup must include $\gamma V(s')$.
+    solution: The optimality backup takes the max over actions, so repeating it gives $V^*$. The expectation backup gives the values of one fixed policy.
+  - id: vfp-optimal-backup-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: 'A robot is in cell 2 of a corridor. Moving left reaches cell 1 and moving right reaches cell 3, and both moves always work and give reward $-1$. The current estimates are $V(1)={{=a}}$ and $V(3)={{=c}}$, and $\gamma=0.9$. What is the new estimate of $V(2)$ after one Bellman optimality backup?'
+    params:
+      a: { min: 0, max: 10, step: 2 }
+      c: { min: 0, max: 10, step: 2 }
+    constraints: ["a != c"]
+    answer_expr: "-1 + 0.9 * max(a, c)"
+    tolerance:
+      abs: 0.005
+    common_wrong:
+      - answer_expr: "-1 + 0.9 * (a + c) / 2"
+        category: misapplied_technique
+        feedback: That averages the two moves. The optimality backup keeps the better one.
+      - answer_expr: "max(a, c) - 1"
+        category: math_error
+        feedback: The next cell's estimate comes one step later, so multiply it by $\gamma=0.9$.
+    solution: 'Left gives $-1+0.9\times{{=a}}={{=-1+0.9*a}}$ and right gives $-1+0.9\times{{=c}}={{=-1+0.9*c}}$. The backup keeps the larger, ${{=-1+0.9*max(a,c)}}$.'
+  - id: vfp-slow-spread
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: 'In a 4-cell corridor, reaching cell 4 gives $+10$, other steps give $-1$, and $\gamma=0.9$. Value iteration starts every estimate at $0$. After the first sweep, $V(3)=10$ but $V(1)=-1$, even though $V^*(1)=6.2$. Why?'
+    options:
+      - id: a
+        text: Each backup looks one step ahead, so the $+10$ moves back only one cell per sweep.
+        correct: true
+        feedback: Cell 2 learns about it in sweep 2 and cell 1 in sweep 3.
+      - id: b
+        text: Cell 1 is worth less than $6.2$, and the later sweeps raise it too high.
+        correct: false
+        category: incorrect_reasoning
+        feedback: "The values settle at $6.2$, $8$ and $10$, which satisfy the optimality equation, so $V^*(1)=6.2$."
+      - id: c
+        text: The first sweep averages the two moves in cell 1, and later sweeps take the max.
+        correct: false
+        category: misunderstood_definition
+        feedback: Every sweep of value iteration takes the max. The low estimate comes from the zeros it starts from.
+    solution: 'In sweep 1, cell 2 is still estimated at $0$, so cell 1 gets $-1+0.9\times0=-1$. The $+10$ reaches cell 2 in sweep 2 and cell 1 in sweep 3.'
+  - id: vfp-wall-q-star
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: 'A robot moves in a corridor of 4 cells. Moving into the wall left of cell 1 leaves it where it is. Reaching cell 4 gives $+20$ and ends the episode, every other step gives $-1$, and $\gamma=0.9$. The optimal values are $V^*(1)=14.3$, $V^*(2)=17$ and $V^*(3)=20$. What is $Q^*(1,\text{left})$?'
+    answer: 11.87
+    tolerance:
+      abs: 0.005
+    common_wrong:
+      - answer: 14.3
+        category: incorrect_reasoning
+        feedback: That is the value of moving right, to cell 2. Moving left hits the wall and stays in cell 1.
+      - answer: 13.3
+        category: math_error
+        feedback: Cell 1's value comes one step later, so multiply it by $\gamma=0.9$.
+    solution: 'The wall keeps the robot in cell 1, so $Q^*(1,\text{left})=-1+0.9\times V^*(1)=-1+0.9\times14.3=11.87$.'
+  - id: vfp-greedy-reward-mistake
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: 'In a 4-cell corridor, reaching cell 4 gives $+10$, every other step gives $-1$, and $\gamma=0.9$. A learner says that in cell 2 moving left and moving right are equally good, because both give reward $-1$. What went wrong?'
+    options:
+      - id: a
+        text: 'The learner ignored where each move leads; $Q^*(2,\text{right})=8$ and $Q^*(2,\text{left})=4.58$.'
+        correct: true
+        feedback: The best move is the one with the largest $Q^*$, which adds the discounted value of the next cell.
+      - id: b
+        text: "The rewards differ, because moving right in cell 2 already gives the $+10$."
+        correct: false
+        category: incorrect_reasoning
+        feedback: The $+10$ comes only on the step into cell 4. Moving right from cell 2 gives $-1$.
+      - id: c
+        text: "Nothing; both moves give $-1$, so they really are equally good in cell 2."
+        correct: false
+        category: misunderstood_definition
+        feedback: Moving right lands nearer the goal, and that is worth more, so the moves are not equal.
+    solution: 'Moves are compared by $Q^*$: right gives $-1+0.9\times10=8$ and left gives $-1+0.9\times6.2=4.58$, so right is better.'
+  - id: vfp-drone-land-or-fly
+    dimension: transfer
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: 'A delivery drone in state $s$ can land now, which gives reward $2$ and ends the episode, or fly on, which gives reward $0$ and always reaches a state $s''$ with $V^*(s'')=5$. With $\gamma=0.9$, what is $V^*(s)$?'
+    answer: 4.5
+    tolerance:
+      abs: 0.005
+    common_wrong:
+      - answer: 2
+        category: incorrect_reasoning
+        feedback: Landing has the larger reward, but flying on leads to a valuable state. Compare $r+\gamma V^*(s')$ for both.
+      - answer: 5
+        category: math_error
+        feedback: The next state's value comes one step later, so multiply it by $\gamma=0.9$.
+      - answer: 3.25
+        category: misapplied_technique
+        feedback: That averages the two actions. The optimal value takes the better one.
+    solution: 'Landing is worth $2$ and flying on is worth $0+0.9\times5=4.5$. The optimal value takes the larger, so $V^*(s)=4.5$.'
+  - id: vf-explain-values
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 2
+    est_minutes: 4
+    prompt: 'Explain what $V^\pi(s)$ and $Q^\pi(s,a)$ measure, how a Bellman backup works out a state''s value from the next states, and how the optimality backup is different.'
+    rubric:
+      - id: r1
+        criterion: 'Says that $V^\pi(s)$ is the expected return from $s$ under $\pi$, and $Q^\pi(s,a)$ the expected return from taking $a$ first and then following $\pi$'
+        weight: 2
+        required: true
+      - id: r2
+        criterion: "Describes a backup as one step of reward plus the discounted value of the next state, averaged over actions and next states, using current estimates"
+        weight: 2
+        required: true
+      - id: r3
+        criterion: The optimality backup takes the best action (a max) instead of averaging over the policy's actions, which leads to the optimal values
+        weight: 1
+    exemplar: '$V^\pi(s)$ is the return an agent expects from state $s$ if it follows policy $\pi$, and $Q^\pi(s,a)$ is the return it expects if it takes action $a$ first and then follows $\pi$. A Bellman backup takes current estimates and sets a state''s value to the expected one-step reward plus $\gamma$ times the next state''s value, averaged over the policy''s actions and where the moves land. In the 4-cell corridor under "always move right", cell 2 gets $-1+0.9\times10=8$. The optimality backup instead takes the largest of those one-step values over the actions, and repeating it gives $V^*$, from which the best move is the one with the largest $Q^*$.'
