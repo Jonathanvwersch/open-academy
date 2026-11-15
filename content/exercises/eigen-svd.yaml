@@ -762,21 +762,20 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 5
-    prompt: Explain to a colleague what the SVD of a matrix does to an input vector, what the singular values measure, and why keeping only the biggest singular values gives a good copy of the matrix in fewer numbers.
-    exemplar: The SVD writes any matrix as $A=USV^\top$. Read right to left, $V^\top$ turns perpendicular input directions onto the axes, $S$ stretches each axis by a singular value, and $U$ turns the result to the output directions, so $Av_i=s_iu_i$. Either turn may include a mirror flip. Singular values are the lengths that $v_1$ and $v_2$ come out at, never negative. Keeping the $k$ biggest pieces $s_iu_iv_i^\top$ gives the closest rank-$k$ matrix, off by at most the first dropped singular value, and it needs $k(m+n)$ numbers in place of $mn$.
+    prompt: "Explain how an SVD transforms an input vector, what its singular values measure, and how they are used to choose a low-rank copy of the matrix."
+    exemplar: "For $A=USV^\\top$, read right to left: turn the input, stretch along the axes, then turn into the output directions. A turn may include a mirror flip. The singular values are the nonnegative output lengths for perpendicular unit input directions. Keeping the $k$ biggest pieces $s_iu_iv_i^\\top$ gives the closest rank-$k$ copy."
     rubric:
       - id: r1
-        criterion: "Describes the SVD as turn, stretch along the axes, turn ($V^\\top$, then $S$, then $U$), where a turn may include a mirror flip"
-        required: true
-        weight: 2
-      - id: r2
-        criterion: Singular values are how much each input direction is stretched (the output lengths of $v_1$ and $v_2$), never negative
-        required: true
-        weight: 2
-      - id: r3
-        criterion: Keeping the biggest pieces gives the closest low-rank copy, with error set by the dropped singular values
-        required: true
-        weight: 2
-      - id: r4
-        criterion: "A rank-k copy of an m×n matrix needs k(m+n) numbers in place of mn"
+        criterion:
+          Describe applying $V^\top$, then $S$, then $U$ as turn, stretch and turn, allowing a turn to include
+          a mirror flip.
         weight: 1
+        required: true
+      - id: r2
+        criterion: Explain that singular values are nonnegative output lengths for perpendicular unit input directions.
+        weight: 1
+        required: true
+      - id: r3
+        criterion: Explain that keeping the $k$ biggest singular-value pieces gives the closest rank-$k$ copy.
+        weight: 1
+        required: true

@@ -534,15 +534,21 @@ exercises:
     prompt: Explain to a friend why an agent that always takes its best-looking action can end up doing badly, and how epsilon-greedy and an entropy bonus each keep it trying other actions.
     rubric:
       - id: r1
-        criterion: "The agent only learns about actions it takes, so one unlucky early reward can leave a good action looking bad for ever"
+        criterion:
+          Explain that an agent learns only about actions it takes, so an unlucky early reward can leave a good
+          action looking bad.
         weight: 2
         required: true
       - id: r2
-        criterion: "Epsilon-greedy picks a random action with probability $\\varepsilon$ and the best-looking one otherwise, so every action keeps being tried"
+        criterion:
+          Describe choosing a random action with probability $\varepsilon$ and the best-looking action otherwise,
+          so alternatives keep being tried.
         weight: 1
         required: true
       - id: r3
-        criterion: "An entropy bonus adds $\\beta$ times the policy's entropy to the objective, which keeps its probabilities spread out, so it keeps trying every action early in training"
+        criterion:
+          Explain that adding $\beta$ times entropy to the objective rewards more spread-out action probabilities,
+          helping exploration continue.
         weight: 1
         required: true
-    exemplar: "An agent only finds out what an action pays by taking it. If it always takes the action with the best estimate, an action that paid badly once by bad luck may never be tried again, so the agent can stay stuck on a worse action for ever. Epsilon-greedy fixes this by picking a random action with probability $\\varepsilon$, so every action keeps getting tried and its estimate can recover. An agent that learns its policy's probabilities directly can get stuck when one probability goes to 1 too early. An entropy bonus adds $\\beta$ times the entropy, a measure of how spread out the probabilities are, to the objective. The policy keeps trying every action early in training, then commits when the extra return is worth more than the lost bonus."
+    exemplar: "An agent only finds out what an action pays by taking it. If it always takes the action with the best estimate, an action that paid badly once by bad luck may never be tried again, leaving the agent stuck on a worse action. Epsilon-greedy picks a random action with probability $\\varepsilon$, so alternatives keep getting tried and their estimates can recover. A policy that learns action probabilities directly can concentrate on one action too early. Adding $\\beta$ times entropy to expected return rewards more spread-out probabilities and helps the policy keep trying alternatives. Training moves toward a more concentrated policy only when the extra expected return outweighs the lost bonus."

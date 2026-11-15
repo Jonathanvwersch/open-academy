@@ -682,16 +682,26 @@ exercises:
     prompt: A team trains a robot arm to put a cup on a shelf. Explain why a reward given only when the cup is on the shelf can be hard to learn from, how they could add progress rewards without changing which behaviour is best, and how a careless progress bonus could be hacked.
     rubric:
       - id: r1
-        criterion: Explains that a sparse reward is rarely reached by random actions, so the agent gets no useful feedback at first
+        criterion:
+          Explain that random actions may rarely reach a sparse success reward, leaving no useful feedback at
+          first.
         weight: 1
         required: true
       - id: r2
-        criterion: Describes potential-based shaping, a bonus equal to the change in a score for each state, and why it adds the same total to every path
-        weight: 1
+        criterion: Add the potential-based bonus $F=\gamma\Psi(s')-\Psi(s)$ for a state score $\Psi$.
+        weight: 0.5
+        required: true
+      - id: terminal
+        criterion: Set the potential of states where the episode ends to $0$ so shaping preserves which behaviour is best.
+        weight: 0.5
         required: true
       - id: r3
-        criterion: Gives a concrete loophole, such as a bonus never taken back that can be collected in a loop, and a way to spot or prevent it
-        weight: 1
+        criterion: Give a loophole such as a progress bonus collected repeatedly by moving back and forth.
+        weight: 0.5
         required: true
-    exemplar: "A sparse reward only for the cup on the shelf is hard to learn from because an arm moving at random almost never gets the cup there, so at first every reward is 0 and nothing says which moves help. The team could add potential-based bonuses: give each state a score Ψ for how close the cup is to the shelf and pay Ψ(s') − Ψ(s) on each move. Along any path these add up to the last score minus the first, so every path gains the same total and the best behaviour doesn't change, but the arm gets feedback sooner. A careless bonus, such as a reward every time the cup gets closer with nothing taken back when it moves away, could be hacked by moving the cup back and forth forever. They should ask what the easiest way to earn the reward is and watch what the trained arm actually does."
-    solution: "A sparse reward only for the cup on the shelf is hard to learn from because an arm moving at random almost never gets the cup there, so at first every reward is 0 and nothing says which moves help. The team could add potential-based bonuses: give each state a score Ψ for how close the cup is to the shelf and pay Ψ(s') − Ψ(s) on each move. Along any path these add up to the last score minus the first, so every path gains the same total and the best behaviour doesn't change, but the arm gets feedback sooner. A careless bonus, such as a reward every time the cup gets closer with nothing taken back when it moves away, could be hacked by moving the cup back and forth forever. They should ask what the easiest way to earn the reward is and watch what the trained arm actually does."
+      - id: inspection
+        criterion: Suggest looking for repeatable bonuses or watching the trained arm's behaviour to spot reward hacking.
+        weight: 0.5
+        required: false
+    exemplar: "A reward only for getting the cup onto the shelf may be hard to discover through random moves, so early rewards give no sign of which moves help. Give each state a potential $\\Psi(s)$ measuring progress toward the shelf and pay $F=\\gamma\\Psi(s')-\\Psi(s)$ on each move, with potential $0$ where the episode ends. Under that condition, these potential-based bonuses preserve which behaviour is best while giving earlier feedback. A bonus for getting closer with nothing taken back when moving away could be collected repeatedly by moving the cup back and forth. Ask what the easiest way to earn reward is and watch what the trained arm actually does."
+    solution: "Use potential-based shaping $F=\\gamma\\Psi(s')-\\Psi(s)$ with terminal potential $0$ to preserve the best behaviour. Check whether a progress bonus can be collected repeatedly without completing the placement."

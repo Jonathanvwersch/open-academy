@@ -423,18 +423,20 @@ exercises:
     role: core
     difficulty: 3
     est_minutes: 4
-    prompt: Explain why shared attention with no position-dependent rules cannot distinguish token order in its per-token mixtures. Describe how learned, sinusoidal and rotary positional encodings work, and say what needs checking when using sequences longer than those used in training.
+    prompt: "Describe how learned positional encodings, sinusoidal positional encodings and rotary positional encodings put position information into a transformer."
     rubric:
-      - id: follows-tokens
-        criterion: Explains that keys and values move together and outputs follow the query tokens to their new slots under a rearrangement.
-        weight: 1
-        required: true
       - id: two-mechanisms
-        criterion: Distinguishes adding learned or fixed wave position vectors to embeddings from rotating queries and keys so their comparison depends on relative position.
+        criterion: Describe adding a learned position-table row to each token embedding.
         weight: 1
         required: true
-      - id: lengths
-        criterion: Notes that learned tables need trained rows and that computable wave/rotation rules do not guarantee performance beyond training lengths.
+      - id: sinusoidal
+        criterion: Describe computing fixed sine/cosine position vectors and adding them to embeddings.
         weight: 1
         required: true
-    exemplar: Without position-dependent rules, a moved token keeps its query and sees the same keys paired with the same values. Its mixture follows it, so reordering tokens reorders the outputs. Additive positional encodings give each slot a vector, either a learned table row or fixed sine/cosine values, and add it to the embedding. Rotary positional encoding turns query/key pairs by their positions, making the positional effect on their dot product depend on the gap while still depending on the original vectors. Learned tables need trained rows for the positions used. With computed waves or rotations, performance at lengths beyond training still needs testing.
+      - id: rotary
+        criterion:
+          Describe rotating query/key pairs by position so the positional effect on their dot product depends
+          on the relative gap.
+        weight: 1
+        required: true
+    exemplar: "Learned positional encodings add a learned position-table row to each token embedding. Sinusoidal encodings add a position vector computed from fixed sine and cosine waves. Rotary encodings rotate query/key pairs by their positions, making the positional effect on their dot product depend on the gap between positions."

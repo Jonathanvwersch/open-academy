@@ -737,19 +737,20 @@ exercises:
     rubric:
       - {
           id: r1,
-          criterion: "States $a\\cdot b = \\|a\\|\\|b\\|\\cos\\theta$, or equivalently that it is large when the vectors point the same way",
+          criterion: "Explain that for fixed lengths the dot product is largest for arrows pointing the same way, zero at a right angle and negative beyond a right angle.",
           weight: 2,
           required: true,
         }
       - {
           id: r2,
-          criterion: "Notes that it also grows with vector length, so long vectors score high even if they are less aligned",
+          criterion: "Explain that lengthening an arrow without turning it increases a positive dot product, even though the directions are no closer.",
           weight: 2,
           required: true,
         }
       - {
           id: r3,
-          criterion: "Mentions cosine similarity or normalisation as the length-independent alternative",
+          criterion: "Explain that cosine similarity divides the dot product by both nonzero lengths to compare directions alone.",
           weight: 1,
+          required: true,
         }
     exemplar: "For fixed lengths, the dot product is largest when the movement arrows point in the same direction. It is zero for perpendicular arrows and negative when their angle exceeds a right angle. Lengthening one arrow without turning raises a positive score even though the headings are no closer. Cosine similarity divides by both non-zero lengths to compare direction alone."

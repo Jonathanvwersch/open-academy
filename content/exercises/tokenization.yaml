@@ -676,17 +676,24 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 4
-    prompt: Explain how byte-pair encoding builds its vocabulary from training text, how a trained tokenizer then splits a word it never saw, and why this works better than using whole words or single characters as tokens.
+    prompt: "Explain how byte-pair encoding builds a vocabulary from training text, how the trained tokenizer encodes a new word, and why it can represent words outside a whole-word vocabulary."
     rubric:
       - id: r1
-        criterion: Building the vocabulary starts from single characters (or bytes) and repeatedly adds the most frequent pair of neighbouring tokens as a new token, until the chosen vocabulary size
-        weight: 2
+        criterion:
+          Describe starting with characters or bytes and repeatedly adding the most frequent neighbouring token
+          pair until the chosen vocabulary size.
+        weight: 1
         required: true
       - id: r2
-        criterion: A new word is split into characters and the learned merges are applied in the order they were learned, with no new counting
-        weight: 2
+        criterion:
+          Encode a new word by starting from characters and applying the learned merges in order, without counting
+          pairs again.
+        weight: 1
         required: true
       - id: r3
-        criterion: Compared with words, any word can still be encoded; compared with characters, texts take far fewer tokens because common words become single tokens
+        criterion:
+          Explain that unseen words can be built from known smaller pieces, avoiding the whole-word tokenizer's
+          unknown-word ID.
         weight: 1
-    exemplar: BPE starts with a vocabulary of single characters (bytes, in tokenizers like GPT-2's). It counts every pair of neighbouring tokens in the training text, joins the most frequent pair into a new token, and repeats until the vocabulary reaches the size we chose, keeping the merges in order. To split a new word, it starts from its characters and applies those merges in the same order, so an unseen word like "that" becomes pieces it knows, th and at. Whole-word tokens turn every word outside the vocabulary into one unknown-word id, losing the word, and character tokens make every text very long; BPE keeps common words as single tokens and spells rare ones from smaller pieces.
+        required: true
+    exemplar: "Start with characters or bytes and repeatedly add the most frequent neighbouring token pair until the vocabulary reaches the chosen size, recording the merges in order. Encode a new word by starting from its characters and applying those learned merges in order. Unseen words can be built from known smaller pieces, avoiding a whole-word tokenizer's unknown-word ID."

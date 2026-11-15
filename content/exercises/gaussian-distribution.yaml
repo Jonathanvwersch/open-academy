@@ -552,27 +552,19 @@ exercises:
     role: core
     difficulty: 3
     est_minutes: 5
-    prompt:
-      Explain how the mean and variance determine a Gaussian sensor model, how the curve gives an
-      interval probability, and why the model may or may not fit real noise.
+    prompt: "Explain what the mean controls in a Gaussian sensor curve, what the variance controls, and how to obtain an interval probability from the curve."
     rubric:
       - id: shape
-        criterion: Connects mean to centre, square root of variance to width, and greater width to lower peak.
+        criterion: Explain that the mean sets the Gaussian's centre.
         weight: 1
+        required: true
+      - id: width
+        criterion: Explain that standard deviation is the square root of variance and sets the width.
+        weight: 1
+        required: true
       - id: area
-        criterion: Distinguishes density height from interval probability and states that total area is 1.
+        criterion: Explain that interval probability is the area under the curve between the interval's endpoints.
         weight: 1
-      - id: limits
-        criterion:
-          Explains the many-independent-effects justification and one reason to question a Gaussian
-          model.
-        weight: 1
-    exemplar:
-      The mean sets the centre; standard deviation is the square root of variance and sets the
-      width. A larger standard deviation makes the bell wider and lower so its area stays 1.
-      Probability between two readings is area under the curve, not its height. Many small
-      independent effects can make Gaussian noise plausible, but frequent extreme errors or
-      nonnegative small counts call for another model.
-    solution: A Gaussian is specified by its mean and positive standard deviation. These control
-      location and spread, while interval areas give probabilities; the model's shape still needs
-      checking against data.
+        required: true
+    exemplar: "The mean sets the curve's centre. Standard deviation is the square root of variance and sets its width. The area under the curve between two readings gives the probability of that interval."
+    solution: "The mean sets the curve's centre. Standard deviation is the square root of variance and sets its width. The area under the curve between two readings gives the probability of that interval."

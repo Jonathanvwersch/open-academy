@@ -485,29 +485,22 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 4
-    prompt:
-      A friend writes a model's forward calculation and calls `loss.backward()`. Explain what was
-      recorded, what the call does and why reverse mode suits many weights and one loss. Say whether
-      the call changes the weights.
+    prompt: "A friend writes a model's forward calculation and calls `loss.backward()`. Explain what the forward run records, how backward finds the loss slopes, and whether the call changes the weights."
     rubric:
       - id: record
         criterion:
-          Explains that executed forward operations, dependencies and needed values are recorded
-          for local derivative rules.
+          Explain recording the executed forward operations, their connections and the values needed by derivative
+          rules.
         weight: 1
         required: true
       - id: reverse
         criterion:
-          Explains reverse chain-rule multiplication and path summation, accumulation in leaf
-          .grad, and that backward does not update weights.
+          Explain walking backward through the recorded operations, multiplying local slopes along paths and
+          adding where paths meet.
         weight: 1
         required: true
-      - id: cost
-        criterion: Contrasts one forward derivative pass per input with one recording pass plus one backward pass per output, favouring reverse for many weights and one loss.
+      - id: weights
+        criterion: Say that `loss.backward()` leaves the weights unchanged.
         weight: 1
         required: true
-    exemplar:
-      The forward run records the operations that actually execute, their connections and values
-      needed by derivative rules. Starting at the scalar loss with derivative one, backward
-      multiplies local derivatives in reverse order and adds contributions from different paths,
-      accumulating requested leaf gradients in .grad without updating the weights. After one recording pass, one backward pass gives that loss's slopes for all weights, whereas ordinary forward mode needs one derivative pass per weight.
+    exemplar: "The forward run records the executed operations, their connections and the values needed by derivative rules. Backward starts at the loss, multiplies local derivatives along each path and adds contributions where paths meet. The call computes slopes and leaves the weights unchanged."

@@ -721,19 +721,23 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 4
-    prompt: "Explain how a robot that doesn't know where its moves lead can learn the best move in each state with Q-learning: what it stores, how one move changes what it stores, and why it sometimes moves at random."
+    prompt: "A Q-table already holds action values. Explain how to form a target after a move that does not end the episode, how to change the visited entry toward that target, and why random moves help during training."
     rubric:
-      - id: r1
-        criterion: "Says it stores a table of action values $Q(s,a)$, one per state and action, and acts by picking the biggest value"
+      - id: r2
+        criterion: Build the nonterminal target as $r+\gamma\max_{a'}Q(s',a')$.
         weight: 1
         required: true
-      - id: r2
-        criterion: "Describes the update: the TD target $r+\\gamma\\max_{a'}Q(s',a')$ (just $r$ at the end), and moving $Q(s,a)$ a fraction $\\eta$ of the way toward it"
+      - id: update
+        criterion: Move the stored $Q(s,a)$ a fraction $\eta$ of the gap toward its target.
         weight: 1
         required: true
       - id: r3
-        criterion: "Explains epsilon-greedy exploration: without random moves some actions are never tried, and the max in the target still learns the best values while exploring"
+        criterion: Explain that random moves keep trying actions that looked bad early and can reveal a better one.
         weight: 1
         required: true
-    exemplar: "The robot keeps a Q-table with one value $Q(s,a)$ for each state and action, its guess of the return from taking that action there. After each move it sees the reward $r$ and the next state $s'$, and builds the target $r+\\gamma\\max_{a'}Q(s',a')$, or just $r$ if the episode ended. It then moves $Q(s,a)$ a fraction $\\eta$ of the way toward that target, so over many episodes the goal's reward spreads back through the table. It moves at random with a small probability $\\varepsilon$, because a greedy robot would never try an action that looked bad early and might miss a better one. Because the target uses the max, the table still learns the values of acting greedily, and once learning is done the robot acts greedily."
-    solution: "The robot keeps a Q-table with one value $Q(s,a)$ for each state and action, its guess of the return from taking that action there. After each move it sees the reward $r$ and the next state $s'$, and builds the target $r+\\gamma\\max_{a'}Q(s',a')$, or just $r$ if the episode ended. It then moves $Q(s,a)$ a fraction $\\eta$ of the way toward that target, so over many episodes the goal's reward spreads back through the table. It moves at random with a small probability $\\varepsilon$, because a greedy robot would never try an action that looked bad early and might miss a better one. Because the target uses the max, the table still learns the values of acting greedily, and once learning is done the robot acts greedily."
+      - id: terminal
+        criterion: Use just the reward $r$ as the target when the episode ends.
+        weight: 0.25
+        required: false
+    exemplar: "After a nonterminal move, form the target $r+\\gamma\\max_{a'}Q(s',a')$. Move the visited $Q(s,a)$ a fraction $\\eta$ of the gap toward that target. Random moves keep trying actions that looked bad early and can reveal a better one. When an episode ends, the target is just $r$."
+    solution: "After a nonterminal move, form the target $r+\\gamma\\max_{a'}Q(s',a')$. Move the visited $Q(s,a)$ a fraction $\\eta$ of the gap toward that target. Random moves keep trying actions that looked bad early and can reveal a better one. When an episode ends, the target is just $r$."

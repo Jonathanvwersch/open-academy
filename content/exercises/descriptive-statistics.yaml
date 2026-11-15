@@ -433,28 +433,25 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 4
-    prompt: Explain how spread, standard error and confidence intervals help us compare robot versions. Include how to estimate uncertainty in a mean and a success rate, and how an interval for the rate difference lets us judge an improvement. Contrast the 160/200 versus 180/200 experiment with 7/10 versus 9/10.
+    prompt: "Large independent robot tests give an estimated success-rate increase of $0.10$ with standard error $0.035$. Explain how standard error differs from individual-result spread, how to build an approximate $95\\%$ interval, and whether that interval supports an improvement."
     rubric:
-      - {
-          id: spread-versus-uncertainty,
-          criterion: Distinguishes individual-result spread from the uncertainty of an estimate across repeated samples.,
-          weight: 1,
-          required: true,
-        }
-      - {
-          id: errors-and-interval,
-          criterion: Gives both standard-error formulas and explains the approximate interval as estimate plus or minus two standard errors.,
-          weight: 1,
-          required: true,
-        }
-      - {
-          id: small-counts,
-          criterion: Combines independent rate uncertainties and uses exclusion of zero to judge the larger experiment while recognising that the smaller one includes zero and fails the count rule.,
-          weight: 1,
-          required: true,
-        }
-    exemplar: |
-      Standard deviation describes spread among individual results, while standard error describes variation in an estimate across fresh experiments. For independent trials, the estimated standard errors are $s/\sqrt n$ for a mean and $\sqrt{\hat p(1-\hat p)/n}$ for a success rate. We extend an estimate by two standard errors each way for an approximate 95% interval. For the difference of independently tested rates, combine the errors as $\sqrt{\mathrm{SE}_1^2+\mathrm{SE}_2^2}$. The 160/200 versus 180/200 experiment gives an improvement interval of about 0.03 to 0.17, excluding zero and supporting a real improvement under the assumptions. The 7/10 versus 9/10 experiment gives a rough interval including zero and also fails the success/failure count rule. We need more trials before judging that smaller experiment, rather than claiming either improvement or equality.
+      - id: spread-versus-uncertainty
+        criterion:
+          Explain that individual-result spread describes individual outcomes and standard error describes an
+          estimate's variation across repeated samples.
+        weight: 1
+        required: true
+      - id: interval
+        criterion: Build the approximate interval as $0.10\pm2(0.035)=[0.03,0.17]$.
+        weight: 1
+        required: true
+      - id: larger-experiment
+        criterion:
+          Explain that the interval excludes zero and supports a positive improvement under the approximation's
+          assumptions.
+        weight: 1
+        required: true
+    exemplar: "Individual-result spread describes variation among outcomes; standard error describes how an estimate varies across repeated samples. The approximate $95\\%$ interval is $0.10\\pm2(0.035)=[0.03,0.17]$. It excludes zero, supporting a positive improvement under the approximation's assumptions."
   - id: ds-rate-basics
     dimension: conceptual
     type: mc

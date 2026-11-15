@@ -571,18 +571,19 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 3
-    prompt: 'A robot can choose left or right in a four-cell corridor. Describe a deterministic policy and a stochastic policy. A trip earns $-1$, $-1$, then $10$ and ends: explain how to find its starting return with $\gamma=0.9$, and what changing the discount would change.'
+    prompt: "A robot chooses left or right in cells $1$ to $3$ of a corridor; cell $4$ ends a trip. Describe a deterministic policy and a stochastic policy. A trip earns $-1$, $-1$, then $10$ and ends: explain how to find its starting return with $\\gamma=0.9$."
     rubric:
-      - {
-          id: policy,
-          criterion: Gives a fixed action per state and action probabilities per state that sum to one.,
-          weight: 1,
-        }
-      - { id: return, criterion: Uses weights 1 and 0.9 and 0.81 to get return 6.2., weight: 1 }
-      - {
-          id: delay,
-          criterion: Explains that the discount changes the weight of delayed rewards while the observed trip stays fixed.,
-          weight: 1,
-        }
-    exemplar: "Always choosing right in cells 1 to 3 is deterministic. Choosing right with probability 0.8 and left with probability 0.2 in each of those cells is stochastic. The trip has return $(-1)+0.9(-1)+0.81(10)=6.2$. A smaller discount gives the final reward less weight; a larger one gives it more weight. The trip and its rewards stay the same."
-    solution: The policy supplies action choices. The return weights the observed rewards by delay, starting with weight one on the next reward.
+      - id: policy
+        criterion: Describe one fixed action for each nonterminal cell as a deterministic policy.
+        weight: 1
+        required: true
+      - id: stochastic
+        criterion: Describe action probabilities adding to $1$ in each nonterminal cell as a stochastic policy.
+        weight: 1
+        required: true
+      - id: return
+        criterion: Weight the rewards by $1$, $0.9$ and $0.81$ to obtain a starting return of $6.2$.
+        weight: 1
+        required: true
+    exemplar: "Always choosing right in cells $1$ to $3$ is deterministic. Choosing right with probability $0.8$ and left with probability $0.2$ in each of those cells is stochastic. The starting return is $(-1)+0.9(-1)+0.81(10)=6.2$."
+    solution: "Always choosing right in cells $1$ to $3$ is deterministic. Choosing right with probability $0.8$ and left with probability $0.2$ in each of those cells is stochastic. The starting return is $(-1)+0.9(-1)+0.81(10)=6.2$."

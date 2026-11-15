@@ -882,24 +882,22 @@ exercises:
     role: core
     difficulty: 3
     est_minutes: 5
-    prompt: Explain how DQN trains a Q-network from stored moves. Why can training a Q-network without any fixes diverge, and how do experience replay and a target network help?
+    prompt: "Explain why using the trained Q-network for both predictions and targets can be unstable, how random replay minibatches help, and how a frozen target copy helps."
     rubric:
-      - {
-          id: training,
-          criterion: "Describes state input, one Q-value per action, selected-action prediction, reward plus discounted best next value, reward-only ended targets, and a gradient step on mean squared error.",
-          weight: 1,
-          required: true,
-        }
-      - {
-          id: replay,
-          criterion: "Explains that a replay buffer stores transitions and random minibatches mix similar consecutive experiences and reuse data.",
-          weight: 1,
-          required: true,
-        }
-      - {
-          id: stability,
-          criterion: "Explains how shared weights can move both predictions and targets and lead to divergence, and how a frozen target copy with no target gradients and periodic weight copies holds labels steady.",
-          weight: 1,
-          required: true,
-        }
-    exemplar: "A Q-network reads a state and outputs one Q-value per action. DQN stores each transition and samples random minibatches from the buffer. Random replay mixes experiences from different times and reuses each move. For each move, the prediction is the output for the action taken. The target is the reward plus the discounted largest next-action value from the target network. An ended episode has target equal to its final reward. DQN takes gradient steps on the mean squared prediction error. If the trained network also supplies targets, shared weights can move both sides after each update and the estimates can diverge. A frozen target copy supplies labels without gradients. Copying the trained weights every C updates keeps labels steady between copies."
+      - id: stability
+        criterion:
+          Explain that shared weights can move predictions and targets together after an update, allowing estimates
+          to diverge.
+        weight: 1
+        required: true
+      - id: mixing
+        criterion:
+          Explain that random replay minibatches mix moves from different places and times, reducing runs of
+          similar updates.
+        weight: 1
+        required: true
+      - id: frozen
+        criterion: Explain that a target copy holds next-state values steady between periodic copies of the trained weights.
+        weight: 1
+        required: true
+    exemplar: "When one network supplies predictions and targets, an update can move both sides and the estimates can diverge. Random replay minibatches mix moves from different places and times, reducing runs of similar updates. A frozen target copy holds next-state values steady between periodic copies of the trained weights."

@@ -6,28 +6,22 @@ exercises:
     role: core
     difficulty: 3
     est_minutes: 3
-    prompt: "Two image-classifier runs use the same data split, starting weights and mini-batch order. Run A uses weight decay 0 and dropout 0, with best validation loss 0.54. Run B uses weight decay 0.1 and dropout 0.25, with best validation loss 0.48. Which run would you keep? Explain how the two methods affect training and whether this comparison shows which method contributed more."
+    prompt: "Two image-classifier runs use the same data split, starting weights and mini-batch order. Run A uses weight decay $0$ and dropout $0$, with best validation loss $0.54$. Run B uses weight decay $0.1$ and dropout $0.25$, with best validation loss $0.48$. Which run would you keep? Explain how weight decay and dropout affect training."
     rubric:
-      - {
-          id: choice,
-          criterion: "Keeps run B because its best validation loss is lower.",
-          weight: 1,
-          required: true,
-        }
-      - {
-          id: mechanism,
-          criterion: "Explains that weight decay shrinks weights and dropout randomly removes activations during training, which can reduce overfitting.",
-          weight: 1,
-          required: true,
-        }
-      - {
-          id: limits,
-          criterion: "Explains that changing both methods together measures their combined effect and proposes separate runs to distinguish their contributions.",
-          weight: 1,
-          required: true,
-        }
-    exemplar: "I would keep run B because 0.48 is the lower validation loss. Weight decay shrinks weights. Dropout randomly removes activations during training, which limits reliance on particular activations. Both can reduce overfitting. Since both settings changed, this comparison shows their combined benefit. I would also run each method alone with the same split and seeds to separate their contributions."
-    solution: "Keep run B by validation loss. Separate runs with weight decay alone and dropout alone are needed to distinguish their contributions."
+      - id: choice
+        criterion: Keep run B because its best validation loss, $0.48$, is lower than $0.54$.
+        weight: 1
+        required: true
+      - id: mechanism
+        criterion: Explain that weight decay shrinks weights during training.
+        weight: 0.5
+        required: true
+      - id: dropout
+        criterion: Explain that dropout randomly sets unit outputs to $0$ during training.
+        weight: 0.5
+        required: true
+    exemplar: "I would keep run B because $0.48$ is the lower validation loss. Weight decay shrinks weights, making predictions change more gently. Dropout randomly sets unit outputs to $0$ during training, so the network spreads what it learns across units instead of relying on any one. Both methods can reduce overfitting."
+    solution: "Keep run B by its lower validation loss. Weight decay shrinks weights, and dropout randomly sets unit outputs to $0$ during training."
   - id: rg-penalty-basics
     dimension: conceptual
     type: mc
@@ -799,25 +793,21 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 4
-    prompt: A model is trained by gradient descent with squared error plus an L2 penalty $\lambda\sum_j w_j^2$. Explain how the penalty changes each update, why that can reduce overfitting, and how you would choose $\lambda$.
+    prompt: "A model uses gradient descent on squared error plus $\\lambda\\sum_jw_j^2$. Explain how this penalty changes a weight's update, why it can reduce overfitting, and how to choose $\\lambda$."
     rubric:
-      - {
-          id: update,
-          criterion: "States that the penalty adds a slope of $2\\lambda w$ to each weight, so the update becomes $(1-2\\eta\\lambda)\\,w-\\eta\\,\\partial L_{\\text{data}}/\\partial w$: each step shrinks every weight by a fixed fraction (weight decay) as well as taking the data step.",
-          weight: 1,
-          required: true,
-        }
-      - {
-          id: why,
-          criterion: "Explains that a weight then grows only as far as the drop in data loss pays for it, so weights stay smaller and the model is less able to copy quirks of its training examples.",
-          weight: 1,
-          required: true,
-        }
-      - {
-          id: choose,
-          criterion: "Chooses $\\lambda$ by training with several values and keeping the lowest validation error, noting that too small still overfits and too large underfits, and keeps the test examples for one final score.",
-          weight: 1,
-          required: true,
-        }
-    exemplar: "The penalty $\\lambda w^2$ has slope $2\\lambda w$, so the update becomes $w_{\\text{new}}=(1-2\\eta\\lambda)\\,w-\\eta\\,\\partial L_{\\text{data}}/\\partial w$. Every step multiplies each weight by a number just below $1$, which is why it's called weight decay, and then takes the usual data step. A weight settles where the data's pull balances the decay, so it only stays large if that clearly lowers the training error. Smaller weights make predictions change more gently, so the model is less able to copy noise in its training examples. I would train with several values of $\\lambda$, such as $0.01$, $0.1$, $1$ and $10$, and keep the one with the lowest validation error: too small still overfits and too large underfits. The test examples stay untouched until one final score."
-    solution: "The penalty adds $2\\lambda w$ to each weight's slope, so each update multiplies the weight by $1-2\\eta\\lambda$ before the data step. Weights only stay large where that lowers the data loss enough, which makes copying training quirks costly. Choose $\\lambda$ by validation error and keep the test examples for the final score."
+      - id: decay
+        criterion: Give $w_{\text{new}}=(1-2\eta\lambda)w-\eta\,\partial L_{\text{data}}/\partial w$ as the update.
+        weight: 1
+        required: true
+      - id: why
+        criterion:
+          Explain that smaller weights make predictions change more gently, limiting how closely the model can
+          copy training quirks.
+        weight: 1
+        required: true
+      - id: choose
+        criterion: Train with several values of $\lambda$ and keep the one with lowest validation error.
+        weight: 1
+        required: true
+    exemplar: "The update becomes $w_{\\text{new}}=(1-2\\eta\\lambda)w-\\eta\\,\\partial L_{\\text{data}}/\\partial w$. Smaller weights make predictions change more gently, limiting how closely the model can copy training quirks. Train with several values of $\\lambda$ and keep the one with lowest validation error."
+    solution: "The update becomes $w_{\\text{new}}=(1-2\\eta\\lambda)w-\\eta\\,\\partial L_{\\text{data}}/\\partial w$. Smaller weights make predictions change more gently, limiting how closely the model can copy training quirks. Train with several values of $\\lambda$ and keep the one with lowest validation error."

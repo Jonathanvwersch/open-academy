@@ -827,23 +827,21 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 4
-    prompt: "Explain how you would let an agent practise a task in a simulation environment: what reset and step do, how the interaction loop runs an episode and when it stops, how running many copies changes things, and why a good score in simulation might not carry over to a real robot."
+    prompt: "For a simulation environment, explain what `reset` does, what `step` returns after an action, and how the policy uses those calls to run an episode."
     rubric:
       - id: r1
-        criterion: Says reset starts an episode and returns the start state, and step applies one action and returns the next state, the reward and whether the episode ended
+        criterion: Describe reset as starting an episode and returning the start state.
+        weight: 1
+        required: true
+      - id: step
+        criterion: Describe step as applying one action and returning the next state, reward and ending flags.
         weight: 1
         required: true
       - id: r2
-        criterion: Describes the loop of policy picks, step applies, add reward, and stops on terminated or truncated, explaining the difference between the two
+        criterion:
+          Repeat policy action selection, step and reward accumulation using the returned state until either
+          ending flag is true.
         weight: 1
         required: true
-      - id: r3
-        criterion: Explains that a vectorised environment steps N copies per call and resets finished copies on their own
-        weight: 1
-        required: false
-      - id: r4
-        criterion: Explains the sim-to-real gap and at least one fix, such as domain randomisation, matching the simulator to measurements or practice on the real robot
-        weight: 1
-        required: true
-    exemplar: "I call reset, which starts an episode and returns the start state. Then I loop: the policy picks an action from the current state, step applies it and returns the next state, the reward and two flags, and I add up the reward. I stop when terminated is true, because a terminal state ended the task, or when truncated is true, because the time limit cut the episode short. With a vectorised environment, each call can step N active copies. With same-call resets, that gives N transitions, and any copy that finishes is reset by itself while the others carry on. With Gymnasium's default next-step autoreset, the call after a copy finishes only resets it, so that entry is left out of experience. A simulator never matches the world exactly, so a policy can score well by using its flaws and then fail on the real robot. Randomising the simulator's settings at each reset, measuring the real robot to set the simulator, and a little practice on the real robot help."
-    solution: "reset starts an episode and returns the start state. The loop then repeats: the policy picks an action, step applies it and returns the next state, the reward and the terminated and truncated flags, and the reward is added. It stops when either flag is true: terminated means a terminal state ended the task, truncated means the time limit cut it short. With same-call resets, a vectorised environment gives N transitions per call and resets each finished copy on its own. With Gymnasium's default next-step autoreset, the call after a copy finishes only resets it, so that entry is left out of experience. Because simulators are never exact, a policy can do worse on the real robot. Domain randomisation, matching the simulator to measurements and brief real practice help."
+    exemplar: "Call `reset` to start an episode and get the start state. The policy chooses an action, and `step` applies it and returns the next state, reward and ending flags. Add up the reward and continue from the returned state until either ending flag is true."
+    solution: "Call `reset` to start an episode and get the start state. The policy chooses an action, and `step` applies it and returns the next state, reward and ending flags. Add up the reward and continue from the returned state until either ending flag is true."

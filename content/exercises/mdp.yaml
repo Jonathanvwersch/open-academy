@@ -531,19 +531,23 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 4
-    prompt: Describe how you would turn a robot navigation task into an MDP. Explain what the state must contain, how actions lead to next states and rewards, and how the discount factor affects a delayed reward's weight.
+    prompt: "A robot can move left or right. Explain what its state must contain, how to describe where each command can lead, and how rewards are specified."
     rubric:
       - id: state
-        criterion: Chooses state information sufficient to predict next-state and reward probabilities given an action, without earlier history.
+        criterion:
+          Choose state information that, together with the action, predicts next-state and reward probabilities
+          without earlier history.
         weight: 1
         required: true
-      - id: task
-        criterion: Specifies available actions, transition probabilities totalling 1, a reward rule and how an episode ends.
+      - id: transitions
+        criterion:
+          Explain specifying the possible next states and their probabilities for each state and action, with
+          probabilities adding to $1$.
         weight: 1
         required: true
-      - id: delay
-        criterion: Explains that the next reward has weight 1 and each extra step of delay multiplies a later reward's weight by the discount factor.
+      - id: rewards
+        criterion: Explain assigning a numeric reward to each transition.
         weight: 1
         required: true
-    exemplar: I choose a state such as the robot's position and velocity if both affect its motion. I list available commands, give the chance of every next state for each command so those chances total 1, assign rewards to transitions and mark which arrivals end the episode. The discount factor gives the next reward weight 1 and multiplies a later reward's weight once per extra step of delay.
-    solution: A complete task description needs sufficient state information, available actions, transition probabilities, rewards and a discount factor, with the start and termination specified for an episodic task. Discounting specifies how delay changes the weight of a reward.
+    exemplar: "Record enough state information, such as cell and battery charge, that the current state and action predict outcomes without earlier history. For each state and command, list the possible next states and probabilities adding to $1$. Assign a numeric reward to each transition."
+    solution: "Record enough state information, such as cell and battery charge, that the current state and action predict outcomes without earlier history. For each state and command, list the possible next states and probabilities adding to $1$. Assign a numeric reward to each transition."

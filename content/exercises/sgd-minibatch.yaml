@@ -497,23 +497,27 @@ exercises:
     est_minutes: 4
     prompt: "Explain to a friend how minibatch gradient descent changes full-batch gradient descent. Include what happens in one update, how an epoch differs from an update, and why a correct update can still raise the full-data loss."
     rubric:
-      - {
-          id: average,
-          criterion: "Average the chosen examples' gradients at the current parameters and subtract the learning rate times that average.",
-          weight: 1,
-          required: true,
-        }
-      - {
-          id: epoch,
-          criterion: "An epoch covers the dataset once; each batch gives an update, so an epoch can contain multiple updates.",
-          weight: 1,
-          required: true,
-        }
-      - {
-          id: tradeoff,
-          criterion: "Smaller batches use fewer examples per update but can disagree with the full gradient, so the full loss can rise; larger batches generally reduce this noise at greater per-update cost.",
-          weight: 1,
-          required: true,
-        }
+      - id: average
+        criterion:
+          Use only a chosen batch's examples, average their gradients at the current parameters, and subtract
+          learning rate times that average.
+        weight: 1
+        required: true
+      - id: epoch
+        criterion: Explain that an epoch uses the dataset once and can contain several batch updates.
+        weight: 1
+        required: true
+      - id: tradeoff
+        criterion:
+          Explain that a batch gradient can disagree with the full-data gradient, so a correct update can raise
+          the full-data loss.
+        weight: 1
+        required: true
+      - id: larger-batches
+        criterion:
+          Mention that larger batches usually give steadier gradient estimates but need more examples and memory
+          per update.
+        weight: 0.5
+        required: false
     exemplar: "Full-batch descent checks every training example before moving. Minibatch descent averages only a chosen group's gradients, all at the current parameters, then subtracts the learning rate times that average. Each batch produces one update; using all the examples once completes an epoch, after which we shuffle and continue from the learned parameters. Small batches need fewer examples before moving but can point against the full gradient, so even correct arithmetic can raise full-data loss. Bigger batches generally give steadier directions but need more examples and usually more memory per update."
     solution: "The parameter update is unchanged; the examples supplying its gradient change. One epoch can contain many batch updates, and sampling noise trades cheaper updates against less reliable directions."

@@ -610,18 +610,20 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 4
-    prompt: "Use house-sale data to explain the difference between an event probability, a distribution of offer counts, an expected number of offers and a conditional probability. Include how a complement is estimated and how you would check whether selling above asking is independent of receiving at least two offers."
+    prompt: "Use house-sale data to explain what a distribution of offer counts records, how to find the expected number of offers, and how to estimate the probability of selling above asking given at least two offers."
     rubric:
-      - id: event-and-complement
-        criterion: "Defines an event as a set of outcomes and explains that an event and its complement have probabilities summing to one."
+      - id: distribution-and-expectation
+        criterion: Describe each possible offer count paired with its probability, with probabilities adding to $1$.
         weight: 1
         required: true
-      - id: distribution-and-expectation
-        criterion: "Explains that a distribution lists values with probabilities and that expectation weights values by those probabilities."
+      - id: expectation
+        criterion: Multiply each offer count by its probability and add to find the long-run average.
         weight: 1
         required: true
       - id: conditional-and-independent
-        criterion: "Explains that conditional probability restricts the outcomes and that independence means the condition does not change the probability."
+        criterion:
+          Keep only sales with at least two offers and find the fraction above asking to estimate the conditional
+          probability.
         weight: 1
         required: true
-    exemplar: "An event is a set of outcomes, such as a sale going above asking. The fraction of past sales in the event estimates its probability, and the complement, not above asking, gets 1 minus that. A distribution pairs each possible offer count with its probability, and those probabilities add to 1; the expected number of offers multiplies each count by its probability and adds, giving the long-run average. A conditional probability, such as above asking given at least two offers, keeps only the sales with at least two offers and finds the fraction above asking. To check independence, compare that rate with the overall above-asking rate: if they are equal, knowing the offers tells you nothing."
+    exemplar: "A distribution lists each possible offer count with its probability, and those probabilities add to $1$. Expected offers multiplies each count by its probability and adds, giving the long-run average. To estimate above-asking probability given at least two offers, keep only sales with at least two offers and find the fraction above asking."
