@@ -1,4 +1,4 @@
-import { scoreRubricCriteria } from './rubric-score.js';
+import { type RubricJudgementValue, scoreRubricCriteria } from './rubric-score.js';
 import { graded } from './shared.js';
 import type { ExplainExercise, ExplanationGrader, GradeResult } from './types.js';
 
@@ -24,7 +24,7 @@ export class SelfCheckExplanationGrader implements ExplanationGrader {
     const selected = new Set(metCriteria);
     const score = scoreRubricCriteria(
       exercise.rubric,
-      new Map(
+      new Map<string, RubricJudgementValue>(
         exercise.rubric.map((criterion) => [
           criterion.id,
           selected.has(criterion.id) ? 'met' : 'missing',
