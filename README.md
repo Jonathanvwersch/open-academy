@@ -34,7 +34,7 @@ Robotics      Classical Robotics → Robot Learning
 - **What Home picks each day.** Due reviews come first and take up to about a third of the day's time. New topics fill the rest, at most two a day, until the plan fills the time you set. You can always open any unlocked topic yourself instead.
 - **Focus.** The Focus buttons on Home (All, or one subject) limit new lessons and reviews to that subject. Other subjects pause and their reviews wait until you switch back to All. Your choice is remembered.
 - **Up next** lists the topics Home will teach you, in order, with roughly when, plus the date you finished each topic you've done.
-- **Finish dates** come from running the same daily planner forward at your recent pace. Because all your courses share one plan, the dates take each other into account. A course without lessons yet shows "Lessons coming soon".
+- **Finish dates** are estimates. They step forward day by day at your recent daily XP, taking new topics in the same order Home would (prerequisites, course order, subject balance, at most two a day) and counting a fixed amount of XP per topic. Time spent on reviews isn't modelled. Because all your courses go through one forecast, the dates take each other into account. A course without lessons yet shows "Lessons coming soon".
 
 ## Run it locally
 
