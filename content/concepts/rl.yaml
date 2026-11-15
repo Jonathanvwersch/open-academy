@@ -22,7 +22,7 @@ concepts:
       dimensions: [conceptual, math],
       prereqs: [{ id: mdp }],
       objectives: [{ text: "Compute a discounted return", dimension: math }],
-      status: stub,
+      status: authored,
     }
   - {
       id: value-functions,
