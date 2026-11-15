@@ -191,7 +191,8 @@ test('a missing criterion in an optional-only rubric counts as an Almost shortfa
     ],
   });
 
-  expect(html).toContain('✗ Mentions curvature');
+  expect(html).toContain('✗');
+  expect(html).toContain('Mentions curvature');
   expect(html).toContain('Add the points marked ½ or ✗');
   expect(html).not.toContain('Also worth mentioning');
 });

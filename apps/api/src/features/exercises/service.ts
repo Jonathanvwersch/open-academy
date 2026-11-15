@@ -376,17 +376,16 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
   } else {
     result = await gradeExercise(exercise, body.data.answer);
   }
-  if (exercise.type === 'explain' && 'rubric' in result && Array.isArray(result.rubric)) {
-    result = {
-      ...result,
-      rubric: rubricFeedbackWithScoredFlags(exercise.rubric, result.rubric),
-    };
-  }
+  const rubricForFeedback =
+    exercise.type === 'explain' && 'rubric' in result && Array.isArray(result.rubric)
+      ? rubricFeedbackWithScoredFlags(exercise.rubric, result.rubric)
+      : undefined;
   if (result.status !== 'graded') {
     return serviceResult(
       exercise.type === 'explain' && result.status === 'self_check_required'
         ? {
             ...result,
+            ...(rubricForFeedback ? { rubric: rubricForFeedback } : {}),
             ...(typeof body.data.answer === 'object' &&
             body.data.answer !== null &&
             'text' in body.data.answer &&
@@ -467,7 +466,7 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
       message: result.feedback,
       status: result.status,
       ...('yourAnswer' in result ? { yourAnswer: result.yourAnswer } : {}),
-      ...('rubric' in result ? { rubric: result.rubric } : {}),
+      ...('rubric' in result ? { rubric: rubricForFeedback ?? result.rubric } : {}),
       ...(exercise.type === 'explain' && !followUp
         ? {
             exemplar: exercise.exemplar,
@@ -729,7 +728,7 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
                 ...(exercise.solution ? { solution: exercise.solution } : {}),
               }
             : {}),
-          ...('rubric' in result ? { rubric: result.rubric } : {}),
+          ...('rubric' in result ? { rubric: rubricForFeedback ?? result.rubric } : {}),
         }
       : {}),
   } satisfies AttemptResponse);
