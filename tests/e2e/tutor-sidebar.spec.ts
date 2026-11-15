@@ -1021,7 +1021,9 @@ test('tutor send failure stays in a retryable bubble and retry sends it once', a
   await expect(tutor.getByTestId('tutor-thinking-bubble')).toHaveCount(0);
   await page.screenshot({ path: `${tutorSteerScreenshotDir}/failed-retry-edit-1440.png` });
 
+  await textarea.fill('new draft');
   await failedBubble.getByRole('button', { name: 'Retry' }).click();
+  await expect(textarea).toHaveValue('new draft');
   await expect(
     tutor.getByTestId('tutor-assistant-message').filter({
       hasText: `Tutor reply to: ${question}`,

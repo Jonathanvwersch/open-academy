@@ -611,7 +611,6 @@ export function TutorContextProvider({
     const optimisticId = crypto.randomUUID();
     const sendId = latestSendId.current + 1;
     latestSendId.current = sendId;
-    setDraft('');
     setError('');
     setFailedSend(null);
     mutation.mutate({
@@ -647,6 +646,7 @@ export function TutorContextProvider({
     }
     const createThread = newChatSelected || !selectedId;
     const threadId = createThread ? newThreadId.current || crypto.randomUUID() : selectedId;
+    setDraft('');
     submitQuestion(question, threadId, createThread, context);
   };
   const retryFailedSend = () => {
