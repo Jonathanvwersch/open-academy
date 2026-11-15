@@ -12,11 +12,11 @@ exercises:
         text: The single vector obtained by adding them.
         correct: false
         category: misunderstood_definition
-        feedback: Adding them gives just one choice of coefficients.
+        feedback: Adding them gives just one combination, with each amount equal to 1.
       - id: b
         text: The set of all their linear combinations.
         correct: true
-        feedback: Each coefficient can be any real number.
+        feedback: Each amount can be any real number.
       - id: c
         text: The set of all multiples of one chosen vector.
         correct: false
@@ -27,7 +27,7 @@ exercises:
         correct: false
         category: misunderstood_definition
         feedback: Combinations can extend beyond the arrows and include negative amounts.
-    solution: The span contains every vector formed by multiplying the given vectors by real coefficients and adding them.
+    solution: The span contains every vector formed by multiplying the given vectors by real numbers and adding them.
   - id: rspp-span-self-explain
     dimension: conceptual
     type: mc
@@ -41,17 +41,17 @@ exercises:
         text: The third component can be chosen separately after setting the first two.
         correct: false
         category: incorrect_reasoning
-        feedback: The same two coefficients determine all three components.
+        feedback: The same two amounts determine all three components.
       - id: b
         text: Two vectors can reach every third component once their lengths differ.
         correct: false
         category: incorrect_reasoning
-        feedback: Different lengths do not supply a third adjustable coefficient.
+        feedback: Different lengths do not supply a third adjustable amount.
       - id: c
-        text: The first two components fix $c_1=2,c_2=3$, forcing the third to be 5.
+        text: The first two components fix both amounts, and those amounts give a different third component.
         correct: true
-        feedback: The third component must equal the sum of the two coefficients.
-    solution: The first two equations fix the coefficients at 2 and 3. The third component is then 5, so $(2,3,4)$ cannot be reached.
+        feedback: With $c_1=2$ and $c_2=3$, the third component must be $2+3=5$.
+    solution: The first two equations fix the amounts at 2 and 3. The third component is then 5, so $(2,3,4)$ cannot be reached.
   - id: rspp-combination-template
     dimension: math
     type: numeric
@@ -101,25 +101,25 @@ exercises:
     prompt: Is $b=(3,1,4)$ in the span of $(1,0,2)$ and $(0,1,1)$?
     options:
       - id: a
-        text: Yes, coefficients 3 and 1 match the required vector.
+        text: Yes, amounts 3 and 1 match the required vector.
         correct: false
         category: incomplete_explanation
-        feedback: Those coefficients give third component 7.
+        feedback: Those amounts give third component 7.
       - id: b
         text: Yes, two vectors in three dimensions span the whole space.
         correct: false
         category: misunderstood_definition
-        feedback: Two vectors have rank at most 2 and cannot span three-dimensional space.
+        feedback: Two vectors span at most a plane, so they cannot span three-dimensional space.
       - id: c
-        text: No, the required coefficients give third component 7.
+        text: No, the required amounts give third component 7.
         correct: true
-        feedback: The first two components force coefficients 3 and 1, giving $2(3)+1=7$.
+        feedback: The first two components force amounts 3 and 1, giving $2(3)+1=7$.
       - id: d
         text: No, because $b$ is a multiple of neither given vector.
         correct: false
         category: incorrect_reasoning
         feedback: A combination can belong to a span without being a multiple of either individual vector.
-    solution: The first two components require coefficients 3 and 1. Their combination is $(3,1,7)$, so $b$ is outside the span.
+    solution: The first two components require amounts 3 and 1. Their combination is $(3,1,7)$, so $b$ is outside the span.
   - id: rspp-span-line
     dimension: conceptual
     type: mc
@@ -132,7 +132,7 @@ exercises:
         text: A plane through the origin.
         correct: false
         category: misunderstood_definition
-        feedback: A plane needs two independent directions.
+        feedback: A plane needs two directions that don't lie on one line.
       - id: b
         text: A line through the origin.
         correct: true
@@ -141,7 +141,7 @@ exercises:
         text: All of three-dimensional space.
         correct: false
         category: misunderstood_definition
-        feedback: These vectors supply only one independent direction.
+        feedback: These vectors supply only one direction.
       - id: d
         text: Just the two given points.
         correct: false
@@ -274,12 +274,13 @@ exercises:
     params:
       a: { min: 1, max: 4 }
       b: { min: 1, max: 4 }
+    constraints: ["a != b"]
     answer_expr: 2*a+b
     tolerance: { abs: 0 }
     common_wrong:
       - answer_expr: a+b
         category: math_error
-        feedback: Row 3 of column 1 contributes twice its coefficient.
+        feedback: Row 3 of column 1 is 2, so the amount of column 1 counts twice.
       - answer_expr: 2*a
         category: incomplete_explanation
         feedback: Include the contribution from column 2 in row 3.
@@ -403,16 +404,16 @@ exercises:
         text: The final row $0=0$ puts $b$ outside the column space.
         correct: false
         category: misunderstood_definition
-        feedback: A row $0=0$ is consistent; a nonzero right side would be a contradiction.
+        feedback: A row $0=0$ is always true, so it allows a solution. Only a nonzero right side would be a contradiction.
       - id: c
-        text: The system is consistent and rank 2 is less than the three unknowns.
+        text: The system has a solution and rank 2 is less than the three unknowns.
         correct: true
         feedback: The last row is $0=0$, and two pivots cannot fix all three unknowns.
       - id: d
-        text: Every consistent linear system allows more than one input vector.
+        text: Every linear system that has a solution allows more than one input vector.
         correct: false
         category: misunderstood_definition
-        feedback: A consistent system with a pivot for every unknown has exactly one solution.
+        feedback: A system that has a solution and a pivot for every unknown has exactly one solution.
     solution: Elimination leaves $0=0$ with no contradiction, so $b$ is in the column space. Rank 2 is below the three unknowns, giving infinitely many solutions.
   - id: rspp-zero-row-count
     dimension: conceptual
@@ -426,7 +427,7 @@ exercises:
         text: Infinitely many solutions.
         correct: false
         category: misunderstood_definition
-        feedback: Rank below the number of unknowns gives infinitely many solutions only when all equations are consistent.
+        feedback: Rank below the number of unknowns gives infinitely many solutions only when no row says $0$ equals a nonzero number.
       - id: b
         text: No solutions.
         correct: true
@@ -459,7 +460,7 @@ exercises:
       - answer_expr: s
         category: misapplied_technique
         feedback: Compare the second row to the first row to find the required output ratio.
-    solution: "Row 2 is ${{= m }}$ times row 1, so consistency requires $t=({{= m }})({{= s }})={{= m*s }}$."
+    solution: "Row 2 is ${{= m }}$ times row 1, so a solution exists only when $t=({{= m }})({{= s }})={{= m*s }}$."
   - id: rspp-tall-unique
     dimension: conceptual
     type: mc
@@ -472,9 +473,9 @@ exercises:
         text: Infinitely many, because there are more rows than columns.
         correct: false
         category: misunderstood_definition
-        feedback: Three pivots fix all three unknowns when the system is consistent.
+        feedback: Three pivots fix all three unknowns when a solution exists.
       - id: b
-        text: None, because the coefficient matrix is rectangular.
+        text: None, because the matrix is rectangular.
         correct: false
         category: misunderstood_definition
         feedback: Being in the column space guarantees at least one solution even for a rectangular matrix.
@@ -482,19 +483,19 @@ exercises:
         text: Undetermined, because the individual entries are missing.
         correct: false
         category: incorrect_reasoning
-        feedback: Consistency and a pivot for each unknown determine the solution count.
+        feedback: Knowing that a solution exists and that each unknown has a pivot determines the solution count.
       - id: d
         text: Exactly one, because all three unknowns have pivots.
         correct: true
-        feedback: Membership in the column space ensures consistency, and rank equals the number of unknowns.
-    solution: The system is consistent because $b$ lies in the column space. Rank 3 equals the three unknowns, so the solution is unique.
+        feedback: Membership in the column space ensures a solution exists, and rank equals the number of unknowns.
+    solution: A solution exists because $b$ lies in the column space. Rank 3 equals the three unknowns, so the solution is unique.
   - id: rspp-free-template
     dimension: math
     type: numeric
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: 'For $B=\begin{bmatrix}1&2\\2&4\end{bmatrix}$ and $b=(3,6)$, find $x_1$ in the solution of $Bx=b$ with $x_2=({{= k }})$.'
+    prompt: 'For $B=\begin{bmatrix}1&2\\2&4\end{bmatrix}$ and $b=(3,6)$, find $x_1$ in the solution of $Bx=b$ with $x_2={{= k }}$.'
     params:
       k: { min: -2, max: 3 }
     constraints: ["k != 0"]
@@ -559,7 +560,7 @@ exercises:
         text: Yes, sufficiently fast joints can overcome the restricted direction.
         correct: false
         category: incorrect_reasoning
-        feedback: Larger coefficients change speed along the same line.
+        feedback: Larger joint speeds only move the hand faster along the same line.
     solution: $Jq=(q_1+2q_2)(1,2)$. Every nonzero reachable velocity has second component twice its first, so direction $(1,0)$ is unreachable.
   - id: rsp-low-rank-basics
     dimension: conceptual
@@ -624,7 +625,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: 'For $u=(1,{{= a }},2)^\top$ and $v=({{= b }},1,{{= c }})^\top$, find the entry in row 2, column 3 of $uv^\top$.'
+    prompt: 'For $u=(1,{{= a }},2)$ and $v=({{= b }},1,{{= c }})$, find the entry in row 2, column 3 of $uv^\top$.'
     params:
       a: { min: 3, max: 6 }
       b: { min: 1, max: 4 }
@@ -634,7 +635,7 @@ exercises:
     common_wrong:
       - answer_expr: a+c
         category: misapplied_technique
-        feedback: An outer-product entry multiplies the selected entries from the two vectors.
+        feedback: An entry of $uv^\top$ multiplies the selected entries from the two vectors.
     solution: "The entry is $u_2v_3=({{= a }})({{= c }})={{= a*c }}$."
   - id: rspp-storage-template
     dimension: math

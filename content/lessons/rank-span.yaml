@@ -16,7 +16,7 @@ knowledge_points:
 
       In the vectors lesson, we scaled a vector by multiplying every component by a number, and we added two vectors by adding matching components. Putting those two moves together lets us build new vectors out of old ones.
 
-      Take $u=(2,1)$, the blue arrow, and $v=(1,2)$, the green arrow. One copy of $u$ followed by two copies of $v$ lands on the orange point, $(4,5)$. By choosing other amounts of each, including negative and fractional ones, we can land on any point of the plane, because $u$ and $v$ point along different lines. The grey dashed line shows every multiple of $u$ on its own, so one arrow alone only reaches the points on its own line.
+      Take $u=(2,1)$, the blue arrow, and $v=(1,2)$, the green arrow. One copy of $u$ followed by two copies of $v$ lands at the tip of the orange arrow, $(4,5)$. By choosing other amounts of each, including negative and fractional ones, we can land on any point of the plane, because $u$ and $v$ point along different lines. The grey dashed line shows every multiple of $u$ on its own, so one arrow alone only reaches the points on its own line.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 420" aria-label="A grid with the origin at the bottom left. The blue arrow u = (2, 1) goes from the origin to (2, 1). Two green arrows, each v = (1, 2), continue from (2, 1) to (3, 3) and then to (4, 5). The orange arrow goes straight from the origin to (4, 5), the combination 1u + 2v. A grey dashed line through the origin and (2, 1) marks every multiple of u">
