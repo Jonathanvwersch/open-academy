@@ -1,3 +1,4 @@
+import { scoreRubricCriteria } from './rubric-score.js';
 import { graded } from './shared.js';
 import type { ExplainExercise, ExplanationGrader, GradeResult } from './types.js';
 
@@ -21,16 +22,16 @@ export class SelfCheckExplanationGrader implements ExplanationGrader {
     }
 
     const selected = new Set(metCriteria);
-    const totalWeight = exercise.rubric.reduce((total, criterion) => total + criterion.weight, 0);
-    const earnedWeight = exercise.rubric.reduce(
-      (total, criterion) => total + (selected.has(criterion.id) ? criterion.weight : 0),
-      0,
+    const score = scoreRubricCriteria(
+      exercise.rubric,
+      new Map(
+        exercise.rubric.map((criterion) => [
+          criterion.id,
+          selected.has(criterion.id) ? 'met' : 'missing',
+        ]),
+      ),
     );
-    const requiredMet = exercise.rubric
-      .filter((criterion) => criterion.required)
-      .every((criterion) => selected.has(criterion.id));
-    const score = totalWeight === 0 ? 0 : earnedWeight / totalWeight;
-    const correctness = requiredMet && score === 1 ? 1 : score > 0 ? 0.5 : 0;
+    const correctness = score === 1 ? 1 : score > 0 ? 0.5 : 0;
     return graded(
       correctness,
       correctness === 1
