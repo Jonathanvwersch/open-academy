@@ -68,22 +68,24 @@ export function ProgressPage() {
                           {course.topicsDone} of {course.topicsTotal} topics
                         </span>
                       </div>
-                      <div
-                        aria-label={legend || 'No authored topics'}
-                        className="flex h-2 overflow-hidden rounded-full"
-                        role="img"
-                      >
-                        {counts.map(([state, count]) => (
-                          <span
-                            key={state}
-                            className={masteryStateColors[state]}
-                            style={{ width: `${(count / total) * 100}%` }}
-                          />
-                        ))}
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        {legend || 'No authored topics'}
-                      </p>
+                      {legend ? (
+                        <>
+                          <div
+                            aria-label={legend}
+                            className="flex h-2 overflow-hidden rounded-full"
+                            role="img"
+                          >
+                            {counts.map(([state, count]) => (
+                              <span
+                                key={state}
+                                className={masteryStateColors[state]}
+                                style={{ width: `${(count / total) * 100}%` }}
+                              />
+                            ))}
+                          </div>
+                          <p className="text-xs text-muted-foreground">{legend}</p>
+                        </>
+                      ) : null}
                       {course.lessonsComingSoon ? (
                         <p className="text-sm text-muted-foreground">
                           {course.lessonsComingSoon}{' '}
