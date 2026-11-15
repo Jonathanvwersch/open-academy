@@ -13,7 +13,7 @@ import {
 import { basename, dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
-import { ContentValidationError, loadContent } from '@academy/api/content';
+import { ContentValidationError, loadContent, loadContentReport } from '@academy/api/content';
 import { isMap, isSeq, parse, parseDocument, stringify } from 'yaml';
 
 const cliRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -179,7 +179,8 @@ async function loadPack(directory: string) {
 
 async function check(directory: string): Promise<number> {
   try {
-    const content = await loadPack(directory);
+    requirePack(directory);
+    const { content, warnings } = await loadContentReport(directory);
     const issues: string[] = [];
     function scan(value: unknown, file: string, path: string) {
       if (typeof value === 'string' && /\bTODO\b/i.test(value)) {
@@ -209,6 +210,10 @@ async function check(directory: string): Promise<number> {
     console.log(
       `${content.concepts.length} topics, ${content.lessons.length} lessons, ${content.exercises.length} questions, ${content.courses.length} courses`,
     );
+    for (const warning of warnings) {
+      console.log(`warning: ${warning.file} [${warning.id}] ${warning.message}`);
+    }
+    console.log(`${warnings.length} warning${warnings.length === 1 ? '' : 's'}`);
     return issues.length ? 1 : 0;
   } catch (error) {
     if (error instanceof ContentValidationError) {
@@ -286,7 +291,7 @@ async function init(directory: string, title: string) {
       },
     ],
   });
-  writeYaml(join(directory, 'notation.yaml'), { terms: [], avoid: [] });
+  copyFileSync(join(templateRoot, 'notation.yaml'), join(directory, 'notation.yaml'));
   writeYaml(join(directory, 'sources', 'index.yaml'), { sources: [] });
   writeFileSync(join(directory, 'sources', '.gitignore'), '*\n!index.yaml\n!.gitignore\n');
   writeFileSync(

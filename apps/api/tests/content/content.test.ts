@@ -986,8 +986,8 @@ test('notation used without an introducing hard prerequisite is an issue', async
     expect.arrayContaining([
       expect.objectContaining({
         id: 'derivatives-fixture-practice-1',
-        message: expect.stringContaining(
-          'uses needle notation but none of vectors is a hard prerequisite',
+        message: expect.stringMatching(
+          /^uses needle notation but none of vectors is a hard prerequisite; near ".+"\. Add one of them as a prerequisite$/,
         ),
       }),
     ]),
@@ -1020,8 +1020,8 @@ test('a soft prerequisite does not allow notation use', async () => {
     expect.arrayContaining([
       expect.objectContaining({
         id: 'linear-models-fixture-practice-1',
-        message: expect.stringContaining(
-          'uses needle notation but none of vectors is a hard prerequisite',
+        message: expect.stringMatching(
+          /^uses needle notation but none of vectors is a hard prerequisite; near ".+"\. Add one of them as a prerequisite$/,
         ),
       }),
     ]),
@@ -1942,6 +1942,39 @@ test('SVG fences reject malformed, unsafe, inaccessible, and non-hex SVG', async
   expect(validateContent(valid).some((issue) => issue.message.startsWith('invalid SVG'))).toBe(
     false,
   );
+});
+
+test('visualization metadata stays allowlisted and cannot bypass SVG validation', async () => {
+  for (const [meta, body, expected] of [
+    [
+      'academy-visual=eigen-directions',
+      '<svg viewBox="0 0 10 10" aria-label="Diagram"><rect fill="#abc"/></svg>',
+      undefined,
+    ],
+    [
+      'academy-visual=untrusted-code',
+      '<svg viewBox="0 0 10 10" aria-label="Diagram"/>',
+      'unsupported SVG visualization metadata',
+    ],
+    [
+      'academy-visual=eigen-directions',
+      '<svg viewBox="0 0 10 10" aria-label="Diagram"><script/></svg>',
+      'invalid SVG',
+    ],
+  ] as const) {
+    const data = await notationFixture();
+    const exercise = data.exercises.find(({ concept }) => concept === 'vectors');
+    if (!exercise) throw new Error('Missing vectors fixture');
+    exercise.value.prompt = `Diagram:\n\`\`\`svg ${meta}\n${body}\n\`\`\``;
+    const issues = validateContent(data).filter(
+      (issue) =>
+        issue.id === exercise.value.id &&
+        (issue.message.startsWith('invalid SVG') ||
+          issue.message.startsWith('unsupported SVG visualization')),
+    );
+    if (expected) expect(issues.some((issue) => issue.message.startsWith(expected))).toBe(true);
+    else expect(issues).toEqual([]);
+  }
 });
 
 test('exercise prose rejects unwrapped maths and ignores inline maths and code spans', async () => {

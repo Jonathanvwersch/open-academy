@@ -1,0 +1,504 @@
+concept: determinants
+exercises:
+  - id: det-area-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What does the determinant of a $2\times2$ matrix describe?
+    options:
+      - id: signed-area
+        text: How it scales area, with a sign recording orientation.
+        correct: true
+        feedback: Its magnitude multiplies areas, and its sign records whether orientation reverses.
+      - id: arrow-length
+        text: How it scales every arrow, with a sign recording direction.
+        correct: false
+        feedback: Different arrows can change length by different amounts. The determinant measures area scaling.
+      - id: entry-total
+        text: How its entries add up, with a sign recording their total.
+        correct: false
+        feedback: Adding the entries does not measure what the matrix does to area.
+    solution: The determinant gives the area scale with a sign. A positive sign preserves orientation and a negative sign reverses it.
+  - id: det-area-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    lesson_only: true
+    est_minutes: 1
+    prompt: In the worked example, why do we multiply 2 by 4 to get the area scale?
+    options:
+      - id: rectangle
+        text: The unit square becomes a rectangle of width 2 and height 4.
+        correct: true
+        feedback: Its area starts at 1 and ends at 8, so every area is multiplied by 8.
+      - id: entry-count
+        text: There are two nonzero entries, each acting on four corners.
+        correct: false
+        feedback: Counting entries or corners does not give area. We multiply the rectangle's width by its height.
+      - id: arrow-total
+        text: Each output arrow is 2 times 4 units long after the map.
+        correct: false
+        feedback: The output arrows have lengths 2 and 4. Their perpendicular sides enclose area 8.
+    solution: The two perpendicular edges have lengths 2 and 4, so the output rectangle has area $2\times4=8$. The original square had area 1, making 8 the area scale.
+  - id: det-area-scaled-region
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A planar map sends $(x,y)$ to $(3x,3y)$. A region starts with area 2 square units. What is its area after the map, in square units?
+    answer: 18
+    tolerance: { abs: 0 }
+    common_wrong:
+      - {
+          answer: 6,
+          category: misunderstood_definition,
+          feedback: "Both dimensions triple, so the area scale is 9, not 3.",
+        }
+      - {
+          answer: 9,
+          category: incorrect_reasoning,
+          feedback: "That is the area scale. Apply it to the region's original area of 2.",
+        }
+    solution: Both perpendicular dimensions triple, giving an area scale of $3\times3=9$. The region's new area is $2\times9=18$.
+  - id: det-area-negative-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: |
+      What is the determinant of $A=\begin{bmatrix}-{{=p}}&0\\0&{{=q}}\end{bmatrix}$?
+    params:
+      p: { min: 2, max: 5 }
+      q: { min: 2, max: 5 }
+    answer_expr: -p*q
+    tolerance: { abs: 0 }
+    common_wrong:
+      - answer_expr: p*q
+        category: misunderstood_definition
+        feedback: The first edge goes left and the second up, reversing orientation. Keep the negative sign.
+    solution: The rectangle has side lengths {{=p}} and {{=q}}, while its orientation reverses. Its determinant is $-({{=p}}\times{{=q}})={{=-p*q}}$.
+  - id: det-area-negative-meaning
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: A $2\times2$ matrix has determinant $-3$. What does this say about a region it transforms?
+    options:
+      - id: area-and-flip
+        text: Its area triples and its orientation reverses.
+        correct: true
+        feedback: The magnitude 3 controls area and the negative sign records the flip.
+      - id: negative-area
+        text: Its area becomes negative and its orientation stays the same.
+        correct: false
+        feedback: Ordinary area remains positive. The negative sign records reversed orientation.
+      - id: lengths-and-flip
+        text: Every edge triples in length and points the opposite way.
+        correct: false
+        feedback: The determinant does not give a common scale for every edge. It measures area and orientation.
+    solution: The area is multiplied by $|-3|=3$, and the negative sign means orientation reverses.
+  - id: det-area-one-meaning
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: A $2\times2$ matrix has determinant 1. What can you conclude about its effect on a picture?
+    options:
+      - id: area-preserved
+        text: Areas and orientation are preserved, though the shape may change.
+        correct: true
+        feedback: The magnitude 1 preserves area; the positive sign preserves orientation.
+      - id: everything-preserved
+        text: Every point stays in place, so the shape and position are unchanged.
+        correct: false
+        feedback: Area can be preserved while a matrix slants or turns the shape.
+      - id: lengths-preserved
+        text: Every edge keeps its length, though the orientation may reverse.
+        correct: false
+        feedback: A determinant of 1 describes area, not individual lengths, and its positive sign preserves orientation.
+    solution: The area scale is 1 and the sign is positive. This preserves area and orientation but does not require the matrix to leave points or edge lengths unchanged.
+  - id: det-area-half-turn
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: A planar map sends $(1,0)$ to $(-1,0)$ and $(0,1)$ to $(0,-1)$. What happens to orientation?
+    options:
+      - id: preserved
+        text: It is preserved, because turning from the first edge to the second is still counterclockwise.
+        correct: true
+        feedback: Both edges turn halfway around, keeping the order of the pair. The determinant is positive.
+      - id: reversed
+        text: It is reversed, because both arrows end up pointing in the opposite direction from before.
+        correct: false
+        feedback: Changing individual directions does not necessarily reverse the order of the pair.
+      - id: undefined
+        text: It is undefined, because neither arrow ends up pointing along a positive coordinate axis.
+        correct: false
+        feedback: Orientation is still defined on the negative axes. The ordered pair remains counterclockwise.
+    solution: This is a half-turn, which keeps the order of the edges. Turning from left to down is counterclockwise, just as turning from right to up was.
+  - id: det-area-camera-region
+    dimension: transfer
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A camera applies a $2\times2$ matrix to a flat map. A region of area 6 becomes a region of area 18, and an ordered pair of edges changes from counterclockwise to clockwise. What is the matrix's determinant?
+    answer: -3
+    tolerance: { abs: 0 }
+    common_wrong:
+      - {
+          answer: 3,
+          category: misunderstood_definition,
+          feedback: "The area scale is 3, but the reversed edge order makes the determinant negative.",
+        }
+      - {
+          answer: -18,
+          category: incorrect_reasoning,
+          feedback: "Use the ratio of output area to input area, not the output area alone.",
+        }
+    solution: The area scale is $18/6=3$. The reversed order makes the signed scale, the determinant, $-3$.
+  - id: det-calculate-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: For $A=\begin{bmatrix}a&b\\c&d\end{bmatrix}$, which calculation gives its determinant?
+    options:
+      - id: diagonal-difference
+        text: Multiply $a$ by $d$, then subtract $b$ times $c$.
+        correct: true
+        feedback: The signed area scale is $ad-bc$.
+      - id: diagonal-sum
+        text: Multiply $a$ by $d$, then add $b$ times $c$.
+        correct: false
+        feedback: Adding the two products loses the subtraction that accounts for the slant and orientation.
+      - id: row-difference
+        text: Multiply $a$ by $b$, then subtract $c$ times $d$.
+        correct: false
+        feedback: The products pair opposite corners, not entries in the same row.
+    solution: The $2\times2$ determinant is $ad-bc$, the top-left to bottom-right product minus the other diagonal product.
+  - id: det-calculate-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    lesson_only: true
+    est_minutes: 1
+    prompt: Why does the worked example subtract the grey triangles from the enclosing rectangle?
+    options:
+      - id: outside-output
+        text: They lie inside the enclosing rectangle and outside the transformed square.
+        correct: true
+        feedback: Removing only those outside pieces leaves the green parallelogram's area.
+      - id: remove-slant
+        text: They lie inside the transformed square and must be removed when it tilts.
+        correct: false
+        feedback: Areas inside the transformed square must be kept. The grey triangles are outside it.
+      - id: outside-input
+        text: They lie outside the original unit square and count as lost input area.
+        correct: false
+        feedback: We are finding the output area, not subtracting from the original unit square. The grey pieces fill the enclosing rectangle outside the output.
+    solution: The enclosing rectangle contains the green parallelogram plus four grey triangles. Subtracting the grey area leaves $12-7=5$, the area of the unit square's image.
+  - id: det-calculate-fixed
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: What is the determinant of $\begin{bmatrix}2&3\\1&5\end{bmatrix}$?
+    answer: 7
+    tolerance: { abs: 0 }
+    common_wrong:
+      - {
+          answer: 13,
+          category: math_error,
+          feedback: "Subtract the other diagonal product instead of adding it.",
+        }
+      - {
+          answer: -7,
+          category: math_error,
+          feedback: "Keep the top-left to bottom-right product first.",
+        }
+    solution: The diagonal products are $2\times5=10$ and $3\times1=3$. Their difference is $10-3=7$.
+  - id: det-calculate-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: |
+      What is the determinant of $A=\begin{bmatrix}{{=a}}&{{=b}}\\{{=c}}&{{=d}}\end{bmatrix}$?
+    params:
+      a: { min: 1, max: 4 }
+      b: { min: 1, max: 4 }
+      c: { min: 1, max: 4 }
+      d: { min: 1, max: 4 }
+    constraints: ["abs(a*d-b*c) > 4"]
+    answer_expr: a*d-b*c
+    tolerance: { abs: 0 }
+    common_wrong:
+      - answer_expr: a*d+b*c
+        category: math_error
+        feedback: The second diagonal product is subtracted, not added.
+      - answer_expr: b*c-a*d
+        category: math_error
+        feedback: Reversing the subtraction flips the sign. Start with the top-left to bottom-right product.
+    solution: The first diagonal gives ${{=a}}\times{{=d}}={{=a*d}}$, and the other gives ${{=b}}\times{{=c}}={{=b*c}}$. Subtracting gives ${{=a*d-b*c}}$.
+  - id: det-calculate-wrong-addition
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: A learner reports determinant 14 for $A=\begin{bmatrix}3&2\\1&4\end{bmatrix}$, after calculating $3\times4+2\times1$. What went wrong?
+    options:
+      - id: addition
+        text: They added the second diagonal product when they needed to subtract it.
+        correct: true
+        feedback: The determinant is $3\times4-2\times1=10$.
+      - id: reversed
+        text: They used the second diagonal product first, reversing the determinant's sign.
+        correct: false
+        feedback: They kept the first product in the right place. Their error was adding the second product.
+      - id: rows
+        text: They paired entries within each row when they needed opposite corners.
+        correct: false
+        feedback: Both products use the correct corners. The operation between the products is wrong.
+    solution: The products are correct but should be subtracted. The signed area scale is $12-2=10$, rather than 14.
+  - id: det-calculate-rectangular
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: A matrix has 2 rows and 3 columns. What can you say about its determinant?
+    options:
+      - id: undefined
+        text: It has no determinant because the matrix is not square.
+        correct: true
+        feedback: A determinant is defined for a matrix with equal row and column counts.
+      - id: first-two
+        text: Its determinant comes from the first two columns only.
+        correct: false
+        feedback: Dropping a column would make a different matrix, not a determinant for the original one.
+      - id: three-products
+        text: Its determinant comes from three diagonal products.
+        correct: false
+        feedback: Extra products cannot give a determinant to a nonsquare matrix.
+    solution: A determinant belongs to a square matrix. A $2\times3$ matrix is rectangular, so its determinant is not defined.
+  - id: det-calculate-robot-region
+    dimension: transfer
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: A robot converts planar coordinates $(x,y)$ to $(x+2y,3x+y)$. A region starts with area 2 square units. What is its area after this conversion, in square units?
+    answer: 10
+    tolerance: { abs: 0 }
+    common_wrong:
+      - {
+          answer: -10,
+          category: misunderstood_definition,
+          feedback: "The determinant is negative, but ordinary area uses its magnitude.",
+        }
+      - {
+          answer: 5,
+          category: incorrect_reasoning,
+          feedback: "That is the area scale. The original region has area 2.",
+        }
+    solution: The coordinate map has matrix $\begin{bmatrix}1&2\\3&1\end{bmatrix}$ and determinant $1-6=-5$. Its area scale is 5, so the region's new area is $2\times5=10$.
+  - id: det-zero-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What does a zero determinant mean for a $2\times2$ matrix's map?
+    options:
+      - id: collapse
+        text: It collapses areas to zero and cannot uniquely recover inputs.
+        correct: true
+        feedback: The plane is squeezed to a line or point, and different inputs share an output.
+      - id: reflection
+        text: It preserves areas but reverses the order of the two edges.
+        correct: false
+        feedback: A negative nonzero determinant can reverse the order. Zero means the area has collapsed.
+      - id: zero-vector
+        text: It sends every input to the origin and has no other output.
+        correct: false
+        feedback: A zero determinant can also collapse the plane to an entire line, not just the origin.
+    solution: A zero determinant means all area disappears. Inputs merge into shared outputs, so the map has no inverse.
+  - id: det-zero-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    lesson_only: true
+    est_minutes: 1
+    prompt: In the worked example for $C$, why do the two inputs giving $(2,0)$ rule out an inverse?
+    options:
+      - id: ambiguity
+        text: One output cannot identify which of those different inputs it came from.
+        correct: true
+        feedback: An inverse must recover one unique original input from each output.
+      - id: output-zero
+        text: An output containing a zero coordinate always prevents a matrix inverse.
+        correct: false
+        feedback: Invertible maps can produce zero coordinates. The problem is different inputs sharing the same output.
+      - id: reciprocals
+        text: An inverse must take the reciprocal of each entry, and the output contains zero.
+        correct: false
+        feedback: Undoing a matrix map does not mean taking reciprocals of output entries. The problem is different inputs sharing one output.
+    solution: Both $(1,0)$ and $(0,2)$ become $(2,0)$. There is no unique input an inverse could recover from that output.
+  - id: det-zero-nonzero-entries
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: Calculate the determinant of $\begin{bmatrix}2&3\\4&6\end{bmatrix}$.
+    answer: 0
+    tolerance: { abs: 0 }
+    common_wrong:
+      - {
+          answer: 24,
+          category: math_error,
+          feedback: "Subtract the two diagonal products; do not add them.",
+        }
+      - {
+          answer: 12,
+          category: math_error,
+          feedback: "That is one diagonal product. Subtract the other diagonal product too.",
+        }
+    solution: The determinant is $2\times6-3\times4=12-12=0$. Even though every entry is nonzero, the columns lie along the same line.
+  - id: det-zero-missing-entry-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: |
+      Choose $t$ so that $A=\begin{bmatrix}{{=a}}&{{=b}}\\{{=a*k}}&t\end{bmatrix}$ has no inverse.
+    params:
+      a: { min: 2, max: 5 }
+      b: { min: 2, max: 5 }
+      k: { min: 2, max: 3 }
+    constraints: ["a != b", "b*k != a"]
+    answer_expr: b*k
+    tolerance: { abs: 0 }
+    common_wrong:
+      - answer_expr: a*k
+        category: misunderstood_definition
+        feedback: Copying the bottom-left entry does not make the determinant zero. Balance the two diagonal products.
+      - answer_expr: b
+        category: misunderstood_definition
+        feedback: The bottom row must keep the same ratio as the top row. Copying the top-right entry misses that ratio.
+    solution: With no inverse, the determinant must be zero. Its diagonal products are ${{=a}}t$ and ${{=b}}\times{{=a*k}}$, which balance when $t={{=b*k}}$.
+  - id: det-zero-entry-mistake
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: A learner says $A=\begin{bmatrix}2&0\\0&3\end{bmatrix}$ has no inverse because it contains zero entries. What is the right conclusion?
+    options:
+      - id: invertible
+        text: It has an inverse because its determinant is 6.
+        correct: true
+        feedback: Its determinant is nonzero, so the independent stretches can be undone.
+      - id: no-inverse
+        text: It has no inverse because either zero entry erases an input.
+        correct: false
+        feedback: Each input still controls its own output coordinate. Zero entries alone do not imply lost information.
+      - id: negative
+        text: It has no inverse because its determinant is $-6$.
+        correct: false
+        feedback: Its determinant is $2\times3-0\times0=6$. A negative nonzero determinant would also allow an inverse.
+    solution: The determinant is $2\times3-0\times0=6$, so the matrix is invertible. The input coordinates can be recovered by undoing the two stretches.
+  - id: det-zero-negative-inverse
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: A square matrix has determinant $-4$. What does this tell us about recovering the original input from its output?
+    options:
+      - id: can-undo
+        text: An inverse exists because the determinant is nonzero.
+        correct: true
+        feedback: A mirror flip can be undone. A zero determinant, not a negative one, signals lost information.
+      - id: cannot-flip
+        text: No inverse exists because a reversed orientation loses information.
+        correct: false
+        feedback: Reversing orientation does not merge different inputs. A negative nonzero determinant still allows an inverse.
+      - id: require-one
+        text: An inverse exists only after the determinant has been changed to 1.
+        correct: false
+        feedback: Any nonzero determinant allows an inverse; area need not be preserved.
+    solution: The determinant is nonzero, so the square matrix is invertible. Its reversed orientation does not prevent recovery of the input.
+  - id: det-zero-robot-inputs
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A robot stores a planar position $(x,y)$ as $(x+2y,2x+4y)$. Which pair of different positions produces the same stored pair?
+    options:
+      - id: merged-positions
+        text: Positions $(2,1)$ and $(0,2)$.
+        correct: true
+        feedback: Both positions give $(4,8)$, so the conversion loses information about which position was the input.
+      - id: swapped-coordinates
+        text: Positions $(1,2)$ and $(2,1)$.
+        correct: false
+        feedback: These give $(5,10)$ and $(4,8)$. Swapping the input coordinates does not preserve this map's output.
+      - id: sign-error
+        text: Positions $(-2,1)$ and $(0,2)$.
+        correct: false
+        feedback: These give $(0,0)$ and $(4,8)$. The negative first coordinate changes the output.
+    solution: The matrix is $\begin{bmatrix}1&2\\2&4\end{bmatrix}$, whose determinant is $4-4=0$. In particular, $(2,1)$ and $(0,2)$ both become $(4,8)$, so no inverse can distinguish them.
+  - id: det-explain-map
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 3
+    est_minutes: 4
+    prompt: |
+      For $A=\begin{bmatrix}-2&1\\0&3\end{bmatrix}$, calculate the determinant and explain what its size and sign say about a picture. Then explain why a zero determinant would prevent an inverse.
+    rubric:
+      - {
+          id: calculation,
+          criterion: "Calculate the determinant as $(-2)\\times3-1\\times0=-6$.",
+          weight: 1,
+          required: true,
+        }
+      - {
+          id: area-scale,
+          criterion: "Explain that the magnitude 6 multiplies every area by 6.",
+          weight: 1,
+          required: true,
+        }
+      - {
+          id: orientation,
+          criterion: "Explain that the negative sign reverses orientation.",
+          weight: 1,
+          required: true,
+        }
+      - {
+          id: lost-input,
+          criterion: "Explain that a zero determinant merges different inputs into the same output, preventing an inverse.",
+          weight: 1,
+          required: true,
+        }
+    exemplar: The determinant is $(-2)\times3-1\times0=-6$. Every region's area grows by a factor of 6, while the negative sign means its orientation reverses. If the determinant were zero, the plane would collapse to a line or point and different inputs would share an output, so there would be no unique input for an inverse to recover.
+    solution: A determinant combines an area scale with orientation. Its magnitude is 6 here and its sign records a flip; zero would instead mean information was lost.

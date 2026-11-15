@@ -3,7 +3,7 @@ import { gradeNumeric } from '../learning/grading/numeric.js';
 import { formatTemplateNumber, instantiateExercise, isTemplate } from './templates.js';
 import type { ContentIssue, ContentSourceData } from './types.js';
 
-const SVG_FENCE = /```svg[ \t]*\r?\n([\s\S]*?)```/gi;
+const SVG_FENCE = /```svg([^\r\n]*)\r?\n([\s\S]*?)```/gi;
 const CURRENCY_MARKERS = [
   /(?<!\$)\$(?!\$)\d+(?:,\d{3})*(?:\.\d+)?(?=\s*(?:k\b|thousand\b|million\b|usd\b|dollars?\b))/i,
   /(?<!\$)\$(?!\$)\{\{=[^{}]+\}\}(?=\s*(?:,|and\b|k\b|thousand\b|million\b|usd\b|dollars?\b))/i,
@@ -142,7 +142,11 @@ function svgIssue(source: string): string | null {
 
 function validateSvgText(text: string, file: string, id: string, issues: ContentIssue[]) {
   for (const match of text.matchAll(SVG_FENCE)) {
-    const error = svgIssue(match[1] ?? '');
+    const meta = match[1]?.trim();
+    if (meta && meta !== 'academy-visual=eigen-directions') {
+      addIssue(issues, file, id, `unsupported SVG visualization metadata: ${meta}`);
+    }
+    const error = svgIssue(match[2] ?? '');
     if (error) addIssue(issues, file, id, `invalid SVG: ${error}`);
   }
 }
@@ -1266,12 +1270,11 @@ function validateNotationUsage(data: ContentSourceData, issues: ContentIssue[]) 
       )[0];
       if (match?.found.index !== undefined) {
         const snippet = snippetAround(match.text, match.found.index, match.found[0].length);
-        addIssue(
-          issues,
-          match.file,
-          match.id,
-          `uses ${term.label} but none of ${term.introduced_by.join(', ')} is a hard prerequisite; near "${snippet}"`,
-        );
+        const message =
+          term.introduced_by.length === 0
+            ? `uses ${term.label}, but no topic teaches it yet; near "${snippet}". Add the topic that teaches it to introduced_by in notation.yaml`
+            : `uses ${term.label} but none of ${term.introduced_by.join(', ')} is a hard prerequisite; near "${snippet}". Add one of them as a prerequisite`;
+        addIssue(issues, match.file, match.id, message);
       }
     }
   }

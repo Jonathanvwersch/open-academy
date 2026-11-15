@@ -144,6 +144,24 @@ Every step whose idea is spatial (directions, slopes, surfaces, arrows, splits, 
 - hex colours from the palette only: text `#171717`, muted `#737373`, lines `#d4d4d4`, green `#10b981`, amber `#f59e0b`, blue `#3b82f6`, red `#ef4444`. Use one colour per meaning, consistently across the lesson (e.g. gradient always blue, chosen step always amber, which the text calls orange);
 - compute coordinates, don't eyeball them: arrows must have the stated direction and relative lengths, and contour lines must be the stated function's level sets.
 
+### Motion, when it teaches something
+
+Consider a short interactive animation when the learner needs to follow a change: an arrow
+moving through a matrix, a tangent sliding along a curve, or repeated updates approaching a
+solution. Choose one precise moment where seeing the movement helps; a static diagram is
+better when it already makes the point. Do not animate every paragraph or add motion as decoration.
+
+Introduce the input, the change, and what to watch in the surrounding prose. Keep the running
+example and colors consistent with the static diagram. The learner controls playback and
+can pause, replay, or scrub with a keyboard; nothing autoplays. Honor reduced-motion preferences
+with a complete static diagram, and keep the lesson understandable without playback.
+
+Use only a registered visual documented in `docs/CONTENT_FORMAT.md`. Annotate its existing
+`svg` fence with the allowlisted metadata and retain the full SVG body as the fallback.
+Do not embed scripts, arbitrary HTML, remote video, or executable expressions. A new scene
+requires a reviewed code-native component, mathematical checks, desktop/mobile screenshots,
+and reduced-motion verification. Include the visual in the normal cold-reader review.
+
 ## 5. Problems
 
 - Each step: a concept MC first (marked `role: basics` in content but labelled like every other question), then at least five problems across difficulties 1, 2 and 3.
@@ -154,7 +172,7 @@ Every step whose idea is spatial (directions, slopes, surfaces, arrows, splits, 
 
 ## 6. Plan before writing
 
-1. Read the concept in `content/concepts/*.yaml` and the lessons of its prerequisites. List what the learner already knows (terms, symbols, results) and what they don't.
+1. Read the concept in `content/concepts/*.yaml` and the lessons of its prerequisites. List what the learner already knows (terms, symbols, results) and what they don't. Then list every term, symbol and result the lesson will use. Each must be taught in this lesson or in a hard prerequisite (direct or indirect). If one isn't, add the missing prerequisite to the concept's `prereqs` or teach the idea in this lesson. Don't rely on a soft prerequisite or a later topic. If the lesson introduces a new symbol or term, add it to `content/notation.yaml` with this concept in `introduced_by`.
 2. Write down, in one line each:
    - the plain-words answer to "what is it?";
    - why it's useful, and why what the learner already knows isn't enough;
@@ -165,7 +183,7 @@ Every step whose idea is spatial (directions, slopes, surfaces, arrows, splits, 
 
 ## 7. Review before it ships
 
-1. Run `pnpm content:check` and the content tests (`pnpm exec vitest run apps/api/tests/content/*.test.ts` or the full `pnpm test`).
+1. Run `pnpm content:check` and the content tests (`pnpm exec vitest run apps/api/tests/content/*.test.ts` or the full `pnpm test`). Fix every error, and read every warning about this lesson's topic or its course.
 2. **Self-check** against §1–§4. The recap gives facts. The opening says what the idea is in its first sentence, then why it's useful. Each step follows the order above, with content headings, a general definition, clean numbers and a correct diagram. Limitations appear where they exist. There are no part labels, and each `explain` is ≤380 words.
 3. **Cold-reader review.** The reader is a new subagent or child Devin session that has seen neither your plan nor any earlier round. Never use the app's own API keys (such as `OPENAI_API_KEY`, the learner's tutor key) to run a reviewer. If you have no way to start a separate agent, stop and tell whoever gave you the task rather than reviewing the lesson yourself. Give the reader:
    - only the rendered lesson text: recap, `where_this_fits`, each step's `explain` and `worked`, `summary`, and the first two problems of each step. "First two problems" means the first two IDs in the knowledge point's `problems` list, with their prompts and options. Replace each diagram with its `aria-label`;

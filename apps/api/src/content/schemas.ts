@@ -180,7 +180,7 @@ export const NotationSchema = z
             id: IdSchema,
             label: z.string().min(1),
             match: z.array(z.string().min(1)).min(1),
-            introduced_by: z.array(IdSchema).min(1),
+            introduced_by: z.array(IdSchema),
           })
           .strict(),
       )

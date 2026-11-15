@@ -1,0 +1,55 @@
+# Symbols a lesson may only use once a topic has taught them. When a topic teaches one, add its id to introduced_by. A term with an empty introduced_by can't be used yet.
+avoid: []
+terms:
+  - id: real-space
+    label: ℝⁿ notation
+    match: ['\\mathbb\s*\{?R', "ℝ"]
+    introduced_by: []
+  - id: sum
+    label: Σ summation
+    match: ['\\sum', "∑"]
+    introduced_by: []
+  - id: transpose
+    label: transpose ⊤ / .T
+    match: ['\\top', '\.T\b', "⊤"]
+    introduced_by: []
+  - id: matrix
+    label: matrix notation
+    match: ['\\begin\{[pb]matrix\}']
+    introduced_by: []
+  - id: limit
+    label: limit notation
+    match: ['\\lim']
+    introduced_by: []
+  - id: exp
+    label: e powers
+    match: ['\be\^']
+    introduced_by: []
+  - id: ln
+    label: ln
+    match: ['\\ln\b']
+    introduced_by: []
+  - id: partial
+    label: ∂ partial derivative
+    match: ['\\partial', "∂"]
+    introduced_by: []
+  - id: nabla
+    label: ∇ gradient
+    match: ['\\nabla', "∇"]
+    introduced_by: []
+  - id: composition
+    label: ∘ composition
+    match: ['(?<!\^)(?<!\^\{)\\circ', "∘"]
+    introduced_by: []
+  - id: argmin
+    label: argmin
+    match: ['\\arg\s*\\?min']
+    introduced_by: []
+  - id: hadamard
+    label: ⊙ elementwise product
+    match: ['\\odot', "⊙"]
+    introduced_by: []
+  - id: indicator
+    label: 𝟙[·] indicator
+    match: ['\\mathbf\s*\{?1\s*\}?\s*\[', "𝟙"]
+    introduced_by: []
