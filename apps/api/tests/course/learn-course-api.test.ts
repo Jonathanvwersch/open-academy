@@ -26,6 +26,7 @@ import {
   users,
   xpEvents,
 } from '../../src/db/schema.js';
+import { newReviewCard } from '../../src/learning/fsrs.js';
 import { courseFoundationIds, prerequisiteMet } from '../../src/learning/prerequisites.js';
 import type { MasteryRecord } from '../../src/learning/types.js';
 
@@ -1427,7 +1428,7 @@ test('a stored focus is ignored when only one subject is active', async () => {
     userId,
     conceptId: reviewExercise.conceptId,
     dimension: reviewExercise.exercise.dimension,
-    fsrs: {},
+    fsrs: newReviewCard(new Date('2026-01-06T00:00:00.000Z')),
     dueAt: new Date('2026-01-06T00:00:00.000Z'),
   });
 
