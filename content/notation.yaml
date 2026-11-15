@@ -37,6 +37,12 @@ terms:
       match: ['\\mathbf\s*\{?1(?!\s*\}?\s*\[)'],
       introduced_by: [linear-regression],
     }
+  - {
+      id: determinant,
+      label: "determinant notation",
+      match: ['\\det\b'],
+      introduced_by: [determinants],
+    }
   - { id: limit, label: "limit notation", match: ['\\lim'], introduced_by: [derivatives] }
   - {
       id: exp,

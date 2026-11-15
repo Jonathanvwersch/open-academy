@@ -1,16 +1,16 @@
 concept: eigen-svd
-version: 1
+version: 2
 objective: |
   **Goal:** find the eigenvalues and eigenvectors of a $2\times2$ matrix, explain the SVD as rotate, stretch, rotate, and use its biggest stretches to approximate a matrix with fewer numbers.
 recap:
   - concept: matrices
-    text: "A matrix times a vector dots each row with the vector, $\\begin{bmatrix}a&b\\\\c&d\\end{bmatrix}\\begin{bmatrix}x\\\\y\\end{bmatrix}=\\begin{bmatrix}ax+by\\\\cx+dy\\end{bmatrix}$. An $m\\times n$ matrix has $m$ rows and $n$ columns, and $(m\\times n)(n\\times p)$ gives $m\\times p$. The transpose $A^\\top$ swaps rows and columns."
+    text: "A matrix times a vector dots each row with the vector. The transpose $A^\\top$ swaps rows and columns. A vector's squared length is its dot product with itself; perpendicular vectors have dot product $0$."
 where_this_fits: |
   ### What are eigenvectors and the SVD?
 
-  An eigenvector of a matrix is a direction that the matrix only stretches. An arrow pointing that way comes out pointing the same way, just longer, shorter or flipped. The singular value decomposition, or SVD, works for every matrix and splits it into three simple moves, a turn (sometimes with a mirror flip), a stretch along the $x$- and $y$-axes and another turn.
+  An eigenvector of a matrix is a direction that the matrix only stretches. An arrow can get longer, shorter, reverse direction or shrink to zero. The singular value decomposition, or SVD, works for every matrix. In two dimensions, its three moves are a turn (sometimes with a mirror flip), a stretch along the axes and another turn.
 
-  This is useful because a grid of numbers is hard to read, while a few stretches are easy to read. Keeping only the biggest stretches gives a close copy of the matrix stored in far fewer numbers. LoRA, a cheap way to adapt a trained language model, trains a separate low-rank change to its weights.
+  This is useful because a grid of numbers is hard to read, while a few stretches are easy to read. When some stretches are small, dropping them gives a close copy stored in fewer numbers. We'll measure how close it is by how much the outputs change. This helps compress matrices and makes updating trained language models cheaper.
 knowledge_points:
   - id: eig-stretch-directions
     title: "Find directions a matrix only stretches"
@@ -23,10 +23,10 @@ knowledge_points:
       $$A=\begin{bmatrix}2&1\\1&2\end{bmatrix}$$
       and try three inputs. In the picture, grey arrows are inputs and blue arrows are what $A$ makes of them. The input $(1,1)$ comes out as $(3,3)$, on the same dashed line and three times as long. The input $(1,-1)$ comes out as $(1,-1)$, unchanged. The input $(1,0)$ comes out as $(2,1)$, which has turned off its line.
 
-      ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" aria-label="Three grey input arrows and the blue arrows the matrix with rows (2, 1) and (1, 2) turns them into. The input (1, 1) becomes (3, 3) on the same dashed line, three times as long. The input (1, minus 1) stays (1, minus 1). The input (1, 0) becomes (2, 1), which points in a new direction">
+      ```svg academy-visual=eigen-directions
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="140 40 400 310" aria-label="Three grey input arrows and the blue arrows the matrix with rows (2, 1) and (1, 2) turns them into. The input (1, 1) becomes (3, 3) on the same dashed line, three times as long. The input (1, minus 1) stays (1, minus 1). The input (1, 0) becomes (2, 1), which points in a new direction">
       <defs><marker id="eig1-grey" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker><marker id="eig1-blue" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#3b82f6"/></marker><marker id="eig1-blue-s" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="3" markerHeight="3" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#3b82f6"/></marker></defs>
-      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="18" fill="#171717">
       <path d="M150 250 H420 M200 345 V40" stroke="#d4d4d4"/>
       <path d="M175 275 L375 75 M175 225 L280 330" stroke="#737373" stroke-width="1.5" stroke-dasharray="6 5"/>
       <path d="M200 250 L350 100" stroke="#3b82f6" stroke-width="3" marker-end="url(#eig1-blue)"/>
@@ -35,13 +35,13 @@ knowledge_points:
       <path d="M200 250 L250 200" stroke="#737373" stroke-width="2.5" marker-end="url(#eig1-grey)"/>
       <path d="M200 250 L250 250" stroke="#737373" stroke-width="2.5" marker-end="url(#eig1-grey)"/>
       <path d="M200 250 L250 300" stroke="#737373" stroke-width="2.5" marker-end="url(#eig1-grey)"/>
-      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="232" y="190" fill="#737373" text-anchor="end">(1, 1)</text>
-      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="358" y="98" fill="#3b82f6">(3, 3): 3 times as long</text>
-      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="306" y="196" fill="#3b82f6">(2, 1): turned</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="232" y="185" fill="#737373" text-anchor="end">(1, 1)</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="358" y="87" fill="#3b82f6">(3, 3)<tspan x="358" dy="22">3 times as long</tspan></text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="306" y="192" fill="#3b82f6">(2, 1)<tspan x="306" dy="22">turned</tspan></text>
       <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="256" y="268" fill="#737373">(1, 0)</text>
-      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="262" y="314">(1, −1) stays (1, −1)</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="262" y="322">(1, −1) stays (1, −1)</text>
       <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="414" y="270" fill="#737373">x</text>
-      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="207" y="50" fill="#737373">y</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="207" y="62" fill="#737373">y</text>
       </g>
       </svg>
       ```
@@ -50,7 +50,7 @@ knowledge_points:
 
       An **eigenvector** of a square matrix $A$ (one with as many rows as columns, so outputs have as many entries as inputs) is a vector $v$, other than the zero vector, that $A$ only stretches. Its **eigenvalue** is the stretch factor, a number written $\lambda$ (the Greek letter lambda):
       $$Av=\lambda v$$
-      On the left is what the matrix does to $v$, and on the right is $v$ scaled by one number. That number can be anything, and its size and sign tell us what happens to the arrow.
+      On the left is what the matrix does to $v$, and on the right is $v$ scaled by one number. A positive value keeps its direction, a negative one reverses it, and zero squashes it to the origin.
 
       - For $(1,1)$ above, $\lambda=3$, so the arrow triples in length.
       - For $(1,-1)$, $\lambda=1$, so the arrow stays exactly where it is.
@@ -85,29 +85,31 @@ knowledge_points:
     explain: |
       ### From guessing to solving
 
-      In the last step we guessed eigenvectors, but we'd like a method that works for any $2\times2$ matrix. The trick is to find the eigenvalues first, because once we know the stretch, finding its direction is one equation.
+      We found special directions by trying arrows. Now we'll solve for the stretch factors, then their directions.
 
-      Write the matrix with letters, $A=\begin{bmatrix}a&b\\c&d\end{bmatrix}$, and the eigenvector as $v=(x,y)$. The equation $Av=\lambda v$ must hold in both entries of the output, so it's really two equations, one for each row of $A$. Moving $\lambda x$ and $\lambda y$ to the left gives
+      Write $A=\begin{bmatrix}a&b\\c&d\end{bmatrix}$ and $v=(x,y)$. Each row of $Av=\lambda v$ gives an equation. Moving $\lambda x$ and $\lambda y$ to the left gives
       $$(a-\lambda)x+by=0,\qquad cx+(d-\lambda)y=0.$$
 
       ### The equation for the eigenvalues
 
-      Next, multiply the first equation by $(d-\lambda)$ and the second by $b$, so that both contain $b(d-\lambda)y$. Subtracting one from the other removes $y$ and leaves
-      $$\big[(a-\lambda)(d-\lambda)-bc\big]\,x=0.$$
-      The same trick with $c$ and $(a-\lambda)$ removes $x$ and leaves the bracket times $y$. An eigenvector can't have $x$ and $y$ both zero, so the bracket must be zero. So $\lambda$ is an eigenvalue exactly when
+      Multiply the first equation by $(d-\lambda)$ and the second by $b$, then subtract to remove $y$. Multiplying the first by $c$ and the second by $(a-\lambda)$ instead removes $x$. Write the common factor remaining after cancellation as $q$:
+      $$q=(a-\lambda)(d-\lambda)-bc,\qquad qx=0,\qquad qy=0.$$
+      Since $x$ and $y$ can't both be zero, $q$ must be zero. We'll use without proof that $q=0$ also guarantees a nonzero solution of both row equations. Expanding it gives the eigenvalue equation:
       $$\lambda^2-(a+d)\lambda+(ad-bc)=0.$$
 
-      Call the two solutions $\lambda_1$ and $\lambda_2$. A quadratic that starts with $\lambda^2$ and is zero at both of them is $(\lambda-\lambda_1)(\lambda-\lambda_2)=\lambda^2-(\lambda_1+\lambda_2)\lambda+\lambda_1\lambda_2$. Matching the two forms, the eigenvalues add up to $a+d$ and multiply to $ad-bc$. Often we can spot two numbers with that sum and product. Otherwise the quadratic formula from algebra gives them:
+      Call its solutions $\lambda_1$ and $\lambda_2$. The quadratic can be written as $(\lambda-\lambda_1)(\lambda-\lambda_2)$, which is zero at either solution. Expanding that same expression gives
+      $$\lambda^2-(\lambda_1+\lambda_2)\lambda+\lambda_1\lambda_2=0.$$
+      The numbers multiplying each power of $\lambda$ must match between these equations, so the eigenvalues add to $a+d$ and multiply to $ad-bc$. Try two numbers with that sum and product. Otherwise, the quadratic formula gives them directly; $\pm$ means calculate once with $+$ and once with $-$:
       $$\lambda=\frac{(a+d)\pm\sqrt{(a+d)^2-4(ad-bc)}}{2}.$$
-      If the number under the square root is negative, there are no real eigenvalues, which in this lesson we call having no eigenvalues.
+      A negative number under the square root means no real eigenvalues, which here we call no eigenvalues.
 
       ### Three matrices side by side
 
-      - For $\begin{bmatrix}2&1\\1&2\end{bmatrix}$ the sum is $4$ and the product is $3$, so the eigenvalues are $3$ and $1$.
-      - For $\begin{bmatrix}3&0\\0&-1\end{bmatrix}$ the sum is $2$ and the product is $-3$, so they're $3$ and $-1$.
-      - The matrix $\begin{bmatrix}0&-1\\1&0\end{bmatrix}$ sends $(1,0)$ to $(0,1)$ and $(0,1)$ to $(-1,0)$, a quarter turn. Its diagonal adds to $0$ and $ad-bc=1$, and $0^2-4\times1$ is negative, so it has no eigenvalues, which fits a turn that moves every arrow off its line.
+      - For $\begin{bmatrix}2&1\\1&2\end{bmatrix}$, sum $4$ and product $3$ give $3$ and $1$.
+      - For $\begin{bmatrix}3&0\\0&-1\end{bmatrix}$, sum $2$ and product $-3$ give $3$ and $-1$.
+      - The matrix $\begin{bmatrix}0&-1\\1&0\end{bmatrix}$ sends $(1,0)$ to $(0,1)$ and $(0,1)$ to $(-1,0)$, a quarter turn. Its sum is $0$, product $1$, and $0^2-4\times1<0$, so it has no eigenvalues.
 
-      Be careful not to read the eigenvalues off the diagonal. That only works when $b$ or $c$ is $0$, as in the second matrix, where both are. The first has $2$ and $2$ on its diagonal but eigenvalues $3$ and $1$.
+      Be careful: diagonal entries give eigenvalues only when $b$ or $c$ is zero, because then $q=(a-\lambda)(d-\lambda)$. Check both row equations for each direction. For the diagonal example at $\lambda=3$, the first becomes $0x+0y=0$, true for every input. The second gives $-4y=0$, so use it.
     worked: |
       Let's find the eigenvalues and eigenvectors of $A=\begin{bmatrix}2&1\\1&2\end{bmatrix}$ from the equation, and check that we get the directions we found by trying arrows.
 
@@ -117,8 +119,8 @@ knowledge_points:
       2. **Find two numbers with sum $4$ and product $3$.** They are $3$ and $1$.
          $$(\lambda-3)(\lambda-1)=0,\qquad\lambda=3\text{ or }\lambda=1$$
 
-      3. **Find the eigenvector for $\lambda=3$.** We put $\lambda=3$ into the first row's equation, $(a-\lambda)x+by=0$. The second row gives the same line, because $\lambda$ was chosen to make the two equations agree.
-         $$(2-3)x+y=0,\qquad y=x$$
+      3. **Find the eigenvector for $\lambda=3$.** Substituting into both rows gives the same line, $y=x$.
+         $$\begin{aligned}(2-3)x+y&=0\\x+(2-3)y&=0\end{aligned}$$
 
       4. **Find the eigenvector for $\lambda=1$.** The same equation with $\lambda=1$ gives the other direction.
          $$(2-1)x+y=0,\qquad y=-x$$
@@ -138,60 +140,58 @@ knowledge_points:
     explain: |
       ### A matrix with no stretch-only direction
 
-      Eigenvectors don't always exist. Take
+      Some matrices have no real eigenvectors. Take
       $$B=\begin{bmatrix}4&-3\\6&8\end{bmatrix}.$$
-      Its diagonal adds to $12$ and $ad-bc=32+18=50$, and $12^2-4\times50=-56$ is negative, so $B$ has no eigenvalues. A matrix that isn't square has none either, since its outputs and inputs have different numbers of entries. So how can we describe what any matrix does to arrows?
+      Its eigenvalue equation has a negative number under the square root, $12^2-4\times50=-56$. The SVD gives us a description even here, and also works for nonsquare matrices. We'll work through the two-dimensional case.
 
       ### Turn, stretch, turn
 
-      Think of all the arrows of length $1$, whose tips make a circle. Unless a $2\times2$ matrix squashes everything onto a line, it sends that circle to an ellipse, an oval with a longest and a shortest direction. The picture follows the circle through $B$ in three moves. First a turn lines up two perpendicular arrows, $v_1=(0.6,0.8)$ and $v_2=(-0.8,0.6)$, with the axes. Then a stretch makes the green arrow $10$ long and the orange one $5$ long. Then a second turn points them along $u_1=(0,1)$ and $u_2=(-1,0)$.
+      The tips of all length-$1$ arrows make a circle. $B$ turns it into an ellipse, an oval with a longest and shortest direction. Follow two perpendicular input arrows, $v_1=(0.6,0.8)$ and $v_2=(-0.8,0.6)$, through the picture. A turn lines them up with the axes. A stretch makes the green arrow $10$ long and the orange one $5$ long. Another turn points them along $u_1=(0,1)$ and $u_2=(-1,0)$.
 
       ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 270" aria-label="Four panels. One: a circle of radius 1 with a green arrow v1 = (0.6, 0.8) and an orange arrow v2 = (minus 0.8, 0.6). Two: after the first turn, the green arrow lies along the x-axis and the orange along the y-axis. Three: after the stretch, an ellipse with the green arrow 10 long along x and the orange 5 long along y. Four: after the second turn, the green arrow points up, 10 long, and the orange points left, 5 long. The last two panels are drawn at a smaller scale">
-      <defs><marker id="eig3-green" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#10b981"/></marker><marker id="eig3-amber" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#f59e0b"/></marker><marker id="eig3-grey" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker></defs>
-      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
-      <circle cx="65" cy="130" r="50" fill="#ffffff" fill-opacity="0" stroke="#737373" stroke-width="1.5"/>
-      <circle cx="205" cy="130" r="50" fill="#ffffff" fill-opacity="0" stroke="#737373" stroke-width="1.5"/>
-      <ellipse cx="375" cy="130" rx="80" ry="40" fill="#ffffff" fill-opacity="0" stroke="#737373" stroke-width="1.5"/>
-      <ellipse cx="560" cy="130" rx="40" ry="80" fill="#ffffff" fill-opacity="0" stroke="#737373" stroke-width="1.5"/>
-      <path d="M65 130 L95 90" stroke="#10b981" stroke-width="3" marker-end="url(#eig3-green)"/>
-      <path d="M205 130 L255 130" stroke="#10b981" stroke-width="3" marker-end="url(#eig3-green)"/>
-      <path d="M375 130 L455 130" stroke="#10b981" stroke-width="3" marker-end="url(#eig3-green)"/>
-      <path d="M560 130 L560 50" stroke="#10b981" stroke-width="3" marker-end="url(#eig3-green)"/>
-      <path d="M65 130 L25 100" stroke="#f59e0b" stroke-width="3" marker-end="url(#eig3-amber)"/>
-      <path d="M205 130 L205 80" stroke="#f59e0b" stroke-width="3" marker-end="url(#eig3-amber)"/>
-      <path d="M375 130 L375 90" stroke="#f59e0b" stroke-width="3" marker-end="url(#eig3-amber)"/>
-      <path d="M560 130 L520 130" stroke="#f59e0b" stroke-width="3" marker-end="url(#eig3-amber)"/>
-      <path d="M120 30 H150" stroke="#737373" stroke-width="2" marker-end="url(#eig3-grey)"/>
-      <path d="M262 30 H292" stroke="#737373" stroke-width="2" marker-end="url(#eig3-grey)"/>
-      <path d="M465 30 H515" stroke="#737373" stroke-width="2" marker-end="url(#eig3-grey)"/>
-      <text x="135" y="20" text-anchor="middle">turn</text>
-      <text x="277" y="20" text-anchor="middle">stretch</text>
-      <text x="490" y="20" text-anchor="middle">turn</text>
-      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="99" y="86" fill="#10b981">v₁</text>
-      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="21" y="94" fill="#f59e0b" text-anchor="end">v₂</text>
-      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" font-size="17" x="440" y="150" fill="#10b981" text-anchor="middle">10</text>
-      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" font-size="17" x="383" y="110" fill="#f59e0b">5</text>
-      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" font-size="17" x="566" y="70" fill="#10b981">10 u₁</text>
-      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" font-size="17" x="540" y="150" fill="#f59e0b" text-anchor="middle">5 u₂</text>
-      <text x="65" y="225" text-anchor="middle" fill="#737373">inputs</text>
-      <text x="205" y="225" text-anchor="middle" fill="#737373">on the axes</text>
-      <text x="375" y="225" text-anchor="middle" fill="#737373">stretched</text>
-      <text x="560" y="225" text-anchor="middle" fill="#737373">outputs</text>
-      <text x="320" y="258" text-anchor="middle" fill="#737373">The last two panels are drawn at a smaller scale than the first two.</text>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 515" aria-label="Four panels, read across the top row then the bottom row. One: a circle of radius 1 with a green arrow v1 = (0.6, 0.8) and an orange arrow v2 = (minus 0.8, 0.6). Two: after the first turn, the green arrow lies along the x-axis and the orange along the y-axis. Three: after the stretch, an ellipse with the green arrow 10 long along x and the orange 5 long along y. Four: after the second turn, the green arrow points up, 10 long, and the orange points left, 5 long. The last two panels use a smaller scale">
+      <defs><marker id="eig3-green" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#10b981"/></marker><marker id="eig3-amber" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#f59e0b"/></marker></defs>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="18" fill="#171717">
+      <text x="100" y="28" text-anchor="middle">1. Inputs</text><text x="300" y="28" text-anchor="middle">2. First turn</text>
+      <text x="100" y="270" text-anchor="middle">3. Stretch</text><text x="300" y="270" text-anchor="middle">4. Last turn</text>
+      <circle cx="100" cy="130" r="60" fill="#ffffff" fill-opacity="0" stroke="#737373" stroke-width="1.5"/>
+      <circle cx="300" cy="130" r="60" fill="#ffffff" fill-opacity="0" stroke="#737373" stroke-width="1.5"/>
+      <ellipse cx="100" cy="375" rx="80" ry="40" fill="#ffffff" fill-opacity="0" stroke="#737373" stroke-width="1.5"/>
+      <ellipse cx="300" cy="375" rx="40" ry="80" fill="#ffffff" fill-opacity="0" stroke="#737373" stroke-width="1.5"/>
+      <path d="M100 130 L136 82" stroke="#10b981" stroke-width="3" marker-end="url(#eig3-green)"/>
+      <path d="M300 130 L360 130" stroke="#10b981" stroke-width="3" marker-end="url(#eig3-green)"/>
+      <path d="M100 375 L180 375" stroke="#10b981" stroke-width="3" marker-end="url(#eig3-green)"/>
+      <path d="M300 375 L300 295" stroke="#10b981" stroke-width="3" marker-end="url(#eig3-green)"/>
+      <path d="M100 130 L52 94" stroke="#f59e0b" stroke-width="3" marker-end="url(#eig3-amber)"/>
+      <path d="M300 130 L300 70" stroke="#f59e0b" stroke-width="3" marker-end="url(#eig3-amber)"/>
+      <path d="M100 375 L100 335" stroke="#f59e0b" stroke-width="3" marker-end="url(#eig3-amber)"/>
+      <path d="M300 375 L260 375" stroke="#f59e0b" stroke-width="3" marker-end="url(#eig3-amber)"/>
+      <text stroke="#ffffff" stroke-width="4" paint-order="stroke" x="144" y="78" fill="#10b981">v₁</text>
+      <text stroke="#ffffff" stroke-width="4" paint-order="stroke" x="42" y="87" fill="#f59e0b" text-anchor="end">v₂</text>
+      <text stroke="#ffffff" stroke-width="4" paint-order="stroke" x="160" y="400" fill="#10b981" text-anchor="middle">10</text>
+      <text stroke="#ffffff" stroke-width="4" paint-order="stroke" x="109" y="354" fill="#f59e0b">5</text>
+      <text stroke="#ffffff" stroke-width="4" paint-order="stroke" x="310" y="318" fill="#10b981">10 u₁</text>
+      <text stroke="#ffffff" stroke-width="4" paint-order="stroke" x="268" y="403" fill="#f59e0b">5 u₂</text>
+      <text x="100" y="220" text-anchor="middle" fill="#737373">input directions</text>
+      <text x="300" y="220" text-anchor="middle" fill="#737373">on the axes</text>
+      <text x="100" y="455" text-anchor="middle" fill="#737373">stretched</text>
+      <text x="300" y="475" text-anchor="middle" fill="#737373">outputs</text>
+      <text x="200" y="505" text-anchor="middle" font-size="17" fill="#737373">Last two panels use a smaller scale.</text>
       </g>
       </svg>
       ```
 
       ### The singular value decomposition
 
-      The **singular value decomposition** (SVD) writes any matrix as a turn, a stretch along the axes and another turn, where one turn may also flip arrows like a mirror:
+      The **singular value decomposition** (SVD) writes a matrix as three moves. A turn may include a mirror flip, a reflection across a line:
       $$A=USV^\top$$
-      Read it from right to left, since that's the order the moves happen in. $V$ has the perpendicular input directions $v_1$ and $v_2$, each of length $1$, as its columns, so $V^\top$ has them as its rows. Multiplying by $V^\top$ dots the input with $v_1$ and $v_2$, which sends $v_1$ to $(1,0)$ and $v_2$ to $(0,1)$. $S$ is a diagonal matrix holding the **singular values** $s_1\ge s_2\ge0$, the stretch along each axis. Finally $U$ has the output directions $u_1$ and $u_2$ as its columns and turns the axes onto them. So $A$ sends $v_1$ to $s_1u_1$ and $v_2$ to $s_2u_2$.
+      Read right to left. $V$ has the perpendicular length-$1$ input directions as columns. $V^\top$ dots the input with them. Each direction dots with itself to give $1$ and with the other to give $0$, so $v_1$ becomes $(1,0)$ and $v_2$ becomes $(0,1)$. The diagonal entries of $S$ are the **singular values**, the stretches $s_1\ge s_2\ge0$. $U$ has the perpendicular length-$1$ output directions as columns, so it turns each axis onto its output direction. Thus $Av_i=s_iu_i$.
 
-      To find these, we use the last step's method on $A^\top A$, which is always square. We'll use without proof that its eigenvectors are $v_1$ and $v_2$ and its eigenvalues are $s_1^2$ and $s_2^2$. Then $u_1$ is $Av_1$ divided by $s_1$, and the same for $u_2$ when $s_2$ isn't zero.
+      For our $2\times2$ example, choose length-$1$ eigenvectors of $B^\top B$ as input directions. We'll use without proof that perpendicular choices always exist. Squared length is a self-dot product, and transposing a product reverses its order, so $(Bv_i)^\top=v_i^\top B^\top$. Thus their eigenvalues measure squared stretches:
+      $$\text{length}(Bv_i)^2=v_i^\top B^\top Bv_i=v_i^\top(s_i^2v_i)=s_i^2.$$
+      For a positive $s_i$, divide $Bv_i$ by $s_i$ to find $u_i$. A zero stretch gives zero output whichever direction we choose, so choose $u_i$ perpendicular to the other output direction. If both stretches are zero, use the coordinate axes for $U$.
 
-      Be careful not to treat singular values as eigenvalues. $B$ has no eigenvalues, yet its singular values are $10$ and $5$. Singular values are lengths, so they're never negative, and every matrix has them.
+      Be careful not to treat singular values as eigenvalues. $B$ has no real eigenvalues, yet its singular values are $10$ and $5$. Singular values are lengths, so they're never negative.
     worked: |
       Let's find the three moves for $B=\begin{bmatrix}4&-3\\6&8\end{bmatrix}$ with the eigenvalue method, then follow $v_1$ through them.
 
@@ -201,18 +201,32 @@ knowledge_points:
       2. **Find its eigenvalues.** They add up to $52+73=125$ and multiply to $52\times73-36\times36=2500$, so they're $100$ and $25$. The singular values are their square roots.
          $$s_1=\sqrt{100}=10,\qquad s_2=\sqrt{25}=5$$
 
-      3. **Find the input directions.** Putting $\lambda=100$ into the first row's equation gives $y=\tfrac43x$, and $(3,4)$ is on that line. It has length $5$, so dividing by $5$ gives $v_1$. A quarter turn of $v_1$ gives the perpendicular direction $v_2$.
-         $$(52-100)x+36y=0,\qquad v_1=(0.6,0.8),\qquad v_2=(-0.8,0.6)$$
+      3. **Find the first input direction.** Putting $\lambda=100$ into the first row's equation gives $y=\tfrac43x$, and $(3,4)$ is on that line. Its length is $\sqrt{3^2+4^2}=5$, so divide both entries by $5$.
+         $$(52-100)x+36y=0,\qquad v_1=(0.6,0.8)$$
 
-      4. **Find the output directions.** Since $Bv_1=s_1u_1$, we multiply and divide by the singular value.
+      4. **Find the other input direction.** For $\lambda=25$, divide the first row's equation by $9$ and the second by $12$. Both give $3x+4y=0$. Choose $(-4,3)$, whose length is again $5$, and divide by $5$. Its dot product with $v_1$ is $0$, so it's perpendicular.
+         $$3(-0.8)+4(0.6)=0,\qquad v_2=(-0.8,0.6)$$
+
+      5. **Find the first output direction.** Since $Bv_1=s_1u_1$, multiply and divide by the singular value.
          $$u_1=\tfrac{1}{10}Bv_1=\tfrac{1}{10}(0,10)=(0,1)$$
+
+      6. **Find the other output direction.** Do the same for the second input and its stretch.
          $$u_2=\tfrac15Bv_2=\tfrac15(-5,0)=(-1,0)$$
 
-      5. **Follow $v_1$ through the three moves.** $V^\top$ dots it with $v_1$ and $v_2$, $S$ stretches the axes by $10$ and $5$, and the quarter turn $U$ turns the result.
+      7. **Turn $v_1$ onto an axis.** $V^\top$ dots it with $v_1$ and $v_2$.
          $$V^\top v_1=\begin{bmatrix}0.6&0.8\\-0.8&0.6\end{bmatrix}\begin{bmatrix}0.6\\0.8\end{bmatrix}=\begin{bmatrix}1\\0\end{bmatrix}$$
-         $$S\begin{bmatrix}1\\0\end{bmatrix}=\begin{bmatrix}10&0\\0&5\end{bmatrix}\begin{bmatrix}1\\0\end{bmatrix}=\begin{bmatrix}10\\0\end{bmatrix},\qquad U\begin{bmatrix}10\\0\end{bmatrix}=\begin{bmatrix}0&-1\\1&0\end{bmatrix}\begin{bmatrix}10\\0\end{bmatrix}=\begin{bmatrix}0\\10\end{bmatrix}$$
 
-      That's $Bv_1$, so the three moves do what $B$ does. The same moves take $v_2$ to $(0,1)$, then $(0,5)$, then $(-5,0)=Bv_2$.
+      8. **Stretch along the axes.** $S$ stretches the first axis by $10$ and the second by $5$.
+         $$S\begin{bmatrix}1\\0\end{bmatrix}=\begin{bmatrix}10&0\\0&5\end{bmatrix}\begin{bmatrix}1\\0\end{bmatrix}=\begin{bmatrix}10\\0\end{bmatrix}$$
+
+      9. **Turn to the output direction.** Put $u_1=(0,1)$ and $u_2=(-1,0)$ into the columns of $U$. This matrix makes a quarter turn.
+         $$U\begin{bmatrix}10\\0\end{bmatrix}=\begin{bmatrix}0&-1\\1&0\end{bmatrix}\begin{bmatrix}10\\0\end{bmatrix}=\begin{bmatrix}0\\10\end{bmatrix}$$
+
+      That's $Bv_1$. The same moves take $v_2$ to $(0,1)$, then $(0,5)$, then $(-5,0)=Bv_2$.
+
+      Every input is a sum of multiples of these perpendicular directions. For example, dotting $(1,0)$ with $v_1$ and $v_2$ gives $0.6$ and $-0.8$, and those coefficients rebuild the input:
+      $$0.6v_1-0.8v_2=0.6(0.6,0.8)-0.8(-0.8,0.6)=(1,0).$$
+      Matrix multiplication distributes over the sum, so checking both directions checks every input.
     problems:
       - eig-svd-three-moves-basics
       - eigp-svd-self-explain
@@ -228,22 +242,22 @@ knowledge_points:
 
       If one stretch is much bigger than the other, most of what the matrix does happens along that direction. Can we keep just the big stretch and drop the rest?
 
-      We split the matrix into one piece per singular value. A column $u_1$ ($2\times1$) times a row $v_1^\top$ ($1\times2$) is a $2\times2$ matrix. The piece $s_1u_1v_1^\top$ dots the input with $v_1$ and multiplies $s_1u_1$ by the result, so it sends $v_1$ to $s_1u_1$ and the perpendicular $v_2$ to zero. The second piece does the same for $v_2$. Their sum treats $v_1$ and $v_2$ just as $A$ does, and since every input is a mix of the two,
+      We split the matrix into one piece per singular value. A column $u_1$ times a row $v_1^\top$ is a $2\times2$ matrix. Read $s_1u_1v_1^\top$ right to left. Dot the input with $v_1$, then multiply the arrow $s_1u_1$ by that number. This sends $v_1$ to $s_1u_1$ and the perpendicular $v_2$ to zero. The second piece handles $v_2$. Adding the pieces handles every input:
       $$A=s_1u_1v_1^\top+s_2u_2v_2^\top.$$
 
       ### Low-rank approximation
 
-      The **rank** of a matrix is the number of its singular values that aren't zero. Keeping only the biggest $k$ pieces gives a **low-rank approximation** $A_k$ of rank $k$, off by at most the first singular value we dropped. With two pieces, a length-1 input is $c_1v_1+c_2v_2$ with $c_1^2+c_2^2=1$ by Pythagoras, so dropping the second changes its output by $c_2s_2u_2$, at most $s_2$ long. We'll use without proof that no rank-$k$ matrix is off by less.
+      The **rank** is the number of nonzero singular values. Keeping the biggest $k$ nonzero pieces gives a **low-rank approximation** $A_k$. Its maximum output error over length-$1$ inputs is the first singular value dropped. Write an input as $c_1v_1+c_2v_2$, where $c_i$ is its dot product with $v_i$, its coordinate in that direction. Place these arrows tip to tail. They form a right triangle; the input is its hypotenuse. For a length-$1$ input, Pythagoras gives $c_1^2+c_2^2=1$, so $|c_2|\le1$. Dropping the second piece removes $c_2s_2u_2$, at most $s_2$ long. We'll use without proof that no rank-$k$ matrix has a smaller worst-case error.
 
-      For $B$, the first piece alone is the rank-1 copy $B_1=10\,u_1v_1^\top$. In the picture, $B$ turns the circle of length-1 arrows into the grey ellipse, while $B_1$ squashes it onto the green line. For $v_2$, $B$ gives $(-5,0)$ and $B_1$ gives $(0,0)$, off by the red $5=s_2$. If we change $B$'s $s_2$ and keep the rest, $B_1$ stays the same.
+      For $B$, the first piece is the rank-1 copy $B_1=10\,u_1v_1^\top$. The picture compares both matrices on the same length-1 inputs: $B$ makes the grey ellipse, while $B_1$ makes the green line. For $v_2$, their outputs are $(-5,0)$ and $(0,0)$, separated by the red gap of length $5=s_2$. Hold the directions and first stretch fixed, and change the second stretch:
 
       - With $s_2=5$, as in $B$, it's off by up to $5$.
       - With $s_2=0.5$, it's off by at most $0.5$.
       - With $s_2=0$, the copy is exact.
 
       ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 320" aria-label="The grey ellipse of all outputs of B, reaching 10 up and down and 5 left and right of the origin. The rank-1 copy B1 squashes every output onto the green vertical line from (0, minus 10) to (0, 10). For the input v2, B gives (minus 5, 0) on the ellipse while B1 gives (0, 0); the red gap between them is 5">
-      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="160 10 360 300" aria-label="The grey ellipse of all outputs of B, reaching 10 up and down and 5 left and right of the origin. The rank-1 copy B1 squashes every output onto the green vertical line from (0, minus 10) to (0, 10). For the input v2, B gives (minus 5, 0) on the ellipse while B1 gives (0, 0); the red gap between them is 5">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="18" fill="#171717">
       <path d="M200 160 H440 M320 300 V20" stroke="#d4d4d4"/>
       <ellipse cx="320" cy="160" rx="60" ry="120" fill="#ffffff" fill-opacity="0" stroke="#737373" stroke-width="2"/>
       <path d="M320 280 L320 40" stroke="#10b981" stroke-width="5"/>
@@ -251,8 +265,8 @@ knowledge_points:
       <circle cx="260" cy="160" r="5" fill="#171717"/>
       <circle cx="320" cy="160" r="5" fill="#10b981"/>
       <circle cx="320" cy="40" r="5" fill="#10b981"/>
-      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="332" y="45">Bv₁ = B₁v₁ = (0, 10)</text>
-      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="250" y="165" text-anchor="end">Bv₂ = (−5, 0)</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="332" y="45">Bv₁ = B₁v₁<tspan x="332" dy="22">= (0, 10)</tspan></text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="245" y="153" text-anchor="end">Bv₂<tspan x="245" dy="22">= (−5, 0)</tspan></text>
       <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="330" y="186" fill="#10b981">B₁v₂ = (0, 0)</text>
       <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="290" y="148" fill="#ef4444" text-anchor="middle">5</text>
       <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="374" y="238" fill="#737373">outputs of B</text>
@@ -263,14 +277,14 @@ knowledge_points:
 
       ### Why fewer numbers
 
-      A rank-$k$ matrix with $m$ rows and $n$ columns can be stored as $k$ columns of $m$ numbers and $k$ rows of $n$, so $k(m+n)$ numbers in place of $mn$. If a $1000\times1000$ matrix has only $8$ big singular values, its rank-8 copy needs $16{,}000$ numbers in place of a million. LoRA uses this to cheaply train a low-rank change to the large weight matrices a language model has learned.
+      For a matrix with $m$ rows and $n$ columns, store the $k$ column/row factors instead of multiplying them out. Absorb each singular value into its column: $k(m+n)$ numbers instead of $mn$. A $1000\times1000$ matrix's rank-8 copy needs $16{,}000$ numbers instead of a million. LoRA, introduced next, uses factors like these to learn changes to a language model's weight matrices.
     worked: |
-      Let's build the rank-1 copy of $B=\begin{bmatrix}4&-3\\6&8\end{bmatrix}$ and measure how far it is from $B$, using $s_1=10$, $u_1=(0,1)$, $v_1=(0.6,0.8)$, $s_2=5$, $u_2=(-1,0)$ and $v_2=(-0.8,0.6)$.
+      Let's build the rank-1 copy of $B=\begin{bmatrix}4&-3\\6&8\end{bmatrix}$ from its first stretch $s_1=10$ and directions $u_1=(0,1)$ and $v_1=(0.6,0.8)$. We'll compare its outputs with $B$'s.
 
       1. **Build the first piece.** A column times a row gives each entry as one entry of $u_1$ times one entry of $v_1$, then everything is multiplied by $s_1=10$.
          $$B_1=10\begin{bmatrix}0\times0.6&0\times0.8\\1\times0.6&1\times0.8\end{bmatrix}=\begin{bmatrix}0&0\\6&8\end{bmatrix}$$
 
-      2. **Build the second piece.** The same recipe with $s_2=5$, $u_2$ and $v_2$ gives what the copy leaves out.
+      2. **Build the second piece.** The same recipe with stretch $s_2=5$, output direction $u_2=(-1,0)$ and input direction $v_2=(-0.8,0.6)$ gives what the copy leaves out.
          $$5\begin{bmatrix}-1\times(-0.8)&-1\times0.6\\0\times(-0.8)&0\times0.6\end{bmatrix}=\begin{bmatrix}4&-3\\0&0\end{bmatrix}$$
 
       3. **Check that the pieces add up to $B$.** Adding entry by entry gives the matrix we started with.
@@ -295,8 +309,8 @@ knowledge_points:
 final: eig-explain-svd
 summary: |
   - An eigenvector of a square matrix $A$ is a direction that $A$ only stretches, so $Av=\lambda v$, and its eigenvalue $\lambda$ is the stretch factor. Any nonzero multiple of an eigenvector is also one.
-  - For $A=\begin{bmatrix}a&b\\c&d\end{bmatrix}$, the eigenvalues solve $\lambda^2-(a+d)\lambda+(ad-bc)=0$, so they add up to $a+d$ and multiply to $ad-bc$. Putting each one into $(a-\lambda)x+by=0$ gives its eigenvector.
-  - Every matrix has an SVD, $A=USV^\top$. Read from right to left, $V^\top$ turns the input directions onto the axes, $S$ stretches them by the singular values $s_1\ge s_2\ge0$, and $U$ turns them onto the output directions, so $Av_1=s_1u_1$ and $Av_2=s_2u_2$. Either turn may include a mirror flip. The singular values are the square roots of the eigenvalues of $A^\top A$.
+  - For $A=\begin{bmatrix}a&b\\c&d\end{bmatrix}$, the eigenvalues solve $\lambda^2-(a+d)\lambda+(ad-bc)=0$, so they add up to $a+d$ and multiply to $ad-bc$. Putting each one into both $(a-\lambda)x+by=0$ and $cx+(d-\lambda)y=0$ gives its eigenvector; a row that reduces to $0=0$ gives no restriction.
+  - Every matrix has an SVD, $A=USV^\top$. Read from right to left, $V^\top$ turns the input directions onto the axes, $S$ stretches them, and $U$ turns them onto the output directions. Either turn may include a mirror flip. For our $2\times2$ case, the stretches are $s_1\ge s_2\ge0$, with $Av_1=s_1u_1$ and $Av_2=s_2u_2$. They are the square roots of the eigenvalues of $A^\top A$.
   - Keeping the $k$ biggest pieces, such as $s_1u_1v_1^\top$, gives the closest rank-$k$ matrix, off by at most the first singular value dropped for any length-1 input. A rank-$k$ matrix with $m$ rows and $n$ columns needs only $k(m+n)$ numbers.
 
-  **Next:** LoRA fine-tunes a large model by learning a separate low-rank change to its weight matrices, so only a small fraction of the numbers are trained.
+  **Next:** LoRA updates a trained language model by learning a low-rank change to its weight matrices, which store its learned numbers. The existing weights stay fixed, so only the much smaller change is learned from new examples.

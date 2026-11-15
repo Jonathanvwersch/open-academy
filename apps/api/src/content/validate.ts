@@ -3,7 +3,7 @@ import { gradeNumeric } from '../learning/grading/numeric.js';
 import { formatTemplateNumber, instantiateExercise, isTemplate } from './templates.js';
 import type { ContentIssue, ContentSourceData } from './types.js';
 
-const SVG_FENCE = /```svg[ \t]*\r?\n([\s\S]*?)```/gi;
+const SVG_FENCE = /```svg([^\r\n]*)\r?\n([\s\S]*?)```/gi;
 const CURRENCY_MARKERS = [
   /(?<!\$)\$(?!\$)\d+(?:,\d{3})*(?:\.\d+)?(?=\s*(?:k\b|thousand\b|million\b|usd\b|dollars?\b))/i,
   /(?<!\$)\$(?!\$)\{\{=[^{}]+\}\}(?=\s*(?:,|and\b|k\b|thousand\b|million\b|usd\b|dollars?\b))/i,
@@ -142,7 +142,11 @@ function svgIssue(source: string): string | null {
 
 function validateSvgText(text: string, file: string, id: string, issues: ContentIssue[]) {
   for (const match of text.matchAll(SVG_FENCE)) {
-    const error = svgIssue(match[1] ?? '');
+    const meta = match[1]?.trim();
+    if (meta && meta !== 'academy-visual=eigen-directions') {
+      addIssue(issues, file, id, `unsupported SVG visualization metadata: ${meta}`);
+    }
+    const error = svgIssue(match[2] ?? '');
     if (error) addIssue(issues, file, id, `invalid SVG: ${error}`);
   }
 }

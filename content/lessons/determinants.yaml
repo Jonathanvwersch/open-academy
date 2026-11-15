@@ -1,0 +1,260 @@
+concept: determinants
+version: 1
+objective: |
+  **Goal:** calculate a 2×2 determinant, explain its size and sign as area scaling and orientation, and use zero to recognise when a square matrix loses information.
+recap:
+  - concept: matrices
+    text: "Multiplying a matrix by a vector takes one dot product per row. For a two-entry input, $\\begin{bmatrix}a&b\\\\c&d\\end{bmatrix}\\begin{bmatrix}x\\\\y\\end{bmatrix}=\\begin{bmatrix}ax+by\\\\cx+dy\\end{bmatrix}$."
+where_this_fits: |
+  ### What is a determinant?
+
+  A determinant is a number that measures how much a matrix changes area or volume, with a sign that records a mirror flip. It belongs to a **square matrix**, which has the same number of rows and columns. We'll work with $2\times2$ matrices and flat pictures, so the size of the determinant tells us how much areas grow or shrink.
+
+  Matrix multiplication already lets us calculate where each point goes. The determinant answers a question about the whole picture: does it cover more area, turn over, or collapse? That last case matters when we want to recover an input from an output, because a collapse can erase information.
+
+knowledge_points:
+  - id: det-area-orientation
+    title: "Measure changes to a square"
+    explain: |
+      ### Moving a square with a matrix
+
+      A matrix can move every point in a picture. Write a point as $(x,y)$, with $x$ measuring rightwards and $y$ upwards from the origin, $(0,0)$. Multiplication by a $2\times2$ matrix gives its new coordinates. This is a **linear transformation**: it keeps the origin fixed and sends straight, evenly spaced grid lines to straight, evenly spaced lines, unless it collapses them.
+
+      Draw a **unit square** with corners $(0,0)$, $(1,0)$, $(1,1)$ and $(0,1)$. Each side has length 1.
+
+      Try $A=\begin{bmatrix}2&0\\0&4\end{bmatrix}$. It sends the rightward unit arrow $(1,0)$ to column 1, $(2,0)$, and the upward unit arrow $(0,1)$ to column 2, $(0,4)$. More generally, the output for $(x,y)$ is $x$ times column 1 plus $y$ times column 2. The square's fourth corner is $(1,1)$, so its output is the sum of the columns, $(2,4)$; $(0,0)$ stays fixed. We now know where all four corners go.
+
+      In the picture, the grey dashed square has area 1. Its blue first edge and orange second edge become the sides of a rectangle, 2 units across and 4 up.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 660" aria-label="Three maps of the unit square. First: the first edge goes right 2 and the second goes up 4, making a rectangle of area 8 and keeping their counterclockwise order. Second: the first edge goes left 2 and the second up 4, making area 8 but reversing the order to clockwise. Third: a half-turn sends right to left and up to down; their order stays counterclockwise." font-family="ui-sans-serif, system-ui, sans-serif">
+      <defs><marker id="det-area-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#3b82f6"/></marker><marker id="det-area-orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#f59e0b"/></marker></defs>
+      <g font-size="18" fill="#171717">
+      <text x="200" y="28" text-anchor="middle">Stretch</text>
+      <path d="M90 195 H300 M110 215 V60 M140 415 H320 M260 435 V285" stroke="#d4d4d4"/>
+      <path d="M110 195 L166 195 L166 83 L110 83 Z M260 415 L204 415 L204 303 L260 303 Z" fill="#10b981" fill-opacity="0.12" stroke="#10b981" stroke-width="2"/>
+      <path d="M110 195 L138 195 L138 167 L110 167 Z M260 415 L288 415 L288 387 L260 387 Z" fill="#737373" fill-opacity="0.08" stroke="#737373" stroke-width="1.5" stroke-dasharray="4 3"/>
+      <path d="M110 195 H166 M260 415 H204" stroke="#3b82f6" stroke-width="3" marker-end="url(#det-area-blue)"/>
+      <path d="M110 195 V83 M260 415 V303" stroke="#f59e0b" stroke-width="3" marker-end="url(#det-area-orange)"/>
+      <text x="176" y="202" fill="#3b82f6">(2, 0)</text><text x="122" y="73" fill="#f59e0b">(0, 4)</text>
+      <text x="104" y="424" fill="#3b82f6">(−2, 0)</text><text x="274" y="296" fill="#f59e0b">(0, 4)</text>
+      <text x="192" y="139" fill="#10b981">area 8</text><text x="124" y="359" fill="#10b981">area 8</text>
+      <text x="200" y="235" text-anchor="middle">Right then up: counterclockwise</text>
+      <text x="200" y="275" text-anchor="middle">Stretch and flip</text>
+      <text x="200" y="458" text-anchor="middle">Left then up: clockwise</text>
+      <text x="200" y="500" text-anchor="middle">Half-turn: order stays the same</text>
+      <path d="M145 570 H310 M230 625 V515" stroke="#d4d4d4"/>
+      <rect x="202" y="570" width="28" height="28" fill="#10b981" fill-opacity="0.12" stroke="#10b981" stroke-width="2"/>
+      <rect x="230" y="542" width="28" height="28" fill="#737373" fill-opacity="0.08" stroke="#737373" stroke-width="1.5" stroke-dasharray="4 3"/>
+      <path d="M230 570 H202" stroke="#3b82f6" stroke-width="3" marker-end="url(#det-area-blue)"/>
+      <path d="M230 570 V598" stroke="#f59e0b" stroke-width="3" marker-end="url(#det-area-orange)"/>
+      <path d="M214 570 A16 16 0 0 0 230 586 L224 581 M230 586 L224 591" fill="#737373" fill-opacity="0" stroke="#737373" stroke-width="1.5"/>
+      <text x="100" y="565" fill="#3b82f6">(−1, 0)</text><text x="244" y="617" fill="#f59e0b">(0, −1)</text>
+      <text x="200" y="647" text-anchor="middle">Left then down: counterclockwise</text>
+      </g></svg>
+      ```
+
+      ### Area with a sign
+
+      In two dimensions, the **determinant**, written $\det(A)$, is the signed area scale of a $2\times2$ matrix. Its magnitude, $|\det(A)|$, multiplies the area of every region. The bars mean take the size while ignoring the sign.
+
+      Why does one square tell us about other shapes? A linear transformation treats every part of a grid the same way. Cover a region with tiny squares: each square gets the same area factor, so their combined area does too.
+
+      The sign records **orientation**. Turn from the original rightward edge towards the upward edge: that is counterclockwise. After the map, take the same ordered pair of edges. A positive determinant keeps that counterclockwise order; a negative one reverses it to clockwise.
+
+      Be careful with a negative determinant. The area is positive; the minus sign records the reversed orientation. A positive determinant can still turn arrows: a half-turn sends right to left and up to down while preserving their counterclockwise order.
+    worked: |
+      Let's find the signed area scale for $A=\begin{bmatrix}2&0\\0&4\end{bmatrix}$ and then change its first entry to $-2$.
+
+      1. **Find the output area.** The unit square becomes a rectangle of width 2 and height 4.
+         $$\text{output area}=2\times4=8$$
+
+      2. **Check the order of the edges.** The first edge points right and the second up, so their order stays counterclockwise.
+         $$\det(A)=8$$
+
+      3. **Flip the first edge.** Changing 2 to $-2$ sends the first edge left. The width stays 2, while the order becomes clockwise.
+         $$\det\!\begin{pmatrix}-2&0\\0&4\end{pmatrix}=-8$$
+
+      Both maps multiply area by 8; their signs tell us which one flips the picture.
+    problems:
+      - det-area-basics
+      - det-area-self-explain
+      - det-area-scaled-region
+      - det-area-negative-template
+      - det-area-negative-meaning
+      - det-area-one-meaning
+      - det-area-half-turn
+      - det-area-camera-region
+  - id: det-two-by-two
+    title: "Calculate a determinant"
+    explain: |
+      ### A square can become slanted
+
+      The rectangle made the area easy to see. A matrix can also slant a square into a **parallelogram**, a four-sided shape with opposite sides parallel. We still follow the same two edges.
+
+      Take $A=\begin{bmatrix}3&1\\1&2\end{bmatrix}$. Its first column sends $(1,0)$ to $(3,1)$, the blue arrow, and its second sends $(0,1)$ to $(1,2)$, the orange arrow. The square's opposite corner is the input $(1,1)$. It uses one copy of each column, so its output is their sum, $(4,3)$. The green parallelogram is what the unit square becomes. The grey triangles fill the rest of an enclosing rectangle; we can find the green area by removing them. Call the top-right entry $b=1$ and the bottom-left entry $c=1$; these label distances in the picture.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 330" aria-label="The matrix with rows (3, 1) and (1, 2) maps a unit square to a parallelogram with corners (0, 0), (3, 1), (4, 3) and (1, 2). The enclosing rectangle is 4 wide and 3 high. The four outside grey triangles have areas 2, 2, 1.5 and 1.5, leaving green area 5." font-family="ui-sans-serif, system-ui, sans-serif">
+      <defs><marker id="det-calc-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#3b82f6"/></marker><marker id="det-calc-orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#f59e0b"/></marker></defs>
+      <g font-size="18" fill="#171717">
+      <path d="M40 235 H350 M70 255 V55" stroke="#d4d4d4"/>
+      <path d="M70 235 L220 185 L270 85 L120 135 Z" fill="#10b981" fill-opacity="0.15" stroke="#10b981" stroke-width="2"/>
+      <path d="M70 85 L270 85 L120 135 Z M70 235 L270 235 L220 185 Z M70 85 L120 135 L70 235 Z M270 85 L220 185 L270 235 Z" fill="#737373" fill-opacity="0.12" stroke="#737373" stroke-width="1"/>
+      <text x="157" y="106" text-anchor="middle" fill="#737373">2</text>
+      <text x="186" y="225" text-anchor="middle" fill="#737373">2</text>
+      <text x="88" y="163" text-anchor="middle" font-size="16" fill="#737373">1.5</text>
+      <text x="253" y="178" text-anchor="middle" font-size="16" fill="#737373">1.5</text>
+      <path d="M70 235 L220 185" stroke="#3b82f6" stroke-width="3" marker-end="url(#det-calc-blue)"/>
+      <path d="M70 235 L120 135" stroke="#f59e0b" stroke-width="3" marker-end="url(#det-calc-orange)"/>
+      <text x="228" y="207" fill="#3b82f6">(3, 1)</text><text x="61" y="120" fill="#f59e0b">(1, 2)</text>
+      <text x="280" y="80">(4, 3)</text>
+      <text x="170" y="56" text-anchor="middle">4 wide</text>
+      <text x="312" y="154">3 high</text><text x="20" y="258">(0, 0)</text>
+      <text x="170" y="166" text-anchor="middle" fill="#10b981">area 5</text>
+      <path d="M70 255 H120 M70 250 V260 M120 250 V260 M305 185 V235 M300 185 H310 M300 235 H310" stroke="#737373"/>
+      <text x="95" y="280" text-anchor="middle" font-size="16">b = 1</text><text x="317" y="217" font-size="16">c = 1</text>
+      <text x="200" y="320" text-anchor="middle">Green: image of the unit square</text>
+      </g></svg>
+      ```
+
+      ### The two products
+
+      For a general $2\times2$ matrix, name the top row's entries $a,b$ and the bottom row's entries $c,d$:
+
+      $$A=\begin{bmatrix}a&b\\c&d\end{bmatrix}$$
+
+      Its determinant comes from two products. Multiply the top-left entry by the bottom-right entry, then subtract the product of the other diagonal:
+
+      $$\det(A)=ad-bc$$
+
+      For positive $a,d$ with $b=c=0$, this is width times height. We can see the subtraction for the arrangement in our picture. The enclosing rectangle has width $a+b$ and height $c+d$. A triangle covers half a rectangle with the same base and height, so a pair of matching triangles covers a whole rectangle. Each top or bottom triangle has base $a+b$ and height $c$, so together they have area $c(a+b)$. Each side triangle has base $c+d$ and height $b$, giving $b(c+d)$ together. Removing them gives:
+
+      $$\begin{aligned}\text{area}&=(a+b)(c+d)\\&\quad-c(a+b)-b(c+d)\\&=(ac+ad+bc+bd)\\&\quad-(ac+2bc+bd)\\&=ad-bc\end{aligned}$$
+
+      The terms $ac$ and $bd$ cancel; removing two copies of $bc$ from one leaves $-bc$. This picture preserves orientation, so its area is its determinant. Swapping columns reverses the edge order and changes the formula to $bc-ad$, reversing the sign.
+
+      Be careful to subtract the second product. Adding it can give the wrong area and even the wrong sign.
+
+      ### Which matrices this rule fits
+
+      Determinants belong to square matrices; a $2\times3$ matrix has no determinant. The $ad-bc$ formula works for every $2\times2$ matrix, including negative entries. Larger square matrices also have determinants, but need a different calculation.
+    worked: |
+      Let's find the area of the green image of the unit square for $A=\begin{bmatrix}3&1\\1&2\end{bmatrix}$, then check the diagonal rule.
+
+      1. **Find the enclosing area.** The far corner is $(4,3)$, so the enclosing rectangle is 4 wide and 3 high.
+         $$\text{enclosing area}=4\times3=12$$
+
+      2. **Count the outside triangles.** A triangle covers half a rectangle with the same base and height. The top and bottom triangles each have area $4\times1/2=2$. The left and right each have area $3\times1/2=1.5$.
+         $$\text{outside area}=2+2+1.5+1.5=7$$
+
+      3. **Keep the green area.** Remove the grey triangles, which are outside the transformed square.
+         $$\text{output area}=12-7=5$$
+
+      4. **Check from the entries.** The diagonal rule gives the same result, and its positive sign keeps the orientation.
+         $$\det(A)=3\times2-1\times1=5$$
+
+      5. **Swap the columns.** This keeps the same parallelogram but reverses the order of its edges, so its determinant becomes negative.
+         $$\det\!\begin{pmatrix}1&3\\2&1\end{pmatrix}=1\times1-3\times2=-5$$
+
+      The map multiplies every area by 5. The two-product formula saves us drawing and subtracting the outside pieces each time.
+
+    problems:
+      - det-calculate-basics
+      - det-calculate-self-explain
+      - det-calculate-fixed
+      - det-calculate-template
+      - det-calculate-wrong-addition
+      - det-calculate-rectangular
+      - det-calculate-robot-region
+  - id: det-zero-collapse
+    title: "Check whether information is lost"
+    explain: |
+      ### When the area disappears
+
+      The determinant also tells us when a matrix loses information. Imagine changing a square's two edges until they lie along the same line. The square is squeezed flat, so its area becomes zero.
+
+      Try $C=\begin{bmatrix}2&1\\0&0\end{bmatrix}$. The first output coordinate is $2x+y$, and the second is always zero. Its columns, $(2,0)$ and $(1,0)$, both point along the horizontal axis, so the unit square becomes a line segment.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 380" aria-label="The matrix C with rows (2, 1) and (0, 0) turns the unit square into a horizontal segment from 0 to 3. The column arrows (2, 0) and (1, 0) lie on the same line, so the output area is zero." font-family="ui-sans-serif, system-ui, sans-serif">
+      <defs><marker id="det-zero-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#3b82f6"/></marker><marker id="det-zero-orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#f59e0b"/></marker></defs>
+      <g font-size="18" fill="#171717">
+      <rect x="165" y="65" width="70" height="70" fill="#737373" fill-opacity="0.08" stroke="#737373" stroke-width="1.5" stroke-dasharray="4 3"/>
+      <text x="200" y="35" text-anchor="middle">Unit square: area 1</text>
+      <path d="M200 160 V215 M190 202 L200 215 L210 202" stroke="#171717" stroke-width="2" fill="#171717" fill-opacity="0"/>
+      <text x="220" y="194">C</text>
+      <path d="M50 290 H310" stroke="#d4d4d4"/>
+      <path d="M80 290 H260" stroke="#10b981" stroke-width="9"/>
+      <path d="M80 290 H200" stroke="#3b82f6" stroke-width="5" marker-end="url(#det-zero-blue)"/>
+      <path d="M80 290 H140" stroke="#f59e0b" stroke-width="3" marker-end="url(#det-zero-orange)"/>
+      <text x="80" y="326" text-anchor="middle">0</text><text x="140" y="326" text-anchor="middle">1</text><text x="200" y="326" text-anchor="middle">2</text><text x="260" y="326" text-anchor="middle">3</text>
+      <text x="200" y="254" text-anchor="middle">Both columns lie on one line</text>
+      <text x="200" y="365" text-anchor="middle">Output area 0</text>
+      </g></svg>
+      ```
+
+      For a $2\times2$ matrix, a zero determinant means every region collapses to a line or a point. There is then no clockwise or counterclockwise order left between the edges.
+
+      ### Can we recover the input?
+
+      An **inverse** undoes a matrix's map, recovering the original input from its output. A square matrix is **invertible** when that inverse exists.
+
+      Why does zero prevent an inverse? Different inputs have merged into the same output. For $C$, the inputs $(1,0)$ and $(0,2)$ both give $(2,0)$. An inverse given $(2,0)$ could not tell which input to return.
+
+      ### Following an output back
+
+      With nonzero area, the columns point along different lines. To recover an input, start at its output and draw a line parallel to column 2 until it meets the line of column 1. Two nonparallel lines meet exactly once, telling us how many copies of column 1 were used. Subtract that contribution from the output. The remaining vector tells us how many copies of column 2 were used. These amounts, which can be negative, are $x$ and $y$.
+
+      To see recovery without a collapse, return to $A=\begin{bmatrix}3&1\\1&2\end{bmatrix}$. The line drawn from output $(4,3)$ parallel to column 2 meets the first column's line at $(3,1)$, one copy of column 1. The remaining move is $(1,2)$, one copy of column 2, so the input is $(1,1)$.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" aria-label="Recovering input (1, 1) for the noncollapsed slanted map. From output (4, 3), an orange dashed line parallel to column 2 meets the blue column-1 line once, at (3, 1). One blue column plus one orange column reaches the output." font-family="ui-sans-serif, system-ui, sans-serif">
+      <defs><marker id="det-inverse-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#3b82f6"/></marker><marker id="det-inverse-orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#f59e0b"/></marker></defs>
+      <g font-size="18" fill="#171717">
+      <path d="M40 235 H350 M70 255 V55" stroke="#d4d4d4"/>
+      <path d="M70 235 L340 145" stroke="#3b82f6" stroke-opacity="0.4" stroke-width="1.5"/>
+      <path d="M70 235 L220 185" stroke="#3b82f6" stroke-width="3" marker-end="url(#det-inverse-blue)"/>
+      <path d="M70 235 L120 135" stroke="#f59e0b" stroke-width="3" marker-end="url(#det-inverse-orange)"/>
+      <path d="M270 85 L220 185" stroke="#f59e0b" stroke-width="3" stroke-dasharray="5 4" marker-end="url(#det-inverse-orange)"/>
+      <path d="M120 135 L270 85" stroke="#3b82f6" stroke-width="1.5" stroke-dasharray="5 4"/>
+      <circle cx="270" cy="85" r="4" fill="#171717"/>
+      <text x="237" y="57">Output (4, 3)</text><text x="228" y="210" fill="#3b82f6">(3, 1)</text>
+      <text x="57" y="121" fill="#f59e0b">(1, 2)</text><text x="24" y="258">(0, 0)</text>
+      <text x="200" y="282" text-anchor="middle">One copy of each column</text>
+      </g></svg>
+      ```
+
+      This construction works for every output when the columns are nonparallel, so a nonzero determinant guarantees an inverse.
+
+      A positive or negative nonzero determinant allows an inverse. Stretching and mirror-flipping can be undone; losing a dimension cannot.
+
+      Be careful not to judge by zero entries. The matrix $\begin{bmatrix}2&0\\0&4\end{bmatrix}$ has two zero entries, yet its determinant is 8, so it is invertible. The determinant tests the whole map.
+    worked: |
+      Let's check why $C=\begin{bmatrix}2&1\\0&0\end{bmatrix}$ cannot be undone.
+
+      1. **Calculate its determinant.** Both diagonal products are zero.
+         $$\det(C)=2\times0-1\times0=0$$
+
+      2. **Try the first input.** Multiply each row by the entries of $(1,0)$.
+         $$C\begin{bmatrix}1\\0\end{bmatrix}=\begin{bmatrix}2\\0\end{bmatrix}$$
+
+      3. **Try a different input.** The input $(0,2)$ reaches exactly the same output.
+         $$C\begin{bmatrix}0\\2\end{bmatrix}=\begin{bmatrix}2\\0\end{bmatrix}$$
+
+      The vanished area reflects lost information: the output cannot identify one unique input, so $C$ has no inverse.
+    problems:
+      - det-zero-basics
+      - det-zero-self-explain
+      - det-zero-nonzero-entries
+      - det-zero-missing-entry-template
+      - det-zero-entry-mistake
+      - det-zero-negative-inverse
+      - det-zero-robot-inputs
+final: det-explain-map
+summary: |
+  - A determinant is the signed area scale of a $2\times2$ matrix: $|\det(A)|$ multiplies area, and a negative sign reverses orientation.
+  - For $A=\begin{bmatrix}a&b\\c&d\end{bmatrix}$, the determinant is $\det(A)=ad-bc$. This shortcut applies to $2\times2$ matrices, while determinants themselves are defined for square matrices of any size.
+  - A zero determinant collapses a two-dimensional picture to a line or a point, so different inputs can share an output. A square matrix is invertible exactly when its determinant is nonzero.
+
+  **Next:** We'll look for directions a matrix only stretches, then describe a map as turns and stretches.

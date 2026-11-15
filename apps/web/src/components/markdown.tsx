@@ -119,14 +119,23 @@ export const Markdown = React.memo(function Markdown({
   inline = false,
   className,
   wrapDisplayMath = false,
+  renderCodeBlock,
 }: {
   children: string;
   inline?: boolean;
   className?: string;
   wrapDisplayMath?: boolean;
+  renderCodeBlock?: (block: { language: string; source: string; meta?: string }) => ReactNode;
 }) {
   const markdownComponents: Components = {
-    code({ className, children: codeChildren, node: _node, ...props }) {
+    code({ className, children: codeChildren, node, ...props }) {
+      const language = className?.match(/\blanguage-(\S+)/)?.[1] ?? '';
+      const custom = renderCodeBlock?.({
+        language,
+        source: plainText(codeChildren).replace(/\n$/, ''),
+        meta: typeof node?.data?.meta === 'string' ? node.data.meta : undefined,
+      });
+      if (custom !== undefined) return <>{custom}</>;
       if (/\blanguage-svg\b/.test(className ?? '')) {
         const svg = plainText(codeChildren).replace(/\n$/, '');
         const label = svg.match(/\baria-label\s*=\s*["']([^"']+)["']/)?.[1] ?? '';

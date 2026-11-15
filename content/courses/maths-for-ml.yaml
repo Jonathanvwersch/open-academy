@@ -5,13 +5,14 @@ subject: mathematics
 units:
   - title: Linear algebra
     project: pca-numpy
-    intro: "Vectors, dot products and matrices: how models store and combine numbers, plus eigenvalues and the SVD."
+    intro: "Vectors, dot products and matrices: how models store and combine numbers, how determinants measure area changes, plus eigenvalues and the SVD."
     papers:
       - pca-tutorial
     concepts:
       - vectors
       - dot-product
       - matrices
+      - determinants
       - eigen-svd
   - title: Calculus
     project: gradient-check

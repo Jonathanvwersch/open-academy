@@ -144,6 +144,24 @@ Every step whose idea is spatial (directions, slopes, surfaces, arrows, splits, 
 - hex colours from the palette only: text `#171717`, muted `#737373`, lines `#d4d4d4`, green `#10b981`, amber `#f59e0b`, blue `#3b82f6`, red `#ef4444`. Use one colour per meaning, consistently across the lesson (e.g. gradient always blue, chosen step always amber, which the text calls orange);
 - compute coordinates, don't eyeball them: arrows must have the stated direction and relative lengths, and contour lines must be the stated function's level sets.
 
+### Motion, when it teaches something
+
+Consider a short interactive animation when the learner needs to follow a change: an arrow
+moving through a matrix, a tangent sliding along a curve, or repeated updates approaching a
+solution. Choose one precise moment where seeing the movement helps; a static diagram is
+better when it already makes the point. Do not animate every paragraph or add motion as decoration.
+
+Introduce the input, the change, and what to watch in the surrounding prose. Keep the running
+example and colors consistent with the static diagram. The learner controls playback and
+can pause, replay, or scrub with a keyboard; nothing autoplays. Honor reduced-motion preferences
+with a complete static diagram, and keep the lesson understandable without playback.
+
+Use only a registered visual documented in `docs/CONTENT_FORMAT.md`. Annotate its existing
+`svg` fence with the allowlisted metadata and retain the full SVG body as the fallback.
+Do not embed scripts, arbitrary HTML, remote video, or executable expressions. A new scene
+requires a reviewed code-native component, mathematical checks, desktop/mobile screenshots,
+and reduced-motion verification. Include the visual in the normal cold-reader review.
+
 ## 5. Problems
 
 - Each step: a concept MC first (marked `role: basics` in content but labelled like every other question), then at least five problems across difficulties 1, 2 and 3.
