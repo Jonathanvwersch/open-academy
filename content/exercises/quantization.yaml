@@ -1,0 +1,772 @@
+concept: quantization
+exercises:
+  - id: qz-memory-speed-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What changes when a model's weights are quantised from 16 bits to INT8?
+    options:
+      - id: a
+        text: The model keeps all its weights, and each one is stored in 1 byte in place of 2.
+        correct: true
+        feedback: Every weight is still there. Each takes half the bytes, so the weights take half the memory.
+      - id: b
+        text: The model drops half of its weights, so it has half as many parameters as before.
+        correct: false
+        category: misunderstood_definition
+        feedback: Quantisation keeps every weight. It stores each one with fewer bits.
+      - id: c
+        text: The model's maths becomes twice as fast, so reading the prompt takes half as long.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Storing weights in INT8 halves the bytes read. Faster maths needs the maths itself to run in 8 bits.
+      - id: d
+        text: The model gives exactly the same answers, because 8 bits can hold every 16-bit value.
+        correct: false
+        category: misunderstood_definition
+        feedback: 8 bits hold far fewer values than 16 bits, so each weight is rounded and answers can change.
+    solution: Every weight is kept, and each is stored in 1 byte in place of 2, so the weights take half the memory.
+  - id: qzp-memory-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example, why is the INT4 decode speed about four times the 16-bit speed of about 209 tokens per second?
+    options:
+      - id: a
+        text: The INT4 weights take 4 GB, a quarter of 16 GB, and each token needs one full read of them.
+        correct: true
+        feedback: Decode time here is the bytes read divided by the bandwidth, so a quarter of the bytes gives four times the tokens per second.
+      - id: b
+        text: INT4 maths runs four times faster than 16-bit maths on the H100's cores.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The example never counts maths speed. It divides the bytes of weights by the memory bandwidth.
+      - id: c
+        text: The GPU's memory bandwidth is four times higher when it reads 4-bit numbers.
+        correct: false
+        category: misunderstood_definition
+        feedback: The bandwidth stays at 3.35 TB/s. The GPU reads fewer bytes in the same time per byte.
+      - id: d
+        text: The INT4 model has a quarter as many layers, so each token passes through less of it.
+        correct: false
+        category: misunderstood_definition
+        feedback: The model keeps all its layers and weights. Only the bytes per weight change.
+    solution: Each decoded token needs one full read of the weights, and INT4 weights take 4 GB in place of 16 GB, so the time per token is a quarter and the speed four times higher.
+  - id: qzp-memory-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A model has {{=n}} billion parameters. How many GB do its weights take when stored as INT4? Use GB = $10^9$ bytes."
+    params:
+      n:
+        min: 2
+        max: 14
+        step: 2
+    answer_expr: n * 0.5
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer_expr: n * 2
+        category: math_error
+        feedback: That's the size at 16 bits, 2 bytes per weight. INT4 uses half a byte per weight.
+      - answer_expr: n * 4
+        category: misunderstood_definition
+        feedback: INT4 uses 4 bits per weight, which is half a byte. Multiply by 0.5 bytes.
+    solution: "INT4 uses $4/8=0.5$ bytes per weight, so the weights take {{=n}} × $10^9$ × 0.5 = {{= n * 0.5 }} GB."
+  - id: qzp-decode-time-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A model's weights take {{=g}} GB at 16 bits. It is quantised to INT8 and served on an H100 with 3.35 TB/s of bandwidth, one request at a time. Counting only the reading of the weights, what is the shortest possible time per decoded token, in milliseconds?"
+    params:
+      g:
+        min: 4
+        max: 40
+        step: 4
+    answer_expr: g / 2 / 3.35
+    tolerance:
+      rel: 0.02
+    common_wrong:
+      - answer_expr: g / 3.35
+        category: math_error
+        feedback: That's the 16-bit time. INT8 weights take half the bytes, so halve the size first.
+      - answer_expr: g / 4 / 3.35
+        category: math_error
+        feedback: That's a quarter of the bytes, which is INT4. INT8 uses 1 byte, half of the 2 bytes at 16 bits.
+    solution: "At INT8 the weights take {{= g / 2 }} GB. Dividing by 3.35 TB/s gives {{= g / 2 }} × $10^9$ / 3.35 × $10^{12}$ ≈ {{= g / 2 / 3.35 }} ms per token."
+  - id: qzp-prefill-speed
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A team stores Llama 3 8B's weights as INT8. The GPU turns each weight back into a 16-bit number before multiplying. Replies now come out faster, but long prompts take as long to read as before. Why?
+    options:
+      - id: a
+        text: Prefill time is set by the maths speed, which is still 16-bit, while decode time is set by reading the weights, which halved.
+        correct: true
+        feedback: Prefill does many multiplications per weight it reads, so fewer bytes don't help it. Decode is limited by reading.
+      - id: b
+        text: Prefill reads the weights once per prompt token, so the saving is spread too thin to notice.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Prefill handles all the prompt tokens together and does many multiplications per weight read. Its limit is the maths speed.
+      - id: c
+        text: INT8 weights must be read twice during prefill, which cancels the saving from the smaller size.
+        correct: false
+        category: misunderstood_definition
+        feedback: Each weight is read once and turned back into 16 bits inside the chip. Nothing is read twice.
+      - id: d
+        text: Long prompts use the activations, and only activations decide prefill time, so the weights never matter.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Prefill multiplies activations by the weights. Its time is set by how fast that maths runs.
+    solution: Prefill does many multiplications for each weight it reads, so it is limited by the GPU's maths speed, which is still 16-bit. Decode reads every weight per token, so halving the bytes speeds it up.
+  - id: qzp-fit-gpu
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A larger model has 70 billion parameters. Its weights are stored as INT4 on one H100 with 80 GB of memory. How many GB of memory are left for everything else? Use GB = $10^9$ bytes.
+    answer: 45
+    tolerance:
+      abs: 0.01
+    common_wrong:
+      - answer: 10
+        category: math_error
+        feedback: That uses 1 byte per weight, which is INT8. INT4 uses half a byte.
+      - answer: -60
+        category: math_error
+        feedback: That uses 2 bytes per weight, which is 16 bits. INT4 uses half a byte, so the weights take 35 GB.
+      - answer: 35
+        category: incomplete_explanation
+        feedback: 35 GB is the size of the weights. Subtract it from the 80 GB to find what's left.
+    solution: 'The weights take $70\times10^9\times0.5=35$ GB, so $80-35=45$ GB is left. At 16 bits the weights alone, 140 GB, would not fit.'
+  - id: qzp-upper-bound
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: 'A colleague says: "INT4 weights are a quarter of the size, so our Llama 3 8B chat assistant on one H100 will decode at about 840 tokens per second in production." What is wrong with this?'
+    options:
+      - id: a
+        text: 840 tokens per second is a best case from reading the weights alone, and real systems read other data and never reach full bandwidth.
+        correct: true
+        feedback: The estimate divides weight bytes by peak bandwidth. It is an upper limit, and the real speed is lower.
+      - id: b
+        text: INT4 weights are half the size of 16-bit weights, so the right figure is about 420 tokens per second.
+        correct: false
+        category: math_error
+        feedback: INT4 uses half a byte and 16 bits use 2 bytes, so INT4 is a quarter of the size.
+      - id: c
+        text: Decode speed is set by the maths speed, so quantising the weights alone gives no speed-up at all.
+        correct: false
+        category: incorrect_reasoning
+        feedback: With one request at a time, decode is limited by reading the weights, so smaller weights do help.
+      - id: d
+        text: INT4 stores 16 different values, so the speed-up should be 16 times, about 3,300 tokens per second.
+        correct: false
+        category: misunderstood_definition
+        feedback: The number of values doesn't set the speed. The bytes read per token do, and those fall by four times.
+    solution: The figure of about 840 tokens per second comes from dividing 4 GB of weights by the full 3.35 TB/s. It is an upper limit. Real decoding also reads other data and doesn't use the full bandwidth, so it is slower.
+  - id: qz-int8-scale-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: In symmetric INT8 quantisation, how is the scale $s$ of a group of numbers chosen?
+    options:
+      - id: a
+        text: It is the largest size in the group divided by 127, so the largest number lands on 127.
+        correct: true
+        feedback: With $s=\max|x|/127$, every number in the group fits in $[-127,127]$ after dividing by $s$.
+      - id: b
+        text: It is the average of the group divided by 127, so a typical number lands on 127.
+        correct: false
+        category: misunderstood_definition
+        feedback: With the average, larger numbers would fall outside $[-127,127]$ and be clamped. The scale uses the largest size.
+      - id: c
+        text: It is 127 divided by the largest size in the group, so the scale grows as the numbers shrink.
+        correct: false
+        category: math_error
+        feedback: That is upside down. The scale is the spacing between storable values, $\max|x|/127$.
+      - id: d
+        text: It is always 1, so each number is simply rounded to the nearest whole number.
+        correct: false
+        category: misunderstood_definition
+        feedback: Weights are mostly small, so rounding them directly would make most of them 0. The scale stretches them over the range.
+    solution: The scale is $s=\max|x|/127$, the largest size in the group divided by 127.
+  - id: qzp-int8-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example, why does the weight $0.006$ come back as $0.01$?
+    options:
+      - id: a
+        text: $0.006/0.01=0.6$ rounds to the integer 1, and dequantising gives $1\times0.01=0.01$.
+        correct: true
+        feedback: The storable values are steps of $0.01$, and $0.01$ is the nearest one to $0.006$.
+      - id: b
+        text: The integer was clamped up to 1, because INT8 cannot store 0.
+        correct: false
+        category: misunderstood_definition
+        feedback: INT8 can store 0. Clamping only affects values outside $[-127,127]$, and $0.6$ is inside.
+      - id: c
+        text: The scale was chosen from $0.006$, so it comes back with the biggest error.
+        correct: false
+        category: misunderstood_definition
+        feedback: The scale came from the largest size, $1.27$. The value $0.006$ just rounds to its nearest step.
+      - id: d
+        text: Dequantising adds half a step, $0.005$, to every value, so $0.006$ rises to about $0.01$.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Dequantising only multiplies the integer by $s$. Half a step is the largest possible rounding error.
+    solution: Dividing by the scale gives $0.006/0.01=0.6$, which rounds to 1. Dequantising gives $1\times0.01=0.01$, the nearest step to $0.006$.
+  - id: qzp-scale-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "The largest weight in a matrix, by size, is {{=m}}. What INT8 scale $s$ should the matrix use? Give 4 significant figures."
+    params:
+      m:
+        min: 1
+        max: 10
+        step: 1
+    answer_expr: m / 127
+    tolerance:
+      rel: 0.005
+    common_wrong:
+      - answer_expr: 127 / m
+        category: math_error
+        feedback: That is upside down. Divide the largest size by 127.
+      - answer_expr: m / 255
+        category: misapplied_technique
+        feedback: Symmetric INT8 uses 127 on each side of 0, so divide by 127.
+    solution: '$s={{=m}}/127\approx{{= m / 127 }}$.'
+  - id: qzp-quantise-value-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A weight matrix uses the INT8 scale $s=0.03$. Which integer $q$ is stored for the weight $x={{= a / 100 }}$?"
+    params:
+      a:
+        min: 11
+        max: 371
+        step: 12
+    answer_expr: round(a / 3)
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer_expr: floor(a / 3)
+        category: math_error
+        feedback: That drops the fraction. Round to the nearest whole number, which here rounds up.
+      - answer_expr: round(a / 100 * 0.03)
+        category: math_error
+        feedback: That multiplies by the scale. To quantise, divide $x$ by $s$, and multiply only when you dequantise.
+    solution: '$x/s={{= a / 100 }}/0.03\approx{{= a / 3 }}$, which rounds to $q={{= round(a / 3) }}$. It is inside $[-127,127]$, so clamping changes nothing.'
+  - id: qzp-dequant-error
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt: A group of weights has largest size $2.54$. One weight in it is $x=0.777$. After INT8 quantisation and dequantisation, how big is the error $|x-\hat x|$?
+    answer: 0.003
+    tolerance:
+      abs: 0.0001
+    common_wrong:
+      - answer: 0.017
+        category: math_error
+        feedback: That comes from dropping the fraction of $38.85$ to get 38. Round to the nearest integer, 39.
+      - answer: 0.01
+        category: incorrect_reasoning
+        feedback: That is half a step, $s/2$, which is the largest possible error. Work out this weight's actual error.
+    solution: The scale is $s=2.54/127=0.02$. Then $0.777/0.02=38.85$, which rounds to $q=39$. Dequantising gives $\hat x=39\times0.02=0.78$, so the error is $|0.777-0.78|=0.003$.
+  - id: qzp-outlier-effect
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: Two rows of a weight matrix each get their own INT8 scale. Row A's largest size is $0.5$. Row B is the same except for one outlier of $50$. Both rows hold a weight of $0.2$. What happens to that weight in each row?
+    options:
+      - id: a
+        text: In row A it comes back within about $0.002$ of $0.2$. In row B it comes back as about $0.39$.
+        correct: true
+        feedback: Row B's scale is $50/127\approx0.39$, so $0.2/0.39\approx0.51$ rounds to 1 and dequantises to about $0.39$.
+      - id: b
+        text: It comes back with the same small error in both rows, because both rows are stored as INT8.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The error depends on the scale. Row B's outlier makes its scale 100 times bigger.
+      - id: c
+        text: In row B it is clamped to 127, because the outlier fills the whole range.
+        correct: false
+        category: misunderstood_definition
+        feedback: Clamping affects values beyond the range. Here $0.2/s$ is small, about $0.51$.
+      - id: d
+        text: Row A has the bigger error, because its smaller scale gives the weight fewer steps to land on.
+        correct: false
+        category: incorrect_reasoning
+        feedback: A smaller scale means finer steps, so the error, at most $s/2$, is smaller.
+    solution: Row A has $s=0.5/127\approx0.0039$, so the error is at most about $0.002$. Row B has $s=50/127\approx0.394$, so $0.2/s\approx0.51$ rounds to 1 and comes back as about $0.394$, an error of about $0.19$.
+  - id: qzp-code-bug
+    dimension: implementation
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: |
+      This PyTorch code is meant to quantise `x` to INT8, but every value of `q` comes out as 0. What is the bug?
+
+      ```python
+      import torch
+
+      x = torch.tensor([1.27, -0.514, 0.006, 0.333])
+      s = x.abs().max() / 127
+      q = torch.clamp(torch.round(x * s), -127, 127).to(torch.int8)
+      ```
+    options:
+      - id: a
+        text: It multiplies by the scale where it should divide, so every value becomes tiny and rounds to 0.
+        correct: true
+        feedback: Here $s=0.01$, so $x\cdot s$ is at most $0.0127$. Quantising needs $x/s$.
+      - id: b
+        text: The clamp range is wrong and should be $[-128,127]$, which is why the values vanish.
+        correct: false
+        category: implementation_error
+        feedback: Clamping to $[-127,127]$ is the symmetric choice and doesn't change small values. The problem is earlier.
+      - id: c
+        text: The scale should use the smallest size, $0.006$, so that small weights are kept.
+        correct: false
+        category: misunderstood_definition
+        feedback: With that scale most values would be clamped. The scale uses the largest size.
+      - id: d
+        text: Converting to `torch.int8` drops the fractions, so the rounding has to happen after the conversion.
+        correct: false
+        category: implementation_error
+        feedback: Rounding before converting is right. The values were already near 0 before the conversion.
+    solution: The line should use `torch.round(x / s)`. Multiplying by $s=0.01$ makes every value at most $0.0127$ in size, and those all round to 0.
+  - id: qz-formats-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What is weight-only quantisation?
+    options:
+      - id: a
+        text: The weights are stored in a low-bit format, and the activations and the maths stay at 16 bits.
+        correct: true
+        feedback: The GPU reads small weights, turns them back into 16-bit numbers inside the chip, and multiplies at 16 bits.
+      - id: b
+        text: The weights and the activations are both stored in 8 bits, and the GPU does 8-bit maths.
+        correct: false
+        category: misunderstood_definition
+        feedback: That is weight-and-activation quantisation. Weight-only leaves the activations at 16 bits.
+      - id: c
+        text: The activations are stored in a low-bit format, and the weights stay at 16 bits.
+        correct: false
+        category: misunderstood_definition
+        feedback: That is the other way round. Weight-only quantisation shrinks the weights.
+      - id: d
+        text: The model is cut down to keep only its most important weights, and the rest are removed.
+        correct: false
+        category: misunderstood_definition
+        feedback: Quantisation keeps every weight and stores each one with fewer bits.
+    solution: The weights are stored in a low-bit format such as INT8 or INT4, while the activations and the maths stay at 16 bits.
+  - id: qzp-formats-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example, why does the prefill take 16 ms with INT4 weight-only quantisation and only 8 ms with FP8?
+    options:
+      - id: a
+        text: With INT4 weight-only, the maths still runs at the 16-bit rate, and FP8 maths runs at twice that rate.
+        correct: true
+        feedback: Prefill time is the FLOPs divided by the maths rate, and the FLOPs are the same for both.
+      - id: b
+        text: INT4 weights are larger than FP8 weights, so the GPU takes longer to read them.
+        correct: false
+        category: math_error
+        feedback: INT4 weights are smaller, half a byte each. Prefill time came from the maths rate.
+      - id: c
+        text: INT4 weight-only quantisation does twice as many FLOPs, because each weight is used twice.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Both cases count the same $1.6\times10^{13}$ FLOPs. Only the rate differs.
+      - id: d
+        text: The prefill reads all the weights once for every prompt token, and INT4 needs more reads.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The example times the prefill from the FLOPs and the maths rate, with no reading time.
+    solution: Both prefills do $1.6\times10^{13}$ FLOPs. INT4 weight-only still does 16-bit maths at about 1,000 TFLOP/s, so it takes 16 ms. FP8 maths runs at about 2,000 TFLOP/s, so it takes 8 ms.
+  - id: qzp-bf16-range
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: Some activations in a model reach values of about 100,000. Which 2-byte format can store them without overflowing?
+    options:
+      - id: a
+        text: BF16, because it has as many exponent bits as FP32 and so covers the same range.
+        correct: true
+        feedback: BF16's 8 exponent bits reach about $3.4\times10^{38}$, far above 100,000.
+      - id: b
+        text: FP16, because its 10 mantissa bits give it the most precise steps.
+        correct: false
+        category: misunderstood_definition
+        feedback: Mantissa bits set the step size, and the exponent bits set the range. FP16 tops out at 65,504.
+      - id: c
+        text: FP8 E4M3, because a smaller format leaves more room for large numbers.
+        correct: false
+        category: misunderstood_definition
+        feedback: FP8 uses 1 byte, and E4M3 reaches only 448.
+      - id: d
+        text: Either FP16 or BF16, because every 2-byte format covers the same range.
+        correct: false
+        category: incorrect_reasoning
+        feedback: They split their 16 bits differently. FP16 has 5 exponent bits and reaches 65,504, while BF16 has 8.
+    solution: BF16 has 8 exponent bits, like FP32, so it reaches about $3.4\times10^{38}$. FP16 has only 5 exponent bits and overflows above 65,504.
+  - id: qzp-prefill-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A model with {{=n}} billion parameters uses FP8 weight-and-activation quantisation on a GPU that does about 2,000 TFLOP/s of FP8 maths. It reads a prompt of 2,000 tokens. Counting only the weight multiplications, how many milliseconds does the prefill take?"
+    params:
+      n:
+        min: 1
+        max: 15
+        step: 1
+    answer_expr: 2 * n
+    tolerance:
+      rel: 0.01
+    common_wrong:
+      - answer_expr: n
+        category: math_error
+        feedback: Each weight does one multiply-add per token, which is 2 FLOPs.
+      - answer_expr: 4 * n
+        category: misapplied_technique
+        feedback: That uses the 16-bit rate of 1,000 TFLOP/s. FP8 maths runs at about 2,000 TFLOP/s.
+    solution: 'The prefill does $2\times{{=n}}\times10^9\times2000={{= 4 * n }}\times10^{12}$ FLOPs. At $2000\times10^{12}$ FLOP/s that takes {{= 2 * n }} ms.'
+  - id: qzp-mode-choice
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A service summarises long documents. Prompts are about 20,000 tokens and replies about 20 tokens, so most of the time goes on prefill. Which quantisation is most likely to cut the time per request?
+    options:
+      - id: a
+        text: FP8 weight-and-activation quantisation, because faster 8-bit maths speeds up a prefill limited by maths.
+        correct: true
+        feedback: Prefill is limited by the maths rate, and FP8 maths runs at about twice the 16-bit rate on the H100.
+      - id: b
+        text: INT4 weight-only quantisation, because it makes the weights the smallest of any choice.
+        correct: false
+        category: misapplied_technique
+        feedback: Smaller weights speed up reading. Prefill here is limited by maths, which stays 16-bit with weight-only.
+      - id: c
+        text: INT8 weight-only quantisation, because 8-bit weights are read faster during prefill.
+        correct: false
+        category: misapplied_technique
+        feedback: Weight-only keeps 16-bit maths, so a prefill limited by maths gains little.
+      - id: d
+        text: None, because quantisation only ever speeds up decode and never prefill.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Weight-and-activation quantisation lets the GPU use its faster 8-bit maths, which helps prefill.
+    solution: Prefill is limited by maths speed. FP8 weight-and-activation quantisation lets the GPU do 8-bit maths at about twice the 16-bit rate, so it cuts the prefill time. Weight-only formats keep 16-bit maths.
+  - id: qzp-calibration
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: In weight-and-activation quantisation, what is calibration data used for?
+    options:
+      - id: a
+        text: It is a small sample of text passed through the model to record typical activation sizes and choose their scales in advance.
+        correct: true
+        feedback: Activations depend on the input, so their scales come from running sample text or from measuring as the model runs.
+      - id: b
+        text: It is extra training text used to retrain the model so that it works with fewer bits.
+        correct: false
+        category: misunderstood_definition
+        feedback: Calibration doesn't change the weights by training. It only records activation sizes.
+      - id: c
+        text: It is the held-out text used at the end to measure how much quality the model lost.
+        correct: false
+        category: misunderstood_definition
+        feedback: Calibration chooses scales. Quality should be measured on different text that wasn't used for that.
+      - id: d
+        text: It is a list of the weights' largest sizes, used to choose the weight scales.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Weight scales can be read straight from the weights. Calibration text is needed for activations, which change with each input.
+    solution: Calibration data is a small sample of text passed through the model to record typical activation values, so that activation scales can be chosen in advance.
+  - id: qzp-weight-only-mistake
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: 'An engineer says: "Our big-batch job is limited by the GPU''s maths speed. We switched to INT4 weight-only quantisation, so it will run about four times faster." What is wrong?'
+    options:
+      - id: a
+        text: Weight-only quantisation keeps 16-bit maths, so a job limited by maths speed gains little.
+        correct: true
+        feedback: Smaller weights cut reading time. A maths-limited job needs faster maths, such as FP8 weight-and-activation quantisation.
+      - id: b
+        text: Nothing; INT4 weights are a quarter of the size, so every job runs four times faster.
+        correct: false
+        category: incorrect_reasoning
+        feedback: A quarter of the bytes helps only when reading the weights is what takes the time.
+      - id: c
+        text: The speed-up should be two times, because INT4 is half the size of INT8.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The comparison should be with the 16-bit model, and the bigger problem is that maths speed doesn't change.
+      - id: d
+        text: INT4 makes the job four times slower, because 4-bit maths is slower than 16-bit maths.
+        correct: false
+        category: misunderstood_definition
+        feedback: With weight-only quantisation the maths is still 16-bit, so its speed stays about the same.
+    solution: The job is limited by maths speed, and weight-only quantisation still does 16-bit maths. Its smaller weights only cut the reading time, so the job gains little.
+  - id: qz-quality-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: How do we check whether quantisation made a model worse?
+    options:
+      - id: a
+        text: We run the quantised model and the 16-bit model on the same held-out text and tasks, and compare their loss and scores.
+        correct: true
+        feedback: Comparing both models on the same tests shows how much quality the rounding cost.
+      - id: b
+        text: We measure the rounding error of each weight, and small errors mean the answers are unchanged.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Tiny errors add up through all the layers, and they can't tell us on their own whether the answers changed.
+      - id: c
+        text: We run only the quantised model on a few prompts and check that its replies read fluently.
+        correct: false
+        category: incomplete_explanation
+        feedback: Fluent replies can still be wrong more often. We need the same tests on both models, with enough examples.
+      - id: d
+        text: We compare the memory and tokens per second of the two models, and a faster model has kept its quality.
+        correct: false
+        category: misunderstood_definition
+        feedback: Memory and speed measure the savings. Quality needs its own tests, such as loss and task scores.
+    solution: Run both models on the same held-out text and the same real tasks, then compare the loss, or perplexity, and the task scores.
+  - id: qzp-quality-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example, the loss rose by only $0.08$. Why did we still decide the INT4 model isn't good enough for users who ask maths questions?
+    options:
+      - id: a
+        text: Its maths accuracy fell from 80% to 72%, and an average loss over ordinary text can hide a drop in one skill.
+        correct: true
+        feedback: The task test showed 40 fewer problems solved out of 500, which the small change in loss didn't reveal.
+      - id: b
+        text: A rise in loss of $0.08$ always means the model is unusable, whatever the task scores show.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The decision came from the maths score. A small rise in loss alone can be acceptable.
+      - id: c
+        text: Its perplexity rose from 7.39 to 80, so it became far less sure of every token.
+        correct: false
+        category: math_error
+        feedback: The perplexity rose from about 7.39 to about 8.00, a rise of about 8%.
+      - id: d
+        text: INT4 models can never be used for maths, because 4 bits can't store numbers like 80.
+        correct: false
+        category: misunderstood_definition
+        feedback: The bits store weights through a scale. The decision came from measuring the maths score.
+    solution: The maths test showed accuracy falling from 80% to 72%. The loss is an average over ordinary text, so it barely moved even though one skill got clearly worse.
+  - id: qzp-perplexity-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A model's average cross-entropy loss on held-out text is {{=L}}, using natural logs. What is its perplexity? Give 3 significant figures."
+    params:
+      L:
+        min: 1.5
+        max: 3
+        step: 0.25
+    answer_expr: exp(L)
+    tolerance:
+      rel: 0.01
+    common_wrong:
+      - answer_expr: exp(1) * L
+        category: math_error
+        feedback: Perplexity raises $e$ to the power of the loss. That multiplies them.
+      - answer_expr: 10 ^ L
+        category: misunderstood_definition
+        feedback: The loss uses natural logs, so perplexity is $e^{\text{loss}}$, with base $e$.
+    solution: 'Perplexity is $e^{ {{=L}} }\approx{{= exp(L) }}$.'
+  - id: qzp-held-out
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A team chooses its activation scales by running a set of news articles through the model. Then it measures the quantised model's loss on those same articles. What is the problem with this test?
+    options:
+      - id: a
+        text: The text isn't held out, so the test is easier than real use and can hide quality loss.
+        correct: true
+        feedback: The scales were chosen to suit those articles. Quality should be measured on text not used to choose them.
+      - id: b
+        text: News articles are too short to produce a loss, so the measurement can't be made.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Loss can be computed on any text, one token at a time. The problem is which text was used.
+      - id: c
+        text: Loss can't be measured on a quantised model, only on the 16-bit model.
+        correct: false
+        category: misunderstood_definition
+        feedback: The quantised model gives next-token probabilities too, so its loss can be measured.
+      - id: d
+        text: The test should use perplexity, because loss can't show a change in quality.
+        correct: false
+        category: misunderstood_definition
+        feedback: Perplexity is $e^{\text{loss}}$, so the two show the same change. The problem is the reused text.
+    solution: The articles were used to choose the scales, so they aren't held out. A test on them is easier than real use, so it should use different text.
+  - id: qzp-choose-eval
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A quantised assistant will mostly answer questions about long German legal contracts. Which test is best for catching quality loss before it ships?
+    options:
+      - id: a
+        text: Run both models on held-out German contract questions with long prompts and the same settings, and compare their scores.
+        correct: true
+        feedback: Testing the skills users rely on, against the 16-bit model, catches damage an average can hide.
+      - id: b
+        text: Compare both models' loss on held-out English news articles, because loss covers every skill.
+        correct: false
+        category: incorrect_reasoning
+        feedback: An average over ordinary English text can barely move while a rarer skill, like long German contracts, gets worse.
+      - id: c
+        text: Check that the largest rounding error in any weight is below half a step.
+        correct: false
+        category: misapplied_technique
+        feedback: Every weight meets that limit by design. It can't tell us whether the answers changed.
+      - id: d
+        text: Run the quantised model on a few contracts and check that its German reads fluently.
+        correct: false
+        category: incomplete_explanation
+        feedback: A few fluent replies can still hide more wrong answers. Compare both models on enough examples.
+    solution: Test the skill users need. Run the 16-bit and quantised models on the same held-out German contract questions with long prompts and the same settings, using enough examples, and compare their scores.
+  - id: qzp-loss-hides
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: After INT8 quantisation, a coding assistant's held-out loss rises from $1.90$ to $1.91$. On a test of 200 coding tasks, the 16-bit model passes 150 and the quantised model passes 120. What should the team conclude?
+    options:
+      - id: a
+        text: Coding got clearly worse, from 75% to 60%, even though the loss barely moved, so the model needs fixing before it serves coders.
+        correct: true
+        feedback: Coding depends on a small share of tokens in ordinary text, so the average loss hides the drop. Finer scales or 16-bit sensitive layers may help.
+      - id: b
+        text: The loss is the most reliable measure, and it barely moved, so the model is ready to ship.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The loss is an average over ordinary text. The coding test measures the skill these users need, and it fell sharply.
+      - id: c
+        text: A loss rise of $0.01$ multiplies the perplexity by 10, which explains the drop in coding.
+        correct: false
+        category: math_error
+        feedback: Perplexity grows by a factor of $e^{0.01}\approx1.01$, about 1%.
+      - id: d
+        text: The coding test must be broken, because quantisation can't hurt one skill without raising the loss.
+        correct: false
+        category: misunderstood_definition
+        feedback: It can. A skill that few tokens depend on can get worse while the average loss barely changes.
+    solution: The pass rate fell from $150/200=75\%$ to $120/200=60\%$. The loss barely moved because it averages over ordinary text. The team should try finer scales or keep sensitive layers at 16 bits, and test again before serving coders.
+  - id: qzp-perplexity-ratio-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "After quantisation, a model's held-out loss rises from 2 to {{= 2 + d }}, using natural logs. By what factor does its perplexity grow? Give 3 decimal places."
+    params:
+      d:
+        min: 0.02
+        max: 0.2
+        step: 0.02
+    answer_expr: exp(d)
+    tolerance:
+      abs: 0.002
+    common_wrong:
+      - answer_expr: (2 + d) / 2
+        category: misapplied_technique
+        feedback: That is the ratio of the losses. Perplexity is $e^{\text{loss}}$, so divide the two perplexities.
+      - answer_expr: exp(2 + d)
+        category: incomplete_explanation
+        feedback: That is the new perplexity. Divide it by the old perplexity, $e^2$, to get the factor.
+    solution: 'The factor is $e^{ {{= 2 + d }} }/e^{2}=e^{ {{=d}} }\approx{{= exp(d) }}$.'
+  - id: qz-explain
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 3
+    est_minutes: 5
+    prompt: "You want to serve Llama 3 8B with INT8 weights. Explain how to quantise one weight matrix to INT8 with a single scale, why this makes decoding faster, and how you would check that the quantised model is still good enough."
+    rubric:
+      - id: scale
+        criterion: Set the scale to the largest size in the matrix divided by 127.
+        weight: 1
+        required: true
+      - id: round
+        criterion: Store each weight as its value divided by the scale, rounded and clamped to $[-127,127]$, and dequantise by multiplying the integer by the scale.
+        weight: 1
+        required: true
+      - id: speed
+        criterion: Decoding reads every weight for each token, so 1 byte per weight in place of 2 halves the bytes read and makes decode faster.
+        weight: 1
+        required: true
+      - id: quality
+        criterion: Compare the quantised and 16-bit models on held-out loss or perplexity and on real tasks users care about.
+        weight: 1
+        required: true
+    exemplar: "Find the largest weight size in the matrix and divide it by 127 to get the scale $s$. Divide each weight by $s$, round it and clamp it to $[-127,127]$; to use it, multiply the integer by $s$. Decoding reads every weight from memory for each token, so storing 1 byte per weight in place of 2 halves the bytes read and makes each token faster. To check quality, run both the 16-bit and INT8 models on the same held-out text and compare their loss or perplexity, and also compare their scores on real tasks the users care about."
