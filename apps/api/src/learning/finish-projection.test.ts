@@ -1,0 +1,159 @@
+import { describe, expect, it } from 'vitest';
+import { type ProjectionCourse, projectCourseFinishes } from './finish-projection.js';
+
+const today = '2026-01-01';
+
+function topics(prefix: string, count: number): ProjectionCourse['topics'] {
+  return Array.from({ length: count }, (_, index) => ({
+    conceptId: `${prefix}-${index + 1}`,
+    done: false,
+    hardPrereqIds: [],
+  }));
+}
+
+describe('projectCourseFinishes', () => {
+  it('balances independent 10-topic courses at 40 XP per day', () => {
+    const result = projectCourseFinishes({
+      courses: [
+        { id: 'a', topics: topics('a', 10) },
+        { id: 'b', topics: topics('b', 10) },
+      ],
+      dailyXp: 40,
+      today,
+    });
+
+    expect(result.byCourse.get('a')).toBe('2026-01-20');
+    expect(result.byCourse.get('b')).toBe('2026-01-21');
+    expect(result.overall).toBe('2026-01-21');
+  });
+
+  it('waits for a prerequisite topic in another active course', () => {
+    const alone = projectCourseFinishes({
+      courses: [{ id: 'a', topics: topics('a', 2) }],
+      dailyXp: 40,
+      today,
+    });
+    const together = projectCourseFinishes({
+      courses: [
+        {
+          id: 'a',
+          topics: [
+            { conceptId: 'a-1', done: false, hardPrereqIds: [] },
+            { conceptId: 'a-2', done: false, hardPrereqIds: ['b-prereq'] },
+          ],
+        },
+        {
+          id: 'b',
+          topics: [{ conceptId: 'b-prereq', done: false, hardPrereqIds: [] }],
+        },
+      ],
+      dailyXp: 40,
+      today,
+    });
+
+    expect(alone.byCourse.get('a')).toBe('2026-01-03');
+    expect(together.byCourse.get('a')).toBe('2026-01-04');
+    expect(together.byCourse.get('b')).toBe('2026-01-03');
+  });
+
+  it('learns a shared concept once for every course that includes it', () => {
+    const result = projectCourseFinishes({
+      courses: [
+        {
+          id: 'a',
+          topics: [{ conceptId: 'shared', done: false, hardPrereqIds: [] }],
+        },
+        {
+          id: 'b',
+          topics: [{ conceptId: 'shared', done: false, hardPrereqIds: [] }],
+        },
+      ],
+      dailyXp: 40,
+      maxNewTopicsPerDay: 1,
+      today,
+    });
+
+    expect(result.byCourse.get('a')).toBe('2026-01-02');
+    expect(result.byCourse.get('b')).toBe('2026-01-02');
+  });
+
+  it('returns null for a course that was already complete', () => {
+    const result = projectCourseFinishes({
+      courses: [
+        {
+          id: 'done',
+          topics: [{ conceptId: 'done-topic', done: true, hardPrereqIds: [] }],
+        },
+        { id: 'remaining', topics: topics('remaining', 1) },
+      ],
+      dailyXp: 40,
+      today,
+    });
+
+    expect(result.byCourse.get('done')).toBeNull();
+    expect(result.byCourse.get('remaining')).toBe('2026-01-02');
+    expect(result.overall).toBeNull();
+  });
+
+  it('limits the number of topics completed each day when XP is plentiful', () => {
+    const result = projectCourseFinishes({
+      courses: [{ id: 'a', topics: topics('a', 5) }],
+      dailyXp: 1000,
+      maxNewTopicsPerDay: 2,
+      today,
+    });
+
+    expect(result.byCourse.get('a')).toBe('2026-01-04');
+  });
+
+  it('carries partial topic progress into the next day before starting another topic', () => {
+    const result = projectCourseFinishes({
+      courses: [{ id: 'a', topics: topics('a', 2) }],
+      dailyXp: 30,
+      xpPerTopic: 40,
+      maxNewTopicsPerDay: 2,
+      today,
+    });
+
+    expect(result.byCourse.get('a')).toBe('2026-01-04');
+  });
+
+  it('continues working on a partial topic across multiple days', () => {
+    const result = projectCourseFinishes({
+      courses: [{ id: 'a', topics: topics('a', 1) }],
+      dailyXp: 20,
+      xpPerTopic: 50,
+      maxNewTopicsPerDay: 2,
+      today,
+    });
+
+    expect(result.byCourse.get('a')).toBe('2026-01-04');
+  });
+
+  it('returns null when a missing hard prerequisite cannot be completed', () => {
+    const result = projectCourseFinishes({
+      courses: [
+        {
+          id: 'blocked',
+          topics: [{ conceptId: 'topic', done: false, hardPrereqIds: ['missing'] }],
+        },
+      ],
+      dailyXp: 40,
+      today,
+    });
+
+    expect(result.byCourse.get('blocked')).toBeNull();
+    expect(result.overall).toBeNull();
+  });
+
+  it('returns null dates when daily XP is not positive', () => {
+    const result = projectCourseFinishes({
+      courses: [{ id: 'a', topics: topics('a', 1) }],
+      dailyXp: 0,
+      today,
+    });
+
+    expect(result.byCourse.get('a')).toBeNull();
+    expect(result.overall).toBeNull();
+  });
+});

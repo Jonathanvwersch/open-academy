@@ -1,7 +1,22 @@
+import { and, eq, inArray, or } from 'drizzle-orm';
 import type { ContentIndex, IndexedConcept, IndexedCourse } from '../../content/types.js';
+import type { Database } from '../../db/client.js';
 import type { LearnerRepository } from '../../db/repository.js';
-import type { lessonRuns } from '../../db/schema.js';
-import { lowestMasteryState, masteryLabel, topicStatus } from '../../learning/course-status.js';
+import {
+  lessonRuns,
+  mastery,
+  masteryEvents,
+  remediationFlags,
+  reviewCards,
+  sessionActivities,
+  studySessions,
+} from '../../db/schema.js';
+import {
+  lowestMasteryState,
+  masteryLabel,
+  topicIsComplete,
+  topicStatus,
+} from '../../learning/course-status.js';
 import { courseTopicPosition } from '../../learning/lesson-course-context.js';
 import {
   activeCourseFor,
@@ -17,6 +32,131 @@ type RunRecords = Array<typeof lessonRuns.$inferSelect>;
 type PaperStatuses = Map<string, 'not_started' | 'reading' | 'completed'>;
 type ProjectStatuses = Map<string, 'not_started' | 'in_progress' | 'completed'>;
 type EnrollmentStatus = 'not_started' | 'active' | 'paused' | 'completed';
+
+export async function restartTopic(input: {
+  db: Database;
+  userId: string;
+  conceptId: string;
+  content: ContentIndex;
+}) {
+  await input.db.transaction(async (tx) => {
+    await tx
+      .delete(masteryEvents)
+      .where(
+        and(eq(masteryEvents.userId, input.userId), eq(masteryEvents.conceptId, input.conceptId)),
+      );
+    await tx
+      .delete(mastery)
+      .where(and(eq(mastery.userId, input.userId), eq(mastery.conceptId, input.conceptId)));
+    await tx
+      .delete(reviewCards)
+      .where(and(eq(reviewCards.userId, input.userId), eq(reviewCards.conceptId, input.conceptId)));
+    await tx
+      .delete(lessonRuns)
+      .where(and(eq(lessonRuns.userId, input.userId), eq(lessonRuns.conceptId, input.conceptId)));
+    await tx
+      .delete(remediationFlags)
+      .where(
+        and(
+          eq(remediationFlags.userId, input.userId),
+          or(
+            eq(remediationFlags.conceptId, input.conceptId),
+            eq(remediationFlags.targetPrereqId, input.conceptId),
+          ),
+        ),
+      );
+
+    const sessions = await tx
+      .select({ id: studySessions.id })
+      .from(studySessions)
+      .where(eq(studySessions.userId, input.userId));
+    if (!sessions.length) return;
+    const sessionIds = sessions.map((session) => session.id);
+    await tx
+      .update(sessionActivities)
+      .set({ status: 'skipped' })
+      .where(
+        and(
+          eq(sessionActivities.conceptId, input.conceptId),
+          inArray(sessionActivities.sessionId, sessionIds),
+          or(eq(sessionActivities.status, 'planned'), eq(sessionActivities.status, 'in_progress')),
+        ),
+      );
+
+    const plannedActivities = await tx
+      .select({ id: sessionActivities.id, conceptId: sessionActivities.conceptId })
+      .from(sessionActivities)
+      .where(
+        and(
+          inArray(sessionActivities.sessionId, sessionIds),
+          eq(sessionActivities.status, 'planned'),
+        ),
+      );
+    const [masteryRows, runRows] = await Promise.all([
+      tx
+        .select({
+          conceptId: mastery.conceptId,
+          dimension: mastery.dimension,
+          state: mastery.state,
+        })
+        .from(mastery)
+        .where(eq(mastery.userId, input.userId)),
+      tx
+        .select({ conceptId: lessonRuns.conceptId, status: lessonRuns.status })
+        .from(lessonRuns)
+        .where(eq(lessonRuns.userId, input.userId)),
+    ]);
+    const masteryByKey = new Map(
+      masteryRows.map((record) => [masteryKey(record.conceptId, record.dimension), record.state]),
+    );
+    const runStatusByConcept = new Map(runRows.map((run) => [run.conceptId, run.status]));
+    const incompletePrereqMemo = new Map<string, boolean>();
+    const hasIncompleteHardPrerequisite = (conceptId: string) => {
+      const visited = new Set<string>();
+      const visit = (id: string): boolean => {
+        if (visited.has(id)) return false;
+        visited.add(id);
+        const concept = input.content.conceptsById.get(id);
+        if (!concept) return false;
+        for (const prerequisite of concept.prereqs) {
+          if (prerequisite.strength !== 'hard') continue;
+          const prerequisiteConcept = input.content.conceptsById.get(prerequisite.id);
+          if (!prerequisiteConcept) return true;
+          const cached = incompletePrereqMemo.get(prerequisite.id);
+          if (cached === true) return true;
+          const dimensionStates = prerequisiteConcept.dimensions.map(
+            (dimension) =>
+              masteryByKey.get(masteryKey(prerequisite.id, dimension)) ?? 'not_assessed',
+          );
+          const incomplete =
+            !topicIsComplete(runStatusByConcept.get(prerequisite.id), dimensionStates) ||
+            visit(prerequisite.id);
+          incompletePrereqMemo.set(prerequisite.id, incomplete);
+          if (incomplete) return true;
+        }
+        return false;
+      };
+      return visit(conceptId);
+    };
+    const activitiesToSkip = plannedActivities
+      .filter(
+        (activity) =>
+          activity.conceptId !== null && hasIncompleteHardPrerequisite(activity.conceptId),
+      )
+      .map((activity) => activity.id);
+    if (activitiesToSkip.length) {
+      await tx
+        .update(sessionActivities)
+        .set({ status: 'skipped' })
+        .where(
+          and(
+            inArray(sessionActivities.id, activitiesToSkip),
+            eq(sessionActivities.status, 'planned'),
+          ),
+        );
+    }
+  });
+}
 
 export function placedOutConceptsFromRuns(runs: readonly { state: unknown }[]): Set<string> {
   const conceptIds = new Set<string>();

@@ -239,6 +239,9 @@ export function LearnPage() {
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="space-y-5">
+              <p className="text-sm text-muted-foreground">
+                Dates assume you keep studying all these courses together.
+              </p>
               {data.studyCourses.map((course) => {
                 const percentComplete =
                   course.topicsTotal > 0
@@ -287,6 +290,13 @@ export function LearnPage() {
                   </div>
                 );
               })}
+              {data.today.studyFinish.atPace && data.today.studyFinish.atGoal ? (
+                <p className="text-sm text-muted-foreground">
+                  {data.today.studyFinish.atPace === data.today.studyFinish.atGoal
+                    ? `All your courses: ${formatDate(data.today.studyFinish.atPace)} at your pace and daily goal`
+                    : `All your courses: ${formatDate(data.today.studyFinish.atPace)} at your pace, ${formatDate(data.today.studyFinish.atGoal)} at your daily goal`}
+                </p>
+              ) : null}
             </div>
 
             <div className="space-y-3 border-t pt-5">

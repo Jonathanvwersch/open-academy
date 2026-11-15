@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { dailyStudyMinutes, sessionBudget } from './session-budget.js';
-import { estimatedFinishDate, weekXp } from './xp.js';
+import { weekXp } from './xp.js';
 
 describe('daily study goals', () => {
   it('preserves existing weekday and weekend preferences', () => {
@@ -17,7 +17,7 @@ describe('daily study goals', () => {
     });
   });
 
-  it('uses each day for session planning, progress goals and finish estimates', () => {
+  it('uses each day for session planning and progress goals', () => {
     const dailyMinutes = {
       monday: 10,
       tuesday: 20,
@@ -35,6 +35,5 @@ describe('daily study goals', () => {
         day.date === '2026-01-10' ? 'saturday' : day.date === '2026-01-11' ? 'sunday' : 'weekday';
       expect(sessionBudget(kind, prefs, day.date)).toBe(day.goal);
     }
-    expect(estimatedFinishDate(7, 0, '2026-01-05', prefs)).toBe('2026-01-12');
   });
 });

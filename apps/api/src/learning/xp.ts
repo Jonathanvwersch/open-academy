@@ -1,7 +1,7 @@
 import type { SessionKind, SessionPreferences } from './session-budget.js';
 import { dailyStudyMinutes, sessionBudget } from './session-budget.js';
 
-const XP_PER_REMAINING_TOPIC = 40;
+export const XP_PER_REMAINING_TOPIC = 40;
 const DAY_MS = 86_400_000;
 
 export interface XpEventDate {
@@ -20,7 +20,7 @@ export function sessionKindForDate(localDate: string): Exclude<SessionKind, 'cus
   return 'weekday';
 }
 
-function defaultAverageDailyXp(prefs?: SessionPreferences): number {
+export function defaultAverageDailyXp(prefs?: SessionPreferences): number {
   return Object.values(dailyStudyMinutes(prefs)).reduce((sum, minutes) => sum + minutes, 0) / 7;
 }
 
@@ -75,17 +75,6 @@ export function averageDailyXp(events: readonly XpEventDate[], todayLocal: strin
     0,
   );
   return total / 14;
-}
-
-export function estimatedFinishDate(
-  remainingTopics: number,
-  avgDailyXp: number,
-  today: string,
-  prefs?: SessionPreferences,
-): string {
-  const dailyXp = avgDailyXp > 0 ? avgDailyXp : defaultAverageDailyXp(prefs);
-  const days = Math.ceil((Math.max(0, remainingTopics) * XP_PER_REMAINING_TOPIC) / dailyXp);
-  return addLocalDays(today, days);
 }
 
 export function localDateKey(date: Date, timeZone: string): string {

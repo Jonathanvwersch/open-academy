@@ -9,11 +9,18 @@ import { LearnerRepository } from '../../src/db/repository.js';
 import {
   attempts,
   courseEnrollments,
+  diagnosticRuns,
   lessonProblems,
+  lessonQuizAttempts,
+  lessonQuizItems,
   lessonRuns,
   mastery,
+  masteryEvents,
   paperProgress,
   projectProgress,
+  remediationFlags,
+  reviewCards,
+  reviewLogs,
   sessionActivities,
   studySessions,
   users,
@@ -106,6 +113,314 @@ async function post(path: string, body: unknown) {
     body: JSON.stringify(body),
   });
 }
+
+test('restarting a topic clears only its progress while preserving history', async () => {
+  const conceptX = 'vectors';
+  const conceptY = 'supervised-learning';
+  const [session] = await db
+    .insert(studySessions)
+    .values({ userId, plannedMinutes: 60, status: 'active' })
+    .returning();
+  if (!session) throw new Error('Could not create restart test session');
+  const activityRows = await db
+    .insert(sessionActivities)
+    .values([
+      {
+        sessionId: session.id,
+        idx: 0,
+        kind: 'learn',
+        conceptId: conceptX,
+        plannedMinutes: 10,
+        status: 'planned',
+      },
+      {
+        sessionId: session.id,
+        idx: 1,
+        kind: 'learn',
+        conceptId: conceptX,
+        plannedMinutes: 10,
+        status: 'in_progress',
+      },
+      {
+        sessionId: session.id,
+        idx: 2,
+        kind: 'learn',
+        conceptId: conceptX,
+        plannedMinutes: 10,
+        status: 'completed',
+      },
+      {
+        sessionId: session.id,
+        idx: 3,
+        kind: 'learn',
+        conceptId: conceptY,
+        plannedMinutes: 10,
+        status: 'planned',
+      },
+    ])
+    .returning();
+  const xActivity = activityRows.find(
+    (activity) => activity.conceptId === conceptX && activity.status === 'in_progress',
+  );
+  if (!xActivity) throw new Error('Could not find restart test activity');
+
+  const [attempt] = await db
+    .insert(attempts)
+    .values({
+      userId,
+      sessionId: session.id,
+      activityId: xActivity.id,
+      exerciseId: 'vectors-restart-history',
+      exerciseVersion: 'test',
+      conceptId: conceptX,
+      dimension: 'conceptual',
+      mode: 'practice',
+      answer: { response: 'retained' },
+      correct: 1,
+      credit: 1,
+      gradedBy: 'deterministic',
+    })
+    .returning();
+  if (!attempt) throw new Error('Could not create restart test attempt');
+
+  await db.insert(mastery).values([
+    { userId, conceptId: conceptX, dimension: 'conceptual', state: 'assisted' },
+    { userId, conceptId: conceptY, dimension: 'conceptual', state: 'assisted' },
+  ]);
+  await db.insert(masteryEvents).values([
+    {
+      userId,
+      conceptId: conceptX,
+      dimension: 'conceptual',
+      fromState: 'introduced',
+      toState: 'assisted',
+      rule: 'restart-test',
+    },
+    {
+      userId,
+      conceptId: conceptY,
+      dimension: 'conceptual',
+      fromState: 'introduced',
+      toState: 'assisted',
+      rule: 'restart-test',
+    },
+  ]);
+  const cards = await db
+    .insert(reviewCards)
+    .values([
+      { userId, conceptId: conceptX, dimension: 'conceptual', fsrs: {}, dueAt: new Date() },
+      { userId, conceptId: conceptY, dimension: 'conceptual', fsrs: {}, dueAt: new Date() },
+    ])
+    .returning();
+  const cardX = cards.find((card) => card.conceptId === conceptX);
+  const cardY = cards.find((card) => card.conceptId === conceptY);
+  if (!cardX || !cardY) throw new Error('Could not create restart test review cards');
+  await db.insert(reviewLogs).values([
+    { cardId: cardX.id, attemptId: attempt.id, rating: 'good', fsrsLog: {} },
+    { cardId: cardY.id, rating: 'good', fsrsLog: {} },
+  ]);
+
+  const runs = await db
+    .insert(lessonRuns)
+    .values([
+      { userId, conceptId: conceptX, status: 'in_progress' },
+      { userId, conceptId: conceptY, status: 'in_progress' },
+    ])
+    .returning();
+  const runX = runs.find((run) => run.conceptId === conceptX);
+  const runY = runs.find((run) => run.conceptId === conceptY);
+  if (!runX || !runY) throw new Error('Could not create restart test lesson runs');
+  await db.insert(lessonProblems).values([
+    {
+      runId: runX.id,
+      knowledgePointId: `${conceptX}-point`,
+      round: 0,
+      position: 0,
+      exerciseId: 'vectors-restart-history',
+      attemptId: attempt.id,
+    },
+    {
+      runId: runY.id,
+      knowledgePointId: `${conceptY}-point`,
+      round: 0,
+      position: 0,
+      exerciseId: 'supervised-learning-history',
+    },
+  ]);
+  const quizAttempts = await db
+    .insert(lessonQuizAttempts)
+    .values([
+      { runId: runX.id, attemptNo: 1 },
+      { runId: runY.id, attemptNo: 1 },
+    ])
+    .returning();
+  const quizX = quizAttempts.find((attemptRow) => attemptRow.runId === runX.id);
+  const quizY = quizAttempts.find((attemptRow) => attemptRow.runId === runY.id);
+  if (!quizX || !quizY) throw new Error('Could not create restart test quiz attempts');
+  await db.insert(lessonQuizItems).values([
+    {
+      quizAttemptId: quizX.id,
+      position: 0,
+      knowledgePointId: `${conceptX}-point`,
+      exerciseId: 'vectors-restart-history',
+      attemptId: attempt.id,
+    },
+    {
+      quizAttemptId: quizY.id,
+      position: 0,
+      knowledgePointId: `${conceptY}-point`,
+      exerciseId: 'supervised-learning-history',
+    },
+  ]);
+  await db.insert(remediationFlags).values([
+    { userId, conceptId: conceptX, targetPrereqId: null },
+    { userId, conceptId: conceptY, targetPrereqId: conceptX },
+    { userId, conceptId: conceptY, targetPrereqId: null },
+  ]);
+  await db.insert(xpEvents).values({
+    userId,
+    kind: 'knowledge_point',
+    sourceKey: 'restart-history',
+    conceptId: conceptX,
+    amount: 10,
+    earnedAt: new Date('2026-01-07T12:00:00.000Z'),
+    localDate: '2026-01-07',
+  });
+  await db.insert(diagnosticRuns).values({
+    userId,
+    kind: 'placement',
+    status: 'completed',
+    state: { courseId: 'ml-foundations', answers: [], known: [conceptX], unknown: [] },
+    completedAt: new Date('2026-01-07T11:00:00.000Z'),
+  });
+
+  const response = await post(`/concepts/${conceptX}/restart`, {});
+  expect(response.status).toBe(200);
+  expect(await response.json()).toEqual({ conceptId: conceptX });
+
+  const [remainingMastery, remainingEvents, remainingCards, remainingRuns, remainingAttempts] =
+    await Promise.all([
+      db.select().from(mastery).where(eq(mastery.userId, userId)),
+      db.select().from(masteryEvents).where(eq(masteryEvents.userId, userId)),
+      db.select().from(reviewCards).where(eq(reviewCards.userId, userId)),
+      db.select().from(lessonRuns).where(eq(lessonRuns.userId, userId)),
+      db.select().from(attempts).where(eq(attempts.userId, userId)),
+    ]);
+  expect(remainingMastery.map((row) => row.conceptId)).toEqual([conceptY]);
+  expect(remainingEvents.map((row) => row.conceptId)).toEqual([conceptY]);
+  expect(remainingCards.map((row) => row.conceptId)).toEqual([conceptY]);
+  expect(remainingRuns.map((row) => row.conceptId)).toEqual([conceptY]);
+  expect(remainingAttempts.map((row) => row.id)).toEqual([attempt.id]);
+  expect(await db.select().from(reviewLogs)).toMatchObject([{ cardId: cardY.id }]);
+  expect(await db.select().from(lessonProblems)).toMatchObject([{ runId: runY.id }]);
+  expect(await db.select().from(lessonQuizAttempts)).toMatchObject([{ runId: runY.id }]);
+  expect(await db.select().from(lessonQuizItems)).toMatchObject([{ quizAttemptId: quizY.id }]);
+  expect(await db.select().from(xpEvents).where(eq(xpEvents.userId, userId))).toHaveLength(1);
+  expect(
+    await db.select().from(remediationFlags).where(eq(remediationFlags.userId, userId)),
+  ).toMatchObject([{ conceptId: conceptY, targetPrereqId: null }]);
+  expect(
+    (await db.select().from(sessionActivities).where(eq(sessionActivities.sessionId, session.id)))
+      .sort((left, right) => left.idx - right.idx)
+      .map((activity) => [activity.idx, activity.status]),
+  ).toEqual([
+    [0, 'skipped'],
+    [1, 'skipped'],
+    [2, 'completed'],
+    [3, 'planned'],
+  ]);
+  const courseResponse = await get('/courses/ml-foundations');
+  const course = (await courseResponse.json()) as {
+    units: Array<{ topics: Array<{ conceptId: string; status: string }> }>;
+  };
+  const restartedTopic = course.units
+    .flatMap((unit) => unit.topics)
+    .find((topic) => topic.conceptId === conceptX);
+  expect(restartedTopic?.status).toBe('not_started');
+
+  expect((await post('/concepts/missing-concept/restart', {})).status).toBe(404);
+});
+
+test('restarting a prerequisite skips planned dependent activities', async () => {
+  const prerequisiteId = 'tokenization';
+  const dependentId = 'embeddings';
+  const dependent = content.conceptsById.get(dependentId);
+  if (
+    !dependent?.prereqs.some(
+      (prerequisite) => prerequisite.id === prerequisiteId && prerequisite.strength === 'hard',
+    )
+  ) {
+    throw new Error('Expected embeddings to have tokenization as a hard prerequisite');
+  }
+  const unrelated = [...content.conceptsById.values()].find(
+    (concept) =>
+      concept.id !== prerequisiteId &&
+      concept.id !== dependentId &&
+      concept.prereqs.every((prerequisite) => prerequisite.strength !== 'hard'),
+  );
+  if (!unrelated) throw new Error('Could not find a concept without hard prerequisites');
+
+  const [session] = await db
+    .insert(studySessions)
+    .values({ userId, plannedMinutes: 60, status: 'active' })
+    .returning();
+  if (!session) throw new Error('Could not create prerequisite restart session');
+  await db.insert(lessonRuns).values([
+    { userId, conceptId: prerequisiteId, status: 'completed' },
+    { userId, conceptId: 'matrices', status: 'completed' },
+  ]);
+  await db.insert(sessionActivities).values([
+    {
+      sessionId: session.id,
+      idx: 0,
+      kind: 'learn',
+      conceptId: dependentId,
+      plannedMinutes: 10,
+      status: 'planned',
+    },
+    {
+      sessionId: session.id,
+      idx: 1,
+      kind: 'learn',
+      conceptId: dependentId,
+      plannedMinutes: 10,
+      status: 'in_progress',
+    },
+    {
+      sessionId: session.id,
+      idx: 2,
+      kind: 'learn',
+      conceptId: dependentId,
+      plannedMinutes: 10,
+      status: 'completed',
+    },
+    {
+      sessionId: session.id,
+      idx: 3,
+      kind: 'learn',
+      conceptId: unrelated.id,
+      plannedMinutes: 10,
+      status: 'planned',
+    },
+  ]);
+
+  const response = await post(`/concepts/${prerequisiteId}/restart`, {});
+  expect(response.status).toBe(200);
+  const activities = await db
+    .select()
+    .from(sessionActivities)
+    .where(eq(sessionActivities.sessionId, session.id));
+  expect(
+    activities
+      .sort((left, right) => left.idx - right.idx)
+      .map((activity) => [activity.conceptId, activity.status]),
+  ).toEqual([
+    [dependentId, 'skipped'],
+    [dependentId, 'in_progress'],
+    [dependentId, 'completed'],
+    [unrelated.id, 'planned'],
+  ]);
+});
 
 test('learners can switch to a listed course', async () => {
   const response = await put('/course/active', { courseId: 'robotics' });

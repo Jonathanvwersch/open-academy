@@ -10,7 +10,6 @@ export interface TodayPayload {
     topicsDone: number;
     topicsTotal: number;
     unitTitle: string;
-    estimatedFinish?: string | null;
   }>;
   objective: string;
   courseTitle: string;
