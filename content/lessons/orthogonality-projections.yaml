@@ -2,6 +2,9 @@ concept: orthogonality-projections
 version: 1
 objective: |
   **Goal:** project a vector onto a line, recognise an orthogonal matrix and invert it with its transpose, and fit a least-squares line with the normal equations $A^\top A\hat x=A^\top b$, by hand and in NumPy.
+recap:
+  - concept: rank-span
+    text: "The column space of $A$ is the span of its columns. $Ax=b$ has a solution only when $b$ is in the column space of $A$."
 where_this_fits: |
   ### What is a projection?
 

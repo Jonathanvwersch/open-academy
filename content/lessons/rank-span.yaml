@@ -2,6 +2,9 @@ concept: rank-span
 version: 1
 objective: |
   **Goal:** decide whether a vector is in the span of others, test vectors for independence and find a matrix's rank by elimination, use the rank to predict whether $Ax=b$ has one, no or infinitely many solutions, and explain why a tall matrix times a wide one has low rank.
+recap:
+  - concept: inverses-linear-systems
+    text: "We write a system of equations as $Ax=b$ and solve it by elimination. When a square matrix $A$ has a nonzero determinant it has an inverse, and $Ax=b$ has exactly one solution, $x=A^{-1}b$."
 where_this_fits: |
   ### What are span and rank?
 
