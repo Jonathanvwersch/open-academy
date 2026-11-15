@@ -1,19 +1,11 @@
 import { useRouterState } from '@tanstack/react-router';
 import { Loader2 } from 'lucide-react';
 import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import type { Layout, Shape } from './layout-shapes.js';
+import { isLayout, LayoutShapeLayer } from './layout-shapes.js';
 
-export interface Shape {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  radius: number;
-  kind: 'frame' | 'content' | 'rule';
-}
-interface Layout {
-  height: number;
-  shapes: Shape[];
-}
+export type { Layout, Shape } from './layout-shapes.js';
+
 const storageKey = `academy.page-layout.${import.meta.env.PROD ? new URL(import.meta.url).pathname : 'dev-2'}`;
 const memory = new Map<string, Layout>();
 const frameSelector = '[data-slot=card], [data-slot=alert]';
@@ -89,19 +81,7 @@ export function loadLayout(key: string): Layout | undefined {
   try {
     const saved = JSON.parse(sessionStorage.getItem(storageKey) ?? '{}') as Record<string, Layout>;
     const layout = saved[key];
-    if (
-      layout &&
-      Number.isFinite(layout.height) &&
-      layout.height >= 0 &&
-      Array.isArray(layout.shapes) &&
-      layout.shapes.length <= 2000 &&
-      layout.shapes.every(
-        (shape) =>
-          shape &&
-          (shape.kind === 'frame' || shape.kind === 'content' || shape.kind === 'rule') &&
-          [shape.x, shape.y, shape.width, shape.height, shape.radius].every(Number.isFinite),
-      )
-    ) {
+    if (isLayout(layout)) {
       memory.set(key, layout);
       return layout;
     }
@@ -132,7 +112,7 @@ function saveLayout(key: string, layout: Layout) {
 const blocks =
   '[data-slot=button], input:not([type=hidden]), textarea, select, [data-slot=badge], [data-slot=progress], [role=radio], [role=checkbox], [role=img], pre, img, canvas, svg, .katex';
 
-function measureLayout(element: HTMLElement): Layout {
+export function measureLayout(element: HTMLElement): Layout {
   const bounds = element.getBoundingClientRect();
   const style = getComputedStyle(element);
   const left = Number.parseFloat(style.paddingLeft) || 0;
@@ -340,28 +320,7 @@ export function PageLayoutSkeleton({ fallback }: { fallback?: ReactNode } = {}) 
       style={layout ? { height: layout.height } : undefined}
     >
       {layout ? (
-        <div aria-hidden="true" data-layout-shape-layer>
-          {layout.shapes.map((shape) => (
-            <div
-              key={`${shape.kind}-${shape.x}-${shape.y}-${shape.width}-${shape.height}`}
-              data-layout-shape={shape.kind}
-              className={`absolute ${
-                shape.kind === 'frame'
-                  ? 'bg-card ring-1 ring-foreground/10'
-                  : shape.kind === 'rule'
-                    ? 'bg-border'
-                    : 'animate-pulse bg-muted motion-reduce:animate-none'
-              }`}
-              style={{
-                left: shape.x,
-                top: shape.y,
-                width: shape.width,
-                height: shape.kind === 'rule' ? 1 : shape.height,
-                borderRadius: shape.kind === 'rule' ? 0 : shape.radius,
-              }}
-            />
-          ))}
-        </div>
+        <LayoutShapeLayer shapes={layout.shapes} />
       ) : fallback ? (
         fallback
       ) : (

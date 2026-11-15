@@ -133,6 +133,9 @@ test('course skeleton replays visible decorative icons', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/courses/fixture-course');
   await expect(page.getByRole('heading', { name: /Unit 1/ })).toBeVisible();
+  const unitToggle = page.getByRole('button', { name: /^(Expand|Collapse) unit 1/ });
+  if ((await unitToggle.getAttribute('aria-expanded')) !== 'true') await unitToggle.click();
+  await expect(unitToggle).toHaveAttribute('aria-expanded', 'true');
   await page.evaluate(async () => {
     await document.fonts.ready;
   });
@@ -159,8 +162,8 @@ test('course skeleton replays visible decorative icons', async ({ page }) => {
       headers: { ...route.request().headers(), 'x-now': '2026-01-01T12:00:00.000Z' },
     });
   });
+  const reload = page.reload();
   try {
-    await page.reload();
     const skeleton = page.getByTestId('route-skeleton');
     await expect(skeleton).toBeVisible();
     const ruleShape = skeleton.locator('[data-layout-shape="rule"]').first();
@@ -188,6 +191,7 @@ test('course skeleton replays visible decorative icons', async ({ page }) => {
   } finally {
     release();
   }
+  await reload;
   await expect(firstUnitCard).toBeVisible();
 });
 
