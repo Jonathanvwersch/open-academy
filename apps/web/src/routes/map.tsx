@@ -8,7 +8,7 @@ export const Route = createFileRoute('/map')({
   pendingComponent: PageSkeleton,
   loader: ({ context }) => context.queryClient.ensureQueryData(studyMapQueryOptions()),
   errorComponent: () => (
-    <RouteLoadError message="The study map is unavailable." className="text-sm text-destructive" />
+    <RouteLoadError message="Up next is unavailable." className="text-sm text-destructive" />
   ),
   component: MapPage,
 });

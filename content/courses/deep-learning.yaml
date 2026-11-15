@@ -1,6 +1,7 @@
 id: deep-learning
 title: Deep Learning
 description: "Neural networks from single neurons to convolutional networks and autoencoders: backpropagation, PyTorch, and how to train deep models well."
+subject: ai
 units:
   - title: Neural networks
     intro: A straight-line model can't capture every pattern. You'll build a neural network from neurons and layers, and learn backpropagation, the method that trains every modern network.

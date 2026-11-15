@@ -1,6 +1,7 @@
 id: ml-foundations
 title: Machine Learning Foundations
 description: "What machine learning is and how a model learns from data: linear and logistic regression, losses, gradient descent, probability for classification, and how to evaluate a model. The maths is taught as each model needs it."
+subject: ai
 units:
   - title: ML fundamentals
     intro: "You'll build the simplest model that learns: predicting a house's price from its measurements, trained on past sales. The maths topics are the tools this model needs, taught in the order it needs them."

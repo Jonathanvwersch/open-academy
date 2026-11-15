@@ -17,7 +17,7 @@ export function CoursesPage() {
     <section className="space-y-8">
       <h1 className="sr-only">Courses</h1>
       {data.subjects.map((subject) => (
-        <section key={subject.title} className="space-y-4">
+        <section key={subject.id} className="space-y-4">
           {data.subjects.length > 1 ? (
             <h2 className="text-lg font-semibold tracking-tight">{subject.title}</h2>
           ) : null}

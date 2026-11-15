@@ -1,6 +1,7 @@
 id: robot-learning
 title: Robot Learning
 description: "Learning robot behaviour from data: multimodal and generative models, imitation learning, robot policies, foundation and world models, and an end-to-end capstone."
+subject: robotics
 units:
   - title: Multimodal and generative models
     intro: "Models that see and generate: vision transformers, CLIP, vision-language models and self-supervised JEPA, then diffusion and flow matching, which later generate robot actions and video."

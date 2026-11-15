@@ -3,7 +3,25 @@ import { XP_PER_REMAINING_TOPIC } from './xp.js';
 
 export interface ProjectionCourse {
   id: string;
-  topics: Array<{ conceptId: string; done: boolean; hardPrereqIds: string[] }>;
+  subjectId?: string;
+  subjectOrder?: number;
+  title?: string;
+  topics: Array<{
+    conceptId: string;
+    done: boolean;
+    hardPrereqIds: string[];
+    title?: string;
+    unitTitle?: string;
+  }>;
+}
+
+export interface ProjectedTopic {
+  conceptId: string;
+  courseId: string;
+  courseTitle: string;
+  title: string;
+  unitTitle: string;
+  date: string;
 }
 
 export function projectCourseFinishes(input: {
@@ -13,9 +31,23 @@ export function projectCourseFinishes(input: {
   xpPerTopic?: number;
   maxNewTopicsPerDay?: number;
   maxDays?: number;
-}): { byCourse: Map<string, string | null>; overall: string | null } {
+}): {
+  byCourse: Map<string, string | null>;
+  overall: string | null;
+  upcoming: ProjectedTopic[];
+  finished: ProjectedTopic[];
+} {
   const byCourse = new Map<string, string | null>(input.courses.map((course) => [course.id, null]));
-  if (input.dailyXp <= 0 || input.courses.length === 0) return { byCourse, overall: null };
+  const finishedByConcept = new Map<string, ProjectedTopic>();
+  for (const course of input.courses) {
+    for (const topic of course.topics) {
+      if (!topic.done || finishedByConcept.has(topic.conceptId)) continue;
+      finishedByConcept.set(topic.conceptId, projectedTopic(course, topic, input.today));
+    }
+  }
+  if (input.dailyXp <= 0 || input.courses.length === 0) {
+    return { byCourse, overall: null, upcoming: [], finished: [...finishedByConcept.values()] };
+  }
 
   const xpPerTopic = input.xpPerTopic ?? XP_PER_REMAINING_TOPIC;
   const maxNewTopicsPerDay = Math.max(
@@ -33,9 +65,10 @@ export function projectCourseFinishes(input: {
       .filter((course) => course.topics.some((topic) => !doneConcepts.has(topic.conceptId)))
       .map((course) => course.id),
   );
-  const spentByCourse = new Map(input.courses.map((course) => [course.id, 0]));
+  const spentBySubject = new Map<string, number>();
   const progressByConcept = new Map<string, number>();
-  let partialTopic: { conceptId: string; courseId: string } | null = null;
+  const upcomingByConcept = new Map<string, ProjectedTopic>();
+  let partialTopic: { conceptId: string; courseId: string; subjectId: string } | null = null;
   for (let day = 1; day <= maxDays && unfinishedCourses.size > 0; day += 1) {
     if (maxNewTopicsPerDay === 0) break;
     let remainingXp = input.dailyXp;
@@ -45,12 +78,12 @@ export function projectCourseFinishes(input: {
       topicsToday = 1;
       const spent = spendOnTopic(
         partialTopic.conceptId,
-        partialTopic.courseId,
+        partialTopic.subjectId,
         remainingXp,
         xpPerTopic,
         progressByConcept,
         doneConcepts,
-        spentByCourse,
+        spentBySubject,
       );
       remainingXp -= spent.xp;
       if (spent.completed) partialTopic = null;
@@ -62,22 +95,36 @@ export function projectCourseFinishes(input: {
         input.courses,
         unfinishedCourses,
         doneConcepts,
-        spentByCourse,
+        spentBySubject,
       );
       if (!topic) break;
       topicsToday += 1;
+      const topicCourse = input.courses.find((course) => course.id === topic.courseId);
+      const topicDetails = topicCourse?.topics.find(
+        (candidate) => candidate.conceptId === topic.conceptId,
+      );
+      if (topicCourse && topicDetails && !upcomingByConcept.has(topic.conceptId)) {
+        upcomingByConcept.set(
+          topic.conceptId,
+          projectedTopic(topicCourse, topicDetails, addLocalDays(input.today, day - 1)),
+        );
+      }
       const spent = spendOnTopic(
         topic.conceptId,
-        topic.courseId,
+        topic.subjectId,
         remainingXp,
         xpPerTopic,
         progressByConcept,
         doneConcepts,
-        spentByCourse,
+        spentBySubject,
       );
       remainingXp -= spent.xp;
       if (!spent.completed) {
-        partialTopic = { conceptId: topic.conceptId, courseId: topic.courseId };
+        partialTopic = {
+          conceptId: topic.conceptId,
+          courseId: topic.courseId,
+          subjectId: topic.subjectId,
+        };
         break;
       }
     }
@@ -101,46 +148,62 @@ export function projectCourseFinishes(input: {
     dates.length === 0 || nonNullDates.length !== dates.length
       ? null
       : (nonNullDates.at(-1) ?? null);
-  return { byCourse, overall };
+  return {
+    byCourse,
+    overall,
+    upcoming: [...upcomingByConcept.values()].slice(0, 20),
+    finished: [...finishedByConcept.values()],
+  };
 }
 
 function nextAvailableTopic(
   courses: ProjectionCourse[],
   unfinishedCourses: ReadonlySet<string>,
   doneConcepts: ReadonlySet<string>,
-  spentByCourse: ReadonlyMap<string, number>,
+  spentBySubject: ReadonlyMap<string, number>,
 ) {
-  let selected: { conceptId: string; courseId: string; xpSpent: number } | undefined;
+  const frontCourseBySubject = new Map<
+    string,
+    { conceptId: string; courseId: string; subjectId: string; subjectOrder: number }
+  >();
   courses.forEach((course) => {
-    if (!unfinishedCourses.has(course.id)) return;
+    const subjectId = course.subjectId ?? 'default';
+    if (frontCourseBySubject.has(subjectId) || !unfinishedCourses.has(course.id)) return;
     const topic = course.topics.find(
       (candidate) =>
         !doneConcepts.has(candidate.conceptId) &&
         candidate.hardPrereqIds.every((prereqId) => doneConcepts.has(prereqId)),
     );
-    if (!topic) return;
-    const xpSpent = spentByCourse.get(course.id) ?? 0;
-    if (!selected || xpSpent < selected.xpSpent) {
-      selected = { conceptId: topic.conceptId, courseId: course.id, xpSpent };
+    if (topic) {
+      frontCourseBySubject.set(subjectId, {
+        conceptId: topic.conceptId,
+        courseId: course.id,
+        subjectId,
+        subjectOrder: course.subjectOrder ?? Infinity,
+      });
     }
   });
-  return selected;
+  return [...frontCourseBySubject.values()].sort(
+    (left, right) =>
+      (spentBySubject.get(left.subjectId) ?? 0) - (spentBySubject.get(right.subjectId) ?? 0) ||
+      left.subjectOrder - right.subjectOrder,
+  )[0];
 }
 
 function spendOnTopic(
   conceptId: string,
-  courseId: string,
+  subjectId: string,
   availableXp: number,
   xpPerTopic: number,
   progressByConcept: Map<string, number>,
   doneConcepts: Set<string>,
-  spentByCourse: Map<string, number>,
+  spentBySubject: Map<string, number>,
 ) {
   const alreadySpent = progressByConcept.get(conceptId) ?? 0;
   const neededXp = Math.max(0, xpPerTopic - alreadySpent);
   const xp = Math.min(availableXp, neededXp);
   const progress = alreadySpent + xp;
-  spentByCourse.set(courseId, (spentByCourse.get(courseId) ?? 0) + xp);
+  spentBySubject.set(subjectId, (spentBySubject.get(subjectId) ?? 0) + xp);
   if (progress >= xpPerTopic) {
     progressByConcept.delete(conceptId);
     doneConcepts.add(conceptId);
@@ -148,6 +211,21 @@ function spendOnTopic(
   }
   progressByConcept.set(conceptId, progress);
   return { xp, completed: false };
+}
+
+function projectedTopic(
+  course: ProjectionCourse,
+  topic: ProjectionCourse['topics'][number],
+  date: string,
+): ProjectedTopic {
+  return {
+    conceptId: topic.conceptId,
+    courseId: course.id,
+    courseTitle: course.title ?? course.id,
+    title: topic.title ?? topic.conceptId,
+    unitTitle: topic.unitTitle ?? '',
+    date,
+  };
 }
 
 function addLocalDays(localDate: string, days: number): string {

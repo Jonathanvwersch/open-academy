@@ -263,10 +263,13 @@ export class LearnerRepository {
       recentLearnMinutesByConcept[activity.conceptId] =
         (recentLearnMinutesByConcept[activity.conceptId] ?? 0) + activity.plannedMinutes;
     }
+    const focusSubjectId = (user?.prefs as { focusSubjectId?: unknown } | undefined)
+      ?.focusSubjectId;
     return {
       timezone: user?.timezone ?? 'UTC',
       activeCourseId: user?.activeCourseId ?? null,
       studyCourseIds,
+      focusSubjectId: typeof focusSubjectId === 'string' ? focusSubjectId : undefined,
       recentLearnMinutesByConcept,
       mastery: masteryRows,
       cards: cards.map((card) => ({

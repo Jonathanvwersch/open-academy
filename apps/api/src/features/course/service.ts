@@ -11,8 +11,11 @@ import {
   reviewCards,
   sessionActivities,
   studySessions,
+  users,
 } from '../../db/schema.js';
+import { filterSchedulerStateForContent } from '../../learning/content-filters.js';
 import { lowestMasteryState, masteryLabel, topicStatus } from '../../learning/course-status.js';
+import { initialLearnProgress } from '../../learning/initial-learn-progress.js';
 import { courseTopicPosition } from '../../learning/lesson-course-context.js';
 import {
   activeCourseFor,
@@ -21,7 +24,7 @@ import {
   masteryKey,
   prerequisiteMet,
 } from '../../learning/prerequisites.js';
-import { currentLearnerUnit } from '../../learning/scheduler.js';
+import { currentLearnerUnit, type PlannedActivity, replan } from '../../learning/scheduler.js';
 
 type MasteryRecords = Awaited<ReturnType<LearnerRepository['masteryRecords']>>;
 type RunRecords = Array<typeof lessonRuns.$inferSelect>;
@@ -150,6 +153,67 @@ export async function restartTopic(input: {
         );
     }
   });
+}
+
+export async function updateLearningFocus(input: {
+  db: Database;
+  repo: LearnerRepository;
+  userId: string;
+  content: ContentIndex;
+  subjectId: string | null;
+  now: Date;
+}) {
+  const user = await input.repo.user();
+  const prefs = { ...((user?.prefs ?? {}) as Record<string, unknown>) };
+  if (input.subjectId === null) delete prefs.focusSubjectId;
+  else prefs.focusSubjectId = input.subjectId;
+  await input.db.update(users).set({ prefs }).where(eq(users.id, input.userId));
+
+  const active = await input.repo.activeSession(input.now);
+  const session = active ? await input.repo.session(active.id) : undefined;
+  if (!session) return;
+  const state = filterSchedulerStateForContent(
+    input.content,
+    await input.repo.schedulerState(input.now, input.content),
+  );
+  const activities = session.activities as unknown as PlannedActivity[];
+  const existingMinutes = activities
+    .filter((activity) => activity.status === 'completed' || activity.status === 'in_progress')
+    .reduce((total, activity) => total + activity.plannedMinutes, 0);
+  const remaining = Math.max(0, session.plannedMinutes - existingMinutes);
+  const plan = replan(state, input.content, input.now, remaining, activities, session.kind);
+  await Promise.all(
+    session.activities
+      .filter((activity) => activity.status === 'planned')
+      .map((activity) =>
+        input.db.delete(sessionActivities).where(eq(sessionActivities.id, activity.id)),
+      ),
+  );
+  const preserved = session.activities.filter((activity) => activity.status !== 'planned');
+  await Promise.all(
+    plan.activities
+      .filter((activity) => activity.status !== 'in_progress')
+      .map(async (activity, idx) => {
+        const progress = await initialLearnProgress(
+          input.db,
+          input.userId,
+          activity,
+          activity.conceptId ? input.content.lessonsByConcept.get(activity.conceptId) : undefined,
+        );
+        await input.db.insert(sessionActivities).values({
+          sessionId: session.id,
+          idx: preserved.length + idx,
+          kind: activity.kind,
+          conceptId: activity.conceptId,
+          projectId: activity.projectId,
+          exerciseIds: activity.exerciseIds,
+          plannedMinutes: activity.plannedMinutes,
+          status: 'planned',
+          reason: activity.reason,
+          ...(progress ? { progress } : {}),
+        });
+      }),
+  );
 }
 
 export function placedOutConceptsFromRuns(runs: readonly { state: unknown }[]): Set<string> {
@@ -429,6 +493,16 @@ export function buildCoursePayload(
               };
         })
     : [];
+  const foundationCourseTitles = [
+    ...new Set(
+      foundations.flatMap((foundation) => {
+        const source = index.courses.find((candidate) =>
+          candidate.units.some((unit) => unit.concepts.includes(foundation.conceptId)),
+        );
+        return source ? [source.title] : [];
+      }),
+    ),
+  ];
   const state = {
     activeCourseId: activeCourse?.id ?? null,
     mastery: masteryRecords,
@@ -441,6 +515,11 @@ export function buildCoursePayload(
       : { id: '', title: '', description: '' },
     courses,
     currentUnit: currentLearnerUnit(state, index),
+    foundationNeeds: {
+      count: foundations.length,
+      courseTitles: foundationCourseTitles.slice(0, 3),
+      hasMore: foundationCourseTitles.length > 3,
+    },
     foundations,
     units,
   };

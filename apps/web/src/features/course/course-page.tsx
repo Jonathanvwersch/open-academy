@@ -29,6 +29,13 @@ const CourseRoute = getRouteApi('/courses/$courseId');
 
 type RestartTarget = { conceptId: string; title: string };
 
+function foundationSourceLabel(courseTitles: string[], hasMore: boolean): string {
+  const titles = [...courseTitles, ...(hasMore ? ['others'] : [])];
+  if (titles.length < 2) return titles[0] ?? 'other courses';
+  if (titles.length === 2) return `${titles[0]} and ${titles[1]}`;
+  return `${titles.slice(0, -1).join(', ')}, and ${titles.at(-1)}`;
+}
+
 export function CoursePage() {
   const { courseId } = CourseRoute.useParams();
   const { data } = useSuspenseQuery(courseDetailQueryOptions(courseId));
@@ -58,6 +65,17 @@ export function CoursePage() {
           <p className="text-sm font-medium">
             {courseProgress?.topicsDone ?? 0} of {courseProgress?.topicsTotal ?? 0} topics done
           </p>
+          {data.foundationNeeds.count > 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Needs {data.foundationNeeds.count}{' '}
+              {data.foundationNeeds.count === 1 ? 'topic' : 'topics'} from{' '}
+              {foundationSourceLabel(
+                data.foundationNeeds.courseTitles,
+                data.foundationNeeds.hasMore,
+              )}{' '}
+              first.
+            </p>
+          ) : null}
         </div>
         {!showStartCard && data.status === 'active' ? (
           <Button

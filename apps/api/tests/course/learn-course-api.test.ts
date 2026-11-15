@@ -26,7 +26,7 @@ import {
   users,
   xpEvents,
 } from '../../src/db/schema.js';
-import { prerequisiteMet } from '../../src/learning/prerequisites.js';
+import { courseFoundationIds, prerequisiteMet } from '../../src/learning/prerequisites.js';
 import type { MasteryRecord } from '../../src/learning/types.js';
 
 const db = createDb(env.TEST_DATABASE_URL);
@@ -696,12 +696,29 @@ test('starting a course uses a valid requested courseId instead of the active co
 
 test('course catalogue and enrollment routes start, pause, and reactivate courses', async () => {
   const catalog = await (await get('/courses')).json();
+  expect(
+    catalog.subjects.map((subject: { id: string; title: string }) => ({
+      id: subject.id,
+      title: subject.title,
+    })),
+  ).toEqual([
+    { id: 'mathematics', title: 'Mathematics' },
+    { id: 'ai', title: 'AI' },
+    { id: 'robotics', title: 'Robotics' },
+  ]);
+  for (const subject of catalog.subjects as Array<{ id: string; courses: Array<{ id: string }> }>) {
+    expect(subject.courses.map((course) => course.id)).toEqual(
+      (content.curriculum?.courses ?? content.courses.map((course) => course.id)).filter(
+        (courseId) => content.subjectForCourse(courseId).id === subject.id,
+      ),
+    );
+  }
   const courses = catalog.subjects.flatMap(
     (subject: { courses: Array<{ id: string; status: string; startNeeded: boolean }> }) =>
       subject.courses,
   );
-  expect(courses.map((course: { id: string }) => course.id)).toEqual(
-    content.curriculum?.courses ?? content.courses.map((course) => course.id),
+  expect(new Set(courses.map((course: { id: string }) => course.id))).toEqual(
+    new Set(content.curriculum?.courses ?? content.courses.map((course) => course.id)),
   );
   expect(courses.find((course: { id: string }) => course.id === 'deep-learning')).toMatchObject({
     status: 'not_started',
@@ -1177,6 +1194,125 @@ test('lesson choices exclude locked, completed and stub concepts and retain the 
   expect(learn.choices[0]?.xp).toBe(
     (content.lessonsByConcept.get(targets[0]?.id ?? '')?.knowledge_points?.length ?? 0) * 10,
   );
+});
+
+test('course details report incomplete foundation counts and source courses', async () => {
+  const payload = await (await get('/courses/transformers-llms')).json();
+  const sourceTitles = [
+    ...new Set(
+      payload.foundations.flatMap((foundation: { conceptId: string }) => {
+        const source = content.courses.find((course) =>
+          course.units.some((unit) => unit.concepts.includes(foundation.conceptId)),
+        );
+        return source ? [source.title] : [];
+      }),
+    ),
+  ];
+
+  expect(payload.foundationNeeds).toEqual({
+    count: payload.foundations.length,
+    courseTitles: sourceTitles.slice(0, 3),
+    hasMore: sourceTitles.length > 3,
+  });
+});
+
+test('focus persists and replans only planned activities', async () => {
+  const mathsCourse = content.coursesById.get('maths-for-ml');
+  const aiCourse = content.coursesById.get('ml-foundations');
+  if (!mathsCourse || !aiCourse) throw new Error('Missing subject focus test courses');
+  const aiFoundations = courseFoundationIds(content, aiCourse.id);
+  const mathsConcept = mathsCourse.units
+    .flatMap((unit) => unit.concepts)
+    .find((conceptId) => !aiFoundations.has(conceptId));
+  if (!mathsConcept) throw new Error('Missing non-foundation Mathematics topic');
+  await db.insert(courseEnrollments).values(
+    [mathsCourse.id, aiCourse.id].map((courseId) => ({
+      userId,
+      courseId,
+      status: 'active' as const,
+      startMethod: 'beginning' as const,
+    })),
+  );
+  const [session] = await db
+    .insert(studySessions)
+    .values({
+      userId,
+      kind: 'weekday',
+      plannedMinutes: 60,
+      status: 'active',
+      startedAt: new Date('2026-01-07T11:00:00.000Z'),
+    })
+    .returning();
+  if (!session) throw new Error('Could not create focus test session');
+  const [completed, inProgress, planned] = await db
+    .insert(sessionActivities)
+    .values([
+      {
+        sessionId: session.id,
+        idx: 0,
+        kind: 'learn',
+        conceptId: mathsConcept,
+        plannedMinutes: 5,
+        status: 'completed',
+      },
+      {
+        sessionId: session.id,
+        idx: 1,
+        kind: 'learn',
+        conceptId: mathsConcept,
+        plannedMinutes: 5,
+        status: 'in_progress',
+      },
+      {
+        sessionId: session.id,
+        idx: 2,
+        kind: 'learn',
+        conceptId: mathsConcept,
+        plannedMinutes: 5,
+        status: 'planned',
+      },
+    ])
+    .returning();
+  if (!completed || !inProgress || !planned) {
+    throw new Error('Could not seed focus test activities');
+  }
+
+  expect((await put('/focus', { subjectId: 'history' })).status).toBe(400);
+  const response = await put('/focus', { subjectId: 'ai' });
+  expect(response.status).toBe(200);
+  expect(await response.json()).toEqual({ focusSubjectId: 'ai' });
+  const [user] = await db.select().from(users).where(eq(users.id, userId));
+  expect(user?.prefs).toMatchObject({ focusSubjectId: 'ai' });
+  const activities = await db
+    .select()
+    .from(sessionActivities)
+    .where(eq(sessionActivities.sessionId, session.id));
+  expect(activities.find((activity) => activity.id === completed.id)?.status).toBe('completed');
+  expect(activities.find((activity) => activity.id === inProgress.id)?.status).toBe('in_progress');
+  expect(activities.some((activity) => activity.id === planned.id)).toBe(false);
+  const plannedAfterFocus = activities.filter(
+    (activity) => activity.status === 'planned' && ['learn', 'review'].includes(activity.kind),
+  );
+  expect(plannedAfterFocus.length).toBeGreaterThan(0);
+  expect(
+    plannedAfterFocus.every((activity) => {
+      const belongsToAi = aiCourse.units.some((unit) =>
+        unit.concepts.includes(activity.conceptId ?? ''),
+      );
+      return belongsToAi || aiFoundations.has(activity.conceptId ?? '');
+    }),
+  ).toBe(true);
+
+  const learn = await (await get('/learn')).json();
+  expect(learn.focusSubjectId).toBe('ai');
+  expect((await put('/focus', { subjectId: null })).status).toBe(200);
+  const [resetUser] = await db.select().from(users).where(eq(users.id, userId));
+  expect(resetUser?.prefs).not.toHaveProperty('focusSubjectId');
+  await db
+    .update(users)
+    .set({ prefs: { scheduleMinutes: 60, focusSubjectId: 'history' } })
+    .where(eq(users.id, userId));
+  expect((await (await get('/learn')).json()).focusSubjectId).toBeNull();
 });
 
 test('lesson choices are empty while a session is active', async () => {

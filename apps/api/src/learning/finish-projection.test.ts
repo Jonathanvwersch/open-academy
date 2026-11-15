@@ -15,8 +15,8 @@ describe('projectCourseFinishes', () => {
   it('balances independent 10-topic courses at 40 XP per day', () => {
     const result = projectCourseFinishes({
       courses: [
-        { id: 'a', topics: topics('a', 10) },
-        { id: 'b', topics: topics('b', 10) },
+        { id: 'a', subjectId: 'math', topics: topics('a', 10) },
+        { id: 'b', subjectId: 'ai', topics: topics('b', 10) },
       ],
       dailyXp: 40,
       today,
@@ -25,6 +25,45 @@ describe('projectCourseFinishes', () => {
     expect(result.byCourse.get('a')).toBe('2026-01-20');
     expect(result.byCourse.get('b')).toBe('2026-01-21');
     expect(result.overall).toBe('2026-01-21');
+  });
+
+  it('finishes later courses in a subject after earlier courses', () => {
+    const result = projectCourseFinishes({
+      courses: [
+        {
+          id: 'ml-foundations',
+          subjectId: 'ai',
+          title: 'ML Foundations',
+          topics: topics('ml', 2),
+        },
+        {
+          id: 'deep-learning',
+          subjectId: 'ai',
+          title: 'Deep Learning',
+          topics: topics('deep', 1),
+        },
+      ],
+      dailyXp: 1000,
+      maxNewTopicsPerDay: 2,
+      today,
+    });
+
+    expect(result.byCourse.get('ml-foundations')).toBe('2026-01-02');
+    expect(result.byCourse.get('deep-learning')).toBe('2026-01-03');
+  });
+
+  it('uses curriculum subject order to break equal-minute ties', () => {
+    const result = projectCourseFinishes({
+      courses: [
+        { id: 'ml', subjectId: 'ai', subjectOrder: 1, topics: topics('ml', 1) },
+        { id: 'math', subjectId: 'mathematics', subjectOrder: 0, topics: topics('math', 1) },
+      ],
+      dailyXp: 40,
+      maxNewTopicsPerDay: 1,
+      today,
+    });
+
+    expect(result.upcoming[0]?.courseId).toBe('math');
   });
 
   it('waits for a prerequisite topic in another active course', () => {

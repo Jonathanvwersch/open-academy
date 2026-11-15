@@ -64,6 +64,7 @@ export interface ContentEdge {
 
 export interface ContentIndex {
   curriculum?: Curriculum & { contentVersion: string };
+  subjectForCourse(courseId: string): { id: string; title: string };
   courses: IndexedCourse[];
   coursesById: Map<string, IndexedCourse>;
   concepts: IndexedConcept[];

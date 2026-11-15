@@ -75,6 +75,7 @@ export interface SchedulerState {
   timezone?: string;
   activeCourseId: string | null;
   studyCourseIds: string[];
+  focusSubjectId?: string;
   recentLearnMinutesByConcept: Record<string, number>;
   mastery: MasteryRecord[];
   cards: Array<{
@@ -203,10 +204,34 @@ function schedulerCourseContexts(
   state: SchedulerState,
   content: ContentIndex,
 ): SchedulerCourseContext[] {
-  return state.studyCourseIds.flatMap((courseId) => {
-    const context = schedulerCourseContextFor(state, content, courseId);
-    return context ? [context] : [];
-  });
+  const focusSubjectId = effectiveFocusSubjectId(state, content);
+  const curriculumOrder = new Map(
+    (content.curriculum?.courses ?? content.courses.map((course) => course.id)).map(
+      (courseId, position) => [courseId, position],
+    ),
+  );
+  return [...state.studyCourseIds]
+    .filter(
+      (courseId) => !focusSubjectId || content.subjectForCourse(courseId).id === focusSubjectId,
+    )
+    .sort(
+      (left, right) =>
+        (curriculumOrder.get(left) ?? Infinity) - (curriculumOrder.get(right) ?? Infinity),
+    )
+    .flatMap((courseId) => {
+      const context = schedulerCourseContextFor(state, content, courseId);
+      return context ? [context] : [];
+    });
+}
+
+function effectiveFocusSubjectId(state: SchedulerState, content: ContentIndex): string | undefined {
+  const focus = state.focusSubjectId;
+  if (!focus || !content.curriculum?.subjects?.some((subject) => subject.id === focus)) {
+    return undefined;
+  }
+  return state.studyCourseIds.some((courseId) => content.subjectForCourse(courseId).id === focus)
+    ? focus
+    : undefined;
 }
 
 function schedulerCourseContextFor(
@@ -378,36 +403,59 @@ function packWeekday(
     candidatesByCourse.set(candidate.courseId, group);
   }
   for (const group of candidatesByCourse.values()) group.sort(compareLearnCandidates);
-  const selectedLearnMinutesByCourse = new Map<string, number>();
+  const coursesBySubject = new Map<string, SchedulerCourseContext[]>();
+  for (const course of courseContexts) {
+    const subjectId = content.subjectForCourse(course.course.id).id;
+    const group = coursesBySubject.get(subjectId) ?? [];
+    group.push(course);
+    coursesBySubject.set(subjectId, group);
+  }
+  const subjectOrder = new Map(
+    (content.curriculum?.subjects ?? []).map((subject, position) => [subject.id, position]),
+  );
+  const selectedLearnMinutesBySubject = new Map<string, number>();
+  const subjectRecentMinutes = new Map<string, number>();
+  for (const [subjectId, courses] of coursesBySubject) {
+    const conceptIds = new Set(courses.flatMap((course) => [...course.newConceptIds]));
+    subjectRecentMinutes.set(
+      subjectId,
+      [...conceptIds].reduce(
+        (sum, conceptId) => sum + (state.recentLearnMinutesByConcept[conceptId] ?? 0),
+        0,
+      ),
+    );
+  }
   while (newConceptCount < SCHEDULER_CONFIG.weekday.maxNewConcepts) {
-    const nextCourse = courseContexts
-      .filter((course) => candidatesByCourse.get(course.course.id)?.some(canAdd))
-      .sort((left, right) => {
-        const minutes = (course: SchedulerCourseContext) => {
-          const recentMinutes = Object.entries(state.recentLearnMinutesByConcept)
-            .filter(
-              ([conceptId]) =>
-                course.newConceptIds.has(conceptId) &&
-                courseContexts.find((candidate) => candidate.newConceptIds.has(conceptId))?.course
-                  .id === course.course.id,
-            )
-            .reduce((sum, [, value]) => sum + value, 0);
-          return recentMinutes + (selectedLearnMinutesByCourse.get(course.course.id) ?? 0);
-        };
-        return minutes(left) - minutes(right);
-      })[0];
+    const frontCourseBySubject = new Map<string, SchedulerCourseContext>();
+    for (const [subjectId, courses] of coursesBySubject) {
+      const frontCourse = courses.find(
+        (course) => (candidatesByCourse.get(course.course.id)?.length ?? 0) > 0,
+      );
+      if (frontCourse) frontCourseBySubject.set(subjectId, frontCourse);
+    }
+    const nextSubject = [...frontCourseBySubject.keys()]
+      .filter((subjectId) => {
+        const course = frontCourseBySubject.get(subjectId);
+        return course && candidatesByCourse.get(course.course.id)?.some(canAdd);
+      })
+      .sort(
+        (left, right) =>
+          (subjectRecentMinutes.get(left) ?? 0) +
+            (selectedLearnMinutesBySubject.get(left) ?? 0) -
+            ((subjectRecentMinutes.get(right) ?? 0) +
+              (selectedLearnMinutesBySubject.get(right) ?? 0)) ||
+          (subjectOrder.get(left) ?? Infinity) - (subjectOrder.get(right) ?? Infinity),
+      )[0];
+    if (!nextSubject) break;
+    const nextCourse = frontCourseBySubject.get(nextSubject);
     if (!nextCourse) break;
     const nextCandidates = candidatesByCourse.get(nextCourse.course.id) ?? [];
     const candidate = nextCandidates.find(canAdd);
-    if (!candidate || !add(candidate)) {
-      nextCandidates.length = 0;
-      continue;
-    }
+    if (!candidate || !add(candidate)) break;
     newConceptCount += 1;
-    selectedLearnMinutesByCourse.set(
-      nextCourse.course.id,
-      (selectedLearnMinutesByCourse.get(nextCourse.course.id) ?? 0) +
-        candidate.activity.plannedMinutes,
+    selectedLearnMinutesBySubject.set(
+      nextSubject,
+      (selectedLearnMinutesBySubject.get(nextSubject) ?? 0) + candidate.activity.plannedMinutes,
     );
     nextCandidates.splice(nextCandidates.indexOf(candidate), 1);
   }
@@ -540,7 +588,11 @@ function generateCandidates(state: SchedulerState, content: ContentIndex, now: D
       continue;
     }
     const concept = content.conceptsById.get(card.conceptId);
-    if (!concept || concept.status === 'stub') {
+    if (
+      !concept ||
+      concept.status === 'stub' ||
+      (effectiveFocusSubjectId(state, content) && !newConceptIds.has(concept.id))
+    ) {
       continue;
     }
     const record = masteryByKey.get(masteryKey(card.conceptId, card.dimension));

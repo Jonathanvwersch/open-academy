@@ -75,7 +75,7 @@ test('desktop sidebar collapse persists across reload', async ({ page }) => {
   ).toHaveCount(0);
   await expect(page.getByRole('link', { name: 'Open Fixture course' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Open Fixture switching course' })).toBeVisible();
-  const navRows = ['Home', 'Courses', 'Map', 'Reviews', 'Progress'].map((name) =>
+  const navRows = ['Home', 'Courses', 'Up next', 'Reviews', 'Progress'].map((name) =>
     navigation.getByRole('link', { name, exact: true }),
   );
   const navBoxes = await Promise.all(navRows.map((row) => row.boundingBox()));
@@ -138,7 +138,7 @@ test('auth-pending shell shows the real sidebar without shifting navigation', as
     await expect.poll(() => authRequestStarted).toBe(true);
     await expect(shell).toBeVisible();
     const navigation = page.getByRole('navigation', { name: 'Main navigation' });
-    for (const label of ['Home', 'Courses', 'Map', 'Reviews', 'Progress']) {
+    for (const label of ['Home', 'Courses', 'Up next', 'Reviews', 'Progress']) {
       await expect(navigation.getByRole('link', { name: label, exact: true })).toBeVisible();
       await expect(navigation.getByText(label, { exact: true })).toBeVisible();
     }
@@ -153,7 +153,7 @@ test('auth-pending shell shows the real sidebar without shifting navigation', as
     expect(coursesRequests).toBe(0);
     expect(reviewsRequests).toBe(0);
 
-    const linkLabels = ['Home', 'Courses', 'Map', 'Reviews', 'Progress', 'Settings'];
+    const linkLabels = ['Home', 'Courses', 'Up next', 'Reviews', 'Progress', 'Settings'];
     const pendingBoxes = await Promise.all(
       linkLabels.map((label) =>
         navigation.getByRole('link', { name: label, exact: true }).boundingBox(),
@@ -540,10 +540,14 @@ test('modified course-row clicks open the course in a new tab without changing e
   await newPage.close();
 });
 
-test('Home schedules learn activities from both active courses', async ({ page }) => {
+test('Home schedules the earlier course before another course in the same subject', async ({
+  page,
+}) => {
   await page.goto('/');
   await expect(page.getByText('Vectors', { exact: true }).first()).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Switching topic', exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Switching topic', exact: true }),
+  ).not.toBeVisible();
   await expect(page.getByRole('link', { name: 'View course' })).toHaveCount(2);
 });
 
@@ -776,4 +780,79 @@ test('tutor opens without moving the app navigation', async ({ page }) => {
   const after = await navigation.boundingBox();
   expect(after?.x).toBe(before?.x);
   expect(after?.width).toBe(before?.width);
+});
+
+test('active courses and the catalogue are grouped in subject order', async ({ page }) => {
+  await page.route('**/api/courses', (route) =>
+    route.fulfill({
+      json: {
+        subjects: [
+          {
+            id: 'mathematics',
+            title: 'Mathematics',
+            courses: [
+              {
+                id: 'maths-for-ml',
+                title: 'Mathematics for Machine Learning',
+                description: 'Mathematics course',
+                topicsDone: 2,
+                topicsTotal: 12,
+                status: 'active',
+                startNeeded: false,
+              },
+            ],
+          },
+          {
+            id: 'ai',
+            title: 'AI',
+            courses: [
+              {
+                id: 'ml-foundations',
+                title: 'ML Foundations',
+                description: 'AI course',
+                topicsDone: 3,
+                topicsTotal: 18,
+                status: 'active',
+                startNeeded: false,
+              },
+            ],
+          },
+          {
+            id: 'robotics',
+            title: 'Robotics',
+            courses: [
+              {
+                id: 'robotics',
+                title: 'Robotics',
+                description: 'Robotics course',
+                topicsDone: 0,
+                topicsTotal: 10,
+                status: 'active',
+                startNeeded: false,
+              },
+            ],
+          },
+        ],
+      },
+    }),
+  );
+
+  await page.goto('/');
+  const navigation = page.getByRole('navigation', { name: 'Main navigation' });
+  for (const subject of ['Mathematics', 'AI', 'Robotics']) {
+    await expect(
+      navigation.locator('li').filter({ hasText: new RegExp(`^${subject}$`) }),
+    ).toBeVisible();
+  }
+  await expect(
+    navigation.getByRole('link', {
+      name: 'Open Mathematics for Machine Learning',
+    }),
+  ).toBeVisible();
+
+  await page.goto('/courses');
+  await expect(page.getByRole('heading', { name: 'Mathematics', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'AI', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Robotics', exact: true }).first()).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'ML Foundations', exact: true })).toBeVisible();
 });

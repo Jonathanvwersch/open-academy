@@ -113,8 +113,11 @@ function studyCourseOwner(
   });
 }
 
-function schedulerContentWithTopics(topicsByCourse: Record<string, string[]>): ContentIndex {
-  const courses = content.courses.map((course) => {
+function schedulerContentWithTopics(
+  topicsByCourse: Record<string, string[]>,
+  index: ContentIndex = content,
+): ContentIndex {
+  const courses = index.courses.map((course) => {
     const topics = topicsByCourse[course.id];
     if (!topics) return course;
     const firstUnit = course.units[0];
@@ -128,9 +131,42 @@ function schedulerContentWithTopics(topicsByCourse: Record<string, string[]>): C
     };
   });
   return {
-    ...content,
+    ...index,
     courses,
     coursesById: new Map(courses.map((course) => [course.id, course])),
+  };
+}
+
+function schedulerContentWithSubjects(
+  index: ContentIndex,
+  subjects: Array<{ id: string; title: string }>,
+  subjectByCourse: Record<string, string>,
+  courseOrder?: string[],
+): ContentIndex {
+  if (!index.curriculum) throw new Error('Missing curriculum for scheduler fixture');
+  const courses = index.courses.map((course) => ({
+    ...course,
+    ...(subjectByCourse[course.id] ? { subject: subjectByCourse[course.id] } : {}),
+  }));
+  const coursesById = new Map(courses.map((course) => [course.id, course]));
+  return {
+    ...index,
+    courses,
+    coursesById,
+    curriculum: {
+      ...index.curriculum,
+      courses: courseOrder ?? index.curriculum.courses,
+      subjects,
+    },
+    subjectForCourse: (courseId) => {
+      const subjectId = coursesById.get(courseId)?.subject;
+      return (
+        subjects.find((subject) => subject.id === subjectId) ?? {
+          id: 'default',
+          title: index.curriculum?.subject?.title ?? 'Courses',
+        }
+      );
+    },
   };
 }
 
@@ -1489,12 +1525,29 @@ test('each study course receives a new lesson when the plan has room for two con
   expect(scheduledCourseIds).toEqual(new Set(courseIds));
 });
 
-test('deficit scheduling gives the next new concept to the course with no recent learning', () => {
+test('subject balancing gives the next concept to the subject with less recent learning', () => {
   const courseIds = ['fixture-course', 'fixture-switching-course'];
-  const schedulerContent = schedulerContentWithTopics({
+  const topicsContent = schedulerContentWithTopics({
     'fixture-course': ['vectors'],
     'fixture-switching-course': ['supervised-learning'],
   });
+  const subjectContent = schedulerContentWithSubjects(
+    topicsContent,
+    [
+      { id: 'math', title: 'Math' },
+      { id: 'ai', title: 'AI' },
+    ],
+    { 'fixture-course': 'math', 'fixture-switching-course': 'ai' },
+    courseIds,
+  );
+  const concepts = subjectContent.concepts.map((concept) =>
+    ['vectors', 'supervised-learning'].includes(concept.id) ? { ...concept, prereqs: [] } : concept,
+  );
+  const schedulerContent = {
+    ...subjectContent,
+    concepts,
+    conceptsById: new Map(concepts.map((concept) => [concept.id, concept])),
+  };
   const firstCourse = required(
     schedulerContent.coursesById.get(courseIds[0] ?? ''),
     'first study course',
@@ -1517,6 +1570,195 @@ test('deficit scheduling gives the next new concept to the course with no recent
   expect(studyCourseOwner(firstLearn?.conceptId ?? '', courseIds, schedulerContent)).toBe(
     'fixture-switching-course',
   );
+});
+
+test('subject balancing splits two new topics between three AI courses and History', () => {
+  const courseIds = ['ml-foundations', 'deep-learning', 'transformers-llms', 'maths-for-ml'];
+  const topicsByCourse = Object.fromEntries(
+    courseIds.map((courseId) => {
+      const course = required(courseContent.coursesById.get(courseId), courseId);
+      const topic = course.units.flatMap((unit) => unit.concepts)[0];
+      if (!topic) throw new Error(`Missing topic in ${courseId}`);
+      return [courseId, [topic]];
+    }),
+  );
+  const topicsContent = schedulerContentWithTopics(topicsByCourse, courseContent);
+  const concepts = topicsContent.concepts.map((concept) =>
+    courseIds.some((courseId) => topicsByCourse[courseId]?.includes(concept.id))
+      ? { ...concept, prereqs: [] }
+      : concept,
+  );
+  const schedulerContent = schedulerContentWithSubjects(
+    {
+      ...topicsContent,
+      concepts,
+      conceptsById: new Map(concepts.map((concept) => [concept.id, concept])),
+    },
+    [
+      { id: 'ai', title: 'AI' },
+      { id: 'history', title: 'History' },
+    ],
+    {
+      'ml-foundations': 'ai',
+      'deep-learning': 'ai',
+      'transformers-llms': 'ai',
+      'maths-for-ml': 'history',
+    },
+    courseIds,
+  );
+  const plan = planSession(studyState(courseIds, schedulerContent), schedulerContent, now, 200);
+  const learned = plan.activities.filter(
+    (activity) => activity.kind === 'learn' && activity.conceptId,
+  );
+
+  expect(learned).toHaveLength(2);
+  expect(learned.map((activity) => activity.conceptId)).toContain(
+    topicsByCourse['ml-foundations']?.[0],
+  );
+  expect(learned.map((activity) => activity.conceptId)).toContain(
+    topicsByCourse['maths-for-ml']?.[0],
+  );
+});
+
+test('a single subject keeps the same plan with or without subject metadata', () => {
+  const topicsContent = schedulerContentWithTopics({ 'fixture-course': ['vectors'] });
+  const subjectContent = schedulerContentWithSubjects(
+    topicsContent,
+    [{ id: 'math', title: 'Math' }],
+    { 'fixture-course': 'math' },
+    ['fixture-course'],
+  );
+  const state = studyState(['fixture-course'], topicsContent);
+
+  expect(planSession(state, subjectContent, now, 60)).toEqual(
+    planSession(state, topicsContent, now, 60),
+  );
+});
+
+test('unknown focus behaves like All', () => {
+  const courseIds = ['fixture-course', 'fixture-switching-course'];
+  const topicsContent = schedulerContentWithTopics({
+    'fixture-course': ['vectors'],
+    'fixture-switching-course': ['supervised-learning'],
+  });
+  const schedulerContent = schedulerContentWithSubjects(
+    topicsContent,
+    [
+      { id: 'math', title: 'Math' },
+      { id: 'ai', title: 'AI' },
+    ],
+    { 'fixture-course': 'math', 'fixture-switching-course': 'ai' },
+    courseIds,
+  );
+  const state = studyState(courseIds, schedulerContent);
+
+  expect(planSession({ ...state, focusSubjectId: 'unknown' }, schedulerContent, now, 100)).toEqual(
+    planSession(state, schedulerContent, now, 100),
+  );
+  const singleSubjectState = { ...state, studyCourseIds: ['fixture-course'] };
+  expect(
+    planSession({ ...singleSubjectState, focusSubjectId: 'ai' }, schedulerContent, now, 100),
+  ).toEqual(planSession(singleSubjectState, schedulerContent, now, 100));
+});
+
+test('ML Foundations gets new topics before Transformers in the AI course sequence', () => {
+  const courseIds = ['ml-foundations', 'deep-learning', 'transformers-llms'];
+  const topicsByCourse = Object.fromEntries(
+    courseIds.map((courseId) => {
+      const course = required(courseContent.coursesById.get(courseId), courseId);
+      const topic = course.units.flatMap((unit) => unit.concepts)[0];
+      if (!topic) throw new Error(`Missing topic in ${courseId}`);
+      return [courseId, [topic]];
+    }),
+  );
+  const schedulerContent = schedulerContentWithTopics(topicsByCourse, courseContent);
+  const plan = planSession(studyState(courseIds, schedulerContent), schedulerContent, now, 200);
+  const learned = plan.activities
+    .filter((activity) => activity.kind === 'learn')
+    .map((activity) => activity.conceptId);
+  const transformersTopic = topicsByCourse['transformers-llms']?.[0];
+
+  expect(learned).toContain(topicsByCourse['ml-foundations']?.[0]);
+  expect(learned).not.toContain(transformersTopic);
+});
+
+test('a later AI course gets new learning when an earlier course is blocked on Maths', () => {
+  const courseIds = ['ml-foundations', 'deep-learning'];
+  const topicsByCourse = Object.fromEntries(
+    courseIds.map((courseId) => {
+      const course = required(courseContent.coursesById.get(courseId), courseId);
+      const topic = course.units.flatMap((unit) => unit.concepts)[0];
+      if (!topic) throw new Error(`Missing topic in ${courseId}`);
+      return [courseId, [topic]];
+    }),
+  );
+  const topicsContent = schedulerContentWithTopics(topicsByCourse, courseContent);
+  const blockedId = topicsByCourse['ml-foundations']?.[0];
+  const laterId = topicsByCourse['deep-learning']?.[0];
+  if (!blockedId || !laterId) throw new Error('Missing AI sequence topics');
+  const concepts = topicsContent.concepts.map((concept) =>
+    concept.id === blockedId
+      ? { ...concept, prereqs: [{ id: 'maths-only-prerequisite', strength: 'hard' as const }] }
+      : concept,
+  );
+  const schedulerContent = {
+    ...topicsContent,
+    concepts,
+    conceptsById: new Map(concepts.map((concept) => [concept.id, concept])),
+  };
+  const plan = planSession(studyState(courseIds, schedulerContent), schedulerContent, now, 200);
+  const learned = plan.activities
+    .filter((activity) => activity.kind === 'learn')
+    .map((activity) => activity.conceptId);
+
+  expect(learned).not.toContain(blockedId);
+  expect(learned).toContain(laterId);
+});
+
+test('AI focus allows Maths Foundations but excludes other Maths learning and reviews', () => {
+  const aiCourseId = 'ml-foundations';
+  const mathsCourseId = 'maths-for-ml';
+  const topicsContent = schedulerContentWithTopics(
+    {
+      [aiCourseId]: ['vectors'],
+      [mathsCourseId]: ['derivatives', 'probability-basics'],
+    },
+    courseContent,
+  );
+  const concepts = topicsContent.concepts.map((concept) => {
+    if (concept.id === 'vectors') {
+      return { ...concept, prereqs: [{ id: 'derivatives', strength: 'hard' as const }] };
+    }
+    if (concept.id === 'derivatives') return { ...concept, prereqs: [] };
+    return concept;
+  });
+  const schedulerContent = {
+    ...topicsContent,
+    concepts,
+    conceptsById: new Map(concepts.map((concept) => [concept.id, concept])),
+  };
+  const state = studyState([aiCourseId, mathsCourseId], schedulerContent);
+  const probability = required(
+    schedulerContent.conceptsById.get('probability-basics'),
+    'probability topic',
+  );
+  const dimension = probability.dimensions[0];
+  if (!dimension) throw new Error('Missing probability dimension');
+  state.focusSubjectId = 'ai';
+  state.mastery.push({ ...initialMastery(probability.id, dimension), state: 'independent' });
+  state.cards = [{ conceptId: probability.id, dimension, dueAt: now.toISOString() }];
+  const plan = planSession(state, schedulerContent, now, 200);
+  const learnConcepts = plan.activities
+    .filter((activity) => activity.kind === 'learn')
+    .map((activity) => activity.conceptId);
+
+  expect(learnConcepts).toContain('derivatives');
+  expect(learnConcepts).not.toContain('probability-basics');
+  expect(
+    plan.activities.some(
+      (activity) => activity.kind === 'review' && activity.conceptId === 'probability-basics',
+    ),
+  ).toBe(false);
 });
 
 test('a concept shared by two study courses is scheduled only once', () => {

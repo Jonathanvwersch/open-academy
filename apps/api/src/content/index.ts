@@ -44,6 +44,15 @@ export function buildContentIndex(data: ContentSourceData): ContentIndex {
     contentVersion: contentVersion(value),
   }));
   const coursesById = new Map(courses.map((course) => [course.id, course]));
+  const subjects = data.curriculum?.value.subjects ?? [];
+  const fallbackSubjectTitle = data.curriculum?.value.subject?.title ?? 'Courses';
+  const subjectForCourse = (courseId: string) => {
+    const course = coursesById.get(courseId);
+    const subject = subjects.find((candidate) => candidate.id === course?.subject);
+    return subject
+      ? { id: subject.id, title: subject.title }
+      : { id: 'default', title: fallbackSubjectTitle };
+  };
   const orderedCourses = (data.curriculum?.value.courses ?? []).flatMap((courseId) => {
     const course = coursesById.get(courseId);
     return course ? [course] : [];
@@ -98,6 +107,7 @@ export function buildContentIndex(data: ContentSourceData): ContentIndex {
     curriculum: data.curriculum
       ? { ...data.curriculum.value, contentVersion: contentVersion(data.curriculum.value) }
       : undefined,
+    subjectForCourse,
     courses: orderedCourses,
     coursesById,
     concepts,

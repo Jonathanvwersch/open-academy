@@ -150,7 +150,7 @@ test('root auth pending renders the app-shell skeleton', async ({ page }) => {
   await expect(shell).toBeVisible();
   await expect(shell.getByTestId('route-skeleton')).toBeVisible();
   const navigation = shell.getByRole('navigation', { name: 'Main navigation' });
-  for (const label of ['Home', 'Courses', 'Map', 'Reviews', 'Progress']) {
+  for (const label of ['Home', 'Courses', 'Up next', 'Reviews', 'Progress']) {
     await expect(navigation.getByRole('link', { name: label, exact: true })).toBeVisible();
   }
   await expect(navigation.getByRole('link', { name: 'Settings', exact: true })).toBeVisible();

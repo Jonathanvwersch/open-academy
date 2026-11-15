@@ -26,6 +26,7 @@ export interface StudyMapPayload {
 
 export interface CourseCatalogPayload {
   subjects: Array<{
+    id: string;
     title: string;
     courses: Array<{
       id: string;
@@ -47,6 +48,10 @@ export interface LearnPayload {
   > & {
     studyFinish: { atPace: string | null; atGoal: string | null };
   };
+  activeSubjects: Array<{ id: string; title: string }>;
+  focusSubjectId: string | null;
+  dueReviewsOutsideFocus: number;
+  upNext: UpNextPayload;
   xp: {
     total: number;
     today: number;
@@ -108,6 +113,7 @@ export interface CoursePayload {
     started: boolean;
   }>;
   currentUnit: number;
+  foundationNeeds: { count: number; courseTitles: string[]; hasMore: boolean };
   foundations: CourseTopic[];
   units: Array<{
     unit: number;
@@ -148,4 +154,24 @@ export interface CourseTopic {
   buildsOn: Array<{ id: string; title: string }>;
   leadsTo: Array<{ id: string; title: string }>;
   leadsToMore: number;
+}
+
+export interface UpNextPayload {
+  upcoming: Array<{
+    conceptId: string;
+    courseId: string;
+    courseTitle: string;
+    title: string;
+    unitTitle: string;
+    date: string;
+    dayLabel: string;
+  }>;
+  finished: Array<{
+    conceptId: string;
+    courseId: string;
+    courseTitle: string;
+    title: string;
+    unitTitle: string;
+    date: string;
+  }>;
 }

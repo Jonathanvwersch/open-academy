@@ -44,6 +44,38 @@ export function LearnPage() {
     },
     onSuccess: enterSession,
   });
+  const focusSubject = useMutation({
+    mutationFn: async (subjectId: string | null) => {
+      const response = await apiFetch('/api/focus', {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ subjectId }),
+      });
+      if (!response.ok) throw new Error('Could not update learning focus');
+      return response.json() as Promise<{ focusSubjectId: string | null }>;
+    },
+    onMutate: async (subjectId) => {
+      const queryKey = learnQueryOptions().queryKey;
+      await queryClient.cancelQueries({ queryKey });
+      const previous = queryClient.getQueryData(queryKey);
+      queryClient.setQueryData(queryKey, (current) =>
+        current ? { ...current, focusSubjectId: subjectId } : current,
+      );
+      return { previous };
+    },
+    onError: (_error, _subjectId, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(learnQueryOptions().queryKey, context.previous);
+      }
+    },
+    onSettled: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: learnQueryOptions().queryKey }),
+        queryClient.invalidateQueries({ queryKey: todayQueryOptions().queryKey }),
+        queryClient.invalidateQueries({ queryKey: ['session'] }),
+      ]);
+    },
+  });
   const maxXp = Math.max(1, ...data.xp.week.flatMap((day) => [day.xp, day.goal]));
   const dayTotal = data.xp.week.reduce((total, day) => total + day.xp, 0);
 
@@ -111,6 +143,51 @@ export function LearnPage() {
               <CardTitle>Next up</CardTitle>
             </CardHeader>
             <CardContent className="space-y-5">
+              {data.activeSubjects.length > 1 ? (
+                <fieldset className="space-y-2">
+                  <legend className="text-sm font-medium">Focus</legend>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={data.focusSubjectId ? 'outline' : 'secondary'}
+                      aria-pressed={!data.focusSubjectId}
+                      disabled={focusSubject.isPending}
+                      onClick={() => focusSubject.mutate(null)}
+                    >
+                      All
+                    </Button>
+                    {data.activeSubjects.map((subject) => (
+                      <Button
+                        key={subject.id}
+                        type="button"
+                        size="sm"
+                        variant={data.focusSubjectId === subject.id ? 'secondary' : 'outline'}
+                        aria-pressed={data.focusSubjectId === subject.id}
+                        disabled={focusSubject.isPending}
+                        onClick={() => focusSubject.mutate(subject.id)}
+                      >
+                        {subject.title}
+                      </Button>
+                    ))}
+                  </div>
+                  {focusSubject.isError ? (
+                    <p role="alert" className="text-sm text-destructive">
+                      {focusSubject.error.message}
+                    </p>
+                  ) : null}
+                  {data.focusSubjectId && data.dueReviewsOutsideFocus > 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      {data.dueReviewsOutsideFocus}{' '}
+                      {data.dueReviewsOutsideFocus === 1 ? 'review' : 'reviews'} from other subjects
+                      are waiting.{' '}
+                      <Link to="/reviews" className="underline underline-offset-4">
+                        Review them
+                      </Link>
+                    </p>
+                  ) : null}
+                </fieldset>
+              ) : null}
               {data.activeSessionId ? (
                 <Button asChild className="h-10 w-full justify-between px-4">
                   <Link to="/session/$id" params={{ id: data.activeSessionId }}>
