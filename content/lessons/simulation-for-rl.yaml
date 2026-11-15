@@ -150,7 +150,7 @@ knowledge_points:
       - `self.steps += 1` adds 1 to the step count.
       - `min(self.cell + 1, 4)` and `max(self.cell - 1, 1)` keep the robot between the walls, since `min` picks the smaller number and `max` the larger.
       - `10 if terminated else -1` gives 10 when `terminated` is true and $-1$ otherwise.
-      - `and not terminated` stops both flags being true at once, so reaching cell 4 on the 5th step counts only as terminated, because the task really ended. Gymnasium's time-limit wrapper can set both.
+      - `and not terminated` stops both flags being true at once, so reaching cell 4 on the 5th step counts only as terminated, because the task really ended. Gymnasium, a package of ready-made environments we'll meet below, can wrap an environment in extra code that ends episodes at a step limit. Gymnasium's time-limit wrapper can set both.
       - `return` can hand back several values, and `a, b = ...` unpacks them into separate names.
       - `run_episode` takes the environment `env` and a policy, which is a function from a state to an action. These two policies ignore the state. `while True` repeats until a `return` leaves the function, handing back the total reward, the step count `env.steps` and whether the episode terminated. Our `step` doesn't check for a finished episode, so `run_episode` must stop.
       - `env = Corridor()` makes one corridor, and `run_episode` calls its reset.
