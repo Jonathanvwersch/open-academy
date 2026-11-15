@@ -378,6 +378,78 @@ test('restarting a completed course topic reactivates the course and removes its
   expect(restartedTopic?.status).toBe('not_started');
 });
 
+test('a restarted lesson does not restore its previous final answer', async () => {
+  const conceptId = 'vectors';
+  const lesson = content.lessonsByConcept.get(conceptId);
+  const finalExercise = lesson?.final ? content.exercisesById.get(lesson.final) : undefined;
+  if (!lesson?.knowledge_points?.length || !finalExercise || !lesson.final) {
+    throw new Error('Expected vectors to have a knowledge-point final exercise');
+  }
+  const [oldSession] = await db
+    .insert(studySessions)
+    .values({ userId, plannedMinutes: 60, status: 'completed' })
+    .returning();
+  if (!oldSession) throw new Error('Could not create the previous lesson session');
+  const [oldActivity] = await db
+    .insert(sessionActivities)
+    .values({
+      sessionId: oldSession.id,
+      idx: 0,
+      kind: 'learn',
+      conceptId,
+      exerciseIds: [lesson.final],
+      plannedMinutes: 10,
+      status: 'completed',
+    })
+    .returning();
+  if (!oldActivity) throw new Error('Could not create the previous lesson activity');
+  await db.insert(lessonRuns).values({
+    userId,
+    conceptId,
+    status: 'completed',
+    startedAt: new Date('2026-01-01T09:00:00.000Z'),
+  });
+  await db.insert(attempts).values({
+    userId,
+    sessionId: oldSession.id,
+    activityId: oldActivity.id,
+    exerciseId: lesson.final,
+    exerciseVersion: finalExercise.contentVersion,
+    conceptId,
+    dimension: finalExercise.dimension,
+    mode: 'practice',
+    answer: { text: 'A previously completed final answer.' },
+    correct: 1,
+    credit: 1,
+    attemptNo: 1,
+    gradedBy: 'test',
+    feedback: {},
+    createdAt: new Date('2026-01-06T09:00:00.000Z'),
+  });
+
+  expect((await post(`/concepts/${conceptId}/restart`, {})).status).toBe(200);
+  const sessionResponse = await post('/sessions', {
+    budgetMinutes: 60,
+    focusConceptId: conceptId,
+  });
+  expect(sessionResponse.status).toBe(201);
+  const session = await sessionResponse.json();
+  const activity = session.activities.find(
+    (candidate: { kind: string; conceptId: string }) =>
+      candidate.kind === 'learn' && candidate.conceptId === conceptId,
+  );
+  if (!activity?.exerciseIds.includes(lesson.final)) {
+    throw new Error('Could not find the restarted final exercise in the new session');
+  }
+  expect(activity.progress?.completedExerciseIds ?? []).not.toContain(lesson.final);
+  const runResponse = await post(`/lessons/${conceptId}/run`, { activityId: activity.id });
+  expect(runResponse.status).toBe(200);
+  expect(
+    (await db.select().from(sessionActivities).where(eq(sessionActivities.id, activity.id)))[0]
+      ?.progress,
+  ).not.toMatchObject({ completedExerciseIds: [lesson.final] });
+});
+
 test('restarting a prerequisite skips planned dependent activities', async () => {
   const prerequisiteId = 'tokenization';
   const dependentId = 'embeddings';

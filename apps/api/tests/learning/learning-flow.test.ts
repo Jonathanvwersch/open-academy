@@ -155,6 +155,12 @@ async function createSessionWithPreviousFinalAttempt(attempt: {
     })
     .returning();
   if (!previousActivity) throw new Error('Could not create previous final-question activity');
+  await db.insert(lessonRuns).values({
+    userId,
+    conceptId: 'vectors',
+    status: 'completed',
+    startedAt: new Date('2026-01-01T11:00:00.000Z'),
+  });
   await db.insert(attempts).values({
     userId,
     sessionId: previousSession.id,
