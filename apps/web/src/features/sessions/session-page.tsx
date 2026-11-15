@@ -17,7 +17,7 @@ import { FeedbackPanel, FinalRetryNote, isFinalRetryResult } from '../exercises/
 import { HintLadder } from '../exercises/hint-ladder.js';
 import { exerciseQueryOptions } from '../exercises/queries.js';
 import { LessonBlock } from '../lessons/lesson-block.js';
-import { LessonRunner, LessonSteps } from '../lessons/lesson-runner.js';
+import { LessonMarkdown, LessonRunner, LessonSteps } from '../lessons/lesson-runner.js';
 import { lessonQueryOptions, lessonRunQueryOptions } from '../lessons/queries.js';
 import { projectQueryOptions } from '../projects/queries.js';
 import { TutorLauncher, useTutorSidebar } from '../tutor/tutor-sidebar.js';
@@ -875,7 +875,7 @@ export function SessionPage() {
             Back to Explain it
           </Button>
           <div data-testid="lesson-step-content" className="space-y-4">
-            <Markdown>{recapPoint.explain}</Markdown>
+            <LessonMarkdown>{recapPoint.explain}</LessonMarkdown>
             <LessonBlock kind="worked" md={recapPoint.worked} />
           </div>
         </section>

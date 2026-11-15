@@ -2,7 +2,6 @@ import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-quer
 import { getRouteApi, Link, useNavigate } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import { apiFetch } from '../../api/authenticated-fetch.js';
-import { Markdown } from '../../components/markdown.js';
 import { Button } from '../../components/ui/button.js';
 import { Card, CardContent } from '../../components/ui/card.js';
 import { useReportCurrentCourse } from '../../lib/current-course.js';
@@ -15,6 +14,7 @@ import {
 import { useTutorSidebar } from '../tutor/tutor-sidebar.js';
 import { LessonBlock } from './lesson-block.js';
 import { LessonCourseLine } from './lesson-course-line.js';
+import { LessonMarkdown as Markdown } from './lesson-markdown.js';
 import { useRestartTopic } from './mutations.js';
 import { lessonReviewQueryOptions, lessonRunQueryOptions } from './queries.js';
 import { RestartTopicDialog } from './restart-topic-dialog.js';

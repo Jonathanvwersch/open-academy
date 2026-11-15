@@ -347,13 +347,15 @@ export function suggestedNextCourses(
       }
       const topicsWithCompletedPrerequisite = new Set(
         course.units.flatMap((unit) =>
-          unit.concepts.filter((conceptId) =>
-            index.conceptsById
-              .get(conceptId)
-              ?.prereqs.some(
-                (prerequisite) =>
-                  prerequisite.strength === 'hard' && completedConceptIds.has(prerequisite.id),
-              ),
+          unit.concepts.filter(
+            (conceptId) =>
+              !completedConceptIds.has(conceptId) &&
+              index.conceptsById
+                .get(conceptId)
+                ?.prereqs.some(
+                  (prerequisite) =>
+                    prerequisite.strength === 'hard' && completedConceptIds.has(prerequisite.id),
+                ),
           ),
         ),
       ).size;

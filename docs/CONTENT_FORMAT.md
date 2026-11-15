@@ -155,6 +155,28 @@ must be well-formed XML with an `<svg>` root, a `viewBox`, and a non-empty `aria
 Scripts, `foreignObject`, event-handler attributes, and external `href` references are
 forbidden; colors must be literal hexadecimal values.
 
+A lesson may opt an existing SVG into a trusted interactive visual with exact fence metadata:
+
+````markdown
+```svg academy-visual=eigen-directions
+<svg viewBox="0 0 640 360" aria-label="Describe the complete static result here">...</svg>
+```
+````
+
+`eigen-directions` is the only supported scene. It follows the three inputs `(1, 1)`,
+`(1, -1)` and `(1, 0)` through the matrix with rows `(2, 1)` and `(1, 2)`. The SVG body
+remains required and passes the same accessibility and safety checks as any other diagram.
+It is shown when reduced motion is preferred and remains available from the interactive
+visual's static-diagram control. Unsupported metadata is rejected by `content:check`;
+the renderer falls back to the SVG instead of interpreting unrecognized instructions.
+
+Motion belongs at a specific teaching moment: following an arrow through a transformation,
+watching a curve change, or comparing successive steps. It should answer something a still
+picture makes hard to follow. Keep explanatory prose, formulas, and an accurate static
+diagram; never make playback necessary to answer a question. Use explicit play, pause,
+replay, and keyboard-accessible scrubbing, with no autoplay. New scenes need a reviewed,
+lesson-owned component and an explicit allowlist entry; authored content cannot execute code.
+
 ## content/sources/index.yaml
 ```yaml
 sources:

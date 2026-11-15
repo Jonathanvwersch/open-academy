@@ -7,7 +7,6 @@ import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { apiFetch } from '../../api/authenticated-fetch.js';
-import { Markdown } from '../../components/markdown.js';
 import { ThinkingIndicator } from '../../components/thinking-indicator.js';
 import { Alert, AlertDescription } from '../../components/ui/alert.js';
 import { Button } from '../../components/ui/button.js';
@@ -21,11 +20,13 @@ import { type LessonLink, SessionActivityHeader } from '../sessions/session-acti
 import { TutorLauncher, useTutorSidebar } from '../tutor/tutor-sidebar.js';
 import { LessonBlock } from './lesson-block.js';
 import { LessonCourseLine } from './lesson-course-line.js';
+import { LessonMarkdown as Markdown } from './lesson-markdown.js';
 import { LessonSteps } from './lesson-steps.js';
 import { lessonQueryOptions, lessonRunQueryOptions } from './queries.js';
 import { QuizReview } from './quiz-review.js';
 import { StepProgress } from './step-progress.js';
 
+export { LessonMarkdown } from './lesson-markdown.js';
 export { LessonSteps };
 
 function problemLabel(problem: { position: number }) {

@@ -38,6 +38,25 @@ concepts:
       - { text: "Explain a matrix as a linear transformation", dimension: conceptual }
       - { text: "Write batched matrix products in NumPy", dimension: implementation }
     status: authored
+  - id: determinants
+    title: Determinants
+    description: Signed area scaling, orientation and the 2×2 determinant; zero area and lost information.
+    difficulty: 2
+    est_minutes: 30
+    goal_weight: 2
+    dimensions: [conceptual, math, transfer]
+    prereqs: [{ id: matrices }]
+    related: [eigen-svd]
+    objectives:
+      - { text: "Interpret a determinant as signed area scaling", dimension: conceptual }
+      - { text: "Calculate the determinant of a 2×2 matrix", dimension: math }
+      - { text: "Decide whether a square coordinate map loses information", dimension: transfer }
+    sources:
+      - {
+          title: "3Blue1Brown: The determinant",
+          url: "https://www.3blue1brown.com/lessons/determinant/",
+        }
+    status: authored
   - id: derivatives
     title: Derivatives
     description: Derivative as local slope / rate of change; basic rules.

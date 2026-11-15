@@ -2,8 +2,8 @@ import type { LessonBlockKind, LessonPrerequisite } from '@academy/contracts/les
 import { Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import * as React from 'react';
-import { Markdown } from '../../components/markdown.js';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card.js';
+import { LessonMarkdown as Markdown } from './lesson-markdown.js';
 
 const lessonBlockLabels: Partial<Record<LessonBlockKind, string>> = {
   example: 'Example',
