@@ -86,15 +86,15 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: A robot moves in a corridor of 4 cells, numbered 1 to 4 from left to right, and starts in cell 1. Moving into a wall leaves it where it is. Reaching cell 4 gives $+{{=goal}}$ and ends the episode, and every other step gives $-1$. The agent moves left {{=k}} times, then moves right until the episode ends. What is the episode's total reward?
+    prompt: A robot moves in a corridor of 4 cells, numbered 1 to 4 from left to right, and starts in cell 1. Moving into a wall leaves it where it is. Reaching cell 4 gives $+{{=goal}}$ and ends the episode, and every other step gives $-1$. The number of left moves at the start is {{=k}}. Then the robot moves right until the episode ends. What is the episode's total reward?
     params:
       goal:
         min: 14
         max: 18
         step: 2
       k:
-        min: 0
-        max: 1
+        min: 1
+        max: 2
         step: 1
     answer_expr: goal - k - 2
     tolerance:
@@ -313,7 +313,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: A robot moves in a corridor of 4 cells, numbered 1 to 4 from left to right, and starts in cell 1. Moving into a wall leaves it where it is. Reaching cell 4 gives $+{{=goal}}$ and ends the episode, and every other step gives $-1$. The environment also truncates an episode after {{=n}} steps. The rule moves left for its first {{=k}} steps, then moves right until the episode ends. What is the episode's total reward?
+    prompt: A robot moves in a corridor of 4 cells, numbered 1 to 4 from left to right, and starts in cell 1. Moving into a wall leaves it where it is. Reaching cell 4 gives $+{{=goal}}$ and ends the episode, and every other step gives $-1$. The environment also truncates an episode after {{=n}} steps. The robot moves left {{=k}} times, then moves right until the episode ends. What is the episode's total reward?
     params:
       goal:
         min: 14
@@ -321,11 +321,11 @@ exercises:
         step: 2
       n:
         min: 3
-        max: 4
+        max: 5
         step: 1
       k:
-        min: 0
-        max: 1
+        min: 1
+        max: 2
         step: 1
     answer_expr: "k + 3 <= n ? goal - k - 2 : -n"
     tolerance:
@@ -521,7 +521,7 @@ exercises:
       - id: a
         text: Use a multi-process vectorised environment, such as Gymnasium's AsyncVectorEnv, with 16 copies, one per core.
         correct: true
-        feedback: Each copy runs in its own process, so up to 16 copies can step at once. With Gymnasium's default next-step mode, the call after a copy finishes only resets it, so that entry is left out of experience.
+        feedback: Each copy runs in its own process, so up to 16 copies can step at once, one per core.
       - id: b
         text: Make the time limit longer, so each episode has more steps.
         correct: false
@@ -532,7 +532,7 @@ exercises:
         correct: false
         category: incorrect_reasoning
         feedback: Each episode needs one reset, and that's a small part of the time. Putting the 15 idle cores to work helps far more.
-    solution: A multi-process vectorised environment can run each copy of the simulator in its own process, so all 16 cores can work at once. With same-call resets, one call gives 16 transitions. With Gymnasium's default next-step mode, the call after a copy finishes only resets it, so that entry is left out of experience.
+    solution: A multi-process vectorised environment can run each copy of the simulator in its own process, so all 16 cores work at once. Each call then steps up to 16 copies instead of one.
   - id: sim-episodes-template
     dimension: implementation
     type: numeric

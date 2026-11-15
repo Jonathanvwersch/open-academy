@@ -58,7 +58,7 @@ knowledge_points:
 
       Suppose the floor is slippery: a move works with probability $0.8$, otherwise the robot stays put. Step draws a random number from 0 to 1 and moves only if it is below $0.8$. A move away from a wall now has two possible next states, so identical actions can give different episodes. A computer's random numbers follow a fixed rule that starts from a **seed**. The same seed gives the same numbers and repeats a run, which helps find bugs.
 
-      Each fresh random draw is independent, so the chance of a sequence of outcomes is the product of their chances. If several different sequences lead to the same result, add their chances. For example, one slip and one successful move in either order has probability $(1-p)p+p(1-p)=2p(1-p)$.
+      Each fresh random draw is independent, so the chance of a sequence of outcomes is the product of their chances. If several different sequences lead to the same result, add their chances. For example, if a move works with probability $p$, one slip and one successful move in either order has probability $(1-p)p+p(1-p)=2p(1-p)$.
 
       Do not call step again after an episode ends. Its answers mean nothing, and many environments warn or raise an error. The next call must be reset.
     worked: |
@@ -217,7 +217,7 @@ knowledge_points:
 
       The loop still chooses actions and calls step repeatedly, but it checks the ending flags separately for each copy. A finished copy restarts while the others carry on.
 
-      With a same-call reset, each call gives $N$ **transitions**, where a transition is the record of one step: the state, the action, the reward and the next state. In Gymnasium's default next-step mode, the call after a copy finishes only resets it, so that entry is left out of experience. Agents learn from transitions, so more per second means faster learning.
+      If a finished copy restarts within the same call, each call gives $N$ **transitions**, where a transition is the record of one step: the state, the action, the reward and the next state. In Gymnasium's default next-step mode, the call after a copy finishes only resets it, so that entry is left out of experience. Agents learn from transitions, so more per second means faster learning.
 
       The picture shows two copies of the corridor over four calls. Normally all copies share one policy, but here they differ so their episodes end at different times. In copy A the policy always moves right, and in copy B it always moves left.
 
