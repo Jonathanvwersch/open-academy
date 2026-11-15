@@ -57,7 +57,7 @@ knowledge_points:
 
       Suppose instead the floor is slippery, so a move works with probability $0.8$ and otherwise the robot stays put. Then step draws a random number between 0 and 1 and moves the robot only if it's below $0.8$. Now a move away from a wall has two possible next states, so two runs of the same actions can give different episodes. A computer's random numbers come from a fixed rule that starts from a number called the **seed**, so the same seed gives the same numbers. Fixing the seed, usually by passing it to reset, makes a run repeat exactly, which helps in hunting bugs.
 
-      Be careful not to call step again once an episode has ended. Its answers no longer mean anything, and many environments stop with an error. The next call must be reset.
+      Be careful not to call step again once an episode has ended. Its answers mean nothing, and many environments warn or raise an error. The next call must be reset.
     worked: |
       Let's run one episode by hand in the corridor where moves always work, with the actions left, right, right, right.
 
@@ -118,7 +118,7 @@ knowledge_points:
       </svg>
       ```
 
-      This pattern is called the **interaction loop**. Every reinforcement-learning method you'll meet runs it. Methods differ in how they improve the policy from the rewards.
+      This pattern is called the **interaction loop**. Online reinforcement-learning methods, which learn by acting in the environment, all run it. Methods differ in how they improve the policy from the rewards.
 
       ### Two ways an episode can end
 
@@ -147,7 +147,7 @@ knowledge_points:
       - `self.steps += 1` adds 1 to the step count.
       - `min(self.cell + 1, 4)` and `max(self.cell - 1, 1)` keep the robot between the walls, since `min` picks the smaller number and `max` the larger.
       - `10 if terminated else -1` gives 10 when `terminated` is true and $-1$ otherwise.
-      - `and not terminated` stops both flags being true at once, so reaching cell 4 on the 5th step counts only as terminated, because the task really ended.
+      - `and not terminated` stops both flags being true at once, so reaching cell 4 on the 5th step counts only as terminated, because the task really ended. Gymnasium's time-limit wrapper can set both.
       - `return` can hand back several values, and `a, b = ...` unpacks them into separate names.
       - `run_episode` takes the environment `env` and a policy, which is a function from a state to an action. These two policies ignore the state. `while True` repeats until a `return` leaves the function, handing back the total reward, the step count `env.steps` and whether the episode terminated. Our `step` doesn't check for a finished episode, so `run_episode` must stop.
       - `env = Corridor()` makes one corridor, and `run_episode` calls its reset.
@@ -210,7 +210,7 @@ knowledge_points:
 
       ### Many corridors side by side
 
-      A **vectorised environment** runs $N$ copies of the same environment side by side, so one call does $N$ steps. A vector is a list of numbers, and its inputs and outputs are lists with one entry per copy. Its reset returns $N$ start states. Its step takes $N$ actions and returns $N$ next states, $N$ rewards, $N$ terminated flags and $N$ truncated flags. The loop looks the same as before, with lists in place of single values.
+      A **vectorised environment** runs $N$ copies of the same environment side by side, so one call does $N$ steps. Gymnasium's `AsyncVectorEnv` runs each copy in its own process, so each can use its own core. Its inputs and outputs are lists, or vectors, with one entry per copy. Its reset returns $N$ start states. Its step takes $N$ actions and returns $N$ next states, $N$ rewards, $N$ terminated flags and $N$ truncated flags. The loop is unchanged, with lists in place of single values.
 
       So each call gives $N$ **transitions**, where a transition is the record of one step: the state, the action, the reward and the next state. Agents learn from transitions, so more per second means faster learning.
 
@@ -254,11 +254,11 @@ knowledge_points:
 
       ### Finished copies restart on their own
 
-      The copies' episodes don't end together, so a vectorised environment resets each finished copy by itself and keeps stepping the others.
+      The copies' episodes don't end together, so a vectorised environment resets each finished copy alone and keeps stepping the others.
 
-      Here a finished copy is reset straight away, so step returns its new start state. Some libraries, such as Gymnasium, can instead reset it on its next call and ignore that call's action.
+      Here a finished copy is reset straight away, so step returns its new start state. Gymnasium by default resets it on its next call instead, and ignores that call's action.
 
-      Be careful not to read the cell 1 returned for a finished copy as where the action led. Copy A moved from cell 3 into cell 4, and the cell 1 belongs to its next episode. The environment hands back the real last state, cell 4, in an extra output such as Gymnasium's `info`, so the loop can record the true transition.
+      Don't read the cell 1 returned for a finished copy as where the action led. Copy A moved from cell 3 into cell 4, and cell 1 starts its next episode. So an environment that resets straight away also returns the real last state, cell 4, letting the loop record the true transition. Gymnasium puts it in `info["final_obs"]` in its same-call reset mode.
     worked: |
       Let's follow the two copies call by call. Each corridor has a 5-step time limit, copy A always moves right and copy B always moves left.
 
