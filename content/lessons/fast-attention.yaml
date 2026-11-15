@@ -1,0 +1,301 @@
+concept: fast-attention
+version: 1
+objective: |
+  **Goal:** count the bytes standard attention and a fused attention kernel move to and from GPU memory, and explain how FlashAttention's block-by-block softmax gives exactly the same output.
+recap:
+  - concept: attention
+    text: "Attention scores query $t$ against key $j$ with $s_{tj}=q_t\\cdot k_j/\\sqrt{d_k}$, where $d_k$ is the key width, turns each query's scores into softmax weights $a_{tj}$, and outputs the weighted sum of the values, $o_t=\\sum_j a_{tj}v_j$."
+where_this_fits: |
+  ### What is a fast attention kernel?
+
+  A fast attention kernel is a GPU program that computes all of attention in one go. It keeps the scores it's working on in the GPU's small on-chip memory, so the full table of scores never goes to main memory. FlashAttention (Dao et al., 2022) is the best-known one.
+
+  As GPUs for inference showed, a GPU keeps its data in a large main memory, HBM, which is slower to reach than its small on-chip memory. And as Memory-bound vs compute-bound showed, an operation doing fewer FLOPs per byte moved than the GPU's ops:byte ratio spends its time waiting on memory. Attention on a long prompt makes a score for every pair of tokens, and moving those scores through HBM makes it slow.
+knowledge_points:
+  - id: fa-standard-traffic
+    title: "Count the bytes attention moves"
+    explain: |
+      ### Attention as three kernels
+
+      A chat assistant runs Llama 3 8B on one NVIDIA H100 SXM GPU, and a user sends a prompt of $T=1{,}000$ tokens. Each layer splits attention into 32 query heads that run in parallel, and each head's queries, keys and values have width $d_h=128$, the recap's $d_k$. Follow one head. Its queries form a matrix $Q$ with $T$ rows, one per token, and $d_h$ columns. Its keys $K$ and values $V$ have the same shape.
+
+      A **kernel** is one program that the GPU runs on many compute units at once, each working on part of the data. A kernel's on-chip memory is cleared when it finishes, so its result is written to HBM, and the next kernel reads it back from there. The usual way, which the FlashAttention paper calls standard attention, uses three kernels. The first finds the score table $S$, with $s_{tj}$ in row $t$, column $j$. The second applies softmax to each row of $S$ to give the weight table $P$, which holds the weights $a_{tj}$. The third multiplies $P$ by $V$ to give the outputs $O$, one row per token.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 282" aria-label="Standard attention for one head with 1,000 tokens and head size 128 at 16-bit. Kernel 1 reads Q and K, 0.512 MB, and writes S, 2 MB. Kernel 2 reads S, 2 MB, and writes P, 2 MB. Kernel 3 reads P, 2 MB, and V, 0.256 MB, and writes O, 0.256 MB. The total is 9.024 MB, of which 8 MB is S and P. Sizes are in MB, where 1 MB is 1,000,000 bytes">
+      <defs><marker id="fa1-muted" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker></defs>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <text x="225" y="30" text-anchor="end" fill="#737373">read from HBM</text>
+      <text x="320" y="30" text-anchor="middle" fill="#737373">kernel</text>
+      <text x="418" y="30" fill="#737373">write to HBM</text>
+      <rect x="250" y="60" width="140" height="40" rx="8" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="320" y="85" text-anchor="middle">1. scores</text>
+      <rect x="250" y="125" width="140" height="40" rx="8" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="320" y="150" text-anchor="middle">2. softmax</text>
+      <rect x="250" y="190" width="140" height="40" rx="8" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="320" y="215" text-anchor="middle">3. weighted sum</text>
+      <path d="M230 80 H246" stroke="#737373" stroke-width="2" marker-end="url(#fa1-muted)"/>
+      <path d="M392 80 H412" stroke="#737373" stroke-width="2" marker-end="url(#fa1-muted)"/>
+      <path d="M230 145 H246" stroke="#737373" stroke-width="2" marker-end="url(#fa1-muted)"/>
+      <path d="M392 145 H412" stroke="#737373" stroke-width="2" marker-end="url(#fa1-muted)"/>
+      <path d="M230 210 H246" stroke="#737373" stroke-width="2" marker-end="url(#fa1-muted)"/>
+      <path d="M392 210 H412" stroke="#737373" stroke-width="2" marker-end="url(#fa1-muted)"/>
+      <text x="225" y="85" text-anchor="end"><tspan fill="#3b82f6">Q</tspan> and <tspan fill="#10b981">K</tspan>, 0.512 MB</text>
+      <text x="418" y="85" fill="#ef4444">S, 2 MB</text>
+      <text x="225" y="150" text-anchor="end" fill="#ef4444">S, 2 MB</text>
+      <text x="418" y="150" fill="#ef4444">P, 2 MB</text>
+      <text x="225" y="215" text-anchor="end"><tspan fill="#ef4444">P, 2 MB,</tspan><tspan> and </tspan><tspan fill="#10b981">V</tspan><tspan>, 0.256 MB</tspan></text>
+      <text x="418" y="215"><tspan fill="#f59e0b">O</tspan>, 0.256 MB</text>
+      <text x="320" y="252" text-anchor="middle" fill="#737373">total 9.024 MB, of which 8 MB is S and P</text>
+      <text x="320" y="274" text-anchor="middle" fill="#737373">1 MB = 1,000,000 bytes</text>
+      </g>
+      </svg>
+      ```
+
+      ### Counting the numbers moved
+
+      $Q$, $K$, $V$ and $O$ each hold $Td_h$ numbers. $S$ and $P$ hold one number for every query and key pair, so $T^2$ each. Both tables are written once and read once. So standard attention moves
+
+      $$4Td_h+4T^2 \text{ numbers},$$
+
+      each taking $b$ bytes, which is 2 at 16-bit. For our head, $T^2$ is about eight times $Td_h$, so $S$ and $P$, red in the picture, are most of the traffic.
+
+      ### Longer prompts stay memory-bound
+
+      Finding $S$ multiplies $Q$ by $K$ turned on its side, a $(T\times d_h)$ matrix times a $(d_h\times T)$ one, which costs $2T^2d_h$ FLOPs, and $PV$ costs the same. So the total is $4T^2d_h$. We leave out softmax's few FLOPs. When $T$ is much bigger than $d_h$, the bytes are almost all $4T^2b$, so the arithmetic intensity gets close to $d_h/b=64$ FLOPs per byte.
+
+      Be careful not to expect longer prompts to be compute-bound. The FLOPs and the bytes both grow like $T^2$, so their ratio levels off near $64$, far below the H100's ratio of about $300$.
+    worked: |
+      Let's count the traffic of standard attention for our head, with $T=1{,}000$ tokens, $d_h=128$ and $b=2$ bytes per number. We'll use the H100's figures rounded to $1{,}000$ TFLOP/s and $3.35$ TB/s.
+
+      1. **Find the bytes in one input.** $Q$ has $T$ rows of $d_h$ numbers, and $K$, $V$ and $O$ are the same size.
+         $$1{,}000\times128\times2=256{,}000 \text{ bytes}.$$
+
+      2. **Find the bytes in one table.** $S$ has one score for each of the $T\times T$ pairs, and $P$ is the same size.
+         $$1{,}000\times1{,}000\times2=2{,}000{,}000.$$
+
+      3. **Add up the traffic.** Each of the four inputs and outputs moves once, and each table moves twice.
+         $$4\times256{,}000=1{,}024{,}000$$
+         $$4\times2{,}000{,}000=8{,}000{,}000$$
+         That's $9{,}024{,}000$ bytes, about $9.0$ MB.
+
+      4. **Count the FLOPs.** Both matrix multiplies cost $2T^2d_h$.
+         $$4\times1{,}000^2\times128=5.12\times10^{8}.$$
+
+      5. **Find the arithmetic intensity.** We divide the FLOPs by the bytes.
+         $$I=\frac{5.12\times10^{8}}{9.024\times10^{6}}\approx56.7.$$
+         That's about $56.7$ FLOPs per byte. It's below $64$ because at this $T$ the $4Td_h$ inputs and outputs still add about 11% of the bytes.
+
+      6. **Compare the two times.** To keep it simple, we time this head as if it had the whole GPU to itself. Llama 3 8B lets groups of four query heads share one set of keys and values (grouped-query attention, 8 key-value heads), but we count each query head with its own copy of $K$ and $V$. Then the other heads do the same work, so the ratio of the two times holds for the whole layer. Sharing $K$ and $V$ would change it only a little, because they are a small share of the bytes. Moving the bytes at $3.35$ TB/s takes about $2.69$ microseconds, while the maths at $1{,}000$ TFLOP/s takes $0.512$ microseconds.
+         $$\frac{9.024\times10^{6}}{3.35\times10^{12}}\approx2.69\times10^{-6}\text{ s}.$$
+
+      So moving the data takes about five times as long as the maths, which is what an intensity of $56.7$, well below $300$, predicts.
+    problems:
+      - fa-std-basics
+      - fa-std-self-explain
+      - fa-std-table-size
+      - fa-std-total
+      - fa-std-intensity
+      - fa-std-limit
+      - fa-std-transfer
+  - id: fa-fused-kernel
+    title: "Do all of attention in one kernel"
+    explain: |
+      ### One kernel for the whole calculation
+
+      In standard attention, the score and weight tables were most of the bytes, and they only went to HBM to pass between kernels. **Kernel fusion** joins several kernels into one, so the results in between stay on chip. A fused attention kernel only reads $Q$, $K$ and $V$ and writes $O$. So the least it can move is
+
+      $$4Td_h \text{ numbers}.$$
+
+      Dividing standard attention's $4Td_h+4T^2$ by this gives $1+T/d_h$, so the saving grows with the prompt. The FLOPs stay $4T^2d_h$, so a kernel moving only this much has an arithmetic intensity of $T/b$. At 16-bit that's $T/2$, which passes the H100's $300$ once the prompt is longer than $600$ tokens.
+
+      ### Working in blocks
+
+      But on-chip memory is small. An H100 SXM has 132 compute units, called streaming multiprocessors or SMs. Each has $233{,}472$ bytes of its own on-chip shared memory, and each group of threads a kernel runs there can use at most $232{,}448$ bytes of it. Our head's $K$ alone is $256{,}000$ bytes, so it doesn't fit.
+
+      So the kernel works in blocks of, say, 128 rows. It gives each block of queries to an SM, which loads that block once. Then the SM brings in $K$ and $V$ one block at a time, computes the scores between its queries and that key block, uses the scores to update a running output, then throws the scores away. The next step shows how that update works. After the last key block, it writes its rows of $O$. One block of 128 rows of $Q$ is $128\times128\times2=32{,}768$ bytes. The key and value blocks, the running output and the $128\times128$ table of scores for the current blocks are each about that size, so roughly $5\times32{,}768\approx164{,}000$ bytes in all, which fits. With $T=1{,}000$ there are 8 query blocks, the last with only 104 rows, and the picture draws four. Other SMs work on the other blocks and heads at once.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 330" aria-label="Left, HBM holds Q, K, V and O for one head, each split into four blocks of rows. Right, the on-chip memory of one SM holds query block 1, loaded once, key block 2 and value block 2, brought in one block at a time, the scores for this pair of blocks, and the running output, which is written once to block 1 of O">
+      <defs><marker id="fa2-muted" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker></defs>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <text x="10" y="50">HBM</text>
+      <text x="360" y="50">on-chip memory of one SM</text>
+      <rect x="5" y="65" width="230" height="250" rx="8" fill="#ffffff" fill-opacity="0" stroke="#d4d4d4" stroke-width="1.5"/>
+      <rect x="355" y="65" width="280" height="250" rx="8" fill="#ffffff" fill-opacity="0" stroke="#d4d4d4" stroke-width="1.5"/>
+      <rect x="40" y="90" width="45" height="30" fill="#3b82f6" fill-opacity="0.3"/>
+      <rect x="85" y="150" width="45" height="30" fill="#10b981" fill-opacity="0.3"/>
+      <rect x="85" y="210" width="45" height="30" fill="#10b981" fill-opacity="0.3"/>
+      <rect x="40" y="270" width="45" height="30" fill="#f59e0b" fill-opacity="0.3"/>
+      <path d="M40 90 H220 V120 H40 Z M85 90 V120 M130 90 V120 M175 90 V120 M40 150 H220 V180 H40 Z M85 150 V180 M130 150 V180 M175 150 V180 M40 210 H220 V240 H40 Z M85 210 V240 M130 210 V240 M175 210 V240 M40 270 H220 V300 H40 Z M85 270 V300 M130 270 V300 M175 270 V300" fill="#ffffff" fill-opacity="0" stroke="#737373" stroke-width="1.5"/>
+      <text x="30" y="110" text-anchor="end">Q</text><text x="30" y="170" text-anchor="end">K</text><text x="30" y="230" text-anchor="end">V</text><text x="30" y="290" text-anchor="end">O</text>
+      <rect x="370" y="90" width="125" height="30" rx="6" fill="#ffffff" stroke="#3b82f6" stroke-width="1.5"/><text x="432.5" y="110" text-anchor="middle">query block 1</text>
+      <rect x="370" y="150" width="125" height="30" rx="6" fill="#ffffff" stroke="#10b981" stroke-width="1.5"/><text x="432.5" y="170" text-anchor="middle">key block 2</text>
+      <rect x="370" y="210" width="125" height="30" rx="6" fill="#ffffff" stroke="#10b981" stroke-width="1.5"/><text x="432.5" y="230" text-anchor="middle">value block 2</text>
+      <rect x="370" y="270" width="125" height="30" rx="6" fill="#ffffff" stroke="#f59e0b" stroke-width="1.5"/><text x="432.5" y="290" text-anchor="middle">running output</text>
+      <rect x="510" y="150" width="112" height="90" rx="6" fill="#ffffff" stroke="#ef4444" stroke-width="1.5"/><text x="566" y="190" text-anchor="middle">scores for</text><text x="566" y="208" text-anchor="middle">these blocks</text>
+      <path d="M226 105 H366" stroke="#737373" stroke-width="2" marker-end="url(#fa2-muted)"/>
+      <path d="M226 165 H366" stroke="#737373" stroke-width="2" marker-end="url(#fa2-muted)"/>
+      <path d="M226 225 H366" stroke="#737373" stroke-width="2" marker-end="url(#fa2-muted)"/>
+      <path d="M370 285 H228" stroke="#737373" stroke-width="2" marker-end="url(#fa2-muted)"/>
+      <text x="296" y="97" text-anchor="middle" font-size="13" fill="#737373">loaded once</text>
+      <text x="296" y="157" text-anchor="middle" font-size="13" fill="#737373">block by block</text>
+      <text x="296" y="217" text-anchor="middle" font-size="13" fill="#737373">block by block</text>
+      <text x="296" y="277" text-anchor="middle" font-size="13" fill="#737373">written once</text>
+      </g>
+      </svg>
+      ```
+
+      Splitting the queries is easy, because one query's output row needs that query and all the keys and values, but no other query. Splitting the keys is harder, because softmax divides by a total over every key in the row, and the next step shows how the kernel handles that.
+    worked: |
+      Let's count what a fused kernel saves for our Llama 3 8B head, with $T=1{,}000$ tokens, $d_h=128$, $b=2$, and standard attention's $9{,}024{,}000$ bytes and $512{,}000{,}000$ FLOPs.
+
+      1. **Count the least traffic.** The kernel reads $Q$, $K$ and $V$ and writes $O$, each $Td_h$ numbers.
+         $$4\times1{,}000\times128\times2=1{,}024{,}000.$$
+         That's $1{,}024{,}000$ bytes, about $1.0$ MB.
+
+      2. **Compare with standard attention.** Dividing the two byte counts matches $1+T/d_h$.
+         $$\frac{9{,}024{,}000}{1{,}024{,}000}=8.8125=1+\frac{1{,}000}{128}.$$
+
+      3. **Find the arithmetic intensity.** The FLOPs haven't changed, so we divide them by the new byte count.
+         $$I=\frac{5.12\times10^{8}}{1.024\times10^{6}}=500.$$
+         That's $500$ FLOPs per byte.
+
+      4. **Compare the two times.** The maths still takes $0.512$ microseconds at $1{,}000$ TFLOP/s, and the bytes now take about $0.31$ microseconds at $3.35$ TB/s.
+         $$\frac{1.024\times10^{6}}{3.35\times10^{12}}\approx0.31\times10^{-6}\text{ s}.$$
+
+      If the kernel moved only this minimum, the traffic would fall about $8.8$ times, and with an intensity of $500$, above $300$, the maths would set the time. The last step shows that a real kernel moves somewhat more.
+    problems:
+      - fa-fused-basics
+      - fa-fused-self-explain
+      - fa-fused-min
+      - fa-fused-ratio
+      - fa-fused-intensity
+      - fa-fused-why-blocks
+      - fa-fused-short
+      - fa-fused-transfer
+  - id: fa-online-softmax
+    title: "Compute softmax one block of keys at a time"
+    explain: |
+      ### The total that comes last
+
+      Let's follow one query, so we can drop the subscript $t$ and write its scores as $s_j$ and the keys' values as $v_j$. Softmax gives key $j$ the weight $e^{s_j}/\ell$, where $\ell$ is the total of the exponentials of all $T$ scores. But an SM working through key blocks has only seen some of the keys. How can it weigh their values before it knows the total?
+
+      ### Divide once at the end
+
+      Every weight for this query divides by the same total $\ell$, so we can add up the values, each multiplied by $e^{s_j}$, and divide once at the end:
+
+      $$o=\frac{\sum_{j=1}^{T}e^{s_j}v_j}{\sum_{j=1}^{T}e^{s_j}}.$$
+
+      The top and the bottom are both plain sums, and a sum can be added up a few terms at a time. So the kernel keeps two running totals for each query. One is $\ell$, the sum of $e^{s_j}$ over the keys seen so far. The other is $u$, the sum of $e^{s_j}v_j$. Like a value, $u$ is a vector of $d_h$ numbers, and dividing it by $\ell$ divides each of them. Each new block adds its own terms to both. After the last block, the output is $u/\ell$. This way of computing softmax is called **online softmax**, because it updates its totals as each block arrives. The kernel never stores the weights $P$; it builds the output directly.
+
+      It's exact: the maths is the same as softmax on the whole row, with the additions done in a different order. Computers round each sum slightly, so only the last digits can differ. FlashAttention computes exact attention this way.
+
+      ### Four keys in two blocks
+
+      To see it work, take one query with four keys, split into two blocks of two. The scores are $0$, $0$, $1$ and $1$. To keep the arithmetic short, each value has one component, so the values are just the numbers $1$, $3$, $2$ and $4$.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 240" aria-label="Four keys in two blocks. Block 1 has scores 0 and 0 with values 1 and 3. After it, l is 2 and u is 4, so u over l is 2 so far. Block 2 has scores 1 and 1 with values 2 and 4. After it, l is about 7.44 and u is about 20.31, so the output u over l is about 2.73">
+      <defs><marker id="fa3-muted" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker></defs>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717" text-anchor="middle">
+      <text x="145" y="30" fill="#737373">block 1</text><text x="495" y="30" fill="#737373">block 2</text>
+      <rect x="30" y="45" width="110" height="50" rx="6" fill="#ffffff" stroke="#10b981" stroke-width="1.5"/><text x="85" y="66">score 0</text><text x="85" y="86">value 1</text>
+      <rect x="150" y="45" width="110" height="50" rx="6" fill="#ffffff" stroke="#10b981" stroke-width="1.5"/><text x="205" y="66">score 0</text><text x="205" y="86">value 3</text>
+      <rect x="380" y="45" width="110" height="50" rx="6" fill="#ffffff" stroke="#10b981" stroke-width="1.5"/><text x="435" y="66">score 1</text><text x="435" y="86">value 2</text>
+      <rect x="500" y="45" width="110" height="50" rx="6" fill="#ffffff" stroke="#10b981" stroke-width="1.5"/><text x="555" y="66">score 1</text><text x="555" y="86">value 4</text>
+      <text x="145" y="135" fill="#737373">after block 1</text><text x="145" y="160">ℓ = 2, u = 4</text>
+      <text x="495" y="135" fill="#737373">after block 2</text><text x="495" y="160">ℓ ≈ 7.44, u ≈ 20.31</text>
+      <path d="M260 152 H366" stroke="#737373" stroke-width="2" marker-end="url(#fa3-muted)"/>
+      <text x="145" y="210" fill="#737373">u / ℓ = 2 so far</text>
+      <text x="495" y="210" fill="#f59e0b">output u / ℓ ≈ 2.73</text>
+      </g>
+      </svg>
+      ```
+
+      Be careful not to give each block its own softmax and then average the block outputs. Block 1 alone gives $2$ and block 2 alone gives $3$, and their average, $2.5$, is wrong, because the second block's larger exponentials should give it more say.
+    worked: |
+      Let's run online softmax on the four keys, with scores $0$, $0$, $1$ and $1$ and values $1$, $3$, $2$ and $4$, in blocks of two. We'll keep $e$ in the totals and round only when we show a number.
+
+      1. **Add block 1 to the totals.** Both scores are $0$ and $e^0=1$, so each exponential is $1$.
+         $$\ell=1+1=2$$
+         $$u=1\times1+1\times3=4$$
+
+      2. **Add block 2 to the totals.** Both scores are $1$, so each exponential is $e$, and we add the new terms to what we had.
+         $$\ell=2+2e\approx7.44$$
+         $$u=4+2e+4e=4+6e\approx20.31$$
+
+      3. **Divide once at the end.** Now that every key has been seen, $\ell$ is the full softmax total.
+         $$o=\frac{4+6e}{2+2e}\approx2.73.$$
+
+      4. **Check against softmax on the whole row.** The weights are $1$, $1$, $e$ and $e$ over $2+2e$, about $0.134$, $0.134$, $0.366$ and $0.366$.
+         $$0.134\times(1+3)=0.536$$
+         $$0.366\times(2+4)=2.196$$
+         Adding these gives $o\approx2.73$.
+
+      Both ways give $2.73$, so working in blocks changed nothing about the answer.
+    problems:
+      - fa-online-basics
+      - fa-online-self-explain
+      - fa-online-update
+      - fa-online-mistake
+      - fa-online-exact
+      - fa-online-direct
+      - fa-online-transfer
+  - id: fa-running-max
+    title: "Stop the exponentials from getting too big"
+    explain: |
+      ### Big scores break the exponential
+
+      Online softmax adds up $e^{s_j}$, and exponentials grow very fast. A number too big for its format turns into infinity, which is called **overflow**. In FP16, a common 16-bit format, the largest number is $65{,}504$. $e^{11}\approx59{,}874$ fits, but $e^{12}\approx162{,}755$ doesn't, so a score of $12$ would ruin the output.
+
+      If we subtract the same number $c$ from every score, each exponential is multiplied by $e^{-c}$, because $e^{s_j-c}=e^{s_j}e^{-c}$. That factor appears on the top and the bottom of every weight, so it cancels. So in practice softmax first subtracts the largest score $m$ from every score, making every exponential at most $e^0=1$.
+
+      ### A running largest score
+
+      But a kernel working in blocks only knows the largest score after the last block. So it keeps $m$, the largest score so far, and subtracts it from each score, adding $e^{s_j-m}$ to $\ell$ and $e^{s_j-m}v_j$ to $u$. When a new block raises the largest score to $m_{\text{new}}$, each old term $e^{s_j-m}$ should now be $e^{s_j-m_{\text{new}}}$, which is $e^{m-m_{\text{new}}}$ times as big. So the kernel multiplies both totals by $e^{m-m_{\text{new}}}$ before adding the new block's terms:
+
+      $$\ell_{\text{new}}=e^{m-m_{\text{new}}}\,\ell+\sum_{j\in\text{block}}e^{s_j-m_{\text{new}}},$$
+
+      $$u_{\text{new}}=e^{m-m_{\text{new}}}\,u+\sum_{j\in\text{block}}e^{s_j-m_{\text{new}}}v_j.$$
+
+      The sums run over the keys in the new block. Rescaling shrinks both old totals by the same factor, so it doesn't change their ratio. FlashAttention does this for each query row.
+
+      ### Limitations of fast attention kernels
+
+      A fused kernel must move at least $4Td_h$ numbers. A real kernel reads every block of $K$ and $V$ again for each block of queries, so it reads more. The FlashAttention paper shows that the extra traffic of a blocked kernel shrinks as the on-chip memory grows, because bigger blocks mean fewer passes over the data. But the $T\times T$ tables still never go to HBM. So the earlier $1.024$ MB and intensity of $500$ are best cases.
+
+      Fusion doesn't cut any FLOPs either. The matrix multiplies still cost $4T^2d_h$ FLOPs, and the extra softmax work is small, so doubling a long prompt still makes attention about four times slower. PyTorch's `scaled_dot_product_attention`, in `torch.nn.functional`, picks a kernel itself. On GPUs that support it, that can be a FlashAttention kernel.
+    worked: |
+      Let's run the four keys again, with scores $0$, $0$, $1$ and $1$ and values $1$, $3$, $2$ and $4$, this time keeping a running largest score $m$.
+
+      1. **Start with block 1.** Its largest score is $0$, so $m=0$, and each exponential is $e^{0-0}=1$.
+         $$m=0,\qquad\ell=2$$
+         $$u=1\times1+1\times3=4$$
+
+      2. **Rescale for block 2.** Block 2's largest score is $1$, so the old terms are multiplied by $e^{0-1}\approx0.368$.
+         $$\ell=2e^{-1}\approx0.736$$
+         $$u=4e^{-1}\approx1.472$$
+
+      3. **Add block 2's terms.** Measured from $m=1$, each of its exponentials is $e^{1-1}=1$.
+         $$\ell\approx0.736+2=2.736$$
+         $$u\approx1.472+2+4=7.472$$
+
+      4. **Divide once at the end.** We divide the two totals, just as before.
+         $$o\approx\frac{7.472}{2.736}\approx2.73.$$
+
+      This matches the $2.73$ we got without subtracting, and the biggest exponential we ever computed was $1$. With scores of $12$ or more, the version without subtracting would overflow in FP16, but this one would still compute no exponential bigger than $1$.
+    problems:
+      - fa-max-basics
+      - fa-max-self-explain
+      - fa-max-overflow
+      - fa-max-factor
+      - fa-max-rescale
+      - fa-max-forgot-u
+      - fa-max-limit
+      - fa-max-transfer
+final: fa-explain
+summary: |
+  - Standard attention runs as three kernels that pass the $T\times T$ score and weight tables through HBM, so it moves $4Td_h+4T^2$ numbers and its arithmetic intensity stays below $d_h/b$, which is $64$ FLOPs per byte at 16-bit with $d_h=128$.
+  - A fused kernel keeps the scores on chip and needs to move as few as $4Td_h$ numbers, which is $1+T/d_h$ times fewer, so its intensity can reach $T/b$.
+  - It works on blocks of queries and keys, keeping a running sum $\ell$ of exponentials and a running sum $u$ of exponential-weighted values, and outputs $u/\ell$ after the last block, which is exactly softmax attention.
+  - To stop exponentials overflowing, it subtracts a running largest score $m$ and multiplies $\ell$ and $u$ by $e^{m-m_{\text{new}}}$ whenever that score grows.
+
+  **Next:** The quantisation lesson stores numbers in fewer bytes each, which cuts memory traffic for the model's learned parameters as well.
