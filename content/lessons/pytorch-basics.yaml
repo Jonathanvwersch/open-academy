@@ -97,7 +97,7 @@ knowledge_points:
     explain: |
       ### From a formula to a module
 
-      In the first step we typed the weight and bias into `x @ w + 1` by hand. Training has to change those numbers, so PyTorch must know which tensors they are and find their slopes.
+      The expression `x @ w + 1` multiplies the input table `x` by the weight table `w` and adds bias 1 to each prediction. We typed the weight and bias by hand. Training has to change those numbers, so PyTorch must know which tensors they are and find their slopes.
 
       A **module** is a PyTorch object that does a calculation and keeps track of the numbers training will adjust, called its **parameters**. Each parameter is a tensor that needs gradients. Ready-made modules live in `torch.nn`, which we import as `nn`. The one we need is `nn.Linear`, which computes the linear model $\hat y=wx+b$ for every row of its input, where $\hat y$ is the prediction, $w$ the weight and $b$ the bias. It's our `x @ w + 1`, with its own weight and bias.
 
@@ -117,7 +117,7 @@ knowledge_points:
       </svg>
       ```
 
-      We call a module like a function: `model(x)` gives a prediction for every row of `x`, and `model.parameters()` hands `model.weight` and `model.bias` to the optimiser, which step 3 introduces.
+      We call a module like a function: `model(x)` gives a prediction for every row of `x`, and `model.parameters()` hands `model.weight` and `model.bias` to the optimiser, the object that updates parameters from their slopes.
 
       ### What the two sizes mean
 
@@ -162,7 +162,7 @@ knowledge_points:
     explain: |
       ### Starting from a wrong guess
 
-      Now let's train, starting at weight $1$ and bias $0$, so the model predicts $1$ and $2$ instead of $3$ and $5$. An update measures the loss, finds each slope and moves each parameter against it, and PyTorch splits that between a loss function, `loss.backward()` and an optimiser, as the picture shows.
+      Now let's train, starting at weight $1$ and bias $0$, so the model predicts $1$ and $2$ instead of $3$ and $5$. An update measures the loss, finds each slope and moves each parameter against it. A **loss function** turns predictions and targets into one number that says how wrong the predictions are. An **optimiser** is the object that updates the parameters from their stored slopes. PyTorch splits the update between a loss function, `loss.backward()` and an optimiser, as the picture shows.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 300" aria-label="One update in three stages. First the loss is 6.5 with weight 1 and bias 0. A blue arrow labelled loss.backward() leads to the second stage, where the slopes -8 and -5 are stored in .grad and the weight and bias are unchanged. An orange arrow labelled optimizer.step() leads to the third stage, weight 1.8 and bias 0.5">
@@ -187,13 +187,13 @@ knowledge_points:
 
       ### The loss function and the optimiser
 
-      A **loss function** turns predictions and targets into one number that says how wrong the predictions are. `nn.MSELoss()` gives the mean squared error, which squares each error and averages the squares. Each error is prediction minus target, $1-3=-2$ and $2-5=-3$, so
+      `nn.MSELoss()` gives the mean squared error, which squares each error and averages the squares. Each error is prediction minus target, $1-3=-2$ and $2-5=-3$, so
 
       $$L=\frac{(-2)^2+(-3)^2}{2}=6.5.$$
 
       Calling `loss.backward()` then works out the loss's slope for every parameter and stores it in that parameter's `.grad`. Here the weight's slope is $-8$ and the bias's is $-5$; the worked example below finds them by hand.
 
-      An **optimiser** is the object that updates the parameters from their stored slopes. `torch.optim.SGD` makes the gradient-descent update, $w_{\text{new}}=w-\eta\,\partial L/\partial w$; its name means "stochastic gradient descent", which with the whole dataset each pass, as here, is plain gradient descent. We give it `model.parameters()` and the learning rate as `lr`, and each call to `optimizer.step()` moves every parameter once.
+      `torch.optim.SGD` makes the gradient-descent update, $w_{\text{new}}=w-\eta\,\partial L/\partial w$; its name means "stochastic gradient descent", which with the whole dataset each pass, as here, is plain gradient descent. We give it `model.parameters()` and the learning rate as `lr`, and each call to `optimizer.step()` moves every parameter once.
 
       ### Who changes what
 
@@ -248,7 +248,7 @@ knowledge_points:
 
       One update took the loss to $0.65$, but $1.8$ and $0.5$ aren't yet $2$ and $1$. So we repeat it, each pass starting from fresh predictions, because the slopes depend on the current weight and bias.
 
-      A **training loop** in PyTorch is a `for` loop whose body is the update from step 3, always in this order:
+      Here `optimizer` is the optimiser, the object that updates parameters from their stored slopes. A **training loop** in PyTorch is a `for` loop whose body repeats the update, always in this order:
 
       1. `optimizer.zero_grad()` clears old slopes.
       2. `model(x)` predicts.
@@ -288,7 +288,7 @@ knowledge_points:
 
       Be careful not to leave out `optimizer.zero_grad()`. The second pass would then store $-8+(-2.5)=-10.5$ for the weight instead of its slope, $-2.5$ (worked out below), and step far too far.
 
-      Be careful, too, with the `loss` you print: it was measured before `optimizer.step()`, so it describes the old parameters. To judge the updated model, compute a new loss. Inside `torch.no_grad()` the answer is the same, but PyTorch skips recording work we'll never call backward on.
+      Be careful, too, with the `loss` you print: it was measured before `optimizer.step()`, so it describes the old parameters. To judge the updated model, compute a new loss. Inside a `torch.no_grad()` block, which turns off PyTorch's recording of calculations for slopes, the answer is the same, but PyTorch skips work we'll never call backward on.
     worked: |
       Let's run pass 2 by hand, from $w=1.8$, $b=0.5$ and $\eta=0.1$.
 
@@ -322,11 +322,11 @@ knowledge_points:
 
       ### Training mode and evaluation mode
 
-      Before we leave the loop, one setting matters for the larger models in later lessons. Our `nn.Linear` model has no dropout, so the code above is still correct.
+      Before we leave the loop, one setting matters for the larger models in later lessons. Our `nn.Linear` model has no **dropout**, which zeroes a random share of the numbers flowing through a model during training, so the code above is still correct.
 
       A **mode** is a setting stored in the model. A PyTorch model starts in **training mode**, the setting used while it learns. `model.train()` selects training mode and `model.eval()` selects **evaluation mode**.
 
-      Some larger models use **dropout**, which zeroes a random share of the numbers flowing through the model on each call in training mode. Even with the same `x` and the same weights, predictions can change from call to call, so the loss can change too.
+      Some larger models use dropout on each call in training mode. Even with the same `x` and the same weights, predictions can change from call to call, so the loss can change too.
 
       When checking the model, we want dropout off and don't need to record calculations for slopes. `torch.no_grad()` alone leaves dropout on in training mode, so we also call `model.eval()`.
 

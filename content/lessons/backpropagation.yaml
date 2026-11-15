@@ -116,7 +116,7 @@ knowledge_points:
 
       ### One backward step at a time
 
-      At each operation, a **backward step** multiplies the slope arriving for its output by a local derivative, which gives a slope for each of its inputs. So if we read the blue numbers from right to left, as the backward pass does, each one is the number to its right times a local derivative. The output layer $\hat y=w_2h$ has two inputs, so it sends one slope to $h$ and one to $w_2$.
+      At each operation, a **backward step** multiplies the slope arriving for its output by a local derivative, which gives a slope for each of its inputs. The **backward pass** follows these steps from the loss back towards the inputs. Reading the blue numbers right to left, each is the number to its right times a local derivative. The output layer $\hat y=w_2h$ has two inputs, so it sends one slope to $h$ and one to $w_2$.
 
       ### The ReLU step
 
@@ -239,7 +239,7 @@ knowledge_points:
 
       Backward code with a mistake still gives a number, so we also measure the slope another way, by nudging one parameter and watching the loss.
 
-      Let's go back to the first model, $\hat y=wx+b$ with $x=2$ and $y=0$, and hold $b=1$ fixed, so the loss is $L(w)=(2w+1)^2$. At $w=1$, backpropagation gave $12$. The grey curve is the loss as $w$ changes. We measure it at $w=0.9$ and $w=1.1$, and the slope of the orange line joining them is our measurement.
+      Let's go back to the first model, $\hat y=wx+b$ with $x=2$ and $y=0$, and hold $b=1$ fixed, so the loss is $L(w)=(2w+1)^2$. At $w=1$, backpropagation, which applies the chain rule backwards through the operations to find parameter slopes, gave $12$. The grey curve is the loss as $w$ changes. We measure it at $w=0.9$ and $w=1.1$, and the slope of the orange line joining them is our measurement.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 260" aria-label="The grey curve shows the loss (2w plus 1) squared for w from 0.6 to 1.4. It passes through 7.84 at w equals 0.9, 9 at w equals 1 and 10.24 at w equals 1.1. An orange line joins the two outer points, and its slope, 2.4 divided by 0.2, is 12">

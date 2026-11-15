@@ -98,11 +98,11 @@ knowledge_points:
     explain: |
       ### Why the step size matters
 
-      Why did we use a learning rate of only $0.1$? A bigger step might seem to reach the bottom sooner, so let's test that.
+      The learning rate $\eta$ (eta) is the positive number that scales the gradient to set the step size. Why choose only $0.1$? A bigger step might seem to reach the bottom sooner, so let's test that.
 
       ### Three step sizes on one curve
 
-      Along the line $y=0$, the bowl is just $x^2$, so let's take $f(w)=w^2$ as a stand-in loss. We call its input $w$ because it plays the part of a weight. Its slope is $2w$, so one step gives
+      Let's take the bowl-shaped curve $f(w)=w^2$ as a stand-in loss. We call its input $w$ because it plays the part of a weight. Its slope is $2w$, so one step gives
 
       $$w_{\text{new}}=w-\eta\times2w=(1-2\eta)\,w.$$
 
@@ -256,7 +256,7 @@ knowledge_points:
 
       Be careful not to read the biggest slope as the most wrong weight. In a model with several inputs, every weight's slope contains the same error $e$, so the weight on the biggest input gets the biggest slope, even though the mistake belongs to the whole prediction.
     worked: |
-      Let's take the step that turns the grey line into the orange one. The model is $\hat y=wx+b$, starting from $w=1$ and $b=1$, with the example $x=2$, $y=7$ and a learning rate of $\eta=0.05$.
+      Let's take the step that turns the grey line into the orange one. The model is $\hat y=wx+b$, starting from $w=1$ and $b=1$, with the example $x=2$, $y=7$ and a learning rate of $\eta=0.05$, the positive number that scales the gradient to set the step size.
 
       1. **Predict.** We put the input into the model with the current weight and bias.
          $$\hat y=1\times2+1=3.$$
@@ -291,7 +291,7 @@ knowledge_points:
     explain: |
       ### Repeating the step
 
-      One step lowered our model's loss from $16$ to $4$, but not to $0$. So we take another step, and another, each one starting from the weight and bias that the last one left behind. Each time round is called a **pass**, and every pass does the same four things, shown on the left. On the right are the losses of our one-example model over four passes.
+      Gradient descent repeatedly subtracts a scaled loss gradient from the model's parameters. The learning rate $\eta$ sets that scale. For the model $\hat y=wx+b$ with example $x=2$, $y=7$, one step from $w=1$, $b=1$ at $\eta=0.05$ lowered the loss from $16$ to $4$. So we take another step, and another, each one starting from the weight and bias that the last one left behind. Each time round is called a **pass**, and every pass does the same four things, shown on the left. On the right are the losses of our one-example model over four passes.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 340" aria-label="Left: the training loop as four boxes in a cycle, predict, error and loss, slopes, update w and b, with an arrow back to predict. Right: green bars of the loss at the start of each of four passes, 16, 4, 1 and 0.25">
@@ -324,11 +324,11 @@ knowledge_points:
 
       ### Work out the slopes again every pass
 
-      The slopes belong to the point where we're standing, and that point moves. After the first step the error halves from $-4$ to $-2$, so the slopes halve too, from $(-16,-8)$ to $(-8,-4)$. That's why the steps get smaller near the bottom on their own. If we kept reusing the first slopes, every step would stay full size, adding $2$ to the prediction each time, $3$, $5$, $7$, $9$, $11$, so it would sail straight past $7$ and keep going.
+      As the point moves, its slopes change. After the first step the error halves from $-4$ to $-2$, so the slopes halve too, from $(-16,-8)$ to $(-8,-4)$. The steps shrink near the bottom. Reusing the first slopes would keep adding $2$ to the prediction each time, $3$, $5$, $7$, $9$, $11$, sailing straight past $7$.
 
       ### When to stop
 
-      We stop after a fixed number of passes, or once a pass barely lowers the loss, say by under $0.1\%$. Be careful not to confuse this with a loss that has crept down slowly from the start and is still high. That's the sign of a learning rate that's too small, not of being finished.
+      We stop after a fixed number of passes, or once a pass barely lowers the loss, say by under $0.1\%$. Be careful not to confuse this with a loss that has crept down slowly from the start and is still high. The learning rate may be too small; try increasing it before deciding training is finished.
 
       ### Getting stuck in a dip
 
@@ -355,7 +355,7 @@ knowledge_points:
       </svg>
       ```
 
-      This can't happen to our linear model. Its squared-error loss is a bowl in $w$ and $b$, so any point where the slopes are all $0$ is as low as it gets. For losses with several dips, a common fix is to train from a few different starting points and keep whichever ends lowest.
+      This can't happen to our linear model. Its squared-error loss is a bowl in $w$ and $b$, so any point where the slopes are all $0$ is as low as it gets. For losses with several dips, train from different starting points and keep whichever ends lowest.
     worked: |
       Let's run the second pass of the loop by hand. The model is still $\hat y=wx+b$, with the example $x=2$, $y=7$ and $\eta=0.05$, and the first pass left us with $w=1.8$ and $b=1.4$.
 

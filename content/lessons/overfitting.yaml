@@ -16,7 +16,7 @@ knowledge_points:
     explain: |
       ### Three shapes for predicting prices
 
-      We fit three models to the six training houses only. The two validation houses stay separate so we can check predictions that did not help train any model.
+      We want to predict house prices from size, using six sales for training and two for validation. We fit three models to the six training houses only. The two validation houses stay separate so we can check predictions that did not help train any model.
 
       A model's **flexibility** is how far it can bend to follow the data. The straight line can only tilt, the smooth curve can bend once, and the wiggly curve can bend many times.
 
@@ -126,7 +126,7 @@ knowledge_points:
     explain: |
       ### Compare mistakes on training and validation houses
 
-      Suppose the people using this tool can tolerate an average price error below $30,000 when planning their budgets. That is the target they have given us, not a rule for every task. Throughout this step, errors are in thousands of dollars, so the target is below 30.
+      We are comparing house-price models with different **flexibility**, meaning how far their shapes can bend to follow sales data. A straight line can only tilt, a smooth curve can bend once, and a wiggly curve can bend many times. Suppose the people using this tool can tolerate an average price error below $30,000 when planning their budgets. That is the target they have given us, not a rule for every task. Throughout this step, errors are in thousands of dollars, so the target is below 30.
 
       - High training error suggests **underfitting**. A model whose shape cannot follow the pattern makes the same kind of mistake again and again. We call this **high bias**, as when the straight line cannot follow bending prices.
       - Low training error with much higher validation error suggests **overfitting**. This often goes with **high variance**, meaning the model would change a lot if we had picked a different six training houses from all the sales we know about.
@@ -205,15 +205,15 @@ knowledge_points:
     explain: |
       ### Watch predictions change during training
 
-      The finished fits showed that following training prices too closely can hurt validation predictions. Now we'll watch a model get to that point so we can stop before it happens. The upper plot illustrates training the wiggly curve on more houses from our sales collection, rather than continuing the six-house fit. Training adjusts its weights a little during each pass through the training houses. These adjustable numbers control its predictions. Early adjustments can produce a smooth shape. Later adjustments can pull different parts towards individual training prices. One full pass is an **epoch**, and we can save a copy after each epoch.
+      The finished fits showed that following training prices too closely can hurt validation predictions. Now we'll watch a model get to that point so we can stop before it happens. The upper plot illustrates training a wiggly curve, a model that can bend many times, on more houses from our sales collection, rather than continuing the six-house fit. Training adjusts its weights a little during each pass through the training houses. These adjustable numbers control its predictions. Early adjustments can produce a smooth shape. Later adjustments can pull different parts towards individual training prices. One full pass is an **epoch**, and we can save a copy after each epoch.
 
       A **learning curve** shows how error changes during training. In both plots, the horizontal axis counts completed epochs and zero means before training. Throughout this step, errors are in thousands of dollars. Blue is training error and green is validation error.
 
-      In the upper plot, both errors fall at first. After epoch 5, training error keeps falling but validation error rises. The wiggly curve is following training houses more closely while predicting validation houses less well, which suggests overfitting.
+      In the upper plot, both errors fall at first. After epoch 5, training error keeps falling but validation error rises. The wiggly curve is following training houses more closely while predicting validation houses less well, which suggests **overfitting**: following training details that do not carry over to new examples.
 
       ### Compare with the straight line
 
-      The lower plot trains the straight line from step 1 in repeated passes too. Its errors settle at the same rounded scores of 50 and 62. Both stay above the dashed target of 30, suggesting underfitting. A more flexible model may help when extra passes no longer improve the training fit.
+      The lower plot trains a straight-line house-price model, whose shape can only tilt, in repeated passes too. Its errors settle at 50 and 62. Both stay above the dashed target of 30, the users' acceptable average error, suggesting **underfitting**: missing useful patterns even in training data. A more flexible model may help when extra passes no longer improve the training fit.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 595" aria-label="Two house-price models trained in repeated passes over epochs 0 through 10, with error in thousands of dollars. Both learning-curve plots have their own blue training and green validation legend and a dashed useful-error line at 30. The upper plot illustrates training the wiggly curve on more houses from the sales collection, not continuing the six-house fit. Training error falls from 50 to 1.2, but validation reaches its minimum 16 at epoch 5 and then rises to 31. The lower plot trains the straight line from step 1. Its errors settle at the same rounded scores of 50 training and 62 validation, both above 30. The lower error axis extends to 100 to fit the higher starting errors.">
@@ -261,9 +261,9 @@ knowledge_points:
 
       ### Try a change that addresses the failure
 
-      More training data can help overfitting because more houses make individual quirks matter less. A simpler model or stopping earlier can also help. If a model's errors are both high but still falling each pass, extra training may help instead. Keep checking whether validation predictions improve.
+      More houses can help overfitting by making individual quirks matter less. A simpler model or stopping earlier can also help. If a model's errors are both high but still falling each pass, extra training may help instead.
 
-      Be careful not to react to every tiny rise in validation error. Checking only a few validation houses can make the learning curve wobble, so look for a clear trend before deciding what to change.
+      Be careful with tiny rises in validation error: a few validation houses can make it wobble. Look for a clear trend before changing anything.
     worked: |
       Let's use the wiggly curve's saved scores to decide which copy to keep.
 

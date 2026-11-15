@@ -23,7 +23,7 @@ knowledge_points:
 
       ### Keep W and learn only the change
 
-      LoRA's first move is to stop changing $W$ itself. **Freezing** a weight means leaving it out of training, so gradient descent never updates it. We freeze $W$ and keep the change $\Delta W$ as a separate matrix, the only thing training updates. This step saves nothing yet. It sets up the change that the next step describes with far fewer numbers. The layer then works out both products and adds them, where $h$ is the result for this matrix:
+      LoRA, short for low-rank adaptation, is a cheap way to fine-tune a pretrained model. Its first move is to stop changing $W$ itself. **Freezing** a weight means leaving it out of training, so gradient descent never updates it. We freeze $W$ and keep the change $\Delta W$ as a separate matrix, the only thing training updates. This step saves nothing yet. It sets up the change that the next step describes with far fewer numbers. The layer then works out both products and adds them, where $h$ is the result for this matrix:
 
       $$h=Wx+\Delta W x$$
 
@@ -91,7 +91,7 @@ knowledge_points:
     explain: |
       ### One column times one row
 
-      $\Delta W$ is as big as $W$. LoRA describes it with far fewer numbers by building it from two thin matrices, while $\Delta W$ keeps its full shape. Let's start with a column $B$ and a row $A$, each with 4 entries. Here $B$ is $4\times1$ and $A$ is $1\times4$, so the inner sizes are both 1 and $BA$ is a $4\times4$ matrix.
+      A change $\Delta W$ to a pretrained weight matrix $W$ has the same shape as $W$. **LoRA**, short for low-rank adaptation, keeps $W$ fixed during training and builds this change from two thin matrices, using fewer numbers. Let's start with a column $B$ and a row $A$, each with 4 entries. Here $B$ is $4\times1$ and $A$ is $1\times4$, so the inner sizes are both 1 and $BA$ is a $4\times4$ matrix.
 
       Write $b_i$ for entry $i$ of $B$ and $a_j$ for entry $j$ of $A$. The entry in row $i$ and column $j$ of $BA$ is $b_ia_j$. So the product is a multiplication table, with $B$ down the side and $A$ along the top.
 
@@ -117,11 +117,11 @@ knowledge_points:
 
       So one column and one row can only make a simple change. To allow more, we give $B$ a few columns and $A$ the same number of rows, and call that number $r$. Then $BA$ is a sum of $r$ multiplication tables, one for each column of $B$ and the matching row of $A$. Each table's rows are multiples of a different row of $A$, so the rows of the sum can follow different patterns. With $r=2$, $BA$ is column 1 of $B$ times row 1 of $A$, plus column 2 of $B$ times row 2 of $A$.
 
-      **LoRA** freezes a weight matrix $W$ with $d$ rows and $k$ columns, and trains a change made from a $d\times r$ matrix $B$ and an $r\times k$ matrix $A$, with $r$ much smaller than $d$ and $k$:
+      For $W$ with $d$ rows and $k$ columns, the change is made from a $d\times r$ matrix $B$ and an $r\times k$ matrix $A$, with $r$ much smaller than $d$ and $k$:
 
       $$\Delta W=BA$$
 
-      The inner sizes are both $r$, so $BA$ is $d\times k$, the shape of $W$. The **rank** of a matrix is the smallest number of column-times-row tables that add up to it, so $BA$ has rank at most $r$, and the chosen $r$ is called the LoRA rank. Here $d$ and $k$ are just the two sizes of one weight matrix.
+      The inner sizes are both $r$, so $BA$ is $d\times k$, the shape of $W$. The **rank** of a matrix is the smallest number of column-times-row tables that add up to it, so $BA$ has rank at most $r$, and the chosen $r$ is called the LoRA rank. Here $d$ and $k$ are the sizes of one weight matrix.
 
       ### Never building the grid
 
@@ -157,11 +157,11 @@ knowledge_points:
     explain: |
       ### Counting the numbers to train
 
-      Fine-tuning a $d\times k$ matrix directly trains all $dk$ of its entries. A rank-$r$ LoRA change trains the $dr$ entries of $B$ and the $rk$ entries of $A$, so the number of **trainable parameters**, the numbers gradient descent updates, is
+      LoRA trains a change $BA$ while keeping pretrained weights frozen, or fixed, using $B$ of size $d\times r$ and $A$ of size $r\times k$. A weight matrix with $d$ rows and $k$ columns has $dk$ entries. The entries of $B$ and $A$ are the **trainable parameters**, the numbers gradient descent updates:
 
       $$dr+rk=r(d+k)$$
 
-      Here are both counts:
+      The counts are:
 
       | Shape | $r$ | $dk$ | $r(d+k)$ |
       | --- | --- | --- | --- |
@@ -180,7 +180,7 @@ knowledge_points:
 
       The singular value decomposition (SVD) shows that any matrix can be written as a sum of column-times-row tables, each scaled by a number called a singular value. Keeping the few tables with the largest singular values gives a close low-rank approximation when the ones left out are small. So if the change that fine-tuning needs is mostly a few large tables, a rank-$r$ change $BA$ can match it closely. The LoRA authors found evidence that it usually is. In their GPT-3 experiments on two language tasks, a rank as small as 1 or 2 already scored close to larger ranks.
 
-      When the needed change is far from low rank, a small $r$ falls short, so people raise $r$ or put LoRA on more matrices.
+      If a small $r$ cannot capture the change, raise $r$ or apply LoRA to more matrices.
     worked: |
       Let's count what LoRA trains in a whole model. Suppose the model has 32 layers, and in each one we put LoRA on two of its $4096\times4096$ weight matrices, with rank $r=8$. (In a transformer, these are two of the matrices used by attention, often called $W_Q$ and $W_V$. For counting, only their shape matters.) Suppose the model has 7 billion weights in all.
 
@@ -211,17 +211,17 @@ knowledge_points:
     explain: |
       ### Starting from no change
 
-      We want training to start from the pretrained model, so $BA$ should start at zero. LoRA sets $B$ to all zeros and $A$ to small random numbers. Why not make both zero? Take the rank-1 case, where $B$ is a column with entries $b_i$ and $A$ is a row. Entry $i$ of $BAx$ is $b_i$ times the number $Ax=a_1x_1+\dots+a_kx_k$. Nudging $b_i$ moves that entry by $Ax$ times the nudge, and nudging $a_j$ moves it by $b_ix_j$ times the nudge. By the chain rule, the gradient for $b_i$ is $Ax$ times the loss's slope for entry $i$. The gradient for $a_j$ adds up $b_ix_j$ times the loss's slope for entry $i$, over every entry $i$. If $B$ and $A$ are both zero, then $Ax=0$ and every $b_i=0$, so every gradient is zero and nothing moves. With $A$ random, $Ax$ is almost never zero, so $B$ gets a gradient and moves. Once some $b_i$ is nonzero, $A$ gets gradients too.
+      LoRA, short for low-rank adaptation, keeps pretrained weights $W$ frozen, unchanged by training, and trains a change $BA$ built from two thin matrices. Starting $BA$ at zero preserves the pretrained model's predictions. LoRA sets $B$ to all zeros and $A$ to small random numbers. Why not make both zero? Take the rank-1 case, where $B$ is a column with entries $b_i$ and $A$ is a row. Entry $i$ of $BAx$ is $b_i$ times the number $Ax=a_1x_1+\dots+a_kx_k$. Nudging $b_i$ moves that entry by $Ax$ times the nudge, and nudging $a_j$ moves it by $b_ix_j$ times the nudge. By the chain rule, the gradient for $b_i$ is $Ax$ times the loss's slope for entry $i$. The gradient for $a_j$ adds up $b_ix_j$ times the loss's slope for entry $i$, over every entry $i$. If $B$ and $A$ are both zero, then $Ax=0$ and every $b_i=0$, so every gradient is zero and nothing moves. With $A$ random, $Ax$ is almost never zero, so $B$ gets a gradient and moves. Once some $b_i$ is nonzero, $A$ gets gradients too.
 
-      In practice, LoRA code also multiplies $BA$ by a fixed number, so that the size of the change stays similar when $r$ is changed. It doesn't change the count $r(d+k)$. We leave it out here. With it, each $BA$ below becomes that number times $BA$.
+      LoRA code also multiplies $BA$ by a fixed number, so that the size of the change stays similar when $r$ is changed. It doesn't change the count $r(d+k)$ of trained entries, where $W$ is $d\times k$ and $r$ is the shared inner size of $B$ and $A$. We leave this multiplier out below.
 
       ### Merging the change into W
 
-      After training, we can build $BA$ once and add it into the frozen matrix:
+      After training, we can build $BA$ once and add it into the frozen matrix $W$:
 
       $$W'=W+BA$$
 
-      Here $W'$, read "W prime", is the new weight matrix. It has the same shape as $W$, so predicting with the merged model takes exactly the same work as predicting with the original one.
+      Here $W'$, read "W prime", is the new weight matrix. Its shape matches $W$, so predictions take the same work as before.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 200" aria-label="Left, during training: the frozen grey matrix W plus the trained orange product BA, two separate pieces. An arrow labelled merge points right to one green matrix W prime = W + BA, with the same shape as W, used after training">
@@ -242,7 +242,7 @@ knowledge_points:
 
       ### One frozen model, many tasks
 
-      We can also keep the change separate. All the trained pairs $B$ and $A$ for a task together are called a **LoRA adapter**. Since each adapter is tiny, we can keep one copy of the frozen model and a small adapter for each task, and swap between them.
+      We can keep the change separate. The trained pairs $B$ and $A$ for a task form a **LoRA adapter**. We can swap these tiny adapters between tasks while keeping one frozen model.
 
       Be careful not to think a merged model can switch tasks by itself. Once $BA$ is added in, $W'$ holds that one task's change. To serve several tasks from one copy of the frozen weights, we keep the adapters separate and pay for the extra products $Ax$ and $B(Ax)$ on each input.
     worked: |

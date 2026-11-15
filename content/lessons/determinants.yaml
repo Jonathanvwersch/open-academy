@@ -90,9 +90,9 @@ knowledge_points:
     explain: |
       ### A square can become slanted
 
-      The rectangle made the area easy to see. A matrix can also slant a square into a **parallelogram**, a four-sided shape with opposite sides parallel. We still follow the same two edges.
+      A matrix can slant a square into a **parallelogram**, a four-sided shape with opposite sides parallel.
 
-      Take $A=\begin{bmatrix}3&1\\1&2\end{bmatrix}$. Its first column sends $(1,0)$ to $(3,1)$, the blue arrow, and its second sends $(0,1)$ to $(1,2)$, the orange arrow. The square's opposite corner is the input $(1,1)$. It uses one copy of each column, so its output is their sum, $(4,3)$. The green parallelogram is what the unit square becomes. The grey triangles fill the rest of an enclosing rectangle; we can find the green area by removing them. Call the top-right entry $b=1$ and the bottom-left entry $c=1$; these label distances in the picture.
+      Take $A=\begin{bmatrix}3&1\\1&2\end{bmatrix}$. Its first column sends $(1,0)$ to $(3,1)$, the blue arrow, and its second sends $(0,1)$ to $(1,2)$, the orange arrow. The square's opposite corner is the input $(1,1)$. It uses one copy of each column, so its output is their sum, $(4,3)$. The green parallelogram is what the unit square (the square with opposite corners $(0,0)$ and $(1,1)$) becomes. The grey triangles fill the rest of an enclosing rectangle; we find the green area by removing them. Call the top-right entry $b=1$ and the bottom-left entry $c=1$; these label distances in the picture.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 330" aria-label="The matrix with rows (3, 1) and (1, 2) maps a unit square to a parallelogram with corners (0, 0), (3, 1), (4, 3) and (1, 2). The enclosing rectangle is 4 wide and 3 high. The four outside grey triangles have areas 2, 2, 1.5 and 1.5, leaving green area 5." font-family="ui-sans-serif, system-ui, sans-serif">
@@ -124,7 +124,7 @@ knowledge_points:
 
       $$A=\begin{bmatrix}a&b\\c&d\end{bmatrix}$$
 
-      Its determinant comes from two products. Multiply the top-left entry by the bottom-right entry, then subtract the product of the other diagonal:
+      Its determinant, the signed area scale, comes from two products. Multiply the top-left entry by the bottom-right entry, then subtract the product of the other diagonal:
 
       $$\det(A)=ad-bc$$
 
@@ -132,13 +132,13 @@ knowledge_points:
 
       $$\begin{aligned}\text{area}&=(a+b)(c+d)\\&\quad-c(a+b)-b(c+d)\\&=(ac+ad+bc+bd)\\&\quad-(ac+2bc+bd)\\&=ad-bc\end{aligned}$$
 
-      The terms $ac$ and $bd$ cancel; removing two copies of $bc$ from one leaves $-bc$. This picture preserves orientation, so its area is its determinant. Swapping columns reverses the edge order and changes the formula to $bc-ad$, reversing the sign.
+      The terms $ac$ and $bd$ cancel; removing two copies of $bc$ from one leaves $-bc$. This picture preserves orientation, the clockwise or counterclockwise order of the edges, so its area is its determinant. Swapping columns reverses the edge order and changes the formula to $bc-ad$, reversing the sign.
 
       Be careful to subtract the second product. Adding it can give the wrong area and even the wrong sign.
 
       ### Which matrices this rule fits
 
-      Determinants belong to square matrices; a $2\times3$ matrix has no determinant. The $ad-bc$ formula works for every $2\times2$ matrix, including negative entries. Larger square matrices also have determinants, but need a different calculation.
+      Determinants belong to square matrices, which have equal numbers of rows and columns; a $2\times3$ matrix has no determinant. The $ad-bc$ formula works for every $2\times2$ matrix, including negative entries. Larger square matrices need a different calculation.
     worked: |
       Let's find the area of the green image of the unit square for $A=\begin{bmatrix}3&1\\1&2\end{bmatrix}$, then check the diagonal rule.
 
@@ -172,9 +172,9 @@ knowledge_points:
     explain: |
       ### When the area disappears
 
-      The determinant also tells us when a matrix loses information. Imagine changing a square's two edges until they lie along the same line. The square is squeezed flat, so its area becomes zero.
+      The determinant, the signed area scale of a $2\times2$ matrix, tells us when a matrix loses information. Imagine changing a square's two edges until they lie along the same line. The square is squeezed flat, so its area becomes zero.
 
-      Try $C=\begin{bmatrix}2&1\\0&0\end{bmatrix}$. The first output coordinate is $2x+y$, and the second is always zero. Its columns, $(2,0)$ and $(1,0)$, both point along the horizontal axis, so the unit square becomes a line segment.
+      Try $C=\begin{bmatrix}2&1\\0&0\end{bmatrix}$. The first output coordinate is $2x+y$, and the second is always zero. Its columns, $(2,0)$ and $(1,0)$, both point along the horizontal axis, so the unit square (the square with opposite corners $(0,0)$ and $(1,1)$) becomes a line segment.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 380" aria-label="The matrix C with rows (2, 1) and (0, 0) turns the unit square into a horizontal segment from 0 to 3. The column arrows (2, 0) and (1, 0) lie on the same line, so the output area is zero." font-family="ui-sans-serif, system-ui, sans-serif">
@@ -198,7 +198,7 @@ knowledge_points:
 
       ### Can we recover the input?
 
-      An **inverse** undoes a matrix's map, recovering the original input from its output. A square matrix is **invertible** when that inverse exists.
+      An **inverse** undoes a matrix's map, recovering the original input from its output. A square matrix, with equal numbers of rows and columns, is **invertible** when that inverse exists.
 
       Why does zero prevent an inverse? Different inputs have merged into the same output. For $C$, the inputs $(1,0)$ and $(0,2)$ both give $(2,0)$. An inverse given $(2,0)$ could not tell which input to return.
 
@@ -225,9 +225,9 @@ knowledge_points:
       </g></svg>
       ```
 
-      This construction works for every output when the columns are nonparallel, so a nonzero determinant guarantees an inverse.
+      Nonparallel columns let us recover every input, so a nonzero determinant guarantees an inverse.
 
-      A positive or negative nonzero determinant allows an inverse. Stretching and mirror-flipping can be undone; losing a dimension cannot.
+      Stretching and mirror-flipping can be undone; losing a dimension cannot.
 
       Be careful not to judge by zero entries. The matrix $\begin{bmatrix}2&0\\0&4\end{bmatrix}$ has two zero entries, yet its determinant is 8, so it is invertible. The determinant tests the whole map.
     worked: |

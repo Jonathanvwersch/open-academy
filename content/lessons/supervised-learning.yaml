@@ -85,7 +85,7 @@ knowledge_points:
     explain: |
       ### How wrong is one guess?
 
-      Setting A ($w=3$, $b=50$) priced the 100 m² house at 350 when it sold for 370. To improve, the computer needs "how wrong" as one number that it can try to make smaller. Which number should that be?
+      Our house-price rule multiplies size in square metres by a weight $w$ and adds a bias $b$, with prices in thousands of pounds. Setting A chooses $w=3$, $b=50$: it priced a 100 m² house at 350 when it sold for 370. To improve, the computer needs "how wrong" as one number it can make smaller. Which number should that be?
 
       The obvious first try is the **error**, the prediction minus the target. Let's add two more past sales: an 80 m² house that sold for 280, and a 120 m² house that sold for 400. Setting A predicts 290 and 410 for them, so the errors on our three houses are $+10$, $-20$ and $+10$. If we add them up, we get $10-20+10=0$, as if every guess were right. The misses that are too high cancel the one that is too low.
 
@@ -157,7 +157,7 @@ knowledge_points:
     explain: |
       ### One score for a whole dataset
 
-      Squared error scores one house, but we have three. How do we give a whole setting one score, so we can keep the best?
+      Our house-price rule multiplies size by weight $w$ and adds bias $b$. A **setting** chooses these **parameters**; Setting A uses $w=3$, $b=50$. Our 80, 100 and 120 m² houses sold for 280, 370 and 400 thousand pounds. **Squared error** squares the prediction minus the sale price. Squared error scores one house, but we have three. How do we give a whole setting one score, so we can keep the best?
 
       The natural answer is to average its squared errors over the houses. Setting A's squared errors on our three sales are 100, 400 and 100, so its average is $600\div3=200$. A setting that badly misses even one house gets a large average.
 
@@ -195,7 +195,7 @@ knowledge_points:
 
       ### The training formula
 
-      Let's write the average as a formula. Number the houses 1, 2 and 3, and call house $i$'s input $x_i$ and its target $y_i$. The model predicts $f_\theta(x_i)$ for it, so its loss is $L\big(f_\theta(x_i),y_i\big)$, which we'll shorten to $L_i$. For our three houses, the average is $\frac13(L_1+L_2+L_3)$.
+      Let's write the average as a formula. Write the model as $f_\theta$, where $\theta$ holds its parameters, and its scoring rule, or **loss**, as $L$. Number the houses 1, 2 and 3, and call house $i$'s input $x_i$ and its target $y_i$. The model predicts $f_\theta(x_i)$ for it, so its loss is $L\big(f_\theta(x_i),y_i\big)$, which we'll shorten to $L_i$. For our three houses, the average is $\frac13(L_1+L_2+L_3)$.
 
       A dataset with $n$ examples would need $n$ terms, so we use $\sum_{i=1}^{n}$, which means "add up what follows for $i=1,2,\ldots,n$". The **average loss** is
 
@@ -233,7 +233,7 @@ knowledge_points:
     explain: |
       ### Scoring houses the model hasn't seen
 
-      Training made the average loss small on our past sales. But the point is to price houses that haven't sold yet, so how do we check that?
+      **Training** chooses a model's adjustable numbers to make its **average loss**, the mean prediction-error score over the examples, small. Our house-price rule multiplies size in square metres by a weight $w$ and adds a bias $b$, with prices in thousands of pounds. Training chose Setting A, $w=3$, $b=50$, using past sales. But the point is to price houses that haven't sold yet, so how do we check that?
 
       We keep some sales back. The three sales we've used so far are the ones we judged $w$ and $b$ on, so we call them the **training** sales. Two more, a 90 m² house that sold for 330 and a 110 m² house that sold for 360, play no part in choosing $w$ and $b$, so we only score Setting A on them. Its average squared error is 200 on the training sales and 250 on the held-back sales. The second number is the fair guide, because those houses are new to the model, just like a house for sale today.
 
