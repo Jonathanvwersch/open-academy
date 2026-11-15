@@ -2,7 +2,7 @@ import type { CourseCatalogPayload } from '@academy/contracts/course';
 import { useQuery } from '@tanstack/react-query';
 import { Link, Outlet, useRouterState } from '@tanstack/react-router';
 import { Activity, BookOpen, House, ListOrdered, RotateCcw, Settings } from 'lucide-react';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Toaster } from 'sonner';
 import { BrandLockup } from '../components/brand-lockup.js';
 import { useCapturePageLayout } from '../components/page-layout-skeleton.js';
@@ -34,6 +34,11 @@ import { readBrowserStorage, writeBrowserStorage } from '../lib/browser-storage.
 import { useCurrentCourseId } from '../lib/current-course.js';
 
 const SIDEBAR_STORAGE_KEY = 'academy.app-sidebar.open';
+const SIDEBAR_COURSE_GROUPS_KEY = 'academy.sidebar-course-groups';
+const DEFAULT_SIDEBAR_COURSE_GROUP_COUNTS = [1, 3];
+const COURSE_SKELETON_TITLE_WIDTHS = ['w-3/4', 'w-3/5', 'w-[68%]'];
+const COURSE_SKELETON_GROUP_KEYS = Array.from({ length: 12 }, (_, index) => `group-${index + 1}`);
+const COURSE_SKELETON_ROW_KEYS = Array.from({ length: 30 }, (_, index) => `row-${index + 1}`);
 
 const navigation = [
   { label: 'Home', to: '/', icon: House },
@@ -42,6 +47,32 @@ const navigation = [
   { label: 'Reviews', to: '/reviews', icon: RotateCcw },
   { label: 'Progress', to: '/progress', icon: Activity },
 ] as const;
+
+function readSidebarCourseGroupCounts(): number[] {
+  try {
+    const stored = window.localStorage.getItem(SIDEBAR_COURSE_GROUPS_KEY);
+    if (!stored) return [...DEFAULT_SIDEBAR_COURSE_GROUP_COUNTS];
+    const counts: unknown = JSON.parse(stored);
+    if (
+      Array.isArray(counts) &&
+      counts.length >= 1 &&
+      counts.length <= 12 &&
+      counts.every(
+        (count: unknown) =>
+          typeof count === 'number' && Number.isInteger(count) && count > 0 && count <= 30,
+      )
+    ) {
+      return counts as number[];
+    }
+  } catch {}
+  return [...DEFAULT_SIDEBAR_COURSE_GROUP_COUNTS];
+}
+
+function writeSidebarCourseGroupCounts(counts: number[]) {
+  try {
+    window.localStorage.setItem(SIDEBAR_COURSE_GROUPS_KEY, JSON.stringify(counts));
+  } catch {}
+}
 
 function isActive(pathname: string, to: string) {
   return pathname === to || (to !== '/' && pathname.startsWith(to));
@@ -95,8 +126,79 @@ function AppSidebarView({
       }))
       .filter((subject) => subject.courses.length > 0) ?? [];
   const activeCourses = activeCourseGroups.flatMap((subject) => subject.courses);
+  const [loadingCourseGroupCounts] = useState(readSidebarCourseGroupCounts);
+  useEffect(() => {
+    if (loadingCourses || !courses) return;
+    const counts = courses.subjects
+      .map((subject) => subject.courses.filter((course) => course.status === 'active').length)
+      .filter((count) => count > 0);
+    if (counts.length) writeSidebarCourseGroupCounts(counts);
+  }, [courses, loadingCourses]);
   const closeMobile = () => {
     if (isMobile) setOpenMobile(false);
+  };
+  const renderCourseSkeletons = (count: number, groupKey: string) =>
+    COURSE_SKELETON_ROW_KEYS.slice(0, count).map((rowKey, index) => (
+      <SidebarMenuItem
+        key={`${groupKey}-${rowKey}`}
+        data-testid="sidebar-course-skeleton"
+        aria-hidden="true"
+      >
+        <div className="flex h-9 items-center gap-2 rounded-md px-2">
+          <Skeleton
+            className={`h-4 ${COURSE_SKELETON_TITLE_WIDTHS[index % COURSE_SKELETON_TITLE_WIDTHS.length] ?? 'w-3/4'}`}
+          />
+          <Skeleton className="ml-auto h-3 w-8 shrink-0" />
+        </div>
+      </SidebarMenuItem>
+    ));
+
+  const renderCourse = (course: (typeof activeCourseGroups)[number]['courses'][number]) => {
+    const isActive =
+      currentCourseId === course.id ||
+      pathname === `/courses/${course.id}` ||
+      pathname.startsWith(`/courses/${course.id}/`);
+    const content = (
+      <>
+        <span className="min-w-0 flex-1 whitespace-normal break-words text-sm">{course.title}</span>
+        <span className="ml-auto shrink-0 text-xs font-normal tabular-nums text-muted-foreground">
+          {course.topicsDone}/{course.topicsTotal}
+        </span>
+      </>
+    );
+    return (
+      <SidebarMenuItem key={course.id}>
+        {isActive ? (
+          <SidebarMenuButton
+            asChild
+            isActive={!isMobile}
+            className="h-auto min-h-8 items-start py-2 text-sm"
+          >
+            <Link
+              to="/courses/$courseId"
+              params={{ courseId: course.id }}
+              preload="intent"
+              aria-label={`${course.title}, ${course.topicsDone} of ${course.topicsTotal} topics done`}
+              onClick={closeMobile}
+            >
+              {content}
+            </Link>
+          </SidebarMenuButton>
+        ) : (
+          <SidebarMenuButton asChild className="h-auto min-h-8 items-start py-2 text-sm">
+            <Link
+              to="/courses/$courseId"
+              params={{ courseId: course.id }}
+              preload="intent"
+              aria-label={`Open ${course.title}`}
+              onClick={closeMobile}
+            >
+              {content}
+            </Link>
+          </SidebarMenuButton>
+        )}
+      </SidebarMenuItem>
+    );
   };
 
   return (
@@ -108,7 +210,7 @@ function AppSidebarView({
       aria-label="Main navigation"
     >
       <SidebarHeader
-        className={`h-14 shrink-0 border-b border-sidebar-border p-0 ${
+        className={`h-14 shrink-0 border-b border-sidebar-border px-2 py-0 ${
           !isMobile && state === 'collapsed'
             ? 'items-center justify-center'
             : 'flex-row items-center justify-between'
@@ -126,7 +228,7 @@ function AppSidebarView({
               to="/"
               aria-label="Open Academy home"
               onClick={closeMobile}
-              className="flex h-full min-w-0 flex-1 items-center rounded-md px-3 text-primary outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="flex h-full min-w-0 flex-1 items-center rounded-md px-2 text-primary outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <BrandLockup size="sm" />
             </Link>
@@ -171,97 +273,68 @@ function AppSidebarView({
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-        {showCourseSection && (activeCourses.length > 0 || loadingCourses) ? (
-          <SidebarGroup className="px-2 py-1">
-            <SidebarGroupLabel>My courses</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu className="gap-1">
-                {loadingCourses
-                  ? [
-                      { id: 'first', titleWidth: 'w-3/4' },
-                      { id: 'second', titleWidth: 'w-3/5' },
-                      { id: 'third', titleWidth: 'w-[68%]' },
-                    ].map(({ id, titleWidth }) => {
-                      return (
-                        <SidebarMenuItem
-                          key={`course-skeleton-${id}`}
-                          data-testid="sidebar-course-skeleton"
-                          aria-hidden="true"
-                        >
-                          <div className="flex h-9 items-center gap-2 rounded-md px-2">
-                            <Skeleton className={`h-4 ${titleWidth}`} />
-                            <Skeleton className="ml-auto h-3 w-8 shrink-0" />
-                          </div>
-                        </SidebarMenuItem>
-                      );
-                    })
-                  : activeCourseGroups.flatMap((subject) => [
-                      ...(activeCourseGroups.length > 1
-                        ? [
-                            <SidebarMenuItem
-                              key={`subject-${subject.id}`}
-                              className="px-2 pt-3 pb-1 text-xs font-medium text-muted-foreground"
-                            >
-                              {subject.title}
-                            </SidebarMenuItem>,
-                          ]
-                        : []),
-                      ...subject.courses.map((course) => {
-                        const isActive =
-                          currentCourseId === course.id ||
-                          pathname === `/courses/${course.id}` ||
-                          pathname.startsWith(`/courses/${course.id}/`);
-                        const content = (
-                          <>
-                            <span className="min-w-0 flex-1 whitespace-normal break-words text-sm">
-                              {course.title}
-                            </span>
-                            <span className="ml-auto shrink-0 text-xs font-normal tabular-nums text-muted-foreground">
-                              {course.topicsDone}/{course.topicsTotal}
-                            </span>
-                          </>
-                        );
-                        return (
-                          <SidebarMenuItem key={course.id}>
-                            {isActive ? (
-                              <SidebarMenuButton
-                                asChild
-                                isActive={!isMobile}
-                                className="h-auto min-h-8 items-start py-2 text-sm"
-                              >
-                                <Link
-                                  to="/courses/$courseId"
-                                  params={{ courseId: course.id }}
-                                  preload="intent"
-                                  aria-label={`${course.title}, ${course.topicsDone} of ${course.topicsTotal} topics done`}
-                                  onClick={closeMobile}
-                                >
-                                  {content}
-                                </Link>
-                              </SidebarMenuButton>
-                            ) : (
-                              <SidebarMenuButton
-                                asChild
-                                className="h-auto min-h-8 items-start py-2 text-sm"
-                              >
-                                <Link
-                                  to="/courses/$courseId"
-                                  params={{ courseId: course.id }}
-                                  preload="intent"
-                                  aria-label={`Open ${course.title}`}
-                                  onClick={closeMobile}
-                                >
-                                  {content}
-                                </Link>
-                              </SidebarMenuButton>
-                            )}
-                          </SidebarMenuItem>
-                        );
-                      }),
-                    ])}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
+        {showCourseSection && loadingCourses ? (
+          loadingCourseGroupCounts.length > 1 ? (
+            COURSE_SKELETON_GROUP_KEYS.slice(0, loadingCourseGroupCounts.length).map(
+              (groupKey, groupIndex) => (
+                <SidebarGroup
+                  key={groupKey}
+                  data-testid="sidebar-course-skeleton-group"
+                  aria-hidden="true"
+                  className="px-2 pt-3 pb-1"
+                >
+                  <SidebarGroupLabel className="text-sm font-semibold text-sidebar-foreground">
+                    <Skeleton className="h-4 w-20" />
+                  </SidebarGroupLabel>
+                  <SidebarGroupContent>
+                    <SidebarMenu className="ml-2 gap-0.5 border-l border-sidebar-border pl-2">
+                      {renderCourseSkeletons(loadingCourseGroupCounts[groupIndex] ?? 1, groupKey)}
+                    </SidebarMenu>
+                  </SidebarGroupContent>
+                </SidebarGroup>
+              ),
+            )
+          ) : (
+            <SidebarGroup
+              data-testid="sidebar-course-skeleton-group"
+              aria-hidden="true"
+              className="px-2 py-1"
+            >
+              <SidebarGroupLabel>
+                <Skeleton className="h-4 w-20" />
+              </SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu className="gap-1">
+                  {renderCourseSkeletons(loadingCourseGroupCounts[0] ?? 1, 'group-1')}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          )
+        ) : null}
+        {showCourseSection && !loadingCourses && activeCourses.length > 0 ? (
+          activeCourseGroups.length > 1 ? (
+            activeCourseGroups.map((subject) => (
+              <SidebarGroup key={subject.id} className="px-2 pt-3 pb-1">
+                <SidebarGroupLabel className="text-sm font-semibold text-sidebar-foreground">
+                  {subject.title}
+                </SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu className="ml-2 gap-0.5 border-l border-sidebar-border pl-2">
+                    {subject.courses.map(renderCourse)}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            ))
+          ) : (
+            <SidebarGroup className="px-2 py-1">
+              <SidebarGroupLabel>My courses</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu className="gap-1">
+                  {activeCourseGroups.flatMap((subject) => subject.courses.map(renderCourse))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          )
         ) : null}
       </SidebarContent>
       <SidebarFooter className="border-t border-sidebar-border p-2">

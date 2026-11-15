@@ -156,7 +156,7 @@ export function LearnPage() {
             <CardContent className="space-y-5">
               {data.activeSubjects.length > 1 ? (
                 <fieldset className="space-y-2">
-                  <legend className="text-sm font-medium">Focus</legend>
+                  <legend className="text-sm font-medium">Study today</legend>
                   <div className="flex flex-wrap gap-2">
                     <Button
                       type="button"
@@ -175,10 +175,14 @@ export function LearnPage() {
                         size="sm"
                         variant={data.focusSubjectId === subject.id ? 'secondary' : 'outline'}
                         aria-pressed={data.focusSubjectId === subject.id}
-                        disabled={focusSubject.isPending}
+                        disabled={focusSubject.isPending || subject.hasLessons === false}
+                        title={subject.hasLessons === false ? 'Lessons coming soon' : undefined}
                         onClick={() => focusSubject.mutate(subject.id)}
                       >
                         {subject.title}
+                        {subject.hasLessons === false ? (
+                          <span className="text-muted-foreground"> · soon</span>
+                        ) : null}
                       </Button>
                     ))}
                   </div>
@@ -187,11 +191,19 @@ export function LearnPage() {
                       {focusSubject.error.message}
                     </p>
                   ) : null}
+                  {focusSubjectTitle ? (
+                    <p className="text-sm text-muted-foreground">
+                      Studying {focusSubjectTitle} only. Other subjects are paused until you pick
+                      All.
+                    </p>
+                  ) : null}
                   {data.focusSubjectId && data.dueReviewsOutsideFocus > 0 ? (
                     <p className="text-sm text-muted-foreground">
                       {data.dueReviewsOutsideFocus}{' '}
-                      {data.dueReviewsOutsideFocus === 1 ? 'review' : 'reviews'} from other subjects
-                      are waiting.{' '}
+                      {data.dueReviewsOutsideFocus === 1
+                        ? 'review from another subject is'
+                        : 'reviews from other subjects are'}{' '}
+                      waiting.{' '}
                       <Link to="/reviews" className="underline underline-offset-4">
                         Review them
                       </Link>
@@ -202,7 +214,7 @@ export function LearnPage() {
               {data.activeSessionId ? (
                 <Button asChild className="h-10 w-full justify-between px-4">
                   <Link to="/session/$id" params={{ id: data.activeSessionId }}>
-                    Resume session
+                    {focusSubjectTitle ? `Resume ${focusSubjectTitle}` : 'Resume session'}
                     <ArrowRight className="size-4" aria-hidden="true" />
                   </Link>
                 </Button>
@@ -213,7 +225,7 @@ export function LearnPage() {
                   onClick={() => startSession.mutate()}
                   loading={startSession.isPending}
                 >
-                  Start learning
+                  {focusSubjectTitle ? `Start ${focusSubjectTitle}` : 'Start learning'}
                   <ArrowRight className="size-4" aria-hidden="true" />
                 </Button>
               )}
@@ -325,77 +337,8 @@ export function LearnPage() {
           <CardHeader>
             <CardTitle>Your progress</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-5">
-              <p className="text-sm text-muted-foreground">
-                {focusSubjectTitle
-                  ? `Dates assume you keep studying ${focusSubjectTitle} courses.`
-                  : 'Dates assume you keep studying all these courses together.'}
-              </p>
-              {data.studyCourses.map((course) => {
-                const percentComplete =
-                  course.topicsTotal > 0
-                    ? Math.round((course.topicsDone / course.topicsTotal) * 100)
-                    : 0;
-                return (
-                  <div key={course.id} className="space-y-2">
-                    <div className="flex items-baseline justify-between gap-4">
-                      <span className="min-w-0 truncate text-sm font-medium">{course.title}</span>
-                      <span className="shrink-0 text-sm font-medium">
-                        {course.topicsDone} of {course.topicsTotal} topics
-                      </span>
-                    </div>
-                    <Progress
-                      value={percentComplete}
-                      aria-label={`${course.title} progress`}
-                      className="h-2"
-                    />
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="font-medium">{percentComplete}% complete</span>
-                      <Button asChild variant="link" size="sm" className="h-auto px-0">
-                        <Link to="/courses/$courseId" params={{ courseId: course.id }}>
-                          View course
-                        </Link>
-                      </Button>
-                    </div>
-                    {focusSubjectTitle && course.subjectId !== data.focusSubjectId ? (
-                      <p className="text-sm text-muted-foreground">
-                        Paused while you focus on {focusSubjectTitle}
-                      </p>
-                    ) : course.estimatedFinish &&
-                      course.estimatedFinish === course.estimatedFinishAtGoal ? (
-                      <p className="text-sm text-muted-foreground">
-                        Estimated finish {formatDate(course.estimatedFinish)}
-                      </p>
-                    ) : course.estimatedFinish || course.estimatedFinishAtGoal ? (
-                      <>
-                        {course.estimatedFinish ? (
-                          <p className="text-sm text-muted-foreground">
-                            At your pace: {formatDate(course.estimatedFinish)}
-                          </p>
-                        ) : null}
-                        {course.estimatedFinishAtGoal ? (
-                          <p className="text-sm text-muted-foreground">
-                            At your daily goal: {formatDate(course.estimatedFinishAtGoal)}
-                          </p>
-                        ) : null}
-                      </>
-                    ) : course.topicsDone < course.topicsTotal ? (
-                      <p className="text-sm text-muted-foreground">Lessons coming soon</p>
-                    ) : null}
-                  </div>
-                );
-              })}
-              {data.today.studyFinish.atPace && data.today.studyFinish.atGoal ? (
-                <p className="text-sm text-muted-foreground">
-                  {data.today.studyFinish.atPace === data.today.studyFinish.atGoal
-                    ? `${finishLineLabel} ${formatDate(data.today.studyFinish.atPace)}`
-                    : `${finishLineLabel} ${formatDate(data.today.studyFinish.atPace)} at your pace, or ${formatDate(data.today.studyFinish.atGoal)} at your daily goal`}
-                </p>
-              ) : null}
-            </div>
-
-            <div className="space-y-3 border-t pt-5">
+          <CardContent className="space-y-5">
+            <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">XP today</p>
@@ -426,7 +369,7 @@ export function LearnPage() {
               <div
                 aria-label="XP earned each day this week"
                 role="img"
-                className="grid h-32 grid-cols-7 items-end gap-2"
+                className="grid h-24 grid-cols-7 items-end gap-2"
               >
                 {data.xp.week.map((day) => {
                   const goalHeight = (day.goal / maxXp) * 100;
@@ -434,7 +377,7 @@ export function LearnPage() {
                   return (
                     <div key={day.date} className="flex h-full min-w-0 flex-col justify-end gap-1">
                       <div
-                        className="relative h-24 overflow-hidden rounded-sm bg-muted"
+                        className="relative h-16 overflow-hidden rounded-sm bg-muted"
                         title={`${day.xp} XP earned; goal ${day.goal} XP`}
                       >
                         <div
@@ -459,6 +402,71 @@ export function LearnPage() {
                 })}
               </div>
             </div>
+            <div className="space-y-3 border-t pt-5">
+              <div className="flex items-baseline gap-3 text-xs text-muted-foreground">
+                <span className="flex-1">Course</span>
+                <span className="shrink-0">Topics</span>
+                <span className="w-14 shrink-0 text-right">Finish</span>
+              </div>
+              <ul className="space-y-3">
+                {data.studyCourses.map((course) => {
+                  const percentComplete =
+                    course.topicsTotal > 0
+                      ? Math.round((course.topicsDone / course.topicsTotal) * 100)
+                      : 0;
+                  const paused = Boolean(
+                    focusSubjectTitle && course.subjectId !== data.focusSubjectId,
+                  );
+                  const finished =
+                    course.topicsTotal > 0 && course.topicsDone >= course.topicsTotal;
+                  const [status, statusLabel] = paused
+                    ? ['Paused', `Paused while you focus on ${focusSubjectTitle}`]
+                    : course.estimatedFinish
+                      ? [
+                          formatShortDate(course.estimatedFinish),
+                          `Finishes around ${formatDate(course.estimatedFinish)} at your pace`,
+                        ]
+                      : finished
+                        ? ['Done', 'Finished']
+                        : ['Soon', 'Lessons coming soon'];
+                  return (
+                    <li key={course.id} className="space-y-1.5">
+                      <div className="flex items-baseline gap-3 text-sm">
+                        <Link
+                          to="/courses/$courseId"
+                          params={{ courseId: course.id }}
+                          className="min-w-0 flex-1 break-words font-medium underline-offset-4 hover:underline"
+                        >
+                          {course.title}
+                        </Link>
+                        <span className="shrink-0 tabular-nums text-muted-foreground">
+                          {course.topicsDone}/{course.topicsTotal}
+                        </span>
+                        <span
+                          className="w-14 shrink-0 text-right tabular-nums text-muted-foreground"
+                          title={statusLabel}
+                        >
+                          <span aria-hidden="true">{status}</span>
+                          <span className="sr-only">{statusLabel}</span>
+                        </span>
+                      </div>
+                      <Progress
+                        value={percentComplete}
+                        aria-label={`${course.title} progress`}
+                        className="h-1.5"
+                      />
+                    </li>
+                  );
+                })}
+              </ul>
+              {data.today.studyFinish.atPace && data.today.studyFinish.atGoal ? (
+                <p className="pt-1 text-sm text-muted-foreground">
+                  {data.today.studyFinish.atPace === data.today.studyFinish.atGoal
+                    ? `${finishLineLabel} ${formatDate(data.today.studyFinish.atPace)}`
+                    : `${finishLineLabel} ${formatDate(data.today.studyFinish.atPace)} at your pace, or ${formatDate(data.today.studyFinish.atGoal)} at your daily goal`}
+                </p>
+              ) : null}
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -469,6 +477,14 @@ export function LearnPage() {
 function weekdayLabel(date: string): string {
   return new Date(`${date}T12:00:00.000Z`).toLocaleDateString('en-US', {
     weekday: 'short',
+    timeZone: 'UTC',
+  });
+}
+
+function formatShortDate(date: string): string {
+  return new Date(`${date}T12:00:00.000Z`).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
     timeZone: 'UTC',
   });
 }

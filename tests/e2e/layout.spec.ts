@@ -146,7 +146,7 @@ test('root auth pending renders the app-shell skeleton', async ({ page }) => {
     await expect(navigation.getByRole('link', { name: label, exact: true })).toBeVisible();
   }
   await expect(navigation.getByRole('link', { name: 'Settings', exact: true })).toBeVisible();
-  await expect(navigation.getByTestId('sidebar-course-skeleton')).toHaveCount(3);
+  await expect(navigation.getByTestId('sidebar-course-skeleton')).toHaveCount(4);
   await expect(navigation.getByTestId('reviews-due-skeleton')).toBeVisible();
   await expect(
     navigation.locator('[data-sidebar="menu"]').first().locator('[data-sidebar="menu-skeleton"]'),

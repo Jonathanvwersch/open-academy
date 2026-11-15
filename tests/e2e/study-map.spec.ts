@@ -55,6 +55,7 @@ test('Up next lists projected topics by week and keeps Finished collapsed', asyn
               dayLabel: 'Monday',
             },
           ],
+          allSubjects: null,
           finished: [
             {
               conceptId: 'topic-done',
@@ -86,11 +87,20 @@ test('Up next lists projected topics by week and keeps Finished collapsed', asyn
   await expect(page.getByRole('link', { name: /Topic Two/ })).toContainText(
     'Fixture switching course · Second unit',
   );
+  const topicCard = page
+    .locator('[data-slot="card"]')
+    .filter({ has: page.getByRole('link', { name: /Topic One/ }) });
+  await expect(topicCard).toHaveCSS('background-color', 'rgb(254, 253, 251)');
   const finished = page.getByRole('button', { name: 'Finished (2)', exact: true });
   await expect(finished).toHaveAttribute('aria-expanded', 'false');
   await expect(page.getByText('Finished Topic', { exact: true })).not.toBeVisible();
   await finished.click();
+  await expect(finished).toHaveAttribute('aria-expanded', 'true');
   await expect(page.getByText('Finished Topic', { exact: true })).toBeVisible();
+  const finishedCard = page
+    .locator('[data-slot="card"]')
+    .filter({ has: page.getByText('Finished Topic', { exact: true }) });
+  await expect(finishedCard).toHaveCSS('background-color', 'rgb(254, 253, 251)');
   const undatedRow = page.getByText('Undated Topic', { exact: true }).locator('xpath=../..');
   await expect(undatedRow).toBeVisible();
   await expect(undatedRow).not.toContainText('2026');
@@ -98,7 +108,7 @@ test('Up next lists projected topics by week and keeps Finished collapsed', asyn
 
 test('Up next explains when no topics are projected', async ({ page }) => {
   await page.route('**/api/learn', (route) =>
-    route.fulfill({ json: { upNext: { upcoming: [], finished: [] } } }),
+    route.fulfill({ json: { upNext: { upcoming: [], allSubjects: null, finished: [] } } }),
   );
   await page.goto('/map');
   await expect(
@@ -107,4 +117,76 @@ test('Up next explains when no topics are projected', async ({ page }) => {
     ),
   ).toBeVisible();
   await expect(page.getByRole('button', { name: 'Finished (0)', exact: true })).toBeVisible();
+});
+
+test('Show all subjects toggles between the focused and full projections', async ({ page }) => {
+  const aiTopic = {
+    conceptId: 'ai-topic',
+    courseId: 'fixture-switching-course',
+    courseTitle: 'Fixture switching course',
+    title: 'AI Topic',
+    unitTitle: 'AI unit',
+    date: '2026-01-12',
+    dayLabel: 'Monday',
+  };
+  const mathTopic = {
+    conceptId: 'math-topic',
+    courseId: 'fixture-course',
+    courseTitle: 'Fixture course',
+    title: 'Mathematics Topic',
+    unitTitle: 'Math unit',
+    date: '2026-01-12',
+    dayLabel: 'Monday',
+  };
+  await page.route('**/api/learn', (route) =>
+    route.fulfill({
+      json: {
+        activeSubjects: [
+          { id: 'ai', title: 'AI', hasLessons: true },
+          { id: 'mathematics', title: 'Mathematics', hasLessons: true },
+        ],
+        focusSubjectId: 'ai',
+        upNext: { upcoming: [aiTopic], allSubjects: [aiTopic, mathTopic], finished: [] },
+      },
+    }),
+  );
+  await page.goto('/map');
+
+  const toggle = page.getByRole('button', { name: 'Show all subjects', exact: true });
+  await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.getByRole('link', { name: /AI Topic/ })).toBeVisible();
+  await expect(page.getByRole('link', { name: /Mathematics Topic/ })).toHaveCount(0);
+  await toggle.click();
+  const focusedToggle = page.getByRole('button', { name: 'Show AI only', exact: true });
+  await expect(focusedToggle).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('link', { name: /Mathematics Topic/ })).toBeVisible();
+  await focusedToggle.click();
+  await expect(
+    page.getByRole('button', { name: 'Show all subjects', exact: true }),
+  ).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.getByRole('link', { name: /Mathematics Topic/ })).toHaveCount(0);
+});
+
+test('Up next renders every projected topic returned by the API', async ({ page }) => {
+  const topics = Array.from({ length: 25 }, (_, index) => ({
+    conceptId: `projected-${index + 1}`,
+    courseId: 'fixture-course',
+    courseTitle: 'Fixture course',
+    title: `Projected topic ${index + 1}`,
+    unitTitle: 'Projected unit',
+    date: '2026-01-12',
+    dayLabel: 'Monday',
+  }));
+  await page.route('**/api/learn', (route) =>
+    route.fulfill({
+      json: {
+        activeSubjects: [],
+        focusSubjectId: null,
+        upNext: { upcoming: topics, allSubjects: null, finished: [] },
+      },
+    }),
+  );
+  await page.goto('/map');
+
+  await expect(page.getByRole('link', { name: /Projected topic/ })).toHaveCount(25);
 });

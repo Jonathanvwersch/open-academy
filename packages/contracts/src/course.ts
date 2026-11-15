@@ -48,7 +48,7 @@ export interface LearnPayload {
   > & {
     studyFinish: { atPace: string | null; atGoal: string | null };
   };
-  activeSubjects: Array<{ id: string; title: string }>;
+  activeSubjects: Array<{ id: string; title: string; hasLessons: boolean }>;
   focusSubjectId: string | null;
   dueReviewsOutsideFocus: number;
   upNext: UpNextPayload;
@@ -138,9 +138,18 @@ export interface CoursePayload {
   }>;
 }
 
+export type CourseQueueStatus =
+  | { kind: 'studying' }
+  | { kind: 'after'; courseId: string; courseTitle: string }
+  | { kind: 'waiting'; topicCount: number; courseTitles: string[] }
+  | { kind: 'paused'; subjectTitle: string }
+  | { kind: 'soon' }
+  | { kind: 'done' };
+
 export type CourseDetailPayload = CoursePayload & {
   status: 'not_started' | CourseEnrollmentStatus;
   suggestedNext: Array<{ id: string; title: string; reason: string }>;
+  queue: CourseQueueStatus | null;
 };
 
 export interface CourseTopic {
@@ -167,6 +176,7 @@ export interface UpNextPayload {
     date: string;
     dayLabel: string;
   }>;
+  allSubjects: UpNextPayload['upcoming'] | null;
   finished: Array<{
     conceptId: string;
     courseId: string;

@@ -2,7 +2,7 @@ import { useRouterState } from '@tanstack/react-router';
 import { Loader2 } from 'lucide-react';
 import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react';
 
-interface Shape {
+export interface Shape {
   x: number;
   y: number;
   width: number;
@@ -21,6 +21,64 @@ function layoutKey(path: string, width: number) {
   const breakpoint =
     window.innerWidth < 640 ? 'small' : window.innerWidth < 1024 ? 'medium' : 'large';
   return `${path}:${Math.round(width)}:${breakpoint}`;
+}
+
+function compareShapes(left: Shape, right: Shape) {
+  return (
+    Number(right.frame) - Number(left.frame) ||
+    left.y - right.y ||
+    left.x - right.x ||
+    left.height - right.height ||
+    left.width - right.width ||
+    left.radius - right.radius
+  );
+}
+
+export function mergeLineShapes(shapes: Shape[]): Shape[] {
+  const content = shapes.filter((shape) => !shape.frame).map((shape) => ({ ...shape }));
+  const frames = shapes.filter((shape) => shape.frame);
+  content.sort(compareShapes);
+
+  while (true) {
+    let merged = false;
+    for (let leftIndex = 0; leftIndex < content.length && !merged; leftIndex += 1) {
+      const left = content[leftIndex];
+      if (!left) continue;
+      for (let rightIndex = leftIndex + 1; rightIndex < content.length; rightIndex += 1) {
+        const right = content[rightIndex];
+        if (!right) continue;
+        const verticalCenterDifference = Math.abs(
+          left.y + left.height / 2 - (right.y + right.height / 2),
+        );
+        const heightDifference = Math.abs(left.height - right.height);
+        const horizontalGap = Math.max(
+          0,
+          Math.max(left.x, right.x) - Math.min(left.x + left.width, right.x + right.width),
+        );
+        if (verticalCenterDifference > 2 || heightDifference > 4 || horizontalGap > 8) continue;
+
+        const x = Math.min(left.x, right.x);
+        const y = Math.min(left.y, right.y);
+        const rightEdge = Math.max(left.x + left.width, right.x + right.width);
+        const bottom = Math.max(left.y + left.height, right.y + right.height);
+        content.splice(leftIndex, 1, {
+          x,
+          y,
+          width: rightEdge - x,
+          height: bottom - y,
+          radius: Math.min(left.radius, right.radius),
+          frame: false,
+        });
+        content.splice(rightIndex, 1);
+        content.sort(compareShapes);
+        merged = true;
+        break;
+      }
+    }
+    if (!merged) break;
+  }
+
+  return [...content, ...frames].sort(compareShapes);
 }
 
 function loadLayout(key: string): Layout | undefined {
@@ -156,7 +214,7 @@ function measureLayout(element: HTMLElement): Layout {
     node = walker.nextNode();
   }
   const unique = new Map(
-    shapes.map((shape) => [
+    mergeLineShapes(shapes).map((shape) => [
       `${shape.frame}-${shape.x}-${shape.y}-${shape.width}-${shape.height}`,
       shape,
     ]),

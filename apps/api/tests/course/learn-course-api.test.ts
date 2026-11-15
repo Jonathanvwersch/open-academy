@@ -764,6 +764,7 @@ test('course catalogue and enrollment routes start, pause, and reactivate course
     course: { id: 'deep-learning' },
     status: 'not_started',
     suggestedNext: [],
+    queue: null,
   });
   expect((await put('/courses/deep-learning/enrollment', { status: 'active' })).status).toBe(409);
 
@@ -774,6 +775,7 @@ test('course catalogue and enrollment routes start, pause, and reactivate course
       })
     ).status,
   ).toBe(200);
+  expect((await (await get('/courses/deep-learning')).json()).queue).not.toBeNull();
   expect(
     (
       await put('/courses/deep-learning/enrollment', {
@@ -795,6 +797,36 @@ test('course catalogue and enrollment routes start, pause, and reactivate course
       })
     ).status,
   ).toBe(200);
+});
+
+test('active subjects report whether their active courses have lessons', async () => {
+  const courseIds = (
+    content.curriculum?.courses ?? content.courses.map((course) => course.id)
+  ).filter((courseId) =>
+    ['mathematics', 'ai', 'robotics'].includes(subjectForCourse(content, courseId).id),
+  );
+  await db.insert(courseEnrollments).values(
+    courseIds.map((courseId) => ({
+      userId,
+      courseId,
+      status: 'active' as const,
+      startMethod: 'beginning' as const,
+    })),
+  );
+
+  const learn = await (await get('/learn')).json();
+
+  expect(
+    learn.activeSubjects.map((subject: { id: string; title: string; hasLessons: boolean }) => ({
+      id: subject.id,
+      title: subject.title,
+      hasLessons: subject.hasLessons,
+    })),
+  ).toEqual([
+    { id: 'mathematics', title: 'Mathematics', hasLessons: true },
+    { id: 'ai', title: 'AI', hasLessons: true },
+    { id: 'robotics', title: 'Robotics', hasLessons: false },
+  ]);
 });
 
 test('course details persist completion when every topic is complete', async () => {
@@ -1250,6 +1282,117 @@ test('course details report incomplete foundation counts and source courses', as
   });
 });
 
+test('all-subject projection uses recent learn minutes from outside the focus', async () => {
+  const mathsCourse = content.coursesById.get('maths-for-ml');
+  const aiCourse = content.coursesById.get('ml-foundations');
+  if (!mathsCourse || !aiCourse) throw new Error('Missing subject projection test courses');
+  const mathsCourseConcepts = new Set(mathsCourse.units.flatMap((unit) => unit.concepts));
+  const aiCourseConcepts = new Set(aiCourse.units.flatMap((unit) => unit.concepts));
+  const mathsFoundations = courseFoundationIds(content, mathsCourse.id);
+  const hasIndependentLesson = (conceptId: string) => {
+    const concept = content.conceptsById.get(conceptId);
+    return (
+      concept?.status !== 'stub' &&
+      concept?.prereqs.every((prerequisite) => prerequisite.strength !== 'hard') &&
+      (content.lessonsByConcept.get(conceptId)?.knowledge_points?.length ?? 0) > 0
+    );
+  };
+  const mathsConceptId = [...mathsCourseConcepts].find((conceptId) => {
+    return hasIndependentLesson(conceptId);
+  });
+  const aiConceptId = [...aiCourseConcepts].find((conceptId) => {
+    return (
+      !mathsCourseConcepts.has(conceptId) &&
+      !mathsFoundations.has(conceptId) &&
+      hasIndependentLesson(conceptId)
+    );
+  });
+  if (!mathsConceptId || !aiConceptId) {
+    throw new Error('Missing independent Mathematics and AI lessons for subject balancing');
+  }
+  await db.insert(courseEnrollments).values(
+    [mathsCourse.id, aiCourse.id].map((courseId) => ({
+      userId,
+      courseId,
+      status: 'active' as const,
+      startMethod: 'beginning' as const,
+    })),
+  );
+  const [session] = await db
+    .insert(studySessions)
+    .values({
+      userId,
+      kind: 'weekday',
+      plannedMinutes: 30,
+      status: 'completed',
+      startedAt: new Date('2026-01-07T09:30:00.000Z'),
+      endedAt: new Date('2026-01-07T10:00:00.000Z'),
+    })
+    .returning();
+  if (!session) throw new Error('Could not create recent learn session');
+  await db.insert(sessionActivities).values([
+    {
+      sessionId: session.id,
+      idx: 0,
+      kind: 'learn',
+      conceptId: mathsConceptId,
+      plannedMinutes: 10,
+      status: 'completed',
+      completedAt: new Date('2026-01-07T10:00:00.000Z'),
+    },
+    {
+      sessionId: session.id,
+      idx: 1,
+      kind: 'learn',
+      conceptId: aiConceptId,
+      plannedMinutes: 20,
+      status: 'completed',
+      completedAt: new Date('2026-01-07T10:00:00.000Z'),
+    },
+  ]);
+
+  const allSubjects = await (await get('/learn')).json();
+  expect(allSubjects.focusSubjectId).toBeNull();
+  expect(allSubjects.upNext.upcoming[0]?.courseId).toBe(mathsCourse.id);
+
+  expect((await put('/focus', { subjectId: 'mathematics' })).status).toBe(200);
+  const focused = await (await get('/learn')).json();
+  expect(focused.upNext.allSubjects).not.toBeNull();
+  expect(
+    focused.upNext.allSubjects.map(
+      ({
+        conceptId,
+        courseId,
+        dayLabel,
+      }: {
+        conceptId: string;
+        courseId: string;
+        dayLabel: string;
+      }) => ({
+        conceptId,
+        courseId,
+        dayLabel,
+      }),
+    ),
+  ).toEqual(
+    allSubjects.upNext.upcoming.map(
+      ({
+        conceptId,
+        courseId,
+        dayLabel,
+      }: {
+        conceptId: string;
+        courseId: string;
+        dayLabel: string;
+      }) => ({
+        conceptId,
+        courseId,
+        dayLabel,
+      }),
+    ),
+  );
+});
+
 test('focus persists and replans only planned activities', async () => {
   const mathsCourse = content.coursesById.get('maths-for-ml');
   const aiCourse = content.coursesById.get('ml-foundations');
@@ -1378,6 +1521,19 @@ test('focus persists and replans only planned activities', async () => {
       .filter((topic: { dayLabel: string }) => topic.dayLabel !== 'Today')
       .some((topic: { courseId: string }) => topic.courseId === mathsCourse.id),
   ).toBe(false);
+  expect(
+    learn.upNext.upcoming.every(
+      (topic: { courseId: string; dayLabel: string }) =>
+        topic.dayLabel === 'Today' || topic.courseId === aiCourse.id,
+    ),
+  ).toBe(true);
+  expect(learn.upNext.allSubjects).not.toBeNull();
+  expect(
+    learn.upNext.allSubjects.some(
+      (topic: { courseId: string; dayLabel: string }) =>
+        topic.courseId === mathsCourse.id && topic.dayLabel !== 'Today',
+    ),
+  ).toBe(true);
   const mathsStudyCourse = learn.studyCourses.find(
     (studyCourse: { id: string }) => studyCourse.id === mathsCourse.id,
   );
@@ -1437,6 +1593,7 @@ test('a stored focus is ignored when only one subject is active', async () => {
 
   expect(learn.activeSubjects.map((subject: { id: string }) => subject.id)).toEqual(['ai']);
   expect(learn.focusSubjectId).toBeNull();
+  expect(learn.upNext.allSubjects).toBeNull();
   expect(
     learn.tasks.some(
       (task: { activityKind: string; conceptId?: string }) =>

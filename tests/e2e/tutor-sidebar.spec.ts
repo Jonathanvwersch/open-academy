@@ -1455,6 +1455,7 @@ test('tutor Context follows the session, lesson, and home pages', async ({ page 
   });
   await expect(page).toHaveURL(/\/lessons\/supervised-learning$/);
   await expect(page.getByRole('heading', { name: 'Supervised learning' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Restart topic' })).toBeVisible();
   const lessonTextarea = tutor.getByLabel('Ask the tutor');
   await lessonTextarea.fill('What does the full lesson explain?');
   const lessonResponse = page.waitForResponse(

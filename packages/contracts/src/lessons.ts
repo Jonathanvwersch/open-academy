@@ -27,6 +27,7 @@ export interface LessonPayload {
 
 export interface LessonReviewPayload {
   course: LessonCourse | null;
+  canRestart: boolean;
   lesson: LessonPayload;
   checkAnswers: Record<string, string>;
   checks: Record<string, ExercisePayload>;

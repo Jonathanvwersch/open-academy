@@ -31,6 +31,28 @@ async function fulfillCoursesWithLongTitle(route: Route) {
   await route.fulfill({ response, json: catalog });
 }
 
+async function fulfillCoursesWithThreeSubjects(route: Route) {
+  const response = await route.fetch({
+    headers: { ...route.request().headers(), 'x-now': '2026-01-01T12:00:00.000Z' },
+  });
+  const catalog = (await response.json()) as {
+    subjects: Array<{ id: string; title: string; courses: Array<{ id: string; title: string }> }>;
+  };
+  const courses = new Map(
+    catalog.subjects.flatMap((subject) => subject.courses).map((course) => [course.id, course]),
+  );
+  catalog.subjects = [
+    { id: 'mathematics', title: 'Mathematics', courseId: 'fixture-course' },
+    { id: 'ai', title: 'AI', courseId: 'fixture-switching-course' },
+    { id: 'robotics', title: 'Robotics', courseId: 'fixture-third-course' },
+  ].map(({ id, title, courseId }) => {
+    const course = courses.get(courseId);
+    if (!course) throw new Error(`Missing ${courseId} in catalogue`);
+    return { id, title, courses: [course] };
+  });
+  await route.fulfill({ response, json: catalog });
+}
+
 test.beforeEach(async ({ page }) => {
   await page.route('**/api/**', (route) =>
     route.continue({
@@ -108,6 +130,62 @@ test('desktop sidebar collapse persists across reload', async ({ page }) => {
   await expect(header.getByRole('button', { name: 'Collapse navigation' })).toBeVisible();
 });
 
+test('sidebar skeleton remembers three subject groups on reload', async ({ page }, testInfo) => {
+  await db.insert(courseEnrollments).values({
+    userId,
+    courseId: 'fixture-third-course',
+    status: 'active',
+    startMethod: 'beginning',
+  });
+  let coursesRequests = 0;
+  let delayCourses = false;
+  const createGate = () => {
+    let release = () => {};
+    const promise = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    return { promise, release: () => release() };
+  };
+  let coursesGate = createGate();
+  await page.route('**/api/courses', async (route) => {
+    coursesRequests += 1;
+    if (delayCourses) await coursesGate.promise;
+    await fulfillCoursesWithThreeSubjects(route);
+  });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/');
+
+  const navigation = page.getByRole('navigation', { name: 'Main navigation' });
+  for (const subject of ['Mathematics', 'AI', 'Robotics']) {
+    await expect(navigation.getByText(subject, { exact: true })).toBeVisible();
+  }
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem('academy.sidebar-course-groups')))
+    .toBe('[1,1,1]');
+
+  const previousCoursesRequests = coursesRequests;
+  delayCourses = true;
+  coursesGate = createGate();
+  await page.reload();
+  await expect.poll(() => coursesRequests > previousCoursesRequests).toBe(true);
+  const skeletonGroups = navigation.getByTestId('sidebar-course-skeleton-group');
+  await expect(skeletonGroups).toHaveCount(3);
+  await expect(navigation.getByTestId('sidebar-course-skeleton')).toHaveCount(3);
+  await expect(navigation.getByText('My courses', { exact: true })).toHaveCount(0);
+  mkdirSync(testInfo.outputDir, { recursive: true });
+  await page.screenshot({
+    path: testInfo.outputPath('sidebar-three-subject-groups-loading-1440x900.png'),
+    animations: 'disabled',
+    fullPage: true,
+  });
+
+  coursesGate.release();
+  await expect(skeletonGroups).toHaveCount(0);
+  for (const subject of ['Mathematics', 'AI', 'Robotics']) {
+    await expect(navigation.getByText(subject, { exact: true })).toBeVisible();
+  }
+});
+
 test('auth-pending shell shows the real sidebar without shifting navigation', async ({
   page,
 }, testInfo) => {
@@ -145,7 +223,8 @@ test('auth-pending shell shows the real sidebar without shifting navigation', as
     await expect(navigation.getByRole('link', { name: 'Settings', exact: true })).toBeVisible();
     await expect(navigation.getByText('Settings', { exact: true })).toBeVisible();
     await expect(navigation.getByRole('button', { name: 'Collapse navigation' })).toBeVisible();
-    await expect(navigation.getByTestId('sidebar-course-skeleton')).toHaveCount(3);
+    await expect(navigation.getByTestId('sidebar-course-skeleton-group')).toHaveCount(2);
+    await expect(navigation.getByTestId('sidebar-course-skeleton')).toHaveCount(4);
     await expect(navigation.getByTestId('reviews-due-skeleton')).toBeVisible();
     const navMenu = navigation.locator('[data-sidebar="menu"]').first();
     await expect(navMenu.getByTestId('sidebar-course-skeleton')).toHaveCount(0);
@@ -230,7 +309,8 @@ test('mobile auth-pending shell uses the real header and navigation', async ({
     const navigation = page.getByRole('navigation', { name: 'Main navigation' });
     await expect(navigation).toBeVisible();
     await expect(navigation.getByRole('link', { name: 'Home', exact: true })).toBeVisible();
-    await expect(navigation.getByTestId('sidebar-course-skeleton')).toHaveCount(3);
+    await expect(navigation.getByTestId('sidebar-course-skeleton-group')).toHaveCount(2);
+    await expect(navigation.getByTestId('sidebar-course-skeleton')).toHaveCount(4);
     await expect(navigation.getByTestId('reviews-due-skeleton')).toBeVisible();
     await page.screenshot({
       path: testInfo.outputPath('root-pending-mobile-navigation-390x844.png'),
@@ -282,14 +362,16 @@ test('sidebar shows first-load course and review skeletons before real data', as
   await page.goto('/');
   await expect.poll(() => coursesRequests > 0 && reviewsRequests > 0).toBe(true);
   const navigation = page.getByRole('navigation', { name: 'Main navigation' });
-  await expect(navigation.getByText('My courses', { exact: true })).toBeVisible();
-  await expect(navigation.getByTestId('sidebar-course-skeleton')).toHaveCount(3);
+  await expect(navigation.getByText('My courses', { exact: true })).toHaveCount(0);
+  await expect(navigation.getByTestId('sidebar-course-skeleton-group')).toHaveCount(2);
+  await expect(navigation.getByTestId('sidebar-course-skeleton')).toHaveCount(4);
   await expect(navigation.getByTestId('reviews-due-skeleton')).toBeVisible();
   const skeletonRowHeights = await navigation
     .getByTestId('sidebar-course-skeleton')
     .evaluateAll((rows) => rows.map((row) => row.getBoundingClientRect().height));
   expect(skeletonRowHeights[1]).toBe(skeletonRowHeights[0]);
   expect(skeletonRowHeights[2]).toBe(skeletonRowHeights[0]);
+  expect(skeletonRowHeights[3]).toBe(skeletonRowHeights[0]);
   await page.screenshot({
     path: testInfo.outputPath('sidebar-loading-1440x900.png'),
     animations: 'disabled',
@@ -303,7 +385,8 @@ test('sidebar shows first-load course and review skeletons before real data', as
     animations: 'disabled',
   });
   await navigation.getByRole('button', { name: 'Expand navigation' }).click();
-  await expect(navigation.getByTestId('sidebar-course-skeleton')).toHaveCount(3);
+  await expect(navigation.getByTestId('sidebar-course-skeleton-group')).toHaveCount(2);
+  await expect(navigation.getByTestId('sidebar-course-skeleton')).toHaveCount(4);
 
   coursesGate.release();
   reviewsGate.release();
@@ -377,13 +460,13 @@ test('sidebar shows first-load course and review skeletons before real data', as
     .toBe(true);
   await page.getByRole('button', { name: 'Open navigation' }).click();
   const mobileNavigation = page.getByRole('navigation', { name: 'Main navigation' });
-  await expect(mobileNavigation.getByTestId('sidebar-course-skeleton')).toHaveCount(3);
+  await expect(mobileNavigation.getByTestId('sidebar-course-skeleton-group')).toHaveCount(1);
+  await expect(mobileNavigation.getByTestId('sidebar-course-skeleton')).toHaveCount(2);
   await expect(mobileNavigation.getByTestId('reviews-due-skeleton')).toBeVisible();
   const mobileSkeletonRowHeights = await mobileNavigation
     .getByTestId('sidebar-course-skeleton')
     .evaluateAll((rows) => rows.map((row) => row.getBoundingClientRect().height));
   expect(mobileSkeletonRowHeights[0]).toBe(mobileSkeletonRowHeights[1]);
-  expect(mobileSkeletonRowHeights[2]).toBe(mobileSkeletonRowHeights[1]);
   const mobileWidths = await mobileNavigation.evaluate((element) => ({
     clientWidth: element.clientWidth,
     scrollWidth: element.scrollWidth,
@@ -548,7 +631,14 @@ test('Home schedules the earlier course before another course in the same subjec
   await expect(
     page.getByRole('heading', { name: 'Switching topic', exact: true }),
   ).not.toBeVisible();
-  await expect(page.getByRole('link', { name: 'View course' })).toHaveCount(2);
+  const main = page.getByRole('main');
+  await expect(main.getByRole('link', { name: 'Fixture course', exact: true })).toHaveAttribute(
+    'href',
+    '/courses/fixture-course',
+  );
+  await expect(
+    main.getByRole('link', { name: 'Fixture switching course', exact: true }),
+  ).toHaveAttribute('href', '/courses/fixture-switching-course');
 });
 
 test('adding a course from the beginning adds it to My courses', async ({ page }) => {
@@ -839,11 +929,21 @@ test('active courses and the catalogue are grouped in subject order', async ({ p
 
   await page.goto('/');
   const navigation = page.getByRole('navigation', { name: 'Main navigation' });
-  for (const subject of ['Mathematics', 'AI', 'Robotics']) {
-    await expect(
-      navigation.locator('li').filter({ hasText: new RegExp(`^${subject}$`) }),
-    ).toBeVisible();
-  }
+  const subjectLabels = ['Mathematics', 'AI', 'Robotics'].map((subject) =>
+    navigation.locator('[data-sidebar="group-label"]').filter({
+      hasText: new RegExp(`^${subject}$`),
+    }),
+  );
+  for (const label of subjectLabels) await expect(label).toBeVisible();
+  const subjectPositions = await Promise.all(
+    subjectLabels.map(async (label) => {
+      const bounds = await label.boundingBox();
+      if (!bounds) throw new Error('Expected visible subject heading');
+      return bounds.y;
+    }),
+  );
+  expect(subjectPositions[0]).toBeLessThan(subjectPositions[1] ?? Number.POSITIVE_INFINITY);
+  expect(subjectPositions[1]).toBeLessThan(subjectPositions[2] ?? Number.POSITIVE_INFINITY);
   await expect(
     navigation.getByRole('link', {
       name: 'Open Mathematics for Machine Learning',

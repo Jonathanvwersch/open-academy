@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { getLessonPrerequisites } from '../../content/index.js';
 import { serializeExercise, serializeLesson } from '../../content/serialize.js';
 import { isTemplate } from '../../content/templates.js';
@@ -6,6 +6,7 @@ import { lessonProblems, lessonRuns } from '../../db/schema.js';
 import { deriveLessonState } from '../../learning/lesson-runner.js';
 import { masteryRank } from '../../learning/types.js';
 import { type FeatureRequest, type FeatureServices, serviceResult } from '../../service-context.js';
+import { courseTopicState } from '../course/service.js';
 import { resolveLessonCourse } from './course-context.js';
 
 export async function getLessonsByConceptId(deps: FeatureServices, request: FeatureRequest) {
@@ -46,6 +47,8 @@ export async function getLessonsByConceptIdReview(deps: FeatureServices, request
   const conceptId = request.params.conceptId;
   const lesson = index.lessonsByConcept.get(conceptId);
   if (!lesson) return serviceResult({ error: 'Lesson not found' }, 404);
+  const concept = index.conceptsById.get(conceptId);
+  if (!concept) return serviceResult({ error: 'Lesson not found' }, 404);
   const checkAnswers = Object.fromEntries(
     lesson.blocks.flatMap((block) =>
       block.kind === 'check' && block.exercise
@@ -67,18 +70,26 @@ export async function getLessonsByConceptIdReview(deps: FeatureServices, request
         : [];
     }),
   );
-  const [run] = lesson.knowledge_points?.length
-    ? await deps.db
-        .select()
-        .from(lessonRuns)
-        .where(and(eq(lessonRuns.userId, request.userId), eq(lessonRuns.conceptId, conceptId)))
-        .limit(1)
-    : [];
+  const runRowsPromise = Promise.resolve(
+    deps.db.select().from(lessonRuns).where(eq(lessonRuns.userId, request.userId)),
+  );
+  const [runRows, masteryRecords, course] = await Promise.all([
+    runRowsPromise,
+    runRowsPromise.then((rows) =>
+      rows.some((row) => row.conceptId === conceptId) ? [] : request.repo.masteryRecords(),
+    ),
+    resolveLessonCourse(deps.db, request.repo, index, request.userId, conceptId),
+  ]);
+  const run = lesson.knowledge_points?.length
+    ? runRows.find((row) => row.conceptId === conceptId)
+    : undefined;
   const rows = run
     ? await deps.db.select().from(lessonProblems).where(eq(lessonProblems.runId, run.id))
     : [];
+  const topicState = courseTopicState(index, masteryRecords, runRows, new Set())(concept);
   return serviceResult({
-    course: await resolveLessonCourse(deps.db, request.repo, index, request.userId, conceptId),
+    course,
+    canRestart: topicState.status !== 'not_started' && topicState.status !== 'locked',
     lesson: serializeLesson({
       ...lesson,
       prerequisites: getLessonPrerequisites(index, conceptId),

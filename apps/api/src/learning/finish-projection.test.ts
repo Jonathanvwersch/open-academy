@@ -243,6 +243,20 @@ describe('projectCourseFinishes', () => {
     expect(result.byCourse.get('b')).toBe('2026-01-02');
   });
 
+  it('returns every projected topic when more than twenty remain', () => {
+    const projectedTopics = topics('many', 25);
+    const result = projectCourseFinishes({
+      courses: [{ id: 'course', topics: projectedTopics }],
+      dailyXp: 1000,
+      maxNewTopicsPerDay: 2,
+      today,
+    });
+
+    expect(result.upcoming.map(({ conceptId }) => conceptId)).toEqual(
+      projectedTopics.map(({ conceptId }) => conceptId),
+    );
+  });
+
   it('returns null for a course that was already complete', () => {
     const result = projectCourseFinishes({
       courses: [

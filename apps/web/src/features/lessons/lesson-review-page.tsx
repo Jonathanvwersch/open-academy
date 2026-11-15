@@ -15,7 +15,9 @@ import {
 import { useTutorSidebar } from '../tutor/tutor-sidebar.js';
 import { LessonBlock } from './lesson-block.js';
 import { LessonCourseLine } from './lesson-course-line.js';
+import { useRestartTopic } from './mutations.js';
 import { lessonReviewQueryOptions, lessonRunQueryOptions } from './queries.js';
+import { RestartTopicDialog } from './restart-topic-dialog.js';
 
 const Route = getRouteApi('/lessons/$conceptId');
 export function LessonReviewPage() {
@@ -28,6 +30,7 @@ export function LessonReviewPage() {
   // Observe newer answers already in the cache without fetching the full run for a read-only page.
   const cachedRun = useQuery({ ...lessonRunQueryOptions(conceptId), enabled: false });
   const { lesson, checkAnswers, conceptTitle } = reviewQuery.data;
+  const restart = useRestartTopic();
   const runStatus =
     cachedRun.dataUpdatedAt > reviewQuery.dataUpdatedAt
       ? (cachedRun.data?.run?.status ?? null)
@@ -37,6 +40,7 @@ export function LessonReviewPage() {
     enabled: runStatus === 'quiz',
   });
   const tutorSidebar = useTutorSidebar();
+  const [restartOpen, setRestartOpen] = useState(false);
   const [startingQuiz, setStartingQuiz] = useState(false);
   const [quizStartError, setQuizStartError] = useState('');
   const finalBlock = lesson.blocks.find(
@@ -105,6 +109,20 @@ export function LessonReviewPage() {
       setStartingQuiz(false);
     }
   };
+  const confirmRestart = () => {
+    restart.mutate(
+      { conceptId, topicTitle: conceptTitle },
+      {
+        onSuccess: () => {
+          setRestartOpen(false);
+          const course = reviewQuery.data.course;
+          void navigate(
+            course ? { to: '/courses/$courseId', params: { courseId: course.id } } : { to: '/' },
+          );
+        },
+      },
+    );
+  };
 
   return (
     <section className="space-y-6">
@@ -115,10 +133,30 @@ export function LessonReviewPage() {
           </Link>
         </Button>
       ) : null}
-      <div className="space-y-1">
-        <LessonCourseLine course={reviewQuery.data.course} />
-        <h1 className="text-3xl font-semibold">{conceptTitle}</h1>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0 flex-1 space-y-1">
+          <LessonCourseLine course={reviewQuery.data.course} />
+          <h1 className="text-3xl font-semibold">{conceptTitle}</h1>
+        </div>
+        {reviewQuery.data.canRestart ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="shrink-0"
+            onClick={() => setRestartOpen(true)}
+          >
+            Restart topic
+          </Button>
+        ) : null}
       </div>
+      <RestartTopicDialog
+        open={restartOpen}
+        topicTitle={conceptTitle}
+        isPending={restart.isPending}
+        onOpenChange={setRestartOpen}
+        onConfirm={confirmRestart}
+      />
       {runStatus === 'completed' ? (
         <p className="text-sm text-muted-foreground">Quiz passed</p>
       ) : runStatus === 'quiz' ? (

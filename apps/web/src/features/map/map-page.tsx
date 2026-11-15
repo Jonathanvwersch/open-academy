@@ -3,6 +3,7 @@ import { useSuspenseQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { ChevronDown } from 'lucide-react';
 import { Collapsible } from 'radix-ui';
+import { useState } from 'react';
 import { Button } from '../../components/ui/button.js';
 import { Card, CardContent } from '../../components/ui/card.js';
 import { studyMapQueryOptions } from './queries.js';
@@ -40,82 +41,107 @@ function groupByWeek(topics: UpNextPayload['upcoming']) {
   return [...weeks].map(([week, items]) => ({ week, items }));
 }
 
+function TopicList({ topics }: { topics: UpNextPayload['upcoming'] }) {
+  return (
+    <Card className="gap-0 py-0">
+      <CardContent className="p-0 first:pt-0 last:pb-0">
+        <ol className="divide-y">
+          {topics.map((topic) => (
+            <li key={`${topic.courseId}:${topic.conceptId}`}>
+              <Link
+                to="/courses/$courseId"
+                params={{ courseId: topic.courseId }}
+                className="flex items-start justify-between gap-4 px-5 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <span className="min-w-0 space-y-1">
+                  <span className="block font-medium">{topic.title}</span>
+                  <span className="block text-sm text-muted-foreground">
+                    {topic.courseTitle} · {topic.unitTitle}
+                  </span>
+                </span>
+                <span className="shrink-0 pt-0.5 text-sm text-muted-foreground">
+                  {topic.dayLabel}
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ol>
+      </CardContent>
+    </Card>
+  );
+}
+
 export function MapPage() {
   const { data } = useSuspenseQuery(studyMapQueryOptions());
-  const weeks = groupByWeek(data.upcoming);
+  const [showAllSubjects, setShowAllSubjects] = useState(false);
+  const allSubjects = data.allSubjects ?? null;
+  const focused = Boolean(data.focusSubjectTitle && allSubjects);
+  const weeks = groupByWeek(
+    focused && showAllSubjects && allSubjects ? allSubjects : data.upcoming,
+  );
 
   return (
     <section className="mx-auto w-full max-w-3xl space-y-6 px-4 pb-10 sm:px-6">
-      <header className="space-y-1">
+      <header className="space-y-3">
         <h1 className="sr-only">Up next</h1>
         <p className="text-sm text-muted-foreground">
-          Your next topics across active courses, in projected study order.
+          {focused && !showAllSubjects
+            ? `Your next ${data.focusSubjectTitle} topics, in projected study order. Other subjects are paused while you focus on ${data.focusSubjectTitle}.`
+            : 'Your next topics across active courses, in projected study order.'}
         </p>
+        {focused ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            aria-pressed={showAllSubjects}
+            onClick={() => setShowAllSubjects((value) => !value)}
+          >
+            {showAllSubjects ? `Show ${data.focusSubjectTitle} only` : 'Show all subjects'}
+          </Button>
+        ) : null}
       </header>
       {weeks.length ? (
         weeks.map(({ week, items }) => (
           <section key={week} aria-label={weekTitle(week)} className="space-y-3">
             <h2 className="text-sm font-semibold text-muted-foreground">{weekTitle(week)}</h2>
-            <ol className="divide-y rounded-lg border">
-              {items.map((topic) => (
-                <li key={`${topic.courseId}:${topic.conceptId}`} className="px-4 py-3">
-                  <Link
-                    to="/courses/$courseId"
-                    params={{ courseId: topic.courseId }}
-                    className="flex items-start justify-between gap-4 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  >
-                    <span className="min-w-0 space-y-1">
-                      <span className="block font-medium">{topic.title}</span>
-                      <span className="block text-sm text-muted-foreground">
-                        {topic.courseTitle} · {topic.unitTitle}
-                      </span>
-                    </span>
-                    <span className="shrink-0 pt-0.5 text-sm text-muted-foreground">
-                      {topic.dayLabel}
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ol>
+            <TopicList topics={items} />
           </section>
         ))
       ) : (
         <Card>
-          <CardContent className="py-6 text-sm text-muted-foreground">
+          <CardContent className="text-sm text-muted-foreground">
             No topics are currently projected. Add an active course or complete a prerequisite to
             see what is next.
           </CardContent>
         </Card>
       )}
-      <Collapsible.Root>
-        <Card>
-          <CardContent className="p-0">
-            <Collapsible.Trigger asChild>
-              <Button
-                type="button"
-                variant="ghost"
-                className="h-auto w-full justify-between px-4 py-3"
-              >
-                <span className="font-medium">Finished ({data.finished.length})</span>
-                <ChevronDown aria-hidden="true" className="size-4" />
-              </Button>
-            </Collapsible.Trigger>
-            <Collapsible.Content>
+      <Collapsible.Root className="space-y-3">
+        <Collapsible.Trigger className="group flex w-full items-center justify-between rounded-sm text-sm font-semibold text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          <span>Finished ({data.finished.length})</span>
+          <ChevronDown
+            aria-hidden="true"
+            className="size-4 transition-transform group-data-[state=open]:rotate-180"
+          />
+        </Collapsible.Trigger>
+        <Collapsible.Content>
+          <Card className="gap-0 py-0">
+            <CardContent className="p-0 first:pt-0 last:pb-0">
               {data.finished.length ? (
-                <ol className="divide-y border-t">
+                <ol className="divide-y">
                   {data.finished.map((topic) => (
                     <li
                       key={`${topic.courseId}:${topic.conceptId}`}
-                      className="flex items-start justify-between gap-4 px-4 py-3"
+                      className="flex items-start justify-between gap-4 px-5 py-3"
                     >
-                      <span className="min-w-0">
+                      <span className="min-w-0 space-y-1">
                         <span className="block font-medium">{topic.title}</span>
                         <span className="block text-sm text-muted-foreground">
                           {topic.courseTitle} · {topic.unitTitle}
                         </span>
                       </span>
                       {topic.date ? (
-                        <span className="shrink-0 text-sm text-muted-foreground">
+                        <span className="shrink-0 pt-0.5 text-sm text-muted-foreground">
                           {dateLabel(topic.date)}
                         </span>
                       ) : null}
@@ -123,13 +149,11 @@ export function MapPage() {
                   ))}
                 </ol>
               ) : (
-                <p className="border-t px-4 py-3 text-sm text-muted-foreground">
-                  No finished topics yet.
-                </p>
+                <p className="px-5 py-3 text-sm text-muted-foreground">No finished topics yet.</p>
               )}
-            </Collapsible.Content>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </Collapsible.Content>
       </Collapsible.Root>
     </section>
   );
