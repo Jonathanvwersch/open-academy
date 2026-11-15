@@ -186,7 +186,7 @@ exercises:
     prompt: "A GPU has 48 GB of memory, where 1 GB is $10^9$ bytes. A model with {{= n }} billion parameters is loaded onto it in BF16. How many GB of memory are left for everything else?"
     params:
       n: { min: 2, max: 20, step: 2 }
-    constraints: ["n != 12"]
+    constraints: ["n != 12", "n != 8", "n != 16"]
     answer_expr: "48 - 2 * n"
     tolerance:
       abs: 0.01
@@ -300,7 +300,7 @@ exercises:
         text: In the registers, the fastest memory inside each SM.
         correct: false
         category: misunderstood_definition
-        feedback: Registers hold only the numbers an SM is working on right now, a tiny fraction of a megabyte.
+        feedback: Registers hold only the numbers an SM is working on right now, about a quarter of a megabyte per SM.
       - id: d
         text: In the Tensor Cores, the circuits that do the matrix maths.
         correct: false
@@ -524,7 +524,7 @@ exercises:
     params:
       bw: { min: 1, max: 4, step: 1 }
       g: { min: 2, max: 20, step: 2 }
-    constraints: ["mod(1000 * bw, g) == 0"]
+    constraints: ["mod(1000 * bw, g) == 0", "bw != g"]
     answer_expr: "1000 * bw / g"
     tolerance:
       abs: 0.5
@@ -545,7 +545,7 @@ exercises:
     prompt: Llama 3 8B, with about 8 billion parameters, is stored in INT8 on an H100 SXM GPU with a memory bandwidth of 3.35 TB/s. Ignoring all memory traffic except the weights, what is the most tokens per second one conversation can decode, to the nearest whole number?
     answer: 419
     tolerance:
-      abs: 1
+      abs: 3
     common_wrong:
       - answer: 209
         category: misunderstood_definition
@@ -565,7 +565,7 @@ exercises:
       b: { min: 2, max: 32, step: 2 }
     answer_expr: "b * 3350 / 16"
     tolerance:
-      rel: 0.003
+      rel: 0.006
     common_wrong:
       - answer_expr: "3350 / 16"
         category: incorrect_reasoning

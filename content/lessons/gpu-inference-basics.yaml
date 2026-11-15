@@ -8,9 +8,11 @@ recap:
 where_this_fits: |
   ### What does a GPU do during inference?
 
-  A GPU (graphics processing unit) is a chip with thousands of small calculators that work at the same time, with its own memory beside it. When a language model runs, the GPU keeps the model's weights in that memory and does the model's matrix maths.
+  A GPU (graphics processing unit) is a chip with thousands of calculators working together and its own memory for model weights.
 
-  We'll ask two questions. Do a model's weights fit in the GPU's memory? And how fast can the GPU move those weights from memory to its calculators? We'll answer both for a chat assistant that serves Llama 3 8B, a language model anyone can download, on one NVIDIA H100 SXM GPU, the server version of the H100. The second answer shows why generating text one token at a time is held back by memory speed.
+  We'll check whether the weights fit and how memory speed limits decoding for a chat assistant that serves Llama 3 8B, a language model anyone can download, on one NVIDIA H100 SXM GPU, the version that mounts directly on the server's board.
+
+  In the lesson on arithmetic intensity, we learned that an operation's arithmetic intensity $I$ is the FLOPs it does per byte it moves to or from GPU memory. When $I$ is below the GPU's ops:byte ratio (peak FLOP/s ÷ memory bandwidth, about 300 for an H100), the operation is memory-bound.
 knowledge_points:
   - id: gib-model-memory
     title: "Work out how much memory a model needs"
@@ -133,11 +135,12 @@ knowledge_points:
       <rect x="135" y="40" width="90" height="50" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="180" y="70" text-anchor="middle">SM</text>
       <rect x="240" y="40" width="90" height="50" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="285" y="70" text-anchor="middle">SM</text>
       <text x="345" y="70">… 132 SMs in all</text>
-      <text x="30" y="112">each: Tensor Cores and about 0.5 MB of registers,</text>
-      <text x="30" y="130">shared memory and L1 cache</text>
+      <text x="30" y="106">each: Tensor Cores and about</text>
+      <text x="30" y="124">0.5 MB of registers, shared</text>
+      <text x="30" y="142">memory and L1 cache</text>
       <rect x="30" y="150" width="580" height="44" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/>
       <text x="320" y="177" text-anchor="middle">L2 cache: 50 MB, shared by all SMs</text>
-      <path d="M320 150 V140" stroke="#737373" stroke-width="2" marker-end="url(#gib2-muted)"/>
+      <path d="M320 150 V96" stroke="#737373" stroke-width="2" marker-end="url(#gib2-muted)"/>
       <rect x="30" y="270" width="580" height="54" rx="6" fill="#ffffff" stroke="#3b82f6" stroke-width="2.5"/>
       <text x="320" y="302" text-anchor="middle" fill="#3b82f6">HBM: 80 GB, holds the weights</text>
       <path d="M320 268 V200" stroke="#3b82f6" stroke-width="3" marker-end="url(#gib2-blue)"/>
