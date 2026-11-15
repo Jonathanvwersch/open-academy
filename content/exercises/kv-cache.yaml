@@ -112,7 +112,15 @@ exercises:
       scores, cache = decoder(prompt, ([], []))
       token = 0 if scores[0] >= scores[1] else 1
       scores, cache = decoder(____)
-    accept: ["[token], cache"]
+    accept:
+      [
+        "[token], cache",
+        "[token], cache=cache",
+        "tokens=[token], cache=cache",
+        "(token,), cache",
+        "(token,), cache=cache",
+        "tokens=(token,), cache=cache",
+      ]
     solution: "Pass `[token], cache`. Passing the full prompt again would append duplicate prompt entries to this cache."
   - id: kvc-edit-history
     dimension: conceptual
@@ -354,7 +362,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "A decoder has 4 layers, 2 key-value heads per layer and head size 8. Each number takes 2 bytes. How many cache bytes hold {{= batch }} independent sequences with {{= tokens }} processed tokens each? Ignore allocation overhead."
+    prompt: "A decoder has 4 layers, 2 key-value heads per layer and head size 8. Each number takes 2 bytes. How many cache bytes hold {{= batch }} independent sequences with {{= tokens }} processed tokens each? Ignore allocation overhead. Enter digits only, without commas."
     params:
       batch: { min: 2, max: 4, step: 2 }
       tokens: { min: 10, max: 30, step: 10 }
@@ -367,7 +375,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: A decoder needs 200 cache bytes per token. Three independent sequences have 10, 20 and 40 processed tokens. How many bytes store their entries with no padding or allocation overhead?
+    prompt: A decoder needs 200 cache bytes per token. Three independent sequences have 10, 20 and 40 processed tokens. How many bytes store their entries with no padding or allocation overhead? Enter digits only, without commas.
     answer: 14000
     tolerance: { abs: 0 }
     solution: The sequences have 10 + 20 + 40 = 70 tokens altogether. Their entries take 70 × 200 = 14,000 bytes.
