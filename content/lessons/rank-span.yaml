@@ -1,0 +1,316 @@
+concept: rank-span
+version: 1
+objective: |
+  **Goal:** decide whether a vector is in the span of others, test vectors for independence and find a matrix's rank by elimination, use the rank to predict whether $Ax=b$ has one, no or infinitely many solutions, and explain why a tall matrix times a wide one has low rank.
+where_this_fits: |
+  ### What are span and rank?
+
+  The span of a set of vectors is every vector we can build from them by scaling them and adding the results. The rank of a matrix counts the columns we really need, after dropping each column we could build from the others.
+
+  Why do we need them? In the lesson on inverses and linear systems, we wrote equations as $Ax=b$ and solved them. A $2\times2$ matrix with a nonzero determinant always gives one answer. But what if the determinant is zero, or the matrix isn't square? Span and rank tell us whether $Ax=b$ has one solution, none or infinitely many. They also explain why a tall, narrow matrix times a short, wide one can be stored with far fewer numbers than the product.
+knowledge_points:
+  - id: rsp-span
+    title: "Build vectors from other vectors"
+    explain: |
+      ### Scaling and adding two arrows
+
+      In the vectors lesson, we scaled a vector by multiplying every component by a number, and we added two vectors by adding matching components. Putting those two moves together lets us build new vectors out of old ones.
+
+      Take $u=(2,1)$, the blue arrow, and $v=(1,2)$, the green arrow. One copy of $u$ followed by two copies of $v$ lands on the orange point, $(4,5)$. By choosing other amounts of each, including negative and fractional ones, we can land on any point of the plane, because $u$ and $v$ point along different lines. The grey dashed line shows every multiple of $u$ on its own, so one arrow alone only reaches the points on its own line.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 420" aria-label="A grid with the origin at the bottom left. The blue arrow u = (2, 1) goes from the origin to (2, 1). Two green arrows, each v = (1, 2), continue from (2, 1) to (3, 3) and then to (4, 5). The orange arrow goes straight from the origin to (4, 5), the combination 1u + 2v. A grey dashed line through the origin and (2, 1) marks every multiple of u">
+      <defs><marker id="rs1-blue" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#3b82f6"/></marker><marker id="rs1-green" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#10b981"/></marker><marker id="rs1-amber" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#f59e0b"/></marker></defs>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <path d="M50 400 V50 M100 400 V50 M150 400 V50 M200 400 V50 M250 400 V50 M300 400 V50 M350 400 V50 M400 400 V50 M50 400 H400 M50 350 H400 M50 300 H400 M50 250 H400 M50 200 H400 M50 150 H400 M50 100 H400 M50 50 H400" stroke="#d4d4d4" stroke-width="1" fill="#ffffff" fill-opacity="0"/>
+      <path d="M50 350 H400 M100 400 V50" stroke="#737373" stroke-width="1.5"/>
+      <path d="M50 375 L400 200" stroke="#737373" stroke-width="2" stroke-dasharray="7 6"/>
+      <path d="M100 350 L300 100" stroke="#f59e0b" stroke-width="3.5" marker-end="url(#rs1-amber)"/>
+      <path d="M100 350 L200 300" stroke="#3b82f6" stroke-width="3.5" marker-end="url(#rs1-blue)"/>
+      <path d="M200 300 L250 200" stroke="#10b981" stroke-width="3.5" marker-end="url(#rs1-green)"/>
+      <path d="M250 200 L300 100" stroke="#10b981" stroke-width="3.5" marker-end="url(#rs1-green)"/>
+      <circle cx="100" cy="350" r="4" fill="#171717"/>
+      <circle cx="200" cy="300" r="4" fill="#171717"/>
+      <circle cx="250" cy="200" r="4" fill="#171717"/>
+      <circle cx="300" cy="100" r="4" fill="#171717"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="146" y="370" fill="#737373">1</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="196" y="370" fill="#737373">2</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="246" y="370" fill="#737373">3</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="296" y="370" fill="#737373">4</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="346" y="370" fill="#737373">5</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="82" y="305" fill="#737373">1</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="82" y="255" fill="#737373">2</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="82" y="205" fill="#737373">3</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="82" y="155" fill="#737373">4</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="82" y="105" fill="#737373">5</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="215" y="318" fill="#3b82f6">u = (2, 1)</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="270" y="215" fill="#10b981">v = (1, 2), twice</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="312" y="96" fill="#f59e0b">1u + 2v = (4, 5)</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="406" y="196" fill="#737373">multiples of u</text>
+      </g>
+      </svg>
+      ```
+
+      ### Linear combinations and span
+
+      A **linear combination** of some vectors is what we get by multiplying each one by a number and adding the results. For two vectors $u$ and $v$ and any numbers $c_1$ and $c_2$, it's
+
+      $$c_1u+c_2v.$$
+
+      The **span** of a set of vectors is the set of all their linear combinations, every point we can reach with them.
+
+      - One nonzero vector spans a line through the origin.
+      - In a flat plane, two vectors that don't lie on one line span the whole plane.
+      - In three-dimensional space, two vectors that don't lie on one line span a flat plane through the origin.
+      - In three-dimensional space, three vectors that don't all lie in one plane span all of space.
+
+      ### Is a vector in the span?
+
+      To decide whether a vector $b$ is in the span, we look for the amounts. Writing $c_1u+c_2v=b$ one component at a time gives a system of equations, one for each component. For example, the first components of $c_1u$ and $c_2v$ must add up to the first component of $b$. If the system has a solution, $b$ is in the span, and the solution tells us the amounts. If the equations contradict each other, it isn't.
+
+      Be careful not to assume that two vectors always span a plane. The vectors $u=(2,1)$ and $w=(4,2)$ lie on the same line, because $w=2u$. Every combination of them is still a multiple of $u$, so together they span only that line.
+    worked: |
+      Let's check whether $b=(2,3,5)$ is in the span of $p=(1,0,1)$ and $q=(0,1,1)$, two vectors in three-dimensional space. Then we'll try $(2,3,4)$, which turns out to be outside it.
+
+      1. **Write the combination one component at a time.** Scaling and adding gives a vector whose components we can match against $b$.
+         $$c_1p+c_2q=(c_1,\;c_2,\;c_1+c_2)$$
+
+      2. **Match the first two components.** The first component is just $c_1$ and the second is just $c_2$, so they fix both amounts.
+         $$c_1=2,\qquad c_2=3$$
+
+      3. **Check the third component.** It must equal $c_1+c_2=2+3=5$, and it does, so $b$ is in the span.
+         $$b=2p+3q$$
+
+      4. **Try $(2,3,4)$.** The first two components still force $c_1=2$ and $c_2=3$, but now the third doesn't match.
+         $$c_1+c_2=5\neq4$$
+
+      Since $p$ and $q$ don't lie on one line, their span is a plane through the origin. It contains $(2,3,5)$ but not $(2,3,4)$, because no amounts make all three components match.
+    problems:
+      - rsp-span-basics
+      - rspp-span-self-explain
+      - rspp-combination-template
+      - rspp-amounts-template
+      - rspp-in-span
+      - rspp-span-line
+      - rspp-led-mix
+  - id: rsp-independence-rank
+    title: "Test independence and find rank"
+    explain: |
+      ### Vectors that add nothing new
+
+      In step 1, $w=(4,2)$ added nothing to $u=(2,1)$. Since $w=2u$, the span stayed a line. In general, a vector adds nothing new when it's a linear combination of the others, since anything built with it can be built without it.
+
+      A set of vectors is **linearly independent** when none of them is a linear combination of the others. Otherwise it's **linearly dependent**. Two vectors are dependent exactly when one is a multiple of the other. Now look at the columns of
+
+      $$A=\begin{bmatrix}1&1&2\\1&2&3\\2&1&3\end{bmatrix}.$$
+
+      No column is a multiple of another, yet the third, $(2,3,3)$, is the sum of the first two, $(1,1,2)$ and $(1,2,1)$. So be careful. Checking the vectors in pairs isn't enough.
+
+      ### Testing by elimination
+
+      In the lesson on inverses and linear systems, we solved equations by elimination, subtracting a multiple of one equation from another to remove an unknown. We can do the same to the rows of a matrix. That changes the rows but keeps every relationship between the columns. A relationship such as column 3 equals column 1 plus column 2 holds in each row separately, so it still holds after we add or subtract multiples of rows.
+
+      We make the entries below the top of column 1 zero, then the entries below the second entry of column 2, and so on. For $A$ this leaves
+
+      $$\begin{bmatrix}1&1&2\\0&1&1\\0&0&0\end{bmatrix}.$$
+
+      After elimination, the first nonzero entry in each row is called a **pivot**, and we say its column has a pivot. Here columns 1 and 2 have pivots. Column 3 has none, a sign that it's a combination of earlier columns. In the eliminated matrix, column 3 is column 1 plus column 2, so the same holds for the original columns.
+
+      ### Rank
+
+      The **rank** of a matrix $A$, written $\operatorname{rank}(A)$, is the largest number of its columns that are independent of each other, which is the number of pivots elimination leaves. Our $A$ has rank 2. The columns are independent exactly when every column gets a pivot. Each pivot sits in its own row, so the rank can't exceed the number of rows. So three vectors with two components each, side by side in a two-row matrix, have rank at most 2 and are dependent.
+    worked: |
+      Let's find the rank of $A=\begin{bmatrix}1&1&2\\1&2&3\\2&1&3\end{bmatrix}$ by elimination, step by step.
+
+      1. **Make column 1 zero below row 1.** Subtract row 1 from row 2, and subtract twice row 1 from row 3.
+         $$\begin{bmatrix}1&1&2\\0&1&1\\0&-1&-1\end{bmatrix}$$
+
+      2. **Make column 2 zero below row 2.** Adding row 2 to row 3 removes the $-1$.
+         $$\begin{bmatrix}1&1&2\\0&1&1\\0&0&0\end{bmatrix}$$
+
+      3. **Count the pivots.** Rows 1 and 2 each have a first nonzero entry, and row 3 has none.
+         $$\operatorname{rank}(A)=2$$
+
+      4. **Check the relationship in the original columns.** Column 3 had no pivot, so it should be a combination of columns 1 and 2.
+         $$(1,1,2)+(1,2,1)=(2,3,3)$$
+
+      So $A$ has only two independent columns, and its third column adds nothing new. In NumPy, which the matrices lesson used, `np.linalg.matrix_rank` finds the rank for us.
+
+      ```python
+      import numpy as np
+
+      A = np.array([[1, 1, 2],
+                    [1, 2, 3],
+                    [2, 1, 3]])
+      r = np.linalg.matrix_rank(A)
+      print(r)
+      # prints 2
+      ```
+    problems:
+      - rsp-independence-basics
+      - rspp-rank-self-explain
+      - rspp-dependent-pair
+      - rspp-rank-fixed
+      - rspp-dependent-template
+      - rspp-pairs-trap
+      - rspp-too-many
+      - rspp-duplicate-feature
+  - id: rsp-solutions
+    title: "Tell how many solutions a system has"
+    explain: |
+      ### A matrix times a vector combines its columns
+
+      The determinants lesson showed that a $2\times2$ matrix sends $(x,y)$ to $x$ times column 1 plus $y$ times column 2. The same holds for any matrix. Name the $n$ columns of a matrix $A$ as $a_1,\dots,a_n$. If $x$ has entries $x_1,\dots,x_n$, then
+
+      $$Ax=x_1a_1+x_2a_2+\dots+x_na_n.$$
+
+      So solving $Ax=b$ asks which amounts of the columns of $A$ build $b$, if any. The span of a matrix's columns is called its **column space**. Rank 1 makes it a line through the origin, and rank 2 a plane.
+
+      ### One, none or infinitely many
+
+      Take $B=\begin{bmatrix}1&2\\2&4\end{bmatrix}$. Its columns $(1,2)$ and $(2,4)$ lie on one line, so $\operatorname{rank}(B)=1$ and its column space is the line through them, dashed below.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 430" aria-label="The columns of B, blue (1, 2) and green (2, 4), are both drawn from the origin and lie along one grey dashed line through the origin, the column space of B. The orange point b = (3, 6) lies on that line, so it can be reached. The red point b = (3, 1) lies off the line, so no combination of the columns reaches it">
+      <defs><marker id="rs3-blue" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#3b82f6"/></marker><marker id="rs3-green" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#10b981"/></marker></defs>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <path d="M75 415 V55 M120 415 V55 M165 415 V55 M210 415 V55 M255 415 V55 M300 415 V55 M345 415 V55 M75 415 H345 M75 370 H345 M75 325 H345 M75 280 H345 M75 235 H345 M75 190 H345 M75 145 H345 M75 100 H345 M75 55 H345" stroke="#d4d4d4" stroke-width="1" fill="#ffffff" fill-opacity="0"/>
+      <path d="M75 370 H345 M120 415 V55" stroke="#737373" stroke-width="1.5"/>
+      <path d="M97.5 415 L277.5 55" stroke="#737373" stroke-width="2" stroke-dasharray="7 6"/>
+      <path d="M120 370 L210 190" stroke="#10b981" stroke-width="3.5" marker-end="url(#rs3-green)"/>
+      <path d="M120 370 L165 280" stroke="#3b82f6" stroke-width="3.5" marker-end="url(#rs3-blue)"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="161" y="390" fill="#737373">1</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="206" y="390" fill="#737373">2</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="251" y="390" fill="#737373">3</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="296" y="390" fill="#737373">4</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="102" y="330" fill="#737373">1</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="102" y="285" fill="#737373">2</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="102" y="240" fill="#737373">3</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="102" y="195" fill="#737373">4</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="102" y="150" fill="#737373">5</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="102" y="105" fill="#737373">6</text>
+      <circle cx="255" cy="100" r="6" fill="#f59e0b"/>
+      <circle cx="255" cy="325" r="6" fill="#ef4444"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="177" y="292" fill="#3b82f6">column 1 = (1, 2)</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="222" y="200" fill="#10b981">column 2 = (2, 4)</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="269" y="105" fill="#f59e0b">b = (3, 6) is on the line: reachable</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="269" y="330" fill="#ef4444">b = (3, 1) is off the line: not reachable</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="287.5" y="71" fill="#737373">column space of B</text>
+      </g>
+      </svg>
+      ```
+
+      - The orange $b=(3,6)$ is on the line, and many amounts reach it, such as $x=(3,0)$ or $x=(1,1)$. Column 2 is twice column 1, so we can trade one copy of column 2 for two of column 1.
+      - The red $b=(3,1)$ is off the line, so nothing reaches it.
+      - Now take $C=\begin{bmatrix}2&1\\1&2\end{bmatrix}$, whose columns are $u$ and $v$ from step 1. They span the plane, so every $b$ is reached. They're independent, so nothing can be traded and exactly one $x$ reaches it.
+
+      In general, for $Ax=b$ with $n$ unknowns:
+
+      - If $b$ isn't in the column space, there's no solution. Elimination shows this as a row that says $0$ equals a nonzero number, such as $0=1$.
+      - If $b$ is in the column space and $\operatorname{rank}(A)=n$, there's exactly one solution, because the columns are independent.
+      - If $b$ is in the column space and $\operatorname{rank}(A)<n$, there are infinitely many, because a dependent column lets us trade amounts, as with $B$.
+
+      ### Which square matrices have inverses
+
+      A square $n\times n$ matrix with rank $n$ is called **full rank**. Its columns reach every vector with $n$ entries, so every $b$ has exactly one solution. So we can always undo $A$, and it has an inverse. With a smaller rank, some $b$ can't be reached and there's no inverse. For a $2\times2$ matrix, rank below 2 means the columns lie on one line, which is exactly when the determinant is zero. For $B$, it's $1\times4-2\times2=0$.
+    worked: |
+      Let's solve $Ax=b$ for the matrix $A=\begin{bmatrix}1&1&2\\1&2&3\\2&1&3\end{bmatrix}$, which has rank 2, first with $b=(3,4,5)$ and then with $b=(3,4,6)$. We'll call the entries of $x$ by the names $x_1$, $x_2$ and $x_3$.
+
+      1. **Apply the same row operations to $b$.** Each row is an equation, so every operation on a row of $A$ must also be done to the matching entry of $b$. We subtract row 1 from row 2 and twice row 1 from row 3, then add the new row 2 to row 3. That turns $b=(3,4,5)$ into $(3,1,-1)$ and then $(3,1,0)$. Written as equations, the rows now say
+         $$\begin{aligned}x_1+x_2+2x_3&=3\\x_2+x_3&=1\\0&=0\end{aligned}$$
+
+      2. **Read the last row.** It says $0=0$, so there's no contradiction and $b$ is in the column space. The rank, 2, is less than the 3 unknowns, so there are infinitely many solutions.
+         $$\operatorname{rank}(A)=2<3$$
+
+      3. **Find two of them.** Column 3 has no pivot, so we can choose $x_3$ freely. Then $x_2=1-x_3$ and $x_1=3-x_2-2x_3$. Taking $x_3=0$ and $x_3=1$ gives two solutions.
+         $$x=(2,1,0)\quad\text{or}\quad x=(1,0,1)$$
+
+      4. **Change $b$ to $(3,4,6)$.** The same row operations turn it into $(3,1,0)$ and then $(3,1,1)$, so the last row contradicts itself.
+         $$0=1$$
+
+      So with $b=(3,4,5)$ there are infinitely many solutions, and with $b=(3,4,6)$ there are none, because $(3,4,6)$ is not in the column space.
+    problems:
+      - rsp-solutions-basics
+      - rspp-solutions-self-explain
+      - rspp-zero-row-count
+      - rspp-reachable-template
+      - rspp-tall-unique
+      - rspp-free-template
+      - rspp-not-invertible
+      - rspp-robot-arm
+  - id: rsp-low-rank
+    title: "Store a big matrix as two small ones"
+    explain: |
+      ### A column times a row
+
+      In the lesson on inverses and linear systems, we met the transpose, which turns a column vector $v$ into a row $v^\top$. Take two new vectors with 3 entries each, $u=(1,2,3)$ and $v=(2,1,4)$, which replace the $u$ and $v$ from step 1. In matrix maths they're columns. Then $uv^\top$ is a $3\times1$ matrix times a $1\times3$ matrix, so the result is a $3\times3$ matrix. Its entry in row $i$, column $j$ is entry $i$ of $u$ times entry $j$ of $v$.
+
+      $$uv^\top=\begin{bmatrix}2&1&4\\4&2&8\\6&3&12\end{bmatrix}.$$
+
+      Every column is a multiple of $u$, with the entries of $v$ as the amounts: column 1 is $2u$, column 2 is $1u$ and column 3 is $4u$. So when $u$ and $v$ are both nonzero, $uv^\top$ has rank 1. Its 9 entries come from just 6 numbers.
+
+      ### A tall matrix times a wide one
+
+      The same idea works when the left factor has more than one column. Take a tall, narrow $m\times k$ matrix $F$ and a short, wide $k\times n$ matrix $G$, where $k$ is much smaller than $m$ and $n$. Each column of $FG$ is $F$ times one column of $G$, because each entry of that column is a row of $F$ dotted with that column of $G$. In step 3 we saw that a matrix times a vector is a linear combination of the matrix's columns, and $F$ has only $k$ of them. So every column of $FG$ lies in the span of $k$ vectors, and such a span can't hold more than $k$ independent vectors. That means
+
+      $$\operatorname{rank}(FG)\le k.$$
+
+      Be careful here. This bound is only a ceiling. The rank can be lower, for example when the columns of $F$ are themselves dependent.
+
+      ### Saving numbers
+
+      Storing the $m\times n$ product directly takes $mn$ numbers. Storing the two factors takes $mk+kn$ numbers. When $m=n=1000$ and $k=10$, that's $1{,}000{,}000$ numbers against $20{,}000$, fifty times fewer.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 310" aria-label="A tall blue 1000 by 10 matrix, holding 10,000 numbers, times a wide green 10 by 1000 matrix, also holding 10,000 numbers, equals a grey 1000 by 1000 matrix holding 1,000,000 numbers, whose rank is at most 10">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <rect x="60" y="40" width="30" height="200" fill="#3b82f6" fill-opacity="0.15" stroke="#3b82f6" stroke-width="2"/>
+      <text x="112" y="146" font-size="22" text-anchor="middle">×</text>
+      <rect x="135" y="40" width="200" height="30" fill="#10b981" fill-opacity="0.15" stroke="#10b981" stroke-width="2"/>
+      <text x="360" y="146" font-size="22" text-anchor="middle">=</text>
+      <rect x="390" y="40" width="200" height="200" fill="#737373" fill-opacity="0.12" stroke="#737373" stroke-width="2"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="75" y="264" fill="#3b82f6" text-anchor="middle">1000 × 10</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="75" y="284" fill="#3b82f6" text-anchor="middle">10,000 numbers</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="235" y="96" fill="#10b981" text-anchor="middle">10 × 1000</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="235" y="116" fill="#10b981" text-anchor="middle">10,000 numbers</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="490" y="264" fill="#171717" text-anchor="middle">1000 × 1000</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="490" y="284" fill="#171717" text-anchor="middle">1,000,000 numbers, rank at most 10</text>
+      </g>
+      </svg>
+      ```
+
+      This is why machine learning often stores a big matrix of low rank as two thin factors. For example, a later lesson on LoRA updates the big matrices inside a language model by learning only two thin factors for each one.
+    worked: |
+      Let's multiply a $3\times2$ matrix $F$ by a $2\times3$ matrix $G$, so $k=2$. Then we'll check the rank of the product and count the numbers each form stores.
+
+      $$F=\begin{bmatrix}1&0\\0&1\\1&1\end{bmatrix},\qquad G=\begin{bmatrix}1&2&0\\0&1&1\end{bmatrix}$$
+
+      1. **Multiply.** Each entry of $FG$ is a row of $F$ dotted with a column of $G$.
+         $$FG=\begin{bmatrix}1&2&0\\0&1&1\\1&3&1\end{bmatrix}$$
+
+      2. **Build each column of $FG$ from $F$'s columns.** Call $F$'s columns $f_1=(1,0,1)$ and $f_2=(0,1,1)$. The amounts are the entries of each column of $G$, so columns 1 and 3 of $FG$ are just $f_1$ and $f_2$, and the middle column is
+         $$(2,1,3)=2f_1+1f_2$$
+
+      3. **Eliminate to find the rank.** Subtract row 1 from row 3, then row 2 from the new row 3. That leaves two pivots, so $\operatorname{rank}(FG)=2$, right at the ceiling $k=2$.
+         $$\begin{bmatrix}1&2&0\\0&1&1\\0&0&0\end{bmatrix}$$
+
+      4. **Count the numbers stored.** The product has $3\times3$ entries, while the two factors have $3\times2$ and $2\times3$.
+         $$9\ \text{against}\ 6+6=12$$
+
+      At this tiny size the factors take more room than the product. The saving appears when $k$ is much smaller than $m$ and $n$, as in the $1000\times1000$ example.
+    problems:
+      - rsp-low-rank-basics
+      - rspp-low-rank-self-explain
+      - rspp-outer-entry-template
+      - rspp-storage-template
+      - rspp-product-rank-bound
+      - rspp-dependent-factor
+      - rspp-ratings-rank
+final: rsp-explain-rank
+summary: |
+  - A linear combination multiplies each vector by a number and adds the results, $c_1u+c_2v$. The span of a set of vectors is all of their linear combinations, which can be a line, a plane or all of space. A vector $b$ is in the span when the equations for the amounts have a solution.
+  - Vectors are linearly independent when none of them is a linear combination of the others. Elimination is how we test it. The rank, $\operatorname{rank}(A)$, is the number of pivots elimination leaves, and it equals the number of independent columns.
+  - $Ax$ is a combination of the columns of $A$, so $Ax=b$ has a solution only when $b$ is in the column space. Then there's exactly one solution if the rank equals the number of unknowns and infinitely many if it's smaller. A square matrix has an inverse exactly when it's full rank, and for a $2\times2$ matrix that means a nonzero determinant.
+  - A nonzero column times a nonzero row, $uv^\top$, has rank 1, and an $m\times k$ matrix times a $k\times n$ matrix has rank at most $k$, so a low-rank matrix can be stored as two thin factors with $mk+kn$ numbers instead of $mn$.
+
+  **Next:** The orthogonality and projections lesson finds the closest point in a column space when $b$ isn't in it, which is how we fit a line to data points that don't all lie on it.
