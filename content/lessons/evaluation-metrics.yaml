@@ -16,11 +16,11 @@ knowledge_points:
     explain: |
       ### Four outcomes for a factory camera
 
-      Our camera says faulty or fine for each test part. When the camera says faulty, we say it **flags** the part. Flagged parts are counted in the column labelled Camera says faulty. They go to a person to check by hand. We call faulty the **positive** class, the thing we're trying to detect. Fine is the negative class. Positive doesn't mean good.
+      Our camera says faulty or fine for each test part. When the camera says faulty, we say it **flags** the part. Flagged parts go to a person to check by hand. We call faulty the **positive** class, the thing we're trying to detect. Fine is the negative class. Positive doesn't mean good.
 
       A true positive (TP) is a correctly flagged faulty part. A false positive (FP) is a fine part wrongly flagged, a false alarm. A false negative (FN) is a missed faulty part. A true negative (TN) is a fine part correctly called fine. True means the camera was right. Positive or negative names what the camera said.
 
-      There are 100 test parts, of which 10 are actually faulty. A **confusion matrix** compares what parts actually are with what the camera says. Each cell counts parts. Each part goes in exactly one cell. Rows tell us whether parts are actually faulty or fine. Columns tell us what the camera says.
+      There are 100 test parts, of which 10 are actually faulty. A **confusion matrix** compares what parts actually are with what the camera says. Each cell counts parts. Each part goes in exactly one cell. Rows tell us whether parts are actually faulty or fine. Columns tell us what the camera says. Flagged parts are counted in the column labelled Camera says faulty.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 156" aria-label="Confusion matrix of counts. Columns are Camera says faulty and Camera says fine. The Actually faulty row has 6 true positives and 4 false negatives. The Actually fine row has 2 false positives and 88 true negatives.">
