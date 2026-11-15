@@ -92,7 +92,7 @@ describe('academy CLI', () => {
       );
       const notation = parse(readFileSync(join(pack, 'notation.yaml'), 'utf8')) as {
         avoid: unknown[];
-        terms: { id: string; introduced_by: string[] }[];
+        terms: { id: string; match: string[]; introduced_by: string[] }[];
       };
       expect(notation.terms.map(({ id }) => id)).toEqual([
         'real-space',
@@ -111,6 +111,19 @@ describe('academy CLI', () => {
       ]);
       expect(notation.terms.every(({ introduced_by }) => introduced_by.length === 0)).toBe(true);
       expect(notation.avoid).toEqual([]);
+      for (const [id, pattern] of [
+        ['real-space', 'ℝ'],
+        ['sum', '∑'],
+        ['sum', 'Σ'],
+        ['transpose', '⊤'],
+        ['partial', '∂'],
+        ['nabla', '∇'],
+        ['composition', '∘'],
+        ['hadamard', '⊙'],
+        ['indicator', '𝟙'],
+      ]) {
+        expect(notation.terms.find((term) => term.id === id)?.match).toContain(pattern);
+      }
       const result = run(['check', pack]);
       expect(result.status).toBe(0);
       expect(result.stdout).toContain('1 topics, 0 lessons, 0 questions, 1 courses');
@@ -193,12 +206,13 @@ describe('academy CLI', () => {
         }[];
         avoid?: unknown[];
       };
-      notation.terms.push({
-        id: 'sum',
-        label: 'Σ summation',
-        match: [String.raw`\\sum`],
-        introduced_by: [],
-      });
+      const starterNotation = parse(
+        readFileSync(join(root, 'packages/cli/template/notation.yaml'), 'utf8'),
+      ) as typeof notation;
+      const sumTerm = starterNotation.terms.find(({ id }) => id === 'sum');
+      const nablaTerm = starterNotation.terms.find(({ id }) => id === 'nabla');
+      if (!sumTerm || !nablaTerm) throw new Error('Missing starter notation terms');
+      notation.terms.push(sumTerm, nablaTerm);
 
       const lessonFile = join(pack, 'lessons/vectors.yaml');
       const lesson = parse(readFileSync(lessonFile, 'utf8')) as {
@@ -206,7 +220,7 @@ describe('academy CLI', () => {
       };
       const firstPoint = lesson.knowledge_points[0];
       if (!firstPoint) throw new Error('Missing vector knowledge point');
-      firstPoint.explain = `${firstPoint.explain}\n\nThe symbol ${String.raw`\sum`} adds values.`;
+      firstPoint.explain = `${firstPoint.explain}\n\nThe symbol ${String.raw`\sum`} adds values. The symbol ∇ points along the gradient.`;
 
       writeFileSync(notationFile, stringify(notation));
       writeFileSync(lessonFile, stringify(lesson));
@@ -227,10 +241,26 @@ describe('academy CLI', () => {
       expect(missingIntroducer.stderr).toContain(
         '. Add the topic that teaches it to introduced_by in notation.yaml',
       );
+      expect(missingIntroducer.stderr).toContain(
+        'uses ∇ gradient, but no topic teaches it yet; near "',
+      );
 
       const sum = notation.terms.find(({ id }) => id === 'sum');
       if (!sum) throw new Error('Missing summation notation term');
       sum.introduced_by = ['vectors'];
+      writeFileSync(notationFile, stringify(notation));
+      const missingNablaIntroducer = run(['check', pack]);
+      expect(missingNablaIntroducer.status).toBe(1);
+      expect(missingNablaIntroducer.stderr).not.toContain(
+        'uses Σ summation, but no topic teaches it yet',
+      );
+      expect(missingNablaIntroducer.stderr).toContain(
+        'uses ∇ gradient, but no topic teaches it yet; near "',
+      );
+
+      const nabla = notation.terms.find(({ id }) => id === 'nabla');
+      if (!nabla) throw new Error('Missing gradient notation term');
+      nabla.introduced_by = ['vectors'];
       writeFileSync(notationFile, stringify(notation));
       expect(run(['check', pack]).status).toBe(0);
     } finally {

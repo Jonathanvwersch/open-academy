@@ -3,15 +3,15 @@ avoid: []
 terms:
   - id: real-space
     label: ℝⁿ notation
-    match: ['\\mathbb\s*\{?R']
+    match: ['\\mathbb\s*\{?R', "ℝ"]
     introduced_by: []
   - id: sum
     label: Σ summation
-    match: ['\\sum']
+    match: ['\\sum', "∑", "Σ"]
     introduced_by: []
   - id: transpose
     label: transpose ⊤ / .T
-    match: ['\\top', '\.T\b']
+    match: ['\\top', '\.T\b', "⊤"]
     introduced_by: []
   - id: matrix
     label: matrix notation
@@ -31,15 +31,15 @@ terms:
     introduced_by: []
   - id: partial
     label: ∂ partial derivative
-    match: ['\\partial']
+    match: ['\\partial', "∂"]
     introduced_by: []
   - id: nabla
     label: ∇ gradient
-    match: ['\\nabla']
+    match: ['\\nabla', "∇"]
     introduced_by: []
   - id: composition
     label: ∘ composition
-    match: ['(?<!\^)(?<!\^\{)\\circ']
+    match: ['(?<!\^)(?<!\^\{)\\circ', "∘"]
     introduced_by: []
   - id: argmin
     label: argmin
@@ -47,9 +47,9 @@ terms:
     introduced_by: []
   - id: hadamard
     label: ⊙ elementwise product
-    match: ['\\odot']
+    match: ['\\odot', "⊙"]
     introduced_by: []
   - id: indicator
     label: 𝟙[·] indicator
-    match: ['\\mathbf\s*\{?1\s*\}?\s*\[']
+    match: ['\\mathbf\s*\{?1\s*\}?\s*\[', "𝟙"]
     introduced_by: []
