@@ -1,0 +1,871 @@
+concept: ml-compilers
+exercises:
+  - id: mlc-record-graph-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What does eager execution do when it runs a model?
+    options:
+      - id: a
+        text: It runs each operation as its own kernel as soon as the code reaches it.
+        correct: true
+        feedback: Eager execution launches one kernel per operation, straight away, so each result goes to GPU memory.
+      - id: b
+        text: It records every operation first, then runs the model as one kernel.
+        correct: false
+        category: misunderstood_definition
+        feedback: Recording the graph first is what an ML compiler does. Eager execution runs each operation straight away.
+      - id: c
+        text: It merges neighbouring operations so their results stay on chip.
+        correct: false
+        category: misunderstood_definition
+        feedback: That is kernel fusion, which needs the recorded graph. Eager execution can't see the next operation.
+      - id: d
+        text: It rewrites each big operation as a few primitive ones before running.
+        correct: false
+        category: misunderstood_definition
+        feedback: That is lowering, which a compiler does to a recorded graph.
+    solution: Eager execution runs each operation as its own kernel the moment the code reaches it, and each kernel writes its result to GPU memory.
+  - id: mlcp-lower-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example that lowers softmax on the scores $(0,\ 0.69,\ 1.10)$, why must the sum finish before the divide can start?
+    options:
+      - id: a
+        text: Each output is an exponential divided by the total of all three, so the divide needs the finished sum.
+        correct: true
+        feedback: The divide uses the sum $6$, and the sum exists only after every exponential has been added.
+      - id: b
+        text: Division is slower than addition, so the GPU always schedules it last.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The order comes from which values each operation needs, not from how slow it is.
+      - id: c
+        text: The sum is elementwise, and elementwise steps always run before any reduce.
+        correct: false
+        category: misunderstood_definition
+        feedback: The sum is the reduce. It combines the three exponentials into one number.
+      - id: d
+        text: The exponentials have to be written to HBM before anything can read them.
+        correct: false
+        category: incorrect_reasoning
+        feedback: A fused kernel keeps them on chip and still waits for the sum. The wait comes from the divide needing the total.
+    solution: Each softmax output is one exponential divided by the sum of all of them, here $1/6$, $2/6$ and $3/6$. The divide can't start until the sum $6$ is known.
+  - id: mlcp-why-no-fuse-eager
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "Eager PyTorch runs `y = x * 2 + 1` on a large tensor as two kernels, so the result of `x * 2` goes to GPU memory and comes straight back. Why can't it merge the two into one kernel?"
+    options:
+      - id: a
+        text: When it runs `x * 2`, it hasn't yet seen the `+ 1` that uses the result.
+        correct: true
+        feedback: Eager execution runs each operation as soon as it reaches it, so it never knows what comes next.
+      - id: b
+        text: A GPU kernel can't multiply and add in the same program.
+        correct: false
+        category: incorrect_reasoning
+        feedback: A fused kernel does exactly that, keeping the in-between value on chip.
+      - id: c
+        text: Merging them would give slightly different values for `y`.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The fused kernel does the same arithmetic in the same order, so the values are the same.
+      - id: d
+        text: Merging them would need more FLOPs than running them separately.
+        correct: false
+        category: misunderstood_definition
+        feedback: Fusion does exactly the same FLOPs. It only moves fewer bytes.
+    solution: Eager execution runs each operation the moment it reaches it, so when it runs `x * 2` it doesn't know a `+ 1` follows. A compiler records the graph first, so it can see both and merge them.
+  - id: mlcp-primitive-kind
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: A compiler lowers an operation that finds the largest number in each row of a matrix. Which kind of primitive is it?
+    options:
+      - id: a
+        text: Elementwise, because it looks at every number in the row.
+        correct: false
+        category: misunderstood_definition
+        feedback: An elementwise operation gives one output for each input number. Here a whole row gives one number.
+      - id: b
+        text: Reduce, because it combines each row into a single number.
+        correct: true
+        feedback: Finding a maximum combines many numbers into one, which is what a reduce does.
+      - id: c
+        text: Movement, because it picks one number out of each row.
+        correct: false
+        category: misunderstood_definition
+        feedback: Movement operations only rearrange numbers, like a transpose. Finding the maximum compares the numbers.
+    solution: Taking the maximum of a row combines many numbers into one, so it's a reduce, like a sum.
+  - id: mlcp-eager-writes-template
+    dimension: implementation
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A softmax over one row of {{= n }} scores is lowered to three primitives: exponentiate each score, add up the exponentials, then divide each exponential by that total. Under eager execution, how many numbers are written to GPU memory in total?"
+    params:
+      n:
+        min: 3
+        max: 12
+    answer_expr: 2 * n + 1
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer_expr: 3 * n
+        category: incorrect_reasoning
+        feedback: The sum is a reduce, so it writes a single number, not one for each score.
+      - answer_expr: 2 * n
+        category: incorrect_reasoning
+        feedback: Under eager execution the sum is its own kernel too, so it also writes its one number.
+      - answer_expr: n
+        category: misunderstood_definition
+        feedback: That counts only the final answer. Eager execution also writes every in-between result.
+    solution: Each primitive is its own kernel. The exp kernel writes {{= n }} numbers, the sum kernel writes 1 and the divide kernel writes {{= n }}, so {{= n }} + 1 + {{= n }} = {{= 2 * n + 1 }}.
+  - id: mlcp-graph-break
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A model compiled with `torch.compile` has a line `if h.mean() > 0:` that chooses between two branches, where `h` is a tensor computed earlier in the model. What does the compiler do at that line?"
+    options:
+      - id: a
+        text: It splits the model into separate graphs there, since the branch depends on a value it can't know ahead of time.
+        correct: true
+        feedback: The branch depends on numbers inside a tensor, so the compiler records the parts on either side as separate graphs.
+      - id: b
+        text: It fuses both branches into one kernel and runs them both every time.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Only one branch should run, and the compiler can't tell which one until the mean is known.
+      - id: c
+        text: It records whichever branch was taken first and uses it every time after.
+        correct: false
+        category: incorrect_reasoning
+        feedback: That could give wrong results when the mean changes sign, so it splits the graph instead.
+      - id: d
+        text: It lowers the `if` into an elementwise primitive and fuses it with the next step.
+        correct: false
+        category: misunderstood_definition
+        feedback: The `if` is a Python decision about which code runs, not arithmetic on each number.
+    solution: The branch depends on the value of `h.mean()`, which isn't known until the model runs. So `torch.compile` splits the model into separate graphs at that line, and it can't fuse across the split.
+  - id: mlcp-what-graph-shows
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A compiler records the graph `a = x * 2`, then `b = a + 1`, then `y = b * b`, and only `y` is returned. Nothing else uses `a` or `b`. What can it conclude about `a` and `b`?"
+    options:
+      - id: a
+        text: They can stay on chip inside one fused kernel and never be written to GPU memory.
+        correct: true
+        feedback: Each is used only by the next operation in the chain, so one kernel can compute them and pass them on.
+      - id: b
+        text: They can be skipped, because nothing returns them.
+        correct: false
+        category: incorrect_reasoning
+        feedback: "`y` is computed from them, so they still have to be computed, just not stored."
+      - id: c
+        text: They must be written to GPU memory, because every result of a kernel goes there.
+        correct: false
+        category: incorrect_reasoning
+        feedback: That's true for separate eager kernels. A fused kernel keeps in-between values on chip.
+      - id: d
+        text: They can be computed at lower precision, because they're only in-between values.
+        correct: false
+        category: misunderstood_definition
+        feedback: The graph tells the compiler who uses each value. It says nothing about changing precision.
+    solution: "`a` is used only by `+ 1`, and `b` only by the square. So the compiler can fuse all three steps into one kernel, and `a` and `b` stay on chip."
+  - id: mlcp-new-op
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A researcher invents a new layer that computes $x\div(1+x\times x)$ for every number $x$ in a tensor. Nobody has written a GPU kernel for it. Why can a compiler that lowers to primitives still run it fast?
+    options:
+      - id: a
+        text: It's built from elementwise primitives the compiler already handles, so it can fuse them into one kernel.
+        correct: true
+        feedback: Multiply, add and divide are all elementwise, so they fuse like any other chain.
+      - id: b
+        text: The compiler turns the new layer into a reduce, which GPUs run faster.
+        correct: false
+        category: misunderstood_definition
+        feedback: Each output depends on one input number, so every step is elementwise, not a reduce.
+      - id: c
+        text: The compiler runs unknown layers eagerly, which is fast for small steps.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Eager execution writes every in-between result to GPU memory, which is the slow part for small steps.
+      - id: d
+        text: The compiler times the layer once and stores its outputs to reuse later.
+        correct: false
+        category: misunderstood_definition
+        feedback: The outputs change with every input, so they can't be reused. Timing is used to pick between kernels.
+    solution: After lowering, the layer is a multiply, an add and a divide, all elementwise. The compiler already knows how to fuse such a chain into one kernel, so no hand-written kernel is needed.
+  - id: mlc-fuse-elementwise-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What is kernel fusion?
+    options:
+      - id: a
+        text: Splitting one large operation into several smaller kernels.
+        correct: false
+        category: misunderstood_definition
+        feedback: Breaking big operations into primitives is lowering. Fusion goes the other way and merges kernels.
+      - id: b
+        text: Merging several operations into one kernel so in-between results stay on chip.
+        correct: true
+        feedback: The merged kernel never writes the in-between results to GPU memory.
+      - id: c
+        text: Running two kernels at the same time on two different GPUs.
+        correct: false
+        category: misunderstood_definition
+        feedback: Fusion happens inside one GPU, by putting several operations into a single kernel.
+      - id: d
+        text: Storing every number with fewer bytes so kernels move less data.
+        correct: false
+        category: misunderstood_definition
+        feedback: That changes the precision. Fusion keeps the numbers the same and moves fewer of them.
+    solution: Kernel fusion merges several operations into one kernel, so the results passed between them stay on chip and never go to GPU memory.
+  - id: mlcp-fuse-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example, the chain multiply by 2, add 1, square runs on a 100 MB tensor. Why does the fused kernel move 200 MB when eager execution moves 600 MB?
+    options:
+      - id: a
+        text: It reads $x$ once and writes $y$ once, and the two in-between results stay on chip.
+        correct: true
+        feedback: Eager execution writes and rereads both in-between tensors, which is the extra 400 MB.
+      - id: b
+        text: It does a third of the FLOPs, so it needs a third of the bytes.
+        correct: false
+        category: misunderstood_definition
+        feedback: The fused kernel does the same three FLOPs per number. Only the bytes change.
+      - id: c
+        text: It stores each number in fewer bytes than the eager kernels do.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Both versions use 16-bit numbers, 2 bytes each.
+      - id: d
+        text: It skips the square, which eager execution needs a separate pass for.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The fused kernel still squares every number, inside the same kernel.
+    solution: The fused kernel reads the 100 MB input once and writes the 100 MB output once. Eager execution also writes and rereads the two 100 MB in-between tensors, so it moves $600$ MB.
+  - id: mlcp-fusion-flops
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: 'A learner says: "Fusing three elementwise operations into one kernel makes the GPU do less arithmetic, and that''s why it''s faster." What''s wrong with this?'
+    options:
+      - id: a
+        text: Nothing, because fusion removes two of the three operations.
+        correct: false
+        category: incorrect_reasoning
+        feedback: All three operations still run, inside one kernel.
+      - id: b
+        text: The fused kernel does the same FLOPs and is faster because it moves fewer bytes.
+        correct: true
+        feedback: In-between results stay on chip, so less data travels to and from GPU memory.
+      - id: c
+        text: Fusion only speeds up compute-bound kernels, so this chain isn't faster.
+        correct: false
+        category: incorrect_reasoning
+        feedback: It's the other way round. Fusion saves bytes, so it helps most for memory-bound steps like this one.
+      - id: d
+        text: The fused kernel is faster because it runs at a higher clock speed.
+        correct: false
+        category: misunderstood_definition
+        feedback: Fusion doesn't change the GPU's speed. It changes how much data moves.
+    solution: Fusion does exactly the same arithmetic. It's faster because the in-between results stay on chip, so fewer bytes move to and from GPU memory, which is what sets the time for memory-bound steps.
+  - id: mlcp-bytes-saved-template
+    dimension: implementation
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A chain of {{= k }} elementwise operations runs on a tensor that takes {{= s }} MB. Each operation, run on its own, reads one tensor of that size and writes one. How many fewer MB does a single fused kernel move than eager execution?
+    params:
+      k:
+        min: 2
+        max: 5
+      s:
+        min: 50
+        max: 400
+        step: 50
+    answer_expr: 2 * s * (k - 1)
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer_expr: s * (k - 1)
+        category: math_error
+        feedback: Each removed in-between tensor saves a write and a read, so count both.
+      - answer_expr: 2 * s * k
+        category: incorrect_reasoning
+        feedback: That's everything eager execution moves. The fused kernel still reads the input and writes the output.
+    solution: Eager execution moves $2\times{{= k }}\times{{= s }}={{= 2 * k * s }}$ MB and the fused kernel moves $2\times{{= s }}={{= 2 * s }}$ MB, so fusion saves {{= 2 * s * (k - 1) }} MB.
+  - id: mlcp-time-saved-template
+    dimension: implementation
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt: On an H100 GPU with 3.35 TB/s of memory bandwidth, a chain of {{= k }} elementwise operations runs on a tensor of {{= n }} million numbers at 16-bit precision. Each operation, run on its own, reads and writes the whole tensor. The chain is memory-bound. How many microseconds does fusing it into one kernel save? Round to the nearest microsecond.
+    params:
+      k:
+        min: 2
+        max: 4
+      n:
+        min: 10
+        max: 50
+        step: 10
+    answer_expr: 4 * n * (k - 1) / 3.35
+    tolerance:
+      abs: 0.6
+    common_wrong:
+      - answer_expr: 2 * n * (k - 1) / 3.35
+        category: math_error
+        feedback: Each 16-bit number takes 2 bytes, so the tensor is {{= 2 * n }} MB.
+      - answer_expr: 4 * n * k / 3.35
+        category: incorrect_reasoning
+        feedback: That's the whole eager time. The fused kernel still has to read the input and write the output.
+    solution: The tensor is {{= n }} million × 2 bytes = {{= 2 * n }} MB. Fusion removes {{= k - 1 }} in-between tensors, each written and read once, saving {{= 4 * n * (k - 1) }} MB. At 3.35 MB per µs that's about {{= round(4 * n * (k - 1) / 3.35) }} µs.
+  - id: mlcp-intensity-template
+    dimension: implementation
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: One fused kernel applies {{= k }} elementwise operations, each costing 1 FLOP per number, to a tensor stored with {{= b }} bytes per number. It reads each number once and writes each result once. What is its arithmetic intensity, in FLOPs per byte?
+    params:
+      k:
+        min: 2
+        max: 6
+      b:
+        min: 2
+        max: 4
+        step: 2
+    answer_expr: k / (2 * b)
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer_expr: k / b
+        category: math_error
+        feedback: Each number is read and its result written, so $2\times{{= b }}$ bytes move per number.
+      - answer_expr: 1 / (2 * b)
+        category: incorrect_reasoning
+        feedback: The fused kernel does all {{= k }} operations on each number, so it's {{= k }} FLOPs per number.
+    solution: Each number costs {{= k }} FLOPs and moves $2\times{{= b }}={{= 2 * b }}$ bytes, so the intensity is ${{= k }}/{{= 2 * b }}={{= k / (2 * b) }}$ FLOPs per byte, far below an H100's ops:byte ratio.
+  - id: mlcp-kernel-count
+    dimension: implementation
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A compiler fuses only runs of consecutive elementwise operations, and runs each matrix multiply as its own kernel. A layer's graph, in order, is: matrix multiply, add a bias, multiply by 2, matrix multiply, square, add 1. How many kernels does the layer run after fusion?"
+    answer: 4
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer: 6
+        category: incorrect_reasoning
+        feedback: That's the eager count, one kernel per operation. Each run of elementwise steps becomes one kernel.
+      - answer: 3
+        category: incorrect_reasoning
+        feedback: The two elementwise runs are separated by a matrix multiply, so they can't become one kernel.
+      - answer: 2
+        category: misapplied_technique
+        feedback: This compiler doesn't fuse elementwise steps into a matrix multiply, so each run is its own kernel.
+    solution: "The kernels are: matrix multiply, then add bias and multiply by 2 together, then matrix multiply, then square and add 1 together. That's 4."
+  - id: mlcp-robot-camera
+    dimension: implementation
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: A robot prepares each camera image with three elementwise steps on every number, run one kernel at a time on its GPU. The image tensor holds 24 million numbers in FP32, at 4 bytes each, and each step reads and writes the whole tensor. How many MB per image would fusing the three steps into one kernel save? Use 1 MB = $10^6$ bytes.
+    answer: 384
+    tolerance:
+      abs: 0.5
+    common_wrong:
+      - answer: 576
+        category: incorrect_reasoning
+        feedback: That's everything the eager version moves. The fused kernel still reads the image and writes the result, 192 MB.
+      - answer: 192
+        category: math_error
+        feedback: That's one read and one write of a 96 MB tensor. Fusion removes two in-between tensors, each written and read.
+      - answer: 96
+        category: math_error
+        feedback: That's the size of one tensor. Count the reads and writes that fusion removes.
+    solution: The tensor is 24 million × 4 bytes = 96 MB. Eager moves $3\times2\times96=576$ MB and fused moves $2\times96=192$ MB, so fusion saves $384$ MB per image.
+  - id: mlc-egraph-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What does an e-graph store?
+    options:
+      - id: a
+        text: Only the cheapest version found so far, replaced whenever a cheaper one turns up.
+        correct: false
+        category: misunderstood_definition
+        feedback: Throwing old versions away is what a greedy rewriter does. An e-graph keeps them all.
+      - id: b
+        text: Many equal versions of a calculation at once, sorted into groups of equal value.
+        correct: true
+        feedback: Each group holds expressions with the same value, and rules only ever add to the groups.
+      - id: c
+        text: The measured time of each candidate kernel, used to pick a tile size.
+        correct: false
+        category: misunderstood_definition
+        feedback: That's what an autotuner records. An e-graph stores equal versions of the calculation.
+      - id: d
+        text: Every operation the model ran, in the order eager execution ran it.
+        correct: false
+        category: misunderstood_definition
+        feedback: An e-graph is built by a compiler from the recorded graph, and it holds many versions of it.
+    solution: An e-graph keeps many equal versions of a calculation at once. It sorts them into groups called e-classes, where everything in a group has the same value.
+  - id: mlcp-egraph-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example on $(a\times2)\div2$, why does the greedy compiler stop at $(a+a)\div2$ while the e-graph reaches $a$?
+    options:
+      - id: a
+        text: Turning $a\times2$ into $a+a$ removed the multiplication the next rule needed, and only the e-graph kept $a\times2$.
+        correct: true
+        feedback: The rule $(x\times y)\div z\to x\times(y\div z)$ needs a multiplication, which the e-graph still had.
+      - id: b
+        text: The greedy compiler has fewer rewrite rules than the e-graph.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Both use the same four rules. The difference is what each one keeps.
+      - id: c
+        text: $(a+a)\div2$ doesn't equal $a$, so the greedy rewrite was a mistake.
+        correct: false
+        category: incorrect_reasoning
+        feedback: $(a+a)\div2$ does equal $a$. The rewrite was valid, it just blocked a later rule.
+      - id: d
+        text: The greedy compiler ignores costs, and the e-graph uses a cost model.
+        correct: false
+        category: misunderstood_definition
+        feedback: The greedy compiler did use costs, which is why it picked the cheaper $a+a$.
+    solution: The greedy compiler threw away $a\times2$ when it chose $a+a$, so the rule that needs a multiplication could no longer match. The e-graph kept both, so the later rules could still reach $a$, with cost 0.
+  - id: mlcp-valid-rule
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: A compiler may only use rewrite rules whose two sides always give the same value. Which of these rules is valid?
+    options:
+      - id: a
+        text: $(x+y)\times z$ can become $x\times z+y\times z$.
+        correct: true
+        feedback: Multiplying a sum by $z$ is the same as multiplying each part by $z$ and adding.
+      - id: b
+        text: $(x+y)\times(x+y)$ can become $x\times x+y\times y$.
+        correct: false
+        category: math_error
+        feedback: This misses the cross terms. With $x=y=1$ the left is $4$ and the right is $2$.
+      - id: c
+        text: $x\div(y+z)$ can become $x\div y+x\div z$.
+        correct: false
+        category: math_error
+        feedback: Division doesn't split over a sum below the line. With $x=2$, $y=z=1$ the left is $1$ and the right is $4$.
+      - id: d
+        text: $x-(y-z)$ can become $x-y-z$.
+        correct: false
+        category: math_error
+        feedback: Subtracting $(y-z)$ adds $z$ back. With $x=3$, $y=2$, $z=1$ the left is $2$ and the right is $0$.
+    solution: Only $(x+y)\times z=x\times z+y\times z$ holds for every value. Each of the others gives a different number for at least one choice of values.
+  - id: mlcp-versions-template
+    dimension: implementation
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: In an e-graph, one group holds {{= p }} equal versions of an expression $u$ and another group holds {{= q }} equal versions of an expression $v$. A third group holds a single node, a multiplication whose arrows point to those two groups. How many versions of the product does that node stand for?
+    params:
+      p:
+        min: 2
+        max: 5
+      q:
+        min: 2
+        max: 5
+    constraints:
+      - p * q != p + q
+    answer_expr: p * q
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer_expr: p + q
+        category: incorrect_reasoning
+        feedback: Any version of $u$ can pair with any version of $v$, so the counts multiply.
+    solution: The node means "any version from the first group times any version from the second", so there are ${{= p }}\times{{= q }}={{= p * q }}$ versions.
+  - id: mlcp-extract
+    dimension: implementation
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A cost model says an addition costs 1, a multiplication costs 2 and a division costs 4, while numbers and variables cost nothing. In an e-graph, one group holds both $b\\times2$ and $b+b$. The top group holds one node, which divides that group by $3$. What is the cost of the cheapest version extraction can pick?"
+    answer: 5
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer: 6
+        category: incorrect_reasoning
+        feedback: That's $(b\times2)\div3$. Extraction picks the cheapest version, which uses $b+b$.
+      - answer: 1
+        category: incorrect_reasoning
+        feedback: That's only the cheapest version of the inner group. The division by $3$ costs 4 more.
+      - answer: 9
+        category: incorrect_reasoning
+        feedback: The group holds alternatives, so extraction picks one of them, not both.
+    solution: Extraction picks $b+b$, cost 1, from the inner group, then adds the division, cost 4. The cheapest version, $(b+b)\div3$, costs $1+4=5$.
+  - id: mlcp-greedy-order
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A compiler applies rewrite rules one at a time and keeps only the newest version each time. Why can it end up with a slower graph than an e-graph would find?
+    options:
+      - id: a
+        text: A rewrite can remove the pattern a later, better rule needs, and the old version is gone.
+        correct: true
+        feedback: Once the old version is thrown away, rules that matched only it can never apply.
+      - id: b
+        text: Each rewrite adds FLOPs, so applying rules one at a time makes the graph slower.
+        correct: false
+        category: incorrect_reasoning
+        feedback: A greedy compiler picks rewrites that look cheaper. The problem is what it throws away.
+      - id: c
+        text: Rewrite rules sometimes change the value, and applying them one at a time hides this.
+        correct: false
+        category: misunderstood_definition
+        feedback: Valid rewrite rules never change the value, whichever order they're applied in.
+      - id: d
+        text: It can only apply each rule once, so it runs out of rules too soon.
+        correct: false
+        category: misunderstood_definition
+        feedback: A greedy compiler can apply a rule many times. It gets stuck because it discarded the versions other rules needed.
+    solution: Keeping only the newest version means a rewrite can destroy the pattern another rule needed. For example, turning $a\times2$ into $a+a$ stops a rule that needs a multiplication from ever reaching $a$.
+  - id: mlcp-saturation-stop
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: When does equality saturation stop applying rewrite rules?
+    options:
+      - id: a
+        text: As soon as it finds a version cheaper than the one it started with.
+        correct: false
+        category: misunderstood_definition
+        feedback: It keeps going, because a later rule might find something cheaper still.
+      - id: b
+        text: After it has applied each rule exactly once.
+        correct: false
+        category: misunderstood_definition
+        feedback: Rules are applied again and again, because one rule's additions can let another rule match.
+      - id: c
+        text: When no rule adds anything new, or when it hits a size or time limit.
+        correct: true
+        feedback: At that point the e-graph holds every version the rules can reach, or as many as the limits allow.
+      - id: d
+        text: When every group in the e-graph holds only one version.
+        correct: false
+        category: misunderstood_definition
+        feedback: Groups only grow during saturation, because rules add versions and never delete them.
+    solution: Equality saturation applies every rule again and again until none adds anything new, or until a size or time limit stops it. Then extraction picks the cheapest version.
+  - id: mlcp-attention-scale-template
+    dimension: implementation
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "In one attention head, the query matrix $Q$ and the key matrix $K$ each have $T={{= t }}$ rows of 128 numbers, and the scores are $(QK^\\top)\\div s$ for a constant $s$, where $K^\\top$ is $K$ transposed. That version divides every entry of the $T\\times T$ score matrix by $s$. An equal version is $(Q\\div s)K^\\top$, which divides the entries of $Q$ instead. An e-graph holds both, and its cost model counts divisions. How many divisions does the version that extraction picks need?"
+    params:
+      t:
+        min: 256
+        max: 4096
+        step: 256
+    answer_expr: t * 128
+    tolerance:
+      abs: 0.5
+    common_wrong:
+      - answer_expr: t * t
+        category: incorrect_reasoning
+        feedback: That's the version that divides every score. Extraction picks the cheaper one.
+      - answer_expr: t
+        category: math_error
+        feedback: $Q$ has {{= t }} rows of 128 numbers, so dividing it touches every one of those numbers.
+    solution: Dividing the score matrix costs ${{= t }}\times{{= t }}={{= t * t }}$ divisions, while dividing $Q$ costs ${{= t }}\times128={{= t * 128 }}$. Extraction picks the cheaper version, $(Q\div s)K^\top$, with {{= t * 128 }} divisions.
+  - id: mlc-autotune-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What is autotuning?
+    options:
+      - id: a
+        text: Working out a kernel's exact time from the GPU's spec sheet.
+        correct: false
+        category: misunderstood_definition
+        feedback: The effects are too hard to predict, so autotuning measures on the real GPU.
+      - id: b
+        text: Changing the model's weights so the GPU can run it faster.
+        correct: false
+        category: misunderstood_definition
+        feedback: Autotuning changes how a kernel runs, such as its tile size. The weights stay the same.
+      - id: c
+        text: Merging neighbouring kernels so fewer results go to GPU memory.
+        correct: false
+        category: misunderstood_definition
+        feedback: That's kernel fusion, which decides which kernels run. Autotuning decides how each one runs.
+      - id: d
+        text: Timing candidate versions of a kernel on the real GPU and shape, and keeping the fastest.
+        correct: true
+        feedback: Measuring each candidate on the actual GPU and tensor shapes finds what works best there.
+    solution: Autotuning runs candidate versions of a kernel, such as different tile sizes, on the real GPU with the real shapes, times each one and keeps the fastest.
+  - id: mlcp-tune-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example, why is the winning time of 75 µs compared with about 60 µs?
+    options:
+      - id: a
+        text: 60 µs is the fastest any kernel moving 200 MB could run at 3.35 TB/s, so it shows how much is left to gain.
+        correct: true
+        feedback: $200\div3.35\approx59.7$ µs is the memory-bound limit, and 75 µs gets about 80% of the way there.
+      - id: b
+        text: 60 µs is how long the eager version of the chain takes.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The eager version moves 600 MB, which takes about 179 µs.
+      - id: c
+        text: 60 µs is the time the 4,096-number tile took.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The 4,096-number tile took 100 µs. The 60 µs comes from bytes divided by bandwidth.
+      - id: d
+        text: 60 µs is the time the arithmetic takes, which no kernel can beat.
+        correct: false
+        category: misunderstood_definition
+        feedback: The arithmetic is tiny here. This kernel is memory-bound, so the limit comes from the bytes it moves.
+    solution: The fused kernel moves 200 MB, and at 3.35 MB per µs that can't take less than about 59.7 µs. Comparing 75 µs with that limit shows the winner is already at about 80%.
+  - id: mlcp-pick-tile
+    dimension: implementation
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "An autotuner times one kernel at four tile sizes on a GPU: 128 numbers per tile takes 210 µs, 512 takes 95 µs, 2,048 takes 88 µs and 8,192 takes 120 µs. Which tile size does it keep? Give the number of numbers per tile."
+    answer: 2048
+    tolerance:
+      abs: 0.5
+    common_wrong:
+      - answer: 8192
+        category: incorrect_reasoning
+        feedback: The biggest tile isn't automatically best. Here it takes 120 µs.
+      - answer: 128
+        category: incorrect_reasoning
+        feedback: That's the slowest candidate. The tuner keeps the one with the smallest time.
+    solution: The tuner keeps the fastest candidate. The smallest time is 88 µs, at 2,048 numbers per tile.
+  - id: mlcp-floor-template
+    dimension: implementation
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A memory-bound kernel on an H100 GPU, with 3.35 TB/s of memory bandwidth, reads and writes {{= m }} MB in total. What's the fastest it could possibly run, in microseconds? Round to one decimal place.
+    params:
+      m:
+        min: 100
+        max: 1000
+        step: 100
+    answer_expr: m / 3.35
+    tolerance:
+      abs: 0.06
+    common_wrong:
+      - answer_expr: m * 3.35
+        category: math_error
+        feedback: Time is bytes divided by bandwidth, not multiplied.
+      - answer_expr: m / 3350
+        category: math_error
+        feedback: 3.35 TB/s is 3.35 MB per microsecond, so divide the MB by 3.35.
+    solution: 3.35 TB/s moves 3.35 MB each microsecond, so the fastest possible time is ${{= m }}\div3.35\approx{{= round(m / 3.35, 1) }}$ µs.
+  - id: mlcp-fraction-template
+    dimension: implementation
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A tuned kernel on an H100 GPU, with 3.35 TB/s of memory bandwidth, moves {{= m }} MB and takes {{= t }} µs. What percentage of the memory bandwidth does it reach? Round to the nearest whole percent.
+    params:
+      m:
+        min: 100
+        max: 400
+        step: 100
+      t:
+        min: 40
+        max: 400
+        step: 10
+    constraints:
+      - m / (3.35 * t) <= 0.95
+      - m / (3.35 * t) >= 0.3
+    answer_expr: 100 * m / (3.35 * t)
+    tolerance:
+      abs: 0.6
+    common_wrong:
+      - answer_expr: m / t
+        category: math_error
+        feedback: That's the bandwidth it reaches in TB/s. Divide by 3.35 and multiply by 100 for a percentage.
+    solution: The kernel reaches ${{= m }}\div{{= t }}\approx{{= round(m / t, 2) }}$ MB per µs, which is the same number in TB/s. As a share of 3.35 TB/s that's about {{= round(100 * m / (3.35 * t)) }}%.
+  - id: mlcp-shape-change
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A kernel was autotuned on an H100 for prefill on 4,096-token prompts. The server now also runs it during decode, one token at a time. What should you expect?
+    options:
+      - id: a
+        text: It stays the fastest choice, because tuning finds the best version for every shape.
+        correct: false
+        category: misunderstood_definition
+        feedback: Tuning finds the best version for the shapes it measured. Other shapes can favour other choices.
+      - id: b
+        text: It gives wrong answers at the new shape until it is tuned again.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Every candidate computes the same values. The tuning choice only changes the speed.
+      - id: c
+        text: The tuned choice may be slow at the new shape, so it should be tuned for that shape too.
+        correct: true
+        feedback: The best tile size depends on the tensor shape, so the decode shape needs its own tuning.
+      - id: d
+        text: It runs at the same speed, because the GPU's bandwidth hasn't changed.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The bandwidth limit is the same, but how close a kernel gets to it depends on its choices and the shape.
+    solution: Tuning results belong to one GPU and one shape. A one-token decode step has a very different shape from a 4,096-token prompt, so the best choice may differ and the kernel should be tuned for it as well.
+  - id: mlcp-why-measure
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: Why do ML compilers time candidate kernels on the GPU instead of working out the best tile size from its specs?
+    options:
+      - id: a
+        text: GPU spec sheets don't say how much memory bandwidth the GPU has.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The bandwidth is listed, such as 3.35 TB/s for an H100. The hard part is predicting how each choice uses it.
+      - id: b
+        text: The best choice depends on many details of the GPU and shape that interact in ways that are hard to predict.
+        correct: true
+        feedback: SRAM size, the number of compute units and the tensor shape all matter together, so measuring is more reliable.
+      - id: c
+        text: Timing is the only way to check that a kernel gives the right answer.
+        correct: false
+        category: misunderstood_definition
+        feedback: Timing measures speed. Every candidate is built to give the same answer.
+      - id: d
+        text: The best tile size is the same on every GPU, so one measurement settles it for good.
+        correct: false
+        category: misunderstood_definition
+        feedback: The best tile size changes with the GPU and the shape, which is why results are saved per GPU and shape.
+    solution: The best choice depends on things like how much SRAM the GPU has, how many compute units it has and the shape of the tensors, which interact in ways that are hard to predict. Timing each candidate on the real GPU is more reliable.
+  - id: mlcp-robot-gpu
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A team compiles and autotunes a vision model's kernels on an H100, then deploys the model on a robot with a small GPU that has less on-chip memory and fewer compute units. What should they do with the tuning?
+    options:
+      - id: a
+        text: Reuse the H100 results, since a kernel tuned once is fastest on every GPU.
+        correct: false
+        category: misunderstood_definition
+        feedback: Tuning results belong to the GPU they were measured on. A smaller GPU can favour different choices.
+      - id: b
+        text: Turn fusion off, since a small GPU can't run fused kernels.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Fused kernels run on any GPU, and they save memory traffic there too.
+      - id: c
+        text: Double every tile size, since a GPU with less on-chip memory needs bigger tiles.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Less on-chip memory, if anything, limits how big a tile can be. The way to know is to measure.
+      - id: d
+        text: Autotune again on the robot's GPU, since the best choices depend on the GPU.
+        correct: true
+        feedback: The robot's GPU has different SRAM and compute units, so its best tile sizes need measuring there.
+    solution: The best tile sizes depend on the GPU's on-chip memory and compute units, so the team should autotune again on the robot's GPU and save those results for it.
+  - id: mlc-explain
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 3
+    est_minutes: 5
+    prompt: Explain why recording the whole model as a graph lets a compiler fuse operations that eager execution runs one at a time, what fusing a chain of elementwise operations saves, and how an e-graph helps the compiler pick a cheaper equal version of the graph.
+    rubric:
+      - id: r1
+        criterion: Explain that eager execution runs each operation as its own kernel as soon as it reaches it, so it can't see the next operation, while the recorded graph shows which results are used only by the next operation.
+        weight: 1
+        required: true
+      - id: r2
+        criterion: Explain that a fused kernel keeps the in-between results on chip, so it reads the input once and writes the output once and moves fewer bytes to and from GPU memory.
+        weight: 1
+        required: true
+      - id: r3
+        criterion: Explain that an e-graph keeps every equal version in groups of equal value without deleting any, and extraction picks the cheapest by a cost model.
+        weight: 1
+        required: true
+      - id: r4
+        criterion: Mention that elementwise chains are memory-bound, so moving fewer bytes cuts the time by about the same factor.
+        weight: 1
+        required: false
+      - id: r5
+        criterion: Mention that a greedy rewriter can throw away a version a later rule needed, which the e-graph avoids.
+        weight: 1
+        required: false
+    exemplar: Eager execution runs each operation as its own kernel the moment it reaches it, so it never knows what comes next and writes every result to GPU memory. A compiler records the whole graph first, so it can see that a result is used only by the next operation. A fused kernel then keeps those in-between results on chip, reading the input once and writing the output once, so it moves far fewer bytes; since elementwise chains are memory-bound, the time falls by about the same factor. An e-graph keeps every equal version of the graph in groups of equal value and never deletes one, so a rewrite can't block a better rule later. After the rules stop adding anything, extraction picks the cheapest version using a cost model.
