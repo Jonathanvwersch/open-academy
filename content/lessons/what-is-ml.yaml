@@ -275,7 +275,7 @@ knowledge_points:
 
       2. **Name the target.** The answer to copy is what the person did at that moment, which was to turn the elbow by 10° (degrees).
 
-      3. **Predict.** The policy is a neural network, a bigger model built from many weighted sums, which Week 3 teaches. It outputs an elbow turn of 6°.
+      3. **Predict.** The policy is a neural network, a bigger model built from many weighted sums (each adds up inputs times their weights), which Week 3 teaches. It outputs an elbow turn of 6°.
 
       4. **Measure the miss.** As with house prices, we subtract the target from the prediction.
          $$6-10=-4$$
