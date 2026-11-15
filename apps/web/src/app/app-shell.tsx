@@ -210,7 +210,7 @@ function AppSidebarView({
       aria-label="Main navigation"
     >
       <SidebarHeader
-        className={`h-14 shrink-0 border-b border-sidebar-border p-0 ${
+        className={`h-14 shrink-0 border-b border-sidebar-border px-2 py-0 ${
           !isMobile && state === 'collapsed'
             ? 'items-center justify-center'
             : 'flex-row items-center justify-between'
@@ -228,7 +228,7 @@ function AppSidebarView({
               to="/"
               aria-label="Open Academy home"
               onClick={closeMobile}
-              className="flex h-full min-w-0 flex-1 items-center rounded-md px-3 text-primary outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="flex h-full min-w-0 flex-1 items-center rounded-md px-2 text-primary outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <BrandLockup size="sm" />
             </Link>

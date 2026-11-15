@@ -58,4 +58,10 @@ describe('mergeLineShapes', () => {
     expect(mergeLineShapes(fragments)).toEqual(expected);
     expect(mergeLineShapes([...fragments].reverse())).toEqual(expected);
   });
+  it('puts frames before content so cards paint underneath their text', () => {
+    const frame = shape({ x: 0, y: 0, width: 100, height: 50, frame: true });
+    const text = shape({ x: 10, y: 10, width: 20 });
+    const result = mergeLineShapes([text, frame]);
+    expect(result.map((item) => item.frame)).toEqual([true, false]);
+  });
 });

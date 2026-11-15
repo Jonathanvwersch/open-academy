@@ -25,7 +25,7 @@ function layoutKey(path: string, width: number) {
 
 function compareShapes(left: Shape, right: Shape) {
   return (
-    Number(left.frame) - Number(right.frame) ||
+    Number(right.frame) - Number(left.frame) ||
     left.y - right.y ||
     left.x - right.x ||
     left.height - right.height ||

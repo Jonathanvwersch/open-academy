@@ -43,8 +43,8 @@ function groupByWeek(topics: UpNextPayload['upcoming']) {
 
 function TopicList({ topics }: { topics: UpNextPayload['upcoming'] }) {
   return (
-    <Card className="py-0">
-      <CardContent className="p-0">
+    <Card className="gap-0 py-0">
+      <CardContent className="p-0 first:pt-0 last:pb-0">
         <ol className="divide-y">
           {topics.map((topic) => (
             <li key={`${topic.courseId}:${topic.conceptId}`}>
@@ -125,8 +125,8 @@ export function MapPage() {
           />
         </Collapsible.Trigger>
         <Collapsible.Content>
-          <Card className="py-0">
-            <CardContent className="p-0">
+          <Card className="gap-0 py-0">
+            <CardContent className="p-0 first:pt-0 last:pb-0">
               {data.finished.length ? (
                 <ol className="divide-y">
                   {data.finished.map((topic) => (

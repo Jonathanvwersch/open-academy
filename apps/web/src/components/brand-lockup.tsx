@@ -14,14 +14,14 @@ export function BrandLockup({
       }`}
     >
       <Logo
-        className={`${size === 'sm' ? 'size-5' : 'size-7'} ${
-          hideNameWhenSidebarCollapsed ? 'group-data-[collapsible=icon]:size-6' : ''
+        className={`w-auto ${size === 'sm' ? 'h-[17px]' : 'h-6'} ${
+          hideNameWhenSidebarCollapsed ? 'group-data-[collapsible=icon]:h-5' : ''
         }`}
       />
       <span
         className={`font-heading ${
           size === 'sm' ? 'text-lg' : 'text-[1.375rem]'
-        } leading-none font-medium tracking-tight ${
+        } translate-y-[0.08em] leading-none font-medium tracking-tight ${
           hideNameWhenSidebarCollapsed ? 'group-data-[collapsible=icon]:hidden' : ''
         }`}
       >
