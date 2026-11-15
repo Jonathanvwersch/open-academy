@@ -1,0 +1,208 @@
+concept: exploration
+version: 1
+objective: |
+  **Goal:** explain why an agent that learns from rewards must sometimes try actions that don't look best, and how epsilon-greedy and an entropy bonus keep it trying them.
+where_this_fits: |
+  ### What is the exploration problem?
+
+  An agent that learns from rewards keeps choosing between two things. It can **exploit**, by taking the action that has paid best so far. Or it can **explore**, by trying another action to find out what it really pays. The exploration problem is deciding how much of each to do.
+
+  It matters because an agent only learns about the actions it takes. If it always exploits, one unlucky reward can turn it away from a good action for ever. Too much exploring means paying for poor actions.
+
+  We'll use two ideas from the policies and returns lesson. A policy $\pi(a\mid s)$ gives the probability of taking action $a$ in state $s$. The return is the sum of the agent's rewards, with later rewards discounted.
+knowledge_points:
+  - id: xpl-greedy-trap
+    title: "Why only taking the best-looking action fails"
+    explain: |
+      ### A slot machine with two arms
+
+      Let's see the problem in the simplest setting there is. A slot machine has two arms, A and B. Each pull of an arm is one action, and it pays a reward straight away. There's only one state, so a policy just says how likely each arm is to be pulled.
+
+      Arm A pays $1$ on every pull. Arm B pays $4$ half the time and nothing the other half, so on average it pays $4\times0.5=2$ per pull, which is more than A. The agent doesn't know any of this. All it can do is pull arms and keep an **estimate** for each one, which is the average of the rewards that arm has paid so far.
+
+      ### Stuck after one unlucky pull
+
+      Suppose the agent pulls each arm once and then always pulls the arm with the higher estimate. Arm A pays $1$, and arm B happens to pay $0$. So A's estimate is $1$ and B's is $0$. The agent pulls A, and then it keeps pulling A. B's estimate can only change when B is pulled, so it stays at $0$ for ever, even though B's true average is higher.
+
+      In the chart, the green bars are each arm's true average reward and the blue bars are the agent's estimates. For arm A they match. For arm B the estimate is stuck far below the truth.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" aria-label="Bar chart for the two-armed slot machine. Arm A: true average reward 1 in green, agent's estimate 1 in blue. Arm B: true average reward 2 in green, but the agent's estimate is 0 after one unlucky pull, and it stays stuck at 0">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <rect x="150" y="18" width="14" height="14" fill="#10b981"/><text x="170" y="30">true average reward</text>
+      <rect x="340" y="18" width="14" height="14" fill="#3b82f6"/><text x="360" y="30">agent's estimate</text>
+      <path d="M80 240 H580" stroke="#737373" stroke-width="1.5"/>
+      <rect x="130" y="170" width="50" height="70" fill="#10b981"/><rect x="190" y="170" width="50" height="70" fill="#3b82f6"/>
+      <text x="155" y="162" text-anchor="middle">1</text><text x="215" y="162" text-anchor="middle">1</text>
+      <rect x="390" y="100" width="50" height="140" fill="#10b981"/>
+      <path d="M450 238.5 H500" stroke="#3b82f6" stroke-width="3"/>
+      <text x="415" y="92" text-anchor="middle">2</text><text x="475" y="230" text-anchor="middle" fill="#3b82f6">0</text>
+      <text x="190" y="264" text-anchor="middle">arm A</text><text x="445" y="264" text-anchor="middle">arm B</text>
+      <text x="445" y="288" text-anchor="middle" fill="#3b82f6">estimate stuck at 0</text>
+      </g>
+      </svg>
+      ```
+
+      ### Exploiting and exploring
+
+      Now we can name these ideas exactly. An agent that always takes the action with the best estimate is called **greedy**. Taking that action is **exploitation**, because it collects the most reward the agent can expect from what it knows now. Taking an action to learn more about it, usually one that doesn't look best, is **exploration**. It usually pays less now, but it improves an estimate, so later choices can be better. Balancing the two is the exploration problem from the start of the lesson, also called the **exploration–exploitation trade-off**.
+
+      Be careful not to think that trying every action once is enough exploring. One pull gives one random reward. Arm B's single $0$ said very little about its average, and a greedy agent never checks it again.
+    worked: |
+      Let's work out what that one unlucky pull costs the greedy agent over its next 100 pulls. Arm A always pays $1$, and arm B pays $4$ with probability $0.5$ and $0$ otherwise.
+
+      1. **Find each arm's true average.** An arm's true average is what it pays per pull in the long run, so we multiply each reward by its probability and add.
+         $$\text{A: }1\times1=1$$
+         $$\text{B: }4\times0.5+0\times0.5=2$$
+
+      2. **Find the estimates after one pull each.** Each estimate is the average of the rewards that arm has paid, and each arm has been pulled once.
+         $$\text{A: }\frac{1}{1}=1,\qquad\text{B: }\frac{0}{1}=0$$
+
+      3. **Pick the greedy arm.** The greedy agent pulls the arm with the higher estimate. It never pulls B again, so B's estimate never changes and A stays the choice.
+         $$1>0,\ \text{so it pulls A every time}$$
+
+      4. **Compare 100 pulls of each arm.** Arm A gives $1$ per pull. An agent that always pulled B would get $2$ per pull on average.
+         $$100\times1=100,\qquad 100\times2=200$$
+
+      So the greedy agent expects $100$ less reward than it could have had, all because of one unlucky pull of arm B.
+    problems:
+      - xpl-trap-basics
+      - xpl-trap-self-explain
+      - xpl-trap-estimate
+      - xpl-trap-next-pull
+      - xpl-trap-tried-once
+      - xpl-trap-cost
+      - xpl-trap-robot-grip
+  - id: xpl-epsilon-greedy
+    title: "Pick a random action some of the time"
+    explain: |
+      ### Explore at random, now and then
+
+      The greedy agent got stuck because it never pulled arm B again. The simplest fix is to make it pull a random arm every now and then. Before each choice, the agent makes a random draw. With probability $\varepsilon$ (the Greek letter epsilon) it explores, by picking one of the actions at random, each equally likely. Otherwise, with probability $1-\varepsilon$, it exploits and takes the action with the best estimate. This rule is called **epsilon-greedy**, and $\varepsilon$ is the **exploration rate**, a number between $0$ and $1$ that we choose. The random pick sometimes lands on the best-looking action anyway. It still counts as exploring, because the agent ignored its estimates.
+
+      ### The chance of each action
+
+      The tree shows the slot machine from before, with $\varepsilon=0.1$, and arm A still has the best estimate. The blue branch exploits and always pulls A. The orange branch explores and pulls A or B with equal chance.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 400" aria-label="Probability tree for epsilon-greedy on the slot machine with epsilon 0.1, while arm A has the best estimate. Before each pull, the blue exploit branch, probability 0.9, pulls arm A. The orange explore branch, probability 0.1, picks an arm at random: arm A with probability 0.05 and arm B with probability 0.05. In total arm A is pulled with probability 0.95 and arm B with probability 0.05">
+      <defs><marker id="xpl2-blue" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#3b82f6"/></marker><marker id="xpl2-amber" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#f59e0b"/></marker></defs>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <rect x="15" y="150" width="150" height="44" rx="8" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="90.0" y="177" text-anchor="middle" fill="#171717">before each pull</text>
+      <rect x="225" y="50" width="180" height="44" rx="8" fill="#ffffff" stroke="#3b82f6" stroke-width="1.5"/><text x="315.0" y="77" text-anchor="middle" fill="#3b82f6">exploit: 1 − ε = 0.9</text>
+      <rect x="225" y="250" width="180" height="44" rx="8" fill="#ffffff" stroke="#f59e0b" stroke-width="1.5"/><text x="315.0" y="277" text-anchor="middle" fill="#f59e0b">explore: ε = 0.1</text>
+      <rect x="465" y="50" width="160" height="44" rx="8" fill="#ffffff" stroke="#3b82f6" stroke-width="1.5"/><text x="545.0" y="77" text-anchor="middle" fill="#171717">arm A: 0.9</text>
+      <rect x="465" y="200" width="160" height="44" rx="8" fill="#ffffff" stroke="#f59e0b" stroke-width="1.5"/><text x="545.0" y="227" text-anchor="middle" fill="#171717">arm A: 0.05</text>
+      <rect x="465" y="300" width="160" height="44" rx="8" fill="#ffffff" stroke="#f59e0b" stroke-width="1.5"/><text x="545.0" y="327" text-anchor="middle" fill="#171717">arm B: 0.05</text>
+      <path d="M165 172 L223 74" stroke="#3b82f6" stroke-width="2" marker-end="url(#xpl2-blue)"/>
+      <path d="M165 172 L223 270" stroke="#f59e0b" stroke-width="2" marker-end="url(#xpl2-amber)"/>
+      <path d="M405 72 H463" stroke="#3b82f6" stroke-width="2" marker-end="url(#xpl2-blue)"/>
+      <path d="M405 272 L463 224" stroke="#f59e0b" stroke-width="2" marker-end="url(#xpl2-amber)"/>
+      <path d="M405 272 L463 320" stroke="#f59e0b" stroke-width="2" marker-end="url(#xpl2-amber)"/>
+      <text x="315" y="130" text-anchor="middle" fill="#3b82f6">always the best estimate</text>
+      <text x="315" y="325" text-anchor="middle" fill="#f59e0b">random: half each</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="320" y="385" text-anchor="middle">in total: arm A 0.9 + 0.05 = 0.95, arm B 0.05</text>
+      </g>
+      </svg>
+      ```
+
+      In general, with $k$ actions, the random pick splits $\varepsilon$ evenly, so each action gets $\varepsilon/k$ from it. The best-looking action also gets the whole exploit branch. So the best-looking action and each other action have probabilities
+
+      $$\pi(\text{best})=1-\varepsilon+\frac{\varepsilon}{k},\qquad\pi(\text{other})=\frac{\varepsilon}{k}.$$
+
+      Be careful here. It's tempting to give the best-looking action a probability of just $1-\varepsilon$. But the random pick can land on it too, which adds $\varepsilon/k$ and gives arm A $0.95$.
+
+      With several states, the agent keeps an estimate for each action in each state. Picture a robot in a corridor of 4 cells, numbered 1 to 4 from left to right, that can move left or right. Moving into a wall leaves it where it is. If, in cell 1, moving right has the better estimate and $\varepsilon=0.2$, then $\pi(\text{right}\mid\text{cell }1)=1-0.2+0.2/2=0.9$ and $\pi(\text{left}\mid\text{cell }1)=0.2/2=0.1$.
+
+      ### Choosing epsilon
+
+      With $\varepsilon=0$ the agent is greedy and can get stuck. With $\varepsilon=1$ it acts completely at random and never uses what it has learned. Many agents start with a large $\varepsilon$, while the estimates are poor, and lower it as the estimates improve. DQN, a 2015 agent that learned to play Atari video games from the screen, lowered $\varepsilon$ from $1$ to $0.1$ over its first million frames, the screen images it saw while playing.
+    worked: |
+      Let's find how much reward per pull the epsilon-greedy agent can expect on the slot machine, with $\varepsilon=0.1$. Arm A pays $1$ on average and arm B pays $2$, and at first arm A has the best estimate, after the unlucky pull of B.
+
+      1. **Find each arm's chance while A looks best.** A gets the exploit branch plus half of the random picks, and B gets the other half.
+         $$\pi(\text{A})=1-0.1+\frac{0.1}{2}=0.95$$
+         $$\pi(\text{B})=\frac{0.1}{2}=0.05$$
+
+      2. **Find the expected reward per pull.** Each arm's average reward counts in proportion to how often it's pulled, so we multiply each average by its chance and add.
+         $$0.95\times1+0.05\times2=1.05$$
+
+      3. **Wait for B's estimate to rise.** B is still pulled about once in every 20 pulls, so its estimate keeps changing. About half of B's pulls pay $4$ and half pay $0$, so after enough pulls its average settles near $2$, above A's $1$, and B becomes the best-looking arm, so the two chances swap.
+         $$\pi(\text{B})=0.95,\qquad\pi(\text{A})=0.05$$
+
+      4. **Find the expected reward per pull again.** We use the same rule with the new chances.
+         $$0.95\times2+0.05\times1=1.95$$
+
+      The greedy agent from before, after its unlucky pull of B, was stuck at $1$ per pull. The epsilon-greedy agent reaches $1.95$, close to the best possible $2$, and the missing $0.05$ is what it pays for still exploring on some pulls.
+    problems:
+      - xpl-eps-basics
+      - xpl-eps-self-explain
+      - xpl-eps-best-prob
+      - xpl-eps-zero
+      - xpl-eps-other-prob
+      - xpl-eps-expected
+      - xpl-eps-schedule
+      - xpl-eps-headlines
+  - id: xpl-entropy-bonus
+    title: "Keep a policy's choices spread out"
+    explain: |
+      ### Agents that learn their probabilities
+
+      Some agents don't pick the best-looking action at all. They learn the policy's probabilities directly, nudging them up for actions that led to a high return. Later lessons show how. Such an agent explores on its own, because it picks each action at random using its probabilities. But whenever an action does well, its probability goes up, so it gets tried more, and its probability goes up again. This can push one action's probability towards $1$ early, and then the agent stops trying the others. It's the same problem the greedy agent had.
+
+      ### How spread out a policy is
+
+      The **entropy** of a policy in a state is a number that says how spread out its action probabilities are. It's largest when every action is equally likely, and it's $0$ when one action has probability $1$. For two actions the largest it can be is about $0.69$, the natural log of $2$. It's worked out from the probabilities with natural logs, but here we only need its values. The chart shows three policies over two actions, with their entropies rounded to two decimal places.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" aria-label="Three policies over two actions A and B, drawn as blue probability bars. Probabilities 0.5 and 0.5 have entropy 0.69, the largest. Probabilities 0.9 and 0.1 have entropy 0.33. Probabilities 0.99 and 0.01 have entropy 0.06, close to 0">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="17" fill="#171717">
+      <text x="320" y="24" text-anchor="middle">probability of each action</text>
+      <path d="M20 230 H620" stroke="#737373" stroke-width="1.5"/>
+      <rect x="65" y="155.0" width="40" height="75.0" fill="#3b82f6"/><text x="85" y="147.0" text-anchor="middle">0.5</text><text x="85" y="250" text-anchor="middle" fill="#737373">A</text><rect x="115" y="155.0" width="40" height="75.0" fill="#3b82f6"/><text x="135" y="147.0" text-anchor="middle">0.5</text><text x="135" y="250" text-anchor="middle" fill="#737373">B</text><text x="110" y="280" text-anchor="middle">entropy 0.69</text><rect x="275" y="95.0" width="40" height="135.0" fill="#3b82f6"/><text x="295" y="87.0" text-anchor="middle">0.9</text><text x="295" y="250" text-anchor="middle" fill="#737373">A</text><rect x="325" y="215.0" width="40" height="15.0" fill="#3b82f6"/><text x="345" y="207.0" text-anchor="middle">0.1</text><text x="345" y="250" text-anchor="middle" fill="#737373">B</text><text x="320" y="280" text-anchor="middle">entropy 0.33</text><rect x="485" y="81.5" width="40" height="148.5" fill="#3b82f6"/><text x="505" y="73.5" text-anchor="middle">0.99</text><text x="505" y="250" text-anchor="middle" fill="#737373">A</text><rect x="535" y="228.5" width="40" height="1.5" fill="#3b82f6"/><text x="555" y="220.5" text-anchor="middle">0.01</text><text x="555" y="250" text-anchor="middle" fill="#737373">B</text><text x="530" y="280" text-anchor="middle">entropy 0.06</text>
+      </g>
+      </svg>
+      ```
+
+      ### The entropy bonus
+
+      Training is how such an agent learns. It adjusts the probabilities to make the expected return large. An **entropy bonus** adds the policy's entropy, times a weight $\beta$ (the Greek letter beta) that we choose. The total is called the **objective**:
+
+      $$\text{expected return}+\beta\times\text{entropy}$$
+
+      A policy that puts all its probability on one action has entropy $0$, so it gives up its bonus. Training only moves it there if the extra return is worth more than the lost bonus, and a larger $\beta$ keeps the policy more spread out. PPO, a method covered later in the course, used $\beta=0.01$ for its Atari agents.
+
+      ### Limitations
+
+      Epsilon-greedy and the entropy bonus both explore by acting at random. That works when a few random actions can stumble on a reward. It fails when the first reward needs a long, exact sequence of actions. The 2015 DQN agent explored with epsilon-greedy and scored $0$ on the Atari game Montezuma's Revenge, where scoring takes many precise moves. On a real robot, random actions can also cause damage, so much of the exploring is done in simulation.
+    worked: |
+      Let's see an entropy bonus change which policy the agent prefers, on the slot machine with arms A and B. Suppose the agent has pulled B only a few times and got unlucky, so every pull of B has paid $0$, and every pull of A has paid $1$. Each pull is complete on its own, so a pull's return is just its reward. We compare two policies. Policy X pulls A with probability $0.99$, and policy Y pulls A with probability $0.9$. To make the effect easy to see we use a large weight, $\beta=0.5$.
+
+      1. **Find each expected return.** The agent only knows what it has seen, so it uses the rewards seen so far, $1$ for A and $0$ for B.
+         $$\text{X: }0.99\times1+0.01\times0=0.99$$
+         $$\text{Y: }0.9\times1+0.1\times0=0.9$$
+
+      2. **Read off each policy's entropy.** These are the rounded values from the chart.
+         $$\text{X: }0.06,\qquad\text{Y: }0.33$$
+
+      3. **Add the bonus.** Each objective is the expected return plus $\beta$ times the entropy.
+         $$\text{X: }0.99+0.5\times0.06=1.02$$
+         $$\text{Y: }0.9+0.5\times0.33=1.065$$
+
+      Without the bonus, policy X scores higher, so training would push towards always pulling arm A. With the bonus, policy Y scores higher, because it gives up $0.99-0.9=0.09$ of return but gains $0.5\times(0.33-0.06)=0.135$ of bonus. So the agent keeps pulling arm B one time in ten, which gives it the chance to find out that B pays $4$ half the time. Training would keep adjusting the probabilities after this, but the bonus has stopped it from settling on pulling A almost every time.
+    problems:
+      - xpl-ent-basics
+      - xpl-ent-self-explain
+      - xpl-ent-highest
+      - xpl-ent-objective
+      - xpl-ent-huge-weight
+      - xpl-ent-break-even
+      - xpl-ent-sparse-reward
+final: xpl-explain-problem
+summary: |
+  - An agent only learns about the actions it takes. Exploiting takes the action with the best estimate, and exploring tries another one to improve its estimate. A greedy agent never explores, so one unlucky reward can trap it on a worse action for ever.
+  - Epsilon-greedy explores with probability $\varepsilon$ by picking an action at random. With $k$ actions, the best-looking action has probability $1-\varepsilon+\varepsilon/k$ and each other action has $\varepsilon/k$.
+  - Agents often start with a large $\varepsilon$ and lower it as their estimates improve. Exploring usually costs some reward now, in exchange for better choices later.
+  - An entropy bonus adds $\beta$ times the policy's entropy to the objective, which keeps a learned policy's probabilities from collapsing onto one action too early. Both methods explore at random, so they struggle when reward needs a long, exact sequence of actions.
+
+  **Next:** The deep Q-learning lesson trains an agent with a neural network, which explores with epsilon-greedy while it learns.
