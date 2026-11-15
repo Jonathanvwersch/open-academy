@@ -96,7 +96,7 @@ concepts:
           { text: "Explain when prefix caching saves prefill work", dimension: conceptual },
         ],
       projects: [inference-engine],
-      status: stub,
+      status: authored,
     }
   - {
       id: fast-attention,
