@@ -1,3 +1,9 @@
 export { buildContentIndex, getLessonPrerequisites, subjectForCourse } from './index.js';
-export { ContentValidationError, loadContent, resolveContentDirectory } from './load.js';
+export {
+  ContentValidationError,
+  loadContent,
+  loadContentReport,
+  resolveContentDirectory,
+} from './load.js';
 export type { ContentIndex, ContentIssue, ContentSourceData } from './types.js';
+export { contentWarnings } from './warnings.js';

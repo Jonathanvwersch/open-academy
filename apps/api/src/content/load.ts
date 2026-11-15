@@ -20,6 +20,7 @@ import {
 } from './schemas.js';
 import type { ContentIndex, ContentIssue, ContentSourceData } from './types.js';
 import { validateContent } from './validate.js';
+import { contentWarnings } from './warnings.js';
 
 const ConceptHeaderSchema = z
   .object({
@@ -61,6 +62,12 @@ export function resolveContentDirectory(directory = process.env.CONTENT_DIR ?? '
 export async function loadContent(
   directory = process.env.CONTENT_DIR ?? 'content',
 ): Promise<ContentIndex> {
+  return (await loadContentReport(directory)).content;
+}
+
+export async function loadContentReport(
+  directory = process.env.CONTENT_DIR ?? 'content',
+): Promise<{ content: ContentIndex; warnings: ContentIssue[] }> {
   const root = resolveContentDirectory(directory);
   const data: ContentSourceData = {
     concepts: [],
@@ -238,7 +245,7 @@ export async function loadContent(
   if (issues.length > 0) {
     throw new ContentValidationError(issues);
   }
-  return buildContentIndex(data);
+  return { content: buildContentIndex(data), warnings: contentWarnings(data) };
 }
 
 async function yamlFiles(directory: string): Promise<string[]> {

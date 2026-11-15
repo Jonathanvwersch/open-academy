@@ -133,6 +133,30 @@ describe('academy CLI', () => {
     }
   }, 20_000);
 
+  it('prints non-failing content warnings from academy check', () => {
+    const parent = temporaryDirectory();
+    try {
+      const pack = join(parent, 'pack');
+      expect(run(['init', pack, '--title', 'Applied Science']).status).toBe(0);
+      for (const [id, title] of [
+        ['second-topic', 'Second topic'],
+        ['third-topic', 'Third topic'],
+        ['fourth-topic', 'Fourth topic'],
+      ]) {
+        expect(run(['new', 'topic', id, '--title', title, '--pack', pack]).status).toBe(0);
+      }
+
+      const result = run(['check', pack]);
+      expect(result.status).toBe(0);
+      expect(result.stdout).toContain(
+        'warning: concepts/main.yaml [fourth-topic] has no prerequisites but sits in unit 1 of Applied Science basics; is a link missing?',
+      );
+      expect(result.stdout).toContain('1 warning');
+    } finally {
+      rmSync(parent, { recursive: true, force: true });
+    }
+  }, 30_000);
+
   it('creates topics and courses while preserving YAML comments', () => {
     const parent = temporaryDirectory();
     try {
