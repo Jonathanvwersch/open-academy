@@ -289,6 +289,14 @@ knowledge_points:
       Be careful not to leave out `optimizer.zero_grad()`. The second pass would then store $-8+(-2.5)=-10.5$ for the weight instead of its slope, $-2.5$ (worked out below), and step far too far.
 
       Be careful, too, with the `loss` you print: it was measured before `optimizer.step()`, so it describes the old parameters. To judge the updated model, compute a new loss. Inside `torch.no_grad()` the answer is the same, but PyTorch skips recording work we'll never call backward on.
+
+      ### When repeated predictions differ
+
+      Some PyTorch models use **dropout**, a module that randomly sets some of its input numbers to $0$ on each training call. With unchanged model inputs and weights, this can still make the loss vary between calls.
+
+      `model.eval()` selects evaluation mode and turns dropout off. Use it with `torch.no_grad()` when measuring the trained model's loss. `torch.no_grad()` pauses recording the calculations needed to find slopes. It leaves the model's mode unchanged.
+
+      Measure the loss twice on unchanged inputs and weights to check the evaluation. The losses should agree. Call `model.train()` to turn dropout back on before training again.
     worked: |
       Let's run pass 2 by hand, from $w=1.8$, $b=0.5$ and $\eta=0.1$.
 
