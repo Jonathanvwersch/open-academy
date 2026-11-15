@@ -6,15 +6,544 @@ exercises:
     role: diagnostic
     difficulty: 2
     est_minutes: 2
-    prompt: "Which of these is **not** part of the definition of a Markov decision process?"
+    prompt: A friend lists what defines an MDP. Which item on the list belongs to the agent instead of the environment?
     options:
-      - { id: a, text: "The agent's policy", correct: true }
-      - {
-          id: b,
-          text: "The transition probabilities $P(s' \\mid s, a)$",
-          correct: false,
-          category: misunderstood_definition,
-        }
-      - { id: c, text: "The reward function", correct: false, category: misunderstood_definition }
-      - { id: d, text: "The set of actions", correct: false, category: misunderstood_definition }
-    solution: "An MDP is $(S, A, P, R, \\gamma)$: it describes the environment. The policy is what the agent chooses in order to act within it."
+      - id: a
+        text: The agent's policy
+        correct: true
+        feedback: A policy tells the agent how to choose actions after the task has been specified.
+      - id: b
+        text: The transition probabilities $p(s' \mid s, a)$
+        correct: false
+        category: misunderstood_definition
+        feedback: They describe how actions move the environment from one state to another.
+      - id: c
+        text: The reward function
+        correct: false
+        category: misunderstood_definition
+        feedback: The reward function assigns feedback to the task's outcomes.
+      - id: d
+        text: The set of actions
+        correct: false
+        category: misunderstood_definition
+        feedback: The available actions are part of the task the agent acts in.
+    solution: An MDP describes the task, including its states, actions, transitions and rewards. The policy belongs to the agent and tells it which actions to choose.
+  - id: dx-rl-1b
+    dimension: conceptual
+    type: mc
+    role: diagnostic
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A robot's move command sometimes fails and leaves it where it was. Which part of a Markov decision process describes how often that happens?"
+    options:
+      - id: a
+        text: "The transition probabilities $p(s' \\mid s, a)$"
+        correct: true
+        feedback: "They give the chance of each next state after an action, including staying put."
+      - id: b
+        text: The reward function
+        correct: false
+        category: misunderstood_definition
+        feedback: "It gives the reward for an outcome; transition probabilities show how often that outcome occurs."
+      - id: c
+        text: "The discount factor $\\gamma$"
+        correct: false
+        category: misunderstood_definition
+        feedback: It weights later rewards.
+      - id: d
+        text: The set of states
+        correct: false
+        category: misunderstood_definition
+        feedback: "It lists the situations an agent can occupy. Transition probabilities describe how often each move leads to them."
+    solution: "Transition probabilities give the chance of each next state $s'$ after action $a$ in state $s$, so a failed move is a transition back to the same cell."
+  - id: mdpp-state-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What must a state with the Markov property contain?
+    options:
+      - id: a
+        text: Enough information to predict the next state and reward probabilities given an action.
+        correct: true
+        feedback: Once the state and action are given, earlier history adds no needed information about those probabilities.
+      - id: b
+        text: Enough information to name the best action without comparing any future outcomes.
+        correct: false
+        feedback: A state describes the current situation; choosing a good action is a further problem.
+      - id: c
+        text: Enough information to list every action and reward from the start of the episode.
+        correct: false
+        feedback: A sufficient current state can summarise the relevant history without storing the whole episode.
+    solution: A Markov state makes the next-state and reward probabilities depend only on the current state and action.
+  - id: mdpp-task-why
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: In the worked example, why does the left command from cell 1 still produce reward $-1$?
+    options:
+      - id: a
+        text: Any command toward a wall is penalised by $-1$, whatever cell the robot is in.
+        correct: false
+        feedback: There is no wall-specific penalty. Every step that doesn't reach the goal gives $-1$.
+      - id: b
+        text: The command still uses one time step, and it ends outside the goal cell.
+        correct: true
+        feedback: Staying in cell 1 is a nonterminal transition, so the ordinary step reward applies.
+      - id: c
+        text: A left action has a negative reward, while every right action has a positive reward.
+        correct: false
+        feedback: Right moves into cells 2 and 3 also give $-1$; the destination decides whether the goal reward applies.
+    solution: A wall move still consumes a step. It does not enter cell 4, so it receives the ordinary reward $-1$.
+  - id: mdpp-state-choice
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: Two runs put a corridor robot in cell 2 after the same number of commands. One robot has a charged battery; the other has an empty battery. The same right command moves the charged robot to cell 3 but leaves the other in cell 2. Which state description distinguishes the situations that matter for movement?
+    options:
+      - id: a
+        text: Its current cell and the total number of commands issued.
+        correct: false
+        feedback: Command count does not tell us the current battery level in this task.
+      - id: b
+        text: Its most recent reward and its most recent command.
+        correct: false
+        feedback: These may leave both the current cell and battery level unknown.
+      - id: c
+        text: Its current cell and its current battery level.
+        correct: true
+        feedback: Together these contain the information the stated motor rule needs, once the command is supplied.
+    solution: Include both cell and battery level because both affect movement under the same command.
+  - id: mdpp-wall-state
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A robot is in cell 2 of a four-cell corridor numbered 1 to 4 from left to right. Each command moves one cell in that direction; trying to cross a wall leaves it in place. It executes left, left, then right. What is its final cell number?
+    answer: 2
+    tolerance: { abs: 0 }
+    solution: The states after the three commands are 1, 1 and 2. The second left command meets the wall, so the next state remains 1 before the right move.
+  - id: mdpp-reward-meaning
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: The symbol $r_3$ records one reward in a robot's episode. What does its subscript tell us?
+    options:
+      - id: a
+        text: The reward is paid before the robot chooses its action at time 2.
+        correct: false
+        feedback: The reward follows the action at time 2 and arrives with state $s_3$.
+      - id: b
+        text: The reward is paid after the robot chooses its action at time 2.
+        correct: true
+        feedback: In this notation, action $a_t$ is followed by reward $r_{t+1}$ and state $s_{t+1}$.
+      - id: c
+        text: The reward is the sum of the first three rewards in the episode.
+        correct: false
+        feedback: The subscript is a time index; $r_3$ denotes the reward received at time 3.
+    solution: The action at time 2 produces the reward indexed 3 and the next state indexed 3.
+  - id: mdpp-terminal-mistake
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A four-cell corridor ends the episode as soon as the robot enters cell 4, paying $+10$. A learner says, "Once there, the robot can keep choosing right to collect more tens." Which rule corrects this?
+    options:
+      - id: a
+        text: Each right command after arrival is replaced by a left command.
+        correct: false
+        feedback: No replacement rule was defined, and the episode has already ended.
+      - id: b
+        text: Each right command after arrival receives the ordinary wall reward.
+        correct: false
+        feedback: The wall rule governs active steps, but no steps follow arrival at this terminal state.
+      - id: c
+        text: Arrival is the last transition, so the episode has no further commands.
+        correct: true
+        feedback: A terminal state ends the run; its arrival reward is received once in that episode.
+    solution: Cell 4 is terminal, so the action that enters it is the final action and pays the final reward once.
+  - id: mdpp-coasting-state
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A robot arm passes the same joint angle moving clockwise on one visit and counterclockwise on another. Angular velocity records how fast and in which direction it moves. A command slows its current motion but does not stop it instantly. Which state description accounts for the different next angles after that command?
+    options:
+      - id: a
+        text: The current joint angle together with the current angular velocity.
+        correct: true
+        feedback: Those are precisely the two quantities the next-angle rule needs.
+      - id: b
+        text: The current joint angle together with the desired final joint angle.
+        correct: false
+        feedback: A target angle does not identify the arm's current velocity, which affects its next angle.
+      - id: c
+        text: The current joint angle together with the most recent reward received.
+        correct: false
+        feedback: A reward need not reveal velocity, so two physically different situations may still share this description.
+    solution: Angle locates the arm, and angular velocity describes its motion. Both affect the next angle when the arm keeps moving during a command.
+  - id: mdpp-transition-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What does $p(s'\mid s,a)$ describe in an MDP?
+    options:
+      - id: a
+        text: The chance of choosing action $a$ after arriving in state $s'$.
+        correct: false
+        feedback: Transition probabilities describe the environment's response after an action has been chosen.
+      - id: b
+        text: The chance of starting in state $s$ before choosing action $a$.
+        correct: false
+        feedback: The current state and action are given here; the uncertain quantity is the next state.
+      - id: c
+        text: The chance of next state $s'$ given current state $s$ and action $a$.
+        correct: true
+        feedback: The quantities after the bar are known; the primed state is the possible destination.
+    solution: $p(s'\mid s,a)$ is the next-state probability for a fixed current state and action.
+  - id: mdpp-transition-why
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: Why does the worked example multiply both $10$ and $-1$ by their probabilities before adding?
+    options:
+      - id: a
+        text: It weights each reward by how often that outcome occurs over repeated attempts.
+        correct: true
+        feedback: Expected reward is an average over the outcomes of the same state and action.
+      - id: b
+        text: It combines the rewards because every command visits both possible next states.
+        correct: false
+        feedback: One command produces one outcome; the probabilities weight different possible attempts.
+      - id: c
+        text: It reduces each reward because both branches occur after a delay of one extra step.
+        correct: false
+        feedback: These factors describe how likely the outcomes are; no delay weighting is being applied.
+    solution: Multiplying by the probability gives each reward its share of the long-run average for attempts from cell 3.
+  - id: mdpp-transition-tool
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A command has two outcomes: reward $6$ with probability $0.75$, or reward $-2$ with probability $0.25$. Which expression predicts the average next reward across many attempts?"
+    options:
+      - id: a
+        text: $(6+(-2))/2$
+        correct: false
+        feedback: That gives the two outcomes equal weight even though one is three times as likely.
+      - id: b
+        text: $0.75\times6+0.25\times(-2)$
+        correct: true
+        feedback: Each outcome contributes its reward times its own probability.
+      - id: c
+        text: $0.25\times6+0.75\times(-2)$
+        correct: false
+        feedback: That exchanges the success and failure probabilities.
+    solution: The expected reward weights each reward by its own probability, giving $0.75\times6+0.25\times(-2)=4$.
+  - id: mdpp-reward-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    params:
+      chance: { min: 6, max: 8, step: 2 }
+      goal: { min: 12, max: 16, step: 2 }
+      cost: { min: 1, max: 3, step: 2 }
+    constraints:
+      - "abs((chance / 10) * goal - (1 - chance / 10) * cost - chance) > 0.001"
+    prompt: A four-cell corridor robot is in cell 3. Choosing right reaches terminal cell 4 with probability ${{= chance / 10 }}$ and otherwise stays at 3. Entry to 4 gives reward ${{= goal }}$; staying at 3 gives $-{{= cost }}$. What is the expected reward of this one command? Give an exact decimal.
+    answer_expr: (chance / 10) * goal - (1 - chance / 10) * cost
+    tolerance: { abs: 0.001 }
+    solution: The failure chance is $1-{{= chance / 10 }}$. The expected reward is ${{= chance / 10 }}\times{{= goal }}+(1-{{= chance / 10 }})\times(-{{= cost }})={{= (chance / 10) * goal - (1 - chance / 10) * cost }}$.
+  - id: mdpp-average-meaning
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: An action gives reward $10$ with probability $0.8$ and reward $-1$ otherwise. Its expected reward is $7.8$. What does $7.8$ mean?
+    options:
+      - id: a
+        text: Each attempt gives reward $7.8$ once the two branches are combined.
+        correct: false
+        feedback: Each attempt produces one branch and therefore gives either $10$ or $-1$.
+      - id: b
+        text: The action succeeds on a fraction $7.8$ of its attempts in the long run.
+        correct: false
+        feedback: A success fraction is between 0 and 1; the stated success probability is $0.8$.
+      - id: c
+        text: The reward per attempt averages toward $7.8$ over many repetitions.
+        correct: true
+        feedback: An expected reward summarises repeated outcomes, even when no single reward equals it.
+    solution: $7.8$ is the long-run average reward per attempt of this action, while individual rewards remain $10$ or $-1$.
+  - id: mdpp-wall-mistake
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A corridor motor obeys a command with probability $0.8$ and otherwise stays in place. The robot is at the left wall in cell 1 and chooses left; a successful command into a wall also stays in place. A learner assigns $p(1\mid1,\text{left})=0.2$. What went wrong?
+    options:
+      - id: a
+        text: They counted only motor failure, although motor success has the same destination.
+        correct: true
+        feedback: Both branches end in cell 1, so their probabilities combine to give 1.
+      - id: b
+        text: They counted only motor failure, although motor success would reach cell 2.
+        correct: false
+        feedback: A successful left command cannot move right into cell 2; it meets the left wall.
+      - id: c
+        text: They counted only motor failure, although wall moves have no next state.
+        correct: false
+        feedback: A wall move has a next state equal to the current state.
+    solution: Successful and failed left commands both stay at cell 1, so $p(1\mid1,\text{left})=0.8+0.2=1$.
+  - id: mdpp-row-mistake
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: An MDP has exactly two states. A learner lists $p(1\mid1,\text{right})=0.2$ and $p(2\mid1,\text{right})=0.7$. Which issue prevents this from being a complete transition rule for that state and action?
+    options:
+      - id: a
+        text: Each destination must have probability $0.5$ when there are two states.
+        correct: false
+        feedback: Destinations can have unequal probabilities; their total must still be 1.
+      - id: b
+        text: The listed destinations account for less than the full probability mass.
+        correct: true
+        feedback: The two probabilities total $0.9$, leaving $0.1$ unassigned despite listing every possible state.
+      - id: c
+        text: The chance of staying in the current state must always equal zero.
+        correct: false
+        feedback: Staying in place is a valid transition, for example after a failed move.
+    solution: For a fixed current state and action, the probabilities over all next states must total 1; here they total $0.9$.
+  - id: mdpp-delivery-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    params:
+      chance: { min: 7, max: 9, step: 2 }
+      bonus: { min: 10, max: 16, step: 6 }
+      penalty: { min: 2, max: 4, step: 2 }
+    prompt: A delivery task has states waiting, delivered and delayed. A dispatch action from waiting reaches delivered with probability ${{= chance / 10 }}$ and delayed otherwise. Its reward is ${{= bonus }}$ on delivery and $-{{= penalty }}$ on delay. What is its expected next reward from waiting? Give an exact decimal.
+    answer_expr: (chance / 10) * bonus - (1 - chance / 10) * penalty
+    tolerance: { abs: 0.001 }
+    solution: The two next states have probabilities ${{= chance / 10 }}$ and $1-{{= chance / 10 }}$. Weighting their rewards gives ${{= chance / 10 }}\times{{= bonus }}+(1-{{= chance / 10 }})\times(-{{= penalty }})={{= (chance / 10) * bonus - (1 - chance / 10) * penalty }}$.
+  - id: mdpp-discount-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What does the discount factor $\gamma$ control in an MDP?
+    options:
+      - id: a
+        text: The probability that a chosen action reaches its intended destination.
+        correct: false
+        feedback: Transition probabilities describe destinations; discounting concerns when rewards arrive.
+      - id: b
+        text: The weight given to a reward for each extra step of delay.
+        correct: true
+        feedback: A reward delayed one extra step has its weight multiplied by $\gamma$ once more.
+      - id: c
+        text: The number of actions available before the next state is reached.
+        correct: false
+        feedback: Available actions are part of the task description; $\gamma$ weights rewards over time.
+    solution: The discount factor multiplies a reward's weight once for every extra step of delay.
+  - id: mdpp-discount-why
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: Why does the worked example multiply the goal reward by $0.9^2$?
+    options:
+      - id: a
+        text: It arrives two extra steps after the first reward, so its weight has two discount factors.
+        correct: true
+        feedback: The first reward has weight 1, the second $0.9$, and the third $0.9^2$.
+      - id: b
+        text: It requires two independent successful moves, so its chance has two probability factors.
+        correct: false
+        feedback: This example uses reliable moves; $0.9$ controls how delay changes a reward's weight.
+      - id: c
+        text: It is received in the second cell, so the cell number supplies the discount exponent.
+        correct: false
+        feedback: The goal reward is received in cell 4; the exponent counts extra delay from the first reward.
+    solution: The goal reward is third in the reward sequence, two delays beyond the first, so its weight is $\gamma^2=0.81$.
+  - id: mdpp-weight-rule
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A task uses discount factor $\gamma$. A reward $r$ arrives after the third command from now. Which expression weights that one reward from before the first command?
+    options:
+      - id: a
+        text: $\gamma^3r$
+        correct: false
+        feedback: The reward after the first command has weight 1, so the third reward has only two extra steps of delay.
+      - id: b
+        text: $\gamma r$
+        correct: false
+        feedback: One factor accounts for only one extra step; this reward arrives two extra steps later.
+      - id: c
+        text: $\gamma^2r$
+        correct: true
+        feedback: Two extra steps beyond the next reward give two factors of $\gamma$.
+    solution: The reward arrives two extra steps beyond the next reward, so its weight is $\gamma^2$ and its weighted amount is $\gamma^2r$.
+  - id: mdpp-weight-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    params:
+      factor: { min: 5, max: 9, step: 4 }
+      reward: { min: 12, max: 20, step: 4 }
+      delay: { min: 1, max: 2, step: 1 }
+    constraints:
+      - "abs((factor / 10)^delay * reward - factor) > 0.001"
+      - "abs((factor / 10)^delay * reward - (delay + 1)) > 0.001"
+    prompt: A robot task uses $\gamma={{= factor / 10 }}$. A reward of ${{= reward }}$ arrives after command {{= delay + 1 }} from now. What is its weighted amount from before the next command? Give an exact decimal.
+    answer_expr: (factor / 10)^delay * reward
+    tolerance: { abs: 0.001 }
+    solution: The reward arrives after command {{= delay + 1 }}, so there are {{= delay }} extra steps after the next reward. From before the next command, its weighted amount is ${{= factor / 10 }}^{{= delay }}\times{{= reward }}={{= (factor / 10)^delay * reward }}$.
+  - id: mdpp-zero-meaning
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: A task's discount factor changes from $0.9$ to $0$. How are the next reward and those received later weighted?
+    options:
+      - id: a
+        text: The next reward keeps weight 1, and every later reward gets weight 0.
+        correct: true
+        feedback: The next reward keeps weight 1; all positive powers of zero vanish.
+      - id: b
+        text: The next reward gets weight 0, and every later reward also gets weight 0.
+        correct: false
+        feedback: The next reward has no factor of $\gamma$, so it keeps full weight.
+      - id: c
+        text: The final reward keeps weight 1, and every earlier reward gets weight 0.
+        correct: false
+        feedback: Every reward after the next gets weight 0, including the final reward when it arrives later.
+    solution: The next reward keeps weight 1. Every extra step multiplies a later reward's weight by zero.
+  - id: mdpp-weight-mistake
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A reward arrives after the third command from now. With $\gamma=0.9$, a learner gives it weight $0.9$ when evaluating it from before the first command. Which timing error caused this?
+    options:
+      - id: a
+        text: They included the first command as an extra step of delay.
+        correct: false
+        feedback: Including that command would give three factors of $0.9$, more than the learner used.
+      - id: b
+        text: They counted only one extra step of delay instead of two.
+        correct: true
+        feedback: Two steps separate this reward from the next reward, so its weight needs two factors of $0.9$.
+      - id: c
+        text: They ignored every extra step and kept the reward's weight unchanged.
+        correct: false
+        feedback: Ignoring every extra step would leave weight 1, above the learner's weight of $0.9$.
+    solution: The next reward has weight 1. The third reward arrives two extra steps later, so its weight is $0.9^2=0.81$.
+  - id: mdpp-delay-neutral
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: An MDP changes its discount factor from $0.9$ to $1$. Which effect comes from this change?
+    options:
+      - id: a
+        text: Every action becomes certain to reach its intended destination.
+        correct: false
+        feedback: Transition probabilities determine the destinations; discounting controls reward weights.
+      - id: b
+        text: Every reward after the next command is given zero weight.
+        correct: false
+        feedback: A discount factor of zero would remove these delayed rewards' weights.
+      - id: c
+        text: Every reward keeps its full size when weighted for delay.
+        correct: true
+        feedback: Multiplying by 1 for every extra step leaves the reward unchanged.
+    solution: With $\gamma=1$, each delay factor equals 1, so both positive and negative rewards keep their full size.
+  - id: mdpp-complete-task
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A task specification lists the states, actions, transition probabilities, start and terminal states, and a discount factor. Which additional piece completes the MDP description?
+    options:
+      - id: a
+        text: A rule assigning an action to choose in each nonterminal state.
+        correct: false
+        feedback: That would specify how to act in the task; it would leave the reward for a transition unspecified.
+      - id: b
+        text: A record listing the full action history from one completed episode.
+        correct: false
+        feedback: One episode's history does not define what rewards other possible transitions produce.
+      - id: c
+        text: A rule assigning the reward received after each possible transition.
+        correct: true
+        feedback: The reward rule supplies the numerical feedback that transition probabilities alone do not describe.
+    solution: An MDP needs a reward rule as well as states, actions, transition probabilities and a discount factor.
+  - id: mdpp-charger-weight
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A charger controller receives a reward of $8$ after its third command. This task uses $\gamma=0.5$. What is the weighted amount of that reward when evaluated from before its first command?
+    answer: 2
+    tolerance: { abs: 0.001 }
+    solution: The reward arrives two extra steps beyond the next reward, so its weighted amount is $0.5^2\times8=2$.
+  - id: mdpp-explain
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 2
+    est_minutes: 4
+    prompt: Describe how you would turn a robot navigation task into an MDP. Explain what the state must contain, how actions lead to next states and rewards, and how the discount factor affects a delayed reward's weight.
+    rubric:
+      - id: state
+        criterion: Chooses state information sufficient to predict next-state and reward probabilities given an action, without earlier history.
+        weight: 1
+        required: true
+      - id: task
+        criterion: Specifies available actions, transition probabilities totalling 1, a reward rule and how an episode ends.
+        weight: 1
+        required: true
+      - id: delay
+        criterion: Explains that the next reward has weight 1 and each extra step of delay multiplies a later reward's weight by the discount factor.
+        weight: 1
+        required: true
+    exemplar: I choose a state such as the robot's position and velocity if both affect its motion. I list available commands, give the chance of every next state for each command so those chances total 1, assign rewards to transitions and mark which arrivals end the episode. The discount factor gives the next reward weight 1 and multiplies a later reward's weight once per extra step of delay.
+    solution: A complete task description needs sufficient state information, available actions, transition probabilities, rewards and a discount factor, with the start and termination specified for an episodic task. Discounting specifies how delay changes the weight of a reward.

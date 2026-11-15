@@ -1,0 +1,224 @@
+concept: mdp
+version: 1
+objective: |
+  **Goal:** describe a decision task as a Markov decision process, choosing a sufficient state and specifying actions, transition probabilities, rewards and a discount factor.
+recap:
+  - concept: probability-basics
+    text: A conditional probability gives a chance once something is known. Probabilities over all possible outcomes add to 1. An expected value multiplies each outcome by its probability and adds the products.
+where_this_fits: |
+  ### What is a Markov decision process?
+
+  A **Markov decision process**, or **MDP**, is a mathematical description of a task with repeated choices and numerical rewards. A decision maker, called the **agent**, chooses an action, then receives a reward and arrives in the next state.
+
+  An MDP helps us describe a robot's commands and movement, define what counts as progress and predict the consequences of choices. Probability lets us describe the uncertain outcomes of one action. An MDP connects choices and outcomes over a whole **run**, meaning one attempt at the task. It also includes a rule for how much later rewards count.
+knowledge_points:
+  - id: mdp-task
+    title: Describe a robot's task
+    explain: |
+      ### A robot in four cells
+
+      Let's describe a robot's choices and scores. Our robot starts in cell 1 of a corridor numbered 1 to 4 from left to right. Each left or right command moves one cell unless it meets a wall just outside cells 1 or 4. Every command takes one time step, even at a wall. Entering cell 4 ends the run and gives reward $+10$. Every other step gives $-1$. Adding the rewards over a run favours reaching the goal with fewer steps.
+
+      The picture follows three right moves. Blue arrows show movement, grey bars mark walls, and the green cell ends the run.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 190" aria-label="Four corridor cells numbered 1 to 4, left to right. Start in 1. Three right arrows lead through 2 and 3 to green terminal cell 4. Their rewards are minus 1, minus 1 and plus 10. Grey bars mark the corridor walls.">
+        <defs><marker id="mdp-task-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#3b82f6"/></marker></defs>
+        <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="20" fill="#171717" text-anchor="middle">
+          <rect x="25" y="55" width="80" height="65" fill="#d4d4d4" fill-opacity="0.2" stroke="#737373"/>
+          <rect x="180" y="55" width="80" height="65" fill="#d4d4d4" fill-opacity="0.2" stroke="#737373"/>
+          <rect x="335" y="55" width="80" height="65" fill="#d4d4d4" fill-opacity="0.2" stroke="#737373"/>
+          <rect x="490" y="55" width="80" height="65" fill="#10b981" fill-opacity="0.2" stroke="#10b981"/>
+          <path d="M14 55 V120 M581 55 V120" stroke="#737373" stroke-width="4"/>
+          <text x="65" y="95">1</text><text x="220" y="95">2</text><text x="375" y="95">3</text><text x="530" y="95">4</text>
+          <path d="M110 88 H170" stroke="#3b82f6" stroke-width="3" marker-end="url(#mdp-task-arrow)"/>
+          <path d="M265 88 H325" stroke="#3b82f6" stroke-width="3" marker-end="url(#mdp-task-arrow)"/>
+          <path d="M420 88 H480" stroke="#3b82f6" stroke-width="3" marker-end="url(#mdp-task-arrow)"/>
+          <text x="140" y="48">−1</text><text x="295" y="48">−1</text><text x="450" y="48">+10</text>
+          <text x="65" y="150">start</text><text x="530" y="150" fill="#10b981">end</text>
+        </g>
+      </svg>
+      ```
+
+      ### What one step records
+
+      A **state**, $s$, records the current situation. For this robot, we try using the cell number. An **action**, $a$, is an available choice. The **reward**, $r$, is the score received after acting.
+
+      One **transition** records what happens during a time step, including staying in place. A whole run is called an **episode**. It stops when the agent reaches a **terminal state**, here cell 4, so no action follows arrival there.
+
+      We label time steps $t=0,1,2,\dots$ and use a **subscript**, the small label below a letter, to record time. Our convention labels a reward by its arrival time. Action $a_0$ at time 0 produces reward $r_1$ with the next state at time 1. Read the arrow as "current state and action lead to a reward and next state".
+
+      $$(s_t,a_t)\longrightarrow(r_{t+1},s_{t+1}).$$
+
+      ### Enough information to predict
+
+      A state has the **Markov property** when the current state and action determine the probabilities of the next state and reward without earlier history. Here the outcomes are certain, with probability 1. The past cells, commands and rewards do not change what happens next from a given cell and action.
+
+      Cell number alone can fail for a different robot. Suppose a charged battery lets it move, while an empty battery prevents movement. Two histories could leave it in cell 3 with different battery levels. Recording "cell 3, charged" or "cell 3, empty" tells us which movement rule applies.
+    worked: |
+      Let's record a right command from cell 3 and a separate left command from cell 1.
+
+      1. **Record the starting point and choice.** The state is the current cell, and the action tells the robot which direction to move.
+         $$s_t=3,\qquad a_t=\text{right}.$$
+
+      2. **Apply the movement rule.** The next cell is 4, so the arrival ends the episode and earns the goal reward.
+         $$s_{t+1}=4,\qquad r_{t+1}=10.$$
+
+      3. **Check a wall move.** For a separate step, take $s_t=1$ and $a_t=\text{left}$. The wall leaves the robot in cell 1 and the ordinary step reward applies.
+         $$s_{t+1}=1,\qquad r_{t+1}=-1.$$
+
+      Both records attach a reward to one time step, even when the cell number stays the same.
+    problems:
+      - mdpp-state-basics
+      - mdpp-task-why
+      - mdpp-state-choice
+      - mdpp-wall-state
+      - mdpp-reward-meaning
+      - mdpp-terminal-mistake
+      - mdpp-coasting-state
+  - id: mdp-transitions
+    title: Describe uncertain moves
+    explain: |
+      ### One choice can have two outcomes
+
+      An unreliable motor can make one command lead to different scores. We need the chance of each outcome to describe its behaviour. Keep the four cells, wall rule and rewards. When a command does not point into a wall, it moves one cell as intended with probability $0.8$ and otherwise leaves the robot in place.
+
+      From cell 3, choosing right now has two possible next states. The boxes on the right show alternatives after one command. The upper branch ends at cell 4 with reward $+10$. The lower branch shows cell 3 again, because the robot stays where the command began.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 240" aria-label="From cell 3 after choosing right, a blue upper branch reaches terminal cell 4 with probability 0.8 and reward plus 10. A lower blue branch stays at cell 3 with probability 0.2 and reward minus 1. The branch probabilities add to 1.">
+        <defs><marker id="mdp-branch-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#3b82f6"/></marker></defs>
+        <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="20" fill="#171717">
+          <rect x="20" y="85" width="120" height="70" fill="#d4d4d4" fill-opacity="0.2" stroke="#737373"/>
+          <text x="80" y="115" text-anchor="middle">cell 3</text><text x="80" y="142" text-anchor="middle" font-size="18">choose right</text>
+          <path d="M145 120 L360 55" stroke="#3b82f6" stroke-width="3" marker-end="url(#mdp-branch-arrow)"/>
+          <path d="M145 120 L360 190" stroke="#3b82f6" stroke-width="3" marker-end="url(#mdp-branch-arrow)"/>
+          <text x="205" y="60" fill="#3b82f6">0.8</text><text x="205" y="192" fill="#3b82f6">0.2</text>
+          <rect x="375" y="20" width="205" height="70" fill="#10b981" fill-opacity="0.2" stroke="#10b981"/>
+          <text x="477" y="49" text-anchor="middle">cell 4, end</text><text x="477" y="77" text-anchor="middle">reward +10</text>
+          <rect x="375" y="155" width="205" height="70" fill="#d4d4d4" fill-opacity="0.2" stroke="#737373"/>
+          <text x="477" y="184" text-anchor="middle">cell 3</text><text x="477" y="212" text-anchor="middle">reward −1</text>
+        </g>
+      </svg>
+      ```
+
+      ### A probability for every destination
+
+      A **transition probability** is the chance of a next state for a given current state and action. We write it
+
+      $$p(s'\mid s,a).$$
+
+      Read this as "the probability of next state $s'$ given state $s$ and action $a$". The prime on $s'$ means the next state. For the upper branch, $p(4\mid3,\text{right})=0.8$. For the lower branch, $p(3\mid3,\text{right})=0.2$. Here cells 1 and 2 have probability 0. All next-state probabilities must add to 1 for each given state and action.
+
+      A **deterministic transition** has one certain next state, as in the original reliable corridor. A **stochastic transition** has several possible next states. At the left wall, a left command stays at 1 whether the motor works or fails. Random motor behaviour can therefore produce a certain next state, with $p(1\mid1,\text{left})=1$.
+
+      ### The average reward of one action
+
+      The **reward rule** tells us the score after a transition. Here it gives $+10$ on entry to cell 4 and $-1$ otherwise. From cell 3, the chance of reward $10$ is therefore $0.8$, and the chance of $-1$ is $0.2$.
+
+      To predict the **expected next reward**, multiply each possible reward by the chance of receiving it and add the products. This uses the expected value from the recap.
+
+      Be careful about interpreting an average as a guaranteed score. An attempt produces just one branch's reward. The average describes many such trials.
+    worked: |
+      Let's find the expected reward of choosing right at cell 3 with the unreliable motor.
+
+      1. **List both outcomes.** With probability $0.8$, the robot enters cell 4 and receives $10$. With probability $0.2$, it stays in cell 3 and receives $-1$. These chances cover every possibility.
+
+      2. **Weight each reward by its chance.** Each outcome contributes in proportion to how often it occurs.
+         $$0.8\times10+0.2\times(-1)=7.8.$$
+
+      3. **Compare a left command.** Its two possible destinations are cells 2 and 3. Both give reward $-1$.
+         $$0.8\times(-1)+0.2\times(-1)=-1.$$
+
+      Right has the higher expected immediate reward: $7.8$ compared with $-1$. To picture these averages, imagine repeatedly placing the robot in cell 3. Each experiment is a single command from cell 3.
+    problems:
+      - mdpp-transition-basics
+      - mdpp-transition-why
+      - mdpp-transition-tool
+      - mdpp-reward-template
+      - mdpp-average-meaning
+      - mdpp-wall-mistake
+      - mdpp-row-mistake
+      - mdpp-delivery-template
+  - id: mdp-discount
+    title: Weight later rewards
+    explain: |
+      ### Rewards arrive at different times
+
+      An expected next reward averages the outcomes of one command. A task also needs to specify how much reward timing matters. **Discounting** gives later rewards smaller weights when we prefer progress sooner. Use the reliable corridor again: three right moves from cell 1 reach the goal in cell 4. Its reward $+10$ arrives after the third command.
+
+      At time $t$, we are about to take an action. A reward's **weight** is the number we multiply it by when evaluating it from that time. The next reward, after the first command, has weight 1. The goal reward has two extra steps of delay beyond that next reward.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 180" aria-label="Three right moves from cell 1 through 2 and 3 to terminal cell 4. Rewards minus 1, minus 1 and plus 10 arrive with 0, 1 and 2 extra steps of delay beyond the first reward.">
+        <defs><marker id="mdp-time-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#3b82f6"/></marker></defs>
+        <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="20" fill="#171717" text-anchor="middle">
+          <rect x="10" y="20" width="50" height="50" fill="#d4d4d4" fill-opacity="0.2" stroke="#737373"/><rect x="185" y="20" width="50" height="50" fill="#d4d4d4" fill-opacity="0.2" stroke="#737373"/><rect x="360" y="20" width="50" height="50" fill="#d4d4d4" fill-opacity="0.2" stroke="#737373"/><rect x="535" y="20" width="50" height="50" fill="#10b981" fill-opacity="0.2" stroke="#10b981"/>
+          <text x="35" y="52">1</text><text x="210" y="52">2</text><text x="385" y="52">3</text><text x="560" y="52">4</text>
+          <path d="M65 45 H175" stroke="#3b82f6" stroke-width="3" marker-end="url(#mdp-time-arrow)"/>
+          <path d="M240 45 H350" stroke="#3b82f6" stroke-width="3" marker-end="url(#mdp-time-arrow)"/>
+          <path d="M415 45 H525" stroke="#3b82f6" stroke-width="3" marker-end="url(#mdp-time-arrow)"/>
+          <text x="122" y="105">reward −1</text><text x="297" y="105">reward −1</text><text x="472" y="105">reward +10</text>
+          <text x="122" y="145">delay 0</text><text x="297" y="145">delay 1</text><text x="472" y="145">delay 2</text>
+        </g>
+      </svg>
+      ```
+
+      ### Choose how delay affects a reward
+
+      A **discount factor**, $\gamma$ (gamma), is between 0 and 1, including both endpoints. Each extra step of delay multiplies the previous weight by $\gamma$. For a later reward $r$ delayed by $k\ge1$ extra steps beyond the next reward, the weighted amount is
+
+      $$\gamma^k r.$$
+
+      Here $k$ counts those extra steps. For example, $k=2$ means multiply by $\gamma$ twice. We use $\gamma=0.9$ for the corridor.
+
+      - With $\gamma=0$, only the next reward counts.
+      - With $\gamma=0.9$, later rewards have smaller weights.
+      - With $\gamma=1$, every reward has weight 1.
+
+      Be careful: discounting also makes delayed penalties count less strongly, which can encourage delaying costs. A very small discount factor can almost ignore a distant goal. Discounting changes only the weight we give a reward when we evaluate it.
+
+      ### The complete task description
+
+      An MDP is often written as a five-item list, $(S,A,p,R,\gamma)$:
+
+      - $S$ contains every possible state $s$; here $S=\{1,2,3,4\}$.
+      - $A$ lists available actions. Here we allow left and right until the episode ends.
+      - $p$ gives next-state probabilities. In this reliable version, the movement rule selects one next cell with probability 1. Every other cell has probability 0.
+      - $R$ is the rule producing each reward $r$; here $10$ on entry to 4 and $-1$ otherwise.
+      - $\gamma$ weights rewards by delay; here it is $0.9$.
+
+      For an episodic task, we also specify how to start and end a run. Here we start in cell 1 and mark cell 4 terminal, with no available actions.
+    worked: |
+      Let's weight the goal reward and one step cost for three reliable right moves from cell 1, using $\gamma=0.9$ and viewing the rewards from before the first command.
+
+      1. **Count the goal reward's delay.** It arrives after the third command, two extra steps beyond the next reward. Its weight has two factors of $0.9$.
+         $$\gamma^2=0.9\times0.9=0.81.$$
+
+      2. **Weight the goal reward.** Entry to cell 4 gives $10$, which we multiply by its weight.
+         $$0.81\times10=8.1.$$
+
+      3. **Weight one step cost.** The reward after the second command is $-1$, with one extra step of delay.
+         $$0.9\times(-1)=-0.9.$$
+
+      Discounting reduces the size of both the delayed goal reward and the delayed cost. With $\gamma=1$, each would keep its full size.
+    problems:
+      - mdpp-discount-basics
+      - mdpp-discount-why
+      - mdpp-weight-rule
+      - mdpp-weight-template
+      - mdpp-zero-meaning
+      - mdpp-weight-mistake
+      - mdpp-delay-neutral
+      - mdpp-complete-task
+      - mdpp-charger-weight
+final: mdpp-explain
+summary: |
+  - An MDP describes states, available actions, transition probabilities, a reward rule and a discount factor, written $(S,A,p,R,\gamma)$.
+  - A state has the Markov property when the current state and action suffice to predict the next state and reward probabilities without earlier history.
+  - Transition probabilities $p(s'\mid s,a)$ add to 1 over next states for each fixed state and action; expected next reward weights each possible reward by its probability.
+  - The next reward has weight 1. The discount factor $\gamma$ gives a later reward weight $\gamma^k$ for $k\ge1$ extra steps of delay.
+
+  The MDP defines which runs can occur and how their rewards are weighted.
+
+  **Next:** The next lesson introduces policies, rules for choosing actions, and combines weighted rewards into a discounted return.

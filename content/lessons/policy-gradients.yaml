@@ -1,0 +1,323 @@
+concept: policy-gradients
+version: 1
+objective: |
+  **Goal:** derive the REINFORCE estimator, by using the log-derivative trick to turn the slope of a policy's expected return into an average over episodes, and use it with a baseline to improve a policy.
+recap:
+  - concept: gradient-descent
+    text: "Gradient descent lowers a loss by stepping the parameters against its gradient again and again, $w_{\\text{new}}=w-\\eta\\,\\nabla L$, where $w$ holds the parameters. The learning rate $\\eta$ is a small positive number that sets the size of each step."
+  - concept: policies-returns
+    text: "A policy $\\pi(a\\mid s)$ gives the chance of action $a$ in state $s$. Return $G_t$ adds rewards from $r_{t+1}$ onward, weighting later rewards by discount factor $\\gamma$."
+where_this_fits: |
+  ### What is a policy gradient method?
+
+  A policy gradient method improves a policy a little after each episode. The policy has adjustable numbers, its parameters $\theta$, and we nudge them so that actions that led to high returns become more likely.
+
+  Why is this useful? Gradient descent needs a formula to take the slope of, but a policy's average return depends on a world whose rules the agent doesn't know. This lesson estimates that slope from played episodes. The method, REINFORCE, leads on to PPO, a method used to fine-tune chat models.
+knowledge_points:
+  - id: pg-score
+    title: "Score a policy by its average return"
+    explain: |
+      ### A robot that picks a direction
+
+      Let's set up the example we'll use. A robot sits in a corridor of 4 cells, numbered 1 to 4 from left to right, and starts in cell 1. Each step it moves left or right, and moving into a wall leaves it where it is. Every step gives reward $-1$, except the step that reaches cell 4, which gives $+10$ and ends the episode. We use $\gamma=0.9$.
+
+      Our policy has one parameter, $\theta$. The policy ignores which cell the robot is in, and in every cell it moves right with probability
+
+      $$p=\pi_\theta(\text{right}\mid s)=\frac{e^\theta}{e^\theta+1},$$
+
+      and left otherwise. This is a common way to turn any number into a probability. At $\theta=0$ this is $0.5$, at $\theta=2$ it's about $0.88$, and at $\theta=-2$ it's about $0.12$. So raising $\theta$ makes right more likely, and the formula always gives a probability between $0$ and $1$.
+
+      ### The score of a policy
+
+      The policy's actions are random, so each episode can turn out differently. We score the policy by its **expected return** from the start,
+
+      $$J(\theta)=E[G_0],$$
+
+      where $E$ stands for expected value. This is the average of $G_0$ over many episodes played with $\pi_\theta$. The picture shows $J$ for every $\theta$. On the left the robot almost never goes right, so its discounted $-1$ rewards add up to nearly $-1/(1-0.9)=-10$. On the right, it rises towards $6.2$, the return of going straight right.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 380" aria-label="The score J of theta, the expected return, plotted for theta from minus 4 to 4. The curve rises from about minus 10 on the left towards 6.2 on the right, shown as a dashed line. At theta equals 0 the score is about minus 1.42, and an orange arrow climbs the curve to the right, because raising theta raises J">
+      <defs><marker id="pg1-amber" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#f59e0b"/></marker></defs>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <path d="M70 340 H600 M70 340 V30" stroke="#d4d4d4"/>
+      <path d="M70 168 H600" stroke="#d4d4d4" stroke-dasharray="3 4"/>
+      <path d="M70 68.8 H600" stroke="#737373" stroke-dasharray="6 5"/>
+      <path d="M70.0 328.0 96.0 328.0 122.0 327.8 148.0 327.5 174.0 326.5 200.0 323.8 213.0 321.1 226.0 316.8 239.0 310.4 252.0 301.2 265.0 288.7 278.0 272.9 291.0 254.1 304.0 233.3 317.0 211.7 330.0 190.8 343.0 171.4 356.0 154.1 369.0 139.2 382.0 126.6 395.0 116.1 408.0 107.5 421.0 100.4 434.0 94.6 447.0 89.8 460.0 86.0 473.0 82.8 486.0 80.2 499.0 78.1 512.0 76.4 525.0 75.0 538.0 73.9 551.0 73.0 564.0 72.2 577.0 71.6 590.0 71.1" fill="#ffffff" fill-opacity="0" stroke="#10b981" stroke-width="2.5"/>
+      <path d="M330 190.8 L366 133.6" stroke="#f59e0b" stroke-width="3" marker-end="url(#pg1-amber)"/>
+      <circle cx="330" cy="190.8" r="4.5" fill="#171717"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="342" y="206">θ = 0, J ≈ −1.42</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="380" y="148" fill="#f59e0b">raising θ raises J</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="80" y="60" fill="#737373">6.2, always moving right</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="62" y="173" text-anchor="end" fill="#737373">0</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="62" y="333" text-anchor="end" fill="#737373">−10</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="62" y="74" text-anchor="end" fill="#737373">6.2</text>
+      <text x="70" y="360" text-anchor="middle" fill="#737373">−4</text><text x="200" y="360" text-anchor="middle" fill="#737373">−2</text><text x="330" y="360" text-anchor="middle" fill="#737373">0</text><text x="460" y="360" text-anchor="middle" fill="#737373">2</text><text x="590" y="360" text-anchor="middle" fill="#737373">4</text>
+      <text x="610" y="345" fill="#737373">θ</text>
+      <text x="80" y="24">expected return J(θ)</text>
+      </g>
+      </svg>
+      ```
+
+      ### Climbing the score
+
+      We want $J$ as large as possible, so we turn gradient descent around and step along the gradient. This is **gradient ascent**:
+
+      $$\theta_{\text{new}}=\theta+\eta\,\nabla_\theta J(\theta).$$
+
+      Here $\eta$ is the learning rate, which reinforcement-learning books often write as $\alpha$. Our $\theta$ is one number, so $\nabla_\theta J$ is just the slope of $J$.
+
+      But $J$ depends on which episodes happen, and that depends on the world's rules. We know the corridor's rules, which lets us check our answers, but a real robot in a real building isn't told them, so it can't write $J$ as a formula and differentiate it. All it can do is play episodes. The next step shows how to get the slope from them.
+
+    worked: |
+      Let's work out how likely two episodes are at $\theta=0$, and what each one returns.
+
+      1. **Find the policy's probabilities.** We put $\theta=0$ into the formula, using $e^0=1$.
+         $$\pi_0(\text{right}\mid s)=\frac{1}{1+1}=0.5,\qquad\pi_0(\text{left}\mid s)=0.5.$$
+
+      2. **Find how likely right, right, right is.** The policy picks each action on its own and the moves always succeed, so we multiply the three chances.
+         $$0.5\times0.5\times0.5=0.125.$$
+
+      3. **Find its return.** The first two moves give $-1$ each and the third reaches cell 4, so the rewards are $-1$, $-1$ and $+10$.
+         $$G_0=-1+0.9\times(-1)+0.9^2\times10=6.2.$$
+
+      4. **Find how likely left, right, right, right is.** This is the only episode with four moves. Its first move bumps into the wall and leaves the robot in cell 1, then three rights reach cell 4.
+         $$0.5^4=0.0625.$$
+
+      5. **Find its return.** Now there are three rewards of $-1$ before the $+10$.
+         $$G_0=-1-0.9-0.81+0.729\times10=4.58.$$
+
+      The score $J(0)$ adds up every possible episode's probability times its return. These two episodes give its first terms, $0.125\times6.2+0.0625\times4.58\approx1.06$, and the many longer episodes that wander left pull the total down to about $-1.42$.
+    problems:
+      - pg-score-basics
+      - pgp-score-self-explain
+      - pgp-ascent-sign
+      - pgp-ascent-template
+      - pgp-episode-prob
+      - pgp-expected-return-template
+      - pgp-why-no-formula
+      - pgp-grasp-score
+  - id: pg-log-trick
+    title: "Estimate the slope by trying actions"
+    explain: |
+      ### One choice, then stop
+
+      How can we get the slope from played episodes? Let's leave the corridor for a moment and take the simplest case, where the agent makes one choice and the episode ends. A slot machine has two arms. Arm A always pays $1$ and arm B always pays $3$, but the agent isn't told this. Its policy pulls B with probability $p=\pi_\theta(B)=e^\theta/(e^\theta+1)$ and A otherwise. The expected payout is each payout times its chance,
+
+      $$J(\theta)=3\,\pi_\theta(B)+1\,\pi_\theta(A),$$
+
+      so its slope is each payout times the slope of its probability:
+
+      $$\nabla_\theta J=3\,\nabla_\theta\pi_\theta(B)+1\,\nabla_\theta\pi_\theta(A).$$
+
+      We can't estimate this by pulling arms. Averaging what we see over many pulls estimates a sum whose terms are weighted by how often each arm is pulled. Here each term is weighted by the slope of a probability.
+
+      ### The log-derivative trick
+
+      The natural log $\ln x$ has slope $1/x$. So if a small change in $\theta$ moves $\pi$ by some amount, $\ln\pi$ moves by about that amount divided by $\pi$. That gives the **log-derivative trick**:
+
+      $$\nabla_\theta\pi_\theta(a)=\pi_\theta(a)\,\nabla_\theta\ln\pi_\theta(a).$$
+
+      Putting this into the slope gives
+
+      $$\nabla_\theta J=3\,\pi_\theta(B)\,\nabla_\theta\ln\pi_\theta(B)+1\,\pi_\theta(A)\,\nabla_\theta\ln\pi_\theta(A).$$
+
+      Now each term is weighted by its own probability, so this is an expected value:
+
+      $$\nabla_\theta J=E\big[G\,\nabla_\theta\ln\pi_\theta(a)\big],$$
+
+      where $a$ is the arm we pull and $G$ is its payout, the whole return of this one-step episode. One pull gives the estimate $G\,\nabla_\theta\ln\pi_\theta(a)$, and over many pulls these estimates average out to the true slope.
+
+      ### Two pulls at θ = 0
+
+      For our policy, $\nabla_\theta\ln\pi_\theta(B)=1-p$ and $\nabla_\theta\ln\pi_\theta(A)=-p$, as the worked example shows. At $\theta=0$, $p=0.5$, so:
+
+      - pulling B gives the estimate $3\times0.5=1.5$;
+      - pulling A gives $1\times(-0.5)=-0.5$.
+
+      Each happens half the time, so the estimates average $0.5$. That's the slope we'd find from the payouts directly, since $J=3p+(1-p)=1+2p$, and $p$ has slope $p(1-p)$, so $J$ has slope $2\times0.5\times0.5=0.5$.
+
+      Be careful not to trust a single pull. Pulling A gives $-0.5$, which says to lower $\theta$, even though raising it helps. Only the average of many estimates points the right way.
+    worked: |
+      Let's find $\nabla_\theta\ln\pi_\theta$ for both arms, with $p=e^\theta/(e^\theta+1)$, and then the two estimates at $\theta=0$.
+
+      1. **Find the slope of $p$.** We use the quotient rule for the slope of a fraction, with $e^\theta$ on top and $e^\theta+1$ below.
+         $$\nabla_\theta p=\frac{e^\theta(e^\theta+1)-e^\theta\,e^\theta}{(e^\theta+1)^2}=\frac{e^\theta}{(e^\theta+1)^2}.$$
+
+      2. **Write it with $p$.** Splitting the fraction gives $p$ times $1/(e^\theta+1)$, which is $p$ times $1-p$, because the two fractions $e^\theta/(e^\theta+1)$ and $1/(e^\theta+1)$ add up to $1$.
+         $$\nabla_\theta p=p\,(1-p).$$
+
+      3. **Divide by the probability for arm B.** The trick, divided by $\pi$, says $\nabla_\theta\ln\pi=\nabla_\theta\pi/\pi$, and $\pi_\theta(B)=p$.
+         $$\nabla_\theta\ln\pi_\theta(B)=\frac{p(1-p)}{p}=1-p.$$
+
+      4. **Do the same for arm A.** Its probability $1-p$ has slope $-p(1-p)$, so we divide that by $1-p$.
+         $$\nabla_\theta\ln\pi_\theta(A)=\frac{-p(1-p)}{1-p}=-p.$$
+
+      5. **Average the two estimates at $\theta=0$.** Each arm is pulled with probability $0.5$, and each estimate is the payout times that arm's $\nabla_\theta\ln\pi_\theta$.
+         $$0.5\times(3\times0.5)+0.5\times(1\times(-0.5))=0.5.$$
+
+      The average of the estimates is $0.5$, the true slope, even though the agent never needed to know the payouts in advance.
+    problems:
+      - pg-log-trick-basics
+      - pgp-trick-self-explain
+      - pgp-one-pull-template
+      - pgp-arm-a-template
+      - pgp-true-slope
+      - pgp-wrong-sign-pull
+      - pgp-why-trick
+      - pgp-reply-estimate
+  - id: pg-reinforce
+    title: "Learn from whole episodes"
+    explain: |
+      ### From one choice to an episode
+
+      In the corridor, the robot makes several choices before the episode ends. We'll use the same trick on whole episodes. We write an episode as $\tau$ (tau), the list of states and actions it went through, $s_0,a_0,s_1,a_1,\dots$. The episode's probability multiplies the policy's chance of each action by the world's chance of each move:
+
+      $$P(\tau)=\pi_\theta(a_0\mid s_0)\,p(s_1\mid s_0,a_0)\,\pi_\theta(a_1\mid s_1)\,p(s_2\mid s_1,a_1)\cdots$$
+
+      Here $p(s'\mid s,a)$ is the probability that action $a$ in state $s$ leads to state $s'$. This $p$ belongs to the world and is a different thing from the policy's chance $p$ of moving right. In our corridor it is always $1$ or $0$, because moves always succeed.
+
+      ### The world drops out
+
+      Taking $\ln$ turns this product into a sum, since $\ln(xy)=\ln x+\ln y$. The world's terms don't depend on $\theta$, so their slopes are $0$, and only the policy's terms are left:
+
+      $$\nabla_\theta\ln P(\tau)=\sum_{t=0}^{T-1}\nabla_\theta\ln\pi_\theta(a_t\mid s_t).$$
+
+      The episode ends at step $T$, so the last action is $a_{T-1}$. Now we repeat the slot-machine argument with episodes in place of arms. $J$ adds up each episode's $G_0$ times $P(\tau)$. The trick gives $\nabla_\theta P(\tau)=P(\tau)\,\nabla_\theta\ln P(\tau)$, so each term is again weighted by its probability, and
+
+      $$\nabla_\theta J=E\Big[G_0\sum_{t=0}^{T-1}\nabla_\theta\ln\pi_\theta(a_t\mid s_t)\Big].$$
+
+      So the robot never needs to know the world's rules. **REINFORCE**, published by Ronald Williams in 1992, plays one episode with $\pi_\theta$ and takes one gradient-ascent step with this estimate:
+
+      $$\theta_{\text{new}}=\theta+\eta\,G_0\sum_{t=0}^{T-1}\nabla_\theta\ln\pi_\theta(a_t\mid s_t).$$
+
+      ### What the update does
+
+      Each action the robot took becomes more likely when $G_0$ is positive, and less likely when it's negative, by an amount scaled by the return. Every action in the episode is weighted by the same $G_0$, even though an action can't change the rewards that came before it. Over many episodes, those extra pushes cancel on average. The picture shows the episode right, right, right at $\theta=0$.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 230" aria-label="The corridor of cells 1 to 4. The robot starts in cell 1 and moves right three times, with rewards minus 1, minus 1 and plus 10. Under each move, its log-probability slope is 0.5. The return is 6.2 and the sum of the slopes is 1.5">
+      <defs><marker id="pg3-amber" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#f59e0b"/></marker></defs>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <rect x="60" y="80" width="120" height="60" fill="#ffffff" stroke="#737373" stroke-width="1.5"/>
+      <rect x="200" y="80" width="120" height="60" fill="#ffffff" stroke="#737373" stroke-width="1.5"/>
+      <rect x="340" y="80" width="120" height="60" fill="#ffffff" stroke="#737373" stroke-width="1.5"/>
+      <rect x="480" y="80" width="120" height="60" fill="#ffffff" stroke="#10b981" stroke-width="2.5"/>
+      <text x="120" y="115" text-anchor="middle">1, start</text><text x="260" y="115" text-anchor="middle">2</text><text x="400" y="115" text-anchor="middle">3</text><text x="540" y="115" text-anchor="middle" fill="#10b981">4, goal</text>
+      <path d="M130 60 L250 60" stroke="#f59e0b" stroke-width="2.5" marker-end="url(#pg3-amber)"/>
+      <path d="M270 60 L390 60" stroke="#f59e0b" stroke-width="2.5" marker-end="url(#pg3-amber)"/>
+      <path d="M410 60 L530 60" stroke="#f59e0b" stroke-width="2.5" marker-end="url(#pg3-amber)"/>
+      <text x="190" y="45" text-anchor="middle">right, −1</text><text x="330" y="45" text-anchor="middle">right, −1</text><text x="470" y="45" text-anchor="middle">right, +10</text>
+      <text x="190" y="170" text-anchor="middle" fill="#3b82f6">0.5</text><text x="330" y="170" text-anchor="middle" fill="#3b82f6">0.5</text><text x="470" y="170" text-anchor="middle" fill="#3b82f6">0.5</text>
+      <text x="60" y="195" fill="#3b82f6">blue: slope of ln π for each move</text>
+      <text x="60" y="220">return G₀ = 6.2, sum of slopes = 1.5</text>
+      </g>
+      </svg>
+      ```
+
+      Be careful with the sign. We want $J$ to rise, so the update adds the step. Subtracting it, as gradient descent does, would make good episodes less likely.
+    worked: |
+      Let's take one REINFORCE step from $\theta=0$ after the episode right, right, right, with a learning rate of $\eta=0.1$.
+
+      1. **Find each action's slope.** At $\theta=0$ the policy moves right with probability $p=0.5$, and for a right move $\nabla_\theta\ln\pi_\theta=1-p$.
+         $$\nabla_\theta\ln\pi_\theta(\text{right}\mid s)=1-0.5=0.5.$$
+
+      2. **Add them up.** The episode has three right moves, so there are three equal terms.
+         $$\sum_{t=0}^{2}\nabla_\theta\ln\pi_\theta(a_t\mid s_t)=0.5+0.5+0.5=1.5.$$
+
+      3. **Find the return.** The rewards are $-1$, $-1$ and $+10$, discounted by $0.9$ per step.
+         $$G_0=-1+0.9\times(-1)+0.81\times10=6.2.$$
+
+      4. **Take the step.** We add $\eta$ times the return times the sum.
+         $$\theta_{\text{new}}=0+0.1\times6.2\times1.5=0.93.$$
+
+      5. **Check the new policy.** We put $\theta=0.93$ into the policy's formula and round to two decimal places.
+         $$\pi_{0.93}(\text{right}\mid s)=\frac{e^{0.93}}{e^{0.93}+1}\approx0.72.$$
+
+      After one good episode, the chance of moving right rose from $0.5$ to about $0.72$ in every cell.
+    problems:
+      - pg-reinforce-basics
+      - pgp-reinforce-self-explain
+      - pgp-world-drops-out
+      - pgp-sum-template
+      - pgp-update-template
+      - pgp-goal-pushed-down
+      - pgp-slippery
+      - pgp-clumsy-action
+  - id: pg-baseline
+    title: "Compare each return with a typical one"
+    explain: |
+      ### Noisy estimates
+
+      REINFORCE's estimate is right on average, but one episode's estimate can be far off, so learning takes many episodes. It gets worse when every return is positive, as this example shows. Suppose the slot machine's arm A pays $11$ and arm B pays $13$, with the same policy as before, which pulls B with probability $p$. At $\theta=0$, pulling B gives $13\times0.5=6.5$ and pulling A gives $11\times(-0.5)=-5.5$. They still average $0.5$, but each estimate is more than ten times that, and they disagree about which way to move. We call this spread between estimates noise.
+
+      ### Subtracting a baseline
+
+      The fix is to compare each return with a typical return. A **baseline** $b$ is a number that doesn't depend on the action taken, and we subtract it from the return:
+
+      $$\theta_{\text{new}}=\theta+\eta\,(G-b)\,\nabla_\theta\ln\pi_\theta(a).$$
+
+      For whole episodes, $G_0-b$ multiplies the sum of slopes. With $b=12$, the average payout at $\theta=0$, pulling B gives $(13-12)\times0.5=0.5$ and pulling A gives $(11-12)\times(-0.5)=0.5$, so every pull now gives the true slope. Here the baseline removes the noise completely; usually it only shrinks it.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 380" aria-label="Bars of the one-pull slope estimates at theta 0 for arms paying 11 and 13. With no baseline, pulling B gives 6.5 and pulling A gives minus 5.5. With baseline 12, both give 0.5. A green dashed line marks the true slope 0.5">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <path d="M40 210 H620" stroke="#737373"/>
+      <rect x="90" y="80" width="60" height="130" fill="#3b82f6"/><text x="120" y="70" text-anchor="middle">6.5</text>
+      <rect x="190" y="210" width="60" height="110" fill="#3b82f6"/><text x="220" y="338" text-anchor="middle">−5.5</text>
+      <rect x="390" y="200" width="60" height="10" fill="#3b82f6"/><text x="420" y="190" text-anchor="middle">0.5</text>
+      <rect x="490" y="200" width="60" height="10" fill="#3b82f6"/><text x="520" y="190" text-anchor="middle">0.5</text>
+      <path d="M40 200 H620" stroke="#10b981" stroke-width="2" stroke-dasharray="6 5"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="620" y="160" text-anchor="end" fill="#10b981">true slope 0.5</text>
+      <text x="120" y="368" text-anchor="middle">pull B</text>
+      <text x="220" y="368" text-anchor="middle">pull A</text>
+      <text x="420" y="368" text-anchor="middle">pull B</text><text x="520" y="368" text-anchor="middle">pull A</text>
+      <text x="170" y="30" text-anchor="middle">no baseline</text><text x="470" y="30" text-anchor="middle">baseline b = 12</text>
+      </g>
+      </svg>
+      ```
+
+      ### Why the average stays the same
+
+      The part we subtracted averages to zero. Using the trick backwards, $\pi\,\nabla\ln\pi=\nabla\pi$, so
+
+      $$E\big[b\,\nabla_\theta\ln\pi_\theta(a)\big]=b\sum_a\pi_\theta(a)\,\nabla_\theta\ln\pi_\theta(a)=b\sum_a\nabla_\theta\pi_\theta(a)=0.$$
+
+      The last sum is $0$ because the probabilities always add up to $1$, so their changes cancel. Any number that doesn't depend on the action keeps the average right. A baseline near the typical return, kept up to date as the policy learns, usually cuts the noise, and $G-b$ then says whether things went better or worse than usual. A badly chosen baseline can add noise.
+
+      ### Limitations
+
+      Even with a baseline, REINFORCE needs many episodes. Its average is over the episodes the current policy plays. So it only holds for episodes played with the current $\theta$, and after every update the old episodes are thrown away. And one step that's too big can wreck a good policy, for example by making the robot almost never move right.
+    worked: |
+      Let's compare a good baseline and a bad one on the slot machine, where arm A pays $11$, arm B pays $13$ and $\theta=0$, so the policy pulls B with probability $p=0.5$.
+
+      1. **Find each arm's slope.** For arm B, $\nabla_\theta\ln\pi_\theta(B)=1-p$, and for arm A it is $-p$.
+         $$\nabla_\theta\ln\pi_\theta(B)=0.5,\qquad\nabla_\theta\ln\pi_\theta(A)=-0.5.$$
+
+      2. **Use the baseline $b=10$.** This is close to the typical payout of $12$, and each estimate is $(G-b)$ times the arm's slope.
+         $$\text{B: }(13-10)\times0.5=1.5,\qquad\text{A: }(11-10)\times(-0.5)=-0.5.$$
+
+      3. **Use the baseline $b=30$.** This is far above both payouts.
+         $$\text{B: }(13-30)\times0.5=-8.5,\qquad\text{A: }(11-30)\times(-0.5)=9.5.$$
+
+      4. **Check the averages.** Each arm is pulled half the time, so we average each pair of estimates.
+         $$0.5\times1.5+0.5\times(-0.5)=0.5,\qquad0.5\times(-8.5)+0.5\times9.5=0.5.$$
+
+      Both baselines keep the average at the true slope $0.5$. Without a baseline the two estimates are $6.5$ and $-5.5$, which are $12$ apart. With $b=10$ they are only $2$ apart, so the noise shrinks a lot. With $b=30$ they are $18$ apart, so this badly chosen baseline adds noise.
+    problems:
+      - pg-baseline-basics
+      - pgp-baseline-self-explain
+      - pgp-baseline-simple-template
+      - pgp-baseline-arm-template
+      - pgp-why-same-average
+      - pgp-all-positive
+      - pgp-reuse-episodes
+      - pgp-equal-baseline
+      - pgp-reply-baseline
+final: pg-explain-reinforce
+summary: |
+  - A policy gradient method gives the policy parameters $\theta$ and climbs its expected return $J(\theta)=E[G_0]$ by gradient ascent, $\theta_{\text{new}}=\theta+\eta\,\nabla_\theta J(\theta)$.
+  - The log-derivative trick, $\nabla_\theta\pi_\theta(a)=\pi_\theta(a)\,\nabla_\theta\ln\pi_\theta(a)$, turns the slope into an average, $\nabla_\theta J=E[G\,\nabla_\theta\ln\pi_\theta(a)]$, which we can estimate from played episodes.
+  - REINFORCE plays an episode and steps $\theta_{\text{new}}=\theta+\eta\,G_0\sum_t\nabla_\theta\ln\pi_\theta(a_t\mid s_t)$. The world's transition probabilities drop out, so the agent never needs to know them.
+  - Subtracting a baseline $b$ from the return leaves the average estimate unchanged, because $E[\nabla_\theta\ln\pi_\theta(a)]=0$, and a baseline near the typical return usually makes each estimate less noisy.
+
+  **Next:** The PPO lesson builds on these estimates and limits how far each update can move the policy, so one big step can't wreck it.

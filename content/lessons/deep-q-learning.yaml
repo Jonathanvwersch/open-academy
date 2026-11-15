@@ -1,0 +1,381 @@
+concept: deep-q-learning
+version: 1
+objective: |
+  **Goal:** explain why deep Q-learning needs experience replay and a target network to train stably, and compute the TD targets for a minibatch of stored transitions using a target network.
+recap:
+  - concept: q-learning
+    text: "Q-learning estimates $Q(s,a)$ as the return after taking action $a$ in state $s$ and acting as well as possible. It moves the estimate toward reward $r_{t+1}$ plus the discounted best next-state value."
+  - concept: exploration
+    text: "Epsilon-greedy picks an action at random with probability $\\varepsilon$ and otherwise picks the action with the highest Q-value."
+  - concept: pytorch-basics
+    text: "`nn.Linear(inputs, outputs)` computes $\\hat y=wx+b$ for every row of its input. One update calls `optimizer.zero_grad()`, measures the loss, calls `loss.backward()` to store the slopes, then `optimizer.step()` to move every parameter."
+where_this_fits: |
+  ### What is deep Q-learning?
+
+  Deep Q-learning is Q-learning with a neural network in place of the table of Q-values. The network reads a state and outputs one Q-value for each action.
+
+  A table needs a row for every state, and it learns nothing about a state until the agent visits it. A video game can show more screens than any table could hold. A network reads any screen as pixel values and tends to give similar screens similar values. But a network trained the obvious way is unstable, because it learns from its own changing guesses. So we'll also learn the two fixes in DeepMind's DQN (deep Q-network). Its first paper, in 2013, used experience replay, and the 2015 version added a target network.
+knowledge_points:
+  - id: dqn-q-network
+    title: "Replace the table with a network"
+    explain: |
+      ### The corridor task
+
+      Our corridor has four cells numbered 1 to 4. The robot starts at cell 1, can move left or right, and gets reward $+10$ for reaching cell 4, where the episode ends. Every other step gives $-1$.
+
+      ### A network that outputs Q-values
+
+      A **Q-network** is a neural network that takes a state as input and outputs one Q-value for each action. To act greedily, we run it on the state and pick the action with the largest output.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 200" aria-label="The cell number s equals 2 goes into a Q-network, a linear layer with one input and two outputs. It outputs Q of 2 and left equals 4 and Q of 2 and right equals 6. Right is the larger output, so it is the greedy choice">
+      <defs><marker id="dqn1-muted" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker></defs>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">
+      <rect x="20" y="75" width="130" height="50" rx="8" fill="#ffffff" stroke="#737373" stroke-width="1.5"/>
+      <text x="85" y="105" text-anchor="middle">cell s = 2</text>
+      <path d="M150 100 H203" stroke="#737373" stroke-width="2" marker-end="url(#dqn1-muted)"/>
+      <rect x="210" y="60" width="150" height="80" rx="8" fill="#ffffff" stroke="#3b82f6" stroke-width="2"/>
+      <text x="285" y="95" text-anchor="middle" fill="#3b82f6">Q-network</text>
+      <text x="285" y="118" text-anchor="middle" fill="#737373">nn.Linear(1, 2)</text>
+      <path d="M360 85 L404 58" stroke="#737373" stroke-width="2" marker-end="url(#dqn1-muted)"/>
+      <path d="M360 115 L404 142" stroke="#737373" stroke-width="2" marker-end="url(#dqn1-muted)"/>
+      <rect x="410" y="30" width="135" height="44" rx="8" fill="#ffffff" stroke="#737373" stroke-width="1.5"/>
+      <text x="477.5" y="57" text-anchor="middle">Q(2, left) = 4</text>
+      <rect x="410" y="126" width="135" height="44" rx="8" fill="#ffffff" stroke="#10b981" stroke-width="2.5"/>
+      <text x="477.5" y="153" text-anchor="middle">Q(2, right) = 6</text>
+      <text x="477.5" y="192" text-anchor="middle" fill="#10b981">largest: greedy choice</text>
+      </g>
+      </svg>
+      ```
+
+      To do the arithmetic by hand, our Q-network is a single linear layer, `nn.Linear(1, 2)`, with starting weights we've picked. It reads the cell number $s$ and gives
+
+      $$Q(s,\text{left})=s+2,\qquad Q(s,\text{right})=s+4.$$
+
+      So the left output has weight $1$ and bias $2$, and the right output has weight $1$ and bias $4$. Real Q-networks have many layers, but they're trained the same way.
+
+      ### Training it on the TD target
+
+      A network has no table entry to nudge. Instead we use the TD target as the label, which we write $y$, and take a gradient step on the squared error
+
+      $$L=\big(Q(s,a)-y\big)^2.$$
+
+      This is supervised learning, except that the label comes from the network's own outputs. During the step we treat $y$ as a fixed number, our best guess at the right answer, and only move $Q(s,a)$ toward it.
+
+      Be careful: a step changes the weights, so it changes the values for every cell, even unvisited ones. That's how a network handles new states, and later in this lesson it also causes trouble.
+    worked: |
+      Let's train our Q-network, $Q(s,\text{left})=s+2$ and $Q(s,\text{right})=s+4$, on one move. The robot was in cell 2, moved right, got reward $r=-1$ and landed in cell 3. We use a learning rate of $\eta=0.1$. RL books often write the learning rate as $\alpha$.
+
+      1. **Predict.** The prediction is the network's output for the action the robot took, right, in cell 2.
+         $$Q(2,\text{right})=2+4=6.$$
+
+      2. **Find the TD target.** We run the network on the next state, cell 3, where it outputs $5$ for left and $7$ for right, and keep the larger.
+         $$y=-1+0.9\times7=5.3.$$
+
+      3. **Measure the loss.** The prediction is $0.7$ above the target.
+         $$L=(6-5.3)^2=0.49.$$
+
+      4. **Find the slopes.** As the prediction changes, the loss changes at a rate of twice the error, $2\times0.7=1.4$. The right output is $1\times s+4$, so nudging its weight moves the output by $s=2$ times the nudge, and nudging its bias moves it by the nudge itself. By the chain rule, we multiply the two rates. The left output's weight and bias don't affect $Q(2,\text{right})$, so their slopes are $0$ and they stay the same.
+         $$\frac{\partial L}{\partial w}=1.4\times2=2.8,\qquad\frac{\partial L}{\partial b}=1.4.$$
+
+      5. **Update.** Each parameter moves against its slope.
+         $$w=1-0.1\times2.8=0.72,\qquad b=4-0.1\times1.4=3.86.$$
+
+      The new prediction is $Q(2,\text{right})=0.72\times2+3.86=5.3$, exactly the target. That's a coincidence of these numbers, since a step usually just gets closer. But the step also changed the right output in cell 3, from $7$ to $0.72\times3+3.86=6.02$, even though we never trained on cell 3.
+    problems:
+      - dqn-q-network-basics
+      - dqnq-target-self-explain
+      - dqnq-greedy-template
+      - dqnq-target-template
+      - dqnq-loss
+      - dqnq-wrong-state
+      - dqnq-unseen-state
+      - dqnq-all-actions
+  - id: dqn-replay
+    title: "Train on a store of past moves"
+    explain: |
+      ### Two problems with learning as we go
+
+      We can now train a Q-network on one move. The simplest plan is to take a gradient step on each move as soon as the robot makes it, but that has two problems.
+
+      First, moves that come one after another are alike. Our robot starts in cell 1 of the 4-cell corridor. Early in training its Q-values are poor guesses and it explores a lot, so its first moves are spent in cells 1 and 2. Moving at random, it takes 6 moves on average to first reach cell 3. In a video game, screens a moment apart look almost the same. Since each step changes the values for every cell, several steps on cells 1 and 2 can drag cell 3's values off, so the network forgets what earlier episodes taught it about cell 3.
+
+      Second, each move is used for one step and then thrown away. Real moves take real time, so that's wasteful.
+
+      ### A store of past moves
+
+      **Experience replay** saves every move in a store called a **replay buffer**, and trains on random handfuls drawn from it. Each saved move is called a **transition**. It holds five values, $(s,a,r,s',\text{done})$, which are the state, the action, the reward, the next state, and a flag called done that says whether the episode ended. A random handful of transitions used for one gradient step is a **minibatch**, and its loss is the average of the transitions' squared errors.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 250" aria-label="Each move of the robot is stored in a replay buffer of five transitions: 1, cell 1 right reward minus 1 to cell 2; 2, cell 2 left reward minus 1 to cell 1; 3, cell 1 right reward minus 1 to cell 2; 4, cell 2 right reward minus 1 to cell 3; 5, cell 3 right reward 10 to cell 4, done. Transitions 2 and 5 are drawn at random into a minibatch">
+      <defs><marker id="dqn2-muted" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker><marker id="dqn2-green" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#10b981"/></marker></defs>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <text x="65" y="122" text-anchor="middle">each move</text>
+      <text x="65" y="140" text-anchor="middle">is stored</text>
+      <path d="M112 131 H143" stroke="#737373" stroke-width="2" marker-end="url(#dqn2-muted)"/>
+      <text x="265" y="30" text-anchor="middle">replay buffer</text>
+      <rect x="150" y="45" width="230" height="32" fill="#ffffff" stroke="#737373" stroke-width="1.5"/>
+      <text x="160" y="66">#1  (1, right, −1, 2, no)</text>
+      <rect x="150" y="79" width="230" height="32" fill="#ffffff" stroke="#10b981" stroke-width="2.5"/>
+      <text x="160" y="100">#2  (2, left, −1, 1, no)</text>
+      <rect x="150" y="113" width="230" height="32" fill="#ffffff" stroke="#737373" stroke-width="1.5"/>
+      <text x="160" y="134">#3  (1, right, −1, 2, no)</text>
+      <rect x="150" y="147" width="230" height="32" fill="#ffffff" stroke="#737373" stroke-width="1.5"/>
+      <text x="160" y="168">#4  (2, right, −1, 3, no)</text>
+      <rect x="150" y="181" width="230" height="32" fill="#ffffff" stroke="#10b981" stroke-width="2.5"/>
+      <text x="160" y="202">#5  (3, right, 10, 4, yes)</text>
+      <path d="M385 131 H418" stroke="#10b981" stroke-width="2" marker-end="url(#dqn2-green)"/>
+      <text x="402" y="240" text-anchor="middle" fill="#10b981">drawn at random</text>
+      <text x="530" y="83" text-anchor="middle">minibatch</text>
+      <rect x="425" y="98" width="210" height="32" fill="#ffffff" stroke="#10b981" stroke-width="2.5"/>
+      <text x="435" y="119">#2  (2, left, −1, 1, no)</text>
+      <rect x="425" y="132" width="210" height="32" fill="#ffffff" stroke="#10b981" stroke-width="2.5"/>
+      <text x="435" y="153">#5  (3, right, 10, 4, yes)</text>
+      </g>
+      </svg>
+      ```
+
+      A real buffer holds moves from many episodes, so a random minibatch mixes moves from many places and times, and each transition can be used in many updates. The 2015 DQN paper kept the last million transitions and drew minibatches of 32.
+
+      Be careful: you might think old moves teach the wrong thing, because the robot explored more when it made them. But the target uses the value of the best next action, whatever the old robot actually did next, so old moves are still useful.
+
+      ### When the episode ends
+
+      If a move ended the episode, like the move from cell 3 into cell 4, there's no next state to act in, so the target is just the reward:
+
+      $$y=\begin{cases}r&\text{if the episode ended}\\r+\gamma\max_{a'}Q(s',a')&\text{otherwise.}\end{cases}$$
+
+    worked: |
+      In the picture, the number after each # just labels the transition. Transitions #1 and #3 are the same move made twice, because the robot stepped back to cell 1 in between. Let's compute the loss for the minibatch, transitions 2 and 5, with $\gamma=0.9$. We use the Q-network from step 1 of this lesson at its starting values, $Q(s,\text{left})=s+2$ and $Q(s,\text{right})=s+4$, before any training.
+
+      1. **Prediction for transition 2.** The robot moved left in cell 2, so we use the left output.
+         $$Q(2,\text{left})=2+2=4.$$
+
+      2. **Target for transition 2.** The episode went on, so we run the network on the next state, cell 1, where it outputs $3$ for left and $5$ for right, and keep the larger.
+         $$y_2=-1+0.9\times5=3.5.$$
+
+      3. **Prediction for transition 5.** The robot moved right in cell 3.
+         $$Q(3,\text{right})=3+4=7.$$
+
+      4. **Target for transition 5.** This move ended the episode, so the target is just the reward.
+         $$y_5=10.$$
+
+      5. **Average the squared errors.** The minibatch loss is the mean over its two transitions.
+         $$L=\frac{(4-3.5)^2+(7-10)^2}{2}=\frac{0.25+9}{2}=4.625.$$
+
+      Almost all of the loss comes from transition 5, because the network still undervalues the move that reaches the goal.
+    problems:
+      - dqn-replay-basics
+      - dqnr-done-self-explain
+      - dqnr-why-random
+      - dqnr-error
+      - dqnr-loss-template
+      - dqnr-done-mistake
+      - dqnr-old-moves
+      - dqnr-robot-camera
+  - id: dqn-target-network
+    title: "Use a frozen network copy for targets"
+    explain: |
+      ### The target moves when we train
+
+      Replay deals with similar moves in a row, but one problem is left. In supervised learning the label never changes. In deep Q-learning, the TD target is computed by the same network we are training, so a step that changes the prediction can also change the target.
+
+      Let's watch it happen. Our robot is in a corridor of 4 cells with reward $-1$ per step and $\gamma=0.9$, and our Q-network gives $Q(s,\text{left})=s+2$ and $Q(s,\text{right})=s+4$ for cell $s$. The robot moves right from cell 2 to cell 3. The prediction is $Q(2,\text{right})=6$, and the target is $-1+0.9\times7=5.3$. One gradient step brings the prediction down to $5.3$. But the same weights produce $Q(3,\text{right})$, so the step lowers it too, and the target slides down to about $4.42$. The gap grows from $0.7$ to $0.88$, as the first two rows of the picture show. The third row shows the fix we'll meet next.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 330" aria-label="Three rows on a number line from 4 to 6.5. Before the step, the blue prediction is at 6 and the orange target is at 5.3, a gap of 0.7. After the step, with the target from the network being trained, the prediction is at 5.3 and the target has slid to 4.42, a gap of 0.88. After the step, with the target from a frozen copy, the prediction and target are both at 5.3, a gap of 0">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <text x="20" y="40">Before the step: gap 0.7</text>
+      <path d="M80 70 H580" stroke="#d4d4d4"/>
+      <path d="M340 70 H480" stroke="#737373" stroke-width="3"/>
+      <circle cx="480" cy="70" r="6" fill="#3b82f6"/>
+      <circle cx="340" cy="70" r="6" fill="#f59e0b"/>
+      <text x="480" y="92" text-anchor="middle" fill="#3b82f6">prediction 6</text>
+      <text x="340" y="92" text-anchor="middle" fill="#f59e0b">target 5.3</text>
+      <text x="20" y="130">After the step, target from the network being trained: gap 0.88</text>
+      <path d="M80 160 H580" stroke="#d4d4d4"/>
+      <path d="M163.6 160 H340" stroke="#737373" stroke-width="3"/>
+      <circle cx="340" cy="160" r="6" fill="#3b82f6"/>
+      <circle cx="163.6" cy="160" r="6" fill="#f59e0b"/>
+      <text x="340" y="182" text-anchor="middle" fill="#3b82f6">prediction 5.3</text>
+      <text x="163.6" y="182" text-anchor="middle" fill="#f59e0b">target 4.42</text>
+      <text x="20" y="220">After the step, target from a frozen copy: gap 0</text>
+      <path d="M80 250 H580" stroke="#d4d4d4"/>
+      <circle cx="340" cy="250" r="10" fill="#ffffff" fill-opacity="0" stroke="#f59e0b" stroke-width="3"/>
+      <circle cx="340" cy="250" r="5" fill="#3b82f6"/>
+      <text x="340" y="276" text-anchor="middle">prediction and target both 5.3</text>
+      <path d="M80 300 H580" stroke="#737373"/>
+      <path d="M80 300 V306 M180 300 V306 M280 300 V306 M380 300 V306 M480 300 V306 M580 300 V306" stroke="#737373"/>
+      <text x="80" y="322" text-anchor="middle" fill="#737373">4</text>
+      <text x="180" y="322" text-anchor="middle" fill="#737373">4.5</text>
+      <text x="280" y="322" text-anchor="middle" fill="#737373">5</text>
+      <text x="380" y="322" text-anchor="middle" fill="#737373">5.5</text>
+      <text x="480" y="322" text-anchor="middle" fill="#737373">6</text>
+      <text x="580" y="322" text-anchor="middle" fill="#737373">6.5</text>
+      </g>
+      </svg>
+      ```
+
+      We moved toward the target, and the target moved away by even more. Over many steps this can feed on itself, so the values drift or grow without limit, which is called **diverging**. A table doesn't have this problem, because updating one entry leaves the others alone.
+
+      ### A frozen copy for the targets
+
+      A **target network** is a copy of the Q-network that is used only to compute targets. We write all of the Q-network's weights and biases together as $\theta$ (theta). The copy's weights are written $\theta^-$, read "theta minus", and they stay frozen while $\theta$ is trained. We write $Q(s',a';\theta^-)$ for the copy's output. For a move that didn't end the episode, the target is
+
+      $$y=r+\gamma\max_{a'}Q(s',a';\theta^-).$$
+
+      Every $C$ gradient steps we copy the Q-network's weights into the target network. In between, the labels stay fixed, like in supervised learning, so the network has many steps to catch up with them before they jump. The 2015 DQN paper copied every $10{,}000$ steps.
+
+      Be careful not to think the target network is trained. It gets no gradient steps and only changes when we copy. A large $C$ keeps the targets steady for longer, but the targets only pick up what the Q-network has learned at each copy, so learning can be slower.
+    worked: |
+      Let's do the arithmetic behind the picture. Before the step, the Q-network and its frozen copy are the same: $Q(s,\text{left})=s+2$ and $Q(s,\text{right})=s+4$. The robot moves right from cell 2 to cell 3 and gets reward $-1$. We use $\gamma=0.9$ and a learning rate of $\eta=0.1$.
+
+      1. **Take the step.** The prediction $6$ is $0.7$ above the target $5.3$, so the loss changes at a rate of $2\times0.7=1.4$ as the prediction changes. The right output's weight moves against its slope, $1.4\times2$, to $1-0.1\times2.8=0.72$, and its bias moves against its slope, $1.4$, to $4-0.1\times1.4=3.86$.
+         $$Q(2,\text{right})=0.72\times2+3.86=5.3.$$
+
+      2. **Target from the network being trained.** The trained network's right output in cell 3 has dropped to $6.02$. That's still larger than its left output, $5$, so the max uses $6.02$.
+         $$y=-1+0.9\times(0.72\times3+3.86)=-1+0.9\times6.02=4.418.$$
+
+      3. **Target from the frozen copy.** The copy still gives $Q(3,\text{right})=3+4=7$.
+         $$y=-1+0.9\times7=5.3.$$
+
+      4. **Compare the gaps.** With the trained network's target the prediction is still about $0.88$ too high. With the copy's target the gap closes, here exactly to $0$ because of our neat numbers.
+         $$5.3-4.418=0.882,\qquad 5.3-5.3=0.$$
+
+      After $C$ steps we would copy the trained weights into the target network, so the targets catch up all at once and then hold still again.
+    problems:
+      - dqn-target-network-basics
+      - dqnt-slide-self-explain
+      - dqnt-frozen-weights
+      - dqnt-target-template
+      - dqnt-moving-target
+      - dqnt-copy-every-step
+      - dqnt-copy-rarely
+      - dqnt-drone-values
+  - id: dqn-training-loop
+    title: "Put the whole training loop together"
+    explain: |
+      ### The DQN loop
+
+      We now have all the pieces of **DQN**, short for deep Q-network, the method DeepMind first showed in 2013 and refined in its 2015 Nature paper by Mnih and colleagues. Each pass of its loop does six things, as the picture shows.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 230" aria-label="The DQN loop as six boxes in a cycle. 1, act epsilon-greedily with the Q-network. 2, store the transition s, a, r, s prime, done. 3, sample a random minibatch. 4, compute targets with the target network. 5, take a gradient step on the Q-network. 6, every C steps, copy theta into theta minus. Then back to 1">
+      <defs><marker id="dqn4-muted" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker></defs>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <rect x="20" y="30" width="170" height="52" rx="8" fill="#ffffff" stroke="#3b82f6" stroke-width="2"/>
+      <text x="105" y="52" text-anchor="middle">1. act ε-greedily</text>
+      <text x="105" y="71" text-anchor="middle">with the Q-network</text>
+      <rect x="235" y="30" width="170" height="52" rx="8" fill="#ffffff" stroke="#737373" stroke-width="1.5"/>
+      <text x="320" y="52" text-anchor="middle">2. store</text>
+      <text x="320" y="71" text-anchor="middle">(s, a, r, s′, done)</text>
+      <rect x="450" y="30" width="170" height="52" rx="8" fill="#ffffff" stroke="#10b981" stroke-width="2"/>
+      <text x="535" y="52" text-anchor="middle">3. sample a</text>
+      <text x="535" y="71" text-anchor="middle">random minibatch</text>
+      <rect x="450" y="150" width="170" height="52" rx="8" fill="#ffffff" stroke="#f59e0b" stroke-width="2"/>
+      <text x="535" y="172" text-anchor="middle">4. targets from</text>
+      <text x="535" y="191" text-anchor="middle">the target network</text>
+      <rect x="235" y="150" width="170" height="52" rx="8" fill="#ffffff" stroke="#3b82f6" stroke-width="2"/>
+      <text x="320" y="172" text-anchor="middle">5. gradient step</text>
+      <text x="320" y="191" text-anchor="middle">on the Q-network</text>
+      <rect x="20" y="150" width="170" height="52" rx="8" fill="#ffffff" stroke="#737373" stroke-width="1.5"/>
+      <text x="105" y="172" text-anchor="middle">6. every C steps,</text>
+      <text x="105" y="191" text-anchor="middle">copy θ into θ⁻</text>
+      <path d="M190 56 H228" stroke="#737373" stroke-width="2" marker-end="url(#dqn4-muted)"/>
+      <path d="M405 56 H443" stroke="#737373" stroke-width="2" marker-end="url(#dqn4-muted)"/>
+      <path d="M535 82 V143" stroke="#737373" stroke-width="2" marker-end="url(#dqn4-muted)"/>
+      <path d="M450 176 H412" stroke="#737373" stroke-width="2" marker-end="url(#dqn4-muted)"/>
+      <path d="M235 176 H197" stroke="#737373" stroke-width="2" marker-end="url(#dqn4-muted)"/>
+      <path d="M105 150 V89" stroke="#737373" stroke-width="2" marker-end="url(#dqn4-muted)"/>
+      </g>
+      </svg>
+      ```
+
+      Be careful to pick actions with the Q-network, which has the newest values.
+
+      In the 2015 paper, learning started after $50{,}000$ random moves had filled the buffer, with one gradient step every $4$ moves. The network read the last four screens, since one screen can't show which way things move. With one design and one set of settings, DQN learned 49 Atari 2600 games (a late-1970s games console) from the screen and score alone, and it scored at least $75\%$ of a professional human games tester's score on more than half of them.
+
+      ### Limitations
+
+      DQN needs a short list of actions, because it takes a max over the network's outputs. A robot arm that can set its joints to any angle has endless possible actions, so it needs other methods, such as the policy gradients in a later lesson. The max also tends to make the targets too high. If two actions are both truly worth $5$ and the network's estimates are $4$ and $6$, the max picks $6$. Errors upward get picked and errors downward get passed over, so the targets come out too high on average. A later version, Double DQN (2016), reduces this by choosing the next action with the Q-network and valuing it with the target network, so a lucky high estimate in one network isn't automatically the value used. And DQN needs a lot of experience, tens of millions of screens for each game.
+
+      ### Targets for a whole minibatch
+
+      In code we compute every target in a minibatch at once. We run the target network on all the next states, which gives a table with one row per transition and one column per action. We take the largest output in each row, and multiply that by $1-\text{done}$, where done is $1$ if the episode ended and $0$ if not.
+
+      $$y=r+\gamma\,(1-\text{done})\max_{a'}Q(s',a';\theta^-).$$
+
+      When done is $1$, the second term vanishes and the target is just $r$.
+
+    worked: |
+      Let's compute the targets and the loss for a minibatch of three transitions in our corridor of 4 cells, where reaching cell 4 ends the episode with reward $10$ and every other step gives $-1$, with $\gamma=0.9$. The target network still has the old weights, $Q(s,\text{left})=s+2$ and $Q(s,\text{right})=s+4$. Suppose training has since changed the Q-network to $Q(s,\text{left})=s+2$ and $Q(s,\text{right})=s+3$. These values are picked to keep the arithmetic simple, and they aren't the ones from step 3. The first transition is a move right from cell 1 to cell 2. The second is a move left from cell 2 to cell 1. The third is a move right from cell 3 to cell 4, which ends the episode.
+
+      1. **Run the target network on the next states.** For cells 2, 1 and 4 it gives the rows $(4,6)$, $(3,5)$ and $(6,8)$, so the largest outputs are $6$, $5$ and $8$. The numbers for cell 4 mean nothing, since the episode ended there, and the next step throws them away.
+
+      2. **Build the targets.** Done is $0$ for the first two and $1$ for the third, so the third transition's $8$ is multiplied by $0$ and drops out.
+         $$y_1=-1+0.9\times6=4.4,\quad y_2=-1+0.9\times5=3.5,\quad y_3=10.$$
+
+      3. **Pick the Q-network's predictions.** Each uses the action the robot took.
+         $$Q(1,\text{right})=4,\quad Q(2,\text{left})=4,\quad Q(3,\text{right})=6.$$
+
+      4. **Average the squared errors.**
+         $$L=\frac{(4-4.4)^2+(4-3.5)^2+(6-10)^2}{3}=\frac{16.41}{3}=5.47.$$
+
+      If we'd taken the first target from the Q-network instead, its cell 2 outputs $(4,5)$ would give $y_1=3.5$, so the two networks really do give different labels.
+
+      Here is the same calculation in PyTorch. These lines are boxes 4 and 5 of the loop, and they use a few things we haven't met yet:
+
+      - `copy_` writes values into a tensor, the way `fill_` does in PyTorch fundamentals, so it also goes inside `torch.no_grad()`.
+      - `nn.Linear(1, 2)` stores its weights as a table with one row per output, so `[[1.0], [1.0]]` gives both outputs weight $1$.
+      - `.max(dim=1)` takes the largest entry across the columns, so it gives one number per row, and `.values` keeps those numbers.
+      - `torch.arange(3)` counts $0$, $1$, $2$. Indexing with two lists pairs them up, so `q[torch.arange(3), actions]` with `actions` equal to `[1, 0, 1]` picks row $0$ column $1$, row $1$ column $0$ and row $2$ column $1$, the action taken in each row, with $0$ for left and $1$ for right.
+      - `nn.MSELoss()` averages the squared errors, as in step 4.
+
+      ```python
+      import torch
+      from torch import nn
+
+      target_net = nn.Linear(1, 2)
+      q_net = nn.Linear(1, 2)
+      with torch.no_grad():
+          target_net.weight.copy_(torch.tensor([[1.0], [1.0]]))
+          target_net.bias.copy_(torch.tensor([2.0, 4.0]))
+          q_net.weight.copy_(torch.tensor([[1.0], [1.0]]))
+          q_net.bias.copy_(torch.tensor([2.0, 3.0]))
+
+      states = torch.tensor([[1.0], [2.0], [3.0]])
+      actions = torch.tensor([1, 0, 1])
+      rewards = torch.tensor([-1.0, -1.0, 10.0])
+      next_states = torch.tensor([[2.0], [1.0], [4.0]])
+      dones = torch.tensor([0.0, 0.0, 1.0])
+      gamma = 0.9
+
+      with torch.no_grad():
+          next_max = target_net(next_states).max(dim=1).values
+          targets = rewards + gamma * (1 - dones) * next_max
+      q = q_net(states)
+      loss = nn.MSELoss()(q[torch.arange(3), actions], targets)
+      print([round(t, 2) for t in targets.tolist()])
+      print(round(loss.item(), 2))
+      # [4.4, 3.5, 10.0]
+      # 5.47
+      ```
+
+      The targets are computed inside `torch.no_grad()`, so `loss.backward()` would find slopes only for the Q-network. A full program runs these lines inside the six-step loop above, with an optimiser built from `q_net.parameters()`. Each pass calls `optimizer.zero_grad()` before these lines, then `loss.backward()` and `optimizer.step()` after them. Every $C$ steps it copies the weights with `target_net.load_state_dict(q_net.state_dict())`, where `state_dict()` gives a module's weights and biases and `load_state_dict` writes them into another module.
+    problems:
+      - dqn-training-loop-basics
+      - dqnl-done-self-explain
+      - dqnl-loop-order
+      - dqnl-targets-complete
+      - dqnl-targets-read
+      - dqnl-wrong-network-debug
+      - dqnl-act-network
+      - dqnl-robot-arm
+final: dqn-explain-stability
+summary: |
+  - A Q-network takes a state and outputs one Q-value per action. It is trained by gradient steps on the squared error between $Q(s,a)$ and the TD target $y=r+\gamma\max_{a'}Q(s',a')$, which is just $r$ when the episode ended. In DQN the next-state values come from the target network.
+  - Experience replay stores transitions $(s,a,r,s',\text{done})$ in a replay buffer and trains on random minibatches, so updates aren't dominated by a run of similar moves and each move is reused.
+  - Because one network sets both the prediction and the target, a step can push the target away, and naive training can diverge. A target network, a frozen copy with weights $\theta^-$ copied every $C$ steps, holds the targets still.
+  - For a minibatch, each target is $y=r+\gamma\,(1-\text{done})\max_{a'}Q(s',a';\theta^-)$, computed without gradients, and the loss is the average of the squared errors.
+
+  **Next:** Policy gradients learn the policy directly, which also works when there are too many actions to take a max over.

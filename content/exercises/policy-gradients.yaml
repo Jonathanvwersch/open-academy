@@ -35,3 +35,1038 @@ exercises:
           feedback: "A state-only baseline has zero expected contribution to the policy gradient. Subtracting it does not change the expected gradient.",
         }
     solution: "Because $\\mathbb E_{a\\sim\\pi}[\\nabla_\\theta \\log\\pi_\\theta(a\\mid s)] = 0$, subtracting any action-independent $b(s)$ keeps the estimator unbiased while centring the returns, which greatly reduces variance. Using $b(s) \\approx V(s)$ gives the advantage."
+  - id: pg-score-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 2
+    prompt: What does a policy's score $J(\theta)$ measure?
+    solution: $J(\theta)=E[G_0]$ averages return from the start over episodes played with $\pi_\theta$.
+    options:
+      - id: a
+        text: The expected return from the start when acting with $\pi_\theta$.
+        correct: true
+        feedback: This is the average of the starting return over episodes drawn from the policy.
+      - id: b
+        text: The return of the best single episode played with the policy.
+        correct: false
+        category: incorrect_reasoning
+        feedback: A best episode leaves out all the other possible episodes.
+      - id: c
+        text: The probability that the policy selects the best available action.
+        correct: false
+        category: incorrect_reasoning
+        feedback: An action probability does not include the returns of whole episodes.
+      - id: d
+        text: The expected reward from only the first step of an episode.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The return includes later rewards too.
+  - id: pgp-score-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example, why is the probability of right, right, right 0.125?
+    solution: Each choice has probability 0.5 and each move succeeds. Their product is $0.5^3=0.125$.
+    options:
+      - id: a
+        text: Each choice has chance 0.5 and moves succeed, so add the three chances.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Adding gives 1.5, which cannot be a probability.
+      - id: b
+        text: There are eight cells in the corridor, so each route has chance one eighth.
+        correct: false
+        category: incorrect_reasoning
+        feedback: There are four cells. Route chances come from the policy choices.
+      - id: c
+        text: The route returns 6.2, which fixes its chance at one eighth.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Returns measure rewards and do not set episode chances.
+      - id: d
+        text: Each choice has chance 0.5 and moves succeed, so multiply the three chances.
+        correct: true
+    lesson_only: true
+  - id: pgp-ascent-sign
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt:
+      A differentiable score $J(\theta)$ has a nonzero gradient. Which is the gradient-ascent update
+      with learning rate $\eta$ that locally increases it when $\eta$ is small and positive?
+    solution:
+      The gradient points toward a local increase in $J$. Adding a small positive multiple takes
+      an ascent step.
+    options:
+      - id: a
+        text: $\theta_{new}=\theta+\nabla_\theta J/\eta$
+        correct: false
+        category: incorrect_reasoning
+        feedback: Dividing by a small rate makes a large step that can overshoot.
+      - id: b
+        text: $\theta_{new}=\theta+\eta J$
+        correct: false
+        category: incorrect_reasoning
+        feedback: The score itself does not give the direction of increase.
+      - id: c
+        text: $\theta_{new}=\theta+\eta\nabla_\theta J$
+        correct: true
+      - id: d
+        text: $\theta_{new}=\theta-\eta\nabla_\theta J$
+        correct: false
+        category: incorrect_reasoning
+        feedback: Subtracting the gradient locally lowers the score.
+  - id: pgp-ascent-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt:
+      A policy parameter starts at $\theta={{=a}}$. The slope of its expected return is ${{=s}}$.
+      With learning rate $0.1$, what is $\theta$ after one ascent step?
+    solution: Ascent adds the rate times the slope. The new parameter is ${{=a}}+0.1\times{{=s}}={{=a+0.1*s}}$.
+    tolerance:
+      abs: 0.001
+    answer_expr: a+0.1*s
+    params:
+      a:
+        min: 0
+        max: 1
+        step: 0.5
+      s:
+        min: 2
+        max: 8
+        step: 1
+    common_wrong:
+      - answer_expr: a-0.1*s
+        category: math_error
+        feedback: That subtracts the slope and takes a descent step.
+  - id: pgp-episode-prob
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      A corridor has cells 1 to 4 from left to right. A robot starts in cell 1 and chooses left or
+      right. A wall leaves it in place. Reaching cell 4 gives $+10$ and ends the episode. Every other step
+      gives $-1$, with $\gamma=0.9$. In every cell the policy chooses right with probability $p=e^\theta/(e^\theta+1)$
+      and left otherwise. At $\theta=0$, what is the probability of exactly left, right, right, right?
+    solution:
+      Both choices have chance $0.5$. The left hits the wall and three rights finish, so the probability
+      is $0.5^4=0.0625$.
+    tolerance:
+      abs: 0.001
+    answer: 0.0625
+    common_wrong:
+      - answer: 0.125
+        category: math_error
+        feedback: That leaves out the first left choice.
+      - answer: 2
+        category: math_error
+        feedback: That adds four chances of 0.5 instead of multiplying them.
+  - id: pgp-expected-return-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      A policy's episode returns ${{=g1}}$ with probability ${{=q}}$ and $({{=g2}})$ otherwise. What
+      is its expected return $J$?
+    solution: Weight each return by its chance. This gives ${{=q}}\times{{=g1}}+(1-{{=q}})\times({{=g2}})=({{=q*g1+(1-q)*g2}})$.
+    tolerance:
+      abs: 0.001
+    answer_expr: q*g1+(1-q)*g2
+    params:
+      q:
+        min: 0.2
+        max: 0.8
+        step: 0.1
+      g1:
+        min: 6
+        max: 10
+        step: 1
+      g2:
+        min: -4
+        max: 2
+        step: 1
+    constraints:
+      - q != 0.5
+      - g2 != 0
+      - abs(q*g1+(1-q)*g2-q) > 0.001
+    common_wrong:
+      - answer_expr: (g1+g2)/2
+        category: math_error
+        feedback: That gives both returns equal weight.
+      - answer_expr: q*g1
+        category: math_error
+        feedback: That leaves out the other possible return.
+  - id: pgp-why-no-formula
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt:
+      A robot can play episodes but is not told the world's transition probabilities. Why can it not
+      directly differentiate an exact formula for its expected return $J(\theta)$?
+    solution:
+      An exact expected return weights possible episodes by their chances. Those chances depend
+      on world transitions the robot has not been given.
+    options:
+      - id: a
+        text: Its discount factor $\gamma$ has no derivative, so its expected return has no derivative.
+        correct: false
+        category: incorrect_reasoning
+        feedback: A constant can multiply a differentiable expression.
+      - id: b
+        text: Its score is maximised, so derivatives used for minimising losses cannot be used.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Derivatives describe slopes for both maximisation and minimisation.
+      - id: c
+        text: Its episode chances depend on world transitions whose probabilities it does not know.
+        correct: true
+      - id: d
+        text: Its actions are discrete, so its expected return has no slope with respect to parameters.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Action probabilities can change smoothly with the parameters.
+  - id: pgp-grasp-score
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt:
+      A grasping robot tests two policies for 1000 episodes each. Policy A's best return is 9 and
+      its average is 4. Policy B's best is 7 and its average is 6. Which has the higher estimated $J$, and
+      why?
+    solution: $J$ is estimated by the average return. B has average $6>4$.
+    options:
+      - id: a
+        text: We cannot compare them without the discount factor $\gamma$.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The reported returns already include any discounting.
+      - id: b
+        text: Policy B, because its average return is 6 compared with 4.
+        correct: true
+      - id: c
+        text: Policy A, because its best return is 9 compared with 7.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The best return does not estimate the average.
+      - id: d
+        text: They are equal, because both can complete a successful grasp.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Success does not imply equal returns or equal success chances.
+  - id: pg-log-trick-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 2
+    prompt: What does the log-derivative trick say about the slope of an action's probability $\pi_\theta(a)$?
+    solution:
+      The chain rule gives $\nabla_\theta\ln\pi_\theta=(\nabla_\theta\pi_\theta)/\pi_\theta$. Multiplying
+      by $\pi_\theta$ gives the identity.
+    options:
+      - id: a
+        text: $\nabla_\theta\pi_\theta=\pi_\theta\nabla_\theta\ln\pi_\theta$
+        correct: true
+        feedback: The chain rule divides the probability slope by the probability when taking its log.
+      - id: b
+        text: $\nabla_\theta\ln\pi_\theta=\ln(\nabla_\theta\pi_\theta)$
+        correct: false
+        category: incorrect_reasoning
+        feedback: A derivative cannot be moved inside a logarithm this way.
+      - id: c
+        text: $\nabla_\theta\pi_\theta=\nabla_\theta\ln\pi_\theta$
+        correct: false
+        category: incorrect_reasoning
+        feedback: The log slope includes division by the probability.
+      - id: d
+        text: $\nabla_\theta\ln\pi_\theta=\pi_\theta\nabla_\theta\pi_\theta$
+        correct: false
+        category: incorrect_reasoning
+        feedback: The chain rule divides by the probability.
+  - id: pgp-trick-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example, why is the estimate after pulling A negative even though A pays 1?
+    solution:
+      Raising $\theta$ makes A less likely, so $\nabla_\theta\ln\pi_\theta(A)=-p$. A positive payout
+      times this negative slope is negative.
+    options:
+      - id: a
+        text: A pays less than average, so the update subtracts the average payout first.
+        correct: false
+        category: incorrect_reasoning
+        feedback: This estimate uses no baseline and subtracts no average.
+      - id: b
+        text: Every estimate subtracts the mean payout, leaving A with a negative payout.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The estimate here multiplies payout by log-probability slope.
+      - id: c
+        text: A has probability below 0.5, so its log-probability slope must be negative.
+        correct: false
+        category: incorrect_reasoning
+        feedback: A has probability 0.5 here. The sign describes how it changes.
+      - id: d
+        text: Raising $\theta$ makes A less likely, so its log-probability slope is negative.
+        correct: true
+    lesson_only: true
+  - id: pgp-one-pull-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt:
+      One slot-machine pull pays $G={{=g}}$. The chosen action has log-probability slope $\nabla_\theta\ln\pi_\theta(a)={{=s}}$.
+      What is the one-pull estimate of the slope of expected payout?
+    solution: Multiply payout by the chosen action's log-probability slope. The estimate is ${{=g}}\times{{=s}}={{=g*s}}$.
+    tolerance:
+      abs: 0.001
+    answer_expr: g*s
+    params:
+      g:
+        min: 2
+        max: 9
+        step: 1
+      s:
+        min: 0.2
+        max: 0.8
+        step: 0.1
+    common_wrong:
+      - answer_expr: g/s
+        category: math_error
+        feedback: That divides by the log-probability slope.
+      - answer_expr: g+s
+        category: math_error
+        feedback: That adds the two quantities.
+  - id: pgp-arm-a-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      A slot machine has arms A and B. Its policy pulls B with probability $p=e^\theta/(e^\theta+1)$
+      and A otherwise. Currently $p={{=p}}$. A pull of A pays ${{=g}}$. What is the one-pull estimate
+      of the slope of expected payout?
+    solution: A's log-probability slope is $-p$. The estimate is ${{=g}}\times(-{{=p}})=({{=-g*p}})$.
+    tolerance:
+      abs: 0.001
+    answer_expr: -g*p
+    params:
+      p:
+        min: 0.2
+        max: 0.8
+        step: 0.1
+      g:
+        min: 1
+        max: 6
+        step: 1
+    constraints:
+      - p != 0.5
+    common_wrong:
+      - answer_expr: g*(1-p)
+        category: math_error
+        feedback: That uses B's log-probability slope.
+      - answer_expr: g*p
+        category: math_error
+        feedback: That loses the negative sign for A.
+      - answer_expr: -g*(1-p)
+        category: math_error
+        feedback: That uses A's probability in place of p in its negative slope.
+  - id: pgp-true-slope
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      A slot machine has arms A and B. Its policy pulls B with probability $p=e^\theta/(e^\theta+1)$
+      and A otherwise. A always pays 2 and B always pays 6. At $\theta=0$, what is the average one-pull
+      estimate of the slope of expected payout?
+    solution:
+      Both arms have chance $0.5$ and log-probability slopes $-0.5$ and $0.5$. Their estimates average
+      $0.5\times2\times(-0.5)+0.5\times6\times0.5=1$.
+    tolerance:
+      abs: 0.001
+    answer: 1
+    common_wrong:
+      - answer: 2
+        category: math_error
+        feedback: That sums the estimates -1 and 3 without weighting by their chances.
+      - answer: 4
+        category: math_error
+        feedback: That uses the payout difference without the probability slope.
+  - id: pgp-wrong-sign-pull
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      A slot-machine policy has true expected-payout slope $+0.5$. One pull gives a slope estimate
+      of $-0.5$. A learner says the method is broken. What explains this?
+    solution:
+      A single estimate can point the wrong way. Averaging estimates drawn from the current policy
+      gives the true slope.
+    options:
+      - id: a
+        text: The learning rate is too large; reducing it fixes the sign of the estimate.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The learning rate scales the update after the estimate is formed.
+      - id: b
+        text: All payouts must be negative; positive payouts cannot give negative estimates.
+        correct: false
+        category: incorrect_reasoning
+        feedback: A positive payout can multiply a negative log-probability slope.
+      - id: c
+        text: The parameter must be positive; the trick only works for $\theta>0$.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The identity works for negative and zero parameters too, wherever the probability is positive and differentiable.
+      - id: d
+        text: Single estimates can point the wrong way; their average gives the slope.
+        correct: true
+  - id: pgp-why-trick
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt:
+      Why rewrite $\nabla_\theta\pi_\theta(a)$ as $\pi_\theta(a)\nabla_\theta\ln\pi_\theta(a)$ when
+      estimating an expected-payout slope from pulls?
+    solution:
+      The probability factor turns the sum into an average over the policy choices. Observed payouts
+      and log-probability slopes provide samples of that average.
+    options:
+      - id: a
+        text: It gives discrete actions a slope, because their probabilities otherwise have zero derivative.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Discrete actions can have smoothly changing probabilities.
+      - id: b
+        text: It removes payouts from the slope, so pulls only need the chosen action probability.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The observed payout still multiplies the log-probability slope.
+      - id: c
+        text:
+          It weights each term by its action's chance, so pulls estimate the average without knowing all
+          payouts.
+        correct: true
+      - id: d
+        text: It makes every slope larger, so each pull gives a faster and more reliable improvement.
+        correct: false
+        category: incorrect_reasoning
+        feedback: A logarithm does not guarantee larger slopes or better individual steps.
+  - id: pgp-reply-estimate
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt:
+      A language model samples a reply from $\pi_\theta$. A person gives it reward $R$. Which is a
+      one-sample estimate of the slope of expected reward?
+    solution:
+      The estimate is reward times the gradient of the sampled reply log probability. Averaging
+      over current-policy replies gives the expected-reward gradient.
+    options:
+      - id: a
+        text: $R$ times the sampled reply log probability, without a gradient.
+        correct: false
+        category: incorrect_reasoning
+        feedback: An update direction needs the gradient of the log probability.
+      - id: b
+        text: $R$ times the gradient of the sampled reply log probability.
+        correct: true
+      - id: c
+        text: $R$ times the gradient of the sampled reply probability.
+        correct: false
+        category: incorrect_reasoning
+        feedback: That omits division by the reply probability from the log derivative.
+      - id: d
+        text: The gradient of the human reward $R$ with respect to $\theta$.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The person does not provide a differentiable path through the reply.
+  - id: pg-reinforce-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 2
+    prompt:
+      After an episode with return $G_0$, what does whole-episode REINFORCE add to policy parameters
+      $\theta$? Let $\eta$ be the learning rate.
+    solution:
+      REINFORCE takes an ascent step using return times the sum of chosen actions log-probability
+      gradients.
+    options:
+      - id: a
+        text: $\eta G_0$ times the sum of log-probability gradients of actions taken.
+        correct: true
+        feedback: This sampled ascent step uses every action taken and weights them by the episode return.
+      - id: b
+        text: $-\eta G_0$ times the sum of log-probability gradients of actions taken.
+        correct: false
+        category: incorrect_reasoning
+        feedback: That reverses the ascent direction.
+      - id: c
+        text: $\eta G_0$ times the log-probability gradient of only the final action.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The update includes every action taken.
+      - id: d
+        text: $\eta G_0$ times a fitted model of the world transition probabilities.
+        correct: false
+        category: incorrect_reasoning
+        feedback: REINFORCE does not need to fit the world transitions.
+  - id: pgp-reinforce-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example, why is the sum of log-probability slopes 1.5?
+    solution: Three right moves each contribute $1-p=0.5$. Their sum is $3\times0.5=1.5$.
+    options:
+      - id: a
+        text: The episode probability is 1.5, so its slope sum is also 1.5.
+        correct: false
+        category: incorrect_reasoning
+        feedback: An episode probability cannot exceed 1.
+      - id: b
+        text: The return divided by the four corridor cells gives exactly 1.5.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The return is 6.2. The slope sum comes from policy probabilities.
+      - id: c
+        text: Three moves each contribute 0.5 because rewards are discounted by half.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The discount is 0.9. The value 0.5 comes from the policy log slope.
+      - id: d
+        text: Three right moves each contribute $1-p=0.5$ to the sum.
+        correct: true
+    lesson_only: true
+  - id: pgp-world-drops-out
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt:
+      World transition probabilities $p(s'\mid s,a)$ do not depend on policy parameters $\theta$.
+      Why does REINFORCE not need them when taking $\nabla_\theta\ln P(\tau)$ for episode $\tau$?
+    solution:
+      The log episode probability splits into policy and world terms. The world terms have zero
+      derivative with respect to $\theta$.
+    options:
+      - id: a
+        text: Their values are learned alongside $\theta$ before each update.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The update does not fit a world model.
+      - id: b
+        text: Their log terms cancel with the discount factor $\gamma$.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Discounting weights rewards and does not cancel transition terms.
+      - id: c
+        text: Their log terms have zero slope with respect to $\theta$.
+        correct: true
+      - id: d
+        text: Every world has certain moves, so all its transition terms equal 1.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The argument also works when moves sometimes fail.
+  - id: pgp-sum-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      A corridor has cells 1 to 4 from left to right. A robot starts in cell 1 and chooses left or
+      right. A wall leaves it in place. Reaching cell 4 gives $+10$ and ends the episode. Every other step
+      gives $-1$, with $\gamma=0.9$. In every cell the policy chooses right with probability $p=e^\theta/(e^\theta+1)$
+      and left otherwise. Currently $p={{=p}}$. An episode takes left, right, right, right. What is the
+      sum of $\nabla_\theta\ln\pi_\theta(a_t\mid s_t)$ over its actions?
+    solution: Each right contributes $1-p$ and the left contributes $-p$. The sum is $3(1-{{=p}})-{{=p}}=({{=3-4*p}})$.
+    tolerance:
+      abs: 0.001
+    answer_expr: 3-4*p
+    params:
+      p:
+        min: 0.3
+        max: 0.9
+        step: 0.1
+    constraints:
+      - p != 0.6
+      - p != 0.5
+    common_wrong:
+      - answer_expr: 3*(1-p)+p
+        category: math_error
+        feedback: That gives the left move a positive slope.
+      - answer_expr: 4*(1-p)
+        category: math_error
+        feedback: That treats the left as another right.
+  - id: pgp-update-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      A corridor has cells 1 to 4 from left to right. A robot starts in cell 1 and chooses left or
+      right. A wall leaves it in place. Reaching cell 4 gives $+10$ and ends the episode. Every other step
+      gives $-1$, with $\gamma=0.9$. In every cell the policy chooses right with probability $p=e^\theta/(e^\theta+1)$
+      and left otherwise. Start at $\theta=0$. The episode right, right, right has return $6.2$. With learning
+      rate $\eta={{=eta}}$, what is the new $\theta$ after one whole-episode REINFORCE update?
+      Give the exact value.
+    solution: Each right has log-probability slope $0.5$, so their sum is $1.5$. The new parameter is $0+{{=eta}}\times6.2\times1.5={{=9.3*eta}}$.
+    tolerance:
+      abs: 0.001
+    answer_expr: 9.3*eta
+    params:
+      eta:
+        min: 0.01
+        max: 0.1
+        step: 0.01
+    common_wrong:
+      - answer_expr: -9.3*eta
+        category: math_error
+        feedback: That takes a descent step.
+      - answer_expr: 6.2*eta
+        category: math_error
+        feedback: That leaves out the slope sum.
+      - answer_expr: 1.5*eta
+        category: math_error
+        feedback: That leaves out the return.
+  - id: pgp-goal-pushed-down
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt:
+      A corridor has cells 1 to 4 from left to right. A robot starts in cell 1 and chooses left or
+      right. A wall leaves it in place. Reaching cell 4 gives $+10$ and ends the episode. Every other step
+      gives $-1$, with $\gamma=0.9$. In every cell the policy chooses right with probability $p=e^\theta/(e^\theta+1)$
+      and left otherwise. Currently $p=0.8$. The episode left, right, right, right has return $4.58$. What
+      whole-episode REINFORCE slope estimate does it give? Round to two decimal places.
+    solution:
+      The slopes sum to $-0.8+3\times0.2=-0.2$. Multiplying by $4.58$ gives $-0.916$, which rounds
+      to $-0.92$.
+    tolerance:
+      abs: 0.005
+    answer: -0.92
+    common_wrong:
+      - answer: 6.412
+        category: math_error
+        feedback: That changes the left contribution from -0.8 to +0.8.
+      - answer: 10.076
+        category: math_error
+        feedback: That uses p for each right slope and -(1-p) for the left slope.
+  - id: pgp-slippery
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt:
+      A corridor has cells 1 to 4 from left to right. A robot starts in cell 1 and chooses left or
+      right. A wall leaves it in place. Reaching cell 4 gives $+10$ and ends the episode. Every other step
+      gives $-1$, with $\gamma=0.9$. In every cell the policy chooses right with probability $p=e^\theta/(e^\theta+1)$
+      and left otherwise. Now each attempted move succeeds with probability $0.8$ and otherwise leaves the
+      robot in place. These chances do not depend on $\theta$. What changes in whole-episode REINFORCE?
+    solution:
+      The transition log terms still have zero slope with respect to $\theta$. Use the same update
+      with the actions and returns that actually happened.
+    options:
+      - id: a
+        text: Divide each chosen action log-probability gradient by 0.8 before using the observed return.
+        correct: false
+        category: incorrect_reasoning
+        feedback: No correction for transition success is needed.
+      - id: b
+        text: Learn the 0.8 success chance first, then calculate a gradient from the fitted world model.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The sampled update needs no fitted transition model.
+      - id: c
+        text: Keep $G_0$ times the sum of chosen actions log-probability gradients, using observed returns.
+        correct: true
+      - id: d
+        text: Multiply each chosen action log-probability gradient by 0.8 before using the observed return.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Transition chances do not multiply the policy log gradient.
+  - id: pgp-clumsy-action
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt:
+      A walking robot uses whole-episode REINFORCE with $G_0$ weighting and no baseline. Each visited
+      state has separate policy parameters and is visited once. An episode returns $+20$ and contains one
+      clumsy action with nonzero log-probability gradient. With a small positive learning rate, what happens
+      to its probability at its state?
+    solution:
+      The positive episode return weights every chosen action log-probability gradient. With separate
+      state parameters and a small step, the clumsy action becomes more likely too.
+    options:
+      - id: a
+        text: It increases only if it was the final action in the episode.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Every chosen action receives the episode return weight.
+      - id: b
+        text: It increases too, since the same positive return weights every chosen action.
+        correct: true
+      - id: c
+        text: It decreases, since the update identifies which action looked clumsy.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The whole return does not isolate each action contribution.
+      - id: d
+        text: It stays fixed, since the update changes only the best action.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The update includes every action taken.
+  - id: pg-baseline-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 2
+    prompt: What is a baseline in REINFORCE?
+    solution:
+      A baseline is independent of the action taken and is subtracted from the return. The difference
+      weights the log-probability gradient.
+    options:
+      - id: a
+        text: An action-independent number subtracted from the return before weighting the gradient.
+        correct: true
+        feedback: The resulting difference compares the observed return with a reference level.
+      - id: b
+        text: The lowest return seen, used as a cutoff for dropping poor episodes.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Episodes below a baseline still contribute.
+      - id: c
+        text: A second learning rate used to shrink the update after each episode.
+        correct: false
+        category: incorrect_reasoning
+        feedback: A learning rate scales the update. A baseline centres the return.
+      - id: d
+        text: An extra reward added at every step before computing the episode return.
+        correct: false
+        category: incorrect_reasoning
+        feedback: A baseline is subtracted from the return used in the estimate.
+  - id: pgp-baseline-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example, why does $b=30$ make the estimates noisier than having no baseline?
+    solution: Thirty is far above both payouts, so both centred returns have large magnitudes. The estimates are $-8.5$ and $9.5$, which are 18 apart, compared with 12 without a baseline.
+    options:
+      - id: a
+        text: It changes the average estimate, so the estimates drift away from the true slope.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Both pairs of estimates average 0.5. An action-independent baseline preserves the average.
+      - id: b
+        text: It exceeds both payouts, so it reverses the sign of the true expected-payout slope.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The true slope stays 0.5. A baseline changes individual estimates without changing their average.
+      - id: c
+        text: Larger baselines always remove more noise, so the apparent extra spread is misleading.
+        correct: false
+        category: incorrect_reasoning
+        feedback: A poorly chosen baseline can add noise. Here the estimates spread farther apart.
+      - id: d
+        text: It is far above both payouts, giving large centred returns and estimates 18 apart instead of 12.
+        correct: true
+    lesson_only: true
+  - id: pgp-baseline-simple-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt:
+      A sampled action has return $G={{=g}}$ and log-probability slope $0.5$. With baseline $b=5$,
+      what REINFORCE slope estimate does it give?
+    solution: Subtract the baseline before multiplying by the slope. The estimate is $({{=g}}-5)\times0.5={{=(g-5)*0.5}}$.
+    tolerance:
+      abs: 0.001
+    answer_expr: (g-5)*0.5
+    constraints:
+      - g != 6
+    params:
+      g:
+        min: 6
+        max: 12
+        step: 1
+    common_wrong:
+      - answer_expr: g*0.5
+        category: math_error
+        feedback: That leaves out the baseline.
+      - answer_expr: (g+5)*0.5
+        category: math_error
+        feedback: That adds the baseline.
+  - id: pgp-baseline-arm-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      A slot machine has arms A and B. Its policy pulls B with probability $p=e^\theta/(e^\theta+1)$
+      and A otherwise. Currently $p={{=p}}$. A pull of B pays ${{=g}}$, and the baseline is ${{=b}}$. What
+      one-pull REINFORCE slope estimate does it give with this baseline?
+    solution: B's log-probability slope is $1-p$. The estimate is $({{=g}}-{{=b}})(1-{{=p}})=({{=(g-b)*(1-p)}})$.
+    tolerance:
+      abs: 0.001
+    answer_expr: (g-b)*(1-p)
+    params:
+      p:
+        min: 0.2
+        max: 0.8
+        step: 0.1
+      g:
+        min: 10
+        max: 16
+        step: 1
+      b:
+        min: 8
+        max: 14
+        step: 1
+    constraints:
+      - g != b
+      - p != 0.5
+      - abs((g-b)*(1-p)-p) > 0.001
+      - abs((g-b)*(1-p)-1) > 0.001
+    common_wrong:
+      - answer_expr: g*(1-p)
+        category: math_error
+        feedback: That leaves out the baseline.
+      - answer_expr: (g-b)*p
+        category: math_error
+        feedback: That uses p in place of B's log-probability slope.
+  - id: pgp-why-same-average
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      In REINFORCE, a fixed action-independent baseline $b$ is subtracted from the return. Why does
+      this leave the average slope estimate unchanged?
+    solution:
+      The policy average of its log-probability gradient is zero. Subtracting $b$ times that gradient
+      therefore subtracts zero on average.
+    options:
+      - id: a
+        text: The log-probability gradient averages to zero over the policy choices.
+        correct: true
+      - id: b
+        text: Subtracting the same baseline makes it cancel in every individual estimate.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Individual estimates change. The extra terms average to zero.
+      - id: c
+        text: The baseline is always tiny compared with the returns in each estimate.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The result holds for any fixed action-independent baseline.
+      - id: d
+        text: The learning rate absorbs the baseline and restores each original estimate.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The learning rate does not undo the subtraction.
+  - id: pgp-all-positive
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      A policy uses REINFORCE without a baseline. Every return lies between 50 and 60. Consider each
+      chosen action contribution to the update on its own. What happens?
+    solution:
+      Every return gives a positive weight to its chosen actions. The shared large positive level
+      makes quality differences hard to separate from noise.
+    options:
+      - id: a
+        text: Every chosen action gets zero push; positive returns contain no useful information.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Positive returns still multiply log-probability gradients.
+      - id: b
+        text: Every chosen action learns more reliably; large returns remove sampling noise.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Large shared positive weights can leave estimates far from their average.
+      - id: c
+        text: Every bad chosen action gets a strong negative push; only good actions get positive returns.
+        correct: false
+        category: incorrect_reasoning
+        feedback: All returns here are positive, including those from worse episodes.
+      - id: d
+        text: Every chosen action gets a positive push; small push differences give noisy comparisons.
+        correct: true
+  - id: pgp-reuse-episodes
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      Plain REINFORCE updates $\theta$ after collecting episodes. Why can it not keep using those
+      episodes as fresh samples for later updates without a correction?
+    solution:
+      The average estimate matches the slope when episodes come from the current policy. Old episodes
+      came from different action probabilities.
+    options:
+      - id: a
+        text: The estimate needs empty storage, and retaining old episodes prevents playing new ones.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Storage is separate from the sampling requirement.
+      - id: b
+        text: The estimate uses $\gamma$, and the discount must change after every update.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Parameter updates do not require changing the discount.
+      - id: c
+        text: The estimate averages to the current slope only for episodes drawn with current parameters.
+        correct: true
+      - id: d
+        text: The estimate needs high returns, and every old episode returns less than any new one.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Returns need not improve after an update.
+  - id: pgp-equal-baseline
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt:
+      A slot machine has arms A and B. Its policy pulls B with probability $p=e^\theta/(e^\theta+1)$
+      and A otherwise. A always pays 4 and B always pays 10. At $\theta=0$, each arm has chance 0.5. What
+      baseline makes the one-pull REINFORCE estimate equal whichever arm is pulled?
+    solution:
+      Set B's estimate $(10-b)0.5$ equal to A's estimate $(4-b)(-0.5)$. Solving $10-b=b-4$ gives
+      $b=7$.
+    tolerance:
+      abs: 0.001
+    answer: 7
+    common_wrong:
+      - answer: 0
+        category: math_error
+        feedback: Without a baseline the estimates are -2 and 5.
+      - answer: 6
+        category: math_error
+        feedback: That is the payout difference. Equal estimates require the midpoint.
+  - id: pgp-reply-baseline
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt:
+      A language model samples a reply with reward $R=0.6$. A fixed baseline $b=0.7$ is the average
+      reward of several other replies to the same prompt. Consider only this reply contribution $(R-b)\nabla_\theta\ln\pi_\theta$,
+      with a small positive learning rate and nonzero gradient. What happens to its probability?
+    solution:
+      The weight is $0.6-0.7=-0.1$. A small step against the reply log-probability gradient lowers
+      its probability.
+    options:
+      - id: a
+        text: It decreases because the reward is below the baseline.
+        correct: true
+      - id: b
+        text: It increases because the reply received a positive reward.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The weight after baseline subtraction is negative.
+      - id: c
+        text: It stays unchanged because both given values are positive.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Their difference is nonzero.
+      - id: d
+        text: It increases slightly because the baseline only shrinks a positive push.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Subtracting 0.7 from 0.6 reverses the weight sign.
+  - id: pg-explain-reinforce
+    dimension: math
+    type: explain
+    role: core
+    difficulty: 3
+    est_minutes: 5
+    prompt:
+      Explain how REINFORCE improves a policy. What does it climb? Where does the log-derivative trick
+      enter? Why are the world transition probabilities unnecessary, and how does the choice of baseline affect noise?
+    rubric:
+      - id: objective
+        criterion: States that REINFORCE climbs expected return by adding an ascent step.
+        weight: 1
+        required: true
+      - id: estimate
+        criterion:
+          Uses the log-derivative trick to obtain return times a sum of log-policy gradients and
+          explains that world transition terms have zero parameter slope.
+        weight: 1
+        required: true
+      - id: baseline
+        criterion:
+          Explains that an action-independent baseline preserves the average because the average log-policy
+          gradient is zero. A baseline near the typical return usually reduces noise a lot, while a bad one can add noise.
+        weight: 1
+        required: true
+    exemplar:
+      REINFORCE climbs expected return $J(\theta)=E[G_0]$ by gradient ascent. The log-derivative
+      trick $\nabla_\theta\pi_\theta=\pi_\theta\nabla_\theta\ln\pi_\theta$ turns the slope into an average
+      estimated by $G_0\sum_t\nabla_\theta\ln\pi_\theta(a_t\mid s_t)$; world transition log terms have zero
+      slope because they do not depend on $\theta$. An action-independent baseline replaces $G_0$ with $G_0-b$
+      while preserving the average estimate, since the policy log-probability gradient averages to zero.
+      A baseline near the typical return usually reduces noise a lot, but a bad one can add noise.
+    solution:
+      REINFORCE climbs expected return $J(\theta)=E[G_0]$ by gradient ascent. The log-derivative
+      trick $\nabla_\theta\pi_\theta=\pi_\theta\nabla_\theta\ln\pi_\theta$ turns the slope into an average
+      estimated by $G_0\sum_t\nabla_\theta\ln\pi_\theta(a_t\mid s_t)$; world transition log terms have zero
+      slope because they do not depend on $\theta$. An action-independent baseline replaces $G_0$ with $G_0-b$
+      while preserving the average estimate, since the policy log-probability gradient averages to zero.
+      A baseline near the typical return usually reduces noise a lot, but a bad one can add noise.

@@ -1,0 +1,376 @@
+concept: simulation-for-rl
+version: 1
+objective: |
+  **Goal:** write the loop that lets an agent practise in a simulated environment, using reset and step to run episodes that end by termination or a time limit, explain why many copies run at once, and say why a policy trained in simulation can fail on a real robot.
+recap:
+  - concept: mdp
+    text: "A Markov decision process (MDP) describes states $s$, actions $a$, the chance $p(s'\\mid s,a)$ of each next state, and reward $r_{t+1}$ for each step."
+where_this_fits: |
+  ### What is a simulation environment?
+
+  A simulation environment puts an MDP into a program for an agent to interact with. It takes the agent's action and says what happens next.
+
+  It's useful because a reinforcement-learning agent learns by trial and error, over thousands of tries. Real robots are slow, wear out and break. A simulator runs fast, restarts instantly and runs many copies at once. We'll write the loop that drives a simulator, run copies of it and see what fails on real robots.
+knowledge_points:
+  - id: sim-reset-step
+    title: "Start the task and take one step"
+    explain: |
+      ### The corridor as a program
+
+      Our example is a corridor of 4 cells, numbered 1 to 4. The robot starts in cell 1 and moves left or right; walls keep it in place. Reaching cell 4 gives $+10$ and ends the task. Every other step gives $-1$, so the robot does best by reaching cell 4 quickly.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" aria-label="Top: a corridor of four cells numbered 1 to 4, with the robot as a green dot in cell 1, the start. Cell 4 is marked plus 10, episode ends, and every other step gives minus 1. Bottom: an agent box and an environment box. A blue arrow from the agent to the environment is labelled step with an action. A blue arrow back is labelled next state, reward and whether the episode ended. A note says reset puts the robot in cell 1 and returns state 1">
+      <defs><marker id="sim1-blue" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#3b82f6"/></marker></defs>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <rect x="80" y="30" width="120" height="70" fill="#ffffff" stroke="#737373" stroke-width="1.5"/>
+      <rect x="200" y="30" width="120" height="70" fill="#ffffff" stroke="#737373" stroke-width="1.5"/>
+      <rect x="320" y="30" width="120" height="70" fill="#ffffff" stroke="#737373" stroke-width="1.5"/>
+      <rect x="440" y="30" width="120" height="70" fill="#ffffff" stroke="#737373" stroke-width="1.5"/>
+      <text x="90" y="50">1</text><text x="210" y="50">2</text><text x="330" y="50">3</text><text x="450" y="50">4</text>
+      <circle cx="140" cy="70" r="12" fill="#10b981"/>
+      <text x="140" y="94" text-anchor="middle" fill="#737373">start</text>
+      <text x="500" y="68" text-anchor="middle">+10</text><text x="500" y="88" text-anchor="middle" font-size="13">episode ends</text>
+      <text x="320" y="124" text-anchor="middle" fill="#737373">every other step gives −1; a move into a wall stays put</text>
+      <rect x="30" y="170" width="160" height="70" rx="8" fill="#ffffff" stroke="#737373" stroke-width="1.5"/>
+      <text x="110" y="210" text-anchor="middle">agent</text>
+      <rect x="450" y="170" width="160" height="70" rx="8" fill="#ffffff" stroke="#737373" stroke-width="1.5"/>
+      <text x="530" y="210" text-anchor="middle">environment</text>
+      <path d="M192 188 H446" stroke="#3b82f6" stroke-width="2.5" marker-end="url(#sim1-blue)"/>
+      <path d="M448 222 H194" stroke="#3b82f6" stroke-width="2.5" marker-end="url(#sim1-blue)"/>
+      <text x="320" y="180" text-anchor="middle" fill="#3b82f6">step(action)</text>
+      <text x="320" y="242" text-anchor="middle" fill="#3b82f6">next state, reward, ended?</text>
+      <text x="320" y="282" text-anchor="middle" fill="#737373">reset() puts the robot in cell 1 and returns state 1</text>
+      </g>
+      </svg>
+      ```
+
+      - **reset** starts a new try. It puts the robot back in cell 1 and returns that state.
+      - **step** applies one action. It moves the robot, then returns the next state, the reward for that step and whether the task has ended.
+
+      ### One try is an episode
+
+      A try from reset until the task ends is an **episode**. A state where it ends, like cell 4, is a **terminal state**.
+
+      So a **simulation environment** is a program that holds a task's current state and offers reset, to start an episode, and step, to apply one action. Inside step it follows the MDP. It finds the next state $s'$ from $p(s'\mid s,a)$ and works out the reward $r$. In our corridor each move has one result, which has probability 1.
+
+      ### When a move can fail
+
+      Suppose the floor is slippery: a move works with probability $0.8$, otherwise the robot stays put. Step draws a random number from 0 to 1 and moves only if it is below $0.8$. A move away from a wall now has two possible next states, so identical actions can give different episodes. A computer's random numbers follow a fixed rule that starts from a **seed**. The same seed gives the same numbers and repeats a run, which helps find bugs.
+
+      Each fresh random draw is independent, so the chance of a sequence of outcomes is the product of their chances. If several different sequences lead to the same result, add their chances. For example, if a move works with probability $p$, one slip and one successful move in either order has probability $(1-p)p+p(1-p)=2p(1-p)$.
+
+      Do not call step again after an episode ends. Its answers mean nothing, and many environments warn or raise an error. The next call must be reset.
+    worked: |
+      Let's run one episode by hand in the corridor where moves always work, with the actions left, right, right, right.
+
+      1. **Start the episode.** reset puts the robot in its start cell and returns that state.
+         $$s=1$$
+
+      2. **Step left.** The robot is against the left wall, so it stays put and the step costs $-1$.
+         $$s'=1,\quad r=-1,\quad\text{not ended}$$
+
+      3. **Step right.** The robot moves into cell 2.
+         $$s'=2,\quad r=-1,\quad\text{not ended}$$
+
+      4. **Step right.** The robot moves into cell 3.
+         $$s'=3,\quad r=-1,\quad\text{not ended}$$
+
+      5. **Step right.** The robot reaches cell 4, a terminal state, so it gets $+10$ and the episode ends.
+         $$s'=4,\quad r=+10,\quad\text{ended}$$
+
+      6. **Add up the rewards.** The episode's total reward is the sum of the rewards from every step.
+         $$-1-1-1+10=7$$
+
+      The episode took 4 steps and earned 7. Moving right on every step would have earned 8, because it skips the wasted bump into the wall.
+    problems:
+      - sim-reset-step-basics
+      - sim-reset-self-explain
+      - sim-terminal-state
+      - sim-episode-total-template
+      - sim-step-after-end
+      - sim-seed
+      - sim-slip-template
+      - sim-game-step
+  - id: sim-interaction-loop
+    title: "Write the loop that runs an episode"
+    explain: |
+      ### The loop
+
+      We can now restart the corridor and take a step in it. To run whole episodes, the agent also needs a rule for choosing an action in each state. Reinforcement learning calls this rule a **policy**. Later lessons are about finding good policies, so here we'll use simple fixed ones, such as "always move right".
+
+      Running an episode always follows the same pattern, shown in the picture. We call reset once. Then we repeat three things until the episode ends. The policy picks an action from the current state, step applies it, and we add the reward and carry on from the next state.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 320" aria-label="Flowchart of the interaction loop. reset leads to the policy picking an action, which leads to step returning the next state and reward. Then a check asks whether the episode has ended. If yes, the episode is over. If no, an arrow goes back to the policy picking the next action">
+      <defs><marker id="sim2-muted" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker></defs>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <rect x="20" y="40" width="130" height="44" rx="8" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="85" y="67" text-anchor="middle">reset()</text>
+      <rect x="200" y="40" width="170" height="44" rx="8" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="285" y="67" text-anchor="middle">policy picks action</text>
+      <rect x="420" y="40" width="200" height="44" rx="8" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="520" y="67" text-anchor="middle">step: state, reward</text>
+      <rect x="420" y="150" width="200" height="44" rx="8" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="520" y="177" text-anchor="middle">episode ended?</text>
+      <rect x="420" y="260" width="200" height="44" rx="8" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="520" y="287" text-anchor="middle">episode over</text>
+      <path d="M150 62 H196" stroke="#737373" stroke-width="2" marker-end="url(#sim2-muted)"/>
+      <path d="M370 62 H416" stroke="#737373" stroke-width="2" marker-end="url(#sim2-muted)"/>
+      <path d="M520 84 V146" stroke="#737373" stroke-width="2" marker-end="url(#sim2-muted)"/>
+      <path d="M520 194 V256" stroke="#737373" stroke-width="2" marker-end="url(#sim2-muted)"/>
+      <path d="M420 172 H285 V88" stroke="#737373" stroke-width="2" fill="#ffffff" fill-opacity="0" marker-end="url(#sim2-muted)"/>
+      <text x="532" y="231">yes</text>
+      <text x="352" y="164" fill="#737373">no</text>
+      </g>
+      </svg>
+      ```
+
+      This pattern is called the **interaction loop**. Online reinforcement-learning methods, which learn by acting in the environment, all run it. Methods differ in how they improve the policy from the rewards.
+
+      ### Two ways an episode can end
+
+      What if the robot never reaches cell 4? With the policy "always move left", it bumps into the left wall forever, and the loop would never stop. So an environment also sets a **time limit**, the largest number of steps in one episode. Our corridor stops an episode after 5 steps.
+
+      That gives two different endings, and step reports each one with its own **flag**, a value that is either true or false.
+
+      - **terminated** is true when the robot reaches a terminal state, so the task itself is over.
+      - **truncated** is true when the time limit cuts the episode short. The task isn't over, so the state where it stopped isn't a terminal state.
+
+      The loop stops when either flag is true. The difference matters when an agent learns. A robot stopped by the time limit in cell 3 was one step from $+10$, so more reward could still have followed. A robot in cell 4 has nothing more to collect. Later lessons estimate how much reward is still to come from a state, and they use the flags to tell these cases apart.
+
+      Be careful not to stop the loop on terminated alone. With a policy that never reaches cell 4, that loop runs forever.
+    worked: |
+      Let's run two episodes in the corridor with its 5-step time limit, one with the policy "always move right" and one with "always move left".
+
+      1. **Always right.** After reset puts the robot in cell 1, it moves to cells 2, 3 and 4, with rewards $-1$, $-1$ and $+10$. Cell 4 is terminal, so step says terminated after 3 steps.
+         $$\text{total}=-1-1+10=8$$
+
+      2. **Always left.** The robot bumps into the left wall on every step and stays in cell 1, each time for $-1$. It never reaches cell 4, so on step 5 the time limit makes step say truncated.
+         $$\text{total}=5\times(-1)=-5$$
+
+      Here are the same two episodes in Python. Some pieces of Python may be new.
+
+      - `class Corridor` groups the corridor's data, `self.cell` and the step count `self.steps`, with its two functions `reset` and `step`. Inside them, `self` means "this corridor".
+      - `self.steps += 1` adds 1 to the step count.
+      - `min(self.cell + 1, 4)` and `max(self.cell - 1, 1)` keep the robot between the walls, since `min` picks the smaller number and `max` the larger.
+      - `10 if terminated else -1` gives 10 when `terminated` is true and $-1$ otherwise.
+      - `and not terminated` stops both flags being true at once, so reaching cell 4 on the 5th step counts only as terminated, because the task really ended. Gymnasium's time-limit wrapper can set both.
+      - `return` can hand back several values, and `a, b = ...` unpacks them into separate names.
+      - `run_episode` takes the environment `env` and a policy, which is a function from a state to an action. These two policies ignore the state. `while True` repeats until a `return` leaves the function, handing back the total reward, the step count `env.steps` and whether the episode terminated. Our `step` doesn't check for a finished episode, so `run_episode` must stop.
+      - `env = Corridor()` makes one corridor, and `run_episode` calls its reset.
+
+      ```python
+      class Corridor:
+          def reset(self):
+              self.cell, self.steps = 1, 0
+              return self.cell
+
+          def step(self, action):
+              self.steps += 1
+              if action == "right":
+                  self.cell = min(self.cell + 1, 4)
+              else:
+                  self.cell = max(self.cell - 1, 1)
+              terminated = self.cell == 4
+              reward = 10 if terminated else -1
+              truncated = self.steps >= 5 and not terminated
+              return self.cell, reward, terminated, truncated
+
+      def run_episode(env, policy):
+          state = env.reset()
+          total = 0
+          while True:
+              action = policy(state)
+              state, reward, terminated, truncated = env.step(action)
+              total += reward
+              if terminated or truncated:
+                  return total, env.steps, terminated
+
+      def always_right(state):
+          return "right"
+
+      def always_left(state):
+          return "left"
+
+      env = Corridor()
+      print(run_episode(env, always_right))
+      print(run_episode(env, always_left))
+      # prints (8, 3, True), then (-5, 5, False)
+      ```
+
+      Real projects usually get environments from a library, a package of ready-made code. A common one is Gymnasium, the maintained successor to the Gym library that OpenAI released in 2016. It uses the same names for reset, step, terminated and truncated. Its step also returns a fifth value, `info`, a dictionary (a set of named values) with extra details such as values for debugging, and its reset returns the start state together with `info`.
+    problems:
+      - sim-loop-basics
+      - sim-loop-self-explain
+      - sim-truncated-meaning
+      - sim-loop-stop-code
+      - sim-limit-template
+      - sim-loop-reset-bug
+      - sim-why-two-flags
+      - sim-drone-hover
+  - id: sim-vector-envs
+    title: "Run many copies of the simulator at once"
+    explain: |
+      ### Why one copy is slow
+
+      Training takes millions of steps, but one simulator leaves most processor cores idle. Running episodes together gives varied situations because policies often pick actions at random.
+
+      ### Many corridors side by side
+
+      A **vectorised environment** runs $N$ copies side by side. Each active copy gets one action per call. Gymnasium's `AsyncVectorEnv` runs copies in separate processes. Reset returns $N$ start states; step returns a next state, reward, terminated flag and truncated flag for each copy.
+
+      The loop still chooses actions and calls step repeatedly, but it checks the ending flags separately for each copy. A finished copy restarts while the others carry on.
+
+      If a finished copy restarts within the same call, each call gives $N$ **transitions**, where a transition is the record of one step: the state, the action, the reward and the next state. In Gymnasium's default next-step mode, the call after a copy finishes only resets it, so that entry is left out of experience. Agents learn from transitions, so more per second means faster learning.
+
+      The picture shows two copies of the corridor over four calls. Normally all copies share one policy, but here they differ so their episodes end at different times. In copy A the policy always moves right, and in copy B it always moves left.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 270" aria-label="A grid with two rows, copy A always moving right and copy B always moving left, and five columns, the start and calls 1 to 4. Copy A goes from cell 1 to 2 to 3, and on call 3 it reaches cell 4, earns plus 10, and is reset at once, so step returns cell 1, shown in green. On call 4 it is in cell 2. Copy B stays in cell 1 with reward minus 1 on every call. Below: 4 calls times 2 copies gives 8 transitions">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <text x="160" y="40" text-anchor="middle" fill="#737373">start</text>
+      <text x="260" y="40" text-anchor="middle" fill="#737373">call 1</text>
+      <text x="360" y="40" text-anchor="middle" fill="#737373">call 2</text>
+      <text x="460" y="40" text-anchor="middle" fill="#737373">call 3</text>
+      <text x="560" y="40" text-anchor="middle" fill="#737373">call 4</text>
+      <text x="20" y="85">copy A</text><text x="20" y="103" fill="#737373">right</text>
+      <text x="20" y="165">copy B</text><text x="20" y="183" fill="#737373">left</text>
+      <rect x="115" y="55" width="90" height="60" fill="#ffffff" stroke="#d4d4d4"/>
+      <rect x="215" y="55" width="90" height="60" fill="#ffffff" stroke="#d4d4d4"/>
+      <rect x="315" y="55" width="90" height="60" fill="#ffffff" stroke="#d4d4d4"/>
+      <rect x="415" y="55" width="90" height="60" fill="#ffffff" stroke="#10b981" stroke-width="2.5"/>
+      <rect x="515" y="55" width="90" height="60" fill="#ffffff" stroke="#d4d4d4"/>
+      <rect x="115" y="135" width="90" height="60" fill="#ffffff" stroke="#d4d4d4"/>
+      <rect x="215" y="135" width="90" height="60" fill="#ffffff" stroke="#d4d4d4"/>
+      <rect x="315" y="135" width="90" height="60" fill="#ffffff" stroke="#d4d4d4"/>
+      <rect x="415" y="135" width="90" height="60" fill="#ffffff" stroke="#d4d4d4"/>
+      <rect x="515" y="135" width="90" height="60" fill="#ffffff" stroke="#d4d4d4"/>
+      <text x="160" y="90" text-anchor="middle">cell 1</text>
+      <text x="260" y="82" text-anchor="middle">cell 2</text><text x="260" y="102" text-anchor="middle" fill="#737373">−1</text>
+      <text x="360" y="82" text-anchor="middle">cell 3</text><text x="360" y="102" text-anchor="middle" fill="#737373">−1</text>
+      <text x="460" y="80" text-anchor="middle" fill="#10b981">cell 4, +10</text><text x="460" y="100" text-anchor="middle" fill="#10b981">now cell 1</text>
+      <text x="560" y="82" text-anchor="middle">cell 2</text><text x="560" y="102" text-anchor="middle" fill="#737373">−1</text>
+      <text x="160" y="170" text-anchor="middle">cell 1</text>
+      <text x="260" y="162" text-anchor="middle">cell 1</text><text x="260" y="182" text-anchor="middle" fill="#737373">−1</text>
+      <text x="360" y="162" text-anchor="middle">cell 1</text><text x="360" y="182" text-anchor="middle" fill="#737373">−1</text>
+      <text x="460" y="162" text-anchor="middle">cell 1</text><text x="460" y="182" text-anchor="middle" fill="#737373">−1</text>
+      <text x="560" y="162" text-anchor="middle">cell 1</text><text x="560" y="182" text-anchor="middle" fill="#737373">−1</text>
+      <text x="460" y="228" text-anchor="middle" fill="#10b981">reached cell 4, so A restarts</text>
+      <text x="320" y="258" text-anchor="middle" fill="#737373">4 calls × 2 copies = 8 transitions</text>
+      </g>
+      </svg>
+      ```
+
+      ### Finished copies restart on their own
+
+      A vectorised environment resets each finished copy alone and keeps stepping the others.
+
+      Here a finished copy is reset straight away, so step returns its new start state. Gymnasium's default next-step autoreset waits until the next call to reset it and ignores that call's action. That call produces no transition for the finished copy, so its entry is left out of experience.
+
+      A's move reached terminal cell 4, its true next state. Returned cell 1 starts the new episode. In same-call reset mode, Gymnasium records it in `info["final_obs"]`.
+    worked: |
+      Let's follow the two copies call by call. Each corridor has a 5-step time limit, copy A always moves right and copy B always moves left.
+
+      1. **Reset both.** The vectorised reset returns one start state for each copy.
+         $$\text{states }(1,1)$$
+
+      2. **Call 1 with the actions (right, left).** A moves to cell 2, and B bumps the wall and stays in cell 1.
+         $$\text{states }(2,1),\quad\text{rewards }(-1,-1)$$
+
+      3. **Call 2 with (right, left) again.** A moves to cell 3, and B stays put again.
+         $$\text{states }(3,1),\quad\text{rewards }(-1,-1)$$
+
+      4. **Call 3, same actions.** A reaches cell 4 for $+10$, so its terminated flag is true and it's reset straight away to cell 1. B stays put.
+         $$\begin{aligned}\text{states }&(1,1)\\\text{rewards }&(+10,-1)\\\text{terminated }&(\text{true},\text{false})\end{aligned}$$
+
+      5. **Call 4, same actions.** A starts its second episode by moving to cell 2. B has now taken 4 steps.
+         $$\text{states }(2,1),\quad\text{rewards }(-1,-1)$$
+
+      6. **Count what we collected.** The same-call reset mode gave one transition per copy on each call. With Gymnasium's default next-step mode, the call after a copy finishes only resets it, so that entry is left out of experience. For A on call 3, the transition records cell 4 as the next state, because that's where the move led.
+         $$4\times2=8\text{ transitions}$$
+
+      After four calls, only A's first episode has finished. B's episode will be truncated on call 5, when it reaches the time limit.
+    problems:
+      - sim-vector-basics
+      - sim-vector-self-explain
+      - sim-transitions-template
+      - sim-episodes-template
+      - sim-final-state-mistake
+      - sim-why-vector
+      - sim-walker-fall
+  - id: sim-to-real
+    title: "Move from the simulator to a real robot"
+    explain: |
+      ### No simulator is exact
+
+      A simulator's friction, masses, delays and sensor errors are imperfect. The drop in performance when a policy trained in simulation runs on the real robot is called the **sim-to-real gap**.
+
+      ### A jump that works only in the simulator
+
+      To see the gap, we give the corridor robot a third action, a **jump** that moves it two cells to the right. Like a move, it gives $-1$, or $+10$ if it lands in cell 4. Moves left and right still always work. In the simulator the jump always works too. On the real floor it works only half the time, and otherwise the robot falls over. A fall gives $-10$ for that step and ends the episode, with terminated set to true.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 310" aria-label="The four-cell corridor. Green arrows below the cells walk from 1 to 2 to 3 to 4, total 8. An orange arc above jumps from cell 1 to cell 3 and is followed by one step right, total 9 in the simulator. A red note says that on the real floor the jump works half the time, and otherwise the robot falls, which ends the episode with minus 10">
+      <defs><marker id="sim4-green" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#10b981"/></marker><marker id="sim4-amber" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#f59e0b"/></marker></defs>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <rect x="80" y="110" width="120" height="70" fill="#ffffff" stroke="#737373" stroke-width="1.5"/>
+      <rect x="200" y="110" width="120" height="70" fill="#ffffff" stroke="#737373" stroke-width="1.5"/>
+      <rect x="320" y="110" width="120" height="70" fill="#ffffff" stroke="#737373" stroke-width="1.5"/>
+      <rect x="440" y="110" width="120" height="70" fill="#ffffff" stroke="#737373" stroke-width="1.5"/>
+      <text x="140" y="150" text-anchor="middle">1</text><text x="260" y="150" text-anchor="middle">2</text><text x="380" y="150" text-anchor="middle">3</text><text x="500" y="150" text-anchor="middle">4</text>
+      <path d="M140 105 Q260 15 374 103" stroke="#f59e0b" stroke-width="2.5" fill="#ffffff" fill-opacity="0" marker-end="url(#sim4-amber)"/>
+      <path d="M392 102 Q440 70 492 102" stroke="#f59e0b" stroke-width="2.5" fill="#ffffff" fill-opacity="0" marker-end="url(#sim4-amber)"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="260" y="44" text-anchor="middle" fill="#f59e0b">jump, then right: total 9 in the simulator</text>
+      <path d="M150 200 H246" stroke="#10b981" stroke-width="2.5" marker-end="url(#sim4-green)"/>
+      <path d="M270 200 H366" stroke="#10b981" stroke-width="2.5" marker-end="url(#sim4-green)"/>
+      <path d="M390 200 H486" stroke="#10b981" stroke-width="2.5" marker-end="url(#sim4-green)"/>
+      <text x="320" y="230" text-anchor="middle" fill="#10b981">walk right three times: total 8 everywhere</text>
+      <text x="320" y="270" text-anchor="middle" fill="#ef4444">real floor: the jump works half the time;</text>
+      <text x="320" y="290" text-anchor="middle" fill="#ef4444">otherwise the robot falls, −10, episode ends</text>
+      </g>
+      </svg>
+      ```
+
+      In the simulator, jumping and then stepping right earns $-1+10=9$, which beats walking's $8$. Training finds the policy with the highest total reward, so an agent trained there learns to jump. On the real floor that same policy falls over half the time.
+
+      Be careful not to read a top score in the simulator as proof the robot is ready. The jumping policy scores the best possible 9 there, and it fails on the real floor.
+
+      ### Closing the gap
+
+      A common fix is **domain randomisation**. At every reset, the simulator draws its uncertain settings at random from a range. Here that's the jump's chance of working, and for a real robot, things like friction, masses and delays. The policy is trained to do well on average across the whole range, and if the real world lies inside it, the real world is just one more variation. In 2018, OpenAI trained a five-fingered robot hand this way, entirely in simulation, to turn a cube in its palm until it faced a chosen way, then used the policy on the real hand.
+
+      Other fixes are measuring the real robot to set the simulator, and practising briefly on the real robot at the end. Choose a range that covers plausible real-world conditions. Outside the training range, transfer is uncertain. A policy that copes with everything can be more cautious than it needs to be in any one setting, like our robot walking even on a floor where the jump would work.
+    worked: |
+      Let's compare the two policies, jumping and walking, using the expected value. That's the average total reward over many episodes. Each outcome is weighted by its probability, so an outcome that happens half the time counts for half.
+
+      1. **In the simulator.** The jump always works, so jumping then stepping right earns more than walking, which takes three steps.
+         $$\begin{aligned}\text{jump: }&-1+10=9\\\text{walk: }&-1-1+10=8\end{aligned}$$
+
+      2. **Jumping on the real floor.** Half the time the jump works and the episode earns 9. Half the time the robot falls and earns $-10$.
+         $$0.5\times9+0.5\times(-10)=-0.5$$
+
+      3. **Walking on the real floor.** Moves left and right work on the real floor exactly as in the simulator.
+         $$-1-1+10=8$$
+
+      4. **Jumping under each randomised setting.** With domain randomisation, each reset draws the jump's chance of working from $0.5$, $0.75$ and $1$, each equally likely, and the agent isn't told which was drawn, so it can't jump only when the jump is safe. A jump that works earns 9 and a fall earns $-10$.
+         $$\begin{aligned}0.5\times9+0.5\times(-10)&=-0.5\\0.75\times9+0.25\times(-10)&=4.25\\1\times9&=9\end{aligned}$$
+
+      5. **Average over the settings.** Two chances are at work. The reset picks a floor, then on that floor the jump works or fails. Each row above already covers the second chance, so we only need to average over the floors. Each comes up a third of the time, so jumping's expected total is the average of the three.
+         $$\frac{-0.5+4.25+9}{3}=4.25$$
+
+         This matches the middle row because jumping's total rises evenly with the chance, and the three chances average to $0.75$.
+
+      In the randomised simulator jumping is worth $4.25$ on average and walking is worth $8$, so the agent learns to walk, which is also the right choice on the real floor.
+    problems:
+      - sim-gap-basics
+      - sim-gap-self-explain
+      - sim-randomise-meaning
+      - sim-jump-template
+      - sim-measure-gripper
+      - sim-top-score-mistake
+      - sim-range-outside
+      - sim-drone-camera
+final: sim-explain-loop
+summary: |
+  - A simulation environment is an MDP written as code. reset starts an episode and returns the start state, and step applies one action and returns the next state, the reward and whether the episode has ended.
+  - The interaction loop calls reset once, then repeats "the policy picks an action, step applies it, add up the reward" until step says terminated (a terminal state was reached) or truncated (the time limit cut the episode short).
+  - With same-call resets, a vectorised environment gives $N$ transitions per call. In Gymnasium's default next-step mode, the call after a copy finishes only resets it, so that entry is left out of experience while the other copies carry on.
+  - A policy trained in simulation can do worse on the real robot, which is the sim-to-real gap. Domain randomisation, matching the simulator to measurements and brief practice on the real robot help close it.
+
+  **Next:** The sim-to-real transfer lesson goes deeper into these fixes and how they're used on real robots.

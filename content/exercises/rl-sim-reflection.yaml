@@ -1,0 +1,118 @@
+concept: ppo
+exercises:
+  - id: rlsim-discounted-return
+    dimension: math
+    type: numeric
+    role: core
+    difficulty: 1
+    est_minutes: 2
+    prompt: |
+      An episode has rewards $r_1=0$, $r_2=2$, and $r_3=8$, then ends.
+      With discount $\gamma=0.5$, what is the return $G_0$?
+    answer: 3
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - answer: 10
+        category: misunderstood_definition
+        feedback: This adds the rewards without discounting later rewards.
+      - answer: 5
+        category: math_error
+        feedback: This discounts both later rewards once. The third reward needs two powers of the discount.
+    solution: |
+      We weight each reward by its distance from the current step.
+      The return is $G_0=0+0.5\cdot2+0.5^2\cdot8=3$.
+  - id: rlsim-baseline-advantage
+    dimension: math
+    type: numeric
+    role: core
+    difficulty: 2
+    est_minutes: 2
+    prompt: |
+      A sampled action has return $G_t=0.3$. The fitted state-value baseline
+      is $V(s_t)=0.7$. What advantage estimate $\hat A_t$ weights its
+      log-probability gradient in REINFORCE?
+    answer: -0.4
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - answer: 0.4
+        category: math_error
+        feedback: Subtract the baseline from the return. Reversing that subtraction reverses the update's direction.
+      - answer: 0.3
+        category: misunderstood_definition
+        feedback: This uses the raw return and leaves out the baseline.
+    solution: |
+      We compare the sampled return with the baseline.
+      The advantage is $\hat A_t=0.3-0.7=-0.4$, so this sample contributes a decrease in its action's log probability.
+  - id: rlsim-negative-clip
+    dimension: math
+    type: numeric
+    role: core
+    difficulty: 2
+    est_minutes: 2
+    prompt: |
+      A PPO sample has advantage $\hat A_t=-2$, ratio $\rho_t(\theta)=0.5$,
+      and clip range $c=0.2$. What is this sample's clipped surrogate value
+      before averaging over the batch?
+    answer: -1.6
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - answer: -1
+        category: misunderstood_definition
+        feedback: This uses only the raw ratio term. Compare it with the clipped term and take the smaller value.
+      - answer: -2.4
+        category: incorrect_reasoning
+        feedback: A ratio of 0.5 clips to the lower boundary 0.8. The upper boundary 1.2 applies to ratios above it.
+    solution: |
+      The raw term is $0.5(-2)=-1$ and the clipped term is $0.8(-2)=-1.6$.
+      We take the smaller value, $-1.6$.
+  - id: rlsim-ratio-overshoot
+    dimension: conceptual
+    type: mc
+    role: core
+    difficulty: 3
+    est_minutes: 2
+    prompt: |
+      A PPO batch uses clip range $c=0.2$. After a parameter update, one
+      sampled action has ratio $\rho_t(\theta)=1.25$.
+      Which explanation is consistent with the clipped objective?
+    options:
+      - id: a
+        text: Clipping changes the objective's slope; a finite parameter step can cross a clip boundary.
+        correct: true
+      - id: b
+        text: Clipping projects each probability ratio into the interval; this result shows an implementation error.
+        correct: false
+        feedback: The objective clips a surrogate term. A finite update can still move the ratio outside the interval without any error.
+      - id: c
+        text: Clipping resets the old probability after each step; this result shows an outdated denominator.
+        correct: false
+        feedback: Old probabilities stay fixed across the PPO epochs for a collected batch.
+    solution: |
+      The clipped branch can remove a sample's incentive for further movement.
+      A finite update, including contributions from other samples, can still move its ratio beyond the boundary.
+  - id: rlsim-evaluation-claim
+    dimension: transfer
+    type: mc
+    role: core
+    difficulty: 3
+    est_minutes: 2
+    prompt: |
+      We train a policy in a deterministic gridworld. It beats a random policy
+      on 100 evaluation seeds excluded from training. Training and evaluation
+      draw start cells from the same 24 cells. The seeds select start cells
+      and action-sampling sequences. Which conclusion does this support?
+    options:
+      - id: a
+        text: The comparison supports higher mean return on the evaluated episodes under the original gridworld dynamics.
+        correct: true
+      - id: b
+        text: The comparison supports higher mean return on start cells held out from training under the original gridworld dynamics.
+        correct: false
+        feedback: Holding out seeds separates episodes. Both seed sets draw start cells from the same pool, so this comparison leaves performance on held-out start cells unmeasured.
+      - id: c
+        text: The comparison supports higher mean return on the evaluated start cells under gridworld dynamics with random action slips.
+        correct: false
+        feedback: Action sampling varies the chosen actions. Action slips change how chosen actions affect the environment and require a separate evaluation.
+    solution: |
+      The comparison supports improved mean return on the stated evaluation episodes.
+      Different seeds keep evaluation episodes separate from training while retaining the same environment dynamics.

@@ -10,7 +10,7 @@ concepts:
       dimensions: [conceptual, math],
       prereqs: [{ id: probability-basics }],
       objectives: [{ text: "Formalise a task as an MDP", dimension: conceptual }],
-      status: stub,
+      status: authored,
     }
   - {
       id: policies-returns,
@@ -22,7 +22,7 @@ concepts:
       dimensions: [conceptual, math],
       prereqs: [{ id: mdp }],
       objectives: [{ text: "Compute a discounted return", dimension: math }],
-      status: stub,
+      status: authored,
     }
   - {
       id: value-functions,
@@ -34,7 +34,7 @@ concepts:
       dimensions: [conceptual, math],
       prereqs: [{ id: policies-returns }],
       objectives: [{ text: "Apply one Bellman backup", dimension: math }],
-      status: stub,
+      status: authored,
     }
   - {
       id: q-learning,
@@ -46,7 +46,7 @@ concepts:
       dimensions: [math, implementation],
       prereqs: [{ id: value-functions }],
       objectives: [{ text: "Perform a Q-learning update", dimension: math }],
-      status: stub,
+      status: authored,
     }
   - {
       id: exploration,
@@ -58,7 +58,7 @@ concepts:
       dimensions: [conceptual],
       prereqs: [{ id: policies-returns }],
       objectives: [{ text: "Explain the exploration problem", dimension: conceptual }],
-      status: stub,
+      status: authored,
     }
   - {
       id: deep-q-learning,
@@ -80,7 +80,7 @@ concepts:
             dimension: implementation,
           },
         ],
-      status: stub,
+      status: authored,
     }
   - {
       id: policy-gradients,
@@ -92,7 +92,7 @@ concepts:
       dimensions: [conceptual, math],
       prereqs: [{ id: policies-returns }, { id: gradient-descent }],
       objectives: [{ text: "Derive the REINFORCE estimator", dimension: math }],
-      status: stub,
+      status: authored,
     }
   - {
       id: ppo,
@@ -105,7 +105,7 @@ concepts:
       prereqs: [{ id: policy-gradients }, { id: value-functions }],
       objectives: [{ text: "Explain what PPO's clipping prevents", dimension: conceptual }],
       projects: [rl-sim],
-      status: stub,
+      status: authored,
     }
   - {
       id: world-models,
@@ -135,7 +135,7 @@ concepts:
       dimensions: [conceptual, implementation],
       prereqs: [{ id: mdp }],
       objectives: [{ text: "Write an environment interaction loop", dimension: implementation }],
-      status: stub,
+      status: authored,
     }
   - {
       id: reward-design,
@@ -147,5 +147,5 @@ concepts:
       dimensions: [conceptual, transfer],
       prereqs: [{ id: mdp }],
       objectives: [{ text: "Identify reward hacking risks", dimension: transfer }],
-      status: stub,
+      status: authored,
     }
