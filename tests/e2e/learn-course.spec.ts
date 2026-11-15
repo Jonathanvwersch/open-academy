@@ -118,6 +118,7 @@ test('Home shows XP and tasks, starts a session, and Course links to lessons and
   ).toBeVisible();
   await expect(page.getByText(/^At your pace:/)).toBeVisible();
   await expect(page.getByText(/^At your daily goal:/)).toBeVisible();
+  await expect(page.getByText(/^All your courses done by /)).toBeVisible();
   await expect(page.getByRole('main').getByText('Fixture course', { exact: true })).toBeVisible();
   await expect(page.getByText('Total XP').locator('..')).toContainText('45');
   await expect(page.getByRole('button', { name: 'Start learning' })).toBeEnabled();
@@ -1155,7 +1156,7 @@ test('learner can restart a completed topic', async ({ page }) => {
   );
   await dialog.screenshot({ path: `${restartTopicScreenshotDir}/restart-confirmation.png` });
   await dialog.getByRole('button', { name: 'Restart topic' }).click();
-  await expect(topicRow).toContainText('Not started');
+  await expect(topicRow.getByText('Not started', { exact: true })).toHaveCount(0);
   await expect(topicRow.getByRole('button', { name: 'Restart' })).toHaveCount(0);
   await topicRow.screenshot({ path: `${restartTopicScreenshotDir}/restarted-topic-row.png` });
 });

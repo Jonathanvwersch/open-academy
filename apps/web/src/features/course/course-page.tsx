@@ -226,7 +226,7 @@ export function CoursePage() {
                                             </>
                                           )}
                                         </span>
-                                      ) : (
+                                      ) : topic.status !== 'not_started' ? (
                                         <Badge
                                           variant="secondary"
                                           className={
@@ -241,7 +241,7 @@ export function CoursePage() {
                                             ? 'Placed out'
                                             : COURSE_STATUS_LABEL[topic.status]}
                                         </Badge>
-                                      )}
+                                      ) : null}
                                       {topic.status !== 'locked' &&
                                       topic.mastery !== 'Not started' ? (
                                         <span
@@ -281,9 +281,7 @@ export function CoursePage() {
                                           )}{' '}
                                           ·{' '}
                                         </>
-                                      ) : (
-                                        <>{COURSE_STATUS_LABEL[topic.status]} · </>
-                                      )}
+                                      ) : null}
                                       Lesson coming soon
                                     </span>
                                   )}
@@ -521,11 +519,11 @@ function TopicRows({
                 <span className="text-xs text-muted-foreground">
                   Needs {topic.needs?.map((prerequisite) => prerequisite.title).join(', ')}
                 </span>
-              ) : (
+              ) : topic.status !== 'not_started' ? (
                 <Badge variant="secondary" className={topicStatusClasses(topic.status)}>
                   {COURSE_STATUS_LABEL[topic.status]}
                 </Badge>
-              )}
+              ) : null}
             </span>
             {topic.status !== 'not_started' && topic.status !== 'locked' ? (
               <TopicRestartButton topic={topic} onRestart={onRestart} />

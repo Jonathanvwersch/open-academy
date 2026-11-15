@@ -293,8 +293,8 @@ export function LearnPage() {
               {data.today.studyFinish.atPace && data.today.studyFinish.atGoal ? (
                 <p className="text-sm text-muted-foreground">
                   {data.today.studyFinish.atPace === data.today.studyFinish.atGoal
-                    ? `All your courses: ${formatDate(data.today.studyFinish.atPace)} at your pace and daily goal`
-                    : `All your courses: ${formatDate(data.today.studyFinish.atPace)} at your pace, ${formatDate(data.today.studyFinish.atGoal)} at your daily goal`}
+                    ? `All your courses done by ${formatDate(data.today.studyFinish.atPace)}`
+                    : `All your courses done by ${formatDate(data.today.studyFinish.atPace)} at your pace, or ${formatDate(data.today.studyFinish.atGoal)} at your daily goal`}
                 </p>
               ) : null}
             </div>
