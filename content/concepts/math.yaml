@@ -57,6 +57,82 @@ concepts:
           url: "https://www.3blue1brown.com/lessons/determinant/",
         }
     status: authored
+  - id: inverses-linear-systems
+    title: Inverses, transposes and linear systems
+    description: "The identity matrix, undoing a matrix with its inverse, the 2×2 inverse formula, transpose rules and symmetric matrices, and solving Ax = b by elimination."
+    difficulty: 2
+    est_minutes: 30
+    goal_weight: 2
+    dimensions: [conceptual, math, implementation]
+    prereqs: [{ id: determinants }]
+    objectives:
+      - {
+          text: "Find the inverse of a 2×2 matrix and check it gives the identity",
+          dimension: math,
+        }
+      - { text: "Solve a small linear system Ax = b by elimination", dimension: math }
+      - {
+          text: "Apply the transpose rules, including (AB)ᵀ = BᵀAᵀ, and recognise symmetric matrices",
+          dimension: math,
+        }
+      - { text: "Solve linear systems in NumPy with np.linalg.solve", dimension: implementation }
+    sources:
+      - {
+          title: "3Blue1Brown: Inverse matrices, column space and null space",
+          url: "https://www.3blue1brown.com/lessons/inverse-matrices",
+        }
+    status: authored
+  - id: rank-span
+    title: Linear independence, span and rank
+    description: "Linear combinations and span, testing whether vectors are independent, rank as the number of independent columns, and when Ax = b has one, no or infinitely many solutions."
+    difficulty: 3
+    est_minutes: 30
+    goal_weight: 2
+    dimensions: [conceptual, math, transfer]
+    prereqs: [{ id: inverses-linear-systems }]
+    objectives:
+      - { text: "Decide whether a vector is in the span of others", dimension: math }
+      - { text: "Test a set of vectors for linear independence", dimension: math }
+      - { text: "Find the rank of a small matrix by elimination", dimension: math }
+      - {
+          text: "Predict whether a linear system has one, no or infinitely many solutions",
+          dimension: conceptual,
+        }
+      - {
+          text: "Explain why a product of a tall and a wide matrix has low rank",
+          dimension: transfer,
+        }
+    sources:
+      - {
+          title: "3Blue1Brown: Linear combinations, span, and basis vectors",
+          url: "https://www.3blue1brown.com/lessons/span",
+        }
+    status: stub
+  - id: orthogonality-projections
+    title: Orthogonality and projections
+    description: "Projecting a vector onto a line, orthonormal vectors and orthogonal matrices (QᵀQ = I), and least squares as projecting onto a matrix's columns."
+    difficulty: 3
+    est_minutes: 35
+    goal_weight: 2
+    dimensions: [conceptual, math, implementation]
+    prereqs: [{ id: rank-span }]
+    objectives:
+      - {
+          text: "Project a vector onto a line and find the leftover perpendicular part",
+          dimension: math,
+        }
+      - {
+          text: "Check whether a matrix is orthogonal and invert it with its transpose",
+          dimension: math,
+        }
+      - { text: "Fit a least-squares line with the normal equations AᵀAx = Aᵀb", dimension: math }
+      - { text: "Compute projections and least-squares fits in NumPy", dimension: implementation }
+    sources:
+      - {
+          title: "MIT 18.06 (Strang), Lecture 15: Projections onto subspaces",
+          url: "https://ocw.mit.edu/courses/18-06-linear-algebra-spring-2010/",
+        }
+    status: stub
   - id: derivatives
     title: Derivatives
     description: Derivative as local slope / rate of change; basic rules.
@@ -195,7 +271,12 @@ concepts:
     est_minutes: 35
     goal_weight: 2
     dimensions: [conceptual, math]
-    prereqs: [{ id: matrices }]
+    prereqs:
+      [
+        { id: matrices },
+        { id: rank-span, strength: soft },
+        { id: orthogonality-projections, strength: soft },
+      ]
     objectives:
       - { text: "Find the eigenvalues of a 2×2 matrix", dimension: math }
       - { text: "Explain SVD as rotate, stretch, rotate", dimension: conceptual }
