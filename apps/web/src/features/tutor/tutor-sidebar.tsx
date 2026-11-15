@@ -465,6 +465,16 @@ export function TutorContextProvider({
         }),
       ]);
       if (variables.signal.aborted || variables.sendId !== latestSendId.current) return;
+      const refetchedMessages =
+        queryClient.getQueryData<TutorThreadDetail>(['tutor', 'thread', variables.threadId])
+          ?.messages ?? [];
+      const questionWasSaved = refetchedMessages.some(
+        (message, index) =>
+          index >= variables.baseMessageCount &&
+          message.role === 'user' &&
+          message.content === variables.question,
+      );
+      if (questionWasSaved) return;
       setFailedSend({
         id: variables.optimisticId,
         threadId: variables.threadId,

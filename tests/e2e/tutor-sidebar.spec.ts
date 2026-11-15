@@ -1169,6 +1169,86 @@ test('a repeated tutor question stays visible once while the second reply is pen
   await expect(userMessages).toHaveCount(2);
 });
 
+test('a saved reply after a lost POST response does not show a failed bubble', async ({ page }) => {
+  const threadId = '11111111-1111-4111-8111-111111111111';
+  const question = 'Please explain this again.';
+  const reply = 'Here is the explanation.';
+  let postAborted = false;
+  const messages: MockedTutorMessage[] = [];
+  const thread = () => ({
+    id: threadId,
+    conceptId: 'supervised-learning',
+    title: 'Lost response',
+    updatedAt: '2026-01-01T12:00:00.002Z',
+  });
+  const detail = () => ({
+    thread: {
+      ...thread(),
+      conceptTitle: 'Supervised learning',
+      messageCount: messages.length,
+      lastMessagePreview: messages.at(-1)?.content ?? '',
+    },
+    messages: [...messages],
+  });
+
+  await page.addInitScript((id) => {
+    localStorage.setItem('academy.tutor.open', 'true');
+    localStorage.setItem('academy.tutor.thread', id);
+  }, threadId);
+  await page.route('**/api/tutor/status', (route) =>
+    route.fulfill({ json: { tutorEnabled: true } }),
+  );
+  await page.route('**/api/tutor/threads**', async (route) => {
+    const url = new URL(route.request().url());
+    if (route.request().method() === 'POST') {
+      expect(url.pathname).toBe(`/api/tutor/threads/${threadId}/messages`);
+      expect(route.request().postDataJSON()).toMatchObject({ question });
+      messages.push(
+        {
+          id: 'user-saved-before-disconnect',
+          role: 'user',
+          content: question,
+          createdAt: '2026-01-01T12:00:00.001Z',
+        },
+        {
+          id: 'assistant-saved-before-disconnect',
+          role: 'assistant',
+          content: reply,
+          createdAt: '2026-01-01T12:00:00.002Z',
+        },
+      );
+      postAborted = true;
+      await route.abort('failed');
+      return;
+    }
+    if (url.pathname === '/api/tutor/threads') {
+      await route.fulfill({ json: [detail().thread] });
+      return;
+    }
+    if (url.pathname === `/api/tutor/threads/${threadId}`) {
+      await route.fulfill({ json: detail() });
+      return;
+    }
+    await route.continue();
+  });
+
+  await page.goto(`/session/${sessionId}`);
+  const tutor = page.getByRole('complementary', { name: 'Tutor' });
+  await expect(tutor).toBeVisible();
+  const textarea = tutor.getByLabel('Ask the tutor');
+  await textarea.fill(question);
+  await textarea.press('Enter');
+
+  await expect(tutor.getByTestId('tutor-failed-message')).toHaveCount(0);
+  await expect(tutor.getByTestId('tutor-user-message').filter({ hasText: question })).toHaveCount(
+    1,
+  );
+  await expect(tutor.getByTestId('tutor-assistant-message').filter({ hasText: reply })).toHaveCount(
+    1,
+  );
+  expect(postAborted).toBe(true);
+});
+
 test('a failed steered message is rolled back before retrying once', async ({ page }) => {
   const firstQuestion = 'Sorry, can you explain this to me step by step? What is this page about?';
   const steeredQuestion = 'please';
