@@ -70,9 +70,15 @@ export async function getLessonsByConceptIdReview(deps: FeatureServices, request
         : [];
     }),
   );
+  const runRowsPromise = deps.db
+    .select()
+    .from(lessonRuns)
+    .where(eq(lessonRuns.userId, request.userId));
   const [runRows, masteryRecords, course] = await Promise.all([
-    deps.db.select().from(lessonRuns).where(eq(lessonRuns.userId, request.userId)),
-    request.repo.masteryRecords(),
+    runRowsPromise,
+    runRowsPromise.then((rows) =>
+      rows.some((row) => row.conceptId === conceptId) ? [] : request.repo.masteryRecords(),
+    ),
     resolveLessonCourse(deps.db, request.repo, index, request.userId, conceptId),
   ]);
   const run = lesson.knowledge_points?.length
