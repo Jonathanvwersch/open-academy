@@ -1305,6 +1305,10 @@ test('focus persists and replans only planned activities', async () => {
 
   const learn = await (await get('/learn')).json();
   expect(learn.focusSubjectId).toBe('ai');
+  expect(learn.studyCourses.map((studyCourse: { id: string }) => studyCourse.id)).toEqual([
+    mathsCourse.id,
+    aiCourse.id,
+  ]);
   expect(
     learn.upNext.upcoming
       .filter((topic: { dayLabel: string }) => topic.dayLabel !== 'Today')

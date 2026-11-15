@@ -1,3 +1,4 @@
+import { orderCourseIdsBySubject } from '../content/course-order.js';
 import type { ContentIndex, IndexedConcept, IndexedCourse } from '../content/types.js';
 import type { MasteryRecord } from './types.js';
 import { masteryRank } from './types.js';
@@ -148,7 +149,7 @@ export function outlinePosition(
     if (topicIndex >= 0) return [unitIndex, topicIndex];
   }
   let globalUnit = 0;
-  for (const courseId of content.curriculum?.courses ?? []) {
+  for (const courseId of orderCourseIdsBySubject(content)) {
     const globalCourse = content.coursesById.get(courseId);
     for (const unit of globalCourse?.units ?? []) {
       const topicIndex = unit.concepts.indexOf(conceptId);

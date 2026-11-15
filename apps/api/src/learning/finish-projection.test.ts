@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { orderCoursesBySubject } from '../content/course-order.js';
 import {
   courseTopicAttribution,
   type ProjectionCourse,
@@ -16,58 +17,57 @@ function topics(prefix: string, count: number): ProjectionCourse['topics'] {
 }
 
 describe('projectCourseFinishes', () => {
-  it('attributes a shared foundation topic to its first direct course owner', () => {
-    const attribution = courseTopicAttribution(
-      'eigen-svd',
+  it('attributes a shared Mathematics topic by subject order before course order', () => {
+    const orderedCourses = orderCoursesBySubject(
       [
         {
+          id: 'transformers-llms',
+          subjectId: 'ai',
+          title: 'Transformers and LLMs',
+          units: [{ title: 'Post-training', concepts: ['eigen-svd'] }],
+        },
+        {
+          id: 'deep-learning',
+          subjectId: 'ai',
+          title: 'Deep Learning',
+          units: [{ title: 'Neural networks', concepts: ['backpropagation'] }],
+        },
+        {
           id: 'maths-for-ml',
+          subjectId: 'mathematics',
           title: 'Mathematics for ML',
           units: [{ title: 'Linear algebra', concepts: ['eigen-svd'] }],
         },
-        {
-          id: 'transformers-llms',
-          title: 'Transformers and LLMs',
-          units: [{ title: 'Post-training', concepts: ['dpo'] }],
-        },
       ],
-      {
-        courseId: 'transformers-llms',
-        courseTitle: 'Transformers and LLMs',
-        unitTitle: 'Post-training',
-      },
+      [{ id: 'mathematics' }, { id: 'ai' }],
+      ['ml-foundations', 'deep-learning', 'transformers-llms', 'maths-for-ml'],
     );
+    const attribution = courseTopicAttribution('eigen-svd', orderedCourses, {
+      courseId: 'transformers-llms',
+      courseTitle: 'Transformers and LLMs',
+      unitTitle: 'Post-training',
+    });
 
+    expect(orderedCourses.map(({ id }) => id)).toEqual([
+      'maths-for-ml',
+      'deep-learning',
+      'transformers-llms',
+    ]);
     expect(attribution).toEqual({
       courseId: 'maths-for-ml',
       courseTitle: 'Mathematics for ML',
       unitTitle: 'Linear algebra',
     });
     expect(
-      courseTopicAttribution(
-        'tokenization',
-        [
-          {
-            id: 'maths-for-ml',
-            title: 'Mathematics for ML',
-            units: [{ title: 'Linear algebra', concepts: ['eigen-svd'] }],
-          },
-          {
-            id: 'transformers-llms',
-            title: 'Transformers and LLMs',
-            units: [{ title: 'Transformers and LLMs', concepts: ['embeddings'] }],
-          },
-        ],
-        {
-          courseId: 'transformers-llms',
-          courseTitle: 'Transformers and LLMs',
-          unitTitle: 'Transformers and LLMs',
-        },
-      ),
+      courseTopicAttribution('tokenization', orderedCourses, {
+        courseId: 'transformers-llms',
+        courseTitle: 'Transformers and LLMs',
+        unitTitle: 'Post-training',
+      }),
     ).toEqual({
       courseId: 'transformers-llms',
       courseTitle: 'Transformers and LLMs · Foundations',
-      unitTitle: 'Transformers and LLMs',
+      unitTitle: 'Post-training',
     });
   });
 

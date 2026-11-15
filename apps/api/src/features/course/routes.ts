@@ -1,6 +1,7 @@
 import { and, eq, inArray } from 'drizzle-orm';
 import type { Context, Hono } from 'hono';
 import { z } from 'zod';
+import { orderCourseIdsBySubject } from '../../content/course-order.js';
 import type { ContentIndex } from '../../content/types.js';
 import type { Database } from '../../db/client.js';
 import type { LearnerRepository } from '../../db/repository.js';
@@ -72,18 +73,10 @@ function buildProjectionCourses(
   courseIds: string[],
   topicState: ReturnType<typeof courseTopicState>,
 ): ProjectionCourse[] {
-  const curriculumOrder = new Map(
-    (index.curriculum?.courses ?? index.courses.map((course) => course.id)).map(
-      (courseId, position) => [courseId, position],
-    ),
-  );
   const subjectOrder = new Map(
     (index.curriculum?.subjects ?? []).map((subject, position) => [subject.id, position]),
   );
-  const orderedCourseIds = [...courseIds].sort(
-    (left, right) =>
-      (curriculumOrder.get(left) ?? Infinity) - (curriculumOrder.get(right) ?? Infinity),
-  );
+  const orderedCourseIds = orderCourseIdsBySubject(index, courseIds);
   const attributionCourses = orderedCourseIds.flatMap((activeCourseId) => {
     const activeCourse = index.coursesById.get(activeCourseId);
     return activeCourse
@@ -571,7 +564,7 @@ export function registerLearnCourseRoutes(
       ],
       finished: finishesAtPace.finished,
     };
-    const studyCourses = studyCourseIds.flatMap((courseId) => {
+    const studyCourses = orderCourseIdsBySubject(index, studyCourseIds).flatMap((courseId) => {
       const course = index.coursesById.get(courseId);
       const progress = coursePayload.courses.find((item) => item.id === courseId);
       if (!course || !progress) return [];
@@ -670,7 +663,7 @@ export function registerLearnCourseRoutes(
         .filter((course) => course.topicsTotal > 0 && course.topicsDone === course.topicsTotal)
         .map((course) => course.id),
     );
-    const courseOrder = index.curriculum?.courses ?? index.courses.map((course) => course.id);
+    const courseOrder = orderCourseIdsBySubject(index);
     const subjects = new Map<
       string,
       Array<{

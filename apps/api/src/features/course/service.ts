@@ -1,4 +1,5 @@
 import { and, eq, inArray, or } from 'drizzle-orm';
+import { orderCourseIdsBySubject } from '../../content/course-order.js';
 import type { ContentIndex, IndexedConcept, IndexedCourse } from '../../content/types.js';
 import type { Database } from '../../db/client.js';
 import type { LearnerRepository } from '../../db/repository.js';
@@ -319,7 +320,7 @@ export function suggestedNextCourses(
   const completedCourse = index.coursesById.get(completedCourseId);
   if (!completedCourse) return [];
   const completedConceptIds = new Set(completedCourse.units.flatMap((unit) => unit.concepts));
-  const courseOrder = index.curriculum?.courses ?? index.courses.map((course) => course.id);
+  const courseOrder = orderCourseIdsBySubject(index);
   return courseOrder
     .flatMap((courseId, order) => {
       const course = index.coursesById.get(courseId);

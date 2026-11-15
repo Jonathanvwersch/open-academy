@@ -1,3 +1,4 @@
+import { orderCourseIdsBySubject } from '../content/course-order.js';
 import { isTemplate } from '../content/templates.js';
 import type {
   ContentIndex,
@@ -205,18 +206,9 @@ function schedulerCourseContexts(
   content: ContentIndex,
 ): SchedulerCourseContext[] {
   const focusSubjectId = effectiveFocusSubjectId(state, content);
-  const curriculumOrder = new Map(
-    (content.curriculum?.courses ?? content.courses.map((course) => course.id)).map(
-      (courseId, position) => [courseId, position],
-    ),
-  );
-  return [...state.studyCourseIds]
+  return orderCourseIdsBySubject(content, state.studyCourseIds)
     .filter(
       (courseId) => !focusSubjectId || content.subjectForCourse(courseId).id === focusSubjectId,
-    )
-    .sort(
-      (left, right) =>
-        (curriculumOrder.get(left) ?? Infinity) - (curriculumOrder.get(right) ?? Infinity),
     )
     .flatMap((courseId) => {
       const context = schedulerCourseContextFor(state, content, courseId);
