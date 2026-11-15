@@ -1,0 +1,904 @@
+concept: deep-q-learning
+exercises:
+  - id: dqn-q-network-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What does a DQN Q-network take in and output?
+    options:
+      - {
+          id: a,
+          text: "A state in, one Q-value per action out.",
+          correct: true,
+          feedback: "Each output estimates the return from one action in that state.",
+        }
+      - {
+          id: b,
+          text: "A state and action in, the next state out.",
+          correct: false,
+          feedback: "That describes a model of state transitions.",
+        }
+      - {
+          id: c,
+          text: "A state in, a single best action label out.",
+          correct: false,
+          feedback: "An action label loses the separate return estimates DQN needs.",
+        }
+      - {
+          id: d,
+          text: "A reward in, a rule for choosing actions out.",
+          correct: false,
+          feedback: "This confuses the reward signal with the state input.",
+        }
+    solution: A Q-network reads a state and estimates one Q-value for each available action.
+  - id: dqnq-target-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example, why does the TD target use 7, the larger of the network's two outputs for cell 3?
+    options:
+      - {
+          id: a,
+          text: "The robot is certain to move right on its next turn.",
+          correct: false,
+          feedback: "This confuses the target with the next actual move. Exploration can choose left.",
+        }
+      - {
+          id: b,
+          text: "The target assumes the best possible action after this move.",
+          correct: true,
+          feedback: "The maximum estimates the return from acting as well as possible next.",
+        }
+      - {
+          id: c,
+          text: "The value 7 predicts the action already taken in cell 2.",
+          correct: false,
+          feedback: "This uses the wrong state. The prediction for right in cell 2 is 6.",
+        }
+      - {
+          id: d,
+          text: "Choosing a larger target always makes training finish sooner.",
+          correct: false,
+          feedback: "This confuses the target's meaning with training speed. The maximum represents the best next action.",
+        }
+    solution: The target assumes the robot acts as well as possible in cell 3. Its best estimated value is 7, giving $y=-1+0.9(7)=5.3$.
+  - id: dqnq-greedy-template
+    dimension: implementation
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    params:
+      e: { min: 0.1, max: 0.5, step: 0.1 }
+    prompt: "An ε-greedy agent has 3 actions and a unique highest Q-value. It explores with probability $ε={{= e }}$ and picks uniformly among all 3 actions when it explores. What is the total probability that it picks the action with the highest Q-value? Give a probability between 0 and 1, to two decimal places."
+    answer_expr: 1-e+e/3
+    tolerance: { abs: 0.0051 }
+    common_wrong:
+      - {
+          answer_expr: 1-e,
+          category: incorrect_reasoning,
+          feedback: "This counts only greedy choices. Exploration can also pick the best action.",
+        }
+      - {
+          answer_expr: e/3,
+          category: incorrect_reasoning,
+          feedback: "This counts only exploration choices. Include the greedy branch too.",
+        }
+    solution: "The greedy branch contributes $1-{{= e }}$ and exploration contributes ${{= e }}/3$. Their sum is ${{= 1-e+e/3 }}$."
+  - id: dqnq-target-template
+    dimension: implementation
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    params:
+      q1: { min: 2, max: 9 }
+      q2: { min: 2, max: 9 }
+    constraints: ["q1 != q2"]
+    prompt: "A robot receives reward $(-1)$ and its episode continues. At the next state its Q-network gives left ${{= q1 }}$ and right ${{= q2 }}$. With $\\gamma=0.9$, what is the Q-learning TD target?"
+    answer_expr: -1+0.9*max(q1,q2)
+    tolerance: { abs: 0.000001 }
+    common_wrong:
+      - {
+          answer_expr: "-1+0.9*min(q1,q2)",
+          category: misapplied_technique,
+          feedback: "This chooses the smaller next-action value. Q-learning uses the maximum.",
+        }
+      - {
+          answer_expr: "-1+max(q1,q2)",
+          category: math_error,
+          feedback: "This omits the discount factor 0.9 on the next-action value.",
+        }
+    solution: "The best next-action value is ${{= max(q1,q2) }}$. The target is $(-1)+0.9({{= max(q1,q2) }})={{= -1+0.9*max(q1,q2) }}$."
+  - id: dqnq-loss
+    dimension: implementation
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt: "A robot moves right from cell 1 to cell 2, receives reward $-1$, and continues its episode. Its Q-network outputs (left, right) are (3, 5) in cell 1 and (4, 6) in cell 2. With $\\gamma=0.9$, what is the squared-error loss for this move?"
+    answer: 0.36
+    tolerance: { abs: 0.000001 }
+    common_wrong:
+      - {
+          answer: 2.25,
+          category: misapplied_technique,
+          feedback: "This builds the target from cell 1's maximum 5. The next state is cell 2.",
+        }
+      - {
+          answer: 1.96,
+          category: misapplied_technique,
+          feedback: "This uses the left prediction 3. The robot took right, whose prediction is 5.",
+        }
+    solution: "The next-state maximum is 6, so $y=-1+0.9(6)=4.4$. The selected prediction is 5 and the loss is $(5-4.4)^2=0.36$."
+  - id: dqnq-wrong-state
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A robot moves from state $s$ to state $s'$ and its episode continues. A learner builds its Q-learning target using the largest network output at $s$. What went wrong?"
+    options:
+      - {
+          id: a,
+          text: "They used the departure state to value future actions.",
+          correct: true,
+          feedback: "Future actions are available at the arrival state, so the maximum belongs at $s'$.",
+        }
+      - {
+          id: b,
+          text: "They used a maximum where the target needs a minimum.",
+          correct: false,
+          feedback: "This confuses best future return with worst future return. Q-learning uses the maximum.",
+        }
+      - {
+          id: c,
+          text: "They used a network where the target needs a table.",
+          correct: false,
+          feedback: "A Q-network can supply the next-action values. The state choice is the error.",
+        }
+    solution: "The prediction uses the action taken at $s$. The target values future actions at $s'$."
+  - id: dqnq-unseen-state
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: Why can a Q-network give a sensible estimate for a new state before visiting it, while a separate table entry has learned nothing there?
+    options:
+      - {
+          id: a,
+          text: "Its weights connect similar states, so training can change their outputs together.",
+          correct: true,
+          feedback: "Shared weights let experience in one state affect estimates in similar states.",
+        }
+      - {
+          id: b,
+          text: "Its input contains the future reward, so each new state's return is given.",
+          correct: false,
+          feedback: "This assumes access to future rewards. The input describes the current state.",
+        }
+      - {
+          id: c,
+          text: "Its outputs are exact returns, so each new state has a guaranteed value.",
+          correct: false,
+          feedback: "This confuses an estimate with a guarantee. A new state's estimate can be wrong.",
+        }
+    solution: Shared weights allow training on one state to affect the outputs for similar states. This can give useful estimates before a state is visited.
+  - id: dqnq-all-actions
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: "A game has 4 joystick actions. Why does DQN output one Q-value per action rather than take a state and one action as input?"
+    options:
+      - {
+          id: a,
+          text: "One run supplies all 4 values for a maximum and a greedy choice.",
+          correct: true,
+          feedback: "A single forward pass gives every action estimate needed at that state.",
+        }
+      - {
+          id: b,
+          text: "Four outputs guarantee that every action receives the same amount of training.",
+          correct: false,
+          feedback: "This confuses output availability with training frequency. Stored actions determine which predictions are trained.",
+        }
+      - {
+          id: c,
+          text: "Four outputs let the agent execute every joystick action at the same time.",
+          correct: false,
+          feedback: "This confuses evaluating actions with taking them. The agent chooses one action.",
+        }
+    solution: One forward pass gives all 4 Q-values. The agent can take their maximum for a target or pick the largest for a greedy action.
+  - id: dqn-replay-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What is experience replay in DQN?
+    options:
+      - {
+          id: a,
+          text: "Store transitions and train on random minibatches from them.",
+          correct: true,
+          feedback: "The buffer supplies mixed batches and allows transitions to be reused.",
+        }
+      - {
+          id: b,
+          text: "Repeat the latest action until its predicted return stops changing.",
+          correct: false,
+          feedback: "This confuses replaying stored data with repeating an action in the environment.",
+        }
+      - {
+          id: c,
+          text: "Store network weights and restore them before each new move.",
+          correct: false,
+          feedback: "This confuses the replay buffer with saved network parameters. Replay stores transitions.",
+        }
+    solution: Experience replay stores past transitions in a buffer and samples random minibatches for training.
+  - id: dqnr-done-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example, why is transition 5's target just 10?
+    options:
+      - {
+          id: a,
+          text: "The episode ended, so there are no future actions to value.",
+          correct: true,
+          feedback: "An ended episode contributes only the reward from its final move.",
+        }
+      - {
+          id: b,
+          text: "The network gives zero for both possible actions in cell 4.",
+          correct: false,
+          feedback: "This assumes network values that were never given. Ending the episode removes the future term.",
+        }
+      - {
+          id: c,
+          text: "The reward 10 is the largest reward, so the maximum selects it.",
+          correct: false,
+          feedback: "This confuses the action-value maximum with a comparison between rewards.",
+        }
+      - {
+          id: d,
+          text: "A goal reward always replaces the discount factor in the calculation.",
+          correct: false,
+          feedback: "This confuses the reward with the discount factor. The ended flag removes the future term.",
+        }
+    solution: Transition 5 ended the episode. Its target is the final reward, $y_5=10$.
+  - id: dqnr-why-random
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: Why does DQN sample random transitions from a buffer rather than train on the latest moves in order?
+    options:
+      - {
+          id: a,
+          text: "Nearby moves are often alike, so random batches mix the training data.",
+          correct: true,
+          feedback: "Mixing past moves reduces runs of very similar training examples.",
+        }
+      - {
+          id: b,
+          text: "Nearby moves have incorrect rewards, so random batches repair the recorded rewards.",
+          correct: false,
+          feedback: "This confuses similarity with incorrect data. Sampling leaves each recorded reward unchanged.",
+        }
+      - {
+          id: c,
+          text: "Nearby moves lack next states, so random batches supply the missing states.",
+          correct: false,
+          feedback: "This confuses sampling with data collection. Every stored transition already includes its next state.",
+        }
+    solution: Consecutive moves often come from similar states. Random minibatches mix moves from different times and episodes.
+  - id: dqnr-error
+    dimension: implementation
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A stored move is (cell 2, left, reward $-1$, cell 1, episode continues). The Q-network outputs (left, right) are (4, 6) in cell 2 and (3, 5) in cell 1. With $\\gamma=0.9$, what is the signed prediction error $Q(s,a)-y$?"
+    answer: 0.5
+    tolerance: { abs: 0.000001 }
+    common_wrong:
+      - {
+          answer: 2.5,
+          category: misapplied_technique,
+          feedback: "This uses cell 2's right prediction 6. The stored action was left.",
+        }
+      - {
+          answer: -0.4,
+          category: misapplied_technique,
+          feedback: "This uses cell 2's maximum for the target. The next state is cell 1.",
+        }
+    solution: "The next-state maximum is 5, giving $y=-1+0.9(5)=3.5$. The stored action's prediction is 4, so $Q(s,a)-y=4-3.5=0.5$."
+  - id: dqnr-loss-template
+    dimension: implementation
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    params:
+      a1: { min: 2, max: 4 }
+      a2: { min: 5, max: 7 }
+      pA: { min: 2, max: 4 }
+      pB: { min: 6, max: 8 }
+    constraints:
+      [
+        "abs(((pA-(-1+0.9*max(a1,a2)))^2+(pB-10)^2)/2-a1) > 0.000001",
+        "abs(((pA-(-1+0.9*max(a1,a2)))^2+(pB-10)^2)/2-a2) > 0.000001",
+        "abs(((pA-(-1+0.9*max(a1,a2)))^2+(pB-10)^2)/2-pA) > 0.000001",
+        "abs(((pA-(-1+0.9*max(a1,a2)))^2+(pB-10)^2)/2-pB) > 0.000001",
+      ]
+    prompt: "A DQN minibatch has 2 moves and $\\gamma=0.9$. Move A has reward $(-1)$ and continues the episode. Its next-state Q-values are ${{= a1 }}$ and ${{= a2 }}$, and its selected-action prediction is ${{= pA }}$. Move B ends its episode with reward 10 and selected-action prediction ${{= pB }}$. What is the mean squared-error loss, to two decimal places?"
+    answer_expr: ((pA-(-1+0.9*max(a1,a2)))^2+(pB-10)^2)/2
+    tolerance: { abs: 0.0051 }
+    common_wrong:
+      - {
+          answer_expr: "(pA-(-1+0.9*max(a1,a2)))^2+(pB-10)^2",
+          category: math_error,
+          feedback: "This adds the two squared errors. Divide by the batch size 2 to get their mean.",
+        }
+    solution: "A's target is $(-1)+0.9({{= max(a1,a2) }})={{= -1+0.9*max(a1,a2) }}$ and B's target is 10. The loss is $[({{= pA }}-({{= -1+0.9*max(a1,a2) }}))^2+({{= pB }}-10)^2]/2={{= ((pA-(-1+0.9*max(a1,a2)))^2+(pB-10)^2)/2 }}$."
+  - id: dqnr-done-mistake
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A robot moves right from cell 3 to cell 4, receives 10, and ends its episode. A learner writes $y=10+0.9\\max_a Q(4,a)$. What is the mistake?"
+    options:
+      - {
+          id: a,
+          text: "They added future return after the episode had already ended.",
+          correct: true,
+          feedback: "The ended flag removes the next-state term, leaving the reward 10.",
+        }
+      - {
+          id: b,
+          text: "They used the arrival cell where the departure cell was needed.",
+          correct: false,
+          feedback: "Cell 4 is the right state to look at when the episode continues. Here it ended, so there is no future term.",
+        }
+      - {
+          id: c,
+          text: "They added the reward where the reward should have been discounted.",
+          correct: false,
+          feedback: "This discounts the immediate reward by mistake. The immediate reward enters directly.",
+        }
+    solution: The episode ends on this move, so there is no future return. The target is $y=10$.
+  - id: dqnr-old-moves
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: Why can Q-learning reuse a transition collected by an older agent that explored more often?
+    options:
+      - {
+          id: a,
+          text: "Its target values the best next action regardless of the older agent's next choice.",
+          correct: true,
+          feedback: "The target uses the maximum next-action estimate, so the recorded policy's later choice is unnecessary.",
+        }
+      - {
+          id: b,
+          text: "Its target reconstructs the older agent's next action from the stored reward alone.",
+          correct: false,
+          feedback: "This assumes rewards identify actions. The target takes a maximum without reconstructing that choice.",
+        }
+      - {
+          id: c,
+          text: "Its target remains equal to the target calculated when the transition was first stored.",
+          correct: false,
+          feedback: "This confuses fixed transition data with targets. Targets are recomputed from the network's current values each time the transition is drawn.",
+        }
+    solution: The transition records what happened after one action. Q-learning values the best next action independently of what the older agent actually chose next.
+  - id: dqnr-robot-camera
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A robot arm's camera captures 10 frames per second. It trains on each transition as it arrives. Which problem and fix fit this setup?
+    options:
+      - {
+          id: a,
+          text: "Nearby frames look alike; store transitions and sample random minibatches.",
+          correct: true,
+          feedback: "Random replay mixes experiences across times instead of training on a run of similar frames.",
+        }
+      - {
+          id: b,
+          text: "Nearby frames look alike; repeat the latest transition for every update.",
+          correct: false,
+          feedback: "Repeating the latest transition concentrates training even further on one recent experience.",
+        }
+      - {
+          id: c,
+          text: "Nearby frames look alike; set every stored transition's reward to zero.",
+          correct: false,
+          feedback: "Changing rewards destroys the task signal and leaves the similarity problem in place.",
+        }
+    solution: Frames only 0.1 seconds apart often show nearly the same scene. A replay buffer with random minibatches mixes experiences from different times.
+  - id: dqn-target-network-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What is a target network in DQN?
+    options:
+      - {
+          id: a,
+          text: "A frozen Q-network copy used for targets and refreshed every $C$ steps.",
+          correct: true,
+          feedback: "The copy holds target estimates steady between scheduled weight copies.",
+        }
+      - {
+          id: b,
+          text: "A second Q-network trained on each target with its own gradient steps.",
+          correct: false,
+          feedback: "This trains the copy by mistake. Standard DQN refreshes its weights by copying.",
+        }
+      - {
+          id: c,
+          text: "A stored list of rewards used as labels for every future action choice.",
+          correct: false,
+          feedback: "This confuses a network with transition data. The copy estimates next-action values.",
+        }
+    solution: A target network is a frozen copy used to calculate TD targets. Every $C$ steps it receives the trained Q-network's weights.
+  - id: dqnt-slide-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example, why did the target from the trained network fall after the step?
+    options:
+      - {
+          id: a,
+          text: "The update lowered the shared right-output weight and bias used in cell 3.",
+          correct: true,
+          feedback: "The same changed parameters produce the prediction in cell 2 and the next-state value in cell 3.",
+        }
+      - {
+          id: b,
+          text: "The update lowered the recorded reward of the robot's move from cell 2.",
+          correct: false,
+          feedback: "This confuses parameter changes with transition data. The reward stays at -1.",
+        }
+      - {
+          id: c,
+          text: "The update lowered the discount factor used to value the next action.",
+          correct: false,
+          feedback: "This treats the discount as a trained weight. Gamma stays at 0.9.",
+        }
+    solution: The step changes the right-output weight to 0.72 and bias to 3.86. Cell 3's right value becomes 6.02, so its target becomes $-1+0.9(6.02)=4.418$.
+  - id: dqnt-frozen-weights
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: How do the target network's weights change in DQN with copies every $C$ updates?
+    options:
+      - {
+          id: a,
+          text: "They receive the trained Q-network's weights at each scheduled copy.",
+          correct: true,
+          feedback: "Between copies the target weights remain fixed.",
+        }
+      - {
+          id: b,
+          text: "They receive a gradient step from the prediction loss every update.",
+          correct: false,
+          feedback: "This trains the target network directly. Only the prediction network receives those gradient steps.",
+        }
+      - {
+          id: c,
+          text: "They receive fresh random values whenever a new episode begins.",
+          correct: false,
+          feedback: "This confuses copying with random initialisation. The copy uses learned Q-network weights.",
+        }
+    solution: The target weights change only when copied from the trained Q-network every $C$ updates.
+  - id: dqnt-target-template
+    dimension: implementation
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    params:
+      o1: { min: 2, max: 4 }
+      o2: { min: 5, max: 7 }
+      t1: { min: 2, max: 4 }
+      t2: { min: 5, max: 9 }
+    constraints: ["max(o1,o2) != max(t1,t2)"]
+    prompt: "A DQN move receives reward $(-1)$ and its episode continues. At the next state the trained Q-network gives $({{= o1 }},{{= o2 }})$ and the frozen target network gives $({{= t1 }},{{= t2 }})$. With $\\gamma=0.9$, what is the TD target?"
+    answer_expr: -1+0.9*max(t1,t2)
+    tolerance: { abs: 0.000001 }
+    common_wrong:
+      - {
+          answer_expr: "-1+0.9*max(o1,o2)",
+          category: implementation_error,
+          feedback: "This uses the trained Q-network for the target. Use the frozen target network.",
+        }
+      - {
+          answer_expr: "-1+0.9*min(t1,t2)",
+          category: misapplied_technique,
+          feedback: "This takes the smaller target-network output. Q-learning uses the maximum.",
+        }
+    solution: "The target network's maximum is ${{= max(t1,t2) }}$. The target is $(-1)+0.9({{= max(t1,t2) }})={{= -1+0.9*max(t1,t2) }}$."
+  - id: dqnt-moving-target
+    dimension: implementation
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A robot moves right from cell 2 to cell 3, receives $-1$, and continues its episode with $\\gamma=0.9$. Targets use the network being trained. Before an update, its cell 3 outputs are left 5 and right 7, giving target 5.3. After the update they are left 5 and right 6.5. What is the new target for the stored move?"
+    answer: 4.85
+    tolerance: { abs: 0.000001 }
+    common_wrong:
+      - {
+          answer: 5.3,
+          category: incorrect_reasoning,
+          feedback: "This keeps the old target as if its network were frozen. The trained network's next-state output changed.",
+        }
+      - {
+          answer: 3.5,
+          category: misapplied_technique,
+          feedback: "This uses the left value 5. The new maximum is the right value 6.5.",
+        }
+    solution: "The updated maximum in cell 3 is 6.5. The new target is $-1+0.9(6.5)=4.85$."
+  - id: dqnt-copy-every-step
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A learner copies the trained Q-network into the target network after every update. What happens to the stability benefit of the frozen copy?
+    options:
+      - {
+          id: a,
+          text: "Targets can change after every update, losing the steady interval between copies.",
+          correct: true,
+          feedback: "Refreshing every step lets the trained weights immediately move the next targets.",
+        }
+      - {
+          id: b,
+          text: "Targets remain fixed for all updates, gaining a permanently steady set of labels.",
+          correct: false,
+          feedback: "This reverses the effect of copying. Each copy replaces the target weights with changed weights.",
+        }
+      - {
+          id: c,
+          text: "Targets become immediate rewards for all moves, removing the need for future estimates.",
+          correct: false,
+          feedback: "This confuses copying with episode ending. Continuing moves still include future values.",
+        }
+    solution: With a copy after every update, each new target calculation uses the latest trained weights. This loses the fixed-target interval that stabilises DQN.
+  - id: dqnt-copy-rarely
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A DQN agent uses a very large copy interval $C$. What trade-off should you expect?
+    options:
+      - {
+          id: a,
+          text: "Targets stay steady longer, but learned improvements reach them slowly.",
+          correct: true,
+          feedback: "A long interval gives stable labels while delaying fresh estimates.",
+        }
+      - {
+          id: b,
+          text: "Targets change more often, but each change uses fewer stored transitions.",
+          correct: false,
+          feedback: "This reverses the meaning of C. A larger interval means fewer copies.",
+        }
+      - {
+          id: c,
+          text: "Targets become more random, but gradient steps train the copy faster.",
+          correct: false,
+          feedback: "This assumes the target copy gets gradient steps. It stays frozen between copies.",
+        }
+    solution: A large $C$ holds labels steady for many updates. Those labels can become stale and slow learning until the next copy.
+  - id: dqnt-drone-values
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "A drone receives at most 1 reward per step and uses $\\gamma=0.9$, so even an endless stream of best rewards has return at most 10. Its Q-values climb into the thousands. Which diagnosis fits, and what should you check first?"
+    options:
+      - {
+          id: a,
+          text: "Estimates may be diverging through moving targets; check the target network.",
+          correct: true,
+          feedback: "Values far beyond the return bound suggest the estimates are feeding on themselves.",
+        }
+      - {
+          id: b,
+          text: "The agent found a better strategy; check which path earns thousands.",
+          correct: false,
+          feedback: "This ignores the reward bound. No strategy can exceed return 10 under these conditions.",
+        }
+      - {
+          id: c,
+          text: "The learning rate is too small; increase it to shrink the estimates.",
+          correct: false,
+          feedback: "This treats slow updates as a cause of impossible returns. Larger steps can worsen unstable targets.",
+        }
+      - {
+          id: d,
+          text: "The exploration probability ε is too high; remove random action choices.",
+          correct: false,
+          feedback: "This confuses exploration with the scale of valid returns. Every policy still obeys the bound 10.",
+        }
+    solution: The maximum possible return is $1/(1-0.9)=10$, so values in the thousands signal faulty estimates. Moving targets can cause divergence; check that target weights stay frozen between copies.
+  - id: dqn-training-loop-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: Which network computes the TD targets in DQN?
+    options:
+      - {
+          id: a,
+          text: "The frozen target network evaluates the next states.",
+          correct: true,
+          feedback: "Its next-action values supply the future-return term.",
+        }
+      - {
+          id: b,
+          text: "The trained Q-network evaluates the departure states.",
+          correct: false,
+          feedback: "This confuses the selected-action prediction with the target's next-state estimate.",
+        }
+      - {
+          id: c,
+          text: "A newly randomised network evaluates the stored rewards.",
+          correct: false,
+          feedback: "This replaces learned next-state estimates with random outputs and uses the wrong input.",
+        }
+    solution: The frozen target network supplies next-state Q-values for TD targets. The reward and ended flag complete each target.
+  - id: dqnl-done-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example, why is the third transition's target 10 even though the target network gives a maximum of 8 for cell 4?
+    options:
+      - {
+          id: a,
+          text: "It has done equal to 1, so the future-value term is multiplied by zero.",
+          correct: true,
+          feedback: "The factor 1 minus done removes the next-state estimate for an ended episode.",
+        }
+      - {
+          id: b,
+          text: "It has a reward larger than 8, so the code chooses reward as the maximum.",
+          correct: false,
+          feedback: "This confuses the action-value maximum with comparing reward against future value.",
+        }
+      - {
+          id: c,
+          text: "It has a discount factor of zero, so all rewards in its episode vanish.",
+          correct: false,
+          feedback: "This changes gamma by mistake. Gamma stays 0.9 and the immediate reward remains 10.",
+        }
+    solution: "For the third transition, done is 1 and $1-1=0$. Its target is $10+0.9(0)(8)=10$."
+  - id: dqnl-loop-order
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: Right after a DQN agent acts and observes the reward, next state and ended flag, what does it do before sampling a training minibatch?
+    options:
+      - {
+          id: a,
+          text: "Store the complete transition in the replay buffer.",
+          correct: true,
+          feedback: "Recording the move makes it available for future random training batches.",
+        }
+      - {
+          id: b,
+          text: "Replace the target network with new random weights.",
+          correct: false,
+          feedback: "This confuses scheduled weight copying with random initialisation.",
+        }
+      - {
+          id: c,
+          text: "Discard the move after updating its reward estimate.",
+          correct: false,
+          feedback: "This loses the experience replay needs. DQN records the transition for reuse.",
+        }
+    solution: Store $(s,a,r,s',\text{done})$ in the replay buffer. Then sample a random minibatch for training.
+  - id: dqnl-targets-complete
+    dimension: implementation
+    type: code_complete
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: Fill the blank so ended episodes contribute only their immediate reward. Each done entry is 1 for an ended episode and 0 otherwise.
+    code: |
+      import torch
+      rewards = torch.tensor([-1.0, -1.0, 10.0])
+      dones = torch.tensor([0.0, 0.0, 1.0])
+      next_max = torch.tensor([6.0, 2.5, 8.0])
+      gamma = 0.9
+      targets = rewards + gamma * ____ * next_max
+      print([round(t, 2) for t in targets.tolist()])
+    accept: ["(1 - dones)", "(1-dones)", "(1.0 - dones)"]
+    solution: "Use `(1 - dones)` to remove the future term where done is 1. The targets are 4.4, 1.25 and 10."
+  - id: dqnl-targets-read
+    dimension: implementation
+    type: code_read
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: What number does this DQN target calculation print? Each done entry is 1 for an ended episode and 0 otherwise.
+    code: |
+      import torch
+      next_max = torch.tensor([6.0, 2.5, 8.0])
+      rewards = torch.tensor([-1.0, -1.0, 10.0])
+      dones = torch.tensor([0.0, 0.0, 1.0])
+      gamma = 0.9
+      targets = rewards + gamma * (1 - dones) * next_max
+      print(round(targets.sum().item(), 2))
+    answer: 15.65
+    tolerance: { abs: 0.000001 }
+    common_wrong:
+      - {
+          answer: 22.85,
+          category: implementation_error,
+          feedback: "This includes the ended move's future value 7.2. Its done entry removes that term.",
+        }
+    solution: "The targets are $-1+0.9(6)=4.4$, $-1+0.9(2.5)=1.25$ and 10. Their sum is $4.4+1.25+10=15.65$."
+  - id: dqnl-wrong-network-debug
+    dimension: implementation
+    type: debug
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt: This DQN code should compute targets with a frozen target network. Select the faulty line and its replacement.
+    code: |
+      import torch
+      from torch import nn
+      q_net = nn.Linear(1, 2)
+      target_net = nn.Linear(1, 2)
+      with torch.no_grad():
+          q_net.weight.fill_(1.0)
+          q_net.bias.copy_(torch.tensor([2.0, 3.0]))
+          target_net.weight.fill_(1.0)
+          target_net.bias.copy_(torch.tensor([2.0, 4.0]))
+      next_states = torch.tensor([[2.0], [1.0], [4.0]])
+      rewards = torch.tensor([-1.0, -1.0, 10.0])
+      dones = torch.tensor([0.0, 0.0, 1.0])
+      gamma = 0.9
+      with torch.no_grad():
+          next_max = q_net(next_states).max(dim=1).values
+          targets = rewards + gamma * (1 - dones) * next_max
+      print([round(t, 2) for t in targets.tolist()])
+    buggy_line: 15
+    fix_options:
+      - {
+          id: a,
+          text: "`next_max = target_net(next_states).max(dim=1).values`",
+          correct: true,
+          feedback: "This uses the frozen network's best next-action values.",
+        }
+      - {
+          id: b,
+          text: "`next_max = target_net(next_states).min(dim=1).values`",
+          correct: false,
+          feedback: "This uses the correct network but selects the worst next action.",
+        }
+      - {
+          id: c,
+          text: "`next_max = q_net(next_states).min(dim=1).values`",
+          correct: false,
+          feedback: "This keeps the trained network and also chooses the smaller action value.",
+        }
+    solution: "Line 15 must call `target_net(next_states)` and take each row's maximum. The fixed targets are 4.4, 3.5 and 10."
+  - id: dqnl-act-network
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: Which network supplies action values when a DQN agent acts ε-greedily in the environment?
+    options:
+      - {
+          id: a,
+          text: "The Q-network whose weights receive the training updates.",
+          correct: true,
+          feedback: "Acting uses the latest trained estimates, with random choices during exploration.",
+        }
+      - {
+          id: b,
+          text: "The target network whose weights stay frozen between copies.",
+          correct: false,
+          feedback: "This confuses stable target calculation with action selection. The trained Q-network acts.",
+        }
+      - {
+          id: c,
+          text: "A separate network whose weights are redrawn at every move.",
+          correct: false,
+          feedback: "This confuses exploration with random network weights. Exploration randomises the action choice.",
+        }
+    solution: The trained Q-network supplies the values for ε-greedy action selection. Its greedy branch picks the largest output.
+  - id: dqnl-robot-arm
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A robot arm can choose any torque in [-1, 1]. Why is standard DQN a poor fit for this action space?
+    options:
+      - {
+          id: a,
+          text: "It needs an output for each action and a maximum over endlessly many choices.",
+          correct: true,
+          feedback: "Standard DQN assumes a short discrete action list that can be evaluated together.",
+        }
+      - {
+          id: b,
+          text: "It needs positive actions and cannot calculate values for any negative torque choices.",
+          correct: false,
+          feedback: "This confuses the sign of a torque with action-space size. Discrete negative torques can be valid actions.",
+        }
+      - {
+          id: c,
+          text: "It needs a fixed reward and cannot learn when different torques earn different rewards.",
+          correct: false,
+          feedback: "This assumes rewards must be constant. Learning action-dependent returns is the purpose of Q-values.",
+        }
+    solution: The interval [-1, 1] contains endlessly many torque choices. Standard DQN needs a finite output list to select the maximum action value.
+  - id: dqn-explain-stability
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 3
+    est_minutes: 5
+    prompt: Explain how DQN trains a Q-network from stored moves. Why can training a Q-network without any fixes diverge, and how do experience replay and a target network help?
+    rubric:
+      - {
+          id: training,
+          criterion: "Describes state input, one Q-value per action, selected-action prediction, reward plus discounted best next value, reward-only ended targets, and a gradient step on mean squared error.",
+          weight: 1,
+          required: true,
+        }
+      - {
+          id: replay,
+          criterion: "Explains that a replay buffer stores transitions and random minibatches mix similar consecutive experiences and reuse data.",
+          weight: 1,
+          required: true,
+        }
+      - {
+          id: stability,
+          criterion: "Explains how shared weights can move both predictions and targets and lead to divergence, and how a frozen target copy with no target gradients and periodic weight copies holds labels steady.",
+          weight: 1,
+          required: true,
+        }
+    exemplar: "A Q-network reads a state and outputs one Q-value per action. DQN stores each transition and samples random minibatches from the buffer. Random replay mixes experiences from different times and reuses each move. For each move, the prediction is the output for the action taken. The target is the reward plus the discounted largest next-action value from the target network. An ended episode has target equal to its final reward. DQN takes gradient steps on the mean squared prediction error. If the trained network also supplies targets, shared weights can move both sides after each update and the estimates can diverge. A frozen target copy supplies labels without gradients. Copying the trained weights every C updates keeps labels steady between copies."
