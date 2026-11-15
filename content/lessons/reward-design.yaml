@@ -2,10 +2,13 @@ concept: reward-design
 version: 1
 objective: |
   **Goal:** spot the risks in a reward before training: tell a sparse reward from a shaped one, add progress bonuses that can't change which behaviour is best, and find the loopholes an agent could use to earn reward without doing the task.
+recap:
+  - concept: mdp
+    text: "A Markov decision process (MDP) describes states, actions, next states and rewards $r_{t+1}$, which score each action. Its discount factor $\\gamma$ gives the next reward full weight and multiplies each later reward by one more $\\gamma$."
 where_this_fits: |
   ### What is reward design?
 
-  Reward design is choosing the rewards an agent gets, so that earning as much reward as it can means doing the task we want. In a Markov decision process (MDP), an **agent**, such as a robot, sees its **state**, the situation it's in, picks an action, and then gets a new state and a **reward**, a number that says how good that move was. The reward is the only way it finds out what we want.
+  Reward design is choosing the rewards an agent gets, so that earning as much reward as it can means doing the task we want.
 
   That's why it needs care. Training makes the agent repeat what earned more reward. If the reward comes too rarely, the agent may never find out what earns it. If we add extra rewards to help, it may find a way to collect them without doing the task.
 knowledge_points:
@@ -16,7 +19,7 @@ knowledge_points:
 
       Let's set up the example we'll use all lesson. A robot sits in a corridor of 4 cells, numbered 1 to 4 from left to right. It starts in cell 1, and at each step it moves left or right. Moving into a wall leaves it where it is. Reaching cell 4 ends the **episode**, one run from start to finish.
 
-      For now, the robot gets $+10$ for reaching cell 4 and $0$ for every other move. Steps are numbered $t=0,1,2,\dots$, and the reward for the move made at step $t$ arrives at time $t+1$, so we write it $r_{t+1}$. The first reward is $r_1$. An MDP also has a **discount factor** $\gamma$, a number between 0 and 1, here $0.9$. The first reward counts in full, and each later reward is multiplied by one more $\gamma$, so later rewards count less. The robot's aim is to make the **return** from the start (time 0), written $G_0$, as large as possible:
+      For now, the robot gets $+10$ for reaching cell 4 and $0$ for every other move. Steps are numbered $t=0,1,2,\dots$, and the reward for the move made at step $t$ arrives at time $t+1$, so we write it $r_{t+1}$. The first reward is $r_1$. Here we use $\gamma=0.9$. The robot's aim is to make the **return** from the start (time 0), written $G_0$, as large as possible:
 
       $$G_0=r_1+\gamma r_2+\gamma^2 r_3+\dots$$
 

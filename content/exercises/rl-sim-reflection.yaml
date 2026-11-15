@@ -3,7 +3,7 @@ exercises:
   - id: rlsim-discounted-return
     dimension: math
     type: numeric
-    role: diagnostic
+    role: core
     difficulty: 1
     est_minutes: 2
     prompt: |
@@ -24,7 +24,7 @@ exercises:
   - id: rlsim-baseline-advantage
     dimension: math
     type: numeric
-    role: diagnostic
+    role: core
     difficulty: 2
     est_minutes: 2
     prompt: |
@@ -46,7 +46,7 @@ exercises:
   - id: rlsim-negative-clip
     dimension: math
     type: numeric
-    role: diagnostic
+    role: core
     difficulty: 2
     est_minutes: 2
     prompt: |
@@ -68,7 +68,7 @@ exercises:
   - id: rlsim-ratio-overshoot
     dimension: conceptual
     type: mc
-    role: diagnostic
+    role: core
     difficulty: 3
     est_minutes: 2
     prompt: |
@@ -93,7 +93,7 @@ exercises:
   - id: rlsim-evaluation-claim
     dimension: transfer
     type: mc
-    role: diagnostic
+    role: core
     difficulty: 3
     est_minutes: 2
     prompt: |

@@ -2,10 +2,13 @@ concept: simulation-for-rl
 version: 1
 objective: |
   **Goal:** write the loop that lets an agent practise in a simulated environment, using reset and step to run episodes that end by termination or a time limit, explain why many copies run at once, and say why a policy trained in simulation can fail on a real robot.
+recap:
+  - concept: mdp
+    text: "A Markov decision process (MDP) describes states $s$, actions $a$, the chance $p(s'\\mid s,a)$ of each next state, and reward $r_{t+1}$ for each step."
 where_this_fits: |
   ### What is a simulation environment?
 
-  A simulation environment is a program that plays the part of the world for a learning agent. It takes the agent's action and says what happens next. It is a Markov decision process (MDP) turned into a program. Recall that an MDP describes a task by its states $s$, actions $a$, the probability $p(s'\mid s,a)$ of each next state $s'$, and the reward $r$ for each step.
+  A simulation environment puts an MDP into a program for an agent to interact with. It takes the agent's action and says what happens next.
 
   It's useful because a reinforcement-learning agent learns by trial and error, over thousands of tries. Real robots are slow, wear out and break. A simulator runs fast, restarts instantly and runs many copies at once. We'll write the loop that drives a simulator, run copies of it and see what fails on real robots.
 knowledge_points:

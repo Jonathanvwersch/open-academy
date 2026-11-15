@@ -2,12 +2,15 @@ concept: q-learning
 version: 1
 objective: |
   **Goal:** perform a Q-learning update, by building the TD target from one move's reward and the next state's best value and moving the stored value part of the way toward it, and run the update with epsilon-greedy exploration until the table holds the best action values.
+recap:
+  - concept: value-functions
+    text: "The best action value $Q^*(s,a)$ adds reward $r_{t+1}$ to the best next-action value, discounted by factor $\\gamma$. After an episode ends, the next value is zero."
+  - concept: policies-returns
+    text: "The return $G_t$ sums rewards from $r_{t+1}$ onward; a reward $k$ steps later gets weight $\\gamma^k$. With discount factor $\\gamma=0.9$, later rewards count less."
 where_this_fits: |
   ### What is Q-learning?
 
   Q-learning is a way for a robot or a program to learn, by trial and error, how good each move is in each situation. It keeps a table of these numbers and corrects one after every move.
-
-  Each number is the total reward the robot expects to collect, on average, from that move onward, with rewards further in the future counting a little less.
 
   Why is that useful? We can only work these values out by hand if we know where each action leads, and a robot in a new place doesn't. Q-learning learns them from experience, and then the biggest value marks the best action.
 knowledge_points:
@@ -18,13 +21,13 @@ knowledge_points:
 
       Our robot lives in a corridor of 4 cells, numbered 1 to 4 from the left. It starts in cell 1 and can move left or right, and moving into the wall at the left end leaves it where it is. The move into cell 4 gives a reward of $+10$ and ends the **episode**, one run from start to finish. Every other move gives a reward of $-1$.
 
-      In reinforcement learning, learning by trial and reward, the robot is the **agent**, each cell is a **state** $s$, and each move is an **action** $a$. The **return** adds up the rewards from now on, with a reward $k$ steps ahead multiplied by $\gamma^k$. The **discount factor** $\gamma=0.9$ makes later rewards count less.
+      In reinforcement learning, the robot is the **agent**, each cell is a **state** $s$, and each move is an **action** $a$.
 
       ### One number for each state and action
 
       Q-learning stores a **Q-table**, one number $Q(s,a)$ for every state $s$ and action $a$, its current guess of that value. The corridor has 3 cells where the robot can act, and 2 actions, so the table has 6 entries. Cell 4 ends the episode, so it needs none.
 
-      The picture shows the values the robot is aiming for. These are the **best values** $Q^*(s,a)$, the returns we get by taking action $a$ in state $s$ and then always choosing the moves that collect the most reward.
+      The picture shows the best action values $Q^*(s,a)$ the robot is aiming to learn.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 250" aria-label="A corridor of four cells in a row. Cells 1, 2 and 3 each show two best values, moving left and moving right. Cell 1: left 4.58, right 6.2. Cell 2: left 4.58, right 8. Cell 3: left 6.2, right 10. The right value is bigger in every cell and is shown in orange. Cell 4 is the goal, worth plus 10, and the robot starts in cell 1">

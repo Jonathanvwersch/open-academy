@@ -2,16 +2,16 @@ concept: ppo
 version: 1
 objective: |
   **Goal:** explain what PPO's clipping prevents, by estimating advantages with a critic, comparing new and old action probabilities with a ratio, and seeing how the clipped objective caps how far one batch can move the policy.
+recap:
+  - concept: policy-gradients
+    text: "A policy-gradient update adjusts policy parameters using return $G_t$ minus baseline $b$, scaled by learning rate $\\eta$ and the policy's log-probability gradient. This makes actions with above-baseline returns more likely."
+  - concept: value-functions
+    text: "State value $V^\\pi(s)$ is the expected return from $s$ while following policy $\\pi$. Action value $Q^\\pi(s,a)$ is the expected return after first taking $a$ and then following $\\pi$."
 where_this_fits: |
   ### What is PPO?
 
   PPO (proximal policy optimization) trains a policy. It makes actions that did better than usual more likely, and limits how far one batch of experience can move the policy. Proximal means near. Experience is slow to collect, so we want several updates per batch, and the limit stops them wrecking the policy. PPO is standard in robotics and in RLHF for language models.
 
-  A policy gradient method nudges the parameters $\theta$ of a policy $\pi_\theta(a\mid s)$ so actions that did well become more likely:
-
-  $$\theta_\text{new}=\theta+\eta\,(G_t-b)\,\nabla_\theta\ln\pi_\theta(a_t\mid s_t),$$
-
-  with return $G_t$, baseline $b$ and learning rate $\eta$ (RL books often write it as $\alpha$). The state value $V^\pi(s)$ is the return we expect from $s$ under $\pi$, and $Q^\pi(s,a)$ is the same after first taking $a$.
 knowledge_points:
   - id: ppo-advantage
     title: "Score each action by how much better it did than usual"

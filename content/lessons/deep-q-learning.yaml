@@ -3,6 +3,10 @@ version: 1
 objective: |
   **Goal:** explain why deep Q-learning needs experience replay and a target network to train stably, and compute the TD targets for a minibatch of stored transitions using a target network.
 recap:
+  - concept: q-learning
+    text: "Q-learning estimates $Q(s,a)$ as the return after taking action $a$ in state $s$ and acting as well as possible. It moves the estimate toward reward $r_{t+1}$ plus the discounted best next-state value."
+  - concept: exploration
+    text: "Epsilon-greedy picks an action at random with probability $\\varepsilon$ and otherwise picks the action with the highest Q-value."
   - concept: pytorch-basics
     text: "`nn.Linear(inputs, outputs)` computes $\\hat y=wx+b$ for every row of its input. One update calls `optimizer.zero_grad()`, measures the loss, calls `loss.backward()` to store the slopes, then `optimizer.step()` to move every parameter."
 where_this_fits: |
@@ -15,11 +19,9 @@ knowledge_points:
   - id: dqn-q-network
     title: "Replace the table with a network"
     explain: |
-      ### A quick reminder of Q-learning
+      ### The corridor task
 
-      A robot lives in a corridor of 4 cells, numbered 1 to 4 from left to right, and starts in cell 1. It can move left or right, and moving into a wall leaves it where it is. Reaching cell 4 ends the episode with reward $+10$, and every other step gives reward $-1$. The discount factor is $\gamma=0.9$.
-
-      $Q(s,a)$ is the return the robot expects if it takes action $a$ in state $s$ and acts as well as possible after that. Q-learning keeps one table entry for each state and action. After a move from $s$ to $s'$ with reward $r$, it nudges $Q(s,a)$ toward the **TD target** $r+\gamma\max_{a'}Q(s',a')$, the reward plus the discounted value of the best next action. To explore, the robot acts **epsilon-greedily**: with probability $\varepsilon$ it picks an action at random, and otherwise it picks the action with the highest Q-value.
+      Our corridor has four cells numbered 1 to 4. The robot starts at cell 1, can move left or right, and gets reward $+10$ for reaching cell 4, where the episode ends. Every other step gives $-1$.
 
       ### A network that outputs Q-values
 

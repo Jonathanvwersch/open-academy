@@ -2,12 +2,15 @@ concept: value-functions
 version: 1
 objective: |
   **Goal:** say what the state value $V^\pi(s)$ and the action value $Q^\pi(s,a)$ measure, and apply one Bellman backup, for a given policy and for the best policy, to work out a state's value from the values of the states that come after it.
+recap:
+  - concept: policies-returns
+    text: "Return $G_t$ adds rewards from $r_{t+1}$ onward, with later rewards weighted by discount factor $\\gamma$. Policy $\\pi(a\\mid s)$ gives the chance of action $a$ in state $s$; a deterministic policy writes its action as $\\pi(s)$."
 where_this_fits: |
   ### What is a value function?
 
-  A value function gives each state a number for how much reward an agent can expect to collect from there on. That reward is the return, $G_t=r_{t+1}+\gamma r_{t+2}+\gamma^2 r_{t+3}+\dots$, which adds up the rewards to come and shrinks each later one by the discount factor $\gamma$. The agent follows its policy $\pi(a\mid s)$, the chance of taking action $a$ in state $s$.
+  A value function gives each state a number for how much reward an agent can expect to collect from there on.
 
-  Why is it useful? The big reward is often many steps away. A value turns all that future reward into one number, so an agent can compare states and actions and pick the better one. The Bellman equations link each state's value to the next state's value, so we can find values without listing whole paths.
+  The big reward is often many steps away. A value turns all that future reward into one number, so an agent can compare states and actions and pick the better one. The Bellman equations link each state's value to the next state's value, so we can find values without listing whole paths.
 knowledge_points:
   - id: vf-state-value
     title: "Measure how good each state is"

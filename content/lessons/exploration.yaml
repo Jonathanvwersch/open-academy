@@ -2,6 +2,9 @@ concept: exploration
 version: 1
 objective: |
   **Goal:** explain why an agent that learns from rewards must sometimes try actions that don't look best, and how epsilon-greedy and an entropy bonus keep it trying them.
+recap:
+  - concept: policies-returns
+    text: "A policy $\\pi(a\\mid s)$ gives the chance of action $a$ in state $s$. The return $G_t$ adds rewards from $r_{t+1}$ onward, weighting later rewards by the discount factor $\\gamma$."
 where_this_fits: |
   ### What is the exploration problem?
 
@@ -9,7 +12,6 @@ where_this_fits: |
 
   It matters because an agent only learns about the actions it takes. If it always exploits, one unlucky reward can turn it away from a good action for ever. Too much exploring means paying for poor actions.
 
-  We'll use two ideas from the policies and returns lesson. A policy $\pi(a\mid s)$ gives the probability of taking action $a$ in state $s$. The return is the sum of the agent's rewards, with later rewards discounted.
 knowledge_points:
   - id: xpl-greedy-trap
     title: "Why only taking the best-looking action fails"

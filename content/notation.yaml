@@ -75,7 +75,7 @@ terms:
       id: learning-rate,
       label: "learning rate η",
       match: ["learning rate", '\\eta'],
-      introduced_by: [gradient-descent],
+      introduced_by: [gradient-descent, q-learning],
     }
   - { id: phi, label: "φ activation", match: ['\\phi', '\\varphi'], introduced_by: [perceptron] }
   - { id: hyperplane, label: "hyperplane", match: ["hyperplane"], introduced_by: [perceptron] }
@@ -218,3 +218,58 @@ terms:
       introduced_by: [lora],
     }
   - { id: lora-adapter, label: "LoRA adapter", match: ["LoRA adapter"], introduced_by: [lora] }
+  - {
+      id: markov-property,
+      label: "Markov property",
+      match: ["Markov property"],
+      introduced_by: [mdp],
+    }
+  - {
+      id: experience-replay,
+      label: "experience replay / replay buffer",
+      match: ["experience replay", "replay buffer"],
+      introduced_by: [deep-q-learning],
+    }
+  - {
+      id: target-network,
+      label: "target network θ⁻",
+      match: ["target network", '\\theta\s*\^\s*-'],
+      introduced_by: [deep-q-learning],
+    }
+  - {
+      id: sim-to-real-gap,
+      label: "sim-to-real gap",
+      match: ["sim-to-real gap"],
+      introduced_by: [simulation-for-rl],
+    }
+  - {
+      id: domain-randomisation,
+      label: "domain randomisation",
+      match: ['\*\*domain randomi[sz]ation\*\*'],
+      introduced_by: [simulation-for-rl],
+    }
+  - {
+      id: ppo-clip-objective,
+      label: "PPO clipped objective $L^{\\text{CLIP}}$",
+      match: ['L\^\s*\{?\\text\{CLIP\}\}?'],
+      introduced_by: [ppo],
+    }
+  - { id: ppo-clip-range, label: "PPO clip range", match: ['\bclip range\b'], introduced_by: [ppo] }
+  - {
+      id: estimated-advantage,
+      label: "estimated advantage $\\hat A$",
+      match: ['\\hat\s*A'],
+      introduced_by: [ppo],
+    }
+  - {
+      id: policy-probability,
+      label: "policy probability $\\pi(a\\mid s)$",
+      match: ['\\pi\s*\(\s*a\\mid\s*s\s*\)'],
+      introduced_by: [policies-returns],
+    }
+  - {
+      id: return-to-go,
+      label: "return $G_t$",
+      match: ['\bG_t\s*=\s*r_\{t\+1\}'],
+      introduced_by: [policies-returns],
+    }

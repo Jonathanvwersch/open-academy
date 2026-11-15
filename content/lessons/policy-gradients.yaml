@@ -5,12 +5,12 @@ objective: |
 recap:
   - concept: gradient-descent
     text: "Gradient descent lowers a loss by stepping the parameters against its gradient again and again, $w_{\\text{new}}=w-\\eta\\,\\nabla L$, where $w$ holds the parameters. The learning rate $\\eta$ is a small positive number that sets the size of each step."
+  - concept: policies-returns
+    text: "A policy $\\pi(a\\mid s)$ gives the chance of action $a$ in state $s$. Return $G_t$ adds rewards from $r_{t+1}$ onward, weighting later rewards by discount factor $\\gamma$."
 where_this_fits: |
   ### What is a policy gradient method?
 
   A policy gradient method improves a policy a little after each episode. The policy has adjustable numbers, its parameters $\theta$, and we nudge them so that actions that led to high returns become more likely.
-
-  A policy $\pi(a\mid s)$ gives the probability of taking action $a$ in state $s$. The return $G_t=r_{t+1}+\gamma r_{t+2}+\gamma^2r_{t+3}+\dots$ adds up the rewards from step $t$ on, with each later reward shrunk by the discount factor $\gamma$.
 
   Why is this useful? Gradient descent needs a formula to take the slope of, but a policy's average return depends on a world whose rules the agent doesn't know. This lesson estimates that slope from played episodes. The method, REINFORCE, leads on to PPO, a method used to fine-tune chat models.
 knowledge_points:
