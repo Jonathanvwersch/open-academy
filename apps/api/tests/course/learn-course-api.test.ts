@@ -468,6 +468,30 @@ test('restarting a prerequisite skips planned dependent activities', async () =>
       concept.prereqs.every((prerequisite) => prerequisite.strength !== 'hard'),
   );
   if (!unrelated) throw new Error('Could not find a concept without hard prerequisites');
+  const assistedDependent = [...content.conceptsById.values()].find((concept) => {
+    const hardPrerequisites = concept.prereqs.filter(
+      (prerequisite) => prerequisite.strength === 'hard',
+    );
+    if (
+      concept.id === prerequisiteId ||
+      concept.id === dependentId ||
+      hardPrerequisites.length !== 1 ||
+      hardPrerequisites[0]?.id === prerequisiteId ||
+      hardPrerequisites[0]?.id === 'matrices'
+    ) {
+      return false;
+    }
+    return (content.conceptsById.get(hardPrerequisites[0]?.id ?? '')?.dimensions.length ?? 0) > 1;
+  });
+  const assistedPrerequisite = assistedDependent?.prereqs.find(
+    (prerequisite) => prerequisite.strength === 'hard',
+  );
+  const assistedPrerequisiteConcept = assistedPrerequisite
+    ? content.conceptsById.get(assistedPrerequisite.id)
+    : undefined;
+  if (!assistedDependent || !assistedPrerequisiteConcept?.dimensions[0]) {
+    throw new Error('Could not find a dependent with a multi-dimension hard prerequisite');
+  }
 
   const [session] = await db
     .insert(studySessions)
@@ -478,6 +502,12 @@ test('restarting a prerequisite skips planned dependent activities', async () =>
     { userId, conceptId: prerequisiteId, status: 'completed' },
     { userId, conceptId: 'matrices', status: 'completed' },
   ]);
+  await db.insert(mastery).values({
+    userId,
+    conceptId: assistedPrerequisiteConcept.id,
+    dimension: assistedPrerequisiteConcept.dimensions[0],
+    state: 'assisted',
+  });
   await db.insert(sessionActivities).values([
     {
       sessionId: session.id,
@@ -511,6 +541,14 @@ test('restarting a prerequisite skips planned dependent activities', async () =>
       plannedMinutes: 10,
       status: 'planned',
     },
+    {
+      sessionId: session.id,
+      idx: 4,
+      kind: 'learn',
+      conceptId: assistedDependent.id,
+      plannedMinutes: 10,
+      status: 'planned',
+    },
   ]);
 
   const response = await post(`/concepts/${prerequisiteId}/restart`, {});
@@ -528,6 +566,7 @@ test('restarting a prerequisite skips planned dependent activities', async () =>
     [dependentId, 'in_progress'],
     [dependentId, 'completed'],
     [unrelated.id, 'planned'],
+    [assistedDependent.id, 'planned'],
   ]);
 });
 

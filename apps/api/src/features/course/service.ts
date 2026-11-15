@@ -12,12 +12,7 @@ import {
   sessionActivities,
   studySessions,
 } from '../../db/schema.js';
-import {
-  lowestMasteryState,
-  masteryLabel,
-  topicIsComplete,
-  topicStatus,
-} from '../../learning/course-status.js';
+import { lowestMasteryState, masteryLabel, topicStatus } from '../../learning/course-status.js';
 import { courseTopicPosition } from '../../learning/lesson-course-context.js';
 import {
   activeCourseFor,
@@ -115,6 +110,7 @@ export async function restartTopic(input: {
           conceptId: mastery.conceptId,
           dimension: mastery.dimension,
           state: mastery.state,
+          inferred: mastery.inferred,
         })
         .from(mastery)
         .where(eq(mastery.userId, input.userId)),
@@ -124,42 +120,23 @@ export async function restartTopic(input: {
         .where(eq(lessonRuns.userId, input.userId)),
     ]);
     const masteryByKey = new Map(
-      masteryRows.map((record) => [masteryKey(record.conceptId, record.dimension), record.state]),
+      masteryRows.map((record) => [
+        masteryKey(record.conceptId, record.dimension),
+        { state: record.state, inferred: record.inferred },
+      ]),
     );
-    const runStatusByConcept = new Map(runRows.map((run) => [run.conceptId, run.status]));
-    const incompletePrereqMemo = new Map<string, boolean>();
-    const hasIncompleteHardPrerequisite = (conceptId: string) => {
-      const visited = new Set<string>();
-      const visit = (id: string): boolean => {
-        if (visited.has(id)) return false;
-        visited.add(id);
-        const concept = input.content.conceptsById.get(id);
-        if (!concept) return false;
-        for (const prerequisite of concept.prereqs) {
-          if (prerequisite.strength !== 'hard') continue;
-          const prerequisiteConcept = input.content.conceptsById.get(prerequisite.id);
-          if (!prerequisiteConcept) return true;
-          const cached = incompletePrereqMemo.get(prerequisite.id);
-          if (cached === true) return true;
-          const dimensionStates = prerequisiteConcept.dimensions.map(
-            (dimension) =>
-              masteryByKey.get(masteryKey(prerequisite.id, dimension)) ?? 'not_assessed',
-          );
-          const incomplete =
-            !topicIsComplete(runStatusByConcept.get(prerequisite.id), dimensionStates) ||
-            visit(prerequisite.id);
-          incompletePrereqMemo.set(prerequisite.id, incomplete);
-          if (incomplete) return true;
-        }
-        return false;
-      };
-      return visit(conceptId);
-    };
     const activitiesToSkip = plannedActivities
-      .filter(
-        (activity) =>
-          activity.conceptId !== null && hasIncompleteHardPrerequisite(activity.conceptId),
-      )
+      .filter((activity) => {
+        if (!activity.conceptId) return false;
+        const concept = input.content.conceptsById.get(activity.conceptId);
+        return (
+          concept?.prereqs.some(
+            (prerequisite) =>
+              prerequisite.strength === 'hard' &&
+              !prerequisiteMet(prerequisite.id, masteryByKey, runRows, input.content),
+          ) ?? false
+        );
+      })
       .map((activity) => activity.id);
     if (activitiesToSkip.length) {
       await tx
