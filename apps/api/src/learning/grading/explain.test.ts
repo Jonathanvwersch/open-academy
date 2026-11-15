@@ -8,16 +8,11 @@ describe('SelfCheckExplanationGrader', () => {
 
   beforeAll(async () => {
     const content = await loadContent();
-    const candidate = content.exercisesById.get('gd-explain-lr');
+    const candidate = content.exercisesById.get('sgm-explain-training');
     if (candidate?.type !== 'explain') throw new Error('Missing explain exercise');
-    exercise = {
-      ...candidate,
-      rubric: [
-        { id: 'step-size', criterion: 'Names the step size.', weight: 1, required: true },
-        { id: 'direction', criterion: 'Names the update direction.', weight: 1, required: true },
-        { id: 'extra', criterion: 'Adds optional context.', weight: 1, required: false },
-      ],
-    };
+    expect(candidate.rubric.some(({ required }) => required === true)).toBe(true);
+    expect(candidate.rubric.some(({ required }) => required === false)).toBe(true);
+    exercise = candidate;
   });
 
   it('gives partial credit when some required criteria are selected', async () => {

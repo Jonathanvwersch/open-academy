@@ -636,6 +636,8 @@ function validateCourses(
 ) {
   const curriculum = data.curriculum?.value;
   if (!curriculum) return;
+  const subjectsConfigured = curriculum.subjects !== undefined;
+  const subjects = new Map((curriculum.subjects ?? []).map((subject) => [subject.id, subject]));
 
   const courseFiles = new Map<
     string,
@@ -672,6 +674,18 @@ function validateCourses(
   for (const course of data.courses) {
     if (!listedCourses.has(course.value.id)) {
       addIssue(issues, course.file, course.value.id, 'course id is not listed in curriculum');
+    }
+    if (subjectsConfigured && !course.value.subject) {
+      addIssue(issues, course.file, course.value.id, 'course must name a curriculum subject');
+    } else if (subjectsConfigured && !subjects.has(course.value.subject ?? '')) {
+      addIssue(
+        issues,
+        course.file,
+        course.value.id,
+        `course references unknown subject "${course.value.subject}"`,
+      );
+    } else if (!subjectsConfigured && course.value.subject) {
+      addIssue(issues, course.file, course.value.id, 'course subject requires curriculum.subjects');
     }
   }
   if (

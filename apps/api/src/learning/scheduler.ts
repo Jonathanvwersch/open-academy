@@ -1,3 +1,4 @@
+import { orderCourseIdsBySubject } from '../content/course-order.js';
 import { isTemplate } from '../content/templates.js';
 import type {
   ContentIndex,
@@ -75,6 +76,7 @@ export interface SchedulerState {
   timezone?: string;
   activeCourseId: string | null;
   studyCourseIds: string[];
+  focusSubjectId?: string;
   recentLearnMinutesByConcept: Record<string, number>;
   mastery: MasteryRecord[];
   cards: Array<{
@@ -129,6 +131,11 @@ interface SchedulerCourseContext {
   unitPositions: Map<string, number>;
   newConceptIds: Set<string>;
 }
+
+type SchedulerCourseContextState = Pick<
+  SchedulerState,
+  'activeCourseId' | 'studyCourseIds' | 'focusSubjectId' | 'mastery' | 'lessonRuns'
+>;
 
 const noTerms = (): PriorityTerms => ({
   goal: 0,
@@ -200,17 +207,89 @@ export function currentLearnerUnit(
 }
 
 function schedulerCourseContexts(
-  state: SchedulerState,
+  state: SchedulerCourseContextState,
   content: ContentIndex,
 ): SchedulerCourseContext[] {
-  return state.studyCourseIds.flatMap((courseId) => {
-    const context = schedulerCourseContextFor(state, content, courseId);
-    return context ? [context] : [];
-  });
+  const focusSubjectId = effectiveFocusSubjectId(
+    { focusSubjectId: state.focusSubjectId },
+    state.studyCourseIds,
+    content,
+  );
+  return orderCourseIdsBySubject(content, state.studyCourseIds)
+    .filter(
+      (courseId) => !focusSubjectId || content.subjectForCourse(courseId).id === focusSubjectId,
+    )
+    .flatMap((courseId) => {
+      const context = schedulerCourseContextFor(state, content, courseId);
+      return context ? [context] : [];
+    });
+}
+
+export function schedulerRecentLearnMinutesBySubject(
+  state: SchedulerCourseContextState & Pick<SchedulerState, 'recentLearnMinutesByConcept'>,
+  content: ContentIndex,
+): Record<string, number> {
+  const coursesBySubject = groupSchedulerCoursesBySubject(
+    schedulerCourseContexts(state, content),
+    content,
+  );
+  return Object.fromEntries(recentLearnMinutesForSubjects(state, coursesBySubject));
+}
+
+function groupSchedulerCoursesBySubject(
+  courseContexts: readonly SchedulerCourseContext[],
+  content: ContentIndex,
+): Map<string, SchedulerCourseContext[]> {
+  const coursesBySubject = new Map<string, SchedulerCourseContext[]>();
+  for (const course of courseContexts) {
+    const subjectId = content.subjectForCourse(course.course.id).id;
+    const group = coursesBySubject.get(subjectId) ?? [];
+    group.push(course);
+    coursesBySubject.set(subjectId, group);
+  }
+  return coursesBySubject;
+}
+
+function recentLearnMinutesForSubjects(
+  state: Pick<SchedulerState, 'recentLearnMinutesByConcept'>,
+  coursesBySubject: ReadonlyMap<string, SchedulerCourseContext[]>,
+): Map<string, number> {
+  const subjectRecentMinutes = new Map<string, number>();
+  for (const [subjectId, courses] of coursesBySubject) {
+    const conceptIds = new Set(courses.flatMap((course) => [...course.newConceptIds]));
+    subjectRecentMinutes.set(
+      subjectId,
+      [...conceptIds].reduce(
+        (sum, conceptId) => sum + (state.recentLearnMinutesByConcept[conceptId] ?? 0),
+        0,
+      ),
+    );
+  }
+  return subjectRecentMinutes;
+}
+
+export function effectiveFocusSubjectId(
+  prefs: { focusSubjectId?: unknown } | null | undefined,
+  activeCourseIds: readonly string[],
+  content: ContentIndex,
+): string | null {
+  const focus = prefs?.focusSubjectId;
+  if (
+    typeof focus !== 'string' ||
+    !content.curriculum?.subjects?.some((subject) => subject.id === focus)
+  ) {
+    return null;
+  }
+  const activeSubjectIds = new Set(
+    activeCourseIds
+      .filter((courseId) => content.coursesById.has(courseId))
+      .map((courseId) => content.subjectForCourse(courseId).id),
+  );
+  return activeSubjectIds.size > 1 && activeSubjectIds.has(focus) ? focus : null;
 }
 
 function schedulerCourseContextFor(
-  state: SchedulerState,
+  state: SchedulerCourseContextState,
   content: ContentIndex,
   courseId: string,
 ): SchedulerCourseContext | undefined {
@@ -230,7 +309,7 @@ function schedulerCourseContextFor(
 }
 
 function fallbackCourseContext(
-  state: SchedulerState,
+  state: SchedulerCourseContextState,
   content: ContentIndex,
   courseId?: string,
 ): SchedulerCourseContext | undefined {
@@ -249,8 +328,9 @@ export function planSession(
   now: Date,
   budgetMinutes: number,
   _kind: SessionKind = 'weekday',
+  excludedLearnConceptIds: ReadonlySet<string> = new Set(),
 ): SessionPlan {
-  return packWeekday(state, content, now, Math.max(0, budgetMinutes));
+  return packWeekday(state, content, now, Math.max(0, budgetMinutes), excludedLearnConceptIds);
 }
 
 export function replan(
@@ -273,7 +353,23 @@ export function replan(
     ...completed.flatMap((activity) => activity.exerciseIds),
   ];
   const nextState = { ...state, usedExerciseIds: protectedExerciseIds };
-  const plan = planSession(nextState, content, now, remainingBudgetMinutes, kind);
+  const excludedLearnConceptIds = new Set(
+    existingActivities.flatMap((activity) =>
+      activity.kind === 'learn' &&
+      (activity.status === 'in_progress' || activity.status === 'completed') &&
+      activity.conceptId
+        ? [activity.conceptId]
+        : [],
+    ),
+  );
+  const plan = planSession(
+    nextState,
+    content,
+    now,
+    remainingBudgetMinutes,
+    kind,
+    excludedLearnConceptIds,
+  );
   return {
     activities: [...inProgress, ...plan.activities],
     reasons: [...inProgress.map((activity) => activity.reason), ...plan.reasons],
@@ -285,8 +381,13 @@ function packWeekday(
   content: ContentIndex,
   now: Date,
   budget: number,
+  excludedLearnConceptIds: ReadonlySet<string> = new Set(),
 ): SessionPlan {
-  const candidates = generateCandidates(state, content, now);
+  const candidates = generateCandidates(state, content, now).filter(
+    (candidate) =>
+      candidate.activity.kind !== 'learn' ||
+      !excludedLearnConceptIds.has(candidate.activity.conceptId ?? ''),
+  );
   const selected: Candidate[] = [];
   let usedMinutes = 0;
   let newConceptCount = 0;
@@ -378,36 +479,43 @@ function packWeekday(
     candidatesByCourse.set(candidate.courseId, group);
   }
   for (const group of candidatesByCourse.values()) group.sort(compareLearnCandidates);
-  const selectedLearnMinutesByCourse = new Map<string, number>();
+  const coursesBySubject = groupSchedulerCoursesBySubject(courseContexts, content);
+  const subjectOrder = new Map(
+    (content.curriculum?.subjects ?? []).map((subject, position) => [subject.id, position]),
+  );
+  const selectedLearnMinutesBySubject = new Map<string, number>();
+  const subjectRecentMinutes = recentLearnMinutesForSubjects(state, coursesBySubject);
   while (newConceptCount < SCHEDULER_CONFIG.weekday.maxNewConcepts) {
-    const nextCourse = courseContexts
-      .filter((course) => candidatesByCourse.get(course.course.id)?.some(canAdd))
-      .sort((left, right) => {
-        const minutes = (course: SchedulerCourseContext) => {
-          const recentMinutes = Object.entries(state.recentLearnMinutesByConcept)
-            .filter(
-              ([conceptId]) =>
-                course.newConceptIds.has(conceptId) &&
-                courseContexts.find((candidate) => candidate.newConceptIds.has(conceptId))?.course
-                  .id === course.course.id,
-            )
-            .reduce((sum, [, value]) => sum + value, 0);
-          return recentMinutes + (selectedLearnMinutesByCourse.get(course.course.id) ?? 0);
-        };
-        return minutes(left) - minutes(right);
-      })[0];
+    const frontCourseBySubject = new Map<string, SchedulerCourseContext>();
+    for (const [subjectId, courses] of coursesBySubject) {
+      const frontCourse = courses.find(
+        (course) => (candidatesByCourse.get(course.course.id)?.length ?? 0) > 0,
+      );
+      if (frontCourse) frontCourseBySubject.set(subjectId, frontCourse);
+    }
+    const nextSubject = [...frontCourseBySubject.keys()]
+      .filter((subjectId) => {
+        const course = frontCourseBySubject.get(subjectId);
+        return course && candidatesByCourse.get(course.course.id)?.some(canAdd);
+      })
+      .sort(
+        (left, right) =>
+          (subjectRecentMinutes.get(left) ?? 0) +
+            (selectedLearnMinutesBySubject.get(left) ?? 0) -
+            ((subjectRecentMinutes.get(right) ?? 0) +
+              (selectedLearnMinutesBySubject.get(right) ?? 0)) ||
+          (subjectOrder.get(left) ?? Infinity) - (subjectOrder.get(right) ?? Infinity),
+      )[0];
+    if (!nextSubject) break;
+    const nextCourse = frontCourseBySubject.get(nextSubject);
     if (!nextCourse) break;
     const nextCandidates = candidatesByCourse.get(nextCourse.course.id) ?? [];
     const candidate = nextCandidates.find(canAdd);
-    if (!candidate || !add(candidate)) {
-      nextCandidates.length = 0;
-      continue;
-    }
+    if (!candidate || !add(candidate)) break;
     newConceptCount += 1;
-    selectedLearnMinutesByCourse.set(
-      nextCourse.course.id,
-      (selectedLearnMinutesByCourse.get(nextCourse.course.id) ?? 0) +
-        candidate.activity.plannedMinutes,
+    selectedLearnMinutesBySubject.set(
+      nextSubject,
+      (selectedLearnMinutesBySubject.get(nextSubject) ?? 0) + candidate.activity.plannedMinutes,
     );
     nextCandidates.splice(nextCandidates.indexOf(candidate), 1);
   }
@@ -431,6 +539,11 @@ function packWeekday(
 function generateCandidates(state: SchedulerState, content: ContentIndex, now: Date): Candidate[] {
   const candidates: Candidate[] = [];
   const courseContexts = schedulerCourseContexts(state, content);
+  const focusSubjectId = effectiveFocusSubjectId(
+    { focusSubjectId: state.focusSubjectId },
+    state.studyCourseIds,
+    content,
+  );
   const newConceptIds = new Set(courseContexts.flatMap((course) => [...course.newConceptIds]));
   const masteryByKey = new Map(
     state.mastery.map((record) => [masteryKey(record.conceptId, record.dimension), record]),
@@ -540,7 +653,11 @@ function generateCandidates(state: SchedulerState, content: ContentIndex, now: D
       continue;
     }
     const concept = content.conceptsById.get(card.conceptId);
-    if (!concept || concept.status === 'stub') {
+    if (
+      !concept ||
+      concept.status === 'stub' ||
+      (focusSubjectId && !newConceptIds.has(concept.id))
+    ) {
       continue;
     }
     const record = masteryByKey.get(masteryKey(card.conceptId, card.dimension));

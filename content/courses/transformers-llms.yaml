@@ -1,6 +1,7 @@
 id: transformers-llms
 title: Transformers and LLMs
 description: "How language models work and are trained: tokens, attention, the transformer block, pretraining, then post-training with fine-tuning, preference learning and reinforcement learning."
+subject: ai
 units:
   - title: Transformers and LLMs
     intro: "The model design behind ChatGPT and many robot models: tokens, embeddings and attention, built up into a small language model."

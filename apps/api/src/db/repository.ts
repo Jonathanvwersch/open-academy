@@ -5,7 +5,7 @@ import type { Dimension } from '../content/schemas.js';
 import type { ContentIndex } from '../content/types.js';
 import { courseHasEvidence } from '../learning/course-start.js';
 import { retrievability } from '../learning/fsrs.js';
-import type { SchedulerState } from '../learning/scheduler.js';
+import { effectiveFocusSubjectId, type SchedulerState } from '../learning/scheduler.js';
 import type { MasteryRecord, MasteryState } from '../learning/types.js';
 import { initialMastery } from '../learning/types.js';
 import { localDateKey } from '../learning/xp.js';
@@ -263,10 +263,16 @@ export class LearnerRepository {
       recentLearnMinutesByConcept[activity.conceptId] =
         (recentLearnMinutesByConcept[activity.conceptId] ?? 0) + activity.plannedMinutes;
     }
+    const focusSubjectId = effectiveFocusSubjectId(
+      user?.prefs as { focusSubjectId?: unknown } | undefined,
+      studyCourseIds,
+      content,
+    );
     return {
       timezone: user?.timezone ?? 'UTC',
       activeCourseId: user?.activeCourseId ?? null,
       studyCourseIds,
+      focusSubjectId: focusSubjectId ?? undefined,
       recentLearnMinutesByConcept,
       mastery: masteryRows,
       cards: cards.map((card) => ({

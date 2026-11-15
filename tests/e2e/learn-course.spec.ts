@@ -118,7 +118,7 @@ test('Home shows XP and tasks, starts a session, and Course links to lessons and
   ).toBeVisible();
   await expect(page.getByText(/^At your pace:/)).toBeVisible();
   await expect(page.getByText(/^At your daily goal:/)).toBeVisible();
-  await expect(page.getByText(/^All your courses done by /)).toBeVisible();
+  await expect(page.getByText(/^All current lessons done by /)).toBeVisible();
   await expect(page.getByRole('main').getByText('Fixture course', { exact: true })).toBeVisible();
   await expect(page.getByText('Total XP').locator('..')).toContainText('45');
   await expect(page.getByRole('button', { name: 'Start learning' })).toBeEnabled();
@@ -174,6 +174,98 @@ test('Home shows XP and tasks, starts a session, and Course links to lessons and
   await expect(page).toHaveURL(/\/session\//);
   expect(createdSessionRequest).toEqual({ kind: 'weekday' });
   expect(await page.evaluate(() => performance.timeOrigin)).toBe(documentStartedAt);
+});
+
+test('Home focus changes the plan and keeps outside reviews visible', async ({ page }) => {
+  let focusSubjectId: string | null = null;
+  await page.route('**/api/learn', async (route) => {
+    const response = await route.fetch();
+    const learn = await response.json();
+    learn.activeSubjects = [
+      { id: 'mathematics', title: 'Mathematics' },
+      { id: 'ai', title: 'AI' },
+    ];
+    learn.focusSubjectId = focusSubjectId;
+    learn.today.studyFinish = {
+      atPace: '2026-01-20',
+      atGoal: '2026-01-21',
+    };
+    learn.studyCourses = [
+      {
+        id: 'maths-for-ml',
+        title: 'Mathematics for Machine Learning',
+        subjectId: 'mathematics',
+        topicsDone: 1,
+        topicsTotal: 3,
+        unitTitle: 'Linear algebra',
+        estimatedFinish: null,
+        estimatedFinishAtGoal: null,
+      },
+    ];
+    learn.dueReviewsOutsideFocus = focusSubjectId ? 2 : 0;
+    learn.today.needsCourseChoice = false;
+    learn.today.courseStart = { courseId: null, needed: false, placementRunId: null };
+    learn.tasks = [
+      {
+        id: focusSubjectId ? 'ai-task' : 'maths-task',
+        activityKind: 'learn',
+        label: 'Lesson',
+        title: focusSubjectId ? 'AI Topic' : 'Mathematics Topic',
+        xp: 20,
+        prerequisites: [],
+      },
+    ];
+    learn.upNext = {
+      upcoming: [
+        {
+          conceptId: focusSubjectId ? 'ai-projected' : 'maths-projected',
+          courseId: focusSubjectId ? 'ml-foundations' : 'maths-for-ml',
+          courseTitle: focusSubjectId ? 'ML Foundations' : 'Mathematics for Machine Learning',
+          title: focusSubjectId ? 'AI projected topic' : 'Mathematics projected topic',
+          unitTitle: 'Unit 1',
+          date: '2026-01-07',
+          dayLabel: 'Today',
+        },
+      ],
+      finished: [],
+    };
+    await route.fulfill({ response, json: learn });
+  });
+  await page.route('**/api/focus', async (route) => {
+    focusSubjectId = route.request().postDataJSON().subjectId;
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ focusSubjectId }),
+    });
+  });
+  await markCourseStarted();
+  await page.goto('/');
+
+  await page.getByRole('link', { name: 'Up next', exact: true }).click();
+  await expect(page.getByRole('link', { name: /Mathematics projected topic/ })).toBeVisible();
+  await page.getByRole('link', { name: 'Home', exact: true }).click();
+
+  const focus = page.getByRole('group', { name: 'Focus' });
+  const all = focus.getByRole('button', { name: 'All', exact: true });
+  const ai = focus.getByRole('button', { name: 'AI', exact: true });
+  await expect(all).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByText('Mathematics Topic', { exact: true })).toBeVisible();
+  await ai.click();
+  await expect(ai).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByText('AI Topic', { exact: true })).toBeVisible();
+  await expect(page.getByText('Mathematics Topic', { exact: true })).toHaveCount(0);
+  await expect(page.getByText('2 reviews from other subjects are waiting.')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Review them' })).toHaveAttribute('href', '/reviews');
+  await expect(page.getByText('Paused while you focus on AI')).toBeVisible();
+  await expect(page.getByText(/^All current AI lessons done by /)).toBeVisible();
+  await page.getByRole('link', { name: 'Up next', exact: true }).click();
+  await expect(page.getByRole('link', { name: /AI projected topic/ })).toBeVisible();
+  await expect(page.getByRole('link', { name: /Mathematics projected topic/ })).toHaveCount(0);
+  await page.getByRole('link', { name: 'Home', exact: true }).click();
+  await all.click();
+  await expect(all).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByText('Mathematics Topic', { exact: true })).toBeVisible();
 });
 
 test('Course units default to the current unit and remember toggles', async ({ page }) => {
@@ -292,6 +384,9 @@ test('course detail shows prerequisite foundations and catalog navigation', asyn
   ).toBeVisible();
   const foundations = page.getByText('Foundations · 1 topic', { exact: true });
   await expect(foundations).toBeVisible();
+  await expect(
+    page.getByText('Needs 1 topic from Fixture course first.', { exact: true }),
+  ).toBeVisible();
   const foundationIntro = page.getByText(
     "Topics from other courses that this course needs. They're scheduled when a unit needs them.",
     { exact: true },
@@ -508,10 +603,10 @@ test('lab activities show project progress and finish without awarding XP', asyn
   expect(await db.select().from(xpEvents).where(eq(xpEvents.userId, userId))).toHaveLength(0);
 });
 
-test('navigation has four destinations and Lab redirects to Courses', async ({ page }) => {
+test('navigation includes Up next and Lab redirects to Courses', async ({ page }) => {
   await page.goto('/');
   const navigation = page.getByRole('navigation', { name: 'Main navigation' });
-  for (const label of ['Home', 'Courses', 'Reviews', 'Progress', 'Settings']) {
+  for (const label of ['Home', 'Courses', 'Up next', 'Reviews', 'Progress', 'Settings']) {
     await expect(navigation.getByRole('link', { name: label, exact: true })).toBeVisible();
   }
 
@@ -760,7 +855,7 @@ test('navigation cleanup pages render at desktop and mobile widths', async ({ pa
 
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto('/progress');
-  await expect(page.getByRole('heading', { name: 'Mastery by domain' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'By course' })).toBeVisible();
   await page.screenshot({
     path: `${navCleanupScreenshotDir}/progress-desktop.png`,
     fullPage: true,

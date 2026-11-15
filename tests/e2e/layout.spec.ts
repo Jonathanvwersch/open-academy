@@ -86,17 +86,9 @@ test('routes fit mobile viewports without horizontal page overflow', async ({ pa
       await page.goto(route);
       await expect(page.locator('h1').first()).toBeAttached();
       if (route === '/progress') {
-        const masteredValue = page
-          .getByText('Concepts mastered', { exact: true })
-          .locator('..')
-          .locator('p')
-          .nth(1);
-        const studyValue = page
-          .getByText('Study time', { exact: true })
-          .locator('..')
-          .locator('p')
-          .nth(1);
-        for (const value of [masteredValue, studyValue]) {
+        const topicsValue = page.getByText(/Topics done:/);
+        const studyValue = page.getByText(/Study time:/);
+        for (const value of [topicsValue, studyValue]) {
           const bounds = await value.boundingBox();
           expect(bounds?.height, `progress value wraps at ${width}px`).toBeLessThanOrEqual(32);
         }
@@ -150,7 +142,7 @@ test('root auth pending renders the app-shell skeleton', async ({ page }) => {
   await expect(shell).toBeVisible();
   await expect(shell.getByTestId('route-skeleton')).toBeVisible();
   const navigation = shell.getByRole('navigation', { name: 'Main navigation' });
-  for (const label of ['Home', 'Courses', 'Map', 'Reviews', 'Progress']) {
+  for (const label of ['Home', 'Courses', 'Up next', 'Reviews', 'Progress']) {
     await expect(navigation.getByRole('link', { name: label, exact: true })).toBeVisible();
   }
   await expect(navigation.getByRole('link', { name: 'Settings', exact: true })).toBeVisible();

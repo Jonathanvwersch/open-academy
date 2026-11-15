@@ -52,10 +52,10 @@ test('project uploads fixture results, records evidence, and reveals reflection'
 test('progress displays mastery and stats without debt or recent answers', async ({ page }) => {
   await page.goto('/progress');
   await expect(page.getByRole('heading', { name: 'Progress' })).toBeVisible();
-  await expect(page.getByText('Concepts mastered', { exact: true })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Mastery by domain' })).toBeVisible();
-  await expect(page.getByText('Mathematics', { exact: true })).toBeVisible();
-  await expect(page.getByText('Study time', { exact: true })).toBeVisible();
+  await expect(page.getByText(/Topics done:/)).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'By course' })).toBeVisible();
+  await expect(page.getByText('Fixture subject', { exact: true })).toBeVisible();
+  await expect(page.getByText(/Study time:/)).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Learning debt' })).toHaveCount(0);
   await expect(page.getByRole('heading', { name: 'Recent answers' })).toHaveCount(0);
 });

@@ -1,4 +1,5 @@
 import { asc, eq } from 'drizzle-orm';
+import { orderCourseIdsBySubject } from '../../content/course-order.js';
 import { reviewCards } from '../../db/schema.js';
 import { localDateDifference, shiftLocalDate } from '../../http/request-context.js';
 import { courseConceptIds, courseFoundationIds } from '../../learning/prerequisites.js';
@@ -11,7 +12,7 @@ export async function getReviews(deps: FeatureServices, request: FeatureRequest)
   const now = request.now();
   const timeZone = request.timeZone;
   const localToday = localDateKey(now, timeZone);
-  const studyCourseIds = await request.repo.studyCourseIds(index);
+  const studyCourseIds = orderCourseIdsBySubject(index, await request.repo.studyCourseIds(index));
   const [cards, activeCourseId] = await Promise.all([
     db
       .select()
@@ -24,7 +25,7 @@ export async function getReviews(deps: FeatureServices, request: FeatureRequest)
   const preferredCourseIds = [
     ...studyCourseIds,
     ...(activeCourse ? [activeCourse.id] : []),
-    ...(index.curriculum?.courses ?? index.courses.map((course) => course.id)),
+    ...orderCourseIdsBySubject(index),
   ];
   const courseTopicSets = new Map(
     preferredCourseIds.map((courseId) => {

@@ -26,7 +26,8 @@ import {
   users,
   xpEvents,
 } from '../../src/db/schema.js';
-import { prerequisiteMet } from '../../src/learning/prerequisites.js';
+import { newReviewCard } from '../../src/learning/fsrs.js';
+import { courseFoundationIds, prerequisiteMet } from '../../src/learning/prerequisites.js';
 import type { MasteryRecord } from '../../src/learning/types.js';
 
 const db = createDb(env.TEST_DATABASE_URL);
@@ -450,7 +451,7 @@ test('a restarted lesson does not restore its previous final answer', async () =
   ).not.toMatchObject({ completedExerciseIds: [lesson.final] });
 });
 
-test('restarting a prerequisite skips planned dependent activities', async () => {
+test('restarting a prerequisite skips planned and in-progress dependent activities', async () => {
   const prerequisiteId = 'tokenization';
   const dependentId = 'embeddings';
   const dependent = content.conceptsById.get(dependentId);
@@ -498,10 +499,25 @@ test('restarting a prerequisite skips planned dependent activities', async () =>
     .values({ userId, plannedMinutes: 60, status: 'active' })
     .returning();
   if (!session) throw new Error('Could not create prerequisite restart session');
-  await db.insert(lessonRuns).values([
-    { userId, conceptId: prerequisiteId, status: 'completed' },
-    { userId, conceptId: 'matrices', status: 'completed' },
-  ]);
+  const runs = await db
+    .insert(lessonRuns)
+    .values([
+      { userId, conceptId: prerequisiteId, status: 'completed' },
+      { userId, conceptId: 'matrices', status: 'completed' },
+      { userId, conceptId: dependentId, status: 'in_progress' },
+    ])
+    .returning();
+  const dependentRun = runs.find((run) => run.conceptId === dependentId);
+  if (!dependentRun) throw new Error('Could not create dependent lesson run');
+  await db.insert(lessonProblems).values({
+    runId: dependentRun.id,
+    knowledgePointId: `${dependentId}-preserved`,
+    round: 0,
+    position: 0,
+    exerciseId: `${dependentId}-preserved-answer`,
+    answeredAt: new Date('2026-01-07T09:00:00.000Z'),
+    correct: 1,
+  });
   await db.insert(mastery).values({
     userId,
     conceptId: assistedPrerequisiteConcept.id,
@@ -524,6 +540,8 @@ test('restarting a prerequisite skips planned dependent activities', async () =>
       conceptId: dependentId,
       plannedMinutes: 10,
       status: 'in_progress',
+      startedAt: new Date('2026-01-07T09:00:00.000Z'),
+      progress: { lessonViewed: true, savedAnswer: 'keep-me' },
     },
     {
       sessionId: session.id,
@@ -563,10 +581,25 @@ test('restarting a prerequisite skips planned dependent activities', async () =>
       .map((activity) => [activity.conceptId, activity.status]),
   ).toEqual([
     [dependentId, 'skipped'],
-    [dependentId, 'in_progress'],
+    [dependentId, 'skipped'],
     [dependentId, 'completed'],
     [unrelated.id, 'planned'],
     [assistedDependent.id, 'planned'],
+  ]);
+  expect(activities.find((activity) => activity.idx === 1)?.progress).toEqual({
+    lessonViewed: true,
+    savedAnswer: 'keep-me',
+  });
+  expect(
+    await db.select().from(lessonRuns).where(eq(lessonRuns.id, dependentRun.id)),
+  ).toMatchObject([{ status: 'in_progress', id: dependentRun.id }]);
+  expect(
+    await db.select().from(lessonProblems).where(eq(lessonProblems.runId, dependentRun.id)),
+  ).toMatchObject([
+    {
+      knowledgePointId: `${dependentId}-preserved`,
+      exerciseId: `${dependentId}-preserved-answer`,
+    },
   ]);
 });
 
@@ -696,12 +729,29 @@ test('starting a course uses a valid requested courseId instead of the active co
 
 test('course catalogue and enrollment routes start, pause, and reactivate courses', async () => {
   const catalog = await (await get('/courses')).json();
+  expect(
+    catalog.subjects.map((subject: { id: string; title: string }) => ({
+      id: subject.id,
+      title: subject.title,
+    })),
+  ).toEqual([
+    { id: 'mathematics', title: 'Mathematics' },
+    { id: 'ai', title: 'AI' },
+    { id: 'robotics', title: 'Robotics' },
+  ]);
+  for (const subject of catalog.subjects as Array<{ id: string; courses: Array<{ id: string }> }>) {
+    expect(subject.courses.map((course) => course.id)).toEqual(
+      (content.curriculum?.courses ?? content.courses.map((course) => course.id)).filter(
+        (courseId) => content.subjectForCourse(courseId).id === subject.id,
+      ),
+    );
+  }
   const courses = catalog.subjects.flatMap(
     (subject: { courses: Array<{ id: string; status: string; startNeeded: boolean }> }) =>
       subject.courses,
   );
-  expect(courses.map((course: { id: string }) => course.id)).toEqual(
-    content.curriculum?.courses ?? content.courses.map((course) => course.id),
+  expect(new Set(courses.map((course: { id: string }) => course.id))).toEqual(
+    new Set(content.curriculum?.courses ?? content.courses.map((course) => course.id)),
   );
   expect(courses.find((course: { id: string }) => course.id === 'deep-learning')).toMatchObject({
     status: 'not_started',
@@ -1177,6 +1227,231 @@ test('lesson choices exclude locked, completed and stub concepts and retain the 
   expect(learn.choices[0]?.xp).toBe(
     (content.lessonsByConcept.get(targets[0]?.id ?? '')?.knowledge_points?.length ?? 0) * 10,
   );
+});
+
+test('course details report incomplete foundation counts and source courses', async () => {
+  const payload = await (await get('/courses/transformers-llms')).json();
+  const sourceTitles = [
+    ...new Set(
+      payload.foundations.flatMap((foundation: { conceptId: string }) => {
+        const source = content.courses.find((course) =>
+          course.units.some((unit) => unit.concepts.includes(foundation.conceptId)),
+        );
+        return source ? [source.title] : [];
+      }),
+    ),
+  ];
+
+  expect(payload.foundationNeeds).toEqual({
+    count: payload.foundations.length,
+    courseTitles: sourceTitles.slice(0, 3),
+    hasMore: sourceTitles.length > 3,
+  });
+});
+
+test('focus persists and replans only planned activities', async () => {
+  const mathsCourse = content.coursesById.get('maths-for-ml');
+  const aiCourse = content.coursesById.get('ml-foundations');
+  if (!mathsCourse || !aiCourse) throw new Error('Missing subject focus test courses');
+  const aiFoundations = courseFoundationIds(content, aiCourse.id);
+  const aiInProgressConceptId = aiCourse.units
+    .flatMap((unit) => unit.concepts)
+    .find((conceptId) => {
+      const concept = content.conceptsById.get(conceptId);
+      return (
+        (content.lessonsByConcept.get(conceptId)?.knowledge_points?.length ?? 0) > 0 &&
+        concept?.prereqs.every((prerequisite) => prerequisite.strength !== 'hard')
+      );
+    });
+  if (!aiInProgressConceptId) throw new Error('Missing an available AI lesson for focus test');
+  const mathsConcept = mathsCourse.units
+    .flatMap((unit) => unit.concepts)
+    .find((conceptId) => !aiFoundations.has(conceptId));
+  if (!mathsConcept) throw new Error('Missing non-foundation Mathematics topic');
+  await db.insert(courseEnrollments).values(
+    [mathsCourse.id, aiCourse.id].map((courseId) => ({
+      userId,
+      courseId,
+      status: 'active' as const,
+      startMethod: 'beginning' as const,
+    })),
+  );
+  const [session] = await db
+    .insert(studySessions)
+    .values({
+      userId,
+      kind: 'weekday',
+      plannedMinutes: 60,
+      status: 'active',
+      startedAt: new Date('2026-01-07T11:00:00.000Z'),
+    })
+    .returning();
+  if (!session) throw new Error('Could not create focus test session');
+  const [completed, inProgress, planned, aiInProgress] = await db
+    .insert(sessionActivities)
+    .values([
+      {
+        sessionId: session.id,
+        idx: 0,
+        kind: 'learn',
+        conceptId: mathsConcept,
+        plannedMinutes: 5,
+        status: 'completed',
+      },
+      {
+        sessionId: session.id,
+        idx: 1,
+        kind: 'learn',
+        conceptId: mathsConcept,
+        plannedMinutes: 5,
+        status: 'in_progress',
+      },
+      {
+        sessionId: session.id,
+        idx: 2,
+        kind: 'learn',
+        conceptId: mathsConcept,
+        plannedMinutes: 5,
+        status: 'planned',
+      },
+      {
+        sessionId: session.id,
+        idx: 3,
+        kind: 'learn',
+        conceptId: aiInProgressConceptId,
+        plannedMinutes: 10,
+        status: 'in_progress',
+      },
+    ])
+    .returning();
+  if (!completed || !inProgress || !planned || !aiInProgress) {
+    throw new Error('Could not seed focus test activities');
+  }
+  await db.insert(lessonRuns).values({
+    userId,
+    conceptId: aiInProgressConceptId,
+    status: 'in_progress',
+  });
+
+  expect((await put('/focus', { subjectId: 'history' })).status).toBe(400);
+  const response = await put('/focus', { subjectId: 'ai' });
+  expect(response.status).toBe(200);
+  expect(await response.json()).toEqual({ focusSubjectId: 'ai' });
+  const [user] = await db.select().from(users).where(eq(users.id, userId));
+  expect(user?.prefs).toMatchObject({ focusSubjectId: 'ai' });
+  const activities = await db
+    .select()
+    .from(sessionActivities)
+    .where(eq(sessionActivities.sessionId, session.id));
+  expect(activities.find((activity) => activity.id === completed.id)?.status).toBe('completed');
+  expect(activities.find((activity) => activity.id === inProgress.id)?.status).toBe('in_progress');
+  const aiConceptActivities = activities.filter(
+    (activity) =>
+      activity.kind === 'learn' &&
+      activity.conceptId === aiInProgressConceptId &&
+      ['planned', 'in_progress'].includes(activity.status),
+  );
+  expect(aiConceptActivities.map((activity) => activity.status)).toEqual(['in_progress']);
+  expect(activities.some((activity) => activity.id === planned.id)).toBe(false);
+  const plannedAfterFocus = activities.filter(
+    (activity) => activity.status === 'planned' && ['learn', 'review'].includes(activity.kind),
+  );
+  expect(plannedAfterFocus.length).toBeGreaterThan(0);
+  expect(
+    plannedAfterFocus.every((activity) => {
+      const belongsToAi = aiCourse.units.some((unit) =>
+        unit.concepts.includes(activity.conceptId ?? ''),
+      );
+      return belongsToAi || aiFoundations.has(activity.conceptId ?? '');
+    }),
+  ).toBe(true);
+
+  const learn = await (await get('/learn')).json();
+  expect(learn.focusSubjectId).toBe('ai');
+  expect(learn.studyCourses.map((studyCourse: { id: string }) => studyCourse.id)).toEqual([
+    mathsCourse.id,
+    aiCourse.id,
+  ]);
+  expect(
+    learn.upNext.upcoming
+      .filter((topic: { dayLabel: string }) => topic.dayLabel !== 'Today')
+      .some((topic: { courseId: string }) => topic.courseId === mathsCourse.id),
+  ).toBe(false);
+  const mathsStudyCourse = learn.studyCourses.find(
+    (studyCourse: { id: string }) => studyCourse.id === mathsCourse.id,
+  );
+  expect(mathsStudyCourse?.estimatedFinish).toBeNull();
+  expect(mathsStudyCourse?.estimatedFinishAtGoal).toBeNull();
+  expect((await put('/focus', { subjectId: null })).status).toBe(200);
+  const [resetUser] = await db.select().from(users).where(eq(users.id, userId));
+  expect(resetUser?.prefs).not.toHaveProperty('focusSubjectId');
+  await db
+    .update(users)
+    .set({ prefs: { scheduleMinutes: 60, focusSubjectId: 'history' } })
+    .where(eq(users.id, userId));
+  expect((await (await get('/learn')).json()).focusSubjectId).toBeNull();
+});
+
+test('a stored focus is ignored when only one subject is active', async () => {
+  const mathsCourse = content.coursesById.get('maths-for-ml');
+  const aiCourse = content.coursesById.get('ml-foundations');
+  if (!mathsCourse || !aiCourse) throw new Error('Missing single-subject focus test courses');
+  const aiFoundations = courseFoundationIds(content, aiCourse.id);
+  const reviewExercise = mathsCourse.units
+    .flatMap((unit) => unit.concepts)
+    .filter((conceptId) => !aiFoundations.has(conceptId))
+    .flatMap((conceptId) =>
+      (content.exercisesByConcept.get(conceptId) ?? []).map((exercise) => ({
+        conceptId,
+        exercise,
+      })),
+    )
+    .find(({ exercise }) =>
+      ['review', 'core', 'practice', 'transfer', 'basics'].includes(exercise.role),
+    );
+  if (!reviewExercise) throw new Error('Missing a Mathematics review exercise');
+  await db.insert(courseEnrollments).values({
+    userId,
+    courseId: aiCourse.id,
+    status: 'active',
+    startMethod: 'beginning',
+  });
+  await db
+    .update(users)
+    .set({
+      activeCourseId: aiCourse.id,
+      studySetInitializedAt: new Date('2026-01-01T00:00:00.000Z'),
+      prefs: { scheduleMinutes: 60, focusSubjectId: 'ai' },
+    })
+    .where(eq(users.id, userId));
+  await db.insert(reviewCards).values({
+    userId,
+    conceptId: reviewExercise.conceptId,
+    dimension: reviewExercise.exercise.dimension,
+    fsrs: newReviewCard(new Date('2026-01-06T00:00:00.000Z')),
+    dueAt: new Date('2026-01-06T00:00:00.000Z'),
+  });
+
+  const learn = await (await get('/learn')).json();
+
+  expect(learn.activeSubjects.map((subject: { id: string }) => subject.id)).toEqual(['ai']);
+  expect(learn.focusSubjectId).toBeNull();
+  expect(
+    learn.tasks.some(
+      (task: { activityKind: string; conceptId?: string }) =>
+        task.activityKind === 'review' && task.conceptId === reviewExercise.conceptId,
+    ),
+  ).toBe(true);
+
+  const started = await post('/sessions', { budgetMinutes: 60 });
+  expect(started.status).toBe(201);
+  const session = await started.json();
+  expect(
+    session.activities.some(
+      (activity: { kind: string; conceptId?: string }) =>
+        activity.kind === 'review' && activity.conceptId === reviewExercise.conceptId,
+    ),
+  ).toBe(true);
 });
 
 test('lesson choices are empty while a session is active', async () => {
@@ -1693,4 +1968,308 @@ test('invalid timezone is ignored and a missing header uses the stored timezone'
     headers: { 'X-Now': '2026-11-09T00:17:00.000Z' },
   });
   expect((await missing.json()).sessionKind).toBe('sunday');
+});
+
+async function seedStaleEmbeddingsSession() {
+  const now = new Date('2026-01-07T10:00:00.000Z');
+  await db
+    .update(users)
+    .set({ activeCourseId: 'ml-foundations', studySetInitializedAt: now })
+    .where(eq(users.id, userId));
+  await db.insert(courseEnrollments).values(
+    ['ml-foundations', 'transformers-llms'].map((courseId) => ({
+      userId,
+      courseId,
+      startMethod: 'beginning' as const,
+    })),
+  );
+  const [session] = await db
+    .insert(studySessions)
+    .values({
+      userId,
+      kind: 'weekday',
+      plannedMinutes: 60,
+      status: 'active',
+      startedAt: now,
+    })
+    .returning();
+  if (!session) throw new Error('Could not create stale-activity session');
+  const [activity] = await db
+    .insert(sessionActivities)
+    .values({
+      sessionId: session.id,
+      idx: 0,
+      kind: 'learn',
+      conceptId: 'embeddings',
+      plannedMinutes: 20,
+      status: 'planned',
+    })
+    .returning();
+  if (!activity) throw new Error('Could not create stale Embeddings activity');
+  return { session, activity };
+}
+
+async function seedInProgressStaleEmbeddingsSession() {
+  const seeded = await seedStaleEmbeddingsSession();
+  const progress = { lessonViewed: true, savedAnswer: 'keep-embeddings-progress' };
+  const startedAt = new Date('2026-01-07T11:00:00.000Z');
+  const [run] = await db
+    .insert(lessonRuns)
+    .values({ userId, conceptId: 'embeddings', status: 'in_progress' })
+    .returning();
+  if (!run) throw new Error('Could not create in-progress Embeddings run');
+  const [problem] = await db
+    .insert(lessonProblems)
+    .values({
+      runId: run.id,
+      knowledgePointId: 'embeddings-preserved',
+      round: 0,
+      position: 0,
+      exerciseId: 'embeddings-preserved-answer',
+      answeredAt: startedAt,
+      correct: 1,
+    })
+    .returning();
+  if (!problem) throw new Error('Could not create Embeddings lesson progress');
+  await db
+    .update(sessionActivities)
+    .set({ status: 'in_progress', startedAt, progress })
+    .where(eq(sessionActivities.id, seeded.activity.id));
+  return { ...seeded, run, problem, progress, startedAt };
+}
+
+test('Home skips a planned lesson with an unmet prerequisite and replans the front AI course', async () => {
+  const { session, activity } = await seedStaleEmbeddingsSession();
+
+  const response = await get('/learn');
+  expect(response.status).toBe(200);
+
+  const sessionRows = await db
+    .select()
+    .from(sessionActivities)
+    .where(eq(sessionActivities.sessionId, session.id));
+  expect(sessionRows.find((row) => row.id === activity.id)?.status).toBe('skipped');
+  const frontCourse = content.coursesById.get('ml-foundations');
+  if (!frontCourse) throw new Error('Expected the ML Foundations course');
+  const frontConceptIds = new Set(frontCourse.units.flatMap((unit) => unit.concepts));
+  expect(
+    sessionRows.some(
+      (row) =>
+        row.kind === 'learn' &&
+        row.status === 'planned' &&
+        row.conceptId !== 'embeddings' &&
+        frontConceptIds.has(row.conceptId ?? ''),
+    ),
+  ).toBe(true);
+});
+
+test('Home skips a stale in-progress lesson without changing its run or progress', async () => {
+  const { session, activity, run, problem, progress, startedAt } =
+    await seedInProgressStaleEmbeddingsSession();
+
+  const response = await get('/learn');
+  expect(response.status).toBe(200);
+
+  const sessionRows = await db
+    .select()
+    .from(sessionActivities)
+    .where(eq(sessionActivities.sessionId, session.id));
+  expect(sessionRows.find((row) => row.id === activity.id)).toMatchObject({
+    status: 'skipped',
+    startedAt,
+    progress,
+  });
+  expect(await db.select().from(lessonRuns).where(eq(lessonRuns.id, run.id))).toMatchObject([
+    { id: run.id, status: 'in_progress' },
+  ]);
+  expect(
+    await db.select().from(lessonProblems).where(eq(lessonProblems.runId, run.id)),
+  ).toMatchObject([problem]);
+  const frontCourse = content.coursesById.get('ml-foundations');
+  if (!frontCourse) throw new Error('Expected the ML Foundations course');
+  const frontConceptIds = new Set(frontCourse.units.flatMap((unit) => unit.concepts));
+  expect(
+    sessionRows.some(
+      (row) =>
+        row.kind === 'learn' &&
+        row.status === 'planned' &&
+        row.conceptId !== 'embeddings' &&
+        frontConceptIds.has(row.conceptId ?? ''),
+    ),
+  ).toBe(true);
+});
+
+test('starting a planned lesson with an unmet prerequisite skips it instead of opening it', async () => {
+  const { session, activity } = await seedStaleEmbeddingsSession();
+  const response = await app.request(
+    `/api/sessions/${session.id}/activities/${activity.id}/progress`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Now': '2026-01-07T12:00:00.000Z',
+      },
+      body: JSON.stringify({ lessonViewed: true }),
+    },
+  );
+
+  expect(response.status).toBe(409);
+  const [row] = await db
+    .select()
+    .from(sessionActivities)
+    .where(eq(sessionActivities.id, activity.id));
+  expect(row?.status).toBe('skipped');
+  expect(row?.startedAt).toBeNull();
+});
+
+test('starting a stale in-progress lesson skips it without changing its run or progress', async () => {
+  const { session, activity, run, progress } = await seedInProgressStaleEmbeddingsSession();
+  const response = await app.request(
+    `/api/sessions/${session.id}/activities/${activity.id}/progress`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Now': '2026-01-07T12:00:00.000Z',
+      },
+      body: JSON.stringify({ lessonViewed: true }),
+    },
+  );
+
+  expect(response.status).toBe(409);
+  expect(
+    await db.select().from(sessionActivities).where(eq(sessionActivities.id, activity.id)),
+  ).toMatchObject([{ status: 'skipped', progress }]);
+  expect(await db.select().from(lessonRuns).where(eq(lessonRuns.id, run.id))).toMatchObject([
+    { id: run.id, status: 'in_progress' },
+  ]);
+  expect(
+    await db.select().from(lessonProblems).where(eq(lessonProblems.runId, run.id)),
+  ).toMatchObject([
+    { knowledgePointId: 'embeddings-preserved', exerciseId: 'embeddings-preserved-answer' },
+  ]);
+});
+
+test('Up next starts with active-session lessons in order and projects future topics from tomorrow', async () => {
+  const now = new Date('2026-01-07T10:00:00.000Z');
+  await db
+    .update(users)
+    .set({ activeCourseId: 'ml-foundations', studySetInitializedAt: now })
+    .where(eq(users.id, userId));
+  await db.insert(courseEnrollments).values({
+    userId,
+    courseId: 'ml-foundations',
+    startMethod: 'beginning',
+  });
+  const [session] = await db
+    .insert(studySessions)
+    .values({
+      userId,
+      kind: 'weekday',
+      plannedMinutes: 60,
+      status: 'active',
+      startedAt: now,
+    })
+    .returning();
+  if (!session) throw new Error('Could not create Up next session');
+  await db.insert(sessionActivities).values([
+    {
+      sessionId: session.id,
+      idx: 0,
+      kind: 'learn',
+      conceptId: 'supervised-learning',
+      plannedMinutes: 20,
+      status: 'in_progress',
+    },
+    {
+      sessionId: session.id,
+      idx: 1,
+      kind: 'learn',
+      conceptId: 'what-is-ml',
+      plannedMinutes: 20,
+      status: 'planned',
+    },
+  ]);
+
+  const learn = await (await get('/learn')).json();
+  expect(
+    learn.upNext.upcoming.slice(0, 2).map((topic: { conceptId: string }) => topic.conceptId),
+  ).toEqual(['supervised-learning', 'what-is-ml']);
+  expect(
+    learn.upNext.upcoming
+      .slice(0, 2)
+      .every((topic: { dayLabel: string }) => topic.dayLabel === 'Today'),
+  ).toBe(true);
+  expect(
+    learn.upNext.upcoming.slice(2).every((topic: { date: string }) => topic.date >= '2026-01-08'),
+  ).toBe(true);
+});
+
+test('Finished topics use lesson completion dates or the earliest mastery transition', async () => {
+  const studySetInitializedAt = new Date('2026-01-01T00:00:00.000Z');
+  await db
+    .update(users)
+    .set({ activeCourseId: 'ml-foundations', studySetInitializedAt })
+    .where(eq(users.id, userId));
+  await db.insert(courseEnrollments).values({
+    userId,
+    courseId: 'ml-foundations',
+    startMethod: 'beginning',
+  });
+  await db.insert(lessonRuns).values([
+    {
+      userId,
+      conceptId: 'supervised-learning',
+      status: 'completed',
+      completedAt: new Date('2026-01-06T18:00:00.000Z'),
+    },
+    { userId, conceptId: 'probability-basics', status: 'completed' },
+  ]);
+  const statistics = content.conceptsById.get('descriptive-statistics');
+  if (!statistics) throw new Error('Expected descriptive statistics in authored content');
+  await db.insert(mastery).values(
+    statistics.dimensions.map((dimension) => ({
+      userId,
+      conceptId: statistics.id,
+      dimension,
+      state: 'assisted' as const,
+    })),
+  );
+  await db.insert(masteryEvents).values([
+    {
+      userId,
+      conceptId: 'supervised-learning',
+      dimension: 'conceptual',
+      fromState: 'not_assessed',
+      toState: 'assisted',
+      rule: 'test',
+      createdAt: new Date('2026-01-03T08:00:00.000Z'),
+    },
+    {
+      userId,
+      conceptId: statistics.id,
+      dimension: statistics.dimensions[0] ?? 'conceptual',
+      fromState: 'not_assessed',
+      toState: 'assisted',
+      rule: 'test',
+      createdAt: new Date('2026-01-05T08:00:00.000Z'),
+    },
+  ]);
+
+  const response = await get('/learn');
+  expect(response.status).toBe(200);
+  const learn = await response.json();
+  expect(
+    learn.upNext.finished
+      .filter((topic: { conceptId: string }) =>
+        ['supervised-learning', 'descriptive-statistics', 'probability-basics'].includes(
+          topic.conceptId,
+        ),
+      )
+      .map((topic: { conceptId: string; date?: string }) => [topic.conceptId, topic.date]),
+  ).toEqual([
+    ['supervised-learning', '2026-01-06'],
+    ['descriptive-statistics', '2026-01-05'],
+    ['probability-basics', undefined],
+  ]);
 });

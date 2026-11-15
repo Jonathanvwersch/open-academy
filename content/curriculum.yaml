@@ -1,4 +1,8 @@
 schedule: { mon: 60, tue: 60, wed: 60, thu: 60, fri: 60, sat: 300, sun: 60 }
+subjects:
+  - { id: mathematics, title: Mathematics }
+  - { id: ai, title: AI }
+  - { id: robotics, title: Robotics }
 domains:
   - {
       id: math,

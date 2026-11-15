@@ -1,6 +1,7 @@
 id: reinforcement-learning
 title: Reinforcement Learning
 description: "Learning from reward: MDPs, value functions, Q-learning, policy gradients and PPO, and training agents in simulation."
+subject: ai
 units:
   - title: Reinforcement learning
     intro: "Learning by trial and error from rewards: decision problems, value functions, Q-learning, policy gradients and PPO, the algorithm behind RLHF."

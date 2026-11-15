@@ -25,6 +25,7 @@ A course is a path through a graph of topics. Get the graph right first; lessons
 ## 4. Group into units
 - 3-8 topics per unit, in an order where every prerequisite comes first.
 - Each unit has a title that says what the learner can do after it.
+- When a pack has multiple subject areas, add ordered `subjects` to `curriculum.yaml` and set each course's `subject` to one of those IDs.
 
 ## 5. Create it with the CLI
 ```

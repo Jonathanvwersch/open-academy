@@ -6,6 +6,7 @@ import { Badge } from '../../components/ui/badge.js';
 import { Button } from '../../components/ui/button.js';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card.js';
 import { Progress } from '../../components/ui/progress.js';
+import { studyMapQueryOptions } from '../map/queries.js';
 import { StreakCard } from '../progress/streak-card.js';
 import { todayQueryOptions } from '../sessions/queries.js';
 import { useStartSession } from '../sessions/start-session.js';
@@ -18,6 +19,13 @@ export function LearnPage() {
   const { data } = useSuspenseQuery(learnQueryOptions());
   const { data: catalog } = useSuspenseQuery(coursesQueryOptions());
   const today = data.today;
+  const focusSubjectTitle = data.focusSubjectId
+    ? (data.activeSubjects.find((subject) => subject.id === data.focusSubjectId)?.title ??
+      data.focusSubjectId)
+    : null;
+  const finishLineLabel = focusSubjectTitle
+    ? `All current ${focusSubjectTitle} lessons done by`
+    : 'All current lessons done by';
   const enterSession = async ({ id }: { id: string }) => {
     queryClient.setQueryData(learnQueryOptions().queryKey, (current) =>
       current ? { ...current, activeSessionId: id } : current,
@@ -43,6 +51,41 @@ export function LearnPage() {
       return response.json() as Promise<{ id: string }>;
     },
     onSuccess: enterSession,
+  });
+  const focusSubject = useMutation({
+    mutationFn: async (subjectId: string | null) => {
+      const response = await apiFetch('/api/focus', {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ subjectId }),
+      });
+      if (!response.ok) throw new Error('Could not update learning focus');
+      return response.json() as Promise<{ focusSubjectId: string | null }>;
+    },
+    onMutate: async (subjectId) => {
+      const queryKey = learnQueryOptions().queryKey;
+      await queryClient.cancelQueries({ queryKey });
+      const previous = queryClient.getQueryData(queryKey);
+      queryClient.setQueryData(queryKey, (current) =>
+        current ? { ...current, focusSubjectId: subjectId } : current,
+      );
+      return { previous };
+    },
+    onError: (_error, _subjectId, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(learnQueryOptions().queryKey, context.previous);
+      }
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: studyMapQueryOptions().queryKey });
+    },
+    onSettled: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: learnQueryOptions().queryKey }),
+        queryClient.invalidateQueries({ queryKey: todayQueryOptions().queryKey }),
+        queryClient.invalidateQueries({ queryKey: ['session'] }),
+      ]);
+    },
   });
   const maxXp = Math.max(1, ...data.xp.week.flatMap((day) => [day.xp, day.goal]));
   const dayTotal = data.xp.week.reduce((total, day) => total + day.xp, 0);
@@ -111,6 +154,51 @@ export function LearnPage() {
               <CardTitle>Next up</CardTitle>
             </CardHeader>
             <CardContent className="space-y-5">
+              {data.activeSubjects.length > 1 ? (
+                <fieldset className="space-y-2">
+                  <legend className="text-sm font-medium">Focus</legend>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={data.focusSubjectId ? 'outline' : 'secondary'}
+                      aria-pressed={!data.focusSubjectId}
+                      disabled={focusSubject.isPending}
+                      onClick={() => focusSubject.mutate(null)}
+                    >
+                      All
+                    </Button>
+                    {data.activeSubjects.map((subject) => (
+                      <Button
+                        key={subject.id}
+                        type="button"
+                        size="sm"
+                        variant={data.focusSubjectId === subject.id ? 'secondary' : 'outline'}
+                        aria-pressed={data.focusSubjectId === subject.id}
+                        disabled={focusSubject.isPending}
+                        onClick={() => focusSubject.mutate(subject.id)}
+                      >
+                        {subject.title}
+                      </Button>
+                    ))}
+                  </div>
+                  {focusSubject.isError ? (
+                    <p role="alert" className="text-sm text-destructive">
+                      {focusSubject.error.message}
+                    </p>
+                  ) : null}
+                  {data.focusSubjectId && data.dueReviewsOutsideFocus > 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      {data.dueReviewsOutsideFocus}{' '}
+                      {data.dueReviewsOutsideFocus === 1 ? 'review' : 'reviews'} from other subjects
+                      are waiting.{' '}
+                      <Link to="/reviews" className="underline underline-offset-4">
+                        Review them
+                      </Link>
+                    </p>
+                  ) : null}
+                </fieldset>
+              ) : null}
               {data.activeSessionId ? (
                 <Button asChild className="h-10 w-full justify-between px-4">
                   <Link to="/session/$id" params={{ id: data.activeSessionId }}>
@@ -240,7 +328,9 @@ export function LearnPage() {
           <CardContent className="space-y-6">
             <div className="space-y-5">
               <p className="text-sm text-muted-foreground">
-                Dates assume you keep studying all these courses together.
+                {focusSubjectTitle
+                  ? `Dates assume you keep studying ${focusSubjectTitle} courses.`
+                  : 'Dates assume you keep studying all these courses together.'}
               </p>
               {data.studyCourses.map((course) => {
                 const percentComplete =
@@ -268,12 +358,16 @@ export function LearnPage() {
                         </Link>
                       </Button>
                     </div>
-                    {course.estimatedFinish &&
-                    course.estimatedFinish === course.estimatedFinishAtGoal ? (
+                    {focusSubjectTitle && course.subjectId !== data.focusSubjectId ? (
+                      <p className="text-sm text-muted-foreground">
+                        Paused while you focus on {focusSubjectTitle}
+                      </p>
+                    ) : course.estimatedFinish &&
+                      course.estimatedFinish === course.estimatedFinishAtGoal ? (
                       <p className="text-sm text-muted-foreground">
                         Estimated finish {formatDate(course.estimatedFinish)}
                       </p>
-                    ) : (
+                    ) : course.estimatedFinish || course.estimatedFinishAtGoal ? (
                       <>
                         {course.estimatedFinish ? (
                           <p className="text-sm text-muted-foreground">
@@ -286,15 +380,17 @@ export function LearnPage() {
                           </p>
                         ) : null}
                       </>
-                    )}
+                    ) : course.topicsDone < course.topicsTotal ? (
+                      <p className="text-sm text-muted-foreground">Lessons coming soon</p>
+                    ) : null}
                   </div>
                 );
               })}
               {data.today.studyFinish.atPace && data.today.studyFinish.atGoal ? (
                 <p className="text-sm text-muted-foreground">
                   {data.today.studyFinish.atPace === data.today.studyFinish.atGoal
-                    ? `All your courses done by ${formatDate(data.today.studyFinish.atPace)}`
-                    : `All your courses done by ${formatDate(data.today.studyFinish.atPace)} at your pace, or ${formatDate(data.today.studyFinish.atGoal)} at your daily goal`}
+                    ? `${finishLineLabel} ${formatDate(data.today.studyFinish.atPace)}`
+                    : `${finishLineLabel} ${formatDate(data.today.studyFinish.atPace)} at your pace, or ${formatDate(data.today.studyFinish.atGoal)} at your daily goal`}
                 </p>
               ) : null}
             </div>

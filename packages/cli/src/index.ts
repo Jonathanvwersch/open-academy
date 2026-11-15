@@ -252,6 +252,7 @@ async function init(directory: string, title: string) {
   const topicId = `${slug(title)}-first-topic`;
   writeYaml(join(directory, 'curriculum.yaml'), {
     schedule: { mon: 45, tue: 45, wed: 45, thu: 45, fri: 45, sat: 120, sun: 60 },
+    subjects: [{ id: slug(title), title }],
     domains: [{ id: 'main', title, description: `Topics in ${title}.` }],
     courses: [courseId],
     default_course: courseId,
@@ -262,6 +263,7 @@ async function init(directory: string, title: string) {
     id: courseId,
     title: `${title} basics`,
     description: `A first path through ${title}.`,
+    subject: slug(title),
     units: [{ title: 'Basics', concepts: [topicId] }],
   });
   writeYaml(join(directory, 'concepts', 'main.yaml'), {
@@ -544,10 +546,12 @@ async function newCourse(id: string, title: string, directory: string) {
       writeYaml(conceptFile, { domain, concepts: [concept] });
     }
   }
+  const subjectId = content.curriculum?.subjects?.[0]?.id;
   writeYaml(join(directory, 'courses', `${id}.yaml`), {
     id,
     title,
     description: `A course in ${title}.`,
+    ...(subjectId ? { subject: subjectId } : {}),
     units: [{ title: 'Unit 1', concepts: [placeholderId] }],
   });
   const curriculumFile = join(directory, 'curriculum.yaml');

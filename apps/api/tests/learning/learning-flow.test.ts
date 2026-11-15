@@ -1314,18 +1314,10 @@ test('review mode partial explain answers get one retry before card rating and c
 test('a missing optional explain point keeps a review answer correct and rates the card', async () => {
   await resetLearner();
   const authoredContent = await loadContent('content');
-  const exercise = authoredContent.exercisesById.get('gd-explain-lr');
-  if (exercise?.type !== 'explain') throw new Error('Missing gradient-descent explain exercise');
-  // Optional-point behavior needs an explicit fixture, independent of authored rubric revisions.
-  exercise.rubric = [
-    ...['r1', 'r2', 'r3'].map((id) => ({
-      id,
-      criterion: `Required point ${id}.`,
-      weight: 1,
-      required: true,
-    })),
-    { id: 'r4', criterion: 'Optional context.', weight: 1, required: false },
-  ];
+  const exercise = authoredContent.exercisesById.get('sgm-explain-training');
+  if (exercise?.type !== 'explain') throw new Error('Missing minibatch explain exercise');
+  expect(exercise.rubric.some(({ required }) => required === true)).toBe(true);
+  expect(exercise.rubric.some(({ required }) => required === false)).toBe(true);
   const [session] = await db
     .insert(studySessions)
     .values({ userId, plannedMinutes: 15, status: 'active', kind: 'weekday' })
@@ -1376,10 +1368,10 @@ test('a missing optional explain point keeps a review answer correct and rates t
     retryAllowed: false,
     activityCompleted: true,
     rubric: [
-      { id: 'r1', required: true },
-      { id: 'r2', required: true },
-      { id: 'r3', required: true },
-      { id: 'r4', required: false },
+      { id: 'average', required: true },
+      { id: 'epoch', required: true },
+      { id: 'tradeoff', required: true },
+      { id: 'larger-batches', required: false },
     ],
   });
   const replay = await optionalMissingApp.request(`/api/sessions/${session.id}`, {
@@ -1388,10 +1380,10 @@ test('a missing optional explain point keeps a review answer correct and rates t
   expect(replay.status).toBe(200);
   expect((await replay.json()).activities[0].lastAttempt).toMatchObject({
     rubric: [
-      { id: 'r1', required: true },
-      { id: 'r2', required: true },
-      { id: 'r3', required: true },
-      { id: 'r4', required: false },
+      { id: 'average', required: true },
+      { id: 'epoch', required: true },
+      { id: 'tradeoff', required: true },
+      { id: 'larger-batches', required: false },
     ],
   });
   const logs = await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, card.id));
@@ -1663,7 +1655,7 @@ test('stale sessions are hidden for today, abandoned by new sessions, and keep l
   const progressResponse = await app.request('/api/progress', {
     headers: headersAt(dayTwo),
   });
-  expect((await progressResponse.json()).hours).toBe(0);
+  expect((await progressResponse.json()).studyTimeHours).toBe(0);
 
   const activeResponse = await app.request('/api/sessions/active', {
     headers: headersAt(dayTwo),

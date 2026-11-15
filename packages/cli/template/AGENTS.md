@@ -2,7 +2,7 @@
 
 This folder is an Open Academy course pack: one subject, its topic graph, lessons, questions and courses.
 
-- `curriculum.yaml` names the subject, its domains, its courses and the default course.
+- `curriculum.yaml` names the pack-level subject, domains, ordered subjects, courses and the default course.
 - `concepts/<domain>.yaml` lists topics. Each topic has a stable `id`, a title, `requires` (hard prerequisites) and `status: stub` until its lesson is written.
 - `lessons/<topic>.yaml` is the lesson for a topic; `exercises/<topic>.yaml` holds its questions.
 - `courses/<id>.yaml` is an ordered path through the topics, split into units.
@@ -10,6 +10,7 @@ This folder is an Open Academy course pack: one subject, its topic graph, lesson
 
 Rules:
 - Never change an existing `id`. Learner progress is keyed on it.
+- With `curriculum.subjects`, every course must set `subject` to a listed subject ID.
 - Plan the graph before writing lessons: `.agents/skills/plan-course/SKILL.md`.
 - Write every lesson with `.agents/skills/write-lesson/SKILL.md`.
 - Write and check every question with `.agents/skills/write-questions/SKILL.md`.

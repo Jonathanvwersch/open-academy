@@ -2,6 +2,7 @@ import { resolve } from 'node:path';
 import { expect, test } from 'vitest';
 import { loadContent } from '../../src/content/load.js';
 import {
+  CurriculumSchema,
   ExerciseSchema,
   LessonSchema,
   normalizeLesson,
@@ -54,6 +55,10 @@ test('loads the fixture graph and builds lookup indexes', async () => {
   expect(content.curriculum?.subject).toEqual({
     title: 'Fixture subject',
     tutor_context: 'The learner is working through a fixture course.',
+  });
+  expect(content.subjectForCourse('fixture-course')).toEqual({
+    id: 'default',
+    title: 'Fixture subject',
   });
   expect(content.sourceIndex?.sources).toEqual([
     {
@@ -158,6 +163,58 @@ test('a paper can be assigned to multiple course units', async () => {
   const paperId = required(unit.papers?.[0], 'paper assignment');
   secondUnit.papers = [...(secondUnit.papers ?? []), paperId];
   expect(validateContent(data)).toEqual([]);
+});
+
+test('course subjects must match the ordered curriculum subjects when configured', async () => {
+  const valid = await notationFixture();
+  if (!valid.curriculum) throw new Error('Missing curriculum fixture');
+  valid.curriculum.value.subjects = [{ id: 'science', title: 'Science' }];
+  for (const course of valid.courses) course.value.subject = 'science';
+  expect(validateContent(valid)).toEqual([]);
+
+  const unknownSubject = structuredClone(valid);
+  const firstCourse = required(unknownSubject.courses[0], 'course');
+  firstCourse.value.subject = 'history';
+  expect(validateContent(unknownSubject)).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        id: firstCourse.value.id,
+        message: 'course references unknown subject "history"',
+      }),
+    ]),
+  );
+
+  const unexpectedSubject = structuredClone(valid);
+  const firstUnexpectedCourse = required(unexpectedSubject.courses[0], 'course');
+  if (!unexpectedSubject.curriculum) throw new Error('Missing curriculum fixture');
+  delete unexpectedSubject.curriculum.value.subjects;
+  expect(validateContent(unexpectedSubject)).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        id: firstUnexpectedCourse.value.id,
+        message: 'course subject requires curriculum.subjects',
+      }),
+    ]),
+  );
+
+  const emptySubjects = structuredClone(valid);
+  if (!emptySubjects.curriculum) throw new Error('Missing curriculum fixture');
+  emptySubjects.curriculum.value.subjects = [];
+  delete required(emptySubjects.courses[0], 'course').value.subject;
+  expect(validateContent(emptySubjects)).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ message: 'course must name a curriculum subject' }),
+    ]),
+  );
+
+  const duplicateSubjects = CurriculumSchema.safeParse({
+    ...valid.curriculum.value,
+    subjects: [
+      { id: 'science', title: 'Science' },
+      { id: 'science', title: 'Science duplicate' },
+    ],
+  });
+  expect(duplicateSubjects.success).toBe(false);
 });
 
 test.each([

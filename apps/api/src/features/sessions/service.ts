@@ -22,6 +22,7 @@ import { recordLessonViewed } from '../../learning/mastery.js';
 import {
   activeCourseFor,
   compareOutlinePosition,
+  learnActivitiesWithUnmetPrerequisites,
   masteryKey,
   prerequisiteMet,
 } from '../../learning/prerequisites.js';
@@ -36,6 +37,7 @@ import {
 import { masteryRank } from '../../learning/types.js';
 import { localDateKey, sessionKindForDate, xpGoalFor } from '../../learning/xp.js';
 import { type FeatureRequest, type FeatureServices, serviceResult } from '../../service-context.js';
+import { replanSessionActivities } from '../course/service.js';
 
 export async function getToday(deps: FeatureServices, request: FeatureRequest) {
   const { content, tutorProvider } = deps;
@@ -463,14 +465,60 @@ async function updateActivityProgress(deps: FeatureServices, request: FeatureReq
   if (!body.success) {
     return serviceResult({ error: 'Invalid progress' }, 400);
   }
-  const session = await request.repo.session(request.params.id);
-  const activity = session?.activities.find((item) => item.id === request.params.aid);
+  let session = await request.repo.session(request.params.id);
+  let activity = session?.activities.find((item) => item.id === request.params.aid);
   if (!activity) {
     return serviceResult({ error: 'Activity not found' }, 404);
   }
   const completed = body.data.complete === true;
   const { complete: _complete, ...progress } = body.data;
   const now = request.now();
+  if (
+    session?.status === 'active' &&
+    activity.kind === 'learn' &&
+    (activity.status === 'planned' ||
+      (activity.status === 'in_progress' && body.data.lessonViewed === true))
+  ) {
+    const index = await content();
+    const state = filterSchedulerStateForContent(
+      index,
+      await request.repo.schedulerState(now, index),
+    );
+    const masteryByKey = new Map(
+      state.mastery.map((record) => [
+        masteryKey(record.conceptId, record.dimension),
+        { state: record.state, inferred: record.inferred },
+      ]),
+    );
+    const blockedActivities = learnActivitiesWithUnmetPrerequisites(
+      session.activities,
+      masteryByKey,
+      state.lessonRuns ?? [],
+      index,
+    );
+    if (blockedActivities.length > 0) {
+      const blockedTarget = blockedActivities.includes(activity.id);
+      await replanSessionActivities({
+        db,
+        repo: request.repo,
+        userId: request.userId,
+        content: index,
+        now,
+        session,
+        skipActivityIds: blockedActivities,
+        ...(blockedTarget || activity.status !== 'planned'
+          ? {}
+          : { activatePlannedActivityId: activity.id }),
+        schedulerState: state,
+      });
+      if (blockedTarget) {
+        return serviceResult({ error: 'Lesson prerequisites are no longer complete.' }, 409);
+      }
+      session = await request.repo.session(request.params.id);
+      activity = session?.activities.find((item) => item.id === request.params.aid);
+      if (!activity) return serviceResult({ error: 'Activity not found' }, 404);
+    }
+  }
   const lessonIndex =
     body.data.lessonRunnerContinued === true &&
     !completed &&

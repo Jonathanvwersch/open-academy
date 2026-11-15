@@ -1,9 +1,12 @@
-import type { StudyMapPayload } from '@academy/contracts/course';
+import type { LearnPayload } from '@academy/contracts/course';
 import { queryOptions } from '@tanstack/react-query';
 import { getJson } from '../../api/query-client.js';
 
 export const studyMapQueryOptions = () =>
   queryOptions({
     queryKey: ['study-map'] as const,
-    queryFn: () => getJson<StudyMapPayload>('/api/study-map', 'Could not load Map'),
+    queryFn: async () => {
+      const learn = await getJson<LearnPayload>('/api/learn', 'Could not load Up next');
+      return learn.upNext;
+    },
   });

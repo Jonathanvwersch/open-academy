@@ -1,3 +1,4 @@
+import { orderCourseIdsBySubject } from '../content/course-order.js';
 import type { ContentIndex, IndexedConcept, IndexedCourse } from '../content/types.js';
 import type { MasteryRecord } from './types.js';
 import { masteryRank } from './types.js';
@@ -18,7 +19,7 @@ export function prerequisiteMet(
   content: ContentIndex,
 ): boolean {
   const concept = content.conceptsById.get(prereqId);
-  if (!concept) return false;
+  if (!concept || concept.status === 'stub') return false;
 
   const lessonRun = lessonRuns.find((run) => run.conceptId === prereqId);
   if (lessonRun) return lessonRun.status === 'completed';
@@ -28,6 +29,38 @@ export function prerequisiteMet(
       record?.inferred || masteryRank(record?.state ?? 'not_assessed') >= masteryRank('assisted')
     );
   });
+}
+
+export function learnActivitiesWithUnmetPrerequisites(
+  activities: readonly {
+    id: string;
+    kind: string;
+    status: string;
+    conceptId: string | null;
+  }[],
+  masteryByKey: ReadonlyMap<string, Pick<MasteryRecord, 'state' | 'inferred'>>,
+  lessonRuns: readonly LessonRun[],
+  content: ContentIndex,
+): string[] {
+  return activities
+    .filter((activity) => {
+      if (
+        (activity.status !== 'planned' && activity.status !== 'in_progress') ||
+        activity.kind !== 'learn' ||
+        !activity.conceptId
+      ) {
+        return false;
+      }
+      const concept = content.conceptsById.get(activity.conceptId);
+      return (
+        concept?.prereqs.some(
+          (prerequisite) =>
+            prerequisite.strength === 'hard' &&
+            !prerequisiteMet(prerequisite.id, masteryByKey, lessonRuns, content),
+        ) ?? false
+      );
+    })
+    .map(({ id }) => id);
 }
 
 export function activeCourseFor(
@@ -120,7 +153,7 @@ export function outlinePosition(
     if (topicIndex >= 0) return [unitIndex, topicIndex];
   }
   let globalUnit = 0;
-  for (const courseId of content.curriculum?.courses ?? []) {
+  for (const courseId of orderCourseIdsBySubject(content)) {
     const globalCourse = content.coursesById.get(courseId);
     for (const unit of globalCourse?.units ?? []) {
       const topicIndex = unit.concepts.indexOf(conceptId);

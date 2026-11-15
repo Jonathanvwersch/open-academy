@@ -53,6 +53,7 @@ export const CourseSchema = z
     id: IdSchema,
     title: z.string().min(1),
     description: z.string(),
+    subject: IdSchema.optional(),
     units: z.array(CourseUnitSchema).min(1),
   })
   .strict();
@@ -90,6 +91,29 @@ export const CurriculumSchema = z
         tutor_context: z.string().optional(),
       })
       .strict()
+      .optional(),
+    subjects: z
+      .array(
+        z
+          .object({
+            id: IdSchema,
+            title: z.string().min(1),
+          })
+          .strict(),
+      )
+      .superRefine((subjects, context) => {
+        const ids = new Set<string>();
+        for (const [index, subject] of subjects.entries()) {
+          if (ids.has(subject.id)) {
+            context.addIssue({
+              code: 'custom',
+              message: `duplicate subject id "${subject.id}"`,
+              path: [index, 'id'],
+            });
+          }
+          ids.add(subject.id);
+        }
+      })
       .optional(),
     grounded: z.boolean().optional(),
   })

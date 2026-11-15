@@ -1,6 +1,7 @@
 id: robotics
 title: Classical Robotics
 description: "Frames, transforms, kinematics, motion planning, sensors, control and perception: the foundations every robot-learning system sits on."
+subject: robotics
 units:
   - title: Robotics foundations
     intro: "How robots describe where things are: coordinate frames, rotations and transforms, then working out where an arm's hand is from its joint angles, and back."

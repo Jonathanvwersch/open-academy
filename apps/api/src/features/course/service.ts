@@ -1,4 +1,5 @@
 import { and, eq, inArray, or } from 'drizzle-orm';
+import { orderCourseIdsBySubject } from '../../content/course-order.js';
 import type { ContentIndex, IndexedConcept, IndexedCourse } from '../../content/types.js';
 import type { Database } from '../../db/client.js';
 import type { LearnerRepository } from '../../db/repository.js';
@@ -11,8 +12,11 @@ import {
   reviewCards,
   sessionActivities,
   studySessions,
+  users,
 } from '../../db/schema.js';
+import { filterSchedulerStateForContent } from '../../learning/content-filters.js';
 import { lowestMasteryState, masteryLabel, topicStatus } from '../../learning/course-status.js';
+import { initialLearnProgress } from '../../learning/initial-learn-progress.js';
 import { courseTopicPosition } from '../../learning/lesson-course-context.js';
 import {
   activeCourseFor,
@@ -21,7 +25,13 @@ import {
   masteryKey,
   prerequisiteMet,
 } from '../../learning/prerequisites.js';
-import { currentLearnerUnit } from '../../learning/scheduler.js';
+import {
+  currentLearnerUnit,
+  effectiveFocusSubjectId,
+  type PlannedActivity,
+  replan,
+  type SchedulerState,
+} from '../../learning/scheduler.js';
 
 type MasteryRecords = Awaited<ReturnType<LearnerRepository['masteryRecords']>>;
 type RunRecords = Array<typeof lessonRuns.$inferSelect>;
@@ -95,13 +105,13 @@ export async function restartTopic(input: {
         ),
       );
 
-    const plannedActivities = await tx
+    const dependentActivities = await tx
       .select({ id: sessionActivities.id, conceptId: sessionActivities.conceptId })
       .from(sessionActivities)
       .where(
         and(
           inArray(sessionActivities.sessionId, sessionIds),
-          eq(sessionActivities.status, 'planned'),
+          or(eq(sessionActivities.status, 'planned'), eq(sessionActivities.status, 'in_progress')),
         ),
       );
     const [masteryRows, runRows] = await Promise.all([
@@ -125,7 +135,7 @@ export async function restartTopic(input: {
         { state: record.state, inferred: record.inferred },
       ]),
     );
-    const activitiesToSkip = plannedActivities
+    const activitiesToSkip = dependentActivities
       .filter((activity) => {
         if (!activity.conceptId) return false;
         const concept = input.content.conceptsById.get(activity.conceptId);
@@ -145,10 +155,162 @@ export async function restartTopic(input: {
         .where(
           and(
             inArray(sessionActivities.id, activitiesToSkip),
+            or(
+              eq(sessionActivities.status, 'planned'),
+              eq(sessionActivities.status, 'in_progress'),
+            ),
+          ),
+        );
+    }
+  });
+}
+
+export async function replanSessionActivities(input: {
+  db: Database;
+  repo: LearnerRepository;
+  userId: string;
+  content: ContentIndex;
+  now: Date;
+  session: NonNullable<Awaited<ReturnType<LearnerRepository['session']>>>;
+  skipActivityIds?: readonly string[];
+  activatePlannedActivityId?: string;
+  schedulerState?: SchedulerState;
+}) {
+  const state = filterSchedulerStateForContent(
+    input.content,
+    input.schedulerState ?? (await input.repo.schedulerState(input.now, input.content)),
+  );
+  const skipIds = new Set(input.skipActivityIds ?? []);
+  const planningActivities = input.session.activities.map((activity) => ({
+    ...activity,
+    status: skipIds.has(activity.id)
+      ? 'skipped'
+      : activity.id === input.activatePlannedActivityId
+        ? 'in_progress'
+        : activity.status,
+  })) as unknown as PlannedActivity[];
+  const existingMinutes = planningActivities
+    .filter((activity) => activity.status === 'completed' || activity.status === 'in_progress')
+    .reduce((total, activity) => total + activity.plannedMinutes, 0);
+  const remaining = Math.max(0, input.session.plannedMinutes - existingMinutes);
+  const plan = replan(
+    state,
+    input.content,
+    input.now,
+    remaining,
+    planningActivities,
+    input.session.kind,
+  );
+  const preserved = input.session.activities
+    .filter(
+      (activity) =>
+        activity.status !== 'planned' ||
+        skipIds.has(activity.id) ||
+        activity.id === input.activatePlannedActivityId,
+    )
+    .map((activity) => (skipIds.has(activity.id) ? { ...activity, status: 'skipped' } : activity));
+  const planned = await Promise.all(
+    plan.activities
+      .filter((activity) => activity.status !== 'in_progress')
+      .map(async (activity) => ({
+        activity,
+        progress: await initialLearnProgress(
+          input.db,
+          input.userId,
+          activity,
+          activity.conceptId ? input.content.lessonsByConcept.get(activity.conceptId) : undefined,
+        ),
+      })),
+  );
+  const nextIndex = Math.max(-1, ...preserved.map((activity) => activity.idx)) + 1;
+  await input.db.transaction(async (tx) => {
+    if (skipIds.size > 0) {
+      await tx
+        .update(sessionActivities)
+        .set({ status: 'skipped' })
+        .where(
+          and(
+            eq(sessionActivities.sessionId, input.session.id),
+            inArray(sessionActivities.id, [...skipIds]),
+            or(
+              eq(sessionActivities.status, 'planned'),
+              eq(sessionActivities.status, 'in_progress'),
+            ),
+          ),
+        );
+    }
+    if (input.activatePlannedActivityId) {
+      await tx
+        .update(sessionActivities)
+        .set({ status: 'in_progress', startedAt: input.now })
+        .where(
+          and(
+            eq(sessionActivities.id, input.activatePlannedActivityId),
             eq(sessionActivities.status, 'planned'),
           ),
         );
     }
+    await tx
+      .delete(sessionActivities)
+      .where(
+        and(
+          eq(sessionActivities.sessionId, input.session.id),
+          eq(sessionActivities.status, 'planned'),
+        ),
+      );
+    for (const [idx, entry] of planned.entries()) {
+      const { activity, progress } = entry;
+      await tx.insert(sessionActivities).values({
+        sessionId: input.session.id,
+        idx: nextIndex + idx,
+        kind: activity.kind,
+        conceptId: activity.conceptId,
+        projectId: activity.projectId,
+        exerciseIds: activity.exerciseIds,
+        plannedMinutes: activity.plannedMinutes,
+        status: 'planned',
+        reason: activity.reason,
+        ...(progress ? { progress } : {}),
+      });
+    }
+  });
+}
+
+export async function updateLearningFocus(input: {
+  db: Database;
+  repo: LearnerRepository;
+  userId: string;
+  content: ContentIndex;
+  subjectId: string | null;
+  now: Date;
+}) {
+  const user = await input.repo.user();
+  const prefs = { ...((user?.prefs ?? {}) as Record<string, unknown>) };
+  if (input.subjectId === null) delete prefs.focusSubjectId;
+  else prefs.focusSubjectId = input.subjectId;
+  await input.db.update(users).set({ prefs }).where(eq(users.id, input.userId));
+
+  const active = await input.repo.activeSession(input.now);
+  const session = active ? await input.repo.session(active.id) : undefined;
+  if (!session) return;
+  const schedulerState = await input.repo.schedulerState(input.now, input.content);
+  const focusSubjectId = effectiveFocusSubjectId(
+    { focusSubjectId: input.subjectId },
+    schedulerState.studyCourseIds,
+    input.content,
+  );
+  const state = filterSchedulerStateForContent(input.content, {
+    ...schedulerState,
+    focusSubjectId: focusSubjectId ?? undefined,
+  });
+  await replanSessionActivities({
+    db: input.db,
+    repo: input.repo,
+    userId: input.userId,
+    content: input.content,
+    now: input.now,
+    session,
+    schedulerState: state,
   });
 }
 
@@ -173,7 +335,7 @@ export function suggestedNextCourses(
   const completedCourse = index.coursesById.get(completedCourseId);
   if (!completedCourse) return [];
   const completedConceptIds = new Set(completedCourse.units.flatMap((unit) => unit.concepts));
-  const courseOrder = index.curriculum?.courses ?? index.courses.map((course) => course.id);
+  const courseOrder = orderCourseIdsBySubject(index);
   return courseOrder
     .flatMap((courseId, order) => {
       const course = index.coursesById.get(courseId);
@@ -429,6 +591,16 @@ export function buildCoursePayload(
               };
         })
     : [];
+  const foundationCourseTitles = [
+    ...new Set(
+      foundations.flatMap((foundation) => {
+        const source = index.courses.find((candidate) =>
+          candidate.units.some((unit) => unit.concepts.includes(foundation.conceptId)),
+        );
+        return source ? [source.title] : [];
+      }),
+    ),
+  ];
   const state = {
     activeCourseId: activeCourse?.id ?? null,
     mastery: masteryRecords,
@@ -441,6 +613,11 @@ export function buildCoursePayload(
       : { id: '', title: '', description: '' },
     courses,
     currentUnit: currentLearnerUnit(state, index),
+    foundationNeeds: {
+      count: foundations.length,
+      courseTitles: foundationCourseTitles.slice(0, 3),
+      hasMore: foundationCourseTitles.length > 3,
+    },
     foundations,
     units,
   };

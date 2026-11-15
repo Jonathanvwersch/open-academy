@@ -1,7 +1,7 @@
 import type { CourseCatalogPayload } from '@academy/contracts/course';
 import { useQuery } from '@tanstack/react-query';
 import { Link, Outlet, useRouterState } from '@tanstack/react-router';
-import { Activity, BookOpen, House, Network, RotateCcw, Settings } from 'lucide-react';
+import { Activity, BookOpen, House, ListOrdered, RotateCcw, Settings } from 'lucide-react';
 import { useCallback, useState } from 'react';
 import { Toaster } from 'sonner';
 import { BrandLockup } from '../components/brand-lockup.js';
@@ -38,7 +38,7 @@ const SIDEBAR_STORAGE_KEY = 'academy.app-sidebar.open';
 const navigation = [
   { label: 'Home', to: '/', icon: House },
   { label: 'Courses', to: '/courses', icon: BookOpen },
-  { label: 'Map', to: '/map', icon: Network },
+  { label: 'Up next', to: '/map', icon: ListOrdered },
   { label: 'Reviews', to: '/reviews', icon: RotateCcw },
   { label: 'Progress', to: '/progress', icon: Activity },
 ] as const;
@@ -87,10 +87,14 @@ function AppSidebarView({
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const { isMobile, state, setOpenMobile } = useSidebar();
   const showCourseSection = state !== 'collapsed' || isMobile;
-  const activeCourses =
-    courses?.subjects.flatMap((subject) =>
-      subject.courses.filter((course) => course.status === 'active'),
-    ) ?? [];
+  const activeCourseGroups =
+    courses?.subjects
+      .map((subject) => ({
+        ...subject,
+        courses: subject.courses.filter((course) => course.status === 'active'),
+      }))
+      .filter((subject) => subject.courses.length > 0) ?? [];
+  const activeCourses = activeCourseGroups.flatMap((subject) => subject.courses);
   const closeMobile = () => {
     if (isMobile) setOpenMobile(false);
   };
@@ -191,58 +195,70 @@ function AppSidebarView({
                         </SidebarMenuItem>
                       );
                     })
-                  : activeCourses.map((course) => {
-                      const isActive =
-                        currentCourseId === course.id ||
-                        pathname === `/courses/${course.id}` ||
-                        pathname.startsWith(`/courses/${course.id}/`);
-                      const content = (
-                        <>
-                          <span className="min-w-0 flex-1 whitespace-normal break-words text-sm">
-                            {course.title}
-                          </span>
-                          <span className="ml-auto shrink-0 text-xs font-normal tabular-nums text-muted-foreground">
-                            {course.topicsDone}/{course.topicsTotal}
-                          </span>
-                        </>
-                      );
-                      return (
-                        <SidebarMenuItem key={course.id}>
-                          {isActive ? (
-                            <SidebarMenuButton
-                              asChild
-                              isActive={!isMobile}
-                              className="h-auto min-h-8 items-start py-2 text-sm"
+                  : activeCourseGroups.flatMap((subject) => [
+                      ...(activeCourseGroups.length > 1
+                        ? [
+                            <SidebarMenuItem
+                              key={`subject-${subject.id}`}
+                              className="px-2 pt-3 pb-1 text-xs font-medium text-muted-foreground"
                             >
-                              <Link
-                                to="/courses/$courseId"
-                                params={{ courseId: course.id }}
-                                preload="intent"
-                                aria-label={`${course.title}, ${course.topicsDone} of ${course.topicsTotal} topics done`}
-                                onClick={closeMobile}
+                              {subject.title}
+                            </SidebarMenuItem>,
+                          ]
+                        : []),
+                      ...subject.courses.map((course) => {
+                        const isActive =
+                          currentCourseId === course.id ||
+                          pathname === `/courses/${course.id}` ||
+                          pathname.startsWith(`/courses/${course.id}/`);
+                        const content = (
+                          <>
+                            <span className="min-w-0 flex-1 whitespace-normal break-words text-sm">
+                              {course.title}
+                            </span>
+                            <span className="ml-auto shrink-0 text-xs font-normal tabular-nums text-muted-foreground">
+                              {course.topicsDone}/{course.topicsTotal}
+                            </span>
+                          </>
+                        );
+                        return (
+                          <SidebarMenuItem key={course.id}>
+                            {isActive ? (
+                              <SidebarMenuButton
+                                asChild
+                                isActive={!isMobile}
+                                className="h-auto min-h-8 items-start py-2 text-sm"
                               >
-                                {content}
-                              </Link>
-                            </SidebarMenuButton>
-                          ) : (
-                            <SidebarMenuButton
-                              asChild
-                              className="h-auto min-h-8 items-start py-2 text-sm"
-                            >
-                              <Link
-                                to="/courses/$courseId"
-                                params={{ courseId: course.id }}
-                                preload="intent"
-                                aria-label={`Open ${course.title}`}
-                                onClick={closeMobile}
+                                <Link
+                                  to="/courses/$courseId"
+                                  params={{ courseId: course.id }}
+                                  preload="intent"
+                                  aria-label={`${course.title}, ${course.topicsDone} of ${course.topicsTotal} topics done`}
+                                  onClick={closeMobile}
+                                >
+                                  {content}
+                                </Link>
+                              </SidebarMenuButton>
+                            ) : (
+                              <SidebarMenuButton
+                                asChild
+                                className="h-auto min-h-8 items-start py-2 text-sm"
                               >
-                                {content}
-                              </Link>
-                            </SidebarMenuButton>
-                          )}
-                        </SidebarMenuItem>
-                      );
-                    })}
+                                <Link
+                                  to="/courses/$courseId"
+                                  params={{ courseId: course.id }}
+                                  preload="intent"
+                                  aria-label={`Open ${course.title}`}
+                                  onClick={closeMobile}
+                                >
+                                  {content}
+                                </Link>
+                              </SidebarMenuButton>
+                            )}
+                          </SidebarMenuItem>
+                        );
+                      }),
+                    ])}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
