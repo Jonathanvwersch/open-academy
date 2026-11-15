@@ -1,0 +1,612 @@
+concept: inference-metrics
+exercises:
+  - id: infm-trace-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What does the time to first token (TTFT) of a language-model request measure?
+    options:
+      - id: a
+        text: The wait from sending the request until the first output token arrives.
+        correct: true
+        feedback: TTFT is the pause the user sees before the reply starts.
+      - id: b
+        text: The gap between two consecutive output tokens while the reply streams.
+        correct: false
+        category: misunderstood_definition
+        feedback: That gap is the inter-token latency (ITL).
+      - id: c
+        text: The wait from sending the request until the last output token arrives.
+        correct: false
+        category: misunderstood_definition
+        feedback: That is the end-to-end latency, which also includes every gap after the first token.
+      - id: d
+        text: The number of output tokens the server writes in its first second.
+        correct: false
+        category: misunderstood_definition
+        feedback: TTFT is a time, measured from the request to the first token, and it counts no tokens.
+    solution: TTFT is the time from sending a request until its first output token arrives.
+  - id: infm-trace-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example, why is 100 the right divisor when finding the ITL from $2.30-0.30$?
+    options:
+      - id: a
+        text: The 101 tokens have only 100 gaps between them, and those gaps fill the time from the first token to the last.
+        correct: true
+        feedback: The first token's arrival ends the TTFT, so only the 100 later tokens each add a gap.
+      - id: b
+        text: The first token belongs to the prompt, so the reply really has only 100 output tokens.
+        correct: false
+        category: misunderstood_definition
+        feedback: The first token is an output token. Its wait is counted in the TTFT; the gaps start after it arrives.
+      - id: c
+        text: Dividing by 100 rounds the answer to a clean number, and dividing by 101 would be just as correct.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Dividing by 101 underestimates the gap. The reply has 100 actual gaps, so using that ITL gives $0.30+100\times(2/101)\approx2.28$ s, short of 2.30 s.
+      - id: d
+        text: There's also a gap after the last token, but at 2.30 s it hasn't happened yet, so it can't be counted.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The reply ends with the last token, so there's no gap after it. 101 tokens have 100 gaps between them.
+    solution: Between 101 tokens there are 100 gaps, and together they span $2.30-0.30=2.00$ s, so the average gap is $2.00/100=0.02$ s.
+  - id: infm-which-metric
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: A voice assistant starts speaking as soon as the language model gives it the first word of its reply. Users complain about the silence before it starts talking. Which measurement should the team look at first?
+    options:
+      - id: a
+        text: The time to first token, from the request to the first output token.
+        correct: true
+        feedback: The silence lasts until the first token arrives, which is exactly the TTFT.
+      - id: b
+        text: The inter-token latency, the gap between consecutive output tokens.
+        correct: false
+        category: misapplied_technique
+        feedback: ITL measures the gaps after the first token arrives. TTFT measures the initial silence.
+      - id: c
+        text: The server's throughput, its total output tokens per second for all users.
+        correct: false
+        category: misapplied_technique
+        feedback: Throughput counts tokens for everyone together and doesn't measure one user's wait.
+    solution: The silence before speaking is the wait for the first token, so the TTFT is the measurement to look at.
+  - id: infm-e2e-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: A chat reply has {{= n }} output tokens. Its time to first token is {{= t }} ms and its inter-token latency is {{= g }} ms. What is its end-to-end latency, in ms?
+    params:
+      t: { min: 200, max: 500, step: 50 }
+      n: { min: 51, max: 201, step: 50 }
+      g: { min: 10, max: 30, step: 5 }
+    answer_expr: t + (n - 1) * g
+    tolerance: { abs: 0.5 }
+    common_wrong:
+      - answer_expr: t + n * g
+        category: math_error
+        feedback: "{{= n }} tokens have only {{= n - 1 }} gaps, because the wait before the first token is counted in the TTFT."
+      - answer_expr: (n - 1) * g
+        category: incomplete_explanation
+        feedback: The end-to-end latency starts when the request is sent, so add the TTFT too.
+    solution: "End-to-end latency is TTFT plus one ITL for each of the {{= n - 1 }} gaps: ${{= t }}+{{= n - 1 }}\\times{{= g }}={{= t + (n - 1) * g }}$ ms."
+  - id: infm-avg-itl
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A request is sent at 0 ms, and its five output tokens arrive at 300, 320, 345, 360 and 380 ms. What is its average inter-token latency, in ms?
+    answer: 20
+    tolerance: { abs: 0.01 }
+    common_wrong:
+      - answer: 16
+        category: math_error
+        feedback: The 80 ms from the first token to the last is split into 4 gaps between the 5 tokens.
+      - answer: 76
+        category: misunderstood_definition
+        feedback: That divides the end-to-end latency by the number of tokens, which mixes the wait for the first token into each gap.
+    solution: The gaps run from the first token at 300 ms to the last at 380 ms. That's 80 ms over 4 gaps, so the average ITL is $80/4=20$ ms.
+  - id: infm-off-by-one
+    dimension: math
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A reply has 41 output tokens, a time to first token of 200 ms and an inter-token latency of 25 ms. A learner writes: end-to-end latency $=200+41\\times25=1225$ ms. What went wrong?"
+    options:
+      - id: a
+        text: "It counts 41 gaps, but 41 tokens have only 40, so the answer is $200+40\\times25=1200$ ms."
+        correct: true
+        feedback: The first token arrives at the end of the TTFT, so only the 40 later tokens each add a gap.
+      - id: b
+        text: "It adds the TTFT, which should be left out, so the answer is $41\\times25=1025$ ms."
+        correct: false
+        category: misunderstood_definition
+        feedback: End-to-end latency starts when the request is sent, so the TTFT belongs in it.
+      - id: c
+        text: "It should count 42 gaps to include the end of the reply, so the answer is $200+42\\times25=1250$ ms."
+        correct: false
+        category: math_error
+        feedback: The reply ends when the last token arrives. There is no gap after it.
+      - id: d
+        text: "Nothing went wrong, because each of the 41 tokens takes one ITL to arrive, so 1225 ms is right."
+        correct: false
+        category: incorrect_reasoning
+        feedback: The first token's wait is the TTFT, so it doesn't take an ITL as well.
+    solution: "41 tokens have 40 gaps between them, so the end-to-end latency is $200+40\\times25=1200$ ms."
+  - id: infm-speed-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A request is sent at 0 ms. Its first output token arrives at {{= a }} ms, and its last, token number {{= n }}, arrives at {{= a + (n - 1) * g }} ms. How many tokens per second does the user see while the reply streams?
+    params:
+      a: { min: 200, max: 600, step: 100 }
+      n: { min: 51, max: 201, step: 50 }
+      g: { min: 10, max: 50, step: 10 }
+    constraints: ["g != 30"]
+    answer_expr: 1000 / g
+    tolerance: { abs: 0.05 }
+    common_wrong:
+      - answer_expr: 1000 * n / (a + (n - 1) * g)
+        category: misunderstood_definition
+        feedback: That divides by the whole end-to-end time, so it mixes the wait for the first token into the streaming speed.
+      - answer_expr: 1000 * n / ((n - 1) * g)
+        category: math_error
+        feedback: The {{= (n - 1) * g }} ms from the first token to the last holds {{= n - 1 }} gaps and delivers {{= n - 1 }} tokens after the first.
+    solution: "The {{= n - 1 }} gaps fill {{= a + (n - 1) * g }} − {{= a }} = {{= (n - 1) * g }} ms, so the ITL is {{= g }} ms and the user sees $1000/{{= g }}={{= 1000 / g }}$ tokens/s."
+  - id: infm-two-assistants
+    dimension: math
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt: Assistant A has a time to first token of 0.2 s and an inter-token latency of 50 ms. Assistant B has a time to first token of 1.0 s and an inter-token latency of 10 ms. Both write the same 101-token reply. Which one finishes first?
+    options:
+      - id: a
+        text: B finishes first, at 2.0 s, while A finishes at 5.2 s.
+        correct: true
+        feedback: "A takes $0.2+100\\times0.05=5.2$ s and B takes $1.0+100\\times0.01=2.0$ s."
+      - id: b
+        text: A finishes first, because it shows its first token 0.8 s sooner.
+        correct: false
+        category: incorrect_reasoning
+        feedback: A starts sooner, but its 100 slower gaps add 5 s, against 1 s for B.
+      - id: c
+        text: They finish together, because B's longer wait cancels its faster gaps.
+        correct: false
+        category: math_error
+        feedback: B's extra 0.8 s of TTFT is much less than the 4 s it saves over 100 gaps.
+    solution: "End-to-end latency is TTFT plus 100 gaps. A takes $0.2+100\\times0.05=5.2$ s and B takes $1.0+100\\times0.01=2.0$ s, so B finishes first."
+  - id: infm-autocomplete
+    dimension: transfer
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A code editor's autocomplete uses a language model and shows a suggestion only once the whole suggestion is written. A suggestion is 9 tokens long, the time to first token is 120 ms and the inter-token latency is 15 ms. How long after the request does the suggestion appear, in ms?
+    answer: 240
+    tolerance: { abs: 0.5 }
+    common_wrong:
+      - answer: 120
+        category: misapplied_technique
+        feedback: The editor shows the suggestion when the last token arrives, so use the end-to-end latency.
+      - answer: 255
+        category: math_error
+        feedback: Nine tokens have eight gaps, since the first one arrives at the end of the TTFT.
+    solution: "The suggestion appears when the last token arrives, which is the end-to-end latency: $120+8\\times15=240$ ms."
+  - id: infm-pct-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: A chat server reports a nearest-rank p90 time to first token of 400 ms. What does that tell you about the recorded requests?
+    options:
+      - id: a
+        text: At least 90% of requests got their first token within 400 ms.
+        correct: true
+        feedback: At least 90% are at or below p90; at most 10% are strictly above it. Ties can put more than 90% at or below it.
+      - id: b
+        text: At least 90% of requests waited strictly longer than 400 ms for their first token.
+        correct: false
+        category: misunderstood_definition
+        feedback: That reverses the bound. At most 10% of recorded requests are strictly above p90.
+      - id: c
+        text: The average wait for the first token across 90% of requests is 400 ms.
+        correct: false
+        category: misunderstood_definition
+        feedback: A percentile selects a value from the sorted times. The mean adds times and divides by their count.
+      - id: d
+        text: The server answers 90 requests in every 400 ms.
+        correct: false
+        category: misunderstood_definition
+        feedback: p90 describes a wait time. Throughput measures how much the server produces per second.
+    solution: With nearest rank, at least 90% of recorded requests are at or below p90, so at least 9 in 10 got their first token within 400 ms. At most 10% waited strictly longer.
+  - id: infm-pct-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example, the mean time to first token is 328 ms but p50 is only 210 ms. Why are they so far apart?
+    options:
+      - id: a
+        text: The one 1200 ms request pulls the mean up, while p50 is just the 5th value and ignores how slow the slowest is.
+        correct: true
+        feedback: Adding the 1200 ms request raises the total a lot, but it doesn't change which value sits 5th.
+      - id: b
+        text: The mean is always about 1.5 times p50, whatever the times are.
+        correct: false
+        category: incorrect_reasoning
+        feedback: For ten equal times the mean and p50 would be the same. The gap here comes from the slow request.
+      - id: c
+        text: Nearest rank rounds p50 down to a smaller value than the real middle.
+        correct: false
+        category: misunderstood_definition
+        feedback: The 5th and 6th values are 210 and 220 ms, so any way of picking the middle gives far less than 328.
+      - id: d
+        text: The mean leaves out the fastest requests, so it ends up larger.
+        correct: false
+        category: misunderstood_definition
+        feedback: The mean adds up all ten times. It's the one very slow time that raises it.
+    solution: One request took 1200 ms. It adds a lot to the total, so the mean rises to 328 ms, but p50 only looks at which value is in the middle position, 210 ms.
+  - id: infm-p90-itl
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "Ten requests had these average inter-token latencies, in ms, in the order they were logged: 22, 18, 25, 20, 60, 19, 21, 20, 23, 30. Using the nearest-rank rule, what is p90, in ms?"
+    answer: 30
+    tolerance: { abs: 0.01 }
+    common_wrong:
+      - answer: 23
+        category: math_error
+        feedback: Sort the values first. The 9th value in the logged order isn't the 9th fastest.
+      - answer: 60
+        category: math_error
+        feedback: That's the slowest, the 10th value. p90 of ten values is at position $90\times10/100=9$.
+      - answer: 25.8
+        category: misunderstood_definition
+        feedback: That's the mean. A percentile is a value at a position in the sorted list.
+    solution: "Sorted, the values are 18, 19, 20, 20, 21, 22, 23, 25, 30, 60. p90 is at position $90\\times10/100=9$, so it's 30 ms."
+  - id: infm-p50-e2e
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "Ten chat replies had these end-to-end latencies, in seconds: 2.1, 1.9, 2.4, 2.0, 2.2, 8.0, 2.3, 2.0, 2.5, 1.8. Using the nearest-rank rule, what is p50, in seconds?"
+    answer: 2.1
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - answer: 2.72
+        category: misunderstood_definition
+        feedback: That's the mean, which the one 8 s reply pulls up. p50 is the value in the middle position.
+      - answer: 2.2
+        category: math_error
+        feedback: Sort first, then take position $50\times10/100=5$. 2.2 s is the 5th value in the unsorted list.
+      - answer: 2.15
+        category: misapplied_technique
+        feedback: That averages the 5th and 6th values. The nearest-rank rule takes the 5th value itself.
+    solution: "Sorted, the values are 1.8, 1.9, 2.0, 2.0, 2.1, 2.2, 2.3, 2.4, 2.5, 8.0. p50 is at position $50\\times10/100=5$, so it's 2.1 s."
+  - id: infm-rank-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: A server logged {{= n }} times to first token and sorted them from fastest to slowest. Using the nearest-rank rule, at which position in the sorted list is p95?
+    params:
+      n: { min: 40, max: 400, step: 20 }
+    answer_expr: 95 * n / 100
+    tolerance: { abs: 0.01 }
+    common_wrong:
+      - answer_expr: 5 * n / 100
+        category: misunderstood_definition
+        feedback: Count from the fastest end. p95 is near the slow end, with 95% of the values at or before it.
+      - answer_expr: "95"
+        category: misunderstood_definition
+        feedback: The position depends on how many values there are. Multiply 95 by {{= n }} and divide by 100.
+    constraints: ["n != 100"]
+    solution: "The position is $95\\times{{= n }}/100={{= 95 * n / 100 }}$, a whole number already, so p95 is the value at position {{= 95 * n / 100 }}."
+  - id: infm-which-percentile
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: A team wants to promise that replies start within 1 second for almost every request, about 99 in 100. Which number from its logs should it check against 1 second?
+    options:
+      - id: a
+        text: The p99 time to first token.
+        correct: true
+        feedback: p99 is the time that 99% of requests are at or below, which is exactly the promise.
+      - id: b
+        text: The mean time to first token.
+        correct: false
+        category: misapplied_technique
+        feedback: A mean under 1 s can still hide many requests that wait far longer.
+      - id: c
+        text: The p50 time to first token.
+        correct: false
+        category: misapplied_technique
+        feedback: p50 under 1 s only says half the requests start within 1 s.
+      - id: d
+        text: The p99 inter-token latency.
+        correct: false
+        category: misapplied_technique
+        feedback: The promise is about when replies start, which is the TTFT. ITL measures the gaps after that.
+    solution: The promise covers 99 in 100 requests and is about when the reply starts, so check that the p99 TTFT is at most 1 s.
+  - id: infm-mean-vs-tail
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: Server A's recorded times to first token have a mean of 300 ms and a nearest-rank p99 of 400 ms. Server B's have a mean of 250 ms and a p99 of 3,000 ms. Which comparison follows?
+    options:
+      - id: a
+        text: B has the lower mean, but its higher p99 shows that the lower mean alone cannot establish better tail latency.
+        correct: true
+        feedback: B's mean is 250 ms versus A's 300 ms, while its p99 is 3,000 ms versus A's 400 ms. The mean and p99 describe different aspects of the waits.
+      - id: b
+        text: B has better latency in every way, because its mean is 50 ms lower and that also establishes a faster tail.
+        correct: false
+        category: incorrect_reasoning
+        feedback: A lower mean can coexist with a higher p99. Here B's p99 is 3,000 ms, compared with A's 400 ms.
+      - id: c
+        text: A's p99 means at least 99% of its recorded replies took strictly longer than 400 ms to start, so B has the faster tail.
+        correct: false
+        category: misunderstood_definition
+        feedback: At least 99% of A's recorded times are at or below 400 ms, and at most 1% are strictly above it.
+    solution: B has a lower mean, 250 ms versus 300 ms, but a higher p99, 3,000 ms versus 400 ms. The lower mean alone cannot establish better tail latency.
+  - id: infm-robot-p99
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A robot asks a vision model what to do next and must get each answer within 100 ms, every time. Over 1,000 calls, the answer times had nearest-rank p50 of 30 ms and p99 of 120 ms. Did these calls meet the requirement?
+    options:
+      - id: a
+        text: No. At least 11 recorded calls took 120 ms or longer, exceeding the 100 ms deadline.
+        correct: true
+        feedback: p99 is at position 990. Positions 990 through 1000 give at least 11 late calls; earlier positions may also exceed 100 ms, so the total is unknown.
+      - id: b
+        text: Yes. The typical call took only 30 ms, which is enough to satisfy the 100 ms deadline for every call.
+        correct: false
+        category: misapplied_technique
+        feedback: The limit must hold every time. p50 describes a typical wait, while the recorded 120 ms calls exceed the deadline.
+      - id: c
+        text: Yes. At most 1% of calls can be above 100 ms, and that fraction rounds to zero missed deadlines.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The 1% upper bound applies strictly above 120 ms. At least 11 calls already exceed 100 ms, and every one misses the requirement.
+    solution: The nearest-rank position is $99\times1000/100=990$. Positions 990 through 1000 are all at least 120 ms, so at least 11 calls missed the 100 ms deadline; the percentile leaves the total number of misses unknown.
+  - id: infm-batch-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What is the throughput of a language-model server?
+    options:
+      - id: a
+        text: The total number of output tokens it writes per second, across all requests.
+        correct: true
+        feedback: Throughput counts tokens for everyone together.
+      - id: b
+        text: The number of tokens per second one user sees while their reply streams.
+        correct: false
+        category: misunderstood_definition
+        feedback: That's one user's speed, $1/\text{ITL}$. Throughput adds up every request.
+      - id: c
+        text: The time it takes to answer one request from start to end.
+        correct: false
+        category: misunderstood_definition
+        feedback: That's the end-to-end latency of one request. Throughput counts output tokens per second.
+      - id: d
+        text: The number of requests waiting in line for the GPU.
+        correct: false
+        category: misunderstood_definition
+        feedback: A queue length counts waiting requests. Throughput counts the tokens produced each second.
+    solution: Throughput is the total number of output tokens the server produces per second, summed over all the requests it's serving.
+  - id: infm-batch-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example, why does the team prefer $B=32$ over $B=64$?
+    options:
+      - id: a
+        text: "$B=64$ gives each user only 25 tokens/s, below the 40 tokens/s target, and its throughput is no higher anyway."
+        correct: true
+        feedback: Both give 1,600 tokens/s, and only $B=32$ meets the users' target.
+      - id: b
+        text: "$B=64$ gives lower throughput than $B=32$, because each run takes twice as long."
+        correct: false
+        category: math_error
+        feedback: "$64/0.04$ and $32/0.02$ are both 1,600 tokens/s. The throughput is the same."
+      - id: c
+        text: "$B=32$ gives each user the lowest inter-token latency in the table."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "$B=1$ has the lowest ITL, 10 ms. $B=32$ wins on throughput among the batch sizes that meet the target."
+      - id: d
+        text: "$B=64$ would need a longer time to first token, which the target rules out."
+        correct: false
+        category: incorrect_reasoning
+        feedback: The example keeps the TTFT fixed. The target is on each user's tokens per second.
+    solution: "At $B=64$ each user sees $1/0.04=25$ tokens/s, below the target of 40, and the throughput, $64/0.04=1600$, is the same as at $B=32$. So $B=32$ is the best choice that meets the target."
+  - id: infm-throughput-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: A server runs a language model on a batch of {{= 2^k }} sequences, and every sequence is writing its reply. Each run of the model takes {{= 5 * 2^j }} ms. What is the server's throughput, in tokens per second?
+    params:
+      k: { min: 2, max: 6 }
+      j: { min: 1, max: 3 }
+    answer_expr: 2^k * 1000 / (5 * 2^j)
+    tolerance: { abs: 0.5 }
+    common_wrong:
+      - answer_expr: 1000 / (5 * 2^j)
+        category: incomplete_explanation
+        feedback: That's one user's tokens per second. Each run gives every sequence in the batch a token, so multiply by the batch size.
+      - answer_expr: 2^k * 5 * 2^j / 1000
+        category: math_error
+        feedback: Throughput is tokens divided by time, so divide the batch size by the run time in seconds.
+    solution: "Each run makes {{= 2^k }} tokens in {{= 5 * 2^j / 1000 }} s, so the throughput is ${{= 2^k }}/{{= 5 * 2^j / 1000 }}={{= 2^k * 1000 / (5 * 2^j) }}$ tokens/s."
+  - id: infm-batch-itl
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A server runs a batch of 16 sequences, all writing their replies, and its throughput is 800 tokens per second. What is each user's inter-token latency, in ms?
+    answer: 20
+    tolerance: { abs: 0.01 }
+    common_wrong:
+      - answer: 1.25
+        category: misunderstood_definition
+        feedback: That treats the whole server's 800 tokens/s as one user's speed. Each user gets only their share.
+      - answer: 50
+        category: math_error
+        feedback: Each user sees 50 tokens/s. The question asks for the gap between tokens, in ms.
+    solution: "Each user gets one token per run, so each sees $800/16=50$ tokens/s. That's one token every $1/50=0.02$ s, so the ITL is 20 ms."
+  - id: infm-batch-tradeoff
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A server's time per run grows from 12.5 ms to 20 ms when its batch size goes from 8 to 32, with every sequence writing. What happens?
+    options:
+      - id: a
+        text: Throughput rises from 640 to 1,600 tokens/s, and each user's speed falls from 80 to 50 tokens/s.
+        correct: true
+        feedback: "Throughput is $8/0.0125=640$ and then $32/0.02=1600$. Each user sees $1/0.0125=80$ and then $1/0.02=50$."
+      - id: b
+        text: Throughput rises from 640 to 1,600 tokens/s, and each user's speed stays at 80 tokens/s.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Each user gets one token per run, and the runs got longer, so each user slows down.
+      - id: c
+        text: Throughput falls from 80 to 50 tokens/s, because each run takes longer.
+        correct: false
+        category: misunderstood_definition
+        feedback: 80 and 50 tokens/s are each user's speed. Throughput counts all the sequences together.
+      - id: d
+        text: Throughput and each user's speed both rise, because the GPU is used better.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Longer runs mean longer gaps between each user's tokens, so their speed falls.
+    solution: "Throughput is $B/\\text{ITL}$: $8/0.0125=640$ and $32/0.02=1600$ tokens/s. Each user sees $1/\\text{ITL}$: 80 and then 50 tokens/s."
+  - id: infm-bigger-batch-claim
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: 'An engineer says: "A bigger batch always means more throughput, so use the biggest batch that fits." On their server, a run takes 20 ms with a batch of 32 and 40 ms with a batch of 64. What''s wrong with the claim here?'
+    options:
+      - id: a
+        text: Both batch sizes give 1,600 tokens/s, so going to 64 only halves each user's speed.
+        correct: true
+        feedback: "$32/0.02$ and $64/0.04$ are both 1,600 tokens/s, while each user drops from 50 to 25 tokens/s."
+      - id: b
+        text: The batch of 64 gives less throughput, 800 tokens/s, because its runs take twice as long.
+        correct: false
+        category: math_error
+        feedback: Each run of 40 ms makes 64 tokens, so the throughput is $64/0.04=1600$ tokens/s.
+      - id: c
+        text: Nothing is wrong. The batch of 64 doubles the throughput to 3,200 tokens/s.
+        correct: false
+        category: math_error
+        feedback: That would need the run time to stay at 20 ms. At 40 ms per run, throughput stays at 1,600 tokens/s.
+    solution: "Throughput is $32/0.02=1600$ and $64/0.04=1600$ tokens/s, the same. Here the run time grows in proportion to the batch, so the bigger batch only makes each run longer, and users get slower with no gain."
+  - id: infm-choose-batch
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "A server's time per run, with every sequence writing, is 8 ms at batch size 1, 16 ms at batch size 16, 30 ms at batch size 48 and 60 ms at batch size 96. Every user must see at least 50 tokens per second. What is the highest throughput the server can reach while meeting that, in tokens per second?"
+    answer: 1000
+    tolerance: { abs: 0.5 }
+    common_wrong:
+      - answer: 1600
+        category: incomplete_explanation
+        feedback: Batch size 48 gives that, but each user sees only $1/0.03\approx33$ tokens/s, below the 50 they need.
+      - answer: 125
+        category: misunderstood_definition
+        feedback: That's the throughput at batch size 1. Batch size 16 still meets the target and gives more.
+    solution: "Each user sees $1/\\text{ITL}$: 125, 62.5, 33.3 and 16.7 tokens/s. Only batch sizes 1 and 16 reach 50, and batch size 16 gives the most throughput, $16/0.016=1000$ tokens/s."
+  - id: infm-overnight-job
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A company uses a language model to summarise a million documents overnight, and nobody reads the summaries until morning. How should it choose the batch size?
+    options:
+      - id: a
+        text: Pick the batch size with the highest throughput, since no one is waiting on any single summary.
+        correct: true
+        feedback: Only the total time for the whole job matters, and the most tokens per second finishes it soonest.
+      - id: b
+        text: Pick a batch size of 1, so each summary has the lowest inter-token latency.
+        correct: false
+        category: misapplied_technique
+        feedback: Low ITL helps someone watching a reply stream. Here it would make the whole job take far longer.
+      - id: c
+        text: Pick the batch size with the lowest p99 time to first token, so no summary starts late.
+        correct: false
+        category: misapplied_technique
+        feedback: Nobody sees a summary start, so how long any one waits doesn't matter. Total throughput does.
+    solution: No user is watching, so per-request latency doesn't matter. The job finishes soonest with the highest throughput, so choose the batch size that gives the most tokens per second.
+  - id: infm-explain-final
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 2
+    est_minutes: 4
+    prompt: Explain what the time to first token and the inter-token latency of a chat reply measure; how batching can raise throughput and affect each user's latency; and why throughput gains can plateau.
+    rubric:
+      - id: ttft
+        criterion: Explain that TTFT is the wait from sending the request until the first output token arrives, and ITL is the gap between consecutive output tokens.
+        weight: 1
+        required: true
+      - id: batch-throughput
+        criterion: Explain that each run gives every sequence its next token and shares weight reads, which can improve throughput before saturation.
+        weight: 1
+        required: true
+      - id: batch-slower
+        criterion: Explain that larger batches can lengthen each run and increase each user's inter-token latency, as they do in the lesson's example.
+        weight: 1
+        required: true
+      - id: plateau
+        criterion: Explain that throughput gains can plateau once the maths takes most of each run, as when doubling the batch also doubles the run time.
+        weight: 1
+        required: true
+    exemplar: "The time to first token is the wait from sending the request until the first output token arrives. The inter-token latency is the gap between consecutive output tokens. Each batched run gives every sequence its next token and shares the weight read, which can improve throughput before saturation. Larger batches can lengthen runs and increase each user's ITL, as they do on the made-up server in the lesson. Once the maths takes most of each run, gains can plateau: going from 32 tokens in 20 ms to 64 in 40 ms leaves throughput at 1,600 tokens/s."
+    solution: "TTFT measures the initial wait and ITL measures the gaps during streaming. Sharing weight reads across a batch can improve throughput before saturation; larger batches can lengthen each user's ITL, and throughput gains can plateau when run time grows in proportion to batch size."

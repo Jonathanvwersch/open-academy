@@ -1,0 +1,356 @@
+concept: ml-compilers
+version: 1
+objective: |
+  **Goal:** explain how an ML compiler makes a model run faster, by recording the whole model as a graph, fusing operations so less data moves to and from GPU memory, searching equal versions of the graph with an e-graph, and tuning each kernel for one GPU and shape.
+recap:
+  - concept: computational-graphs
+    text: "A computational graph has a node for each input and each simple operation, with an arrow from each value to the operations that use it. The forward pass computes each node once its inputs are ready."
+  - concept: fast-attention
+    text: "FlashAttention avoids writing the full attention score table to HBM by keeping blocks on chip and updating a running softmax."
+  - concept: gpu-inference-basics
+    text: "GPUs store weights in HBM and use smaller, faster on-chip memory for calculations; HBM bandwidth limits memory-bound operations."
+where_this_fits: |
+  ### What is an ML compiler?
+
+  An ML compiler is a program that takes a model written as ordinary code and turns it into fast programs for the GPU. It looks at the whole calculation before running it.
+
+  Why do we need one? PyTorch normally dispatches operations as Python reaches them. Separate kernels on large tensors can spend most of their time moving intermediate results through GPU memory. A compiler can merge steps, choose cheaper calculations within its numerical rules, and time kernel versions to find the fastest on one GPU. Examples include XLA, TVM, tinygrad, Luminal and PyTorch's `torch.compile`.
+knowledge_points:
+  - id: mlc-record-graph
+    title: "Turn the model into a graph"
+    explain: |
+      ### Running one operation at a time
+
+      A GPU holds tensors in HBM and performs arithmetic using much faster on-chip storage. Memory bandwidth limits how quickly large memory-bound operations can move their inputs and outputs.
+
+      By default PyTorch uses **eager execution**: it dispatches each operation as Python reaches it. A **kernel** is a program that processes data on the GPU. Operations may use several kernels or fused library kernels; a transpose can create a view, reinterpreting data without moving it. Caches also serve reads.
+
+      For the arithmetic examples below, assume each eager primitive launches its own kernel and reads and writes its tensor data through HBM. In `y = (x * 2 + 1) ** 2`, the result of `x * 2` is written out, then read by the next kernel. When eager execution dispatches `x * 2`, it hasn't seen `+ 1` yet.
+
+      ### Recording the graph first
+
+      An ML compiler first records the model's operations as a computational graph. One way is to run the code once on stand-in tensors that hold only a shape, noting each operation. With the whole graph, the compiler can see that the result of `x * 2` is used only by `+ 1`, so it can run both in one kernel and keep that result on chip.
+
+      Be careful: a compiler can't see everything. If the code takes a Python `if` based on a number inside a tensor, the compiler can't know which branch comes next. So `torch.compile` runs a graph up to that line, checks the condition in plain Python, then runs a graph for the branch taken, and can't merge across the split.
+
+      ### Breaking big operations into small ones
+
+      Next the compiler **lowers** the graph, which means it rewrites each big operation as a few primitive ones, closer to what the GPU runs. Primitives come in three kinds. **Elementwise** operations work on each number separately. **Reduce** operations combine many numbers into one, like a sum. **Movement** operations rearrange numbers without arithmetic, like a transpose. The picture shows softmax lowered.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 290" aria-label="Top: a graph with input x, one softmax node and output y. Bottom: the same softmax lowered to three primitives in a row, exp on each score (elementwise), sum (reduce) and divide (elementwise), with an extra arrow from exp to divide because each exponential is used again by the divide">
+      <defs><marker id="mlc1-muted" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker></defs>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <text x="20" y="28">Before lowering: one operation</text>
+      <circle cx="150" cy="75" r="18" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="150" y="80" text-anchor="middle">x</text>
+      <path d="M168 75 L226 75" stroke="#737373" stroke-width="2" marker-end="url(#mlc1-muted)"/>
+      <rect x="230" y="53" width="180" height="44" rx="8" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="320" y="80" text-anchor="middle">softmax</text>
+      <path d="M410 75 L468 75" stroke="#737373" stroke-width="2" marker-end="url(#mlc1-muted)"/>
+      <circle cx="490" cy="75" r="18" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="490" y="80" text-anchor="middle">y</text>
+      <text x="20" y="150">After lowering: three primitives</text>
+      <text x="165" y="182" text-anchor="middle" fill="#3b82f6">elementwise</text>
+      <text x="335" y="182" text-anchor="middle" fill="#f59e0b">reduce</text>
+      <text x="505" y="182" text-anchor="middle" fill="#3b82f6">elementwise</text>
+      <circle cx="50" cy="212" r="18" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="50" y="217" text-anchor="middle">x</text>
+      <path d="M68 212 L106 212" stroke="#737373" stroke-width="2" marker-end="url(#mlc1-muted)"/>
+      <rect x="110" y="190" width="110" height="44" rx="8" fill="#ffffff" stroke="#3b82f6" stroke-width="1.5"/><text x="165" y="217" text-anchor="middle">exp</text>
+      <path d="M220 212 L276 212" stroke="#737373" stroke-width="2" marker-end="url(#mlc1-muted)"/>
+      <rect x="280" y="190" width="110" height="44" rx="8" fill="#ffffff" stroke="#f59e0b" stroke-width="1.5"/><text x="335" y="217" text-anchor="middle">sum</text>
+      <path d="M390 212 L446 212" stroke="#737373" stroke-width="2" marker-end="url(#mlc1-muted)"/>
+      <rect x="450" y="190" width="110" height="44" rx="8" fill="#ffffff" stroke="#3b82f6" stroke-width="1.5"/><text x="505" y="217" text-anchor="middle">divide</text>
+      <path d="M560 212 L588 212" stroke="#737373" stroke-width="2" marker-end="url(#mlc1-muted)"/>
+      <circle cx="610" cy="212" r="18" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="610" y="217" text-anchor="middle">y</text>
+      <path d="M165 234 V262 H505 V238" stroke="#737373" stroke-width="2" fill="#ffffff" fill-opacity="0" marker-end="url(#mlc1-muted)"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="335" y="282" text-anchor="middle" fill="#737373">each exponential is used again by divide</text>
+      </g>
+      </svg>
+      ```
+
+      The compiler writes its own kernels for these few primitives, so a new operation built from them can run even if nobody has written a kernel for it. Merging those pieces into one kernel then makes it fast.
+    worked: |
+      Let's lower softmax on a row of three scores, $(0,\ 0.69,\ 1.10)$, and run its three primitives in separate kernels under our eager traffic model.
+
+      1. **Exponentiate each score.** This is elementwise, so each score is handled on its own. We round the results to whole numbers to keep the arithmetic clean.
+         $$\left(e^{0},\ e^{0.69},\ e^{1.10}\right)\approx(1,\ 2,\ 3).$$
+
+      2. **Add up the exponentials.** This is a reduce operation, which turns the three numbers into one. It can't finish until every exponential exists.
+         $$1+2+3=6.$$
+
+      3. **Divide each exponential by the sum.** This is elementwise again, and it needs both the exponentials from step 1 and the sum from step 2.
+         $$\left(\tfrac{1}{6},\ \tfrac{2}{6},\ \tfrac{3}{6}\right)\approx(0.17,\ 0.33,\ 0.5).$$
+
+      4. **Count what our eager model writes to HBM.** Each primitive has its own kernel here, so the exp kernel writes its 3 results, the sum kernel writes 1 number and the divide kernel writes 3. We count only writes because they're enough to compare with a merged kernel. The reads follow the same pattern: the sum and divide kernels read the exponentials back, and the divide reads the sum.
+         $$3+1+3=7\text{ numbers}.$$
+
+      Only the last 3 of those numbers are the answer we want. With the whole graph recorded, the compiler can see all three primitives together. A row this small fits on chip, so it can run them as one kernel. That kernel reads the row once, keeps the exponentials on chip, adds them up there, divides, and writes only the 3 results, instead of 7.
+    problems:
+      - mlc-record-graph-basics
+      - mlcp-lower-self-explain
+      - mlcp-why-no-fuse-eager
+      - mlcp-primitive-kind
+      - mlcp-eager-writes-template
+      - mlcp-graph-break
+      - mlcp-what-graph-shows
+      - mlcp-new-op
+  - id: mlc-fuse-elementwise
+    title: "Merge a chain of small operations"
+    explain: |
+      ### Three kernels on one big tensor
+
+      Let's count what keeping results on chip saves. Our running example is a chat assistant serving Llama 3 8B on one NVIDIA H100 SXM GPU, whose memory moves about 3.35 TB/s. Each of the model's 32 layers has small steps that touch every number in a tensor once, such as the residual connection, which adds a sublayer's output to its input.
+
+      We'll run a made-up chain, multiply by 2, add 1 and square, on 50 million 16-bit numbers. At 2 bytes per number, the tensor is 100 MB, where 1 MB is $10^6$ bytes. Under our eager model, each of three kernels reads 100 MB from HBM and writes 100 MB back, as on the left. Fused, the chain reads $x$ once and writes $y$ once, keeping in-between values on chip. Our fused examples preserve arithmetic order, rounding and storage precision.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 335" aria-label="A bar across the top stands for HBM, the GPU memory. Left: eager execution runs three kernels, times 2, plus 1 and square, each with a blue arrow reading 100 MB from HBM and an orange arrow writing 100 MB back, so 600 MB moves in all. Right: one fused kernel does all three operations with one blue read and one orange write, so 200 MB moves and the in-between values stay on chip">
+      <defs><marker id="mlc2-blue" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#3b82f6"/></marker><marker id="mlc2-amber" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#f59e0b"/></marker></defs>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <rect x="20" y="20" width="600" height="40" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="320" y="45" text-anchor="middle">HBM (GPU memory)</text>
+      <path d="M330 80 V320" stroke="#d4d4d4"/>
+      <text x="165" y="252" text-anchor="middle">Eager: three kernels</text>
+      <path d="M55 62 V174" stroke="#3b82f6" stroke-width="2.5" marker-end="url(#mlc2-blue)"/><path d="M85 178 V66" stroke="#f59e0b" stroke-width="2.5" marker-end="url(#mlc2-amber)"/>
+      <path d="M150 62 V174" stroke="#3b82f6" stroke-width="2.5" marker-end="url(#mlc2-blue)"/><path d="M180 178 V66" stroke="#f59e0b" stroke-width="2.5" marker-end="url(#mlc2-amber)"/>
+      <path d="M245 62 V174" stroke="#3b82f6" stroke-width="2.5" marker-end="url(#mlc2-blue)"/><path d="M275 178 V66" stroke="#f59e0b" stroke-width="2.5" marker-end="url(#mlc2-amber)"/>
+      <rect x="30" y="180" width="80" height="44" rx="8" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="70" y="207" text-anchor="middle">× 2</text>
+      <rect x="125" y="180" width="80" height="44" rx="8" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="165" y="207" text-anchor="middle">+ 1</text>
+      <rect x="220" y="180" width="80" height="44" rx="8" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="260" y="207" text-anchor="middle">square</text>
+      <text x="165" y="274" text-anchor="middle">reads 300 MB, writes 300 MB</text>
+      <text x="165" y="296" text-anchor="middle">600 MB moved</text>
+      <text x="480" y="252" text-anchor="middle">Fused: one kernel</text>
+      <path d="M450 62 V174" stroke="#3b82f6" stroke-width="2.5" marker-end="url(#mlc2-blue)"/><path d="M510 178 V66" stroke="#f59e0b" stroke-width="2.5" marker-end="url(#mlc2-amber)"/>
+      <rect x="380" y="180" width="200" height="44" rx="8" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="480" y="207" text-anchor="middle">× 2, + 1, square</text>
+      <text x="480" y="274" text-anchor="middle">reads 100 MB, writes 100 MB</text>
+      <text x="480" y="296" text-anchor="middle">200 MB moved</text>
+      <text x="480" y="320" text-anchor="middle" fill="#737373">in-between values stay on chip</text>
+      <text x="165" y="320" text-anchor="middle" fill="#737373">blue: read, orange: write</text>
+      </g>
+      </svg>
+      ```
+
+      ### What merging saves
+
+      **Kernel fusion** merges several operations into one kernel, so the results passed between them stay on chip and never go to HBM. For a chain of $k$ elementwise operations on a tensor of $S$ bytes, each eager kernel reads and writes $S$ bytes, so
+
+      $$\text{eager bytes}=2kS,\qquad\text{fused bytes}=2S.$$
+
+      The fused kernel reads 2 bytes and writes 2 bytes per number. It does 3 FLOPs on each number, one per operation. That's an arithmetic intensity of $0.75$ FLOPs per byte. In the memory-bound vs compute-bound lesson, we saw that anything far below the GPU's ops:byte ratio, about 300 for an H100, is memory-bound. So its time is about bytes moved divided by bandwidth.
+
+      ### What a compiler can merge
+
+      A compiler can fuse a compatible chain of elementwise operations. It can also fuse an elementwise step into the preceding kernel, such as adding a bias after a matrix multiply. FlashAttention computes attention in tiles and keeps intermediate work on chip, avoiding a full score-matrix write to HBM. Simple fusion rules don't find tricks like that, so people still write some kernels by hand.
+
+      Fusion keeps the same FLOPs in this chain. It reduces intermediate memory traffic and kernel-launch overhead, the time needed to start kernels. Launch savings can dominate for small tensors. For our large, memory-bound example, we estimate the benefit from bytes moved alone.
+    worked: |
+      Let's estimate what fusing our chain saves on the 100 MB tensor, running on the H100 at 3.35 TB/s.
+
+      1. **Count the eager bytes.** Each of the three kernels reads the whole tensor and writes a whole new one.
+         $$3\times(100+100)=600\text{ MB}.$$
+
+      2. **Count the fused bytes.** The one kernel reads $x$ once and writes $y$ once.
+         $$100+100=200\text{ MB}.$$
+
+      3. **Turn bytes into time.** The chain is memory-bound, so we divide by the bandwidth. 1 TB/s moves $10^{12}$ bytes a second, which is 1 MB each microsecond (µs). So 3.35 TB/s is 3.35 MB per µs. We round to whole microseconds.
+         $$\frac{600}{3.35}\approx179\ \mu\text{s},\qquad\frac{200}{3.35}\approx60\ \mu\text{s}.$$
+
+      4. **Find the saving.** We subtract the fused time from the eager time.
+         $$179-60=119\ \mu\text{s}.$$
+
+      That's for one run of this chain. Fusion cuts the time to about a third, the same factor as the bytes, because bytes are what set the time here. A model runs many steps like this in every layer, so the savings add up.
+
+      Here is the same chain in plain Python, on a list of three numbers. A line like `[v * 2 for v in x]` builds a new list by doing `v * 2` for each `v` in `x`, so each of those lines stands for an eager kernel writing a whole new tensor. The code counts numbers moved. In the fused loop, `t` holds the in-between value for one number at a time, like a value kept on chip, and `append` adds a result to the end of the list.
+
+      ```python
+      x = [1.0, 2.0, 3.0]
+
+      # Eager: three passes, each writing a new list.
+      a = [v * 2 for v in x]
+      b = [v + 1 for v in a]
+      y_eager = [v * v for v in b]
+      # each pass reads one list and writes one
+      eager_moves = 3 * (len(x) + len(x))
+
+      # Fused: one pass; t never leaves the loop.
+      y_fused = []
+      for v in x:
+          t = v * 2 + 1
+          y_fused.append(t * t)
+      # read x once, write y once
+      fused_moves = len(x) + len(x)
+
+      print(y_eager, y_fused)
+      print(eager_moves, fused_moves)
+      # prints [9.0, 25.0, 49.0] [9.0, 25.0, 49.0], then 18 6
+      ```
+    problems:
+      - mlc-fuse-elementwise-basics
+      - mlcp-fuse-self-explain
+      - mlcp-fusion-flops
+      - mlcp-bytes-saved-template
+      - mlcp-time-saved-template
+      - mlcp-intensity-template
+      - mlcp-kernel-count
+      - mlcp-robot-camera
+  - id: mlc-egraph
+    title: "Search for a cheaper equal calculation"
+    explain: |
+      ### Rewriting a graph
+
+      A compiler can swap parts of a graph using **rewrite rules**, which replace one pattern with an equivalent one under stated numerical rules. Our toy search assumes exact real arithmetic, with no rounding and only nonzero divisors. In this model, scaling attention's queries is mathematically equivalent to scaling the bigger score matrix, for less work.
+
+      Here are four rules for that exact-arithmetic model, adapted from the paper behind egg, a rewriting library (Willsey et al., 2021). The letters $x$, $y$ and $z$ stand for expressions:
+
+      - $x\times2$ can become $x+x$.
+      - $(x\times y)\div z$ can become $x\times(y\div z)$.
+      - $x\div x$ can become $1$, for $x$ that isn't $0$.
+      - $x\times1$ can become $x$.
+
+      To compare versions, the compiler uses a **cost model**, an estimate of what each operation costs. Real ones estimate time. Ours is made up: an addition costs 1, a multiplication 2 and a division 4, while numbers and variables cost nothing.
+
+      ### Getting stuck after one choice
+
+      Start from $(a\times2)\div2$, equal to $a$ in exact arithmetic. A greedy rewriter takes the cheapest swap and throws the old version away. Turning $a\times2$ into $a+a$ lowers the cost from 6 to 5, giving $(a+a)\div2$. The second rule can no longer match, because the multiplication is gone, so it never reaches $a$.
+
+      ### Keeping every version
+
+      An **e-graph** keeps every version at once. It sorts expressions into groups, called e-classes, where everything in a group has the same value. Each node is an operation whose arrows point down to the groups it uses, the reverse of a computational graph's arrows, so it stands for that operation applied to any version from those groups. Rules add nodes, or merge two groups shown to be equal, and never delete anything.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 330" aria-label="An e-graph for (a times 2) divided by 2. Dashed boxes are groups of equal values. The top group holds a divide node, with arrows to a middle group and to the group holding 2. The middle group holds two nodes, a times 2 and a plus a. The times node points to the groups for a and for 2; the plus node points twice to the group for a. So the divide node stands for both (a times 2) divided by 2 and (a plus a) divided by 2">
+      <defs><marker id="mlc3-muted" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker></defs>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <rect x="250" y="20" width="140" height="60" rx="10" fill="#ffffff" stroke="#737373" stroke-width="1.5" stroke-dasharray="6 4"/>
+      <circle cx="320" cy="50" r="18" fill="#ffffff" stroke="#171717" stroke-width="1.5"/><text x="320" y="55" text-anchor="middle">÷</text>
+      <text x="400" y="55">(a × 2) ÷ 2 and (a + a) ÷ 2</text>
+      <rect x="100" y="130" width="280" height="60" rx="10" fill="#ffffff" stroke="#737373" stroke-width="1.5" stroke-dasharray="6 4"/>
+      <circle cx="180" cy="160" r="18" fill="#ffffff" stroke="#171717" stroke-width="1.5"/><text x="180" y="165" text-anchor="middle">×</text>
+      <circle cx="300" cy="160" r="18" fill="#ffffff" stroke="#171717" stroke-width="1.5"/><text x="300" y="165" text-anchor="middle">+</text>
+      <text x="390" y="165">a × 2 and a + a</text>
+      <rect x="40" y="250" width="80" height="60" rx="10" fill="#ffffff" stroke="#737373" stroke-width="1.5" stroke-dasharray="6 4"/>
+      <text x="80" y="285" text-anchor="middle">2</text>
+      <rect x="200" y="250" width="80" height="60" rx="10" fill="#ffffff" stroke="#737373" stroke-width="1.5" stroke-dasharray="6 4"/>
+      <text x="240" y="285" text-anchor="middle">a</text>
+      <path d="M314 67 L297 126" stroke="#737373" stroke-width="2" marker-end="url(#mlc3-muted)"/>
+      <path d="M302 50 H20 V280 H36" stroke="#737373" stroke-width="2" fill="#ffffff" fill-opacity="0" marker-end="url(#mlc3-muted)"/>
+      <path d="M170 175 L93 246" stroke="#737373" stroke-width="2" marker-end="url(#mlc3-muted)"/>
+      <path d="M190 175 L232 246" stroke="#737373" stroke-width="2" marker-end="url(#mlc3-muted)"/>
+      <path d="M290 175 L250 246" stroke="#737373" stroke-width="2" marker-end="url(#mlc3-muted)"/>
+      <path d="M307 177 L266 246" stroke="#737373" stroke-width="2" marker-end="url(#mlc3-muted)"/>
+      <text x="300" y="290" fill="#737373">dashed box: a group of equal values</text>
+      </g>
+      </svg>
+      ```
+
+      The top node stands for both versions. A node whose inputs come from groups holding $p$ and $q$ versions stands for $p\times q$ versions, so a small e-graph can hold a huge number of them.
+
+      The compiler applies every rule again and again until none adds anything new, which is called **equality saturation**, or until it hits a size or time limit. Then **extraction** uses the cost model to pick the cheapest version in the top group.
+    worked: |
+      Let's run the e-graph on $(a\times2)\div2$ with our made-up costs: 1 for an addition, 2 for a multiplication and 4 for a division.
+
+      1. **Add up the starting version's cost.** It has one multiplication and one division.
+         $$2+4=6.$$
+
+      2. **Apply the first rule and keep both.** The group for $a\times2$ now also holds $a+a$, so the top node stands for 2 versions. We add up the new one's cost.
+         $$(a+a)\div2:\quad1+4=5.$$
+
+      3. **Apply the second rule.** It matches $(a\times2)\div2$, which the e-graph kept, and adds $a\times(2\div2)$ to the top group.
+         $$a\times(2\div2):\quad2+4=6.$$
+
+      4. **Apply the last two rules.** The third puts $1$ in the group for $2\div2$, so the node $a\times(2\div2)$ now also stands for $a\times1$. The fourth shows that $a\times1$ equals $a$, so the e-graph merges the top group, which holds that node, with the group for $a$. Merging joins the two boxes into one box holding the nodes of both, and every arrow that pointed at either now points at the joined box. So the $\times$ node now points back at its own box, which just records that $a\times1$ is in the same group as $a$.
+         $$a\times1:\quad2,\qquad a:\quad0.$$
+
+      5. **Extract the cheapest.** Nothing new appears after this, so saturation stops. Extraction picks the cheapest of the versions we've costed in the top group.
+         $$\min(6,\ 5,\ 6,\ 2,\ 0)=0.$$
+
+      The greedy compiler stopped at a cost of 5, while the e-graph found $a$, which costs nothing, because it never threw away $a\times2$.
+
+      Real floating-point compilers must preserve their supported numerical semantics. Reassociation can change rounding or overflow: with 16-bit FP16, $(40000\times2)\div2$ overflows to infinity, while $40000$ is finite. A compiler may reassociate only where its semantics or explicitly relaxed accuracy settings permit it. Attention scaling rewrites need this qualification too.
+    problems:
+      - mlc-egraph-basics
+      - mlcp-egraph-self-explain
+      - mlcp-valid-rule
+      - mlcp-versions-template
+      - mlcp-extract
+      - mlcp-greedy-order
+      - mlcp-saturation-stop
+      - mlcp-attention-scale-template
+  - id: mlc-autotune
+    title: "Tune each kernel for one GPU"
+    explain: |
+      ### Many ways to run one kernel
+
+      Rewriting and fusion settle which kernels to run, and a compiler usually rewrites before it fuses. Next it decides how to run each kernel. Take our fused kernel, which squares $2x+1$ for 50 million 16-bit numbers on the H100. The GPU splits the work into **tiles**, blocks of numbers handed out to its many compute units, which work at the same time. The tile size is a choice. Each tile has a fixed cost to start, so many small tiles waste time. Big tiles need more on-chip memory each, so fewer of them run at once on each compute unit.
+
+      The best choice depends on the GPU, such as its SRAM and number of compute units, and on the tensor shapes. These effects interact in ways that are hard to predict, so compilers measure instead.
+
+      ### Timing candidates on the real GPU
+
+      **Autotuning** runs each candidate version of a kernel on the real GPU, with the real tensor shapes, times it and keeps the fastest. Suppose three tile sizes give these made-up times.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 310" aria-label="Bar chart of made-up times for one fused kernel at three tile sizes: 256 numbers per tile takes 150 microseconds, 1,024 takes 75 and is the fastest, shown in green, and 4,096 takes 100. A dashed red line at about 60 microseconds marks the fastest any kernel moving 200 MB could run at 3.35 TB/s">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <path d="M70 40 V250 H470" stroke="#737373" fill="#ffffff" fill-opacity="0"/>
+      <text x="70" y="28">time (µs)</text>
+      <rect x="100" y="62.5" width="80" height="187.5" fill="#737373"/>
+      <text x="140" y="54.5" text-anchor="middle">150</text>
+      <rect x="230" y="156.25" width="80" height="93.75" fill="#10b981"/>
+      <text x="270" y="148.25" text-anchor="middle">75</text>
+      <rect x="360" y="125" width="80" height="125" fill="#737373"/>
+      <text x="400" y="117" text-anchor="middle">100</text>
+      <path d="M70 175.37 H470" stroke="#ef4444" stroke-width="2" stroke-dasharray="7 5"/>
+      <text x="478" y="172" fill="#ef4444">fastest possible</text>
+      <text x="478" y="190" fill="#ef4444">≈ 60 µs</text>
+      <text x="140" y="272" text-anchor="middle">256</text>
+      <text x="270" y="272" text-anchor="middle">1,024</text>
+      <text x="400" y="272" text-anchor="middle">4,096</text>
+      <text x="270" y="298" text-anchor="middle" fill="#737373">tile size (numbers per tile)</text>
+      </g>
+      </svg>
+      ```
+
+      The middle tile wins. Trying every candidate can take a long time, so TVM (Chen et al., 2018) trains a cost model on its measurements. It learns from a description of each candidate's code to predict the time of candidates it hasn't tried, so TVM only times the promising ones.
+
+      ### How close to the best possible
+
+      A memory-bound kernel can't run faster than its bytes divided by the bandwidth:
+
+      $$\text{fastest possible time}=\frac{\text{bytes moved}}{\text{bandwidth}}.$$
+
+      Our kernel moves 200 MB, so at 3.35 TB/s it can't beat about 60 µs, the red line. Dividing the fastest possible time by the measured time gives the fraction of the best possible speed that the winner reaches.
+
+      A tuning choice only holds for one GPU and one shape. A kernel tuned for one shape, such as a long prompt during prefill, may be slow for another, such as one token at a time during decode. A different GPU needs tuning again too. So compilers save tuning results for reuse.
+
+      Be careful not to assume bigger tiles are always faster just because there are fewer of them to start. In our timings the biggest tile is slower than the middle one.
+    worked: |
+      Let's pick a tile size for the fused kernel from our made-up timings, then check how close it gets to the fastest possible time on the H100.
+
+      1. **Keep the fastest candidate.** The three tile sizes took 150 µs, 75 µs and 100 µs, so we keep the 1,024-number tile.
+         $$\min(150,\ 75,\ 100)=75\ \mu\text{s}.$$
+
+      2. **Find the fastest possible time.** The kernel moves 200 MB, and 3.35 TB/s is 3.35 MB per µs.
+         $$\frac{200}{3.35}\approx59.7\ \mu\text{s}.$$
+
+      3. **Compare the two.** We divide the fastest possible time by the measured one.
+         $$\frac{59.7}{75}\approx0.80.$$
+
+      4. **Find the bandwidth it reaches.** Bytes moved over time taken gives MB per µs, which is the same number in TB/s.
+         $$\frac{200}{75}\approx2.67\text{ TB/s}.$$
+
+      The winner reaches about 80% of the best possible speed, the same as 80% of the H100's memory bandwidth. So even a perfect kernel could be at most about $75\div59.7\approx1.26$ times faster, and real kernels rarely reach the full bandwidth.
+    problems:
+      - mlc-autotune-basics
+      - mlcp-tune-self-explain
+      - mlcp-pick-tile
+      - mlcp-floor-template
+      - mlcp-fraction-template
+      - mlcp-shape-change
+      - mlcp-why-measure
+      - mlcp-robot-gpu
+final: mlc-explain
+summary: |
+  - An ML compiler records a computational graph, splitting where a Python decision depends on tensor values, then lowers it to primitives: elementwise, reduce and movement. Eager execution dispatches operations as Python reaches them; the graph exposes opportunities to merge them.
+  - Kernel fusion keeps in-between results on chip and reduces launch overhead. In our traffic model, $k$ elementwise operations on $S$ bytes move $2kS$ bytes eagerly and $2S$ fused. For our large, memory-bound chain, estimated time falls by the same factor as bytes.
+  - An e-graph keeps equivalent versions in groups. Equality saturation applies rewrite rules until nothing new appears, and extraction picks the cheapest by a cost model. Our toy rules assume exact real arithmetic; floating-point rewrites must respect the compiler's numerical semantics.
+  - Autotuning times candidate kernels on the real GPU and shape and keeps the fastest. Bytes moved divided by bandwidth gives the fastest time a memory-bound kernel could possibly take.
+
+  **Next:** In the course project, you'll write a tiny graph compiler in Python that records elementwise operations, fuses each chain into one kernel and measures the speed-up.

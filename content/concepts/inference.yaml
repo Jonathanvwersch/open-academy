@@ -18,7 +18,7 @@ concepts:
           { text: "Explain the latency–throughput trade-off of batching", dimension: conceptual },
         ],
       projects: [inference-engine],
-      status: stub,
+      status: authored,
     }
   - {
       id: prefill-decode,
@@ -37,7 +37,7 @@ concepts:
           },
           { text: "Implement temperature, top-k and top-p sampling", dimension: implementation },
         ],
-      status: stub,
+      status: authored,
     }
   - {
       id: arithmetic-intensity,
@@ -59,7 +59,7 @@ concepts:
             dimension: conceptual,
           },
         ],
-      status: stub,
+      status: authored,
     }
   - {
       id: gpu-inference-basics,
@@ -75,7 +75,7 @@ concepts:
           { text: "Estimate a model's memory at fp32, fp16 and int8", dimension: math },
           { text: "Explain why memory bandwidth bounds decode speed", dimension: conceptual },
         ],
-      status: stub,
+      status: authored,
     }
   - {
       id: kv-cache,
@@ -85,7 +85,7 @@ concepts:
       est_minutes: 30,
       goal_weight: 3,
       dimensions: [conceptual, math, implementation],
-      prereqs: [{ id: prefill-decode }, { id: multi-head-attention }],
+      prereqs: [{ id: prefill-decode }, { id: multi-head-attention }, { id: gpu-inference-basics }],
       objectives:
         [
           {
@@ -96,7 +96,7 @@ concepts:
           { text: "Explain when prefix caching saves prefill work", dimension: conceptual },
         ],
       projects: [inference-engine],
-      status: stub,
+      status: authored,
     }
   - {
       id: fast-attention,
@@ -115,7 +115,7 @@ concepts:
           },
           { text: "Explain how tiling lets FlashAttention stay exact", dimension: conceptual },
         ],
-      status: stub,
+      status: authored,
     }
   - {
       id: quantization,
@@ -142,7 +142,7 @@ concepts:
           },
         ],
       projects: [inference-engine],
-      status: stub,
+      status: authored,
     }
   - {
       id: speculative-decoding,
@@ -164,7 +164,7 @@ concepts:
             dimension: conceptual,
           },
         ],
-      status: stub,
+      status: authored,
     }
   - {
       id: llm-serving,
@@ -174,8 +174,7 @@ concepts:
       est_minutes: 30,
       goal_weight: 2,
       dimensions: [conceptual, transfer],
-      prereqs:
-        [{ id: kv-cache }, { id: inference-metrics }, { id: mixture-of-experts, strength: soft }],
+      prereqs: [{ id: kv-cache }, { id: inference-metrics }, { id: mixture-of-experts }],
       objectives:
         [
           { text: "Explain how continuous batching raises throughput", dimension: conceptual },
@@ -184,7 +183,7 @@ concepts:
             dimension: transfer,
           },
         ],
-      status: stub,
+      status: authored,
     }
   - {
       id: ml-compilers,
@@ -210,5 +209,5 @@ concepts:
             dimension: conceptual,
           },
         ],
-      status: stub,
+      status: authored,
     }

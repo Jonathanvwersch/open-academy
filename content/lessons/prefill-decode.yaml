@@ -1,0 +1,363 @@
+concept: prefill-decode
+version: 1
+objective: |
+  **Goal:** explain how prefill and decode shape response time, and implement temperature, top-k and top-p sampling to choose each next token.
+recap:
+  - concept: autoregressive-lm
+    text: "A language model gives a score to each possible next token. Softmax turns scores into probabilities adding to 1. A causal mask preserves allowed dependencies. Generation chooses, appends and repeats. Greedy decoding chooses the highest score."
+  - concept: inference-metrics
+    text: "Time to first token is the wait for a reply's first token; inter-token latency is the gap between consecutive output tokens."
+where_this_fits: |
+  ### What are prefill and decode?
+
+  Prefill processes a language model's prompt together, and decode extends the answer one token at a time. This split explains the initial wait and later streaming rate. Both phases must choose an output token. We'll also control these choices through sampling, which randomly selects a token according to its probability, and filters that remove unlikely choices.
+
+  We'll follow a chat assistant using the Llama 3 8B language model on one NVIDIA H100 SXM GPU, the processor running the model. Our examples use invented timings and token probabilities.
+
+  Time to first token (TTFT) is the wait from sending a request to its first output token. Inter-token latency (ITL) is the gap between consecutive output tokens. A steady ITL of 0.02 seconds gives 50 tokens/s.
+knowledge_points:
+  - id: pd-request-phases
+    title: Process the prompt, then generate
+    explain: |
+      ### Reading the known prompt
+
+      Our chat assistant must read a prompt before it can answer. Suppose its prompt is the three tokens "the cat sat", treating each word as one token. All three are already known. Within each model layer, a stage of calculation, their positions can be processed in parallel. The causal mask still stops a position from using later tokens. A **pass** means one forward calculation through the model on its current input.
+
+      **Prefill** is this processing of the known prompt. The causal mask lets the last prompt position use all prompt tokens to predict what follows them. It supplies probabilities for the first output token. We choose that token and send it to the user.
+
+      ### Extending the answer
+
+      **Decode** predicts and chooses later output tokens one at a time, using the tokens chosen so far.
+
+      Suppose the answer is "on the mat", again treating each word as a token. After choosing "on", we feed it back to predict "the". We must choose "the" before predicting "mat". This dependence makes ordinary decoding sequential within one request.
+
+      The picture shows this order. The three prompt boxes share one prefill pass. Each output choice supplies the input needed for the next decode pass. Box widths do not represent time.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 290" aria-label="Prefill processes the known prompt the cat sat and supplies the first output choice, on. Feeding on into decode produces the; feeding the into another decode pass produces mat. Boxes show the order of steps.">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="16" fill="#171717">
+      <text x="20" y="25">Prefill: known prompt</text>
+      <rect x="20" y="42" width="65" height="36" fill="#d4d4d4" fill-opacity="0" stroke="#3b82f6"/><text x="52.5" y="66" text-anchor="middle">the</text>
+      <rect x="95" y="42" width="65" height="36" fill="#d4d4d4" fill-opacity="0" stroke="#3b82f6"/><text x="127.5" y="66" text-anchor="middle">cat</text>
+      <rect x="170" y="42" width="65" height="36" fill="#d4d4d4" fill-opacity="0" stroke="#3b82f6"/><text x="202.5" y="66" text-anchor="middle">sat</text>
+      <path d="M125 86 V108 L119 100 M125 108 L131 100" fill="#d4d4d4" fill-opacity="0" stroke="#737373" stroke-width="2"/>
+      <text x="20" y="134">Choose output 1: on</text>
+      <path d="M125 145 V169 L119 161 M125 169 L131 161" fill="#d4d4d4" fill-opacity="0" stroke="#737373" stroke-width="2"/>
+      <text x="20" y="195">Decode: feed on → choose the</text>
+      <path d="M125 206 V230 L119 222 M125 230 L131 222" fill="#d4d4d4" fill-opacity="0" stroke="#737373" stroke-width="2"/>
+      <text x="20" y="256">Decode: feed the → choose mat</text>
+      </g></svg>
+      ```
+
+      ### Where the waiting comes from
+
+      Prefill contributes to **TTFT**. Longer prompts require more calculation, even though positions can share a pass. If everything else takes the same time, this usually delays the first token. Queueing, network time and choosing the token also contribute to TTFT.
+
+      Decode largely sets the gaps between later tokens. Choosing and delivering each token also contributes to its gap. Divide one second by the steady gap to find the streaming rate, with ITL in seconds.
+
+      $$\text{tokens/s}=\frac{1}{\mathrm{ITL}}.$$
+
+      Be careful when counting passes. Prefill already supplies the first output's probabilities. Producing three output tokens needs two later decode passes. Faster prefill shortens the initial wait; faster decode shortens the later gaps.
+    worked: |
+      Let's time the assistant's three-token answer. In this invented request, prefill takes 115 ms. Choosing and sending the first token takes another 5 ms. Each later decode pass takes 20 ms, including token choice and delivery. There is no queue or extra network delay.
+
+      1. **Find the first arrival.** The first token follows prefill and its choice.
+         $$\mathrm{TTFT}=115+5=120\text{ ms}.$$
+
+      2. **Find the total request time.** End-to-end latency is the time from sending a request until its last token arrives. Here it includes the first wait and the two later gaps.
+         $$120+2\times20=160\text{ ms}.$$
+
+      3. **Find the streaming rate.** Convert the 20 ms gap to 0.02 seconds before taking its reciprocal.
+         $$\text{tokens/s}=1/0.02=50.$$
+
+      The user sees tokens at 120, 140 and 160 ms. The 50 tokens/s describes the steady stream after the first token; the whole request also includes the initial wait.
+    problems:
+      - pd-phases-basics
+      - pd-phases-example
+      - pd-phases-passes
+      - pd-phases-wait
+      - pd-phases-rate
+      - pd-phases-mistake
+      - pd-phases-new-setting
+  - id: pd-temperature
+    title: Make token choices more or less random
+    explain: |
+      ### Choosing from the scores
+
+      Prefill and each later decode pass supply scores for choosing a token. Sampling lets the assistant vary its wording across requests. Let's use a toy vocabulary, Yes and No, with scores $\ln4$ and $0$. These give clean softmax weights: the natural logarithm $\ln4$ is the number whose exponential is $4$. Scores before softmax are called **logits**. Softmax exponentiates them to $4$ and $1$, then divides by their total, giving probabilities $0.8$ and $0.2$.
+
+      **Temperature** is a positive number that divides the logits before softmax. A lower temperature concentrates probability on higher scores; a higher one spreads it more evenly. For example, No is drawn more often at higher temperatures. The blue bars show Yes's probability, rounded to two decimals.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 230" aria-label="For Yes and No logits ln 4 and 0, the probability of Yes is about 0.94 at temperature 0.5, 0.80 at temperature 1, and 0.67 at temperature 2. Bar heights use the unrounded probabilities.">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="16" fill="#171717">
+      <text x="20" y="24">Probability of Yes</text><path d="M40 50 V180 H340" fill="#d4d4d4" fill-opacity="0" stroke="#d4d4d4"/>
+      <text x="30" y="58" text-anchor="end">1</text><text x="30" y="185" text-anchor="end">0</text>
+      <rect x="80" y="57.6471" width="45" height="122.3529" fill="#3b82f6"/><text x="102.5" y="49" text-anchor="middle">0.94</text><text x="102.5" y="210" text-anchor="middle">τ = 0.5</text>
+      <rect x="180" y="76" width="45" height="104" fill="#3b82f6"/><text x="202.5" y="68" text-anchor="middle">0.80</text><text x="202.5" y="210" text-anchor="middle">τ = 1</text>
+      <rect x="280" y="93.3333" width="45" height="86.6667" fill="#3b82f6"/><text x="302.5" y="85" text-anchor="middle">0.67</text><text x="302.5" y="210" text-anchor="middle">τ = 2</text>
+      </g></svg>
+      ```
+
+      ### Scaling before softmax
+
+      Write temperature as $\tau$ (tau). Many papers and APIs call it $T$ or "temperature". For token $i$, with logit $z_i$, the adjusted probability is
+
+      $$p_i=\frac{e^{z_i/\tau}}{\sum_j e^{z_j/\tau}},\qquad \tau>0.$$
+
+      The sum runs over all vocabulary tokens $j$. At $\tau=1$, this is ordinary softmax. At $\tau=0.5$, Yes has probability about $0.94$; at $\tau=2$, about $0.67$. Positive temperature preserves the score order. Raising it makes the distribution more even: the leader loses probability and the lowest-ranked tokens gain. An individual token between them can gain or lose probability.
+
+      ### Random draws and greedy choices
+
+      **Sampling** draws a token according to its probability. Lay the probabilities along a strip from 0 to 1. Pick a random point $u$ on it, with $0\le u<1$, and choose the token covering that point. In code, add probabilities until the total first exceeds $u$. Below, at $\tau=2$, Yes covers two thirds and No covers the rest. The orange line marks $u=0.70$.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 165" aria-label="At temperature 2, Yes covers 0 to 2/3 and No covers 2/3 to 1. A draw u equals 0.70 lies in No's interval.">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="16" fill="#171717">
+      <text x="130" y="35" text-anchor="middle">Yes: 2/3</text><text x="280" y="35" text-anchor="middle">No: 1/3</text>
+      <rect x="30" y="50" width="200" height="40" fill="#3b82f6" fill-opacity="0.15" stroke="#3b82f6"/>
+      <rect x="230" y="50" width="100" height="40" fill="#3b82f6" fill-opacity="0.15" stroke="#3b82f6"/>
+      <text x="30" y="115" text-anchor="middle">0</text><text x="230" y="115" text-anchor="middle">2/3</text><text x="330" y="115" text-anchor="middle">1</text>
+      <path d="M240 43 V95" stroke="#f59e0b" stroke-width="3"/><text x="240" y="148" text-anchor="middle">u = 0.70</text>
+      </g></svg>
+      ```
+
+      **Greedy decoding** chooses a token with the highest score, breaking ties consistently. A serving program can handle zero temperature by using greedy decoding. Zero is outside the formula because division by zero is undefined. Positive temperature can still draw a lower-scoring token, including one that makes the answer incorrect.
+    worked: |
+      Let's adjust Yes and No's logits, $\ln4$ and $0$, using $\tau=2$, then draw with $u=0.70$.
+
+      1. **Scale and exponentiate.** Divide both scores by 2, then raise $e$ to each result.
+         $$e^{\ln4/2}=2,\qquad e^{0/2}=1.$$
+
+      2. **Normalise the weights.** Divide each weight by their total to make probabilities.
+         $$p_{\mathrm{Yes}}=2/3,\qquad p_{\mathrm{No}}=1/3.$$
+
+      3. **Locate the draw.** Yes covers $0\le u<2/3$. Our draw lies in No's remaining interval.
+         $$2/3\le0.70<1\quad\Rightarrow\quad\text{No}.$$
+
+      The lower-scoring token can be selected even though Yes remains more probable.
+
+      Here is the same calculation in Python. Start with at least one token and one finite logit per token. Use a positive temperature and a draw $0\le u<1$. `math.exp` computes a power of $e$. The expression in square brackets computes one weight for each logit.
+
+      Computers cannot store arbitrarily large exponentials. Subtracting the largest logit before exponentiating avoids this problem. At $\tau=2$, this changes our weights from $(2,1)$ to $(1,0.5)$. Both pairs normalise to $(2/3,1/3)$ because their relative weights are unchanged.
+
+      `zip` pairs tokens with weights so the loop can accumulate their probabilities. Computer rounding can leave the final total just below 1. If no interval catches `u`, we return the last token with positive weight. Very small weights can round to zero, so we skip those in the fallback. For a fresh draw, import Python's `random` module and pass `random.random()` as `u`.
+
+      ```python
+      import math
+
+      def temperature_sample(tokens, logits, tau, u):
+          if tau <= 0:
+              raise ValueError("tau must be positive")
+          largest = max(logits)
+          weights = [math.exp((z - largest) / tau) for z in logits]
+          total = sum(weights)
+          cumulative = 0.0
+          fallback = tokens[0]
+          for token, weight in zip(tokens, weights):
+              if weight > 0:
+                  fallback = token
+              cumulative += weight / total
+              if u < cumulative:
+                  return token
+          return fallback
+
+      tokens = ["Yes", "No"]
+      logits = [math.log(4), 0]
+      print(temperature_sample(tokens, logits, 2, 0.70))
+      # prints: No
+      ```
+    problems:
+      - pd-temp-basics
+      - pd-temp-example
+      - pd-temp-probability
+      - pd-temp-order
+      - pd-temp-zero
+      - pd-temp-code
+      - pd-temp-new-setting
+  - id: pd-top-k
+    title: Keep a fixed count of likely tokens
+    explain: |
+      ### Removing unlikely choices
+
+      Temperature changes the assistant's next-token probabilities. The assistant can still choose an unlikely token. To remove the least likely choices, we can filter them out. Let the toy vocabulary be Yes, Maybe, No and a full stop. Suppose their probabilities, after temperature and softmax, are $0.4$, $0.3$, $0.2$ and $0.1$.
+
+      **Top-k sampling** keeps the $k$ most probable tokens and removes the rest. Choose a whole number $k$ from 1 to the vocabulary size. Then divide the retained probabilities by their total so they add up to 1 again. This is called **renormalising**.
+
+      The picture shows $k=2$. Blue boxes remain available and grey boxes are removed. We sort from most to least probable before choosing which boxes stay.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 260" aria-label="Read sorted choices across each row. Top-k with k equals 2 keeps Yes at 0.4 and Maybe at 0.3 in blue, and removes No at 0.2 and full stop at 0.1 in grey. Divide the retained probabilities by their total, 0.7, before sampling.">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="16" fill="#171717">
+      <text x="20" y="25">Sorted choices, k = 2</text>
+      <rect x="20" y="45" width="145" height="65" fill="#d4d4d4" fill-opacity="0" stroke="#3b82f6" stroke-width="2"/><text x="92.5" y="70" text-anchor="middle">Yes</text><text x="92.5" y="97" text-anchor="middle">0.4</text>
+      <rect x="195" y="45" width="145" height="65" fill="#d4d4d4" fill-opacity="0" stroke="#3b82f6" stroke-width="2"/><text x="267.5" y="70" text-anchor="middle">Maybe</text><text x="267.5" y="97" text-anchor="middle">0.3</text>
+      <rect x="20" y="125" width="145" height="65" fill="#d4d4d4" fill-opacity="0" stroke="#d4d4d4"/><text x="92.5" y="150" text-anchor="middle" fill="#737373">No</text><text x="92.5" y="177" text-anchor="middle" fill="#737373">0.2</text>
+      <rect x="195" y="125" width="145" height="65" fill="#d4d4d4" fill-opacity="0" stroke="#d4d4d4"/><text x="267.5" y="150" text-anchor="middle" fill="#737373">full stop</text><text x="267.5" y="177" text-anchor="middle" fill="#737373">0.1</text>
+      <text x="20" y="220">Keep 0.7 total → divide by 0.7</text>
+      <text x="20" y="245">Then sample from the survivors</text>
+      </g></svg>
+      ```
+
+      ### Drawing after the cut
+
+      If token $i$ survives, its new probability is
+
+      $$p'_i=\frac{p_i}{\text{sum of retained probabilities}}.$$
+
+      Here $p_i$ is its probability before filtering and $p'_i$ is its probability after filtering. Removed tokens have probability zero. A draw uses these new probabilities, so a retained second-place token can still win.
+
+      For our four-token vocabulary, $k=1$ keeps only Yes and makes its probability 1. With $k=2$, Yes and Maybe share the draws. With $k=4$, every token stays and the probabilities are unchanged.
+
+      ### The cost of a fixed count
+
+      Suppose the probabilities become $0.97$, $0.01$, $0.01$, $0.01$. Keeping two includes a token with probability only $0.01$. If instead all four have probability $0.25$, keeping two discards half the equally likely choices. Top-p, in the next step, lets the number kept adapt to the probabilities.
+    worked: |
+      Let's sample from Yes, Maybe, No and full stop with probabilities $0.4$, $0.3$, $0.2$, $0.1$, using $k=2$ and $u=0.60$.
+
+      1. **Keep the two leaders.** Their total probability is the amount the two survivors will share.
+         $$0.4+0.3=0.7.$$
+
+      2. **Renormalise.** Divide both surviving probabilities by that total.
+         $$\begin{aligned}p'_{\mathrm{Yes}}&=0.4/0.7=4/7,\\p'_{\mathrm{Maybe}}&=3/7.\end{aligned}$$
+
+      3. **Draw a token.** Yes ends at four sevenths, about $0.57$, so $u=0.60$ falls in Maybe's interval.
+         $$4/7\le0.60<1\quad\Rightarrow\quad\text{Maybe}.$$
+
+      This Python function takes a nonempty list of positive probabilities summing to 1. `type(k) is int` checks that $k$ is a Python integer. The rest of the check ensures it is in range. To sort the entries, `range` supplies indices and `lambda i: probs[i]` supplies each index's probability. With `reverse=True`, `sorted` puts the largest probabilities first. Ties keep their input order, making the cutoff repeatable. `[:k]` selects the first $k$ indices. The final loop repeats our draw $u=0.60$ by accumulating the filtered probabilities.
+
+      ```python
+      def top_k(probs, k):
+          if type(k) is not int or not 1 <= k <= len(probs):
+              raise ValueError("invalid k")
+          order = sorted(
+              range(len(probs)),
+              key=lambda i: probs[i], reverse=True
+          )
+          keep = order[:k]
+          total = sum(probs[i] for i in keep)
+          result = [0.0] * len(probs)
+          for i in keep:
+              result[i] = probs[i] / total
+          return result
+
+      tokens = ["Yes", "Maybe", "No", "."]
+      filtered = top_k([0.4, 0.3, 0.2, 0.1], 2)
+      print([round(p, 2) for p in filtered])
+      cumulative = 0.0
+      for token, prob in zip(tokens, filtered):
+          cumulative += prob
+          if 0.60 < cumulative:
+              print(token)
+              break
+      # prints:
+      # [0.57, 0.43, 0.0, 0.0]
+      # Maybe
+      ```
+    problems:
+      - pd-topk-basics
+      - pd-topk-example
+      - pd-topk-probability
+      - pd-topk-mistake
+      - pd-topk-code
+      - pd-topk-new-setting
+  - id: pd-top-p
+    title: Choose how much probability to keep
+    explain: |
+      ### Letting the number kept change
+
+      The assistant's probabilities change at each prefill or decode prediction. We want the number of choices to adapt to those probabilities. **Top-p sampling**, also called nucleus sampling, adds the most likely tokens one by one until their total probability reaches at least a chosen threshold $p$, with $0<p\le1$. Here $p$ is a cutoff for the total. Then we renormalise and draw from the retained set.
+
+      To find the set, sort tokens from most to least probable. Add their probabilities until the running total first reaches or exceeds $p$, then stop. Keep all tokens added so far, including the one that crosses the threshold.
+
+      For the toy choices Yes, Maybe, No and full stop, use probabilities $0.4$, $0.3$, $0.2$, $0.1$ again. Yes takes four tenths of the bar's width, Maybe three tenths, and so on. With $p=0.8$, the first two reach only $0.7$, so we must keep No as well, reaching $0.9$. The orange line marks the threshold inside No's segment.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 180" aria-label="Sorted probabilities Yes 0.4, Maybe 0.3, No 0.2, full stop 0.1 form a bar from 0 to 1. The top-p threshold 0.8 lies inside No's segment, so the first three whole tokens are retained, reaching cumulative probability 0.9.">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="16" fill="#171717">
+      <text x="20" y="22">Sorted probability, p = 0.8</text>
+      <text x="84" y="56" text-anchor="middle">Yes</text><text x="196" y="56" text-anchor="middle">Maybe</text><text x="276" y="56" text-anchor="middle">No</text><text x="324" y="56" text-anchor="middle">.</text>
+      <rect x="20" y="66" width="128" height="32" fill="#3b82f6" fill-opacity="0.15" stroke="#3b82f6"/>
+      <rect x="148" y="66" width="96" height="32" fill="#3b82f6" fill-opacity="0.15" stroke="#3b82f6"/>
+      <rect x="244" y="66" width="64" height="32" fill="#3b82f6" fill-opacity="0.15" stroke="#3b82f6"/>
+      <rect x="308" y="66" width="32" height="32" fill="#d4d4d4" fill-opacity="0" stroke="#d4d4d4"/>
+      <text x="20" y="125" text-anchor="middle">0</text><text x="148" y="125" text-anchor="middle">0.4</text><text x="244" y="125" text-anchor="middle">0.7</text><text x="308" y="125" text-anchor="middle">0.9</text><text x="340" y="125" text-anchor="middle">1</text>
+      <path d="M276 62 V102" stroke="#f59e0b" stroke-width="3"/><text x="276" y="158" text-anchor="middle">threshold 0.8</text>
+      </g></svg>
+      ```
+
+      ### Different distributions, different counts
+
+      With the same threshold $p=0.8$, probabilities $0.85$, $0.05$, $0.05$, $0.05$ keep just one token. Probabilities $0.25$, $0.25$, $0.25$, $0.25$ keep all four. This adapts the count to how concentrated the probabilities are.
+
+      Be careful with the boundary. If the running total equals $p$, stop there. If it falls short, include the next token with its full probability. Divide by the actual retained total, which can exceed $p$. For example, our retained total is $0.9$, so dividing by $0.8$ would leave probabilities summing to more than 1.
+
+      ### Choosing a token during generation
+
+      A generation program can apply temperature to logits, compute softmax, then filter and sample. Our filter examples start from probabilities after that softmax step. We demonstrate top-k and top-p separately. The same procedure works after prefill and after each later decode pass. Either filter can remove a useful continuation. Check generated answers for incorrect or irrelevant text when changing $k$ or $p$.
+    worked: |
+      Let's apply $p=0.8$ to Yes, Maybe, No and full stop with probabilities $0.4$, $0.3$, $0.2$, $0.1$, then draw with $u=0.85$.
+
+      1. **Find the cutoff.** The third token is needed to reach the threshold.
+         $$\begin{aligned}0.4&<0.8,\\0.4+0.3&=0.7<0.8,\\0.7+0.2&=0.9\ge0.8.\end{aligned}$$
+
+      2. **Renormalise the three survivors.** Divide each original probability by their actual total, $0.9$.
+         $$\begin{aligned}p'_{\mathrm{Yes}}&=4/9,\\p'_{\mathrm{Maybe}}&=3/9,\\p'_{\mathrm{No}}&=2/9.\end{aligned}$$
+
+      3. **Locate the draw.** Yes and Maybe together end at seven ninths, about $0.78$, so $u=0.85$ chooses No.
+         $$7/9\le0.85<1\quad\Rightarrow\quad\text{No}.$$
+
+      This complete Python example takes a nonempty list of positive probabilities summing to 1. As in top-k, tied probabilities keep their input order. We use `append` to add an index to `keep` before checking the threshold. Once the total reaches $p$, `break` exits the loop, leaving the crossing token included. The final loop repeats the worked draw $u=0.85$.
+
+      Floating-point sums can land just under $p$, so `math.fsum` adds the retained probabilities more accurately at the boundary.
+
+      ```python
+      import math
+
+      def top_p(probs, p):
+          if not 0 < p <= 1:
+              raise ValueError("p must be in (0, 1]")
+          order = sorted(
+              range(len(probs)),
+              key=lambda i: probs[i], reverse=True
+          )
+          keep = []
+          total = 0.0
+          for i in order:
+              keep.append(i)
+              total = math.fsum(probs[j] for j in keep)
+              if total >= p:
+                  break
+          result = [0.0] * len(probs)
+          for i in keep:
+              result[i] = probs[i] / total
+          return result
+
+      tokens = ["Yes", "Maybe", "No", "."]
+      filtered = top_p([0.4, 0.3, 0.2, 0.1], 0.8)
+      print([round(prob, 2) for prob in filtered])
+      cumulative = 0.0
+      for token, prob in zip(tokens, filtered):
+          cumulative += prob
+          if 0.85 < cumulative:
+              print(token)
+              break
+      # prints:
+      # [0.44, 0.33, 0.22, 0.0]
+      # No
+      ```
+    problems:
+      - pd-topp-basics
+      - pd-topp-example
+      - pd-topp-probability
+      - pd-topp-boundary
+      - pd-topp-code
+      - pd-topp-new-setting
+final: pd-final
+summary: |
+  - Prefill processes known prompt positions together and supplies the first output's probabilities. It contributes to TTFT. Later decode passes produce tokens one at a time and largely set ITL and the steady rate $1/\mathrm{ITL}$.
+  - Temperature $\tau>0$ divides logits before softmax. Lower values concentrate probability on high scores. Greedy decoding directly selects a highest-scoring token.
+  - Top-k keeps $k$ most probable tokens, then renormalises their probabilities and draws from them.
+  - Top-p keeps the smallest set of most likely tokens reaching total probability at least $p$, including the crossing token, then renormalises by the retained total and draws.
+
+  **Next:** We'll compare how much calculation prefill and decode do with how much data they move. That helps explain what limits their speed.

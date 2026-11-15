@@ -1,0 +1,822 @@
+concept: llm-serving
+exercises:
+  - id: lsv-batching-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What does continuous batching do?
+    options:
+      - id: a
+        text: After the whole batch finishes, it removes all sequences and starts another batch of requests.
+        correct: false
+        feedback: Waiting for the whole batch is static batching. Short replies leave slots idle.
+        category: incorrect_reasoning
+      - id: b
+        text: During each decode step, it speeds up the weight reads so every sequence gets its token sooner.
+        correct: false
+        feedback: Continuous batching changes which requests occupy slots. It does not speed up weight reads.
+        category: incorrect_reasoning
+      - id: c
+        text: Before each batch starts, it groups requests by prompt length and keeps those groups together.
+        correct: false
+        feedback: Grouping by prompt length does not refill slots as replies finish.
+        category: incorrect_reasoning
+      - id: d
+        text: After each decode step, it removes finished sequences and fills their slots with waiting requests.
+        correct: true
+        feedback: A slot is refilled after a decode step as soon as its sequence finishes.
+    solution: Continuous batching checks after every decode step and immediately replaces finished sequences with waiting requests, keeping slots busy.
+  - id: lsv-batching-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: In the worked example, static batching needs 8 steps but continuous batching needs 6 for the same 12 tokens. Why?
+    lesson_only: true
+    options:
+      - id: a
+        text: Continuous makes fewer reply tokens; static still makes all 12 requested tokens.
+        correct: false
+        feedback: Both schedules make all 12 tokens.
+        category: incorrect_reasoning
+      - id: b
+        text: Continuous uses 3 slots for requests; static has room for only 2 at a time.
+        correct: false
+        feedback: Both servers have exactly 2 slots.
+        category: incorrect_reasoning
+      - id: c
+        text: Static leaves slot 2 idle for 4 steps; continuous fills it with requests 3 and 4.
+        correct: true
+        feedback: Requests 3 and 4 use the time that slot 2 would otherwise spend idle.
+      - id: d
+        text: Continuous reduces each step below 5 ms; static still needs 5 ms for each step.
+        correct: false
+        feedback: Both schedules use 5 ms steps. Their numbers of steps differ.
+        category: incorrect_reasoning
+    solution: Static batching leaves slot 2 idle while request 1 finishes. Continuous batching runs requests 3 and 4 in that slot, finishing all 12 tokens in 6 steps.
+  - id: lsv-batching-why-free
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: Llama 3 8B is an 8-billion-parameter language model with 16 GB of weights. On one H100 GPU, why can decoding batches of 1 and 8 short sequences take about the same time per step?
+    options:
+      - id: a
+        text: The larger batch replaces the model weights with cached keys and values for each token.
+        correct: false
+        feedback: The KV cache stores earlier keys and values. Every step still reads the model weights.
+        category: incorrect_reasoning
+      - id: b
+        text: Both batches read all 16 GB of weights once; the extra token maths adds little time.
+        correct: true
+        feedback: For short sequences, weight reads dominate and are shared across the batch.
+      - id: c
+        text: Similar sequences skip most of the weights; their tokens reuse the first sequence's answer.
+        correct: false
+        feedback: Each sequence still runs the model with all its weights.
+        category: incorrect_reasoning
+      - id: d
+        text: The larger batch halves the bytes per weight; this offsets the extra tokens being made.
+        correct: false
+        feedback: Changing the batch size leaves the weight precision and size unchanged.
+        category: incorrect_reasoning
+    solution: Each step reads the same 16 GB of weights once for the batch. With short sequences, making 8 tokens adds little maths relative to those memory reads.
+  - id: lsv-batching-throughput-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A server decodes a batch of {{=B}} sequences. Each decode step takes {{=t}} ms. What is its throughput in tokens/s?
+    params:
+      B:
+        min: 8
+        max: 64
+        step: 8
+      t:
+        min: 4
+        max: 10
+        step: 1
+    constraints:
+      - B == 8 or B == 16 or B == 32 or B == 64
+      - t == 4 or t == 5 or t == 8 or t == 10
+    answer_expr: B*1000/t
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer_expr: 1000/t
+        category: math_error
+        feedback: That counts one token per step and omits the other sequences.
+      - answer_expr: B/t
+        category: math_error
+        feedback: Convert milliseconds to seconds when reporting tokens/s.
+      - answer_expr: B*t
+        category: math_error
+        feedback: Throughput divides tokens by elapsed time.
+    solution: Each step makes {{=B}} tokens in {{=t/1000}} seconds, giving {{=B}} / {{=t/1000}} = {{=B*1000/t}} tokens/s.
+  - id: lsv-batching-continuous-steps
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A server has 2 slots. Four requests arrive together needing replies of 5, 3, 1 and 1 tokens, served in that order with continuous batching. Their prompts are already processed. How many decode steps finish all four replies?
+    answer: 5
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer: 6
+        category: math_error
+        feedback: That waits for the first whole batch before starting the next pair.
+      - answer: 10
+        category: math_error
+        feedback: Ten is the total token count. Two slots can produce tokens together.
+    solution: Slot 1 makes the 5-token reply in 5 steps. Slot 2 makes the 3-token reply followed by the two 1-token replies, also in 5 steps.
+  - id: lsv-batching-faster-steps
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A learner says, "Switching from static to continuous batching raised throughput from 300 to 400 tokens/s, so each decode step must now take less time." What is wrong with this reasoning?
+    options:
+      - id: a
+        text: The batch limit alone sets throughput, so changing the schedule cannot affect tokens per second.
+        correct: false
+        feedback: A fixed batch limit can still have different numbers of idle slots.
+        category: incorrect_reasoning
+      - id: b
+        text: Continuous batching necessarily slows each step, so the throughput increase proves the reverse.
+        correct: false
+        feedback: Continuous batching does not necessarily change step time in either direction.
+        category: incorrect_reasoning
+      - id: c
+        text: The step time can stay the same while refilling idle slots increases useful tokens per second.
+        correct: true
+        feedback: More occupied slots can explain the throughput gain without any change in step time.
+      - id: d
+        text: The claim is right because throughput can rise only when every decode step becomes faster.
+        correct: false
+        feedback: Throughput also depends on how many slots produce useful tokens.
+        category: incorrect_reasoning
+    solution: Throughput measures useful tokens per second. Refilling slots can raise it from 300 to 400 tokens/s with the same decode-step time.
+  - id: lsv-batching-busy-share
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A static batch has 4 sequences with replies of 8, 6, 4 and 2 tokens. Prompts are already processed. What percentage of its slot-steps produce a token?
+    answer: 62.5
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer: 100
+        category: math_error
+        feedback: Finished sequences leave idle slots while the longest reply continues.
+      - answer: 37.5
+        category: math_error
+        feedback: That is the idle share, 12 of the 32 slot-steps.
+    solution: The batch runs 8 steps across 4 slots, giving 32 slot-steps. Its 20 reply tokens occupy 20/32 = 62.5% of them.
+  - id: lsv-batching-speech
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A text-to-speech server generates one audio chunk per active request each step. Reading model weights sets the step time, clips have different lengths, and requests are waiting. With the same slot limit, which schedule keeps the most slots producing chunks?
+    options:
+      - id: a
+        text: Replace each finished clip with a waiting clip at the next step.
+        correct: true
+        feedback: Refilling immediately avoids idle slots while longer clips finish.
+      - id: b
+        text: Wait until all clips in a batch finish before starting another batch.
+        correct: false
+        feedback: Waiting for the longest clip leaves shorter clips' slots idle.
+        category: incorrect_reasoning
+      - id: c
+        text: Use only one slot until its clip finishes, even when other slots are free.
+        correct: false
+        feedback: One occupied slot wastes the opportunity to generate several chunks per step.
+        category: incorrect_reasoning
+      - id: d
+        text: Leave a finished clip's slot empty for two steps before admitting another clip.
+        correct: false
+        feedback: An enforced delay adds idle slot-steps while requests wait.
+        category: incorrect_reasoning
+    solution: Refilling after every step keeps slots generating useful chunks. Different clip lengths otherwise leave slots idle until the longest clip finishes.
+  - id: lsv-paging-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What does PagedAttention do?
+    options:
+      - id: a
+        text: Compresses each token's keys and values into fewer bytes, tracked by a per-token compression table.
+        correct: false
+        feedback: Paging changes allocation. Each stored token still has the same keys and values.
+        category: incorrect_reasoning
+      - id: b
+        text: Reserves one continuous stretch per request for its longest allowed reply, tracked by a start address.
+        correct: false
+        feedback: A fixed reservation holds memory for tokens that may never exist.
+        category: incorrect_reasoning
+      - id: c
+        text: Moves each sequence's KV cache to CPU memory between steps, tracked by a transfer queue.
+        correct: false
+        feedback: Paging allocates GPU-memory blocks. It does not require moving caches to the CPU.
+        category: incorrect_reasoning
+      - id: d
+        text: Stores each sequence's KV cache in fixed-size blocks anywhere in memory, tracked by a block table.
+        correct: true
+        feedback: The block table lists each sequence's blocks in token order.
+    solution: PagedAttention assigns fixed-size GPU-memory blocks as tokens arrive. A block table lets attention find a sequence's blocks even when they are scattered.
+  - id: lsv-paging-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: In the worked example, why do 953 requests fit with paging but only 238 with fixed reservations?
+    lesson_only: true
+    options:
+      - id: a
+        text: Paging frees the 16 GB of weights and gives that memory to the requests' KV caches.
+        correct: false
+        feedback: The weights remain in memory. Both calculations use 64 GB for KV caches.
+        category: incorrect_reasoning
+      - id: b
+        text: Paging stores one shared KV cache for all requests instead of giving every request its own cache.
+        correct: false
+        feedback: Different requests still need their own keys and values.
+        category: incorrect_reasoning
+      - id: c
+        text: Each paged request holds 512 slots for 500 tokens; each fixed reservation holds 2,048 slots.
+        correct: true
+        feedback: Thirty-two 16-token blocks hold 512 tokens, saving slots compared with 2,048-token reservations.
+      - id: d
+        text: Each paged token takes fewer bytes for its keys and values than a token in a fixed reservation.
+        correct: false
+        feedback: Each token still takes 131,072 bytes with either allocation method.
+        category: incorrect_reasoning
+    solution: Paging allocates 32 blocks of 16 slots, or 512 slots per 500-token request. The same memory therefore fits 953 requests instead of 238 reservations of 2,048 slots.
+  - id: lsv-paging-blocks-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: A sequence has {{=T}} tokens. Its KV-cache blocks each hold 16 tokens. How many blocks must be allocated?
+    params:
+      T:
+        min: 20
+        max: 200
+        step: 5
+    constraints:
+      - mod(T,16) != 0
+    answer_expr: ceil(T/16)
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer_expr: floor(T/16)
+        category: math_error
+        feedback: A partly filled last block still occupies a whole block.
+    solution: "Round {{=T}}/16 up to include the partly filled last block: {{=ceil(T/16)}} blocks."
+  - id: lsv-paging-waste
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: With 16-token KV-cache blocks allocated as needed, what is the most token slots one nonempty sequence can leave unused?
+    options:
+      - id: a
+        text: 15 slots, when its last block contains only one token.
+        correct: true
+        feedback: Only the last block can be partly empty, so it can waste at most 15 slots.
+      - id: b
+        text: 16 slots, because one allocated block can be completely empty.
+        correct: false
+        feedback: A block is allocated when a token needs it. The last block contains at least one token.
+        category: incorrect_reasoning
+      - id: c
+        text: 0 slots, because every allocated block is always completely full.
+        correct: false
+        feedback: The last block may hold fewer than 16 tokens.
+        category: incorrect_reasoning
+      - id: d
+        text: As many slots as the longest allowed reply, regardless of its actual tokens.
+        correct: false
+        feedback: That describes fixed reservations. Paging allocates blocks as tokens arrive.
+        category: incorrect_reasoning
+    solution: Only the last block can have empty slots. Its first token causes allocation, leaving at most 16 - 1 = 15 unused slots.
+  - id: lsv-paging-capacity-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: Llama 3 8B is an 8-billion-parameter language model. At 16-bit precision its KV cache takes 131,072 bytes per token. A GPU has {{=G}} GB free for KV caches and reserves {{=R}} tokens per request. How many requests fit at most? Use GB = $10^9$ bytes.
+    params:
+      G:
+        min: 32
+        max: 64
+        step: 16
+      R:
+        min: 1024
+        max: 4096
+        step: 1024
+    constraints:
+      - R == 1024 or R == 2048 or R == 4096
+    answer_expr: floor(G*1e9/(131072*R))
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer_expr: ceil(G*1e9/(131072*R))
+        category: math_error
+        feedback: Rounding up admits a request whose reservation does not fit.
+      - answer_expr: G*1e9/R
+        category: math_error
+        feedback: Each reserved token costs 131,072 bytes, so divide by that too.
+    solution: Each reservation takes 131,072 times {{=R}} bytes. Rounding {{=G}} times $10^9$ divided by that size down gives {{=floor(G*1e9/(131072*R))}} requests.
+  - id: lsv-paging-smaller-cache
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A learner says, "Switching to PagedAttention makes each token's KV cache smaller, so Llama 3 8B's 131,072 bytes per token drops." What does paging actually change?
+    options:
+      - id: a
+        text: Each token uses half the precision; the block table restores the missing numerical accuracy.
+        correct: false
+        feedback: A block table stores locations. Paging does not change numerical precision.
+        category: incorrect_reasoning
+      - id: b
+        text: Each token stores only its newest layer; older layers are removed from the cache at every step.
+        correct: false
+        feedback: Every layer's cached keys and values remain available for attention.
+        category: incorrect_reasoning
+      - id: c
+        text: Each token keeps the same size; blocks avoid reserving memory for tokens that do not yet exist.
+        correct: true
+        feedback: The saving comes from allocating only the blocks a sequence currently needs.
+      - id: d
+        text: Each token stores only its keys; values are recomputed whenever the next token needs them.
+        correct: false
+        feedback: PagedAttention still stores both keys and values.
+        category: incorrect_reasoning
+    solution: Paging leaves the 131,072 bytes per stored token unchanged. It saves memory by avoiding unused slots in large fixed reservations.
+  - id: lsv-paging-other-model
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A model has 40 layers, 8 key-value heads per layer, head size 128, and 16-bit numbers taking 2 bytes each. KV-cache blocks hold 32 tokens and are allocated as needed. At most how many bytes of allocated cache can one sequence leave unused?
+    answer: 5079040
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer: 5242880
+        category: math_error
+        feedback: That counts an entirely empty block. The last allocated block contains at least one token.
+      - answer: 2539520
+        category: math_error
+        feedback: Count both keys and values when finding the bytes per token.
+    solution: Each token needs 2 times 40 times 8 times 128 times 2 = 163,840 bytes for keys and values. At most 31 slots are empty, wasting 31 times 163,840 = 5,079,040 bytes.
+  - id: lsv-parallel-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What is tensor parallelism?
+    options:
+      - id: a
+        text: Split each weight matrix across GPUs and exchange partial results each layer.
+        correct: true
+        feedback: Each GPU stores and reads its share of each matrix.
+      - id: b
+        text: Keep a full model copy on each GPU and give each copy different requests.
+        correct: false
+        feedback: Full copies serving different batches are replicas.
+        category: incorrect_reasoning
+      - id: c
+        text: Place different experts of a mixture-of-experts layer on different GPUs.
+        correct: false
+        feedback: Placing whole experts on different GPUs is expert parallelism.
+        category: incorrect_reasoning
+      - id: d
+        text: Place layers 1 to 16 on one GPU and layers 17 to 32 on another.
+        correct: false
+        feedback: That splits by whole layers. Each weight matrix still lives on one GPU.
+        category: incorrect_reasoning
+    solution: Tensor parallelism splits each weight matrix so each GPU stores and reads only its share. The GPUs exchange partial results in every layer.
+  - id: lsv-parallel-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: In the worked example, why does tensor parallelism over two GPUs cut the decode step to about 2.4 ms while two replicas stay at 4.8 ms, ignoring swaps?
+    lesson_only: true
+    options:
+      - id: a
+        text: Replicas share a single 16 GB copy of the weights and take turns reading that copy.
+        correct: false
+        feedback: Each replica stores its own complete 16 GB model.
+        category: incorrect_reasoning
+      - id: b
+        text: Tensor parallelism uses half as many bytes per number and restores them after the step.
+        correct: false
+        feedback: Splitting matrices leaves their precision unchanged.
+        category: incorrect_reasoning
+      - id: c
+        text: Tensor parallelism skips all result exchanges, which accounts for the entire time saving.
+        correct: false
+        feedback: Tensor parallelism needs exchanges. The 2.4 ms estimate leaves their time out.
+        category: incorrect_reasoning
+      - id: d
+        text: Each tensor-parallel GPU reads 8 GB of weights; each replica still reads all 16 GB.
+        correct: true
+        feedback: Halving the bytes read halves the weight-read time at the same bandwidth.
+    solution: At the same bandwidth, reading 8 GB takes half as long as reading 16 GB. Tensor parallelism splits those reads; replicas each retain a full 16 GB copy.
+  - id: lsv-parallel-row-split
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: A multiply is $y=Wx$, with $W=\begin{bmatrix}2&1\\0&3\end{bmatrix}$ and $x=(1,2)$. The rows are split over two GPUs, and GPU 2 holds the second row. What number does GPU 2 compute?
+    answer: 6
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer: 4
+        category: math_error
+        feedback: That uses row 1, which belongs to GPU 1.
+      - answer: 3
+        category: math_error
+        feedback: Multiply the second entry of the row by the second entry of x, which is 2.
+    solution: GPU 2 multiplies row (0, 3) by x = (1, 2), giving 0 times 1 + 3 times 2 = 6.
+  - id: lsv-parallel-step-time-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A dense model has {{=W}} GB of weights, split with tensor parallelism across {{=N}} GPUs. Each GPU reads memory at 2 TB/s. Ignoring result exchanges and KV-cache reads, about how many ms does one decode step take to read the weights?
+    params:
+      W:
+        min: 16
+        max: 48
+        step: 8
+      N:
+        min: 2
+        max: 8
+        step: 2
+    constraints:
+      - W == 16 or W == 24 or W == 32 or W == 48
+      - N == 2 or N == 4 or N == 8
+      - W/(2*N) != N
+    answer_expr: W/(2*N)
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer_expr: W/2
+        category: math_error
+        feedback: Divide the weight bytes among the GPUs before timing the read.
+      - answer_expr: W*N/2
+        category: math_error
+        feedback: Each GPU reads a smaller share as the GPU count increases.
+    solution: Each GPU reads {{=W/N}} GB at 2,000 GB/s. That takes {{=W/(2*N)}} ms.
+  - id: lsv-parallel-replicas
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A chat service on one H100 GPU meets its inter-token latency target but cannot serve enough users. The model fits easily and more GPUs are available. Which change most directly adds serving capacity?
+    options:
+      - id: a
+        text: Run additional model replicas on the available GPUs, each serving its own batches.
+        correct: true
+        feedback: Replicas serve more batches at once while preserving each GPU's step time.
+      - id: b
+        text: Shrink the batch limit on the existing GPU so fewer users decode at each step.
+        correct: false
+        feedback: A smaller batch reduces simultaneous useful tokens when latency is already acceptable.
+        category: incorrect_reasoning
+      - id: c
+        text: Place more long-prompt prefills in each decode step on the existing GPU.
+        correct: false
+        feedback: More prompt work can lengthen steps. It does not use the extra GPUs.
+        category: incorrect_reasoning
+      - id: d
+        text: Switch to static batching and wait for every reply before admitting another batch.
+        correct: false
+        feedback: Waiting for whole batches introduces idle slots.
+        category: incorrect_reasoning
+    solution: Additional replicas each run their own batches, raising total throughput. The service already meets its ITL target, so the extra GPUs can serve more users.
+  - id: lsv-parallel-expert-gpus
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A mixture-of-experts layer places experts 1 to 4 on GPU 1, 5 to 8 on GPU 2, 9 to 12 on GPU 3, and 13 to 16 on GPU 4. A token's router picks experts 6 and 15. Which GPUs run its experts?
+    options:
+      - id: a
+        text: All four GPUs.
+        correct: false
+        feedback: Every expert is stored, but only the selected experts run for this token.
+        category: incorrect_reasoning
+      - id: b
+        text: GPUs 2 and 3.
+        correct: false
+        feedback: Expert 15 belongs to the 13 to 16 group on GPU 4.
+        category: incorrect_reasoning
+      - id: c
+        text: Only GPU 2.
+        correct: false
+        feedback: GPU 2 runs expert 6, but expert 15 must also run on GPU 4.
+        category: incorrect_reasoning
+      - id: d
+        text: GPUs 2 and 4.
+        correct: true
+        feedback: Expert 6 is on GPU 2 and expert 15 is on GPU 4.
+    solution: Expert 6 lies in the 5 to 8 group and expert 15 in the 13 to 16 group. Their work runs on GPUs 2 and 4.
+  - id: lsv-parallel-big-model
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A dense model has 70 billion parameters stored at 16-bit precision, or 2 bytes each. Available GPUs each have 80 GB of memory. Which setup can hold its weights and serve it?
+    options:
+      - id: a
+        text: Place its experts on separate GPUs using expert parallelism.
+        correct: false
+        feedback: This is a dense model, so it has no separate experts to distribute.
+        category: incorrect_reasoning
+      - id: b
+        text: Use continuous batching to hold all its weights on one GPU.
+        correct: false
+        feedback: Scheduling requests does not reduce the model's 140 GB weight size.
+        category: incorrect_reasoning
+      - id: c
+        text: Split its weight matrices with tensor parallelism over two or more GPUs.
+        correct: true
+        feedback: The 140 GB of weights can be split into 70 GB shares over two GPUs.
+      - id: d
+        text: Run two full replicas, each on a separate GPU with 80 GB of memory.
+        correct: false
+        feedback: Each replica needs all 140 GB, exceeding one GPU's 80 GB.
+        category: incorrect_reasoning
+    solution: Seventy billion parameters at 2 bytes each need 140 GB. Tensor parallelism across two GPUs gives each 70 GB of weights, leaving some memory for caches.
+  - id: lsv-prefill-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What does chunked prefill do?
+    options:
+      - id: a
+        text: Caches whole prompts so all later requests can skip processing their prompt tokens.
+        correct: false
+        feedback: Chunking divides prompt processing over several steps. It does not let later requests skip their prompts.
+        category: incorrect_reasoning
+      - id: b
+        text: Splits a long prompt into pieces processed one per step alongside decoding sequences.
+        correct: true
+        feedback: Each step carries a bounded amount of prompt work.
+      - id: c
+        text: Runs all prompt processing on separate GPUs and copies the KV cache to decode GPUs.
+        correct: false
+        feedback: Separate prefill and decode GPUs are disaggregated serving.
+        category: incorrect_reasoning
+      - id: d
+        text: Shortens each prompt by dropping tokens before the model begins processing the request.
+        correct: false
+        feedback: Chunking processes every prompt token over several steps.
+        category: incorrect_reasoning
+    solution: Chunked prefill spreads the prompt's processing over several steps. Decoding sequences wait only for a piece of the prompt at each step.
+  - id: lsv-prefill-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: In the worked example, why can at most 625 prompt tokens fit in 10 ms of maths?
+    lesson_only: true
+    options:
+      - id: a
+        text: Each prompt token costs $1.6\times10^{10}$ FLOPs, and 10 ms allows $10^{13}$ FLOPs.
+        correct: true
+        feedback: Dividing the available FLOPs by the cost per token gives 625 tokens.
+      - id: b
+        text: The 2,000-token prompt is divided into 4 equal chunks, each containing 625 tokens.
+        correct: false
+        feedback: Four equal chunks of 2,000 tokens contain 500 tokens each.
+        category: incorrect_reasoning
+      - id: c
+        text: The GPU's memory bandwidth allows exactly 625 KV-cache tokens to be read in 10 ms.
+        correct: false
+        feedback: The estimate uses prefill maths speed, not KV-cache memory bandwidth.
+        category: incorrect_reasoning
+      - id: d
+        text: The batch has 625 decoding users, and each user adds one prompt token to the chunk.
+        correct: false
+        feedback: Chunk size counts prompt tokens. It is separate from the number of decoding users.
+        category: incorrect_reasoning
+    solution: In 10 ms the GPU performs $10^{13}$ FLOPs. Dividing by $1.6\times10^{10}$ FLOPs per prompt token gives 625 tokens.
+  - id: lsv-prefill-time-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A dense model has {{=N}} billion parameters. A GPU performs 1,000 TFLOP/s. Ignoring attention scores and other overhead, about how many ms does processing a {{=P}}-token prompt take?
+    params:
+      N:
+        min: 1
+        max: 8
+        step: 1
+      P:
+        min: 1000
+        max: 4000
+        step: 500
+    constraints:
+      - N == 1 or N == 3 or N == 8
+    answer_expr: 2*N*P/1000
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer_expr: N*P/1000
+        category: math_error
+        feedback: Each parameter contributes a multiply and an add for each prompt token.
+      - answer_expr: 2*N*P
+        category: math_error
+        feedback: Convert the FLOP rate and elapsed time into milliseconds.
+    solution: A multiply and an add cost 2 FLOPs per parameter per token. The prompt costs {{=2*N*P}} billion FLOPs, taking {{=2*N*P/1000}} ms at $10^{15}$ FLOP/s.
+  - id: lsv-prefill-spikes
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A chat server's inter-token latency is about 5 ms most of the time but jumps to about 30 ms when a long prompt arrives. Which change most directly reduces those prompt-induced gaps on the same GPU?
+    options:
+      - id: a
+        text: Raise the batch limit so more decoding requests share each long-prompt step.
+        correct: false
+        feedback: A larger batch does not reduce the prompt work in that step.
+        category: incorrect_reasoning
+      - id: b
+        text: Wait for whole batches to finish before admitting the next group of requests.
+        correct: false
+        feedback: Static batching adds waiting and does not divide the long prompt's work.
+        category: incorrect_reasoning
+      - id: c
+        text: Split long prompts into pieces processed over several steps.
+        correct: true
+        feedback: Smaller pieces bound the prompt work that delays a decoding step.
+      - id: d
+        text: Add replicas elsewhere while leaving long prompts whole on this GPU.
+        correct: false
+        feedback: This GPU still stalls when a whole long prompt joins its decode batch.
+        category: incorrect_reasoning
+    solution: Chunked prefill spreads the long prompt across steps. Each decoding step then waits for only one piece instead of the entire prompt.
+  - id: lsv-prefill-kv-copy
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: Disaggregated serving runs prefill and decode on separate GPUs. Llama 3 8B, an 8-billion-parameter language model, uses 131,072 bytes of KV cache per token at 16-bit precision. After a 1,000-token prompt is processed, how many GB of KV cache must be copied to the decode GPU? Use GB = $10^9$ bytes.
+    answer: 0.131072
+    tolerance:
+      abs: 0.002
+    common_wrong:
+      - answer: 0.065536
+        category: math_error
+        feedback: The stated per-token size already includes keys and values. Keep the full size.
+      - answer: 131.072
+        category: math_error
+        feedback: Divide bytes by a billion for GB. Dividing by a million gives MB.
+    solution: The prompt cache is 1,000 times 131,072 = 131,072,000 bytes. Dividing by $10^9$ gives 0.131072 GB.
+  - id: lsv-prefill-chunk-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: Llama 3 8B has 8 billion parameters. A GPU performs 1,000 TFLOP/s. To keep a prompt-processing step within an inter-token latency target of {{=t}} ms, what is the largest chunk in tokens? Ignore decoding's own maths, attention scores and other overhead.
+    params:
+      t:
+        min: 8
+        max: 20
+        step: 4
+    answer_expr: 62.5*t
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer_expr: 125*t
+        category: math_error
+        feedback: Each parameter needs both a multiply and an add per prompt token.
+    solution: Each prompt token costs $1.6\times10^{10}$ FLOPs. In {{=t}} ms the GPU can process {{=62.5*t}} tokens.
+  - id: lsv-prefill-overnight
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: An overnight job summarises 100,000 documents. Nobody watches the replies, the model fits on one GPU, and four identical GPUs are available. Which setup best prioritises total throughput over per-user token latency?
+    options:
+      - id: a
+        text: One tensor-parallel model across four GPUs with very small batches.
+        correct: false
+        feedback: Small batches leave fewer useful tokens per shared weight read and prioritise latency.
+        category: incorrect_reasoning
+      - id: b
+        text: One GPU using tiny prompt chunks to keep each token gap very short.
+        correct: false
+        feedback: Tiny token gaps are unnecessary for unattended work and leave three GPUs unused.
+        category: incorrect_reasoning
+      - id: c
+        text: One GPU serving one document at a time with a batch limit of one.
+        correct: false
+        feedback: That leaves three GPUs unused and shares no weight reads across requests.
+        category: incorrect_reasoning
+      - id: d
+        text: Four replicas, each serving large continuously refilled batches.
+        correct: true
+        feedback: Independent replicas and busy batch slots prioritise total tokens per second.
+    solution: Four replicas use all four GPUs for separate batches. Large continuous batches keep slots busy, which suits an unattended job that values throughput.
+  - id: lsv-prefill-code-assistant
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A coding assistant receives whole files as long prompts and produces short replies. Long prompts arrive almost every step, so prompt work keeps delaying decode even with chunking. Which setup most directly isolates decoding from that work?
+    options:
+      - id: a
+        text: Use static batching so new requests wait for all current replies before starting.
+        correct: false
+        feedback: Static batching changes admission timing but still mixes prompt work and decode on the same GPUs.
+        category: incorrect_reasoning
+      - id: b
+        text: Reserve the longest possible reply's KV-cache memory for every request at admission.
+        correct: false
+        feedback: Fixed reservations waste memory and do not isolate prompt maths from decode.
+        category: incorrect_reasoning
+      - id: c
+        text: Use separate prefill and decode GPUs, copying each prompt's KV cache between them.
+        correct: true
+        feedback: Dedicated decode GPUs avoid doing the prompt maths in their own steps.
+      - id: d
+        text: Make each prompt chunk larger so a decoding step processes more prompt tokens at once.
+        correct: false
+        feedback: Larger chunks lengthen the prompt work delaying a decode step.
+        category: incorrect_reasoning
+    solution: Disaggregated serving runs prompt maths on prefill GPUs and sends the resulting KV cache to decode GPUs. This separates the recurring prompt work from decode steps.
+  - id: lsv-explain
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 3
+    est_minutes: 4
+    prompt: Explain how continuous batching raises a chat server's throughput, why storing the KV cache in blocks lets the batch grow, and what you would change if inter-token latency jumped whenever a long prompt arrived.
+    rubric:
+      - id: r1
+        criterion: Explain that continuous batching replaces finished sequences after every decode step so slots do not sit idle.
+        weight: 1
+        required: true
+      - id: r2
+        criterion: Explain that every sequence needs KV-cache memory and paged blocks are handed out as needed, so memory is not held for tokens that do not exist yet and more sequences fit.
+        weight: 1
+        required: true
+      - id: r3
+        criterion: Explain that long prompts can be split into chunks processed over several steps with chunked prefill, or prefill can run on separate GPUs that copy the KV cache to decode GPUs.
+        weight: 1
+        required: true
+      - id: r4
+        criterion: Explain that a decode step reads all the weights whatever the batch size, so extra sequences cost little time.
+        weight: 1
+        required: false
+      - id: r5
+        criterion: Explain that each sequence wastes less than one block.
+        weight: 1
+        required: false
+    exemplar: Continuous batching replaces finished sequences after every decode step, keeping slots busy while each step still takes about the same time. A decode step reads all the weights whatever the batch size. Every sequence needs KV-cache memory. PagedAttention hands out blocks as needed, avoiding memory held for tokens that do not exist yet, so more sequences fit. Only the last block can be partly empty, wasting less than one block per sequence. If long prompts caused inter-token latency jumps, I would split them into chunks processed over several steps. Another option is to run prefill on separate GPUs and copy each prompt's KV cache to a decode GPU.
+    solution: Continuous batching keeps slots busy by replacing finished sequences after each decode step, with about the same step time. Allocating KV-cache blocks as needed leaves room for more sequences. Chunked prefill spreads long prompts over several steps, or separate prefill GPUs copy the KV cache to decode GPUs to keep prompt work out of decode steps.

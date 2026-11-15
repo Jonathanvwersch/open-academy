@@ -1,0 +1,248 @@
+concept: inference-metrics
+version: 1
+objective: |
+  **Goal:** compute time to first token, inter-token latency, tokens per second and end-to-end latency from a request trace, summarise many requests with percentiles, and explain how batching can improve throughput, lengthen each user's wait and reach a throughput plateau.
+recap:
+  - concept: autoregressive-lm
+    text: "A language model writes text one token at a time. It predicts a next-token distribution, chooses a token, adds it to the text and runs again, so each new token needs another run of the model."
+where_this_fits: |
+  ### What are inference metrics?
+
+  Inference means running a trained model to answer requests. Inference metrics are the numbers that say how fast it does that. They tell us how long a user waits before the reply starts, how quickly the rest appears, and how many tokens the server writes per second for all its users together.
+
+  Why do we need them? A reply can feel slow because it takes long to start or because it then trickles in, and these have different causes and fixes. Users care about their own wait, while whoever pays for the computer chips that run the model cares about how many users they serve. Serving more users at once can improve throughput while making replies slower, so we need numbers for both sides.
+knowledge_points:
+  - id: infm-one-request
+    title: "Measure the wait for one reply"
+    explain: |
+      ### Following one request
+
+      Our example in this course is a chat assistant that runs the Llama 3 8B model. It has about 8 billion parameters, the learned numbers inside it. It runs on one NVIDIA H100 SXM GPU, a chip built for the maths that models do.
+
+      A user sends a message at time 0. Before anything appears, the server has to run the model over the whole prompt and choose the first token. This first run usually takes much longer than each later token. After that, as we saw in the autoregressive language models lesson, each new token needs another run of the model, so the reply arrives one token at a time. Chat apps usually show each token as soon as it's made, which is called **streaming**.
+
+      To measure this, we record a **request trace**, a log of when each event happened. The picture shows a made-up trace for a short reply of 5 tokens. The first token arrives at 250 ms, and the others follow every 20 ms.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 215" aria-label="A timeline in milliseconds for one reply of 5 tokens. The request is sent at 0 ms and the tokens arrive at 250, 270, 290, 310 and 330 ms. An orange bracket from 0 to 250 ms marks the time to first token, 250 ms. A blue bracket from 250 to 270 ms marks one inter-token latency, 20 ms. A black bracket below the timeline from 0 to 330 ms marks the end-to-end latency, 330 ms">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <text x="40" y="28" fill="#737373">one reply of 5 tokens, times in ms</text>
+      <path d="M40 120 H600" stroke="#d4d4d4" stroke-width="2"/>
+      <circle cx="40" cy="120" r="5" fill="#737373"/>
+      <circle cx="440" cy="120" r="5" fill="#171717"/>
+      <circle cx="472" cy="120" r="5" fill="#171717"/>
+      <circle cx="504" cy="120" r="5" fill="#171717"/>
+      <circle cx="536" cy="120" r="5" fill="#171717"/>
+      <circle cx="568" cy="120" r="5" fill="#171717"/>
+      <text x="40" y="146" text-anchor="middle" font-size="13">0</text>
+      <text x="440" y="146" text-anchor="middle" font-size="13">250</text>
+      <text x="472" y="146" text-anchor="middle" font-size="13">270</text>
+      <text x="504" y="146" text-anchor="middle" font-size="13">290</text>
+      <text x="536" y="146" text-anchor="middle" font-size="13">310</text>
+      <text x="568" y="146" text-anchor="middle" font-size="13">330</text>
+      <text x="48" y="104" fill="#737373">request sent</text>
+      <path d="M40 92 V82 H440 V92" stroke="#f59e0b" stroke-width="2.5" fill="#ffffff" fill-opacity="0"/>
+      <text x="240" y="72" text-anchor="middle" fill="#f59e0b">time to first token = 250 ms</text>
+      <path d="M440 104 V94 H472 V104" stroke="#3b82f6" stroke-width="2.5" fill="#ffffff" fill-opacity="0"/>
+      <text x="456" y="62" text-anchor="middle" fill="#3b82f6">ITL = 20 ms</text>
+      <path d="M456 66 V90" stroke="#3b82f6" stroke-width="1.5"/>
+      <path d="M40 160 V170 H568 V160" stroke="#171717" stroke-width="2.5" fill="#ffffff" fill-opacity="0"/>
+      <text x="304" y="194" text-anchor="middle">end-to-end latency = 330 ms</text>
+      </g>
+      </svg>
+      ```
+
+      ### Three waits we measure
+
+      Latency just means a waiting time. We measure three of them.
+
+      **Time to first token (TTFT)** is the time from sending the request until the first output token arrives. Here it's 250 ms, shown by the orange bracket.
+
+      **Inter-token latency (ITL)** is the gap between two consecutive output tokens. Here every gap is 20 ms, shown by the blue bracket. In real traces the gaps vary a little, so we report their average. We take the time from the first token to the last and divide it by the number of gaps.
+
+      **End-to-end latency** is the time from sending the request until the last token arrives. A reply of $N$ tokens has its first token and then $N-1$ gaps, so
+
+      $$\text{end-to-end latency}=\text{TTFT}+(N-1)\times\text{ITL}.$$
+
+      Be careful to count the gaps. Five tokens have only four gaps between them. The wait before the first token is already counted in the TTFT, so it isn't a gap.
+
+      ### Tokens per second for one user
+
+      Once the reply starts, how fast does it appear? One token every 20 ms is 50 tokens per second (tokens/s). So a user's **tokens per second** while the reply streams is one divided by the ITL, with the ITL in seconds:
+
+      $$\text{tokens/s}=\frac{1}{\text{ITL}}.$$
+    worked: |
+      Let's read the four numbers off a longer made-up trace from our chat assistant. The user sends a message at 0 s. The first output token arrives at 0.30 s, and the 101st and last token arrives at 2.30 s.
+
+      1. **Read off the time to first token.** It's the arrival time of the first token, measured from when the request was sent.
+         $$\text{TTFT}=0.30\ \text{s}$$
+
+      2. **Find the average inter-token latency.** The 101 tokens have 100 gaps between them, and those gaps fill the time from the first token to the last.
+         $$\text{ITL}=\frac{2.30-0.30}{100}=0.02\ \text{s}$$
+
+      3. **Turn the ITL into tokens per second.** On average a new token arrives every 0.02 s, which is 20 ms, so one second holds $1/0.02$ of them.
+         $$\frac{1}{0.02\ \text{s}}=50\ \text{tokens/s}$$
+
+      4. **Check the end-to-end latency with the formula.** The TTFT plus 100 gaps should give the last token's arrival time.
+         $$0.30+100\times0.02=2.30\ \text{s}$$
+
+      So this user waited 0.3 s for the reply to start, then read it as it streamed in at 50 tokens/s, and had the whole reply after 2.3 s.
+    problems:
+      - infm-trace-basics
+      - infm-trace-self-explain
+      - infm-which-metric
+      - infm-e2e-template
+      - infm-avg-itl
+      - infm-off-by-one
+      - infm-speed-template
+      - infm-two-assistants
+      - infm-autocomplete
+  - id: infm-percentiles
+    title: "Describe the waits of many users"
+    explain: |
+      ### Many requests, many different waits
+
+      Our chat assistant answers thousands of requests, and their times differ, because some prompts are longer and some arrive when the server is busy and have to wait their turn. How do we describe all of them with a few numbers?
+
+      The picture shows ten made-up times to first token from our assistant, as orange bars sorted from fastest to slowest. We'll come to the labels p50 and p90 in a moment.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 340" aria-label="Ten orange bars, the times to first token of ten requests sorted from fastest to slowest: 180, 190, 200, 200, 210, 220, 230, 250, 400 and 1200 ms. A red line across the chart marks the mean, 328 ms, which is higher than eight of the ten bars. Bar 5, 210 ms, is labelled p50, and bar 9, 400 ms, is labelled p90">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <text x="40" y="28" fill="#737373">time to first token (ms) of 10 requests</text>
+      <path d="M40 260 H560" stroke="#d4d4d4" stroke-width="2"/>
+      <rect x="60" y="230" width="36" height="30" fill="#f59e0b"/><text x="78" y="248" text-anchor="middle" font-size="13">180</text><text x="78" y="280" text-anchor="middle" font-size="13" fill="#737373">1</text>
+      <rect x="110" y="228.33" width="36" height="31.67" fill="#f59e0b"/><text x="128" y="246.33" text-anchor="middle" font-size="13">190</text><text x="128" y="280" text-anchor="middle" font-size="13" fill="#737373">2</text>
+      <rect x="160" y="226.67" width="36" height="33.33" fill="#f59e0b"/><text x="178" y="244.67" text-anchor="middle" font-size="13">200</text><text x="178" y="280" text-anchor="middle" font-size="13" fill="#737373">3</text>
+      <rect x="210" y="226.67" width="36" height="33.33" fill="#f59e0b"/><text x="228" y="244.67" text-anchor="middle" font-size="13">200</text><text x="228" y="280" text-anchor="middle" font-size="13" fill="#737373">4</text>
+      <rect x="260" y="225" width="36" height="35" fill="#f59e0b"/><text x="278" y="243" text-anchor="middle" font-size="13">210</text><text x="278" y="280" text-anchor="middle" font-size="13" fill="#737373">5</text>
+      <rect x="310" y="223.33" width="36" height="36.67" fill="#f59e0b"/><text x="328" y="241.33" text-anchor="middle" font-size="13">220</text><text x="328" y="280" text-anchor="middle" font-size="13" fill="#737373">6</text>
+      <rect x="360" y="221.67" width="36" height="38.33" fill="#f59e0b"/><text x="378" y="239.67" text-anchor="middle" font-size="13">230</text><text x="378" y="280" text-anchor="middle" font-size="13" fill="#737373">7</text>
+      <rect x="410" y="218.33" width="36" height="41.67" fill="#f59e0b"/><text x="428" y="236.33" text-anchor="middle" font-size="13">250</text><text x="428" y="280" text-anchor="middle" font-size="13" fill="#737373">8</text>
+      <rect x="460" y="193.33" width="36" height="66.67" fill="#f59e0b"/><text x="478" y="185.33" text-anchor="middle" font-size="13">400</text><text x="478" y="280" text-anchor="middle" font-size="13" fill="#737373">9</text>
+      <rect x="510" y="60" width="36" height="200" fill="#f59e0b"/><text x="528" y="52" text-anchor="middle" font-size="13">1200</text><text x="528" y="280" text-anchor="middle" font-size="13" fill="#737373">10</text>
+      <path d="M40 205.33 H560" stroke="#ef4444" stroke-width="2"/>
+      <text x="60" y="196" fill="#ef4444">mean = 328 ms</text>
+      <text x="278" y="302" text-anchor="middle" font-weight="bold">p50</text>
+      <text x="478" y="302" text-anchor="middle" font-weight="bold">p90</text>
+      <text x="300" y="328" text-anchor="middle" fill="#737373">requests, sorted from fastest to slowest</text>
+      </g>
+      </svg>
+      ```
+
+      The mean is the sum of the times divided by how many there are. Here it's 328 ms, shown by the red line. Yet 8 of the 10 users waited 250 ms or less, and one waited 1.2 s. One slow request pulls the mean above what 8 of the 10 users waited.
+
+      ### Percentiles
+
+      In our list, 9 of the 10 users waited 400 ms or less, so the 90th percentile, written **p90**, is 400 ms. A **percentile** is a value at a chosen position in the sorted times. **p50** describes a typical wait, and **p99** describes the slow end. The slowest few requests are called the **tail**.
+
+      We'll use the nearest-rank rule. Sort the $n$ values from fastest to slowest. The $p$th percentile is the value at position $p\times n/100$, rounded up to a whole number. At least $p$% of the values are at or below it, and at most $(100-p)$% are strictly above it. Ties can put many requests exactly at that value, but still at most $(100-p)$% are strictly above it.
+
+      ### Why the tail matters
+
+      A fast typical reply can coexist with much slower replies. Percentiles help expose those waits. A percentile describes only the requests you recorded, and future requests can go differently. Service operators often set latency targets such as "p90 TTFT under 500 ms". Measuring p99 well needs hundreds of requests or more.
+    worked: |
+      Let's summarise the ten times to first token from our chat assistant, sorted from fastest to slowest in milliseconds: 180, 190, 200, 200, 210, 220, 230, 250, 400 and 1200.
+
+      1. **Find the mean.** We add up the ten times and divide by ten.
+         $$\frac{3280}{10}=328\ \text{ms}$$
+
+      2. **Find p50.** With the nearest-rank rule, p50 is at position $50\times10/100=5$, so it's the 5th value.
+         $$\text{p50}=210\ \text{ms}$$
+
+      3. **Find p90.** The position is $90\times10/100=9$, so p90 is the 9th value.
+         $$\text{p90}=400\ \text{ms}$$
+
+      4. **Find p99.** The position is $99\times10/100=9.9$, which rounds up to 10, the slowest request.
+         $$\text{p99}=1200\ \text{ms}$$
+
+      The typical user waited 210 ms, and 9 in 10 waited at most 400 ms. No one waited close to the mean of 328 ms, because most waited much less and one much longer. With only ten requests we can't pick out the slowest 1%, so rounding up makes p99 the slowest request, and we'd need many more requests to trust it.
+    problems:
+      - infm-pct-basics
+      - infm-pct-self-explain
+      - infm-p90-itl
+      - infm-p50-e2e
+      - infm-rank-template
+      - infm-which-percentile
+      - infm-mean-vs-tail
+      - infm-robot-p99
+  - id: infm-batching
+    title: "Serve many users at the same time"
+    explain: |
+      ### Throughput
+
+      A server's **throughput** is the total number of output tokens it writes per second across all requests.
+
+      **Batching** runs the model on several requests at once. Each request's text so far is a sequence, and the number of sequences is the batch size $B$. One run gives each of them its next token. So one run makes $B$ tokens.
+
+      ### Why a batch is cheap
+
+      Why doesn't a run with $B$ sequences take $B$ times as long? The model's parameters, called weights, live in the GPU's main memory. They're too big for the chip's on-chip storage, so each run reads all 8 billion of them again. Then it does maths with them for each sequence.
+
+      At 2 bytes (16 bits) per weight that's about 16 GB, where 1 GB is $10^9$ bytes. The H100's main memory delivers about 3.35 TB, or 3,350 GB, per second, where 1 TB is $10^{12}$ bytes, so one read takes about $16/3350\approx0.0048$ s, or 4.8 ms. The maths grows with $B$, but the read is the same for any batch. For our assistant, the read is still most of each run even with 64 sequences.
+
+      ### Throughput and each user's wait
+
+      The table below uses a made-up server whose maths is much slower, so its maths catches up with the read. These are the runs after the first token, so each run's time is each user's ITL.
+
+      | $B$ | Time per run (ITL) | Each user's tokens/s | Throughput (tokens/s) |
+      | --- | --- | --- | --- |
+      | 1 | 10 ms | 100 | 100 |
+      | 8 | 12.5 ms | 80 | 640 |
+      | 32 | 20 ms | 50 | 1,600 |
+      | 64 | 40 ms | 25 | 1,600 |
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 310" aria-label="Two bar charts over batch sizes 1, 8, 32 and 64. Left, green bars of throughput: 100, 640, 1600 and 1600 tokens per second. Right, blue bars of each user's tokens per second: 100, 80, 50 and 25">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <text x="40" y="30" fill="#10b981">throughput (tokens/s)</text>
+      <text x="340" y="30" fill="#3b82f6">each user's tokens/s</text>
+      <path d="M40 250 H300 M340 250 H600" stroke="#d4d4d4" stroke-width="2"/>
+      <rect x="50" y="238.75" width="40" height="11.25" fill="#10b981"/><text x="70" y="230.75" text-anchor="middle" font-size="13">100</text><text x="70" y="270" text-anchor="middle" font-size="13" fill="#737373">B = 1</text>
+      <rect x="110" y="178" width="40" height="72" fill="#10b981"/><text x="130" y="170" text-anchor="middle" font-size="13">640</text><text x="130" y="270" text-anchor="middle" font-size="13" fill="#737373">B = 8</text>
+      <rect x="170" y="70" width="40" height="180" fill="#10b981"/><text x="190" y="62" text-anchor="middle" font-size="13">1600</text><text x="190" y="270" text-anchor="middle" font-size="13" fill="#737373">B = 32</text>
+      <rect x="230" y="70" width="40" height="180" fill="#10b981"/><text x="250" y="62" text-anchor="middle" font-size="13">1600</text><text x="250" y="270" text-anchor="middle" font-size="13" fill="#737373">B = 64</text>
+      <rect x="350" y="70" width="40" height="180" fill="#3b82f6"/><text x="370" y="62" text-anchor="middle" font-size="13">100</text><text x="370" y="270" text-anchor="middle" font-size="13" fill="#737373">B = 1</text>
+      <rect x="410" y="106" width="40" height="144" fill="#3b82f6"/><text x="430" y="98" text-anchor="middle" font-size="13">80</text><text x="430" y="270" text-anchor="middle" font-size="13" fill="#737373">B = 8</text>
+      <rect x="470" y="160" width="40" height="90" fill="#3b82f6"/><text x="490" y="152" text-anchor="middle" font-size="13">50</text><text x="490" y="270" text-anchor="middle" font-size="13" fill="#737373">B = 32</text>
+      <rect x="530" y="205" width="40" height="45" fill="#3b82f6"/><text x="550" y="197" text-anchor="middle" font-size="13">25</text><text x="550" y="270" text-anchor="middle" font-size="13" fill="#737373">B = 64</text>
+      <text x="170" y="298" text-anchor="middle" fill="#737373">batch size</text>
+      <text x="470" y="298" text-anchor="middle" fill="#737373">batch size</text>
+      </g>
+      </svg>
+      ```
+
+      With the ITL in seconds,
+
+      $$\text{throughput}=\frac{B}{\text{ITL}}.$$
+
+      Sharing weight reads can raise throughput. Larger batches can also lengthen each run, and so each user's ITL, as on this server. Once the maths takes most of each run, throughput can level off, or saturate. From 32 to 64 the run time doubles, so throughput stays at 1,600 tokens/s.
+
+      Teams pick the batch with the most throughput that still meets their targets for each user, and the smaller one if two tie.
+    worked: |
+      Let's choose a batch size for the made-up server in the table. The team wants every user to see at least 40 tokens/s, which means an ITL of 25 ms or less. Among the batch sizes that manage that, it wants the one with the most throughput.
+
+      1. **Check each user's tokens per second.** A user gets one token per run, so their speed is one divided by the time per run in seconds. The slowest runs, at $B=64$, give $1/0.04=25$ tokens/s. That's below 40, so we drop $B=64$. The others give 100, 80 and 50 tokens/s, so they stay.
+
+      2. **Find the throughput of the ones left.** Each run makes $B$ tokens, so throughput is $B$ divided by the time per run. The biggest batch left gives $32/0.02=1600$ tokens/s, against $8/0.0125=640$ at $B=8$ and 100 at $B=1$.
+
+      3. **Pick the highest throughput.** $B=32$ gives 1,600 tokens/s, sixteen times the throughput of $B=1$.
+
+      Each user pays for this in waiting time. To keep things simple, suppose the TTFT is 0.3 s at both sizes. A 101-token reply then takes $0.3+100\times0.02=2.3$ s at $B=32$, against $0.3+100\times0.01=1.3$ s at $B=1$.
+    problems:
+      - infm-batch-basics
+      - infm-batch-self-explain
+      - infm-throughput-template
+      - infm-batch-itl
+      - infm-batch-tradeoff
+      - infm-bigger-batch-claim
+      - infm-choose-batch
+      - infm-overnight-job
+final: infm-explain-final
+summary: |
+  - Time to first token (TTFT) is the wait from sending a request until the first output token arrives, and inter-token latency (ITL) is the gap between consecutive output tokens.
+  - A reply of $N$ tokens has end-to-end latency $\text{TTFT}+(N-1)\times\text{ITL}$, and while it streams, the user sees $1/\text{ITL}$ tokens per second.
+  - With nearest rank, at least 50%, 90% and 99% of requests are at or below p50, p90 and p99 respectively. At most 1% are strictly above p99, and ties can put many requests exactly at it. Percentiles help reveal slow waits that the mean can hide.
+  - Batching gives every sequence in a batch its next token in one run, so throughput is $B/\text{ITL}$. Sharing weight reads can improve throughput before saturation, but gains can plateau. Larger batches can lengthen runs and slow each user's stream, as they do on the made-up server.
+
+  **Next:** The prefill and decode lesson splits a request into its two phases, reading the prompt and writing tokens one at a time, and shows which one sets the TTFT and which sets the ITL.

@@ -1,0 +1,340 @@
+concept: quantization
+version: 1
+objective: |
+  **Goal:** store a model's numbers in 8 or 4 bits, work out how much memory and time that saves, choose which numbers to shrink, and check that the model still gives good answers.
+recap:
+  - concept: gpu-inference-basics
+    text: "A model's weights take its parameter count times the bytes per number, so Llama 3 8B at 16 bits fills about 16 GB of an H100's 80 GB. Each decode step reads every weight from memory."
+where_this_fits: |
+  ### What is quantisation?
+
+  Quantisation means storing a model's numbers with fewer bits, for example as 8-bit integers in place of 16-bit floating-point numbers. Each number becomes a small whole number, and one scale shared by a group of numbers turns them back into roughly their original values. We can quantise the weights and the activations, the numbers flowing between layers.
+
+  Why is it useful? Recall that a model's weights fill its number of parameters times the bytes per number in memory, and decoding reads every weight from GPU memory for each new token. So fewer bytes per weight means a smaller model that also generates faster. The price is a small rounding error in every number, and we have to check that the model's answers survive it.
+knowledge_points:
+  - id: qz-memory-speed
+    title: "Count the memory and time that fewer bits save"
+    explain: |
+      ### Our running example
+
+      Throughout this lesson we follow a chat assistant that serves Llama 3 8B on one NVIDIA H100 SXM GPU. SXM is the version built into the server board, which has faster memory than the plug-in card. The model has about 8 billion parameters in 32 layers. The GPU has 80 GB of memory, which it can read at about 3.35 TB/s. We count in decimal units, so a GB is $10^9$ bytes and a TB is $10^{12}$ bytes.
+
+      ### Memory at each precision
+
+      At 16 bits, which is 2 bytes per number ($b=2$), Llama 3 8B needs $8\times10^9\times2=16$ GB. The bars show the same model at four precisions, starting from 32-bit floating point (FP32, 4 bytes). Each halving of the bits halves the memory, so 8-bit integers (INT8, 1 byte) need 8 GB and 4-bit integers (INT4, half a byte) need 4 GB. Beside each bar is the time to read those weights once, which we use next.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" aria-label="Bars of Llama 3 8B weight memory at four precisions, drawn to scale against the H100's 80 GB: 32 GB at FP32, 16 GB at 16 bits, 8 GB at INT8 and 4 GB at INT4. Beside each bar is the shortest time to read all the weights once at 3.35 TB/s: about 9.6, 4.8, 2.4 and 1.2 milliseconds">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <path d="M150 40 V270" stroke="#d4d4d4"/>
+      <path d="M550 40 V270" stroke="#737373" stroke-dasharray="6 5"/>
+      <text x="550" y="30" text-anchor="middle" fill="#737373">80 GB of GPU memory</text>
+      <text x="140" y="80" text-anchor="end">FP32</text><rect x="150" y="62" width="160" height="26" fill="#3b82f6"/><text x="320" y="80">32 GB, 9.6 ms</text>
+      <text x="140" y="135" text-anchor="end">16-bit</text><rect x="150" y="117" width="80" height="26" fill="#3b82f6"/><text x="240" y="135">16 GB, 4.8 ms</text>
+      <text x="140" y="190" text-anchor="end">INT8</text><rect x="150" y="172" width="40" height="26" fill="#3b82f6"/><text x="200" y="190">8 GB, 2.4 ms</text>
+      <text x="140" y="245" text-anchor="end">INT4</text><rect x="150" y="227" width="20" height="26" fill="#3b82f6"/><text x="180" y="245">4 GB, 1.2 ms</text>
+      <text x="150" y="292" fill="#737373">weight memory, and the time to read it once</text>
+      </g>
+      </svg>
+      ```
+
+      ### Speed during decode
+
+      Each decode step produces one more token, and to make it the GPU has to read every weight from memory. With one request at a time, the multiplications are quick and the reading is what takes the time, so the time per token is about
+
+      $$\text{time per token}\approx\frac{\text{bytes of weights}}{\text{memory bandwidth}}.$$
+
+      At 16 bits that's $16\times10^9/(3.35\times10^{12})\approx4.8$ ms, so at most about 209 tokens per second. Halving the bytes halves this time, so INT8 weights allow about twice as many tokens per second. The smaller model also leaves more of the 80 GB free for the other numbers each request stores while it generates, so the GPU can serve more requests at once.
+
+      Prefill doesn't get this speed-up. When the model reads the prompt, it does many multiplications for each weight it reads, so its time is set by how fast the GPU does maths. Smaller weights alone don't make that faster. We'll see what does in the third step.
+    worked: |
+      Let's estimate the fastest decode speed for Llama 3 8B on the H100 when its weights are stored as INT4, with one request at a time. We'll ignore everything except reading the weights, so this is a best case.
+
+      1. **Find the bytes per weight.** INT4 uses 4 bits, and a byte is 8 bits.
+         $$b=4/8=0.5\text{ bytes}$$
+
+      2. **Find the size of the weights.** We multiply the number of parameters by the bytes per weight.
+         $$8\times10^9\times0.5=4\times10^9\text{ bytes}=4\text{ GB}$$
+
+      3. **Divide by the memory bandwidth.** Each token needs one full read of the weights.
+         $$\frac{4\times10^9}{3.35\times10^{12}}\approx1.19\times10^{-3}\text{ s}\approx1.2\text{ ms}$$
+
+      4. **Turn the time into tokens per second.** One token every $1.19$ ms, which is $0.00119$ s, gives
+         $$1/0.00119\approx840\text{ tokens/s}$$
+
+      That's four times the 16-bit figure of about 209 tokens per second, because the weights are a quarter of the size. Real systems reach less than this, because they also read other data and never use the full bandwidth.
+    problems:
+      - qz-memory-speed-basics
+      - qzp-memory-self-explain
+      - qzp-memory-template
+      - qzp-decode-time-template
+      - qzp-prefill-speed
+      - qzp-fit-gpu
+      - qzp-upper-bound
+  - id: qz-int8-scale
+    title: "Turn numbers into 8-bit integers"
+    explain: |
+      ### The idea
+
+      We want to turn each weight into an 8-bit integer and back. An 8-bit integer holds whole numbers from $-128$ to $127$. We'll use only $-127$ to $127$, so that a number and its negative always get integers of the same size. This is **symmetric** quantisation: the range is the same on both sides of 0.
+
+      We pick one scale $s$ for a group of numbers, such as a whole weight matrix or one row of it. Think of $s$ as the gap between neighbouring stored values (we'll see how to choose it below). Dividing by $s$ puts the group's largest number at $127$ and every other number in proportion. Then we round. In the diagram, the top line holds the weights $x$ and the bottom line their integers $q$. Dividing by $s=0.01$ sends $-1.27$ to $-127$ and $1.27$ to $127$, so each weight sits above its integer, and rounding moves it under half a step. The small 0 on each line marks zero.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" aria-label="Two number lines. The top line runs from -1.27 to 1.27 and marks four weights: -0.514, 0.006, 0.333 and 1.27. The bottom line runs from -127 to 127, with 0 marked in the middle of both lines, and marks their integers: -51, 1, 33 and 127. A nearly vertical line joins each weight to its integer, because dividing by the scale 0.01 sends each weight right above its integer and rounding moves each point less than half a step">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <text x="20" y="95">x</text>
+      <path d="M60 90 H580" stroke="#737373"/>
+      <text x="20" y="235">q</text>
+      <path d="M60 230 H580" stroke="#737373"/>
+      <text x="60" y="115" text-anchor="middle" fill="#737373">-1.27</text>
+      <text x="60" y="255" text-anchor="middle" fill="#737373">-127</text>
+      <path d="M60 84 V96 M320 84 V96 M580 84 V96" stroke="#737373"/>
+      <path d="M60 224 V236 M320 224 V236 M580 224 V236" stroke="#737373"/>
+      <text x="314" y="112" text-anchor="end" fill="#737373">0</text>
+      <text x="314" y="218" text-anchor="end" fill="#737373">0</text>
+      <path d="M214.77 90 L215.59 230" stroke="#3b82f6" stroke-width="2"/>
+      <path d="M321.23 90 L322.05 230" stroke="#3b82f6" stroke-width="2"/>
+      <path d="M388.17 90 L387.56 230" stroke="#3b82f6" stroke-width="2"/>
+      <path d="M580 90 L580 230" stroke="#3b82f6" stroke-width="2"/>
+      <circle cx="214.77" cy="90" r="5" fill="#3b82f6"/><circle cx="321.23" cy="90" r="5" fill="#3b82f6"/><circle cx="388.17" cy="90" r="5" fill="#3b82f6"/><circle cx="580" cy="90" r="5" fill="#3b82f6"/>
+      <circle cx="215.59" cy="230" r="5" fill="#10b981"/><circle cx="322.05" cy="230" r="5" fill="#10b981"/><circle cx="387.56" cy="230" r="5" fill="#10b981"/><circle cx="580" cy="230" r="5" fill="#10b981"/>
+      <text x="214.77" y="75" text-anchor="middle">-0.514</text><text x="321.23" y="75" text-anchor="middle">0.006</text><text x="388.17" y="75" text-anchor="middle">0.333</text><text x="580" y="75" text-anchor="middle">1.27</text>
+      <text x="215.59" y="255" text-anchor="middle">-51</text><text x="322.05" y="255" text-anchor="middle">1</text><text x="387.56" y="255" text-anchor="middle">33</text><text x="580" y="255" text-anchor="middle">127</text>
+      <text x="320" y="30" text-anchor="middle" fill="#737373">divide by s = 0.01, then round</text>
+      </g>
+      </svg>
+      ```
+
+      ### The rule
+
+      A number's size is its value without the sign, written $|x|$, so $|-0.514|=0.514$. For a group of numbers $x$, the scale is the largest size in the group divided by 127:
+
+      $$s=\frac{\max|x|}{127}.$$
+
+      Each number becomes the integer $q=\text{round}(x/s)$. Then we clamp it to $[-127,127]$. This moves any value outside the range to the nearest end. Here nothing lands outside. Clamping matters when the scale came from other numbers, as with activations in the third step. To use the integer, we dequantise it, turning it back into a real number: $\hat x=q\cdot s$. We store the integers plus the scale.
+
+      ### How big is the error?
+
+      Rounding moves $x/s$ by at most $1/2$. Multiplying back by $s$, each dequantised value is within $s/2$ of the original.
+
+      This is also the weakness. One very large number, called an outlier, makes $\max|x|$ big, which makes $s$ big, so every other number in the group gets coarse steps. Small ones can round to 0. Real models have such outliers. A common fix is a separate scale for each row or small group. One 16-bit scale per group of 128 one-byte weights, a common size, adds $2/128\approx1.6\%$ to the memory.
+    worked: |
+      Let's quantise four weights from one row of a weight matrix, $x=(1.27,\,-0.514,\,0.006,\,0.333)$, and measure the error.
+
+      1. **Find the scale.** The largest size in the group is $1.27$.
+         $$s=1.27/127=0.01$$
+
+      2. **Divide and round.** We divide each weight by $s$ and round to the nearest whole number. None is outside $[-127,127]$, so clamping changes nothing.
+         $$x/s=(127,\,-51.4,\,0.6,\,33.3)\;\Rightarrow\;q=(127,\,-51,\,1,\,33)$$
+
+      3. **Dequantise.** We multiply each integer by $s$.
+         $$\hat x=(1.27,\,-0.51,\,0.01,\,0.33)$$
+
+      4. **Measure the error.** We take the size of each difference. The largest error is $0.004$, below the limit $s/2=0.005$.
+         $$|x-\hat x|=(0,\,0.004,\,0.004,\,0.003)$$
+
+      Here's the same calculation in PyTorch. `x.abs().max()` finds the largest size, `torch.clamp` keeps values inside the range, and `.to(torch.int8)` stores them as 8-bit integers. `.float()` turns the integers back into floating-point numbers, and `.item()` reads out a plain Python number.
+
+      ```python
+      import torch
+
+      x = torch.tensor([1.27, -0.514, 0.006, 0.333])
+      s = x.abs().max() / 127
+      q = torch.clamp(torch.round(x / s), -127, 127).to(torch.int8)
+      x_hat = q.float() * s
+      print(q.tolist())
+      print(round((x - x_hat).abs().max().item(), 4))
+      ```
+
+      It prints:
+
+      ```text
+      [127, -51, 1, 33]
+      0.004
+      ```
+
+      If the row also held an outlier of $12.7$, the scale would be $0.1$ and $0.333$ would come back as $0.3$, an error of $0.033$. One large number made the step ten times bigger, and with it the largest possible error for every other weight. The error on $0.333$ grew about ten times, from $0.003$ to $0.033$.
+
+      INT4 works the same way. It holds $-8$ to $7$, and symmetric INT4 uses $-7$ to $7$, so $s=\max|x|/7$. That step is about $127/7\approx18$ times larger than INT8's for the same group, and so is the largest error. This is why INT4 almost always uses a separate scale for each small group, such as 128 weights.
+    problems:
+      - qz-int8-scale-basics
+      - qzp-int8-self-explain
+      - qzp-scale-template
+      - qzp-quantise-value-template
+      - qzp-dequant-error
+      - qzp-outlier-effect
+      - qzp-code-bug
+  - id: qz-formats
+    title: "Choose what to quantise and how"
+    explain: |
+      ### Two kinds of format
+
+      To choose a format, we need to know what each can store. There are two families: floating point and integer.
+
+      A floating-point number stores a sign, an exponent and a mantissa. The exponent sets the size, like the power of ten in $3.1\times10^{4}$. The mantissa holds the digits, like the $3.1$. More exponent bits give a wider range. More mantissa bits give finer steps.
+
+      An integer format stores evenly spaced whole numbers and needs a scale, as in the previous step. In the diagram below, each box is one bit.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 340" aria-label="Bit layouts drawn as one box per bit. FP16 has 1 sign, 5 exponent and 10 mantissa bits and reaches about 65,504. BF16 has 1 sign, 8 exponent and 7 mantissa bits and reaches about 3.4 times 10 to the 38. FP8 E4M3 has 1 sign, 4 exponent and 3 mantissa bits and reaches 448. INT8 has 8 integer bits holding -128 to 127. INT4 has 4 integer bits holding -8 to 7">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <text x="120" y="59" text-anchor="end">FP16</text>
+      <rect x="130" y="40" width="22" height="28" fill="#737373"/>
+      <rect x="154" y="40" width="22" height="28" fill="#3b82f6"/>
+      <rect x="178" y="40" width="22" height="28" fill="#3b82f6"/>
+      <rect x="202" y="40" width="22" height="28" fill="#3b82f6"/>
+      <rect x="226" y="40" width="22" height="28" fill="#3b82f6"/>
+      <rect x="250" y="40" width="22" height="28" fill="#3b82f6"/>
+      <rect x="274" y="40" width="22" height="28" fill="#10b981"/>
+      <rect x="298" y="40" width="22" height="28" fill="#10b981"/>
+      <rect x="322" y="40" width="22" height="28" fill="#10b981"/>
+      <rect x="346" y="40" width="22" height="28" fill="#10b981"/>
+      <rect x="370" y="40" width="22" height="28" fill="#10b981"/>
+      <rect x="394" y="40" width="22" height="28" fill="#10b981"/>
+      <rect x="418" y="40" width="22" height="28" fill="#10b981"/>
+      <rect x="442" y="40" width="22" height="28" fill="#10b981"/>
+      <rect x="466" y="40" width="22" height="28" fill="#10b981"/>
+      <rect x="490" y="40" width="22" height="28" fill="#10b981"/>
+      <text x="522" y="59">±65,504</text>
+      <text x="120" y="111" text-anchor="end">BF16</text>
+      <rect x="130" y="92" width="22" height="28" fill="#737373"/>
+      <rect x="154" y="92" width="22" height="28" fill="#3b82f6"/>
+      <rect x="178" y="92" width="22" height="28" fill="#3b82f6"/>
+      <rect x="202" y="92" width="22" height="28" fill="#3b82f6"/>
+      <rect x="226" y="92" width="22" height="28" fill="#3b82f6"/>
+      <rect x="250" y="92" width="22" height="28" fill="#3b82f6"/>
+      <rect x="274" y="92" width="22" height="28" fill="#3b82f6"/>
+      <rect x="298" y="92" width="22" height="28" fill="#3b82f6"/>
+      <rect x="322" y="92" width="22" height="28" fill="#3b82f6"/>
+      <rect x="346" y="92" width="22" height="28" fill="#10b981"/>
+      <rect x="370" y="92" width="22" height="28" fill="#10b981"/>
+      <rect x="394" y="92" width="22" height="28" fill="#10b981"/>
+      <rect x="418" y="92" width="22" height="28" fill="#10b981"/>
+      <rect x="442" y="92" width="22" height="28" fill="#10b981"/>
+      <rect x="466" y="92" width="22" height="28" fill="#10b981"/>
+      <rect x="490" y="92" width="22" height="28" fill="#10b981"/>
+      <text x="522" y="111">±3.4×10³⁸</text>
+      <text x="120" y="163" text-anchor="end">FP8 E4M3</text>
+      <rect x="130" y="144" width="22" height="28" fill="#737373"/>
+      <rect x="154" y="144" width="22" height="28" fill="#3b82f6"/>
+      <rect x="178" y="144" width="22" height="28" fill="#3b82f6"/>
+      <rect x="202" y="144" width="22" height="28" fill="#3b82f6"/>
+      <rect x="226" y="144" width="22" height="28" fill="#3b82f6"/>
+      <rect x="250" y="144" width="22" height="28" fill="#10b981"/>
+      <rect x="274" y="144" width="22" height="28" fill="#10b981"/>
+      <rect x="298" y="144" width="22" height="28" fill="#10b981"/>
+      <text x="330" y="163">±448</text>
+      <text x="120" y="215" text-anchor="end">INT8</text>
+      <rect x="130" y="196" width="22" height="28" fill="#f59e0b"/>
+      <rect x="154" y="196" width="22" height="28" fill="#f59e0b"/>
+      <rect x="178" y="196" width="22" height="28" fill="#f59e0b"/>
+      <rect x="202" y="196" width="22" height="28" fill="#f59e0b"/>
+      <rect x="226" y="196" width="22" height="28" fill="#f59e0b"/>
+      <rect x="250" y="196" width="22" height="28" fill="#f59e0b"/>
+      <rect x="274" y="196" width="22" height="28" fill="#f59e0b"/>
+      <rect x="298" y="196" width="22" height="28" fill="#f59e0b"/>
+      <text x="330" y="215">-128 to 127</text>
+      <text x="120" y="267" text-anchor="end">INT4</text>
+      <rect x="130" y="248" width="22" height="28" fill="#f59e0b"/>
+      <rect x="154" y="248" width="22" height="28" fill="#f59e0b"/>
+      <rect x="178" y="248" width="22" height="28" fill="#f59e0b"/>
+      <rect x="202" y="248" width="22" height="28" fill="#f59e0b"/>
+      <text x="234" y="267">-8 to 7</text>
+      <rect x="130" y="310" width="14" height="14" fill="#737373"/><text x="150" y="322">sign</text>
+      <rect x="210" y="310" width="14" height="14" fill="#3b82f6"/><text x="230" y="322">exponent</text>
+      <rect x="320" y="310" width="14" height="14" fill="#10b981"/><text x="340" y="322">mantissa</text>
+      <rect x="430" y="310" width="14" height="14" fill="#f59e0b"/><text x="450" y="322">integer</text>
+      </g>
+      </svg>
+      ```
+
+      FP32 has 8 exponent and 23 mantissa bits. FP16 and BF16 (brain floating point) use 2 bytes. BF16 keeps FP32's 8 exponent bits, so it covers the same huge range with coarser steps. FP16 has only 5 exponent bits, so a value above 65,504 overflows and becomes infinity. FP8 uses 1 byte. Its names count the bits: E4M3 has 4 exponent (E) and 3 mantissa (M) bits.
+
+      Floating point copes with very different sizes inside a group, so FP8 still uses a scale but tolerates a rough one. That suits activations, which change with every prompt. Integers need a careful scale per group, which is easiest for fixed weights.
+
+      ### What we quantise
+
+      In **weight-only** quantisation we store the weights in INT8 or INT4 and keep the activations at 16 bits. The GPU reads the small weights, turns them back into 16-bit numbers in on-chip memory right before use, and does 16-bit maths. Decode gets faster because less is read. Prefill doesn't get faster, because its maths is unchanged.
+
+      In **weight-and-activation** quantisation, both inputs of each matrix multiply are 8-bit, for example FP8 or INT8, and the GPU does 8-bit maths. On the H100, FP8 maths runs at about twice the 16-bit rate. So prefill can speed up too. So can decode with a large batch, because each weight read is used for every request, giving more maths per byte.
+
+      Activation scales are either measured as the model runs, or chosen in advance from calibration data, a small sample of text passed through the model to record typical values. A value bigger than any seen in calibration gets clamped. Activations have more outliers, so this mode is harder.
+    worked: |
+      The assistant gets a prompt of 1,000 tokens and then writes a reply one token at a time, with one request at a time. Let's compare two common choices on this GPU: INT4 weight-only, which gives the smallest weights, and FP8 weight-and-activation, which gives faster maths. We round the H100 to 1,000 TFLOP/s of 16-bit maths and 2,000 TFLOP/s of FP8 maths.
+
+      1. **Count the prefill maths.** Each of the 1,000 tokens meets each weight in one multiply-add, which is 2 FLOPs. We count only these, because they are most of the work.
+         $$2\times8\times10^9\times1000=1.6\times10^{13}\text{ FLOPs}$$
+
+      2. **Time the prefill for INT4 weight-only.** The maths is still 16-bit. We leave out the small cost of turning INT4 weights back into 16 bits.
+         $$\frac{1.6\times10^{13}}{1000\times10^{12}}=0.016\text{ s}=16\text{ ms}$$
+
+      3. **Time the prefill for FP8.** The maths runs at twice the rate.
+         $$\frac{1.6\times10^{13}}{2000\times10^{12}}=0.008\text{ s}=8\text{ ms}$$
+
+      4. **Time one decode step for each.** Each decode step reads all the weights once. That's 4 GB for INT4 and 8 GB for FP8. For INT4 we again leave out the cost of turning the weights back into 16 bits.
+         $$\frac{4\times10^9}{3.35\times10^{12}}\approx1.2\text{ ms},\qquad\frac{8\times10^9}{3.35\times10^{12}}\approx2.4\text{ ms}$$
+
+      FP8 saves 8 ms once per prompt, and INT4 saves about 1.2 ms on every reply token. So INT4 is faster overall once the reply is longer than about $8/1.2\approx7$ tokens, which almost every chat reply is. FP8 would win for long prompts with very short replies, such as sorting documents into a few labels. This compares speed only. The next step checks whether quality survives.
+    problems:
+      - qz-formats-basics
+      - qzp-formats-self-explain
+      - qzp-bf16-range
+      - qzp-prefill-template
+      - qzp-mode-choice
+      - qzp-calibration
+      - qzp-weight-only-mistake
+  - id: qz-quality
+    title: "Check whether the quantised model got worse"
+    explain: |
+      ### Why we have to measure
+
+      Quantising adds a small rounding error to billions of numbers. The errors add up through the model's 32 layers, and we can't tell from them alone whether the answers changed. So we run the original 16-bit model and the quantised model on the same tests and compare.
+
+      ### Loss on held-out text
+
+      The first test is the language-modelling loss. For each token of some text, the model gives a probability $p$ to the token that really came next, and the cross-entropy loss for that token is $-\ln p$, using the natural log. We average it over every token. A worse model gives the true tokens lower probabilities, so its loss is higher.
+
+      The text must be held out, meaning it wasn't used to train the model or choose the scales. Otherwise the test is too easy.
+
+      Many papers report perplexity in place of the loss. Perplexity is $e$ raised to the average loss:
+
+      $$\text{perplexity}=e^{\text{loss}}.$$
+
+      You can read it as the number of tokens the model is choosing between. A model that gave every true token probability $1/8$ would have loss $\ln8$ and perplexity $8$, as if it picked evenly among 8 tokens. Lower is better for both.
+
+      ### Tests on real tasks
+
+      The loss is an average over ordinary text. It can barely move while a skill that few tokens depend on gets much worse, such as arithmetic, code, long prompts or a language that is rare in the text. So we also run the two models on tasks the assistant's users care about, and compare their scores. Both get the same prompts and the same settings, for example always picking the most likely next token. Use enough examples that a difference isn't just luck. With a few hundred problems, a drop of one or two percentage points, say from 80% to 79%, can easily be luck.
+
+      If both checks show only a small drop that is acceptable for the product, we ship the quantised model. If a task gets clearly worse, we can try a finer scale, such as one per row or per group, or keep some layers at 16 bits. To find which layers to keep, quantise one layer at a time and see which hurts the score most.
+    worked: |
+      We quantise the assistant's Llama 3 8B to INT4 and test both models. On the same held-out text, the 16-bit model's average loss is $2.00$ and the INT4 model's is $2.08$. On 500 maths word problems, the 16-bit model solves 400 and the INT4 model solves 360. These numbers are made up for practice.
+
+      1. **Turn each loss into perplexity.** We raise $e$ to each loss.
+         $$e^{2.00}\approx7.39,\qquad e^{2.08}\approx8.00$$
+
+      2. **Compare the perplexities.** The INT4 model's perplexity is about $8.00/7.39\approx1.08$ times as large, about 8% higher. It's as if it chose among 8 tokens where the 16-bit model chose among about 7.4.
+
+      3. **Turn the task counts into accuracy.** We divide each count by 500.
+         $$400/500=80\%,\qquad360/500=72\%$$
+
+      4. **Compare the accuracies.** The score fell from 80% to 72%. We call that a drop of 8 percentage points, because we subtract the two percentages. With 500 problems, luck alone usually moves a score by about 2 percentage points, so a drop of 8 is real.
+
+      The loss rose by only $0.08$, but the maths score fell clearly. If the assistant's users ask maths questions, this INT4 model isn't good enough as it is.
+    problems:
+      - qz-quality-basics
+      - qzp-quality-self-explain
+      - qzp-perplexity-template
+      - qzp-held-out
+      - qzp-loss-hides
+      - qzp-choose-eval
+      - qzp-perplexity-ratio-template
+final: qz-explain
+summary: |
+  - Quantisation stores numbers with fewer bits. Llama 3 8B's weights take 16 GB at 16 bits, 8 GB at INT8 and 4 GB at INT4, and decode gets faster in proportion because it reads every weight for each token.
+  - INT8 quantisation uses one scale $s=\max|x|/127$ per group, stores $q=\text{round}(x/s)$ clamped to $[-127,127]$, and dequantises to $q\cdot s$, with an error of at most $s/2$ that grows when an outlier makes $s$ large.
+  - Weight-only quantisation speeds up decode by reading fewer bytes, and weight-and-activation quantisation with FP8 or INT8 also uses faster 8-bit maths, which helps prefill.
+  - We check quality by comparing the quantised and 16-bit models on held-out loss or perplexity, $e^{\text{loss}}$, and on the real tasks users care about.
+
+  **Next:** speculative decoding, which makes decode faster by drafting several tokens cheaply and checking them all in one pass of the big model.

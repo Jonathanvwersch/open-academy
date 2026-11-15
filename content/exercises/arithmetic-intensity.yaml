@@ -1,0 +1,492 @@
+concept: arithmetic-intensity
+exercises:
+  - id: aip-intensity-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What does an operation's arithmetic intensity measure?
+    options:
+      - id: a
+        text: The FLOPs performed per second of execution.
+        correct: false
+        feedback: FLOP/s measures arithmetic rate. Intensity relates work to transferred bytes.
+      - id: b
+        text: The FLOPs performed per byte of memory traffic.
+        correct: true
+        feedback: Intensity divides the operation's work by its memory traffic.
+      - id: c
+        text: The bytes available per parameter in the model.
+        correct: false
+        feedback: Bytes per parameter describes storage precision, rather than work per transferred byte.
+    solution: Arithmetic intensity is FLOPs performed divided by bytes moved to and from GPU memory.
+  - id: aip-count-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    lesson_only: true
+    difficulty: 1
+    est_minutes: 1
+    prompt: Why does the worked example count three groups of four numbers in its memory traffic?
+    options:
+      - id: a
+        text: Each of the two inputs is read, and the output is written.
+        correct: true
+        feedback: Both reads and the write cross the GPU memory boundary.
+      - id: b
+        text: Each of the two inputs is read, and the first input is read again.
+        correct: false
+        feedback: The example assumes each input is read once. The third group is the output write.
+      - id: c
+        text: One input is read, and the output is both read and written.
+        correct: false
+        feedback: Both inputs are needed, and this fresh output has no old values to read.
+    solution: Each input contains four numbers, and the output contains four numbers that must be written to GPU memory.
+  - id: aip-flops-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    params:
+      m: { min: 2, max: 4 }
+      k: { min: 2, max: 4 }
+      n: { min: 2, max: 4 }
+    prompt: 'A ${{=m}}\times{{=k}}$ matrix multiplies a ${{=k}}\times{{=n}}$ matrix. How many FLOPs does the product take under the convention that each multiply-add counts as 2 FLOPs?'
+    answer_expr: 2*m*k*n
+    tolerance: { abs: 0.000001 }
+    common_wrong:
+      - answer_expr: m*k*n
+        category: misunderstood_definition
+        feedback: Each pair contributes a multiplication and an addition to the total.
+    solution: 'There are ${{=m}}\times{{=n}}$ outputs with ${{=k}}$ multiply-adds each, so the work is $2\times{{=m}}\times{{=k}}\times{{=n}}={{=2*m*k*n}}$ FLOPs.'
+  - id: aip-traffic
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: 'A $2\times3$ input multiplies a $3\times4$ weight matrix to produce a fresh output. Every number occupies 2 bytes. Each input is read once from GPU memory, and the output is written once. How many bytes move in total?'
+    answer: 52
+    tolerance: { abs: 0.000001 }
+    common_wrong:
+      - answer: 36
+        category: incomplete_explanation
+        feedback: That counts the two inputs but leaves out the eight output numbers written.
+      - answer: 26
+        category: math_error
+        feedback: That counts numbers. Each number occupies 2 bytes.
+    solution: 'The inputs hold $2\times3=6$ and $3\times4=12$ numbers, and the $2\times4$ output holds 8. Traffic is $2(6+12+8)=52$ bytes.'
+  - id: aip-intensity-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    params:
+      m: { min: 2, max: 6 }
+    prompt: 'A ${{=m}}\times4$ matrix multiplies a $4\times4$ matrix. Numbers occupy 2 bytes. Read each input once and write the fresh output once. Find the arithmetic intensity in FLOPs per byte, rounded to two decimal places.'
+    answer_expr: round(2*m/(m+2), 2)
+    tolerance: { abs: 0.005 }
+    common_wrong:
+      - answer_expr: round(4*m/(m+4), 2)
+        category: misunderstood_definition
+        feedback: This leaves out the output write. The output has four numbers per row too.
+    solution: "The work is ${{=32*m}}$ FLOPs and the traffic is ${{=16*m+32}}$ bytes. Their ratio is ${{=round(2*m/(m+2),2)}}$ FLOPs per byte, rounded to two decimal places."
+  - id: aip-missing-write
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: 'For a fresh product $(2\times2)(2\times2)$ with 2 bytes per number, a learner reports intensity $16/(8+8)=1$ FLOP per byte. Each input is read once and the output is written once. What caused the error?'
+    options:
+      - id: a
+        text: The numerator should count one FLOP per multiply-add.
+        correct: false
+        feedback: Our convention counts 2 FLOPs per multiply-add, so 16 is the correct work count.
+      - id: b
+        text: The denominator should include an 8-byte output write.
+        correct: true
+        feedback: All bytes read and written belong in the denominator.
+      - id: c
+        text: The denominator should include a second weight read.
+        correct: false
+        feedback: The stated implementation reads each input once. The missing transfer is the output write.
+    solution: "The denominator needs $8+8+8=24$ bytes, including the output write, so intensity is $16/24=2/3$ FLOPs per byte."
+  - id: aip-reread
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: Two implementations perform the same matrix product with the same FLOP count. One transfers twice as many bytes from GPU memory because it rereads inputs. How does its arithmetic intensity compare?
+    options:
+      - id: a
+        text: It is twice as large.
+        correct: false
+        feedback: More transferred bytes increase the denominator, which lowers intensity.
+      - id: b
+        text: It stays the same.
+        correct: false
+        feedback: Intensity depends on actual traffic, so rereads affect it.
+      - id: c
+        text: It is half as large.
+        correct: true
+        feedback: The same work divided by twice the bytes gives half the intensity.
+    solution: "Since $I=F/D$, doubling traffic with the same work halves intensity."
+  - id: aip-image-product
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: 'An image-processing model multiplies a $4\times8$ input by an $8\times4$ weight matrix. Each number occupies 2 bytes. Each input is read once from GPU memory and the fresh output is written once. Find the arithmetic intensity in FLOPs per byte, rounded to two decimal places.'
+    answer: 1.6
+    tolerance: { abs: 0.005 }
+    solution: 'The work is $2\times4\times8\times4=256$ FLOPs, and traffic is $2(32+32+16)=160$ bytes. Intensity is $256/160=1.6$ FLOPs per byte.'
+  - id: aip-roofline-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: In the roofline model, what makes an operation memory-bound?
+    options:
+      - id: a
+        text: Its work needs more bytes than the GPU can store.
+        correct: false
+        feedback: That is a capacity problem. The roofline compares arithmetic rate with transfer rate.
+      - id: b
+        text: Its compute ceiling lies below its memory-supported rate.
+        correct: false
+        feedback: That makes the operation compute-bound in the model.
+      - id: c
+        text: Its memory-supported rate lies below its compute ceiling.
+        correct: true
+        feedback: The lower memory-supported rate limits the roofline prediction.
+    solution: An operation is memory-bound when intensity times bandwidth gives a lower arithmetic rate than peak compute.
+  - id: aip-roof-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    lesson_only: true
+    difficulty: 1
+    est_minutes: 1
+    prompt: Why can't operation B's intensity of 12 raise its ceiling above 120 FLOP/s in the worked example?
+    options:
+      - id: a
+        text: The computing units already set the lower rate limit.
+        correct: true
+        feedback: At 6 the memory-supported rate reaches 120 FLOP/s, and extra intensity cannot lift peak compute.
+      - id: b
+        text: The device's memory bandwidth falls as intensity rises.
+        correct: false
+        feedback: Bandwidth is a hardware limit. Increasing intensity does not reduce it.
+      - id: c
+        text: The operation's intensity is capped at the meeting point.
+        correct: false
+        feedback: Intensity can exceed the meeting point, but the rate ceiling then stays flat.
+    solution: At intensity 6, memory already supports 120 FLOP/s, which is the device's compute ceiling. Intensity 12 cannot lift that ceiling.
+  - id: aip-ratio-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    params:
+      p: { min: 180, max: 360, step: 60 }
+      w: { min: 10, max: 30, step: 10 }
+    prompt: "A toy GPU has peak compute rate {{=p}} FLOP/s and memory bandwidth {{=w}} bytes/s. What is its ops:byte ratio, in FLOPs per byte?"
+    answer_expr: p/w
+    tolerance: { abs: 0.000001 }
+    solution: "Divide peak arithmetic rate by bandwidth: ${{=p}}/{{=w}}={{=p/w}}$ FLOPs per byte."
+  - id: aip-memory-rate-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    params:
+      i: { min: 2, max: 4 }
+      w: { min: 10, max: 20, step: 5 }
+    prompt: "A toy device has peak compute rate 200 FLOP/s and bandwidth {{=w}} bytes/s. An operation has intensity {{=i}} FLOPs per byte. What is its roofline rate ceiling, in FLOP/s?"
+    answer_expr: min(200, i*w)
+    tolerance: { abs: 0.000001 }
+    common_wrong:
+      - answer_expr: "200"
+        category: misapplied_technique
+        feedback: Compare the compute ceiling with the rate supported by memory at this intensity.
+    solution: 'Memory supports ${{=i}}\times{{=w}}={{=i*w}}$ FLOP/s, which is below 200 FLOP/s, so the ceiling is ${{=i*w}}$ FLOP/s.'
+  - id: aip-compute-rate
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A toy GPU peaks at 180 FLOP/s with 30 bytes/s of memory bandwidth. An operation has intensity 9 FLOPs per byte. What is its roofline ceiling in FLOP/s?
+    answer: 180
+    tolerance: { abs: 0.000001 }
+    common_wrong:
+      - answer: 270
+        category: misapplied_technique
+        feedback: Memory can support that rate, but the arithmetic units peak at 180 FLOP/s.
+    solution: 'Memory supports $9\times30=270$ FLOP/s. The smaller ceiling is 180 FLOP/s, so the model predicts a compute-bound operation.'
+  - id: aip-equality
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: A toy device peaks at 120 FLOP/s with bandwidth 20 bytes/s. For an operation with intensity 6 FLOPs per byte, how do the two roofline ceilings compare?
+    options:
+      - id: a
+        text: Memory gives the lower ceiling.
+        correct: false
+        feedback: At this intensity, memory supports exactly 120 FLOP/s.
+      - id: b
+        text: Both ceilings have the same value.
+        correct: true
+        feedback: Intensity 6 is the device's ops:byte ratio.
+      - id: c
+        text: Compute gives the lower ceiling.
+        correct: false
+        feedback: Compute and memory both give 120 FLOP/s here.
+    solution: 'The memory ceiling is $6\times20=120$ FLOP/s, equal to peak compute. This is the meeting point.'
+  - id: aip-add-ceilings
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A device's peak is 120 FLOP/s. For a given operation, its intensity and bandwidth allow 60 FLOP/s. A learner adds these to predict a 180 FLOP/s roofline ceiling. What went wrong?
+    options:
+      - id: a
+        text: The ceilings should be multiplied because both resources work together.
+        correct: false
+        feedback: Multiplying two rates does not produce an arithmetic-rate ceiling.
+      - id: b
+        text: The larger ceiling should be used because it describes peak hardware.
+        correct: false
+        feedback: Reaching peak compute still requires enough data movement to support it.
+      - id: c
+        text: The smaller ceiling should be used because both limits must be met.
+        correct: true
+        feedback: The operation cannot exceed either limit, so the ceiling is 60 FLOP/s.
+    solution: Both ceilings apply to the same operation. The lower one limits the rate, giving 60 FLOP/s.
+  - id: aip-measured-rate
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: An operation is compute-bound in a roofline model, but a measurement is well below peak compute. Which explanation is consistent with the model?
+    options:
+      - id: a
+        text: The implementation leaves some computing units idle.
+        correct: true
+        feedback: A compute ceiling is an upper bound, and an implementation may fail to use all computing units.
+      - id: b
+        text: Compute-bound means every run must reach peak compute.
+        correct: false
+        feedback: The roofline gives a ceiling rather than a guarantee of achieved speed.
+      - id: c
+        text: The measured rate must be wrong for a compute-bound product.
+        correct: false
+        feedback: Starting operations and incomplete use of computing units can lower achieved rate.
+    solution: Compute-bound identifies the lower roofline ceiling. It does not guarantee that the implementation reaches that ceiling.
+  - id: aip-robot-roof
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A robot's vision operation does 480 FLOPs and transfers 80 bytes. Its toy processor peaks at 300 FLOP/s and transfers up to 40 bytes/s. What is the operation's roofline ceiling in FLOP/s?
+    answer: 240
+    tolerance: { abs: 0.000001 }
+    solution: 'Intensity is $480/80=6$ FLOPs per byte, so memory supports $6\times40=240$ FLOP/s. This is below 300 FLOP/s, making 240 FLOP/s the ceiling.'
+  - id: aip-reuse-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: Why can processing more token rows together raise a matrix product's arithmetic intensity?
+    options:
+      - id: a
+        text: Each weight occupies fewer bytes when more rows are present.
+        correct: false
+        feedback: The byte count per weight stays fixed when number format stays fixed.
+      - id: b
+        text: Each weight read can contribute to calculations for more rows.
+        correct: true
+        feedback: Sharing the weights' traffic supports more FLOPs per byte.
+      - id: c
+        text: Each output row requires fewer dot products in a larger group.
+        correct: false
+        feedback: Each row still requires the same number of dot products; more rows reuse the weights.
+    solution: The weight matrix can be read once for a group of rows, so adding rows increases work without repeating the whole weight read.
+  - id: aip-reuse-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    lesson_only: true
+    difficulty: 1
+    est_minutes: 1
+    prompt: Why does the 512-row worked example count the weight matrix once while counting 512 input rows?
+    options:
+      - id: a
+        text: Its traffic assumption lets all the rows share a weight read.
+        correct: true
+        feedback: The count assumes reuse during the product, so weights contribute one matrix read.
+      - id: b
+        text: The rows each use a separate weight matrix of a smaller shape.
+        correct: false
+        feedback: All 512 rows multiply the same 4096 by 4096 weights.
+      - id: c
+        text: The model's weights occupy GPU computing units without any read.
+        correct: false
+        feedback: The weights are read from GPU memory once under the example's assumption.
+    solution: The example assumes one read of each input matrix and one output write. All rows share that one read of the weights during the product.
+  - id: aip-square-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    params:
+      m: { min: 4, max: 12, step: 4 }
+    prompt: 'A group of {{=m}} token rows has input shape ${{=m}}\times64$ and multiplies a $64\times64$ weight matrix. Numbers occupy 2 bytes. Read both inputs once from GPU memory and write the fresh output once. Find intensity in FLOPs per byte to two decimal places.'
+    answer_expr: round(64*m/(64+2*m), 2)
+    tolerance: { abs: 0.005 }
+    common_wrong:
+      - answer_expr: m
+        category: misapplied_technique
+        feedback: Counting only weight traffic gives that approximation. Include input reads and output writes here.
+    solution: "Work is ${{=2*m*64*64}}$ FLOPs and traffic is ${{=2*(64*64+2*m*64)}}$ bytes. Their ratio rounds to ${{=round(64*m/(64+2*m),2)}}$ FLOPs per byte."
+  - id: aip-prefill-limit
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A 512-row prefill product has intensity 409.6 FLOPs per byte under its traffic assumptions. A GPU's ops:byte ratio is about 300 FLOPs per byte. Which ceiling limits this product in the roofline model?
+    options:
+      - id: a
+        text: Memory bandwidth sets the lower ceiling.
+        correct: false
+        feedback: Above the ops:byte ratio, memory can support more arithmetic than peak compute.
+      - id: b
+        text: Both ceilings meet at this intensity.
+        correct: false
+        feedback: They meet at about 300 FLOPs per byte, below 409.6.
+      - id: c
+        text: Peak compute sets the lower ceiling.
+        correct: true
+        feedback: This intensity lies above the hardware's meeting point.
+    solution: Since 409.6 exceeds about 300 FLOPs per byte, the model predicts a compute-bound product.
+  - id: aip-decode-batch
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A server changes from decoding one sequence to decoding 64 sequences together. Each sequence contributes one new token row per iteration, and the product shares one read of the weights across rows. Number format and matrix width stay fixed. What happens to this product's arithmetic intensity?
+    options:
+      - id: a
+        text: It rises because more rows share the weight traffic.
+        correct: true
+        feedback: The same weight read supports 64 rows of arithmetic.
+      - id: b
+        text: It falls because the weights grow with the number of sequences.
+        correct: false
+        feedback: Batch size changes the input rows. The shared weight matrix keeps its shape.
+      - id: c
+        text: It stays fixed because decode uses one row for the whole batch.
+        correct: false
+        feedback: Decode uses one row per sequence, so 64 sequences give 64 rows.
+    solution: More sequences provide more token rows that share the same weight matrix. This raises intensity, although it need not cross the hardware's ops:byte ratio.
+  - id: aip-weight-only-error
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: 'For $(m\times d)(d\times d)$ with 2 bytes per number, a learner uses $I=(2md^2)/(2d^2)=m$ for every $m$. Each input is read once and the fresh output is written once. What does this leave out?'
+    options:
+      - id: a
+        text: The extra multiplication needed for each new output column.
+        correct: false
+        feedback: The numerator already counts all output entries and all their multiply-adds.
+      - id: b
+        text: The input-row reads and output-row writes that grow with row count.
+        correct: true
+        feedback: Those contribute another 2md numbers of traffic, which matter as row count grows.
+      - id: c
+        text: The larger number of bytes per weight when row count grows.
+        correct: false
+        feedback: Each weight still occupies 2 bytes; the missing traffic comes from the input and output.
+    solution: "The approximation counts only weight bytes. Including input and output gives $I=md/(d+2m)$, which is below $m$."
+  - id: aip-short-prompt
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A short prompt's prefill product has intensity 8 FLOPs per byte on a GPU with an ops:byte ratio of 300 FLOPs per byte. A learner labels it compute-bound because it is prefill. How should it be classified in the roofline model?
+    options:
+      - id: a
+        text: Compute-bound, because every prefill processes several token rows.
+        correct: false
+        feedback: Several rows may still give intensity below the hardware's ratio.
+      - id: b
+        text: At the meeting point, because prefill is the first request phase.
+        correct: false
+        feedback: The meeting point depends on the rates, rather than phase order.
+      - id: c
+        text: Memory-bound, because its intensity is below the hardware's ratio.
+        correct: true
+        feedback: Compare 8 with 300; memory gives the lower ceiling.
+    solution: Roofline classification depends on intensity relative to the device ratio. Here 8 is below 300, so the product is memory-bound.
+  - id: aip-vision-rows
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: 'A vision model processes 16 image rows together with a product $(16\times64)(64\times64)$. Each number occupies 2 bytes. Each input is read once from GPU memory and the fresh output is written once. A toy device has peak 160 FLOP/s and bandwidth 10 bytes/s. What is this product''s roofline ceiling in FLOP/s, rounded to two decimal places?'
+    answer: 106.67
+    tolerance: { abs: 0.05 }
+    solution: 'Intensity is $16\times64/(64+2\times16)=32/3$ FLOPs per byte. Memory supports $(32/3)\times10\approx106.67$ FLOP/s, below the compute ceiling of 160 FLOP/s.'
+  - id: aip-explain-serving
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 3
+    est_minutes: 4
+    prompt: |
+      In your own words, explain these three points:
+
+      1. What does arithmetic intensity measure?
+      2. How does comparing it with the GPU's ops:byte ratio identify the roofline bottleneck, including at equality?
+      3. Why can reusing a weight read across many token rows change that bottleneck?
+    rubric:
+      - id: intensity
+        criterion: Explain that arithmetic intensity is FLOPs performed per byte moved to and from GPU memory.
+        weight: 1
+        required: true
+      - id: ceiling
+        criterion: Explain that intensity below the ops:byte ratio gives a memory-bound product, above it gives a compute-bound product, and at equality both ceilings meet.
+        weight: 1
+        required: true
+      - id: reuse
+        criterion: Explain that more token rows can share a weight read, raising intensity and potentially moving the product from memory-bound to compute-bound.
+        weight: 1
+        required: true
+      - id: prediction
+        criterion: Explain that a roofline ceiling is an upper bound and actual speed can be lower.
+        weight: 1
+        required: false
+    exemplar: Arithmetic intensity is the FLOPs an operation performs for every byte it moves to and from GPU memory. Below the GPU's ops:byte ratio, memory bandwidth gives the lower ceiling; above it, peak compute gives the lower ceiling; at equality the ceilings meet. Many rows can share a read of the same weights, raising intensity enough to change the bottleneck. This helps explain the difference between small-batch decode and a sufficiently large prefill, although actual speed can fall below the roofline ceiling.
+    solution: Relate work per byte to the hardware's two rate ceilings, then explain how weight reuse changes work per byte as the number of rows grows.

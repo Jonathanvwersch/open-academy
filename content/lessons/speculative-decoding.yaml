@@ -1,0 +1,274 @@
+concept: speculative-decoding
+version: 1
+objective: |
+  **Goal:** explain draft-and-check decoding, estimate its speed-up, and explain how its acceptance rule preserves the target model's output distribution.
+recap:
+  - concept: prefill-decode
+    text: "Prefill processes all prompt tokens in one pass, while decode produces one token per pass, and each new token depends on the tokens before it."
+  - concept: arithmetic-intensity
+    text: "Arithmetic intensity is FLOPs per byte moved. Decoding one token has low intensity, so the GPU waits on memory, and processing several tokens in one pass reuses each weight read for more FLOPs."
+where_this_fits: |
+  ### What is speculative decoding?
+
+  Speculative decoding lets a small, fast draft model guess several next tokens, then lets the larger target model check those guesses together. It keeps the guesses that pass the check and supplies a correction when one fails.
+
+  This can make a chat assistant answer faster. Ordinary decoding waits for each new token before starting the next expensive model pass. Checking several guesses together lets us get more tokens from each target pass. We'll follow an assistant serving Llama 3 8B on one NVIDIA H100 SXM, a data-centre GPU whose memory bandwidth and maths rate set our timings, and work out when drafting pays for itself.
+knowledge_points:
+  - id: sd-draft-check
+    title: Draft tokens, then check them together
+    explain: |
+      ### Waiting for the next token
+
+      In the Prefill and decode lesson, we saw that prefill processes prompt tokens together, while decode waits for each token before producing the next. Could checking guesses together reduce that waiting?
+
+      In the Memory-bound vs compute-bound lesson, we saw that arithmetic intensity measures FLOPs per byte moved. A FLOP is one floating-point operation, and FLOPs is the plural count. At batch size one, decode does little maths with each weight it reads, so waiting for memory limits its speed.
+
+      ### Checking a short guess
+
+      Our chat assistant serves Llama 3 8B on one H100 SXM, with 16 GB of 16-bit weights. Suppose a 0.8-billion-parameter draft has 1.6 GB of weights. They share a tokenizer and vocabulary, so tokens mean the same thing to both. The target's probabilities pick its top token, which we compare with the guess.
+
+      Both models use **greedy decoding** here, choosing their most probable token. The $k$ draft passes run one after the other, and then the target checks. The target stores the keys and values attention computed for earlier tokens, so it only processes new positions in the sequence.
+
+      At the last token already in the text, the target predicts the first guess. At each draft position, it predicts the next token. Its last prediction is a **bonus token**, an extra output if every guess passes. These are $k+1$ predictions. The causal mask hides later tokens, so each check uses only preceding text. We keep matches until the first mismatch, then use the target's correction and discard later guesses because their prefix is wrong.
+
+      After "The capital of France is", suppose the draft guesses "Paris . It is". Words and punctuation represent tokens here.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 230" aria-label="Four draft tokens Paris, period, It, is. Target choices Paris, period, The, is. The first two match; the third fails. The fourth is discarded even though it matches. Output is Paris, period, The.">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="28" fill="#171717">
+      <text x="20" y="40">Draft</text><text x="170" y="40">Paris</text><text x="275" y="40">.</text><text x="380" y="40">It</text><text x="520" y="40">is</text>
+      <text x="20" y="85">Target</text><text x="170" y="85">Paris</text><text x="275" y="85">.</text><text x="380" y="85">The</text><text x="520" y="85">is</text>
+      <text x="170" y="125" fill="#10b981">✓</text><text x="275" y="125" fill="#10b981">✓</text><text x="380" y="125" fill="#ef4444">✗</text>
+      <text x="170" y="155" fill="#10b981">keep</text><text x="275" y="155" fill="#10b981">keep</text><text x="380" y="155" fill="#ef4444">replace</text><text x="520" y="155" fill="#737373">discard</text>
+      <path d="M160 175 H625" stroke="#d4d4d4"/><text x="20" y="215">Output</text><text x="170" y="215">Paris</text><text x="275" y="215">.</text><text x="380" y="215">The</text>
+      </g></svg>
+      ```
+
+      The target row checks each guess using its preceding text. The third fails, so output ends with "The". The target's later "is" used the wrong prefix ending in "It", so we ignore it. No bonus appears here because a guess failed.
+
+      For readers who've met top-k sampling, which keeps the $k$ most probable tokens, its $k$ is unrelated to draft length.
+
+      ### Sharing the weight read
+
+      We choose $k=4$ as a typical short draft. Checking five positions, $k+1$, can cost about one ordinary pass, as we'll calculate below.
+    worked: |
+      Let's time the pictured round after "The capital of France is", using our 1.6 GB draft and 16 GB target. We'll estimate each pass from its weight read, keep unrounded times along the way, and round final times to one decimal place.
+
+      1. **Check how much maths the pass needs.** Each weight contributes a multiply and an add, giving 2 FLOPs per token, and takes 2 bytes at 16-bit precision. For $n$ positions, we therefore do $2n/2=n$ FLOPs per byte of weights. We also read stored values for earlier tokens, but short text has few such values compared with billions of weights. With five positions the weight-only intensity is 5 FLOPs per byte. Llama 3 8B has about $8\times10^9$ parameters. The H100's dense 16-bit rate is about 990 TFLOP/s, meaning $990\times10^{12}$ operations per second, which we round to 1,000 TFLOP/s. We multiply seconds by 1000 to express the result in milliseconds.
+         $$\text{maths time}=\frac{2\times8\times10^9\times5}{1000\times10^{12}}\times1000=0.08\text{ ms}$$
+
+      2. **Compare maths with reading weights.** The H100's memory bandwidth is 3.35 TB/s, so reading 16 GB takes about 4.8 ms. Here GB means $10^9$ bytes and TB means $10^{12}$ bytes. Dividing the rounded maths rate by bandwidth gives the GPU's **ops:byte ratio**, about $1000/3.35\approx300$ FLOPs per byte. This is the threshold because below it reading bytes takes longer than doing the maths. Our intensity of 5 is far below it. The draft is also memory-bound at batch size one, so we estimate target pass time $t$ and draft pass time $t_d$ from their weight reads. We call $c$ the draft's time as a fraction of the target's, which the next lesson step uses. Because the draft reads one tenth as many bytes, $c=1.6/16=0.1$.
+         $$t=\frac{16\times10^9}{3.35\times10^{12}}\times1000\approx4.7761\text{ ms},\qquad t_d=0.1t\approx0.4776\text{ ms}.$$
+
+      3. **Find how many tokens survive.** The draft proposes "Paris", ".", "It", "is". Because the target agrees twice and then chooses "The", we keep two guesses and add that correction.
+         $$\text{output}=\text{Paris . The}.$$
+
+      4. **Add up the time for the round.** The four draft passes run before the target check, so we add all five pass times for those three output tokens.
+         $$4t_d+t\approx6.7\text{ ms}.$$
+
+      5. **Compare with ordinary decoding.** Without drafting, we would need a separate target pass for each token, so we multiply its pass time by three.
+         $$3t\approx14.3\text{ ms}.$$
+
+      This idealised round saves time even though one draft token failed. Real execution also has overheads, so these times are estimates.
+    problems:
+      [
+        sd-mechanism-basics,
+        sdp-mechanism-self-explain,
+        sdp-first-mismatch,
+        sdp-all-accepted,
+        sdp-weight-read,
+        sdp-round-time,
+        sdp-intensity-limit,
+        sdp-tokenizer,
+      ]
+  - id: sd-expected-speed
+    title: Work out the expected speed-up
+    explain: |
+      ### How many guesses survive?
+
+      A round produces at least one token, even if its first guess fails. Across many rounds and texts, $\alpha$ (alpha) measures how often a draft guess passes. For this estimate, assume that chance stays constant and acceptances are independent.
+
+      We start with two guesses as the smallest case showing an intermediate rejection. Rejecting the first gives one token, with chance $1-\alpha$. Accepting one then rejecting gives two, with chance $\alpha(1-\alpha)$. Accepting both gives three, including the bonus, with chance $\alpha^2$.
+
+      ### Average tokens and time
+
+      In the Probability basics lesson, we met the **expected value**, an average weighted by outcome probabilities. Multiplying each outcome's token count by its chance gives
+
+      $$1(1-\alpha)+2\alpha(1-\alpha)+3\alpha^2=1+\alpha+\alpha^2.$$
+
+      Guess $j$ contributes one token if guesses 1 through $j$ all pass, and zero otherwise. Its average contribution is therefore $\alpha^j$. Averages add, so adding these contributions and the guaranteed token gives
+
+      $$E=1+\alpha+\cdots+\alpha^k=\frac{1-\alpha^{k+1}}{1-\alpha}.$$
+
+      Multiplying by $1-\alpha$ cancels the middle terms, giving $(1-\alpha)E=1-\alpha^{k+1}$. The fraction computes $E$ for any $k$ without adding terms. At $\alpha=1$, it divides by zero, but the sum gives $k+1$. This estimate follows the speculative decoding paper by Leviathan et al. (2023).
+
+      Our draft's pass takes $c=0.1$ of a target pass. In target-pass units, drafting costs $kc$ and checking costs 1. Ordinary decoding takes $E$ passes on average for those tokens, so **speed-up** is
+
+      $$S=\frac{E}{kc+1}.$$
+
+      With $\alpha=0.8$ and $c=0.1$, we get these estimates, rounded to two decimals.
+
+      | Draft length $k$ | Expected tokens $E$ | Speed-up $S$ |
+      | --- | --- | --- |
+      | 1 | 1.80 | 1.64 |
+      | 4 | 3.36 | 2.40 |
+      | 6 | 3.95 | 2.47 |
+      | 10 | 4.57 | 2.29 |
+
+      Length 6 is best of these rows because longer drafts cost more while later guesses rarely survive. At $\alpha=0$, $S=1/(kc+1)$, so drafting makes decoding slower.
+
+      ### Limitations
+
+      Servers batch users' requests into one pass. For $B=64$, ordinary decoding processes one position per user, or 64 positions. Checking $k=4$ drafts processes $64\times5=320$. Above roughly 300 FLOPs per byte, maths takes longer than reading weights, making checking cost more than an ordinary batched pass. Real acceptance also varies with text, so gains need measurement.
+    worked: |
+      Let's estimate the average time per output token for our assistant with $\alpha=0.8$, $k=4$ and $c=0.1$.
+
+      1. **Work out the average token count.** We always get one token. Each further token requires another guess to pass, so its contribution is the chance that all guesses up to it pass.
+         $$E=1+0.8+0.64+0.512+0.4096=3.3616.$$
+
+      2. **Add up the round's cost.** Each draft pass costs a tenth of a target pass, so we pay four tenths for drafting and one more for checking.
+         $$kc+1=4\times0.1+1=1.4.$$
+
+      3. **Compare with ordinary decoding.** Producing that average token count ordinarily would take 3.3616 target passes, so we divide by the round's cost to find the speed-up.
+         $$S=\frac{3.3616}{1.4}\approx2.40.$$
+
+      4. **Find the time per token.** We use target time $t\approx4.7761$ ms from step 1 of the lesson. Multiplying by 1.4 gives round time, then dividing by expected tokens gives the average time per token across many rounds.
+         $$\frac{1.4\times4.7761}{3.3616}\approx2.0\text{ ms per token}.$$
+
+      The round takes about 6.7 ms and averages about 3.36 tokens. Over many rounds, that gives about 2.0 ms per token instead of 4.8 ms under these assumptions.
+    problems:
+      [
+        sd-speed-basics,
+        sdp-speed-self-explain,
+        sdp-expectation,
+        sdp-speed-template,
+        sdp-zero-acceptance,
+        sdp-longer-draft,
+        sdp-large-batch,
+        sdp-speech-budget,
+      ]
+  - id: sd-exact-sampling
+    title: Match the target's probabilities when sampling
+    explain: |
+      ### Drawing tokens at random
+
+      When our assistant samples, there is no single token the target "wants". So we need an acceptance rule that keeps each token's chance of coming out equal to the target's probability. Keeping all those chances preserves its **output distribution**.
+
+      Write $p(x)$ for the target's probability of token $x$, and $q(x)$ for the draft's, given the same text. Temperature controls how concentrated the probabilities are before sampling, and we use the resulting probabilities here. Green shows the overlap (the smaller bar), which will be each token's chance of being both drafted and accepted.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 400" aria-label="Target and draft probability bars for A, B, C. A has target 0.6 and draft 0.3, B has target 0.3 and draft 0.5, C has target 0.1 and draft 0.2. Green overlaps are 0.3, 0.3, 0.1.">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="28" fill="#171717">
+      <text x="20" y="35">Green: the smaller bar (overlap).</text>
+      <text x="20" y="70">Blue: the rest of each bar.</text>
+      <text x="20" y="119">A target</text><text x="20" y="159">A draft</text><text x="20" y="224">B target</text><text x="20" y="264">B draft</text><text x="20" y="329">C target</text><text x="20" y="369">C draft</text>
+      <path d="M160 110 H520 M160 150 H340 M160 215 H340 M160 255 H460 M160 320 H220 M160 360 H280" stroke="#3b82f6" stroke-width="22"/>
+      <path d="M160 110 H340 M160 150 H340 M160 215 H340 M160 255 H340 M160 320 H220 M160 360 H220" stroke="#10b981" stroke-width="22"/>
+      <text x="535" y="119">0.6</text><text x="355" y="159">0.3</text><text x="355" y="224">0.3</text><text x="475" y="264">0.5</text><text x="235" y="329">0.1</text><text x="295" y="369">0.2</text>
+      </g></svg>
+      ```
+
+      ### Accepting and filling the leftover
+
+      We want accepted proposals to supply no more than each token's target probability. After drawing $x$ from $q$, we therefore accept it with probability
+
+      $$\min(1,p(x)/q(x)).$$
+
+      We do this by drawing a random number uniformly between 0 and 1 and accepting if it falls below that threshold. If the draft proposes $x$ more often than the target would, accepting only the fraction $p(x)/q(x)$ reduces its frequency to the target's. Otherwise, we keep every proposal of $x$. Proposed tokens have $q(x)>0$, so the division is defined. Multiplying the proposal and acceptance chances gives
+
+      $$q(x)\min(1,p(x)/q(x))=\min(p(x),q(x)).$$
+
+      Adding over tokens gives the chance a guess passes.
+
+      $$\alpha=\sum_x\min(p(x),q(x)).$$
+
+      This is the acceptance chance from step 2 of the lesson, approximated as constant there. On rejection, we stop checking and sample a replacement. Each token's **leftover** is its probability still missing after acceptance, $\max(0,p(x)-q(x))$. These leftovers sum to $1-\alpha$ because the target sums to 1 and acceptance supplies $\alpha$. We divide by that sum to turn leftovers into replacement probabilities. Combining both ways of producing $x$ gives
+
+      $$\min(p(x),q(x))+(1-\alpha)\frac{\max(0,p(x)-q(x))}{1-\alpha}=p(x).$$
+
+      When $\alpha=1$, rejection never happens, so no replacement is needed. If all $k$ drafts pass, we sample a bonus from the target. Repeating the rule preserves probabilities over complete outputs, as shown by Leviathan et al. (2023) and Chen et al. (2023).
+
+      ### Keeping the target's probabilities
+
+      Greedy checking follows this rule when each model gives its top token probability one, so matches pass and mismatches are replaced. With sampling, a worse draft gives a smaller speed-up and can be slower than plain decoding if most guesses fail. The correction still preserves the target's distribution.
+    worked: |
+      Let's check the tiny A, B, C vocabulary from the picture, with target $p=(0.6,0.3,0.1)$ and draft $q=(0.3,0.5,0.2)$.
+
+      1. **Find the chance of accepting each token.** We divide its target probability by its draft probability and cap at one, because a probability cannot exceed one.
+         $$(\min(1,0.6/0.3),\min(1,0.3/0.5),\min(1,0.1/0.2))=(1,0.6,0.5).$$
+
+      2. **Find each token's chance of being drafted and accepted.** A token must first be drafted and then accepted, so we multiply those chances. The results sum to 0.7, leaving rejection probability 0.3.
+         $$(0.3\times1,0.5\times0.6,0.2\times0.5)=(0.3,0.3,0.1).$$
+
+      3. **Choose a replacement when a guess fails.** We take positive target-minus-draft differences because they show where accepted drafts fell short. Only A has any leftover, so normalising makes A certain on rejection.
+         $$(\max(0,0.6-0.3),\max(0,0.3-0.5),\max(0,0.1-0.2))=(0.3,0,0).$$
+
+      4. **Add the two ways a token can appear.** Rejection happens with probability 0.3 and always supplies A, so we add that probability to what acceptance already supplied.
+         $$(0.3,0.3,0.1)+0.3(1,0,0)=(0.6,0.3,0.1)=p.$$
+
+      Even though the draft favours B, the final next-token distribution is exactly the target's.
+
+      You might think we could just sample the replacement from $p$. But B would then have probability $0.3+0.3\times0.3=0.39$, because accepted drafts already supply 0.3 and rejections add another $0.3\times0.3$. That exceeds its target probability of 0.3.
+    problems:
+      [
+        sd-sampling-basics,
+        sdp-sampling-self-explain,
+        sdp-accept-ratio,
+        sdp-cap-probability,
+        sdp-overlap,
+        sdp-residual,
+        sdp-wrong-resample,
+        sdp-worse-draft,
+      ]
+  - id: sd-guess-sources
+    title: Other ways to make the guesses
+    explain: |
+      ### Paying for a separate draft
+
+      Our assistant's small draft needs its own weights in memory and its own sequential passes. Can we make guesses more cheaply? We can reuse the target's work or look through text we already have, then let the target check those guesses too.
+
+      ### Adding prediction heads
+
+      An **output head** turns a model's final internal vector into token scores. With **Medusa**, the method from Cai et al. (2024), we could add heads to our Llama 3 8B. Picture several heads reading the final internal vector at each computed position, each guessing a different future position. In that same pass, ordinary target predictions check guesses from the previous round while the extra heads propose new ones. New heads start untrained, so they must learn to predict. Training only these heads takes less work than updating the whole model and leaves the original model unchanged.
+
+      With **EAGLE**, the method from Li et al. (2024), our assistant could instead use a one-layer draft network. It takes the target's internal vectors and token embeddings to predict the final internal vector at the next position, just before the output layer. The target's output head turns that vector into token scores. Feeding the predicted vector back into the draft network with the chosen token's embedding lets it predict another position.
+
+      ### Looking up an earlier phrase
+
+      An **n-gram** is a run of $n$ consecutive tokens. N-gram speculation searches the prompt and text generated so far for an earlier occurrence of the last few tokens. It proposes whatever followed that occurrence, so it needs no draft model. This cheap lookup helps with copying documents or editing code. If fresh writing offers no useful match, the target generates normally.
+
+      Suppose our assistant's prompt contains `return total + tax ;` and its answer ends in `return total`. Lookup proposes `+ tax ;`. Here words and symbols are tokens. If the target wants `+ fee ;`, it keeps `+`, corrects `tax` to `fee`, and discards the draft's semicolon.
+
+      Whatever produces the guesses, checking them with the sampling lesson step's rule preserves the target's distribution. Medusa's paper also offers a faster acceptance rule that gives up this guarantee. Lookup proposes only the copied token, giving it draft probability 1 and acceptance chance $p(x)$.
+    worked: |
+      Let's follow the code-edit lookup using greedy checking, as in the first lesson step. The prompt contains `return total + tax ;`, and the answer so far ends with `return total`. Treat words and symbols as tokens.
+
+      1. **Find the answer's ending in the prompt.** One token may match too often, while longer endings rarely match, so two tokens are our simple choice for this small example. We search for "return total". The arrow points from those search tokens to the matching phrase in the prompt.
+         $$\text{return total}\longrightarrow\text{return total + tax ;}$$
+
+      2. **Copy the tokens that followed it.** Because the earlier phrase continues with three more tokens, we can propose those without running a draft model.
+         $$\text{draft}=\text{+ tax ;}\qquad k=3$$
+
+      3. **Let the target check the guesses.** Suppose it chooses "+" after "return total", "fee" after "return total +", and ";" after "return total + tax". We keep the first guess, but the second differs, so we add the correction and stop.
+         $$\text{accepted drafts}=1\qquad\text{output}=\text{+ fee}$$
+
+      We produced two tokens because one guess passed and we added one correction. The draft's semicolon is thrown away because it followed "tax", and the next round starts after "fee".
+    problems:
+      [
+        sd-sources-basics,
+        sdp-sources-self-explain,
+        sdp-medusa,
+        sdp-eagle,
+        sdp-lookup-count,
+        sdp-exact-lookup,
+        sdp-quote-task,
+        sdp-no-match,
+      ]
+final: sd-explain-final
+summary: |
+  - A speculative-decoding round gives between 1 and $k+1$ tokens for the cost of $k$ draft passes and one target pass.
+  - With independent acceptance rate $\alpha$ and draft-to-target pass-time ratio $c$, expected tokens are $E=1+\alpha+\cdots+\alpha^k$ and speed-up is $E/(kc+1)$. Long drafts and large batches can reduce the gain.
+  - Accepting a proposal $x$ with probability $\min(1,p(x)/q(x))$ and replacing rejections from normalised $\max(0,p-q)$ preserves the target distribution.
+  - Guesses can come from a separate model, extra output heads, predicted internal vectors or an earlier matching phrase, and the target still checks every guess.
+
+  **Next:** The Serving LLMs lesson explores batching many users' requests on one GPU and arranging inference work to meet latency goals.
