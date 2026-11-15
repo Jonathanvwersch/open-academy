@@ -139,13 +139,13 @@ knowledge_points:
     explain: |
       ### Memory limits the batch
 
-      Continuous batching benefits from big batches, but each sequence needs KV-cache memory. The KV cache stores every earlier token's keys and values so decoding can reuse them. For Llama 3 8B at 16-bit precision, that's 131,072 bytes for each token, worked out as
+      **Continuous batching** replaces finished requests after each decode step. Big batches help, but each **sequence**, a prompt plus its reply so far, needs KV-cache memory. The KV cache stores earlier tokens' keys and values for reuse. For Llama 3 8B at 16-bit precision, that's 131,072 bytes per token:
 
       $$2\times L\times n_{kv}\times d_h\times b=2\times32\times8\times128\times2.$$
 
       Here $L=32$ layers, $n_{kv}=8$ key-value heads (each shared by 4 of the 32 query heads), $d_h=128$ numbers per head and $b=2$ bytes per number, and the first 2 counts keys and values. The H100 has 80 GB of memory and the weights take 16 GB, which leaves about 64 GB for KV caches, ignoring some smaller working memory.
 
-      A server can't know a reply's length in advance. A simple server reserves one unbroken memory stretch per request for its longest allowed sequence, prompt plus reply. Most are shorter, leaving much of each stretch empty.
+      A server can't know reply lengths in advance. Reserving one unbroken memory stretch per request for its longest allowed sequence leaves much of it empty.
 
       ### Blocks and a block table
 
@@ -377,7 +377,7 @@ knowledge_points:
     explain: |
       ### A long prompt joins the batch
 
-      In the prefill and decode lesson, we saw that prefill handles the whole prompt at once and is limited by maths speed, while decode is limited by reading memory. A step's time is set by whichever takes longer, reading the weights or doing the maths. With continuous batching, a new request's prefill can join the same step as everyone else's decoding. What happens to those other users?
+      Prefill handles the whole prompt at once and is limited by maths speed, while decode is limited by reading memory. A step takes as long as the slower of these. **Continuous batching** replaces finished requests after each decode step. A new request's prefill can join everyone else's decoding. What happens to those users?
 
       Leaving out the attention scores, prefill costs about 2 FLOPs per parameter per prompt token, because each parameter is used in one multiply and one add. A 2,000-token prompt to Llama 3 8B costs about $2\times8\times10^9\times2{,}000=3.2\times10^{13}$ FLOPs. The H100 does about 990 TFLOP/s, which we round to 1,000 TFLOP/s, so that takes about 32 ms. This is far longer than the 5 ms weight read, so the step that carries this prompt takes about 32 ms, and every user mid-reply waits 32 ms for their next token instead of 5 ms.
 
@@ -421,18 +421,18 @@ knowledge_points:
 
       ### Two ways to stop the stall
 
-      **Chunked prefill** splits a long prompt into pieces and processes one piece per step, alongside the decoding sequences. A 500-token piece takes about 8 ms of maths, so in the picture the same prompt spreads over 4 steps and no gap is longer than about 8 ms. The new user's first token arrives at about the same time as before, because the prompt still needs the same total maths.
+      **Chunked prefill** splits a long prompt into pieces and processes one piece per step alongside decoding. A 500-token piece takes about 8 ms of maths, so the picture spreads the prompt over 4 steps with no gap longer than about 8 ms. The new user's first token arrives at about the same time: the total maths is unchanged.
 
       **Disaggregated serving** runs prefill on one set of GPUs and decoding on another. When a prompt's prefill finishes, its KV cache is copied to a decode GPU. Decode GPUs never stall for prompts. The cost is copying the cache, about 0.26 GB for a 2,000-token prompt to Llama 3 8B ($2{,}000\times131{,}072$ bytes). Decoding can't start until the copy arrives.
 
       ### Choosing a setup for the whole server
 
-      Here is what to try for each problem.
+      Try these setups:
 
-      - **Throughput too low, ITL and TTFT fine:** bigger batches with continuous batching and paging, or more replicas.
-      - **ITL too long at every step:** tensor parallelism.
+      - **Throughput too low, ITL and TTFT fine:** bigger batches with continuous batching and paging, which stores KV caches in fixed-size memory blocks, or more replicas, full model copies serving separate requests.
+      - **ITL too long at every step:** tensor parallelism, splitting each weight matrix across GPUs.
       - **ITL jumps when long prompts arrive:** chunked prefill, or separate prefill GPUs.
-      - **Model too big for one GPU:** tensor parallelism, or expert parallelism for a mixture of experts.
+      - **Model too big for one GPU:** tensor parallelism, or expert parallelism, placing different experts on different GPUs, for a mixture of experts.
     worked: |
       Suppose the chat assistant promises every user an ITL of at most 10 ms, and prompts of 2,000 tokens arrive often while 32 users are decoding. Let's find a chunk size for chunked prefill that keeps that promise on one H100.
 

@@ -80,9 +80,9 @@ knowledge_points:
     explain: |
       ### Remembering gradient sizes too
 
-      Our simple robot model has one parameter. A richer version could predict one time for short trips and another for long trips, giving two adjustable parameters. Batches containing both kinds of trip give loss slopes for both predictions. With slopes $4$ and $2$, learning rate $0.1$ makes moves of size $0.4$ and $0.2$. If the first prediction is already near its best value, we might reduce the rate to avoid overshooting, shrinking the second move too.
+      A simple robot model predicts the same trip time for every journey, using one parameter. A richer version predicts one time for short trips and another for long trips. Batches containing both give loss slopes for both predictions. With slopes $4$ and $2$, learning rate $0.1$ makes moves of size $0.4$ and $0.2$. Reducing the rate to avoid overshooting on the first prediction shrinks the second move too.
 
-      We'll remember sizes too, so we can divide each parameter's move by its own size estimate. First look just at the short-trip parameter in a fresh run, with gradient $4$. As with momentum, let's keep three quarters of the old average and include one quarter of the new value. Squaring $4$ gives $16$. We start at zero, so one quarter of $16$ gives an average of $4$. Its square root is $2$, as the arrows show.
+      **Momentum** uses an average of recent gradients to choose moves. We'll remember sizes too, to scale each parameter's move separately. Take the short-trip parameter in a fresh run, with gradient $4$. Keep three quarters of the old average and include one quarter of the new squared gradient. Squaring $4$ gives $16$. Starting at zero gives an average of $4$, whose square root is $2$, as the arrows show.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 245" aria-label="For the first gradient 4, square to get 16, average one quarter of it with three quarters of the starting zero to get v equals 4, then take the square root to get size 2. Each arrow means perform the next operation.">
@@ -100,13 +100,13 @@ knowledge_points:
 
       ### A separate size for each parameter
 
-      An **adaptive learning rate** adjusts the scale of an update using that parameter's own gradient history. Let $v_t$ be an exponentially weighted average of squared gradients, starting at $v_0=0$:
+      An **adaptive learning rate** scales an update using that parameter's gradient history. Let $v_t$ be an **exponentially weighted average** of squared gradients: keep a fixed fraction of the old average at each update, so older contributions fade. Call this fraction $\beta_2$ (beta two), chosen from $0$ up to but excluding $1$. With current gradient $g_t$ at update $t$, start at $v_0=0$:
 
       $$v_t=\beta_2v_{t-1}+(1-\beta_2)g_t^2.$$
 
-      We also choose $\beta_2$ (beta two) to be at least $0$ but less than $1$, and can choose it independently of $\beta_1$. Squaring stops opposite signs from cancelling in this size estimate. We then take the square root because we want to divide by a gradient size rather than a squared size.
+      Choose this independently of $\beta_1$, the fraction kept in the signed-gradient average. Squaring prevents sign cancellation. The square root returns the estimate to gradient size.
 
-      We'll divide the remembered gradient by this size. Using these two stored averages for now gives the scaled value
+      Write the signed-gradient average as $m_t$. Dividing it by this size gives
 
       $$\frac{m_t}{\sqrt{v_t}}.$$
 
@@ -138,7 +138,7 @@ knowledge_points:
     explain: |
       ### How zero affects the first averages
 
-      Our averages start at zero, which initially makes them smaller than the gradients they describe. Imagine every batch gives the same gradient, $4$. With $\beta_1=0.75$, the first average is only $1$, and the second is $1.75$. The gradient hasn't shrunk, so this small average comes from how we started it.
+      We track two averages: $m_t$ for signed gradients and $v_t$ for squared gradients after update $t$. Each keeps a fraction of its previous value and adds the remaining fraction of the new value. Both start at zero, making early averages small. Imagine every batch gives gradient $4$. With $\beta_1=0.75$, the fraction kept in $m_t$, the first average is only $1$, and the second is $1.75$. The gradient hasn't shrunk; the starting zero lowers the average.
 
       The blue bars show the constant gradient. Orange shows the stored average, and green shows the average after removing the starting zero's influence.
 
@@ -165,13 +165,13 @@ knowledge_points:
 
       The two gradient weights add to $7/16$, not $1$. Dividing by $7/16$ turns them into $3/7$ and $4/7$, which do add to $1$. We now have a weighted average of just the real gradients, with no weight left on the starting zero.
 
-      **Bias correction** divides each stored average by the total weight assigned to actual gradients. We'll put a hat over a value to show that we've corrected it:
+      **Bias correction** divides each stored average by the total weight assigned to actual gradients. Write $\beta_2$ for the fraction kept in the squared-gradient average. A hat marks a corrected value:
 
       $$\hat m_t=\frac{m_t}{1-\beta_1^t}.$$
 
       $$\hat v_t=\frac{v_t}{1-\beta_2^t}.$$
 
-      The power $t$ counts updates since we started the averages at zero. The starting zero retains weight $\beta_1^t$ in the signed average and $\beta_2^t$ in the squared average. Each denominator subtracts the matching starting weight from $1$.
+      The power $t$ counts updates since the zero start. The starting zero retains weight $\beta_1^t$ in the signed average and $\beta_2^t$ in the squared average. Each denominator subtracts that starting weight from $1$.
 
       ### What this correction can fix
 
@@ -204,7 +204,7 @@ knowledge_points:
     explain: |
       ### Calculating one parameter's update
 
-      We now have a remembered direction and a separate size for each parameter, both corrected for their zero start. **Adam** is the training algorithm that combines them into a complete update.
+      **Adam** is a training algorithm that tracks two averages per parameter: $m_t$ for signed gradients, giving direction, and $v_t$ for squared gradients, giving size after a square root. Both start at zero. Dividing by the weight assigned to actual gradients removes that starting zero's influence.
 
       The picture shows one parameter's calculation. We use a fresh batch gradient to update both averages, then correct them. Taking the square root of the corrected squared average gives the size. The small positive number epsilon keeps the size we divide by above zero, and eta is our learning rate.
 
@@ -223,7 +223,7 @@ knowledge_points:
 
       ### The complete Adam rule
 
-      Start with $m_0=v_0=0$. For each update $t=1,2,\ldots$, use the current batch gradient $g_t$, measured at $w_{t-1}$:
+      Start with $m_0=v_0=0$. Choose $\beta_1$ and $\beta_2$, the fractions of the previous signed and squared averages to keep, each from $0$ up to but excluding $1$. For each update $t=1,2,\ldots$, use the current batch gradient $g_t$, measured at $w_{t-1}$:
 
       $$m_t=\beta_1m_{t-1}+(1-\beta_1)g_t.$$
 

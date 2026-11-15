@@ -98,7 +98,7 @@ knowledge_points:
     explain: |
       ### A pattern in the slopes
 
-      Working out a limit every time is slow, so let's look for a shortcut. In the last step we found that the car's distance $t^2$ has slope $2t$. If we call the input $x$ instead, the curve $f(x)=x^2$ has slope $2x$. In the picture, the blue tangents at $x=-1$, $0$, $1$ and $2$ have slopes $-2$, $0$, $2$ and $4$, twice the input each time. A negative slope means the curve is going down, and a slope of $0$ means it's flat there.
+      A **limit** is the value a calculation approaches as its input approaches a target. Finding slopes by shrinking an input step towards zero takes time, so let's find a shortcut. A car's distance $t^2$ has slope $2t$. Renaming the input gives $f(x)=x^2$ with slope $2x$. The blue **tangents**, lines touching the curve with its slope there, at $x=-1$, $0$, $1$ and $2$ have slopes $-2$, $0$, $2$ and $4$, twice the input. Negative slopes go down; a slope of $0$ is flat.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 390" aria-label="The curve y equals x squared with blue tangent lines at x equals minus 1, 0, 1 and 2. Their slopes are minus 2, 0, 2 and 4, twice the input each time">
@@ -124,7 +124,7 @@ knowledge_points:
 
       ### The power rule
 
-      When we write $f'$ without an input, we mean the derivative at every input, such as $f'(x)=2x$. To **differentiate** a function means to find its derivative. The **power rule** says that for any fixed number $n$,
+      The **derivative** is a function's slope at each input, written $f'$ ("f prime"), such as $f'(x)=2x$. To **differentiate** means to find this slope function. The **power rule** says that for any fixed number $n$,
 
       $$(x^n)'=nx^{n-1}$$
 
@@ -180,11 +180,11 @@ knowledge_points:
     explain: |
       ### When the input is the power
 
-      The power rule only works for a fixed power, like the $3$ in $x^3$. In an **exponential** such as $2^x$, the input is the power itself, so the rule doesn't apply. The most important exponential uses the number $e\approx2.718$, where $\approx$ means "about", as its base and is written $e^x$.
+      The **power rule** finds slopes of fixed powers: bring the power down in front and reduce it by one, as for the $3$ in $x^3$. In an **exponential** such as $2^x$, the input is the power, so the rule doesn't apply. The exponential $e^x$ uses $e\approx2.718$ as its base; $\approx$ means "about". A prime mark means a function's slope at each input.
 
       ### The slope of e to the x
 
-      Look at the left of the picture. At $x=0$, $e^x$ has height $1$ and its tangent has slope $1$. At $x=1$, the height is about $2.72$, and so is the slope.
+      At the picture's left, $e^x$ has height $1$ at $x=0$. Its tangent, a line touching the curve with its slope there, has slope $1$. At $x=1$, height and slope are about $2.72$.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 410" aria-label="Left, the curve e to the x with blue tangents at x equals 0, where the height and slope are both 1, and at x equals 1, where both are about 2.72. Right, the curve ln x with blue tangents at x equals 1, 2 and 4, whose slopes are 1, one half and one quarter">
@@ -223,11 +223,11 @@ knowledge_points:
 
       A **logarithm** goes the other way, and asks which power gives a number. For example, $\log_2 8$, the power of $2$ that gives $8$, is $3$ because $2^3=8$. The **natural logarithm** $\ln x$ asks which power of $e$ gives $x$, so $\ln 1=0$ because $e^0=1$. It only exists for positive $x$, because no power of $e$ is zero or negative.
 
-      On the right of the picture, the slope of $\ln x$ is $1$ at $x=1$, $\tfrac12$ at $x=2$ and $\tfrac14$ at $x=4$. Because $\ln x$ undoes $e^x$, its graph is the $e^x$ graph with the axes swapped. Swapping the axes swaps rise and run, so each slope flips to one over itself. For example, $e^x$ has height and slope $2.72$ at $x=1$, so $\ln x$ has slope $1/2.72$ at $x=2.72$. The same happens at every point, so $\ln x$ has slope $1/x$ at every input $x$:
+      On the right, $\ln x$ has slope $1$ at $x=1$, $\tfrac12$ at $x=2$ and $\tfrac14$ at $x=4$. Because $\ln x$ undoes $e^x$, its graph swaps the axes. Rise and run swap, so each slope flips to one over itself. For example, $e^x$ has height and slope $2.72$ at $x=1$, so $\ln x$ has slope $1/2.72$ at $x=2.72$. At every input $x$, its slope is $1/x$:
 
       $$(\ln x)'=\frac1x$$
 
-      The rules for numbers in front, sums and constants still apply here. For example, $(5e^x)'=5e^x$.
+      A number multiplying a function multiplies its slope; a sum's slope is the sum of the slopes; a constant's slope is zero. For example, $(5e^x)'=5e^x$.
 
       Be careful not to use the power rule on $e^x$, which would give $xe^{x-1}$. In $e^x$ the power is the input, not a fixed number.
     worked: |
@@ -283,7 +283,7 @@ knowledge_points:
       </svg>
       ```
 
-      In the first step we saw that a small nudge $h$ to the input changes the output by about the slope times $h$. So $\Delta u\approx u'h$ and $\Delta v\approx v'h$. The slope of the area is its change divided by the nudge, so we divide the gained area by $h$. The two strips give $u'v$ and $uv'$, while the corner gives about $u'v'h$, which disappears as $h$ shrinks.
+      A small input nudge $h$ changes an output by about its slope times $h$. Write the slopes of $u$ and $v$ as $u'$ and $v'$ ("u prime" and "v prime"). So $\Delta u\approx u'h$ and $\Delta v\approx v'h$. Divide the gained area by $h$ to find its slope. The strips give $u'v$ and $uv'$, while the corner gives about $u'v'h$, which disappears as $h$ shrinks.
 
       ### The product and quotient rules
 
@@ -303,7 +303,7 @@ knowledge_points:
     worked: |
       Let's find the slope of $f(x)=(x^2+1)(3x-2)$ at $x=1$, then check it by multiplying out the brackets.
 
-      1. **Name the two parts and their slopes.** The first bracket is $u$ and the second is $v$, and the power rule gives their slopes.
+      1. **Name the two parts and their slopes.** The first bracket is $u$ and the second is $v$. The power rule brings each power down in front and reduces it by one to find its slope; constants have slope zero.
          $$u=x^2+1,\quad u'=2x,\qquad v=3x-2,\quad v'=3$$
 
       2. **Find the values at $x=1$.** The product rule needs each part's value as well as its slope.
@@ -312,7 +312,7 @@ knowledge_points:
       3. **Apply the product rule.** Each part's slope is multiplied by the other part's value.
          $$f'(1)=u'v+uv'=2\times1+2\times3=2+6=8$$
 
-      4. **Check by multiplying out.** Expanding gives a polynomial, which the power rule handles directly.
+      4. **Check by multiplying out.** Expanding gives a polynomial, a sum of powers of $x$ multiplied by numbers, which the power rule handles directly.
          $$f(x)=3x^3-2x^2+3x-2,\quad f'(x)=9x^2-4x+3,\quad f'(1)=8$$
 
       Both ways give $8$, while multiplying the two slopes would give $u'v'=6$.

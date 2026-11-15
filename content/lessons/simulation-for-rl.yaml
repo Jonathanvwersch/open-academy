@@ -99,7 +99,7 @@ knowledge_points:
 
       We can now restart the corridor and take a step in it. To run whole episodes, the agent also needs a rule for choosing an action in each state. Reinforcement learning calls this rule a **policy**. Later lessons are about finding good policies, so here we'll use simple fixed ones, such as "always move right".
 
-      Running an episode always follows the same pattern, shown in the picture. We call reset once. Then we repeat three things until the episode ends. The policy picks an action from the current state, step applies it, and we add the reward and carry on from the next state.
+      Running an episode follows the pattern in the picture. We call **reset**, which starts a fresh episode and returns its starting state. Then we repeat three things: the policy picks an action, **step** applies it and returns the next state, reward and ending flags, and we add the reward and carry on.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 320" aria-label="Flowchart of the interaction loop. reset leads to the policy picking an action, which leads to step returning the next state and reward. Then a check asks whether the episode has ended. If yes, the episode is over. If no, an arrow goes back to the policy picking the next action">
@@ -150,7 +150,7 @@ knowledge_points:
       - `self.steps += 1` adds 1 to the step count.
       - `min(self.cell + 1, 4)` and `max(self.cell - 1, 1)` keep the robot between the walls, since `min` picks the smaller number and `max` the larger.
       - `10 if terminated else -1` gives 10 when `terminated` is true and $-1$ otherwise.
-      - `and not terminated` stops both flags being true at once, so reaching cell 4 on the 5th step counts only as terminated, because the task really ended. Gymnasium's time-limit wrapper can set both.
+      - `and not terminated` stops both flags being true at once, so reaching cell 4 on the 5th step counts only as terminated, because the task really ended. Gymnasium, a library of ready-made environments, has a time-limit wrapper, code around an environment that adds a step limit. It can set both flags.
       - `return` can hand back several values, and `a, b = ...` unpacks them into separate names.
       - `run_episode` takes the environment `env` and a policy, which is a function from a state to an action. These two policies ignore the state. `while True` repeats until a `return` leaves the function, handing back the total reward, the step count `env.steps` and whether the episode terminated. Our `step` doesn't check for a finished episode, so `run_episode` must stop.
       - `env = Corridor()` makes one corridor, and `run_episode` calls its reset.
@@ -194,7 +194,7 @@ knowledge_points:
       # prints (8, 3, True), then (-5, 5, False)
       ```
 
-      Real projects usually get environments from a library, a package of ready-made code. A common one is Gymnasium, the maintained successor to the Gym library that OpenAI released in 2016. It uses the same names for reset, step, terminated and truncated. Its step also returns a fifth value, `info`, a dictionary (a set of named values) with extra details such as values for debugging, and its reset returns the start state together with `info`.
+      Gymnasium is the maintained successor to the Gym library that OpenAI released in 2016. It uses the same names for reset, step, terminated and truncated. Its step also returns a fifth value, `info`, a dictionary (a set of named values) with extra details such as values for debugging, and its reset returns the start state together with `info`.
     problems:
       - sim-loop-basics
       - sim-loop-self-explain
@@ -209,11 +209,11 @@ knowledge_points:
     explain: |
       ### Why one copy is slow
 
-      Training takes millions of steps, but one simulator leaves most processor cores idle. Running episodes together gives varied situations because policies often pick actions at random.
+      Training takes millions of steps, but one simulator leaves most processor cores idle. Running episodes together gives varied situations because policies, rules for choosing actions from states, often pick actions at random.
 
       ### Many corridors side by side
 
-      A **vectorised environment** runs $N$ copies side by side. Each active copy gets one action per call. Gymnasium's `AsyncVectorEnv` runs copies in separate processes. Reset returns $N$ start states; step returns a next state, reward, terminated flag and truncated flag for each copy.
+      A **vectorised environment** runs $N$ copies side by side, one action per active copy per call. Gymnasium, a library of ready-made environments, offers `AsyncVectorEnv` to run copies in separate processes. **Reset** starts fresh episodes and returns $N$ start states. **Step** applies the actions and returns each copy's next state, reward and two true-or-false flags: **terminated** for a task ending and **truncated** for a time-limit cutoff.
 
       The loop still chooses actions and calls step repeatedly, but it checks the ending flags separately for each copy. A finished copy restarts while the others carry on.
 
@@ -259,11 +259,9 @@ knowledge_points:
 
       ### Finished copies restart on their own
 
-      A vectorised environment resets each finished copy alone and keeps stepping the others.
-
       Here a finished copy is reset straight away, so step returns its new start state. Gymnasium's default next-step autoreset waits until the next call to reset it and ignores that call's action. That call produces no transition for the finished copy, so its entry is left out of experience.
 
-      A's move reached terminal cell 4, its true next state. Returned cell 1 starts the new episode. In same-call reset mode, Gymnasium records it in `info["final_obs"]`.
+      A's move reached terminal cell 4, its true next state. Returned cell 1 starts the new episode. In same-call reset mode, Gymnasium records the terminal state in `info["final_obs"]`, an entry in the dictionary of extra details returned by step.
     worked: |
       Let's follow the two copies call by call. Each corridor has a 5-step time limit, copy A always moves right and copy B always moves left.
 
@@ -299,11 +297,11 @@ knowledge_points:
     explain: |
       ### No simulator is exact
 
-      A simulator's friction, masses, delays and sensor errors are imperfect. The drop in performance when a policy trained in simulation runs on the real robot is called the **sim-to-real gap**.
+      A simulator's friction, masses, delays and sensor errors are imperfect. A **policy** is a rule for choosing an action from a state. The drop in performance when a policy trained in simulation runs on the real robot is called the **sim-to-real gap**.
 
       ### A jump that works only in the simulator
 
-      To see the gap, we give the corridor robot a third action, a **jump** that moves it two cells to the right. Like a move, it gives $-1$, or $+10$ if it lands in cell 4. Moves left and right still always work. In the simulator the jump always works too. On the real floor it works only half the time, and otherwise the robot falls over. A fall gives $-10$ for that step and ends the episode, with terminated set to true.
+      To see the gap, we give the corridor robot a third action, a **jump** that moves it two cells to the right. Like a move, it gives $-1$, or $+10$ if it lands in cell 4. Moves left and right still always work. In the simulator the jump always works too. On the real floor it works only half the time, and otherwise the robot falls over. A fall gives $-10$ for that step and ends the episode, with **terminated**, the flag reporting that the task ended, set to true.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 310" aria-label="The four-cell corridor. Green arrows below the cells walk from 1 to 2 to 3 to 4, total 8. An orange arc above jumps from cell 1 to cell 3 and is followed by one step right, total 9 in the simulator. A red note says that on the real floor the jump works half the time, and otherwise the robot falls, which ends the episode with minus 10">
@@ -333,9 +331,9 @@ knowledge_points:
 
       ### Closing the gap
 
-      A common fix is **domain randomisation**. At every reset, the simulator draws its uncertain settings at random from a range. Here that's the jump's chance of working, and for a real robot, things like friction, masses and delays. The policy is trained to do well on average across the whole range, and if the real world lies inside it, the real world is just one more variation. In 2018, OpenAI trained a five-fingered robot hand this way, entirely in simulation, to turn a cube in its palm until it faced a chosen way, then used the policy on the real hand.
+      A common fix is **domain randomisation**. At every **reset**, the call that starts a fresh episode, the simulator draws its uncertain settings at random from a range. Here that's the jump's chance of working; for a real robot, it includes friction, masses and delays. The policy trains to do well across the range, making real conditions inside it another variation. In 2018, OpenAI trained a five-fingered robot hand this way, entirely in simulation, to turn a cube in its palm until it faced a chosen way, then used the policy on the real hand.
 
-      Other fixes are measuring the real robot to set the simulator, and practising briefly on the real robot at the end. Choose a range that covers plausible real-world conditions. Outside the training range, transfer is uncertain. A policy that copes with everything can be more cautious than it needs to be in any one setting, like our robot walking even on a floor where the jump would work.
+      Other fixes include measuring the real robot to set the simulator and practising briefly on it at the end. Cover plausible real-world conditions: outside the training range, transfer is uncertain. A policy that copes with everything can be overly cautious in any one setting, like walking on a floor where the jump would work.
     worked: |
       Let's compare the two policies, jumping and walking, using the expected value. That's the average total reward over many episodes. Each outcome is weighted by its probability, so an outcome that happens half the time counts for half.
 

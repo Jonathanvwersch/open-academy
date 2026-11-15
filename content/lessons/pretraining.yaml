@@ -19,7 +19,7 @@ knowledge_points:
     explain: |
       ### Where the text comes from
 
-      To pretrain a model we need far more text than anyone could write for the job. So most of it is gathered from the public web by programs called crawlers, which download pages and follow their links. The Common Crawl archive, a free collection of crawled pages, is a usual starting point, and it's mixed with books, Wikipedia, scientific papers and, in many recent models, computer code. We count dataset sizes in tokens. OpenAI's GPT-3, a large language model from 2020, was trained on 300 billion tokens, and Meta's Llama 3 model on over 15 trillion in 2024.
+      To **pretrain** a model is to teach it to predict the next token across a large collection of text. This needs far more text than anyone could write for the job. Most comes from the public web via crawlers, programs that download pages and follow links. The Common Crawl archive, a free collection of crawled pages, is mixed with books, Wikipedia, scientific papers and often code. We count dataset sizes in tokens. OpenAI's GPT-3, a large language model from 2020, was trained on 300 billion tokens, and Meta's Llama 3 model on over 15 trillion in 2024.
 
       ### Cleaning, tokenizing and packing
 
@@ -91,7 +91,7 @@ knowledge_points:
     explain: |
       ### Counting operations
 
-      Once we have the data, how much computing does training take? We measure it in **floating-point operations**, or FLOPs. Floating-point numbers are numbers with a decimal point, the kind the weights are stored as, and one FLOP is a single addition or multiplication of two of them.
+      How much computing does training take? We measure it in **floating-point operations**, or FLOPs. Floating-point numbers have a decimal point, the kind the weights are stored as, and one FLOP is an addition or multiplication of two of them.
 
       Almost every parameter is a weight in some matrix, and in the matrices lesson we saw that multiplying a matrix by a vector multiplies each weight by one number and adds the product to a running total. That's two FLOPs per weight, so the forward pass costs about $2$ FLOPs per parameter for each token.
 
@@ -105,7 +105,7 @@ knowledge_points:
 
       where $P$ is the number of parameters, $D$ is the number of training tokens, and $6$ is the FLOPs per parameter per token. The formula leaves out the work attention does comparing tokens with each other, which grows with the window length and is small next to the weight multiplications unless windows are very long.
 
-      The numbers get big, so we write them with powers of ten. $10^6$ is a $1$ followed by six zeros, a million, and the raised $6$ is called the exponent. A small model with $P=10^6$ parameters trained on $D=2\times10^7$ tokens needs $1.2\times10^{14}$ FLOPs. GPT-3, with $175$ billion parameters trained on $300$ billion tokens, needs about $3.15\times10^{23}$ FLOPs.
+      The numbers get big, so we write them with powers of ten. $10^6$ is a $1$ followed by six zeros, a million, and the raised $6$ is called the exponent. A small model with $P=10^6$ parameters trained on $D=2\times10^7$ tokens needs $1.2\times10^{14}$ FLOPs. GPT-3, OpenAI's 2020 language model, with $175$ billion parameters trained on $300$ billion tokens, needs about $3.15\times10^{23}$ FLOPs.
 
       ### What that means in time
 
@@ -145,9 +145,9 @@ knowledge_points:
     explain: |
       ### Loss against compute
 
-      What does more compute buy, and can we know before paying for it?
+      **Compute** is the amount of calculation used in training, counted in floating-point operations (FLOPs), additions or multiplications of decimal numbers. What does more compute buy, and can we know before paying for it?
 
-      In 2020, Kaplan and colleagues at OpenAI found a simple pattern across many language models. As long as neither the model's size nor its data holds it back, the loss on test text the model never trained on falls smoothly as compute grows. Every tenfold increase in compute multiplies the loss by about the same factor. The picture starts from a run with a loss of $4$, measures compute in multiples of that run, and uses a factor of $0.9$, close to what they measured. So three tenfold steps take it to $3.6$, then $3.24$, then $2.916$, about $2.92$.
+      In 2020, Kaplan and colleagues at OpenAI found a pattern across language models. When model size and data are sufficient, loss on unseen test text falls smoothly as compute grows. Every tenfold increase multiplies loss by about the same factor. The picture starts at loss $4$, measures compute in multiples of that run, and uses a factor of $0.9$, close to their measurements. Three tenfold steps give $3.6$, then $3.24$, then $2.916$, about $2.92$.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 320" aria-label="Loss against training compute on logarithmic axes, with each compute tick ten times the one before. Four green points, at compute 1, 10, 100 and 1000 times the first run, have losses 4, 3.6, 3.24 and 2.92. They lie on one straight line, because each tenfold step multiplies the loss by 0.9">
@@ -172,7 +172,7 @@ knowledge_points:
       </svg>
       ```
 
-      On these axes, each tenfold step in compute moves the same distance right. The loss axis is spaced so that each multiplication by $0.9$ moves the same distance down, so the points lie on a straight line. The actual drops shrink, $0.4$, then $0.36$, then about $0.32$, so improvements keep getting more expensive.
+      Each tenfold compute increase moves the same distance right. Each multiplication of loss by $0.9$ moves the same distance down, putting the points on a straight line. Actual drops shrink: $0.4$, then $0.36$, then about $0.32$. Improvements keep getting more expensive.
 
       ### Scaling laws
 
@@ -184,7 +184,7 @@ knowledge_points:
 
       ### Splitting the budget
 
-      For a fixed budget $C\approx6PD$, should we build a bigger model or train it on more tokens? In 2022, Hoffmann and colleagues at DeepMind found that at any budget the lowest loss comes at about $20$ training tokens per parameter. Their Chinchilla model had $70$ billion parameters and $1.4$ trillion tokens. It beat their earlier $280$-billion-parameter Gopher model on most tests, using about the same compute.
+      Training costs roughly $C\approx6PD$: $C$ FLOPs for $P$ parameters and $D$ training tokens, at about six FLOPs per parameter per token. For a fixed budget, should we build a bigger model or train on more tokens? In 2022, Hoffmann and colleagues at DeepMind found the lowest loss at about $20$ training tokens per parameter. Their Chinchilla model had $70$ billion parameters and $1.4$ trillion tokens. It beat their earlier $280$-billion-parameter Gopher model on most tests, using about the same compute.
 
       Scaling laws predict only the loss, though. Which skills a model will have at a given loss is much harder to forecast. Many recent models are trained far past $20$ tokens per parameter, because a smaller model needs fewer FLOPs every time it answers a user.
     worked: |
@@ -221,7 +221,7 @@ knowledge_points:
     explain: |
       ### From raw text to an assistant
 
-      So far we've looked at pretraining itself. It is one stage of a longer pipeline that ends with an assistant, so let's follow a model through the whole pipeline, from left to right in the picture.
+      **Pretraining**, teaching a model to predict the next token across a large collection of text, is one stage of building an assistant. Let's follow the whole pipeline from left to right in the picture.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 230" aria-label="The LLM training pipeline from left to right: text data, then a tokenizer, then pretraining, which gives a base model that continues text, then post-training, which gives an assistant. A bar underneath pretraining and post-training, labelled evaluate on unseen tests, shows the model being tested throughout both">
@@ -243,7 +243,7 @@ knowledge_points:
       </svg>
       ```
 
-      First comes the text data, filtered and deduplicated as we saw earlier. Next the tokenizer turns the text into tokens, which are packed into windows as in the first step. It gets its own box because the same tokenizer is used whenever the finished model reads or writes text. Then the pretraining run trains the model on those tokens, often for weeks. During the run, the team training it watches the loss fall and regularly saves **checkpoints**, copies of all the weights, so that if one of thousands of GPUs fails, training can resume from the last checkpoint.
+      First comes text with unwanted pages filtered out and duplicate copies removed. The tokenizer turns it into tokens, packed into **windows**, fixed-length stretches processed together. It gets its own box because the finished model uses the same tokenizer to read and write text. Pretraining runs on these tokens, often for weeks. The team watches the loss and saves **checkpoints**, copies of all the weights, so training can resume if a GPU fails.
 
       ### What pretraining produces
 
@@ -257,9 +257,9 @@ knowledge_points:
 
       So the **LLM training pipeline** is the sequence of data, tokenizer, pretraining and post-training, with evaluation running alongside.
     worked: |
-      Let's compare the compute of pretraining and supervised fine-tuning for one model with $P=10^9$ parameters, using $C\approx6PD$.
+      Let's compare the compute, or total calculation, of pretraining and supervised fine-tuning for one model with $P=10^9$ parameters, using $C\approx6PD$. Here $D$ counts training tokens and $C$ counts floating-point operations (FLOPs), additions or multiplications of decimal numbers; training costs about six per parameter per token.
 
-      1. **Pick the pretraining tokens.** Aiming for the lowest loss, we use the Chinchilla ratio of $20$ tokens per parameter, so pretraining uses
+      1. **Pick the pretraining tokens.** The Chinchilla ratio is a training-budget guideline of about $20$ tokens per parameter for lowest loss. Using it, pretraining uses
          $$D_{\text{pre}}=20\times10^9=2\times10^{10}\text{ tokens}.$$
 
       2. **Count the fine-tuning tokens.** Suppose we fine-tune on $10^4$ example conversations of $500$ tokens each.

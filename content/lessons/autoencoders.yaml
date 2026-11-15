@@ -95,13 +95,13 @@ knowledge_points:
     explain: |
       ### The input is its own answer
 
-      In the last step we chose the weights by hand. A real network finds its own by **training**: it changes its weights and biases in small steps, over and over, so that one error number gets smaller. This lesson only needs that number.
+      A network learns its weights by **training**: changing weights and biases repeatedly to reduce an error number.
 
-      For an autoencoder, it measures how far the reconstruction $\hat x$ is from the input $x$. Many networks learn from examples a person has labelled with the right answer, such as "cat". An autoencoder's right answer is the input itself, so a pile of unlabelled photos is enough.
+      An autoencoder shrinks an input $x$ into a short vector and rebuilds it as a copy, the reconstruction $\hat x$. Its error measures how far the copy is from the input. Many networks learn from examples a person has labelled, such as "cat". An autoencoder's right answer is the input itself, so unlabelled photos are enough.
 
       ### Measuring a bad copy
 
-      Our network copies stripes perfectly, but what about $x=(0.8,0.4,0.2,0.2)$, whose two top pixels differ? The encoder averages the top row to $0.6$, so the reconstruction is $\hat x=(0.6,0.6,0.2,0.2)$.
+      Take a network whose encoder, the part that shrinks the input, stores each image row's average. It copies horizontal stripes perfectly, but what about $x=(0.8,0.4,0.2,0.2)$, whose two top pixels differ? The encoder averages the top row to $0.6$, so the reconstruction is $\hat x=(0.6,0.6,0.2,0.2)$.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 250" aria-label="Three 2 by 2 grids. The input image has top row 0.8 and 0.4 and bottom row 0.2 and 0.2. The autoencoder rebuilds it as top row 0.6 and 0.6 and bottom row 0.2 and 0.2. The differences, rebuilt minus input, are minus 0.2 and 0.2 on the top row, shown in red, and 0 and 0 on the bottom row. The differences add to 0, but their squares add to 0.08">
@@ -126,7 +126,7 @@ knowledge_points:
       </svg>
       ```
 
-      The differences $\hat x-x$ are $-0.2$, $0.2$, $0$ and $0$. Adding them gives $0$, as if the copy were perfect, because the two misses cancel. So we square each difference first, making every miss positive, and then add. The **reconstruction error** is
+      The differences $\hat x-x$ are $-0.2$, $0.2$, $0$ and $0$. They add to $0$ because the two misses cancel. Squaring each difference makes misses positive. Adding these squares gives the **reconstruction error**:
 
       $$E=\sum_{i=1}^{n}(\hat x_i-x_i)^2,$$
 
@@ -134,7 +134,7 @@ knowledge_points:
 
       ### Why the middle must be narrow
 
-      What stops the network from simply passing every pixel straight through? Only the narrow middle stops it. Here is what three latent sizes can do for the stripe image $(0.8,0.8,0.2,0.2)$:
+      The short vector in the middle is the **latent vector**; its number of entries is the **latent size**. Here is what three sizes can do for a horizontal-stripe image $(0.8,0.8,0.2,0.2)$, with equal pixels in each row:
 
       - **1 number:** it can't hold both row brightnesses. For example, if it keeps the average of all four pixels, $0.5$, every pixel is rebuilt as flat grey $0.5$ and misses by $0.3$, so $E=4\times0.3^2=0.36$.
       - **2 numbers:** one per row is enough, so every stripe image comes back exactly, with $E=0$.
@@ -171,7 +171,7 @@ knowledge_points:
     explain: |
       ### From our tiny image to a real one
 
-      Our stripe network turned $4$ numbers into $2$, but real images are much bigger. A classic beginner's dataset, MNIST, holds $70{,}000$ handwritten digits, each a $28\times28$ grayscale image that flattens to $28\times28=784$ numbers. A common latent size for them is $32$, picked by trying sizes until one copies well. The picture draws input, latent vector and copy to scale.
+      A stripe network stores a four-pixel horizontal-stripe image as two row brightnesses, turning $4$ numbers into $2$. Real images are much bigger. MNIST holds $70{,}000$ handwritten digits, each a $28\times28$ grayscale image that flattens to $28\times28=784$ numbers. The compressed list is the **latent vector**, and its length is the **latent size**. A common size for digits is $32$, picked by trying sizes until one copies well. The picture draws input, latent vector and copy to scale.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" aria-label="Bars drawn to scale for the digit autoencoder. The input bar, 784 numbers, is 200 pixels tall. The green latent bar, 32 numbers, is only about 8 pixels tall. The orange reconstruction bar, 784 numbers, is 200 pixels tall again. Grey bands narrow from the input to the latent and widen to the reconstruction">
@@ -198,11 +198,11 @@ knowledge_points:
 
       ### Counting the parameters
 
-      How much does the network itself store? In the forward-pass lesson, we counted a layer's parameters as $d_\text{out}d_\text{in}+d_\text{out}$: one weight per input per neuron, plus one bias per neuron. The encoder has $k$ neurons reading $n$ inputs, and the decoder has $n$ neurons reading $k$ inputs, so
+      How much does the network itself store? A layer has $d_\text{out}d_\text{in}+d_\text{out}$ parameters: one weight per input per neuron, plus one bias per neuron. The encoder, which shrinks the input, has $k$ neurons reading $n$ inputs. The decoder, which rebuilds it, has $n$ neurons reading $k$ inputs, so
 
       $$\text{encoder: }kn+k,\qquad\text{decoder: }nk+n.$$
 
-      Both halves have $nk$ weights, but the decoder has more biases, one per rebuilt pixel. For our stripe network, $k=2$ and $n=4$, so the encoder has $2\times4+2=10$ and the decoder $4\times2+4=12$, which is $22$ parameters in all.
+      Both halves have $nk$ weights; the decoder has one bias per rebuilt pixel. For stripes, $k=2$ and $n=4$, giving $2\times4+2=10$ encoder parameters and $4\times2+4=12$ decoder parameters, $22$ in all.
 
       The digit network has about fifty thousand parameters, far more than $784$, so it can look as if nothing was saved. But they're stored once and shared by every image, and what shrinks is each image, now $32$ numbers instead of $784$.
 
@@ -242,9 +242,9 @@ knowledge_points:
     explain: |
       ### Every image becomes a point
 
-      The vectors lesson treated a list of numbers as a point, one axis per number. The distance between two points was the square root of the summed squared differences. So each latent vector is a point in the **latent space**, one axis per latent number.
+      A latent vector is the short list a network compresses an image into. A list is also a point, one axis per number, so these points form the **latent space**. Distance is the square root of the summed squared differences.
 
-      In our stripe network, the horizontal axis is $z_1$, the top row's brightness, and the vertical axis is $z_2$, the bottom row's brightness. Image A, $(0.8,0.8,0.2,0.2)$, lands at $(0.8,0.2)$. Image B, $(0.8,0.8,0.3,0.3)$, lands next to it, at $(0.8,0.3)$. Image C, $(0.5,0.5,0.6,0.6)$, lands further away, at $(0.5,0.6)$.
+      Take a stripe network that stores a four-pixel image as its two row brightnesses. The horizontal axis is $z_1$, the top row's brightness, and the vertical axis is $z_2$, the bottom row's brightness. Image A, $(0.8,0.8,0.2,0.2)$, lands at $(0.8,0.2)$. Image B, $(0.8,0.8,0.3,0.3)$, lands next to it, at $(0.8,0.3)$. Image C, $(0.5,0.5,0.6,0.6)$, lands further away, at $(0.5,0.6)$.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 340" aria-label="Latent space of the stripe autoencoder: across is z1, the top row brightness, and up is z2, the bottom row brightness, both from 0 to 1. Image A, light on top and dark below, is the point (0.8, 0.2). Image B, with a slightly lighter bottom row, is the point (0.8, 0.3), at distance 0.1 from A. Image C, almost even grey, is the point (0.5, 0.6), at distance 0.5 from A">
@@ -287,7 +287,7 @@ knowledge_points:
 
       ### Close points, similar images
 
-      The decoder only multiplies by weights and adds a bias, so nearby points rebuild into similar images. The other way round holds too. Our decoder copies each latent number into pixels, so similar copies need nearby points, and a trained autoencoder's copies look like its inputs. So images that look alike get points close together, and the distance between latent vectors is a quick way to compare images.
+      The decoder, the part that rebuilds the image, only multiplies by weights and adds a bias, so nearby points rebuild into similar images. Our decoder copies each latent number into pixels, so similar copies need nearby points. An autoencoder combines compression and rebuilding, training its copies to look like its inputs. So images that look alike get nearby points, and latent distance compares images quickly.
 
       ### How robots use latent vectors
 
@@ -297,7 +297,7 @@ knowledge_points:
 
       Don't read fixed meanings into the latent numbers. Our weights made $z_1$ the top row's brightness. But with row brightnesses $a$ and $b$, the latent vector $(a+b,\ a-b)$, from adding and subtracting the row averages, works just as well, since the decoder can rebuild each top pixel as $0.5z_1+0.5z_2=a$ and each bottom pixel as $0.5z_1-0.5z_2=b$. Training only rewards good copies, so it may find either, or many others.
 
-      The latent vector also keeps only what helps the copy. Say a camera frame shows a small screw. It covers few pixels, so dropping it from the copy barely raises $E$. The network may spend no latent numbers on it, so frames with and without it get almost the same point, even if the robot needed it.
+      A small screw covers few pixels. Dropping it barely raises $E$, the sum of squared pixel differences between copy and input. The network may spend no latent numbers on it, so frames with and without it get almost the same point, even if the robot needed it.
     worked: |
       Let's measure how far apart the three images in the picture are in latent space.
 
