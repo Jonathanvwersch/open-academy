@@ -263,7 +263,7 @@ knowledge_points:
 
       Here a finished copy is reset straight away, so step returns its new start state. Gymnasium's default next-step autoreset waits until the next call to reset it and ignores that call's action. That call produces no transition for the finished copy, so its entry is left out of experience.
 
-      The returned cell 1 starts a new episode, not the result of A's move. A moved from cell 3 to terminal cell 4, the transition's true next state. In same-call reset mode, Gymnasium records it in `info["final_obs"]`.
+      A's move reached terminal cell 4, its true next state. Returned cell 1 starts the new episode. In same-call reset mode, Gymnasium records it in `info["final_obs"]`.
     worked: |
       Let's follow the two copies call by call. Each corridor has a 5-step time limit, copy A always moves right and copy B always moves left.
 

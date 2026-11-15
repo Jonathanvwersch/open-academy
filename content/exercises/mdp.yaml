@@ -16,7 +16,7 @@ exercises:
         text: The reward function
         correct: false
         category: misunderstood_definition
-        feedback: "It gives the number received for an outcome, not how likely the outcome is."
+        feedback: "It gives the reward for an outcome; transition probabilities show how often that outcome occurs."
       - id: c
         text: "The discount factor $\\gamma$"
         correct: false
@@ -26,7 +26,7 @@ exercises:
         text: The set of states
         correct: false
         category: misunderstood_definition
-        feedback: "It lists the situations; it says nothing about how likely each move is."
+        feedback: "It lists the situations an agent can occupy. Transition probabilities describe how often each move leads to them."
     solution: "Transition probabilities give the chance of each next state $s'$ after action $a$ in state $s$, so a failed move is a transition back to the same cell."
   - id: mdpp-state-basics
     dimension: conceptual
