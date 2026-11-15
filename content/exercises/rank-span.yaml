@@ -84,7 +84,7 @@ exercises:
     params:
       m: { min: 2, max: 6 }
       n: { min: 1, max: 4 }
-    constraints: ["m > n"]
+    constraints: ["m > n", "m != 2*n", "n != 1"]
     answer_expr: n
     tolerance: { abs: 0 }
     common_wrong:
@@ -454,6 +454,7 @@ exercises:
       m: { min: 2, max: 4 }
       k: { min: 2, max: 3 }
       s: { min: 1, max: 5 }
+    constraints: ["s != k", "s != 1"]
     answer_expr: m*s
     tolerance: { abs: 0 }
     common_wrong:
@@ -498,7 +499,7 @@ exercises:
     prompt: 'For $B=\begin{bmatrix}1&2\\2&4\end{bmatrix}$ and $b=(3,6)$, find $x_1$ in the solution of $Bx=b$ with $x_2={{= k }}$.'
     params:
       k: { min: -2, max: 3 }
-    constraints: ["k != 0"]
+    constraints: ["k != 0", "k != 1"]
     answer_expr: 3-2*k
     tolerance: { abs: 0 }
     common_wrong:
