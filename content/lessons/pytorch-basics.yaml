@@ -117,7 +117,7 @@ knowledge_points:
       </svg>
       ```
 
-      We call a module like a function: `model(x)` gives a prediction for every row of `x`, and `model.parameters()` hands `model.weight` and `model.bias` to the optimiser, which step 3 introduces.
+      We call a module like a function: `model(x)` gives a prediction for every row of `x`, and `model.parameters()` hands `model.weight` and `model.bias` to the optimiser, the object that will update them, which step 3 introduces.
 
       ### What the two sizes mean
 
@@ -322,11 +322,11 @@ knowledge_points:
 
       ### Training mode and evaluation mode
 
-      Before we leave the loop, one setting matters for the larger models in later lessons. Our `nn.Linear` model has no dropout, so the code above is still correct.
+      Before we leave the loop, one setting matters for the larger models in later lessons.
 
       A **mode** is a setting stored in the model. A PyTorch model starts in **training mode**, the setting used while it learns. `model.train()` selects training mode and `model.eval()` selects **evaluation mode**.
 
-      Some larger models use **dropout**, which zeroes a random share of the numbers flowing through the model on each call in training mode. Even with the same `x` and the same weights, predictions can change from call to call, so the loss can change too.
+      Some larger models use **dropout**, which zeroes a random share of the numbers flowing through the model on each call in training mode. Even with the same `x` and the same weights, predictions can change from call to call, so the loss can change too. Our `nn.Linear` model has no dropout, so the code above is still correct.
 
       When checking the model, we want dropout off and don't need to record calculations for slopes. `torch.no_grad()` alone leaves dropout on in training mode, so we also call `model.eval()`.
 
