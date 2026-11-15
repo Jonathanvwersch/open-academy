@@ -1,6 +1,6 @@
 import { onScreenOptions } from '@academy/shared/shuffle';
 import { TUTOR_QUESTION_MAX_LENGTH, tutorQuestionTooLongMessage } from '@academy/shared/tutor';
-import { and, eq } from 'drizzle-orm';
+import { and, asc, eq } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest';
 import { createApp } from '../../src/app.js';
 import { env } from '../../src/config.js';
@@ -575,7 +575,12 @@ test('lesson problems owned by another learner are not available to the tutor', 
     timezone: 'UTC',
     startDate: '2026-01-01',
   });
-  const [authenticatedUser] = await db.select().from(users).limit(1);
+  // Match the API's default learner selection; an unordered scan can pick the other learner.
+  const [authenticatedUser] = await db
+    .select()
+    .from(users)
+    .orderBy(asc(users.createdAt), asc(users.id))
+    .limit(1);
   if (!authenticatedUser) throw new Error('Expected an authenticated learner');
   const otherUserId = authenticatedUser.id === userId ? secondUserId : userId;
   await db.update(lessonRuns).set({ userId: otherUserId }).where(eq(lessonRuns.id, run.id));
