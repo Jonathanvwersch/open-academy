@@ -549,6 +549,8 @@ exercises:
         min: 2
         max: 4
         step: 1
+    constraints:
+      - n * m != 4
     answer_expr: n * m
     tolerance:
       abs: 0.001

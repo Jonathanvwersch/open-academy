@@ -6,6 +6,34 @@ exercises:
     role: diagnostic
     difficulty: 2
     est_minutes: 2
+    prompt: A friend lists what defines an MDP. Which item on the list belongs to the agent instead of the environment?
+    options:
+      - id: a
+        text: The agent's policy
+        correct: true
+        feedback: A policy tells the agent how to choose actions after the task has been specified.
+      - id: b
+        text: The transition probabilities $p(s' \mid s, a)$
+        correct: false
+        category: misunderstood_definition
+        feedback: They describe how actions move the environment from one state to another.
+      - id: c
+        text: The reward function
+        correct: false
+        category: misunderstood_definition
+        feedback: The reward function assigns feedback to the task's outcomes.
+      - id: d
+        text: The set of actions
+        correct: false
+        category: misunderstood_definition
+        feedback: The available actions are part of the task the agent acts in.
+    solution: An MDP describes the task, including its states, actions, transitions and rewards. The policy belongs to the agent and tells it which actions to choose.
+  - id: dx-rl-1b
+    dimension: conceptual
+    type: mc
+    role: diagnostic
+    difficulty: 2
+    est_minutes: 2
     prompt: "A robot's move command sometimes fails and leaves it where it was. Which part of a Markov decision process describes how often that happens?"
     options:
       - id: a
@@ -239,6 +267,8 @@ exercises:
       chance: { min: 6, max: 8, step: 2 }
       goal: { min: 12, max: 16, step: 2 }
       cost: { min: 1, max: 3, step: 2 }
+    constraints:
+      - "abs((chance / 10) * goal - (1 - chance / 10) * cost - chance) > 0.001"
     prompt: A four-cell corridor robot is in cell 3. Choosing right reaches terminal cell 4 with probability ${{= chance / 10 }}$ and otherwise stays at 3. Entry to 4 gives reward ${{= goal }}$; staying at 3 gives $-{{= cost }}$. What is the expected reward of this one command? Give an exact decimal.
     answer_expr: (chance / 10) * goal - (1 - chance / 10) * cost
     tolerance: { abs: 0.001 }

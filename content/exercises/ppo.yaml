@@ -342,7 +342,9 @@ exercises:
       d0: { min: -2, max: 2, step: 0.5 }
       d1: { min: -2, max: 2 }
       lam: { min: 0.5, max: 0.8, step: 0.3 }
-    constraints: ["d1 != 0"]
+    constraints:
+      - "d1 != 0"
+      - "abs(d0 + 0.9 * lam * d1 - 0.9) > 0.001"
     answer_expr: d0 + 0.9 * lam * d1
     tolerance: { abs: 0.001 }
     common_wrong:
@@ -713,7 +715,10 @@ exercises:
     params:
       pnew: { min: 0.1, max: 0.9, step: 0.1 }
       A: { min: -2, max: 2 }
-    constraints: ["A != 0", "abs(pnew - 0.5) > 0.15"]
+    constraints:
+      - "A != 0"
+      - "abs(pnew - 0.5) > 0.15"
+      - "abs(min(pnew / 0.5 * A, max(0.8, min(1.2, pnew / 0.5)) * A) - 0.2) > 0.001"
     answer_expr: min(pnew / 0.5 * A, max(0.8, min(1.2, pnew / 0.5)) * A)
     tolerance: { abs: 0.001 }
     common_wrong:

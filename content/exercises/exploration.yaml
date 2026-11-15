@@ -63,6 +63,9 @@ exercises:
     params:
       a: { min: 1, max: 9 }
       b: { min: 1, max: 9 }
+    constraints:
+      - "abs((a + b) / 4 - a) > 0.001"
+      - "abs((a + b) / 4 - b) > 0.001"
     answer_expr: (a + b) / 4
     tolerance:
       abs: 0.001
@@ -130,7 +133,9 @@ exercises:
     params:
       a: { min: 1, max: 3 }
       x: { min: 4, max: 12, step: 2 }
-    constraints: ["x / 2 > a"]
+    constraints:
+      - "x / 2 > a"
+      - "abs(100 * (x / 2 - a) - 100) > 0.001"
     answer_expr: 100 * (x / 2 - a)
     tolerance:
       abs: 0.001

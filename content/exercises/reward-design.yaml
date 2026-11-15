@@ -276,6 +276,8 @@ exercises:
         step: 1
     constraints:
       - p != q
+      - abs(q - p - p) > 0.001
+      - abs(q - p - 1) > 0.001
     answer_expr: q - p
     tolerance:
       abs: 0.001
@@ -519,6 +521,9 @@ exercises:
         step: 1
     constraints:
       - b != 2 * c
+      - b != c
+      - b != 3 * c
+      - b != 2 * c + 1
     answer_expr: b - 2 * c
     tolerance:
       abs: 0.001

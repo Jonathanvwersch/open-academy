@@ -77,6 +77,8 @@ exercises:
     params:
       R: { min: 5, max: 20, step: 5 }
       g: { min: 0.5, max: 0.9, step: 0.1 }
+    constraints:
+      - abs(-1 - g + g^2 * R - 1) > 0.005
     answer_expr: "-1 - g + g^2 * R"
     tolerance:
       abs: 0.005
@@ -217,7 +219,9 @@ exercises:
     params:
       r: { min: -2, max: 3, step: 1 }
       v: { min: 2, max: 10, step: 2 }
-    constraints: ["r != 0"]
+    constraints:
+      - "r != 0"
+      - "abs(r + 0.9 * v - v) > 0.005"
     answer_expr: "r + 0.9 * v"
     tolerance:
       abs: 0.005
@@ -382,6 +386,9 @@ exercises:
     params:
       c: { min: 4, max: 12, step: 2 }
       g: { min: 0.5, max: 0.9, step: 0.1 }
+    constraints:
+      - "abs(-1 + g * c - 1) > 0.005"
+      - "abs(-1 + g * c - 2) > 0.005"
     answer_expr: "-1 + g * c"
     tolerance:
       abs: 0.005
@@ -588,7 +595,10 @@ exercises:
     params:
       a: { min: 0, max: 10, step: 2 }
       c: { min: 0, max: 10, step: 2 }
-    constraints: ["a != c"]
+    constraints:
+      - "a != c"
+      - "abs((-1 + 0.9 * max(a, c)) - a) > 0.005"
+      - "abs((-1 + 0.9 * max(a, c)) - c) > 0.005"
     answer_expr: "-1 + 0.9 * max(a, c)"
     tolerance:
       abs: 0.005
