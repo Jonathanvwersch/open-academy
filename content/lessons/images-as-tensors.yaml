@@ -17,7 +17,7 @@ knowledge_points:
     explain: |
       ### Brightness in a grid
 
-      In the matrices lesson, each row of a matrix held one house's measurements. A grayscale (black-and-white) image is also a matrix, but each entry is the brightness of one pixel. In the picture below, each square is a pixel, and the number in it says how bright it is. A value of 0 is black, 255 is white, and the values in between are shades of grey.
+      In the matrices lesson, each row of a matrix held one house's measurements. A grayscale (black-and-white) image is also a matrix: each entry is the brightness of one pixel, a tiny square of the image. In the picture below, the number in each square says how bright it is. A value of 0 is black, 255 is white, and the values in between are shades of grey.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 282" role="img" aria-label="Four rows and five columns of grayscale pixels, indexed from zero. Row 1 column 3 has value 153." font-family="ui-sans-serif, system-ui, sans-serif" font-size="14">
@@ -75,7 +75,7 @@ knowledge_points:
       </svg>
       ```
 
-      We use 8-bit images here, whose decoded brightnesses are whole numbers from 0 to 255. Other images can use higher bit depths or floats. NumPy calls this one-byte representation **uint8**, short for "unsigned 8-bit integer". Unsigned means it has no negative values, and 8 bits make one byte, which can hold exactly 256 different values.
+      We use 8-bit images here, whose decoded brightnesses are whole numbers from 0 to 255. The **bit depth** counts the bits used for each brightness. Other images use more bits or floats, numbers that can hold decimals. NumPy calls this one-byte representation **uint8**, short for "unsigned 8-bit integer". Unsigned means it has no negative values, and 8 bits make one byte, which can hold exactly 256 different values.
 
       ### Height comes first
 
@@ -113,9 +113,9 @@ knowledge_points:
     explain: |
       ### Three numbers per pixel
 
-      Our grayscale image had one brightness for each pixel. An RGB colour image has three, saying how much red, green and blue light the pixel has, and each of these is called a **channel**.
+      A pixel is a tiny square of an image. A grayscale image has one brightness per pixel. An RGB colour image has three, saying how much red, green and blue light the pixel has, and each of these is called a **channel**.
 
-      There are two common ways to arrange those numbers. On the left of the picture, each pixel of a tiny $2\times2$ image keeps its three numbers together. On the right, the same twelve numbers are sorted into three separate grids, or planes, one per channel. No number changes; only the order does.
+      On the left, each pixel of a tiny $2\times2$ image keeps its three numbers together. On the right, the same twelve numbers form three grids, one per channel. Only the order changes.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 195" role="img" aria-label="The same 2 by 2 RGB image in HWC and CHW: RGB triples 10,20,30; 40,50,60; 70,80,90; 100,110,120 become red, green and blue planes." font-family="ui-sans-serif, system-ui, sans-serif" font-size="14">
@@ -164,11 +164,11 @@ knowledge_points:
 
       ### Put the channels first
 
-      The left-hand order is called **HWC**, for height, width, channels, and its shape is `(H, W, 3)` for RGB. It's a common layout for NumPy arrays converted from PIL RGB images, or images loaded with matplotlib or OpenCV. (OpenCV defaults to blue, green, red, so check the colour order too.)
+      The left-hand order is called **HWC**, for height, width, channels, and its shape is `(H, W, 3)` for RGB. It's common in NumPy arrays from the Python image libraries PIL and OpenCV, or the plotting library matplotlib. OpenCV defaults to blue, green, red, so check the colour order too.
 
-      The right-hand order is **CHW**, with shape `(3, H, W)`, and it's the one PyTorch vision models usually expect. Models also work on several images at once, called a **batch**, which adds one more axis at the front for the number of images $N$. That gives `(N, H, W, 3)`, called NHWC, or `(N, 3, H, W)`, called NCHW. For a model expecting NCHW, a single RGB image is passed as a batch of one, with shape `(1, 3, H, W)`.
+      The right-hand order is **CHW**, with shape `(3, H, W)`, and it's the one vision models in PyTorch, a machine-learning library, usually expect. Models also work on several images at once, called a **batch**, which adds one more axis at the front for the number of images $N$. That gives `(N, H, W, 3)`, called NHWC, or `(N, 3, H, W)`, called NCHW. For a model expecting NCHW, a single RGB image is passed as a batch of one, with shape `(1, 3, H, W)`.
 
-      To turn HWC into CHW, we use `np.transpose(img, (2, 0, 1))`. Each number in the tuple is an old axis number, and the tuple lists them in their new order. So old axis 2, the channels, moves to the front, followed by axis 0, the height, and axis 1, the width.
+      To turn HWC into CHW, we use `np.transpose(img, (2, 0, 1))`. The tuple `(2, 0, 1)`, an ordered group of values, lists old axis numbers in their new order. So old axis 2, the channels, moves to the front, followed by axis 0, the height, and axis 1, the width.
 
       Be careful not to use `img.reshape(3, H, W)` instead. **Reshape** reads the numbers in NumPy's default row-by-row index order and cuts them into pieces of the new shape, so the shape can be right while the pixels are wrong. A transpose moves the axes and keeps each number with its own pixel.
     worked: |
@@ -212,7 +212,7 @@ knowledge_points:
     explain: |
       ### From whole numbers to small numbers
 
-      The channels are now in order, but our uint8 values still run from 0 to 255. A model multiplies each input by a weight and adds the results, so thousands of inputs in the hundreds can add up to huge sums, and models often learn more reliably from small inputs centred near zero.
+      An RGB image has three channels, the red, green and blue brightnesses of each pixel, or tiny image square. Stored as uint8, unsigned 8-bit whole numbers, these values run from 0 to 255. A model multiplies inputs by weights and adds them, so large inputs can make huge sums. Models often learn more reliably from small inputs centred near zero.
 
       So the first change for our uint8 images is **rescaling**: we divide every pixel value by 255, so it lies between 0 and 1. For example, 153 becomes $153/255=0.6$. The result has decimals, so NumPy stores it as a **float** rather than uint8.
 
@@ -226,7 +226,7 @@ knowledge_points:
 
       ### Line the means up with the channels
 
-      In the matrices lesson, the bias row had one entry per column, so NumPy could reuse it for every house. In general, broadcasting matches the small array's axes with the *last* axes of the big one, and repeats it along the rest. In HWC, the last axis is channels, so `img - mean` with a mean of shape `(3,)` subtracts the right mean from every pixel. In CHW, the last axis is the width, so we give the means shape `(3, 1, 1)` with `mean.reshape(3, 1, 1)`. Now the axis of size 3 lines up with the channels, and each mean is repeated along the two size-1 axes, over its whole grid. Here reshape is safe, because adding size-1 axes doesn't reorder the three numbers.
+      Broadcasting matches the small array's axes with the *last* axes of the big one, and repeats it along the rest. In HWC (height, width, channels) order, the last axis is channels, so `img - mean` with a mean of shape `(3,)` subtracts the right mean from every pixel. In CHW (channels, height, width) order, the last axis is the width, so we give the means shape `(3, 1, 1)` with `mean.reshape(3, 1, 1)`. The axis of size 3 lines up with the channels, and each mean repeats over its grid. Adding size-1 axes doesn't reorder the three numbers, so reshape is safe here.
     worked: |
       Let's prepare one RGB pixel (153, 102, 51), using means (0.5, 0.3, 0.2) and standard deviations (0.25, 0.2, 0.1).
 

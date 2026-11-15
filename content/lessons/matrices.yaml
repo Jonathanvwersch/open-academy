@@ -102,7 +102,7 @@ knowledge_points:
 
       A model can make more than one prediction for each house. Suppose we also want each house's monthly rent, in pounds. That needs a second set of weights, $(100,50,-5)$, in pounds a month for each ten square metres, each bedroom and each year of age. Two houses and two sets of weights make four dot products. Can one multiplication do all four?
 
-      It can, if we put each set of weights in its own column of a second matrix $W$, price in column 1 and rent in column 2. The picture shows one of the four dot products. Row 1 of $X$, house 1 in blue, is laid against column 2 of $W$, the rent weights in orange. That gives the green 1250, house 1's rent, in row 1, column 2 of the answer.
+      It can, if we put each set of weights in its own column of a second matrix $W$, price in column 1 and rent in column 2. Let $X$ hold the houses' measurements, one house per row. The picture shows one of the four dot products. Row 1 of $X$, house 1 in blue, is laid against column 2 of $W$, the rent weights in orange. That gives the green 1250, house 1's rent, in row 1, column 2 of the answer.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 250" aria-label="Row 1 of X, house 1 at (12, 3, 20) in blue, is dotted with column 2 of W, the orange rent weights (100, 50, minus 5), giving the green entry 1250 in row 1, column 2 of the 2 by 2 product XW" font-family="ui-sans-serif, system-ui, sans-serif">
@@ -145,7 +145,7 @@ knowledge_points:
 
       $$(AB)_{ij}=(\text{row }i\text{ of }A)\cdot(\text{column }j\text{ of }B)$$
 
-      A matrix times a vector, from the last step, is the case where $B$ has one column.
+      A matrix times a vector dots each matrix row with that vector. It's the case where $B$ has one column.
 
       So $W$ turns any house's three measurements into two predictions.
 
@@ -192,13 +192,13 @@ knowledge_points:
     explain: |
       ### Matrices in Python
 
-      For a thousand houses, we'd let a computer work out the product. In Python, the usual tool is **NumPy**. It's a library, ready-made code we can load, for grids of numbers, which it calls **arrays**. The line `import numpy as np` loads it under the short name `np`, and `np.array([[12, 3, 20], [8, 2, 5]])` builds our $X$ from a list of its rows. An array's `.shape` gives its size as (rows, columns), here `(2, 3)`, and `X @ W` is the matrix product $XW$. Models usually work through their houses in groups called **batches**, so `X` has one row for each house in the batch.
+      For a thousand houses, we'd let a computer work out the product. In Python, the usual tool is **NumPy**. It's a library, ready-made code we can load, for grids of numbers, which it calls **arrays**. The line `import numpy as np` loads it under the short name `np`, and `np.array([[12, 3, 20], [8, 2, 5]])` builds $X$, one house's measurements per row. An array's `.shape` gives its size as (rows, columns), here `(2, 3)`. Let $W$ hold price and rent weights, one prediction per column; `X @ W` is the matrix product $XW$. Models work through houses in groups called **batches**, with one row per house in `X`.
 
       ### Adding a bias to every row
 
-      Many models also add a fixed amount to each prediction, whatever the house, like a base price. That amount is called a **bias**. With two predictions there's one bias for each, say 20 for price and 100 for rent, so $b=(20,100)$.
+      Models often add a fixed amount to each prediction, like a base price, called a **bias**. With two predictions there's one for each: 20 for price and 100 for rent, so $b=(20,100)$.
 
-      The picture shows the shapes for a batch of five houses. The blue $X$ times the orange $W$ gives one row per house, and $b$ is a single row. In `X @ W + b`, NumPy **broadcasts** `b`, which means it reuses that one row for every house, drawn dashed. So every price goes up by 20 and every rent by 100.
+      The picture shows a batch of five houses. The blue $X$ times the orange $W$ gives one row per house, and $b$ is a single row. In `X @ W + b`, NumPy **broadcasts** `b`, which means it reuses that row for every house, drawn dashed. Every price goes up by 20 and every rent by 100.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 255" aria-label="Shape blocks: the blue X with 5 rows and 3 columns, times the orange W with 3 rows and 2 columns, plus the orange b = (20, 100) copied down all 5 rows, gives the green Y with 5 rows and 2 columns" font-family="ui-sans-serif, system-ui, sans-serif">
@@ -260,7 +260,7 @@ knowledge_points:
 
       ### Swapping rows and columns
 
-      Some code stores the weights the other way round, with one row per prediction, so the price and rent weights make a $2\times3$ array. Then `X @ W_rows` stops with an error, because the inner sizes 3 and 2 differ. The **transpose** fixes this. It swaps a matrix's rows and columns, so the entry in row $i$, column $j$ moves to row $j$, column $i$, and a $2\times3$ matrix becomes $3\times2$. We write it $W^\top$ in maths and `W.T` in NumPy.
+      Some code stores the weights the other way round, with one row per prediction, so the price and rent weights make a $2\times3$ array. Then `X @ W_rows` stops with an error: the inner sizes, the first matrix's column count and the second's row count, are 3 and 2. They must match. The **transpose** fixes this. It swaps rows and columns, so the entry in row $i$, column $j$ moves to row $j$, column $i$, and a $2\times3$ matrix becomes $3\times2$. We write it $W^\top$ in maths and `W.T` in NumPy.
 
       Be careful not to use `*`, the usual multiplication sign in Python, for a matrix product. `X * W` multiplies the numbers in matching positions and adds nothing up. For two arrays of shape `(1, 3)`, `[[1, 2, 3]] * [[4, 5, 6]]` gives `[[4, 10, 18]]`, not the dot product 32, and for shapes `(2, 3)` and `(3, 2)` it stops with an error.
     worked: |

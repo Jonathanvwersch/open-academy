@@ -104,9 +104,9 @@ knowledge_points:
     explain: |
       ### Every house on one map
 
-      Which houses get a yes? To see them all at once, let's draw a map with each house as a point, its size along the bottom and its distance from the station up the side.
+      A perceptron adds weighted inputs and a bias to make a score, then says yes if it's positive. Ours uses size $x_1$ in hundreds of square metres and station distance $x_2$ in kilometres, with weights $(2,-1)$ and bias $-1$. Let's map its answers, size along the bottom and distance up the side.
 
-      The green dot is the 200 m² house 1 km away, which scored $2$, and the red dots are the two houses that got a no. The orange line joins every point that scores exactly $0$. Houses below and to the right of it score above $0$ and get a yes. Houses above and to the left get a no, and so do houses on the line itself.
+      The green dot is the 200 m² house 1 km away, which scored $2$. The red dots got a no. The orange line joins points scoring exactly $0$. Houses below and to its right score above $0$ and get a yes. Houses above and to its left get a no, as do houses on the line.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 340" aria-label="A map of houses with size x1, in hundreds of square metres, along the bottom and distance x2 from the station, in km, up the side. The orange line z = 0 runs from (0.5, 0) to (2, 3). The green house (2, 1) is below and to the right of the line, on the yes side. The red house (1, 2) is above and to the left, on the no side, and the red house (1, 1) is on the line. The blue arrow w = (2, −1) starts on the line at (1.5, 2) and points at right angles to it, into the yes side">
@@ -143,7 +143,7 @@ knowledge_points:
 
       $$2x_1-x_2-1=0.$$
 
-      With two inputs, this equation is always a straight line, as long as one weight isn't $0$, because we can solve it for one input. With more inputs it's a flat surface called a **hyperplane**. Be careful not to think that better weights could bend it. The weights turn the line and the bias slides it, but it always stays straight.
+      With two inputs, this equation is a straight line if one weight isn't $0$, because we can solve for one input. With more inputs it's a flat surface called a **hyperplane**. Be careful not to think better weights could bend it. Weights turn the line and the bias slides it; it stays straight.
 
       ### Which side says yes
 
@@ -189,7 +189,7 @@ knowledge_points:
     explain: |
       ### Houses described by yes or no
 
-      Let's describe each house by two yes-or-no facts instead of size and distance. $x_1$ is $1$ if the house has a garden, $x_2$ is $1$ if it's near the station, and each is $0$ otherwise. Then there are only four kinds of house, $(0,0)$, $(1,0)$, $(0,1)$ and $(1,1)$, and on the map they sit at the corners of a square.
+      Describe houses by two yes-or-no facts: $x_1$ is $1$ for a garden, $x_2$ is $1$ for being near the station, and each is $0$ otherwise. The four kinds, $(0,0)$, $(1,0)$, $(0,1)$ and $(1,1)$, sit at a square's corners.
 
       Here are four rules for which houses get a yes:
 
@@ -250,7 +250,7 @@ knowledge_points:
 
       ### Rules one line can split
 
-      A perceptron says yes on one side of a straight line, so it can follow a rule only if one line puts the yes corners on one side and the no corners on the other. A rule like that is called **linearly separable**.
+      A perceptron adds weighted inputs and a bias to make a score, then says yes if it's positive. Its yes answers lie on one side of a straight line. A rule is **linearly separable** if one line puts the yes corners on one side and the no corners on the other.
 
       AND and OR are both linearly separable. For AND, we give each input the weight $1$, so the weighted sum counts the yeses and is $0$, $1$ or $2$. Any cut-off between $1$ and $2$ works, so we pick $1.5$. That line is $x_1+x_2-1.5=0$, so the bias is $-1.5$. For OR, the line $x_1+x_2=0.5$ sits between $0$ and $1$, so the bias is $-0.5$.
 
@@ -258,7 +258,7 @@ knowledge_points:
 
       XOR isn't linearly separable. Its yes corners, $(1,0)$ and $(0,1)$, are diagonally opposite, so any straight line with both of them on its yes side has a no corner there too. The worked example proves it.
 
-      Be careful not to think XOR just needs better weights. The trouble is the straight boundary, so we connect several perceptrons instead. In a **neural network**, some neurons' outputs are other neurons' inputs. XOR says yes exactly when OR and NAND both say yes. So we feed both inputs to an OR perceptron and a NAND perceptron, and a third perceptron computes AND of their two outputs. Here are the four corners:
+      Be careful not to think XOR just needs better weights. The trouble is the straight boundary, so we connect several perceptrons instead. A neuron combines weighted inputs and a bias, then applies a rule to give its output; a perceptron is one kind. In a **neural network**, some neurons' outputs are other neurons' inputs. XOR says yes exactly when OR and NAND both say yes. We feed both inputs to OR and NAND perceptrons, then a third computes AND of their outputs:
 
       $$\begin{array}{c|c|c|c}x&\text{OR}&\text{NAND}&\text{AND of those}\\\hline(0,0)&0&1&0\\(1,0)&1&1&1\\(0,1)&1&1&1\\(1,1)&1&0&0\end{array}$$
     worked: |

@@ -46,7 +46,7 @@ knowledge_points:
 
       At 16 bits that's $16\times10^9/(3.35\times10^{12})\approx4.8$ ms, so at most about 209 tokens per second. Halving the bytes halves this time, so INT8 weights allow about twice as many tokens per second. The smaller model also leaves more of the 80 GB free for the other numbers each request stores while it generates, so the GPU can serve more requests at once.
 
-      Prefill doesn't get this speed-up. When the model reads the prompt, it does many multiplications for each weight it reads, so its time is set by how fast the GPU does maths. Smaller weights alone don't make that faster. We'll see what does in the third step.
+      Prefill, when the model reads the prompt, doesn't get this speed-up. It does many multiplications for each weight it reads, so its time is set by how fast the GPU does maths. Smaller weights alone don't make that faster. We'll see what does in the third step.
     worked: |
       Let's estimate the fastest decode speed for Llama 3 8B on the H100 when its weights are stored as INT4, with one request at a time. We'll ignore everything except reading the weights, so this is a best case.
 
@@ -112,13 +112,13 @@ knowledge_points:
 
       $$s=\frac{\max|x|}{127}.$$
 
-      Each number becomes the integer $q=\text{round}(x/s)$. Then we clamp it to $[-127,127]$. This moves any value outside the range to the nearest end. Here nothing lands outside. Clamping matters when the scale came from other numbers, as with activations in the third step. To use the integer, we dequantise it, turning it back into a real number: $\hat x=q\cdot s$. We store the integers plus the scale.
+      Each number becomes the integer $q=\text{round}(x/s)$. Then we clamp it to $[-127,127]$. This moves any value outside the range to the nearest end. Here nothing lands outside. Clamping matters when the scale came from other numbers, as with activations, the intermediate numbers a model computes while processing an input. To use the integer, we dequantise it, turning it back into a real number: $\hat x=q\cdot s$. We store the integers plus the scale.
 
       ### How big is the error?
 
       Rounding moves $x/s$ by at most $1/2$. Multiplying back by $s$, each dequantised value is within $s/2$ of the original.
 
-      This is also the weakness. One very large number, called an outlier, makes $\max|x|$ big, which makes $s$ big, so every other number in the group gets coarse steps. Small ones can round to 0. Real models have such outliers. A common fix is a separate scale for each row or small group. One 16-bit scale per group of 128 one-byte weights, a common size, adds $2/128\approx1.6\%$ to the memory.
+      One very large number, an outlier, makes $\max|x|$ big, which makes $s$ big, so other numbers get coarse steps. Small ones can round to 0. Real models have outliers. A common fix is a separate scale per row or small group. One 16-bit scale per group of 128 one-byte weights adds $2/128\approx1.6\%$ to the memory.
     worked: |
       Let's quantise four weights from one row of a weight matrix, $x=(1.27,\,-0.514,\,0.006,\,0.333)$, and measure the error.
 
@@ -170,11 +170,11 @@ knowledge_points:
     explain: |
       ### Two kinds of format
 
-      To choose a format, we need to know what each can store. There are two families: floating point and integer.
+      Number formats come in two families: floating point and integer.
 
       A floating-point number stores a sign, an exponent and a mantissa. The exponent sets the size, like the power of ten in $3.1\times10^{4}$. The mantissa holds the digits, like the $3.1$. More exponent bits give a wider range. More mantissa bits give finer steps.
 
-      An integer format stores evenly spaced whole numbers and needs a scale, as in the previous step. In the diagram below, each box is one bit.
+      An integer format stores evenly spaced whole numbers and needs a scale, the gap between neighbouring stored values. Each box below is one bit.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 340" aria-label="Bit layouts drawn as one box per bit. FP16 has 1 sign, 5 exponent and 10 mantissa bits and reaches about 65,504. BF16 has 1 sign, 8 exponent and 7 mantissa bits and reaches about 3.4 times 10 to the 38. FP8 E4M3 has 1 sign, 4 exponent and 3 mantissa bits and reaches 448. INT8 has 8 integer bits holding -128 to 127. INT4 has 4 integer bits holding -8 to 7">
@@ -251,11 +251,11 @@ knowledge_points:
 
       FP32 has 8 exponent and 23 mantissa bits. FP16 and BF16 (brain floating point) use 2 bytes. BF16 keeps FP32's 8 exponent bits, so it covers the same huge range with coarser steps. FP16 has only 5 exponent bits, so a value above 65,504 overflows and becomes infinity. FP8 uses 1 byte. Its names count the bits: E4M3 has 4 exponent (E) and 3 mantissa (M) bits.
 
-      Floating point copes with very different sizes inside a group, so FP8 still uses a scale but tolerates a rough one. That suits activations, which change with every prompt. Integers need a careful scale per group, which is easiest for fixed weights.
+      Floating point copes with very different sizes inside a group, so FP8 still uses a scale but tolerates a rough one. That suits activations, the intermediate numbers a model computes while processing an input, which change with every prompt. Integers need a careful scale per group, which is easiest for fixed weights.
 
       ### What we quantise
 
-      In **weight-only** quantisation we store the weights in INT8 or INT4 and keep the activations at 16 bits. The GPU reads the small weights, turns them back into 16-bit numbers in on-chip memory right before use, and does 16-bit maths. Decode gets faster because less is read. Prefill doesn't get faster, because its maths is unchanged.
+      In **weight-only** quantisation we store the weights in INT8 or INT4 and keep the activations at 16 bits. The GPU reads the small weights, turns them back into 16-bit numbers in on-chip memory right before use, and does 16-bit maths. Decode gets faster because less is read. Prefill, when the model reads the prompt, doesn't get faster, because its maths is unchanged.
 
       In **weight-and-activation** quantisation, both inputs of each matrix multiply are 8-bit, for example FP8 or INT8, and the GPU does 8-bit maths. On the H100, FP8 maths runs at about twice the 16-bit rate. So prefill can speed up too. So can decode with a large batch, because each weight read is used for every request, giving more maths per byte.
 
@@ -289,19 +289,19 @@ knowledge_points:
     explain: |
       ### Why we have to measure
 
-      Quantising adds a small rounding error to billions of numbers. The errors add up through the model's 32 layers, and we can't tell from them alone whether the answers changed. So we run the original 16-bit model and the quantised model on the same tests and compare.
+      Quantising stores numbers with fewer bits using a scale and rounding. Rounding errors add up through a model's 32 layers. To find whether answers changed, we run the original 16-bit model and the quantised model on the same tests.
 
       ### Loss on held-out text
 
       The first test is the language-modelling loss. For each token of some text, the model gives a probability $p$ to the token that really came next, and the cross-entropy loss for that token is $-\ln p$, using the natural log. We average it over every token. A worse model gives the true tokens lower probabilities, so its loss is higher.
 
-      The text must be held out, meaning it wasn't used to train the model or choose the scales. Otherwise the test is too easy.
+      The text must be held out, meaning it wasn't used to train the model or choose the scales, the gaps between neighbouring stored values. Otherwise the test is too easy.
 
       Many papers report perplexity in place of the loss. Perplexity is $e$ raised to the average loss:
 
       $$\text{perplexity}=e^{\text{loss}}.$$
 
-      You can read it as the number of tokens the model is choosing between. A model that gave every true token probability $1/8$ would have loss $\ln8$ and perplexity $8$, as if it picked evenly among 8 tokens. Lower is better for both.
+      Perplexity acts like a number of tokens to choose between. Giving every true token probability $1/8$ gives loss $\ln8$ and perplexity $8$, as if choosing evenly among 8 tokens. Lower is better for both.
 
       ### Tests on real tasks
 
@@ -309,7 +309,7 @@ knowledge_points:
 
       If both checks show only a small drop that is acceptable for the product, we ship the quantised model. If a task gets clearly worse, we can try a finer scale, such as one per row or per group, or keep some layers at 16 bits. To find which layers to keep, quantise one layer at a time and see which hurts the score most.
     worked: |
-      We quantise the assistant's Llama 3 8B to INT4 and test both models. On the same held-out text, the 16-bit model's average loss is $2.00$ and the INT4 model's is $2.08$. On 500 maths word problems, the 16-bit model solves 400 and the INT4 model solves 360. These numbers are made up for practice.
+      Let's test a chat assistant serving Llama 3 8B, a model with 32 layers. We quantise it to INT4, 4-bit integers, and compare it with the 16-bit original. On the same held-out text, the 16-bit model's average loss is $2.00$ and the INT4 model's is $2.08$. On 500 maths word problems, the 16-bit model solves 400 and the INT4 model solves 360. These numbers are made up for practice.
 
       1. **Turn each loss into perplexity.** We raise $e$ to each loss.
          $$e^{2.00}\approx7.39,\qquad e^{2.08}\approx8.00$$

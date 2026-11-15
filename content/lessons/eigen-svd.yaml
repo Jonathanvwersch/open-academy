@@ -85,9 +85,9 @@ knowledge_points:
     explain: |
       ### From guessing to solving
 
-      We found special directions by trying arrows. Now we'll solve for the stretch factors, then their directions.
+      An eigenvector is a nonzero vector that a matrix only stretches; its eigenvalue is the stretch factor. We'll solve for these factors and directions.
 
-      Write $A=\begin{bmatrix}a&b\\c&d\end{bmatrix}$ and $v=(x,y)$. Each row of $Av=\lambda v$ gives an equation. Moving $\lambda x$ and $\lambda y$ to the left gives
+      Write $A=\begin{bmatrix}a&b\\c&d\end{bmatrix}$ and $v=(x,y)$. The eigenvector condition $Av=\lambda v$ says that applying $A$ to $v$ multiplies it by the eigenvalue $\lambda$. Moving $\lambda x$ and $\lambda y$ to the left gives
       $$(a-\lambda)x+by=0,\qquad cx+(d-\lambda)y=0.$$
 
       ### The equation for the eigenvalues
@@ -140,13 +140,13 @@ knowledge_points:
     explain: |
       ### A matrix with no stretch-only direction
 
-      Some matrices have no real eigenvectors. Take
+      An eigenvector is a nonzero vector that a matrix only stretches, and its eigenvalue is that stretch factor. Some matrices have no real eigenvectors. Take
       $$B=\begin{bmatrix}4&-3\\6&8\end{bmatrix}.$$
-      Its eigenvalue equation has a negative number under the square root, $12^2-4\times50=-56$, so no real arrow is only stretched by $B$. A different description, the **singular value decomposition** or SVD, works for every matrix, even nonsquare ones. It splits a matrix into a turn, a stretch along the axes and another turn. We'll work through the two-dimensional case.
+      Its eigenvalue equation, whose solutions are the eigenvalues, has a negative number under the square root, $12^2-4\times50=-56$, so no real arrow is only stretched by $B$. The **singular value decomposition** or SVD splits a matrix into a turn, a stretch along the axes and another turn. It works even for nonsquare matrices, whose row and column counts differ.
 
       ### Turn, stretch, turn
 
-      The tips of all length-$1$ arrows make a circle. $B$ turns it into an ellipse, an oval with a longest and shortest direction. Follow two perpendicular input arrows, $v_1=(0.6,0.8)$ and $v_2=(-0.8,0.6)$, through the picture. A turn lines them up with the axes. A stretch makes the green arrow $10$ long and the orange one $5$ long. Another turn points them along $u_1=(0,1)$ and $u_2=(-1,0)$.
+      Length-$1$ arrows trace a circle. $B$ turns it into an ellipse, an oval with a longest and shortest direction. Follow two perpendicular input arrows, $v_1=(0.6,0.8)$ and $v_2=(-0.8,0.6)$. A turn lines them up with the axes. A stretch makes the green arrow $10$ long and the orange one $5$ long. Another turn points them along $u_1=(0,1)$ and $u_2=(-1,0)$.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 515" aria-label="Four panels, read across the top row then the bottom row. One: a circle of radius 1 with a green arrow v1 = (0.6, 0.8) and an orange arrow v2 = (minus 0.8, 0.6). Two: after the first turn, the green arrow lies along the x-axis and the orange along the y-axis. Three: after the stretch, an ellipse with the green arrow 10 long along x and the orange 5 long along y. Four: after the second turn, the green arrow points up, 10 long, and the orange points left, 5 long. The last two panels use a smaller scale">
@@ -183,7 +183,7 @@ knowledge_points:
 
       ### The singular value decomposition
 
-      In symbols, the SVD writes a matrix as three moves. A turn may include a mirror flip, a reflection across a line:
+      A turn may include a mirror flip, a reflection across a line:
       $$A=USV^\top$$
       Read right to left. $V$ has the perpendicular length-$1$ input directions as columns. $V^\top$ dots the input with them. Each direction dots with itself to give $1$ and with the other to give $0$, so $v_1$ becomes $(1,0)$ and $v_2$ becomes $(0,1)$. The diagonal entries of $S$ are the **singular values**, the stretches $s_1\ge s_2\ge0$. $U$ has the perpendicular length-$1$ output directions as columns, so it turns each axis onto its output direction. Thus $Av_i=s_iu_i$.
 
@@ -240,16 +240,16 @@ knowledge_points:
     explain: |
       ### A matrix as a sum of pieces
 
-      If one stretch is much bigger than the other, most of what the matrix does happens along that direction. Can we keep just the big stretch and drop the rest?
+      The singular value decomposition (SVD) splits a matrix into a turn, a stretch along the axes and another turn. Singular values measure those stretches. If one is bigger, can we keep it and drop the rest?
 
-      We split the matrix into one piece per singular value. A column $u_1$ times a row $v_1^\top$ is a $2\times2$ matrix. Read $s_1u_1v_1^\top$ right to left. Dot the input with $v_1$, then multiply the arrow $s_1u_1$ by that number. This sends $v_1$ to $s_1u_1$ and the perpendicular $v_2$ to zero. The second piece handles $v_2$. Adding the pieces handles every input:
+      We split the matrix into one piece per singular value. Here $v_1,v_2$ are perpendicular length-$1$ input directions, $u_1,u_2$ are the corresponding output directions of length $1$, and $s_1,s_2$ are their singular values, largest first. A column $u_1$ times a row $v_1^\top$ is a $2\times2$ matrix. Read $s_1u_1v_1^\top$ right to left. Dot the input with $v_1$, then multiply the arrow $s_1u_1$ by that number. This sends $v_1$ to $s_1u_1$ and the perpendicular $v_2$ to zero. Adding both pieces handles every input:
       $$A=s_1u_1v_1^\top+s_2u_2v_2^\top.$$
 
       ### Low-rank approximation
 
       The **rank** is the number of nonzero singular values. Keeping the biggest $k$ nonzero pieces gives a **low-rank approximation** $A_k$. Its maximum output error over length-$1$ inputs is the first singular value dropped. Write an input as $c_1v_1+c_2v_2$, where $c_i$ is its dot product with $v_i$, its coordinate in that direction. Place these arrows tip to tail. They form a right triangle; the input is its hypotenuse. For a length-$1$ input, Pythagoras gives $c_1^2+c_2^2=1$, so $|c_2|\le1$. Dropping the second piece removes $c_2s_2u_2$, at most $s_2$ long. We'll use without proof that no rank-$k$ matrix has a smaller worst-case error.
 
-      For $B$, the first piece is the rank-1 copy $B_1=10\,u_1v_1^\top$. The picture compares both matrices on the same length-1 inputs: $B$ makes the grey ellipse, while $B_1$ makes the green line. For $v_2$, their outputs are $(-5,0)$ and $(0,0)$, separated by the red gap of length $5=s_2$. Hold the directions and first stretch fixed, and change the second stretch:
+      For the example matrix $B=\begin{bmatrix}4&-3\\6&8\end{bmatrix}$, the first piece is the rank-1 copy $B_1=10\,u_1v_1^\top$. On length-1 inputs, $B$ makes the grey ellipse and $B_1$ the green line. For $v_2$, their outputs are $(-5,0)$ and $(0,0)$, separated by the red gap of length $5=s_2$. Hold the directions and first stretch fixed, and change the second stretch:
 
       - With $s_2=5$, as in $B$, it's off by up to $5$.
       - With $s_2=0.5$, it's off by at most $0.5$.
@@ -277,7 +277,7 @@ knowledge_points:
 
       ### Why fewer numbers
 
-      For a matrix with $m$ rows and $n$ columns, store the $k$ column/row factors instead of multiplying them out. Absorb each singular value into its column: $k(m+n)$ numbers instead of $mn$. A $1000\times1000$ matrix's rank-8 copy needs $16{,}000$ numbers instead of a million. LoRA, introduced next, uses factors like these to learn changes to a language model's weight matrices.
+      For $m$ rows and $n$ columns, store $k$ column/row factors. Absorb each singular value into its column: $k(m+n)$ numbers instead of $mn$. A $1000\times1000$ matrix's rank-8 copy needs $16{,}000$ numbers instead of a million. LoRA uses these factors to learn weight changes.
     worked: |
       Let's build the rank-1 copy of $B=\begin{bmatrix}4&-3\\6&8\end{bmatrix}$ from its first stretch $s_1=10$ and directions $u_1=(0,1)$ and $v_1=(0.6,0.8)$. We'll compare its outputs with $B$'s.
 

@@ -112,7 +112,7 @@ knowledge_points:
     explain: |
       ### Choosing between models
 
-      Suppose we have 1,000 past sales and three candidate models. Model A uses only a house's size, B uses its size and number of bedrooms, and C uses size, bedrooms and 12 more details, such as the house's age. We could train all three, pick the one with the lowest test error and report that error. Would the reported number still be a fair estimate for new houses?
+      Suppose we have 1,000 past sales and three candidate models. Model A uses only a house's size, B uses its size and number of bedrooms, and C uses size, bedrooms and 12 more details, such as the house's age. A test set is a group of sales kept out of training; test error is the model's average loss on them. We could train all three, pick the lowest test error and report it. Would that fairly estimate error on new houses?
 
       Not quite. Say the test set is 150 of the sales. An error measured on 150 houses wobbles, because a different 150 would give a different number. So each score is the model's error on new houses plus some luck, and the lowest of three scores is the one most likely to have had good luck. That means we can't use the same sales both to choose a model and to give its final score.
 
@@ -171,11 +171,11 @@ knowledge_points:
     explain: |
       ### What training learns, and what we choose
 
-      Gradient descent learns a model's weights and bias, which are its **parameters**. But there are things it never changes. We choose the learning rate $\eta$, how many steps to take and which inputs the model uses, all before training starts. A **hyperparameter** is a setting like this, fixed before training, that training itself doesn't change. Models A, B and C differ only in one hyperparameter, their inputs.
+      Gradient descent learns a model's weights and bias, which are its **parameters**. But there are things it never changes. We choose the learning rate $\eta$, how many steps to take and which inputs the model uses, all before training starts. A **hyperparameter** is a setting like this, fixed before training, that training itself doesn't change. For house prices, model A uses size, B uses size and bedrooms, and C adds 12 more details. They differ only in one hyperparameter, their inputs.
 
       ### Choosing with the validation set
 
-      To choose a hyperparameter, we train one model per setting on the training set, score each one on the validation set, and keep the setting with the lowest validation error.
+      The training set contains the examples used to fit weights. The validation set contains held-out examples used to compare settings. To choose a hyperparameter, we train one model per setting on the training set, score each on the validation set, and keep the lowest validation error, its average loss there. A separate test set waits until every choice is final.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 380" aria-label="Three columns, one for each choice of inputs: A uses size; B uses size and bedrooms; C uses size, bedrooms and 12 more details. Each model is fitted on the blue training set, with training errors 600, 440 and 280, then scored on the green validation set, with validation errors 620, 460 and 510. B has the lowest validation error, so it is chosen and goes on to the orange test set once, with test error 480.">
@@ -247,7 +247,7 @@ knowledge_points:
     explain: |
       ### Two ways test data sneaks in
 
-      Even if we keep the sets apart and use the test set only once, can test information still reach training? It can, and the picture shows two common ways, in red.
+      We split examples into a training set for fitting weights, a validation set for choosing models and a test set for the final score. Even if these groups stay apart and we use the test set only once, can test information still reach training? The picture shows two ways, in red.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 270" aria-label="Two leaks. Left: sale 17 appears in both the training set and the test set, joined by a red dashed line. Right: training sizes 80, 100, 120 and one missing; test sizes 160 and one missing. The mean of all known sizes is 115 because it includes the test size 160; the mean of training sizes only is 100.">
