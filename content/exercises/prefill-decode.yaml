@@ -1,0 +1,633 @@
+concept: prefill-decode
+exercises:
+  - id: pd-phases-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What happens during prefill in ordinary language-model generation?
+    options:
+      - {
+          id: a,
+          text: "Known prompt positions are processed together to predict the first output.",
+          correct: true,
+          feedback: "The final prompt position supplies probabilities for the first output token.",
+        }
+      - {
+          id: b,
+          text: "Unknown output positions are generated together to complete the answer.",
+          correct: false,
+          feedback: "Later output tokens depend on earlier choices and are generated sequentially.",
+        }
+      - {
+          id: c,
+          text: "Each prompt token is chosen from the preceding output token's probabilities.",
+          correct: false,
+          feedback: "The prompt is already known; the model chooses new output tokens.",
+        }
+    solution: Prefill processes the known prompt positions together. The last position supplies the first output's next-token probabilities.
+  - id: pd-phases-example
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: Why does the worked example count two decode passes for its three-token answer?
+    options:
+      - {
+          id: a,
+          text: "The first output token is copied directly from the prompt.",
+          correct: false,
+          feedback: "The first output is chosen from probabilities at the final prompt position.",
+        }
+      - {
+          id: b,
+          text: "Prefill supplies the probabilities for the first output token.",
+          correct: true,
+          feedback: "Only the two later outputs need subsequent decode passes.",
+        }
+      - {
+          id: c,
+          text: "The final two output tokens are chosen during one shared pass.",
+          correct: false,
+          feedback: "Each later output waits for the preceding token's choice.",
+        }
+    solution: The first output is chosen from the prefill result. Two later decode passes produce the second and third outputs.
+  - id: pd-phases-passes
+    dimension: conceptual
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    params:
+      n: { min: 3, max: 7, step: 1 }
+    prompt: An ordinary autoregressive request emits {{= n }} output tokens. How many decode passes follow the initial prefill? Count only passes that produce these outputs.
+    answer_expr: n - 1
+    tolerance: { abs: 0 }
+    common_wrong:
+      - {
+          answer_expr: n,
+          category: incorrect_reasoning,
+          feedback: "Prefill supplies the first output's probabilities, so one fewer later pass is needed.",
+        }
+    solution: Prefill supplies the first output's probabilities. The remaining {{= n - 1 }} outputs each require a later decode pass.
+  - id: pd-phases-wait
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: A server's first token arrives slowly, but later tokens arrive at a satisfactory steady rate. Profiling attributes the initial delay to processing the prompt. Which change directly addresses that delay?
+    options:
+      - {
+          id: a,
+          text: "Speed up the later decode passes.",
+          correct: false,
+          feedback: "That shortens the gaps after the first token, while the measured delay occurs before it.",
+        }
+      - {
+          id: b,
+          text: "Raise the sampling temperature.",
+          correct: false,
+          feedback: "Temperature changes token probabilities; it does not remove the measured prompt-processing work.",
+        }
+      - {
+          id: c,
+          text: "Speed up the initial prefill pass.",
+          correct: true,
+          feedback: "The measured prompt-processing delay occurs in prefill and contributes to TTFT.",
+        }
+    solution: Prefill processes the prompt before the first token. Speeding up that measured work directly reduces the initial delay.
+  - id: pd-phases-rate
+    dimension: conceptual
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: A request's first token arrives after 300 ms. Every later token arrives 40 ms after the preceding token. What is its steady output rate after the first token, in tokens/s?
+    answer: 25
+    tolerance: { abs: 0.01 }
+    solution: A 40 ms gap is 0.04 seconds. The steady rate is $1/0.04=25$ tokens/s; TTFT affects the initial wait.
+  - id: pd-phases-mistake
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: 'A learner says: "The prompt positions run in parallel, so we can also compute every unknown output position in that prefill pass." What breaks this reasoning?'
+    options:
+      - {
+          id: a,
+          text: "Later output inputs depend on tokens that have yet to be chosen.",
+          correct: true,
+          feedback: "Those unknown choices must be made before ordinary decoding can process them.",
+        }
+      - {
+          id: b,
+          text: "A causal mask prevents all prompt positions from sharing a pass.",
+          correct: false,
+          feedback: "Known prompt positions can share a pass while the mask preserves their allowed dependencies.",
+        }
+      - {
+          id: c,
+          text: "The first output token always determines the entire answer in advance.",
+          correct: false,
+          feedback: "Every later position requires a new prediction from the tokens chosen so far.",
+        }
+    solution: The prompt inputs are known in advance. The inputs for later output positions depend on earlier generated choices, so ordinary decoding must wait for them.
+  - id: pd-phases-new-setting
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A code assistant handles two requests alone on the same loaded model, with identical delivery overhead. One has a short prompt and a long answer; the other has a long prompt and a short answer. Which work would you inspect first for each request?
+    options:
+      - {
+          id: a,
+          text: "Prefill for the long answer; decode for the long prompt.",
+          correct: false,
+          feedback: "Prefill processes prompt positions; decode extends the answer through later tokens.",
+        }
+      - {
+          id: b,
+          text: "Decode for the long answer; prefill for the long prompt.",
+          correct: true,
+          feedback: "The long answer needs many sequential decode passes and the long prompt adds prefill work.",
+        }
+      - {
+          id: c,
+          text: "Sampling temperature for both the long answer and the long prompt.",
+          correct: false,
+          feedback: "Temperature controls the choice distribution rather than explaining these different amounts of model work.",
+        }
+    solution: Many output tokens require many sequential decode passes. A long known prompt adds prefill work before its first output can be chosen.
+  - id: pd-temp-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What does a temperature greater than zero change when sampling a token?
+    options:
+      - {
+          id: a,
+          text: "The number of prompt positions processed in prefill.",
+          correct: false,
+          feedback: "Temperature divides the next-token logits before softmax.",
+        }
+      - {
+          id: b,
+          text: "The concentration of the next-token probabilities.",
+          correct: true,
+          feedback: "Lower values concentrate probability on higher logits and higher values spread it more evenly.",
+        }
+      - {
+          id: c,
+          text: "The maximum number of output tokens in the answer.",
+          correct: false,
+          feedback: "A length limit controls output count; temperature controls how a token is chosen.",
+        }
+    solution: Temperature divides the logits before softmax, changing how concentrated the sampling distribution is.
+  - id: pd-temp-example
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: Why can the temperature worked example draw No even though Yes has the higher logit?
+    options:
+      - {
+          id: a,
+          text: "Temperature 2 reverses the order of the logits.",
+          correct: false,
+          feedback: "A positive temperature preserves the ordering, so Yes remains more likely.",
+        }
+      - {
+          id: b,
+          text: "The model must alternate between the two tokens.",
+          correct: false,
+          feedback: "Each draw follows its probabilities and does not enforce alternation.",
+        }
+      - {
+          id: c,
+          text: "No still has positive probability after the adjustment.",
+          correct: true,
+          feedback: "The draw 0.70 falls above Yes's cumulative probability of two thirds.",
+        }
+    solution: No has probability one third after the adjustment. A random draw can select it even though Yes remains the most likely token.
+  - id: pd-temp-probability
+    dimension: implementation
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    params:
+      a: { min: 2, max: 4, step: 1 }
+    prompt: A two-token model gives A logit $\ln{{= a * a }}$ and B logit $0$. At temperature $\tau=2$, what is A's sampling probability? Give a decimal rounded to two places.
+    answer_expr: a / (a + 1)
+    tolerance: { abs: 0.005 }
+    solution: Halving the logits gives exponential weights {{= a }} and 1. A's probability is ${{= a }}/({{= a }}+1)$, which rounds to ${{= round(a / (a + 1), 2) }}$.
+  - id: pd-temp-order
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: A token has a unique highest finite logit. What happens when a positive temperature is raised from 1 to 2 before softmax?
+    options:
+      - {
+          id: a,
+          text: "It remains most probable while the distribution becomes more even.",
+          correct: true,
+          feedback: "Positive scaling preserves score order, while higher temperature reduces the score gaps.",
+        }
+      - {
+          id: b,
+          text: "It becomes least probable while the distribution becomes more even.",
+          correct: false,
+          feedback: "Dividing all logits by the same positive number cannot reverse their ordering.",
+        }
+      - {
+          id: c,
+          text: "It becomes the only possible draw while other probabilities become zero.",
+          correct: false,
+          feedback: "Finite logits keep positive softmax probabilities; higher temperature spreads probability more evenly.",
+        }
+    solution: Positive temperature preserves the logits' order. Raising it makes the distribution more even, so lower-ranked tokens gain probability.
+  - id: pd-temp-zero
+    dimension: implementation
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: An interface uses temperature zero to request greedy decoding. How should its implementation handle this setting?
+    options:
+      - {
+          id: a,
+          text: "Divide the logits by zero and then run softmax.",
+          correct: false,
+          feedback: "Division by zero does not define a valid softmax input.",
+        }
+      - {
+          id: b,
+          text: "Select a token whose logit is largest directly.",
+          correct: true,
+          feedback: "Greedy decoding is the separate zero-temperature rule.",
+        }
+      - {
+          id: c,
+          text: "Set every logit to zero and sample uniformly.",
+          correct: false,
+          feedback: "Equal logits give a uniform draw, which does not implement greedy decoding.",
+        }
+    solution: Handle zero with a separate greedy branch that selects a highest-logit token. The positive-temperature formula cannot divide by zero.
+  - id: pd-temp-code
+    dimension: implementation
+    type: code_complete
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: Complete the stable exponential weight for a logit $z$, a positive temperature `tau` and `largest = max(logits)`.
+    code: |
+      import math
+      weight = math.exp(____)
+    accept: ["(z - largest) / tau", "(z-largest)/tau", "z / tau - largest / tau"]
+    solution: Divide the logit difference by temperature. Subtracting the same largest logit from every entry cancels out during normalisation and avoids large positive exponents.
+  - id: pd-temp-new-setting
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A story generator should sometimes explore less likely continuations. Its developer proposes raising a positive temperature while keeping the logits fixed. Which expectation is justified?
+    options:
+      - {
+          id: a,
+          text: "Lower-ranked tokens gain chance, and every continuation becomes correct.",
+          correct: false,
+          feedback: "Temperature changes probabilities and gives no guarantee that a continuation is suitable.",
+        }
+      - {
+          id: b,
+          text: "Higher-ranked tokens gain chance, and every draw becomes greedy.",
+          correct: false,
+          feedback: "Raising temperature spreads probability more evenly; greedy selection uses a separate rule.",
+        }
+      - {
+          id: c,
+          text: "Lower-ranked tokens gain chance, and some continuations may fit poorly.",
+          correct: true,
+          feedback: "Higher temperature increases variety while still allowing unsuitable tokens.",
+        }
+    solution: Raising temperature makes the probability distribution more even. That allows more varied draws and can also increase unsuitable choices.
+  - id: pd-topk-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: How does top-k sampling choose its candidate set?
+    options:
+      - {
+          id: a,
+          text: "It retains the k most probable tokens.",
+          correct: true,
+          feedback: "After keeping that count, it renormalises their probabilities and samples.",
+        }
+      - {
+          id: b,
+          text: "It retains tokens with probability at least k.",
+          correct: false,
+          feedback: "Here k is an integer count, not a probability threshold.",
+        }
+      - {
+          id: c,
+          text: "It retains the k least probable tokens.",
+          correct: false,
+          feedback: "Top-k keeps the highest-probability candidates.",
+        }
+    solution: Top-k keeps a fixed count of the most probable tokens, then renormalises and samples from that set.
+  - id: pd-topk-example
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: Why does the top-k worked example divide Yes and Maybe's probabilities by 0.7?
+    options:
+      - {
+          id: a,
+          text: "That is the probability of drawing Maybe alone.",
+          correct: false,
+          feedback: "Maybe originally has probability 0.3; 0.7 is the sum of the two survivors.",
+        }
+      - {
+          id: b,
+          text: "That is the total probability of the surviving set.",
+          correct: true,
+          feedback: "Dividing by the retained total makes the new probabilities add up to 1.",
+        }
+      - {
+          id: c,
+          text: "That is the temperature used to rescale the logits.",
+          correct: false,
+          feedback: "This step filters probabilities; temperature acts earlier on logits.",
+        }
+    solution: The surviving probabilities sum to 0.7. Dividing both by 0.7 gives a distribution summing to 1.
+  - id: pd-topk-probability
+    dimension: implementation
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    params:
+      a: { min: 3, max: 5, step: 1 }
+    prompt: "A model has four token probabilities: A has ${{= a }}/{{= a + 4 }}$, B has $2/{{= a + 4 }}$, C and D each have $1/{{= a + 4 }}$. With top-k and $k=2$, what is A's probability after filtering? Round to two decimal places."
+    answer_expr: a / (a + 2)
+    tolerance: { abs: 0.005 }
+    solution: A and B survive. Dividing A's probability by their combined probability gives ${{= a }}/({{= a }}+2)$, which rounds to ${{= round(a / (a + 2), 2) }}$.
+  - id: pd-topk-mistake
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: 'A model gives A, B, C probabilities 0.6, 0.3, 0.1. A learner applies top-k with k=2, then says: "A always wins because it is the largest survivor." What is the error?'
+    options:
+      - {
+          id: a,
+          text: "Top-k keeps only C because C has the smallest probability.",
+          correct: false,
+          feedback: "Top-k retains the largest probabilities, so A and B stay.",
+        }
+      - {
+          id: b,
+          text: "Top-k must keep C because every finite logit remains eligible.",
+          correct: false,
+          feedback: "Filtering can give C zero probability even though its original softmax probability was positive.",
+        }
+      - {
+          id: c,
+          text: "Top-k samples from both survivors so B can still be chosen.",
+          correct: true,
+          feedback: "The retained probabilities are renormalised; this is still a random draw.",
+        }
+    solution: Top-k retains A and B, then samples from them. A is more likely, but B still has positive probability.
+  - id: pd-topk-code
+    dimension: implementation
+    type: code_complete
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: The indices in `order` are sorted by probability from largest to smallest. Complete the selection of exactly `k` indices for top-k filtering, where $1\le k\le$ the number of tokens.
+    code: |
+      keep = ____
+    accept: ["order[:k]", "order[0:k]"]
+    solution: The first k sorted indices name the k largest probabilities. Python's slice `order[:k]` takes those entries.
+  - id: pd-topk-new-setting
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A caption generator samples from a vocabulary of four tokens using top-k with k=4. Its probabilities are 0.97, 0.01, 0.01, 0.01. What does this filter do?
+    options:
+      - {
+          id: a,
+          text: "It leaves every token eligible, including the weak alternatives.",
+          correct: true,
+          feedback: "Keeping the whole vocabulary leaves its probabilities unchanged.",
+        }
+      - {
+          id: b,
+          text: "It keeps only the leading token because its probability is large.",
+          correct: false,
+          feedback: "Top-k uses a fixed count; the concentration of the distribution does not reduce that count.",
+        }
+      - {
+          id: c,
+          text: "It makes all four tokens equally likely after renormalising.",
+          correct: false,
+          feedback: "Renormalising preserves relative probabilities; their total is already 1 here.",
+        }
+    solution: With k equal to the vocabulary size, every token survives. A fixed count can keep weak alternatives even when the leading token dominates.
+  - id: pd-topp-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: How does top-p sampling choose its candidate set?
+    options:
+      - {
+          id: a,
+          text: "Keep every token whose own probability is at least p.",
+          correct: false,
+          feedback: "The threshold applies to the cumulative probability of the sorted set.",
+        }
+      - {
+          id: b,
+          text: "Keep most likely tokens until their total first reaches or exceeds p.",
+          correct: true,
+          feedback: "Add the most likely tokens until the cumulative total reaches or crosses the threshold.",
+        }
+      - {
+          id: c,
+          text: "Keep a fixed count of p tokens regardless of their probabilities.",
+          correct: false,
+          feedback: "Top-p uses a probability threshold; the number of survivors can change.",
+        }
+    solution: Top-p accumulates sorted probabilities until their total reaches at least p, then renormalises and samples from the survivors.
+  - id: pd-topp-example
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: Why does the top-p worked example retain No when the threshold is 0.8?
+    options:
+      - {
+          id: a,
+          text: "Yes and Maybe together fall short of the threshold.",
+          correct: true,
+          feedback: "Their total is 0.7; including No raises the total to 0.9.",
+        }
+      - {
+          id: b,
+          text: "Every top-p set must contain exactly three tokens.",
+          correct: false,
+          feedback: "The number kept depends on the probabilities and the chosen threshold.",
+        }
+      - {
+          id: c,
+          text: "No alone has probability greater than the threshold.",
+          correct: false,
+          feedback: "No has probability 0.2; it is the cumulative total that crosses 0.8.",
+        }
+    solution: Yes and Maybe sum to only 0.7. No is the whole next token needed to reach at least 0.8.
+  - id: pd-topp-probability
+    dimension: implementation
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    params:
+      a: { min: 3, max: 5, step: 1 }
+    prompt: "A four-token model gives A, B, C, D probabilities ${{= a }}/10$, $3/10$, ${{= 6 - a }}/10$, $1/10$. Top-p uses $p=0.85$ and breaks ties by the order A, B, C, D. What is A's probability after filtering? Round to two decimal places."
+    answer_expr: a / 9
+    tolerance: { abs: 0.005 }
+    solution: The first two tokens fall short of 0.85; adding C reaches 0.9. A's new probability is ${{= a }}/9$, which rounds to ${{= round(a / 9, 2) }}$.
+  - id: pd-topp-boundary
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A, B, C have probabilities 0.5, 0.25, 0.25. With top-p threshold p=0.75 and ties ordered A, B, C, which set survives?
+    options:
+      - {
+          id: a,
+          text: "A alone.",
+          correct: false,
+          feedback: "A's probability 0.5 falls short of 0.75.",
+        }
+      - {
+          id: b,
+          text: "A, B and C.",
+          correct: false,
+          feedback: "A and B reach the threshold exactly, so C is unnecessary.",
+        }
+      - {
+          id: c,
+          text: "A and B.",
+          correct: true,
+          feedback: "Their cumulative probability equals 0.75, which is enough to stop.",
+        }
+    solution: Stop when the running total reaches or exceeds p. A and B total exactly 0.75.
+  - id: pd-topp-code
+    dimension: implementation
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: "A top-p loop visits tokens from most to least probable. It tests whether adding the next token would exceed p, and stops before adding that token. What change implements the intended cutoff?"
+    options:
+      - {
+          id: a,
+          text: "Stop before the next token whenever the running total is below p.",
+          correct: false,
+          feedback: "A total below p means more probability is needed.",
+        }
+      - {
+          id: b,
+          text: "Add each token first, then stop when the running total is at least p.",
+          correct: true,
+          feedback: "This retains the crossing token and also stops at an exact match.",
+        }
+      - {
+          id: c,
+          text: "Add each token first, then stop only when the running total equals p.",
+          correct: false,
+          feedback: "The cumulative total can jump over p without ever equalling it.",
+        }
+    solution: Append the token and update the total before testing `total >= p`. That keeps the smallest leading set that reaches or crosses p.
+  - id: pd-topp-new-setting
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A dialogue model uses top-p with p=0.8. At one position its four probabilities are 0.85, 0.05, 0.05, 0.05; at another they are 0.25 each. What happens to the number of retained tokens?
+    options:
+      - {
+          id: a,
+          text: "It keeps one token first and all four later.",
+          correct: true,
+          feedback: "The first leader reaches 0.8 alone; three equal tokens later reach only 0.75.",
+        }
+      - {
+          id: b,
+          text: "It keeps four tokens first and one token later.",
+          correct: false,
+          feedback: "A concentrated distribution needs fewer candidates to reach the same probability threshold.",
+        }
+      - {
+          id: c,
+          text: "It keeps the same count in both positions.",
+          correct: false,
+          feedback: "Top-p adapts the count to the probability distribution.",
+        }
+    solution: The first leading token exceeds 0.8 alone. In the uniform distribution, three tokens reach only 0.75, so all four are needed.
+  - id: pd-final
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 3
+    est_minutes: 4
+    prompt: Explain how prefill and decode affect the wait for an answer and its later streaming rate. Describe how temperature changes the next-token distribution. Explain how top-k and top-p choose which tokens can be sampled.
+    rubric:
+      - id: phases
+        criterion: Explain that prefill processes the known prompt and contributes to TTFT, while sequential decode largely sets later token gaps and streaming rate.
+        weight: 1
+        required: true
+      - id: temperature
+        criterion: Explain that positive temperature divides logits before softmax, with lower values concentrating probability and higher values spreading it more evenly.
+        weight: 1
+        required: true
+      - id: filters
+        criterion: Explain that top-k keeps a fixed number of most probable tokens, while top-p keeps the smallest leading set reaching at least p; both renormalise the retained probabilities before sampling.
+        weight: 1
+        required: true
+    exemplar: |
+      Prefill processes the known prompt together and supplies probabilities for the first output, so it contributes to TTFT. Decode generates later tokens sequentially because each choice becomes input for the next prediction. Decode largely sets ITL and the steady rate of one divided by ITL in seconds.
+
+      Temperature divides logits before softmax. A lower positive temperature concentrates the probabilities on higher-scoring tokens, while a higher one spreads them more evenly.
+
+      Top-k keeps the k most probable tokens. Top-p keeps the smallest set of most likely tokens whose cumulative probability reaches at least p, including the token that crosses the threshold. Both divide surviving probabilities by the retained total, then sample from that distribution.
+    solution: Connect prompt processing to the first-token wait and sequential generation to later gaps. Then describe temperature's scaling and the two ways to select and renormalise a candidate set.
