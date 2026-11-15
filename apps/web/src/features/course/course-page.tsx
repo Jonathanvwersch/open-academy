@@ -3,7 +3,7 @@ import { useSuspenseQuery } from '@tanstack/react-query';
 import { getRouteApi, Link } from '@tanstack/react-router';
 import { ChevronDown, ChevronRight, FileText, Wrench } from 'lucide-react';
 import { Collapsible } from 'radix-ui';
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import {
   topicStatusLabels as COURSE_STATUS_LABEL,
   topicStatusClasses,
@@ -13,6 +13,7 @@ import { Button } from '../../components/ui/button.js';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card.js';
 import { paperStatusLabel } from '../papers/queries.js';
 import { useTutorSidebar } from '../tutor/tutor-sidebar.js';
+import { buildsOnLineItems, buildsOnLineText } from './builds-on-line.js';
 import { CourseMetadata } from './course-metadata.js';
 import { CourseStartCard } from './course-start-card.js';
 import { foundationsHeading } from './foundations-heading.js';
@@ -33,14 +34,20 @@ function foundationSourceLabel(courseTitles: string[], hasMore: boolean): string
   return `${titles.slice(0, -1).join(', ')}, and ${titles.at(-1)}`;
 }
 
-function QueueStatusLine({ queue }: { queue: CourseQueueStatus }) {
+function QueueStatusLine({
+  queue,
+  hasStartableTopics,
+}: {
+  queue: CourseQueueStatus;
+  hasStartableTopics: boolean;
+}) {
   switch (queue.kind) {
     case 'studying':
       return <p className="text-sm text-muted-foreground">Studying now</p>;
     case 'after':
       return (
         <p className="text-sm text-muted-foreground">
-          Starts after{' '}
+          Next in line after{' '}
           <Link
             to="/courses/$courseId"
             params={{ courseId: queue.courseId }}
@@ -48,6 +55,7 @@ function QueueStatusLine({ queue }: { queue: CourseQueueStatus }) {
           >
             {queue.courseTitle}
           </Link>
+          .{hasStartableTopics ? ' You can start its unlocked topics now.' : null}
         </p>
       );
     case 'waiting':
@@ -78,6 +86,14 @@ export function CoursePage() {
   const enrollment = useCourseEnrollment(courseId, data.course.title);
   const courseProgress = data.courses.find((course) => course.id === courseId);
   const showStartCard = data.status === 'not_started' || data.courseStart.needed;
+  const buildsOnItems = buildsOnLineItems(data.buildsOn);
+  const hasStartableTopics = data.units.some((unit) =>
+    unit.topics.some(
+      (topic) =>
+        topic.hasLesson &&
+        ['not_started', 'in_progress', 'quiz'].some((status) => status === topic.status),
+    ),
+  );
   useEffect(() => {
     tutorSidebar.setContext({
       page: 'course',
@@ -96,18 +112,32 @@ export function CoursePage() {
           <p className="text-sm font-medium">
             {courseProgress?.topicsDone ?? 0} of {courseProgress?.topicsTotal ?? 0} topics done
           </p>
-          {data.foundationNeeds.count > 0 ? (
-            <p className="text-sm text-muted-foreground">
-              Needs {data.foundationNeeds.count}{' '}
-              {data.foundationNeeds.count === 1 ? 'topic' : 'topics'} from{' '}
-              {foundationSourceLabel(
-                data.foundationNeeds.courseTitles,
-                data.foundationNeeds.hasMore,
-              )}{' '}
-              first.
-            </p>
+          <p className="text-sm text-muted-foreground">
+            {buildsOnItems.length > 0 ? (
+              <>
+                Builds on{' '}
+                {buildsOnItems.map(({ courseId: sourceCourseId, title, separator, suffix }) => (
+                  <Fragment key={sourceCourseId}>
+                    {separator}
+                    <Link
+                      to="/courses/$courseId"
+                      params={{ courseId: sourceCourseId }}
+                      className="underline underline-offset-2"
+                    >
+                      {title}
+                    </Link>{' '}
+                    ({suffix})
+                  </Fragment>
+                ))}
+                .
+              </>
+            ) : (
+              buildsOnLineText(data.buildsOn)
+            )}
+          </p>
+          {data.queue ? (
+            <QueueStatusLine queue={data.queue} hasStartableTopics={hasStartableTopics} />
           ) : null}
-          {data.queue ? <QueueStatusLine queue={data.queue} /> : null}
         </div>
         {!showStartCard && data.status === 'active' ? (
           <Button

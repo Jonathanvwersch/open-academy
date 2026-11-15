@@ -2,6 +2,7 @@ import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest';
 import { createApp } from '../../src/app.js';
 import { env } from '../../src/config.js';
+import { orderCourseIdsBySubject } from '../../src/content/course-order.js';
 import { subjectForCourse } from '../../src/content/index.js';
 import { loadContent } from '../../src/content/load.js';
 import type { ContentIndex } from '../../src/content/types.js';
@@ -1262,24 +1263,64 @@ test('lesson choices exclude locked, completed and stub concepts and retain the 
   );
 });
 
-test('course details report incomplete foundation counts and source courses', async () => {
+test('course details group builds-on topics by source course in subject order', async () => {
   const payload = await (await get('/courses/transformers-llms')).json();
-  const sourceTitles = [
-    ...new Set(
-      payload.foundations.flatMap((foundation: { conceptId: string }) => {
-        const source = content.courses.find((course) =>
-          course.units.some((unit) => unit.concepts.includes(foundation.conceptId)),
-        );
-        return source ? [source.title] : [];
-      }),
-    ),
-  ];
 
-  expect(payload.foundationNeeds).toEqual({
-    count: payload.foundations.length,
-    courseTitles: sourceTitles.slice(0, 3),
-    hasMore: sourceTitles.length > 3,
+  expect(payload.buildsOn).toEqual([
+    {
+      courseId: 'ml-foundations',
+      title: 'Machine Learning Foundations',
+      topicCount: 16,
+      remaining: 16,
+    },
+    { courseId: 'deep-learning', title: 'Deep Learning', topicCount: 3, remaining: 3 },
+    {
+      courseId: 'reinforcement-learning',
+      title: 'Reinforcement Learning',
+      topicCount: 6,
+      remaining: 6,
+    },
+  ]);
+});
+
+test('course details reduce builds-on remaining count when a foundation topic is complete', async () => {
+  const courseId = 'transformers-llms';
+  const conceptId = [...courseFoundationIds(content, courseId)].find((id) =>
+    content.lessonsByConcept.has(id),
+  );
+  if (!conceptId) throw new Error('Missing lessoned foundation topic');
+  const sourceCourse = content.courses.find((course) =>
+    course.units.some((unit) => unit.concepts.includes(conceptId)),
+  );
+  if (!sourceCourse) throw new Error(`Missing source course for ${conceptId}`);
+
+  const beforePayload = await (await get(`/courses/${courseId}`)).json();
+  const beforeGroup = beforePayload.buildsOn.find(
+    (group: { courseId: string }) => group.courseId === sourceCourse.id,
+  );
+  if (!beforeGroup) throw new Error(`Missing builds-on group for ${sourceCourse.id}`);
+
+  await db.insert(lessonRuns).values({ userId, conceptId, status: 'completed' });
+
+  const afterPayload = await (await get(`/courses/${courseId}`)).json();
+  const afterGroup = afterPayload.buildsOn.find(
+    (group: { courseId: string }) => group.courseId === sourceCourse.id,
+  );
+  expect(afterGroup.remaining).toBe(beforeGroup.remaining - 1);
+});
+
+test('a first-in-subject course with no foundations has no builds-on courses', async () => {
+  const firstCourseIdsBySubject = new Set<string>();
+  const courseId = orderCourseIdsBySubject(content).find((candidateId) => {
+    const subjectId = subjectForCourse(content, candidateId).id;
+    if (firstCourseIdsBySubject.has(subjectId)) return false;
+    firstCourseIdsBySubject.add(subjectId);
+    return courseFoundationIds(content, candidateId).size === 0;
   });
+  if (!courseId) throw new Error('Missing a first-in-subject course without foundations');
+
+  const payload = await (await get(`/courses/${courseId}`)).json();
+  expect(payload.buildsOn).toEqual([]);
 });
 
 test('all-subject projection uses recent learn minutes from outside the focus', async () => {
