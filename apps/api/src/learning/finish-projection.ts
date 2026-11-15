@@ -187,7 +187,7 @@ export function projectCourseFinishes(input: {
 
   const dates = [...byCourse.values()];
   const nonNullDates = dates.filter((date): date is string => date !== null).sort();
-  const overall = nonNullDates.at(-1) ?? null;
+  const overall = unfinishedCourses.size > 0 ? null : (nonNullDates.at(-1) ?? null);
   return {
     byCourse,
     overall,

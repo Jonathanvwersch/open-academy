@@ -375,6 +375,36 @@ describe('projectCourseFinishes', () => {
     expect(result.overall).toBeNull();
   });
 
+  it('returns no overall date when any remaining course cannot finish', () => {
+    const result = projectCourseFinishes({
+      courses: [
+        { id: 'finishable', topics: topics('finishable', 1) },
+        {
+          id: 'blocked',
+          topics: [{ conceptId: 'blocked-topic', done: false, hardPrereqIds: ['missing'] }],
+        },
+        {
+          id: 'stub-only',
+          topics: [
+            {
+              conceptId: 'stub-topic',
+              status: 'stub',
+              done: false,
+              hardPrereqIds: [],
+            },
+          ],
+        },
+      ],
+      dailyXp: 40,
+      today,
+    });
+
+    expect(result.byCourse.get('finishable')).toBe('2026-01-02');
+    expect(result.byCourse.get('blocked')).toBeNull();
+    expect(result.byCourse.get('stub-only')).toBeNull();
+    expect(result.overall).toBeNull();
+  });
+
   it('returns null dates when daily XP is not positive', () => {
     const result = projectCourseFinishes({
       courses: [{ id: 'a', topics: topics('a', 1) }],
