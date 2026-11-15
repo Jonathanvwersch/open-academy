@@ -58,7 +58,7 @@ concepts:
       dimensions: [conceptual],
       prereqs: [{ id: policies-returns }],
       objectives: [{ text: "Explain the exploration problem", dimension: conceptual }],
-      status: stub,
+      status: authored,
     }
   - {
       id: deep-q-learning,
