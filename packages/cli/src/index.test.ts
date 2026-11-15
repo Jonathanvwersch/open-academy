@@ -222,7 +222,10 @@ describe('academy CLI', () => {
       const missingIntroducer = run(['check', pack]);
       expect(missingIntroducer.status).toBe(1);
       expect(missingIntroducer.stderr).toContain(
-        'uses Σ summation, but no topic teaches it yet: add the topic that does to introduced_by in notation.yaml',
+        'uses Σ summation, but no topic teaches it yet; near "',
+      );
+      expect(missingIntroducer.stderr).toContain(
+        '. Add the topic that teaches it to introduced_by in notation.yaml',
       );
 
       const sum = notation.terms.find(({ id }) => id === 'sum');

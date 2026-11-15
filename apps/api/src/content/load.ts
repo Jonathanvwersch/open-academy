@@ -62,12 +62,18 @@ export function resolveContentDirectory(directory = process.env.CONTENT_DIR ?? '
 export async function loadContent(
   directory = process.env.CONTENT_DIR ?? 'content',
 ): Promise<ContentIndex> {
-  return (await loadContentReport(directory)).content;
+  return buildContentIndex(await loadContentData(directory));
 }
 
 export async function loadContentReport(
   directory = process.env.CONTENT_DIR ?? 'content',
 ): Promise<{ content: ContentIndex; warnings: ContentIssue[] }> {
+  const data = await loadContentData(directory);
+  const content = buildContentIndex(data);
+  return { content, warnings: contentWarnings(data, content) };
+}
+
+async function loadContentData(directory: string): Promise<ContentSourceData> {
   const root = resolveContentDirectory(directory);
   const data: ContentSourceData = {
     concepts: [],
@@ -245,7 +251,7 @@ export async function loadContentReport(
   if (issues.length > 0) {
     throw new ContentValidationError(issues);
   }
-  return { content: buildContentIndex(data), warnings: contentWarnings(data) };
+  return data;
 }
 
 async function yamlFiles(directory: string): Promise<string[]> {

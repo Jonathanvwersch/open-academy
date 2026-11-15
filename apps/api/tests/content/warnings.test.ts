@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { buildContentIndex } from '../../src/content/index.js';
 import type { Concept, Course } from '../../src/content/schemas.js';
 import type { ContentSourceData } from '../../src/content/types.js';
 import { contentWarnings } from '../../src/content/warnings.js';
@@ -61,14 +62,23 @@ function contentData(
   };
 }
 
+function warningsFor(data: ContentSourceData) {
+  return contentWarnings(data, buildContentIndex(data));
+}
+
 describe('contentWarnings', () => {
   it('warns once about topics with no prerequisites after the opening of a course', () => {
-    const warnings = contentWarnings(
+    const warnings = warningsFor(
       contentData(
-        ['one', 'two', 'three', 'shared', 'unit-two'].map((id) => topic(id)),
+        ['one', 'two', 'three', 'shared', 'unit-two', 'unit-two-second', 'later-first'].map((id) =>
+          topic(id),
+        ),
         [
-          course('early-course', 'Early course', [['one', 'two', 'three', 'shared'], ['unit-two']]),
-          course('later-course', 'Later course', [['shared']]),
+          course('early-course', 'Early course', [
+            ['one', 'two', 'three', 'shared'],
+            ['unit-two', 'unit-two-second'],
+          ]),
+          course('later-course', 'Later course', [['later-first', 'shared']]),
         ],
       ),
     );
@@ -81,14 +91,14 @@ describe('contentWarnings', () => {
       },
       {
         file: 'concepts/main.yaml',
-        id: 'unit-two',
+        id: 'unit-two-second',
         message: 'has no prerequisites but sits in unit 2 of Early course; is a link missing?',
       },
     ]);
   });
 
   it('does not warn about an unlinked topic in the opening or one with a soft prerequisite', () => {
-    const warnings = contentWarnings(
+    const warnings = warningsFor(
       contentData(
         [
           topic('one'),
@@ -104,11 +114,36 @@ describe('contentWarnings', () => {
     expect(warnings.filter(({ message }) => message.includes('is a link missing?'))).toEqual([]);
   });
 
+  it('does not warn about unit-opening topics, including repeated course placements', () => {
+    const warnings = warningsFor(
+      contentData(
+        ['one', 'two', 'three', 'repeated-opener', 'unit-two-first', 'unit-two-second'].map((id) =>
+          topic(id),
+        ),
+        [
+          course('course', 'Course', [
+            ['one', 'two', 'three', 'repeated-opener'],
+            ['unit-two-first', 'unit-two-second'],
+          ]),
+          course('later-course', 'Later course', [['repeated-opener']]),
+        ],
+      ),
+    );
+
+    expect(warnings.filter(({ message }) => message.includes('is a link missing?'))).toEqual([
+      {
+        file: 'concepts/main.yaml',
+        id: 'unit-two-second',
+        message: 'has no prerequisites but sits in unit 2 of Course; is a link missing?',
+      },
+    ]);
+  });
+
   it('warns when every topic in a six-topic course opens one at a time', () => {
     const topics = Array.from({ length: 6 }, (_, index) =>
       topic(`topic-${index + 1}`, index === 0 ? [] : [{ id: `topic-${index}`, strength: 'hard' }]),
     );
-    const warnings = contentWarnings(
+    const warnings = warningsFor(
       contentData(topics, [
         course('sequential', 'Sequential course', [topics.map(({ id }) => id)]),
       ]),
@@ -131,7 +166,7 @@ describe('contentWarnings', () => {
       topic('topic-5', [{ id: 'topic-2', strength: 'hard' }]),
       topic('topic-6', [{ id: 'topic-3', strength: 'hard' }]),
     ];
-    const warnings = contentWarnings(
+    const warnings = warningsFor(
       contentData(topics, [course('branching', 'Branching course', [topics.map(({ id }) => id)])]),
     );
 
@@ -139,7 +174,7 @@ describe('contentWarnings', () => {
   });
 
   it('warns when unit 1 requires a topic taught only in a later course of the subject', () => {
-    const warnings = contentWarnings(
+    const warnings = warningsFor(
       contentData(
         [topic('later-topic'), topic('current-topic', [{ id: 'later-topic', strength: 'hard' }])],
         [
@@ -159,7 +194,7 @@ describe('contentWarnings', () => {
   });
 
   it('does not warn when a first-unit prerequisite is also in an earlier course', () => {
-    const warnings = contentWarnings(
+    const warnings = warningsFor(
       contentData(
         [topic('shared-topic'), topic('current-topic', [{ id: 'shared-topic', strength: 'hard' }])],
         [

@@ -1,6 +1,6 @@
 import { orderCourseIdsBySubject } from './course-order.js';
-import { buildContentIndex, subjectForCourse } from './index.js';
-import type { ContentIssue, ContentSourceData } from './types.js';
+import { subjectForCourse } from './index.js';
+import type { ContentIndex, ContentIssue, ContentSourceData } from './types.js';
 
 type CourseEntry = ContentSourceData['courses'][number];
 type ConceptEntry = ContentSourceData['concepts'][number];
@@ -17,8 +17,7 @@ function hardPrerequisiteIds(concept: ConceptEntry['value']): string[] {
     .map(({ id }) => id);
 }
 
-export function contentWarnings(data: ContentSourceData): ContentIssue[] {
-  const content = buildContentIndex(data);
+export function contentWarnings(data: ContentSourceData, content: ContentIndex): ContentIssue[] {
   const concepts = new Map(data.concepts.map((entry) => [entry.value.id, entry]));
   const courses = new Map(data.courses.map((entry) => [entry.value.id, entry]));
   const orderedCourseIds = orderCourseIdsBySubject(
@@ -55,6 +54,9 @@ export function contentWarnings(data: ContentSourceData): ContentIssue[] {
 
   const warnings: ContentIssue[] = [];
   const warnedConcepts = new Set<string>();
+  const unitOpeningTopicIds = new Set(
+    data.courses.flatMap(({ value }) => value.units.flatMap((unit) => unit.concepts.slice(0, 1))),
+  );
 
   for (const courseId of orderedCourseIds) {
     const course = courses.get(courseId);
@@ -67,6 +69,7 @@ export function contentWarnings(data: ContentSourceData): ContentIssue[] {
         !concept ||
         warnedConcepts.has(topic.id) ||
         concept.value.prereqs.length > 0 ||
+        unitOpeningTopicIds.has(topic.id) ||
         (topic.unit === 1 && position < 3)
       ) {
         continue;

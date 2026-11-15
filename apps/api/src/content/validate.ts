@@ -1268,8 +1268,8 @@ function validateNotationUsage(data: ContentSourceData, issues: ContentIssue[]) 
         const snippet = snippetAround(match.text, match.found.index, match.found[0].length);
         const message =
           term.introduced_by.length === 0
-            ? `uses ${term.label}, but no topic teaches it yet: add the topic that does to introduced_by in notation.yaml`
-            : `uses ${term.label} but none of ${term.introduced_by.join(', ')} is a hard prerequisite; near "${snippet}" (taught by ${term.introduced_by.join(', ')}; add one as a prerequisite)`;
+            ? `uses ${term.label}, but no topic teaches it yet; near "${snippet}". Add the topic that teaches it to introduced_by in notation.yaml`
+            : `uses ${term.label} but none of ${term.introduced_by.join(', ')} is a hard prerequisite; near "${snippet}". Add one of them as a prerequisite`;
         addIssue(issues, match.file, match.id, message);
       }
     }
