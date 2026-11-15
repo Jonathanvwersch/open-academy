@@ -210,7 +210,11 @@ function schedulerCourseContexts(
   state: SchedulerCourseContextState,
   content: ContentIndex,
 ): SchedulerCourseContext[] {
-  const focusSubjectId = effectiveFocusSubjectId(state, content);
+  const focusSubjectId = effectiveFocusSubjectId(
+    { focusSubjectId: state.focusSubjectId },
+    state.studyCourseIds,
+    content,
+  );
   return orderCourseIdsBySubject(content, state.studyCourseIds)
     .filter(
       (courseId) => !focusSubjectId || content.subjectForCourse(courseId).id === focusSubjectId,
@@ -264,17 +268,24 @@ function recentLearnMinutesForSubjects(
   return subjectRecentMinutes;
 }
 
-function effectiveFocusSubjectId(
-  state: Pick<SchedulerState, 'studyCourseIds' | 'focusSubjectId'>,
+export function effectiveFocusSubjectId(
+  prefs: { focusSubjectId?: unknown } | null | undefined,
+  activeCourseIds: readonly string[],
   content: ContentIndex,
-): string | undefined {
-  const focus = state.focusSubjectId;
-  if (!focus || !content.curriculum?.subjects?.some((subject) => subject.id === focus)) {
-    return undefined;
+): string | null {
+  const focus = prefs?.focusSubjectId;
+  if (
+    typeof focus !== 'string' ||
+    !content.curriculum?.subjects?.some((subject) => subject.id === focus)
+  ) {
+    return null;
   }
-  return state.studyCourseIds.some((courseId) => content.subjectForCourse(courseId).id === focus)
-    ? focus
-    : undefined;
+  const activeSubjectIds = new Set(
+    activeCourseIds
+      .filter((courseId) => content.coursesById.has(courseId))
+      .map((courseId) => content.subjectForCourse(courseId).id),
+  );
+  return activeSubjectIds.size > 1 && activeSubjectIds.has(focus) ? focus : null;
 }
 
 function schedulerCourseContextFor(
@@ -528,6 +539,11 @@ function packWeekday(
 function generateCandidates(state: SchedulerState, content: ContentIndex, now: Date): Candidate[] {
   const candidates: Candidate[] = [];
   const courseContexts = schedulerCourseContexts(state, content);
+  const focusSubjectId = effectiveFocusSubjectId(
+    { focusSubjectId: state.focusSubjectId },
+    state.studyCourseIds,
+    content,
+  );
   const newConceptIds = new Set(courseContexts.flatMap((course) => [...course.newConceptIds]));
   const masteryByKey = new Map(
     state.mastery.map((record) => [masteryKey(record.conceptId, record.dimension), record]),
@@ -640,7 +656,7 @@ function generateCandidates(state: SchedulerState, content: ContentIndex, now: D
     if (
       !concept ||
       concept.status === 'stub' ||
-      (effectiveFocusSubjectId(state, content) && !newConceptIds.has(concept.id))
+      (focusSubjectId && !newConceptIds.has(concept.id))
     ) {
       continue;
     }

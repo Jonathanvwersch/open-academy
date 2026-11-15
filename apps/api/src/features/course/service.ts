@@ -27,6 +27,7 @@ import {
 } from '../../learning/prerequisites.js';
 import {
   currentLearnerUnit,
+  effectiveFocusSubjectId,
   type PlannedActivity,
   replan,
   type SchedulerState,
@@ -292,9 +293,15 @@ export async function updateLearningFocus(input: {
   const active = await input.repo.activeSession(input.now);
   const session = active ? await input.repo.session(active.id) : undefined;
   if (!session) return;
+  const schedulerState = await input.repo.schedulerState(input.now, input.content);
+  const focusSubjectId = effectiveFocusSubjectId(
+    { focusSubjectId: input.subjectId },
+    schedulerState.studyCourseIds,
+    input.content,
+  );
   const state = filterSchedulerStateForContent(input.content, {
-    ...(await input.repo.schedulerState(input.now, input.content)),
-    focusSubjectId: input.subjectId ?? undefined,
+    ...schedulerState,
+    focusSubjectId: focusSubjectId ?? undefined,
   });
   await replanSessionActivities({
     db: input.db,

@@ -1442,6 +1442,16 @@ test('a stored focus is ignored when only one subject is active', async () => {
         task.activityKind === 'review' && task.conceptId === reviewExercise.conceptId,
     ),
   ).toBe(true);
+
+  const started = await post('/sessions', { budgetMinutes: 60 });
+  expect(started.status).toBe(201);
+  const session = await started.json();
+  expect(
+    session.activities.some(
+      (activity: { kind: string; conceptId?: string }) =>
+        activity.kind === 'review' && activity.conceptId === reviewExercise.conceptId,
+    ),
+  ).toBe(true);
 });
 
 test('lesson choices are empty while a session is active', async () => {

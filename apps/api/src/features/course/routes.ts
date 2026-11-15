@@ -40,6 +40,7 @@ import {
 import type { PlannedActivity, SessionPreferences } from '../../learning/scheduler.js';
 import {
   currentLearnerUnit,
+  effectiveFocusSubjectId,
   isLearnableConcept,
   planSession,
   type SessionKind,
@@ -308,14 +309,7 @@ export function registerLearnCourseRoutes(
     if (activeSubjects.length === 0 && studyCourseIds.length > 0) {
       activeSubjects.push(index.subjectForCourse(studyCourseIds[0] ?? ''));
     }
-    const storedFocusSubjectId =
-      typeof prefs.focusSubjectId === 'string' ? prefs.focusSubjectId : undefined;
-    const focusSubjectId =
-      activeSubjects.length > 1 &&
-      storedFocusSubjectId &&
-      activeSubjects.some((subject) => subject.id === storedFocusSubjectId)
-        ? storedFocusSubjectId
-        : null;
+    const focusSubjectId = effectiveFocusSubjectId(prefs, studyCourseIds, index);
     const placementCourseId = placementRuns
       .map((run) => (run.state as { courseId?: unknown }).courseId)
       .find((id): id is string => typeof id === 'string' && index.coursesById.has(id));
@@ -368,14 +362,14 @@ export function registerLearnCourseRoutes(
     let activeSession = active ? await repo.session(active.id, active) : undefined;
     let schedulerState: Awaited<ReturnType<LearnerRepository['schedulerState']>> | undefined;
     const loadSchedulerState = async () => {
-      schedulerState ??= filterSchedulerStateForContent(index, {
-        ...(await repo.schedulerState(now, index, {
+      schedulerState ??= filterSchedulerStateForContent(
+        index,
+        await repo.schedulerState(now, index, {
           mastery,
           lessonRuns: runRows,
           projectProgress: projectRows,
-        })),
-        focusSubjectId: focusSubjectId ?? undefined,
-      });
+        }),
+      );
       return schedulerState;
     };
     const masteryByKey = new Map(
