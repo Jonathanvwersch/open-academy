@@ -7,7 +7,7 @@ where_this_fits: |
 
   A policy is a rule for choosing actions. A return is a score made by adding the rewards still to come. Together they let us compare behaviour over a sequence of choices.
 
-  An MDP describes a task through states, actions, transitions, rewards and a discount factor. A state describes the current situation, an action is a choice, and a transition says where that choice takes us. The reward scores one step. We need a return because useful results can arrive several steps after a choice. The discount factor controls how much later rewards count in that score.
+  A Markov decision process (MDP) describes a task through states, actions, transitions, rewards and a discount factor. A state describes the current situation, an action is a choice, and a transition says where that choice takes us. The reward scores one step. We need a return because useful results can arrive several steps after a choice. The discount factor controls how much later rewards count in that score.
 knowledge_points:
   - id: pr-choose-actions
     title: Choose actions in each state

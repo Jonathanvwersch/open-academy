@@ -6,20 +6,20 @@ exercises:
     role: diagnostic
     difficulty: 2
     est_minutes: 2
-    prompt: "An episode yields rewards $r_0 = 1$, $r_1 = 0$, $r_2 = 2$ and then ends. With discount $\\gamma = 0.9$, what is the discounted return $G_0$?"
+    prompt: "An episode yields rewards $r_1 = 1$, $r_2 = 0$, $r_3 = 2$ and then ends. With discount $\\gamma = 0.9$, what is the discounted return $G_0$?"
     answer: 2.62
     tolerance: { abs: 0.005 }
     common_wrong:
       - {
           answer: 3,
           category: misunderstood_definition,
-          feedback: "That is the undiscounted sum. Each reward is multiplied by $\\gamma^t$.",
+          feedback: "That is the undiscounted sum. The weights on $r_1$, $r_2$ and $r_3$ are $1$, $\\gamma$ and $\\gamma^2$.",
         }
       - {
           answer: 2.8,
           tolerance: { abs: 0.005 },
           category: math_error,
-          feedback: "$r_2$ is discounted by $\\gamma^2 = 0.81$, not $\\gamma = 0.9$.",
+          feedback: "$r_3$ has weight $\\gamma^2 = 0.81$.",
         }
     solution: "$G_0 = 1 + 0.9\\cdot 0 + 0.81 \\cdot 2 = 2.62$."
   - id: pr-policy-basics
@@ -313,7 +313,7 @@ exercises:
           correct: false,
           feedback: The terminal reward is part of the episode's rewards.,
         }
-      - { id: b, text: Both rewards were discounted one step too early., correct: true }
+      - { id: b, text: 'Each reward got one extra factor of $\gamma$.', correct: true }
       - {
           id: c,
           text: Both rewards should receive the final reward's weight.,
@@ -464,7 +464,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: 'An episode earns $0$, then $-10$, and ends. A learner says raising $\gamma$ from $0.5$ to $0.9$ must increase $G_0$. What actually happens?'
+    prompt: 'An episode earns $0$, then $-8$, and ends. A learner says raising $\gamma$ from $0.6$ to $0.8$ must increase $G_0$. What actually happens?'
     options:
       - { id: a, text: The return falls because the later penalty gets more weight., correct: true }
       - {
@@ -477,9 +477,9 @@ exercises:
           id: c,
           text: The return rises because the later penalty gets less weight.,
           correct: false,
-          feedback: A larger discount increases the magnitude of the later negative contribution.,
+          feedback: 'Raising $\gamma$ gives the later penalty more weight.',
         }
-    solution: The return changes from $0+0.5(-10)=-5$ to $0+0.9(-10)=-9$.
+    solution: The return changes from $0+0.6(-8)=-4.8$ to $0+0.8(-8)=-6.4$.
   - id: pr-discount-runs
     dimension: conceptual
     type: mc
