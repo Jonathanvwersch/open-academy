@@ -102,8 +102,19 @@ test('course queue status waits on distinct unmet hard prerequisites outside the
     );
   });
   if (!course) throw new Error('Missing course with external hard prerequisites');
+  const lockedConceptIds = new Set([
+    ...lessonedConceptIds(course.id),
+    ...[...courseFoundationIds(content, course.id)].filter((conceptId) => {
+      const concept = content.conceptsById.get(conceptId);
+      return (
+        concept !== undefined &&
+        concept.status !== 'stub' &&
+        content.lessonsByConcept.has(conceptId)
+      );
+    }),
+  ]);
   const lockedTopics = new Map(
-    lessonedConceptIds(course.id).map((conceptId) => [conceptId, 'locked' as const]),
+    [...lockedConceptIds].map((conceptId) => [conceptId, 'locked' as const]),
   );
   const queue = courseQueueStatus(content, course, [course.id], null, topicStateFor(lockedTopics));
 
