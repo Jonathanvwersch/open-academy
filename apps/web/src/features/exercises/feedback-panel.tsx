@@ -104,7 +104,7 @@ export function FeedbackPanel({
         </AlertDescription>
       ) : null}
       {rubric.some((item) => item.judgement) ? (
-        <ul className="mt-3 space-y-2">
+        <ul aria-label="Rubric" className="mt-3 space-y-2">
           {visibleRubric.map((item) => {
             const symbol =
               item.judgement === 'met' ? '✓' : item.judgement === 'partial' ? '½' : '✗';
@@ -120,7 +120,7 @@ export function FeedbackPanel({
       {optionalNotMet.length > 0 ? (
         <div className="mt-3">
           <p className="text-sm font-medium text-muted-foreground">Also worth mentioning</p>
-          <ul className="mt-2 space-y-2">
+          <ul aria-label="Also worth mentioning" className="mt-2 space-y-2">
             {optionalNotMet.map((item) => (
               <li key={item.id ?? item.criterion} className="flex gap-2">
                 <span aria-hidden="true" className="text-muted-foreground">
