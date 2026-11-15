@@ -460,9 +460,30 @@ export function courseQueueStatus(
 
   const frontCourseOrder = frontCourseId ? orderedSubjectCourseIds.indexOf(frontCourseId) : -1;
   const courseOrder = orderedSubjectCourseIds.indexOf(course.id);
-  const frontCourse = frontCourseId ? content.coursesById.get(frontCourseId) : undefined;
-  if (frontCourse && frontCourseOrder < courseOrder) {
-    return { kind: 'after', courseId: frontCourse.id, courseTitle: frontCourse.title };
+  if (frontCourseId && frontCourseOrder < courseOrder) {
+    const afterCourseId = orderedSubjectCourseIds
+      .slice(frontCourseOrder, courseOrder)
+      .reverse()
+      .find((courseId) => {
+        const candidateCourse = content.coursesById.get(courseId);
+        return (
+          candidateCourse?.units.some((unit) =>
+            unit.concepts.some((conceptId) => {
+              const concept = content.conceptsById.get(conceptId);
+              return (
+                concept !== undefined &&
+                concept.status !== 'stub' &&
+                content.lessonsByConcept.has(conceptId) &&
+                topicState(concept).status !== 'complete'
+              );
+            }),
+          ) ?? false
+        );
+      });
+    const afterCourse = afterCourseId ? content.coursesById.get(afterCourseId) : undefined;
+    if (afterCourse) {
+      return { kind: 'after', courseId: afterCourse.id, courseTitle: afterCourse.title };
+    }
   }
 
   const courseConceptIds = new Set(course.units.flatMap((unit) => unit.concepts));

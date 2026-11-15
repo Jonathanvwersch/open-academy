@@ -125,6 +125,25 @@ test('a later course with available topics waits until the earlier course starts
   });
 });
 
+test('after names the nearest earlier unfinished course in the subject order', () => {
+  const course = content.coursesById.get('transformers-llms');
+  if (!course) throw new Error('Missing Transformers and LLMs course');
+
+  expect(
+    courseQueueStatus(
+      content,
+      course,
+      ['ml-foundations', 'deep-learning', course.id],
+      null,
+      topicStateFor(),
+    ),
+  ).toEqual({
+    kind: 'after',
+    courseId: 'deep-learning',
+    courseTitle: 'Deep Learning',
+  });
+});
+
 test('a focus on the same subject keeps its front and following courses queued normally', () => {
   const frontCourse = content.coursesById.get('ml-foundations');
   const laterCourse = content.coursesById.get('deep-learning');
