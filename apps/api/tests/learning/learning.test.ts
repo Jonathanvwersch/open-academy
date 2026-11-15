@@ -1237,8 +1237,38 @@ test('Interrupted session resumes its in-progress activity during replanning', (
       summary: 'Resume vectors.',
     },
   };
-  const plan = replan(emptyState(), content, now, 20, [inProgress]);
+  const state = {
+    ...emptyState(),
+    lessonRuns: [{ conceptId: 'vectors', status: 'in_progress' as const }],
+  };
+  const plan = replan(state, content, now, 20, [inProgress]);
   expect(plan.activities[0]).toMatchObject({ status: 'in_progress', conceptId: 'vectors' });
+  expect(
+    plan.activities.filter(
+      (activity) => activity.kind === 'learn' && activity.conceptId === 'vectors',
+    ),
+  ).toHaveLength(1);
+});
+
+test('Replanning does not regenerate a completed learn activity', () => {
+  const completed = {
+    kind: 'learn' as const,
+    conceptId: 'vectors',
+    exerciseIds: [],
+    plannedMinutes: 15,
+    status: 'completed' as const,
+    reason: {
+      terms: { goal: 3, week_fit: 3, project: 0, unlock: 1, gap: 0, review: 0, cost: -1 },
+      summary: 'Vectors completed.',
+    },
+  };
+  const plan = replan(emptyState(), content, now, 20, [completed]);
+
+  expect(
+    plan.activities.filter(
+      (activity) => activity.kind === 'learn' && activity.conceptId === 'vectors',
+    ),
+  ).toHaveLength(0);
 });
 
 test('Every mastery state change has an evidence event', () => {

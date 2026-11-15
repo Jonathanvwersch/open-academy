@@ -266,8 +266,9 @@ export function planSession(
   now: Date,
   budgetMinutes: number,
   _kind: SessionKind = 'weekday',
+  excludedLearnConceptIds: ReadonlySet<string> = new Set(),
 ): SessionPlan {
-  return packWeekday(state, content, now, Math.max(0, budgetMinutes));
+  return packWeekday(state, content, now, Math.max(0, budgetMinutes), excludedLearnConceptIds);
 }
 
 export function replan(
@@ -290,7 +291,23 @@ export function replan(
     ...completed.flatMap((activity) => activity.exerciseIds),
   ];
   const nextState = { ...state, usedExerciseIds: protectedExerciseIds };
-  const plan = planSession(nextState, content, now, remainingBudgetMinutes, kind);
+  const excludedLearnConceptIds = new Set(
+    existingActivities.flatMap((activity) =>
+      activity.kind === 'learn' &&
+      (activity.status === 'in_progress' || activity.status === 'completed') &&
+      activity.conceptId
+        ? [activity.conceptId]
+        : [],
+    ),
+  );
+  const plan = planSession(
+    nextState,
+    content,
+    now,
+    remainingBudgetMinutes,
+    kind,
+    excludedLearnConceptIds,
+  );
   return {
     activities: [...inProgress, ...plan.activities],
     reasons: [...inProgress.map((activity) => activity.reason), ...plan.reasons],
@@ -302,8 +319,13 @@ function packWeekday(
   content: ContentIndex,
   now: Date,
   budget: number,
+  excludedLearnConceptIds: ReadonlySet<string> = new Set(),
 ): SessionPlan {
-  const candidates = generateCandidates(state, content, now);
+  const candidates = generateCandidates(state, content, now).filter(
+    (candidate) =>
+      candidate.activity.kind !== 'learn' ||
+      !excludedLearnConceptIds.has(candidate.activity.conceptId ?? ''),
+  );
   const selected: Candidate[] = [];
   let usedMinutes = 0;
   let newConceptCount = 0;

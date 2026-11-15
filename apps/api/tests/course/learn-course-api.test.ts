@@ -1253,6 +1253,16 @@ test('focus persists and replans only planned activities', async () => {
   const aiCourse = content.coursesById.get('ml-foundations');
   if (!mathsCourse || !aiCourse) throw new Error('Missing subject focus test courses');
   const aiFoundations = courseFoundationIds(content, aiCourse.id);
+  const aiInProgressConceptId = aiCourse.units
+    .flatMap((unit) => unit.concepts)
+    .find((conceptId) => {
+      const concept = content.conceptsById.get(conceptId);
+      return (
+        (content.lessonsByConcept.get(conceptId)?.knowledge_points?.length ?? 0) > 0 &&
+        concept?.prereqs.every((prerequisite) => prerequisite.strength !== 'hard')
+      );
+    });
+  if (!aiInProgressConceptId) throw new Error('Missing an available AI lesson for focus test');
   const mathsConcept = mathsCourse.units
     .flatMap((unit) => unit.concepts)
     .find((conceptId) => !aiFoundations.has(conceptId));
@@ -1276,7 +1286,7 @@ test('focus persists and replans only planned activities', async () => {
     })
     .returning();
   if (!session) throw new Error('Could not create focus test session');
-  const [completed, inProgress, planned] = await db
+  const [completed, inProgress, planned, aiInProgress] = await db
     .insert(sessionActivities)
     .values([
       {
@@ -1303,11 +1313,24 @@ test('focus persists and replans only planned activities', async () => {
         plannedMinutes: 5,
         status: 'planned',
       },
+      {
+        sessionId: session.id,
+        idx: 3,
+        kind: 'learn',
+        conceptId: aiInProgressConceptId,
+        plannedMinutes: 10,
+        status: 'in_progress',
+      },
     ])
     .returning();
-  if (!completed || !inProgress || !planned) {
+  if (!completed || !inProgress || !planned || !aiInProgress) {
     throw new Error('Could not seed focus test activities');
   }
+  await db.insert(lessonRuns).values({
+    userId,
+    conceptId: aiInProgressConceptId,
+    status: 'in_progress',
+  });
 
   expect((await put('/focus', { subjectId: 'history' })).status).toBe(400);
   const response = await put('/focus', { subjectId: 'ai' });
@@ -1321,6 +1344,13 @@ test('focus persists and replans only planned activities', async () => {
     .where(eq(sessionActivities.sessionId, session.id));
   expect(activities.find((activity) => activity.id === completed.id)?.status).toBe('completed');
   expect(activities.find((activity) => activity.id === inProgress.id)?.status).toBe('in_progress');
+  const aiConceptActivities = activities.filter(
+    (activity) =>
+      activity.kind === 'learn' &&
+      activity.conceptId === aiInProgressConceptId &&
+      ['planned', 'in_progress'].includes(activity.status),
+  );
+  expect(aiConceptActivities.map((activity) => activity.status)).toEqual(['in_progress']);
   expect(activities.some((activity) => activity.id === planned.id)).toBe(false);
   const plannedAfterFocus = activities.filter(
     (activity) => activity.status === 'planned' && ['learn', 'review'].includes(activity.kind),
