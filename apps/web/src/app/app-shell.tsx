@@ -126,9 +126,9 @@ function pageFrameClassName(pathname: string) {
     return 'flex min-h-0 min-w-0 w-full flex-1 flex-col px-0 py-0';
   }
   if (pathname === '/map') {
-    return 'flex w-full flex-1 flex-col py-4';
+    return 'flex w-full flex-1 flex-col py-4 md:pt-3';
   }
-  return 'mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 pt-6 pb-20 sm:px-6 sm:py-8';
+  return 'mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 pt-6 pb-20 sm:px-6 sm:py-8 md:pt-3';
 }
 
 interface AppSidebarViewProps {
