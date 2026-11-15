@@ -986,8 +986,8 @@ test('notation used without an introducing hard prerequisite is an issue', async
     expect.arrayContaining([
       expect.objectContaining({
         id: 'derivatives-fixture-practice-1',
-        message: expect.stringContaining(
-          'uses needle notation but none of vectors is a hard prerequisite',
+        message: expect.stringMatching(
+          /^uses needle notation but none of vectors is a hard prerequisite; near ".+"\. Add one of them as a prerequisite$/,
         ),
       }),
     ]),
@@ -1020,8 +1020,8 @@ test('a soft prerequisite does not allow notation use', async () => {
     expect.arrayContaining([
       expect.objectContaining({
         id: 'linear-models-fixture-practice-1',
-        message: expect.stringContaining(
-          'uses needle notation but none of vectors is a hard prerequisite',
+        message: expect.stringMatching(
+          /^uses needle notation but none of vectors is a hard prerequisite; near ".+"\. Add one of them as a prerequisite$/,
         ),
       }),
     ]),

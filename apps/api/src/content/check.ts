@@ -1,10 +1,14 @@
-import { ContentValidationError, loadContent } from './load.js';
+import { ContentValidationError, loadContentReport } from './load.js';
 
 try {
-  const content = await loadContent();
+  const { content, warnings } = await loadContentReport();
   console.log(
     `Content valid: ${content.concepts.length} concepts, ${content.exercises.length} exercises, ${content.projects.length} projects`,
   );
+  for (const warning of warnings) {
+    console.log(`warning: ${warning.file} [${warning.id}] ${warning.message}`);
+  }
+  console.log(`${warnings.length} warning${warnings.length === 1 ? '' : 's'}`);
 } catch (error) {
   if (error instanceof ContentValidationError) {
     for (const issue of error.issues) {

@@ -55,6 +55,10 @@ concepts:
     status: authored | stub       # stub = graph node with placement probes only; no lesson or practice
 ```
 
+`academy check` warns about prerequisite-free topics deep in a course, fully sequential courses with six or more topics,
+and first-unit prerequisites that only appear in later courses in the same subject.
+New CLI packs include common notation terms with empty `introduced_by`; add each teaching topic there before using that notation.
+
 Stub concepts may have exercises only when `role: diagnostic`, and must not have a lesson file. These exercises can be used as placement probes. Stub concepts are not scheduled for lessons or practice until authored.
 
 ## content/lessons/<concept-id>.yaml  (required iff status: authored)
