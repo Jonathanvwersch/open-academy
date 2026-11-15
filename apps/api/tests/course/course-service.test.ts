@@ -7,6 +7,7 @@ import {
   type courseTopicState,
   suggestedNextCourses,
 } from '../../src/features/course/service.js';
+import { courseFoundationIds } from '../../src/learning/prerequisites.js';
 
 let content: ContentIndex;
 
@@ -141,6 +142,39 @@ test('after names the nearest earlier unfinished course in the subject order', (
     kind: 'after',
     courseId: 'deep-learning',
     courseTitle: 'Deep Learning',
+  });
+});
+
+test('course foundations can make the first course available before its own topics', () => {
+  const firstCourse = content.coursesById.get('deep-learning');
+  const secondCourse = content.coursesById.get('transformers-llms');
+  if (!firstCourse || !secondCourse) throw new Error('Missing AI courses');
+  const lessonedFoundationIds = [...courseFoundationIds(content, firstCourse.id)].filter(
+    (conceptId) => {
+      const concept = content.conceptsById.get(conceptId);
+      return (
+        concept !== undefined &&
+        concept.status !== 'stub' &&
+        content.lessonsByConcept.has(conceptId)
+      );
+    },
+  );
+  const availableFoundationId = lessonedFoundationIds[0];
+  if (!availableFoundationId) throw new Error('Deep Learning has no lessoned foundations');
+  const statuses = new Map<string, CourseTopicStatus>([
+    ...lessonedConceptIds(firstCourse.id).map((conceptId) => [conceptId, 'locked'] as const),
+    ...lessonedFoundationIds.map((conceptId) => [conceptId, 'locked'] as const),
+  ]);
+  statuses.set(availableFoundationId, 'not_started');
+  const topicState = topicStateFor(statuses);
+  const studyCourseIds = [firstCourse.id, secondCourse.id];
+
+  expect(courseQueueStatus(content, firstCourse, studyCourseIds, null, topicState)).toEqual({
+    kind: 'studying',
+  });
+  expect(courseQueueStatus(content, secondCourse, studyCourseIds, null, topicState)).toMatchObject({
+    kind: 'after',
+    courseId: firstCourse.id,
   });
 });
 

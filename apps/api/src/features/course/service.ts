@@ -23,6 +23,7 @@ import { courseTopicPosition } from '../../learning/lesson-course-context.js';
 import {
   activeCourseFor,
   compareOutlinePosition,
+  courseFoundationIds,
   courseFoundations,
   masteryKey,
   prerequisiteMet,
@@ -443,18 +444,19 @@ export function courseQueueStatus(
   );
   const frontCourseId = orderedSubjectCourseIds.find((courseId) => {
     const candidateCourse = content.coursesById.get(courseId);
-    return (
-      candidateCourse?.units.some((unit) =>
-        unit.concepts.some((conceptId) => {
-          const concept = content.conceptsById.get(conceptId);
-          if (!concept || concept.status === 'stub' || !content.lessonsByConcept.has(conceptId)) {
-            return false;
-          }
-          const status = topicState(concept).status;
-          return status !== 'locked' && status !== 'complete';
-        }),
-      ) ?? false
-    );
+    if (!candidateCourse) return false;
+    const candidateConceptIds = new Set([
+      ...candidateCourse.units.flatMap((unit) => unit.concepts),
+      ...courseFoundationIds(content, courseId),
+    ]);
+    return [...candidateConceptIds].some((conceptId) => {
+      const concept = content.conceptsById.get(conceptId);
+      if (!concept || concept.status === 'stub' || !content.lessonsByConcept.has(conceptId)) {
+        return false;
+      }
+      const status = topicState(concept).status;
+      return status !== 'locked' && status !== 'complete';
+    });
   });
   if (frontCourseId === course.id) return { kind: 'studying' };
 
