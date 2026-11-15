@@ -7,7 +7,7 @@ terms:
     introduced_by: []
   - id: sum
     label: Σ summation
-    match: ['\\sum', "∑", "Σ"]
+    match: ['\\sum', "∑"]
     introduced_by: []
   - id: transpose
     label: transpose ⊤ / .T

@@ -114,7 +114,6 @@ describe('academy CLI', () => {
       for (const [id, pattern] of [
         ['real-space', 'ℝ'],
         ['sum', '∑'],
-        ['sum', 'Σ'],
         ['transpose', '⊤'],
         ['partial', '∂'],
         ['nabla', '∇'],
@@ -124,6 +123,7 @@ describe('academy CLI', () => {
       ]) {
         expect(notation.terms.find((term) => term.id === id)?.match).toContain(pattern);
       }
+      expect(notation.terms.find((term) => term.id === 'sum')?.match).not.toContain('Σ');
       const result = run(['check', pack]);
       expect(result.status).toBe(0);
       expect(result.stdout).toContain('1 topics, 0 lessons, 0 questions, 1 courses');
@@ -232,6 +232,14 @@ describe('academy CLI', () => {
           writeFileSync(contentFile, content.replaceAll(sumPattern, 'sum'));
         }
       }
+      const switchingLessonFile = join(pack, 'lessons/switching-topic.yaml');
+      const switchingLesson = parse(readFileSync(switchingLessonFile, 'utf8')) as {
+        knowledge_points: { explain: string }[];
+      };
+      const switchingFirstPoint = switchingLesson.knowledge_points[0];
+      if (!switchingFirstPoint) throw new Error('Missing switching-topic knowledge point');
+      switchingFirstPoint.explain = `${switchingFirstPoint.explain}\n\nThe lowercase sigma symbol σ appears here as prose.`;
+      writeFileSync(switchingLessonFile, stringify(switchingLesson));
 
       const missingIntroducer = run(['check', pack]);
       expect(missingIntroducer.status).toBe(1);
@@ -244,6 +252,7 @@ describe('academy CLI', () => {
       expect(missingIntroducer.stderr).toContain(
         'uses ∇ gradient, but no topic teaches it yet; near "',
       );
+      expect(missingIntroducer.stderr).not.toContain('lowercase sigma symbol σ');
 
       const sum = notation.terms.find(({ id }) => id === 'sum');
       if (!sum) throw new Error('Missing summation notation term');
@@ -257,6 +266,7 @@ describe('academy CLI', () => {
       expect(missingNablaIntroducer.stderr).toContain(
         'uses ∇ gradient, but no topic teaches it yet; near "',
       );
+      expect(missingNablaIntroducer.stderr).not.toContain('lowercase sigma symbol σ');
 
       const nabla = notation.terms.find(({ id }) => id === 'nabla');
       if (!nabla) throw new Error('Missing gradient notation term');
