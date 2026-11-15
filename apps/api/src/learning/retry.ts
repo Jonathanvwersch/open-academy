@@ -5,9 +5,9 @@ export function attemptAllowsRetry(attempt: {
   feedback: unknown;
 }): boolean {
   const feedback = attempt.feedback as { followUp?: unknown } | null;
+  if (attempt.attemptNo >= 2) return false;
   return (
-    attempt.mode === 'practice' &&
-    attempt.attemptNo < 2 &&
-    (attempt.correct === 0 || feedback?.followUp === true)
+    (attempt.mode === 'practice' && attempt.correct === 0) ||
+    ((attempt.mode === 'practice' || attempt.mode === 'review') && feedback?.followUp === true)
   );
 }

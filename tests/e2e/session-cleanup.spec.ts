@@ -419,9 +419,11 @@ test('explain tutor feedback shows rubric and model answer, and survives reload'
   await expect(
     page.getByText('Inputs and targets are clearly identified', { exact: false }),
   ).toBeVisible();
-  const rubricList = page.getByRole('status').locator('ul');
+  const rubricList = page.getByRole('list', { name: 'Rubric' });
+  const extrasList = page.getByRole('list', { name: 'Also worth mentioning' });
   await expect(rubricList.locator('.katex')).toBeVisible();
   await expect(rubricList).not.toContainText('$');
+  await expect(extrasList).toContainText('Names a plausible model family and data source');
 
   await page.reload();
   await expect(page.getByText('Almost', { exact: true })).toBeVisible();
@@ -515,7 +517,7 @@ test('fallback explain flow reveals the answer for self-check and then offers Al
   await expect(page.getByLabel('Your answer')).toHaveValue('A model predicts an answer.');
   await expect(page.getByLabel('Your answer')).not.toHaveAttribute('readonly', '');
   await expect(page.getByRole('button', { name: 'Submit again' })).toBeVisible();
-  const rubricList = page.getByRole('status').locator('ul');
+  const rubricList = page.getByRole('list', { name: 'Rubric' });
   await expect(rubricList.locator('.katex')).toBeVisible();
   await expect(rubricList).not.toContainText('$');
   await expect(rubricList.locator('.katex-html')).toContainText('∥');

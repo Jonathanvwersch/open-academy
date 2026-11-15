@@ -276,29 +276,57 @@ describe('tutor contracts', () => {
       status: 'fallback',
     });
   });
-  it('scores weighted rubric judgements in application code', () => {
+  it('scores required criteria without optional points affecting the result', () => {
     const rubric = [
-      { id: 'required', criterion: 'Names slope', weight: 1, required: true },
-      { id: 'reason', criterion: 'Explains change', weight: 3, required: false },
+      { id: 'required', criterion: 'Names slope', weight: 2, required: true },
+      { id: 'second', criterion: 'Explains change', weight: 2, required: true },
+      { id: 'optional', criterion: 'Mentions curvature', weight: 6, required: false },
     ];
     expect(
       scoreRubric(rubric, {
         criteria: [
+          { id: 'required', judgement: 'met', evidence: 'Slope.' },
+          { id: 'second', judgement: 'met', evidence: 'Explained.' },
+          { id: 'optional', judgement: 'missing', evidence: null },
+        ],
+        feedback_md: 'Correct.',
+      }).score,
+    ).toBe(1);
+    expect(
+      scoreRubric(rubric, {
+        criteria: [
+          { id: 'required', judgement: 'partial', evidence: 'Some slope detail.' },
+          { id: 'second', judgement: 'met', evidence: 'Explained.' },
+          { id: 'optional', judgement: 'met', evidence: 'Curvature.' },
+        ],
+        feedback_md: 'Partly correct.',
+      }).score,
+    ).toBe(0.75);
+    expect(
+      scoreRubric(
+        [
+          { id: 'a', criterion: 'A', weight: 1, required: false },
+          { id: 'b', criterion: 'B', weight: 3, required: false },
+        ],
+        {
+          criteria: [
+            { id: 'a', judgement: 'met', evidence: 'A.' },
+            { id: 'b', judgement: 'partial', evidence: 'Some B.' },
+          ],
+          feedback_md: 'Partly correct.',
+        },
+      ).score,
+    ).toBe(0.625);
+    expect(
+      scoreRubric(rubric, {
+        criteria: [
           { id: 'required', judgement: 'missing', evidence: null },
-          { id: 'reason', judgement: 'met', evidence: 'Explained.' },
+          { id: 'second', judgement: 'met', evidence: 'Explained.' },
+          { id: 'optional', judgement: 'met', evidence: 'Curvature.' },
         ],
         feedback_md: 'Needs a slope.',
       }).score,
     ).toBe(0);
-    expect(
-      scoreRubric(rubric, {
-        criteria: [
-          { id: 'required', judgement: 'met', evidence: 'Correct.' },
-          { id: 'reason', judgement: 'partial', evidence: 'Some explanation.' },
-        ],
-        feedback_md: 'Good start.',
-      }).score,
-    ).toBe(0.625);
   });
 
   it('counts a tutor-generated hint at the normal authored hint credit', () => {

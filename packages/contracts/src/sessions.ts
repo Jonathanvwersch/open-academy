@@ -1,4 +1,4 @@
-import type { AnswerOptions } from '@academy/contracts/exercises';
+import type { AnswerOptions, RubricFeedbackItem } from '@academy/contracts/exercises';
 
 export interface TodayPayload {
   tutorEnabled: boolean;
@@ -46,8 +46,12 @@ export interface SessionActivity {
     status?: string;
     correct?: number;
     attemptNo?: number;
+    followUp?: boolean;
     retryAllowed?: boolean;
     feedback?: string;
+    rubric?: RubricFeedbackItem[];
+    exemplar?: string;
+    solution?: string;
     yourAnswer?: string;
     answerOptions?: AnswerOptions;
   } | null;
