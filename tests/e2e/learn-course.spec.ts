@@ -146,6 +146,7 @@ test('Home shows XP and tasks, starts a session, and Course links to lessons and
 
   await progressCourse.click();
   await expect(page.getByRole('heading', { name: 'Fixture course', exact: true })).toBeVisible();
+  await expect(page.getByText('Studying now', { exact: true })).toBeVisible();
   await expect(page.getByText(/You'll build the simplest model that learns:/)).toBeVisible();
   await expect(page.getByRole('region', { name: 'Optional reading' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Optional reading', exact: true })).toBeVisible();

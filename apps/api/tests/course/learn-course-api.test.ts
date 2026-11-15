@@ -764,6 +764,7 @@ test('course catalogue and enrollment routes start, pause, and reactivate course
     course: { id: 'deep-learning' },
     status: 'not_started',
     suggestedNext: [],
+    queue: null,
   });
   expect((await put('/courses/deep-learning/enrollment', { status: 'active' })).status).toBe(409);
 
@@ -774,6 +775,7 @@ test('course catalogue and enrollment routes start, pause, and reactivate course
       })
     ).status,
   ).toBe(200);
+  expect((await (await get('/courses/deep-learning')).json()).queue).not.toBeNull();
   expect(
     (
       await put('/courses/deep-learning/enrollment', {

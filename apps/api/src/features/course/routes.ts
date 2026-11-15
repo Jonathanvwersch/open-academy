@@ -62,6 +62,7 @@ import {
 } from '../../learning/xp.js';
 import {
   buildCoursePayload,
+  courseQueueStatus,
   courseTopicState,
   placedOutConceptsFromRuns,
   replanSessionActivities,
@@ -913,7 +914,8 @@ export function registerLearnCourseRoutes(
   api.get('/courses/:id', async (context) => {
     const index = await deps.content();
     const courseId = context.req.param('id');
-    if (!index.coursesById.has(courseId)) return context.json({ error: 'Course not found' }, 404);
+    const course = index.coursesById.get(courseId);
+    if (!course) return context.json({ error: 'Course not found' }, 404);
     const repo = deps.withRepo(context);
     const snapshot = await loadCourseSnapshot(deps.db, repo, index, context.get('userId'));
     const now = deps.requestNow(context);
@@ -937,10 +939,23 @@ export function registerLearnCourseRoutes(
       ),
     );
     const status = statuses.get(courseId) ?? 'not_started';
-    const course = index.coursesById.get(courseId);
+    const user = await repo.user();
+    const focusSubjectId = effectiveFocusSubjectId(
+      user?.prefs as { focusSubjectId?: unknown } | undefined,
+      snapshot.studyCourseIds,
+      index,
+    );
+    const queue = courseQueueStatus(
+      index,
+      course,
+      snapshot.studyCourseIds,
+      focusSubjectId,
+      courseTopicState(index, snapshot.mastery, snapshot.runs, snapshot.placedOutConcepts),
+    );
     return context.json({
       ...payload,
       status,
+      queue,
       suggestedNext:
         status === 'completed'
           ? suggestedNextCourses(index, courseId, statuses).map((suggestion) => ({

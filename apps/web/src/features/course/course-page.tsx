@@ -1,4 +1,4 @@
-import type { CourseTopic } from '@academy/contracts/course';
+import type { CourseQueueStatus, CourseTopic } from '@academy/contracts/course';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { getRouteApi, Link } from '@tanstack/react-router';
 import { ChevronDown, ChevronRight, FileText, Wrench } from 'lucide-react';
@@ -31,6 +31,42 @@ function foundationSourceLabel(courseTitles: string[], hasMore: boolean): string
   if (titles.length < 2) return titles[0] ?? 'other courses';
   if (titles.length === 2) return `${titles[0]} and ${titles[1]}`;
   return `${titles.slice(0, -1).join(', ')}, and ${titles.at(-1)}`;
+}
+
+function QueueStatusLine({ queue }: { queue: CourseQueueStatus }) {
+  switch (queue.kind) {
+    case 'studying':
+      return <p className="text-sm text-muted-foreground">Studying now</p>;
+    case 'after':
+      return (
+        <p className="text-sm text-muted-foreground">
+          Starts after{' '}
+          <Link
+            to="/courses/$courseId"
+            params={{ courseId: queue.courseId }}
+            className="underline underline-offset-2"
+          >
+            {queue.courseTitle}
+          </Link>
+        </p>
+      );
+    case 'waiting':
+      return (
+        <p className="text-sm text-muted-foreground">
+          {queue.topicCount === 0
+            ? 'Waiting on prerequisites'
+            : `Waiting on ${queue.topicCount} ${queue.topicCount === 1 ? 'topic' : 'topics'} from ${foundationSourceLabel(queue.courseTitles, false)}`}
+        </p>
+      );
+    case 'paused':
+      return (
+        <p className="text-sm text-muted-foreground">Paused while you study {queue.subjectTitle}</p>
+      );
+    case 'soon':
+      return <p className="text-sm text-muted-foreground">Lessons coming soon</p>;
+    case 'done':
+      return <p className="text-sm text-muted-foreground">Finished</p>;
+  }
 }
 
 export function CoursePage() {
@@ -71,6 +107,7 @@ export function CoursePage() {
               first.
             </p>
           ) : null}
+          {data.queue ? <QueueStatusLine queue={data.queue} /> : null}
         </div>
         {!showStartCard && data.status === 'active' ? (
           <Button

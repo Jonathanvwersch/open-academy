@@ -1,5 +1,7 @@
+import type { CourseQueueStatus } from '@academy/contracts/course';
 import { and, eq, inArray, or } from 'drizzle-orm';
 import { orderCourseIdsBySubject } from '../../content/course-order.js';
+import { subjectForCourse } from '../../content/index.js';
 import type { ContentIndex, IndexedConcept, IndexedCourse } from '../../content/types.js';
 import type { Database } from '../../db/client.js';
 import type { LearnerRepository } from '../../db/repository.js';
@@ -403,6 +405,98 @@ export function courseTopicState(
   };
 }
 
+export function courseQueueStatus(
+  content: ContentIndex,
+  course: IndexedCourse,
+  studyCourseIds: readonly string[],
+  focusSubjectId: string | null,
+  topicState: ReturnType<typeof courseTopicState>,
+): CourseQueueStatus | null {
+  if (!studyCourseIds.includes(course.id)) return null;
+
+  const lessonedTopics = course.units.flatMap((unit) =>
+    unit.concepts.flatMap((conceptId) => {
+      const concept = content.conceptsById.get(conceptId);
+      return concept && concept.status !== 'stub' && content.lessonsByConcept.has(conceptId)
+        ? [{ concept, state: topicState(concept) }]
+        : [];
+    }),
+  );
+  if (lessonedTopics.length === 0) return { kind: 'soon' };
+  if (lessonedTopics.every(({ state }) => state.status === 'complete')) {
+    return { kind: 'done' };
+  }
+
+  const subject = subjectForCourse(content, course.id);
+  if (focusSubjectId && focusSubjectId !== subject.id) {
+    return {
+      kind: 'paused',
+      subjectTitle:
+        content.curriculum?.subjects?.find((candidate) => candidate.id === focusSubjectId)?.title ??
+        content.curriculum?.subject?.title ??
+        'Courses',
+    };
+  }
+
+  const orderedSubjectCourseIds = orderCourseIdsBySubject(content, studyCourseIds).filter(
+    (courseId) => subjectForCourse(content, courseId).id === subject.id,
+  );
+  const frontCourseId = orderedSubjectCourseIds.find((courseId) => {
+    const candidateCourse = content.coursesById.get(courseId);
+    return (
+      candidateCourse?.units.some((unit) =>
+        unit.concepts.some((conceptId) => {
+          const concept = content.conceptsById.get(conceptId);
+          if (!concept || concept.status === 'stub' || !content.lessonsByConcept.has(conceptId)) {
+            return false;
+          }
+          const status = topicState(concept).status;
+          return status !== 'locked' && status !== 'complete';
+        }),
+      ) ?? false
+    );
+  });
+  if (frontCourseId === course.id) return { kind: 'studying' };
+
+  const frontCourseOrder = frontCourseId ? orderedSubjectCourseIds.indexOf(frontCourseId) : -1;
+  const courseOrder = orderedSubjectCourseIds.indexOf(course.id);
+  const frontCourse = frontCourseId ? content.coursesById.get(frontCourseId) : undefined;
+  if (frontCourse && frontCourseOrder < courseOrder) {
+    return { kind: 'after', courseId: frontCourse.id, courseTitle: frontCourse.title };
+  }
+
+  const courseConceptIds = new Set(course.units.flatMap((unit) => unit.concepts));
+  const unmetPrerequisiteIds = new Set(
+    lessonedTopics
+      .filter(({ state }) => state.status === 'locked')
+      .flatMap(({ state }) =>
+        state.missingPrereqs
+          .filter(
+            (prerequisite) =>
+              prerequisite.strength === 'hard' &&
+              !prerequisite.done &&
+              !courseConceptIds.has(prerequisite.id),
+          )
+          .map((prerequisite) => prerequisite.id),
+      ),
+  );
+  const courseTitles = [
+    ...new Set(
+      [...unmetPrerequisiteIds].flatMap((conceptId) => {
+        const source = foundationSourceCourse(content, conceptId);
+        return source ? [source.title] : [];
+      }),
+    ),
+  ].slice(0, 3);
+  return { kind: 'waiting', topicCount: unmetPrerequisiteIds.size, courseTitles };
+}
+
+function foundationSourceCourse(content: ContentIndex, conceptId: string) {
+  return content.courses.find((candidate) =>
+    candidate.units.some((unit) => unit.concepts.includes(conceptId)),
+  );
+}
+
 function buildUnits(
   index: ContentIndex,
   course: IndexedCourse,
@@ -558,9 +652,7 @@ export function buildCoursePayload(
     ? courseFoundations(index, resolvedCourseId)
         .filter((concept) => topicState(concept).status !== 'complete')
         .map((concept, indexInFoundations) => {
-          const source = index.courses.find((course) =>
-            course.units.some((unit) => unit.concepts.includes(concept.id)),
-          );
+          const source = foundationSourceCourse(index, concept.id);
           const topics = source
             ? buildUnits(
                 index,
@@ -594,9 +686,7 @@ export function buildCoursePayload(
   const foundationCourseTitles = [
     ...new Set(
       foundations.flatMap((foundation) => {
-        const source = index.courses.find((candidate) =>
-          candidate.units.some((unit) => unit.concepts.includes(foundation.conceptId)),
-        );
+        const source = foundationSourceCourse(index, foundation.conceptId);
         return source ? [source.title] : [];
       }),
     ),
