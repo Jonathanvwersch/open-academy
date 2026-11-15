@@ -25,8 +25,6 @@ const tutorMathScreenshotDir = 'test-results/screenshots/screenshots/tutor-math'
 mkdirSync(tutorMathScreenshotDir, { recursive: true });
 const tutorSidebarScreenshotDir = 'test-results/screenshots/shots/tutor-sidebar';
 mkdirSync(tutorSidebarScreenshotDir, { recursive: true });
-const tutorStopScreenshotDir = '/home/ubuntu/briefs/tutor/shots';
-mkdirSync(tutorStopScreenshotDir, { recursive: true });
 let sessionId = '';
 
 async function waitForTutorSidebarToSettle(page: Page, panelSelector: string) {
@@ -1092,15 +1090,9 @@ test('Stop and steering keep tutor messages server-backed at desktop and mobile 
     await firstRequestStarted;
     await expect(textarea).toBeEnabled();
     await expect(tutor.getByRole('button', { name: 'Stop' })).toBeVisible();
-    await page.screenshot({
-      path: `${tutorStopScreenshotDir}/${width === 390 ? 'mobile-390' : 'desktop-1440'}-pending-stop.png`,
-    });
 
     await textarea.fill('Please show the next line.');
     await expect(tutor.getByRole('button', { name: 'Send' })).toBeEnabled();
-    await page.screenshot({
-      path: `${tutorStopScreenshotDir}/${width === 390 ? 'mobile-390' : 'desktop-1440'}-pending-draft.png`,
-    });
 
     if (width === 1440) {
       await textarea.fill('');
