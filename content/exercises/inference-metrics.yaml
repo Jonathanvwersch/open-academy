@@ -375,7 +375,7 @@ exercises:
         correct: false
         category: misunderstood_definition
         feedback: At least 99% of A's recorded times are at or below 400 ms, and at most 1% are strictly above it.
-    solution: B has a lower mean, 250 ms versus 300 ms, but a higher p99, 3,000 ms versus 400 ms. The lower mean alone cannot establish better tail latency, and these sample percentiles give no guaranteed daily count for a particular user.
+    solution: B has a lower mean, 250 ms versus 300 ms, but a higher p99, 3,000 ms versus 400 ms. The lower mean alone cannot establish better tail latency.
   - id: infm-robot-p99
     dimension: transfer
     type: mc
@@ -543,7 +543,7 @@ exercises:
         correct: false
         category: math_error
         feedback: That would need the run time to stay at 20 ms. At 40 ms per run, throughput stays at 1,600 tokens/s.
-    solution: "Throughput is $32/0.02=1600$ and $64/0.04=1600$ tokens/s, the same. Once the maths takes most of each run, a bigger batch only makes each run longer, so users get slower with no gain."
+    solution: "Throughput is $32/0.02=1600$ and $64/0.04=1600$ tokens/s, the same. Here the run time grows in proportion to the batch, so the bigger batch only makes each run longer, and users get slower with no gain."
   - id: infm-choose-batch
     dimension: math
     type: numeric
@@ -608,5 +608,5 @@ exercises:
         criterion: Explain that throughput gains can plateau once the maths takes most of each run, as when doubling the batch also doubles the run time.
         weight: 1
         required: true
-    exemplar: "The time to first token is the wait from sending the request until the first output token arrives. The inter-token latency is the gap between consecutive output tokens. Each batched run gives every sequence its next token and shares the weight read, which can improve throughput before saturation. Larger batches can lengthen runs and increase each user's ITL, as they do in this example. Once the maths takes most of each run, gains can plateau: going from 32 tokens in 20 ms to 64 in 40 ms leaves throughput at 1,600 tokens/s."
+    exemplar: "The time to first token is the wait from sending the request until the first output token arrives. The inter-token latency is the gap between consecutive output tokens. Each batched run gives every sequence its next token and shares the weight read, which can improve throughput before saturation. Larger batches can lengthen runs and increase each user's ITL, as they do on the made-up server in the lesson. Once the maths takes most of each run, gains can plateau: going from 32 tokens in 20 ms to 64 in 40 ms leaves throughput at 1,600 tokens/s."
     solution: "TTFT measures the initial wait and ITL measures the gaps during streaming. Sharing weight reads across a batch can improve throughput before saturation; larger batches can lengthen each user's ITL, and throughput gains can plateau when run time grows in proportion to batch size."

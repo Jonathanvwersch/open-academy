@@ -130,17 +130,17 @@ knowledge_points:
       </svg>
       ```
 
-      The mean is the sum of the times divided by how many there are. Here it's 328 ms, shown by the red line. Yet 8 of the 10 users waited 250 ms or less, and one waited 1.2 s. One slow request pulls the mean up, so it describes neither the typical user nor the unlucky one.
+      The mean is the sum of the times divided by how many there are. Here it's 328 ms, shown by the red line. Yet 8 of the 10 users waited 250 ms or less, and one waited 1.2 s. One slow request pulls the mean above what 8 of the 10 users waited.
 
       ### Percentiles
 
       In our list, 9 of the 10 users waited 400 ms or less, so the 90th percentile, written **p90**, is 400 ms. A **percentile** is a value at a chosen position in the sorted times. **p50** describes a typical wait, and **p99** describes the slow end. The slowest few requests are called the **tail**.
 
-      We'll use the nearest-rank rule. Sort the $n$ values from fastest to slowest. The $p$th percentile is the value at position $p\times n/100$, rounded up to a whole number. At least $p$% of the values are at or below it, and at most $(100-p)$% are strictly above it. Ties can put many requests exactly at that value; none may be strictly above it.
+      We'll use the nearest-rank rule. Sort the $n$ values from fastest to slowest. The $p$th percentile is the value at position $p\times n/100$, rounded up to a whole number. At least $p$% of the values are at or below it, and at most $(100-p)$% are strictly above it. Ties can put many requests exactly at that value, but still at most $(100-p)$% are strictly above it.
 
       ### Why the tail matters
 
-      A fast typical reply can coexist with much slower replies. Percentiles help expose those waits, but a sample p99 gives no guaranteed daily count of slow replies for one user. Service operators often set goals such as "p90 TTFT under 500 ms". This is a latency target. Measuring p99 well needs hundreds of requests or more.
+      A fast typical reply can coexist with much slower replies. Percentiles help expose those waits. A percentile describes only the requests you recorded, and future requests can go differently. Service operators often set latency targets such as "p90 TTFT under 500 ms". Measuring p99 well needs hundreds of requests or more.
     worked: |
       Let's summarise the ten times to first token from our chat assistant, sorted from fastest to slowest in milliseconds: 180, 190, 200, 200, 210, 220, 230, 250, 400 and 1200.
 
@@ -171,19 +171,19 @@ knowledge_points:
     explain: |
       ### Throughput
 
-      A server's **throughput** is the total number of output tokens it writes per second across all requests. It's what whoever pays for the GPU cares about.
+      A server's **throughput** is the total number of output tokens it writes per second across all requests.
 
-      **Batching** runs the model on several requests at once. Each request's text so far is a sequence, and the number of sequences is the batch size $B$. One run works on all of them side by side, keeping them separate, and gives each its next token. So one run makes $B$ tokens.
+      **Batching** runs the model on several requests at once. Each request's text so far is a sequence, and the number of sequences is the batch size $B$. One run gives each of them its next token. So one run makes $B$ tokens.
 
       ### Why a batch is cheap
 
-      Why doesn't a run with $B$ sequences take $B$ times as long? The model's parameters, called weights, live in the GPU's main memory. They're too big for the chip's small on-chip storage, so each run reads all 8 billion of them again. Then it does maths with them for each sequence.
+      Why doesn't a run with $B$ sequences take $B$ times as long? The model's parameters, called weights, live in the GPU's main memory. They're too big for the chip's on-chip storage, so each run reads all 8 billion of them again. Then it does maths with them for each sequence.
 
-      At 2 bytes (16 bits) per weight that's about 16 GB, where 1 GB is $10^9$ bytes. The H100's main memory delivers about 3.35 TB, or 3,350 GB, per second, where 1 TB is $10^{12}$ bytes, so one read takes about $16/3350$ s, or 5 ms. The maths grows with $B$, but the read is the same for any batch.
+      At 2 bytes (16 bits) per weight that's about 16 GB, where 1 GB is $10^9$ bytes. The H100's main memory delivers about 3.35 TB, or 3,350 GB, per second, where 1 TB is $10^{12}$ bytes, so one read takes about $16/3350\approx0.0048$ s, or 4.8 ms. The maths grows with $B$, but the read is the same for any batch. For our assistant, the read is still most of each run even with 64 sequences.
 
       ### Throughput and each user's wait
 
-      Here are made-up numbers. These are the runs after the first token, so each run's time is each user's ITL.
+      The table below uses a made-up server whose maths is much slower, so its maths catches up with the read. These are the runs after the first token, so each run's time is each user's ITL.
 
       | $B$ | Time per run (ITL) | Each user's tokens/s | Throughput (tokens/s) |
       | --- | --- | --- | --- |
@@ -216,11 +216,11 @@ knowledge_points:
 
       $$\text{throughput}=\frac{B}{\text{ITL}}.$$
 
-      Sharing weight reads can raise throughput before the GPU is fully occupied. Larger batches can also lengthen each run and increase each user's ITL. In this example every larger batch does so. Once the maths takes most of each run, throughput can level off, or saturate. From 32 to 64 the run time doubles, so throughput stays at 1,600 tokens/s.
+      Sharing weight reads can raise throughput. Larger batches can also lengthen each run, and so each user's ITL, as on this server. Once the maths takes most of each run, throughput can level off, or saturate. From 32 to 64 the run time doubles, so throughput stays at 1,600 tokens/s.
 
-      So teams pick the batch with the most throughput that still meets their targets for each user, and the smaller one if two tie.
+      Teams pick the batch with the most throughput that still meets their targets for each user, and the smaller one if two tie.
     worked: |
-      Let's choose a batch size for our chat assistant from the table. The team wants every user to see at least 40 tokens/s, which means an ITL of 25 ms or less. Among the batch sizes that manage that, it wants the one with the most throughput.
+      Let's choose a batch size for the made-up server in the table. The team wants every user to see at least 40 tokens/s, which means an ITL of 25 ms or less. Among the batch sizes that manage that, it wants the one with the most throughput.
 
       1. **Check each user's tokens per second.** A user gets one token per run, so their speed is one divided by the time per run in seconds. The slowest runs, at $B=64$, give $1/0.04=25$ tokens/s. That's below 40, so we drop $B=64$. The others give 100, 80 and 50 tokens/s, so they stay.
 
@@ -243,6 +243,6 @@ summary: |
   - Time to first token (TTFT) is the wait from sending a request until the first output token arrives, and inter-token latency (ITL) is the gap between consecutive output tokens.
   - A reply of $N$ tokens has end-to-end latency $\text{TTFT}+(N-1)\times\text{ITL}$, and while it streams, the user sees $1/\text{ITL}$ tokens per second.
   - With nearest rank, at least 50%, 90% and 99% of requests are at or below p50, p90 and p99 respectively. At most 1% are strictly above p99, and ties can put many requests exactly at it. Percentiles help reveal slow waits that the mean can hide.
-  - Batching gives every sequence in a batch its next token in one run, so throughput is $B/\text{ITL}$. Sharing weight reads can improve throughput before saturation, but gains can plateau. Larger batches can lengthen runs and slow each user's stream, as they do in our example.
+  - Batching gives every sequence in a batch its next token in one run, so throughput is $B/\text{ITL}$. Sharing weight reads can improve throughput before saturation, but gains can plateau. Larger batches can lengthen runs and slow each user's stream, as they do on the made-up server.
 
   **Next:** The prefill and decode lesson splits a request into its two phases, reading the prompt and writing tokens one at a time, and shows which one sets the TTFT and which sets the ITL.
