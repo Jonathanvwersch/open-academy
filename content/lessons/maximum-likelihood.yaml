@@ -221,7 +221,7 @@ knowledge_points:
 
       ### When squared error misleads
 
-      Squaring makes a miss of 10 count 100 times as much as a miss of 1. That suits Gaussian noise, which rarely lands far away. Be careful with wild mistakes. If a sensor reads 50 m where 7 m was predicted, its squared error of $43^2=1849$ swamps the rest and pulls predictions towards it. Yes-or-no outcomes, like coin flips, also need another loss. For them, maximum likelihood gives the **negative log-likelihood**, minus the natural log of the observed outcomes' probability.
+      Squaring makes a miss of 10 count 100 times as much as a miss of 1. That suits Gaussian noise, which rarely lands far away. Be careful with wild mistakes. If a sensor reads 50 m where 7 m was predicted, its squared error of $43^2=1849$ swamps the rest and pulls predictions towards it. Yes-or-no outcomes, like coin flips, aren't a number plus bell-shaped noise. For them, maximum likelihood gives the **negative log-likelihood**, minus the natural log of the observed outcomes' probability.
     worked: |
       Model A has MSE 1.5, from the picture. Model B predicts 6, 8, 9 and 5 m for the same four readings. Let's check that the model with the lower MSE also has the higher likelihood, taking $\sigma=1$ m.
 

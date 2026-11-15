@@ -183,7 +183,7 @@ knowledge_points:
 
       ### Where the LayerNorm goes
 
-      On the left, the green LayerNorm boxes sit before each sublayer. Each reads a normalized copy, and its output is added to the original vector. This is **pre-norm**. Writing $\text{LN}$ for LayerNorm and $\text{Attn}(\dots)_t$ for attention's output at token position $t$, the block computes
+      On the left, the green LayerNorm boxes sit before each sublayer. Each reads a normalized copy, and its output is added to the original vector. This layout is called **pre-norm**, and it's what "transformer block" usually means today. Writing $\text{LN}$ for LayerNorm and $\text{Attn}(\dots)_t$ for attention's output at token position $t$, the block computes
 
       $$u_t=x_t+\text{Attn}\big(\text{LN}(x_1),\dots,\text{LN}(x_T)\big)_t$$
 
@@ -286,7 +286,7 @@ knowledge_points:
 
       A single block takes $T$ vectors of width $d$ and returns $T$ vectors of width $d$. So the output of one block can be the input of the next, and a model is just many blocks in a row, each with its own weights.
 
-      The picture shows a whole model. The tokens "the cat sat on" become $T=4$ vectors of width $d$, from the embedding table plus position information. They pass through blocks keeping shape $T\times d$. A final LayerNorm rescales each token's vector before an output layer turns it into one score per vocabulary token, $N$ scores, to predict the next token.
+      The picture shows a whole model. The tokens "the cat sat on" become $T=4$ vectors of width $d$, from the embedding table plus position information. They pass through blocks keeping shape $T\times d$. A final LayerNorm rescales each token's vector before an output layer turns it into one score for each of the $N$ tokens in the vocabulary, which a later lesson uses to predict the next token.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 400" aria-label="A whole model read from top to bottom. The tokens the cat sat on become T vectors of width d in the embedding and position box. They pass through block 1, block 2, and so on to the last block, each taking and returning T vectors of width d. A green final LayerNorm follows, then an output layer that gives each token one score per vocabulary token, T rows of N scores">
@@ -328,7 +328,7 @@ knowledge_points:
 
       numbers. The biases add $4d$ for attention and $4d+d$ for the MLP. In the **pre-norm** layout, one LayerNorm rescales the input to attention and another rescales the input to the MLP. Each has a gain and shift, adding $4d$ more. A block with $4d$ hidden neurons therefore has $12d^2+13d$ parameters.
 
-      The $d^2$ term dominates at real sizes. GPT-2 small has $d=768$ and $12$ blocks, so each block has $7{,}087{,}872$ parameters and the blocks hold about $85$ million. The whole model has about $124$ million, and most of the rest is the embedding table, with one row of width $768$ for each of the $50{,}257$ tokens in its vocabulary. GPT-2 reuses that table as its output layer.
+      The $d^2$ term dominates at real sizes. GPT-2 small, an OpenAI language model, has $d=768$ and $12$ blocks, so each block has $7{,}087{,}872$ parameters and the blocks hold about $85$ million. The whole model has about $124$ million, and most of the rest is the embedding table, with one row of width $768$ for each of the $50{,}257$ tokens in its vocabulary. GPT-2 reuses that table as its output layer.
 
       Be careful not to count a head's weights once per head at full width. Each head's $W_Q$ is only $d\times d/h$, so the $h$ heads together fill $d\times d$.
     worked: |
