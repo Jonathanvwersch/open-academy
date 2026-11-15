@@ -37,7 +37,7 @@ concepts:
           },
           { text: "Implement temperature, top-k and top-p sampling", dimension: implementation },
         ],
-      status: stub,
+      status: authored,
     }
   - {
       id: arithmetic-intensity,
