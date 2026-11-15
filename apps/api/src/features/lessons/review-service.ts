@@ -70,10 +70,9 @@ export async function getLessonsByConceptIdReview(deps: FeatureServices, request
         : [];
     }),
   );
-  const runRowsPromise = deps.db
-    .select()
-    .from(lessonRuns)
-    .where(eq(lessonRuns.userId, request.userId));
+  const runRowsPromise = Promise.resolve(
+    deps.db.select().from(lessonRuns).where(eq(lessonRuns.userId, request.userId)),
+  );
   const [runRows, masteryRecords, course] = await Promise.all([
     runRowsPromise,
     runRowsPromise.then((rows) =>
