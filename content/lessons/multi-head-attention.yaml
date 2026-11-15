@@ -19,11 +19,11 @@ knowledge_points:
     explain: |
       ### Two heads reading "the cat sat"
 
-      Each head does ordinary attention with its own query, key and value matrices. We write a superscript $(i)$ on everything that belongs to head $i$.
+      Multi-head attention runs several **heads**, each doing ordinary attention with its own query, key and value matrices. We write a superscript $(i)$ on everything that belongs to head $i$.
 
       Take the sentence "the cat sat", with whole words as tokens, and number the tokens 1, 2 and 3. Each embedding $e_t$ has width $d=4$, and we use $h=2$ heads. Each head's three matrices are $4\times2$, so they turn a 4-entry embedding into a query, key and value with $d_k=2$ entries each.
 
-      We skip the matrices and give only their results, chosen as small whole numbers. For "sat", head 1's query matrix gives $q^{(1)}_3=(1,1)$, head 2's gives $q^{(2)}_3=(2,0)$, and the key and value matrices give:
+      We skip the matrices and give only their results, as small whole numbers. For "sat", head 1's query matrix gives $q^{(1)}_3=(1,1)$, head 2's gives $q^{(2)}_3=(2,0)$, and the key and value matrices give:
 
       | token | head 1 key | head 1 value |
       | --- | --- | --- |
@@ -37,7 +37,7 @@ knowledge_points:
       | cat | $(0,2)$ | $(1,0)$ |
       | sat | $(1,0)$ | $(3,1)$ |
 
-      Head 1's query for "sat" matches the key of "cat" best, and head 2's matches "sat" itself. Head 1 puts $0.67$ of its weight on "cat" (blue), and head 2 puts $0.67$ on "sat" (orange). The bars show weights rounded to 2 decimals, which is why they add up to $0.99$.
+      Head 1's query for "sat" matches the key of "cat" best, and head 2's matches "sat" itself. Head 1 puts $0.67$ of its weight on "cat" (blue), and head 2 puts $0.67$ on "sat" (orange). The bars round weights to 2 decimals, so they add up to $0.99$.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 260" aria-label="Two bar charts of the attention weights that the token sat gives to the, cat and sat. In head 1, in blue, the weights are 0.16, 0.67 and 0.16, so most weight goes to cat. In head 2, in orange, they are 0.16, 0.16 and 0.67, so most weight goes to sat itself">
@@ -70,7 +70,7 @@ knowledge_points:
 
       ### What each head computes
 
-      With $h$ heads, head $i$ has its own matrices $W_Q^{(i)}$, $W_K^{(i)}$ and $W_V^{(i)}$, each of shape $d\times d_k$ with $d_k=d/h$, so that the heads together come back to width $d$. Token $t$ scores its query against the key of every token $j$:
+      With $h$ heads, head $i$ has its own matrices $W_Q^{(i)}$, $W_K^{(i)}$ and $W_V^{(i)}$, each of shape $d\times d_k$ with $d_k=d/h$, so the heads together come back to width $d$. Token $t$ scores its query against the key of every token $j$:
 
       $$s^{(i)}_{tj}=\frac{q^{(i)}_t\cdot k^{(i)}_j}{\sqrt{d_k}}$$
 
@@ -78,7 +78,7 @@ knowledge_points:
 
       $$o^{(i)}_t=\sum_j a^{(i)}_{tj}\,v^{(i)}_j,\qquad a^{(i)}_{tj}=\frac{e^{s^{(i)}_{tj}}}{\sum_m e^{s^{(i)}_{tm}}}$$
 
-      Since $d_k<d$, it is tempting to picture each head reading only $d_k$ entries of the embedding. In fact every head's matrices multiply all $d$ entries of $e_t$. Only the query, key and value that come out have $d_k$ entries.
+      Since $d_k<d$, it's tempting to picture each head reading only $d_k$ entries of the embedding. In fact every head's matrices multiply all $d$ entries of $e_t$. Only the query, key and value that come out have $d_k$ entries.
     worked: |
       Let's work out what each head gives "sat", using the queries, keys and values above. We keep every digit while calculating and show 3 decimals along the way, then round the outputs to 2 decimals at the end.
 
@@ -109,13 +109,13 @@ knowledge_points:
     explain: |
       ### Two outputs for one token
 
-      Each head has now given every token an output of width $d_k$. In the sentence "the cat sat", with embeddings of width $d=4$ and two heads of width $d_k=2$, the token "sat" got $(0.33,1.35)$ from head 1 and $(2.18,0.84)$ from head 2.
+      In multi-head attention, several **heads** each run ordinary attention with their own query, key and value matrices, giving every token an output of width $d_k$ from each head. In the sentence "the cat sat", with embeddings of width $d=4$ and $h=2$ heads of width $d_k=2$, the token "sat" got $(0.33,1.35)$ from head 1 and $(2.18,0.84)$ from head 2.
 
       A model stacks several attention layers, one after another, and each layer takes in one vector of width $d$ per token, the way the first one takes in the embeddings. So the last part of multi-head attention joins the heads' outputs into one vector of width $d$, ready for the next layer.
 
       ### Write the outputs side by side, then mix them
 
-      First we **concatenate** the head outputs, which means writing them one after another in a single vector. Two outputs of width 2 make $(0.33,1.35,2.18,0.84)$, of width 4. Since each head has width $d_k=d/h$, putting $h$ of them side by side always gives back width $d$.
+      First we **concatenate** the head outputs, which means writing them one after another in a single vector. Two outputs of width 2 make $(0.33,1.35,2.18,0.84)$, of width 4. Since each of the $h$ heads has width $d_k=d/h$, putting them side by side always gives back width $d$.
 
       In that vector, the first two entries come only from head 1 and the last two only from head 2. So we then multiply it by an **output matrix** $W_O$ of shape $d\times d$, learned along with the heads' matrices. Each entry of the result is the dot product of the whole concatenated vector with one column of $W_O$, so every entry can combine what all the heads found.
 
@@ -200,11 +200,11 @@ knowledge_points:
     explain: |
       ### All tokens at once
 
-      In code, a model works out every token's output at once with matrix products, and tracking each matrix's shape is the quickest way to check such code.
+      Multi-head attention runs $h$ attention **heads**, each with its own matrices, such as query matrix $W_Q^{(i)}$ for head $i$, and mixes their joined outputs with an output matrix $W_O$. Code computes every token's output at once with matrix products, and tracking shapes is the quickest check.
 
       We stack the $T$ embeddings as the rows of a $T\times d$ matrix $X$. For head $i$, the queries are $Q^{(i)}=XW_Q^{(i)}$, a $(T\times d)(d\times d_k)=T\times d_k$ matrix whose row $t$ is $q^{(i)}_t$. The keys $K^{(i)}$ and values $V^{(i)}$ are made the same way.
 
-      The scores are $Q^{(i)}K^{(i)\top}/\sqrt{d_k}$. Here $K^{(i)\top}$ is $K^{(i)}$ transposed, with its rows turned into columns, so it is $d_k\times T$. The product $(T\times d_k)(d_k\times T)$ is $T\times T$, and row $t$ holds token $t$'s scores against every token. A softmax along each row gives the $T\times T$ weights, and multiplying them by $V^{(i)}$, which is $T\times d_k$, gives head $i$'s $T\times d_k$ output. The $h$ outputs side by side make $T\times d$, and $W_O$ keeps it $T\times d$. The picture uses $T=3$, $d=4$ and $h=2$.
+      The scores are $Q^{(i)}K^{(i)\top}/\sqrt{d_k}$. Transposing $K^{(i)}$ turns its rows into columns, so $K^{(i)\top}$ is $d_k\times T$. The product $(T\times d_k)(d_k\times T)$ is $T\times T$, and row $t$ holds token $t$'s scores against every token. A softmax along each row gives the $T\times T$ weights, and multiplying them by the $T\times d_k$ values $V^{(i)}$ gives head $i$'s $T\times d_k$ output. The $h$ outputs side by side make $T\times d$, and $W_O$ keeps it $T\times d$. The picture uses $T=3$, $d=4$ and $h=2$.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 470" aria-label="Shapes through multi-head attention for 3 tokens, width 4 and 2 heads. The embeddings X are 3 by 4. Each head, head 1 in blue and head 2 in orange, makes queries, keys and values of shape 3 by 2, then weights of shape 3 by 3, then a head output of shape 3 by 2. The two head outputs are concatenated into 3 by 4, and multiplying by W O, which is 4 by 4, gives the green output of shape 3 by 4">
@@ -253,13 +253,13 @@ knowledge_points:
 
       ### One big matrix for all the heads
 
-      Putting the $h$ query matrices side by side gives one $d\times d$ matrix, also named $W_Q$ as with one head. Then $XW_Q$ is $T\times d$, and its first $d_k$ columns are head 1's queries, the next $d_k$ are head 2's, and so on. Each column still uses all $d$ entries of the embedding. Code computes this one product, cuts it into heads, and does the same for $W_K$ and $W_V$.
+      Side by side, the $h$ query matrices make one $d\times d$ matrix, named $W_Q$ as with one head. Then $XW_Q$ is $T\times d$, and its first $d_k$ columns are head 1's queries, the next $d_k$ are head 2's, and so on. Each column still uses all $d$ entries of the embedding. Code computes this product, cuts it into heads, and does likewise for $W_K$ and $W_V$.
 
-      The layer learns four $d\times d$ matrices, $W_Q$, $W_K$, $W_V$ and $W_O$, which is $4d^2$ numbers whatever $h$ is, so more heads add no learned numbers. With $d=4$, one head of width 4, two of width 2 and four of width 1 all learn $4\times4^2=64$ numbers. The base model in "Attention Is All You Need" (2017), the paper that introduced multi-head attention, used $d=512$ and $h=8$, so each head had $d_k=64$.
+      The layer learns four $d\times d$ matrices, $W_Q$, $W_K$, $W_V$ and $W_O$, which is $4d^2$ numbers whatever $h$ is. With $d=4$, one head of width 4, two of width 2 and four of width 1 all learn $4\times4^2=64$ numbers. The base model in "Attention Is All You Need" (2017), the paper that introduced multi-head attention, used $d=512$ and $h=8$, so each head had $d_k=64$.
 
       ### What more heads cost
 
-      More heads give more sets of attention weights, but each head is narrower. A head of width 1 turns each token into a single number, so its scores can compare tokens on only that one number. Each head also has its own $T\times T$ attention weights, so there are $h\times T\times T$ to compute and store, which grows quickly for long inputs.
+      More heads give more sets of attention weights, but each head is narrower. A head of width 1 gives each token a single number, so its scores compare tokens on only that number. Each head also has its own $T\times T$ weights, so $h\times T\times T$ must be computed and stored, growing quickly for long inputs.
     worked: |
       Let's track the shapes for "the cat sat", with $T=3$ tokens, embeddings of width $d=4$ and $h=2$ heads of width $d_k=2$, and then check them in code.
 

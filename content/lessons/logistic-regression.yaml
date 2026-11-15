@@ -99,7 +99,7 @@ knowledge_points:
     explain: |
       ### Squeezing a score between 0 and 1
 
-      Our scores can be any number, but a probability must lie between 0 and 1. So we need a function that turns any score into a number in that range, with bigger scores giving bigger numbers.
+      We're predicting whether a house sells within a month from $x$, its number of viewings in its first week. Its **score** is the weighted input plus the bias, $z=wx+b$, which can be any number, but a probability must lie between 0 and 1. So we need a function that turns any score into a number in that range, with bigger scores giving bigger numbers.
 
       The **sigmoid** is a smooth S-shaped function that does this. It takes any number $z$ and gives a number strictly between 0 and 1:
 
@@ -107,7 +107,7 @@ knowledge_points:
 
       The Greek letter $\sigma$ (sigma) is the sigmoid's name, and $e\approx2.718$ is the number from the derivatives lesson. When $z$ is large, $e^{-z}$ is close to 0, so $\sigma(z)$ is close to 1. When $z$ is very negative, $e^{-z}$ is huge, so $\sigma(z)$ is close to 0. At $z=0$, $e^{0}=1$, so $\sigma(0)=1/2$.
 
-      **Logistic regression** is the model that works out the score and then passes it through the sigmoid. Its output, $p=\sigma(wx+b)$, is the model's probability that the label is 1. Training with the loss in the next step is what makes these probabilities good estimates.
+      **Logistic regression** is the model that works out the score and then passes it through the sigmoid. Its output, $p=\sigma(wx+b)$, is the model's probability that the **label**, our 0-or-1 name for the answer, is 1, meaning the house sold. Training with the loss in the next step is what makes these probabilities good estimates.
 
       ### Three houses on the curve
 
@@ -222,13 +222,13 @@ knowledge_points:
       - 4 viewings, $p=0.5$: the loss is $0.69$.
       - 2 viewings, $p=0.12$: the loss is $2.13$, because the model was confident and wrong.
 
-      Be careful: a correct decision doesn't mean zero loss. The house with 6 viewings was predicted correctly, but it still has a loss of $0.13$, because the model gave it $0.88$ rather than 1.
+      Be careful: a correct decision, the label we predict by comparing $p$ with a threshold such as $0.5$, doesn't mean zero loss. The house with 6 viewings was predicted correctly, but it still has a loss of $0.13$, because the model gave it $0.88$ rather than 1.
 
       ### Why not squared error?
 
       For a probability, the squared error $(p-y)^2$ can never be more than 1, as the grey dashed curve shows. A sold house given $p=0.01$ costs $0.98$, not much more than the $0.25$ for an unsure $p=0.5$. Cross-entropy charges $4.61$ and keeps climbing, so confident mistakes cost the most.
     worked: |
-      Let's work out the loss for the new house with 2 viewings, which sold, so $y=1$. The sigmoid gave it $p=\sigma(-2)\approx0.119$.
+      Let's work out the loss for the new house with 2 viewings, which sold, so $y=1$. The sigmoid, the S-shaped function that turns a score into a probability, gave it $p=\sigma(-2)\approx0.119$.
 
       1. **Put the label into the loss.** With $y=1$, the term with $1-y$ is multiplied by 0.
          $$L=-\left[1\times\ln0.119+0\times\ln0.881\right]=-\ln0.119.$$
@@ -250,7 +250,7 @@ knowledge_points:
     explain: |
       ### The slope of the loss against the score
 
-      To use gradient descent, we need the slope of the loss for each parameter. Let's start with how the loss changes as the score changes, for a house that sold. The red curve shows its loss, $-\ln p$, drawn against the score.
+      To use gradient descent, we need the slope of the loss for each parameter. Our model's **score** for a house is the weighted input plus the bias, $z=wx+b$, and the sigmoid $\sigma$, an S-shaped function, turns it into $p=\sigma(z)$, the model's probability that the house sells within a month. Let's start with how the loss changes as the score changes, for a house that sold. The red curve shows its loss, $-\ln p$, drawn against the score.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" aria-label="The red curve is the loss for a house with label 1, drawn against the score z from minus 4 to 4. It falls as the score rises and flattens out towards 0. Orange tangent lines show its slope: minus 0.5 at score 0, where p is 0.5, and only minus 0.12 at score 2, where p is 0.88">
@@ -279,7 +279,7 @@ knowledge_points:
       </svg>
       ```
 
-      At score 0, where $p=0.5$, the orange line shows a slope of $-0.5$. A small nudge checks this: raising the score from 0 to $0.1$ lowers the loss from $0.69$ to $0.64$. At score 2, where $p=0.88$, the slope is only $-0.12$. In both cases the slope is $p-1$, the probability minus the label. Working out the derivative, which we'll skip here, shows that this holds for every score and for label 0 too, so
+      At score 0, where $p=0.5$, the orange line shows a slope of $-0.5$. A small nudge checks this: raising the score from 0 to $0.1$ lowers the loss from $0.69$ to $0.64$. At score 2, where $p=0.88$, the slope is only $-0.12$. In both cases the slope is $p-1$, the probability minus the label $y$, which is 1 for a house that sold and 0 otherwise. Working out the derivative, which we'll skip here, shows that this holds for every score and for label 0 too, so
 
       $$\frac{\partial L}{\partial z}=p-y.$$
 
@@ -287,7 +287,7 @@ knowledge_points:
 
       ### From the score to the weight and bias
 
-      The score is $z=wx+b$. Raising $w$ by a small amount raises the score by $x$ times that amount, so the slope for the weight is $x$ times the slope for the score. Raising $b$ raises the score by the same amount, so the bias keeps the score slope unchanged:
+      Since $z=wx+b$, raising $w$ by a small amount raises the score by $x$ times that amount, so the slope for the weight is $x$ times the slope for the score. Raising $b$ raises the score by the same amount, so the bias keeps the score slope unchanged:
 
       $$\frac{\partial L}{\partial w}=(p-y)\,x,\qquad\frac{\partial L}{\partial b}=p-y.$$
 

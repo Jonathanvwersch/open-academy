@@ -101,7 +101,7 @@ knowledge_points:
     explain: |
       ### Every word after the first is a target
 
-      Now that the model gives a next-token distribution, how do we train it? We need examples of a prefix together with the token that really came next, and any sentence is full of them. In "the cat sat on the mat", "the" is followed by cat, "the cat" by sat, and so on up to "the cat sat on the", which is followed by mat. Each of the last five words is the answer for the words before it, so a sentence of $T$ tokens gives $T-1$ training examples.
+      Now that the model gives a next-token distribution, a probability for each token of coming next, how do we train it? We need examples of a prefix together with the token that really came next, and any sentence is full of them. In "the cat sat on the mat", "the" is followed by cat, "the cat" by sat, and so on up to "the cat sat on the", which is followed by mat. Each of the last five words is the answer for the words before it, so a sentence of $T$ tokens gives $T-1$ training examples.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 280" aria-label="The sentence the cat sat on the mat split into five training examples. The top row holds the inputs, the, cat, sat, on, the, at positions 1 to 5. The bottom row holds the targets, the same sentence shifted left by one: cat, sat, on, the, mat. An arrow joins each position to its target. Position 3 is orange: it sees the cat sat and must predict on">
@@ -147,7 +147,7 @@ knowledge_points:
 
       ### Training on the real earlier words
 
-      Every input prefix is the real text. We could instead let the model predict from its own guesses. Feeding it the true earlier tokens, even at positions where it would have guessed wrong, is called **teacher forcing**. Because every input is known before the run starts, the causal mask can then train all positions in the same run.
+      We could let the model predict from its own earlier guesses instead. Feeding it the true earlier tokens, even at positions where it would have guessed wrong, is called **teacher forcing**. Because every input is known before the run starts, the causal mask can then train all positions in the same run.
 
       Be careful not to score position $t$ against $x_t$. The model already has $x_t$ as input, so its target is the token after it, $x_{t+1}$.
     worked: |
@@ -194,13 +194,13 @@ knowledge_points:
     explain: |
       ### Writing one token at a time
 
-      Once trained, the same model can write. We give it a prompt, such as "the cat sat", run it, and read the next-token distribution at the last position. We choose a token from it, add it to the end and run the model again on the longer text. We repeat until the text reaches a length limit, or until the model chooses a special end-of-text token. This extra vocabulary entry ends every training text, so the model learns when to stop. This loop is called **autoregressive generation**.
+      Once trained, the same model can write. We give it a prompt, such as "the cat sat", run it, and read the next-token distribution, its probability for each token of coming next, at the last position. We choose a token from it, add it to the end and run the model again on the longer text. We repeat until the text reaches a length limit, or until the model chooses a special end-of-text token. This extra vocabulary entry ends every training text, so the model learns when to stop. This loop is called **autoregressive generation**.
 
       Suppose that after "the cat sat" the model gives these probabilities: $0.2$ for the, $0.1$ for cat, $0.1$ for sat, $0.5$ for on and $0.1$ for mat. Which word should we choose?
 
       ### Taking the top word or drawing at random
 
-      **Greedy decoding** always takes the most probable token, which here is on. It's simple, but the same prompt always gives the same text, so we can't ask for several different answers. It can also get stuck repeating a phrase, if writing it makes the same phrase the most likely continuation again.
+      **Greedy decoding** always takes the most probable token, which here is on. It's simple, but the same prompt always gives the same text, so we can't get several different answers. It can also get stuck repeating a phrase, if writing it makes the same phrase the most likely continuation again.
 
       **Sampling** draws the next token at random, giving each token a chance equal to its probability. Picture the probabilities laid end to end along a line from 0 to 1. We pick a random number $u$ between 0 and 1 and take the token whose stretch it lands in.
 
@@ -241,7 +241,7 @@ knowledge_points:
 
       When the model writes, everything after the prompt is made of its own choices. Sometimes sampling picks a word that doesn't fit. That word stays in the text, and every later prediction is made from a prefix that contains it. With teacher forcing, training only showed the model real text, so it may predict badly after an odd word, and one bad word can lead to more.
 
-      Generation is also slow, because writing needs a new run for each token, using the token the last run chose, while training scored every position in one run.
+      Generation is also slow, because it needs a new run for each token, while training scored every position in one run.
     worked: |
       Let's write two more words after "the cat sat" by sampling, with the random numbers $u=0.72$ and then $u=0.30$.
 

@@ -21,7 +21,7 @@ knowledge_points:
 
       Our grasping robot takes 2, 4 and 6 seconds on three attempts.
 
-      The **sample mean** adds the observed values and divides by their count to estimate the long-run average. We write it as $\bar x$, read "x bar". If $n$ is the count and $x_1$ through $x_n$ are the observations, then
+      The **sample mean** adds the observed values and divides by their count to estimate the long-run average, the average we'd get over endless attempts. We write it as $\bar x$, read "x bar". If $n$ is the count and $x_1$ through $x_n$ are the observations, then
 
       $$\bar x=\frac{x_1+\cdots+x_n}{n}.$$
 
@@ -88,7 +88,7 @@ knowledge_points:
     explain: |
       ### Repeating the experiment
 
-      We time 100 independent grasps on varied objects and positions, whether they hold the object or drop it. Suppose step 1's calculation on all 100 gives mean 4 seconds and standard deviation 2 seconds. How much might another experiment's average differ?
+      We time 100 independent grasps on varied objects and positions, whether they hold the object or drop it. Suppose their sample mean, written $\bar x$, is 4 seconds, and their sample standard deviation $s$, which measures how far single times typically sit from the mean, is 2 seconds. That mean estimates the long-run average, the average we'd get over endless grasps. How much might another experiment's average differ?
 
       Imagine running a 25-grasp experiment five separate times. We call each run's group of grasps a **batch**, with its own average.
 
@@ -113,7 +113,7 @@ knowledge_points:
 
       $$\mathrm{SE}(\bar x)=\frac{s}{\sqrt n}.$$
 
-      We read $\mathrm{SE}(\bar x)$ as "the standard error of $\bar x$". Here $s$ measures individual-time spread and $n$ counts trials. We need independent trials under unchanged conditions.
+      We read $\mathrm{SE}(\bar x)$ as "the standard error of $\bar x$". Here $n$ counts trials. We need independent trials under unchanged conditions.
 
       ### A range for the long-run average
 
@@ -169,7 +169,7 @@ knowledge_points:
     explain: |
       ### Count each success as 1
 
-      Of our 100 timed grasps, 80 held the object. A **success rate** is the successful fraction. We write it as $\hat p$, read "p hat", because it estimates the long-run success chance.
+      Of our 100 timed grasps, 80 held the object. A **success rate** is the successful fraction. We write it as $\hat p$, read "p hat", because it estimates the long-run success chance, the fraction that would succeed over endless grasps.
 
       Count each success as 1 and each failure as 0. Their average is exactly the success rate, so the previous step's reasoning about averages applies.
 
@@ -183,7 +183,7 @@ knowledge_points:
 
       $$\hat p(1-\hat p)[(1-\hat p)+\hat p]=\hat p(1-\hat p).$$
 
-      Taking the square root gives spread $\sqrt{\hat p(1-\hat p)}$. We divided by 100 rather than 99, which changes this answer by about half a percent, so we'll use this simpler form. Because the rate is an average, we divide its spread by $\sqrt n$:
+      Taking the square root gives spread $\sqrt{\hat p(1-\hat p)}$. We divided by 100 rather than 99, which changes this answer by about half a percent, so we'll use this simpler form. Because the rate is an average, its **standard error**, or SE, which measures how much it varies across repeated experiments of the same size, is this spread divided by $\sqrt n$:
 
       $$\mathrm{SE}(\hat p)=\sqrt{\frac{\hat p(1-\hat p)}{n}}.$$
 
@@ -191,7 +191,7 @@ knowledge_points:
 
       ### When to trust the range
 
-      A common rule of thumb is at least 10 successes and 10 failures. This helps the bell approximation, but doesn't guarantee it. With very few of either outcome, repeated rates are lopsided, so we can't trust $\pm2\mathrm{SE}$. Instead, collect more trials or use an exact method in statistics software, which calculates from the possible success counts rather than assuming a bell shape.
+      The rate $\pm2\mathrm{SE}$ gives an approximate 95% confidence interval, a range built so that about 95% of such ranges contain the long-run success chance. It relies on repeated rates clustering in a bell shape around that chance. A common rule of thumb for trusting it is at least 10 successes and 10 failures, which helps but doesn't guarantee that bell shape. With very few of either outcome, repeated rates are lopsided, so we can't trust the interval. Instead, collect more trials or use an exact method, which calculates from the possible success counts rather than assuming a bell shape.
 
       We also need independent trials. If every test grasp is on the same mug in the same spot, a quirk of that setup affects all attempts, so they aren't 100 independent pieces of evidence about varied objects and positions. We should test across the conditions we want the robot to handle.
     worked: |
@@ -225,7 +225,7 @@ knowledge_points:
 
       The robot's engineers test each version on 200 fresh grasps, with 160 successes before the update and 180 after. The earlier quick test gave 7 and 9 out of 10, as in our opening.
 
-      We call the observed rates $\hat p_1$ for original and $\hat p_2$ for updated. We subtract original from updated to estimate the improvement, $d$:
+      We call the observed success rates, the fractions of grasps that held, $\hat p_1$ for original and $\hat p_2$ for updated. We subtract original from updated to estimate the improvement, $d$:
 
       $$d=\hat p_2-\hat p_1.$$
 
@@ -233,7 +233,7 @@ knowledge_points:
 
       ### Combine the two uncertainties
 
-      Either estimate can be off in either direction, so subtraction doesn't remove uncertainty. For independent estimates, the squared standard errors add:
+      Either estimate can be off in either direction, so subtraction doesn't remove uncertainty. Each rate has a standard error, or SE, which measures how much it would vary across repeated experiments of the same size. For independent estimates, the squared standard errors add:
 
       $$\mathrm{SE}_{\mathrm{diff}}=\sqrt{\mathrm{SE}_1^2+\mathrm{SE}_2^2}.$$
 
@@ -266,7 +266,7 @@ knowledge_points:
 
       With 140/200 versus 160/200, individual ranges of about 0.64–0.76 and 0.74–0.86 overlap. Yet the difference range is about 0.01–0.19, excluding zero. Using overlap alone would hide this evidence of improvement.
     worked: |
-      Let's compare both experiments using the difference in long-run success chances.
+      Let's compare both experiments using the difference in long-run success chances, the fractions each version would succeed on over endless grasps.
 
       1. **Find the improvement.** We compare the rates by subtracting original from updated.
          $$d=\frac{180}{200}-\frac{160}{200}=0.90-0.80=0.10.$$
@@ -274,13 +274,13 @@ knowledge_points:
       2. **Combine the uncertainties.** Either estimated rate could change in a fresh test, so ignoring one would understate uncertainty in their difference.
          $$\mathrm{SE}_{\mathrm{diff}}=\sqrt{\frac{0.8(0.2)}{200}+\frac{0.9(0.1)}{200}}\approx0.035.$$
 
-      3. **Check the interval.** Both versions pass the count rule, so we can judge the difference.
+      3. **Check the interval.** Both versions have at least 10 successes and 10 failures, the usual rule of thumb for trusting the bell approximation, so we can judge the difference.
          $$d\pm2\mathrm{SE}_{\mathrm{diff}}\approx[0.03,\;0.17].$$
 
       4. **Answer the opening question.** We repeat the calculation for 7 versus 9 successes because that quick test first made us wonder whether the update helped.
          $$d=0.20,\quad\mathrm{SE}_{\mathrm{diff}}\approx0.173,\quad d\pm2\mathrm{SE}_{\mathrm{diff}}\approx[-0.15,\;0.55].$$
 
-      The larger range excludes zero, so it supports improvement without proving it. The smaller range includes zero and fails the count rule, so it doesn't settle whether the long-run success chances differ.
+      The larger range excludes zero, so it supports improvement without proving it. The smaller range includes zero and fails that rule, so it doesn't settle whether the long-run success chances differ.
     problems:
       [
         ds-difference-basics,

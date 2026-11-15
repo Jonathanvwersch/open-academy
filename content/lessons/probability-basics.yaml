@@ -89,7 +89,7 @@ knowledge_points:
     explain: |
       ### A number decided by chance
 
-      An event either happens or it doesn't. But often the uncertain thing is a number, such as how many offers a house gets, which might be 0, 1, 2 or 3. We'd like the chance of every one of those numbers at once.
+      An **event**, the set of outcomes picked out by a condition such as "a die roll is at least 5", either happens or it doesn't. But often the uncertain thing is a number, such as how many offers a house gets, which might be 0, 1, 2 or 3. We'd like the chance of every one of those numbers at once.
 
       Let's picture it with a game spinner. It has four equal sectors but only three labels, because 0 points is printed on two sectors, and 1 point and 2 points on one each. Each spin is equally likely to stop in any sector. On the left of the picture is the spinner, and on the right is a bar for each number of points, as tall as its chance.
 
@@ -137,7 +137,7 @@ knowledge_points:
     worked: |
       Let's estimate the distribution of the number of offers a house gets, from the same 20 past sales. Of those sales, 4 got no offers, 6 got 1 offer, 8 got 2 offers and 2 got 3 offers. Let $X$ be the number of offers a sale gets.
 
-      1. **Divide the count for 0 offers by all 20 sales.** As in the last step, the frequency of a value is our estimate of its probability.
+      1. **Divide the count for 0 offers by all 20 sales.** A value's frequency, the fraction of past sales with that value, is our estimate of its probability.
          $$P(X=0)\approx\frac{4}{20}=0.2$$
 
       2. **Do the same for 1, 2 and 3 offers.** Dividing $6$, $8$ and $2$ by $20$ gives the other three entries.
@@ -162,11 +162,11 @@ knowledge_points:
     explain: |
       ### Averaging many spins
 
-      A distribution gives a chance for every value, but often we want one number that sums it up. If we spun the spinner from the last step many times, how many points would we get per spin, on average?
+      A random variable is a number decided by an uncertain outcome, and its distribution lists every value it can take with the probability of each. Often we want one number that sums it up. Take a game spinner with four equal sectors, where 0 points is printed on two, and 1 point and 2 points on one each. If we spun it many times, how many points would we get per spin, on average?
 
-      Imagine 400 spins. About half of them, 200, stop on 0, about 100 stop on 1, and about 100 stop on 2. That's about $0\times200+1\times100+2\times100=300$ points, or $\frac{300}{400}=0.75$ points per spin.
+      In 400 spins, about 200 stop on 0, 100 on 1 and 100 on 2. That's about $0\times200+1\times100+2\times100=300$ points, or $\frac{300}{400}=0.75$ points per spin.
 
-      Dividing each count by 400 gives the fraction of spins that landed on that value, which is about its probability, so the average is each value times its probability, added up:
+      Each count divided by 400 is about that value's probability, so the average is each value times its probability, added up:
 
       $$0\times\frac12+1\times\frac14+2\times\frac14=0.75$$
 
@@ -180,7 +180,7 @@ knowledge_points:
 
       ### The balance point
 
-      In the picture, the bars are the spinner's distribution. Imagine the number line is a plank, and each bar is a weight standing on it, as heavy as its probability. The plank balances on the green triangle, which sits at the expected value, $0.75$. That's left of 1, the ordinary average of 0, 1 and 2 where each value counts the same, because half the weight sits at 0.
+      In the picture, the bars are the spinner's distribution. Imagine the number line as a plank with each bar a weight on it, as heavy as its probability. The plank balances on the green triangle, which sits at the expected value, $0.75$. That's left of 1, the ordinary average of 0, 1 and 2 where each value counts the same, because half the weight sits at 0.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 340" aria-label="The spinner distribution as a bar chart over values 0, 1 and 2 with heights 1/2, 1/4 and 1/4. A green triangle under the axis at 0.75 is the point where the chart balances; a red dashed mark at 1 shows the plain average of the three values">
@@ -204,10 +204,10 @@ knowledge_points:
       </svg>
       ```
 
-      Moving the weight moves the balance point. Here are two other spinners to compare:
+      Moving the weight moves the balance point, as two other spinners show:
 
-      - If the spinner had four equal sectors marked 0, 1, 2 and 2, a value of 2 would be twice as likely as before, and that extra weight at 2 would pull the balance point up to $1.25$.
-      - If it had three equal sectors 0, 1 and 2, every value is equally likely, so it's exactly the plain average, $1$.
+      - With four equal sectors marked 0, 1, 2 and 2, a 2 is twice as likely as before, and that extra weight pulls the balance point up to $1.25$.
+      - With three equal sectors 0, 1 and 2, every value is equally likely, so it's the plain average, $1$.
 
       Be careful not to expect the expected value on a single try. No spin gives $0.75$ points. It's what the points average out to over many spins.
     worked: |
@@ -264,7 +264,7 @@ knowledge_points:
 
       ### Conditional probability
 
-      The **conditional probability** of $A$ given $B$, written $P(A\mid B)$ and read "the probability of $A$ given $B$", is the chance of $A$ once we know that $B$ happened. We keep only the outcomes in $B$, then ask what fraction of them are also in $A$. When the outcomes are equally likely, or when we count past cases, that fraction is
+      For two events $A$ and $B$, each a set of outcomes such as "even" or "at least 4", the **conditional probability** of $A$ given $B$, written $P(A\mid B)$ and read "the probability of $A$ given $B$", is the chance of $A$ once we know that $B$ happened. We keep only the outcomes in $B$, then ask what fraction of them are also in $A$. When the outcomes are equally likely, or when we count past cases, that fraction is
 
       $$P(A\mid B)=\frac{\text{number of outcomes in both }A\text{ and }B}{\text{number of outcomes in }B}$$
 

@@ -119,13 +119,13 @@ knowledge_points:
     explain: |
       ### The parts of a GPU
 
-      Llama 3 8B's weights fit in the H100's 80 GB. But where is that memory, and how do the weights reach the parts that do the maths?
+      Our chat assistant runs Llama 3 8B, a language model with 8 billion parameters, on an H100, an NVIDIA GPU whose 80 GB of memory holds the weights. But where is that memory, and how do the weights reach the parts that do the maths?
 
-      The H100's chip is made of 132 **streaming multiprocessors** (SMs). Each SM is a small processor with its own calculators, including Tensor Cores, which are built to do matrix multiplies fast. Together the SMs can do about 990 trillion 16-bit floating-point operations (FLOPs) per second. FLOPs is a count and FLOP/s a rate. A trillion is $10^{12}$, written T, so that's about 990 TFLOP/s, which we'll round to 1,000 TFLOP/s. Each operation the model runs, such as one matrix multiply, runs on the GPU as a small program called a **kernel**.
+      The H100's chip is made of 132 **streaming multiprocessors** (SMs). Each SM is a small processor with its own calculators, including Tensor Cores, which are built to do matrix multiplies fast. Together the SMs can do about 990 trillion ($10^{12}$, written T) 16-bit floating-point operations (FLOPs) per second. FLOPs is a count and FLOP/s a rate, so we'll round this to 1,000 TFLOP/s. Each operation the model runs, such as one matrix multiply, runs on the GPU as a small program called a **kernel**.
 
       ### Three levels of memory
 
-      The picture shows the memory in layers, from big and slow at the bottom to small and fast on top.
+      The picture shows the memory in layers, big and slow at the bottom, small and fast on top.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 340" aria-label="The H100's memory in three layers. At the bottom, HBM, 80 GB, holds the weights, drawn in blue. A blue arrow labelled 3.35 TB per second carries data up to the L2 cache, 50 MB, shared by all SMs. A grey arrow carries it up to a row of SMs, 132 in all, each with Tensor Cores and about 0.5 MB of registers, shared memory and L1 cache. The L2 cache and the SMs are inside a dashed box labelled on the chip, SRAM">
@@ -159,11 +159,11 @@ knowledge_points:
 
       $$\text{time}=\frac{\text{bytes moved}}{\text{memory bandwidth}}.$$
 
-      Fewer bytes from HBM means less time. So a kernel runs fastest when it reads each number from HBM once, keeps it in SRAM, and reuses it from there as many times as it can.
+      So a kernel runs fastest when it reads each number from HBM once, keeps it in SRAM, and reuses it from there as many times as it can.
 
-      Be careful not to mix up memory size and bandwidth. The 80 GB says how much fits, and the 3.35 TB/s says how fast it can be read.
+      Don't mix up memory size and bandwidth. The 80 GB says how much fits, and the 3.35 TB/s says how fast it can be read.
     worked: |
-      Let's check whether Llama 3 8B's 16 GB of BF16 weights could stay in the H100's fast on-chip memory, and work out how long reading them from HBM takes.
+      Let's check whether Llama 3 8B's 16 GB of weights, stored in BF16, a 16-bit format with 2 bytes per number, could stay in the H100's fast on-chip memory, and work out how long reading them from HBM takes.
 
       1. **Add up the memory on the chip.** There are 132 SMs with about 0.5 MB each, plus the 50 MB L2 cache.
          $$132\times0.5+50=116\text{ MB}\approx0.12\text{ GB}.$$
@@ -189,23 +189,25 @@ knowledge_points:
     explain: |
       ### Decoding reads every weight
 
-      A chat model writes its reply by **decoding**. Each pass through the model makes one new token, and the next pass needs that token. An operation's **arithmetic intensity** $I$ is the FLOPs it does for each byte it moves to or from GPU memory. A GPU's **ops:byte ratio**, read "ops per byte", is its peak FLOP/s divided by its memory bandwidth. For the H100 it's $1{,}000\times10^{12}/(3.35\times10^{12})\approx300$ FLOPs per byte. When $I$ is below that ratio, the operation is memory-bound, so memory sets its speed.
+      A chat model writes its reply by **decoding**, where each pass through the model makes one new token for the next pass to use. Our chat assistant runs Llama 3 8B, a language model with 8 billion parameters, on one H100 GPU. Its weights, stored in BF16, a 16-bit format of 2 bytes per number, take 16 GB.
 
-      Each pass multiplies one token's vector by every weight matrix. A $(1\times k)$ vector times a $(k\times n)$ matrix costs $2kn$ FLOPs, a multiply and an add per weight. Almost all parameters sit in these matrices, so one token costs about 2 FLOPs per parameter, and nearly every weight must be read from HBM.
+      An operation's **arithmetic intensity** $I$ is its FLOPs per byte moved to or from GPU memory, and a GPU's **ops:byte ratio** is its peak FLOP/s divided by its memory bandwidth. For the H100 it's $1{,}000\times10^{12}/(3.35\times10^{12})\approx300$ FLOPs per byte. Below that ratio, an operation is memory-bound, so memory sets its speed.
+
+      Each pass multiplies one token's vector by every weight matrix. A $(1\times k)$ vector times a $(k\times n)$ matrix costs $2kn$ FLOPs, a multiply and an add per weight. Almost all parameters sit in these matrices, so one token costs about 2 FLOPs per parameter, and nearly every weight is read from HBM, the GPU's main memory.
 
       ### Reading time and maths time
 
-      For Llama 3 8B at BF16, reading the 16 GB of weights takes about 4.78 ms. The maths is $2\times8\times10^9=1.6\times10^{10}$ FLOPs, which takes $0.016$ ms at 1,000 TFLOP/s. The GPU reads the next weights while doing maths on earlier ones, so a pass takes as long as the reading. With $1.6\times10^{10}$ bytes read, $I$ is 1 FLOP per byte, far below 300.
+      Reading the 16 GB of weights takes about 4.78 ms, while the $2\times8\times10^9=1.6\times10^{10}$ FLOPs of maths take $0.016$ ms at 1,000 TFLOP/s. Reading and maths overlap, so a pass takes as long as the reading. With $1.6\times10^{10}$ bytes read, $I$ is 1 FLOP per byte, far below 300.
 
-      One token every 4.78 ms is about 209 tokens/s. So the top decode speed for one conversation is
+      One token every 4.78 ms is about 209 tokens/s, the top decode speed for one conversation:
 
       $$\text{tokens/s}\le\frac{\text{memory bandwidth}}{\text{weight bytes}}=\frac{3.35\times10^{12}}{16\times10^9}\approx209.$$
 
-      To raise it, we need more memory bandwidth or fewer bytes of weights. At INT8 the ceiling doubles to about 419 tokens/s.
+      More bandwidth or fewer weight bytes raise it, and INT8, 1 byte per number, doubles it to about 419 tokens/s.
 
       ### Sharing one read across a batch
 
-      With a batch of $B$ conversations, we stack their token vectors into a $(B\times k)$ matrix and multiply it by each weight matrix. Each weight is read once and used $B$ times. The reading stays at 4.78 ms while the maths grows to $B\times0.016$ ms, so $I$ grows from 1 to $B$ FLOPs per byte. Until $B$ nears the ops:byte ratio of 300, the step takes about the same time and total tokens/s grows $B$ times. Past that, the maths is slower, the step time grows with $B$, and tokens/s levels off.
+      With a batch of $B$ conversations, we stack their token vectors into a $(B\times k)$ matrix, so each weight is read once and used $B$ times. The reading stays at 4.78 ms while the maths grows to $B\times0.016$ ms, so $I$ grows from 1 to $B$. Until $B$ nears 300, the step takes about the same time and total tokens/s grows $B$ times. Past that, maths sets the step time and tokens/s levels off.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" aria-label="Bars drawn to scale for one decode step of Llama 3 8B at BF16 on an H100. For batch sizes 1, 100 and 300, the blue bar for reading the weights is always 4.78 ms long. The orange bar for the maths is 0.016 ms at batch 1, almost invisible, 1.6 ms at batch 100 and 4.8 ms at batch 300, where it just passes the reading">
@@ -234,7 +236,7 @@ knowledge_points:
 
       ### Limitations
 
-      These speeds are upper limits. Each conversation also reads its own KV cache, and starting each kernel takes a little time, so real systems decode more slowly.
+      These speeds are upper limits, because each conversation also reads its KV cache, the stored numbers about its earlier tokens, and starting each kernel, the small GPU program behind each operation, takes time.
     worked: |
       Let's work out how fast Llama 3 8B at BF16 decodes on an H100 when 8 conversations decode together. We'll count only the weights as memory traffic, and use 3.35 TB/s and 1,000 TFLOP/s.
 
