@@ -322,17 +322,24 @@ knowledge_points:
 
       ### Training mode and evaluation mode
 
-      Some models include a **dropout** module alongside layers such as `nn.Linear`. Dropout acts only in **training mode**, the mode the model uses while it learns. A PyTorch model starts in training mode.
+      Before we leave the loop, one setting matters for the larger models in later lessons. Our `nn.Linear` model has no dropout, so the code above is still correct.
 
-      In training mode, dropout randomly sets some of the numbers passed to it from the layer before to $0$. Because any number may vanish, the model can't rely on one particular number. That tends to help on examples it hasn't trained on.
+      A **mode** is a setting stored in the model. A PyTorch model starts in **training mode**, the setting used while it learns. `model.train()` selects training mode and `model.eval()` selects **evaluation mode**.
 
-      With dropout active, the same `x` and the same weights can give different predictions from call to call, and so different losses.
+      Some larger models use **dropout**, which zeroes a random share of the numbers flowing through the model on each call in training mode. Even with the same `x` and the same weights, predictions can change from call to call, so the loss can change too.
 
-      When checking the trained model, we want steady predictions without recording calculations we'll never use to find slopes. `model.eval()` selects **evaluation mode** and turns dropout off, while `torch.no_grad()` stops recording the calculations needed to find slopes. `torch.no_grad()` alone leaves dropout on in training mode, so use both when checking the model.
+      When checking the model, we want dropout off and don't need to record calculations for slopes. `torch.no_grad()` alone leaves dropout on in training mode, so we also call `model.eval()`.
 
-      To quickly check that evaluation mode is on, measure the loss twice with the same `x` and the same weights and see whether the losses agree. Call `model.train()` to switch back to training mode before more training steps, like the ones in the loop above.
+      ```python
+      model.eval()
+      with torch.no_grad():
+          loss = loss_fn(model(x), y)
+      model.train()
+      ```
 
-      The code above is still correct because our `nn.Linear` model has no dropout, and `model.eval()` matters once a model includes dropout.
+      `model.eval()` turns dropout off for the loss measurement, and `model.train()` switches back to training mode before the next training steps. The `torch.no_grad()` block stops recording the calculations needed to find slopes.
+
+      As a quick check, run this code twice with the same `x`, `y` and weights and check that the losses agree.
     problems:
       [
         ptb-loop-basics,
@@ -350,7 +357,6 @@ summary: |
   - `nn.Linear(inputs, outputs)` computes $\hat y=wx+b$ for every row and holds $w$ and $b$ as parameters.
   - `nn.MSELoss()` measures the loss, `loss.backward()` stores slopes, and only `optimizer.step()` updates.
   - A training loop repeats `zero_grad`, predict, loss, `backward` and `step`, so each pass uses fresh slopes.
-
-  When checking a model with dropout, use `model.eval()` together with `torch.no_grad()`.
+    Check models with dropout using `model.eval()` and `torch.no_grad()` together.
 
   **Next:** Logistic regression predicts yes or no, and trains with this same loop.
