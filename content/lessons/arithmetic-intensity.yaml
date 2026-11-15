@@ -172,7 +172,7 @@ knowledge_points:
 
       ### Compare with the H100
 
-      Our dense count includes every matrix entry, even a zero. For our 16-bit numbers, the H100's dense rate is about 990 TFLOP/s, rounded here to 1,000 TFLOP/s. Its bandwidth is about 3.35 TB/s. Here TB means $10^{12}$ bytes and TFLOP/s means $10^{12}$ FLOP/s. The ops:byte ratio rounds to about 300 FLOPs per byte.
+      Our dense count includes every matrix entry, even a zero. Here TB means $10^{12}$ bytes and TFLOP/s means $10^{12}$ FLOP/s. For our 16-bit numbers, the H100's dense rate is about 990 TFLOP/s, rounded here to 1,000 TFLOP/s. Its bandwidth is about 3.35 TB/s. The ops:byte ratio rounds to about 300 FLOPs per byte.
 
       Substituting $d=4096$ into the exact formula gives:
 

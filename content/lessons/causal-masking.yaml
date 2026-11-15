@@ -213,11 +213,11 @@ knowledge_points:
 
       ### What the mask guarantees
 
-      Row $t$ of the weights is $0$ after column $t$, so the output $o_t$ mixes only $v_1$ to $v_t$, with weights worked out from $q_t$ and $k_1$ to $k_t$. In the first attention layer, each of those vectors is made from its own token, so $o_t$ depends only on the first $t$ tokens. If we change the last word of "the cat sat on" to "by", the outputs of the first three positions stay exactly the same.
+      Row $t$ of the weights is $0$ after column $t$, so the output $o_t$ mixes only $v_1$ to $v_t$, with weights worked out from $q_t$ and $k_1$ to $k_t$. A real language model repeats attention many times, one layer after another. In the first attention layer, each of those vectors is made from its own token, so $o_t$ depends only on the first $t$ tokens. If we change the last word of "the cat sat on" to "by", the outputs of the first three positions stay exactly the same.
 
       That's the effect we wanted. Every position's guess of the next word is made from its own word and the words before it, so one pass over a sentence trains all $T$ guesses without any position seeing its answer. It also matches how the model is used, because when it writes new text, the later words don't exist yet.
 
-      A real language model repeats attention many times, one layer after another, and every attention layer uses this mask. The layers in between work on each position by itself, without mixing positions. So each position only ever holds information from its own token and earlier ones, and nothing from a later word can reach it anywhere in the model.
+      Every attention layer uses this mask. The layers in between work on each position by itself, without mixing positions. So each position only ever holds information from its own token and earlier ones, and nothing from a later word can reach it anywhere in the model.
 
       Be careful not to think the mask removes later words from the input. Every word is still there, with its own vectors and its own guess. The mask only stops earlier positions from reading them.
     worked: |

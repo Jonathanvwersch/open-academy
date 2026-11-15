@@ -21,7 +21,7 @@ knowledge_points:
 
       Our grasping robot takes 2, 4 and 6 seconds on three attempts.
 
-      The **sample mean** adds the observed values and divides by their count to estimate the long-run average. We write it as $\bar x$, read "x bar". If $n$ is the count and $x_1$ through $x_n$ are the observations, then
+      The **sample mean** adds the observed values and divides by their count to estimate the long-run average, the average we'd get over endless trials. We write it as $\bar x$, read "x bar". If $n$ is the count and $x_1$ through $x_n$ are the observations, then
 
       $$\bar x=\frac{x_1+\cdots+x_n}{n}.$$
 
@@ -169,7 +169,7 @@ knowledge_points:
     explain: |
       ### Count each success as 1
 
-      Of our 100 timed grasps, 80 held the object. A **success rate** is the successful fraction. We write it as $\hat p$, read "p hat", because it estimates the long-run success chance.
+      Of our 100 timed grasps, 80 held the object. A **success rate** is the successful fraction. We write it as $\hat p$, read "p hat", because it estimates the long-run success chance, the fraction succeeding over endless trials.
 
       Count each success as 1 and each failure as 0. Their average is exactly the success rate, so the previous step's reasoning about averages applies.
 

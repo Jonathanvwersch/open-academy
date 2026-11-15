@@ -23,7 +23,7 @@ knowledge_points:
 
       ### One number for each state and action
 
-      Q-learning stores a **Q-table**, one number $Q(s,a)$ for every state $s$ and action $a$, its current guess of that value. The corridor has 3 cells where the robot can act, and 2 actions, so the table has 6 entries. Cell 4 ends the episode, so it needs none.
+      Q-learning, a way for the robot to learn these values by trial and error, stores a **Q-table**, one number $Q(s,a)$ for every state $s$ and action $a$, its current guess of that value. The corridor has 3 cells where the robot can act, and 2 actions, so the table has 6 entries. Cell 4 ends the episode, so it needs none.
 
       The picture shows the best action values $Q^*(s,a)$ the robot is aiming to learn.
 

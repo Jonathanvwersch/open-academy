@@ -148,7 +148,7 @@ knowledge_points:
     explain: |
       ### Score one day's forecast
 
-      To keep the arithmetic simple, suppose the app gives the same forecast $q=(1/4,1/4,1/2)$ for sun, cloud and rain every day.
+      To keep the arithmetic simple, suppose a weather app gives the same forecast $q=(1/4,1/4,1/2)$ for sun, cloud and rain every day. We call these possible answers **classes**.
 
       For each recorded day, we know the weather that happened. We call this answer its label and pair it with the forecast to make a labelled example. To score the forecast, use the label's surprise under the forecast probabilities. This is the **classification loss**.
 
@@ -162,7 +162,7 @@ knowledge_points:
       - A probability of $1/8$ gives $\log_2 8=3$ bits.
       - A probability of 1 gives $\log_2 1=0$ bits.
 
-      When a forecast strongly favours the wrong answer, it gives the observed class a tiny probability. Its loss is then larger than a less confident mistake's, whereas accuracy records both as simply wrong.
+      When a forecast strongly favours the wrong answer, it gives the observed class a tiny probability. Its loss is then larger than a less confident mistake's, whereas accuracy, the fraction of correct picks, records both as simply wrong.
 
       ### Average the daily losses
 

@@ -17,7 +17,7 @@ knowledge_points:
     explain: |
       ### A robot in four cells
 
-      Let's describe a robot's choices and scores. Our robot starts in cell 1 of a corridor numbered 1 to 4 from left to right. Each left or right command moves one cell unless it meets a wall just outside cells 1 or 4. Every command takes one time step, even at a wall. Entering cell 4 ends the run and gives reward $+10$. Every other step gives $-1$. Adding the rewards over a run favours reaching the goal with fewer steps.
+      Let's describe a robot's choices and scores. Our robot starts in cell 1 of a corridor numbered 1 to 4 from left to right. Each left or right command moves one cell unless it meets a wall just outside cells 1 or 4. Every command takes one time step, even at a wall. Entering cell 4 ends the run and scores $+10$. The score received after acting is called a **reward**. Every other step gives $-1$. Adding the rewards over a run favours reaching the goal with fewer steps.
 
       The picture follows three right moves. Blue arrows show movement, grey bars mark walls, and the green cell ends the run.
 
@@ -42,9 +42,9 @@ knowledge_points:
 
       ### What one step records
 
-      A **state**, $s$, records the current situation. For this robot, we try using the cell number. An **action**, $a$, is an available choice. The **reward**, $r$, is the score received after acting.
+      A **state**, $s$, records the current situation. For this robot, we try using the cell number. An **action**, $a$, is an available choice. We write the reward as $r$.
 
-      One **transition** records what happens during a time step, including staying in place. A whole run is called an **episode**. It stops when the agent reaches a **terminal state**, here cell 4, so no action follows arrival there.
+      One **transition** records what happens during a time step, including staying in place. A whole run is called an **episode**. It stops when the **agent**, the robot making the choices, reaches a **terminal state**, here cell 4, so no action follows arrival there.
 
       We label time steps $t=0,1,2,\dots$ and use a **subscript**, the small label below a letter, to record time. Our convention labels a reward by its arrival time. Action $a_0$ at time 0 produces reward $r_1$ with the next state at time 1. Read the arrow as "current state and action lead to a reward and next state".
 
@@ -180,7 +180,7 @@ knowledge_points:
 
       ### The complete task description
 
-      An MDP is often written as a five-item list, $(S,A,p,R,\gamma)$:
+      A **Markov decision process**, or **MDP**, describes such a task as a five-item list, $(S,A,p,R,\gamma)$:
 
       - $S$ contains every possible state $s$; here $S=\{1,2,3,4\}$.
       - $A$ lists available actions. Here we allow left and right until the episode ends.

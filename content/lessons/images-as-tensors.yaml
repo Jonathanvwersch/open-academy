@@ -17,7 +17,7 @@ knowledge_points:
     explain: |
       ### Brightness in a grid
 
-      In the matrices lesson, each row of a matrix held one house's measurements. A grayscale (black-and-white) image is also a matrix, but each entry is the brightness of one pixel. In the picture below, each square is a pixel, and the number in it says how bright it is. A value of 0 is black, 255 is white, and the values in between are shades of grey.
+      In the matrices lesson, each row of a matrix held one house's measurements. A grayscale (black-and-white) image is also a matrix, but each entry is the brightness of one pixel, one tiny square of the image. In the picture below, each square is a pixel, and the number in it says how bright it is. A value of 0 is black, 255 is white, and the values in between are shades of grey.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 282" role="img" aria-label="Four rows and five columns of grayscale pixels, indexed from zero. Row 1 column 3 has value 153." font-family="ui-sans-serif, system-ui, sans-serif" font-size="14">
@@ -75,7 +75,7 @@ knowledge_points:
       </svg>
       ```
 
-      We use 8-bit images here, whose decoded brightnesses are whole numbers from 0 to 255. Other images can use higher bit depths or floats. NumPy calls this one-byte representation **uint8**, short for "unsigned 8-bit integer". Unsigned means it has no negative values, and 8 bits make one byte, which can hold exactly 256 different values.
+      We use 8-bit images here, whose decoded brightnesses are whole numbers from 0 to 255. Other images can use higher bit depths, meaning more bits per brightness, or floats. NumPy calls this one-byte representation **uint8**, short for "unsigned 8-bit integer". Unsigned means it has no negative values, and 8 bits make one byte, which can hold exactly 256 different values.
 
       ### Height comes first
 

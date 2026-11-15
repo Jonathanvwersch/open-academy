@@ -21,7 +21,7 @@ knowledge_points:
     explain: |
       ### Prepare the vectors we need
 
-      We first score how well each source matches what a token needs. Our running sentence is "the cat sat on the mat". To keep this calculation small, our entire input is its first two words, "the cat", with one token per word. Position 1 holds "the" and position 2 holds "cat". We'll build cat's new vector, called its output, using information from both tokens. Including cat's own value lets its output contain information about itself too.
+      We first score how well each source, meaning each token that supplies information, matches what a token needs. Our running sentence is "the cat sat on the mat". To keep this calculation small, our entire input is its first two words, "the cat", with one token per word. Position 1 holds "the" and position 2 holds "cat". We'll build cat's new vector, called its output, using information from both tokens. Including cat's own value lets its output contain information about itself too.
 
       A matrix is a grid of numbers. Three learned matrices transform each embedding into three vectors, using dot products with the matrix columns to compute the components. The matrix $W_Q$ produces a **query** to compare with sources' keys. The matrix $W_K$ produces each source's **key**. The matrix $W_V$ produces its **value**, the information to contribute to the output. Separate matrices let a model learn what to compare and what to pass along independently. We'll start from invented results of these transformations.
 

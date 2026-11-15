@@ -138,7 +138,7 @@ knowledge_points:
 
       ### Which matrices this rule fits
 
-      Determinants belong to square matrices; a $2\times3$ matrix has no determinant. The $ad-bc$ formula works for every $2\times2$ matrix, including negative entries. Larger square matrices also have determinants, but need a different calculation.
+      Determinants belong to square matrices, which have the same number of rows and columns; a $2\times3$ matrix has no determinant. The $ad-bc$ formula works for every $2\times2$ matrix, including negative entries. Larger square matrices also have determinants, but need a different calculation.
     worked: |
       Let's find the area of the green image of the unit square for $A=\begin{bmatrix}3&1\\1&2\end{bmatrix}$, then check the diagonal rule.
 

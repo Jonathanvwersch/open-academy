@@ -87,7 +87,7 @@ knowledge_points:
 
       The width $d$ is the number of entries. Adding vectors with $d$ entries each gives $d$ entries, so attention can accept the combined input. A **learned positional encoding** stores one vector per slot in a table. Training adjusts the entries to help the model make better predictions.
 
-      A **sinusoidal positional encoding** computes vectors using fixed sine and cosine waves, giving a rule for generating them from position. Picture a point moving counterclockwise around a circle of radius 1. Its horizontal coordinate is called the cosine of its angle, and its vertical coordinate is the sine.
+      Picture a point moving counterclockwise around a circle of radius 1. Its horizontal coordinate is called the cosine of its angle, and its vertical coordinate is the sine. A **sinusoidal positional encoding** computes vectors using fixed sine and cosine waves, giving a rule for generating them from position.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 230" aria-label="A circle of radius 1 centered at the origin. At zero turn the point is (1,0) on the right; at a quarter turn it is (0,1) at the top; at a half turn it is (-1,0) on the left; at three quarter turns it is (0,-1) at the bottom. Cosine is the horizontal coordinate and sine is the vertical coordinate.">

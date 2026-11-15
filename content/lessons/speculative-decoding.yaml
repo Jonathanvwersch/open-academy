@@ -19,7 +19,7 @@ knowledge_points:
     explain: |
       ### Waiting for the next token
 
-      In the Prefill and decode lesson, we saw that prefill processes prompt tokens together, while decode waits for each token before producing the next. Could checking guesses together reduce that waiting?
+      In the Prefill and decode lesson, we saw that prefill processes prompt tokens together, while decode waits for each token before producing the next. Suppose a small **draft** model guesses the next $k$ tokens and a large **target** model checks them. Could checking guesses together reduce that waiting?
 
       In the Memory-bound vs compute-bound lesson, we saw that arithmetic intensity measures FLOPs per byte moved. A FLOP is one floating-point operation, and FLOPs is the plural count. At batch size one, decode does little maths with each weight it reads, so waiting for memory limits its speed.
 
@@ -86,7 +86,7 @@ knowledge_points:
     explain: |
       ### How many guesses survive?
 
-      A round produces at least one token, even if its first guess fails. Across many rounds and texts, $\alpha$ (alpha) measures how often a draft guess passes. For this estimate, assume that chance stays constant and acceptances are independent.
+      A draft-and-check **round** produces at least one token, even if its first guess fails. Across many rounds and texts, $\alpha$ (alpha) measures how often a draft guess passes. For this estimate, assume that chance stays constant and acceptances are independent.
 
       We start with two guesses as the smallest case showing an intermediate rejection. Rejecting the first gives one token, with chance $1-\alpha$. Accepting one then rejecting gives two, with chance $\alpha(1-\alpha)$. Accepting both gives three, including the bonus, with chance $\alpha^2$.
 

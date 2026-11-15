@@ -19,7 +19,7 @@ knowledge_points:
     explain: |
       ### Scores that don't line up
 
-      To train a reward model, we first need data on what people like. The obvious way is to show someone a response and ask for a score from 0 to 10.
+      To train a reward model, which scores responses, we first need data on what people like. The obvious way is to show someone a response and ask for a score from 0 to 10.
 
       Take the prompt "Write one sentence about a cat" and two responses. Response A is "The cat sat on the mat." Response B is "Cat mat the sat on." The picture shows the scores two raters gave them, with A in green and B in red.
 
