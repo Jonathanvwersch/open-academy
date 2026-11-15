@@ -1,0 +1,307 @@
+concept: orthogonality-projections
+version: 1
+objective: |
+  **Goal:** project a vector onto a line, recognise an orthogonal matrix and invert it with its transpose, and fit a least-squares line with the normal equations $A^\top A\hat x=A^\top b$, by hand and in NumPy.
+where_this_fits: |
+  ### What is a projection?
+
+  A projection finds the point on a line, or on a flat plane, that is closest to a given vector. It splits the vector into a part along the line and a leftover at right angles to it.
+
+  Why do we need it? Say we measure three points and want a line through them. Measurements are noisy, so often no line fits exactly. In the rank lesson, we saw that $Ax=b$ has a solution only when $b$ is in the column space of $A$, the span of its columns. Projecting $b$ onto that space gives the closest point, and the $x$ that reaches it gives the best line. This is called least squares. The same right angles give matrices whose inverse is their transpose.
+knowledge_points:
+  - id: orth-line-projection
+    title: "Project a vector onto a line"
+    explain: |
+      ### The shadow as a vector
+
+      In the dot product lesson, we found the shadow of the arrow $(7,1)$ on the line through $(6,8)$. A path dropped from the tip of $(7,1)$ meets the line through $(6,8)$ at a right angle at $(3,4)$. Here we call the arrows $x=(7,1)$ and $u=(6,8)$. We also saw that two vectors are **perpendicular** when their dot product is zero. The usual word for this in linear algebra is **orthogonal**.
+
+      That lesson called the shadow's length, $5$, the projection. From here on, the projection means the shadow itself, the arrow from the origin to $(3,4)$.
+
+      ### The closest point on the line
+
+      In the picture, the blue arrow is $u$ and the green arrow is $x$. The orange arrow, $p=(3,4)$, is the shadow, and the red dashed arrow is the leftover, $x-p=(4,-3)$, which meets the line at a right angle. Pick another point on the line, such as the grey dot $q$. The straight path from it to $x$'s tip is the long side of a right-angled triangle whose other sides are a piece of the line and the red arrow. By Pythagoras' rule that path is longer than the red arrow, so $p$ is the closest point.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="20 10 380 345" aria-label="From the origin, the blue arrow u = (6, 8) and the green arrow x = (7, 1). The orange arrow p = (3, 4) runs halfway along u. A red dashed arrow, the leftover x minus p = (4, minus 3), runs from the tip of p to the tip of x and meets u's line at a right angle. A grey dot q on u's line at (1.5, 2) has a grey dotted path to the tip of x">
+      <defs><marker id="orth1-blue" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#3b82f6"/></marker><marker id="orth1-green" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#10b981"/></marker><marker id="orth1-amber" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#f59e0b"/></marker><marker id="orth1-red" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#ef4444"/></marker></defs>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <path d="M80 320 H400 M80 340 V20" stroke="#d4d4d4"/>
+      <path d="M80 320 L296 32" stroke="#d4d4d4" stroke-width="1.5" stroke-dasharray="6 5"/>
+      <path d="M80 320 L260 80" stroke="#3b82f6" stroke-width="3" marker-end="url(#orth1-blue)"/>
+      <path d="M80 320 L290 290" stroke="#10b981" stroke-width="3" marker-end="url(#orth1-green)"/>
+      <path d="M80 320 L170 200" stroke="#f59e0b" stroke-width="4" marker-end="url(#orth1-amber)"/>
+      <path d="M170 200 L290 290" stroke="#ef4444" stroke-width="2.5" stroke-dasharray="7 5" marker-end="url(#orth1-red)"/>
+      <path d="M125 260 L290 290" stroke="#737373" stroke-width="2" stroke-dasharray="2 4"/>
+      <circle cx="125" cy="260" r="4" fill="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="115" y="266" text-anchor="end" fill="#737373">q</text>
+      <path d="M178 206 L184 198 L176 192" stroke="#737373" stroke-width="1.5" fill="#ffffff" fill-opacity="0"/>
+      <circle cx="80" cy="320" r="4" fill="#171717"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="72" y="344" text-anchor="end">(0, 0)</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="270" y="84" fill="#3b82f6">u = (6, 8)</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="300" y="296" fill="#10b981">x = (7, 1)</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="160" y="196" fill="#f59e0b" text-anchor="end">p = (3, 4)</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="244" y="232" fill="#ef4444">x − p = (4, −3)</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="306" y="40" fill="#737373">u's line</text>
+      </g>
+      </svg>
+      ```
+
+      ### The formula
+
+      The **projection** of $x$ onto the line through $u$ is the vector on that line closest to $x$. We'll call it $p$:
+
+      $$p=\frac{u^\top x}{u^\top u}\,u.$$
+
+      In the inverses lesson, we saw that $u^\top x$ is the dot product of $u$ and $x$, written as a row times a column. So the top of the fraction is $u\cdot x$, and the bottom, $u^\top u$, is $u$'s length squared. This number tells us how many copies of $u$ make the shadow. Here it's $50/100=0.5$, so $p$ is half of $u$.
+
+      Why this fraction? Call the number of copies $k$, so the shadow is $ku$. We want the leftover $x-ku=(7-6k,\,1-8k)$ to be orthogonal to $u$. Its dot product with $u$ is $6(7-6k)+8(1-8k)=42-36k+8-64k=50-100k$. That is $u^\top x-k\,u^\top u$. Setting it to zero gives $k=50/100$, the fraction.
+
+      Be careful not to divide by $u$'s length instead of its length squared. That gives $50/10=5$ copies, so $5u=(30,40)$, far past the shadow.
+    worked: |
+      Let's project $x=(7,1)$ onto the line through $u=(6,8)$, and check that the leftover really is orthogonal to $u$.
+
+      1. **Find the dot product of $u$ and $x$.** This is the top of the fraction.
+         $$u^\top x=6\times7+8\times1=50$$
+
+      2. **Find $u^\top u$.** This is $u$'s length squared, the bottom of the fraction.
+         $$u^\top u=6^2+8^2=100$$
+
+      3. **Divide to find how many copies of $u$ we need.** This number is $k$.
+         $$k=\frac{50}{100}=0.5$$
+
+      4. **Scale $u$ by that number.** The projection is a multiple of $u$, so it lies on $u$'s line.
+         $$p=0.5\times(6,8)=(3,4)$$
+
+      5. **Check that the leftover is orthogonal to $u$.** The leftover is $x-p=(7,1)-(3,4)=(4,-3)$, and its dot product with $u$ should be zero.
+         $$u^\top(x-p)=6\times4+8\times(-3)=0$$
+
+      So $x$ splits into $(3,4)$ along the line plus $(4,-3)$ at right angles to it. The distance from $x$'s tip to the line is the leftover's length, $\sqrt{4^2+3^2}=5$. The shadow's length is also 5 here, just by chance.
+    problems:
+      - orth-line-projection-basics
+      - orthp-project-self-explain
+      - orthp-orthogonal-test
+      - orthp-negative-copies
+      - orthp-project-template
+      - orthp-length-not-squared
+      - orthp-leftover-template
+      - orthp-wall-distance
+  - id: orth-orthogonal-matrices
+    title: "Matrices whose inverse is their transpose"
+    explain: |
+      ### Orthogonal arrows of length 1
+
+      The projection formula divides by $u^\top u$, which is $u$'s length squared. If $u$ is a unit vector, with length 1, then $u^\top u=1$ and the projection is just $(u^\top x)\,u$. With a unit vector the fraction goes away. Unit vectors at right angles to each other make matrices easy to undo too, so they have their own name. A set of vectors is **orthonormal** when each one has length 1 and every pair is orthogonal.
+
+      The picture shows two orthonormal vectors, the blue $(0.6,0.8)$ and the green $(-0.8,0.6)$. Each has length $\sqrt{0.36+0.64}=1$, so both tips sit on the grey arc, part of the circle of radius 1. Their dot product is $-0.48+0.48=0$, so they meet at a right angle.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="100 60 440 220" aria-label="A grey half circle of radius 1 around the origin. The blue arrow (0.6, 0.8) and the green arrow (minus 0.8, 0.6) both end on the circle, so both have length 1, and a small square at the origin marks the right angle between them. Grey dashed arrows show (1, 0) and (0, 1) for comparison">
+      <defs><marker id="orth2-blue" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#3b82f6"/></marker><marker id="orth2-green" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#10b981"/></marker><marker id="orth2-muted" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker></defs>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <path d="M140 250 H500 M320 270 V70" stroke="#d4d4d4"/>
+      <path d="M170 250 A150 150 0 0 1 470 250" stroke="#737373" stroke-width="1.5" fill="#ffffff" fill-opacity="0"/>
+      <path d="M320 250 L470 250" stroke="#737373" stroke-width="1.5" stroke-dasharray="6 5" marker-end="url(#orth2-muted)"/>
+      <path d="M320 250 L320 100" stroke="#737373" stroke-width="1.5" stroke-dasharray="6 5" marker-end="url(#orth2-muted)"/>
+      <path d="M320 250 L410 130" stroke="#3b82f6" stroke-width="3" marker-end="url(#orth2-blue)"/>
+      <path d="M320 250 L200 160" stroke="#10b981" stroke-width="3" marker-end="url(#orth2-green)"/>
+      <path d="M328.4 238.8 L317.2 230.4 L308.8 241.6" stroke="#171717" stroke-width="1.5" fill="#ffffff" fill-opacity="0"/>
+      <circle cx="320" cy="250" r="4" fill="#171717"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="420" y="126" fill="#3b82f6">(0.6, 0.8)</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="190" y="156" fill="#10b981" text-anchor="end">(−0.8, 0.6)</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="478" y="270" fill="#737373">(1, 0)</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="328" y="92" fill="#737373">(0, 1)</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="470" y="200" fill="#737373">radius 1</text>
+      </g>
+      </svg>
+      ```
+
+      ### Orthogonal matrices
+
+      Now stand the two vectors side by side as the columns of a matrix,
+
+      $$Q=\begin{bmatrix}0.6&-0.8\\0.8&0.6\end{bmatrix}.$$
+
+      A square matrix whose columns are orthonormal is called an **orthogonal matrix**. Its transpose undoes it. Look at entry $(i,j)$ of $Q^\top Q$. It is row $i$ of $Q^\top$ dotted with column $j$ of $Q$. Row $i$ of $Q^\top$ is column $i$ of $Q$, so the entry is column $i$ dotted with column $j$. Each column dotted with itself gives 1, and the two different columns give 0, so
+
+      $$Q^\top Q=I.$$
+
+      Why is $Q^\top$ the inverse? If $Qx=0$, then $x=Q^\top Qx=0$, so the columns of $Q$ are independent and $Q$ has an inverse. Then $Q^\top=Q^\top QQ^{-1}=Q^{-1}$. So to solve $Qx=b$ we skip elimination and just work out $x=Q^\top b$.
+
+      An orthogonal matrix never changes lengths. Using $(AB)^\top=B^\top A^\top$ from the inverses lesson, the squared length of $Qx$ is $(Qx)^\top Qx=x^\top Q^\top Qx=x^\top x$, the squared length of $x$. This $Q$ turns every arrow by the same angle, so it's called a rotation matrix. The course doesn't teach rotation matrices yet.
+
+      Be careful: each column of an orthogonal matrix must also have length 1. The columns of $\begin{bmatrix}3&-4\\4&3\end{bmatrix}$ are orthogonal, but each has length 5. Each column dotted with itself gives 25, so its transpose times itself is $25I$. So the inverse is the transpose divided by 25, because that times the matrix gives $I$.
+    worked: |
+      Let's check that $Q=\begin{bmatrix}0.6&-0.8\\0.8&0.6\end{bmatrix}$ is orthogonal, then use its transpose to solve $Qx=b$ for $b=(2,11)$.
+
+      1. **Check that each column has length 1.** We square each column's entries and add them. The second column, $(-0.8,0.6)$, has the same two numbers squared, so both columns give the same sum.
+         $$0.6^2+0.8^2=0.36+0.64=1$$
+
+      2. **Check that the columns are orthogonal.** Their dot product should be zero. The two products are $-0.48$ and $0.48$.
+         $$0.6\times(-0.8)+0.8\times0.6=0$$
+
+      3. **Multiply $b$ by $Q^\top$.** Since $Q^{-1}=Q^\top$, this gives the solution. The rows of $Q^\top$ are the columns of $Q$, so each entry of $x$ is one column of $Q$ dotted with $b$.
+         $$x=\begin{bmatrix}0.6\times2+0.8\times11\\-0.8\times2+0.6\times11\end{bmatrix}=\begin{bmatrix}10\\5\end{bmatrix}$$
+
+      4. **Check by multiplying by $Q$.** Putting $x$ back in should give $b$.
+         $$Q\begin{bmatrix}10\\5\end{bmatrix}=\begin{bmatrix}6-4\\8+3\end{bmatrix}=\begin{bmatrix}2\\11\end{bmatrix}$$
+
+      So $x=(10,5)$. Both $x$ and $b$ have length $\sqrt{125}$, since $10^2+5^2=125$ and $2^2+11^2=125$. That fits with $Q$ never changing lengths.
+    problems:
+      - orth-orthogonal-matrices-basics
+      - orthp-transpose-self-explain
+      - orthp-orthonormal-check
+      - orthp-qtq-entry
+      - orthp-solve-template
+      - orthp-scaled-columns
+      - orthp-length-kept
+      - orthp-robot-frame
+  - id: orth-least-squares
+    title: "Find the line closest to three points"
+    explain: |
+      ### Three points and no exact line
+
+      Suppose we measure at the times $t=-1$, $0$ and $1$ and get $y=1$, $3$ and $2$. We'd like a straight line $y=c+mt$ through all three points, where $c$ is its height at $t=0$ and $m$ is its slope, the change in its height when $t$ goes up by $1$. Each point gives one equation:
+
+      $$\begin{bmatrix}1&-1\\1&0\\1&1\end{bmatrix}\begin{bmatrix}c\\m\end{bmatrix}=\begin{bmatrix}1\\3\\2\end{bmatrix}.$$
+
+      We call the matrix $A$, the unknowns $x=(c,m)$ and the measurements $b$, so this is $Ax=b$. The first and third rows say $c-m=1$ and $c+m=2$, so $c=1.5$, but the middle row needs $c=3$. There's no solution, because $b$ isn't in the column space of $A$.
+
+      ### The closest point instead
+
+      The two columns of $A$ are independent, so they span a plane through the origin in three dimensions. Picture a sheet of paper through the origin, with $b$ sticking out. Every $Ax$ lies in that plane, the column space, so we look for its point closest to $b$. We write it $A\hat x$, where $\hat x$ ("x hat") holds the best $c$ and $m$. As with a line, the leftover, now called the error $e=b-A\hat x$, at the closest point is orthogonal to the plane, so to every arrow in it, including each column of $A$.
+
+      Each entry of $A^\top e$ is a column of $A$ dotted with $e$, so we need $A^\top(b-A\hat x)=0$. Multiplying out gives $A^\top b-A^\top A\hat x=0$. Moving one term across gives the **normal equations** (normal means perpendicular):
+
+      $$A^\top A\,\hat x=A^\top b.$$
+
+      Here $A^\top A$ has determinant $6$, so there's one solution.
+
+      ### What least squares makes smallest
+
+      The squared length of $e$ is the sum of the squared errors. The closest point makes $e$ as short as possible, so $\hat x$ gives the line with the smallest such sum. That's why this is called **least squares**. In the picture, the orange line is the fit, $y=2+0.5t$, and the red dashes are the errors.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="95 30 460 300" aria-label="The three points (minus 1, 1), (0, 3) and (1, 2) on axes of t and y, with the orange least-squares line y = 2 + 0.5t. Red dashed vertical gaps show the errors: minus 0.5 at t = minus 1, 1 at t = 0 and minus 0.5 at t = 1">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <path d="M110 300 H530 M315 320 V40" stroke="#d4d4d4"/>
+      <path d="M185 300 v6 M445 300 v6 M315 240 h-6 M315 180 h-6 M315 120 h-6" stroke="#737373"/>
+      <text x="185" y="322" text-anchor="middle" fill="#737373">−1</text>
+      <text x="445" y="322" text-anchor="middle" fill="#737373">1</text>
+      <text x="302" y="245" text-anchor="end" fill="#737373">1</text>
+      <text x="302" y="125" text-anchor="end" fill="#737373">3</text>
+      <text x="540" y="305" fill="#737373">t</text>
+      <text x="322" y="44" fill="#737373">y</text>
+      <path d="M120 225 L510 135" stroke="#f59e0b" stroke-width="3"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="302" y="185" text-anchor="end" fill="#737373">2</text>
+      <path d="M185 240 V210 M315 120 V180 M445 180 V150" stroke="#ef4444" stroke-width="2.5" stroke-dasharray="5 4"/>
+      <circle cx="185" cy="240" r="5" fill="#171717"/>
+      <circle cx="315" cy="120" r="5" fill="#171717"/>
+      <circle cx="445" cy="180" r="5" fill="#171717"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="175" y="262" text-anchor="end" fill="#ef4444">error −0.5</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="327" y="112" fill="#ef4444">error 1</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="457" y="198" fill="#ef4444">error −0.5</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="500" y="122" fill="#f59e0b" text-anchor="end">y = 2 + 0.5t</text>
+      </g>
+      </svg>
+      ```
+
+      Be careful not to picture the errors as the shortest distances from the points to the line. They are vertical gaps, measured in $y$ at each $t$. The right angle is between $e$ and the columns of $A$, in three dimensions, so this picture can't show it.
+    worked: |
+      Let's fit $y=c+mt$ to the points $(-1,1)$, $(0,3)$ and $(1,2)$ with the normal equations, using $A$ and $b=(1,3,2)$ from above.
+
+      1. **Find $A^\top A$.** Each entry dots two columns of $A$. The first column $(1,1,1)$ with itself gives $3$, the two columns give $-1+0+1=0$, and the second column $(-1,0,1)$ with itself gives $2$.
+         $$A^\top A=\begin{bmatrix}3&0\\0&2\end{bmatrix}$$
+
+      2. **Find $A^\top b$.** Each entry dots one column of $A$ with $b$.
+         $$A^\top b=\begin{bmatrix}1+3+2\\-1+0+2\end{bmatrix}=\begin{bmatrix}6\\1\end{bmatrix}$$
+
+      3. **Solve the normal equations.** The zeros mean each row has one unknown, $3c=6$ and $2m=1$.
+         $$c=2,\qquad m=0.5$$
+
+      4. **Find the errors.** The fitted values, the line's heights at $t=-1$, $0$ and $1$, are $A\hat x=(1.5,2,2.5)$. Subtracting them from $b=(1,3,2)$ gives the errors.
+         $$e=(-0.5,1,-0.5)$$
+
+      5. **Check that $e$ is orthogonal to both columns.** Dotting $e$ with $(1,1,1)$ gives $-0.5+1-0.5$, and with $(-1,0,1)$ gives $0.5+0-0.5$. Both are zero.
+         $$A^\top e=\begin{bmatrix}0\\0\end{bmatrix}$$
+
+      The best line is $y=2+0.5t$, with a sum of squared errors of $0.25+1+0.25=1.5$. Least squares guarantees that no other line has a smaller sum. For example, $y=2+t$ has errors $(0,1,-1)$ and a sum of $2$.
+    problems:
+      - orth-least-squares-basics
+      - orthp-normal-self-explain
+      - orthp-error-orthogonal
+      - orthp-ata-entry
+      - orthp-intercept-template
+      - orthp-vertical-errors
+      - orthp-shifted-fit
+      - orthp-sensor-fit
+  - id: orth-numpy-fits
+    title: "Fit a line in NumPy"
+    explain: |
+      ### Least squares in NumPy
+
+      Three points are easy by hand, but real data sets have thousands of rows. NumPy's `np.linalg.lstsq(A, b, rcond=None)` finds the least-squares $\hat x$. It returns four results, in order: $\hat x$, an array holding the sum of squared errors, the rank of $A$, and a fourth we won't need. `rcond=None` sets NumPy's current cut-off for tiny values.
+
+      As in the matrices lesson, `@` multiplies arrays. So `A @ x_hat` gives the fitted values, which are the projection of $b$ onto the column space of $A$. Projecting onto a line also takes one line of code, since for two vectors `u @ x` is the dot product $u^\top x$.
+
+      Be careful not to reach for `np.linalg.solve(A, b)` here. From the inverses lesson, `solve` needs a square matrix with an inverse. Our $A$ is $3\times2$, so it stops with an error.
+
+      ### When there's no single best line
+
+      The normal equations have one solution only when $A^\top A$ has an inverse. Suppose all three measurements were taken at the same time, $t=1$. Then both columns of $A$ are $(1,1,1)$, so they're dependent, and
+
+      $$A^\top A=\begin{bmatrix}3&3\\3&3\end{bmatrix},$$
+
+      whose determinant is $3\times3-3\times3=0$. Picture the three points stacked on one vertical line at $t=1$. At $t=1$ a line has one height, $c+m$, and the best height is the average of the three measurements. Every line through that height at $t=1$ has the same errors, whatever its slope, so there's no single best line. `lstsq` still returns one answer, the $\hat x=(c,m)$ with the smallest length $\sqrt{c^2+m^2}$. The rank it reports tells us when this happens. A rank below the number of columns means other answers fit just as well. Then the second result is an empty array.
+
+      ### One bad point pulls the line
+
+      Least squares squares each error, so big errors count a lot. In our fit, the error of $1$ adds $1$ to the sum, while each error of $0.5$ adds only $0.25$. One error of $4$ counts as much as sixteen errors of $1$. A single bad measurement, such as a sensor glitch, can drag the line towards itself. So after a fit, print the errors, `b - A @ x_hat`, and check any point with a much larger error.
+    worked: |
+      Let's do the line fit and the projection from earlier in NumPy. In the code, `x_hat, sse, rank, _ = ...` stores the four results under four names (`sse` is short for sum of squared errors, and `_` is a name for a result we don't need), and `np.allclose` checks whether numbers are equal apart from tiny rounding errors.
+
+      ```python
+      import numpy as np
+
+      u = np.array([6, 8])
+      x = np.array([7, 1])
+      p = (u @ x) / (u @ u) * u
+      print(p)                         # [3. 4.]
+
+      A = np.array([[1, -1], [1, 0], [1, 1]])
+      b = np.array([1, 3, 2])
+      x_hat, sse, rank, _ = np.linalg.lstsq(A, b, rcond=None)
+      print(x_hat)                     # [2.  0.5]
+      print(sse)                       # [1.5]
+      print(rank)                      # 2
+
+      e = b - A @ x_hat
+      print(np.allclose(A.T @ e, 0))   # True
+      ```
+
+      1. **Project $x$ onto $u$.** `(u @ x) / (u @ u)` is the fraction $50/100$, and multiplying by `u` gives $p=(3,4)$.
+
+      2. **Fit the line.** `lstsq` returns $\hat x=(2,0.5)$, so the line is $y=2+0.5t$, and the sum of squared errors is $1.5$, as by hand. It prints as `[1.5]`, an array with one entry, because $A$ has more rows than columns and its rank equals its number of columns. When either of those fails, the array is empty, so get the sum yourself with `np.sum((b - A @ x_hat) ** 2)`, where `**` raises to a power.
+
+      3. **Read the rank.** It's $2$, the number of columns, so this is the only best line.
+
+      4. **Check the right angle.** `A.T @ e` dots each column with the errors. NumPy gets tiny numbers such as $2\times10^{-16}$ in place of exact zeros, so we use `np.allclose` instead of `==`.
+
+      The code matches the hand calculation, and it would run just the same with a thousand rows in `A`.
+    problems:
+      - orth-numpy-fits-basics
+      - orthp-numpy-self-explain
+      - orthp-code-solve
+      - orthp-code-fitted
+      - orthp-outlier-weight
+      - orthp-same-time
+      - orthp-outlier
+      - orthp-code-projection
+final: orth-explain
+summary: |
+  - Two vectors are orthogonal when their dot product is zero. The projection of $x$ onto the line through $u$ is $p=\frac{u^\top x}{u^\top u}u$, the closest point on that line to $x$, and the leftover $x-p$ is orthogonal to $u$.
+  - Vectors are orthonormal when each has length 1 and every pair is orthogonal. A square matrix $Q$ with orthonormal columns is an orthogonal matrix, so $Q^\top Q=I$ and $Q^{-1}=Q^\top$.
+  - When $Ax=b$ has no solution, least squares finds the closest $A\hat x$ to $b$. The error $b-A\hat x$ is orthogonal to every column of $A$, which gives the normal equations $A^\top A\hat x=A^\top b$, and $\hat x$ makes the sum of squared errors as small as possible.
+  - In NumPy, `np.linalg.lstsq(A, b, rcond=None)` returns $\hat x$, an array holding the sum of squared errors, and the rank. A rank below the number of columns means the best fit isn't unique, and then that array is empty.
+
+  **Next:** The eigenvalues and SVD lesson looks for the directions a matrix only stretches, and describes any matrix using two orthogonal matrices and a stretch.

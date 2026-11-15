@@ -132,7 +132,7 @@ concepts:
           title: "MIT 18.06 (Strang), Lecture 15: Projections onto subspaces",
           url: "https://ocw.mit.edu/courses/18-06-linear-algebra-spring-2010/",
         }
-    status: stub
+    status: authored
   - id: derivatives
     title: Derivatives
     description: Derivative as local slope / rate of change; basic rules.
