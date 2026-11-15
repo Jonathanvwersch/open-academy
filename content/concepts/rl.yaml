@@ -80,7 +80,7 @@ concepts:
             dimension: implementation,
           },
         ],
-      status: stub,
+      status: authored,
     }
   - {
       id: policy-gradients,
