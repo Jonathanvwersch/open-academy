@@ -292,10 +292,10 @@ export async function updateLearningFocus(input: {
   const active = await input.repo.activeSession(input.now);
   const session = active ? await input.repo.session(active.id) : undefined;
   if (!session) return;
-  const state = filterSchedulerStateForContent(
-    input.content,
-    await input.repo.schedulerState(input.now, input.content),
-  );
+  const state = filterSchedulerStateForContent(input.content, {
+    ...(await input.repo.schedulerState(input.now, input.content)),
+    focusSubjectId: input.subjectId ?? undefined,
+  });
   await replanSessionActivities({
     db: input.db,
     repo: input.repo,
