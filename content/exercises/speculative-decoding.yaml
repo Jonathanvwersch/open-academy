@@ -133,36 +133,36 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: A draft pass takes ${{=d}}$ ms and a target check takes ${{=t}}$ ms. A round drafts ${{=k}}$ tokens and produces 3 tokens after verification. What is its average time per produced token in ms? Give two decimal places.
+    prompt: A draft pass takes ${{=td}}$ ms and a target check takes ${{=t}}$ ms. A round drafts ${{=k}}$ tokens and produces 3 tokens after verification. What is its average time per produced token in ms? Give two decimal places.
     params:
-      d: { min: 0.2, max: 0.4, step: 0.2 }
+      td: { min: 0.2, max: 0.4, step: 0.2 }
       t: { min: 4, max: 6, step: 2 }
       k: { min: 3, max: 5, step: 1 }
-    answer_expr: (k*d+t)/3
+    answer_expr: (k*td+t)/3
     tolerance: { abs: 0.006 }
     common_wrong:
       - {
-          answer_expr: (d+t)/3,
+          answer_expr: (td+t)/3,
           category: incorrect_reasoning,
           feedback: Pay for every draft pass before dividing by produced tokens.,
         }
-    solution: The round costs ${{=k}}\times{{=d}}+{{=t}}$ ms because we pay for every draft pass and the check. Dividing by its three produced tokens gives ${{=(k*d+t)/3}}$ ms per token before rounding.
+    solution: The round costs ${{=k}}\times{{=td}}+{{=t}}$ ms because we pay for every draft pass and the check. Dividing by its three produced tokens gives ${{=(k*td+t)/3}}$ ms per token before rounding.
   - id: sdp-intensity-limit
     dimension: math
     type: numeric
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: A GPU delivers a rounded 1,000 TFLOP/s and 3.35 TB/s of memory bandwidth. A short-text target check uses 16-bit weights, each contributing one multiply-add per processed position. Counting only weight traffic, how many positions can one check process before the maths takes as long as reading the weights? Round to the nearest whole number.
-    answer: 298.5074626865672
-    tolerance: { abs: 0.51 }
+    prompt: A GPU delivers a rounded 1,000 TFLOP/s and 3.35 TB/s of memory bandwidth. A short-text target check uses 16-bit weights, each contributing one multiply-add per processed position. Counting only weight traffic, how many positions can one check process before the maths takes as long as reading the weights? Give a whole number.
+    answer: 299
+    tolerance: { abs: 1.01 }
     common_wrong:
       - {
           answer: 149,
           category: math_error,
           feedback: Each weight takes two bytes. Counting it as one byte halves the position count.,
         }
-    solution: Each position adds 2 FLOPs per two-byte weight, so its weight-only intensity equals the position count in FLOPs per byte. The crossover is $10^{15}/(3.35\times10^{12})\approx298.51$, or about 299 positions.
+    solution: Each position adds 2 FLOPs per two-byte weight, so its weight-only intensity equals the position count in FLOPs per byte. The crossover is $10^{15}/(3.35\times10^{12})\approx298.51$, or about 299 positions. Using the rounded ratio of about 300 FLOPs per byte gives 300, which is also accepted.
   - id: sdp-tokenizer
     dimension: conceptual
     type: mc
@@ -282,7 +282,7 @@ exercises:
       a: { min: 0.6, max: 0.8, step: 0.1 }
       c: { min: 0.1, max: 0.2, step: 0.1 }
     answer_expr: ((1-a^(k+1))/(1-a))/(k*c+1)
-    tolerance: { abs: 0.006 }
+    tolerance: { abs: 0.011 }
     common_wrong:
       - {
           answer_expr: (1-a^(k+1))/(1-a),
@@ -673,7 +673,7 @@ exercises:
     options:
       - {
           id: a,
-          text: It predicts a next top-layer vector guided by token information.,
+          text: It predicts the next final internal vector guided by token embeddings.,
           correct: true,
           feedback: The target's output head converts the predicted vector into token scores.,
         }
