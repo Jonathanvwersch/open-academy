@@ -37,7 +37,7 @@ knowledge_points:
       <rect x="390" y="100" width="50" height="140" fill="#10b981"/>
       <path d="M450 238.5 H500" stroke="#3b82f6" stroke-width="3"/>
       <text x="415" y="92" text-anchor="middle">2</text><text x="475" y="230" text-anchor="middle" fill="#3b82f6">0</text>
-      <text x="190" y="264" text-anchor="middle">arm A</text><text x="445" y="264" text-anchor="middle">arm B</text>
+      <text x="185" y="264" text-anchor="middle">arm A</text><text x="445" y="264" text-anchor="middle">arm B</text>
       <text x="445" y="288" text-anchor="middle" fill="#3b82f6">estimate stuck at 0</text>
       </g>
       </svg>
@@ -116,7 +116,7 @@ knowledge_points:
 
       ### Choosing epsilon
 
-      With $\varepsilon=0$ the agent is greedy and can get stuck. With $\varepsilon=1$ it acts completely at random and never uses what it has learned. Many agents start with a large $\varepsilon$, while the estimates are poor, and lower it as the estimates improve. DQN, a 2015 agent that learned to play Atari video games from the screen, lowered $\varepsilon$ from $1$ to $0.1$ over its first million frames, the screen images it saw while playing.
+      With $\varepsilon=0$ the agent is greedy and can get stuck. With $\varepsilon=1$ it acts completely at random and never uses what it has learned. Many agents start with a large $\varepsilon$, while the estimates are poor, and lower it as the estimates improve. DQN, a 2015 agent that learned to play Atari video games from the screen, lowered $\varepsilon$ from $1$ to $0.1$ over its first million frames, the still images of the game's video.
     worked: |
       Let's find how much reward per pull the epsilon-greedy agent can expect on the slot machine, with $\varepsilon=0.1$. Arm A pays $1$ on average and arm B pays $2$, and at first arm A has the best estimate, after the unlucky pull of B.
 

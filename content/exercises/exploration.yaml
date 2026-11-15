@@ -243,7 +243,7 @@ exercises:
       - answer_expr: eps / k
         category: misunderstood_definition
         feedback: That's the chance of each other action. The best action also gets the whole exploit branch.
-    solution: It exploits with probability $1-{{=eps}}$, and the random pick lands on the best action with probability ${{=eps}}/{{=k}}$, so the total is about ${{=round(1-eps+eps/k, 4)}}$.
+    solution: It exploits with probability $1-{{=eps}}$, and the random pick lands on the best action with probability ${{=eps}}/{{=k}}$, so the probability is $1-{{=eps}}+{{=eps}}/{{=k}}$, which is ${{=round(1-eps+eps/k, 2)}}$ to two decimal places.
   - id: xpl-eps-zero
     dimension: conceptual
     type: mc
@@ -535,7 +535,7 @@ exercises:
         weight: 1
         required: true
       - id: r3
-        criterion: "An entropy bonus adds $\\beta$ times the policy's entropy to the objective, which keeps its probabilities spread out instead of collapsing onto one action early"
+        criterion: "An entropy bonus adds $\\beta$ times the policy's entropy to the objective, which keeps its probabilities spread out, so it keeps trying every action early in training"
         weight: 1
         required: true
     exemplar: "An agent only finds out what an action pays by taking it. If it always takes the action with the best estimate, an action that paid badly once by bad luck may never be tried again, so the agent can stay stuck on a worse action for ever. Epsilon-greedy fixes this by picking a random action with probability $\\varepsilon$, so every action keeps getting tried and its estimate can recover. An agent that learns its policy's probabilities directly can get stuck when one probability goes to 1 too early. An entropy bonus adds $\\beta$ times the entropy, a measure of how spread out the probabilities are, to the objective, so the policy only commits when the extra return is worth more than the lost bonus."
