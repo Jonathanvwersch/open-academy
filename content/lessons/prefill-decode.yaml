@@ -32,7 +32,7 @@ knowledge_points:
       The picture shows this order. The three prompt boxes share one prefill pass. Each output choice supplies the input needed for the next decode pass. Box widths do not represent time.
 
       ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 290" aria-label="Prefill processes the known prompt the cat sat and supplies the first output choice, on. Feeding on into decode produces the; feeding the into another decode pass produces mat. Boxes show order, not durations.">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 290" aria-label="Prefill processes the known prompt the cat sat and supplies the first output choice, on. Feeding on into decode produces the; feeding the into another decode pass produces mat. Boxes show the order of steps.">
       <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="16" fill="#171717">
       <text x="20" y="25">Prefill: known prompt</text>
       <rect x="20" y="42" width="65" height="36" fill="#d4d4d4" fill-opacity="0" stroke="#3b82f6"/><text x="52.5" y="66" text-anchor="middle">the</text>
@@ -201,9 +201,9 @@ knowledge_points:
 
       If token $i$ survives, its new probability is
 
-      $$q_i=\frac{p_i}{\text{sum of retained probabilities}}.$$
+      $$p'_i=\frac{p_i}{\text{sum of retained probabilities}}.$$
 
-      Here $p_i$ is its probability before filtering and $q_i$ is its probability after filtering. Removed tokens have probability zero. A draw uses these new probabilities, so a retained second-place token can still win.
+      Here $p_i$ is its probability before filtering and $p'_i$ is its probability after filtering. Removed tokens have probability zero. A draw uses these new probabilities, so a retained second-place token can still win.
 
       For our four-token vocabulary, $k=1$ keeps only Yes and makes its probability 1. With $k=2$, Yes and Maybe share the draws. With $k=4$, every token stays and the probabilities are unchanged.
 
@@ -217,7 +217,7 @@ knowledge_points:
          $$0.4+0.3=0.7.$$
 
       2. **Renormalise.** Divide both surviving probabilities by that total.
-         $$\begin{aligned}q_{\mathrm{Yes}}&=0.4/0.7=4/7,\\q_{\mathrm{Maybe}}&=3/7.\end{aligned}$$
+         $$\begin{aligned}p'_{\mathrm{Yes}}&=0.4/0.7=4/7,\\p'_{\mathrm{Maybe}}&=3/7.\end{aligned}$$
 
       3. **Draw a token.** Yes ends at four sevenths, about $0.57$, so $u=0.60$ falls in Maybe's interval.
          $$4/7\le0.60<1\quad\Rightarrow\quad\text{Maybe}.$$
@@ -300,7 +300,7 @@ knowledge_points:
          $$\begin{aligned}0.4&<0.8,\\0.4+0.3&=0.7<0.8,\\0.7+0.2&=0.9\ge0.8.\end{aligned}$$
 
       2. **Renormalise the three survivors.** Divide each original probability by their actual total, $0.9$.
-         $$\begin{aligned}q_{\mathrm{Yes}}&=4/9,\\q_{\mathrm{Maybe}}&=3/9,\\q_{\mathrm{No}}&=2/9.\end{aligned}$$
+         $$\begin{aligned}p'_{\mathrm{Yes}}&=4/9,\\p'_{\mathrm{Maybe}}&=3/9,\\p'_{\mathrm{No}}&=2/9.\end{aligned}$$
 
       3. **Locate the draw.** Yes and Maybe together end at seven ninths, about $0.78$, so $u=0.85$ chooses No.
          $$7/9\le0.85<1\quad\Rightarrow\quad\text{No}.$$

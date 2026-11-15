@@ -230,7 +230,7 @@ exercises:
     prompt: A two-token model gives A logit $\ln{{= a * a }}$ and B logit $0$. At temperature $\tau=2$, what is A's sampling probability? Give a decimal rounded to two places.
     answer_expr: a / (a + 1)
     tolerance: { abs: 0.005 }
-    solution: Halving the logits gives exponential weights {{= a }} and 1. A's probability is ${{= a }}/({{= a }}+1)$, which rounds to ${{= round(a / (a + 1), 2) }}$.
+    solution: Halving the logits gives exponential weights {{= a }} and 1. A's probability is ${{= a }}/({{= a }}+1)$, which is $0.{{= round(100 * a / (a + 1)) }}$ to two decimal places.
   - id: pd-temp-order
     dimension: conceptual
     type: mc
@@ -390,7 +390,7 @@ exercises:
     prompt: "A model has four token probabilities: A has ${{= a }}/{{= a + 4 }}$, B has $2/{{= a + 4 }}$, C and D each have $1/{{= a + 4 }}$. With top-k and $k=2$, what is A's probability after filtering? Round to two decimal places."
     answer_expr: a / (a + 2)
     tolerance: { abs: 0.005 }
-    solution: A and B survive. Dividing A's probability by their combined probability gives ${{= a }}/({{= a }}+2)$, which rounds to ${{= round(a / (a + 2), 2) }}$.
+    solution: A and B survive. Dividing A's probability by their combined probability gives ${{= a }}/({{= a }}+2)$, which is $0.{{= round(100 * a / (a + 2)) }}$ to two decimal places.
   - id: pd-topk-mistake
     dimension: conceptual
     type: mc
@@ -522,7 +522,7 @@ exercises:
     prompt: "A four-token model gives A, B, C, D probabilities ${{= a }}/10$, $3/10$, ${{= 6 - a }}/10$, $1/10$. Top-p uses $p=0.85$ and breaks ties by the order A, B, C, D. What is A's probability after filtering? Round to two decimal places."
     answer_expr: a / 9
     tolerance: { abs: 0.005 }
-    solution: The first two tokens fall short of 0.85; adding C reaches 0.9. A's new probability is ${{= a }}/9$, which rounds to ${{= round(a / 9, 2) }}$.
+    solution: The first two tokens fall short of 0.85; adding C reaches 0.9. A's new probability is ${{= a }}/9$, which is $0.{{= round(100 * a / 9) }}$ to two decimal places.
   - id: pd-topp-boundary
     dimension: conceptual
     type: mc
