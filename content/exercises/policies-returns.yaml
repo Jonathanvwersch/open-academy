@@ -6,19 +6,574 @@ exercises:
     role: diagnostic
     difficulty: 2
     est_minutes: 2
-    prompt: "An episode yields rewards $r_0 = 1$, $r_1 = 0$, $r_2 = 2$ and then ends. With discount $\\gamma = 0.9$, what is the discounted return $G_0$?"
+    prompt: "An episode yields rewards $r_1 = 1$, $r_2 = 0$, $r_3 = 2$ and then ends. With discount $\\gamma = 0.9$, what is the discounted return $G_0$?"
     answer: 2.62
     tolerance: { abs: 0.005 }
     common_wrong:
       - {
           answer: 3,
           category: misunderstood_definition,
-          feedback: "That is the undiscounted sum. Each reward is multiplied by $\\gamma^t$.",
+          feedback: "That is the undiscounted sum. The weights on $r_1$, $r_2$ and $r_3$ are $1$, $\\gamma$ and $\\gamma^2$.",
         }
       - {
           answer: 2.8,
           tolerance: { abs: 0.005 },
           category: math_error,
-          feedback: "$r_2$ is discounted by $\\gamma^2 = 0.81$, not $\\gamma = 0.9$.",
+          feedback: "$r_3$ has weight $\\gamma^2 = 0.81$.",
         }
     solution: "$G_0 = 1 + 0.9\\cdot 0 + 0.81 \\cdot 2 = 2.62$."
+  - id: pr-policy-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What does a stochastic policy specify for each state?
+    options:
+      - {
+          id: a,
+          text: The probabilities of choosing the available actions.,
+          correct: true,
+          feedback: These probabilities describe the action choice in each state.,
+        }
+      - {
+          id: b,
+          text: The probabilities that chosen movements succeed.,
+          correct: false,
+          feedback: Movement outcomes belong to the task's transitions.,
+        }
+      - {
+          id: c,
+          text: The rewards assigned to the available actions.,
+          correct: false,
+          feedback: The task supplies rewards; the policy supplies choices.,
+        }
+    solution: A stochastic policy assigns a probability to each available action in a state.
+  - id: pr-policy-self
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: Why does the worked example give left probability $0.2$ in cell 2?
+    options:
+      - {
+          id: a,
+          text: The wall makes one fifth of right moves fail.,
+          correct: false,
+          feedback: Right from cell 2 always succeeds in this corridor.,
+        }
+      - { id: b, text: Left takes the probability remaining after right's $0.8$., correct: true }
+      - {
+          id: c,
+          text: Every stochastic rule must choose left one fifth of the time.,
+          correct: false,
+          feedback: Stochastic policies can use many different probabilities.,
+        }
+    solution: Left and right are the only actions, so left receives $1-0.8=0.2$.
+  - id: pr-policy-tool
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: A robot should always choose right in cell 2. Which policy entry expresses that rule?
+    options:
+      - {
+          id: a,
+          text: '$\pi(2)=\text{left}$.',
+          correct: false,
+          feedback: This chooses the opposite action.,
+        }
+      - {
+          id: b,
+          text: '$\pi(\text{right}\mid2)=0.5$.',
+          correct: false,
+          feedback: This sometimes chooses the other action.,
+        }
+      - { id: c, text: '$\pi(2)=\text{right}$.', correct: true }
+    solution: A deterministic policy maps a state to its chosen action, so this entry always chooses right in cell 2.
+  - id: pr-policy-complement
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    params:
+      p: { min: 0.6, max: 0.9, step: 0.1 }
+    prompt: 'In state $s$, only left and right are available. A policy has $\pi(\text{right}\mid s)={{= p}}$. What is $\pi(\text{left}\mid s)$? Give a probability between $0$ and $1$.'
+    answer_expr: 1 - p
+    tolerance: { abs: 0.000001 }
+    common_wrong:
+      - {
+          answer_expr: p,
+          category: misunderstood_definition,
+          feedback: The left probability is what remains after the right probability.,
+        }
+    solution: "The action probabilities must add to $1$, so the left probability is $1-{{= p}}={{= 1-p}}$."
+  - id: pr-policy-interpret
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: 'What does $\pi(\text{right}\mid2)=0.7$ mean for repeated choices in cell 2?'
+    options:
+      - {
+          id: a,
+          text: Each chosen right move succeeds with probability $0.7$.,
+          correct: false,
+          feedback: The policy describes action choices; transitions describe movement success.,
+        }
+      - { id: b, text: Each choice selects right with probability $0.7$., correct: true }
+      - {
+          id: c,
+          text: Every group of ten choices contains exactly seven rights.,
+          correct: false,
+          feedback: Probabilities allow variation in how many rights a finite group contains.,
+        }
+    solution: The policy chooses right with probability $0.7$ whenever it is asked to choose in cell 2; finite counts can vary.
+  - id: pr-policy-mistake
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: 'Left and right are the only actions. A learner writes $\pi(\text{left}\mid s)=0.4$ and $\pi(\text{right}\mid s)=0.8$. What is wrong with this policy row?'
+    options:
+      - { id: a, text: The two probabilities total more than one., correct: true }
+      - {
+          id: b,
+          text: The two probabilities must be equal.,
+          correct: false,
+          feedback: A stochastic policy may prefer one action.,
+        }
+      - {
+          id: c,
+          text: Each individual probability exceeds one.,
+          correct: false,
+          feedback: Each entry is between zero and one; their sum is the problem.,
+        }
+    solution: These probabilities total $1.2$, but the probabilities across all actions in one state must total $1$.
+  - id: pr-policy-deterministic
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: 'A deterministic policy has $\pi(3)=\text{left}$. What is $\pi(\text{right}\mid3)$ when left and right are the only actions?'
+    answer: 0
+    tolerance: { abs: 0.000001 }
+    solution: The rule always chooses left in cell 3, so the probability of right is $0$.
+  - id: pr-policy-new
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: "A game character always chooses jump in state $s$. After a jump, the game sometimes leaves it in place and sometimes moves it forward. How should we describe its policy in state $s$?"
+    options:
+      - {
+          id: a,
+          text: "Stochastic, because the next position can vary.",
+          correct: false,
+          feedback: Varying next positions concern transitions; the character always chooses jump.,
+        }
+      - {
+          id: b,
+          text: "Invalid, because a policy must fix the next position.",
+          correct: false,
+          feedback: A policy chooses actions; the game determines movement outcomes.,
+        }
+      - { id: c, text: "Deterministic, because its chosen action is fixed.", correct: true }
+    solution: The action choice is always jump, so the policy in this state is deterministic even though the transition is random.
+  - id: pr-return-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What does $G_t$ describe in a finite episode?
+    options:
+      - {
+          id: a,
+          text: The weighted sum of rewards already received before time $t$.,
+          correct: false,
+          feedback: The return starts with the reward after the action at time t.,
+        }
+      - {
+          id: b,
+          text: The weighted sum of rewards still to come after time $t$.,
+          correct: true,
+          feedback: The return starts with the next reward and includes the rest of the episode.,
+        }
+      - {
+          id: c,
+          text: The probability of choosing an action at time $t$.,
+          correct: false,
+          feedback: An action probability is supplied by the policy.,
+        }
+    solution: The return adds rewards from the next reward through the episode's end, weighting them by delay from time $t$.
+  - id: pr-return-self
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: Why does the worked example give the final $+10$ a weight of $0.81$ in $G_0$?
+    options:
+      - {
+          id: a,
+          text: "Two rewards precede it, so its weight has two factors of $0.9$.",
+          correct: true,
+        }
+      - {
+          id: b,
+          text: "Three actions precede the end, so every reward gets weight $0.81$.",
+          correct: false,
+          feedback: Each reward has its own weight; the first two have weights 1 and 0.9.,
+        }
+      - {
+          id: c,
+          text: Reaching the goal has probability $0.81$ under every policy.,
+          correct: false,
+          feedback: The weight comes from delay; this trip's right moves succeed with certainty.,
+        }
+    solution: The third reward is two delays after the next reward, so its weight is $\gamma^2=0.9^2=0.81$.
+  - id: pr-return-tool
+    dimension: math
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "An episode has rewards $r_1,r_2,r_3$ and then ends. Which expression gives $G_1$?"
+    options:
+      - {
+          id: a,
+          text: '$r_1+\gamma r_2+\gamma^2r_3$',
+          correct: false,
+          feedback: This starts from time zero and includes the already received first reward.,
+        }
+      - {
+          id: b,
+          text: '$\gamma r_2+\gamma^2r_3$',
+          correct: false,
+          feedback: The next reward from time 1 has weight one.,
+        }
+      - { id: c, text: '$r_2+\gamma r_3$', correct: true }
+    solution: At time 1, the remaining rewards start with $r_2$ at full weight and then $r_3$ at weight $\gamma$.
+  - id: pr-return-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    params:
+      x: { min: -2, max: -1, step: 1 }
+      y: { min: 1, max: 2, step: 1 }
+      z: { min: 6, max: 10, step: 2 }
+    prompt: 'An episode gives $r_1={{= x}}$, $r_2={{= y}}$, $r_3={{= z}}$ and ends. With $\gamma=0.9$, find $G_0$. Round only at the end to two decimal places.'
+    answer_expr: x + 0.9*y + 0.81*z
+    tolerance: { abs: 0.005 }
+    common_wrong:
+      - {
+          answer_expr: x+y+z,
+          category: misunderstood_definition,
+          feedback: This counts all rewards at full weight.,
+        }
+      - {
+          answer_expr: 0.9*x+0.81*y+0.729*z,
+          category: math_error,
+          feedback: The next reward gets weight one; you started discounting one reward too early.,
+        }
+    solution: "The weights are $1$, $0.9$, $0.81$, so $G_0=({{= x}})+0.9({{= y}})+0.81({{= z}})={{= x+0.9*y+0.81*z}}$."
+  - id: pr-return-later
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: 'An episode gives $r_1=-2$, $r_2=-1$, $r_3=8$ and then ends. With $\gamma=0.9$, what is $G_1$?'
+    answer: 6.2
+    tolerance: { abs: 0.005 }
+    solution: "At time 1, $r_1$ has already happened, so $G_1=(-1)+0.9(8)=6.2$."
+  - id: pr-return-mistake
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: 'Two actions earn $r_1=2$ and $r_2=6$, then the episode ends. A learner writes $G_0=0.5(2)+0.5^2(6)$ for $\gamma=0.5$. What went wrong?'
+    options:
+      - {
+          id: a,
+          text: The final reward should be excluded from the return.,
+          correct: false,
+          feedback: The terminal reward is part of the episode's rewards.,
+        }
+      - { id: b, text: 'Each reward got one extra factor of $\gamma$.', correct: true }
+      - {
+          id: c,
+          text: Both rewards should receive the final reward's weight.,
+          correct: false,
+          feedback: Different delays give different weights.,
+        }
+    solution: The next reward has weight $1$, so the correct expression is $G_0=2+0.5(6)=5$.
+  - id: pr-return-interpret
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: "An episode ends at time $T=3$. What does $G_3=0$ tell us?"
+    options:
+      - {
+          id: a,
+          text: The episode earned zero total reward.,
+          correct: false,
+          feedback: Earlier rewards can be nonzero; this return starts at the end.,
+        }
+      - {
+          id: b,
+          text: The final action earned zero reward.,
+          correct: false,
+          feedback: The last action's reward has already arrived at time 3.,
+        }
+      - { id: c, text: No rewards remain after the episode ends., correct: true }
+    solution: A return counts future rewards from its time onward, and there are none left at the terminal time.
+  - id: pr-return-new
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: 'A delivery robot earns $0$, $-2$, then $8$ on three successive actions before its episode ends. With $\gamma=0.5$, what is its return before the first action?'
+    answer: 1
+    tolerance: { abs: 0.000001 }
+    solution: "The return is $0+0.5(-2)+0.5^2(8)=-1+2=1$."
+  - id: pr-discount-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What does increasing $\gamma$ from $0.5$ to $0.9$ do to the weight on the third reward in a three-action episode?
+    options:
+      - {
+          id: a,
+          text: It gives that reward a larger weight in the return.,
+          correct: true,
+          feedback: The weight rises from 0.25 to 0.81.,
+        }
+      - {
+          id: b,
+          text: It makes that reward arrive earlier in the episode.,
+          correct: false,
+          feedback: Changing the discount changes the score's weights; it does not move rewards in time.,
+        }
+      - {
+          id: c,
+          text: It gives that reward a smaller weight in the return.,
+          correct: false,
+          feedback: The weight rises from 0.25 to 0.81.,
+        }
+    solution: The weight is $\gamma^2$, which rises from $0.25$ to $0.81$.
+  - id: pr-discount-self
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: Why does the worked corridor trip score higher with $\gamma=0.9$ than with $\gamma=0.5$?
+    options:
+      - {
+          id: a,
+          text: The larger discount makes the robot reach the goal sooner.,
+          correct: false,
+          feedback: Both calculations score the same three-move trip.,
+        }
+      - {
+          id: b,
+          text: Every possible reward sequence gains from a larger discount.,
+          correct: false,
+          feedback: A larger discount gives later negative rewards more weight too.,
+        }
+      - {
+          id: c,
+          text: The goal's contribution rises more than the step costs increase.,
+          correct: true,
+        }
+    solution: The final gain's contribution rises from $2.5$ to $8.1$, while the second step's cost contribution changes only from $-0.5$ to $-0.9$.
+  - id: pr-discount-tool
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "You want every reward in a finite episode to count fully, however late it arrives. Which discount should you choose?"
+    options:
+      - { id: a, text: '$\gamma=0$', correct: false, feedback: Zero counts only the next reward. }
+      - { id: b, text: '$\gamma=1$', correct: true }
+      - {
+          id: c,
+          text: '$\gamma=0.5$',
+          correct: false,
+          feedback: A half discounts each additional delay by another factor of one half.,
+        }
+    solution: At $\gamma=1$, every power of the discount is $1$, so all rewards receive full weight.
+  - id: pr-discount-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    params:
+      g: { min: 0.5, max: 0.9, step: 0.4 }
+      h: { min: 6, max: 10, step: 2 }
+    prompt: 'A three-action episode earns rewards $0$, $0$, then ${{= h}}$ and ends. With $\gamma={{= g}}$, what is the return before the first action? Round only at the end to two decimal places.'
+    answer_expr: g^2*h
+    tolerance: { abs: 0.005 }
+    common_wrong:
+      - {
+          answer_expr: g*h,
+          category: math_error,
+          feedback: The final reward is two delays after the next reward.,
+        }
+      - {
+          answer_expr: g^3*h,
+          category: math_error,
+          feedback: "The first reward has weight one, so the third has only two discount factors.",
+        }
+    solution: 'Only the final reward contributes, with weight $\gamma^2$, giving ${{= g}}^2({{= h}})={{= g^2*h}}$.'
+  - id: pr-discount-endpoints
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: 'An episode earns $r_1=-3$, $r_2=2$, $r_3=9$ and ends. What is $G_0$ when $\gamma=0$?'
+    answer: -3
+    tolerance: { abs: 0.000001 }
+    solution: With zero discount, only the next reward counts, so $G_0=r_1=-3$.
+  - id: pr-discount-mistake
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: 'An episode earns $0$, then $-8$, and ends. A learner says raising $\gamma$ from $0.6$ to $0.8$ must increase $G_0$. What actually happens?'
+    options:
+      - { id: a, text: The return falls because the later penalty gets more weight., correct: true }
+      - {
+          id: b,
+          text: The return stays fixed because the next reward is zero.,
+          correct: false,
+          feedback: The second reward still contributes when the discount is positive.,
+        }
+      - {
+          id: c,
+          text: The return rises because the later penalty gets less weight.,
+          correct: false,
+          feedback: 'Raising $\gamma$ gives the later penalty more weight.',
+        }
+    solution: The return changes from $0+0.6(-8)=-4.8$ to $0+0.8(-8)=-6.4$.
+  - id: pr-discount-runs
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "Two randomised policies each run once with the same discount. Policy A gets return $8$ and policy B gets return $2$. What can we conclude from these observations alone?"
+    options:
+      - {
+          id: a,
+          text: A will score higher whenever these policies run.,
+          correct: false,
+          feedback: Random choices can produce different trips on later runs.,
+        }
+      - { id: b, text: A scored higher on these two observed runs., correct: true }
+      - {
+          id: c,
+          text: B must use invalid action probabilities.,
+          correct: false,
+          feedback: A low return does not tell us that the action probabilities are invalid.,
+        }
+    solution: The returns score the observed runs; judging the policies more generally requires considering the possible runs and their frequencies.
+  - id: pr-discount-continuing
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: 'Why can choosing $\gamma=1$ cause a problem for a task that keeps earning $+1$ each step and never ends?'
+    options:
+      - { id: a, text: The total keeps growing without a finite limit., correct: true }
+      - {
+          id: b,
+          text: The later rewards all receive zero weight.,
+          correct: false,
+          feedback: "At a discount factor of one, every reward has full weight.",
+        }
+      - {
+          id: c,
+          text: The first reward must be left out of the total.,
+          correct: false,
+          feedback: The next reward is included at full weight for every allowed discount factor.,
+        }
+    solution: Every reward has weight one, so each new step adds another point and the total never settles at a finite value.
+  - id: pr-discount-patrol
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: "A robot patrols forever and earns $+1$ after each action. Which change would give these rewards a finite discounted total?"
+    options:
+      - {
+          id: a,
+          text: Keep $\gamma=1$ and start scoring one step later.,
+          correct: false,
+          feedback: There are still endlessly many full-weight rewards after the new starting time.,
+        }
+      - { id: b, text: Set $\gamma=0.9$ and keep the rewards at $+1$., correct: true }
+      - {
+          id: c,
+          text: Set $\gamma=1$ and reduce every reward to $+0.5$.,
+          correct: false,
+          feedback: Adding a half point each step forever still gives no finite total at full weight.,
+        }
+    solution: With a factor below one, each later weight is multiplied by the factor again, making the total finite for this constant-reward example.
+  - id: pr-discount-new
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: 'A game offers an immediate $4$-point finish or a three-action route earning $-1$, $-1$, then $10$ before ending. At $\gamma=0.5$, by how many points does the immediate finish exceed the route in return?'
+    answer: 3
+    tolerance: { abs: 0.000001 }
+    solution: "The route scores $(-1)+0.5(-1)+0.25(10)=1$, so the immediate finish exceeds it by $4-1=3$."
+  - id: pr-explain-trip
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 2
+    est_minutes: 3
+    prompt: 'A robot can choose left or right in a four-cell corridor. Describe a deterministic policy and a stochastic policy. A trip earns $-1$, $-1$, then $10$ and ends: explain how to find its starting return with $\gamma=0.9$, and what changing the discount would change.'
+    rubric:
+      - {
+          id: policy,
+          criterion: Gives a fixed action per state and action probabilities per state that sum to one.,
+          weight: 1,
+        }
+      - { id: return, criterion: Uses weights 1 and 0.9 and 0.81 to get return 6.2., weight: 1 }
+      - {
+          id: delay,
+          criterion: Explains that the discount changes the weight of delayed rewards while the observed trip stays fixed.,
+          weight: 1,
+        }
+    exemplar: "Always choosing right in cells 1 to 3 is deterministic. Choosing right with probability 0.8 and left with probability 0.2 in each of those cells is stochastic. The trip has return $(-1)+0.9(-1)+0.81(10)=6.2$. A smaller discount gives the final reward less weight; a larger one gives it more weight. The trip and its rewards stay the same."
+    solution: The policy supplies action choices. The return weights the observed rewards by delay, starting with weight one on the next reward.
