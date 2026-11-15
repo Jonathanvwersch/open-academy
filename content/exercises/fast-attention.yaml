@@ -287,7 +287,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "A fused attention kernel handles one head for a prompt of {{=T}} tokens, with head size {{=d}} and 16-bit numbers. What is the least HBM traffic it needs, in MB ($10^6$ bytes)?"
+    prompt: "A fused attention kernel handles one head for a prompt of {{=T}} tokens, with head size {{=d}} and 16-bit numbers. What is the least HBM traffic it needs, in MB ($10^6$ bytes)? Give three decimal places."
     params:
       T: { min: 1000, max: 4000, step: 1000 }
       d: { min: 64, max: 128, step: 64 }
@@ -352,7 +352,7 @@ exercises:
     options:
       - {
           id: a,
-          text: "All the keys take 1,024,000 bytes, far more than an SM's on-chip memory of about 228 KB.",
+          text: "The keys take 1,024,000 bytes, but an SM holds only about 233,000 bytes on chip.",
           correct: true,
           feedback: "4,000 × 128 × 2 = 1,024,000 bytes, so only a block fits at once.",
         }
@@ -377,7 +377,7 @@ exercises:
           category: misunderstood_definition,
           feedback: "The blocks are groups of rows from one head's K.",
         }
-    solution: The keys hold $4{,}000\times128\times2=1{,}024{,}000$ bytes, while each SM has at most about 228 KB of on-chip memory, so the kernel brings them in a block at a time.
+    solution: The keys hold $4{,}000\times128\times2=1{,}024{,}000$ bytes, while a kernel can keep only about 233,000 bytes in each SM's on-chip memory, so the kernel brings them in a block at a time.
   - id: fa-fused-short
     dimension: conceptual
     type: mc
@@ -522,7 +522,12 @@ exercises:
       c: { min: 1, max: 3 }
       p: { min: 1, max: 5 }
       q: { min: 1, max: 5 }
-    constraints: ["l != a + c", "abs((u+a*p+c*q)/(l+a+c) - (u/l+(a*p+c*q)/(a+c))/2) > 0.02"]
+    constraints:
+      [
+        "l != a + c",
+        "abs((u+a*p+c*q)/(l+a+c) - (u/l+(a*p+c*q)/(a+c))/2) > 0.02",
+        "min(abs((u+a*p+c*q)/(l+a+c) - [l, u, a, c, p, q])) > 0.01",
+      ]
     answer_expr: (u+a*p+c*q)/(l+a+c)
     tolerance: { abs: 0.01 }
     common_wrong:
@@ -784,7 +789,7 @@ exercises:
     prompt: "A kernel computes softmax a block at a time, measuring its running sum of exponentials from a running largest score of {{=m}}. A new block raises the largest score to {{=m+k}}. By what number must the running sum be multiplied before the new block is added? Give three decimal places."
     params:
       m: { min: 0, max: 2 }
-      k: { min: 1, max: 3 }
+      k: { min: 0.5, max: 3, step: 0.5 }
     answer_expr: exp(-k)
     tolerance: { abs: 0.001 }
     common_wrong:
@@ -851,7 +856,7 @@ exercises:
           text: "The output becomes infinite, because u overflows at once.",
           correct: false,
           category: incorrect_reasoning,
-          feedback: "The earlier terms were measured from the old largest score, so they are at most 1 each.",
+          feedback: "The earlier terms were measured from the old largest score, so their exponentials are at most 1 each and u stays the size of the values.",
         }
     solution: Rescaling $\ell$ alone shrinks the earlier keys' share of the total but leaves their part of $u$ full size, so their values count too much.
   - id: fa-max-limit
@@ -889,7 +894,7 @@ exercises:
           category: misunderstood_definition,
           feedback: "A fused kernel never writes scores to HBM.",
         }
-    solution: Each query block needs every key and value, so K and V are read once per query block. The FlashAttention paper shows this extra traffic shrinks as on-chip memory grows.
+    solution: Each query block needs every key and value, so K and V are read once per query block. Bigger query blocks mean fewer passes over K and V, but they need more on-chip memory.
   - id: fa-max-transfer
     dimension: transfer
     type: numeric

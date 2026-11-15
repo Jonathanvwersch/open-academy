@@ -17,12 +17,12 @@ knowledge_points:
     explain: |
       ### Attention as three kernels
 
-      A chat assistant runs Llama 3 8B on one NVIDIA H100 GPU, and a user sends a prompt of $T=1{,}000$ tokens. Each layer splits attention into 32 heads that run side by side, and each head's queries, keys and values have width $d_h=128$, the recap's $d_k$. Follow one head. Its queries form a matrix $Q$ with $T$ rows, one per token, and $d_h$ columns. Its keys $K$ and values $V$ have the same shape.
+      A chat assistant runs Llama 3 8B on one NVIDIA H100 SXM GPU, and a user sends a prompt of $T=1{,}000$ tokens. Each layer splits attention into 32 heads that run side by side, and each head's queries, keys and values have width $d_h=128$, the recap's $d_k$. Follow one head. Its queries form a matrix $Q$ with $T$ rows, one per token, and $d_h$ columns. Its keys $K$ and values $V$ have the same shape.
 
       A **kernel** is one program that the GPU runs on many compute units at once, each working on part of the data. A kernel's on-chip memory is cleared when it finishes, so its result is written to HBM, and the next kernel reads it back from there. The usual way, which the FlashAttention paper calls standard attention, uses three kernels. The first finds the score table $S$, with $s_{tj}$ in row $t$, column $j$. The second applies softmax to each row of $S$ to give the weight table $P$, which holds the weights $a_{tj}$. The third multiplies $P$ by $V$ to give the outputs $O$, one row per token.
 
       ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 260" aria-label="Standard attention for one head with 1,000 tokens and head size 128 at 16-bit. Kernel 1 reads Q and K, 0.512 MB, and writes S, 2 MB. Kernel 2 reads S, 2 MB, and writes P, 2 MB. Kernel 3 reads P, 2 MB, and V, 0.256 MB, and writes O, 0.256 MB. The total is 9.024 MB, of which 8 MB is S and P">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 282" aria-label="Standard attention for one head with 1,000 tokens and head size 128 at 16-bit. Kernel 1 reads Q and K, 0.512 MB, and writes S, 2 MB. Kernel 2 reads S, 2 MB, and writes P, 2 MB. Kernel 3 reads P, 2 MB, and V, 0.256 MB, and writes O, 0.256 MB. The total is 9.024 MB, of which 8 MB is S and P. Sizes are in MB, where 1 MB is 1,000,000 bytes">
       <defs><marker id="fa1-muted" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker></defs>
       <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
       <text x="225" y="30" text-anchor="end" fill="#737373">read from HBM</text>
@@ -31,7 +31,12 @@ knowledge_points:
       <rect x="250" y="60" width="140" height="40" rx="8" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="320" y="85" text-anchor="middle">1. scores</text>
       <rect x="250" y="125" width="140" height="40" rx="8" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="320" y="150" text-anchor="middle">2. softmax</text>
       <rect x="250" y="190" width="140" height="40" rx="8" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="320" y="215" text-anchor="middle">3. weighted sum</text>
-      <path d="M230 80 H246 M392 80 H412 M230 145 H246 M392 145 H412 M230 210 H246 M392 210 H412" stroke="#737373" stroke-width="2" marker-end="url(#fa1-muted)"/>
+      <path d="M230 80 H246" stroke="#737373" stroke-width="2" marker-end="url(#fa1-muted)"/>
+      <path d="M392 80 H412" stroke="#737373" stroke-width="2" marker-end="url(#fa1-muted)"/>
+      <path d="M230 145 H246" stroke="#737373" stroke-width="2" marker-end="url(#fa1-muted)"/>
+      <path d="M392 145 H412" stroke="#737373" stroke-width="2" marker-end="url(#fa1-muted)"/>
+      <path d="M230 210 H246" stroke="#737373" stroke-width="2" marker-end="url(#fa1-muted)"/>
+      <path d="M392 210 H412" stroke="#737373" stroke-width="2" marker-end="url(#fa1-muted)"/>
       <text x="225" y="85" text-anchor="end" fill="#3b82f6">Q and K, 0.512 MB</text>
       <text x="418" y="85" fill="#ef4444">S, 2 MB</text>
       <text x="225" y="150" text-anchor="end" fill="#ef4444">S, 2 MB</text>
@@ -39,6 +44,7 @@ knowledge_points:
       <text x="225" y="215" text-anchor="end"><tspan fill="#ef4444">P, 2 MB,</tspan><tspan fill="#3b82f6"> and V, 0.256 MB</tspan></text>
       <text x="418" y="215" fill="#3b82f6">O, 0.256 MB</text>
       <text x="320" y="252" text-anchor="middle" fill="#737373">total 9.024 MB, of which 8 MB is S and P</text>
+      <text x="320" y="274" text-anchor="middle" fill="#737373">1 MB = 1,000,000 bytes</text>
       </g>
       </svg>
       ```
@@ -57,7 +63,7 @@ knowledge_points:
 
       Be careful not to expect longer prompts to be compute-bound. The FLOPs and the bytes both grow like $T^2$, so their ratio levels off near $64$, far below the H100's ratio of about $300$.
     worked: |
-      Let's count the traffic of standard attention for our head, with $T=1{,}000$ tokens, $d_h=128$ and $b=2$ bytes per number. We'll use MB for $10^6$ bytes, and the H100's figures rounded to $1{,}000$ TFLOP/s and $3.35$ TB/s.
+      Let's count the traffic of standard attention for our head, with $T=1{,}000$ tokens, $d_h=128$ and $b=2$ bytes per number. We'll use the H100's figures rounded to $1{,}000$ TFLOP/s and $3.35$ TB/s.
 
       1. **Find the bytes in one input.** $Q$ has $T$ rows of $d_h$ numbers, and $K$, $V$ and $O$ are the same size.
          $$1{,}000\times128\times2=256{,}000 \text{ bytes}.$$
@@ -102,34 +108,37 @@ knowledge_points:
 
       ### Working in blocks
 
-      But on-chip memory is small. An H100 has 132 compute units, called streaming multiprocessors or SMs, and a kernel can use at most about 228 KB of on-chip memory in each one. Each SM has its own, and our head's $K$ alone is $256{,}000$ bytes, so it doesn't fit in one.
+      But on-chip memory is small. An H100 SXM has 132 compute units, called streaming multiprocessors or SMs. Each has its own on-chip shared memory, and a kernel can keep at most $233{,}472$ bytes there. Our head's $K$ alone is $256{,}000$ bytes, so it doesn't fit.
 
-      So the kernel works in blocks of, say, 128 rows. It gives each block of queries to an SM, which loads that block once. Then the SM brings in $K$ and $V$ one block at a time, computes the scores between its queries and that key block, uses the scores to update a running output, then throws the scores away. The next step shows how that update works. After the last key block, it writes its rows of $O$. One block of 128 rows of $Q$ is $128\times128\times2=32{,}768$ bytes, about 33 KB. The key and value blocks, the running output and the $128\times128$ table of scores for the current blocks are the same size, so about 164 KB in all, which fits. With $T=1{,}000$ there are 8 query blocks, the last with only 104 rows, and the picture draws four. Other SMs work on the other blocks and heads at once.
+      So the kernel works in blocks of, say, 128 rows. It gives each block of queries to an SM, which loads that block once. Then the SM brings in $K$ and $V$ one block at a time, computes the scores between its queries and that key block, uses the scores to update a running output, then throws the scores away. The next step shows how that update works. After the last key block, it writes its rows of $O$. One block of 128 rows of $Q$ is $128\times128\times2=32{,}768$ bytes. The key and value blocks, the running output and the $128\times128$ table of scores for the current blocks are the same size, so $163{,}840$ bytes in all, which fits. With $T=1{,}000$ there are 8 query blocks, the last with only 104 rows, and the picture draws four. Other SMs work on the other blocks and heads at once.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 330" aria-label="Left, HBM holds Q, K, V and O for one head, each split into four blocks of rows. Right, the on-chip memory of one SM holds query block 1, loaded once, key block 2 and value block 2, brought in one block at a time, the scores for this pair of blocks, and the running output, which is written once to block 1 of O">
       <defs><marker id="fa2-muted" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker></defs>
       <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
       <text x="10" y="50">HBM</text>
-      <text x="360" y="50" fill="#10b981">on-chip memory of one SM</text>
-      <rect x="5" y="65" width="257" height="250" rx="8" fill="#ffffff" fill-opacity="0" stroke="#d4d4d4" stroke-width="1.5"/>
-      <rect x="355" y="65" width="280" height="250" rx="8" fill="#ffffff" fill-opacity="0" stroke="#10b981" stroke-width="1.5"/>
-      <rect x="40" y="90" width="52.5" height="30" fill="#3b82f6" fill-opacity="0.3"/>
-      <rect x="92.5" y="150" width="52.5" height="30" fill="#10b981" fill-opacity="0.3"/>
-      <rect x="92.5" y="210" width="52.5" height="30" fill="#10b981" fill-opacity="0.3"/>
-      <rect x="40" y="270" width="52.5" height="30" fill="#f59e0b" fill-opacity="0.3"/>
-      <path d="M40 90 H250 V120 H40 Z M92.5 90 V120 M145 90 V120 M197.5 90 V120 M40 150 H250 V180 H40 Z M92.5 150 V180 M145 150 V180 M197.5 150 V180 M40 210 H250 V240 H40 Z M92.5 210 V240 M145 210 V240 M197.5 210 V240 M40 270 H250 V300 H40 Z M92.5 270 V300 M145 270 V300 M197.5 270 V300" fill="#ffffff" fill-opacity="0" stroke="#737373" stroke-width="1.5"/>
+      <text x="360" y="50">on-chip memory of one SM</text>
+      <rect x="5" y="65" width="230" height="250" rx="8" fill="#ffffff" fill-opacity="0" stroke="#d4d4d4" stroke-width="1.5"/>
+      <rect x="355" y="65" width="280" height="250" rx="8" fill="#ffffff" fill-opacity="0" stroke="#d4d4d4" stroke-width="1.5"/>
+      <rect x="40" y="90" width="45" height="30" fill="#3b82f6" fill-opacity="0.3"/>
+      <rect x="85" y="150" width="45" height="30" fill="#10b981" fill-opacity="0.3"/>
+      <rect x="85" y="210" width="45" height="30" fill="#10b981" fill-opacity="0.3"/>
+      <rect x="40" y="270" width="45" height="30" fill="#f59e0b" fill-opacity="0.3"/>
+      <path d="M40 90 H220 V120 H40 Z M85 90 V120 M130 90 V120 M175 90 V120 M40 150 H220 V180 H40 Z M85 150 V180 M130 150 V180 M175 150 V180 M40 210 H220 V240 H40 Z M85 210 V240 M130 210 V240 M175 210 V240 M40 270 H220 V300 H40 Z M85 270 V300 M130 270 V300 M175 270 V300" fill="#ffffff" fill-opacity="0" stroke="#737373" stroke-width="1.5"/>
       <text x="30" y="110" text-anchor="end">Q</text><text x="30" y="170" text-anchor="end">K</text><text x="30" y="230" text-anchor="end">V</text><text x="30" y="290" text-anchor="end">O</text>
       <rect x="370" y="90" width="125" height="30" rx="6" fill="#ffffff" stroke="#3b82f6" stroke-width="1.5"/><text x="432.5" y="110" text-anchor="middle">query block 1</text>
       <rect x="370" y="150" width="125" height="30" rx="6" fill="#ffffff" stroke="#10b981" stroke-width="1.5"/><text x="432.5" y="170" text-anchor="middle">key block 2</text>
       <rect x="370" y="210" width="125" height="30" rx="6" fill="#ffffff" stroke="#10b981" stroke-width="1.5"/><text x="432.5" y="230" text-anchor="middle">value block 2</text>
       <rect x="370" y="270" width="125" height="30" rx="6" fill="#ffffff" stroke="#f59e0b" stroke-width="1.5"/><text x="432.5" y="290" text-anchor="middle">running output</text>
-      <rect x="510" y="150" width="112" height="90" rx="6" fill="#ffffff" stroke="#10b981" stroke-width="1.5"/><text x="566" y="190" text-anchor="middle">scores for</text><text x="566" y="208" text-anchor="middle">these blocks</text>
-      <path d="M254 105 H366 M254 165 H366 M254 225 H366 M370 285 H258" stroke="#737373" stroke-width="2" marker-end="url(#fa2-muted)"/>
-      <text x="310" y="97" text-anchor="middle" font-size="13" fill="#737373">loaded once</text>
-      <text x="310" y="157" text-anchor="middle" font-size="13" fill="#737373">block by block</text>
-      <text x="310" y="217" text-anchor="middle" font-size="13" fill="#737373">block by block</text>
-      <text x="310" y="277" text-anchor="middle" font-size="13" fill="#737373">written once</text>
+      <rect x="510" y="150" width="112" height="90" rx="6" fill="#ffffff" stroke="#ef4444" stroke-width="1.5"/><text x="566" y="190" text-anchor="middle">scores for</text><text x="566" y="208" text-anchor="middle">these blocks</text>
+      <path d="M226 105 H366" stroke="#737373" stroke-width="2" marker-end="url(#fa2-muted)"/>
+      <path d="M226 165 H366" stroke="#737373" stroke-width="2" marker-end="url(#fa2-muted)"/>
+      <path d="M226 225 H366" stroke="#737373" stroke-width="2" marker-end="url(#fa2-muted)"/>
+      <path d="M370 285 H228" stroke="#737373" stroke-width="2" marker-end="url(#fa2-muted)"/>
+      <text x="296" y="97" text-anchor="middle" font-size="13" fill="#737373">loaded once</text>
+      <text x="296" y="157" text-anchor="middle" font-size="13" fill="#737373">block by block</text>
+      <text x="296" y="217" text-anchor="middle" font-size="13" fill="#737373">block by block</text>
+      <text x="296" y="277" text-anchor="middle" font-size="13" fill="#737373">written once</text>
       </g>
       </svg>
       ```
@@ -251,7 +260,7 @@ knowledge_points:
 
       ### Limitations of fast attention kernels
 
-      A fused kernel must move at least $4Td_h$ numbers. A real kernel reads every block of $K$ and $V$ again for each block of queries, so it reads more. The FlashAttention paper shows that the extra traffic shrinks as the on-chip memory grows, because bigger query blocks mean $K$ and $V$ are read fewer times. But the $T\times T$ tables still never go to HBM. So the earlier $1.024$ MB and intensity of $500$ are best cases.
+      A fused kernel must move at least $4Td_h$ numbers. A real kernel reads every block of $K$ and $V$ again for each block of queries, so it reads more. The FlashAttention paper shows that the extra traffic of a blocked kernel shrinks as the on-chip memory grows, because bigger blocks mean fewer passes over the data. But the $T\times T$ tables still never go to HBM. So the earlier $1.024$ MB and intensity of $500$ are best cases.
 
       Fusion doesn't cut any FLOPs either. The matrix multiplies still cost $4T^2d_h$ FLOPs, and the extra softmax work is small, so doubling a long prompt still makes attention about four times slower. PyTorch's `scaled_dot_product_attention`, in `torch.nn.functional`, picks a kernel itself. On GPUs that support it, that can be a FlashAttention kernel.
     worked: |
