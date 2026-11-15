@@ -220,23 +220,23 @@ knowledge_points:
 
       Q-learning's target always uses $\max_{a'}Q(s',a')$, the greedy choice in $s'$, even when the robot's next move will be a random one. So the table learns the values of acting greedily, the best values, while the robot behaves with some randomness. The rule a robot uses to choose its moves is called its **policy**. Q-learning learns the values of acting greedily. Meanwhile it follows a different policy, epsilon-greedy. So it is called **off-policy**.
 
-      Be careful not to put the value of the next move the robot actually makes into the target. A related method called SARSA does that. Its values count the reward lost to the robot's future random moves, so they come out lower than the best values.
+      Be careful not to put the value of the next move the robot actually makes into the target. A related method called SARSA does that. It learns the values of the epsilon-greedy policy it follows, which can be lower than the best values when future random moves cost reward.
     worked: |
-      Let's look at an epsilon-greedy robot in the corridor with the charger, using $\varepsilon=0.1$, $\eta=0.5$ and $\gamma=0.9$.
+      Let's go back to the corridor without the charger and continue the example from Step 2. Episode 2 there also moved $Q(1,\text{right})$ halfway from $-0.5$ toward a target of $-1$, to $-0.75$, and $Q(3,\text{right})$ halfway from $5$ toward $10$, to $7.5$. So the table holds $Q(1,\text{right})=-0.75$, $Q(2,\text{right})=1.5$ and $Q(3,\text{right})=7.5$, and every left value is still $0$. From episode 3 on, the robot moves epsilon-greedily with $\varepsilon=0.1$, and still $\eta=0.5$ and $\gamma=0.9$.
 
-      1. **Find the chance of the greedy move.** In cell 1, left has the bigger value, $0.5$ against $0$. The robot picks left greedily with probability $0.9$, and its random pick, made with probability $0.1$, lands on left half the time.
+      1. **Find the chance of the greedy move.** In cell 1, left has the bigger value, $0$ against $-0.75$, because so far right has only cost rewards of $-1$. The robot picks left greedily with probability $0.9$, and its random pick, made with probability $0.1$, lands on left half the time.
          $$P(\text{left})=0.9+0.1\times\tfrac12=0.95.$$
 
       2. **Find the chance of exploring right.** Right only happens through the random pick.
          $$P(\text{right})=0.1\times\tfrac12=0.05.$$
 
-      3. **Build a target while exploring.** Later in this run, when the table holds $Q(2,\text{right})=1$, the robot moves right from cell 2, earns $-1$ and lands in cell 3, where $Q(3,\text{left})=2$ and $Q(3,\text{right})=6$. The target uses the larger value, $6$, even if the robot's next move from cell 3 turns out to be a random left.
-         $$\text{target}=-1+0.9\times6=4.4.$$
+      3. **Build a target while exploring.** Say the random pick sends the robot right. It earns $-1$ and lands in cell 2, where $Q(2,\text{left})=0$ and $Q(2,\text{right})=1.5$. The target uses the larger value, $1.5$, even though the move just made was random.
+         $$\text{target}=-1+0.9\times1.5=0.35.$$
 
-      4. **Update $Q(2,\text{right})$.** It was $1$, so the TD error is $4.4-1=3.4$, and we move half of it.
-         $$Q(2,\text{right})\leftarrow1+0.5\times3.4=2.7.$$
+      4. **Update $Q(1,\text{right})$.** It was $-0.75$, so the TD error is $0.35-(-0.75)=1.1$, and we move half of it.
+         $$Q(1,\text{right})\leftarrow-0.75+0.5\times1.1=-0.2.$$
 
-      The random left move changed what the robot did next, but not the target, which is why the table keeps learning the best values.
+      The random move let the robot try right in cell 1, and the target still used the best value in cell 2. That is why the table keeps learning the best values while the robot explores.
     problems:
       - ql-explore-basics
       - qlp-greedy-chance-self-explain
@@ -262,9 +262,9 @@ knowledge_points:
 
       ### What the table ends up as
 
-      On the corridor without the charger, with $\eta=0.5$, $\varepsilon=0.1$ and $\gamma=0.9$, the code below needs 500 episodes for the table to settle on the best values. Right is worth $6.2$, $8$ and $10$ in cells 1, 2 and 3, and left is worth $4.58$, $4.58$ and $6.2$. The left values are only learned from random moves, so they need the most episodes.
+      On the corridor without the charger, with $\eta=0.5$, $\varepsilon=0.1$ and $\gamma=0.9$, the code below runs 500 episodes, enough for every entry to match the best values to 2 decimals. Right is worth $6.2$, $8$ and $10$ in cells 1, 2 and 3, and left is worth $4.58$, $4.58$ and $6.2$. Once right is greedy, left values change only through exploration, so they settle last.
 
-      Chris Watkins introduced Q-learning in his 1989 PhD thesis. In 1992, Watkins and Peter Dayan proved that it reaches the best values in any problem with a finite number of states and actions, as long as every action keeps being tried in every state and the learning rate shrinks toward $0$ at the right speed. On a small, predictable problem like the corridor, a fixed rate such as $0.5$ also works.
+      Chris Watkins introduced Q-learning in his 1989 PhD thesis. In 1992, Watkins and Peter Dayan proved that it reaches the best values in any problem with a finite number of states and actions, bounded rewards and $\gamma<1$, as long as every action keeps being tried in every state and the learning rate shrinks toward $0$ at the right speed. On the corridor, a fixed rate such as $0.5$ also works.
 
       ### Limitations: one entry per state
 
@@ -272,20 +272,19 @@ knowledge_points:
 
       A later lesson on deep Q-learning replaces the table with a neural network, a model that predicts the values from the state. That is how DQN (deep Q-network) learned to play Atari video games from screen pixels (Mnih and colleagues, 2013).
     worked: |
-      Let's follow one episode late in training, when the robot always moves right and its table holds $Q(1,\text{right})=4$, $Q(2,\text{right})=6$ and $Q(3,\text{right})=9$, with every left value below these. We use $\eta=0.5$ and $\gamma=0.9$.
+      Let's finish episode 3 from Step 3's example. The robot is in cell 2, where $Q(2,\text{left})=0$ and $Q(2,\text{right})=1.5$, and cell 3 holds $Q(3,\text{left})=0$ and $Q(3,\text{right})=7.5$. We use $\eta=0.5$ and $\gamma=0.9$.
 
-      1. **Move from cell 1 to cell 2.** The target uses cell 2's current guess, $6$, so the TD error is $4.4-4=0.4$.
-         $$Q(1,\text{right})\leftarrow4+0.5\times(-1+0.9\times6-4)=4.2.$$
+      1. **Choose in cell 2.** Right, $1.5$, beats left, $0$, so the greedy move is right. Say the robot makes it.
 
-      2. **Move from cell 2 to cell 3.** The target uses cell 3's current guess, $9$, so the TD error is $7.1-6=1.1$.
-         $$Q(2,\text{right})\leftarrow6+0.5\times(-1+0.9\times9-6)=6.55.$$
+      2. **Move from cell 2 to cell 3.** The target uses cell 3's current guess, $7.5$, so it is $-1+0.9\times7.5=5.75$, and the TD error is $5.75-1.5=4.25$.
+         $$Q(2,\text{right})\leftarrow1.5+0.5\times4.25=3.625.$$
 
-      3. **Move from cell 3 to the goal.** The episode ends, so the target is just the reward, $10$.
-         $$Q(3,\text{right})\leftarrow9+0.5\times(10-9)=9.5.$$
+      3. **Move from cell 3 to the goal.** Right is greedy again. The episode ends, so the target is just the reward, $10$.
+         $$Q(3,\text{right})\leftarrow7.5+0.5\times(10-7.5)=8.75.$$
 
-      Each value moved toward its best value, $6.2$, $8$ and $10$. Cell 1's target used cell 2's old guess of $6$, which is still too low, so cell 1 will keep improving as cell 2 does.
+      After three episodes, right is worth $-0.2$, $3.625$ and $8.75$ in cells 1, 2 and 3, still short of the best values $6.2$, $8$ and $10$. Cell 2's target used cell 3's guess of $7.5$, which is still too low, so cell 2 keeps improving as cell 3 does.
 
-      Here is the whole algorithm in Python, running 500 episodes. `Q` is a dictionary that maps a (cell, action) pair to its value. `random.random()` gives a number between $0$ and $1$, so it is below `eps` with probability $\varepsilon$, and `random.choice` picks an action at random. `lambda b: Q[(s, b)]` is a small unnamed function that gives the value of action `b`. So `max(..., key=...)` picks the action whose value is biggest. `eta` is the learning rate. The `while` loop runs one episode, and `+=` adds to a value.
+      Here is the whole algorithm in Python, running 500 episodes. `Q` is a dictionary that maps a (cell, action) pair to its value, and the line that builds it makes one entry, set to $0$, for each pair. `def step(s, a)` defines a function that returns the next cell and the reward for a move. `random.random()` gives a number between $0$ and $1$, so it is below `eps` with probability $\varepsilon$, and `random.choice` picks an action at random. `lambda b: Q[(s, b)]` is a small unnamed function that gives the value of action `b`. So `max(..., key=...)` picks the action whose value is biggest. `eta` is the learning rate. The `while` loop runs one episode, and `+=` adds to a value.
 
       ```python
       import random

@@ -6,7 +6,7 @@ exercises:
     role: diagnostic
     difficulty: 3
     est_minutes: 3
-    prompt: "Q-learning update with $\\alpha = 0.5$, $\\gamma = 0.9$. Currently $Q(s, a) = 2$. Taking $a$ in $s$ gives reward $r = 1$ and next state $s'$ with $\\max_{a'} Q(s', a') = 5$. What is the new $Q(s, a)$?"
+    prompt: "Q-learning update with $\\eta = 0.5$, $\\gamma = 0.9$. Currently $Q(s, a) = 2$. Taking $a$ in $s$ gives reward $r = 1$ and next state $s'$ with $\\max_{a'} Q(s', a') = 5$. What is the new $Q(s, a)$?"
     answer: 3.75
     tolerance: { abs: 0.005 }
     common_wrong:
@@ -14,7 +14,7 @@ exercises:
           answer: 5.5,
           tolerance: { abs: 0.005 },
           category: misunderstood_definition,
-          feedback: "5.5 is the TD target. The update only moves $Q$ a fraction $\\alpha$ of the way toward it.",
+          feedback: "5.5 is the TD target. The update only moves $Q$ a fraction $\\eta$ of the way toward it.",
         }
     solution: "Target $= r + \\gamma \\max Q(s',\\cdot) = 1 + 4.5 = 5.5$. $Q \\leftarrow 2 + 0.5\\,(5.5 - 2) = 3.75$."
   - id: ql-q-table-basics
@@ -250,10 +250,10 @@ exercises:
         category: incorrect_reasoning
         feedback: The target uses the max over the next state's actions, whatever the robot did before.
       - id: c
-        text: Five is half of the reward of $10$, because $\eta=0.5$.
+        text: The TD target always multiplies the next cell's reward by the learning rate.
         correct: false
-        category: incorrect_reasoning
-        feedback: The $5$ is what the table held after the first update. The target reads it from the table.
+        category: misunderstood_definition
+        feedback: The learning rate only sets how far an update moves. The target reads cell 3's values from the table, $0$ and $5$, and takes the larger.
     solution: The target is $-1+0.9\times\max(Q(3,\text{left}),Q(3,\text{right}))$. After the first episode those were $0$ and $5$, so the max is $5$.
   - id: qlp-update-template
     dimension: math
@@ -433,7 +433,7 @@ exercises:
         correct: true
         feedback: Left comes from the greedy choice, $0.9$, plus half of the random picks, $0.05$.
       - id: b
-        text: Left's value of $0.5$ adds a little to its chance of being picked.
+        text: Left's lead over right, $0$ against $-0.75$, adds a little to its chance of being picked.
         correct: false
         category: incorrect_reasoning
         feedback: Epsilon-greedy doesn't use the size of the values, only which one is biggest.
@@ -476,14 +476,12 @@ exercises:
     params:
       k:
         min: 2
-        max: 5
+        max: 3
         step: 1
       eps:
-        min: 0.2
-        max: 0.6
-        step: 0.2
-    constraints:
-      - "k != 3"
+        min: 0.1
+        max: 0.5
+        step: 0.1
     answer_expr: 1 - eps + eps / k
     tolerance:
       abs: 0.005
@@ -554,7 +552,7 @@ exercises:
         text: Keep $\varepsilon=0.2$, because the values assume some random moves.
         correct: false
         category: misunderstood_definition
-        feedback: That would be true for SARSA. Q-learning's values assume greedy moves after each action.
+        feedback: Those would be values for an exploratory policy, and Q-learning's values assume greedy moves after each action. Once training ends, the vacuum can choose the move with the largest learned value.
       - id: c
         text: Pick each move with probability in proportion to its value.
         correct: false
@@ -596,14 +594,14 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: In the worked example, why does $Q(1,\text{right})$ rise only from $4$ to $4.2$, when its best value is $6.2$?
+    prompt: In the worked example, why does $Q(2,\text{right})$ rise only from $1.5$ to $3.625$, when its best value is $8$?
     options:
       - id: a
-        text: Its target uses cell 2's guess of $6$, which is still too low.
+        text: Its target uses cell 3's guess of $7.5$, which is still too low, and the update moves only halfway.
         correct: true
-        feedback: The target is $-1+0.9\times6=4.4$, and the update moves halfway to it.
+        feedback: The target is $-1+0.9\times7.5=5.75$, and the update moves halfway to it.
       - id: b
-        text: Cell 1 is far from the goal, so its updates are always small.
+        text: Cell 2 is far from the goal, so its updates are always small.
         correct: false
         category: incorrect_reasoning
         feedback: The size of an update is $\eta$ times the gap, wherever the cell is.
@@ -611,8 +609,8 @@ exercises:
         text: The robot explored on that move, so the update was smaller.
         correct: false
         category: incorrect_reasoning
-        feedback: In this episode the robot moved right every time, and exploring doesn't shrink updates anyway.
-    solution: The target $-1+0.9\times6=4.4$ is built from cell 2's current guess, $6$, which is below its best value, $8$. Moving halfway from $4$ to $4.4$ gives $4.2$. As cell 2's value rises, cell 1's targets rise too.
+        feedback: The robot made the greedy move there, and exploring doesn't shrink updates anyway.
+    solution: The target $-1+0.9\times7.5=5.75$ is built from cell 3's current guess, $7.5$, which is below its best value, $10$. Moving halfway from $1.5$ to $5.75$ gives $3.625$. As cell 3's value rises, cell 2's targets rise too.
   - id: qlp-move-order
     dimension: implementation
     type: mc
@@ -674,6 +672,7 @@ exercises:
     accept:
       - "0"
       - "0.0"
+      - "0.00"
     solution: After the episode ends nothing more can be earned, so the best next value is `0` and the target is just the reward `r`.
   - id: qlp-grid-table-size
     dimension: math
@@ -681,18 +680,18 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: A robot moves on a grid of 5 by 4 cells and can go up, down, left or right. One cell is the goal, where the episode ends. How many entries does its Q-table need?
-    answer: 76
+    prompt: A robot moves along a track of 4 cells and in each cell can go left, go right or wait. Reaching the cell at the far end ends the episode. How many entries does its Q-table need?
+    answer: 9
     tolerance:
       abs: 0.001
     common_wrong:
-      - answer: 80
+      - answer: 12
         category: incorrect_reasoning
-        feedback: The goal ends the episode, so no actions are taken there and it needs no entries.
-      - answer: 19
+        feedback: The far-end cell ends the episode, so no actions are taken there and it needs no entries.
+      - answer: 3
         category: misunderstood_definition
-        feedback: The table has one entry per state and action, so multiply the 19 states by 4 actions.
-    solution: There are $5\times4=20$ cells, and the goal needs no entries, so 19 states. With 4 actions each, that is $19\times4=76$ entries.
+        feedback: The table has one entry per state and action, so multiply the 3 states by 3 actions.
+    solution: Of the 4 cells, the far-end one needs no entries, so there are 3 states. With 3 actions each, that is $3\times3=9$ entries.
   - id: qlp-arm-states
     dimension: transfer
     type: mc
