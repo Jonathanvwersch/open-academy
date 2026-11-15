@@ -34,7 +34,7 @@ import {
   tutorSolutionFor,
 } from './feedback-context.js';
 import { buildTutorPageContent } from './page-context.js';
-import type { TutorService } from './service.js';
+import { type TutorService, tutorFailureDetails } from './service.js';
 
 type Ctx = Context<ApiEnv>;
 const optionalNullable = <T extends z.ZodTypeAny>(schema: T) =>
@@ -58,26 +58,6 @@ export const tutorThreadBodySchema = z.object({
 function formatThreadTitle(question: string): string {
   const collapsed = question.replace(/\s+/g, ' ').trim();
   return collapsed.length > 80 ? `${collapsed.slice(0, 79)}…` : collapsed;
-}
-
-function tutorFailureLogDetails(error: unknown, fallbackStatus?: string) {
-  const failure =
-    error && typeof error === 'object'
-      ? (error as {
-          name?: unknown;
-          status?: unknown;
-          code?: unknown;
-          reason?: unknown;
-          incomplete_details?: { reason?: unknown } | null;
-        })
-      : null;
-  const reason = failure?.reason ?? failure?.incomplete_details?.reason;
-  return {
-    name: typeof failure?.name === 'string' ? failure.name : 'Error',
-    status: typeof failure?.status === 'number' ? failure.status : fallbackStatus,
-    code: typeof failure?.code === 'string' ? failure.code : undefined,
-    reason: typeof reason === 'string' ? reason : fallbackStatus,
-  };
 }
 
 function threadTitleFromMessages() {
@@ -603,7 +583,7 @@ export function registerTutorThreadRoutes(
           thread: request.thread,
         });
       }
-      console.error('tutor reply failed', tutorFailureLogDetails(cause));
+      console.error('tutor reply failed', tutorFailureDetails(cause));
       await rollbackFailedMessage();
       if (signal.aborted) {
         return c.json({
@@ -626,7 +606,7 @@ export function registerTutorThreadRoutes(
           thread: request.thread,
         });
       }
-      console.error('tutor reply failed', tutorFailureLogDetails(result.failure, result.status));
+      console.error('tutor reply failed', tutorFailureDetails(result.failure, result.status));
       await rollbackFailedMessage();
       if (signal.aborted) {
         return c.json({

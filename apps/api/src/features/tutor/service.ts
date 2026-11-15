@@ -11,14 +11,14 @@ import {
 } from './provider.js';
 import type { ExplanationContext, TutorContext, TutorLevel } from './schemas.js';
 
-type TutorFailureDetails = {
+export type TutorFailureDetails = {
   name: string;
-  status?: number;
+  status?: number | string;
   code?: string;
   reason?: string;
 };
 
-function tutorFailureDetails(error: unknown): TutorFailureDetails {
+export function tutorFailureDetails(error: unknown, fallbackStatus?: string): TutorFailureDetails {
   const failure =
     error && typeof error === 'object'
       ? (error as {
@@ -32,9 +32,9 @@ function tutorFailureDetails(error: unknown): TutorFailureDetails {
   const reason = failure?.reason ?? failure?.incomplete_details?.reason;
   return {
     name: typeof failure?.name === 'string' ? failure.name : 'ProviderError',
-    status: typeof failure?.status === 'number' ? failure.status : undefined,
+    status: typeof failure?.status === 'number' ? failure.status : fallbackStatus,
     code: typeof failure?.code === 'string' ? failure.code : undefined,
-    reason: typeof reason === 'string' ? reason : undefined,
+    reason: typeof reason === 'string' ? reason : fallbackStatus,
   };
 }
 

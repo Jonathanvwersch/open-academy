@@ -1065,6 +1065,110 @@ test('a failed tutor message can be edited into the draft', async ({ page }) => 
   await expect(tutor.getByRole('alert')).toHaveCount(0);
 });
 
+test('a repeated tutor question stays visible once while the second reply is pending', async ({
+  page,
+}) => {
+  let threadId = '';
+  let sendCount = 0;
+  const messages: MockedTutorMessage[] = [];
+  const secondRequestStarted = deferred();
+  const releaseSecondRequest = deferred();
+  const thread = () => ({
+    id: threadId,
+    conceptId: 'supervised-learning',
+    title: 'Repeated question',
+    updatedAt: '2026-01-01T12:00:00.004Z',
+  });
+  const detail = () => ({
+    thread: {
+      ...thread(),
+      conceptTitle: 'Supervised learning',
+      messageCount: messages.length,
+      lastMessagePreview: messages.at(-1)?.content ?? '',
+    },
+    messages: [...messages],
+  });
+
+  await page.addInitScript(() => {
+    localStorage.removeItem('academy.tutor.open');
+    localStorage.removeItem('academy.tutor.thread');
+  });
+  await page.route('**/api/tutor/status', (route) =>
+    route.fulfill({ json: { tutorEnabled: true } }),
+  );
+  await page.route('**/api/tutor/threads**', async (route) => {
+    const url = new URL(route.request().url());
+    if (route.request().method() === 'POST') {
+      const body = route.request().postDataJSON() as { question: string; threadId?: string };
+      expect(body.question).toBe('please');
+      sendCount += 1;
+      if (sendCount === 1) {
+        expect(url.pathname).toBe('/api/tutor/threads');
+        expect(body.threadId).toBeTruthy();
+        threadId = body.threadId ?? '';
+      } else {
+        expect(url.pathname).toBe(`/api/tutor/threads/${threadId}/messages`);
+      }
+      const userMessage: MockedTutorMessage = {
+        id: `user-please-${sendCount}`,
+        role: 'user',
+        content: body.question,
+        createdAt: `2026-01-01T12:00:00.00${sendCount * 2 - 1}Z`,
+      };
+      messages.push(userMessage);
+      if (sendCount === 2) {
+        secondRequestStarted.resolve();
+        await releaseSecondRequest.promise;
+      }
+      const assistantMessage: MockedTutorMessage = {
+        id: `assistant-please-${sendCount}`,
+        role: 'assistant',
+        content: `Tutor reply ${sendCount}`,
+        createdAt: `2026-01-01T12:00:00.00${sendCount * 2}Z`,
+      };
+      messages.push(assistantMessage);
+      await route.fulfill({
+        json: { thread: thread(), messages: [userMessage, assistantMessage] },
+      });
+      return;
+    }
+
+    if (url.pathname === '/api/tutor/threads') {
+      await route.fulfill({ json: threadId ? [detail().thread] : [] });
+      return;
+    }
+    if (url.pathname === `/api/tutor/threads/${threadId}`) {
+      await route.fulfill({ json: detail() });
+      return;
+    }
+    await route.continue();
+  });
+
+  await page.goto(`/session/${sessionId}`);
+  await page.getByRole('button', { name: 'Ask the tutor' }).click();
+  const tutor = page.getByRole('complementary', { name: 'Tutor' });
+  const textarea = tutor.getByLabel('Ask the tutor');
+  await tutor.getByRole('button', { name: 'New chat', exact: true }).click();
+
+  await textarea.fill('please');
+  await textarea.press('Enter');
+  await expect(tutor.getByTestId('tutor-assistant-message')).toContainText('Tutor reply 1');
+
+  await textarea.fill('please');
+  await textarea.press('Enter');
+  await secondRequestStarted.promise;
+  const userMessages = tutor.getByTestId('tutor-user-message');
+  await expect(userMessages).toHaveCount(2);
+  await expect(userMessages.nth(0)).toContainText('please');
+  await expect(userMessages.nth(1)).toContainText('please');
+  await expect(tutor.getByTestId('tutor-thinking-bubble')).toHaveCount(1);
+  await expect(tutor.getByTestId('tutor-assistant-message')).toHaveCount(1);
+
+  releaseSecondRequest.resolve();
+  await expect(tutor.getByTestId('tutor-assistant-message')).toHaveCount(2);
+  await expect(userMessages).toHaveCount(2);
+});
+
 test('a failed steered message is rolled back before retrying once', async ({ page }) => {
   const firstQuestion = 'Sorry, can you explain this to me step by step? What is this page about?';
   const steeredQuestion = 'please';

@@ -133,6 +133,7 @@ interface TutorSendVariables {
   optimisticId: string;
   signal: AbortSignal;
   sendId: number;
+  baseMessageCount: number;
 }
 
 interface TutorSendResponse {
@@ -150,6 +151,7 @@ interface TutorSendResponse {
 interface PendingTutorMessage {
   id: string;
   threadId: string;
+  baseMessageCount: number;
   createThread: boolean;
   context: TutorRequestContext;
   role: 'user';
@@ -360,10 +362,18 @@ export function TutorContextProvider({
       if (!response.ok) throw new Error(payload.error ?? 'Tutor is unavailable.');
       return payload;
     },
-    onMutate: ({ question, threadId, createThread, context: requestContext, optimisticId }) => {
+    onMutate: ({
+      question,
+      threadId,
+      baseMessageCount,
+      createThread,
+      context: requestContext,
+      optimisticId,
+    }) => {
       setPendingSend({
         id: optimisticId,
         threadId,
+        baseMessageCount,
         createThread,
         context: requestContext,
         role: 'user',
@@ -458,6 +468,7 @@ export function TutorContextProvider({
       setFailedSend({
         id: variables.optimisticId,
         threadId: variables.threadId,
+        baseMessageCount: variables.baseMessageCount,
         createThread: variables.createThread,
         context: variables.context,
         role: 'user',
@@ -540,8 +551,13 @@ export function TutorContextProvider({
   const visibleFailedSend = failedSend?.threadId === visibleThreadId ? failedSend : null;
   const pendingMessageIsServerBacked =
     visiblePendingSend !== null &&
-    messages.at(-1)?.role === 'user' &&
-    messages.at(-1)?.content === visiblePendingSend.content;
+    messages.length > visiblePendingSend.baseMessageCount &&
+    messages.some(
+      (message, index) =>
+        index >= visiblePendingSend.baseMessageCount &&
+        message.role === 'user' &&
+        message.content === visiblePendingSend.content,
+    );
   const isSending = visiblePendingSend !== null;
   const threadGroups = groupThreads(threads.data ?? []);
   const noChats = !threads.isPending && !threads.isError && threadGroups.length === 0;
@@ -573,6 +589,11 @@ export function TutorContextProvider({
     createThread: boolean,
     requestContext: TutorRequestContext,
   ) => {
+    const cachedDetail = queryClient.getQueryData<TutorThreadDetail>(['tutor', 'thread', threadId]);
+    const baseMessageCount =
+      cachedDetail?.messages.length ??
+      threads.data?.find((thread) => thread.id === threadId)?.messageCount ??
+      0;
     if (createThread) newThreadId.current = threadId;
     activeRequestController.current?.abort();
     const controller = new AbortController();
@@ -591,6 +612,7 @@ export function TutorContextProvider({
       optimisticId,
       signal: controller.signal,
       sendId,
+      baseMessageCount,
     });
     conversationContextRef.current?.scrollToBottom();
     if (requestContext.selection) clearSelection();
