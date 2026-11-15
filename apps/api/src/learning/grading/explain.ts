@@ -1,4 +1,3 @@
-import { type RubricJudgementValue, scoreRubricCriteria } from './rubric-score.js';
 import { graded } from './shared.js';
 import type { ExplainExercise, ExplanationGrader, GradeResult } from './types.js';
 
@@ -22,20 +21,18 @@ export class SelfCheckExplanationGrader implements ExplanationGrader {
     }
 
     const selected = new Set(metCriteria);
-    const score = scoreRubricCriteria(
-      exercise.rubric,
-      new Map<string, RubricJudgementValue>(
-        exercise.rubric.map((criterion) => [
-          criterion.id,
-          selected.has(criterion.id) ? 'met' : 'missing',
-        ]),
-      ),
-    );
-    const correctness = score === 1 ? 1 : score > 0 ? 0.5 : 0;
+    const hasRequiredCriteria = exercise.rubric.some(({ required }) => required);
+    const scoringCriteria = hasRequiredCriteria
+      ? exercise.rubric.filter(({ required }) => required)
+      : exercise.rubric;
+    const everyScoredCriterionSelected =
+      scoringCriteria.length > 0 && scoringCriteria.every(({ id }) => selected.has(id));
+    const anyCriterionSelected = exercise.rubric.some(({ id }) => selected.has(id));
+    const correctness = everyScoredCriterionSelected ? 1 : anyCriterionSelected ? 0.5 : 0;
     return graded(
       correctness,
       correctness === 1
-        ? 'Your self-check selected every rubric criterion.'
+        ? 'Your self-check selected every scored criterion.'
         : 'Compare your explanation with the criteria you did not select.',
       {
         graded_by: 'self',
