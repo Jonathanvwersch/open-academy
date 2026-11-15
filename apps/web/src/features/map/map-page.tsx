@@ -47,7 +47,7 @@ export function MapPage() {
   return (
     <section className="mx-auto w-full max-w-3xl space-y-6 px-4 pb-10 sm:px-6">
       <header className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Up next</h1>
+        <h1 className="sr-only">Up next</h1>
         <p className="text-sm text-muted-foreground">
           Your next topics across active courses, in projected study order.
         </p>

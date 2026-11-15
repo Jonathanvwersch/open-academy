@@ -78,7 +78,7 @@ test('Up next lists projected topics by week and keeps Finished collapsed', asyn
   );
   await page.goto('/map');
 
-  await expect(page.getByRole('heading', { name: 'Up next', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Up next', exact: true })).toBeAttached();
   await expect(page.getByRole('heading', { name: 'Week of Jan 5', exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Week of Jan 12', exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: /Topic One/ })).toContainText('Today');
