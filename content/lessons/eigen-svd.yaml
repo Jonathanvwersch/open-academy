@@ -142,7 +142,7 @@ knowledge_points:
 
       Some matrices have no real eigenvectors. Take
       $$B=\begin{bmatrix}4&-3\\6&8\end{bmatrix}.$$
-      Its eigenvalue equation has a negative number under the square root, $12^2-4\times50=-56$. The SVD gives us a description even here, and also works for nonsquare matrices. We'll work through the two-dimensional case.
+      Its eigenvalue equation has a negative number under the square root, $12^2-4\times50=-56$, so no real arrow is only stretched by $B$. A different description, the **singular value decomposition** or SVD, works for every matrix, even nonsquare ones. It splits a matrix into a turn, a stretch along the axes and another turn. We'll work through the two-dimensional case.
 
       ### Turn, stretch, turn
 
@@ -183,7 +183,7 @@ knowledge_points:
 
       ### The singular value decomposition
 
-      The **singular value decomposition** (SVD) writes a matrix as three moves. A turn may include a mirror flip, a reflection across a line:
+      In symbols, the SVD writes a matrix as three moves. A turn may include a mirror flip, a reflection across a line:
       $$A=USV^\top$$
       Read right to left. $V$ has the perpendicular length-$1$ input directions as columns. $V^\top$ dots the input with them. Each direction dots with itself to give $1$ and with the other to give $0$, so $v_1$ becomes $(1,0)$ and $v_2$ becomes $(0,1)$. The diagonal entries of $S$ are the **singular values**, the stretches $s_1\ge s_2\ge0$. $U$ has the perpendicular length-$1$ output directions as columns, so it turns each axis onto its output direction. Thus $Av_i=s_iu_i$.
 

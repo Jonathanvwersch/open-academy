@@ -19,7 +19,7 @@ knowledge_points:
     explain: |
       ### Readings around a centre
 
-      A Gaussian is completely fixed by its mean and standard deviation, so let's learn those two numbers. A sensor aimed at a wall 100 cm away gives readings of 97, 99, 100, 101 and 103 cm. A robot uses such readings to judge its distance from obstacles.
+      A **Gaussian** distribution, one with a symmetric bell-shaped curve, is completely fixed by its mean and standard deviation, which give its centre and spread, so let's learn those two numbers. A sensor aimed at a wall 100 cm away gives readings of 97, 99, 100, 101 and 103 cm. A robot uses such readings to judge its distance from obstacles.
 
       The **mean** is the average value. For a distribution, it is the expected value $E[X]$. For a list, add the readings and divide by how many there are. We write it as $\mu$, the Greek letter mu. Our mean is 100 cm.
 
@@ -83,7 +83,7 @@ knowledge_points:
 
       ### Height times width gives area
 
-      A **Gaussian distribution** has a symmetric bell-shaped curve. Its mean $\mu$ sets the centre and standard deviation $\sigma$ sets the spread. Near the peak, a narrow 0.1 cm interval has probability about $0.20\times0.1=0.02$. That 0.20 is the **density**, or probability per centimetre.
+      A Gaussian's mean $\mu$ sets the centre and standard deviation $\sigma$ sets the spread. Near the peak, a narrow 0.1 cm interval has probability about $0.20\times0.1=0.02$. That 0.20 is the **density**, or probability per centimetre.
 
       Narrower rectangles each get their own curve height. Their areas add to an interval's probability. The shaded area from 98 to 102 cm is about 68%. The thin ends far from the centre are called **tails**.
 
@@ -119,7 +119,7 @@ knowledge_points:
     explain: |
       ### Why calculate a height?
 
-      Equal small intervals near 100 and 102 cm have chances in a ratio of about 1.65 to 1. The shape factors give $1/e^{-1/2}\approx1/0.607\approx1.65$. Both readings share the front factor, so it cancels. Height times width estimates the chance. In the next lesson we'll use heights to choose the mean and spread that best match readings.
+      Equal small intervals near 100 and 102 cm have chances in a ratio of about 1.65 to 1. Height times width estimates the chance. In the next lesson we'll use heights to choose the mean and spread that best match readings.
 
       Keeping the centre at 100 cm, greater spread makes the bell wider and lower.
 
@@ -157,7 +157,7 @@ knowledge_points:
 
       The standard deviation $\sigma$ must be positive, and variance is $\sigma^2$. The bars' areas add up to 1, including bars beyond the picture. The curve needs total area 1 too.
 
-      The exact front factor needs maths beyond this lesson. Numerically, the shape-factor curve's area along the $z$ axis is $\sqrt{2\pi}\approx2.507$. Stretching width by $\sigma$ multiplies area by $\sigma$, so dividing by both gives area 1. Doubling the width makes the peak half as high.
+      The exact front factor, the fraction in front of the shape factor, needs maths beyond this lesson. Numerically, the shape-factor curve's area along the $z$ axis is $\sqrt{2\pi}\approx2.507$. Stretching width by $\sigma$ multiplies area by $\sigma$, so dividing by both gives area 1. Doubling the width makes the peak half as high. For 100 and 102 cm, the shape factors give $1/e^{-1/2}\approx1/0.607\approx1.65$. Both readings share the front factor, so it cancels.
 
       Height is not probability. With $\sigma=0.1$ cm the peak is about 3.99 per cm. A narrow curve can be that tall while its area stays 1.
     worked: |

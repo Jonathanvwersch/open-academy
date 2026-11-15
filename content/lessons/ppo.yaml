@@ -20,7 +20,7 @@ knowledge_points:
 
       Our robot lives in a corridor of 4 cells, numbered 1 to 4 from the left. It starts in cell 1 and moves left or right. If it moves into a wall, it stays where it is. Reaching cell 4 ends the episode with reward $+10$, and every other step gives $-1$. We use $\gamma=0.9$.
 
-      PPO also trains a second model, the **critic**, to predict returns. We write its estimates as $V(s)$, without the $\pi$. Say they are $V(1)=5$, $V(2)=7$ and $V(3)=9$. The critic is still learning, so these are rough guesses. Nothing happens after cell 4, so its value is $0$.
+      PPO (proximal policy optimization), which trains our robot's policy, also trains a second model, the **critic**, to predict returns. We write its estimates as $V(s)$, without the $\pi$. Say they are $V(1)=5$, $V(2)=7$ and $V(3)=9$. The critic is still learning, so these are rough guesses. Nothing happens after cell 4, so its value is $0$.
 
       ### Better or worse than usual
 
@@ -263,7 +263,7 @@ knowledge_points:
 
       ### What clipping prevents
 
-      Clipping takes away any gain from pushing an action's probability past $1\pm c$ times its old value, so noisy estimates can't drag the policy far in one batch. That makes it safe to take several passes over each batch. The paper's MuJoCo robot-control runs used 10 passes. The limit is soft, though. All samples share the same parameters $\theta$, so a step that raises one action's probability can also change probabilities in other states. People often track how far the new probabilities have moved from the old ones on the batch, and stop the passes once that gets too large.
+      Clipping takes away any gain from pushing an action's probability past $1\pm c$ times its old value, so noisy estimates can't drag the policy far in one batch. That makes it safe to take several passes over each batch. The paper's robot-control runs in the MuJoCo physics simulator used 10 passes. The limit is soft, though. All samples share the same parameters $\theta$, so a step that raises one action's probability can also change probabilities in other states. People often track how far the new probabilities have moved from the old ones on the batch, and stop the passes once that gets too large.
     worked: |
       Let's evaluate the clipped term with $c=0.2$, so ratios are clipped to the range $0.8$ to $1.2$. Each old probability is $0.5$.
 

@@ -135,7 +135,7 @@ knowledge_points:
       </svg>
       ```
 
-      A real buffer holds moves from many episodes, so a random minibatch mixes moves from many places and times, and each transition can be used in many updates. The 2015 DQN paper kept the last million transitions and drew minibatches of 32.
+      A real buffer holds moves from many episodes, so a random minibatch mixes moves from many places and times, and each transition can be used in many updates. The 2015 paper on DQN (deep Q-network), the method this lesson builds, kept the last million transitions and drew minibatches of 32.
 
       Be careful: you might think old moves teach the wrong thing, because the robot explored more when it made them. But the target uses the value of the best next action, whatever the old robot actually did next, so old moves are still useful.
 
@@ -257,7 +257,7 @@ knowledge_points:
     explain: |
       ### The DQN loop
 
-      We now have all the pieces of **DQN**, short for deep Q-network, the method DeepMind first showed in 2013 and refined in its 2015 Nature paper by Mnih and colleagues. Each pass of its loop does six things, as the picture shows.
+      We now have all the pieces of **DQN**, the method DeepMind first showed in 2013 and refined in its 2015 Nature paper by Mnih and colleagues. Each pass of its loop does six things, as the picture shows.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 230" aria-label="The DQN loop as six boxes in a cycle. 1, act epsilon-greedily with the Q-network. 2, store the transition s, a, r, s prime, done. 3, sample a random minibatch. 4, compute targets with the target network. 5, take a gradient step on the Q-network. 6, every C steps, copy theta into theta minus. Then back to 1">

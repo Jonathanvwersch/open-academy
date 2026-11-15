@@ -19,7 +19,7 @@ knowledge_points:
     explain: |
       ### Two heads reading "the cat sat"
 
-      Each head does ordinary attention with its own query, key and value matrices. We write a superscript $(i)$ on everything that belongs to head $i$.
+      Each of several **heads** does ordinary attention with its own query, key and value matrices. We write a superscript $(i)$ on everything that belongs to head $i$.
 
       Take the sentence "the cat sat", with whole words as tokens, and number the tokens 1, 2 and 3. Each embedding $e_t$ has width $d=4$, and we use $h=2$ heads. Each head's three matrices are $4\times2$, so they turn a 4-entry embedding into a query, key and value with $d_k=2$ entries each.
 
@@ -111,7 +111,7 @@ knowledge_points:
 
       Each head has now given every token an output of width $d_k$. In the sentence "the cat sat", with embeddings of width $d=4$ and two heads of width $d_k=2$, the token "sat" got $(0.33,1.35)$ from head 1 and $(2.18,0.84)$ from head 2.
 
-      A model stacks several attention layers, one after another, and each layer takes in one vector of width $d$ per token, the way the first one takes in the embeddings. So the last part of multi-head attention joins the heads' outputs into one vector of width $d$, ready for the next layer.
+      A model stacks several attention layers, one after another, and each layer takes in one vector of width $d$ per token, the way the first one takes in the embeddings. So the last part of multi-head attention, the layer built from these heads, joins the heads' outputs into one vector of width $d$, ready for the next layer.
 
       ### Write the outputs side by side, then mix them
 

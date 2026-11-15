@@ -144,7 +144,7 @@ knowledge_points:
 
       ### What a better split still misses
 
-      Grouping houses removes the duplicate-house shortcut, but other links can remain. A new train station might raise prices for many nearby houses at once, so those houses are still linked. A time split rehearses forecasting, but cannot prevent future market changes. We still need to ask how these held-out houses are linked and whether they resemble the houses we'll really price.
+      Grouping houses removes the duplicate-house shortcut, but other links can remain. A new train station might raise prices for many nearby houses at once, so those houses are still linked. A time split rehearses forecasting, but cannot prevent future market changes. We still need to ask how these held-out houses, the ones kept out of training for validation or testing, are linked and whether they resemble the houses we'll really price.
 
       After we remove leakage, the error may rise because the model can no longer recognise copied sales. That does not make the evaluation worse. It gives us a more honest check of how well the model predicts new houses.
     worked: |

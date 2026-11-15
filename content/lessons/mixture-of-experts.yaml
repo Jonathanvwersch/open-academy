@@ -19,7 +19,7 @@ knowledge_points:
     explain: |
       ### A router scores the experts
 
-      We have several MLPs in place of one. How does a token choose between them? A **router** is a learned scoring layer that reads the token's vector and assigns one score to each expert.
+      We have several MLPs, called experts, in place of one. How does a token choose between them? A **router** is a learned scoring layer that reads the token's vector and assigns one score to each expert.
 
       We'll use the sentence “the cat sat on the mat” and treat each word as one token. For “cat,” let its vector at this point in the model be $x=(1,0)$, with width $d=2$. The router computes scores $(1,1,0,0)$ for four experts. The orange paths select the two highest scores. Given expert outputs $(2,0)$ and $(0,4)$, equal weights combine them into $(1,2)$. The worked example shows how.
 
@@ -83,7 +83,7 @@ knowledge_points:
     explain: |
       ### Parameters we store and use
 
-      We ran two of four experts for “cat.” Why count what we store and what we use separately? The total determines the memory needed to store the layer's parameters. The active count helps estimate computation per token. Choosing a few experts lets the layer store more expert parameters while doing the same amount of expert calculation per token.
+      We ran two of four experts for “cat.” Why count what we store and what we use separately? The total determines the memory needed to store the layer's parameters. The active count, the parameters used for one token, helps estimate computation per token. Choosing a few experts lets the layer store more expert parameters while doing the same amount of expert calculation per token.
 
       **Total parameters** count every weight and bias in the layer. **Active parameters per token** count the router and the selected experts.
 
