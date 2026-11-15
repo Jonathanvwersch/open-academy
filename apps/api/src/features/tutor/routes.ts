@@ -19,6 +19,7 @@ import {
   studySessions,
   tutorMessages,
   tutorThreads,
+  users,
 } from '../../db/schema.js';
 import type { ApiEnv } from '../../http/context.js';
 import { courseFoundationIds } from '../../learning/prerequisites.js';
@@ -41,6 +42,7 @@ const optionalNullable = <T extends z.ZodTypeAny>(schema: T) =>
 
 export const tutorThreadBodySchema = z.object({
   question: z.string().trim().min(1).max(TUTOR_QUESTION_MAX_LENGTH),
+  threadId: optionalNullable(z.string().uuid()),
   conceptId: optionalNullable(z.string()),
   activityId: optionalNullable(z.string().uuid()),
   exerciseId: optionalNullable(z.string()),
@@ -167,28 +169,15 @@ export function registerTutorThreadRoutes(
       );
     }
     const input = parsed.data;
-    const [thread] = requestedThreadId
+    const targetThreadId = requestedThreadId ?? input.threadId;
+    const [thread] = targetThreadId
       ? await db
           .select()
           .from(tutorThreads)
-          .where(
-            and(eq(tutorThreads.id, requestedThreadId), eq(tutorThreads.userId, c.get('userId'))),
-          )
+          .where(and(eq(tutorThreads.id, targetThreadId), eq(tutorThreads.userId, c.get('userId'))))
           .limit(1)
       : [];
     if (requestedThreadId && !thread) return c.json({ error: 'Thread not found' }, 404);
-    const historyRows = thread
-      ? await db
-          .select()
-          .from(tutorMessages)
-          .where(eq(tutorMessages.threadId, thread.id))
-          .orderBy(desc(tutorMessages.seq))
-          .limit(12)
-      : [];
-    const history = historyRows.reverse().map((m) => ({
-      role: m.role === 'assistant' ? ('tutor' as const) : ('learner' as const),
-      content: m.content,
-    }));
     const index = await deps.content();
     if (input.page === 'paper' && !input.paperId) {
       return c.json({ error: 'Paper id is required for paper context' }, 400);
@@ -390,90 +379,263 @@ export function registerTutorThreadRoutes(
           : [];
     const service = deps.tutor(c);
     if (!service) return c.json({ error: 'Tutor unavailable' }, 503);
-    const result = await service.respond(
-      {
-        conceptTitle: concept?.title ?? 'General',
-        objectives: concept?.objectives.map((o) => o.text) ?? [],
-        lessonSummary:
-          lesson?.blocks
-            .filter((b) => b.kind === 'summary')
-            .map((b) => b.md)
-            .join('\n') ?? '',
-        exercisePrompt: exercise?.prompt ?? '',
-        exerciseLabel: exercise ? input.questionLabel || 'Current question' : '',
-        exerciseOptions: optionTexts.map(
-          ({ text }, index) => `${String.fromCharCode(65 + index)}. ${text}`,
-        ),
-        answerKey: tutorAnswerKeyFor(exercise, optionTexts),
-        learnerAnswer:
-          (status === 'retrying' || status === 'answered') && currentAttempt && exercise
-            ? tutorAnswerFor(exercise, currentAttempt.answer)
-            : '',
-        graderVerdict:
-          status === 'retrying' || status === 'answered' ? graderVerdictFor(correct) : '',
-        graderFeedback:
-          (status === 'retrying' || status === 'answered') && currentAttempt
-            ? formatGraderFeedback(currentAttempt.feedback, status === 'retrying')
-            : '',
-        hintLevel: 0,
-        authoredHints:
-          status === 'unanswered' || status === 'retrying' ? (exercise?.hints ?? []) : [],
-        solution:
-          status === 'unanswered' || status === 'retrying' ? '' : tutorSolutionFor(exercise),
-        recentMistakes: [],
-        question: input.question,
-        mode: 'practice',
-        history,
-        problem_status: status,
-        page: input.page ?? 'none',
-        page_content: pageContent,
-      },
-      status === 'unanswered' ? 'nudge' : status === 'retrying' ? 'hint' : 'worked_step',
-      index,
-    );
-    if (result.status !== 'ok' || !result.value) {
-      return c.json({ error: 'Tutor unavailable' }, 503);
-    }
-    const reply = result.value.message_md;
-    const requestedNow = deps.requestNow(c);
-    const [latestThread] = await db
-      .select({ updatedAt: tutorThreads.updatedAt })
-      .from(tutorThreads)
-      .where(eq(tutorThreads.userId, c.get('userId')))
-      .orderBy(desc(tutorThreads.updatedAt))
-      .limit(1);
-    const now = new Date(
-      Math.max(requestedNow.getTime(), (latestThread?.updatedAt.getTime() ?? 0) + 1),
-    );
-    const tutorMessageAt = new Date(now.getTime() + 1);
-    const saved = await db.transaction(async (tx) => {
-      let target = thread;
+
+    const signal = c.req.raw.signal;
+    const request = await db.transaction(async (tx) => {
+      await tx
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.id, c.get('userId')))
+        .for('update');
+      if (signal.aborted) {
+        return {
+          superseded: true as const,
+          ...(thread ? { thread } : {}),
+        };
+      }
+      const [latestThread] = await tx
+        .select({ updatedAt: tutorThreads.updatedAt })
+        .from(tutorThreads)
+        .where(eq(tutorThreads.userId, c.get('userId')))
+        .orderBy(desc(tutorThreads.updatedAt))
+        .limit(1);
+      const learnerMessageAt = new Date(
+        Math.max(deps.requestNow(c).getTime(), (latestThread?.updatedAt.getTime() ?? 0) + 1),
+      );
+      let target = targetThreadId
+        ? (
+            await tx
+              .select()
+              .from(tutorThreads)
+              .where(
+                and(eq(tutorThreads.id, targetThreadId), eq(tutorThreads.userId, c.get('userId'))),
+              )
+              .for('update')
+              .limit(1)
+          )[0]
+        : thread;
+      const createdThread = !target;
+      const previousUpdatedAt = target?.updatedAt ?? null;
       if (!target) {
         const [created] = await tx
           .insert(tutorThreads)
           .values({
+            ...(targetThreadId ? { id: targetThreadId } : {}),
             userId: c.get('userId'),
             conceptId,
             title: formatThreadTitle(input.question),
-            updatedAt: now,
+            updatedAt: learnerMessageAt,
           })
           .returning();
+        if (!created) throw new Error('Tutor thread was not created');
         target = created;
       }
-      const inserted = await tx
+      const historyRows = await tx
+        .select()
+        .from(tutorMessages)
+        .where(eq(tutorMessages.threadId, target.id))
+        .orderBy(desc(tutorMessages.seq))
+        .limit(12);
+      const [learnerMessage] = await tx
         .insert(tutorMessages)
-        .values([
-          {
-            userId: c.get('userId'),
-            threadId: target.id,
-            activityId: activityId ?? null,
-            exerciseId: exerciseId ?? null,
-            lessonProblemId: input.lessonProblemId ?? null,
-            role: 'user',
-            content: input.question,
-            createdAt: now,
-          },
-          {
+        .values({
+          userId: c.get('userId'),
+          threadId: target.id,
+          activityId: activityId ?? null,
+          exerciseId: exerciseId ?? null,
+          lessonProblemId: input.lessonProblemId ?? null,
+          role: 'user',
+          content: input.question,
+          createdAt: learnerMessageAt,
+        })
+        .returning({
+          seq: tutorMessages.seq,
+          id: tutorMessages.id,
+          role: tutorMessages.role,
+          content: tutorMessages.content,
+          createdAt: tutorMessages.createdAt,
+        });
+      if (!learnerMessage) throw new Error('Tutor learner message was not saved');
+      await tx
+        .update(tutorThreads)
+        .set({ updatedAt: learnerMessageAt })
+        .where(eq(tutorThreads.id, target.id));
+      return {
+        thread: { ...target, updatedAt: learnerMessageAt },
+        learnerMessage,
+        createdThread,
+        previousUpdatedAt,
+        history: historyRows.reverse().map((message) => ({
+          role: message.role === 'assistant' ? ('tutor' as const) : ('learner' as const),
+          content: message.content,
+        })),
+      };
+    });
+
+    if ('superseded' in request) return c.json(request);
+
+    const rollbackFailedMessage = async () => {
+      const abortedDuringRollback = new Error('Tutor request aborted during failure rollback');
+      try {
+        return await db.transaction(async (tx) => {
+          await tx
+            .select({ id: users.id })
+            .from(users)
+            .where(eq(users.id, c.get('userId')))
+            .for('update');
+          if (signal.aborted) return false;
+          const [latestMessage] = await tx
+            .select({ seq: tutorMessages.seq })
+            .from(tutorMessages)
+            .where(eq(tutorMessages.threadId, request.thread.id))
+            .orderBy(desc(tutorMessages.seq))
+            .limit(1);
+          await tx
+            .delete(tutorMessages)
+            .where(
+              and(
+                eq(tutorMessages.id, request.learnerMessage.id),
+                eq(tutorMessages.threadId, request.thread.id),
+                eq(tutorMessages.userId, c.get('userId')),
+              ),
+            );
+          if (signal.aborted) throw abortedDuringRollback;
+          const [remainingMessage] = await tx
+            .select({ id: tutorMessages.id })
+            .from(tutorMessages)
+            .where(eq(tutorMessages.threadId, request.thread.id))
+            .limit(1);
+          if (request.createdThread && !remainingMessage) {
+            await tx
+              .delete(tutorThreads)
+              .where(
+                and(
+                  eq(tutorThreads.id, request.thread.id),
+                  eq(tutorThreads.userId, c.get('userId')),
+                ),
+              );
+          } else if (
+            !request.createdThread &&
+            latestMessage?.seq === request.learnerMessage.seq &&
+            request.previousUpdatedAt
+          ) {
+            await tx
+              .update(tutorThreads)
+              .set({ updatedAt: request.previousUpdatedAt })
+              .where(eq(tutorThreads.id, request.thread.id));
+          }
+          if (signal.aborted) throw abortedDuringRollback;
+          return true;
+        });
+      } catch (cause) {
+        if (cause === abortedDuringRollback) return false;
+        throw cause;
+      }
+    };
+    let result: Awaited<ReturnType<typeof service.respond>>;
+    try {
+      result = await service.respond(
+        {
+          conceptTitle: concept?.title ?? 'General',
+          objectives: concept?.objectives.map((o) => o.text) ?? [],
+          lessonSummary:
+            lesson?.blocks
+              .filter((b) => b.kind === 'summary')
+              .map((b) => b.md)
+              .join('\n') ?? '',
+          exercisePrompt: exercise?.prompt ?? '',
+          exerciseLabel: exercise ? input.questionLabel || 'Current question' : '',
+          exerciseOptions: optionTexts.map(
+            ({ text }, index) => `${String.fromCharCode(65 + index)}. ${text}`,
+          ),
+          answerKey: tutorAnswerKeyFor(exercise, optionTexts),
+          learnerAnswer:
+            (status === 'retrying' || status === 'answered') && currentAttempt && exercise
+              ? tutorAnswerFor(exercise, currentAttempt.answer)
+              : '',
+          graderVerdict:
+            status === 'retrying' || status === 'answered' ? graderVerdictFor(correct) : '',
+          graderFeedback:
+            (status === 'retrying' || status === 'answered') && currentAttempt
+              ? formatGraderFeedback(currentAttempt.feedback, status === 'retrying')
+              : '',
+          hintLevel: 0,
+          authoredHints:
+            status === 'unanswered' || status === 'retrying' ? (exercise?.hints ?? []) : [],
+          solution:
+            status === 'unanswered' || status === 'retrying' ? '' : tutorSolutionFor(exercise),
+          recentMistakes: [],
+          question: input.question,
+          mode: 'practice',
+          history: request.history,
+          problem_status: status,
+          page: input.page ?? 'none',
+          page_content: pageContent,
+        },
+        status === 'unanswered' ? 'nudge' : status === 'retrying' ? 'hint' : 'worked_step',
+        index,
+        signal,
+      );
+    } catch {
+      if (signal.aborted) {
+        return c.json({
+          superseded: true,
+          thread: request.thread,
+        });
+      }
+      await rollbackFailedMessage();
+      if (signal.aborted) {
+        return c.json({
+          superseded: true,
+          thread: request.thread,
+        });
+      }
+      return c.json({ error: 'Tutor unavailable' }, 503);
+    }
+    if (signal.aborted) {
+      return c.json({
+        superseded: true,
+        thread: request.thread,
+      });
+    }
+    if (result.status !== 'ok' || !result.value) {
+      await rollbackFailedMessage();
+      if (signal.aborted) {
+        return c.json({
+          superseded: true,
+          thread: request.thread,
+        });
+      }
+      return c.json({ error: 'Tutor unavailable' }, 503);
+    }
+    const reply = result.value.message_md;
+    const saveReply = () =>
+      db.transaction(async (tx) => {
+        await tx
+          .select({ id: users.id })
+          .from(users)
+          .where(eq(users.id, c.get('userId')))
+          .for('update');
+        const [latestMessage] = await tx
+          .select({ seq: tutorMessages.seq })
+          .from(tutorMessages)
+          .where(eq(tutorMessages.threadId, request.thread.id))
+          .orderBy(desc(tutorMessages.seq))
+          .limit(1);
+        if (signal.aborted || latestMessage?.seq !== request.learnerMessage.seq) return null;
+        const [target] = await tx
+          .select()
+          .from(tutorThreads)
+          .where(eq(tutorThreads.id, request.thread.id))
+          .for('update')
+          .limit(1);
+        if (!target || signal.aborted) return null;
+        const tutorMessageAt = new Date(
+          Math.max(deps.requestNow(c).getTime(), target.updatedAt.getTime() + 1),
+        );
+        const [assistantMessage] = await tx
+          .insert(tutorMessages)
+          .values({
             userId: c.get('userId'),
             threadId: target.id,
             activityId: activityId ?? null,
@@ -483,31 +645,45 @@ export function registerTutorThreadRoutes(
             content: reply,
             llmCallId: result.callId ?? null,
             createdAt: tutorMessageAt,
-          },
-        ])
-        .returning({
-          seq: tutorMessages.seq,
-          id: tutorMessages.id,
-          role: tutorMessages.role,
-          content: tutorMessages.content,
-          createdAt: tutorMessages.createdAt,
-        });
-      await tx
-        .update(tutorThreads)
-        .set({ updatedAt: tutorMessageAt })
-        .where(eq(tutorThreads.id, target.id));
-      return {
-        thread: { ...target, updatedAt: tutorMessageAt },
-        messages: inserted
-          .sort((a, b) => a.seq - b.seq)
-          .map(({ id, role, content, createdAt }) => ({
-            id,
-            role,
-            content,
-            createdAt,
-          })),
-      };
-    });
+          })
+          .returning({
+            id: tutorMessages.id,
+            role: tutorMessages.role,
+            content: tutorMessages.content,
+            createdAt: tutorMessages.createdAt,
+          });
+        if (!assistantMessage) throw new Error('Tutor reply was not saved');
+        if (signal.aborted) throw new Error('Tutor request aborted before reply was saved');
+        await tx
+          .update(tutorThreads)
+          .set({ updatedAt: tutorMessageAt })
+          .where(eq(tutorThreads.id, target.id));
+        if (signal.aborted) throw new Error('Tutor request aborted before reply was saved');
+        return {
+          thread: { ...target, updatedAt: tutorMessageAt },
+          messages: [request.learnerMessage, assistantMessage].map(
+            ({ id, role, content, createdAt }) => ({
+              id,
+              role,
+              content,
+              createdAt,
+            }),
+          ),
+        };
+      });
+    let saved: Awaited<ReturnType<typeof saveReply>> | null;
+    try {
+      saved = await saveReply();
+    } catch (cause) {
+      if (!signal.aborted) throw cause;
+      saved = null;
+    }
+    if (!saved) {
+      return c.json({
+        superseded: true,
+        thread: request.thread,
+      });
+    }
     return c.json(saved);
   };
   api.post('/tutor/threads', (c) => send(c));

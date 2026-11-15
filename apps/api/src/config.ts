@@ -19,7 +19,7 @@ const envSchema = z.object({
     .transform((value) => value === '1'),
   ACADEMY_DEMO_TTL_HOURS: z.coerce.number().int().positive().default(24),
   OPENAI_API_KEY: z.string().min(1).optional(),
-  OPENAI_MODEL: z.string().default('gpt-6.1-terra'),
+  OPENAI_MODEL: z.string().default('gpt-6.1-sol'),
   TUTOR_DAILY_CALL_CAP: z.coerce.number().int().positive().default(200),
 });
 

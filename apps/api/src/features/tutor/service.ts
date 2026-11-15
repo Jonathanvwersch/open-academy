@@ -50,8 +50,12 @@ export class TutorService {
     private readonly timeZone: string,
   ) {}
 
-  respond(ctx: TutorContext, level: TutorLevel, content: ContentIndex) {
-    return this.invoke('tutor-system', () => this.provider.respond(ctx, level, content), content);
+  respond(ctx: TutorContext, level: TutorLevel, content: ContentIndex, signal?: AbortSignal) {
+    return this.invoke(
+      'tutor-system',
+      () => this.provider.respond(ctx, level, content, signal),
+      content,
+    );
   }
 
   gradeExplanation(ctx: ExplanationContext) {

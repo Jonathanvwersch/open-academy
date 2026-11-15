@@ -5,7 +5,7 @@ import {
   tutorQuestionTooLongMessage,
 } from '@academy/shared/tutor';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Plus, X } from 'lucide-react';
+import { ArrowLeft, Plus, Square, X } from 'lucide-react';
 import {
   createContext,
   lazy,
@@ -128,8 +128,10 @@ function initialSidebarWidth() {
 interface TutorSendVariables {
   question: string;
   threadId: string;
+  createThread: boolean;
   context: TutorRequestContext;
   optimisticId: string;
+  signal: AbortSignal;
 }
 
 interface TutorSendResponse {
@@ -141,6 +143,7 @@ interface TutorSendResponse {
   };
   messages?: TutorMessage[];
   error?: string;
+  superseded?: boolean;
 }
 
 interface PendingTutorMessage {
@@ -223,6 +226,8 @@ export function TutorContextProvider({
   const [draft, setDraft] = useState('');
   const [error, setError] = useState('');
   const [pendingSend, setPendingSend] = useState<PendingTutorMessage | null>(null);
+  const activeRequestController = useRef<AbortController | null>(null);
+  const newThreadId = useRef('');
   const [sidebarWidth, setSidebarWidth] = useState(initialSidebarWidth);
   const [viewportWidth, setViewportWidth] = useState(() => window.innerWidth);
   const [isResizing, setIsResizing] = useState(false);
@@ -304,16 +309,36 @@ export function TutorContextProvider({
     threads.data,
     threads.isSuccess,
   ]);
+  useEffect(() => {
+    const threadId = newThreadId.current;
+    if (
+      !newChatSelected ||
+      !threadId ||
+      (pendingSend && pendingSend.threadId !== threadId) ||
+      !threads.data?.some((thread) => thread.id === threadId)
+    ) {
+      return;
+    }
+    setSelectedId(threadId);
+  }, [newChatSelected, pendingSend, threads.data]);
   const mutation = useMutation({
-    mutationFn: async ({ question, threadId, context: requestContext }: TutorSendVariables) => {
-      const target = threadId
-        ? `/api/tutor/threads/${encodeURIComponent(threadId)}/messages`
-        : '/api/tutor/threads';
+    mutationFn: async ({
+      question,
+      threadId,
+      createThread,
+      context: requestContext,
+      signal,
+    }: TutorSendVariables) => {
+      const target = createThread
+        ? '/api/tutor/threads'
+        : `/api/tutor/threads/${encodeURIComponent(threadId)}/messages`;
       const response = await apiFetch(target, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
+        signal,
         body: JSON.stringify({
           question,
+          ...(createThread ? { threadId } : {}),
           conceptId: requestContext.conceptId ?? undefined,
           activityId: requestContext.activityId ?? undefined,
           exerciseId: requestContext.exerciseId ?? undefined,
@@ -340,8 +365,21 @@ export function TutorContextProvider({
       });
     },
     onSuccess: (payload, variables) => {
+      if (activeRequestController.current?.signal === variables.signal) {
+        activeRequestController.current = null;
+      }
+      if (payload.superseded) {
+        if (payload.thread) {
+          void queryClient.invalidateQueries({
+            queryKey: ['tutor', 'thread', payload.thread.id],
+          });
+        }
+        setPendingSend((current) => (current?.id === variables.optimisticId ? null : current));
+        void queryClient.invalidateQueries({ queryKey: ['tutor', 'threads'] });
+        return;
+      }
       if (payload.thread) {
-        if (variables.threadId === '') {
+        if (variables.createThread) {
           const greetingThreadId = payload.thread.id;
           setGreeting((current) =>
             current && current.threadId === null
@@ -385,13 +423,24 @@ export function TutorContextProvider({
         setNewChatSelected(false);
         setSelectedId(payload.thread.id);
         setView('conversation');
+        if (newThreadId.current === payload.thread.id) newThreadId.current = '';
       }
-      setPendingSend(null);
+      setPendingSend((current) => (current?.id === variables.optimisticId ? null : current));
       void queryClient.invalidateQueries({ queryKey: ['tutor', 'threads'] });
       void queryClient.invalidateQueries({ queryKey: ['tutor', 'thread'] });
     },
     onError: (cause, variables) => {
-      setPendingSend(null);
+      if (activeRequestController.current?.signal === variables.signal) {
+        activeRequestController.current = null;
+      }
+      setPendingSend((current) => (current?.id === variables.optimisticId ? null : current));
+      if (variables.signal.aborted) {
+        void queryClient.invalidateQueries({ queryKey: ['tutor', 'threads'] });
+        void queryClient.invalidateQueries({
+          queryKey: ['tutor', 'thread', variables.threadId],
+        });
+        return;
+      }
       setDraft((current) =>
         current.trim() ? `${variables.question}\n${current}` : variables.question,
       );
@@ -423,6 +472,7 @@ export function TutorContextProvider({
       setError('');
       if (view !== 'conversation') {
         setDraft('');
+        newThreadId.current = '';
         setNewChatSelected(true);
         setSelectedId('');
         setView('conversation');
@@ -438,6 +488,7 @@ export function TutorContextProvider({
       setContext((current) => ({ ...current, ...next }));
       setError('');
       setDraft('');
+      newThreadId.current = '';
       setNewChatSelected(true);
       setSelectedId('');
       setView('conversation');
@@ -464,7 +515,9 @@ export function TutorContextProvider({
   const showGreeting =
     (newChatSelected && greeting?.threadId === null) ||
     (greeting !== null && greeting.threadId !== null && greeting.threadId === selectedId);
-  const visiblePendingSend = pendingSend?.threadId === selectedId ? pendingSend : null;
+  const visibleThreadId = selectedId || (newChatSelected ? newThreadId.current : '');
+  const visiblePendingSend = pendingSend?.threadId === visibleThreadId ? pendingSend : null;
+  const isSending = visiblePendingSend !== null;
   const threadGroups = groupThreads(threads.data ?? []);
   const noChats = !threads.isPending && !threads.isError && threadGroups.length === 0;
   const selectionPreview = context.selection
@@ -474,6 +527,7 @@ export function TutorContextProvider({
     setDraft('');
     setError('');
     setGreeting(null);
+    newThreadId.current = '';
     setNewChatSelected(true);
     setSelectedId('');
     setView('conversation');
@@ -481,6 +535,7 @@ export function TutorContextProvider({
   };
   const openThread = (threadId: string) => {
     setError('');
+    newThreadId.current = '';
     setNewChatSelected(false);
     setSelectedId(threadId);
     setView('conversation');
@@ -488,20 +543,39 @@ export function TutorContextProvider({
   const draftLength = draft.trim().length;
   const draftTooLong = draftLength > TUTOR_QUESTION_MAX_LENGTH;
   const send = () => {
-    if (!draft.trim() || mutation.isPending) return;
+    const question = draft.trim();
+    if (!question) {
+      if (visiblePendingSend) {
+        activeRequestController.current?.abort();
+        activeRequestController.current = null;
+        setPendingSend((current) => (current?.id === visiblePendingSend.id ? null : current));
+        void queryClient.invalidateQueries({ queryKey: ['tutor', 'threads'] });
+        void queryClient.invalidateQueries({
+          queryKey: ['tutor', 'thread', visiblePendingSend.threadId],
+        });
+      }
+      return;
+    }
     if (draftTooLong) {
       setError(tutorQuestionTooLongMessage());
       return;
     }
-    const question = draft.trim();
+    const createThread = newChatSelected || !selectedId;
+    const threadId = createThread ? newThreadId.current || crypto.randomUUID() : selectedId;
+    if (createThread) newThreadId.current = threadId;
+    activeRequestController.current?.abort();
+    const controller = new AbortController();
+    activeRequestController.current = controller;
     const optimisticId = crypto.randomUUID();
     setDraft('');
     setError('');
     mutation.mutate({
       question,
-      threadId: selectedId,
+      threadId,
+      createThread,
       context,
       optimisticId,
+      signal: controller.signal,
     });
     conversationContextRef.current?.scrollToBottom();
     if (context.selection) clearSelection();
@@ -929,13 +1003,15 @@ export function TutorContextProvider({
                         }}
                       />
                       <div className="flex items-center justify-end gap-2">
-                        <PromptInputSubmit
-                          aria-label={mutation.isPending ? undefined : 'Send'}
-                          loading={mutation.isPending}
-                          disabled={!draft.trim() || draftTooLong}
-                        >
-                          Send
-                        </PromptInputSubmit>
+                        {isSending && !draft.trim() ? (
+                          <Button type="submit" size="icon" variant="outline" aria-label="Stop">
+                            <Square aria-hidden="true" />
+                          </Button>
+                        ) : (
+                          <PromptInputSubmit disabled={!draft.trim() || draftTooLong}>
+                            Send
+                          </PromptInputSubmit>
+                        )}
                         {draftLength >= TUTOR_QUESTION_MAX_LENGTH * 0.8 ? (
                           <span
                             data-testid="tutor-draft-length"

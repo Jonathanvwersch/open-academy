@@ -8,7 +8,7 @@ describe('live OpenAI tutor smoke', () => {
     async () => {
       const apiKey = process.env.OPENAI_API_KEY;
       if (!apiKey) return;
-      const provider = new OpenAIProvider(apiKey, process.env.OPENAI_MODEL ?? 'gpt-6.1-terra');
+      const provider = new OpenAIProvider(apiKey, process.env.OPENAI_MODEL ?? 'gpt-6.1-sol');
       const reply = await provider.respond(
         {
           conceptTitle: 'Linear regression',
