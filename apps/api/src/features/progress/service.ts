@@ -1,6 +1,7 @@
 import type { ProgressMasteryState, ProgressSubjectPayload } from '@academy/contracts/progress';
 import { desc, eq } from 'drizzle-orm';
 import { orderCourseIdsBySubject } from '../../content/course-order.js';
+import { subjectForCourse } from '../../content/index.js';
 import type { ContentIndex } from '../../content/types.js';
 import { lessonRuns, masteryEvents, projectSubmissions, xpEvents } from '../../db/schema.js';
 import { filterMasteryRecordsForContent } from '../../learning/content-filters.js';
@@ -31,7 +32,7 @@ export function buildProgressSubjects(
   for (const courseId of orderCourseIdsBySubject(content, courseIds)) {
     const course = content.coursesById.get(courseId);
     if (!course) continue;
-    const subject = content.subjectForCourse(courseId);
+    const subject = subjectForCourse(content, courseId);
     let group = subjects.get(subject.id);
     if (!group) {
       group = { id: subject.id, title: subject.title, courses: [] };

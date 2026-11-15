@@ -1,4 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest';
+import { subjectForCourse } from '../../src/content/index.js';
 import { loadContent } from '../../src/content/load.js';
 import type { ContentIndex } from '../../src/content/types.js';
 import { buildProgressSubjects } from '../../src/features/progress/service.js';
@@ -135,7 +136,7 @@ describe('buildProgressSubjects', () => {
       ? curriculumSubjects.flatMap((subject) =>
           curriculumCourseIds.filter(
             (courseId) =>
-              courseIds.includes(courseId) && content.subjectForCourse(courseId).id === subject.id,
+              courseIds.includes(courseId) && subjectForCourse(content, courseId).id === subject.id,
           ),
         )
       : curriculumCourseIds.filter((courseId) => courseIds.includes(courseId));
@@ -207,8 +208,8 @@ describe('buildProgressSubjects', () => {
       .filter((id) => scopedContent.conceptsById.get(id)?.status === 'authored').length;
     expect(subjects.map(({ id, title }) => ({ id, title }))).toEqual([
       {
-        id: content.subjectForCourse(course.id).id,
-        title: content.subjectForCourse(course.id).title,
+        id: subjectForCourse(content, course.id).id,
+        title: subjectForCourse(content, course.id).title,
       },
     ]);
     expect(row).toMatchObject({

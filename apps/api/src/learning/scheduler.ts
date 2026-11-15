@@ -1,4 +1,5 @@
 import { orderCourseIdsBySubject } from '../content/course-order.js';
+import { subjectForCourse } from '../content/index.js';
 import { isTemplate } from '../content/templates.js';
 import type {
   ContentIndex,
@@ -217,7 +218,7 @@ function schedulerCourseContexts(
   );
   return orderCourseIdsBySubject(content, state.studyCourseIds)
     .filter(
-      (courseId) => !focusSubjectId || content.subjectForCourse(courseId).id === focusSubjectId,
+      (courseId) => !focusSubjectId || subjectForCourse(content, courseId).id === focusSubjectId,
     )
     .flatMap((courseId) => {
       const context = schedulerCourseContextFor(state, content, courseId);
@@ -242,7 +243,7 @@ function groupSchedulerCoursesBySubject(
 ): Map<string, SchedulerCourseContext[]> {
   const coursesBySubject = new Map<string, SchedulerCourseContext[]>();
   for (const course of courseContexts) {
-    const subjectId = content.subjectForCourse(course.course.id).id;
+    const subjectId = subjectForCourse(content, course.course.id).id;
     const group = coursesBySubject.get(subjectId) ?? [];
     group.push(course);
     coursesBySubject.set(subjectId, group);
@@ -283,7 +284,7 @@ export function effectiveFocusSubjectId(
   const activeSubjectIds = new Set(
     activeCourseIds
       .filter((courseId) => content.coursesById.has(courseId))
-      .map((courseId) => content.subjectForCourse(courseId).id),
+      .map((courseId) => subjectForCourse(content, courseId).id),
   );
   return activeSubjectIds.size > 1 && activeSubjectIds.has(focus) ? focus : null;
 }

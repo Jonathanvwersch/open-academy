@@ -2,6 +2,7 @@ import { and, eq, inArray } from 'drizzle-orm';
 import type { Context, Hono } from 'hono';
 import { z } from 'zod';
 import { orderCourseIdsBySubject } from '../../content/course-order.js';
+import { subjectForCourse } from '../../content/index.js';
 import type { ContentIndex } from '../../content/types.js';
 import type { Database } from '../../db/client.js';
 import type { LearnerRepository } from '../../db/repository.js';
@@ -86,10 +87,10 @@ function buildProjectionCourses(
   const preferredCourseIds = preferredSubjectId
     ? [
         ...orderedCourseIds.filter(
-          (courseId) => index.subjectForCourse(courseId).id === preferredSubjectId,
+          (courseId) => subjectForCourse(index, courseId).id === preferredSubjectId,
         ),
         ...orderedCourseIds.filter(
-          (courseId) => index.subjectForCourse(courseId).id !== preferredSubjectId,
+          (courseId) => subjectForCourse(index, courseId).id !== preferredSubjectId,
         ),
       ]
     : orderedCourseIds;
@@ -100,7 +101,7 @@ function buildProjectionCourses(
           {
             id: activeCourse.id,
             title: activeCourse.title,
-            subjectId: index.subjectForCourse(activeCourseId).id,
+            subjectId: subjectForCourse(index, activeCourseId).id,
             units: activeCourse.units.map(({ title, concepts }) => ({ title, concepts })),
           },
         ]
@@ -169,7 +170,7 @@ function buildProjectionCourses(
     for (const unit of course.units) {
       for (const conceptId of unit.concepts) addTopic(conceptId, unit.title);
     }
-    const subject = index.subjectForCourse(courseId);
+    const subject = subjectForCourse(index, courseId);
     return [
       {
         id: courseId,
@@ -301,13 +302,13 @@ export function registerLearnCourseRoutes(
     const studyCourseIds = await repo.studyCourseIds(index);
     const prefs = (user?.prefs ?? {}) as SessionPreferences & { focusSubjectId?: unknown };
     const activeSubjectIds = new Set(
-      studyCourseIds.map((courseId) => index.subjectForCourse(courseId).id),
+      studyCourseIds.map((courseId) => subjectForCourse(index, courseId).id),
     );
     const activeSubjects = (index.curriculum?.subjects ?? [])
       .filter((subject) => activeSubjectIds.has(subject.id))
       .map(({ id, title }) => ({ id, title }));
     if (activeSubjects.length === 0 && studyCourseIds.length > 0) {
-      activeSubjects.push(index.subjectForCourse(studyCourseIds[0] ?? ''));
+      activeSubjects.push(subjectForCourse(index, studyCourseIds[0] ?? ''));
     }
     const focusSubjectId = effectiveFocusSubjectId(prefs, studyCourseIds, index);
     const placementCourseId = placementRuns
@@ -560,7 +561,7 @@ export function registerLearnCourseRoutes(
     await completePayloadCourses(repo, coursePayload, now);
     const topics = coursePayload.units.flatMap((unit) => unit.topics);
     const focusedCourseIds = focusSubjectId
-      ? studyCourseIds.filter((courseId) => index.subjectForCourse(courseId).id === focusSubjectId)
+      ? studyCourseIds.filter((courseId) => subjectForCourse(index, courseId).id === focusSubjectId)
       : studyCourseIds;
     const topicState = courseTopicState(index, mastery, runRows, placedOutConcepts);
     const latestRunsByConcept = new Map<string, (typeof runRows)[number]>();
@@ -695,7 +696,7 @@ export function registerLearnCourseRoutes(
         {
           id: course.id,
           title: course.title,
-          subjectId: index.subjectForCourse(courseId).id,
+          subjectId: subjectForCourse(index, courseId).id,
           topicsDone: progress.topicsDone,
           topicsTotal: progress.topicsTotal,
           unitTitle: course.units[unit - 1]?.title ?? `Unit ${unit}`,
@@ -710,7 +711,7 @@ export function registerLearnCourseRoutes(
     const focusedConceptIds = focusSubjectId
       ? new Set(
           studyCourseIds
-            .filter((courseId) => index.subjectForCourse(courseId).id === focusSubjectId)
+            .filter((courseId) => subjectForCourse(index, courseId).id === focusSubjectId)
             .flatMap((courseId) => {
               const course = index.coursesById.get(courseId);
               return [
@@ -811,7 +812,7 @@ export function registerLearnCourseRoutes(
         enrollments: snapshot.enrollments,
         placementRuns: snapshot.placementRuns,
       });
-      const subject = index.subjectForCourse(courseId);
+      const subject = subjectForCourse(index, courseId);
       const rows = subjects.get(subject.id) ?? [];
       rows.push({
         id: course.id,

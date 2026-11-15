@@ -18,6 +18,9 @@ content.courses = [
   { id: 'unrelated', title: 'Unrelated', units: [{ title: 'Three', concepts: ['other'] }] },
 ] as IndexedCourse[];
 content.coursesById = new Map(content.courses.map((course) => [course.id, course]));
+content.subjectsByCourseId = new Map(
+  content.courses.map((course) => [course.id, { id: 'default', title: 'Courses' }]),
+);
 content.conceptsById = new Map([
   [
     'other',

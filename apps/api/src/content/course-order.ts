@@ -1,3 +1,4 @@
+import { subjectForCourse } from './index.js';
 import type { ContentIndex } from './types.js';
 
 export function orderCoursesBySubject<T extends { id: string; subjectId: string }>(
@@ -21,7 +22,7 @@ export function orderCourseIdsBySubject(
 ): string[] {
   const courses = courseIds.flatMap((id) => {
     const course = content.coursesById.get(id);
-    return course ? [{ id, subjectId: content.subjectForCourse(id).id }] : [];
+    return course ? [{ id, subjectId: subjectForCourse(content, id).id }] : [];
   });
   return orderCoursesBySubject(
     courses,

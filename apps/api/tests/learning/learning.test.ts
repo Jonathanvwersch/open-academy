@@ -149,23 +149,26 @@ function schedulerContentWithSubjects(
     ...(subjectByCourse[course.id] ? { subject: subjectByCourse[course.id] } : {}),
   }));
   const coursesById = new Map(courses.map((course) => [course.id, course]));
+  const subjectsByCourseId = new Map(
+    courses.map((course) => {
+      const subject = subjects.find((candidate) => candidate.id === course.subject);
+      return [
+        course.id,
+        subject
+          ? { id: subject.id, title: subject.title }
+          : { id: 'default', title: index.curriculum?.subject?.title ?? 'Courses' },
+      ] as const;
+    }),
+  );
   return {
     ...index,
     courses,
     coursesById,
+    subjectsByCourseId,
     curriculum: {
       ...index.curriculum,
       courses: courseOrder ?? index.curriculum.courses,
       subjects,
-    },
-    subjectForCourse: (courseId) => {
-      const subjectId = coursesById.get(courseId)?.subject;
-      return (
-        subjects.find((subject) => subject.id === subjectId) ?? {
-          id: 'default',
-          title: index.curriculum?.subject?.title ?? 'Courses',
-        }
-      );
     },
   };
 }

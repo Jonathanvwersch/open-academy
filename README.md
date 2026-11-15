@@ -17,6 +17,25 @@ Try the demo at [open-academy-demo.vercel.app](https://open-academy-demo.vercel.
 - **Daily plan.** Each day it picks your reviews and next lessons to fit the time you set for that day.
 - **Tutor (optional).** With an OpenAI API key, a tutor sits beside every lesson. It can see the question you're on and the answer key, and it never marks your work. Grading is plain code.
 
+## How your learning is organised
+
+Everything sits in four levels: **subject → course → unit → topic**.
+
+```text
+Mathematics   Mathematics for Machine Learning
+AI            ML Foundations → Deep Learning → Transformers and LLMs → LLM Inference → Reinforcement Learning
+Robotics      Classical Robotics → Robot Learning
+```
+
+- **Topics are what get unlocked.** A topic opens once every topic it needs (its hard prerequisites) is done, whichever subject those belong to. Done means you passed its lesson or the placement check showed you already know it. Soft prerequisites are background reading and never block anything.
+- **Courses are never locked.** You can add any course. If its topics need topics from another course, it lists them under **Foundations** and teaches you just those topics. Each course page says up front how many topics it needs from other courses.
+- **Courses in a subject go in order.** Home teaches the earliest unfinished course in each subject and starts the next one once that course has nothing left to teach. A later course can start early if the earlier one is only waiting on a prerequisite from another course.
+- **Subjects share your time.** When Home picks a new topic, it goes to whichever subject you've spent the least time on recently, so time evens out across subjects and a subject with many courses doesn't crowd out one with a single course.
+- **What Home picks each day.** Due reviews come first and take up to about a third of the day's time. New topics fill the rest, at most two a day, until the plan fills the time you set. You can always open any unlocked topic yourself instead.
+- **Focus.** The Focus buttons on Home (All, or one subject) limit new lessons and reviews to that subject. Other subjects pause and their reviews wait until you switch back to All. Your choice is remembered.
+- **Up next** lists the topics Home will teach you, in order, with roughly when, plus the date you finished each topic you've done.
+- **Finish dates** are estimates. They step forward day by day at your recent daily XP, taking new topics in the same order Home would (prerequisites, course order, subject balance, at most two a day) and counting a fixed amount of XP per topic. Time spent on reviews isn't modelled. Because all your courses go through one forecast, the dates take each other into account. A course without lessons yet shows "Lessons coming soon".
+
 ## Run it locally
 
 You need Node 24, pnpm and Docker.
