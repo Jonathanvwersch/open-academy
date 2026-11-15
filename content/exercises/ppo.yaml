@@ -48,7 +48,7 @@ exercises:
         text: The critic gives a positive value to right moves and a negative value to left moves.
         correct: false
         category: misunderstood_definition
-        feedback: "The critic values cells, and all its values here are positive. The sign comes from comparing $-1+0.9V(s_{t+1})$ with $V(2)=7$."
+        feedback: "The critic values cells, and the values of cells 1 to 3 are all positive. The sign comes from comparing $-1+0.9V(s_{t+1})$ with $V(2)=7$."
       - id: d
         text: Moving left from cell 2 bumps into the wall, so the robot loses a turn.
         correct: false
@@ -744,10 +744,10 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "A batch contains one lucky episode, so one action gets an inflated advantage estimate of $+8$. PPO runs 10 passes on this batch with the clipped objective and $c=0.2$. What happens to that action's probability?"
+    prompt: "A batch contains one lucky episode, so one action, which the old policy took with probability $0.3$, gets an inflated advantage estimate of $+8$. PPO runs 10 passes on this batch with the clipped objective and $c=0.2$. What happens to that action's probability?"
     options:
       - id: a
-        text: "It rises until it is about $1.2$ times its old value. Then that sample's term goes flat and stops pushing."
+        text: "It rises until it is about $1.2$ times its old value, $0.36$. Then that sample's term goes flat and stops pushing."
         correct: true
         feedback: "Yes. Clipping caps how much one lucky estimate can move the policy."
       - id: b
@@ -765,7 +765,7 @@ exercises:
         correct: false
         category: incorrect_reasoning
         feedback: "Each step still moves by an amount set by the learning rate. Clipping only stops the push once the ratio passes $1.2$."
-    solution: 'The term $\min(\rho\times8,\ \text{clip}(\rho,0.8,1.2)\times8)$ is flat once $\rho>1.2$, so this sample stops raising the probability at about $1.2$ times its old value.'
+    solution: 'The term $\min(\rho\times8,\ \text{clip}(\rho,0.8,1.2)\times8)$ is flat once $\rho>1.2$, so this sample stops raising the probability at about $1.2\times0.3=0.36$.'
   - id: ppoc-soft-limit
     dimension: conceptual
     type: mc

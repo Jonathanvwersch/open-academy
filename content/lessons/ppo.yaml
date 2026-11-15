@@ -5,23 +5,17 @@ objective: |
 where_this_fits: |
   ### What is PPO?
 
-  PPO (proximal policy optimization) is a way to train a policy. It makes actions that did better than usual more likely, and it limits how much one batch of experience may change the policy. A batch is a set of episodes collected with the current policy. Proximal means near: each update stays near the old policy.
+  PPO (proximal policy optimization) trains a policy. It makes actions that did better than usual more likely, and limits how far one batch of experience can move the policy. Proximal means near. Experience is slow to collect, so we want several updates per batch, and the limit stops them wrecking the policy. PPO is standard in robotics and in RLHF for language models.
 
-  Why is that useful? Collecting experience is slow, so we want to learn as much as possible from each batch. But big updates on the same batch can push the policy too far and wreck it. PPO's limit makes reuse safe, and it's a standard method in robotics. It's also used to tune language models from human feedback (RLHF), where a model trained on people's ratings gives the reward.
+  A policy gradient method nudges the parameters $\theta$ of a policy $\pi_\theta(a\mid s)$ so actions that did well become more likely:
+
+  $$\theta_\text{new}=\theta+\eta\,(G_t-b)\,\nabla_\theta\ln\pi_\theta(a_t\mid s_t),$$
+
+  with return $G_t$, baseline $b$ and learning rate $\eta$ (RL books often write it as $\alpha$). The state value $V^\pi(s)$ is the return we expect from $s$ under $\pi$, and $Q^\pi(s,a)$ is the same after first taking $a$.
 knowledge_points:
   - id: ppo-advantage
     title: "Score each action by how much better it did than usual"
     explain: |
-      ### Two ideas we build on
-
-      The first idea is the policy gradient. A policy $\pi_\theta(a\mid s)$ gives the probability of taking action $a$ in state $s$, and $\theta$ holds its parameters. A policy gradient method nudges $\theta$ so that actions which did well become more likely. For an action $a_t$ taken in state $s_t$, one update is
-
-      $$\theta_\text{new}=\theta+\eta\,(G_t-b)\,\nabla_\theta\ln\pi_\theta(a_t\mid s_t),$$
-
-      where $G_t$ is the return that followed, $b$ is a baseline, and $\eta$ is the learning rate. Many RL books write the learning rate as $\alpha$.
-
-      The second idea is the state value $V^\pi(s)$, the return we expect on average if we start in $s$ and follow $\pi$. The action value $Q^\pi(s,a)$ is the same, but we take action $a$ first.
-
       ### A corridor robot
 
       Our robot lives in a corridor of 4 cells, numbered 1 to 4 from the left. It starts in cell 1 and moves left or right. If it moves into a wall, it stays where it is. Reaching cell 4 ends the episode with reward $+10$, and every other step gives $-1$. We use $\gamma=0.9$.
@@ -41,28 +35,28 @@ knowledge_points:
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 230" aria-label="Four cells in a row, numbered 1 to 4, with the critic's values 5, 7, 9 and 0 written above them. Cell 4 is the goal with reward plus 10. From cell 2, a green arrow to the right, into cell 3, is labelled delta equals 0.1. A red arrow to the left, into cell 1, is labelled delta equals minus 3.5">
       <defs>
-      <marker id="ppo1-green" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#15803d"/></marker>
-      <marker id="ppo1-red" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#dc2626"/></marker>
+      <marker id="ppo1-green" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#10b981"/></marker>
+      <marker id="ppo1-red" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#ef4444"/></marker>
       </defs>
-      <g font-family="sans-serif" font-size="16" text-anchor="middle" fill="#262626">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="16" text-anchor="middle" fill="#171717">
       <text x="110" y="62">V = 5</text>
       <text x="250" y="62">V = 7</text>
       <text x="390" y="62">V = 9</text>
       <text x="530" y="62">V = 0</text>
-      <rect x="40" y="80" width="140" height="70" fill="#f5f5f5" stroke="#525252" stroke-width="2"/>
-      <rect x="180" y="80" width="140" height="70" fill="#f5f5f5" stroke="#525252" stroke-width="2"/>
-      <rect x="320" y="80" width="140" height="70" fill="#f5f5f5" stroke="#525252" stroke-width="2"/>
-      <rect x="460" y="80" width="140" height="70" fill="#fef3c7" stroke="#525252" stroke-width="2"/>
+      <rect x="40" y="80" width="140" height="70" fill="#ffffff" stroke="#737373" stroke-width="2"/>
+      <rect x="180" y="80" width="140" height="70" fill="#ffffff" stroke="#737373" stroke-width="2"/>
+      <rect x="320" y="80" width="140" height="70" fill="#ffffff" stroke="#737373" stroke-width="2"/>
+      <rect x="460" y="80" width="140" height="70" fill="#f59e0b" fill-opacity="0.15" stroke="#737373" stroke-width="2"/>
       <text x="110" y="121">cell 1</text>
       <text x="250" y="121">cell 2</text>
       <text x="390" y="121">cell 3</text>
       <text x="530" y="113">cell 4</text>
       <text x="530" y="135" font-size="14">goal, +10</text>
-      <circle cx="250" cy="180" r="5" fill="#262626"/>
-      <line x1="256" y1="180" x2="378" y2="180" stroke="#15803d" stroke-width="3" marker-end="url(#ppo1-green)"/>
-      <text x="320" y="210" fill="#15803d">right: δ = 0.1</text>
-      <line x1="244" y1="180" x2="122" y2="180" stroke="#dc2626" stroke-width="3" marker-end="url(#ppo1-red)"/>
-      <text x="180" y="210" fill="#dc2626">left: δ = −3.5</text>
+      <circle cx="250" cy="180" r="5" fill="#171717"/>
+      <line x1="256" y1="180" x2="378" y2="180" stroke="#10b981" stroke-width="3" marker-end="url(#ppo1-green)"/>
+      <text x="320" y="210" fill="#10b981">right: δ = 0.1</text>
+      <line x1="244" y1="180" x2="122" y2="180" stroke="#ef4444" stroke-width="3" marker-end="url(#ppo1-red)"/>
+      <text x="180" y="210" fill="#ef4444">left: δ = −3.5</text>
       </g>
       </svg>
       ```
@@ -81,7 +75,7 @@ knowledge_points:
 
       3. **Read the signs.** Moving right did slightly better than the critic expected from cell 2, so its advantage is positive. Moving left did much worse, so its advantage is negative.
 
-      With only two actions, both scores push the policy towards moving right in cell 2, because lowering the chance of left raises the chance of right. The push from the left move is much stronger, because its score is much larger in size. Both moves earned the same reward of $-1$.
+      With only two actions, both scores push the policy towards moving right in cell 2, because lowering the chance of left raises the chance of right. If both moves are equally likely, the push from the left move is much stronger, because its score is much larger in size. Both moves earned the same reward of $-1$.
     problems:
       - ppo-advantage-basics
       - ppoa-worked-self-explain
@@ -158,7 +152,7 @@ knowledge_points:
     explain: |
       ### Reusing a batch
 
-      Collecting experience is the slow part. A plain policy gradient method takes one gradient step on a batch and then throws it away, because the batch only shows how that exact policy behaves. We'd like several passes per batch, where a pass is one sweep of gradient steps through the whole batch. Each sample in the batch is one state, the action taken there and its advantage estimate.
+      A batch is the steps the current policy collected. A plain policy gradient method takes one gradient step on a batch and then throws it away, because the batch only shows how that exact policy behaves. We'd like several passes per batch, where a pass is one sweep of gradient steps through the whole batch. Each sample in the batch is one state, the action taken there and its advantage estimate.
 
       The trouble is that after the first step the policy has changed, while the batch came from the old one. We call the policy that collected the batch $\pi_{\theta_\text{old}}$.
 
@@ -223,24 +217,24 @@ knowledge_points:
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 330" aria-label="Two plots of one sample's term against the ratio rho from 0 to 2, with c equals 0.2. Grey lines mark rho equals 0.8 and 1.2. Left, advantage plus 1: the dashed grey line rho times A rises without limit, and the blue clipped objective follows it up to rho equals 1.2, value 1.2, then stays flat. Right, advantage minus 1: the dashed line falls from 0 to minus 2, and the blue clipped objective is flat at minus 0.8 for rho below 0.8, then follows the dashed line down">
-      <g font-family="sans-serif" font-size="14" fill="#262626">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
       <text x="180" y="30" text-anchor="middle" font-size="16">advantage = +1</text>
       <text x="500" y="30" text-anchor="middle" font-size="16">advantage = −1</text>
-      <line x1="156" y1="80" x2="156" y2="260" stroke="#d4d4d4" stroke-width="1.5"/>
-      <line x1="204" y1="80" x2="204" y2="260" stroke="#d4d4d4" stroke-width="1.5"/>
-      <line x1="476" y1="80" x2="476" y2="260" stroke="#d4d4d4" stroke-width="1.5"/>
-      <line x1="524" y1="80" x2="524" y2="260" stroke="#d4d4d4" stroke-width="1.5"/>
-      <line x1="60" y1="250" x2="310" y2="250" stroke="#525252" stroke-width="1.5"/>
-      <line x1="60" y1="250" x2="60" y2="80" stroke="#525252" stroke-width="1.5"/>
-      <line x1="380" y1="90" x2="630" y2="90" stroke="#d4d4d4" stroke-width="1.5"/>
-      <line x1="380" y1="260" x2="630" y2="260" stroke="#525252" stroke-width="1.5"/>
-      <line x1="380" y1="90" x2="380" y2="260" stroke="#525252" stroke-width="1.5"/>
+      <line x1="156" y1="90" x2="156" y2="250" stroke="#d4d4d4" stroke-width="1.5"/>
+      <line x1="204" y1="90" x2="204" y2="250" stroke="#d4d4d4" stroke-width="1.5"/>
+      <line x1="476" y1="90" x2="476" y2="250" stroke="#d4d4d4" stroke-width="1.5"/>
+      <line x1="524" y1="90" x2="524" y2="250" stroke="#d4d4d4" stroke-width="1.5"/>
+      <line x1="60" y1="250" x2="300" y2="250" stroke="#171717" stroke-width="1.5"/>
+      <line x1="60" y1="250" x2="60" y2="90" stroke="#171717" stroke-width="1.5"/>
+      <line x1="380" y1="90" x2="620" y2="90" stroke="#d4d4d4" stroke-width="1.5"/>
+      <line x1="380" y1="250" x2="620" y2="250" stroke="#171717" stroke-width="1.5"/>
+      <line x1="380" y1="90" x2="380" y2="250" stroke="#171717" stroke-width="1.5"/>
       <text x="60" y="272" text-anchor="middle">0</text>
       <text x="180" y="272" text-anchor="middle">1</text>
       <text x="300" y="272" text-anchor="middle">2</text>
-      <text x="380" y="282" text-anchor="middle">0</text>
-      <text x="500" y="282" text-anchor="middle">1</text>
-      <text x="620" y="282" text-anchor="middle">2</text>
+      <text x="380" y="272" text-anchor="middle">0</text>
+      <text x="500" y="272" text-anchor="middle">1</text>
+      <text x="620" y="272" text-anchor="middle">2</text>
       <text x="476" y="300" text-anchor="middle" font-size="13">0.8</text>
       <text x="524" y="300" text-anchor="middle" font-size="13">1.2</text>
       <text x="156" y="300" text-anchor="middle" font-size="13">0.8</text>
@@ -255,10 +249,10 @@ knowledge_points:
       <text x="372" y="254" text-anchor="end">−2</text>
       <line x1="60" y1="250" x2="300" y2="90" stroke="#737373" stroke-width="2" stroke-dasharray="6 5"/>
       <line x1="380" y1="90" x2="620" y2="250" stroke="#737373" stroke-width="2" stroke-dasharray="6 5"/>
-      <polyline points="60,250 204,154 300,154" fill="#2563eb" fill-opacity="0" stroke="#2563eb" stroke-width="4"/>
-      <polyline points="380,154 476,154 620,250" fill="#2563eb" fill-opacity="0" stroke="#2563eb" stroke-width="4"/>
-      <text x="250" y="144" fill="#2563eb">flat</text>
-      <text x="420" y="144" fill="#2563eb">flat</text>
+      <polyline points="60,250 204,154 300,154" fill="#3b82f6" fill-opacity="0" stroke="#3b82f6" stroke-width="4"/>
+      <polyline points="380,154 476,154 620,250" fill="#3b82f6" fill-opacity="0" stroke="#3b82f6" stroke-width="4"/>
+      <text x="250" y="144" fill="#3b82f6">flat</text>
+      <text x="420" y="144" fill="#3b82f6">flat</text>
       </g>
       </svg>
       ```
@@ -269,7 +263,7 @@ knowledge_points:
 
       ### What clipping prevents
 
-      Clipping takes away any gain from pushing an action's probability past $1\pm c$ times its old value, so noisy estimates can't drag the policy far in one batch. That makes it safe to take several passes over each batch. The paper's robot-control runs used 10 passes. The limit is soft, though. All samples share the same parameters $\theta$, so a step that raises one action's probability can also change probabilities in other states. People often track how far the new probabilities have moved from the old ones on the batch, and stop the passes once that gets too large.
+      Clipping takes away any gain from pushing an action's probability past $1\pm c$ times its old value, so noisy estimates can't drag the policy far in one batch. That makes it safe to take several passes over each batch. The paper's MuJoCo robot-control runs used 10 passes. The limit is soft, though. All samples share the same parameters $\theta$, so a step that raises one action's probability can also change probabilities in other states. People often track how far the new probabilities have moved from the old ones on the batch, and stop the passes once that gets too large.
     worked: |
       Let's evaluate the clipped term with $c=0.2$, so ratios are clipped to the range $0.8$ to $1.2$. Each old probability is $0.5$.
 
