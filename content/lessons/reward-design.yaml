@@ -81,7 +81,7 @@ knowledge_points:
 
       ### A score for each cell
 
-      From here on, the corridor also has the step cost. The move that reaches cell 4 gives $+10$, and every other move gives $-1$. The $-1$ already makes shorter paths worth more, so we set $\gamma=1$. Then a return is just the sum of the rewards.
+      From here on, the corridor also has the step cost. The move that reaches cell 4 gives $+10$, and every other move gives $-1$. The $-1$ already makes shorter paths worth more, so we set $\gamma=1$. Then a return is the sum of the rewards.
 
       Give each state $s$ a score $\Psi(s)$ (the Greek letter psi), called its **potential**, that says how close it is to the goal. Here $\Psi(s)$ is just the cell number, so cell 1 scores 1 and cell 4 scores 4. On a move from state $s$ to the next state $s'$ (say "s prime"), the robot gets an extra reward, which we call $F$:
 
@@ -114,7 +114,7 @@ knowledge_points:
 
       ### Why the best path stays the same
 
-      Now add up the bonuses along any path from cell 1 to cell 4. Each cell's score is added when the robot moves into it and taken away again when it moves out. So everything in the middle cancels, and the total is always the last score minus the first, $\Psi(4)-\Psi(1)=3$. Every complete path gets the same extra $3$, so the path that was best before is still best. But now a move right that doesn't reach the goal nets $-1+1=0$ and a move left nets $-1-1=-2$, so the robot can tell which way is better before it ever reaches the goal.
+      Now add up the bonuses along any path from cell 1 to cell 4. Each cell's score is added when the robot moves into it and taken away again when it moves out. So everything in the middle cancels, and the total is always the last score minus the first, $\Psi(4)-\Psi(1)=3$. Every complete path gets the same extra $3$, so the path that was best before is still best. But now a move right short of the goal nets $-1+1=0$, and a move left from cell 2 or 3 nets $-1-1=-2$, so the robot can tell the better way before reaching the goal.
 
       This is **potential-based shaping**. Ng, Harada and Russell proved in 1999 that bonuses of this form never change the best behaviour, that is, the best action in each state. With a discount below 1, the bonus is written $\gamma\Psi(s')-\Psi(s)$, so that it cancels in the same way inside the discounted return, and the guarantee still holds.
     worked: |
@@ -177,7 +177,7 @@ knowledge_points:
 
       This is **reward hacking**: the agent earns a high reward in a way the designer didn't intend, by using a gap between the reward and the real goal. Here more loops always earn more, so an agent that maximises reward learns to keep looping and never finish.
 
-      The learning has no bug here. The agent does what it was trained to do. The reward asked for the wrong thing.
+      The agent did exactly what it was trained to do, earn as much reward as it can. The problem is the reward.
 
       It happens in real systems. In 2016, OpenAI trained an agent on the boat-racing game CoastRunners, which gives points for hitting targets. The agent scored more by circling and hitting the same targets again and again than by finishing the race. A chatbot's language model can be trained like the robot, with its reward given by a **reward model**, a second model trained to score replies the way people would. The language model can learn replies the reward model rates highly but people don't actually prefer.
 
@@ -202,7 +202,7 @@ knowledge_points:
       3. **Add the round trips to the direct path.** If the robot makes $n$ round trips once it reaches cell 2, it can still finish the same way, so its return grows by $1$ for each one.
          $$G_0=17+n.$$
 
-      So there's no best number of loops. Any number is beaten by one more. A robot that maximises its return keeps looping and never finishes. With the potential-based bonus of $+1$ right and $-1$ left instead, the same round trip earns $(-1+1)+(-1-1)=-2$, so looping always costs.
+      So there's no best number of loops. Any number is beaten by one more. A robot that maximises its return keeps looping and never finishes. With the potential-based bonus instead, the same round trip earns $(-1+1)+(-1-1)=-2$, so looping always costs.
     problems:
       - rd-hacking-basics
       - rdp-hacking-self-explain
