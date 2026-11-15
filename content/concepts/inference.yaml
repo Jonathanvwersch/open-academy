@@ -115,7 +115,7 @@ concepts:
           },
           { text: "Explain how tiling lets FlashAttention stay exact", dimension: conceptual },
         ],
-      status: stub,
+      status: authored,
     }
   - {
       id: quantization,

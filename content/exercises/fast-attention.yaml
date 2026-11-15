@@ -1,0 +1,958 @@
+concept: fast-attention
+exercises:
+  - id: fa-std-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: Standard attention runs as three kernels. Why do the score and weight tables travel through HBM?
+    options:
+      - {
+          id: a,
+          text: "Each kernel writes its result to HBM so that the next kernel can read it.",
+          correct: true,
+          feedback: "On-chip memory is cleared when a kernel ends, so results pass between kernels through HBM.",
+        }
+      - {
+          id: b,
+          text: "The tables are too big for the GPU, so they go out to the CPU's memory.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "HBM is the GPU's own main memory. The tables go there because each kernel hands its result to the next through it.",
+        }
+      - {
+          id: c,
+          text: "HBM is faster than on-chip memory, so results are kept there to save time.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "On-chip memory is the fast one. HBM is used because on-chip memory is cleared when a kernel ends.",
+        }
+      - {
+          id: d,
+          text: "Softmax can only read its inputs from HBM, never from on-chip memory.",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "A fused kernel does softmax on chip. The trip happens because separate kernels can't share on-chip memory.",
+        }
+    solution: When a kernel ends, its on-chip memory is cleared, so the first kernel writes the scores to HBM and the second reads them back. The same happens to the weights between the second and third kernels.
+  - id: fa-std-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example on standard attention's traffic, why are the score table $S$ and the weight table $P$ each counted twice?
+    options:
+      - {
+          id: a,
+          text: "Each is written to HBM by one kernel and read back by the next one.",
+          correct: true,
+          feedback: "Kernel 1 writes S and kernel 2 reads it; kernel 2 writes P and kernel 3 reads it.",
+        }
+      - {
+          id: b,
+          text: "Each is stored once at 16-bit precision and once at 32-bit precision.",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "All numbers in the count are 16-bit. The two trips are one write and one read.",
+        }
+      - {
+          id: c,
+          text: "Each table has two dimensions, so its number count is doubled.",
+          correct: false,
+          category: math_error,
+          feedback: "The T by T shape is already in T squared. The factor 2 is one write plus one read.",
+        }
+      - {
+          id: d,
+          text: "Keys and values each get their own copy of every table.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "There is one S and one P per head. Each moves twice because it is written and then read.",
+        }
+    solution: The first kernel writes $S$ and the second reads it back, and the second writes $P$ and the third reads it back. So each $T\times T$ table moves twice, $2{,}000{,}000$ bytes each time.
+  - id: fa-std-table-size
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "A prompt has {{=T}} tokens. One attention head stores its table of scores at 16-bit precision. How many MB ($10^6$ bytes) does the table take?"
+    params:
+      T: { min: 500, max: 4000, step: 500 }
+    answer_expr: 2*T^2/1e6
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer_expr: T^2/1e6,
+          category: math_error,
+          feedback: "That is the number of scores. At 16-bit each takes 2 bytes.",
+        }
+      - {
+          answer_expr: 4*T^2/1e6,
+          category: math_error,
+          feedback: "That uses 4 bytes per number, which is 32-bit. At 16-bit each score takes 2 bytes.",
+        }
+    solution: "There is one score for every query and key pair, ${{=T}}^2={{=T^2}}$ scores, and each takes 2 bytes, so the table is ${{=2*T^2}}$ bytes, or ${{=2*T^2/1e6}}$ MB."
+  - id: fa-std-total
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt: "One attention head runs as three kernels. The first computes the score table $S$ from $Q$ and $K$, the second applies softmax to give the weight table $P$, and the third computes $O=PV$. Each kernel reads its inputs from HBM and writes its output to HBM. For a prompt of {{=T}} tokens, head size $d_h={{=d}}$ and 16-bit numbers, how many MB ($10^6$ bytes) move to and from HBM? Give two decimal places."
+    params:
+      T: { min: 1000, max: 4000, step: 1000 }
+      d: { min: 64, max: 128, step: 64 }
+    answer_expr: 2*(4*T*d+4*T^2)/1e6
+    tolerance: { abs: 0.01 }
+    common_wrong:
+      - {
+          answer_expr: 2*(4*T*d+2*T^2)/1e6,
+          category: incorrect_reasoning,
+          feedback: "Each table is written by one kernel and read by the next, so S and P each move twice.",
+        }
+      - {
+          answer_expr: (4*T*d+4*T^2)/1e6,
+          category: math_error,
+          feedback: "That counts numbers. At 16-bit each number is 2 bytes.",
+        }
+      - {
+          answer_expr: 8*T^2/1e6,
+          category: incorrect_reasoning,
+          feedback: "That leaves out reading Q, K and V and writing O, which add $4Td_h$ numbers.",
+        }
+    solution: "Q, K, V and O move once each, $4\\times{{=T}}\\times{{=d}}={{=4*T*d}}$ numbers, and S and P move twice each, $4\\times{{=T}}^2={{=4*T^2}}$ numbers. At 2 bytes each that is ${{=2*(4*T*d+4*T^2)}}$ bytes, or ${{=2*(4*T*d+4*T^2)/1e6}}$ MB."
+  - id: fa-std-intensity
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt: "One attention head runs as three kernels that pass the score and weight tables through HBM. The prompt has 1,920 tokens, the head size is 128 and numbers are 16-bit. Counting only the FLOPs of the two matrix multiplies, what is the arithmetic intensity in FLOPs per byte?"
+    answer: 60
+    tolerance: { abs: 0.1 }
+    common_wrong:
+      - {
+          answer: 120,
+          category: math_error,
+          feedback: "That divides by numbers moved. Each 16-bit number is 2 bytes.",
+        }
+      - {
+          answer: 30,
+          category: math_error,
+          feedback: "Each matrix multiply costs $2T^2d_h$ FLOPs, because a multiply-add counts as 2 FLOPs.",
+        }
+      - {
+          answer: 960,
+          category: misapplied_technique,
+          feedback: "That uses only Q, K, V and O. Here the tables also go through HBM, twice each.",
+        }
+    solution: "The FLOPs are $4\\times1{,}920^2\\times128=1{,}887{,}436{,}800$. The bytes are $2\\times(4\\times1{,}920\\times128+4\\times1{,}920^2)=31{,}457{,}280$. Dividing gives $60$ FLOPs per byte."
+  - id: fa-std-limit
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: An H100 has an ops:byte ratio of about 300. A 16-bit model with head size 128 runs attention as three kernels that pass the score and weight tables through HBM. What happens to the arithmetic intensity as prompts get longer?
+    options:
+      - {
+          id: a,
+          text: "It levels off near 64 FLOPs per byte, so attention stays memory-bound.",
+          correct: true,
+          feedback: "FLOPs and bytes both grow like T squared, so the ratio approaches $d_h/b=64$.",
+        }
+      - {
+          id: b,
+          text: "It keeps growing with the prompt, so long prompts become compute-bound.",
+          correct: false,
+          category: misapplied_technique,
+          feedback: "That is true of a fused kernel. Here the tables' bytes grow like T squared, just as the FLOPs do.",
+        }
+      - {
+          id: c,
+          text: "It falls toward zero, because the tables grow faster than the FLOPs.",
+          correct: false,
+          category: math_error,
+          feedback: "The FLOPs, $4T^2d_h$, and the table bytes, $4T^2b$, grow at the same rate.",
+        }
+      - {
+          id: d,
+          text: "It settles at 300 FLOPs per byte, matching the GPU's ratio.",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "The limit comes from the head size and bytes per number, $128/2=64$, and has nothing to do with the GPU.",
+        }
+    solution: For long prompts the bytes are almost all $4T^2b$ and the FLOPs are $4T^2d_h$, so the intensity approaches $d_h/b=64$, far below 300.
+  - id: fa-std-transfer
+    dimension: transfer
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: "A different model has attention heads of size 256 and runs at 16-bit. Its attention runs as three kernels that pass the score and weight tables through HBM. For very long prompts, what arithmetic intensity, in FLOPs per byte, does attention approach?"
+    answer: 128
+    tolerance: { abs: 0.5 }
+    common_wrong:
+      - {
+          answer: 64,
+          category: misapplied_technique,
+          feedback: "64 is the limit for head size 128. Here $d_h=256$.",
+        }
+      - {
+          answer: 256,
+          category: math_error,
+          feedback: "Divide the head size by the bytes per number, 2 at 16-bit.",
+        }
+    solution: For long prompts the intensity approaches $d_h/b=256/2=128$ FLOPs per byte.
+  - id: fa-fused-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What does kernel fusion do?
+    options:
+      - {
+          id: a,
+          text: "It joins several kernels into one, so results in between stay on chip.",
+          correct: true,
+          feedback: "The in-between results never visit HBM, which removes their traffic.",
+        }
+      - {
+          id: b,
+          text: "It runs the same kernel on several GPUs, so each does part of the work.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Fusion happens on one GPU. It combines kernels so their results needn't go through HBM.",
+        }
+      - {
+          id: c,
+          text: "It stores the results in between at lower precision, to save HBM space.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Fusion keeps those results on chip, so they never take HBM space at all.",
+        }
+      - {
+          id: d,
+          text: "It removes some of the multiplies, so the kernels need fewer FLOPs.",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "The FLOPs stay the same. Fusion saves bytes moved.",
+        }
+    solution: Kernel fusion joins several kernels into one, so the results they pass between them stay in on-chip memory and never go to HBM.
+  - id: fa-fused-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example on the fused kernel, why could the arithmetic intensity rise from about 57 to as much as 500 FLOPs per byte?
+    options:
+      - {
+          id: a,
+          text: "The FLOPs stay the same while the bytes moved fall about 8.8 times.",
+          correct: true,
+          feedback: "512,000,000 FLOPs over 1,024,000 bytes is 500.",
+        }
+      - {
+          id: b,
+          text: "The fused kernel does more FLOPs because it works on blocks.",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "Both versions do 512,000,000 FLOPs. Only the bytes changed.",
+        }
+      - {
+          id: c,
+          text: "The bytes stay the same while the GPU's ops:byte ratio rises.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "The ops:byte ratio is a fixed property of the GPU. The bytes fell from 9,024,000 to 1,024,000.",
+        }
+      - {
+          id: d,
+          text: "Fusion stores every number in 1 byte instead of 2 bytes.",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "Both counts use 2 bytes per number. Fusion removes the table traffic.",
+        }
+    solution: Intensity is FLOPs divided by bytes. The FLOPs stay at $512{,}000{,}000$ while the bytes fall from $9{,}024{,}000$ to $1{,}024{,}000$, so the intensity rises from about $56.7$ to $500$.
+  - id: fa-fused-min
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "A fused attention kernel handles one head for a prompt of {{=T}} tokens, with head size {{=d}} and 16-bit numbers. What is the least HBM traffic it needs, in MB ($10^6$ bytes)?"
+    params:
+      T: { min: 1000, max: 4000, step: 1000 }
+      d: { min: 64, max: 128, step: 64 }
+    answer_expr: 8*T*d/1e6
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer_expr: 6*T*d/1e6,
+          category: incorrect_reasoning,
+          feedback: "That counts reading Q, K and V but leaves out writing O.",
+        }
+      - {
+          answer_expr: 4*T*d/1e6,
+          category: math_error,
+          feedback: "That counts numbers. At 16-bit each is 2 bytes.",
+        }
+    solution: "It must read Q, K and V and write O, each ${{=T}}\\times{{=d}}={{=T*d}}$ numbers. That is ${{=4*T*d}}$ numbers, or ${{=8*T*d}}$ bytes, which is ${{=8*T*d/1e6}}$ MB."
+  - id: fa-fused-ratio
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "An attention head has head size {{=d}} and the prompt has {{=T}} tokens. How many times more HBM traffic does three-kernel attention, which passes the score and weight tables through HBM, move than the least a fused kernel needs?"
+    params:
+      T: { min: 512, max: 4096, step: 512 }
+      d: { min: 64, max: 128, step: 64 }
+    answer_expr: 1+T/d
+    tolerance: { abs: 0.01 }
+    common_wrong:
+      - {
+          answer_expr: T/d,
+          category: math_error,
+          feedback: "Both versions also move Q, K, V and O, which adds 1 to the ratio.",
+        }
+    solution: "Three kernels move $4Td_h+4T^2$ numbers and a fused kernel at least $4Td_h$. The ratio is $1+T/d_h=1+{{=T}}/{{=d}}={{=1+T/d}}$."
+  - id: fa-fused-intensity
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A fused attention kernel moves only the least HBM traffic it needs. The prompt has {{=T}} tokens, the head size is 128 and numbers are 16-bit. Counting the FLOPs of the two matrix multiplies, what is its arithmetic intensity in FLOPs per byte?"
+    params:
+      T: { min: 200, max: 2000, step: 200 }
+    answer_expr: T/2
+    tolerance: { abs: 0.5 }
+    common_wrong:
+      - {
+          answer_expr: T,
+          category: math_error,
+          feedback: "That divides by numbers moved. Each 16-bit number is 2 bytes.",
+        }
+    solution: "The FLOPs are $4T^2d_h$ and the bytes are $4Td_h\\times2$, so the intensity is $T/2={{=T/2}}$ FLOPs per byte."
+  - id: fa-fused-why-blocks
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A fused attention kernel on an H100 handles one head for a 4,000-token prompt, with head size 128 and 16-bit numbers. Why does each SM bring in the keys one block at a time?
+    options:
+      - {
+          id: a,
+          text: "All the keys take 1,024,000 bytes, far more than an SM's on-chip memory of about 228 KB.",
+          correct: true,
+          feedback: "4,000 × 128 × 2 = 1,024,000 bytes, so only a block fits at once.",
+        }
+      - {
+          id: b,
+          text: "HBM can only send one block of rows to each kernel while it runs.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "HBM can send any amount. The limit is how much fits in on-chip memory.",
+        }
+      - {
+          id: c,
+          text: "Loading the keys a block at a time lowers the number of FLOPs needed.",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "The FLOPs are the same either way. Blocks exist because on-chip memory is small.",
+        }
+      - {
+          id: d,
+          text: "Each block of keys belongs to a different head, so each is loaded alone.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "The blocks are groups of rows from one head's K.",
+        }
+    solution: The keys hold $4{,}000\times128\times2=1{,}024{,}000$ bytes, while each SM has at most about 228 KB of on-chip memory, so the kernel brings them in a block at a time.
+  - id: fa-fused-short
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: On an H100 with an ops:byte ratio of about 300, a fused 16-bit attention kernel processes a 400-token prompt with head size 128. If it moves only the least traffic, is it memory-bound or compute-bound?
+    options:
+      - {
+          id: a,
+          text: "Memory-bound, because its intensity is 200 FLOPs per byte, below 300.",
+          correct: true,
+          feedback: "The intensity is T/2 = 200, which is below 300.",
+        }
+      - {
+          id: b,
+          text: "Compute-bound, because a fused kernel never writes scores to HBM.",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "Saving bytes helps, but the intensity T/2 = 200 is still below 300.",
+        }
+      - {
+          id: c,
+          text: "Compute-bound, because its intensity is 800 FLOPs per byte, above 300.",
+          correct: false,
+          category: math_error,
+          feedback: "Divide T by the bytes per number: 400/2 = 200.",
+        }
+      - {
+          id: d,
+          text: "Memory-bound, because its intensity can never go above 64 FLOPs per byte.",
+          correct: false,
+          category: misapplied_technique,
+          feedback: "The 64 limit is for three-kernel attention. A fused kernel reaches T/2.",
+        }
+    solution: A fused kernel's intensity is $T/b=400/2=200$ FLOPs per byte, below 300, so this short prompt is still memory-bound.
+  - id: fa-fused-transfer
+    dimension: transfer
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "A tensor holds 1,000,000 numbers at 16-bit. One kernel multiplies every entry by 3 and a second kernel then adds 1 to every entry. Each kernel reads its input from HBM and writes its output to HBM. How many MB ($10^6$ bytes) of HBM traffic does fusing the two kernels into one save?"
+    answer: 4
+    tolerance: { abs: 0.01 }
+    common_wrong:
+      - {
+          answer: 2,
+          category: incorrect_reasoning,
+          feedback: "The in-between tensor is written once and read once, so fusion saves both trips.",
+        }
+      - {
+          answer: 8,
+          category: incorrect_reasoning,
+          feedback: "8 MB is the traffic with two kernels. The fused kernel still reads the input and writes the output.",
+        }
+    solution: The tensor is 2 MB. Two kernels move 8 MB, reading and writing 2 MB each. A fused kernel reads 2 MB and writes 2 MB, so fusing saves 4 MB.
+  - id: fa-online-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: Why can an attention kernel that works through keys in blocks wait until after the last block to divide by the softmax total?
+    options:
+      - {
+          id: a,
+          text: "Every weight for one query divides by the same total, so one division at the end does it.",
+          correct: true,
+          feedback: "The shared total can be taken out of the sum and applied once.",
+        }
+      - {
+          id: b,
+          text: "The softmax total depends only on the first block of keys.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "The total adds up the exponentials of every key's score.",
+        }
+      - {
+          id: c,
+          text: "Dividing early would change which keys belong to each block.",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "Blocks are fixed groups of rows. The point is that the total isn't known until every key is seen.",
+        }
+      - {
+          id: d,
+          text: "Scaling the scores by the square root of the head size removes the total.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Scaling changes the scores but softmax still divides by a total.",
+        }
+    solution: The output is $\sum_j e^{s_j}v_j$ divided by $\sum_j e^{s_j}$, and every term shares that one total. So the kernel adds up both sums block by block and divides once at the end.
+  - id: fa-online-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked four-key example, after the first block the running totals give $u/\ell=2$. Why isn't $2$ the output?
+    options:
+      - {
+          id: a,
+          text: "The second block's keys still have to be added to both totals.",
+          correct: true,
+          feedback: "After block 2, u/ℓ becomes about 2.73.",
+        }
+      - {
+          id: b,
+          text: "The output must still be divided by the number of blocks, 2.",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "The only division is u by ℓ, after the last block.",
+        }
+      - {
+          id: c,
+          text: "The first block's scores must be recomputed using the second block.",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "Each score depends only on the query and its own key, so it never changes.",
+        }
+      - {
+          id: d,
+          text: "The totals hold rounded numbers, so they can only be read at the end.",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "The totals are exact here. They are incomplete because block 2 isn't added yet.",
+        }
+    solution: After block 1 the totals only cover two of the four keys. Adding block 2 gives $\ell=2+2e$ and $u=4+6e$, so the output is about $2.73$.
+  - id: fa-online-update
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt: "A kernel is computing one query's attention output a block of keys at a time. Each value has one component. After the earlier blocks, the sum of the exponentials of the scores is $\\ell={{=l}}$, and the sum of each value times its exponential is $u={{=u}}$. The last block has two keys whose scores have exponentials {{=a}} and {{=c}}, with values {{=p}} and {{=q}}. What is the output, to two decimal places?"
+    params:
+      l: { min: 2, max: 4 }
+      u: { min: 2, max: 10, step: 2 }
+      a: { min: 1, max: 3 }
+      c: { min: 1, max: 3 }
+      p: { min: 1, max: 5 }
+      q: { min: 1, max: 5 }
+    constraints: ["l != a + c", "abs((u+a*p+c*q)/(l+a+c) - (u/l+(a*p+c*q)/(a+c))/2) > 0.02"]
+    answer_expr: (u+a*p+c*q)/(l+a+c)
+    tolerance: { abs: 0.01 }
+    common_wrong:
+      - {
+          answer_expr: (u/l+(a*p+c*q)/(a+c))/2,
+          category: incorrect_reasoning,
+          feedback: "Averaging the two blocks' outputs ignores how big each block's exponentials are. Add to both totals, then divide.",
+        }
+      - {
+          answer_expr: (u+a*p+c*q)/(a+c),
+          category: incorrect_reasoning,
+          feedback: "The total must include the earlier blocks' exponentials too.",
+        }
+    solution: "Add the new terms to both totals: $\\ell={{=l}}+{{=a}}+{{=c}}={{=l+a+c}}$ and $u={{=u}}+{{=a}}\\times{{=p}}+{{=c}}\\times{{=q}}={{=u+a*p+c*q}}$. The output is $u/\\ell\\approx{{=round((u+a*p+c*q)/(l+a+c)*100)/100}}$."
+  - id: fa-online-mistake
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A kernel splits one query's keys into two blocks of equal size. It applies softmax separately within each block, forms each block's weighted sum of values, and outputs the average of the two results. What goes wrong?
+    options:
+      - {
+          id: a,
+          text: "Each block divides by its own total, so a block with bigger exponentials gets too little say.",
+          correct: true,
+          feedback: "The right weights divide by one total over all keys, which online softmax keeps as ℓ.",
+        }
+      - {
+          id: b,
+          text: "Nothing goes wrong, because the average of two softmax results equals softmax over all keys.",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "For scores 0, 0, 1, 1 and values 1, 3, 2, 4 the average is 2.5 and the true output is about 2.73.",
+        }
+      - {
+          id: c,
+          text: "The kernel should add the two block results together instead of averaging them.",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "Adding gives 5 for scores 0, 0, 1, 1 and values 1, 3, 2, 4, further from the true 2.73.",
+        }
+      - {
+          id: d,
+          text: "The scores should be divided by the square root of the block size first.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Scores are scaled by the square root of the head size, whatever the blocks are.",
+        }
+    solution: Each block's weights add to 1 on their own, so averaging gives both blocks equal say. The correct weights divide every exponential by one total over all keys.
+  - id: fa-online-exact
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: A kernel adds up softmax one block of keys at a time with running totals $\ell$ and $u$, then outputs $u/\ell$. How does its output compare with three-kernel attention on the same inputs?
+    options:
+      - {
+          id: a,
+          text: "It is the same, apart from tiny differences from floating-point rounding.",
+          correct: true,
+          feedback: "It does the same additions in a different order.",
+        }
+      - {
+          id: b,
+          text: "It is an approximation that gets better as the blocks get bigger.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Online softmax is exact for any block size.",
+        }
+      - {
+          id: c,
+          text: "It is an approximation that ignores keys outside each query's block.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Every key block is added to the totals, so every key counts.",
+        }
+      - {
+          id: d,
+          text: "It is the same only when every score in the row is equal.",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "The two sums give the same result for any scores.",
+        }
+    solution: The output is the same sum of exponential-weighted values divided by the same total, added up in a different order, so only rounding in the last digits can differ.
+  - id: fa-online-direct
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "One query's keys come in two blocks, and each value has one component. Block 1 has two keys with scores 0 and 0 and values 6 and 2. Block 2 has one key with score 2 and value 10. Working block by block, what is the attention output, to two decimal places?"
+    answer: 8.7219
+    tolerance: { abs: 0.01 }
+    common_wrong:
+      - {
+          answer: 7,
+          category: incorrect_reasoning,
+          feedback: "That averages the two blocks' outputs, 4 and 10. The weights must divide by one total over all three keys.",
+        }
+      - {
+          answer: 6,
+          category: misunderstood_definition,
+          feedback: "Weights come from softmax of the scores, so the key with score 2 has weight $e^2$ over the total.",
+        }
+    solution: "After block 1, $\\ell=1+1=2$ and $u=6+2=8$. Block 2 adds $e^2\\approx7.389$ to $\\ell$ and $10e^2\\approx73.89$ to $u$. So the output is $81.89/9.389\\approx8.72$."
+  - id: fa-online-transfer
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A sensor has logged a billion readings, far more than fit in memory, and they are stored in chunks of different sizes. You want their mean, reading one chunk at a time. What should you keep between chunks?
+    options:
+      - {
+          id: a,
+          text: "A running sum of the readings and a running count of them.",
+          correct: true,
+          feedback: "Divide the sum by the count once at the end, like u over ℓ.",
+        }
+      - {
+          id: b,
+          text: "Each chunk's mean, then the average of those means at the end.",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "With chunks of different sizes, averaging means gives small chunks too much say.",
+        }
+      - {
+          id: c,
+          text: "Only the latest chunk's mean, since it has the newest readings.",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "The mean covers every reading, so earlier chunks must count too.",
+        }
+      - {
+          id: d,
+          text: "Every reading, since a mean needs all values at the same time.",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "A mean is a sum divided by a count, and both can be added up chunk by chunk.",
+        }
+    solution: A mean is a sum divided by a count, both of which add up chunk by chunk, so keep the running sum and count and divide once at the end.
+  - id: fa-max-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: Why does softmax code subtract the largest score from every score before raising $e$ to the scores?
+    options:
+      - {
+          id: a,
+          text: "It keeps every exponential at most 1 so none overflow, and the weights stay the same.",
+          correct: true,
+          feedback: "The factor it introduces cancels between the top and bottom of every weight.",
+        }
+      - {
+          id: b,
+          text: "It makes the largest score's weight 0, so that key can be skipped.",
+          correct: false,
+          category: math_error,
+          feedback: "The largest score becomes 0, and $e^0=1$, so its key gets the biggest weight.",
+        }
+      - {
+          id: c,
+          text: "It makes the weights add up to 1 without dividing by a total.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Softmax still divides by the total of the exponentials.",
+        }
+      - {
+          id: d,
+          text: "It changes the weights slightly, giving up a little accuracy for speed.",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "Subtracting the same number from every score leaves the weights unchanged.",
+        }
+    solution: Subtracting $m$ multiplies every exponential by $e^{-m}$, which cancels in each weight, and it keeps every exponential at most $e^0=1$ so none overflow.
+  - id: fa-max-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example with a running largest score, why are $\ell$ and $u$ multiplied by $e^{-1}$ when the second block arrives?
+    options:
+      - {
+          id: a,
+          text: "The largest score rises from 0 to 1, so the old terms must have 1 subtracted from their scores instead of 0.",
+          correct: true,
+          feedback: "Multiplying $e^{s_j-0}$ by $e^{-1}$ gives $e^{s_j-1}$.",
+        }
+      - {
+          id: b,
+          text: "Every block's total is divided by e to keep it below 65,504.",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "The factor depends on how much the largest score grew, here by 1.",
+        }
+      - {
+          id: c,
+          text: "The second block has two keys, so the old totals are scaled down.",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "The number of keys doesn't set the factor. The change in the largest score does.",
+        }
+      - {
+          id: d,
+          text: "Multiplying by $e^{-1}$ undoes the scaling by the square root of the head size.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "That scaling happened when the scores were computed. This factor moves the old terms to the new largest score.",
+        }
+    solution: Block 1's terms were measured from $m=0$. Block 2 raises the largest score to 1, so both totals are multiplied by $e^{0-1}$, which turns each $e^{s_j}$ into $e^{s_j-1}$.
+  - id: fa-max-overflow
+    dimension: math
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: The largest number that FP16, a 16-bit format, can store is 65,504. Which of these exponentials overflows in FP16?
+    options:
+      - {
+          id: a,
+          text: "$e^{12}$",
+          correct: true,
+          feedback: "$e^{12}\\approx162{,}755$, above 65,504.",
+        }
+      - {
+          id: b,
+          text: "$e^{11}$",
+          correct: false,
+          category: math_error,
+          feedback: "$e^{11}\\approx59{,}874$, which still fits.",
+        }
+      - {
+          id: c,
+          text: "$e^{10}$",
+          correct: false,
+          category: math_error,
+          feedback: "$e^{10}\\approx22{,}026$, which fits.",
+        }
+      - {
+          id: d,
+          text: "$e^{-12}$",
+          correct: false,
+          category: math_error,
+          feedback: "$e^{-12}$ is a tiny positive number, nowhere near 65,504.",
+        }
+    solution: $e^{11}\approx59{,}874$ fits under 65,504 but $e^{12}\approx162{,}755$ doesn't, so $e^{12}$ overflows.
+  - id: fa-max-factor
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "A kernel computes softmax a block at a time, measuring its running sum of exponentials from a running largest score of {{=m}}. A new block raises the largest score to {{=m+k}}. By what number must the running sum be multiplied before the new block is added? Give three decimal places."
+    params:
+      m: { min: 0, max: 2 }
+      k: { min: 1, max: 3 }
+    answer_expr: exp(-k)
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer_expr: exp(k),
+          category: math_error,
+          feedback: "The old terms are too big, so the factor is $e^{m-m_{\\text{new}}}$, which is below 1.",
+        }
+    solution: "The factor is $e^{m-m_{\\text{new}}}=e^{{{=m}}-{{=m+k}}}=e^{-{{=k}}}\\approx{{=round(exp(-k)*1000)/1000}}$."
+  - id: fa-max-rescale
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt: "A kernel computes one query's softmax a block at a time. So far its largest score is 0 and its running sum of $e^{s_j-m}$ is $\\ell={{=l}}$. The next block has two keys, both with score {{=k}}. What is $\\ell$ after this block, measured from the new largest score? Give two decimal places."
+    params:
+      l: { min: 2, max: 6 }
+      k: { min: 1, max: 2 }
+    answer_expr: l*exp(-k)+2
+    tolerance: { abs: 0.01 }
+    common_wrong:
+      - {
+          answer_expr: l+2,
+          category: incorrect_reasoning,
+          feedback: "The old sum was measured from 0. Multiply it by $e^{0-k}$ before adding.",
+        }
+      - {
+          answer_expr: l+2*exp(k),
+          category: misapplied_technique,
+          feedback: "That keeps measuring from 0, so the new terms are $e^k$ and could overflow. Measure from the new largest score.",
+        }
+    solution: "The largest score becomes {{=k}}, so the old sum is multiplied by $e^{-{{=k}}}$, and each new key adds $e^{{{=k}}-{{=k}}}=1$. That gives ${{=l}}e^{-{{=k}}}+2\\approx{{=round((l*exp(-k)+2)*100)/100}}$."
+  - id: fa-max-forgot-u
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A kernel keeps a running largest score. When a new block raises it, the kernel rescales its running sum $\ell$ but forgets to rescale its running weighted total $u$. What happens to the output $u/\ell$?
+    options:
+      - {
+          id: a,
+          text: "The earlier keys' values count for too much in the output.",
+          correct: true,
+          feedback: "Their part of u stays big while their part of ℓ shrinks.",
+        }
+      - {
+          id: b,
+          text: "Nothing changes, because only ℓ is used in the final division.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "The output is u divided by ℓ, so u matters too.",
+        }
+      - {
+          id: c,
+          text: "The later keys' values count for too much in the output.",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "The later terms are added correctly. The earlier terms in u are the ones left too big.",
+        }
+      - {
+          id: d,
+          text: "The output becomes infinite, because u overflows at once.",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "The earlier terms were measured from the old largest score, so they are at most 1 each.",
+        }
+    solution: Rescaling $\ell$ alone shrinks the earlier keys' share of the total but leaves their part of $u$ full size, so their values count too much.
+  - id: fa-max-limit
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A fused attention kernel gives each block of 128 queries to an SM, and each SM reads every block of keys and values. Counting every read the kernel asks for, how much key and value data does it read?
+    options:
+      - {
+          id: a,
+          text: "All of K and V once for every query block, so many times more than reading them once.",
+          correct: true,
+          feedback: "That is why a real kernel moves more than the least count of $4Td_h$ numbers.",
+        }
+      - {
+          id: b,
+          text: "All of K and V exactly once, because each block is shared by every SM for free.",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "Each SM has its own on-chip memory, so each one reads the blocks it needs.",
+        }
+      - {
+          id: c,
+          text: "Only one block of K and V, because the other blocks are skipped.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Every query needs every key, so no block is skipped.",
+        }
+      - {
+          id: d,
+          text: "All of K and V once, plus the score table written to HBM for each block.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "A fused kernel never writes scores to HBM.",
+        }
+    solution: Each query block needs every key and value, so K and V are read once per query block. The FlashAttention paper shows this extra traffic shrinks as on-chip memory grows.
+  - id: fa-max-transfer
+    dimension: transfer
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "A model's last layer gives a score for each of the 128,256 tokens in its vocabulary, and a kernel computes their softmax in two halves. The first half has largest score 3, and the sum of $e^{s-3}$ over its scores is 2.0. The second half has largest score 5, and the sum of $e^{s-5}$ over its scores is 1.5. What is the sum of $e^{s-5}$ over all the scores? Give two decimal places."
+    answer: 1.7707
+    tolerance: { abs: 0.01 }
+    common_wrong:
+      - {
+          answer: 3.5,
+          category: incorrect_reasoning,
+          feedback: "The first half was measured from 3. Multiply its sum by $e^{3-5}$ before adding.",
+        }
+      - {
+          answer: 16.278,
+          category: math_error,
+          feedback: "The factor is $e^{3-5}=e^{-2}$, which is below 1.",
+        }
+    solution: "The first half's sum is moved to the new largest score by multiplying by $e^{3-5}=e^{-2}\\approx0.135$. So the total is $2.0\\times0.135+1.5\\approx1.77$."
+  - id: fa-explain
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 3
+    est_minutes: 5
+    prompt: Explain why a fused attention kernel moves far less data to and from HBM than three-kernel attention, and how it can add up softmax one block of keys at a time and still give the same output, apart from rounding.
+    rubric:
+      - {
+          id: tables,
+          criterion: "Explain that three-kernel attention writes the T by T score and weight tables to HBM and reads them back between kernels.",
+          weight: 1,
+          required: true,
+        }
+      - {
+          id: fused,
+          criterion: "Explain that a fused kernel keeps the scores on chip, so it only needs to read Q, K and V and write O.",
+          weight: 1,
+          required: true,
+        }
+      - {
+          id: totals,
+          criterion: "Explain that the kernel keeps a running sum of exponentials and a running sum of exponential-weighted values, adding each block to both.",
+          weight: 1,
+          required: true,
+        }
+      - {
+          id: exact,
+          criterion: "Explain that every weight divides by the same total, so dividing once after the last block gives the same output as softmax over the whole row.",
+          weight: 1,
+          required: true,
+        }
+      - {
+          id: max,
+          criterion: "Mention that it subtracts a running largest score and rescales both sums when that score grows, so the exponentials don't overflow.",
+          weight: 1,
+          required: false,
+        }
+      - {
+          id: intensity,
+          criterion: "Mention that this raises the arithmetic intensity from at most $d_h/b$ to about $T/b$.",
+          weight: 1,
+          required: false,
+        }
+    exemplar: Three-kernel attention writes the T by T score table to HBM, reads it back to apply softmax, writes the weight table, and reads that back to mix the values, so for long prompts those tables are most of the traffic. A fused kernel keeps the scores in on-chip memory, so it only reads Q, K and V and writes O. It brings the keys and values in a block at a time and keeps two running sums for each query, the sum of the exponentials of the scores and the sum of the values each multiplied by its exponential. Every weight divides by the same total, so after the last block one division gives exactly the softmax output, apart from rounding. To stop the exponentials overflowing, it also subtracts a running largest score and rescales both sums when that score grows.
