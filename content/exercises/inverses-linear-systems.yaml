@@ -116,7 +116,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: Which matrix undoes $x\mapsto ABx$ for invertible $A,B$?
+    prompt: Which matrix takes $ABx$ back to $x$ for invertible $A$ and $B$?
     options:
       - id: a
         text: $B^{-1}A^{-1}$
@@ -420,6 +420,7 @@ exercises:
       q:
         min: 4
         max: 6
+    constraints: ["p != q"]
     answer_expr: p+2*q
     solution: "Dot column 1 with column 2: ${{=p}}\\times1+2\\times{{=q}}={{=p+2*q}}$."
     tolerance:

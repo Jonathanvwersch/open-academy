@@ -50,7 +50,7 @@ knowledge_points:
       </g></svg>
       ```
 
-      The **inverse** of $A$, written $A^{-1}$, sends every output back to its input. A matrix with an inverse is **invertible**. Every vector $y$ then comes from exactly one input. Applying $A^{-1}$ to $y$ finds that input, and applying $A$ returns $y$. In a product like $A^{-1}Ax$, the matrix next to $x$ acts first. Here $x$ is a column vector. Both orders give $I$:
+      The **inverse** of $A$, written $A^{-1}$, sends every output back to its input. A matrix with an inverse is **invertible**. Every vector $y$ then comes from exactly one input. Applying $A^{-1}$ to $y$ finds that input, and applying $A$ returns $y$. In a product like $A^{-1}Ax$, the matrix next to $x$ acts first. Here $x$ is a vector written as a column. Both orders give $I$:
 
       $$AA^{-1}=A^{-1}A=I$$
 
@@ -259,7 +259,7 @@ knowledge_points:
 
       ### When there is no answer to find
 
-      A **singular** matrix is a square matrix with no inverse. For a $2\times2$ matrix, that means its determinant is zero. Then `np.linalg.solve(A, b)` can't find a single answer and stops with the error `LinAlgError: Singular matrix`.
+      A **singular** matrix is a square matrix with no inverse. For a $2\times2$ matrix, that means its determinant is zero. Then `np.linalg.solve(A, b)` usually raises `LinAlgError: Singular matrix`. With decimal entries, rounding can hide the zero determinant, so `solve` may return enormous, meaningless numbers. Check the determinant and whether the result reproduces $b$; a tiny computed determinant can be a rounded zero.
 
       Be careful not to read that error as a bug in NumPy. It's telling you the equations don't pin down one answer, just as elimination did when every unknown vanished.
     worked: |
