@@ -160,7 +160,7 @@ knowledge_points:
     explain: |
       ### Why a good start isn't enough
 
-      A good starting size only helps at the start. Training changes the weights at every step, and the outputs are made from those weights, so a layer's outputs may become ten times bigger or all move up together, and the next layers see numbers of the wrong size. Normalization rescales outputs to keep their size steady on every forward pass.
+      Training changes the weights at every step, and the outputs are made from those weights, so a layer's outputs may become ten times bigger or all move up together, and the next layers see numbers of the wrong size. Normalization rescales outputs to keep their size steady on every forward pass.
 
       ### Rescaling four outputs
 
