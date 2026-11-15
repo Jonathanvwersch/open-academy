@@ -22,11 +22,11 @@ knowledge_points:
 
       A weight says how much the prediction changes when its input rises by one. To copy a quirk, a model's prediction has to jump between examples that look almost the same, and only large weights turn a small change in the inputs into a big change in the prediction. Say a model has two inputs that almost always rise and fall together, with weights $+50$ and $-49$. When the two inputs are equal, the weights nearly cancel. If the first input is $0.1$ higher than the second, the prediction rises by an extra $50\times0.1=5$. A model with small weights changes its predictions more gently, and gentle changes are more likely to hold up on new examples.
 
+      The **L2 penalty** adds $\lambda$ times the sum of the squared weights to the loss.
+
       So instead of the loss alone, we train the model to make the loss plus a penalty as small as possible.
 
       ### The L2 penalty
-
-      The **L2 penalty** adds $\lambda$ times the sum of the squared weights to the loss:
 
       $$L_{\text{total}}=L_{\text{data}}+\lambda\sum_j w_j^2.$$
 

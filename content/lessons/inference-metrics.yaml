@@ -104,7 +104,7 @@ knowledge_points:
 
       Our chat assistant answers thousands of requests, and their times differ, because some prompts are longer and some arrive when the server is busy and have to wait their turn. How do we describe all of them with a few numbers?
 
-      The picture shows ten made-up times to first token from our assistant, as orange bars sorted from fastest to slowest. We'll come to the labels p50 and p90 in a moment.
+      The picture shows ten made-up times to first token from our assistant, as orange bars sorted from fastest to slowest. We'll come to the labels p50 (the middle wait) and p90 (a wait at least nine in ten users don't exceed) in a moment.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 340" aria-label="Ten orange bars, the times to first token of ten requests sorted from fastest to slowest: 180, 190, 200, 200, 210, 220, 230, 250, 400 and 1200 ms. A red line across the chart marks the mean, 328 ms, which is higher than eight of the ten bars. Bar 5, 210 ms, is labelled p50, and bar 9, 400 ms, is labelled p90">
@@ -134,7 +134,7 @@ knowledge_points:
 
       ### Percentiles
 
-      In our list, 9 of the 10 users waited 400 ms or less, so the 90th percentile, written **p90**, is 400 ms. A **percentile** is a value at a chosen position in the sorted times. **p50** describes a typical wait, and **p99** describes the slow end. The slowest few requests are called the **tail**.
+      In our list, 9 of the 10 users waited 400 ms or less, so the 90th percentile, written **p90**, is 400 ms. A **percentile** is a value at a chosen position in the sorted times. **p99** describes the slow end. The slowest few requests are called the **tail**.
 
       We'll use the nearest-rank rule. Sort the $n$ values from fastest to slowest. The $p$th percentile is the value at position $p\times n/100$, rounded up to a whole number. At least $p$% of the values are at or below it, and at most $(100-p)$% are strictly above it. Ties can put many requests exactly at that value, but still at most $(100-p)$% are strictly above it.
 
