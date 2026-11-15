@@ -298,13 +298,23 @@ test('debug grading gives partial credit for one correct part', async () => {
 
 test('explanation self-check requires rubric selection and caps credit at assisted', async () => {
   const exercise = required(content.exercisesById.get('derivatives-explain'), 'explain exercise');
+  if (exercise.type !== 'explain') throw new Error('Expected an explanation exercise');
   const request = await gradeExercise(exercise, { text: 'A local rate.' });
   expect(request).toMatchObject({ status: 'self_check_required', graded_by: 'self' });
-  const partial = await gradeExercise(exercise, {
+  const allRequired = {
+    ...exercise,
+    rubric: exercise.rubric.map((criterion) => ({ ...criterion, required: true })),
+  };
+  const partial = await gradeExercise(allRequired, {
     text: 'A local rate.',
     metCriteria: ['local-rate'],
   });
   expect(partial).toMatchObject({ status: 'graded', correct: 0.5, credit: 0.5, graded_by: 'self' });
+  const requiredOnly = await gradeExercise(exercise, {
+    text: 'A local rate.',
+    metCriteria: ['local-rate'],
+  });
+  expect(requiredOnly).toMatchObject({ correct: 1, credit: 0.5, graded_by: 'self' });
   const full = await gradeExercise(exercise, {
     text: 'Local rate and tangent slope.',
     metCriteria: ['local-rate', 'tangent-slope'],
