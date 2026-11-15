@@ -311,6 +311,18 @@ export function validateContent(data: ContentSourceData): ContentIssue[] {
     }
     seenExercises.add(value.id);
     exercises.set(value.id, { concept, file, value });
+    if (value.type === 'explain') {
+      const requiredCount = value.rubric.filter((criterion) => criterion.required).length;
+      const totalCount = value.rubric.length;
+      if (requiredCount > 4 || totalCount > 6) {
+        addIssue(
+          issues,
+          file,
+          value.id,
+          `explain rubric has ${requiredCount} required and ${totalCount} total criteria; limits are 4 required and 6 total`,
+        );
+      }
+    }
     if (value.type === 'mc' && !value.options.some((option) => option.correct)) {
       addIssue(
         issues,

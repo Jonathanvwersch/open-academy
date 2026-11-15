@@ -46,6 +46,7 @@ Every idea in a step gets at least two questions from different angles. Cover th
 
 ### Explain questions: rubrics and exemplars
 
+- An explain prompt asks for at most 3 things. Give it 2–4 required criteria, each matching a part of the prompt, and at most 2 optional extras taught in the lesson. Keep the whole rubric to at most 6 criteria.
 - Every rubric criterion, required or optional, and every claim in the exemplar must be explicitly taught in the lesson step or in a prerequisite lesson listed in the recap. Taught means said in plain words in an explain, worked example or summary. A diagram alone or an implication does not count.
 - When an answer is partly right, the app says "Almost" and lists the criteria the learner missed. The learner has to be able to find each one in what they read.
 - Each criterion names one concrete point in the lesson's own words, written as an instruction (for example "Explain that ..."), so the missed-points list tells the learner exactly what to add.

@@ -763,6 +763,62 @@ test('real content has a valid course graph', async () => {
   expect(content.courses).toHaveLength(8);
 });
 
+test.each([
+  { requiredCount: 2, totalCount: 2 },
+  { requiredCount: 2, totalCount: 4 },
+  { requiredCount: 4, totalCount: 4 },
+  { requiredCount: 4, totalCount: 6 },
+])(
+  'explain rubric accepts $requiredCount required and $totalCount total criteria',
+  async ({ requiredCount, totalCount }) => {
+    const data = await notationFixture();
+    const exercise = required(
+      data.exercises.find(({ value }) => value.id === 'derivatives-explain'),
+      'explain exercise',
+    );
+    if (exercise.value.type !== 'explain') throw new Error('Expected explain fixture');
+    exercise.value.rubric = Array.from({ length: totalCount }, (_, index) => ({
+      id: `criterion-${index + 1}`,
+      criterion: `Explain point ${index + 1}.`,
+      weight: 1,
+      required: index < requiredCount,
+    }));
+
+    expect(validateContent(data)).toEqual([]);
+  },
+);
+
+test.each([
+  { requiredCount: 5, totalCount: 5 },
+  { requiredCount: 4, totalCount: 7 },
+  { requiredCount: 5, totalCount: 7 },
+  { requiredCount: 0, totalCount: 7 },
+])(
+  'explain rubric rejects $requiredCount required and $totalCount total criteria',
+  async ({ requiredCount, totalCount }) => {
+    const data = await notationFixture();
+    const exercise = required(
+      data.exercises.find(({ value }) => value.id === 'derivatives-explain'),
+      'explain exercise',
+    );
+    if (exercise.value.type !== 'explain') throw new Error('Expected explain fixture');
+    exercise.value.rubric = Array.from({ length: totalCount }, (_, index) => ({
+      id: `criterion-${index + 1}`,
+      criterion: `Explain point ${index + 1}.`,
+      weight: 1,
+      required: index < requiredCount,
+    }));
+
+    expect(validateContent(data)).toEqual([
+      {
+        file: exercise.file,
+        id: exercise.value.id,
+        message: `explain rubric has ${requiredCount} required and ${totalCount} total criteria; limits are 4 required and 6 total`,
+      },
+    ]);
+  },
+);
+
 test('avoid patterns report prohibited words in learner prompts with their source location', async () => {
   const data = await notationFixture();
   addAvoidPattern(data);
