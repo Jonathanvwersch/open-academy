@@ -76,7 +76,7 @@ knowledge_points:
 
       An assistant can have several reasonable ways to answer one request. To compare two models, we can ask both to answer the same requests and judge each pair. A **pairwise evaluation** judges two answers to one prompt, using a stated rule for which answer is better and allowing a tie.
 
-      For our reading assistant, a **prompt** is the request given to the model. One prompt says, 'Using "the cat sat on the mat", answer in one sentence: where did the cat sit?' Model A says 'On the mat.' Model B says 'On the rug.' Our rule favours answers supported by the supplied sentence and following the instruction, so A wins this comparison.
+      Imagine a reading assistant that answers questions about supplied text. A **prompt** is the request given to the model. One prompt says, 'Using "the cat sat on the mat", answer in one sentence: where did the cat sit?' Model A says 'On the mat.' Model B says 'On the rug.' Our rule favours answers supported by the supplied sentence and following the instruction, so A wins this comparison.
 
       ### Give each prompt one decision
 
@@ -129,7 +129,7 @@ knowledge_points:
 
       An **LLM judge** is a language model asked to compare answers against written criteria, called a **rubric**. This helps us score many pairs, so we need to check its decisions. For our reading task, the rubric checks support from the supplied sentence, then instruction following, with ties allowed when answers are equally good.
 
-      Return to the prompt asking where the cat sat in "the cat sat on the mat". A says 'On the mat.' B says 'On the rug.' Hide the model names and label the displayed answers Left and Right. Compare these same answers twice, swapping their places the second time.
+      Ask two models, A and B, where the cat sat in "the cat sat on the mat". A says 'On the mat.' B says 'On the rug.' Hide the model names and label the displayed answers Left and Right. Compare these same answers twice, swapping their places the second time.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 310" aria-label="Two presentations of the same answer pair. First presentation: Left contains A, On the mat; Right contains B, On the rug. Swapped presentation: Left contains B, On the rug; Right contains A, On the mat. An example biased judge picks Left both times, so its chosen model changes from A to B.">

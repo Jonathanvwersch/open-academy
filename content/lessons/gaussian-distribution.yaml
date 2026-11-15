@@ -19,9 +19,9 @@ knowledge_points:
     explain: |
       ### Readings around a centre
 
-      A Gaussian is completely fixed by its mean and standard deviation, so let's learn those two numbers. A sensor aimed at a wall 100 cm away gives readings of 97, 99, 100, 101 and 103 cm. A robot uses such readings to judge its distance from obstacles.
+      A **Gaussian** is a distribution with a symmetric bell-shaped curve. Two numbers fix its shape: its average, called the **mean**, and its typical distance from that average, measured by the **standard deviation**. A sensor aimed at a wall 100 cm away gives readings of 97, 99, 100, 101 and 103 cm. A robot uses such readings to judge its distance from obstacles.
 
-      The **mean** is the average value. For a distribution, it is the expected value $E[X]$. For a list, add the readings and divide by how many there are. We write it as $\mu$, the Greek letter mu. Our mean is 100 cm.
+      For a distribution, the mean is the expected value $E[X]$. For a list, add the readings and divide by how many there are. We write it as $\mu$, the Greek letter mu. Our mean is 100 cm.
 
       ### Why we square the distances
 
@@ -71,7 +71,7 @@ knowledge_points:
 
       $$\text{bar height}=\frac{\text{fraction in interval}}{\text{interval width}}$$
 
-      More Gaussian readings and narrower bars trace a bell. Five readings cannot establish that. These fractions come from the model itself, as if we had very many readings.
+      A **Gaussian distribution** has a symmetric bell-shaped curve. More readings from it and narrower bars trace that bell. Five readings cannot establish the shape. These fractions come from the model itself, as if we had very many readings.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 540 280" aria-label="Sensor model with mean 100 cm and standard deviation 2 cm. Grey bars are exact Gaussian bin probabilities divided by their 1 cm width. The blue density traces the bar tops. The shaded 98 to 102 cm area is about 68 percent. Tails are the thin ends.">
@@ -83,7 +83,7 @@ knowledge_points:
 
       ### Height times width gives area
 
-      A **Gaussian distribution** has a symmetric bell-shaped curve. Its mean $\mu$ sets the centre and standard deviation $\sigma$ sets the spread. Near the peak, a narrow 0.1 cm interval has probability about $0.20\times0.1=0.02$. That 0.20 is the **density**, or probability per centimetre.
+      The mean $\mu$, or average, sets the centre. The **standard deviation** $\sigma$, the square root of the average squared distance from the mean, sets the spread. Near the peak, a narrow 0.1 cm interval has probability about $0.20\times0.1=0.02$. That 0.20 is the **density**, or probability per centimetre.
 
       Narrower rectangles each get their own curve height. Their areas add to an interval's probability. The shaded area from 98 to 102 cm is about 68%. The thin ends far from the centre are called **tails**.
 
@@ -119,7 +119,7 @@ knowledge_points:
     explain: |
       ### Why calculate a height?
 
-      Equal small intervals near 100 and 102 cm have chances in a ratio of about 1.65 to 1. The shape factors give $1/e^{-1/2}\approx1/0.607\approx1.65$. Both readings share the front factor, so it cancels. Height times width estimates the chance. In the next lesson we'll use heights to choose the mean and spread that best match readings.
+      Model a sensor with a Gaussian bell-shaped distribution centred at mean 100 cm and standard deviation 2 cm. Standard deviation is the square root of the average squared distance from the mean. Equal small intervals near 100 and 102 cm have chances in a ratio of about 1.65 to 1. Height times width estimates the chance. We'll build the height from a distance-dependent **shape factor** and a shared **front factor** that sets total area to 1.
 
       Keeping the centre at 100 cm, greater spread makes the bell wider and lower.
 
@@ -143,7 +143,7 @@ knowledge_points:
 
       $$z^2=\frac{(x-\mu)^2}{\sigma^2}$$
 
-      The shape factor is
+      The shape factor, which shrinks with distance from the centre, is
 
       $$e^{-z^2/2}=e^{-(x-\mu)^2/(2\sigma^2)}$$
 
@@ -155,9 +155,9 @@ knowledge_points:
 
       $$f(x)=\frac{1}{\sigma\sqrt{2\pi}}e^{-(x-\mu)^2/(2\sigma^2)}$$
 
-      The standard deviation $\sigma$ must be positive, and variance is $\sigma^2$. The bars' areas add up to 1, including bars beyond the picture. The curve needs total area 1 too.
+      The standard deviation $\sigma$ must be positive, and variance is $\sigma^2$. Histogram bars group readings into intervals whose areas give their probabilities. Their areas add to 1, including beyond the picture. The curve needs total area 1 too.
 
-      The exact front factor needs maths beyond this lesson. Numerically, the shape-factor curve's area along the $z$ axis is $\sqrt{2\pi}\approx2.507$. Stretching width by $\sigma$ multiplies area by $\sigma$, so dividing by both gives area 1. Doubling the width makes the peak half as high.
+      The front factor is $1/(\sigma\sqrt{2\pi})$. Its derivation needs further maths. The shape-factor curve's area along the $z$ axis is $\sqrt{2\pi}\approx2.507$. Stretching width by $\sigma$ multiplies area by $\sigma$, so dividing by both gives area 1. Doubling width halves the peak. At 100 and 102 cm, the shared front factor cancels, leaving shape-factor ratio $1/e^{-1/2}\approx1/0.607\approx1.65$.
 
       Height is not probability. With $\sigma=0.1$ cm the peak is about 3.99 per cm. A narrow curve can be that tall while its area stays 1.
     worked: |
@@ -191,7 +191,7 @@ knowledge_points:
 
       An **ordered pair** records each die separately. The pair $(1,6)$ means first die 1, second die 6, so it differs from $(6,1)$ even though both sum to 7.
 
-      Two dice make a pointed mound, but five make a rounder outline. Counting all ordered results gives the bars' probabilities. Five-dice bars have width 1, so area equals height, directly comparable with density. The worked example finds the matching Gaussian's mean and variance.
+      Two dice make a pointed mound, but five make a rounder outline. Counting ordered results gives the bars' probabilities. Five-dice bars have width 1, so area equals height, comparable with **density**, probability per unit width. The worked example finds the average, or mean, and average squared distance from it, or variance, for a matching **Gaussian**, a symmetric bell-shaped distribution.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 540 270" aria-label="Exact probabilities for the sum of two fair independent dice. Sums 2 through 12 have counts 1,2,3,4,5,6,5,4,3,2,1 out of 36.">
@@ -217,7 +217,7 @@ knowledge_points:
 
       ### Limitations
 
-      Be careful if stray reflections sometimes make our sensor report 150 cm. That is 25 standard deviations above 100 cm when $\sigma=2$, so our Gaussian gives nearby readings essentially no probability. Frequent readings there would contradict the model.
+      The **standard deviation** $\sigma$ is the square root of variance. Be careful if stray reflections make a sensor report 150 cm. That is 25 standard deviations above its mean of 100 cm when $\sigma=2$, so a Gaussian gives nearby readings essentially no probability. Frequent readings there would contradict the model.
 
       The bell argument needs independent effects within a reading. A motor driving both noise and vibration breaks that independence. Counts are whole numbers, never negative. A Gaussian can approximate large counts far from zero, but fits small counts poorly.
 

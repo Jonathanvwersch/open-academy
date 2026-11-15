@@ -82,7 +82,7 @@ knowledge_points:
     explain: |
       ### Moving through all four examples
 
-      Our first batch moved $w$ from $3$ to $2.8$. Now use targets $5,7$, calculating fresh slopes at $2.8$. A batch update changes the starting point for the next batch.
+      Our model predicts one adjustable trip time $w$ for four trips whose recorded times, the targets, are $1,3,5,7$ seconds. A **batch** groups examples for one parameter update. The first batch, targets $1,3$, moved $w$ from $3$ to $2.8$. Now use targets $5,7$, calculating fresh slopes at $2.8$. Each update changes the next batch's starting point.
 
       An **epoch** is one complete pass through the training dataset. The picture previews our first epoch's two updates, with the second calculation worked out below. Each left-hand box is one batch; each orange box is one parameter update.
 
@@ -143,9 +143,9 @@ knowledge_points:
     explain: |
       ### When two batches disagree
 
-      We can update sooner with a small batch, but how much should we trust its direction? Keep our four targets $1,3,5,7$, and imagine the model has reached $w=4$. The **full-data gradient**, averaging all four slopes $6,2,-2,-6$, is zero. As in gradient descent, our squared-error loss is a bowl, so this flat point is its minimum.
+      A **batch** groups examples for one parameter update. Smaller groups let us update sooner, but how reliable is their direction? Our model predicts one adjustable trip time $w$ for trips with recorded times, or targets, $1,3,5,7$ seconds. At $w=4$, the **full-data gradient**, averaging all four slopes $6,2,-2,-6$, is zero. Our squared-error loss is a bowl, so this flat point is its minimum.
 
-      Look at the two possible batches below. Blue labels give their average slopes; the orange arrows are their updates with $\eta=0.1$. Both start from $4$. The lower-target batch moves left; the higher-target batch moves right.
+      Below, blue labels give average slopes; orange arrows show updates with $\eta=0.1$. Both start from $4$. The lower-target batch moves left; the higher-target batch moves right.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" aria-label="Two alternative batch updates from w equals 4 with learning rate 0.1. Targets 1 and 3 have average slope plus 4 and move left to 3.6. Targets 5 and 7 have average slope minus 4 and move right to 4.4. A separate full-data case has gradient zero and stays at 4. Both arrows have equal length.">

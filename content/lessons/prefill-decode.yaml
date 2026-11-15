@@ -84,7 +84,7 @@ knowledge_points:
     explain: |
       ### Choosing from the scores
 
-      Prefill and each later decode pass supply scores for choosing a token. Sampling lets the assistant vary its wording across requests. Let's use a toy vocabulary, Yes and No, with scores $\ln4$ and $0$. These give clean softmax weights: the natural logarithm $\ln4$ is the number whose exponential is $4$. Scores before softmax are called **logits**. Softmax exponentiates them to $4$ and $1$, then divides by their total, giving probabilities $0.8$ and $0.2$.
+      **Prefill** processes the known prompt to score the first output token. **Decode** scores later tokens one at a time using those already chosen. **Sampling** draws a token according to its probability, allowing varied wording. Let's use a toy vocabulary, Yes and No, with scores $\ln4$ and $0$. The natural logarithm $\ln4$ is the number whose exponential is $4$. Scores before softmax are called **logits**. Softmax exponentiates them to $4$ and $1$, then divides by their total, giving probabilities $0.8$ and $0.2$.
 
       **Temperature** is a positive number that divides the logits before softmax. A lower temperature concentrates probability on higher scores; a higher one spreads it more evenly. For example, No is drawn more often at higher temperatures. The blue bars show Yes's probability, rounded to two decimals.
 
@@ -109,7 +109,7 @@ knowledge_points:
 
       ### Random draws and greedy choices
 
-      **Sampling** draws a token according to its probability. Lay the probabilities along a strip from 0 to 1. Pick a random point $u$ on it, with $0\le u<1$, and choose the token covering that point. In code, add probabilities until the total first exceeds $u$. Below, at $\tau=2$, Yes covers two thirds and No covers the rest. The orange line marks $u=0.70$.
+      Lay the probabilities along a strip from 0 to 1. Pick a random point $u$ on it, with $0\le u<1$, and choose the token covering that point. In code, add probabilities until the total first exceeds $u$. Below, at $\tau=2$, Yes covers two thirds and No covers the rest. The orange line marks $u=0.70$.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 165" aria-label="At temperature 2, Yes covers 0 to 2/3 and No covers 2/3 to 1. A draw u equals 0.70 lies in No's interval.">
@@ -180,7 +180,7 @@ knowledge_points:
     explain: |
       ### Removing unlikely choices
 
-      Temperature changes the assistant's next-token probabilities. The assistant can still choose an unlikely token. To remove the least likely choices, we can filter them out. Let the toy vocabulary be Yes, Maybe, No and a full stop. Suppose their probabilities, after temperature and softmax, are $0.4$, $0.3$, $0.2$ and $0.1$.
+      **Temperature** divides the assistant's next-token scores before softmax, changing their probabilities. The assistant can still choose an unlikely token. To remove the least likely choices, we can filter them out. Let the toy vocabulary be Yes, Maybe, No and a full stop. Suppose their probabilities, after temperature and softmax, are $0.4$, $0.3$, $0.2$ and $0.1$.
 
       **Top-k sampling** keeps the $k$ most probable tokens and removes the rest. Choose a whole number $k$ from 1 to the vocabulary size. Then divide the retained probabilities by their total so they add up to 1 again. This is called **renormalising**.
 
@@ -266,7 +266,7 @@ knowledge_points:
     explain: |
       ### Letting the number kept change
 
-      The assistant's probabilities change at each prefill or decode prediction. We want the number of choices to adapt to those probabilities. **Top-p sampling**, also called nucleus sampling, adds the most likely tokens one by one until their total probability reaches at least a chosen threshold $p$, with $0<p\le1$. Here $p$ is a cutoff for the total. Then we renormalise and draw from the retained set.
+      **Prefill** processes the prompt to predict the first output token; **decode** predicts later tokens using those already chosen. Probabilities change at each prediction, so we want the number of choices to adapt. **Top-p sampling**, or nucleus sampling, adds the most likely tokens until their total probability reaches at least a threshold $p$, with $0<p\le1$. Then we **renormalise**: divide retained probabilities by their total so they sum to 1, and draw from this set.
 
       To find the set, sort tokens from most to least probable. Add their probabilities until the running total first reaches or exceeds $p$, then stop. Keep all tokens added so far, including the one that crosses the threshold.
 
@@ -294,7 +294,7 @@ knowledge_points:
 
       ### Choosing a token during generation
 
-      A generation program can apply temperature to logits, compute softmax, then filter and sample. Our filter examples start from probabilities after that softmax step. We demonstrate top-k and top-p separately. The same procedure works after prefill and after each later decode pass. Either filter can remove a useful continuation. Check generated answers for incorrect or irrelevant text when changing $k$ or $p$.
+      A generation program can divide **logits**, the scores before softmax, by a positive **temperature**, then compute softmax, filter and sample. Our examples start after softmax. **Top-k** keeps a fixed count $k$ of the most probable tokens; we demonstrate it separately from top-p. Either filter works after prefill and each decode pass, and can remove a useful continuation. Check answers for incorrect or irrelevant text when changing $k$ or $p$.
     worked: |
       Let's apply $p=0.8$ to Yes, Maybe, No and full stop with probabilities $0.4$, $0.3$, $0.2$, $0.1$, then draw with $u=0.85$.
 

@@ -85,7 +85,7 @@ knowledge_points:
     explain: |
       ### The outputs become the next inputs
 
-      Our first layer produces two numbers, but we want one prediction. We can feed those numbers into one more neuron. It uses weights $(3,2)$ and bias $1$. We leave its score unchanged so it can predict a price without being squeezed into a fixed range, as we will discuss below.
+      A **layer** groups neurons that read the same inputs. Our first layer reads $(2,1)$: blue uses weights $(1,1)$ and bias $-1$; orange uses $(-1,1)$ and bias $0$. It produces two numbers, but we want one prediction. We feed them into a neuron with weights $(3,2)$ and bias $1$, leaving its score unchanged to predict a price.
 
       Read the picture from top to bottom. The first layer turns $(2,1)$ into $(2,0)$ after ReLU. The output neuron reads those new values, not the original inputs, and produces $7$.
 
@@ -160,9 +160,9 @@ knowledge_points:
     explain: |
       ### Several inputs travel together
 
-      We have run one example through the network. A **batch** groups several examples into one calculation, using the same weights and biases for each. Stack $(2,1)$, $(1,2)$ and $(0,1)$ as rows of a matrix $X$.
+      Our network has two ReLU neurons feeding one output neuron. Their intermediate outputs are **hidden values**. A **batch** groups examples into one calculation with shared weights and biases. Stack $(2,1)$, $(1,2)$ and $(0,1)$ as rows of a matrix $X$.
 
-      In the picture, each row keeps its example from input to prediction. The hidden columns belong to the blue and orange neurons from step 1. The green column holds predictions from the single output neuron.
+      In the picture, each row keeps its example from input to prediction. The hidden columns belong to the blue and orange ReLU neurons. The green column holds predictions from the single output neuron.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 210" aria-label="Three example rows: X has rows (2,1), (1,2), (0,1), shape 3 by 2. Hidden H has rows (2,0), (2,1), (0,1), shape 3 by 2. Predictions are 7, 9, 3, shape 3 by 1. Each row keeps the same example.">
@@ -183,7 +183,7 @@ knowledge_points:
 
       ### Why we transpose the weights
 
-      A matrix product pairs a row with a column. Our blue neuron has weight row $(1,1)$ in $W_1$; transposing makes it the first column of $W_1^\top$. The example row $(2,1)$ then gives $2\cdot1+1\cdot1=3$, and adding its bias $-1$ gives score $2$.
+      A matrix product pairs a row with a column. $W_1$ stores the first layer's weight rows: blue $(1,1)$ and orange $(-1,1)$. Transposing makes blue's row the first column of $W_1^\top$. The example row $(2,1)$ then gives $2\cdot1+1\cdot1=3$, and adding its bias $-1$ gives score $2$.
 
       More generally, let $B$ count examples, $d_\text{in}$ count inputs and $d_\text{out}$ count neurons. Transposing puts the input count first in the weight shape, so the inner sizes match:
 

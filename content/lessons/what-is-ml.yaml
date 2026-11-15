@@ -105,7 +105,7 @@ knowledge_points:
     explain: |
       ### A house as a list of numbers
 
-      So far we fitted one weight by trying values, but a real model has several measurements, each with its own weight, and thousands of sales. So what does a computer need to find all those weights by itself?
+      A **model** is a rule for making predictions, with adjustable numbers called **weights**. A house-price model can use several measurements, each with its own weight, and learn from thousands of sales. How does a computer find those weights?
 
       First, it needs each house written as numbers. Take a house with an area of 120 m², 3 bedrooms and an age of 20 years. We count the area in tens of square metres, so that it's a small number like the other two, and the house becomes the list $(12,3,20)$. A list of numbers like this is called a **vector**.
 
@@ -115,7 +115,7 @@ knowledge_points:
 
       $$\text{prediction}=w_1x_1+w_2x_2+w_3x_3.$$
 
-      With weights $(25,10,-1)$, each ten square metres adds £25k, each bedroom adds £10k and each year of age takes off £1k, so this house is predicted at £310k. It actually sold for £330k.
+      With weights $(25,10,-1)$, each ten square metres adds £25k, each bedroom adds £10k and each year of age takes off £1k, so this house is predicted at £310k. Its **target**, the known answer to compare with the prediction, is its sale price of £330k.
 
       ### Scoring the weights and improving them
 
@@ -168,7 +168,7 @@ knowledge_points:
       </svg>
       ```
 
-      Each box in the diagram is one of these pieces and one Week 1 lesson, which is why the maths lessons aren't a detour before the machine learning but are how it works.
+      Each box is one Week 1 lesson, teaching a piece of how machine learning works.
     worked: |
       Let's follow the 120 m² house through the model and score the result. Its weights are £25k per ten square metres, £10k per bedroom and −£1k per year of age, which we write as $(25,10,-1)$, and it sold for £330k. We've simply picked these weights for now, because finding good ones is the job of training.
 
@@ -207,9 +207,9 @@ knowledge_points:
     explain: |
       ### From house prices to a robot arm
 
-      This course ends with robots that learn tasks such as picking up a cup by looking through a camera. So why start with house prices?
+      This course ends with robots learning to pick up a cup using a camera. Why start with house prices?
 
-      Because a robot's problem has the same pieces. A camera image is numbers too, one brightness for each tiny dot, or pixel. The diagram compares house prices with a robot learning to pick up a cup from recordings of a person steering it. The inputs and outputs change, but there's still a model with weights, a loss and a target, which is the movement the person made.
+      Both use a **model**, a rule for predicting outputs from inputs, with adjustable numbers called **weights**. A **loss** scores how far predictions are from the known answers, or **targets**. A camera image is numbers too, one brightness for each tiny dot, or pixel. The diagram compares house prices with a robot learning from recordings of a person steering it to pick up a cup. The robot's target is the person's movement. The house model uses a **weighted sum**: multiply each measurement by its weight, then add.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" aria-label="The house-price problem and a robot learning to pick up a cup, side by side: each has an input, a model with weights, an output, a target and a loss">
@@ -255,7 +255,7 @@ knowledge_points:
       - **Imitation learning** treats a person's recorded demonstrations as the answers, and then uses the supervised cycle.
       - **Reinforcement learning** has no answers at all, only a score called a **reward** for how well each attempt went. The robot learns by trial and error to make the reward as large as possible.
 
-      Be careful not to think robots need a completely different kind of learning. Their models still predict, get scored and change their weights, so we learn that cycle first on house prices, where we can check it by hand.
+      Be careful about assuming robots need a different learning cycle. Their models still predict, get scored and change weights. House prices let us check this cycle by hand.
 
       ### Where each week fits
 
