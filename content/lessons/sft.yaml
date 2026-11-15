@@ -38,7 +38,7 @@ knowledge_points:
       </svg>
       ```
 
-      **Supervised fine-tuning** is further training on prompt–response demonstrations, starting from already learned weights. The desired response supplies the **targets**, the correct next tokens training asks the model to predict.
+      **Supervised fine-tuning** (SFT) is further training on prompt–response demonstrations, starting from already learned weights. The desired response supplies the **targets**, the correct next tokens training asks the model to predict.
 
       ### Marking who is speaking
 
