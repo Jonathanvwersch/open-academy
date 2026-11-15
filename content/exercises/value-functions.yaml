@@ -417,7 +417,7 @@ exercises:
       - answer_expr: "(1 - p) * (-1 + 0.9 * c) + p * (-1 + 0.9 * a)"
         category: math_error
         feedback: The weights are swapped. Right has probability ${{=p}}$.
-    solution: 'Right gives $-1+0.9\times{{=c}}={{=-1+0.9*c}}$ and left gives $-1+0.9\times{{=a}}={{=-1+0.9*a}}$. So $V(2)\leftarrow{{=p}}\times{{=-1+0.9*c}}+{{=1-p}}\times{{=-1+0.9*a}}={{=p*(-1+0.9*c)+(1-p)*(-1+0.9*a)}}$.'
+    solution: 'Right gives $-1+0.9\times{{=c}}={{=-1+0.9*c}}$ and left gives $-1+0.9\times{{=a}}={{=-1+0.9*a}}$. So $V(2)\leftarrow{{=p}}\times{{=-1+0.9*c}}+{{=1-p}}\times({{=-1+0.9*a}})={{=p*(-1+0.9*c)+(1-p)*(-1+0.9*a)}}$.'
   - id: vfp-first-backup-meaning
     dimension: conceptual
     type: mc
@@ -561,7 +561,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "You want the best possible values for a task, rather than the values of one fixed policy. Which backup do you repeat?"
+    prompt: "You want the best possible values for a task. Which backup do you repeat?"
     options:
       - id: a
         text: 'The optimality backup, which takes the largest of $E[r+\gamma V(s'')]$ over the actions.'
@@ -702,6 +702,6 @@ exercises:
         weight: 2
         required: true
       - id: r3
-        criterion: The optimality backup takes the best action (a max) instead of averaging over the policy's actions, which leads to the optimal values
+        criterion: The optimality backup takes the best action's value (a max), which leads to the optimal values
         weight: 1
     exemplar: '$V^\pi(s)$ is the return an agent expects from state $s$ if it follows policy $\pi$, and $Q^\pi(s,a)$ is the return it expects if it takes action $a$ first and then follows $\pi$. A Bellman backup takes current estimates and sets a state''s value to the expected one-step reward plus $\gamma$ times the next state''s value, averaged over the policy''s actions and where the moves land. In the 4-cell corridor under "always move right", cell 2 gets $-1+0.9\times10=8$. The optimality backup instead takes the largest of those one-step values over the actions, and repeating it gives $V^*$, from which the best move is the one with the largest $Q^*$.'

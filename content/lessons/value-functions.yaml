@@ -187,7 +187,7 @@ knowledge_points:
 
       ### One Bellman backup
 
-      Usually we don't know the values, so we start from guesses, called estimates, and write them as plain $V(s)$. Putting them into the right-hand side gives a new estimate for one state. That's one **Bellman backup**. The new estimate is better because its first reward is exact, and only the shrunk part rests on the old guesses. Repeating backups for every state brings the estimates to $V^\pi$ when $\gamma<1$, because each round shrinks the largest gap from the true values to at most $\gamma$ times its size.
+      Usually we don't know the values, so we start from guesses, called estimates, and write them as plain $V(s)$. Putting them into the right-hand side gives a new estimate for one state. That's one **Bellman backup**. One backup can even move a single estimate further from its true value. Still, repeating backups for every state brings the estimates to $V^\pi$ when $\gamma<1$, because each round shrinks the largest gap from the true values to at most $\gamma$ times its size.
 
       The picture sets up a backup for cell 2 under the policy that goes right with probability $0.8$, from made-up estimates $V(1)=5$ and $V(3)=9$.
 
@@ -247,7 +247,7 @@ knowledge_points:
 
       ### The Bellman optimality equation
 
-      Here we take the best action instead of averaging over actions. The **Bellman optimality equation** is
+      Here we take the best action. The **Bellman optimality equation** is
 
       $$V^*(s)=\max_a E\big[\,r+\gamma V^*(s')\,\big].$$
 
@@ -303,6 +303,6 @@ summary: |
   - The state value $V^\pi(s)$ is the expected return from state $s$ when the agent follows policy $\pi$, so it changes when the policy changes.
   - The action value $Q^\pi(s,a)$ is the expected return from taking action $a$ in state $s$ and then following $\pi$. For a move with one outcome it's $r+\gamma V^\pi(s')$, and $V^\pi(s)$ is the average of the $Q^\pi(s,a)$, weighted by $\pi(a\mid s)$.
   - The Bellman expectation equation, $V^\pi(s)=E\big[r+\gamma V^\pi(s')\big]$, links each value to the next state's value. A Bellman backup puts current estimates into its right-hand side to get a new estimate.
-  - The Bellman optimality equation, $V^*(s)=\max_a E\big[r+\gamma V^*(s')\big]$, takes the best action instead of averaging. Repeating its backups is value iteration, and the best move in each state is the one with the largest $Q^*(s,a)$.
+  - The Bellman optimality equation, $V^*(s)=\max_a E\big[r+\gamma V^*(s')\big]$, takes the value of the best action. Repeating its backups is value iteration, and the best move in each state is the one with the largest $Q^*(s,a)$.
 
   **Next:** The Q-learning lesson learns $Q^*$ from the robot's own experience, without knowing in advance where each move leads.
