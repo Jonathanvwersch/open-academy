@@ -1,0 +1,692 @@
+concept: reward-design
+exercises:
+  - id: rd-sparse-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What makes a reward **sparse**?
+    options:
+      - id: a
+        text: It is $0$ for almost every move and only nonzero at rare events like the goal.
+        correct: true
+        feedback: A sparse reward says nothing until something rare, like reaching the goal, happens.
+      - id: b
+        text: Its values are small, such as $0.1$ for reaching the goal instead of $10$.
+        correct: false
+        feedback: Sparse is about how often a reward is nonzero. A reward of $0.1$ given after every move is not sparse.
+        category: misunderstood_definition
+      - id: c
+        text: It is given after every move, with a different value in each state.
+        correct: false
+        feedback: A reward that changes on every move gives feedback all the time, which is the opposite of sparse.
+        category: misunderstood_definition
+      - id: d
+        text: It is multiplied by the discount factor, so later rewards count less.
+        correct: false
+        feedback: Discounting applies to every reward. It says how much later rewards count, not how often rewards arrive.
+        category: misunderstood_definition
+    solution: A sparse reward is zero for almost every move and only nonzero at rare events such as reaching the goal, so the agent gets little feedback until it finds them.
+  - id: rdp-sparse-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example, both paths earn the same $+10$, yet the direct path has return $8.1$ and the detour $6.56$. Why is the direct path's return higher?
+    options:
+      - id: a
+        text: It reaches cell 4 two moves sooner, so its $10$ is multiplied by $0.9$ two fewer times.
+        correct: true
+        feedback: With $\gamma=0.9$, every extra move before the goal takes another factor of $0.9$ off the $10$.
+      - id: b
+        text: The detour gets a negative reward for its move left, which lowers its return.
+        correct: false
+        feedback: Every move except the one into cell 4 gives $0$, including the move left. The difference comes from the discount.
+        category: incorrect_reasoning
+      - id: c
+        text: The direct path earns $+10$ for each of its three moves right.
+        correct: false
+        feedback: Only the move into cell 4 earns $+10$. The other moves earn $0$.
+        category: misunderstood_definition
+      - id: d
+        text: The return only counts the first 3 rewards, so the detour's $10$ is partly cut off.
+        correct: false
+        feedback: The return counts every reward until the episode ends. The detour's $10$ counts, but discounted by $0.9^4$.
+        category: misunderstood_definition
+    solution: The $+10$ is discounted once per move before it arrives. The direct path gets $0.9^2\times10=8.1$ and the detour $0.9^4\times10\approx6.56$.
+  - id: rdp-sparse-return
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: A robot gets a reward of ${{=R}}$ for reaching its goal and $0$ for every other move, with discount factor $\gamma=0.9$. It reaches the goal on move number ${{=k}}$, counting its first move as move 1. What is its return $G_0$, to 2 decimal places?
+    params:
+      R:
+        min: 10
+        max: 30
+        step: 10
+      k:
+        min: 2
+        max: 4
+        step: 1
+    answer_expr: R * 0.9^(k - 1)
+    tolerance:
+      abs: 0.006
+    common_wrong:
+      - answer_expr: R * 0.9^k
+        category: math_error
+        feedback: The reward from move 1 is $r_1$, which is not discounted. The reward on move $k$ is multiplied by $\gamma^{k-1}$.
+      - answer_expr: R
+        category: incorrect_reasoning
+        feedback: "Later rewards count less: the goal reward must be multiplied by $0.9$ once for each move before it."
+    solution: Only move ${{=k}}$ earns a reward. It is the reward $r_{ {{=k}} }$, which the return multiplies by $\gamma^{ {{=k-1}} }$, so $G_0=0.9^{ {{=k-1}} }\times{{=R}}={{=round(R*0.9^(k-1)*100)/100}}$.
+  - id: rdp-random-chance
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A robot starts in cell 1 of a corridor of ${{=n}}$ cells, numbered 1 to ${{=n}}$ from left to right. Each move, it goes left or right at random with equal chance, and moving into a wall leaves it where it is. The only reward is for reaching cell ${{=n}}$. The chance that it earns that reward in the fewest moves possible is 1 in how many?
+    params:
+      n:
+        min: 3
+        max: 8
+        step: 1
+    answer_expr: 2^(n - 1)
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer_expr: 2^n
+        category: math_error
+        feedback: From cell 1 the robot needs ${{=n-1}}$ moves right to reach cell ${{=n}}$, so the chance is $(1/2)^{ {{=n-1}} }$.
+    solution: The fewest moves is ${{=n-1}}$, all to the right, and each has chance $1/2$. So the chance is $(1/2)^{ {{=n-1}} }$, which is 1 in ${{=2^(n-1)}}$.
+  - id: rdp-step-cost-guidance
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: A robot in a corridor gets $+10$ for reaching the goal cell and $0$ for every other move. A designer changes the other moves to $-1$ each, hoping this shows the robot which way to go. Before the robot has ever reached the goal, does the $-1$ help it choose between left and right?
+    options:
+      - id: a
+        text: No. Every move gets the same $-1$, so left and right still look alike.
+        correct: true
+        feedback: A step cost makes the robot hurry, but it is the same in every direction, so it says nothing about where the goal is.
+      - id: b
+        text: Yes. Moves away from the goal now cost more than moves toward it.
+        correct: false
+        feedback: Every move costs exactly $-1$, whichever way it goes.
+        category: misunderstood_definition
+      - id: c
+        text: Yes. The robot now gets a reward on every move, so the reward is no longer sparse.
+        correct: false
+        feedback: A reward on every move only helps if it differs between good and bad moves. These are all $-1$.
+        category: incorrect_reasoning
+    solution: Every move gets the same $-1$, so until the robot reaches the goal, nothing in its rewards separates left from right.
+  - id: rdp-sparse-interpret
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: Two robots each get $+10$ for reaching the goal and $0$ for every other move, with $\gamma=0.9$. Robot A's return is $8.1$ and robot B's is $7.29$. What do these returns tell you?
+    options:
+      - id: a
+        text: Robot A reached the goal one move sooner than robot B.
+        correct: true
+        feedback: $8.1=0.9^2\times10$ and $7.29=0.9^3\times10$, so B took one more move.
+      - id: b
+        text: Robot A reached the goal and robot B did not.
+        correct: false
+        feedback: A robot that never reaches the goal earns only $0$s, so its return is $0$. B's return of $7.29$ means it reached the goal.
+        category: incorrect_reasoning
+      - id: c
+        text: Robot A collected more $+10$ rewards than robot B.
+        correct: false
+        feedback: Reaching the goal ends the episode, so each robot earns $+10$ once. The difference is the discount.
+        category: incorrect_reasoning
+      - id: d
+        text: Robot B took three more moves than robot A.
+        correct: false
+        feedback: Each extra move multiplies the return by $0.9$ once, and $7.29=0.9\times8.1$, so B took one more move.
+        category: math_error
+    solution: $8.1=0.9^2\times10$ and $7.29=0.9^3\times10$, so both reached the goal, and B needed one more move.
+  - id: rdp-sparse-ranking-mistake
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: 'A robot gets $+10$ for reaching its goal and $0$ for every other move, with $\gamma=0.9$. A learner says: "Every path that reaches the goal gets the same return, $10$, so the robot has no reason to prefer the shortest path." What is wrong with this?'
+    options:
+      - id: a
+        text: With $\gamma<1$, a later $10$ is discounted more, so shorter paths get higher returns.
+        correct: true
+        feedback: A path reaching the goal on move $k$ gets $0.9^{k-1}\times10$, which is larger for smaller $k$.
+      - id: b
+        text: Nothing. The return is $10$ for every path that reaches the goal.
+        correct: false
+        feedback: That would be true with $\gamma=1$. With $\gamma=0.9$, a later $10$ counts for less.
+        category: incorrect_reasoning
+      - id: c
+        text: Longer paths get higher returns, because they collect more rewards along the way.
+        correct: false
+        feedback: Every move before the goal earns $0$, so a longer path adds nothing and only discounts the $10$ more.
+        category: incorrect_reasoning
+    solution: With $\gamma=0.9$, the goal reward reached on move $k$ counts $0.9^{k-1}\times10$, so the shortest path has the highest return.
+  - id: rdp-sparse-chess
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: An agent learns chess by playing a strong opponent. It gets $+1$ for winning, $-1$ for losing and $0$ for every other move. Why is this reward hard to learn from at the start?
+    options:
+      - id: a
+        text: Rewards come only at the end of a game, and a weak player almost never sees a win.
+        correct: true
+        feedback: This is a sparse reward. The agent must first stumble on a win before its rewards say what winning looks like.
+      - id: b
+        text: Rewards of $+1$ and $-1$ are too small for an agent to notice.
+        correct: false
+        feedback: The size of a reward can be scaled freely. The problem is how rarely a useful reward appears.
+        category: misunderstood_definition
+      - id: c
+        text: The $-1$ for losing makes the reward change on every move, which confuses the agent.
+        correct: false
+        feedback: The $-1$ also comes only at the end of a game. Every other move earns $0$.
+        category: misunderstood_definition
+    solution: "The reward is sparse: one nonzero number per game, and a weak player almost always loses, so it rarely learns what leads to a win."
+  - id: rd-shaping-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What is **reward shaping**?
+    options:
+      - id: a
+        text: Adding extra rewards so the agent gets feedback before it reaches the goal.
+        correct: true
+        feedback: Shaping adds rewards along the way, such as a bonus for progress, so learning can start sooner.
+      - id: b
+        text: Removing every reward except the one the agent gets for reaching the goal.
+        correct: false
+        feedback: That makes the reward sparse, which is the problem shaping tries to fix.
+        category: misunderstood_definition
+      - id: c
+        text: Lowering the discount factor so later rewards count less.
+        correct: false
+        feedback: The discount factor sets how much later rewards count. Shaping adds new rewards.
+        category: misunderstood_definition
+      - id: d
+        text: Making the goal reward larger so the agent notices it sooner.
+        correct: false
+        feedback: A larger goal reward still arrives only at the goal, so the agent gets no earlier feedback.
+        category: incorrect_reasoning
+    solution: Reward shaping adds rewards along the way, such as bonuses for progress, so the agent gets feedback before it reaches the goal.
+  - id: rdp-shaping-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example, the direct path and the detour each gain exactly $3$ from the bonuses. Why?
+    options:
+      - id: a
+        text: Along any path, the bonuses cancel down to $\Psi(4)-\Psi(1)=3$.
+        correct: true
+        feedback: Each cell's score is added on the way in and taken away on the way out, leaving the last score minus the first.
+      - id: b
+        text: Each path makes exactly 3 moves to the right along the way.
+        correct: false
+        feedback: The detour makes 4 moves right. Its move left takes $1$ back, which is why its total is also $3$.
+        category: math_error
+      - id: c
+        text: The bonus is capped at $3$ for each episode, however long it is.
+        correct: false
+        feedback: There is no cap. The total is $3$ because the bonuses cancel down to $\Psi(4)-\Psi(1)$.
+        category: misunderstood_definition
+      - id: d
+        text: Both paths take the same number of moves to reach cell 4.
+        correct: false
+        feedback: The direct path takes 3 moves and the detour takes 5. The bonus total doesn't depend on the number of moves.
+        category: incorrect_reasoning
+    solution: Adding $\Psi(s')-\Psi(s)$ over a path cancels every score in the middle, so any path from cell 1 to cell 4 gains $\Psi(4)-\Psi(1)=3$.
+  - id: rdp-potential-bonus
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: An agent uses potential-based shaping with $\gamma=1$. It moves from a state with potential $\Psi(s)={{=p}}$ to a state with potential $\Psi(s')={{=q}}$. What bonus does it get for this move?
+    params:
+      p:
+        min: 1
+        max: 6
+        step: 1
+      q:
+        min: 1
+        max: 6
+        step: 1
+    constraints:
+      - p != q
+    answer_expr: q - p
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer_expr: p - q
+        category: math_error
+        feedback: The bonus is the new potential minus the old one, $\Psi(s')-\Psi(s)$.
+    solution: The bonus is $\Psi(s')-\Psi(s)={{=q}}-{{=p}}={{=q-p}}$.
+  - id: rdp-potential-bonus-discounted
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: An agent uses potential-based shaping with discount factor $\gamma=0.9$. It moves from a state with potential $\Psi(s)={{=p}}$ to a state with potential $\Psi(s')={{=q}}$. What bonus does it get for this move, to 1 decimal place?
+    params:
+      p:
+        min: 1
+        max: 8
+        step: 1
+      q:
+        min: 1
+        max: 8
+        step: 1
+    constraints:
+      - p != q
+    answer_expr: 0.9 * q - p
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer_expr: q - p
+        category: math_error
+        feedback: 'With a discount, the new potential is multiplied by $\gamma$: the bonus is $\gamma\Psi(s'')-\Psi(s)$.'
+      - answer_expr: 0.9 * (q - p)
+        category: math_error
+        feedback: Only the new potential $\Psi(s')$ is multiplied by $\gamma$; the old one is subtracted as it is.
+      - answer_expr: p - 0.9 * q
+        category: math_error
+        feedback: 'The sign is the wrong way round: it is $\gamma\Psi(s'')-\Psi(s)$.'
+    solution: The bonus is $\gamma\Psi(s')-\Psi(s)=0.9\times{{=q}}-{{=p}}={{=round((0.9*q-p)*10)/10}}$.
+  - id: rdp-shaped-path-total
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt: A robot starts in cell 1 of a corridor of 5 cells, numbered 1 to 5 from left to right. Each move gives $-1$, except the move into cell 5, which gives $+10$ and ends the episode. It also gets a bonus $\Psi(s')-\Psi(s)$ on every move, with $\Psi$ equal to the cell number, and $\gamma=1$. It moves right, left, then right four times. What is its total return, bonuses included?
+    answer: 9
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer: 5
+        category: incorrect_reasoning
+        feedback: That is the return without the bonuses. They add $\Psi(5)-\Psi(1)=4$.
+      - answer: 10
+        category: math_error
+        feedback: The move left changes $\Psi$ from 2 to 1, a bonus of $-1$, so the bonuses total $5-1=4$.
+    solution: The usual rewards are five $-1$s and a $+10$, which is $5$. The bonuses add up to $\Psi(5)-\Psi(1)=4$, so the total is $9$.
+  - id: rdp-shaping-safe-bonus
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A robot in a corridor of 4 cells, numbered 1 to 4, gets $-1$ per move and $+10$ for reaching cell 4, with $\gamma=1$. A designer wants a progress bonus that speeds up learning but can't change which path is best. Which bonus should they add?
+    options:
+      - id: a
+        text: $+1$ for each move right and $-1$ for each move left ($0$ into the wall).
+        correct: true
+        feedback: "This is potential-based: every path from cell 1 to cell 4 gains the same $3$, so the best path doesn't change."
+      - id: b
+        text: $+3$ for each move right and $0$ for each move left.
+        correct: false
+        feedback: A round trip right then left earns $(-1+3)+(-1)=+1$, so looping forever beats finishing and the best behaviour changes.
+        category: incorrect_reasoning
+      - id: c
+        text: $+1$ for every move, whichever way it goes.
+        correct: false
+        feedback: This pays for moving at all, which cancels the $-1$ step cost. Then long, wandering paths cost nothing, so the best path can change.
+        category: incorrect_reasoning
+    solution: Only the potential-based bonus adds the same total, $\Psi(4)-\Psi(1)=3$, to every path, so it can't change which path is best.
+  - id: rdp-shaping-interpret
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A robot uses potential-based shaping with $\gamma=1$. Two paths both start in the same cell and end at the goal. With the bonuses, path A's return is $11$ and path B's is $9$. How do the two paths compare without the bonuses?
+    options:
+      - id: a
+        text: Path A still beats path B by $2$.
+        correct: true
+        feedback: Both paths got the same bonus total, $\Psi(\text{end})-\Psi(\text{start})$, so the gap is unchanged.
+      - id: b
+        text: They could be in either order, because the bonus might have favoured path A.
+        correct: false
+        feedback: Potential-based bonuses add the same total to every path with the same start and end, so they can't favour one.
+        category: incorrect_reasoning
+      - id: c
+        text: They are equal, because the bonuses are what separates them.
+        correct: false
+        feedback: The bonuses add the same amount to both, so they can't create a gap.
+        category: incorrect_reasoning
+    solution: Potential-based bonuses add the same total to every path with the same start and end, so A is still $2$ ahead of B.
+  - id: rdp-shaping-mistake
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: 'A robot in a corridor of 4 cells, numbered 1 to 4, gets a bonus $\Psi(s'')-\Psi(s)$ on every move, with $\Psi$ equal to the cell number and $\gamma=1$. A learner says: "The path right, left, right, right, right makes four moves right, so its bonuses add up to $4$, more than the direct path''s $3$." What went wrong?'
+    options:
+      - id: a
+        text: The move left earns $-1$, so the bonuses add up to $3$, like the direct path.
+        correct: true
+        feedback: Moving from cell 2 to cell 1 changes $\Psi$ by $-1$. Any path from cell 1 to cell 4 gains $\Psi(4)-\Psi(1)=3$.
+      - id: b
+        text: Nothing. The detour gets a bonus of $4$, so it is now the better path.
+        correct: false
+        feedback: The move left gives a bonus of $1-2=-1$, which the learner left out.
+        category: incorrect_reasoning
+      - id: c
+        text: The bonus is only paid on the move into cell 4, so both paths get $1$.
+        correct: false
+        feedback: "The bonus is paid on every move: $+1$ for each move right and $-1$ for each move left ($0$ into the wall)."
+        category: misunderstood_definition
+    solution: Bonuses are paid on every move, including the move left, which earns $-1$. So the detour gains $4-1=3$, just like the direct path.
+  - id: rdp-shaping-arm
+    dimension: transfer
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A robot arm pushes a block toward a target. The designer uses potential-based shaping with $\gamma=1$ and sets each state's potential to minus the block's distance from the target in centimetres, so a block $30$ cm away has $\Psi=-30$. In one move, the block goes from $30$ cm to $20$ cm away. What bonus does the arm get for this move?
+    answer: 10
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer: -10
+        category: math_error
+        feedback: The new potential is $-20$ and the old one is $-30$, so the bonus is $-20-(-30)=+10$.
+      - answer: -20
+        category: misunderstood_definition
+        feedback: The bonus is the change in potential, $\Psi(s')-\Psi(s)$, not the new potential itself.
+    solution: The bonus is $\Psi(s')-\Psi(s)=-20-(-30)=10$. Moving the block closer raises the potential, so the bonus is positive.
+  - id: rd-hacking-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What is **reward hacking**?
+    options:
+      - id: a
+        text: An agent earning high reward through a loophole the designer didn't intend.
+        correct: true
+        feedback: The agent maximises the reward it was given, and that reward can be earned without doing the task.
+      - id: b
+        text: A designer adding bonuses during training so that the agent learns faster.
+        correct: false
+        feedback: That is reward shaping. Hacking is what the agent does when a reward has a loophole.
+        category: misunderstood_definition
+      - id: c
+        text: An agent earning no reward at all because the reward is too sparse to find.
+        correct: false
+        feedback: That is the sparse reward problem. A hacking agent earns a lot of reward.
+        category: misunderstood_definition
+      - id: d
+        text: A bug in the learning code that makes the agent ignore its rewards.
+        correct: false
+        feedback: A hacking agent follows its rewards exactly. The reward itself asks for the wrong thing.
+        category: misunderstood_definition
+    solution: Reward hacking is an agent getting high reward by a route the designer didn't intend, through a gap between the reward and the real goal.
+  - id: rdp-hacking-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example, why does a robot that makes $n$ round trips and then finishes get a return of $17+n$?
+    options:
+      - id: a
+        text: Each round trip adds $1$ and ends where it began, so finishing still earns $17$.
+        correct: true
+        feedback: Round trips add $1$ each without stopping the robot from finishing, so the return grows with $n$.
+      - id: b
+        text: The $+10$ goal reward is paid again after every round trip the robot makes.
+        correct: false
+        feedback: The goal reward is paid once, when the robot reaches cell 4 and the episode ends.
+        category: misunderstood_definition
+      - id: c
+        text: Each round trip earns the $+3$ bonus twice, once for each of its moves.
+        correct: false
+        feedback: Only the move right earns $+3$. The move left earns nothing extra, just its $-1$.
+        category: math_error
+      - id: d
+        text: Looping removes the $-1$ cost from the moves made inside the loop.
+        correct: false
+        feedback: Every move still costs $-1$. The $+3$ on the move right is more than the two moves cost.
+        category: incorrect_reasoning
+    solution: One round trip is a move right worth $-1+3=2$ and a move left worth $-1$, so it adds $1$, and the robot can still finish afterwards for $17$.
+  - id: rdp-which-hackable
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: A robot in a corridor gets $-1$ for every move and $+10$ for reaching the goal at the right-hand end, with $\gamma=1$. Which added bonus lets it raise its return without limit by moving back and forth?
+    options:
+      - id: a
+        text: $+3$ for each move right, and nothing for a move left.
+        correct: true
+        feedback: A round trip earns $(-1+3)+(-1)=+1$, so each extra loop adds reward.
+      - id: b
+        text: $+1$ for each move right, and $-1$ for each move left ($0$ into the wall).
+        correct: false
+        feedback: This is potential-based. A round trip earns $(-1+1)+(-1-1)=-2$, so looping costs.
+        category: incorrect_reasoning
+      - id: c
+        text: $+1$ for each move right, and nothing for a move left.
+        correct: false
+        feedback: A round trip earns $(-1+1)+(-1)=-1$. The bonus is too small to beat the cost of two moves.
+        category: math_error
+    solution: "Only the $+3$ bonus makes a round trip pay: $(-1+3)+(-1)=+1$. The others give a negative total for each loop."
+  - id: rdp-loop-gain
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A robot in a corridor gets ${{=0-c}}$ for every move, with $\gamma=1$. A designer adds a bonus of $+{{=b}}$ for every move right and nothing for a move left. How much does one round trip, one move right then one move left, add to the robot's return?
+    params:
+      b:
+        min: 1
+        max: 6
+        step: 1
+      c:
+        min: 1
+        max: 2
+        step: 1
+    constraints:
+      - b != 2 * c
+    answer_expr: b - 2 * c
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer_expr: b - c
+        category: math_error
+        feedback: Both moves cost ${{=0-c}}$, including the move back left.
+      - answer_expr: b
+        category: incorrect_reasoning
+        feedback: Each of the two moves also costs ${{=0-c}}$.
+    solution: The move right earns ${{=0-c}}+{{=b}}$ and the move left earns ${{=0-c}}$, so the round trip adds ${{=b}}-2\times{{=c}}={{=b-2*c}}$.
+  - id: rdp-loop-pays
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A robot with $\gamma=1$ finds that one round trip between two cells adds $+1$ to its return, and afterwards it can still reach the goal just as before. What will a robot that maximises its return learn to do?
+    options:
+      - id: a
+        text: Keep looping and never finish, since every extra loop adds more reward.
+        correct: true
+        feedback: With each loop worth $+1$, there is no best number of loops, so finishing is never best.
+      - id: b
+        text: Loop once to collect the $+1$, then head for the goal.
+        correct: false
+        feedback: If one loop adds $1$, two loops add $2$. Stopping after one leaves reward behind.
+        category: incorrect_reasoning
+      - id: c
+        text: Go straight to the goal, since the goal reward is the largest single reward.
+        correct: false
+        feedback: The goal reward is fixed, but loops add up without limit, so enough loops beat it.
+        category: incorrect_reasoning
+    solution: Every loop adds $1$ and finishing is still possible afterwards, so more loops always give a higher return and the best behaviour is never to finish.
+  - id: rdp-hacking-fix
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A corridor robot gets $-1$ per move and $+10$ for reaching the goal, with $\gamma=1$, plus a bonus of $+3$ for each move right and nothing for a move left. It has learned to move back and forth forever. Which change keeps a progress bonus but removes the loophole?
+    options:
+      - id: a
+        text: Pay $+1$ for each move right and $-1$ for each move left ($0$ into the wall) instead.
+        correct: true
+        feedback: Potential-based bonuses add up to zero around any loop, so a round trip only costs the two moves.
+      - id: b
+        text: Raise the goal reward from $+10$ to $+100$ so finishing pays more.
+        correct: false
+        feedback: Each loop still adds $+1$ without limit, so enough loops still beat any fixed goal reward.
+        category: incorrect_reasoning
+      - id: c
+        text: Raise the bonus to $+5$ for each move right so progress pays more.
+        correct: false
+        feedback: A round trip then adds $(-1+5)+(-1)=3$, which makes looping pay even more.
+        category: math_error
+    solution: A potential-based bonus cancels around any loop, so a round trip is worth $(-1+1)+(-1-1)=-2$ and looping no longer pays.
+  - id: rdp-rising-reward-check
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A designer trains an agent with a new reward and plots its reward per episode, which rises steadily. They conclude that the agent has learned the task. What is the problem with this check?
+    options:
+      - id: a
+        text: A loophole also makes reward rise, so they need to watch what the agent does.
+        correct: true
+        feedback: Reward measures what the reward function pays for. Only looking at the behaviour shows whether that is the task.
+      - id: b
+        text: Nothing. If the reward keeps rising, the agent must be doing the task better.
+        correct: false
+        feedback: Reward measures what the reward function pays for. A loophole can raise it while the task gets no better done.
+        category: incorrect_reasoning
+      - id: c
+        text: Reward should fall during training, so a rising reward means something is broken.
+        correct: false
+        feedback: An agent that is learning usually earns more reward over time.
+        category: misunderstood_definition
+    solution: A hacking agent's reward rises too, so the designer must also look at the agent's behaviour to see whether it does the task.
+  - id: rdp-hacking-cleaner
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A cleaning robot gets $+1$ every time its camera sees less dirt on the floor than it did a moment before, and nothing when the dirt increases. Which behaviour is the clearest reward-hacking risk?
+    options:
+      - id: a
+        text: Knocking over a bin and cleaning up the mess, again and again.
+        correct: true
+        feedback: Making dirt costs nothing and cleaning it earns $+1$, so this is a loop that pays, like a bonus that is never taken back.
+      - id: b
+        text: Cleaning the whole floor quickly and then stopping when it's done.
+        correct: false
+        feedback: This is what the designer wants. Once the floor is clean, there is no more reward to earn.
+        category: incorrect_reasoning
+      - id: c
+        text: Learning slowly at first, because this reward is too sparse to find.
+        correct: false
+        feedback: This reward comes whenever the dirt decreases, which happens often while cleaning, and slow learning is not a loophole.
+        category: misunderstood_definition
+    solution: The reward pays for dirt going down but never charges for dirt going up, so making a mess and cleaning it again earns reward without limit.
+  - id: rdp-hacking-tests
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A coding agent gets $+1$ when all of a project's tests pass. It is allowed to edit any file in the project, including the test files. What is the cheapest way for it to earn the reward?
+    options:
+      - id: a
+        text: Edit the tests so that they always pass, whatever the code does.
+        correct: true
+        feedback: The reward checks that the tests pass, and changing the tests is a cheap way to fake that sign of success.
+      - id: b
+        text: Fix the code so that it does what the tests check.
+        correct: false
+        feedback: This is the intended behaviour, and it is usually much harder than changing the tests.
+        category: incorrect_reasoning
+      - id: c
+        text: Write many extra tests, since more tests mean more reward.
+        correct: false
+        feedback: The reward is a single $+1$ when all tests pass, so adding tests earns nothing more.
+        category: misunderstood_definition
+    solution: The reward only sees whether the tests pass. If the agent can edit them, making them always pass earns the reward without fixing anything.
+  - id: rdp-hacking-long-replies
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A language model is trained with reinforcement learning to get high scores from a reward model, a second model trained to score replies the way people would. The reward model happens to give longer replies higher scores. What is the risk?
+    options:
+      - id: a
+        text: It learns to write long, padded replies that score well but people don't prefer.
+        correct: true
+        feedback: The language model maximises the reward model's score, so it follows the reward model's mistake about length.
+      - id: b
+        text: The language model stops replying, because the reward is too sparse.
+        correct: false
+        feedback: Every reply gets a score, so the reward isn't sparse, and a high score pushes the model to keep replying.
+        category: misunderstood_definition
+      - id: c
+        text: There is no risk, because the reward model was trained on what people prefer.
+        correct: false
+        feedback: A reward model only approximates what people prefer. Pushing hard on its score finds the places where it is wrong.
+        category: incorrect_reasoning
+    solution: The model chases the reward model's score, so any flaw in that score, such as liking length, becomes behaviour people don't want.
+  - id: rd-explain-reward-design
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 2
+    est_minutes: 4
+    prompt: A team trains a robot arm to put a cup on a shelf. Explain why a reward given only when the cup is on the shelf can be hard to learn from, how they could add progress rewards without changing which behaviour is best, and how a careless progress bonus could be hacked.
+    rubric:
+      - id: r1
+        criterion: Explains that a sparse reward is rarely reached by random actions, so the agent gets no useful feedback at first
+        weight: 1
+        required: true
+      - id: r2
+        criterion: Describes potential-based shaping, a bonus equal to the change in a score for each state, and why it adds the same total to every path
+        weight: 1
+        required: true
+      - id: r3
+        criterion: Gives a concrete loophole, such as a bonus never taken back that can be collected in a loop, and a way to spot or prevent it
+        weight: 1
+        required: true
+    exemplar: "A sparse reward only for the cup on the shelf is hard to learn from because an arm moving at random almost never gets the cup there, so at first every reward is 0 and nothing says which moves help. The team could add potential-based bonuses: give each state a score Ψ for how close the cup is to the shelf and pay Ψ(s') − Ψ(s) on each move. Along any path these add up to the last score minus the first, so every path gains the same total and the best behaviour doesn't change, but the arm gets feedback sooner. A careless bonus, such as a reward every time the cup gets closer with nothing taken back when it moves away, could be hacked by moving the cup back and forth forever. They should ask what the easiest way to earn the reward is and watch what the trained arm actually does."
+    solution: "A sparse reward only for the cup on the shelf is hard to learn from because an arm moving at random almost never gets the cup there, so at first every reward is 0 and nothing says which moves help. The team could add potential-based bonuses: give each state a score Ψ for how close the cup is to the shelf and pay Ψ(s') − Ψ(s) on each move. Along any path these add up to the last score minus the first, so every path gains the same total and the best behaviour doesn't change, but the arm gets feedback sooner. A careless bonus, such as a reward every time the cup gets closer with nothing taken back when it moves away, could be hacked by moving the cup back and forth forever. They should ask what the easiest way to earn the reward is and watch what the trained arm actually does."

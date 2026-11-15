@@ -147,5 +147,5 @@ concepts:
       dimensions: [conceptual, transfer],
       prereqs: [{ id: mdp }],
       objectives: [{ text: "Identify reward hacking risks", dimension: transfer }],
-      status: stub,
+      status: authored,
     }
