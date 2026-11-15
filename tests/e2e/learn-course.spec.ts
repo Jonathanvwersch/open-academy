@@ -7,6 +7,7 @@ import { env } from '../../apps/api/src/config.js';
 import { LessonSchema, normalizeLesson } from '../../apps/api/src/content/schemas.js';
 import { createDb } from '../../apps/api/src/db/client.js';
 import {
+  courseEnrollments,
   lessonRuns,
   mastery,
   projectProgress,
@@ -32,6 +33,7 @@ const xpFinishScreenshotDir = 'test-results/screenshots/screenshots/xp-finish';
 const chooseLessonScreenshotDir = 'test-results/screenshots/screenshots/choose-lesson';
 const failedQuizScreenshotDir = 'test-results/screenshots/failed-quiz';
 const courseModelScreenshotDir = 'test-results/screenshots/courses';
+const restartTopicScreenshotDir = 'test-results/screenshots/restart-topic';
 mkdirSync(screenshotDir, { recursive: true });
 mkdirSync(brandScreenshotDir, { recursive: true });
 mkdirSync(courseStructureScreenshotDir, { recursive: true });
@@ -45,6 +47,7 @@ mkdirSync(xpFinishScreenshotDir, { recursive: true });
 mkdirSync(chooseLessonScreenshotDir, { recursive: true });
 mkdirSync(failedQuizScreenshotDir, { recursive: true });
 mkdirSync(courseModelScreenshotDir, { recursive: true });
+mkdirSync(restartTopicScreenshotDir, { recursive: true });
 let userId = '';
 
 test.beforeEach(async ({ page }) => {
@@ -115,6 +118,7 @@ test('Home shows XP and tasks, starts a session, and Course links to lessons and
   ).toBeVisible();
   await expect(page.getByText(/^At your pace:/)).toBeVisible();
   await expect(page.getByText(/^At your daily goal:/)).toBeVisible();
+  await expect(page.getByText(/^All your courses done by /)).toBeVisible();
   await expect(page.getByRole('main').getByText('Fixture course', { exact: true })).toBeVisible();
   await expect(page.getByText('Total XP').locator('..')).toContainText('45');
   await expect(page.getByRole('button', { name: 'Start learning' })).toBeEnabled();
@@ -1099,6 +1103,62 @@ test('Course marks completed lessons green and links the whole row', async ({ pa
   await page.screenshot({ path: `${screenshotDir}/course-complete-row.png`, fullPage: true });
   await completedRow.click();
   await expect(page).toHaveURL(/\/lessons\/vectors$/);
+});
+
+test('learner can restart a completed topic', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await markCourseStarted();
+  await db.insert(courseEnrollments).values(
+    ['fixture-switching-course', 'fixture-third-course'].map((courseId) => ({
+      userId,
+      courseId,
+      status: 'active' as const,
+      startMethod: 'beginning' as const,
+    })),
+  );
+  await db.insert(lessonRuns).values({
+    userId,
+    conceptId: 'vectors',
+    status: 'completed',
+    startedAt: new Date('2026-01-01T10:00:00.000Z'),
+    updatedAt: new Date('2026-01-01T10:10:00.000Z'),
+    completedAt: new Date('2026-01-01T10:10:00.000Z'),
+  });
+  await db.insert(mastery).values([
+    { userId, conceptId: 'vectors', dimension: 'conceptual', state: 'assisted' },
+    { userId, conceptId: 'vectors', dimension: 'math', state: 'assisted' },
+    { userId, conceptId: 'vectors', dimension: 'transfer', state: 'assisted' },
+  ]);
+
+  await page.goto('/');
+  const learnPayload = await page.evaluate(async () => (await fetch('/api/learn')).json());
+  expect(learnPayload.today.studyCourses).toHaveLength(3);
+  expect(
+    learnPayload.today.studyCourses.reduce(
+      (total: number, course: { topicsDone: number }) => total + course.topicsDone,
+      0,
+    ),
+  ).toBe(1);
+  const progressCard = page
+    .locator('[data-slot="card"]')
+    .filter({ has: page.getByRole('heading', { name: 'Your progress' }) });
+  await expect(progressCard).toBeVisible();
+  await progressCard.screenshot({ path: `${restartTopicScreenshotDir}/home-course-card.png` });
+
+  await page.goto('/courses/fixture-course');
+  const topicRow = page.getByRole('link', { name: /1\.1.*Vectors/ });
+  await expect(topicRow).toContainText('Complete');
+  await topicRow.getByRole('button', { name: 'Restart' }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.getByRole('heading', { name: 'Restart Vectors?' })).toBeVisible();
+  await expect(dialog).toContainText(
+    "Your progress and reviews for this topic are cleared and it goes back to not started. XP you've earned stays.",
+  );
+  await dialog.screenshot({ path: `${restartTopicScreenshotDir}/restart-confirmation.png` });
+  await dialog.getByRole('button', { name: 'Restart topic' }).click();
+  await expect(topicRow.getByText('Not started', { exact: true })).toHaveCount(0);
+  await expect(topicRow.getByRole('button', { name: 'Restart' })).toHaveCount(0);
+  await topicRow.screenshot({ path: `${restartTopicScreenshotDir}/restarted-topic-row.png` });
 });
 
 test('passing a knowledge point increases Learn XP after reload', async ({ page }) => {
