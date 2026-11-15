@@ -206,7 +206,7 @@ test('a focus on the same subject keeps its front and following courses queued n
   });
 });
 
-test('suggested next courses rank hard-prerequisite links to the completed course', () => {
+test('suggested next courses rank new topics with hard-prerequisite links to the completed course', () => {
   const statuses = new Map<string, 'not_started' | 'active' | 'paused' | 'completed'>(
     content.courses.map((course) => [course.id, 'not_started']),
   );
@@ -220,4 +220,28 @@ test('suggested next courses rank hard-prerequisite links to the completed cours
     reason: 'Builds on Machine Learning Foundations',
   });
   expect(suggestions.length).toBeLessThanOrEqual(2);
+});
+
+test('suggestions ignore prerequisite links between topics already covered by the completed course', () => {
+  const maths = content.coursesById.get('maths-for-ml');
+  const firstUnit = maths?.units[0];
+  if (!maths || !firstUnit) throw new Error('Missing Mathematics course');
+  const overlappingCourse = {
+    ...maths,
+    units: [{ ...firstUnit, concepts: ['vectors', 'dot-product', 'matrices'] }],
+  };
+  const courses = content.courses.map((course) =>
+    course.id === maths.id ? overlappingCourse : course,
+  );
+  const index = {
+    ...content,
+    courses,
+    coursesById: new Map(courses.map((course) => [course.id, course])),
+  };
+  const statuses = new Map<string, 'not_started' | 'completed'>(
+    courses.map((course) => [course.id, 'completed']),
+  );
+  statuses.set(maths.id, 'not_started');
+
+  expect(suggestedNextCourses(index, 'ml-foundations', statuses)).toEqual([]);
 });
