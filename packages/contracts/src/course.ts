@@ -114,7 +114,7 @@ export interface CoursePayload {
     started: boolean;
   }>;
   currentUnit: number;
-  foundationNeeds: { count: number; courseTitles: string[]; hasMore: boolean };
+  buildsOn: Array<{ courseId: string; title: string; topicCount: number; remaining: number }>;
   foundations: CourseTopic[];
   units: Array<{
     unit: number;

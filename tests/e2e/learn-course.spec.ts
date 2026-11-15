@@ -425,9 +425,11 @@ test('course detail shows prerequisite foundations and catalog navigation', asyn
   ).toBeVisible();
   const foundations = page.getByText('Foundations · 1 topic', { exact: true });
   await expect(foundations).toBeVisible();
-  await expect(
-    page.getByText('Needs 1 topic from Fixture course first.', { exact: true }),
-  ).toBeVisible();
+  const buildsOnLine = page.getByText('Builds on Fixture course (1 of 1 topic left).', {
+    exact: true,
+  });
+  await expect(buildsOnLine).toBeVisible();
+  await expect(buildsOnLine.getByRole('link')).toHaveAttribute('href', '/courses/fixture-course');
   const foundationIntro = page.getByText(
     "Topics from other courses that this course needs. They're scheduled when a unit needs them.",
     { exact: true },

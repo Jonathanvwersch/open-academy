@@ -708,14 +708,34 @@ export function buildCoursePayload(
               };
         })
     : [];
-  const foundationCourseTitles = [
-    ...new Set(
-      foundations.flatMap((foundation) => {
-        const source = foundationSourceCourse(index, foundation.conceptId);
-        return source ? [source.title] : [];
-      }),
-    ),
-  ];
+  const buildsOnByCourse = new Map<
+    string,
+    { courseId: string; title: string; topicCount: number; remaining: number }
+  >();
+  if (activeCourse) {
+    for (const conceptId of courseFoundationIds(index, resolvedCourseId)) {
+      const source = foundationSourceCourse(index, conceptId);
+      if (!source) continue;
+      const group = buildsOnByCourse.get(source.id) ?? {
+        courseId: source.id,
+        title: source.title,
+        topicCount: 0,
+        remaining: 0,
+      };
+      group.topicCount += 1;
+      const concept = index.conceptsById.get(conceptId);
+      if (concept && topicState(concept).status !== 'complete') group.remaining += 1;
+      buildsOnByCourse.set(source.id, group);
+    }
+  }
+  const courseOrder = new Map(
+    orderCourseIdsBySubject(index).map((courseId, position) => [courseId, position]),
+  );
+  const buildsOn = [...buildsOnByCourse.values()].sort(
+    (left, right) =>
+      (courseOrder.get(left.courseId) ?? Number.POSITIVE_INFINITY) -
+      (courseOrder.get(right.courseId) ?? Number.POSITIVE_INFINITY),
+  );
   const state = {
     activeCourseId: activeCourse?.id ?? null,
     mastery: masteryRecords,
@@ -728,11 +748,7 @@ export function buildCoursePayload(
       : { id: '', title: '', description: '' },
     courses,
     currentUnit: currentLearnerUnit(state, index),
-    foundationNeeds: {
-      count: foundations.length,
-      courseTitles: foundationCourseTitles.slice(0, 3),
-      hasMore: foundationCourseTitles.length > 3,
-    },
+    buildsOn,
     foundations,
     units,
   };
