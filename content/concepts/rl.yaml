@@ -135,7 +135,7 @@ concepts:
       dimensions: [conceptual, implementation],
       prereqs: [{ id: mdp }],
       objectives: [{ text: "Write an environment interaction loop", dimension: implementation }],
-      status: stub,
+      status: authored,
     }
   - {
       id: reward-design,
