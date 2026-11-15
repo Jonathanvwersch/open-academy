@@ -105,7 +105,7 @@ concepts:
       prereqs: [{ id: policy-gradients }, { id: value-functions }],
       objectives: [{ text: "Explain what PPO's clipping prevents", dimension: conceptual }],
       projects: [rl-sim],
-      status: stub,
+      status: authored,
     }
   - {
       id: world-models,

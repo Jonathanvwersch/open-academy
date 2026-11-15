@@ -1,0 +1,865 @@
+concept: ppo
+exercises:
+  # Step 1: advantages
+  - id: ppo-advantage-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What does the advantage $A(s,a)$ of an action measure?"
+    options:
+      - id: a
+        text: The reward the action earns on the very next step.
+        correct: false
+        feedback: "The next reward is only part of it. The advantage compares the whole expected return after the action with the usual return from that state."
+      - id: b
+        text: "How much more return we expect from taking $a$ in $s$ than from following the policy as usual."
+        correct: true
+        feedback: "Yes. $A(s,a)=Q(s,a)-V(s)$ is the expected return of the action minus the expected return of acting as usual."
+      - id: c
+        text: The total return of the episode the action was part of.
+        correct: false
+        feedback: "A return is a raw sum of rewards. The advantage subtracts the value of the state, so it says better or worse than usual."
+      - id: d
+        text: "The probability that the policy picks $a$ in state $s$."
+        correct: false
+        feedback: 'That is $\pi(a\mid s)$. The advantage is measured in units of return.'
+    solution: "The advantage is $A(s,a)=Q(s,a)-V(s)$: the expected return from taking $a$ in $s$, minus the expected return from acting as usual in $s$."
+  - id: ppoa-worked-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "In the worked example, both moves from cell 2 earn reward $-1$. Why does moving right get a positive advantage while moving left gets a negative one?"
+    options:
+      - id: a
+        text: 'Moving right lands in cell 3, worth $9$, and $-1+0.9\times9=7.1$ beats $V(2)=7$. Moving left lands in cell 1, worth $5$, and $-1+0.9\times5=3.5$ falls short.'
+        correct: true
+        feedback: "Right. The rewards match, so the difference comes from the value of the cell each move lands in."
+      - id: b
+        text: Moving right earns a bigger reward because it is closer to the goal.
+        correct: false
+        category: incorrect_reasoning
+        feedback: "Both moves earn $-1$. Only the step into cell 4 earns $+10$."
+      - id: c
+        text: The critic gives a positive value to right moves and a negative value to left moves.
+        correct: false
+        category: misunderstood_definition
+        feedback: "The critic values cells, and all its values here are positive. The sign comes from comparing $-1+0.9V(s_{t+1})$ with $V(2)=7$."
+      - id: d
+        text: Moving left from cell 2 bumps into the wall, so the robot loses a turn.
+        correct: false
+        category: incorrect_reasoning
+        feedback: "The wall is to the left of cell 1. From cell 2, moving left reaches cell 1."
+    solution: 'Both moves earn $-1$. Right gives $-1+0.9\times9-7=0.1$ and left gives $-1+0.9\times5-7=-3.5$. The cell each move lands in makes the difference.'
+  - id: ppoa-sign-meaning
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: 'A critic-based estimate gives an action the advantage $\hat A_t=-2$. What does a policy gradient update do with this action in state $s_t$?'
+    options:
+      - id: a
+        text: It makes the action less likely in that state.
+        correct: true
+        feedback: "Yes. A negative advantage means the action did worse than usual, so the update lowers its probability."
+      - id: b
+        text: It makes the action more likely, because every action the agent tried gets reinforced.
+        correct: false
+        category: incorrect_reasoning
+        feedback: "The advantage multiplies the update, so a negative value pushes the probability down."
+      - id: c
+        text: It leaves the action alone, because only positive advantages cause updates.
+        correct: false
+        category: misunderstood_definition
+        feedback: "Any nonzero advantage changes the policy. A negative one lowers the probability."
+      - id: d
+        text: "It lowers the critic's value $V(s_t)$ and leaves the policy alone."
+        correct: false
+        category: misunderstood_definition
+        feedback: 'Training the critic is a separate update. The policy update uses $\hat A_t$ to change the action''s probability.'
+    solution: 'The policy update is scaled by $\hat A_t$. With $\hat A_t=-2$ it lowers $\pi_\theta(a_t\mid s_t)$.'
+  - id: ppoa-td-error
+    dimension: conceptual
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: 'A robot in a 4-cell corridor gets reward $-1$ for each step that doesn''t reach the goal. A critic estimates $V(2)=6$ and $V(3)=8$, and $\gamma=0.9$. The robot moves left from cell 3 to cell 2. What is the one-step advantage estimate for this move?'
+    answer: -3.6
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - answer: -3
+        category: math_error
+        feedback: 'Discount the next value: use $0.9\times6=5.4$.'
+      - answer: -2.6
+        category: math_error
+        feedback: "Include the reward of $-1$ for the step."
+      - answer: 0.2
+        category: misapplied_technique
+        feedback: "The robot left cell 3 and landed in cell 2, so subtract $V(3)$ and discount $V(2)$."
+    solution: '$\delta=r+\gamma V(s_{t+1})-V(s_t)=-1+0.9\times6-8=-1+5.4-8=-3.6$.'
+  - id: ppoa-td-template
+    dimension: conceptual
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: 'A robot moves one cell along a corridor and receives reward $-1$. The critic values the cell it left at {{=a}} and the cell it entered at {{=b}}, and $\gamma=0.9$. What is the one-step advantage estimate for the move?'
+    params:
+      a: { min: 3, max: 6 }
+      b: { min: 4, max: 9 }
+    answer_expr: -1 + 0.9 * b - a
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - answer_expr: -1 + b - a
+        category: math_error
+        feedback: 'Multiply the value of the new cell by $\gamma=0.9$.'
+      - answer_expr: 0.9 * b - a
+        category: math_error
+        feedback: "Add the reward of $-1$ for the step."
+      - answer_expr: a - (-1 + 0.9 * b)
+        category: misapplied_technique
+        feedback: "That has the sign flipped. Start from the one-step target and subtract the value of the cell it left."
+    solution: '$\delta=-1+0.9\times{{=b}}-{{=a}}={{=round(-1+0.9*b-a,2)}}$.'
+  - id: ppoa-reward-not-advantage
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: 'In a corridor where every move earns $-1$ except the one that reaches the goal, a learner says: "Every move that earns $-1$ has a negative advantage, so a policy gradient update should make all of them less likely." What is wrong with this?'
+    options:
+      - id: a
+        text: "Nothing. A negative reward always means a negative advantage."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "The advantage also counts where the move leads. A $-1$ move into a cell worth a lot can beat the usual return."
+      - id: b
+        text: "The advantage compares the move with the usual return from that state, so a $-1$ move that leads somewhere better can have a positive advantage."
+        correct: true
+        feedback: 'Yes. With $V(2)=7$ and $V(3)=9$, moving right from cell 2 scores $-1+0.9\times9-7=0.1$.'
+      - id: c
+        text: "The advantage ignores rewards and only compares critic values."
+        correct: false
+        category: misunderstood_definition
+        feedback: 'The one-step estimate $r_{t+1}+\gamma V(s_{t+1})-V(s_t)$ includes the reward.'
+      - id: d
+        text: "Moves with negative reward should become more likely, so that the robot explores."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "The update follows the advantage. Moves worse than usual become less likely, whatever their reward."
+    solution: "The advantage measures better or worse than usual. Moving right from cell 2 earns $-1$ but lands in a more valuable cell, so with $V(2)=7$ and $V(3)=9$ its estimate is $+0.1$."
+  - id: ppoa-wall-bump
+    dimension: conceptual
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: 'A robot is in cell 1 at the left end of a corridor. It moves left into the wall, stays in cell 1 and gets reward $-1$. A critic values cell 1 at $5$, and $\gamma=0.9$. What is the one-step advantage estimate for this move?'
+    answer: -1.5
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - answer: -1
+        category: math_error
+        feedback: 'Discount the value of the cell it ends in: $0.9\times5=4.5$.'
+      - answer: -6
+        category: misunderstood_definition
+        feedback: "The episode goes on, so the robot still has the value of cell 1 ahead of it."
+    solution: 'The robot ends where it started. $\delta=-1+0.9\times5-5=-1+4.5-5=-1.5$.'
+  - id: ppoa-why-baseline
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: 'A robot almost always reaches its goal, so nearly every return $G_t$ it sees is positive. Why do policy gradient methods like PPO scale updates by an advantage estimate $\hat A_t$ instead of the raw return $G_t$?'
+    options:
+      - id: a
+        text: "With raw returns, almost every action gets pushed up, by amounts that vary a lot. Subtracting the usual value means worse-than-usual actions get pushed down, which makes updates less noisy."
+        correct: true
+        feedback: "Yes. The baseline keeps the same direction on average and cuts the noise."
+      - id: b
+        text: "Raw returns give updates that point the wrong way on average."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "Updates with raw returns point the right way on average. The problem is how much they vary from sample to sample."
+      - id: c
+        text: "The advantage removes the need to choose a learning rate."
+        correct: false
+        category: misunderstood_definition
+        feedback: 'The update still multiplies by the learning rate $\eta$.'
+      - id: d
+        text: "Raw returns are always negative, so they can only lower probabilities."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "Here the returns are mostly positive. That is exactly why raw returns push almost every action up."
+    solution: "If returns are nearly all positive, raw-return updates raise almost every action and differ only in size, which is noisy. Subtracting $V(s_t)$ centres the scores, so actions better than usual go up and worse ones go down."
+  - id: ppoa-robot-arm
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: 'A robot arm learns to grasp. It gets reward $1$ when a grasp succeeds and $0$ on every other step. Take $\gamma=1$. After one action the grasp hasn''t happened yet, the reward is $0$, and the critic''s value for the arm''s state rises from $0.4$ to $0.7$. What does the one-step advantage estimate say about this action?'
+    options:
+      - id: a
+        text: "It is $0.3$, so the action becomes more likely even though it earned nothing yet."
+        correct: true
+        feedback: 'Yes. $0+1\times0.7-0.4=0.3$: the arm moved somewhere better than usual.'
+      - id: b
+        text: "It is $0$, because the reward was $0$."
+        correct: false
+        category: misunderstood_definition
+        feedback: "The estimate also adds the value of the new state and subtracts the value of the old one."
+      - id: c
+        text: "It is negative, because the grasp has not succeeded."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "The critic now expects more return than before, so the move did better than usual."
+      - id: d
+        text: "It is $0.7$, the value of the new state."
+        correct: false
+        category: math_error
+        feedback: "Subtract the value of the state the arm started in, $0.4$."
+    solution: '$\delta=r+\gamma V(s_{t+1})-V(s_t)=0+1\times0.7-0.4=0.3$. It is positive, so the update makes this action more likely.'
+
+  # Step 2: GAE
+  - id: ppo-gae-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What does generalized advantage estimation (GAE) compute?
+    options:
+      - id: a
+        text: 'An advantage estimate that adds up the one-step errors from a step onwards, each later one shrunk by a further factor $\gamma\lambda$.'
+        correct: true
+        feedback: 'Yes. $\hat A_t=\delta_t+(\gamma\lambda)\delta_{t+1}+(\gamma\lambda)^2\delta_{t+2}+\dots$'
+      - id: b
+        text: The critic's value for each state in the episode.
+        correct: false
+        feedback: "GAE uses the critic's values to build one-step errors. Its output is an advantage estimate for each action."
+      - id: c
+        text: The average reward per step over a batch of episodes.
+        correct: false
+        feedback: "GAE gives a separate estimate for each step, built from that step's later errors."
+      - id: d
+        text: The ratio of an action's new probability to its old probability.
+        correct: false
+        feedback: 'That is the probability ratio $\rho_t(\theta)$, which PPO multiplies by the advantage.'
+    solution: 'GAE estimates the advantage of each action as $\hat A_t=\delta_t+(\gamma\lambda)\delta_{t+1}+(\gamma\lambda)^2\delta_{t+2}+\dots$, stopping at the end of the episode.'
+  - id: ppog-worked-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: 'In the worked example, why is $\hat A_2$ computed first, and why is it simply $\delta_2$?'
+    options:
+      - id: a
+        text: "Step 2 is the last step, so no later errors are added to it. Each earlier estimate needs the one after it, so we work backwards."
+        correct: true
+        feedback: 'Yes. $\hat A_t=\delta_t+\gamma\lambda\hat A_{t+1}$, and after the last step there is nothing to add.'
+      - id: b
+        text: '$\delta_2=1$ is the largest error, so it goes first.'
+        correct: false
+        category: incorrect_reasoning
+        feedback: "The order comes from the recursion. Each estimate uses the next one, so we start at the end."
+      - id: c
+        text: "The goal reward has to be removed before the other steps can be scored."
+        correct: false
+        category: misunderstood_definition
+        feedback: 'Nothing is removed. The $+10$ is part of $\delta_2=10+0-9=1$.'
+      - id: d
+        text: '$\lambda$ applies only to the last step, so that step is handled separately.'
+        correct: false
+        category: misunderstood_definition
+        feedback: 'The factor $\gamma\lambda$ shrinks every later error. The last step has no later errors, so it gets none.'
+    solution: 'The last step has nothing after it, so $\hat A_2=\delta_2=1$. Then $\hat A_1=0.1+0.45\times1=0.55$ and $\hat A_0=0.3+0.45\times0.55=0.5475$.'
+  - id: ppog-lambda-zero
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: 'With $\lambda=0$, what does the GAE estimate $\hat A_t$ become?'
+    options:
+      - id: a
+        text: 'The one-step error $\delta_t=r_{t+1}+\gamma V(s_{t+1})-V(s_t)$.'
+        correct: true
+        feedback: 'Yes. Every later term has a factor $(\gamma\lambda)^k$ with $k\ge1$, which is $0$.'
+      - id: b
+        text: "$G_t-V(s_t)$, the real return minus the value."
+        correct: false
+        category: recall_failure
+        feedback: 'That is what GAE gives with $\lambda=1$.'
+      - id: c
+        text: '$0$, because every term is multiplied by $\lambda$.'
+        correct: false
+        category: misunderstood_definition
+        feedback: 'The first term $\delta_t$ has no factor of $\lambda$, so it stays.'
+      - id: d
+        text: 'The plain sum $\delta_t+\delta_{t+1}+\delta_{t+2}+\dots$'
+        correct: false
+        category: math_error
+        feedback: 'That would need $\gamma\lambda=1$. With $\lambda=0$ the later terms vanish.'
+    solution: 'With $\lambda=0$ every later term is multiplied by $0$, leaving $\hat A_t=\delta_t$.'
+  - id: ppog-two-step
+    dimension: conceptual
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: 'An episode has two steps, with one-step errors $\delta_0=2$ and $\delta_1=-1$. With $\gamma=0.9$ and $\lambda=0.5$, what is the GAE estimate $\hat A_0$?'
+    answer: 1.55
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - answer: 1
+        category: math_error
+        feedback: 'Shrink the later error by $\gamma\lambda=0.45$ before adding it.'
+      - answer: 1.1
+        category: math_error
+        feedback: 'You used only $\gamma$. The factor is $\gamma\lambda=0.9\times0.5=0.45$.'
+      - answer: 1.5
+        category: math_error
+        feedback: 'You used only $\lambda$. The factor is $\gamma\lambda=0.9\times0.5=0.45$.'
+    solution: '$\hat A_0=\delta_0+\gamma\lambda\,\delta_1=2+0.45\times(-1)=1.55$.'
+  - id: ppog-template
+    dimension: conceptual
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: 'An episode has two steps, with one-step errors $\delta_0={{=d0}}$ and $\delta_1={{=d1}}$. With $\gamma=0.9$ and $\lambda={{=lam}}$, what is the GAE estimate $\hat A_0$?'
+    params:
+      d0: { min: -2, max: 2, step: 0.5 }
+      d1: { min: -2, max: 2 }
+      lam: { min: 0.5, max: 0.8, step: 0.3 }
+    constraints: ["d1 != 0"]
+    answer_expr: d0 + 0.9 * lam * d1
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - answer_expr: d0 + d1
+        category: math_error
+        feedback: 'Shrink the later error by $\gamma\lambda$ before adding it.'
+      - answer_expr: d0 + lam * d1
+        category: math_error
+        feedback: 'The factor is $\gamma\lambda$, so multiply by $\gamma=0.9$ as well as $\lambda$.'
+    solution: '$\hat A_0=\delta_0+\gamma\lambda\,\delta_1={{=d0}}+0.9\times{{=lam}}\times({{=d1}})={{=round(d0+0.9*lam*d1,3)}}$.'
+  - id: ppog-bigger-lambda
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: 'A learner says: "Setting $\lambda=1$ in GAE always gives the best advantage estimates, because it uses real rewards instead of the critic''s guesses." What is the best reply?'
+    options:
+      - id: a
+        text: "They're right: real rewards are always better than estimates."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "Real rewards avoid the critic's errors, but they carry the luck of every later move."
+      - id: b
+        text: '$\lambda=1$ removes the critic''s bias but adds the noise of every later move, so the estimates vary more and we need more episodes. Values in between often work better.'
+        correct: true
+        feedback: 'Yes. $\lambda$ trades bias against variance.'
+      - id: c
+        text: '$\lambda=1$ ignores the rewards and uses only the critic''s values.'
+        correct: false
+        category: misunderstood_definition
+        feedback: 'That is closer to $\lambda=0$, which trusts the critic after one step. $\lambda=1$ gives $G_t-V(s_t)$.'
+      - id: d
+        text: '$\lambda=1$ makes the estimate lean more heavily on the critic''s guesses.'
+        correct: false
+        category: misunderstood_definition
+        feedback: 'With $\lambda=1$ the critic''s later guesses cancel. Only $V(s_t)$ is left.'
+    solution: 'With $\lambda=1$ the estimate is $G_t-V(s_t)$. It has no bias from the critic''s later guesses, but it depends on every later move, so it is noisy. Smaller $\lambda$ trades some bias for less variance.'
+  - id: ppog-noisy-critic
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: 'Early in training, a critic''s values are mostly wrong. Which choice of $\lambda$ in GAE leans least on those values, and what does it cost?'
+    options:
+      - id: a
+        text: '$\lambda$ close to $1$, at the cost of noisier estimates.'
+        correct: true
+        feedback: 'Yes. Near $\lambda=1$ the later values nearly cancel, but the estimate carries the noise of the real rewards.'
+      - id: b
+        text: '$\lambda=0$, because it uses only one critic value.'
+        correct: false
+        category: incorrect_reasoning
+        feedback: '$\lambda=0$ uses $V(s_{t+1})$ to stand in for everything after the first step, so it leans on the critic the most.'
+      - id: c
+        text: '$\lambda$ close to $1$, at the cost of more bias from the critic.'
+        correct: false
+        category: misunderstood_definition
+        feedback: 'Bias from the critic falls as $\lambda$ rises. The cost is variance.'
+      - id: d
+        text: 'It doesn''t matter, because the critic''s errors cancel for every $\lambda$.'
+        correct: false
+        category: misunderstood_definition
+        feedback: 'They cancel exactly only at $\lambda=1$.'
+    solution: 'At $\lambda=1$ the critic''s later guesses cancel and only $V(s_t)$ remains, so $\lambda$ near $1$ leans least on a bad critic. The price is higher variance from the real rewards.'
+  - id: ppog-drone
+    dimension: conceptual
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: 'A drone''s flight lasts three steps, with rewards $0$, $0$ and then $5$ when it lands. The discount is $\gamma=0.9$, and a critic values the starting state at $3$. Using GAE with $\lambda=1$, what is the advantage estimate for the first action?'
+    answer: 1.05
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - answer: 2
+        category: math_error
+        feedback: 'Discount the landing reward: it arrives two steps after the first reward, so it counts $0.9^2\times5$.'
+      - answer: 4.05
+        category: misunderstood_definition
+        feedback: "That is the return. Subtract the value of the starting state."
+      - answer: 0.645
+        category: math_error
+        feedback: 'The landing reward is $r_3$, so it is discounted by $\gamma^2=0.81$. $\gamma^3$ is one power too many.'
+    solution: 'With $\lambda=1$, GAE gives $G_0-V(s_0)$. The return is $0+0.9\times0+0.81\times5=4.05$, so the estimate is $4.05-3=1.05$.'
+
+  # Step 3: the probability ratio and surrogate
+  - id: ppo-ratio-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: 'What does the probability ratio $\rho_t(\theta)$ in PPO compare?'
+    options:
+      - id: a
+        text: The reward of the action under the new policy and under the old policy.
+        correct: false
+        feedback: "Rewards come from the environment. The ratio compares probabilities of the action."
+      - id: b
+        text: "The advantage of the action and the value of its state."
+        correct: false
+        feedback: "Those give $Q(s,a)$ when added. The ratio is about how likely the action is."
+      - id: c
+        text: "The probability the current policy gives the action that was taken, and the probability the policy that collected the data gave it."
+        correct: true
+        feedback: 'Yes. $\rho_t(\theta)=\pi_\theta(a_t\mid s_t)/\pi_{\theta_\text{old}}(a_t\mid s_t)$.'
+      - id: d
+        text: "The probability of the action taken and the probability of the other action in the same state."
+        correct: false
+        feedback: "Both probabilities in the ratio are for the same action, under two different policies."
+    solution: '$\rho_t(\theta)=\pi_\theta(a_t\mid s_t)/\pi_{\theta_\text{old}}(a_t\mid s_t)$: how many times more likely the current policy makes the action the old policy took.'
+  - id: ppor-worked-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "In the worked example, lowering the probability of moving left in cell 2 from $0.5$ to $0.1$ raises the term from $-2.8$ at $0.4$ to $-0.7$. Why does the surrogate prefer the lower probability?"
+    options:
+      - id: a
+        text: 'The advantage is negative, so a smaller ratio makes the product $\rho\hat A$ closer to $0$, which is larger.'
+        correct: true
+        feedback: 'Yes. $0.8\times(-3.5)=-2.8$ and $0.2\times(-3.5)=-0.7$.'
+      - id: b
+        text: "Lowering the probability raises the ratio."
+        correct: false
+        category: math_error
+        feedback: "The ratio falls, from $0.8$ to $0.2$. The term rises because the advantage is negative."
+      - id: c
+        text: "Lowering the probability makes the advantage less negative."
+        correct: false
+        category: misunderstood_definition
+        feedback: "The advantage is fixed at $-3.5$ for the whole batch. Only the ratio changes."
+      - id: d
+        text: "Lowering any action's probability raises the surrogate."
+        correct: false
+        category: incorrect_reasoning
+        feedback: 'For a positive advantage, lowering the probability lowers the term. It depends on the sign of $\hat A$.'
+    solution: 'The term is $\rho\hat A$ with $\hat A=-3.5$. As $\rho$ falls from $0.8$ to $0.2$, the term rises from $-2.8$ to $-0.7$.'
+  - id: ppor-ratio-one
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: 'During a PPO update, one sample has probability ratio $\rho_t(\theta)=1$. What does that tell you?'
+    options:
+      - id: a
+        text: "The current policy gives the action the same probability as the policy that collected the data."
+        correct: true
+        feedback: "Yes. The two probabilities are equal, so their ratio is $1$."
+      - id: b
+        text: "The current policy picks the action with probability $1$."
+        correct: false
+        category: misunderstood_definition
+        feedback: "The ratio compares two probabilities. Both could be $0.3$, say."
+      - id: c
+        text: "The action's advantage is $1$."
+        correct: false
+        category: misunderstood_definition
+        feedback: "The ratio says nothing about the advantage. It only compares new and old probabilities."
+      - id: d
+        text: "The action is twice as likely as before."
+        correct: false
+        category: math_error
+        feedback: "Twice as likely would be a ratio of $2$."
+    solution: 'A ratio of $1$ means $\pi_\theta(a_t\mid s_t)=\pi_{\theta_\text{old}}(a_t\mid s_t)$.'
+  - id: ppor-ratio-template
+    dimension: conceptual
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: 'The policy that collected a batch took an action with probability {{=pold}}. After a few gradient steps, the current policy gives that action probability {{=pnew}}. What is the probability ratio $\rho_t(\theta)$? Give two decimal places.'
+    params:
+      pold: { min: 0.2, max: 0.5, step: 0.1 }
+      pnew: { min: 0.1, max: 0.9, step: 0.1 }
+    constraints: ["pold != 0.3", "pnew != pold"]
+    answer_expr: pnew / pold
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - answer_expr: pold / pnew
+        category: misunderstood_definition
+        feedback: "The ratio puts the current policy on top: new probability over old."
+      - answer_expr: pnew - pold
+        category: misunderstood_definition
+        feedback: "The ratio divides the two probabilities."
+    solution: '$\rho_t(\theta)={{=pnew}}/{{=pold}}={{=round(pnew/pold,2)}}$.'
+  - id: ppor-surrogate-term
+    dimension: conceptual
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: 'The policy that collected a batch took an action with probability $0.4$, and its advantage estimate is $\hat A_t=-2$. The current policy gives the action probability $0.5$. What is this sample''s term $\rho_t\hat A_t$ in the surrogate objective (with no clipping)?'
+    answer: -2.5
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - answer: -1.6
+        category: misunderstood_definition
+        feedback: "The ratio is new over old, $0.5/0.4=1.25$."
+      - answer: 2.5
+        category: math_error
+        feedback: "The advantage is negative, so the term is negative."
+      - answer: -0.2
+        category: misunderstood_definition
+        feedback: "The ratio divides the probabilities: $0.5/0.4=1.25$."
+    solution: '$\rho_t=0.5/0.4=1.25$, so the term is $1.25\times(-2)=-2.5$.'
+  - id: ppor-why-ratio
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: 'PPO takes several gradient steps on each batch. Why does its objective weight each sample by the ratio $\pi_\theta(a_t\mid s_t)/\pi_{\theta_\text{old}}(a_t\mid s_t)$?'
+    options:
+      - id: a
+        text: "The batch came from the old policy. The ratio accounts for how much the current policy has changed each action's probability, so later steps on the same batch still make sense."
+        correct: true
+        feedback: 'Yes. At $\theta=\theta_\text{old}$ the gradient matches the plain policy gradient, and later the ratio tracks the change.'
+      - id: b
+        text: "The ratio always lies between $0$ and $1$, which keeps the objective small."
+        correct: false
+        category: misunderstood_definition
+        feedback: "The ratio can be any positive number. It is above $1$ when an action got more likely."
+      - id: c
+        text: "The ratio replaces the advantage, so no critic is needed."
+        correct: false
+        category: misunderstood_definition
+        feedback: "Each term is ratio times advantage, so PPO still needs advantage estimates."
+      - id: d
+        text: "The ratio guarantees the new policy stays close to the old one."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "The plain ratio objective keeps rewarding bigger changes. Keeping the policy close is the job of clipping."
+    solution: 'The data were collected by $\pi_{\theta_\text{old}}$. Weighting by the ratio accounts for how the current policy differs, so the same batch can be used for several steps.'
+  - id: ppor-reuse-risk
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: 'A team climbs the plain surrogate objective, average of $\rho_t\hat A_t$ with no clipping, for 30 passes on each batch. Training improves at first and then suddenly gets much worse. What is the most likely cause?'
+    options:
+      - id: a
+        text: "The repeated passes kept pushing ratios far from $1$ on noisy advantages, so the policy moved far from the one that collected the data and fell apart."
+        correct: true
+        feedback: "Yes. The plain objective keeps rewarding bigger changes, however far they go."
+      - id: b
+        text: "The learning rate was too small for the policy to change."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "A tiny learning rate gives slow progress. Here the policy changed too much."
+      - id: c
+        text: "The ratios all stayed at $1$, so the policy never changed."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "Ratios start at $1$ and move as soon as the policy changes. A policy that never changes wouldn't suddenly get worse."
+      - id: d
+        text: "Each batch had too many episodes in it."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "More episodes make advantage estimates less noisy. The trouble is how far each batch moves the policy."
+    solution: "With no limit, every pass rewards moving probabilities further in the direction of the noisy advantages. After many passes the policy is far from the data and can collapse."
+  - id: ppor-llm-token
+    dimension: conceptual
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: 'A language model is tuned with a policy gradient method. When it wrote a reply, it picked one token with probability $0.02$. After a few gradient steps the current model gives that token probability $0.05$. The token''s advantage estimate is $0.5$. What is its surrogate term $\rho_t\hat A_t$, with no clipping?'
+    answer: 1.25
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - answer: 0.2
+        category: misunderstood_definition
+        feedback: "The ratio is new over old: $0.05/0.02=2.5$."
+      - answer: 2.5
+        category: math_error
+        feedback: "That is the ratio. Multiply it by the advantage."
+      - answer: 0.015
+        category: misunderstood_definition
+        feedback: "The ratio divides the probabilities: $0.05/0.02=2.5$."
+    solution: '$\rho_t=0.05/0.02=2.5$, so the term is $2.5\times0.5=1.25$.'
+
+  # Step 4: clipping
+  - id: ppo-clip-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In PPO's clipped objective, what does clipping the ratio to the range $1-c$ to $1+c$ do?"
+    options:
+      - id: a
+        text: "It forces every action probability to lie between $1-c$ and $1+c$."
+        correct: false
+        feedback: "Probabilities lie between $0$ and $1$. The range limits the ratio of new to old probability in the objective."
+      - id: b
+        text: "It resets every ratio to $1$ after each gradient step."
+        correct: false
+        feedback: "Ratios move freely during the passes on a batch. Clipping changes what the objective rewards."
+      - id: c
+        text: "It limits each advantage estimate to between $-c$ and $c$."
+        correct: false
+        feedback: "The advantages are left alone. Only the ratio is clipped."
+      - id: d
+        text: "It removes any gain a sample gets from moving its action's probability past that range in the direction its advantage favours."
+        correct: true
+        feedback: "Yes. Past the range the objective goes flat, so that sample stops pushing."
+    solution: "Clipping makes each sample's term flat once its ratio passes $1+c$ (positive advantage) or falls below $1-c$ (negative advantage), so moving further gains nothing."
+  - id: ppoc-worked-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: 'In the last case of the worked example, a good action fell from $0.5$ to $0.3$, so $\rho=0.6$. Why is its term $0.6$, even though the clipped value would be $0.8$?'
+    options:
+      - id: a
+        text: "PPO takes the smaller of the two, and $0.6<0.8$. Keeping the plain term keeps its slope, so the update can pull the probability back up."
+        correct: true
+        feedback: "Yes. The minimum never hides a change that made things worse."
+      - id: b
+        text: "The ratio $0.6$ is inside the clip range, so nothing is clipped."
+        correct: false
+        category: math_error
+        feedback: "The range is $0.8$ to $1.2$, and $0.6$ is below it."
+      - id: c
+        text: "Clipping only applies to actions with negative advantages."
+        correct: false
+        category: misunderstood_definition
+        feedback: "Clipping applies to both signs. The first case clipped a positive advantage at $1.2$."
+      - id: d
+        text: "The term is rounded down to one decimal place."
+        correct: false
+        category: incorrect_reasoning
+        feedback: 'No rounding happens. $\min(0.6,0.8)$ is exactly $0.6$.'
+    solution: '$\min(0.6\times1,\ 0.8\times1)=0.6$. The plain term is lower, so it is kept, and its slope still pushes the probability back towards $0.5$.'
+  - id: ppoc-inside-range
+    dimension: conceptual
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: 'PPO uses clip range $c=0.2$. A sample has ratio $\rho_t=1.1$ and advantage estimate $\hat A_t=3$. What is its term in the clipped objective?'
+    answer: 3.3
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - answer: 3.6
+        category: misapplied_technique
+        feedback: "$1.1$ is inside the range $0.8$ to $1.2$, so the clipped ratio is still $1.1$."
+      - answer: 2.4
+        category: misapplied_technique
+        feedback: "$1.1$ is inside the range $0.8$ to $1.2$, so it isn't moved to an end."
+    solution: 'The ratio $1.1$ is inside $0.8$ to $1.2$, so both terms equal $1.1\times3=3.3$.'
+  - id: ppoc-clip-template
+    dimension: conceptual
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt: 'PPO uses clip range $c=0.2$. The policy that collected a batch took an action with probability $0.5$, and its advantage estimate is $\hat A_t={{=A}}$. The current policy gives that action probability {{=pnew}}. What is this sample''s term in the clipped objective?'
+    params:
+      pnew: { min: 0.1, max: 0.9, step: 0.1 }
+      A: { min: -2, max: 2 }
+    constraints: ["A != 0", "abs(pnew - 0.5) > 0.15"]
+    answer_expr: min(pnew / 0.5 * A, max(0.8, min(1.2, pnew / 0.5)) * A)
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - answer_expr: max(pnew / 0.5 * A, max(0.8, min(1.2, pnew / 0.5)) * A)
+        category: misapplied_technique
+        feedback: "PPO takes the smaller of the plain term and the clipped term."
+    solution: 'The ratio is $\rho_t={{=pnew}}/0.5={{=round(pnew/0.5,2)}}$, and clipping it to $0.8$ to $1.2$ gives {{=round(max(0.8,min(1.2,pnew/0.5)),2)}}. The two terms are {{=round(pnew/0.5*A,2)}} and {{=round(max(0.8,min(1.2,pnew/0.5))*A,2)}}, and the smaller is {{=round(min(pnew/0.5*A,max(0.8,min(1.2,pnew/0.5))*A),2)}}.'
+  - id: ppoc-negative-far
+    dimension: conceptual
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: 'PPO uses clip range $c=0.2$. The policy that collected a batch took an action with probability $0.4$, and its advantage estimate is $\hat A_t=-2$. The current policy gives the action probability $0.2$. What is this sample''s term in the clipped objective?'
+    answer: -1.6
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - answer: -1
+        category: misapplied_technique
+        feedback: 'That is the plain term $0.5\times(-2)$. PPO takes the smaller of it and the clipped term $0.8\times(-2)$.'
+      - answer: 1.6
+        category: math_error
+        feedback: "The advantage is negative, so the term is negative."
+    solution: '$\rho_t=0.2/0.4=0.5$, which clips to $0.8$. The terms are $0.5\times(-2)=-1$ and $0.8\times(-2)=-1.6$, and the smaller is $-1.6$.'
+  - id: ppoc-what-prevents
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A batch contains one lucky episode, so one action gets an inflated advantage estimate of $+8$. PPO runs 10 passes on this batch with the clipped objective and $c=0.2$. What happens to that action's probability?"
+    options:
+      - id: a
+        text: "It rises until it is about $1.2$ times its old value. Then that sample's term goes flat and stops pushing."
+        correct: true
+        feedback: "Yes. Clipping caps how much one lucky estimate can move the policy."
+      - id: b
+        text: "It keeps rising on every pass, by an amount set by the advantage of $8$."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "That is what the plain surrogate does. With clipping, the term stops rising once the ratio passes $1.2$."
+      - id: c
+        text: "It doesn't change, because large advantages are clipped to $0$."
+        correct: false
+        category: misunderstood_definition
+        feedback: "Clipping acts on the ratio. The advantage of $8$ still pushes the probability up at first."
+      - id: d
+        text: "It jumps to exactly $1.2$ times its old value in the first pass, whatever the learning rate."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "Each step still moves by an amount set by the learning rate. Clipping only stops the push once the ratio passes $1.2$."
+    solution: 'The term $\min(\rho\times8,\ \text{clip}(\rho,0.8,1.2)\times8)$ is flat once $\rho>1.2$, so this sample stops raising the probability at about $1.2$ times its old value.'
+  - id: ppoc-soft-limit
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: 'A learner says: "With $c=0.2$, PPO guarantees that after an update every ratio $\rho_t$ lies between $0.8$ and $1.2$." What is the best reply?'
+    options:
+      - id: a
+        text: "That's right: clipping stops any ratio from leaving the range."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "Clipping only makes one sample's own term flat. Other samples can still move a ratio past the range."
+      - id: b
+        text: "Clipping removes each sample's own push past the range, but the parameters are shared, so gradients from other samples can still move a ratio outside it. People often watch how far the policy moved and stop early."
+        correct: true
+        feedback: "Yes. Clipping is a soft limit on the objective."
+      - id: c
+        text: "Clipping only limits ratios above $1.2$. Ratios can always fall freely below $0.8$."
+        correct: false
+        category: misunderstood_definition
+        feedback: "For negative advantages the objective goes flat below $0.8$ too."
+      - id: d
+        text: "The range is enforced by rescaling the advantages after each step."
+        correct: false
+        category: misunderstood_definition
+        feedback: "PPO leaves the advantages alone. It clips the ratio inside the objective."
+    solution: 'The clipped term only removes a sample''s own reason to move further. Because all samples share the parameters, other gradients can still push a ratio past $1\pm c$, so clipping is a soft limit.'
+  - id: ppoc-min-misread
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: 'A programmer writes the clipped objective with $\max$ where PPO uses $\min$: average of $\max(\rho_t\hat A_t,\ \text{clip}(\rho_t,1-c,1+c)\,\hat A_t)$. What goes wrong?'
+    options:
+      - id: a
+        text: "Nothing, because the two terms are always equal."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "They differ whenever the ratio is outside the range."
+      - id: b
+        text: 'For a positive advantage and a ratio above $1+c$, $\max$ keeps $\rho_t\hat A_t$, so the objective goes on rewarding bigger jumps with no limit.'
+        correct: true
+        feedback: 'Yes. With $\max$ the cap disappears exactly where it was needed.'
+      - id: c
+        text: "Every term becomes flat, so the policy never learns."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "Inside the range both terms are equal and have a slope. Learning still happens."
+      - id: d
+        text: "Only samples with negative advantages are affected."
+        correct: false
+        category: incorrect_reasoning
+        feedback: 'Positive advantages are affected too. For $\rho_t>1+c$, $\max$ picks the uncapped term.'
+    solution: 'With $\hat A_t>0$ and $\rho_t>1+c$, $\rho_t\hat A_t$ is larger than $(1+c)\hat A_t$, so $\max$ keeps the uncapped term and the limit on big jumps is gone.'
+  - id: ppoc-rlhf
+    dimension: conceptual
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A language model is tuned with PPO from human feedback, with clip range $c=0.2$. When it wrote a reply, it picked one token with probability $0.3$. After a few passes the current model gives that token probability $0.45$. The token's advantage estimate is $1$. What is its term in the clipped objective?"
+    answer: 1.2
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - answer: 1.5
+        category: misapplied_technique
+        feedback: "That is the plain term. The ratio $1.5$ is above $1.2$, and PPO takes the smaller of the plain and clipped terms."
+      - answer: 0.15
+        category: misunderstood_definition
+        feedback: "The ratio divides the probabilities: $0.45/0.3=1.5$."
+    solution: '$\rho_t=0.45/0.3=1.5$, which clips to $1.2$. The terms are $1.5$ and $1.2$, and the smaller is $1.2$.'
+
+  - id: ppo-explain-clipping
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 3
+    est_minutes: 5
+    prompt: "Explain to a colleague what PPO's clipped objective prevents. Say what goes wrong when several gradient steps reuse one batch with the plain ratio objective, how the clipped objective behaves for positive and negative advantages, and why it takes the minimum of the plain and clipped terms."
+    rubric:
+      - id: r1
+        criterion: "Reusing a batch with the plain objective keeps rewarding bigger changes, so noisy advantage estimates can push the policy far from the one that collected the data and make it much worse"
+        weight: 2
+        required: true
+      - id: r2
+        criterion: "With a positive advantage the term stops rising once the ratio passes $1+c$; with a negative advantage it stops rising once the ratio falls below $1-c$"
+        weight: 2
+        required: true
+      - id: r3
+        criterion: "The minimum keeps the plain term when it is lower, so a change in the wrong direction is still corrected"
+        weight: 1
+      - id: r4
+        criterion: "This makes several passes per batch safe, so each batch of experience is used more fully"
+        weight: 1
+    exemplar: "If we take many gradient steps on one batch using ratio times advantage, the objective keeps rewarding bigger changes. The advantages are noisy and were measured under the old policy, so the policy can move far from where the data are useful and suddenly get worse. PPO clips the ratio to between $1-c$ and $1+c$. For a good action the term goes flat once the action is $1+c$ times as likely as before, and for a bad action it goes flat once it is $1-c$ times as likely, so that sample stops pushing. Taking the minimum keeps the plain term when it is lower, so if a good action became less likely the update can still pull it back up. That makes it safe to do several passes over each batch."

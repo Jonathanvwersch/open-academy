@@ -1,0 +1,308 @@
+concept: ppo
+version: 1
+objective: |
+  **Goal:** explain what PPO's clipping prevents, by estimating advantages with a critic, comparing new and old action probabilities with a ratio, and seeing how the clipped objective caps how far one batch can move the policy.
+where_this_fits: |
+  ### What is PPO?
+
+  PPO (proximal policy optimization) is a way to train a policy. It makes actions that did better than usual more likely, and it limits how much one batch of experience may change the policy. A batch is a set of episodes collected with the current policy. Proximal means near: each update stays near the old policy.
+
+  Why is that useful? Collecting experience is slow, so we want to learn as much as possible from each batch. But big updates on the same batch can push the policy too far and wreck it. PPO's limit makes reuse safe, and it's a standard method in robotics. It's also used to tune language models from human feedback (RLHF), where a model trained on people's ratings gives the reward.
+knowledge_points:
+  - id: ppo-advantage
+    title: "Score each action by how much better it did than usual"
+    explain: |
+      ### Two ideas we build on
+
+      The first idea is the policy gradient. A policy $\pi_\theta(a\mid s)$ gives the probability of taking action $a$ in state $s$, and $\theta$ holds its parameters. A policy gradient method nudges $\theta$ so that actions which did well become more likely. For an action $a_t$ taken in state $s_t$, one update is
+
+      $$\theta_\text{new}=\theta+\eta\,(G_t-b)\,\nabla_\theta\ln\pi_\theta(a_t\mid s_t),$$
+
+      where $G_t$ is the return that followed, $b$ is a baseline, and $\eta$ is the learning rate. Many RL books write the learning rate as $\alpha$.
+
+      The second idea is the state value $V^\pi(s)$, the return we expect on average if we start in $s$ and follow $\pi$. The action value $Q^\pi(s,a)$ is the same, but we take action $a$ first.
+
+      ### A corridor robot
+
+      Our robot lives in a corridor of 4 cells, numbered 1 to 4 from the left. It starts in cell 1 and moves left or right. If it moves into a wall, it stays where it is. Reaching cell 4 ends the episode with reward $+10$, and every other step gives $-1$. We use $\gamma=0.9$.
+
+      PPO also trains a second model, the **critic**, to predict returns. We write its estimates as $V(s)$, without the $\pi$. Say they are $V(1)=5$, $V(2)=7$ and $V(3)=9$. The critic is still learning, so these are rough guesses. Nothing happens after cell 4, so its value is $0$.
+
+      ### Better or worse than usual
+
+      The **advantage** of an action says how much more return we expect from taking it than from acting as usual:
+
+      $$A(s,a)=Q(s,a)-V(s).$$
+
+      After one step, we can estimate $Q$ as the reward plus the discounted value of where we landed. The hat in $\hat A_t$ marks an estimate. This advantage estimate is also called the TD (temporal-difference) error $\delta_t$, because it compares value estimates one step apart. The reward for the action at step $t$ arrives one step later, so it's written $r_{t+1}$.
+
+      $$\hat A_t=\delta_t=r_{t+1}+\gamma V(s_{t+1})-V(s_t).$$
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 230" aria-label="Four cells in a row, numbered 1 to 4, with the critic's values 5, 7, 9 and 0 written above them. Cell 4 is the goal with reward plus 10. From cell 2, a green arrow to the right, into cell 3, is labelled delta equals 0.1. A red arrow to the left, into cell 1, is labelled delta equals minus 3.5">
+      <defs>
+      <marker id="ppo1-green" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#15803d"/></marker>
+      <marker id="ppo1-red" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#dc2626"/></marker>
+      </defs>
+      <g font-family="sans-serif" font-size="16" text-anchor="middle" fill="#262626">
+      <text x="110" y="62">V = 5</text>
+      <text x="250" y="62">V = 7</text>
+      <text x="390" y="62">V = 9</text>
+      <text x="530" y="62">V = 0</text>
+      <rect x="40" y="80" width="140" height="70" fill="#f5f5f5" stroke="#525252" stroke-width="2"/>
+      <rect x="180" y="80" width="140" height="70" fill="#f5f5f5" stroke="#525252" stroke-width="2"/>
+      <rect x="320" y="80" width="140" height="70" fill="#f5f5f5" stroke="#525252" stroke-width="2"/>
+      <rect x="460" y="80" width="140" height="70" fill="#fef3c7" stroke="#525252" stroke-width="2"/>
+      <text x="110" y="121">cell 1</text>
+      <text x="250" y="121">cell 2</text>
+      <text x="390" y="121">cell 3</text>
+      <text x="530" y="113">cell 4</text>
+      <text x="530" y="135" font-size="14">goal, +10</text>
+      <circle cx="250" cy="180" r="5" fill="#262626"/>
+      <line x1="256" y1="180" x2="378" y2="180" stroke="#15803d" stroke-width="3" marker-end="url(#ppo1-green)"/>
+      <text x="320" y="210" fill="#15803d">right: δ = 0.1</text>
+      <line x1="244" y1="180" x2="122" y2="180" stroke="#dc2626" stroke-width="3" marker-end="url(#ppo1-red)"/>
+      <text x="180" y="210" fill="#dc2626">left: δ = −3.5</text>
+      </g>
+      </svg>
+      ```
+
+      PPO uses $\hat A_t$ in place of $G_t-b$. In the picture, right from cell 2 scores $0.1$ and left scores $-3.5$.
+
+      Be careful: a positive advantage doesn't need a positive reward. Moving right from cell 2 earns $-1$, yet it's better than usual.
+    worked: |
+      Let's score both moves from cell 2 with the critic's values $V(1)=5$, $V(2)=7$, $V(3)=9$ and $\gamma=0.9$.
+
+      1. **Move right.** The robot gets $-1$ and lands in cell 3.
+         $$\delta=-1+0.9\times9-7=0.1.$$
+
+      2. **Move left.** The robot gets $-1$ and lands in cell 1.
+         $$\delta=-1+0.9\times5-7=-3.5.$$
+
+      3. **Read the signs.** Moving right did slightly better than the critic expected from cell 2, so its advantage is positive. Moving left did much worse, so its advantage is negative.
+
+      With only two actions, both scores push the policy towards moving right in cell 2, because lowering the chance of left raises the chance of right. The push from the left move is much stronger, because its score is much larger in size. Both moves earned the same reward of $-1$.
+    problems:
+      - ppo-advantage-basics
+      - ppoa-worked-self-explain
+      - ppoa-sign-meaning
+      - ppoa-td-error
+      - ppoa-td-template
+      - ppoa-reward-not-advantage
+      - ppoa-wall-bump
+      - ppoa-why-baseline
+      - ppoa-robot-arm
+  - id: ppo-gae
+    title: "Look several steps ahead"
+    explain: |
+      ### Two ways to estimate
+
+      The one-step estimate $\delta_t$ trusts the critic for everything after the first step. If the critic's value for the next state is too high, the estimate is too high every time we use it. An error that leans the same way on average is called **bias**.
+
+      At the other extreme we can use the critic only for the starting state, and the real return for everything after it, $\hat A_t=G_t-V(s_t)$. That has no bias, because the real return is exactly what the critic is trying to predict. But it depends on every later move. A few unlucky moves late in the episode drag down the score of a good first move. This spread from episode to episode is called **variance**.
+
+      ### Adding up the one-step errors
+
+      **Generalized advantage estimation**, or GAE, blends the two. It was introduced by Schulman and colleagues in 2015, and it's how PPO usually computes its advantages. It adds up the one-step errors from step $t$ on, shrinking each later one by an extra factor $\gamma\lambda$:
+
+      $$\hat A_t=\delta_t+(\gamma\lambda)\,\delta_{t+1}+(\gamma\lambda)^2\,\delta_{t+2}+\dots$$
+
+      The sum stops at the end of the episode. The number $\lambda$ is between $0$ and $1$, and we choose it.
+
+      - With $\lambda=0$, only $\delta_t$ is left, which is the one-step estimate.
+      - With $\lambda=1$, the sum equals $G_t-V(s_t)$ exactly. Each $\delta$ adds $\gamma V$ of the next state, and the next $\delta$, multiplied by $\gamma$, subtracts it again. So the critic's guesses for the later states cancel.
+      - Values in between give some of each: a little bias and a little variance.
+
+      Taking out the first term leaves $\gamma\lambda$ times the same sum started one step later. So we can compute it backwards from the end of the episode, using $\hat A_t=\delta_t+\gamma\lambda\,\hat A_{t+1}$.
+
+      In the worked example below, one corridor episode gives $\hat A_0=0.3$ with $\lambda=0$, about $0.55$ with $\lambda=0.5$, and $1.2$ with $\lambda=1$.
+
+      The PPO paper, by Schulman and colleagues in 2017, used $\lambda=0.95$ with $\gamma=0.99$ in its robot-control runs.
+
+      Be careful: a larger $\lambda$ isn't always better. It leans more on real rewards, so the estimate gets noisier, and we need more episodes to average the noise away.
+    worked: |
+      Let's compute the GAE for the episode $1\to2\to3\to4$ with $\gamma=0.9$ and $\lambda=0.5$, so $\gamma\lambda=0.45$.
+
+      1. **Find the first one-step error.** The first move earns $-1$ and goes from cell 1 to cell 2.
+         $$\delta_0=-1+0.9\times7-5=0.3.$$
+
+      2. **Find the other two errors.** The same way, $\delta_1=-1+0.9\times9-7=0.1$. The last move earns $+10$ and lands in cell 4, worth $0$, so $\delta_2=10+0.9\times0-9=1$.
+
+      3. **Start at the last step.** Nothing comes after it, so its estimate is just its error.
+         $$\hat A_2=\delta_2=1.$$
+
+      4. **Step back once.** We add $0.45$ times the estimate we just found.
+         $$\hat A_1=0.1+0.45\times1=0.55.$$
+
+      5. **Step back again.** We add $0.45\times0.55=0.2475$, keeping the exact value and rounding only at the end.
+         $$\hat A_0=0.3+0.2475=0.5475\approx0.55.$$
+
+      6. **Check the $\lambda=1$ case.** Then $\gamma\lambda=0.9$, and the factors are $1$, $0.9$ and $0.81$.
+         $$\hat A_0=0.3+0.9\times0.1+0.81\times1=1.2.$$
+
+      7. **Compare with the return.** The rewards were $-1$, $-1$ and $+10$, so $G_0=-1-0.9+8.1=6.2$.
+         $$G_0-V(1)=6.2-5=1.2.$$
+
+      Both ways give $1.2$, so with $\lambda=1$ the critic's guesses really do cancel. With $\lambda=0.5$, $\hat A_0$ happens to round to the same $0.55$ as $\hat A_1$.
+    problems:
+      - ppo-gae-basics
+      - ppog-worked-self-explain
+      - ppog-lambda-zero
+      - ppog-two-step
+      - ppog-template
+      - ppog-drone
+      - ppog-bigger-lambda
+      - ppog-noisy-critic
+  - id: ppo-ratio
+    title: "Compare the new policy with the old"
+    explain: |
+      ### Reusing a batch
+
+      Collecting experience is the slow part. A plain policy gradient method takes one gradient step on a batch and then throws it away, because the batch only shows how that exact policy behaves. We'd like several passes per batch, where a pass is one sweep of gradient steps through the whole batch. Each sample in the batch is one state, the action taken there and its advantage estimate.
+
+      The trouble is that after the first step the policy has changed, while the batch came from the old one. We call the policy that collected the batch $\pi_{\theta_\text{old}}$.
+
+      ### The probability ratio
+
+      The **probability ratio** compares how likely the action is now with how likely it was under the old policy. It's the new probability divided by the old one:
+
+      $$\rho_t(\theta)=\frac{\pi_\theta(a_t\mid s_t)}{\pi_{\theta_\text{old}}(a_t\mid s_t)}.$$
+
+      A ratio of $1$ means no change. Above $1$, the action got more likely. Below $1$, it got less likely. Say the old policy moved right from cell 3 with probability $0.5$. If the new policy gives $0.6$, the ratio is $1.2$.
+
+      ### The surrogate objective
+
+      PPO's starting point is the **surrogate objective**. Surrogate means stand-in: we climb it in place of the return, which we can't compute directly. It's the batch average of ratio times advantage:
+
+      $$L(\theta)=\text{average over the batch of }\rho_t(\theta)\,\hat A_t.$$
+
+      We climb it with gradient ascent, several times on the same batch. Raising $L$ makes actions with $\hat A_t>0$ more likely and actions with $\hat A_t<0$ less likely. Since $\nabla_\theta\pi_\theta=\pi_\theta\nabla_\theta\ln\pi_\theta$, the gradient of a ratio is the ratio times $\nabla_\theta\ln\pi_\theta(a_t\mid s_t)$. At $\theta=\theta_\text{old}$ every ratio is $1$, so the first step is the usual policy gradient step with $\hat A_t$ as the weight.
+
+      ### Nothing limits the change
+
+      For an action with a positive advantage, $\rho_t\hat A_t$ keeps growing as the ratio grows, so every pass pushes the probability further. But $\hat A_t$ is a noisy estimate from one batch, made while following the old policy. After many passes the new policy can be far from the old one, and the batch no longer tells us how it behaves. A policy that changes too much in one go can suddenly get much worse, and then it collects worse experience to learn from.
+
+      This is the problem PPO's clipping solves.
+    worked: |
+      Let's see which changes the surrogate prefers. Suppose the old policy moves right from cell 3 with probability $0.5$. That move reaches the goal, so with the critic from step 1 its advantage is $\hat A=10+0-9=1$.
+
+      1. **Raise the probability to $0.6$.** The ratio is $0.6/0.5=1.2$, so the term grows.
+         $$\rho\hat A=1.2\times1=1.2.$$
+
+      2. **Raise it to $0.95$.** The ratio is $0.95/0.5=1.9$, so the term is larger still, and the objective prefers this bigger jump.
+         $$\rho\hat A=1.9\times1=1.9.$$
+
+      3. **Try a bad move.** Suppose the old policy also moves left from cell 2 with probability $0.5$. Step 1 found this move's advantage, $\hat A=-3.5$. Lowering the probability to $0.4$ gives the ratio $0.4/0.5=0.8$.
+         $$\rho\hat A=0.8\times(-3.5)=-2.8.$$
+
+      4. **Lower it to $0.1$.** The ratio is $0.1/0.5=0.2$. The term rises towards $0$, so again the objective prefers the bigger change.
+         $$\rho\hat A=0.2\times(-3.5)=-0.7.$$
+
+      In both cases a bigger change scores higher, however far it goes from the policy that collected the data.
+    problems:
+      - ppo-ratio-basics
+      - ppor-worked-self-explain
+      - ppor-ratio-one
+      - ppor-ratio-template
+      - ppor-surrogate-term
+      - ppor-why-ratio
+      - ppor-reuse-risk
+      - ppor-llm-token
+  - id: ppo-clip
+    title: "Cap how far one update can go"
+    explain: |
+      ### Clipping the ratio
+
+      PPO's fix is to stop rewarding the ratio once it leaves a range around $1$. We pick a **clip range** $c$, usually $c=0.2$, so the range is $0.8$ to $1.2$. The PPO paper calls this number $\epsilon$. We use $c$, because other RL lessons use $\varepsilon$ for the exploration rate, how often an agent tries a random action. The function $\text{clip}(\rho,1-c,1+c)$ leaves $\rho$ alone inside the range and replaces it with the nearest end outside.
+
+      PPO's **clipped objective** takes, for each sample, the smaller of the plain term and the clipped term. The picture below shows what that does.
+
+      $$L^\text{CLIP}(\theta)=\text{average of }\min\big(\rho_t\hat A_t,\ \text{clip}(\rho_t,1-c,1+c)\,\hat A_t\big).$$
+
+      ### What the minimum does
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 330" aria-label="Two plots of one sample's term against the ratio rho from 0 to 2, with c equals 0.2. Grey lines mark rho equals 0.8 and 1.2. Left, advantage plus 1: the dashed grey line rho times A rises without limit, and the blue clipped objective follows it up to rho equals 1.2, value 1.2, then stays flat. Right, advantage minus 1: the dashed line falls from 0 to minus 2, and the blue clipped objective is flat at minus 0.8 for rho below 0.8, then follows the dashed line down">
+      <g font-family="sans-serif" font-size="14" fill="#262626">
+      <text x="180" y="30" text-anchor="middle" font-size="16">advantage = +1</text>
+      <text x="500" y="30" text-anchor="middle" font-size="16">advantage = −1</text>
+      <line x1="156" y1="80" x2="156" y2="260" stroke="#d4d4d4" stroke-width="1.5"/>
+      <line x1="204" y1="80" x2="204" y2="260" stroke="#d4d4d4" stroke-width="1.5"/>
+      <line x1="476" y1="80" x2="476" y2="260" stroke="#d4d4d4" stroke-width="1.5"/>
+      <line x1="524" y1="80" x2="524" y2="260" stroke="#d4d4d4" stroke-width="1.5"/>
+      <line x1="60" y1="250" x2="310" y2="250" stroke="#525252" stroke-width="1.5"/>
+      <line x1="60" y1="250" x2="60" y2="80" stroke="#525252" stroke-width="1.5"/>
+      <line x1="380" y1="90" x2="630" y2="90" stroke="#d4d4d4" stroke-width="1.5"/>
+      <line x1="380" y1="260" x2="630" y2="260" stroke="#525252" stroke-width="1.5"/>
+      <line x1="380" y1="90" x2="380" y2="260" stroke="#525252" stroke-width="1.5"/>
+      <text x="60" y="272" text-anchor="middle">0</text>
+      <text x="180" y="272" text-anchor="middle">1</text>
+      <text x="300" y="272" text-anchor="middle">2</text>
+      <text x="380" y="282" text-anchor="middle">0</text>
+      <text x="500" y="282" text-anchor="middle">1</text>
+      <text x="620" y="282" text-anchor="middle">2</text>
+      <text x="476" y="300" text-anchor="middle" font-size="13">0.8</text>
+      <text x="524" y="300" text-anchor="middle" font-size="13">1.2</text>
+      <text x="156" y="300" text-anchor="middle" font-size="13">0.8</text>
+      <text x="204" y="300" text-anchor="middle" font-size="13">1.2</text>
+      <text x="185" y="322" text-anchor="middle">ratio ρ</text>
+      <text x="505" y="322" text-anchor="middle">ratio ρ</text>
+      <text x="52" y="254" text-anchor="end">0</text>
+      <text x="52" y="158" text-anchor="end">1.2</text>
+      <text x="52" y="94" text-anchor="end">2</text>
+      <text x="372" y="94" text-anchor="end">0</text>
+      <text x="372" y="158" text-anchor="end">−0.8</text>
+      <text x="372" y="254" text-anchor="end">−2</text>
+      <line x1="60" y1="250" x2="300" y2="90" stroke="#737373" stroke-width="2" stroke-dasharray="6 5"/>
+      <line x1="380" y1="90" x2="620" y2="250" stroke="#737373" stroke-width="2" stroke-dasharray="6 5"/>
+      <polyline points="60,250 204,154 300,154" fill="#2563eb" fill-opacity="0" stroke="#2563eb" stroke-width="4"/>
+      <polyline points="380,154 476,154 620,250" fill="#2563eb" fill-opacity="0" stroke="#2563eb" stroke-width="4"/>
+      <text x="250" y="144" fill="#2563eb">flat</text>
+      <text x="420" y="144" fill="#2563eb">flat</text>
+      </g>
+      </svg>
+      ```
+
+      The dashed line is the plain term $\rho\hat A$, the blue line is the clipped objective, and the grey lines mark $1-c$ and $1+c$. In the right plot all the values are negative. When $\hat A>0$, the objective goes flat once $\rho$ passes $1+c$. A flat line has zero slope, so that sample stops pushing its action's probability up. When $\hat A<0$, the objective goes flat once $\rho$ falls below $1-c$, so the sample stops pushing its probability down.
+
+      The minimum keeps the plain term whenever it is lower. If a good action has become less likely, say $\rho=0.6$ with $\hat A=1$, the term is $0.6$ and its slope still pushes the probability back up. In the same way, if a bad action has become more likely, the plain term is lower and still pushes it back down. Clipping only removes the gain from moving further in the direction the advantage wants.
+
+      ### What clipping prevents
+
+      Clipping takes away any gain from pushing an action's probability past $1\pm c$ times its old value, so noisy estimates can't drag the policy far in one batch. That makes it safe to take several passes over each batch. The paper's robot-control runs used 10 passes. The limit is soft, though. All samples share the same parameters $\theta$, so a step that raises one action's probability can also change probabilities in other states. People often track how far the new probabilities have moved from the old ones on the batch, and stop the passes once that gets too large.
+    worked: |
+      Let's evaluate the clipped term with $c=0.2$, so ratios are clipped to the range $0.8$ to $1.2$. Each old probability is $0.5$.
+
+      1. **Good action pushed far.** Moving right from cell 3, with $\hat A=1$, went from $0.5$ to $0.8$, so $\rho=1.6$. The plain term is $1.6\times1$ and the clipped term is $1.2\times1$.
+         $$\min(1.6,\ 1.2)=1.2.$$
+
+      2. **Read the result.** The term is stuck at $1.2$, so raising this probability further earns nothing.
+
+      3. **Bad action pushed far.** Moving left from cell 2, with $\hat A=-3.5$, went from $0.5$ to $0.1$, so $\rho=0.2$. The plain term is $0.2\times(-3.5)$ and the clipped term is $0.8\times(-3.5)$.
+         $$\min(-0.7,\ -2.8)=-2.8.$$
+
+      4. **Read the result.** The term is stuck at $-2.8$, the same as at $\rho=0.8$. The plain term was $-0.7$, but the clipped objective gives no credit for lowering the probability past $0.4$, where $\rho=0.8$.
+
+      5. **Good action that fell.** Suppose instead that moving right from cell 3 went from $0.5$ to $0.3$, so $\rho=0.6$. The plain term is $0.6\times1$ and the clipped term is $0.8\times1$.
+         $$\min(0.6,\ 0.8)=0.6.$$
+
+      In the last case the plain term is the smaller one, so it stays in charge, and its slope still pushes the probability back up.
+    problems:
+      - ppo-clip-basics
+      - ppoc-worked-self-explain
+      - ppoc-inside-range
+      - ppoc-clip-template
+      - ppoc-negative-far
+      - ppoc-what-prevents
+      - ppoc-soft-limit
+      - ppoc-min-misread
+      - ppoc-rlhf
+final: ppo-explain-clipping
+summary: |
+  - The advantage scores an action against the usual, $A(s,a)=Q(s,a)-V(s)$. A critic gives the one-step estimate $\hat A_t=\delta_t=r_{t+1}+\gamma V(s_{t+1})-V(s_t)$.
+  - GAE adds up the one-step errors, weighting the error $k$ steps later by $(\gamma\lambda)^k$. $\lambda=0$ gives $\delta_t$, $\lambda=1$ gives $G_t-V(s_t)$, and values in between trade bias for variance.
+  - The ratio $\rho_t(\theta)$ compares the new and old probability of each action, so one batch can be reused for several gradient steps on $\rho_t\hat A_t$.
+  - PPO clips the ratio to $1\pm c$ and takes the minimum, so no sample gains from moving its action's probability far from the old policy. This stops a noisy batch from pushing the policy too far.
+  - One round of PPO runs the policy to collect a batch, computes advantages with GAE and the critic, takes several passes of gradient ascent on $L^\text{CLIP}$ while training the critic on the returns, and then makes the new policy the old one.
+
+  **Next:** The reward design lesson looks at choosing the rewards that PPO and other methods learn from.
