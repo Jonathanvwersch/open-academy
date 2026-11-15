@@ -142,9 +142,18 @@ export function PaperReaderPage() {
   const [pageCount, setPageCount] = useState(0);
   const [pageAspectRatios, setPageAspectRatios] = useState<Record<number, number>>({});
   const [pageWidth, setPageWidth] = useState(0);
+  const [pageHeight, setPageHeight] = useState(0);
   const [pageNumber, setPageNumber] = useState(data.progress?.lastPage ?? 1);
   const [readingGuideOpen, setReadingGuideOpen] = useState(readPaperGuideOpen);
-  const [zoom, setZoom] = useState(100);
+  const [manualZoom, setManualZoom] = useState<number | null>(null);
+  const fitZoom = Math.max(
+    10,
+    Math.min(
+      100,
+      Math.floor(((pageHeight - 16) / (pageWidth * (pageAspectRatios[1] ?? Math.SQRT2))) * 100),
+    ),
+  );
+  const zoom = manualZoom ?? (pageWidth > 0 && pageHeight > 0 ? fitZoom : 100);
   const [guideOpen, setGuideOpen] = useState(() => window.matchMedia('(min-width: 768px)').matches);
   const [pdfError, setPdfError] = useState(false);
   const [retry, setRetry] = useState(0);
@@ -185,11 +194,12 @@ export function PaperReaderPage() {
   useLayoutEffect(() => {
     const element = viewer.current;
     if (!element) return;
-    const updatePageWidth = () => {
+    const updatePageSize = () => {
       setPageWidth(Math.max(1, element.clientWidth - 32));
+      setPageHeight(element.clientHeight);
     };
-    updatePageWidth();
-    const resizeObserver = new ResizeObserver(updatePageWidth);
+    updatePageSize();
+    const resizeObserver = new ResizeObserver(updatePageSize);
     resizeObserver.observe(element);
     return () => resizeObserver.disconnect();
   }, []);
@@ -450,7 +460,7 @@ export function PaperReaderPage() {
             variant="ghost"
             size="icon-sm"
             aria-label="Zoom out"
-            onClick={() => setZoom((value) => Math.max(50, value - 10))}
+            onClick={() => setManualZoom(Math.max(10, zoom - 10))}
           >
             <Minus aria-hidden="true" className="size-4" />
           </Button>
@@ -459,7 +469,7 @@ export function PaperReaderPage() {
             variant="ghost"
             size="icon-sm"
             aria-label="Zoom in"
-            onClick={() => setZoom((value) => Math.min(200, value + 10))}
+            onClick={() => setManualZoom(Math.min(200, zoom + 10))}
           >
             <Plus aria-hidden="true" className="size-4" />
           </Button>

@@ -91,10 +91,15 @@ test('Course opens a paper reader with PDF pages, persisted notes/summary, tutor
   expect(await reader.evaluate((element) => element.scrollWidth)).toBeLessThanOrEqual(
     (await reader.evaluate((element) => element.clientWidth)) + 1,
   );
+  const initialZoom = Number.parseInt((await page.getByText(/^\d+%$/).textContent()) ?? '', 10);
+  const firstPage = page.locator('[data-page="1"] .react-pdf__Page').first();
+  expect(
+    await firstPage.evaluate((element) => element.getBoundingClientRect().height),
+  ).toBeLessThanOrEqual(await reader.evaluate((element) => element.clientHeight));
   await page.getByRole('button', { name: 'Zoom in' }).click();
-  await expect(page.getByText('110%', { exact: true })).toBeVisible();
+  await expect(page.getByText(`${initialZoom + 10}%`, { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Zoom out' }).click();
-  await expect(page.getByText('100%', { exact: true })).toBeVisible();
+  await expect(page.getByText(`${initialZoom}%`, { exact: true })).toBeVisible();
 
   const pageTwoSave = page.waitForResponse((response) => {
     const request = response.request();
@@ -274,6 +279,38 @@ test('Course opens a paper reader with PDF pages, persisted notes/summary, tutor
   const completedPaperLink = page.getByRole('link', { name: /Fixture Paper One/ }).first();
   await expect(completedPaperLink.locator('[data-slot="badge"]')).toHaveText('Completed');
   await expect(completedPaperLink.locator('[data-slot="badge"]')).toHaveClass(/bg-emerald-50/);
+});
+
+test('default paper zoom fits the page on desktop and mobile', async ({ page }) => {
+  await page.goto('/papers/fixture-paper-one');
+  await expect(page.locator('.react-pdf__Page__canvas').first()).toBeVisible();
+  const guide = page.getByRole('button', { name: 'Guide', exact: true });
+  if ((await guide.getAttribute('aria-expanded')) === 'true') await guide.click();
+  for (const viewport of [
+    { width: 1920, height: 1080 },
+    { width: 1280, height: 900 },
+    { width: 375, height: 812 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await expect
+      .poll(() =>
+        page.getByLabel('PDF reader').evaluate((reader) => {
+          const paper = reader.querySelector('.react-pdf__Page');
+          if (!paper) return false;
+          const bounds = paper.getBoundingClientRect();
+          const container = reader.getBoundingClientRect();
+          return (
+            bounds.height <= reader.clientHeight &&
+            bounds.width <= reader.clientWidth &&
+            Math.abs(container.bottom - window.innerHeight) <= 1
+          );
+        }),
+      )
+      .toBe(true);
+    await page.screenshot({
+      path: `test-results/screenshots/paper-fit-${viewport.width}.png`,
+    });
+  }
 });
 
 test('paper reader layout shift stays below the course threshold', async ({ page }) => {
