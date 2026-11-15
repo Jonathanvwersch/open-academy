@@ -22,7 +22,11 @@ import {
 } from '../../learning/content-filters.js';
 import { buildCourseStartState, needsCourseChoice } from '../../learning/course-start.js';
 import { topicIsComplete } from '../../learning/course-status.js';
-import { type ProjectionCourse, projectCourseFinishes } from '../../learning/finish-projection.js';
+import {
+  courseTopicAttribution,
+  type ProjectionCourse,
+  projectCourseFinishes,
+} from '../../learning/finish-projection.js';
 import { deriveLessonState } from '../../learning/lesson-runner.js';
 import {
   activeCourseFor,
@@ -80,6 +84,18 @@ function buildProjectionCourses(
     (left, right) =>
       (curriculumOrder.get(left) ?? Infinity) - (curriculumOrder.get(right) ?? Infinity),
   );
+  const attributionCourses = orderedCourseIds.flatMap((activeCourseId) => {
+    const activeCourse = index.coursesById.get(activeCourseId);
+    return activeCourse
+      ? [
+          {
+            id: activeCourse.id,
+            title: activeCourse.title,
+            units: activeCourse.units.map(({ title, concepts }) => ({ title, concepts })),
+          },
+        ]
+      : [];
+  });
   const activeTopicIds = new Set(
     orderedCourseIds.flatMap((courseId) => {
       const course = index.coursesById.get(courseId);
@@ -116,6 +132,11 @@ function buildProjectionCourses(
           addTopic(prereqId, unitTitle);
         }
       }
+      const attribution = courseTopicAttribution(conceptId, attributionCourses, {
+        courseId,
+        courseTitle: course.title,
+        unitTitle,
+      });
       topics.push({
         conceptId,
         status: concept.status,
@@ -123,6 +144,9 @@ function buildProjectionCourses(
         hardPrereqIds,
         title: concept.title,
         unitTitle,
+        displayCourseId: attribution.courseId,
+        displayCourseTitle: attribution.courseTitle,
+        displayUnitTitle: attribution.unitTitle,
       });
     };
     for (const unit of course.units) {
@@ -167,10 +191,11 @@ function activeLearnTopics(
     return [
       {
         conceptId,
-        courseId: projectedCourse.id,
-        courseTitle: projectedCourse.title ?? projectedCourse.id,
+        courseId: projectedTopic.displayCourseId ?? projectedCourse.id,
+        courseTitle:
+          projectedTopic.displayCourseTitle ?? projectedCourse.title ?? projectedCourse.id,
         title: projectedTopic.title ?? conceptId,
-        unitTitle: projectedTopic.unitTitle ?? '',
+        unitTitle: projectedTopic.displayUnitTitle ?? projectedTopic.unitTitle ?? '',
         date,
         dayLabel: 'Today',
       },
@@ -492,28 +517,46 @@ export function registerLearnCourseRoutes(
     );
     await completePayloadCourses(repo, coursePayload, now);
     const topics = coursePayload.units.flatMap((unit) => unit.topics);
-    const projectionCourses = buildProjectionCourses(
-      index,
-      studyCourseIds,
-      courseTopicState(index, mastery, runRows, placedOutConcepts),
+    const activeSubjectIds = new Set(
+      studyCourseIds.map((courseId) => index.subjectForCourse(courseId).id),
     );
+    const activeSubjects = (index.curriculum?.subjects ?? [])
+      .filter((subject) => activeSubjectIds.has(subject.id))
+      .map(({ id, title }) => ({ id, title }));
+    if (activeSubjects.length === 0 && studyCourseIds.length > 0) {
+      activeSubjects.push(index.subjectForCourse(studyCourseIds[0] ?? ''));
+    }
+    const storedFocusSubjectId =
+      typeof prefs.focusSubjectId === 'string' ? prefs.focusSubjectId : undefined;
+    const focusSubjectId =
+      storedFocusSubjectId && activeSubjects.some((subject) => subject.id === storedFocusSubjectId)
+        ? storedFocusSubjectId
+        : null;
+    const focusedCourseIds = focusSubjectId
+      ? studyCourseIds.filter((courseId) => index.subjectForCourse(courseId).id === focusSubjectId)
+      : studyCourseIds;
+    const topicState = courseTopicState(index, mastery, runRows, placedOutConcepts);
+    const projectionCourses = buildProjectionCourses(index, studyCourseIds, topicState);
+    const finishProjectionCourses = focusSubjectId
+      ? buildProjectionCourses(index, focusedCourseIds, topicState)
+      : projectionCourses;
     const averageXp = averageDailyXp(events, todayLocal);
     const dailyXpAtPace = averageXp > 0 ? averageXp : defaultAverageDailyXp(prefs);
     const dailyXpAtGoal = defaultAverageDailyXp(prefs);
     const finishesAtPace = projectCourseFinishes({
-      courses: projectionCourses,
+      courses: finishProjectionCourses,
       dailyXp: dailyXpAtPace,
       today: todayLocal,
     });
     const finishesAtGoal = projectCourseFinishes({
-      courses: projectionCourses,
+      courses: finishProjectionCourses,
       dailyXp: dailyXpAtGoal,
       today: todayLocal,
     });
     const todayTopics = activeLearnTopics(activeActivities, projectionCourses, index, todayLocal);
     const todayConceptIds = new Set(todayTopics.map((topic) => topic.conceptId));
     const futureProjection = projectCourseFinishes({
-      courses: projectionCourses,
+      courses: finishProjectionCourses,
       dailyXp: dailyXpAtPace,
       today: addLocalDays(todayLocal, todayTopics.length > 0 ? 1 : 0),
       assumedDoneConceptIds: todayConceptIds,
@@ -540,6 +583,7 @@ export function registerLearnCourseRoutes(
         {
           id: course.id,
           title: course.title,
+          subjectId: index.subjectForCourse(courseId).id,
           topicsDone: progress.topicsDone,
           topicsTotal: progress.topicsTotal,
           unitTitle: course.units[unit - 1]?.title ?? `Unit ${unit}`,
@@ -551,21 +595,6 @@ export function registerLearnCourseRoutes(
     const topicsDone = topics.filter((topic) => topic.status === 'complete').length;
     const estimatedFinish = finishesAtPace.byCourse.get(currentCourseId ?? '') ?? null;
     const estimatedFinishAtGoal = finishesAtGoal.byCourse.get(currentCourseId ?? '') ?? null;
-    const activeSubjectIds = new Set(
-      studyCourseIds.map((courseId) => index.subjectForCourse(courseId).id),
-    );
-    const activeSubjects = (index.curriculum?.subjects ?? [])
-      .filter((subject) => activeSubjectIds.has(subject.id))
-      .map(({ id, title }) => ({ id, title }));
-    if (activeSubjects.length === 0 && studyCourseIds.length > 0) {
-      activeSubjects.push(index.subjectForCourse(studyCourseIds[0] ?? ''));
-    }
-    const storedFocusSubjectId =
-      typeof prefs.focusSubjectId === 'string' ? prefs.focusSubjectId : undefined;
-    const focusSubjectId =
-      storedFocusSubjectId && activeSubjects.some((subject) => subject.id === storedFocusSubjectId)
-        ? storedFocusSubjectId
-        : null;
     const focusedConceptIds = focusSubjectId
       ? new Set(
           studyCourseIds

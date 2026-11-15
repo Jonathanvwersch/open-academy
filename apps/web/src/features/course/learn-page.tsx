@@ -18,6 +18,13 @@ export function LearnPage() {
   const { data } = useSuspenseQuery(learnQueryOptions());
   const { data: catalog } = useSuspenseQuery(coursesQueryOptions());
   const today = data.today;
+  const focusSubjectTitle = data.focusSubjectId
+    ? (data.activeSubjects.find((subject) => subject.id === data.focusSubjectId)?.title ??
+      data.focusSubjectId)
+    : null;
+  const finishLineLabel = focusSubjectTitle
+    ? `All current ${focusSubjectTitle} lessons done by`
+    : 'All current lessons done by';
   const enterSession = async ({ id }: { id: string }) => {
     queryClient.setQueryData(learnQueryOptions().queryKey, (current) =>
       current ? { ...current, activeSessionId: id } : current,
@@ -317,7 +324,9 @@ export function LearnPage() {
           <CardContent className="space-y-6">
             <div className="space-y-5">
               <p className="text-sm text-muted-foreground">
-                Dates assume you keep studying all these courses together.
+                {focusSubjectTitle
+                  ? `Dates assume you keep studying ${focusSubjectTitle} courses.`
+                  : 'Dates assume you keep studying all these courses together.'}
               </p>
               {data.studyCourses.map((course) => {
                 const percentComplete =
@@ -345,8 +354,12 @@ export function LearnPage() {
                         </Link>
                       </Button>
                     </div>
-                    {course.estimatedFinish &&
-                    course.estimatedFinish === course.estimatedFinishAtGoal ? (
+                    {focusSubjectTitle && course.subjectId !== data.focusSubjectId ? (
+                      <p className="text-sm text-muted-foreground">
+                        Paused while you focus on {focusSubjectTitle}
+                      </p>
+                    ) : course.estimatedFinish &&
+                      course.estimatedFinish === course.estimatedFinishAtGoal ? (
                       <p className="text-sm text-muted-foreground">
                         Estimated finish {formatDate(course.estimatedFinish)}
                       </p>
@@ -372,8 +385,8 @@ export function LearnPage() {
               {data.today.studyFinish.atPace && data.today.studyFinish.atGoal ? (
                 <p className="text-sm text-muted-foreground">
                   {data.today.studyFinish.atPace === data.today.studyFinish.atGoal
-                    ? `All current lessons done by ${formatDate(data.today.studyFinish.atPace)}`
-                    : `All current lessons done by ${formatDate(data.today.studyFinish.atPace)} at your pace, or ${formatDate(data.today.studyFinish.atGoal)} at your daily goal`}
+                    ? `${finishLineLabel} ${formatDate(data.today.studyFinish.atPace)}`
+                    : `${finishLineLabel} ${formatDate(data.today.studyFinish.atPace)} at your pace, or ${formatDate(data.today.studyFinish.atGoal)} at your daily goal`}
                 </p>
               ) : null}
             </div>

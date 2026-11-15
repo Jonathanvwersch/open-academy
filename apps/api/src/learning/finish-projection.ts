@@ -13,6 +13,9 @@ export interface ProjectionCourse {
     hardPrereqIds: string[];
     title?: string;
     unitTitle?: string;
+    displayCourseId?: string;
+    displayCourseTitle?: string;
+    displayUnitTitle?: string;
   }>;
 }
 
@@ -23,6 +26,28 @@ export interface ProjectedTopic {
   title: string;
   unitTitle: string;
   date: string;
+}
+
+export interface TopicAttribution {
+  courseId: string;
+  courseTitle: string;
+  unitTitle: string;
+}
+
+export function courseTopicAttribution(
+  conceptId: string,
+  orderedCourses: readonly {
+    id: string;
+    title: string;
+    units: readonly { title: string; concepts: readonly string[] }[];
+  }[],
+  foundationCourse: TopicAttribution,
+): TopicAttribution {
+  for (const course of orderedCourses) {
+    const unit = course.units.find((candidate) => candidate.concepts.includes(conceptId));
+    if (unit) return { courseId: course.id, courseTitle: course.title, unitTitle: unit.title };
+  }
+  return { ...foundationCourse, courseTitle: `${foundationCourse.courseTitle} · Foundations` };
 }
 
 export function projectCourseFinishes(input: {
@@ -219,10 +244,10 @@ function projectedTopic(
 ): ProjectedTopic {
   return {
     conceptId: topic.conceptId,
-    courseId: course.id,
-    courseTitle: course.title ?? course.id,
+    courseId: topic.displayCourseId ?? course.id,
+    courseTitle: topic.displayCourseTitle ?? course.title ?? course.id,
     title: topic.title ?? topic.conceptId,
-    unitTitle: topic.unitTitle ?? '',
+    unitTitle: topic.displayUnitTitle ?? topic.unitTitle ?? '',
     date,
   };
 }

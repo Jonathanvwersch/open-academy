@@ -1305,6 +1305,16 @@ test('focus persists and replans only planned activities', async () => {
 
   const learn = await (await get('/learn')).json();
   expect(learn.focusSubjectId).toBe('ai');
+  expect(
+    learn.upNext.upcoming
+      .filter((topic: { dayLabel: string }) => topic.dayLabel !== 'Today')
+      .some((topic: { courseId: string }) => topic.courseId === mathsCourse.id),
+  ).toBe(false);
+  const mathsStudyCourse = learn.studyCourses.find(
+    (studyCourse: { id: string }) => studyCourse.id === mathsCourse.id,
+  );
+  expect(mathsStudyCourse?.estimatedFinish).toBeNull();
+  expect(mathsStudyCourse?.estimatedFinishAtGoal).toBeNull();
   expect((await put('/focus', { subjectId: null })).status).toBe(200);
   const [resetUser] = await db.select().from(users).where(eq(users.id, userId));
   expect(resetUser?.prefs).not.toHaveProperty('focusSubjectId');

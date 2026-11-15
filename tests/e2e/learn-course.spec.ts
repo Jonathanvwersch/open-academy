@@ -186,6 +186,22 @@ test('Home focus changes the plan and keeps outside reviews visible', async ({ p
       { id: 'ai', title: 'AI' },
     ];
     learn.focusSubjectId = focusSubjectId;
+    learn.today.studyFinish = {
+      atPace: '2026-01-20',
+      atGoal: '2026-01-21',
+    };
+    learn.studyCourses = [
+      {
+        id: 'maths-for-ml',
+        title: 'Mathematics for Machine Learning',
+        subjectId: 'mathematics',
+        topicsDone: 1,
+        topicsTotal: 3,
+        unitTitle: 'Linear algebra',
+        estimatedFinish: null,
+        estimatedFinishAtGoal: null,
+      },
+    ];
     learn.dueReviewsOutsideFocus = focusSubjectId ? 2 : 0;
     learn.today.needsCourseChoice = false;
     learn.today.courseStart = { courseId: null, needed: false, placementRunId: null };
@@ -223,6 +239,8 @@ test('Home focus changes the plan and keeps outside reviews visible', async ({ p
   await expect(page.getByText('Mathematics Topic', { exact: true })).toHaveCount(0);
   await expect(page.getByText('2 reviews from other subjects are waiting.')).toBeVisible();
   await expect(page.getByRole('link', { name: 'Review them' })).toHaveAttribute('href', '/reviews');
+  await expect(page.getByText('Paused while you focus on AI')).toBeVisible();
+  await expect(page.getByText(/^All current AI lessons done by /)).toBeVisible();
   await all.click();
   await expect(all).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByText('Mathematics Topic', { exact: true })).toBeVisible();

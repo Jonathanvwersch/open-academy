@@ -69,6 +69,7 @@ export interface LearnPayload {
   studyCourses: Array<{
     id: string;
     title: string;
+    subjectId: string;
     topicsDone: number;
     topicsTotal: number;
     unitTitle: string;
