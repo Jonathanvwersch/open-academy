@@ -17,7 +17,7 @@ knowledge_points:
     explain: |
       ### Attention as three kernels
 
-      A chat assistant runs Llama 3 8B on one NVIDIA H100 SXM GPU, and a user sends a prompt of $T=1{,}000$ tokens. Each layer splits attention into 32 heads that run side by side, and each head's queries, keys and values have width $d_h=128$, the recap's $d_k$. Follow one head. Its queries form a matrix $Q$ with $T$ rows, one per token, and $d_h$ columns. Its keys $K$ and values $V$ have the same shape.
+      A chat assistant runs Llama 3 8B on one NVIDIA H100 SXM GPU, and a user sends a prompt of $T=1{,}000$ tokens. Each layer splits attention into 32 query heads that run in parallel, and each head's queries, keys and values have width $d_h=128$, the recap's $d_k$. Follow one head. Its queries form a matrix $Q$ with $T$ rows, one per token, and $d_h$ columns. Its keys $K$ and values $V$ have the same shape.
 
       A **kernel** is one program that the GPU runs on many compute units at once, each working on part of the data. A kernel's on-chip memory is cleared when it finishes, so its result is written to HBM, and the next kernel reads it back from there. The usual way, which the FlashAttention paper calls standard attention, uses three kernels. The first finds the score table $S$, with $s_{tj}$ in row $t$, column $j$. The second applies softmax to each row of $S$ to give the weight table $P$, which holds the weights $a_{tj}$. The third multiplies $P$ by $V$ to give the outputs $O$, one row per token.
 
@@ -37,12 +37,12 @@ knowledge_points:
       <path d="M392 145 H412" stroke="#737373" stroke-width="2" marker-end="url(#fa1-muted)"/>
       <path d="M230 210 H246" stroke="#737373" stroke-width="2" marker-end="url(#fa1-muted)"/>
       <path d="M392 210 H412" stroke="#737373" stroke-width="2" marker-end="url(#fa1-muted)"/>
-      <text x="225" y="85" text-anchor="end" fill="#3b82f6">Q and K, 0.512 MB</text>
+      <text x="225" y="85" text-anchor="end"><tspan fill="#3b82f6">Q</tspan> and <tspan fill="#10b981">K</tspan>, 0.512 MB</text>
       <text x="418" y="85" fill="#ef4444">S, 2 MB</text>
       <text x="225" y="150" text-anchor="end" fill="#ef4444">S, 2 MB</text>
       <text x="418" y="150" fill="#ef4444">P, 2 MB</text>
-      <text x="225" y="215" text-anchor="end"><tspan fill="#ef4444">P, 2 MB,</tspan><tspan fill="#3b82f6"> and V, 0.256 MB</tspan></text>
-      <text x="418" y="215" fill="#3b82f6">O, 0.256 MB</text>
+      <text x="225" y="215" text-anchor="end"><tspan fill="#ef4444">P, 2 MB,</tspan><tspan> and </tspan><tspan fill="#10b981">V</tspan><tspan>, 0.256 MB</tspan></text>
+      <text x="418" y="215"><tspan fill="#f59e0b">O</tspan>, 0.256 MB</text>
       <text x="320" y="252" text-anchor="middle" fill="#737373">total 9.024 MB, of which 8 MB is S and P</text>
       <text x="320" y="274" text-anchor="middle" fill="#737373">1 MB = 1,000,000 bytes</text>
       </g>
@@ -83,7 +83,7 @@ knowledge_points:
          $$I=\frac{5.12\times10^{8}}{9.024\times10^{6}}\approx56.7.$$
          That's about $56.7$ FLOPs per byte. It's below $64$ because at this $T$ the $4Td_h$ inputs and outputs still add about 11% of the bytes.
 
-      6. **Compare the two times.** To keep it simple, we time this head as if it had the whole GPU to itself. The other heads do the same work, so the ratio of the two times holds for the whole layer. Moving the bytes at $3.35$ TB/s takes about $2.69$ microseconds, while the maths at $1{,}000$ TFLOP/s takes $0.512$ microseconds.
+      6. **Compare the two times.** To keep it simple, we time this head as if it had the whole GPU to itself. Llama 3 8B lets groups of four query heads share one set of keys and values (grouped-query attention, 8 key-value heads), but we count each query head with its own copy of $K$ and $V$. Then the other heads do the same work, so the ratio of the two times holds for the whole layer. Sharing $K$ and $V$ would change it only a little, because they are a small share of the bytes. Moving the bytes at $3.35$ TB/s takes about $2.69$ microseconds, while the maths at $1{,}000$ TFLOP/s takes $0.512$ microseconds.
          $$\frac{9.024\times10^{6}}{3.35\times10^{12}}\approx2.69\times10^{-6}\text{ s}.$$
 
       So moving the data takes about five times as long as the maths, which is what an intensity of $56.7$, well below $300$, predicts.
@@ -108,9 +108,9 @@ knowledge_points:
 
       ### Working in blocks
 
-      But on-chip memory is small. An H100 SXM has 132 compute units, called streaming multiprocessors or SMs. Each has its own on-chip shared memory, and a kernel can keep at most $233{,}472$ bytes there. Our head's $K$ alone is $256{,}000$ bytes, so it doesn't fit.
+      But on-chip memory is small. An H100 SXM has 132 compute units, called streaming multiprocessors or SMs. Each has $233{,}472$ bytes of its own on-chip shared memory, and each group of threads a kernel runs there can use at most $232{,}448$ bytes of it. Our head's $K$ alone is $256{,}000$ bytes, so it doesn't fit.
 
-      So the kernel works in blocks of, say, 128 rows. It gives each block of queries to an SM, which loads that block once. Then the SM brings in $K$ and $V$ one block at a time, computes the scores between its queries and that key block, uses the scores to update a running output, then throws the scores away. The next step shows how that update works. After the last key block, it writes its rows of $O$. One block of 128 rows of $Q$ is $128\times128\times2=32{,}768$ bytes. The key and value blocks, the running output and the $128\times128$ table of scores for the current blocks are the same size, so $163{,}840$ bytes in all, which fits. With $T=1{,}000$ there are 8 query blocks, the last with only 104 rows, and the picture draws four. Other SMs work on the other blocks and heads at once.
+      So the kernel works in blocks of, say, 128 rows. It gives each block of queries to an SM, which loads that block once. Then the SM brings in $K$ and $V$ one block at a time, computes the scores between its queries and that key block, uses the scores to update a running output, then throws the scores away. The next step shows how that update works. After the last key block, it writes its rows of $O$. One block of 128 rows of $Q$ is $128\times128\times2=32{,}768$ bytes. The key and value blocks, the running output and the $128\times128$ table of scores for the current blocks are each about that size, so roughly $5\times32{,}768\approx164{,}000$ bytes in all, which fits. With $T=1{,}000$ there are 8 query blocks, the last with only 104 rows, and the picture draws four. Other SMs work on the other blocks and heads at once.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 330" aria-label="Left, HBM holds Q, K, V and O for one head, each split into four blocks of rows. Right, the on-chip memory of one SM holds query block 1, loaded once, key block 2 and value block 2, brought in one block at a time, the scores for this pair of blocks, and the running output, which is written once to block 1 of O">
@@ -197,10 +197,10 @@ knowledge_points:
       <defs><marker id="fa3-muted" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker></defs>
       <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717" text-anchor="middle">
       <text x="145" y="30" fill="#737373">block 1</text><text x="495" y="30" fill="#737373">block 2</text>
-      <rect x="30" y="45" width="110" height="50" rx="6" fill="#ffffff" stroke="#3b82f6" stroke-width="1.5"/><text x="85" y="66">score 0</text><text x="85" y="86">value 1</text>
-      <rect x="150" y="45" width="110" height="50" rx="6" fill="#ffffff" stroke="#3b82f6" stroke-width="1.5"/><text x="205" y="66">score 0</text><text x="205" y="86">value 3</text>
-      <rect x="380" y="45" width="110" height="50" rx="6" fill="#ffffff" stroke="#3b82f6" stroke-width="1.5"/><text x="435" y="66">score 1</text><text x="435" y="86">value 2</text>
-      <rect x="500" y="45" width="110" height="50" rx="6" fill="#ffffff" stroke="#3b82f6" stroke-width="1.5"/><text x="555" y="66">score 1</text><text x="555" y="86">value 4</text>
+      <rect x="30" y="45" width="110" height="50" rx="6" fill="#ffffff" stroke="#10b981" stroke-width="1.5"/><text x="85" y="66">score 0</text><text x="85" y="86">value 1</text>
+      <rect x="150" y="45" width="110" height="50" rx="6" fill="#ffffff" stroke="#10b981" stroke-width="1.5"/><text x="205" y="66">score 0</text><text x="205" y="86">value 3</text>
+      <rect x="380" y="45" width="110" height="50" rx="6" fill="#ffffff" stroke="#10b981" stroke-width="1.5"/><text x="435" y="66">score 1</text><text x="435" y="86">value 2</text>
+      <rect x="500" y="45" width="110" height="50" rx="6" fill="#ffffff" stroke="#10b981" stroke-width="1.5"/><text x="555" y="66">score 1</text><text x="555" y="86">value 4</text>
       <text x="145" y="135" fill="#737373">after block 1</text><text x="145" y="160">ℓ = 2, u = 4</text>
       <text x="495" y="135" fill="#737373">after block 2</text><text x="495" y="160">ℓ ≈ 7.44, u ≈ 20.31</text>
       <path d="M260 152 H366" stroke="#737373" stroke-width="2" marker-end="url(#fa3-muted)"/>

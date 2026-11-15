@@ -352,7 +352,7 @@ exercises:
     options:
       - {
           id: a,
-          text: "The keys take 1,024,000 bytes, but an SM holds only about 233,000 bytes on chip.",
+          text: "The keys take 1,024,000 bytes, but a kernel can keep only about 232,000 bytes in an SM's shared memory.",
           correct: true,
           feedback: "4,000 × 128 × 2 = 1,024,000 bytes, so only a block fits at once.",
         }
@@ -377,7 +377,7 @@ exercises:
           category: misunderstood_definition,
           feedback: "The blocks are groups of rows from one head's K.",
         }
-    solution: The keys hold $4{,}000\times128\times2=1{,}024{,}000$ bytes, while a kernel can keep only about 233,000 bytes in each SM's on-chip memory, so the kernel brings them in a block at a time.
+    solution: The keys hold $4{,}000\times128\times2=1{,}024{,}000$ bytes, while a kernel can keep only about 232,000 bytes in an SM's shared memory, so the kernel brings them in a block at a time.
   - id: fa-fused-short
     dimension: conceptual
     type: mc
@@ -805,7 +805,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 3
-    prompt: "A kernel computes one query's softmax a block at a time. So far its largest score is 0 and its running sum of $e^{s_j-m}$ is $\\ell={{=l}}$. The next block has two keys, both with score {{=k}}. What is $\\ell$ after this block, measured from the new largest score? Give two decimal places."
+    prompt: "A kernel computes one query's softmax a block at a time. So far its largest score is 0 and its running sum of $e^{s_j-m}$ is $\\ell={{=l}}$. The next block has two keys, both with score {{=k}}. What is $\\ell$ after this block, measured from the new largest score? Keep at least three decimals in the rescaling factor and give two decimal places."
     params:
       l: { min: 2, max: 6 }
       k: { min: 1, max: 2 }
@@ -856,7 +856,7 @@ exercises:
           text: "The output becomes infinite, because u overflows at once.",
           correct: false,
           category: incorrect_reasoning,
-          feedback: "The earlier terms were measured from the old largest score, so their exponentials are at most 1 each and u stays the size of the values.",
+          feedback: "The earlier terms were measured from the old largest score, so their exponentials are at most 1 each. That keeps u a modest sum, so it doesn't overflow at once.",
         }
     solution: Rescaling $\ell$ alone shrinks the earlier keys' share of the total but leaves their part of $u$ full size, so their values count too much.
   - id: fa-max-limit
