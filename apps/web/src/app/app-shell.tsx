@@ -123,7 +123,7 @@ function useAppSidebarOpenState() {
 
 function pageFrameClassName(pathname: string) {
   if (pathname.startsWith('/papers/')) {
-    return 'flex min-h-0 min-w-0 w-full flex-1 px-0 py-0';
+    return 'flex min-h-0 min-w-0 w-full flex-1 flex-col px-0 py-0';
   }
   if (pathname === '/map') {
     return 'flex w-full flex-1 flex-col py-4';
@@ -485,6 +485,7 @@ function MobileAppHeader() {
 
 export function AppShellSkeleton() {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const isPaperReader = pathname.startsWith('/papers/');
   const { sidebarOpen, updateSidebarOpen } = useAppSidebarOpenState();
   return (
     <TooltipProvider>
@@ -495,7 +496,9 @@ export function AppShellSkeleton() {
         disableKeyboardShortcut
       >
         <AppSidebarView loadingCourses loadingReviews />
-        <SidebarInset className="min-w-0">
+        <SidebarInset
+          className={isPaperReader ? 'h-dvh min-h-0 min-w-0 overflow-hidden' : 'min-w-0'}
+        >
           <MobileAppHeader />
           <div data-page-frame className={pageFrameClassName(pathname)}>
             <PageSkeleton />
@@ -538,7 +541,9 @@ export function RootLayout() {
     <TooltipProvider>
       <SidebarProvider open={sidebarOpen} onOpenChange={updateSidebarOpen} disableKeyboardShortcut>
         <AppSidebar />
-        <SidebarInset className="min-w-0">
+        <SidebarInset
+          className={isPaperReader ? 'h-dvh min-h-0 min-w-0 overflow-hidden' : 'min-w-0'}
+        >
           <MobileAppHeader />
           <TutorContextProvider
             routeAllowed={!pathname.startsWith('/placement')}
