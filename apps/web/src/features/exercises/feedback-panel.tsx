@@ -60,8 +60,19 @@ export function FeedbackPanel({
           .trim()
           .replace(/^(\p{Ll})/u, (firstLetter) => firstLetter.toUpperCase());
   const rubric = Array.isArray(result.rubric)
-    ? (result.rubric as Array<{ id?: string; criterion?: string; judgement?: string }>)
+    ? (result.rubric as Array<{
+        id?: string;
+        criterion?: string;
+        judgement?: string;
+        required?: boolean;
+      }>)
     : [];
+  const optionalNotMet = rubric.filter(
+    (item) => item.required === false && item.judgement !== 'met',
+  );
+  const visibleRubric = rubric.filter(
+    (item) => item.required !== false || item.judgement === 'met',
+  );
   const correct = Number(result.correct) >= 1;
   const partial = Number(result.correct) > 0 && !correct;
   const writtenAnswer = typeof result.exemplar === 'string';
@@ -94,7 +105,7 @@ export function FeedbackPanel({
       ) : null}
       {rubric.some((item) => item.judgement) ? (
         <ul className="mt-3 space-y-2">
-          {rubric.map((item) => {
+          {visibleRubric.map((item) => {
             const symbol =
               item.judgement === 'met' ? '✓' : item.judgement === 'partial' ? '½' : '✗';
             return (
@@ -105,6 +116,21 @@ export function FeedbackPanel({
             );
           })}
         </ul>
+      ) : null}
+      {optionalNotMet.length > 0 ? (
+        <div className="mt-3">
+          <p className="text-sm font-medium text-muted-foreground">Also worth mentioning</p>
+          <ul className="mt-2 space-y-2">
+            {optionalNotMet.map((item) => (
+              <li key={item.id ?? item.criterion} className="flex gap-2">
+                <span aria-hidden="true" className="text-muted-foreground">
+                  •
+                </span>
+                <Markdown inline>{item.criterion ?? ''}</Markdown>
+              </li>
+            ))}
+          </ul>
+        </div>
       ) : null}
       {showAnswers && !hideAnswerLines ? (
         <div className="mt-3 space-y-2">
@@ -145,7 +171,11 @@ export function FeedbackPanel({
         >
           <Info aria-hidden="true" className="mt-1 size-4 shrink-0" />
           <p>
-            {rubric.some((item) => item.judgement === 'partial' || item.judgement === 'missing')
+            {rubric.some(
+              (item) =>
+                item.required !== false &&
+                (item.judgement === 'partial' || item.judgement === 'missing'),
+            )
               ? 'Add the points marked ½ or ✗ to your answer above, then press '
               : "Add what's missing to your answer above, then press "}
             <strong>Submit again</strong>. You have one more try before the model answer is shown.

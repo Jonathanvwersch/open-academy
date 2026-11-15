@@ -17,6 +17,13 @@ export interface AnswerOptions {
   correct?: string[];
 }
 
+export interface RubricFeedbackItem {
+  id: string;
+  criterion: string;
+  judgement?: 'met' | 'partial' | 'missing';
+  required?: boolean;
+}
+
 export interface AttemptResponse extends Record<string, unknown> {
   activityCompleted?: boolean;
   answerOptions?: AnswerOptions;
@@ -24,7 +31,11 @@ export interface AttemptResponse extends Record<string, unknown> {
   attemptNo?: number;
   correct?: number;
   feedback?: string;
+  followUp?: boolean;
+  rubric?: RubricFeedbackItem[];
   retryAllowed?: boolean;
+  exemplar?: string;
+  solution?: string;
   status?: string;
   yourAnswer?: string;
 }

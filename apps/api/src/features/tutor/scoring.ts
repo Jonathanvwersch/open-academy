@@ -15,8 +15,11 @@ export function scoreRubric(
   ) {
     return { score: 0, feedback: judgement.feedback_md };
   }
-  const total = rubric.reduce((sum, criterion) => sum + criterion.weight, 0);
-  const earned = rubric.reduce((sum, criterion) => {
+  const scoringCriteria = rubric.some((criterion) => criterion.required)
+    ? rubric.filter((criterion) => criterion.required)
+    : rubric;
+  const total = scoringCriteria.reduce((sum, criterion) => sum + criterion.weight, 0);
+  const earned = scoringCriteria.reduce((sum, criterion) => {
     const value = byId.get(criterion.id)?.judgement;
     return sum + criterion.weight * (value === 'met' ? 1 : value === 'partial' ? 0.5 : 0);
   }, 0);

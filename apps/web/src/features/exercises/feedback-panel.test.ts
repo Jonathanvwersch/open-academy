@@ -159,6 +159,35 @@ test('Almost feedback with a partial rubric item tells the learner what to add',
   expect(html).toContain('You have one more try before the model answer is shown.');
 });
 
+test('unmet optional criteria are neutral and do not count as an Almost shortfall', () => {
+  const html = renderFeedback({
+    correct: 1,
+    feedback: 'Correct.',
+    rubric: [
+      { id: 'required', criterion: 'Names the learning rate', judgement: 'met', required: true },
+      { id: 'optional', criterion: 'Mentions curvature', judgement: 'missing', required: false },
+    ],
+  });
+
+  expect(html).toContain('Correct');
+  expect(html).toContain('Also worth mentioning');
+  expect(html).toContain('Mentions curvature');
+  expect(html).not.toContain('Add the points marked ½ or ✗');
+  expect(html).not.toContain('½ Mentions curvature');
+  expect(html).not.toContain('✗ Mentions curvature');
+});
+
+test('old rubric feedback without required flags keeps the existing shortfall marker', () => {
+  const html = renderFeedback({
+    correct: 0.5,
+    followUp: true,
+    rubric: [{ id: 'old', criterion: 'Explain the loss', judgement: 'missing' }],
+  });
+
+  expect(html).toContain('✗');
+  expect(html).toContain('Add the points marked ½ or ✗');
+});
+
 test('Almost feedback without a rubric gives generic next-step guidance', () => {
   const html = renderFeedback({ correct: 0.5, followUp: true });
 

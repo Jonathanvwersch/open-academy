@@ -41,7 +41,12 @@ type TutorGradeResult = {
   feedback: string;
   graded_by: 'llm';
   mistake_category?: string;
-  rubric: Array<{ id: string; criterion: string; judgement: 'met' | 'partial' | 'missing' }>;
+  rubric: Array<{
+    id: string;
+    criterion: string;
+    judgement: 'met' | 'partial' | 'missing';
+    required: boolean;
+  }>;
   exemplar: string;
 };
 export async function getExercisesById(deps: FeatureServices, request: FeatureRequest) {
@@ -309,6 +314,7 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
   const previousAttempts = body.data.activityId
     ? await repo.attemptsForActivity(body.data.activityId, exercise.id)
     : [];
+  const priorAttemptForRetry = previousAttempts.at(-1);
   if (body.data.mode === 'practice' && previousAttempts.length >= 2) {
     return serviceResult(
       {
@@ -320,7 +326,11 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
       409,
     );
   }
-  if (body.data.mode !== 'practice' && previousAttempts.length >= 1) {
+  if (
+    body.data.mode !== 'practice' &&
+    priorAttemptForRetry &&
+    !attemptAllowsRetry(priorAttemptForRetry)
+  ) {
     return serviceResult({ error: 'This activity allows one attempt.' }, 409);
   }
   const attemptNo = previousAttempts.length + 1;
@@ -352,6 +362,7 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
         rubric: exercise.rubric.map((criterion) => ({
           id: criterion.id,
           criterion: criterion.criterion,
+          required: criterion.required,
           judgement:
             judged.value?.criteria.find((entry) => entry.id === criterion.id)?.judgement ??
             'missing',
@@ -383,7 +394,7 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
     );
   }
   const followUp =
-    body.data.mode === 'practice' &&
+    (body.data.mode === 'practice' || body.data.mode === 'review') &&
     exercise.type === 'explain' &&
     result.correct > 0 &&
     result.correct < 1 &&
@@ -477,7 +488,7 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
     now,
     timeZone: request.timeZone,
   });
-  if (body.data.mode === 'review') {
+  if (body.data.mode === 'review' && !followUp) {
     const [card] = await db
       .select()
       .from(reviewCards)
@@ -514,7 +525,7 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
           if (!existingLog) {
             const rating = reviewActivityRating(
               exerciseAttempts.map((items) => ({
-                correct: items[0]?.correct ?? 0,
+                correct: items.at(-1)?.correct ?? 0,
                 hintsUsed: items.reduce((total, attempt) => total + attempt.hintsUsed, 0),
               })),
             );
@@ -619,7 +630,9 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
     }
   }
   const retryAllowed =
-    body.data.mode === 'practice' && attemptNo < 2 && (result.correct === 0 || followUp);
+    attemptNo < 2 &&
+    ((body.data.mode === 'practice' && result.correct === 0) ||
+      ((body.data.mode === 'practice' || body.data.mode === 'review') && followUp));
   const answerOptions = answerOptionsFor(exercise, body.data.answer, !retryAllowed);
   let activityCompleted = false;
   if (activityRow && activity && !retryAllowed) {

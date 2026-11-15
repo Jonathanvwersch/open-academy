@@ -1565,11 +1565,13 @@ test('session inline checks remove Submit after the final retry', async ({ page 
   await page.getByRole('button', { name: 'Submit answer', exact: true }).click();
   await expect(page.getByText('Almost', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Submit answer', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Continue to practice' })).toBeDisabled();
 
   await answer.fill('A model uses inputs to predict a target, and loss measures its errors.');
   await page.getByRole('button', { name: 'Submit answer', exact: true }).click();
   await expect(page.getByText('Partly correct', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Submit answer', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Continue to practice' })).toBeEnabled();
 });
 
 test('a legacy v1 learn activity resumes through the KP runner and final question', async ({
