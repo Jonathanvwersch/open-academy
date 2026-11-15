@@ -92,7 +92,7 @@ concepts:
       dimensions: [conceptual, math],
       prereqs: [{ id: policies-returns }, { id: gradient-descent }],
       objectives: [{ text: "Derive the REINFORCE estimator", dimension: math }],
-      status: stub,
+      status: authored,
     }
   - {
       id: ppo,
