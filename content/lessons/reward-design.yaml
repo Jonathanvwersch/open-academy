@@ -1,0 +1,224 @@
+concept: reward-design
+version: 1
+objective: |
+  **Goal:** spot the risks in a reward before training: tell a sparse reward from a shaped one, add progress bonuses that can't change which behaviour is best, and find the loopholes an agent could use to earn reward without doing the task.
+where_this_fits: |
+  ### What is reward design?
+
+  Reward design is choosing the rewards an agent gets, so that earning as much reward as it can means doing the task we want. In a Markov decision process (MDP), an **agent**, such as a robot, sees its **state**, the situation it's in, picks an action, and then gets a new state and a **reward**, a number that says how good that move was. The reward is the only way it finds out what we want.
+
+  That's why it needs care. Training makes the agent repeat what earned more reward. If the reward comes too rarely, the agent may never find out what earns it. If we add extra rewards to help, it may find a way to collect them without doing the task.
+knowledge_points:
+  - id: rd-sparse
+    title: "Reward only at the goal"
+    explain: |
+      ### A robot in a corridor
+
+      Let's set up the example we'll use all lesson. A robot sits in a corridor of 4 cells, numbered 1 to 4 from left to right. It starts in cell 1, and at each step it moves left or right. Moving into a wall leaves it where it is. Reaching cell 4 ends the **episode**, one run from start to finish.
+
+      For now, the robot gets $+10$ for reaching cell 4 and $0$ for every other move. Steps are numbered $t=0,1,2,\dots$, and the reward for the move made at step $t$ arrives at time $t+1$, so we write it $r_{t+1}$. The first reward is $r_1$. An MDP also has a **discount factor** $\gamma$, a number between 0 and 1, here $0.9$. The first reward counts in full, and each later reward is multiplied by one more $\gamma$, so later rewards count less. The robot's aim is to make the **return** from the start (time 0), written $G_0$, as large as possible:
+
+      $$G_0=r_1+\gamma r_2+\gamma^2 r_3+\dots$$
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 200" aria-label="A corridor of four cells numbered 1 to 4 from left to right, with walls at both ends. The robot starts in cell 1. Reaching cell 4, the goal, gives reward +10. Every other move gives 0">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <rect x="80" y="50" width="480" height="80" fill="#ffffff" fill-opacity="0" stroke="#d4d4d4" stroke-width="2"/>
+      <path d="M200 50 V130 M320 50 V130 M440 50 V130" stroke="#d4d4d4" stroke-width="2"/>
+      <rect x="442" y="52" width="116" height="76" fill="#ffffff" fill-opacity="0" stroke="#10b981" stroke-width="3"/>
+      <path d="M80 46 V134 M560 46 V134" stroke="#737373" stroke-width="5"/>
+      <circle cx="140" cy="90" r="16" fill="#171717"/>
+      <text x="140" y="38" text-anchor="middle">robot starts here</text>
+      <text x="500" y="95" text-anchor="middle" fill="#10b981">goal: +10</text>
+      <text x="140" y="152" text-anchor="middle" fill="#737373">cell 1</text>
+      <text x="260" y="152" text-anchor="middle" fill="#737373">cell 2</text>
+      <text x="380" y="152" text-anchor="middle" fill="#737373">cell 3</text>
+      <text x="500" y="152" text-anchor="middle" fill="#737373">cell 4</text>
+      <text x="320" y="185" text-anchor="middle" fill="#737373">every other move: reward 0</text>
+      </g>
+      </svg>
+      ```
+
+      ### Rewards that come rarely
+
+      A reward like this is **sparse**: it is zero almost everywhere and nonzero only at a few rare moments, such as reaching the goal. It's easy to write, and it says exactly what we want.
+
+      The trouble is finding that first reward. Until the robot reaches cell 4, every reward it has seen is $0$, so left and right look equally good. Suppose it moves at random, left or right with equal chance. To reach cell 4 in its first 3 moves, it must go right 3 times in a row, a chance of $(1/2)^3=1/8$. A longer corridor is worse. With 11 cells, reaching the end in its first 10 moves takes 10 rights in a row, a chance of $1/1024$.
+
+      Real tasks are like the long corridor. A robot arm rewarded only when it lifts a cup almost never lifts it by moving at random.
+
+      A fix people often try is a **step cost**, a reward of $-1$ for every move. It makes a shorter path to the goal worth more. But every move gets the same $-1$, so before the robot finds the goal, it still can't tell which way to go.
+    worked: |
+      A sparse reward does teach something once the goal is found. Let's compare two paths it might take then: the direct path, three moves right, and a detour. The reward is $+10$ for reaching cell 4 and $0$ for every other move, with $\gamma=0.9$.
+
+      1. **Find the return of the direct path.** Moving right three times, only the third move reaches cell 4, so the rewards are $0$, $0$ and $10$.
+         $$G_0=0+0.9\times0+0.9^2\times10=8.1.$$
+
+      2. **Find the return of a path with a detour.** Right, left, then right three times takes 5 moves, and only the fifth reaches cell 4. So the $10$ is multiplied by $\gamma$ four times. Rounded to 2 decimal places,
+         $$G_0=0.9^4\times10=6.561\approx6.56.$$
+
+      3. **Compare them.** Both paths earn the same $+10$, but the direct path earns it two moves sooner, so less discount is taken off.
+         $$8.1>6.56.$$
+
+      So once the robot has found the goal, a sparse reward with $\gamma$ below 1 is enough to make it prefer the shortest path. The hard part is finding the goal the first time.
+    problems:
+      - rd-sparse-basics
+      - rdp-sparse-self-explain
+      - rdp-sparse-return
+      - rdp-random-chance
+      - rdp-step-cost-guidance
+      - rdp-sparse-interpret
+      - rdp-sparse-ranking-mistake
+      - rdp-sparse-chess
+  - id: rd-shaping
+    title: "Add rewards that guide the way"
+    explain: |
+      ### Rewards along the way
+
+      A robot rewarded only at the goal may wander a long time before it learns anything. Why not also reward progress? Adding rewards like this, so the agent gets useful feedback before it reaches the goal, is called **reward shaping**.
+
+      But extra rewards change what the agent maximises. We want a bonus that speeds up learning and leaves the best behaviour the same.
+
+      ### A score for each cell
+
+      From here on, the corridor also has the step cost. The move that reaches cell 4 gives $+10$, and every other move gives $-1$. The $-1$ already makes shorter paths worth more, so we set $\gamma=1$. Then a return is just the sum of the rewards.
+
+      Give each state $s$ a score $\Psi(s)$ (the Greek letter psi), called its **potential**, that says how close it is to the goal. Here $\Psi(s)$ is just the cell number, so cell 1 scores 1 and cell 4 scores 4. On a move from state $s$ to the next state $s'$ (say "s prime"), the robot gets an extra reward, which we call $F$:
+
+      $$F=\Psi(s')-\Psi(s).$$
+
+      So a move right earns $+1$, a move left $-1$, and bumping into the left wall $0$.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 250" aria-label="The four-cell corridor with each cell's score psi equal to its cell number, 1, 2, 3 and 4. A blue arrow from cell 2 to cell 3 shows a move right: psi goes from 2 to 3, so the bonus is +1. A red arrow from cell 3 back to cell 2 shows a move left: psi goes from 3 to 2, so the bonus is minus 1">
+      <defs><marker id="rd2-blue" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#3b82f6"/></marker><marker id="rd2-red" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#ef4444"/></marker></defs>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <rect x="80" y="85" width="480" height="80" fill="#ffffff" fill-opacity="0" stroke="#d4d4d4" stroke-width="2"/>
+      <path d="M200 85 V165 M320 85 V165 M440 85 V165" stroke="#d4d4d4" stroke-width="2"/>
+      <path d="M80 81 V169 M560 81 V169" stroke="#737373" stroke-width="5"/>
+      <text x="140" y="118" text-anchor="middle" fill="#737373">cell 1</text>
+      <text x="260" y="118" text-anchor="middle" fill="#737373">cell 2</text>
+      <text x="380" y="118" text-anchor="middle" fill="#737373">cell 3</text>
+      <text x="500" y="118" text-anchor="middle" fill="#737373">cell 4</text>
+      <text x="140" y="145" text-anchor="middle">Ψ = 1</text>
+      <text x="260" y="145" text-anchor="middle">Ψ = 2</text>
+      <text x="380" y="145" text-anchor="middle">Ψ = 3</text>
+      <text x="500" y="145" text-anchor="middle">Ψ = 4</text>
+      <path d="M270 65 L370 65" stroke="#3b82f6" stroke-width="3" marker-end="url(#rd2-blue)"/>
+      <text x="320" y="45" text-anchor="middle" fill="#3b82f6">move right: Ψ goes 2 → 3, bonus +1</text>
+      <path d="M370 190 L270 190" stroke="#ef4444" stroke-width="3" marker-end="url(#rd2-red)"/>
+      <text x="320" y="225" text-anchor="middle" fill="#ef4444">move left: Ψ goes 3 → 2, bonus −1</text>
+      </g>
+      </svg>
+      ```
+
+      ### Why the best path stays the same
+
+      Now add up the bonuses along any path from cell 1 to cell 4. Each cell's score is added when the robot moves into it and taken away again when it moves out. So everything in the middle cancels, and the total is always the last score minus the first, $\Psi(4)-\Psi(1)=3$. Every complete path gets the same extra $3$, so the path that was best before is still best. But now a move right that doesn't reach the goal nets $-1+1=0$ and a move left nets $-1-1=-2$, so the robot can tell which way is better before it ever reaches the goal.
+
+      This is **potential-based shaping**. Ng, Harada and Russell proved in 1999 that bonuses of this form never change the best behaviour, that is, the best action in each state. With a discount below 1, the bonus is written $\gamma\Psi(s')-\Psi(s)$, so that it cancels in the same way inside the discounted return, and the guarantee still holds.
+    worked: |
+      Let's add up the shaped return for two paths from cell 1. We use the step-cost rewards with $\gamma=1$. On top of them, each move earns the bonus $\Psi(s')-\Psi(s)$, where $\Psi$ is the cell number.
+
+      1. **Add up the direct path's step-cost rewards.** Moving right three times gives $-1$, $-1$, then $+10$ for reaching cell 4.
+         $$-1-1+10=8.$$
+
+      2. **Add the direct path's bonuses.** Each move right raises $\Psi$ by 1.
+         $$8+(1+1+1)=11.$$
+
+      3. **Add up the detour's step-cost rewards.** Right, left, then right three times is 5 moves, and only the last reaches cell 4.
+         $$-1-1-1-1+10=6.$$
+
+      4. **Add the detour's bonuses.** The moves change $\Psi$ by $+1$, $-1$, $+1$, $+1$ and $+1$, so the move left cancels one move right.
+         $$6+(1-1+1+1+1)=9.$$
+
+      Both paths gained exactly $3$, so the direct path still beats the detour by $2$, just as it did before the bonuses.
+    problems:
+      - rd-shaping-basics
+      - rdp-shaping-self-explain
+      - rdp-potential-bonus
+      - rdp-potential-bonus-discounted
+      - rdp-shaped-path-total
+      - rdp-shaping-safe-bonus
+      - rdp-shaping-interpret
+      - rdp-shaping-mistake
+      - rdp-shaping-arm
+  - id: rd-hacking
+    title: "When the robot finds a loophole"
+    explain: |
+      ### A bonus with a loophole
+
+      Shaping goes wrong when bonuses can be piled up without real progress. The corridor keeps the step-cost reward, $+10$ for reaching cell 4 and $-1$ for every other move, with $\gamma=1$. This time the designer adds $+3$ for every move right and nothing for a move left.
+
+      Now look at the robot going back and forth between cells 2 and 3. A move right earns $-1+3=+2$, and the move back left earns $-1$. So each round trip adds $+1$ to the return, and the robot can repeat it as often as it likes.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 260" aria-label="The four-cell corridor with the goal, cell 4, giving +10. A blue arrow from cell 2 to cell 3 shows a move right earning minus 1 plus 3, which is +2. A red arrow from cell 3 back to cell 2 shows a move left earning minus 1. Each round trip adds +1 to the return">
+      <defs><marker id="rd3-blue" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#3b82f6"/></marker><marker id="rd3-red" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#ef4444"/></marker></defs>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <rect x="80" y="85" width="480" height="80" fill="#ffffff" fill-opacity="0" stroke="#d4d4d4" stroke-width="2"/>
+      <path d="M200 85 V165 M320 85 V165 M440 85 V165" stroke="#d4d4d4" stroke-width="2"/>
+      <rect x="442" y="87" width="116" height="76" fill="#ffffff" fill-opacity="0" stroke="#10b981" stroke-width="3"/>
+      <path d="M80 81 V169 M560 81 V169" stroke="#737373" stroke-width="5"/>
+      <text x="140" y="130" text-anchor="middle" fill="#737373">cell 1</text>
+      <text x="260" y="130" text-anchor="middle" fill="#737373">cell 2</text>
+      <text x="380" y="130" text-anchor="middle" fill="#737373">cell 3</text>
+      <text x="500" y="130" text-anchor="middle" fill="#10b981">goal: +10</text>
+      <path d="M270 65 L370 65" stroke="#3b82f6" stroke-width="3" marker-end="url(#rd3-blue)"/>
+      <text x="320" y="45" text-anchor="middle" fill="#3b82f6">move right: −1 + 3 = +2</text>
+      <path d="M370 190 L270 190" stroke="#ef4444" stroke-width="3" marker-end="url(#rd3-red)"/>
+      <text x="320" y="220" text-anchor="middle" fill="#ef4444">move left: −1</text>
+      <text x="320" y="248" text-anchor="middle" fill="#737373">each round trip: +2 − 1 = +1</text>
+      </g>
+      </svg>
+      ```
+
+      ### Reward hacking
+
+      This is **reward hacking**: the agent earns a high reward in a way the designer didn't intend, by using a gap between the reward and the real goal. Here more loops always earn more, so an agent that maximises reward learns to keep looping and never finish.
+
+      The learning has no bug here. The agent does what it was trained to do. The reward asked for the wrong thing.
+
+      It happens in real systems. In 2016, OpenAI trained an agent on the boat-racing game CoastRunners, which gives points for hitting targets. The agent scored more by circling and hitting the same targets again and again than by finishing the race. A chatbot's language model can be trained like the robot, with its reward given by a **reward model**, a second model trained to score replies the way people would. The language model can learn replies the reward model rates highly but people don't actually prefer.
+
+      ### Asking how a reward could be gamed
+
+      Before training, ask what the easiest way to earn a lot of reward is. Look for:
+
+      - rewards that can be collected again and again, like the $+3$ here;
+      - bonuses that are never taken back when the agent moves away;
+      - rewards for a sign of success the agent could fake, such as a cleaning robot paid when its camera sees no dirt; covering the camera earns that too.
+
+      With $\gamma=1$, potential-based bonuses add up to zero around any loop, so they close the loophole here. After training, watch what the agent does, since a reward that rose during training doesn't by itself show the task is done.
+    worked: |
+      Let's check whether looping beats finishing under the $+3$ bonus. Each move gives $-1$, the move into cell 4 gives $+10$, each move right also earns $+3$, and $\gamma=1$.
+
+      1. **Find the return of the direct path.** The first two moves right each earn $-1+3=2$. The third reaches cell 4, so it earns $10+3=13$.
+         $$2+2+13=17.$$
+
+      2. **Find what one round trip adds.** From cell 2, the robot moves right to cell 3 and back left to cell 2, which leaves it where it started.
+         $$(-1+3)+(-1)=1.$$
+
+      3. **Add the round trips to the direct path.** If the robot makes $n$ round trips once it reaches cell 2, it can still finish the same way, so its return grows by $1$ for each one.
+         $$G_0=17+n.$$
+
+      So there's no best number of loops. Any number is beaten by one more. A robot that maximises its return keeps looping and never finishes. With the potential-based bonus of $+1$ right and $-1$ left instead, the same round trip earns $(-1+1)+(-1-1)=-2$, so looping always costs.
+    problems:
+      - rd-hacking-basics
+      - rdp-hacking-self-explain
+      - rdp-which-hackable
+      - rdp-loop-gain
+      - rdp-loop-pays
+      - rdp-hacking-fix
+      - rdp-rising-reward-check
+      - rdp-hacking-cleaner
+      - rdp-hacking-tests
+      - rdp-hacking-long-replies
+final: rd-explain-reward-design
+summary: |
+  - A sparse reward, such as $+10$ only for reaching the goal, is easy to write and says exactly what we want, but an agent acting at random may almost never reach it, so at first it has nothing to learn from.
+  - Reward shaping adds rewards along the way. A potential-based bonus $F=\Psi(s')-\Psi(s)$ (with $\gamma=1$) adds the same total, $\Psi(\text{end})-\Psi(\text{start})$, to every path, so it speeds up learning without changing which behaviour is best. With a discount, the bonus is $\gamma\Psi(s')-\Psi(s)$.
+  - Reward hacking is an agent earning high reward in a way the designer didn't intend. A bonus that can be collected again and again, like $+3$ for every move right with nothing taken back, can make looping forever the best behaviour.
+  - To find the risks, ask what the easiest way to earn the reward is, look for loops, faked signs of success and bonuses never taken back, and watch what the trained agent actually does.
+
+  **Next:** Simulation environments, the worlds in code where agents practise, and how well what they learn there carries over to real robots.
