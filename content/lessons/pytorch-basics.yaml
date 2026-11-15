@@ -340,6 +340,7 @@ knowledge_points:
         ptb-loop-stale,
         ptb-loop-read,
         ptb-loop-transfer,
+        ptb-loop-dropout-mode,
       ]
 final: ptb-explain-loop
 summary: |
