@@ -797,6 +797,36 @@ test('course catalogue and enrollment routes start, pause, and reactivate course
   ).toBe(200);
 });
 
+test('active subjects report whether their active courses have lessons', async () => {
+  const courseIds = (
+    content.curriculum?.courses ?? content.courses.map((course) => course.id)
+  ).filter((courseId) =>
+    ['mathematics', 'ai', 'robotics'].includes(subjectForCourse(content, courseId).id),
+  );
+  await db.insert(courseEnrollments).values(
+    courseIds.map((courseId) => ({
+      userId,
+      courseId,
+      status: 'active' as const,
+      startMethod: 'beginning' as const,
+    })),
+  );
+
+  const learn = await (await get('/learn')).json();
+
+  expect(
+    learn.activeSubjects.map((subject: { id: string; title: string; hasLessons: boolean }) => ({
+      id: subject.id,
+      title: subject.title,
+      hasLessons: subject.hasLessons,
+    })),
+  ).toEqual([
+    { id: 'mathematics', title: 'Mathematics', hasLessons: true },
+    { id: 'ai', title: 'AI', hasLessons: true },
+    { id: 'robotics', title: 'Robotics', hasLessons: false },
+  ]);
+});
+
 test('course details persist completion when every topic is complete', async () => {
   const course = content.coursesById.get('deep-learning');
   if (!course) throw new Error('Missing deep learning course');
@@ -1378,6 +1408,19 @@ test('focus persists and replans only planned activities', async () => {
       .filter((topic: { dayLabel: string }) => topic.dayLabel !== 'Today')
       .some((topic: { courseId: string }) => topic.courseId === mathsCourse.id),
   ).toBe(false);
+  expect(
+    learn.upNext.upcoming.every(
+      (topic: { courseId: string; dayLabel: string }) =>
+        topic.dayLabel === 'Today' || topic.courseId === aiCourse.id,
+    ),
+  ).toBe(true);
+  expect(learn.upNext.allSubjects).not.toBeNull();
+  expect(
+    learn.upNext.allSubjects.some(
+      (topic: { courseId: string; dayLabel: string }) =>
+        topic.courseId === mathsCourse.id && topic.dayLabel !== 'Today',
+    ),
+  ).toBe(true);
   const mathsStudyCourse = learn.studyCourses.find(
     (studyCourse: { id: string }) => studyCourse.id === mathsCourse.id,
   );
@@ -1437,6 +1480,7 @@ test('a stored focus is ignored when only one subject is active', async () => {
 
   expect(learn.activeSubjects.map((subject: { id: string }) => subject.id)).toEqual(['ai']);
   expect(learn.focusSubjectId).toBeNull();
+  expect(learn.upNext.allSubjects).toBeNull();
   expect(
     learn.tasks.some(
       (task: { activityKind: string; conceptId?: string }) =>

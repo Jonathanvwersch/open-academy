@@ -48,7 +48,7 @@ export interface LearnPayload {
   > & {
     studyFinish: { atPace: string | null; atGoal: string | null };
   };
-  activeSubjects: Array<{ id: string; title: string }>;
+  activeSubjects: Array<{ id: string; title: string; hasLessons: boolean }>;
   focusSubjectId: string | null;
   dueReviewsOutsideFocus: number;
   upNext: UpNextPayload;
@@ -167,6 +167,7 @@ export interface UpNextPayload {
     date: string;
     dayLabel: string;
   }>;
+  allSubjects: UpNextPayload['upcoming'] | null;
   finished: Array<{
     conceptId: string;
     courseId: string;

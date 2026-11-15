@@ -21,6 +21,7 @@ test.beforeEach(async ({ page }) => {
     .values({ displayName: 'Math punctuation learner', timezone: 'UTC', startDate: '2026-01-01' });
   const payload: LessonReviewPayload = {
     course: null,
+    canRestart: false,
     conceptTitle: 'Math rendering regression',
     checkAnswers: {},
     checks: {},

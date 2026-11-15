@@ -66,6 +66,8 @@ async function getRun() {
 }
 
 test('full lesson review carries its rendered checks and the same derived run status', async () => {
+  const untouchedResponse = await app.request(`/api/lessons/${conceptId}/review`, { headers });
+  expect((await untouchedResponse.json()).canRestart).toBe(false);
   const started = await (await startRun()).json();
   const response = await app.request(`/api/lessons/${conceptId}/review`, { headers });
   expect(response.status).toBe(200);
@@ -76,6 +78,7 @@ test('full lesson review carries its rendered checks and the same derived run st
   });
   expect((await (await getRun()).json()).course).toEqual(review.course);
   expect(review.runStatus).toBe(started.run.status);
+  expect(review.canRestart).toBe(true);
   const ids = Object.keys(review.checks);
   expect(ids).toEqual([review.lesson.final]);
   for (const id of ids) {

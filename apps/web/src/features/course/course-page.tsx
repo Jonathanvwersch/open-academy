@@ -11,13 +11,12 @@ import {
 import { Badge } from '../../components/ui/badge.js';
 import { Button } from '../../components/ui/button.js';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card.js';
-import { Dialog, DialogContent, DialogTitle } from '../../components/ui/dialog.js';
 import { paperStatusLabel } from '../papers/queries.js';
 import { useTutorSidebar } from '../tutor/tutor-sidebar.js';
 import { CourseMetadata } from './course-metadata.js';
 import { CourseStartCard } from './course-start-card.js';
 import { foundationsHeading } from './foundations-heading.js';
-import { useCourseEnrollment, useRestartTopic } from './mutations.js';
+import { useCourseEnrollment } from './mutations.js';
 import { courseDetailQueryOptions } from './queries.js';
 import {
   isUnitOpen,
@@ -26,8 +25,6 @@ import {
 } from './week-open-state.js';
 
 const CourseRoute = getRouteApi('/courses/$courseId');
-
-type RestartTarget = { conceptId: string; title: string };
 
 function foundationSourceLabel(courseTitles: string[], hasMore: boolean): string {
   const titles = [...courseTitles, ...(hasMore ? ['others'] : [])];
@@ -42,9 +39,7 @@ export function CoursePage() {
   const tutorSidebar = useTutorSidebar();
   const [unitOpenOverrides, setUnitOpenOverrides] = useState(readCourseUnitOpenOverrides);
   const [foundationsOpen, setFoundationsOpen] = useState(false);
-  const [restartTarget, setRestartTarget] = useState<RestartTarget | null>(null);
   const enrollment = useCourseEnrollment(courseId, data.course.title);
-  const restart = useRestartTopic();
   const courseProgress = data.courses.find((course) => course.id === courseId);
   const showStartCard = data.status === 'not_started' || data.courseStart.needed;
   useEffect(() => {
@@ -158,7 +153,7 @@ export function CoursePage() {
                   Topics from other courses that this course needs. They&apos;re scheduled when a
                   unit needs them.
                 </p>
-                <TopicRows topics={data.foundations} onRestart={setRestartTarget} />
+                <TopicRows topics={data.foundations} />
               </CardContent>
             </Collapsible.Content>
           </Card>
@@ -306,9 +301,6 @@ export function CoursePage() {
                                 </div>
                               </div>
                             </div>
-                            {topic.status !== 'not_started' && topic.status !== 'locked' ? (
-                              <TopicRestartButton topic={topic} onRestart={setRestartTarget} />
-                            ) : null}
                             {topic.hasLesson ? (
                               <ChevronRight
                                 aria-hidden="true"
@@ -468,57 +460,11 @@ export function CoursePage() {
           );
         })}
       </div>
-      <Dialog
-        open={restartTarget !== null}
-        onOpenChange={(open) => {
-          if (!open && !restart.isPending) setRestartTarget(null);
-        }}
-      >
-        <DialogContent aria-describedby="restart-topic-description">
-          <div className="space-y-2">
-            <DialogTitle>Restart {restartTarget?.title}?</DialogTitle>
-            <p id="restart-topic-description" className="text-sm text-muted-foreground">
-              Your progress and reviews for this topic are cleared and it goes back to not started.
-              XP you&apos;ve earned stays.
-            </p>
-          </div>
-          <div className="flex justify-end gap-2 pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setRestartTarget(null)}
-              disabled={restart.isPending}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              loading={restart.isPending}
-              onClick={() => {
-                if (!restartTarget) return;
-                restart.mutate(
-                  { conceptId: restartTarget.conceptId, topicTitle: restartTarget.title },
-                  { onSuccess: () => setRestartTarget(null) },
-                );
-              }}
-            >
-              Restart topic
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </section>
   );
 }
 
-function TopicRows({
-  topics,
-  onRestart,
-}: {
-  topics: CourseTopic[];
-  onRestart: (target: RestartTarget) => void;
-}) {
+function TopicRows({ topics }: { topics: CourseTopic[] }) {
   return (
     <ol className="divide-y">
       {topics.map((topic) => {
@@ -543,9 +489,6 @@ function TopicRows({
                 </Badge>
               ) : null}
             </span>
-            {topic.status !== 'not_started' && topic.status !== 'locked' ? (
-              <TopicRestartButton topic={topic} onRestart={onRestart} />
-            ) : null}
             {topic.hasLesson ? (
               <ChevronRight aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
             ) : null}
@@ -578,29 +521,5 @@ function TopicRows({
         );
       })}
     </ol>
-  );
-}
-
-function TopicRestartButton({
-  topic,
-  onRestart,
-}: {
-  topic: Pick<CourseTopic, 'conceptId' | 'title'>;
-  onRestart: (target: RestartTarget) => void;
-}) {
-  return (
-    <Button
-      type="button"
-      variant="ghost"
-      size="sm"
-      className="h-7 shrink-0 px-2 text-xs"
-      onClick={(event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        onRestart({ conceptId: topic.conceptId, title: topic.title });
-      }}
-    >
-      Restart
-    </Button>
   );
 }

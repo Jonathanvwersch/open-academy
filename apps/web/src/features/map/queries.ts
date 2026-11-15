@@ -7,6 +7,8 @@ export const studyMapQueryOptions = () =>
     queryKey: ['study-map'] as const,
     queryFn: async () => {
       const learn = await getJson<LearnPayload>('/api/learn', 'Could not load Up next');
-      return learn.upNext;
+      const focusSubjectTitle =
+        learn.activeSubjects?.find((subject) => subject.id === learn.focusSubjectId)?.title ?? null;
+      return { ...learn.upNext, focusSubjectTitle };
     },
   });

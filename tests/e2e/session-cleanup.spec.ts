@@ -343,6 +343,7 @@ test('legacy lesson review presents labelled blocks as cards with checks inside'
           ],
         },
         checks: {},
+        canRestart: false,
         runStatus: null,
         checkAnswers: {
           'tts-check-purpose': 'Hyperparameter selection uses validation data.',

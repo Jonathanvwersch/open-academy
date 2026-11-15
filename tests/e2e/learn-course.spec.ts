@@ -116,10 +116,26 @@ test('Home shows XP and tasks, starts a session, and Course links to lessons and
   await expect(
     page.getByText(`${learn.xp.today} / ${learn.xp.goal} XP`, { exact: true }),
   ).toBeVisible();
-  await expect(page.getByText(/^At your pace:/)).toBeVisible();
-  await expect(page.getByText(/^At your daily goal:/)).toBeVisible();
   await expect(page.getByText(/^All current lessons done by /)).toBeVisible();
   await expect(page.getByRole('main').getByText('Fixture course', { exact: true })).toBeVisible();
+  const progressCard = page
+    .locator('[data-slot="card"]')
+    .filter({ has: page.getByRole('heading', { name: 'Your progress' }) });
+  const progressCourse = progressCard.getByRole('link', { name: 'Fixture course', exact: true });
+  await expect(progressCourse).toHaveAttribute('href', '/courses/fixture-course');
+  const progressCourseRow = progressCourse.locator('xpath=../..');
+  await expect(progressCourseRow.getByText(/\d+\/\d+/)).toBeVisible();
+  const finishStatus = progressCourseRow.locator('span[title]');
+  await expect(finishStatus.locator('[aria-hidden="true"]')).toHaveText(
+    /^(Paused|Done|Soon|[A-Z][a-z]{2} \d{1,2})$/,
+  );
+  await expect(finishStatus).toHaveAttribute(
+    'title',
+    /^(Paused while you focus on .+|Finished|Lessons coming soon|Finishes around .+ at your pace)$/,
+  );
+  await expect(finishStatus.locator('.sr-only')).toHaveText(
+    /^(Paused while you focus on .+|Finished|Lessons coming soon|Finishes around .+ at your pace)$/,
+  );
   await expect(page.getByText('Total XP').locator('..')).toContainText('45');
   await expect(page.getByRole('button', { name: 'Start learning' })).toBeEnabled();
   await page.screenshot({ path: `${screenshotDir}/learn-with-xp.png`, fullPage: true });
@@ -128,7 +144,7 @@ test('Home shows XP and tasks, starts a session, and Course links to lessons and
     fullPage: true,
   });
 
-  await page.getByRole('link', { name: 'View course' }).click();
+  await progressCourse.click();
   await expect(page.getByRole('heading', { name: 'Fixture course', exact: true })).toBeVisible();
   await expect(page.getByText(/You'll build the simplest model that learns:/)).toBeVisible();
   await expect(page.getByRole('region', { name: 'Optional reading' })).toBeVisible();
@@ -182,10 +198,12 @@ test('Home focus changes the plan and keeps outside reviews visible', async ({ p
     const response = await route.fetch();
     const learn = await response.json();
     learn.activeSubjects = [
-      { id: 'mathematics', title: 'Mathematics' },
-      { id: 'ai', title: 'AI' },
+      { id: 'mathematics', title: 'Mathematics', hasLessons: true },
+      { id: 'ai', title: 'AI', hasLessons: true },
+      { id: 'robotics', title: 'Robotics', hasLessons: false },
     ];
     learn.focusSubjectId = focusSubjectId;
+    learn.activeSessionId = 'focus-session';
     learn.today.studyFinish = {
       atPace: '2026-01-20',
       atGoal: '2026-01-21',
@@ -215,18 +233,31 @@ test('Home focus changes the plan and keeps outside reviews visible', async ({ p
         prerequisites: [],
       },
     ];
+    const projectedTopic = {
+      conceptId: focusSubjectId ? 'ai-projected' : 'maths-projected',
+      courseId: focusSubjectId ? 'ml-foundations' : 'maths-for-ml',
+      courseTitle: focusSubjectId ? 'ML Foundations' : 'Mathematics for Machine Learning',
+      title: focusSubjectId ? 'AI projected topic' : 'Mathematics projected topic',
+      unitTitle: 'Unit 1',
+      date: '2026-01-07',
+      dayLabel: 'Today',
+    };
     learn.upNext = {
-      upcoming: [
-        {
-          conceptId: focusSubjectId ? 'ai-projected' : 'maths-projected',
-          courseId: focusSubjectId ? 'ml-foundations' : 'maths-for-ml',
-          courseTitle: focusSubjectId ? 'ML Foundations' : 'Mathematics for Machine Learning',
-          title: focusSubjectId ? 'AI projected topic' : 'Mathematics projected topic',
-          unitTitle: 'Unit 1',
-          date: '2026-01-07',
-          dayLabel: 'Today',
-        },
-      ],
+      upcoming: [projectedTopic],
+      allSubjects: focusSubjectId
+        ? [
+            projectedTopic,
+            {
+              conceptId: 'maths-all-subjects',
+              courseId: 'maths-for-ml',
+              courseTitle: 'Mathematics for Machine Learning',
+              title: 'Mathematics projected topic',
+              unitTitle: 'Unit 1',
+              date: '2026-01-08',
+              dayLabel: 'Tomorrow',
+            },
+          ]
+        : null,
       finished: [],
     };
     await route.fulfill({ response, json: learn });
@@ -246,18 +277,26 @@ test('Home focus changes the plan and keeps outside reviews visible', async ({ p
   await expect(page.getByRole('link', { name: /Mathematics projected topic/ })).toBeVisible();
   await page.getByRole('link', { name: 'Home', exact: true }).click();
 
-  const focus = page.getByRole('group', { name: 'Focus' });
+  const focus = page.getByRole('group', { name: 'Study today' });
   const all = focus.getByRole('button', { name: 'All', exact: true });
   const ai = focus.getByRole('button', { name: 'AI', exact: true });
+  const robotics = focus.getByRole('button', { name: 'Robotics · soon', exact: true });
   await expect(all).toHaveAttribute('aria-pressed', 'true');
+  await expect(robotics).toBeDisabled();
+  await expect(robotics).toHaveAttribute('title', 'Lessons coming soon');
+  await expect(page.getByRole('link', { name: 'Resume session', exact: true })).toBeVisible();
   await expect(page.getByText('Mathematics Topic', { exact: true })).toBeVisible();
   await ai.click();
   await expect(ai).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('link', { name: 'Resume AI', exact: true })).toBeVisible();
   await expect(page.getByText('AI Topic', { exact: true })).toBeVisible();
   await expect(page.getByText('Mathematics Topic', { exact: true })).toHaveCount(0);
   await expect(page.getByText('2 reviews from other subjects are waiting.')).toBeVisible();
   await expect(page.getByRole('link', { name: 'Review them' })).toHaveAttribute('href', '/reviews');
-  await expect(page.getByText('Paused while you focus on AI')).toBeVisible();
+  const pausedStatus = page.locator('[title="Paused while you focus on AI"]');
+  await expect(pausedStatus).toBeVisible();
+  await expect(pausedStatus.locator('[aria-hidden="true"]')).toHaveText('Paused');
+  await expect(pausedStatus.locator('.sr-only')).toHaveText('Paused while you focus on AI');
   await expect(page.getByText(/^All current AI lessons done by /)).toBeVisible();
   await page.getByRole('link', { name: 'Up next', exact: true }).click();
   await expect(page.getByRole('link', { name: /AI projected topic/ })).toBeVisible();
@@ -265,6 +304,7 @@ test('Home focus changes the plan and keeps outside reviews visible', async ({ p
   await page.getByRole('link', { name: 'Home', exact: true }).click();
   await all.click();
   await expect(all).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('link', { name: 'Resume session', exact: true })).toBeVisible();
   await expect(page.getByText('Mathematics Topic', { exact: true })).toBeVisible();
 });
 
@@ -1074,6 +1114,7 @@ async function mockLessonReview(
         runStatus: null,
         checkAnswers: {},
         conceptTitle,
+        canRestart: false,
       }),
     }),
   );
@@ -1245,17 +1286,25 @@ test('learner can restart a completed topic', async ({ page }) => {
   await page.goto('/courses/fixture-course');
   const topicRow = page.getByRole('link', { name: /1\.1.*Vectors/ });
   await expect(topicRow).toContainText('Complete');
-  await topicRow.getByRole('button', { name: 'Restart' }).click();
+  await expect(page.getByRole('button', { name: 'Restart', exact: true })).toHaveCount(0);
+  await topicRow.click();
+  await expect(page).toHaveURL(/\/lessons\/vectors$/);
+  await expect(page.getByRole('heading', { name: 'Vectors', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Restart topic', exact: true }).click();
   const dialog = page.getByRole('dialog');
   await expect(dialog.getByRole('heading', { name: 'Restart Vectors?' })).toBeVisible();
   await expect(dialog).toContainText(
     "Your progress and reviews for this topic are cleared and it goes back to not started. XP you've earned stays.",
   );
-  await dialog.screenshot({ path: `${restartTopicScreenshotDir}/restart-confirmation.png` });
+  await dialog.screenshot({ path: `${restartTopicScreenshotDir}/lesson-restart-dialog.png` });
   await dialog.getByRole('button', { name: 'Restart topic' }).click();
-  await expect(topicRow.getByText('Not started', { exact: true })).toHaveCount(0);
-  await expect(topicRow.getByRole('button', { name: 'Restart' })).toHaveCount(0);
-  await topicRow.screenshot({ path: `${restartTopicScreenshotDir}/restarted-topic-row.png` });
+  await expect(page).toHaveURL('/courses/fixture-course');
+  const restartedTopicRow = page.getByRole('link', { name: /1\.1.*Vectors/ });
+  await expect(restartedTopicRow).not.toContainText('Complete');
+  await expect(page.getByRole('button', { name: 'Restart', exact: true })).toHaveCount(0);
+  await restartedTopicRow.screenshot({
+    path: `${restartTopicScreenshotDir}/course-topic-restarted.png`,
+  });
 });
 
 test('passing a knowledge point increases Learn XP after reload', async ({ page }) => {

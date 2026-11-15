@@ -192,7 +192,7 @@ export function projectCourseFinishes(input: {
   return {
     byCourse,
     overall,
-    upcoming: [...upcomingByConcept.values()].slice(0, 20),
+    upcoming: [...upcomingByConcept.values()],
     finished: newestFirst(finishedByConcept.values()),
   };
 }

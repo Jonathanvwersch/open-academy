@@ -304,11 +304,29 @@ export function registerLearnCourseRoutes(
     const activeSubjectIds = new Set(
       studyCourseIds.map((courseId) => subjectForCourse(index, courseId).id),
     );
+    const subjectHasLessons = (subjectId: string) =>
+      studyCourseIds.some((courseId) => {
+        if (subjectForCourse(index, courseId).id !== subjectId) return false;
+        const course = index.coursesById.get(courseId);
+        return (
+          course?.units.some((unit) =>
+            unit.concepts.some((conceptId) => {
+              const concept = index.conceptsById.get(conceptId);
+              return (
+                concept !== undefined &&
+                concept.status !== 'stub' &&
+                index.lessonsByConcept.has(conceptId)
+              );
+            }),
+          ) ?? false
+        );
+      });
     const activeSubjects = (index.curriculum?.subjects ?? [])
       .filter((subject) => activeSubjectIds.has(subject.id))
-      .map(({ id, title }) => ({ id, title }));
+      .map(({ id, title }) => ({ id, title, hasLessons: subjectHasLessons(id) }));
     if (activeSubjects.length === 0 && studyCourseIds.length > 0) {
-      activeSubjects.push(subjectForCourse(index, studyCourseIds[0] ?? ''));
+      const subject = subjectForCourse(index, studyCourseIds[0] ?? '');
+      activeSubjects.push({ ...subject, hasLessons: subjectHasLessons(subject.id) });
     }
     const focusSubjectId = effectiveFocusSubjectId(prefs, studyCourseIds, index);
     const placementCourseId = placementRuns
@@ -666,22 +684,34 @@ export function registerLearnCourseRoutes(
       spentBySubject: recentLearnMinutesBySubject,
     });
     const todayTopics = activeLearnTopics(activeActivities, projectionCourses, index, todayLocal);
-    const todayConceptIds = new Set(todayTopics.map((topic) => topic.conceptId));
-    const futureProjection = projectCourseFinishes({
-      courses: finishProjectionCourses,
-      dailyXp: dailyXpAtPace,
-      today: addLocalDays(todayLocal, todayTopics.length > 0 ? 1 : 0),
-      assumedDoneConceptIds: todayConceptIds,
-      spentBySubject: recentLearnMinutesBySubject,
-    });
-    const upNext = {
-      upcoming: [
-        ...todayTopics,
-        ...futureProjection.upcoming.map((topic) => ({
+    const projectUpcoming = (courses: ProjectionCourse[], topicsForToday: typeof todayTopics) => {
+      const todayConceptIds = new Set(topicsForToday.map((topic) => topic.conceptId));
+      const projection = projectCourseFinishes({
+        courses,
+        dailyXp: dailyXpAtPace,
+        today: addLocalDays(todayLocal, topicsForToday.length > 0 ? 1 : 0),
+        assumedDoneConceptIds: todayConceptIds,
+        spentBySubject: recentLearnMinutesBySubject,
+      });
+      return [
+        ...topicsForToday,
+        ...projection.upcoming.map((topic) => ({
           ...topic,
           dayLabel: projectedDayLabel(topic.date, todayLocal),
         })),
-      ],
+      ];
+    };
+    const allSubjectsProjectionCourses = focusSubjectId
+      ? buildProjectionCourses(index, studyCourseIds, topicState, completionDates, null)
+      : projectionCourses;
+    const allSubjectsTodayTopics = focusSubjectId
+      ? activeLearnTopics(activeActivities, allSubjectsProjectionCourses, index, todayLocal)
+      : todayTopics;
+    const upNext = {
+      upcoming: projectUpcoming(finishProjectionCourses, todayTopics),
+      allSubjects: focusSubjectId
+        ? projectUpcoming(allSubjectsProjectionCourses, allSubjectsTodayTopics)
+        : null,
       finished: finishesAtPace.finished,
     };
     const studyCourses = orderCourseIdsBySubject(index, studyCourseIds).flatMap((courseId) => {
