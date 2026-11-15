@@ -117,7 +117,7 @@ knowledge_points:
     explain: |
       ### Why we can't just set the score to 0
 
-      We know which cells to block, so how do we make attention obey the grid? A natural first try is setting each blocked score to $0$. Recall how softmax turns position $t$'s scores into weights,
+      Causal masking blocks attention to later positions. We use a grid whose rows are looking positions and columns are positions they might read, allowing only cells on or below the diagonal. A first try sets blocked scores to $0$. Recall how softmax turns position $t$'s scores into weights,
 
       $$a_{tj}=\frac{e^{s_{tj}}}{\sum_{i=1}^{T}e^{s_{ti}}},$$
 
@@ -161,7 +161,7 @@ knowledge_points:
       </g></svg>
       ```
 
-      To use the grid, we turn it into numbers we can add to the scores, called **mask values**, with $m_{tj}=0$ for an allowed cell ($j\le t$) and $m_{tj}=-\infty$ for a blocked one ($j>t$). Causal masking adds them before the softmax.
+      We turn the grid into **mask values** added before softmax: $m_{tj}=0$ for an allowed cell ($j\le t$) and $m_{tj}=-\infty$ for a blocked one ($j>t$).
 
       $$a_{tj}=\frac{e^{s_{tj}+m_{tj}}}{\sum_{i=1}^{T}e^{s_{ti}+m_{ti}}}$$
 
@@ -205,7 +205,7 @@ knowledge_points:
     explain: |
       ### All the rows at once
 
-      We've masked one row by hand. A sentence of $T$ tokens has $T$ rows, and code handles them all at once. We put the scores in a $T\times T$ grid $S$, with $s_{tj}$ in row $t$ and column $j$. The mask is a grid $M$ of the same size, with $0$ on and below the diagonal and $-\infty$ above it. For "the cat sat on",
+      To block attention to later tokens, code handles all rows at once. A sentence of $T$ tokens has $T$ rows. We put the scores in a $T\times T$ grid $S$, with $s_{tj}$ in row $t$ and column $j$. The mask is a grid $M$ of the same size, with $0$ on and below the diagonal and $-\infty$ above it. For "the cat sat on",
 
       $$M=\begin{bmatrix}0&-\infty&-\infty&-\infty\\0&0&-\infty&-\infty\\0&0&0&-\infty\\0&0&0&0\end{bmatrix}$$
 
@@ -213,7 +213,7 @@ knowledge_points:
 
       ### What the mask guarantees
 
-      Row $t$ of the weights is $0$ after column $t$, so the output $o_t$ mixes only $v_1$ to $v_t$, with weights worked out from $q_t$ and $k_1$ to $k_t$. In the first attention layer, each of those vectors is made from its own token, so $o_t$ depends only on the first $t$ tokens. If we change the last word of "the cat sat on" to "by", the outputs of the first three positions stay exactly the same.
+      An attention layer is one stage of a model that mixes information between positions using attention. Row $t$ of the weights is $0$ after column $t$, so the output $o_t$ mixes only $v_1$ to $v_t$, with weights worked out from $q_t$ and $k_1$ to $k_t$. In the first attention layer, each of those vectors is made from its own token, so $o_t$ depends only on the first $t$ tokens. If we change the last word of "the cat sat on" to "by", the outputs of the first three positions stay exactly the same.
 
       That's the effect we wanted. Every position's guess of the next word is made from its own word and the words before it, so one pass over a sentence trains all $T$ guesses without any position seeing its answer. It also matches how the model is used, because when it writes new text, the later words don't exist yet.
 

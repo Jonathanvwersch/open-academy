@@ -73,7 +73,7 @@ knowledge_points:
     explain: |-
       ### Walk along x first
 
-      Our gradient $(3,4)$ describes both slopes at $P$. Let's walk along $x$ first. The orange arrow shows the unit direction $\mathbf u=(1,0)$. Multiplying it by a distance tells us how far each input changes.
+      Think of $f(x,y)=x^2+2y^2$ as ground height. At $P=(1.5,1)$, its gradient, the vector of partial derivatives, is $(3,4)$. Let's walk along $x$ first. The orange arrow shows the unit direction $\mathbf u=(1,0)$. Multiplying it by a distance tells us how far each input changes.
 
       The gradient's horizontal component is $3$, so a small distance along $x$ raises the height by about three times that distance. It's an estimate because the slope changes as we leave $P$.
 
@@ -146,9 +146,9 @@ knowledge_points:
 
       We can now calculate a slope in any unit direction. Which direction gives the greatest decrease? To compare fairly, we use the same distance of travel.
 
-      At $P$, our gradient $(3,4)$ has length $5$. To compare unit directions, we divide the gradient by $5$. The blue arrow shows this shorter, length-one vector pointing along the gradient. One orange arrow points opposite the gradient, and the other points perpendicular to it. The perpendicular arrow has zero slope because its dot product with the gradient is zero.
+      On the bowl $f(x,y)=x^2+2y^2$, at $P=(1.5,1)$, the gradient, the vector of partial derivatives, is $(3,4)$ and has length $5$. Dividing by $5$ gives the blue length-one arrow. One orange arrow points opposite the gradient, and the other points perpendicular to it. The perpendicular arrow has zero slope because its dot product with the gradient is zero.
 
-      The dashed red arrow points straight to the bottom. We'll compare it with the downhill orange arrow to see whether the steepest way down heads straight for the minimum.
+      The dashed red arrow points straight to the bowl's minimum at $(0,0)$. We'll compare it with the downhill orange arrow to see whether the steepest way down heads straight for the minimum.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 350" aria-label="The ring joins points at height 4.25 and passes through P=(1.5,1). Three arrows of length one point along the gradient, opposite it and perpendicular to it. The blue uphill direction has slope 5, and the orange downhill and perpendicular directions have slopes minus 5 and zero. The dashed red arrow points directly to the bottom at (0,0), allowing comparison with the orange downhill arrow."><defs><marker id="gr3b" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#3b82f6"/></marker><marker id="gr3a" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#f59e0b"/></marker><marker id="gr3r" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#ef4444"/></marker></defs><g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717"><path d="M60 255 H590 M220 330 V25" stroke="#737373"/><ellipse cx="220" cy="255" rx="134" ry="94.75" fill="#171717" fill-opacity="0" stroke="#d4d4d4"/><path d="M317.5 190 L356.5 138" stroke="#3b82f6" stroke-width="2.5" marker-end="url(#gr3b)"/><path d="M317.5 190 L278.5 242" stroke="#f59e0b" stroke-width="2.5" marker-end="url(#gr3a)"/><path d="M317.5 190 L369.5 229" stroke="#f59e0b" stroke-width="2.5" marker-end="url(#gr3a)"/><path d="M317.5 190 L220 255" stroke="#ef4444" stroke-width="2.5" stroke-dasharray="5 4" marker-end="url(#gr3r)"/><circle cx="317.5" cy="190" r="4" fill="#171717"/><text x="370" y="125" fill="#3b82f6">uphill: slope 5</text><text x="370" y="255" fill="#f59e0b">perpendicular: slope 0</text><text x="240" y="285" fill="#f59e0b">downhill: slope -5</text><text x="80" y="320" fill="#ef4444">red: to bottom (0,0)</text><text x="325" y="185" fill="#737373">P</text><text x="75" y="85" fill="#737373">ring: height 4.25</text><text x="595" y="260">x</text><text x="225" y="22">y</text></g></svg>

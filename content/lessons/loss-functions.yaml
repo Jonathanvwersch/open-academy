@@ -111,9 +111,9 @@ knowledge_points:
     explain: |
       ### One error, two costs
 
-      In the last table, four sets of errors had an MAE of $4$ but an MSE from $16$ to $48$. To see why, let's look at what each loss charges for a single error $e$.
+      Mean absolute error (MAE) averages the sizes of prediction errors, while mean squared error (MSE) averages their squares. Four sets of errors can have an MAE of $4$ but an MSE from $16$ to $48$. Why? Let's look at each loss's cost for one error $e$.
 
-      In the picture, the horizontal axis is the error and the height is its cost, the loss for that one error, with both curves drawn to the same scale. The blue curve is the squared error $e^2$ and the green V is the absolute error $|e|$. At $e=3$ the costs are $9$ and $3$, and at $e=-6$ they are $36$ and $6$. A miss of size $6$ is twice the size of a miss of $3$, and that doubles the green cost but makes the blue cost four times as big.
+      The picture plots error horizontally and its cost vertically, with both curves at the same scale. The blue curve is the squared error $e^2$ and the green V is the absolute error $|e|$. At $e=3$ the costs are $9$ and $3$, and at $e=-6$ they are $36$ and $6$. A miss of size $6$ is twice the size of a miss of $3$, and that doubles the green cost but makes the blue cost four times as big.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 350" aria-label="The cost of one error e, drawn to the same scale. The blue squared-error curve e squared reaches 9 at e equals 3 and 36 at e equals minus 6, while the green absolute-error V reaches only 3 and 6. Short orange lines at e equals minus 6 show the slopes, minus 12 for squared error and minus 1 for absolute error">
@@ -192,7 +192,7 @@ knowledge_points:
     explain: |
       ### The simplest possible model
 
-      The two losses also disagree about which single number a model should predict. The simplest model ignores its inputs and predicts the same number $c$ for every example. This is called a **baseline**, and a real model has to beat the baseline's loss to be worth using. So which $c$ gives the smallest loss?
+      Mean squared error (MSE) averages squared prediction errors; mean absolute error (MAE) averages their sizes. They disagree about which single number a model should predict. The simplest model ignores its inputs and predicts the same number $c$ for every example. This **baseline** gives a loss to beat. Which $c$ minimizes it?
 
       ### Two curves with different lowest points
 

@@ -23,7 +23,7 @@ knowledge_points:
 
       ### One number for each state and action
 
-      Q-learning stores a **Q-table**, one number $Q(s,a)$ for every state $s$ and action $a$, its current guess of that value. The corridor has 3 cells where the robot can act, and 2 actions, so the table has 6 entries. Cell 4 ends the episode, so it needs none.
+      Q-learning learns the best action values from experience. It stores a **Q-table**, one number $Q(s,a)$ for every state $s$ and action $a$, its current guess of that value. The corridor has 3 cells where the robot can act, and 2 actions, so the table has 6 entries. Cell 4 ends the episode, so it needs none.
 
       The picture shows the best action values $Q^*(s,a)$ the robot is aiming to learn.
 
@@ -94,7 +94,7 @@ knowledge_points:
     explain: |
       ### Learning from one move
 
-      The robot doesn't know the best values when it starts, so its table begins at $0$ everywhere. Each time it moves, it sees its reward $r$ and the state $s'$ it lands in, and it can read its own current guesses for $s'$ from the table. That's enough to improve the one entry $Q(s,a)$ for the move it just made.
+      A Q-table stores a guessed action value for each state and action. Our robot starts with every entry at $0$. It moves left or right through four cells, starting in cell 1. Entering the goal, cell 4, earns $+10$ and ends the episode; other moves earn $-1$, and the left wall keeps it in cell 1. Each move reveals reward $r$ and new state $s'$. Together with the table's guesses for $s'$, these improve the entry $Q(s,a)$ for that move.
 
       ### The target: a better guess
 
@@ -178,7 +178,7 @@ knowledge_points:
 
       While the robot learns, it has to choose its moves somehow. The obvious choice is greedy, the move with the biggest value so far. But early on, that value can be wrong.
 
-      To see this, let's add a charger to the corridor, just left of cell 1, in place of the left wall. Everything to the right of cell 1 stays the same. Moving left from cell 1 now docks the robot, gives $+1$ and ends the episode. Say the table is all $0$, and on its first move the robot happens to go left. With $\eta=0.5$, $Q(1,\text{left})$ becomes $0+0.5\times(1-0)=0.5$.
+      Take a four-cell corridor, numbered left to right, starting in cell 1. Entering cell 4 earns $+10$ and ends the episode; other moves earn $-1$. Add a charger left of cell 1. Moving left from cell 1 now docks the robot, gives $+1$ and ends the episode. Say the Q-table, which stores guessed action values, is all $0$, and on its first move the robot happens to go left. The **TD target** is reward plus discounted best value in the new state, or just reward when the episode ends. With learning rate $\eta=0.5$, closing half the target gap, $Q(1,\text{left})$ becomes $0+0.5\times(1-0)=0.5$.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 240" aria-label="The corridor with a charger to the left of cell 1. From cell 1, an orange arrow points left to the charger, labelled Q(1, left) = 0.5 after one try. A grey arrow points right to cell 2, labelled Q(1, right) = 0, never tried. Cell 4 is the goal, worth plus 10, never found by a greedy robot">
@@ -219,9 +219,9 @@ knowledge_points:
 
       ### Learning the best values while exploring
 
-      Q-learning's target always uses $\max_{a'}Q(s',a')$, the greedy choice in $s'$, even when the robot's next move will be a random one. So the table learns the values of acting greedily, the best values, while the robot behaves with some randomness. The rule a robot uses to choose its moves is called its **policy**. Q-learning learns the values of acting greedily. Meanwhile it follows a different policy, epsilon-greedy. So it is called **off-policy**.
+      Q-learning's target always uses $\max_{a'}Q(s',a')$, the greedy choice in $s'$, even when the robot's next move will be a random one. The table learns greedy action values while the robot explores. The rule for choosing moves is its **policy**. It follows epsilon-greedy while learning greedy action values. So it is called **off-policy**.
 
-      Be careful not to put the value of the next move the robot actually makes into the target. A related method called SARSA does that. It learns the values of the epsilon-greedy policy it follows, which can be lower than the best values when future random moves cost reward.
+      Be careful not to put the value of the next move the robot actually makes into the target. SARSA does that, learning its epsilon-greedy policy's values. These can be lower when future random moves cost reward.
     worked: |
       Let's go back to the corridor without the charger and continue the example from Step 2. Episode 2 there also moved $Q(1,\text{right})$ halfway from $-0.5$ toward a target of $-1$, to $-0.75$, and $Q(3,\text{right})$ halfway from $5$ toward $10$, to $7.5$. So the table holds $Q(1,\text{right})=-0.75$, $Q(2,\text{right})=1.5$ and $Q(3,\text{right})=7.5$, and every left value is still $0$. From episode 3 on, the robot moves epsilon-greedily with $\varepsilon=0.1$, and still $\eta=0.5$ and $\gamma=0.9$.
 
@@ -251,7 +251,7 @@ knowledge_points:
     explain: |
       ### The whole algorithm
 
-      We now have every piece, the table, the update and epsilon-greedy moves. Q-learning puts them together like this:
+      Q-learning learns action values from experience in a **Q-table**, one guess per state and action. **Epsilon-greedy** chooses randomly with probability $\varepsilon$ and otherwise takes the largest guessed value. Each update moves a fraction $\eta$, the learning rate, toward a **TD target**: reward plus discounted best value in the new state, or just reward when the episode ends. The **TD error** $\delta$ is target minus current guess. Our robot starts in cell 1 of a four-cell corridor, moving left or right. Entering cell 4 earns $+10$ and ends the episode; other moves earn $-1$. The left wall blocks movement.
 
       1. Set every entry of the Q-table to $0$.
       2. Start an episode in cell 1.
@@ -259,19 +259,19 @@ knowledge_points:
       4. Update $Q(s,a)\leftarrow Q(s,a)+\eta\,\delta$, using the TD target from $r$ and $s'$.
       5. Make $s'$ the current state. If the episode has ended, go back to step 2, otherwise go back to step 3.
 
-      After enough episodes, the robot picks the move with the biggest value in its cell.
+
 
       ### What the table ends up as
 
       On the corridor without the charger, with $\eta=0.5$, $\varepsilon=0.1$ and $\gamma=0.9$, the code below runs 500 episodes, enough for every entry to match the best values to 2 decimals. Right is worth $6.2$, $8$ and $10$ in cells 1, 2 and 3, and left is worth $4.58$, $4.58$ and $6.2$. Once right is greedy, left values change only through exploration, so they settle last.
 
-      Chris Watkins introduced Q-learning in his 1989 PhD thesis. In 1992, Watkins and Peter Dayan proved that it reaches the best values in any problem with a finite number of states and actions, bounded rewards and $\gamma<1$, as long as every action keeps being tried in every state and the learning rate shrinks toward $0$ at the right speed. On the corridor, a fixed rate such as $0.5$ also works.
+      Chris Watkins introduced Q-learning in 1989. Watkins and Peter Dayan proved convergence in 1992 for finite states and actions, bounded rewards and $\gamma<1$, with every action repeatedly tried in every state and a suitably shrinking learning rate. Here a fixed rate of $0.5$ works.
 
       ### Limitations: one entry per state
 
-      A Q-table needs one entry for every state and action, and each entry only learns when that exact move is made. With 3 cells, that's only 6 entries. But a robot arm's state is its joint angles, which are real numbers, and a video game's state is the whole screen. There are far too many such states to store, and the robot would almost never see the same one twice, so nothing it learned would carry over.
+      A Q-table learns each entry only when that exact move occurs. Our 3 cells need 6 entries. A robot arm's state contains real-valued joint angles; a game's state can be its whole screen. There are too many states to store, and almost none recur, so learning cannot carry over.
 
-      A later lesson on deep Q-learning replaces the table with a neural network, a model that predicts the values from the state. That is how DQN (deep Q-network) learned to play Atari video games from screen pixels (Mnih and colleagues, 2013).
+      Deep Q-learning replaces the table with a neural network that predicts values from states. DQN (deep Q-network) used this to play Atari games from pixels (Mnih and colleagues, 2013).
     worked: |
       Let's finish episode 3 from Step 3's example. The robot is in cell 2, where $Q(2,\text{left})=0$ and $Q(2,\text{right})=1.5$, and cell 3 holds $Q(3,\text{left})=0$ and $Q(3,\text{right})=7.5$. We use $\eta=0.5$ and $\gamma=0.9$.
 

@@ -55,9 +55,9 @@ knowledge_points:
 
       ### Tokens, the vocabulary and token ids
 
-      A **token** is one piece of text that the model treats as a single unit. The **vocabulary** is the fixed list of every token the model knows, and a token's **token id** is its position in that list. We write $N$ for the vocabulary size and $T$ for the number of tokens in a text, and $x_1,\dots,x_T$ for the text's token ids in order, so $x_1$ is the first. Here $N=5$ and $T=6$, and the sentence becomes $(0,1,2,3,0,4)$. Turning text into ids is called **encoding**, and turning ids back into text is **decoding**. The whole process of cutting text into tokens and giving them ids is **tokenization**, and the program that does it is a **tokenizer**.
+      A **language model** is a program that writes text. A **token** is one piece of text it treats as a single unit. The **vocabulary** is the fixed list of every token the model knows, and a token's **token id** is its position in that list. We write $N$ for the vocabulary size and $T$ for the number of tokens in a text, and $x_1,\dots,x_T$ for the text's token ids in order, so $x_1$ is the first. Here $N=5$ and $T=6$, and the sentence becomes $(0,1,2,3,0,4)$. Turning text into ids is called **encoding**, and turning ids back into text is **decoding**. The whole process of cutting text into tokens and giving them ids is **tokenization**, and the program that does it is a **tokenizer**.
 
-      Be careful not to read meaning into the ids. Id $4$ isn't "more" than id $2$. The ids are just labels, like numbers on lockers. The model learns what each token means later, during training on lots of text.
+      Be careful not to read meaning into the ids. Id $4$ isn't "more" than id $2$. Ids are labels, like locker numbers. The model learns their meaning during training on text.
 
       ### Words or letters?
 
@@ -97,11 +97,11 @@ knowledge_points:
     explain: |
       ### Start from letters, then join the commonest pairs
 
-      **Byte-pair encoding**, or BPE, finds tokens in between letters and words. It starts with a vocabulary of single characters and then learns longer tokens from a large amount of example text called the training text. Over and over, it finds the pair of neighbouring tokens that appears most often and adds the two joined together as a new token. Common words end up as one token, and rare words are left as smaller pieces.
+      A **token** is a piece of text treated as one unit, and a **vocabulary** lists all available tokens. **Byte-pair encoding**, or BPE, builds this list from single characters using example text called the training text. It repeatedly joins the most frequent pair of neighbouring tokens into a new token. Common words become one token; rare words remain smaller pieces.
 
       ### Three merges on our sentence
 
-      Let's pretend "the cat sat on the mat" is our whole training text. We first split it at the spaces and only join tokens inside a word, so no token ever contains a space. Real tokenizers keep the spaces, usually as part of the next word's token, so decoding gives back the exact text. We drop them here only to keep the example small. That leaves $17$ letters, and the starting vocabulary is the $9$ different letters, a, c, e, h, m, n, o, s and t.
+      Let's pretend "the cat sat on the mat" is our whole training text. We first split it at the spaces and only join tokens inside a word, so no token ever contains a space. A **tokenizer**, the program that cuts text into tokens and gives them ids, keeps spaces so **decoding**, turning ids back into text, recovers the exact text. We drop them here only to keep the example small. That leaves $17$ letters, and the starting vocabulary is the $9$ different letters, a, c, e, h, m, n, o, s and t.
 
       Now we count every pair of neighbouring tokens. "a" followed by "t" appears $3$ times, in cat, sat and mat, which is more than any other pair. So the first merge joins them, "at" becomes a token, and the text shrinks from $17$ tokens to $14$. Two more rounds of counting give th and then the. Each orange box is the token made in that row.
 
@@ -171,11 +171,11 @@ knowledge_points:
 
       ### The rule
 
-      Each merge adds exactly one token, so
+      Each merge adds one token to the vocabulary, whose size we write as $N$, so
 
       $$N=\text{starting characters}+\text{merges}.$$
 
-      For us that's $9+3=12$. We choose the vocabulary size in advance and stop once $N$ reaches it. The tokenizer also keeps the list of merges in the order it learned them, which the next step needs.
+      For us that's $9+3=12$. We stop when $N$ reaches our chosen vocabulary size. The tokenizer also keeps the list of merges in the order it learned them, which the next step needs.
 
       Be careful not to just pick the commonest letter. "t" is the commonest letter here, but BPE counts pairs of neighbours, because a new token has to be a piece that actually occurs together in the text.
 
@@ -211,7 +211,7 @@ knowledge_points:
     explain: |
       ### Using the merges on new text
 
-      Training has given us a vocabulary and an ordered list of merges, and both now stay fixed. To split new text, we start from single characters and apply the merges one at a time, in the order they were learned, each one wherever its pair appears. Be careful not to count pairs again in the new text. Counting happens only once, during training. Splitting just replays the merges, so a word is always split the same way.
+      A tokenizer cuts text into pieces called tokens and gives each an id from a fixed list, its vocabulary. During **training**, it learns **merges**, rules joining frequent neighbouring token pairs. The vocabulary and merge order then stay fixed. For new text, we start from characters and apply each merge wherever its pair appears, in learned order. Be careful not to count pairs again: splitting replays the learned merges.
 
       Our three merges were a + t, then t + h, then th + e. The picture applies them to two words that weren't in the training text.
 
@@ -259,7 +259,7 @@ knowledge_points:
 
       ### How big should the vocabulary be?
 
-      Each merge makes $N$ one bigger and $T$ smaller. For our training sentence:
+      Each merge increases vocabulary size $N$ by one and reduces the number of tokens $T$ in the training text. For "the cat sat on the mat":
 
       | Merges | $N$ | $T$ |
       | --- | --- | --- |
@@ -267,7 +267,7 @@ knowledge_points:
       | $1$ | $10$ | $14$ |
       | $3$ | $12$ | $10$ |
 
-      Shorter texts mean less work for the model, but a bigger vocabulary means more tokens for the model to learn about, and rare tokens appear only a few times in the text the model is trained on. Real models settle on tens of thousands to a few hundred thousand tokens. A rule of thumb for English is that a token is about $4$ characters.
+      A language model is a program that writes text. Fewer tokens mean less work for it, but a bigger vocabulary means more pieces to learn about, with rare pieces appearing only a few times in its training text. Real models settle on tens of thousands to a few hundred thousand tokens. A rule of thumb for English is that a token is about $4$ characters.
 
       Be careful not to think a token is a word. A common word is often one token, but a rarer word can be several, and one token can be part of many words, like "at".
 

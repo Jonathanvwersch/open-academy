@@ -114,7 +114,7 @@ knowledge_points:
     explain: |
       ### Inputs that are multiplied together
 
-      In $x^2+2y^2$, each term contained only one input, so freezing the other was easy. But what about $f(x,y)=x^2y+5y$, where $x$ and $y$ are multiplied together in $x^2y$? Can we still find one formula for $\frac{\partial f}{\partial x}$ that works at every point, so we needn't redo the work each time?
+      A partial derivative measures how fast the output changes as one input moves while the others stay fixed, or frozen. Each term of $x^2+2y^2$ contains one input. What about $f(x,y)=x^2y+5y$, where the inputs multiply? Can we find one formula for $\frac{\partial f}{\partial x}$, the partial derivative in $x$, that works at every point?
 
       Let's start with the simplest product, the area of a rectangle, $A(x,y)=xy$, with width $x=3$ and height $y=2$. On the left, we widen it by a small amount $h$ while the height stays at $2$. The orange strip we add has area $2h$, so the area grows at $2$ per unit of width, and that $2$ is the height. So $\frac{\partial A}{\partial x}=y$.
 
@@ -154,7 +154,7 @@ knowledge_points:
 
       ### How common terms behave
 
-      Here's how a few common terms behave:
+      Common terms behave as follows:
 
       | Term | Partial in $x$ | Partial in $y$ |
       | --- | --- | --- |
@@ -194,7 +194,7 @@ knowledge_points:
     explain: |
       ### A model with two adjustable numbers
 
-      Partial derivatives matter in machine learning because a model's error depends on several numbers at once. A **model** is a formula that makes predictions, and **training** means adjusting its numbers until the predictions get closer to the true answers. Let's build the smallest one.
+      A partial derivative measures how fast an output changes when one input moves and the others stay fixed. A **model** is a formula that makes predictions, and **training** adjusts its numbers to bring predictions closer to true answers. Partial derivatives tell us how each number affects the error. Let's build a small model.
 
       Our model predicts a house's price from its area $x$. It multiplies the area by a **weight** $w$, which says how much the price rises per unit of area, and adds a **bias** $b$, a fixed amount on top. So it predicts $wx+b$, and since training adjusts $w$ and $b$, we call them the model's **parameters**.
 
