@@ -23,5 +23,6 @@ export const Route = createFileRoute('/papers/$paperId')({
       className="text-sm text-destructive"
     />
   ),
+  remountDeps: ({ params }) => params,
   component: PaperReaderPage,
 });

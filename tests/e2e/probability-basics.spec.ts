@@ -149,7 +149,7 @@ test.describe('Probability basics real-content rendering', () => {
       .toBe('pb-frequency-fixed');
 
     await expect(page.getByTestId('lesson-problem-prompt')).toContainText(
-      'Use the fraction of these sales to estimate the probability that a sale was above asking.',
+      'In 10 past house sales, 4 were above asking.',
     );
     await page.getByLabel('Your answer').fill('0.6');
     const calculationResponse = page.waitForResponse(

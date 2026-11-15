@@ -13,6 +13,9 @@ python3 labs/nn-from-scratch/setup.py
 
 Edit `labs/nn-from-scratch/work/nn.py`. The starter already contains a fixed-seed data generator and train/validation split. It creates 600 noisy, two-dimensional examples. The first 480 are for training; the remaining 120 are for validation.
 
+Running setup again keeps your existing implementation. Pass `--force` only when you
+want to replace it with the starter.
+
 ## The network
 
 Each row of `X` is one example. Each row of `W1` stores one hidden neuron's weights, and each row of `W2` stores one output neuron's weights. For a batch of `m` examples, use:

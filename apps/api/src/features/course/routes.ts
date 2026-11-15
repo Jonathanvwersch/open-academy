@@ -217,7 +217,7 @@ export function registerLearnCourseRoutes(
       return topicIsComplete(runsByConcept.get(conceptId)?.status, states);
     };
 
-    const activeSession = active ? await repo.session(active.id) : undefined;
+    const activeSession = active ? await repo.session(active.id, active) : undefined;
     const activeActivities =
       activeSession?.activities.filter(
         (activity) =>

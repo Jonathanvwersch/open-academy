@@ -38,6 +38,30 @@ function runWithInitCwd(args: string[], initCwd: string, environment: NodeJS.Pro
 }
 
 describe('academy CLI', () => {
+  it('keeps added source files private in an existing pack without ignore rules', () => {
+    const parent = temporaryDirectory();
+    try {
+      const pack = join(parent, 'pack');
+      expect(run(['init', pack, '--title', 'Applied Science']).status).toBe(0);
+      rmSync(join(pack, 'sources/.gitignore'));
+      expect(spawnSync('git', ['init', '--quiet', pack]).status).toBe(0);
+      const source = join(parent, 'private-notes.txt');
+      writeFileSync(source, 'Private lecture notes.');
+      expect(run(['sources', 'add', source, '--pack', pack]).status).toBe(0);
+      expect(
+        spawnSync('git', ['check-ignore', 'sources/private-notes.txt'], { cwd: pack }).status,
+      ).toBe(0);
+      expect(spawnSync('git', ['check-ignore', 'sources/index.yaml'], { cwd: pack }).status).toBe(
+        1,
+      );
+      expect(readFileSync(join(pack, 'sources/private-notes.txt'), 'utf8')).toBe(
+        'Private lecture notes.',
+      );
+    } finally {
+      rmSync(parent, { recursive: true, force: true });
+    }
+  });
+
   it('prints root and per-command help', () => {
     expect(run([]).status).toBe(0);
     expect(run(['--help']).status).toBe(0);
@@ -210,6 +234,68 @@ describe('academy CLI', () => {
       rmSync(parent, { recursive: true, force: true });
     }
   }, 60_000);
+
+  it('adds course placeholders to the existing domain file regardless of its filename', () => {
+    const parent = temporaryDirectory();
+    try {
+      const pack = join(parent, 'pack');
+      expect(run(['init', pack, '--title', 'Applied Science']).status).toBe(0);
+      const renamedFile = join(pack, 'concepts/science.yaml');
+      renameSync(join(pack, 'concepts/main.yaml'), renamedFile);
+      const created = run([
+        'new',
+        'course',
+        'advanced-path',
+        '--title',
+        'Advanced path',
+        '--pack',
+        pack,
+      ]);
+      expect(created.status).toBe(0);
+      expect(readFileSync(renamedFile, 'utf8')).toContain('advanced-path-first-topic');
+      expect(existsSync(join(pack, 'concepts/main.yaml'))).toBe(false);
+      expect(run(['check', pack]).status).toBe(0);
+    } finally {
+      rmSync(parent, { recursive: true, force: true });
+    }
+  });
+
+  it('finds renamed course files and refuses to overwrite a file owned by another course', () => {
+    const parent = temporaryDirectory();
+    try {
+      const pack = join(parent, 'pack');
+      expect(run(['init', pack, '--title', 'Applied Science']).status).toBe(0);
+      const courseFile = join(pack, 'courses/advanced-path.yaml');
+      renameSync(join(pack, 'courses/applied-science-basics.yaml'), courseFile);
+      const added = run([
+        'new',
+        'topic',
+        'second-topic',
+        '--title',
+        'Second topic',
+        '--pack',
+        pack,
+      ]);
+      expect(added.status).toBe(0);
+      expect(readFileSync(courseFile, 'utf8')).toContain('second-topic');
+      const original = readFileSync(courseFile, 'utf8');
+      const conflict = run([
+        'new',
+        'course',
+        'advanced-path',
+        '--title',
+        'Advanced path',
+        '--pack',
+        pack,
+      ]);
+      expect(conflict.status).toBe(1);
+      expect(conflict.stderr).toContain('Refusing to overwrite');
+      expect(readFileSync(courseFile, 'utf8')).toBe(original);
+      expect(run(['check', pack]).status).toBe(0);
+    } finally {
+      rmSync(parent, { recursive: true, force: true });
+    }
+  });
 
   it('creates a valid unit placeholder when the first domain has no concept file', () => {
     const parent = temporaryDirectory();

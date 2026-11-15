@@ -1,5 +1,6 @@
 import { and, asc, desc, eq, gte, lte, sql } from 'drizzle-orm';
 import type { Card } from 'ts-fsrs';
+import { z } from 'zod';
 import type { Dimension } from '../content/schemas.js';
 import type { ContentIndex } from '../content/types.js';
 import { courseHasEvidence } from '../learning/course-start.js';
@@ -347,12 +348,18 @@ export class LearnerRepository {
     );
   }
 
-  async session(sessionId: string) {
-    const [session] = await this.db
-      .select()
-      .from(studySessions)
-      .where(and(eq(studySessions.id, sessionId), eq(studySessions.userId, this.userId)))
-      .limit(1);
+  async session(sessionId: string, loaded?: typeof studySessions.$inferSelect) {
+    if (!z.string().uuid().safeParse(sessionId).success) return undefined;
+    const session =
+      loaded?.id === sessionId && loaded.userId === this.userId
+        ? loaded
+        : (
+            await this.db
+              .select()
+              .from(studySessions)
+              .where(and(eq(studySessions.id, sessionId), eq(studySessions.userId, this.userId)))
+              .limit(1)
+          )[0];
     if (!session) {
       return undefined;
     }
@@ -395,6 +402,7 @@ export class LearnerRepository {
   }
 
   async placementRun(runId: string) {
+    if (!z.string().uuid().safeParse(runId).success) return undefined;
     const [run] = await this.db
       .select()
       .from(diagnosticRuns)

@@ -1,6 +1,7 @@
 import { HealthResponseSchema } from '@academy/contracts/health';
 import { sql } from 'drizzle-orm';
 import { Hono } from 'hono';
+import { bodyLimit } from 'hono/body-limit';
 import { getCookie, setCookie } from 'hono/cookie';
 import type { ContentIndex } from './content/types.js';
 import type { Database } from './db/client.js';
@@ -27,6 +28,38 @@ export function createApp(deps: {
   demo?: { ttlHours: number } | null;
 }) {
   const app = new Hono<ApiEnv>();
+  app.use(
+    '/api/*',
+    bodyLimit({
+      maxSize: 1024 * 1024,
+      onError: (context) => context.json({ error: 'Request body exceeds the 1 MB limit.' }, 413),
+    }),
+  );
+  app.use('/api/*', async (context, next) => {
+    if (!['GET', 'HEAD', 'OPTIONS'].includes(context.req.method)) {
+      const origin = context.req.header('Origin');
+      const site = context.req.header('Sec-Fetch-Site');
+      const requestUrl = new URL(context.req.url);
+      requestUrl.host = context.req.header('Host') ?? requestUrl.host;
+      if (isSecureRequest(context)) requestUrl.protocol = 'https:';
+      if (
+        site === 'cross-site' ||
+        site === 'same-site' ||
+        (site !== 'same-origin' && origin !== undefined && origin !== requestUrl.origin)
+      ) {
+        return context.json({ error: 'Cross-origin writes are not allowed.' }, 403);
+      }
+      if (context.req.raw.body) {
+        try {
+          const body = await context.req.text();
+          if (body.length > 0) await context.req.json();
+        } catch {
+          return context.json({ error: 'Invalid JSON request body.' }, 400);
+        }
+      }
+    }
+    await next();
+  });
   const demo = deps.demo ?? null;
   const auth = createAuth({ db: deps.db, auth: deps.auth, now: deps.authClock, demo });
   if (demo) {

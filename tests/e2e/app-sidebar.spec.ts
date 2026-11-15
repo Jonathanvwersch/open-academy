@@ -531,7 +531,7 @@ test('modified course-row clicks open the course in a new tab without changing e
   const currentUrl = page.url();
   const newPagePromise = context.waitForEvent('page');
   await page.getByRole('link', { name: 'Open Fixture switching course' }).click({
-    modifiers: ['Control'],
+    modifiers: ['ControlOrMeta'],
   });
   const newPage = await newPagePromise;
   await expect(newPage).toHaveURL('/courses/fixture-switching-course');
@@ -592,7 +592,7 @@ test('removing a course keeps its due reviews and Undo restores it', async ({ pa
 });
 
 test('captures multi-course desktop and mobile screenshots', async ({ page }) => {
-  const screenshots = '/home/ubuntu/shots/study-set';
+  const screenshots = 'test-results/screenshots/study-set';
   mkdirSync(screenshots, { recursive: true });
   await page.route('**/api/courses', async (route) => {
     const response = await route.fetch();

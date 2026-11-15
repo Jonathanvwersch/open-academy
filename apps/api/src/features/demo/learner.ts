@@ -1,8 +1,9 @@
 import { randomUUID } from 'node:crypto';
-import { eq, lt } from 'drizzle-orm';
+import { and, eq, lt, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import type { Database } from '../../db/client.js';
 import { users } from '../../db/schema.js';
+import { localDateKey } from '../../learning/xp.js';
 
 export function createDemoLearnerResolver(db: Database, ttlHours: number) {
   let lastCleanup = Number.NEGATIVE_INFINITY;
@@ -12,7 +13,10 @@ export function createDemoLearnerResolver(db: Database, ttlHours: number) {
     const cutoff = new Date(timestamp - ttlHours * 3_600_000);
     const parsedCookie = z.string().uuid().safeParse(input.cookie);
     if (parsedCookie.success) {
-      const [user] = await db.select().from(users).where(eq(users.id, parsedCookie.data));
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(and(eq(users.id, parsedCookie.data), sql`${users.prefs}->>'demo' = 'true'`));
       if (user && user.createdAt >= cutoff) return { user, created: false };
     }
     for (const [ip, attempts] of creations) {
@@ -26,7 +30,9 @@ export function createDemoLearnerResolver(db: Database, ttlHours: number) {
     creations.set(input.ip, attempts);
     if (timestamp - lastCleanup >= 600_000) {
       lastCleanup = timestamp;
-      await db.delete(users).where(lt(users.createdAt, cutoff));
+      await db
+        .delete(users)
+        .where(and(lt(users.createdAt, cutoff), sql`${users.prefs}->>'demo' = 'true'`));
     }
     const [user] = await db
       .insert(users)
@@ -34,8 +40,8 @@ export function createDemoLearnerResolver(db: Database, ttlHours: number) {
         id: randomUUID(),
         displayName: 'Learner',
         timezone: input.timeZone,
-        startDate: input.now.toISOString().slice(0, 10),
-        prefs: { scheduleMinutes: 60 },
+        startDate: localDateKey(input.now, input.timeZone),
+        prefs: { scheduleMinutes: 60, demo: true },
         createdAt: input.now,
       })
       .returning();

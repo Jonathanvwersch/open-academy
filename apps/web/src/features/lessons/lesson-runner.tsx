@@ -76,7 +76,8 @@ export function LessonRunner({
           : step.correct < step.total,
       )
     : [];
-  const starting = useRef(false);
+  const starting = useRef(-1);
+  const [startAttempt, setStartAttempt] = useState(0);
   const visibleProblemId =
     state?.pendingPracticeProblem?.id ??
     state?.pendingProblem?.id ??
@@ -228,8 +229,8 @@ export function LessonRunner({
   );
 
   useEffect(() => {
-    if ((!state || state.needsProgressSync) && !starting.current) {
-      starting.current = true;
+    if ((!state || state.needsProgressSync) && starting.current !== startAttempt) {
+      starting.current = startAttempt;
       setBusy(true);
       void apiFetch(`/api/lessons/${encodeURIComponent(conceptId)}/run`, {
         method: 'POST',
@@ -241,12 +242,10 @@ export function LessonRunner({
           if (!response.ok || !data.run) throw new Error('Could not start this lesson.');
           await updateState(data.run);
         })
-        .catch((cause: unknown) =>
-          setError(cause instanceof Error ? cause.message : 'Could not start this lesson.'),
-        )
+        .catch(() => setError('Could not start this lesson. Check your connection and try again.'))
         .finally(() => setBusy(false));
     }
-  }, [activityId, conceptId, state, updateState]);
+  }, [activityId, conceptId, state, updateState, startAttempt]);
 
   const submit = async (answer: unknown) => {
     const pending = practiceMode ? state?.pendingPracticeProblem : state?.pendingProblem;
@@ -515,7 +514,25 @@ export function LessonRunner({
           label={activityLabel}
           lessonLink={lessonLink}
         />
-        <ThinkingIndicator />
+        {error ? (
+          <div className="space-y-4">
+            <p role="alert" className="text-sm text-destructive">
+              {error}
+            </p>
+            <Button
+              type="button"
+              loading={busy}
+              onClick={() => {
+                setError('');
+                setStartAttempt((attempt) => attempt + 1);
+              }}
+            >
+              Retry
+            </Button>
+          </div>
+        ) : (
+          <ThinkingIndicator />
+        )}
       </section>
     );
 
@@ -690,9 +707,12 @@ export function LessonRunner({
           lesson?.final
             ? finalAnswered || state.status === 'completed'
               ? 'done'
-              : 'upcoming'
+              : state.status === 'quiz'
+                ? 'current'
+                : 'upcoming'
             : undefined
         }
+        readOnly={Boolean(state.quiz.current)}
       />
 
       {warmupMode && shownProblem ? (

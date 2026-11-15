@@ -109,9 +109,9 @@ test('the app ignores demo-pack progress when loading a generated pack', async (
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Choose a course' })).toBeVisible();
   await expect(page.getByRole('heading', { name: courseTitle, exact: true })).toBeVisible();
-  await page.goto('/courses/fixture-course');
+  await page.goto('/courses/generated-pack-basics');
   await expect(page.getByRole('heading', { name: courseTitle, exact: true })).toBeVisible();
   await page.goto('/reviews');
-  await expect(page.getByText('No review topics yet.')).toBeVisible();
+  await expect(page.getByText('No reviews yet. Topics you finish come back here.')).toBeVisible();
   expect(browserErrors).toEqual([]);
 });

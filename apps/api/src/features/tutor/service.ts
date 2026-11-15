@@ -1,7 +1,7 @@
-import { and, count, eq, gte } from 'drizzle-orm';
+import { and, count, eq, gte, ne } from 'drizzle-orm';
 import type { ContentIndex } from '../../content/types.js';
 import type { Database } from '../../db/client.js';
-import { llmCalls } from '../../db/schema.js';
+import { llmCalls, users } from '../../db/schema.js';
 import {
   type TutorPromptId,
   type TutorProvider,
@@ -16,39 +16,29 @@ export function tutorCallAllowed(dailyCount: number, dailyCap: number) {
 }
 
 export function startOfLocalDay(now: Date, timeZone: string): Date {
-  const format = (date: Date) =>
-    Object.fromEntries(
-      new Intl.DateTimeFormat('en-US', {
-        timeZone,
-        year: 'numeric',
-        month: 'numeric',
-        day: 'numeric',
-        hour: 'numeric',
-        minute: 'numeric',
-        second: 'numeric',
-        hourCycle: 'h23',
-      })
-        .formatToParts(date)
-        .map((part) => [part.type, Number(part.value)]),
-    ) as Record<string, number>;
-  const localNow = format(now);
-  const target = Date.UTC(localNow.year, localNow.month - 1, localNow.day);
-  let candidate = target;
-  for (let attempt = 0; attempt < 4; attempt += 1) {
-    const local = format(new Date(candidate));
-    const represented = Date.UTC(
-      local.year,
-      local.month - 1,
-      local.day,
-      local.hour,
-      local.minute,
-      local.second,
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+  });
+  const dateKey = (timestamp: number) => {
+    const parts = Object.fromEntries(
+      formatter.formatToParts(timestamp).map((part) => [part.type, Number(part.value)]),
     );
-    const adjustment = target - represented;
-    candidate += adjustment;
-    if (adjustment === 0) break;
+    return parts.year * 10_000 + parts.month * 100 + parts.day;
+  };
+  const today = dateKey(now.getTime());
+  // Midnight can be skipped by a DST transition. Find the first actual instant
+  // of this local date rather than solving for a wall-clock time that may not exist.
+  let before = now.getTime() - 48 * 60 * 60 * 1000;
+  let within = now.getTime();
+  while (within - before > 1) {
+    const midpoint = before + Math.floor((within - before) / 2);
+    if (dateKey(midpoint) < today) before = midpoint;
+    else within = midpoint;
   }
-  return new Date(candidate);
+  return new Date(within);
 }
 
 export class TutorService {
@@ -75,38 +65,56 @@ export class TutorService {
   ): Promise<{ value?: T; status: 'ok' | 'fallback' | 'budget_exceeded'; callId?: string }> {
     const startedAt = performance.now();
     const promptVersion = tutorPromptVersion(promptId, content);
-    const [daily] = await this.db
-      .select({ value: count() })
-      .from(llmCalls)
-      .where(
-        and(
-          eq(llmCalls.userId, this.userId),
-          gte(llmCalls.createdAt, startOfLocalDay(new Date(), this.timeZone)),
-        ),
+    // Reserve a call before contacting the provider. The learner row serializes
+    // reservations across requests and server instances without holding a lock
+    // while the provider runs.
+    const reservation = await this.db.transaction(async (tx) => {
+      await tx.select({ id: users.id }).from(users).where(eq(users.id, this.userId)).for('update');
+      const [daily] = await tx
+        .select({ value: count() })
+        .from(llmCalls)
+        .where(
+          and(
+            eq(llmCalls.userId, this.userId),
+            gte(llmCalls.createdAt, startOfLocalDay(new Date(), this.timeZone)),
+            ne(llmCalls.status, 'budget_exceeded'),
+          ),
+        );
+      const allowed = tutorCallAllowed(daily?.value ?? 0, this.dailyCap);
+      const callId = await this.record(
+        promptId,
+        promptVersion,
+        allowed ? 'pending' : 'budget_exceeded',
+        null,
+        0,
+        null,
+        tx,
       );
-    if (!tutorCallAllowed(daily?.value ?? 0, this.dailyCap)) {
-      const callId = await this.record(promptId, promptVersion, 'budget_exceeded', null, 0);
-      return { status: 'budget_exceeded', callId };
-    }
+      return { allowed, callId };
+    });
+    const { callId } = reservation;
+    if (!reservation.allowed) return { status: 'budget_exceeded', callId };
     try {
       const result = await call();
-      const callId = await this.record(
-        promptId,
-        promptVersion,
-        'ok',
-        result.usage,
-        Math.round(performance.now() - startedAt),
-      );
+      await this.db
+        .update(llmCalls)
+        .set({
+          status: 'ok',
+          inputTokens: result.usage?.inputTokens ?? null,
+          outputTokens: result.usage?.outputTokens ?? null,
+          latencyMs: Math.round(performance.now() - startedAt),
+        })
+        .where(eq(llmCalls.id, callId));
       return { value: result.value, status: 'ok', callId };
     } catch (error) {
-      const callId = await this.record(
-        promptId,
-        promptVersion,
-        'fallback',
-        null,
-        Math.round(performance.now() - startedAt),
-        error instanceof Error ? error.name : 'ProviderError',
-      );
+      await this.db
+        .update(llmCalls)
+        .set({
+          status: 'fallback',
+          latencyMs: Math.round(performance.now() - startedAt),
+          error: error instanceof Error ? error.name : 'ProviderError',
+        })
+        .where(eq(llmCalls.id, callId));
       return { status: 'fallback', callId };
     }
   }
@@ -114,12 +122,13 @@ export class TutorService {
   private async record(
     promptId: TutorPromptId,
     promptVersion: string,
-    status: 'ok' | 'fallback' | 'budget_exceeded',
+    status: 'pending' | 'budget_exceeded',
     usage: TutorUsage | null,
     latencyMs: number,
     error: string | null = null,
+    db: Pick<Database, 'insert'> = this.db,
   ) {
-    const [row] = await this.db
+    const [row] = await db
       .insert(llmCalls)
       .values({
         userId: this.userId,
@@ -135,6 +144,6 @@ export class TutorService {
         error,
       })
       .returning({ id: llmCalls.id });
-    return row?.id;
+    return row.id;
   }
 }

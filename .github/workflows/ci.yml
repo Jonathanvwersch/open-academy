@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Install locked dependencies
+        run: pnpm bootstrap
+      - name: Install Python lab dependencies
+        shell: bash
+        run: |
+          python3 -m venv .venv
+          .venv/bin/python -m pip install 'torch>=2.2,<3' --index-url https://download.pytorch.org/whl/cpu
+          requirements=()
+          for requirements_file in labs/*/requirements.txt; do
+            requirements+=(-r "$requirements_file")
+          done
+          .venv/bin/python -m pip install "${requirements[@]}"
+          echo "$GITHUB_WORKSPACE/.venv/bin" >> "$GITHUB_PATH"
+      - name: Check repository
+        run: pnpm check
+      - name: Run unit and API tests
+        run: pnpm test
+      - name: Build both apps
+        run: pnpm build
+      - name: Install browser
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Run browser tests
+        run: pnpm test:e2e
+      - name: Test authored curriculum journeys
+        env:
+          PLAYWRIGHT_CONTENT_DIR: content
+        run: >-
+          pnpm exec playwright test
+          tests/e2e/final-question-repeat.spec.ts
+          tests/e2e/probability-basics.spec.ts
+          tests/e2e/lesson-prerequisites.spec.ts
+          tests/e2e/session-cleanup.spec.ts
+          tests/e2e/lesson-runner.spec.ts
+          tests/e2e/learn-course.spec.ts
+          tests/e2e/placement.spec.ts
+          --grep 'continuing a final question|Probability basics real-content|full lesson shows recap facts|session lesson shows recap facts|course shows an unpassed|loss functions shows its authored|legacy lesson review presents|lesson prose fills|authored course-structure|real-content results keep'
+      - name: Test a generated course pack
+        run: pnpm test:e2e:generated-pack
+      - name: Upload browser failure details
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: browser-failure-details
+          path: |
+            test-results/
+            playwright-report/
+          if-no-files-found: ignore
+          retention-days: 7

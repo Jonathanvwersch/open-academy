@@ -30,6 +30,7 @@ import { authQueryOptions } from '../features/auth/queries.js';
 import { coursesQueryOptions } from '../features/course/queries.js';
 import { reviewsQueryOptions } from '../features/reviews/queries.js';
 import { TutorContextProvider } from '../features/tutor/tutor-sidebar.js';
+import { readBrowserStorage, writeBrowserStorage } from '../lib/browser-storage.js';
 import { useCurrentCourseId } from '../lib/current-course.js';
 
 const SIDEBAR_STORAGE_KEY = 'academy.app-sidebar.open';
@@ -47,14 +48,14 @@ function isActive(pathname: string, to: string) {
 }
 
 function initialSidebarOpen() {
-  return localStorage.getItem(SIDEBAR_STORAGE_KEY) !== 'false';
+  return readBrowserStorage('localStorage', SIDEBAR_STORAGE_KEY) !== 'false';
 }
 
 function useAppSidebarOpenState() {
   const [sidebarOpen, setSidebarOpen] = useState(initialSidebarOpen);
   const updateSidebarOpen = useCallback((open: boolean) => {
     setSidebarOpen(open);
-    localStorage.setItem(SIDEBAR_STORAGE_KEY, String(open));
+    writeBrowserStorage('localStorage', SIDEBAR_STORAGE_KEY, String(open));
   }, []);
   return { sidebarOpen, updateSidebarOpen };
 }

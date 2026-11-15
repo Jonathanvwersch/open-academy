@@ -1316,6 +1316,16 @@ test('a missing optional explain point keeps a review answer correct and rates t
   const authoredContent = await loadContent('content');
   const exercise = authoredContent.exercisesById.get('gd-explain-lr');
   if (exercise?.type !== 'explain') throw new Error('Missing gradient-descent explain exercise');
+  // Optional-point behavior needs an explicit fixture, independent of authored rubric revisions.
+  exercise.rubric = [
+    ...['r1', 'r2', 'r3'].map((id) => ({
+      id,
+      criterion: `Required point ${id}.`,
+      weight: 1,
+      required: true,
+    })),
+    { id: 'r4', criterion: 'Optional context.', weight: 1, required: false },
+  ];
   const [session] = await db
     .insert(studySessions)
     .values({ userId, plannedMinutes: 15, status: 'active', kind: 'weekday' })

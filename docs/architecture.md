@@ -11,13 +11,14 @@ scheduling rules. Cross-app types belong in contracts, pure shared behavior in s
 exports and declared workspace dependencies define the public boundary.
 
 `pnpm check` runs architecture checks, Biome, workspace types, curriculum validation and the
-checker's tests, without a database or provider keys. `pnpm test:unit` runs database-free suites;
-`pnpm test` also starts PostgreSQL and runs API integration suites. Playwright journeys and shared
-cross-app fixtures remain under root `tests/e2e` and `tests/fixtures`.
+checker and tooling tests, without a database or provider keys. `pnpm test:unit` runs database-free
+suites; `pnpm test` also starts PostgreSQL and runs API integration suites. Playwright journeys and
+shared cross-app fixtures remain under root `tests/e2e` and `tests/fixtures`.
 
 `pnpm bootstrap` installs dependencies and configures this checkout's Git hooks. The pre-commit
 hook runs architecture and lint checks without rewriting the working tree or index. Hooks remain
-bypassable; agents must run checks and relevant tests before handoff. CI is outside this setup.
+bypassable; agents must run checks and relevant tests before handoff. GitHub Actions runs the
+checks, unit and API suites, production build, and browser journeys on pushes and pull requests.
 
 `scripts/architecture/policy.mjs` lists public feature modules and deployment exceptions. The
 checker resolves imports, aliases, re-exports, dynamic imports and type imports, rejecting cycles

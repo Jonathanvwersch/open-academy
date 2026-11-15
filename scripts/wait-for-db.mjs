@@ -1,5 +1,7 @@
 import { spawnSync } from 'node:child_process';
+import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
+import { fileURLToPath } from 'node:url';
 
 export async function waitForDatabase() {
   const deadline = Date.now() + 60_000;
@@ -20,8 +22,9 @@ export async function waitForDatabase() {
         '-d',
         'academy',
       ],
-      { stdio: 'ignore' },
+      { stdio: 'ignore', timeout: 5_000 },
     );
+    if (result.error) throw result.error;
     if (result.status === 0) {
       return;
     }
@@ -29,4 +32,8 @@ export async function waitForDatabase() {
   }
 
   throw new Error('PostgreSQL did not become ready within 60 seconds');
+}
+
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  await waitForDatabase();
 }

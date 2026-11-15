@@ -20,11 +20,16 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    env_file:
-      - .env
     environment:
       DATABASE_URL: postgres://academy:academy@db:5432/academy
       PORT: "3001"
+      # Pass secrets from the invoking environment; production validates the password.
+      ACADEMY_PASSWORD:
+      OPENAI_API_KEY:
+      OPENAI_MODEL: "${OPENAI_MODEL:-gpt-6.1-terra}"
+      TUTOR_DAILY_CALL_CAP: "${TUTOR_DAILY_CALL_CAP:-200}"
+      ACADEMY_DEMO: "${ACADEMY_DEMO:-0}"
+      ACADEMY_DEMO_TTL_HOURS: "${ACADEMY_DEMO_TTL_HOURS:-24}"
       # Uncomment with the volume below to use a mounted pack.
       # CONTENT_DIR: /pack
     ports:

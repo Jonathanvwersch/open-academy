@@ -553,7 +553,7 @@ test('lesson course context links to its course and highlights the sidebar', asy
   await expect(line.getByRole('link')).toHaveAttribute('href', '/courses/fixture-course');
   const sidebarCourse = page.getByRole('navigation').getByRole('link', { name: /Fixture course/ });
   await expect(sidebarCourse).toHaveAttribute('data-active', 'true');
-  const dir = '/home/ubuntu/screens/lesson-course';
+  const dir = 'test-results/screenshots/lesson-course';
   mkdirSync(dir, { recursive: true });
   await page.screenshot({ path: `${dir}/session-desktop.png` });
   await page.setViewportSize({ width: 390, height: 844 });
@@ -1397,7 +1397,7 @@ test('asking the tutor does not block a correct answer from completing the step'
     tutor.getByTestId('tutor-assistant-message').filter({ hasText: `Tutor reply to: ${question}` }),
   ).toBeVisible();
   await page.getByText('Step complete', { exact: true }).scrollIntoViewIfNeeded();
-  await page.screenshot({ path: '/tmp/academy-streak-assisted.png', fullPage: false });
+  await page.screenshot({ path: 'test-results/academy-streak-assisted.png', fullPage: false });
   run = await nextProblemAndReload(page);
   run = await answerAndReload(page, true);
   expect(run.points[0]).toMatchObject({ status: 'passed', streak: 2 });
@@ -1625,15 +1625,13 @@ test('a legacy v1 learn activity resumes through the KP runner and final questio
   await expect(page.getByTestId('lesson-steps-complete')).toBeVisible();
   await page.getByRole('button', { name: 'Continue' }).click();
   await expect(page.locator('section > header h2')).toHaveText('Explain it in your own words');
-  await expect(page.getByTestId('explain-memory-note')).toHaveText(
-    "Write it from memory, without looking back at the steps. It isn't part of the quiz score.",
-  );
+  await expect(page.getByTestId('explain-memory-note')).toHaveCount(0);
   await expect(page.getByRole('link', { name: 'View full lesson' })).toHaveCount(0);
   const stepChips = page.getByTestId('lesson-step-chip');
   await expect(stepChips).not.toHaveCount(0);
   for (const stepChip of await stepChips.all()) {
     await expect(stepChip).toHaveText(/^✓ Step \d+$/);
-    await expect(stepChip.locator('button')).toHaveCount(0);
+    await expect(stepChip.locator('button')).toHaveCount(1);
   }
   const explainChip = page.getByTestId('lesson-explain-chip');
   await expect(explainChip).toHaveAttribute('aria-label', 'Explain it, current');

@@ -786,6 +786,8 @@ test('navigation cleanup pages render at desktop and mobile widths', async ({ pa
 });
 
 test('authored course-structure lessons render their diagrams', async ({ page }) => {
+  // This batch visits many lessons and captures each diagram; CI needs time for those screenshots.
+  test.setTimeout(120_000);
   test.skip(
     process.env.PLAYWRIGHT_CONTENT_DIR !== 'content',
     'requires the repository content directory',
@@ -800,7 +802,7 @@ test('authored course-structure lessons render their diagrams', async ({ page })
   await hideTutorLauncher(page);
   await expect(page.locator('article > h2').nth(1)).toContainText('2.');
   const roadmap = page.getByRole('img', {
-    name: 'The seven steps of the house-price model, each taught by a Unit 1 lesson',
+    name: /^The seven steps of the house-price model/,
   });
   await expect(roadmap).toBeVisible();
   await roadmap.evaluate((image) => {

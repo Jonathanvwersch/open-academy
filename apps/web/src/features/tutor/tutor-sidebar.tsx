@@ -49,6 +49,7 @@ import {
 import { Skeleton } from '../../components/ui/skeleton.js';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../../components/ui/tooltip.js';
 import { useIsMobile } from '../../hooks/use-mobile.js';
+import { readBrowserStorage, writeBrowserStorage } from '../../lib/browser-storage.js';
 import {
   tutorStatusQueryOptions,
   tutorThreadQueryOptions,
@@ -116,7 +117,7 @@ function clampSidebarWidth(width: number, viewportWidth = window.innerWidth) {
 }
 
 function initialSidebarWidth() {
-  const storedWidth = localStorage.getItem(WIDTH_KEY);
+  const storedWidth = readBrowserStorage('localStorage', WIDTH_KEY);
   if (storedWidth === null || !storedWidth.trim()) {
     return clampSidebarWidth(DEFAULT_SIDEBAR_WIDTH);
   }
@@ -208,10 +209,12 @@ export function TutorContextProvider({
   });
   const contextRef = useRef(context);
   contextRef.current = context;
-  const [open, setOpen] = useState(() => localStorage.getItem(OPEN_KEY) === 'true');
-  const [selectedId, setSelectedId] = useState(() => localStorage.getItem(THREAD_KEY) || '');
+  const [open, setOpen] = useState(() => readBrowserStorage('localStorage', OPEN_KEY) === 'true');
+  const [selectedId, setSelectedId] = useState(
+    () => readBrowserStorage('localStorage', THREAD_KEY) || '',
+  );
   const [view, setView] = useState<'list' | 'conversation'>(() =>
-    localStorage.getItem(THREAD_KEY) ? 'conversation' : 'list',
+    readBrowserStorage('localStorage', THREAD_KEY) ? 'conversation' : 'list',
   );
   const [newChatSelected, setNewChatSelected] = useState(false);
   const [greeting, setGreeting] = useState<{ text: string; threadId: string | null } | null>(null);
@@ -244,11 +247,11 @@ export function TutorContextProvider({
       open && view === 'conversation' && !!selectedId && enabled && context.allowed && routeAllowed,
   });
   useEffect(() => {
-    localStorage.setItem(OPEN_KEY, String(open));
+    writeBrowserStorage('localStorage', OPEN_KEY, String(open));
   }, [open]);
   useEffect(() => {
-    if (selectedId) localStorage.setItem(THREAD_KEY, selectedId);
-    else localStorage.removeItem(THREAD_KEY);
+    if (selectedId) writeBrowserStorage('localStorage', THREAD_KEY, selectedId);
+    else writeBrowserStorage('localStorage', THREAD_KEY, null);
   }, [selectedId]);
   useEffect(() => {
     const handleResize = () => {
@@ -524,7 +527,7 @@ export function TutorContextProvider({
     if (!start || start.pointerId !== event.pointerId) return;
     const width = clampSidebarWidth(start.startWidth + start.startX - event.clientX);
     setSidebarWidth(width);
-    localStorage.setItem(WIDTH_KEY, String(Math.round(width)));
+    writeBrowserStorage('localStorage', WIDTH_KEY, String(Math.round(width)));
     resizeStart.current = null;
     setIsResizing(false);
   };
@@ -540,12 +543,12 @@ export function TutorContextProvider({
     event.preventDefault();
     const width = clampSidebarWidth(sidebarWidth + (event.key === 'ArrowLeft' ? 16 : -16));
     setSidebarWidth(width);
-    localStorage.setItem(WIDTH_KEY, String(Math.round(width)));
+    writeBrowserStorage('localStorage', WIDTH_KEY, String(Math.round(width)));
   };
   const resetSidebarWidth = () => {
     const width = clampSidebarWidth(DEFAULT_SIDEBAR_WIDTH);
     setSidebarWidth(width);
-    localStorage.setItem(WIDTH_KEY, String(Math.round(width)));
+    writeBrowserStorage('localStorage', WIDTH_KEY, String(Math.round(width)));
   };
   return (
     <SidebarProvider
@@ -800,6 +803,15 @@ export function TutorContextProvider({
                                 ? detail.error.message
                                 : 'Tutor conversation could not be loaded.'}
                             </AlertDescription>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              loading={detail.isFetching}
+                              onClick={() => void detail.refetch()}
+                            >
+                              Retry
+                            </Button>
                           </Alert>
                         ) : null}
                         {showGreeting && greeting ? (
@@ -906,7 +918,11 @@ export function TutorContextProvider({
                         value={draft}
                         onChange={(event) => setDraft(event.target.value)}
                         onKeyDown={(event) => {
-                          if (event.key === 'Enter' && !event.shiftKey) {
+                          if (
+                            event.key === 'Enter' &&
+                            !event.shiftKey &&
+                            !event.nativeEvent.isComposing
+                          ) {
                             event.preventDefault();
                             send();
                           }

@@ -1,13 +1,18 @@
+import argparse
 from pathlib import Path
 import shutil
 
-root = Path(__file__).parent
-work = root / "work"
-work.mkdir(parents=True, exist_ok=True)
-for name in ("linreg.py", "plot.py"):
+
+ROOT = Path(__file__).resolve().parent
+parser = argparse.ArgumentParser(description="Copy starter files without replacing learner work.")
+parser.add_argument("--force", action="store_true", help="Replace existing learner files with the starter.")
+args = parser.parse_args()
+work = ROOT / "work"
+work.mkdir(exist_ok=True)
+for name in ['linreg.py', 'plot.py']:
     destination = work / name
-    if destination.exists():
-        print(f"Kept existing work file at {destination}")
-    else:
-        shutil.copy2(root / "starter" / name, destination)
-        print(f"Copied starter to {destination}")
+    if destination.exists() and not args.force:
+        print(f"Keeping existing {destination}; use --force to replace it.")
+        continue
+    shutil.copy2(ROOT / "starter" / name, destination)
+    print(f"Copied starter implementation to {destination}")

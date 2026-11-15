@@ -11,7 +11,10 @@ export function scoreRubricCriteria(
   judgements: ReadonlyMap<string, RubricJudgementValue>,
 ): number {
   if (
-    rubric.some((criterion) => criterion.required && judgements.get(criterion.id) === 'missing')
+    rubric.some(
+      (criterion) =>
+        criterion.required && (judgements.get(criterion.id) ?? 'missing') === 'missing',
+    )
   ) {
     return 0;
   }

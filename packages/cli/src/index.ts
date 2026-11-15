@@ -158,6 +158,14 @@ function conceptFileForDomain(directory: string, domain: string): string {
   return indexedFile;
 }
 
+function courseFileForId(directory: string, courseId: string): string {
+  for (const file of walkYaml(join(directory, 'courses'))) {
+    const course = parse(readFileSync(file, 'utf8')) as { id?: string };
+    if (course.id === courseId) return file;
+  }
+  fail(`Could not find course "${courseId}" in courses/*.yaml.`);
+}
+
 function requirePack(directory: string): void {
   if (!existsSync(join(directory, 'curriculum.yaml'))) {
     fail(`No course pack at ${directory} (missing curriculum.yaml).`);
@@ -353,7 +361,7 @@ async function newTopic(
     writeYaml(conceptFile, { domain, concepts: [concept] });
   }
   if (courseId && unit) {
-    const courseFile = join(directory, 'courses', `${courseId}.yaml`);
+    const courseFile = courseFileForId(directory, courseId);
     const source = editYaml(courseFile, (document) => {
       const units = document.get('units', true);
       if (!isSeq(units)) fail(`Expected units sequence in ${courseFile}.`);
@@ -373,6 +381,9 @@ async function newLesson(topicId: string, directory: string) {
   const concept = content.conceptsById.get(topicId);
   if (!concept) fail(`Unknown topic "${topicId}".`);
   if (content.lessonsByConcept.has(topicId)) fail(`Lesson for "${topicId}" already exists.`);
+  if (existsSync(join(directory, 'lessons', `${topicId}.yaml`))) {
+    fail(`Refusing to overwrite existing lesson file: ${topicId}.yaml`);
+  }
   const usedExerciseIds = new Set(content.exercisesById.keys());
   function uniqueExerciseId(baseId: string): string {
     let id = baseId;
@@ -499,11 +510,14 @@ async function newCourse(id: string, title: string, directory: string) {
   if (!title.trim()) fail('Pass a non-empty --title.');
   const content = await loadPack(directory);
   if (content.coursesById.has(id)) fail(`Course "${id}" already exists.`);
+  if (existsSync(join(directory, 'courses', `${id}.yaml`))) {
+    fail(`Refusing to overwrite existing course file: ${id}.yaml`);
+  }
   const domain = content.curriculum?.domains[0]?.id;
   if (!domain) fail('The curriculum must define a domain.');
   const placeholderId = `${id}-first-topic`;
   if (!content.conceptsById.has(placeholderId)) {
-    const conceptFile = join(directory, 'concepts', `${domain}.yaml`);
+    const conceptFile = conceptFileForDomain(directory, domain);
     const concept = {
       id: placeholderId,
       title: `${title} topic`,
@@ -573,6 +587,15 @@ async function addSource(
   if (entries.some((source) => source.id === id)) fail(`Source "${id}" already exists.`);
   const target = join(directory, 'sources', filename);
   if (existsSync(target)) fail(`Source file already exists: ${target}`);
+  const ignoreFile = join(directory, 'sources', '.gitignore');
+  const ignoreRules = '*\n!index.yaml\n!.gitignore\n';
+  const existingRules = existsSync(ignoreFile) ? readFileSync(ignoreFile, 'utf8') : '';
+  if (!existingRules.includes(ignoreRules)) {
+    writeFileSync(
+      ignoreFile,
+      `${existingRules}${existingRules.endsWith('\n') || !existingRules ? '' : '\n'}${ignoreRules}`,
+    );
+  }
   copyFileSync(sourceFile, target);
   const entry = {
     id,

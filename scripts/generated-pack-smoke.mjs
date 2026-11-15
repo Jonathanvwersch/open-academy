@@ -25,7 +25,6 @@ try {
         cwd: root,
         env: {
           ...process.env,
-          COMPOSE_PROJECT_NAME: process.env.COMPOSE_PROJECT_NAME ?? 'academy',
           PACK_SMOKE_COURSE_TITLE: `${subjectTitle} basics`,
           PLAYWRIGHT_CONTENT_DIR: contentDirectory,
         },

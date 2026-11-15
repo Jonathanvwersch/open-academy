@@ -12,7 +12,13 @@ type ProjectVerifierResults = {
 function projectEvidenceSummary(
   project: {
     tests: Array<{ id: string }>;
-    metrics: Array<{ id: string; label: string; threshold: number; direction: 'below' | 'above' }>;
+    metrics: Array<{
+      id: string;
+      label: string;
+      threshold: number;
+      direction: 'below' | 'above';
+      inclusive?: boolean;
+    }>;
   },
   results: ProjectVerifierResults,
 ) {
@@ -33,9 +39,20 @@ function projectEvidenceSummary(
       return false;
     }
     const passes =
-      metric.direction === 'below' ? value < metric.threshold : value > metric.threshold;
+      metric.direction === 'below'
+        ? metric.inclusive
+          ? value <= metric.threshold
+          : value < metric.threshold
+        : metric.inclusive
+          ? value >= metric.threshold
+          : value > metric.threshold;
     if (!passes) {
-      failures.push(`${metric.label} (${value}) must be ${metric.direction} ${metric.threshold}.`);
+      const requirement = metric.inclusive
+        ? metric.direction === 'below'
+          ? 'at most'
+          : 'at least'
+        : metric.direction;
+      failures.push(`${metric.label} (${value}) must be ${requirement} ${metric.threshold}.`);
     }
     return passes;
   });

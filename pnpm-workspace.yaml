@@ -3,3 +3,7 @@ packages:
   - packages/*
 allowBuilds:
   esbuild: true
+overrides:
+  # Keep rendered math and the app's stylesheet on the same patched KaTeX release.
+  rehype-katex>katex: 0.18.2
+  micromark-extension-math>katex: 0.18.2

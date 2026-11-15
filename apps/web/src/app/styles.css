@@ -143,6 +143,12 @@ label[for],
   padding: 0;
 }
 
+.math-trailing-punctuation {
+  font-family: var(--font-sans);
+  /* KaTeX scales its root to 1.21em; punctuation keeps the surrounding prose size. */
+  font-size: calc(1em / 1.21);
+}
+
 .katex-display {
   overflow-x: auto;
   overflow-y: hidden;

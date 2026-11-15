@@ -6,6 +6,7 @@ import { loadContent } from '../../src/content/load.js';
 import type { ContentIndex, IndexedExercise } from '../../src/content/types.js';
 import { createDb } from '../../src/db/client.js';
 import {
+  attempts,
   courseEnrollments,
   diagnosticRuns,
   lessonRuns,
@@ -599,4 +600,28 @@ test('placement results keep their first topic after switching courses', async (
     app = originalApp;
     content = originalContent;
   }
+});
+
+test('concurrent placement starts reuse one active run', async () => {
+  const responses = await Promise.all(
+    Array.from({ length: 5 }, () => post('/placement', { courseId: 'fixture-course' })),
+  );
+  const payloads = await Promise.all(responses.map((response) => response.json()));
+  expect(new Set(payloads.map((payload) => payload.id)).size).toBe(1);
+  const runs = await db.select().from(diagnosticRuns).where(eq(diagnosticRuns.userId, userId));
+  expect(runs).toHaveLength(1);
+});
+
+test('concurrent duplicate placement answers record one item', async () => {
+  const run = await (await post('/placement', { courseId: 'fixture-course' })).json();
+  const question = await (await get(`/placement/${run.id}/next`)).json();
+  const responses = await Promise.all(
+    Array.from({ length: 5 }, () =>
+      post(`/placement/${run.id}/answer`, { exerciseId: question.exercise.id, dontKnow: true }),
+    ),
+  );
+  expect(responses.filter((response) => response.status === 200)).toHaveLength(1);
+  expect(responses.filter((response) => response.status === 409)).toHaveLength(4);
+  const recorded = await db.select().from(attempts).where(eq(attempts.userId, userId));
+  expect(recorded).toHaveLength(1);
 });

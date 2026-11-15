@@ -185,6 +185,9 @@ metrics: [{ id: val_mse, label: "Validation MSE", threshold: 0.3, direction: bel
 reflection: [ex-id, ...]     # exercise ids asked after submission
 follow_up: ["..."]
 ```
+Metrics use strict `above` or `below` comparisons by default. Set `inclusive: true` on a
+metric when equality should pass, for example an accuracy requirement of at least 90%.
+
 Lab code lives in `labs/<project-id>/` (starter/, tests/, README.md); `labs/verify.py <project-id>` writes `labs/<project-id>/work/results.json`:
 `{ "project": id, "version": 1, "tests": [{ "id", "passed", "message" }], "metrics": { id: number }, "generated_at": iso }`.
 

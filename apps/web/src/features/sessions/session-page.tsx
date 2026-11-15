@@ -2,14 +2,15 @@ import type { AnswerOptions, AttemptResponse } from '@academy/contracts/exercise
 import type { SessionActivity } from '@academy/contracts/sessions';
 import { useQueries, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { getRouteApi, Link, useNavigate } from '@tanstack/react-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { apiFetch } from '../../api/authenticated-fetch.js';
 import { Markdown } from '../../components/markdown.js';
 import { SessionSkeleton } from '../../components/skeletons.js';
+import { ThinkingIndicator } from '../../components/thinking-indicator.js';
 import { Alert, AlertDescription } from '../../components/ui/alert.js';
 import { Button } from '../../components/ui/button.js';
 import { Card, CardContent } from '../../components/ui/card.js';
-import { Skeleton } from '../../components/ui/skeleton.js';
+import { readBrowserStorage, writeBrowserStorage } from '../../lib/browser-storage.js';
 import { invalidateSidebarQueries, learnQueryOptions } from '../course/queries.js';
 import { ExerciseForm } from '../exercises/exercise-form.js';
 import { FeedbackPanel, FinalRetryNote, isFinalRetryResult } from '../exercises/feedback-panel.js';
@@ -71,7 +72,16 @@ export function SessionPage() {
   const [endingSession, setEndingSession] = useState(false);
   const [endSessionError, setEndSessionError] = useState('');
   const [markingLessonViewed, setMarkingLessonViewed] = useState(false);
+  const [stepRecap, setStepRecap] = useState<{ activityId: string; pointId: string } | null>(null);
   const hintButton = useRef<HTMLButtonElement>(null);
+  const questionFrame = useRef<HTMLDivElement>(null);
+  const questionContent = useRef<HTMLDivElement>(null);
+  const lastQuestionLayout = useRef<{ width: number; height: number; kind: string } | null>(null);
+  const [questionLayout, setQuestionLayout] = useState<{
+    key: string;
+    width: number;
+    height: number;
+  } | null>(null);
   const [timeAnchor, setTimeAnchor] = useState<{ serverTime: number; clientTime: number } | null>(
     null,
   );
@@ -166,11 +176,76 @@ export function SessionPage() {
     ),
   );
   const lesson = lessonQuery.data;
+  const recapPoint =
+    stepRecap?.activityId === activity?.id &&
+    activity?.kind === 'learn' &&
+    lesson?.final === exerciseId &&
+    lessonRunsByConcept
+      .get(activity.conceptId ?? '')
+      ?.points.some((point) => point.id === stepRecap?.pointId && point.status === 'passed')
+      ? lesson?.knowledge_points?.find((point) => point.id === stepRecap?.pointId)
+      : undefined;
   const lessonRunnerActive = usesLessonRunner(activity, lesson);
   const exerciseQuery = useQuery({
     ...exerciseQueryOptions(lessonRunnerActive ? null : (exerciseId ?? null)),
     throwOnError: true,
   });
+  const questionLayoutKey = activity && exerciseId ? `${activity.id}:${exerciseId}` : '';
+  useLayoutEffect(() => {
+    const frame = questionFrame.current;
+    if (!frame || !questionLayoutKey || lessonRunnerActive) return;
+    const content =
+      !exerciseQuery.isPending &&
+      !currentResult &&
+      !recapPoint &&
+      !hints.length &&
+      !submitError &&
+      !tutorUnavailable
+        ? questionContent.current
+        : null;
+    let active = true;
+    const update = () => {
+      if (!active || !frame.isConnected || frame.getBoundingClientRect().width <= 0) return;
+      const width = Math.round(frame.getBoundingClientRect().width);
+      const previous = lastQuestionLayout.current;
+      setQuestionLayout((current) => {
+        if (current?.key === questionLayoutKey && current.width === width) return current;
+        return previous?.width === width && previous.kind === activity?.kind
+          ? { key: questionLayoutKey, width, height: previous.height }
+          : null;
+      });
+      // The minimum lives on the outer card, so its inner content remains an
+      // intrinsic measurement. Never record feedback or carry an imposed floor forward.
+      if (content && content.getBoundingClientRect().height > 0) {
+        lastQuestionLayout.current = {
+          width,
+          height: content.getBoundingClientRect().height,
+          kind: activity?.kind ?? '',
+        };
+      }
+    };
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(frame);
+    if (content) observer.observe(content);
+    void document.fonts.ready.then(update);
+    return () => {
+      active = false;
+      observer.disconnect();
+    };
+  }, [
+    activity?.kind,
+    currentResult,
+    exerciseQuery.isPending,
+    hints.length,
+    lessonRunnerActive,
+    questionLayoutKey,
+    recapPoint,
+    submitError,
+    tutorUnavailable,
+  ]);
+  const questionMinHeight =
+    questionLayout?.key === questionLayoutKey ? questionLayout.height : undefined;
   const activityScrollKey = activity
     ? `${activity.id}:${activity.progress?.lessonViewed ?? ''}`
     : '';
@@ -207,15 +282,20 @@ export function SessionPage() {
           )
         : 0;
     const key = `replanned:${id}`;
-    if (elapsed > session.plannedMinutes * 1.3 && !window.sessionStorage.getItem(key)) {
-      window.sessionStorage.setItem(key, 'true');
+    if (elapsed > session.plannedMinutes * 1.3 && !readBrowserStorage('sessionStorage', key)) {
+      writeBrowserStorage('sessionStorage', key, 'true');
       void apiFetch(`/api/sessions/${id}/replan`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           remainingBudgetMinutes: Math.max(0, session.plannedMinutes - elapsed),
         }),
-      }).then(() => queryClient.invalidateQueries({ queryKey: ['session', id] }));
+      })
+        .then((response) => {
+          if (!response.ok) throw new Error('Replan failed');
+          return queryClient.invalidateQueries({ queryKey: ['session', id] });
+        })
+        .catch(() => writeBrowserStorage('sessionStorage', key, null));
     }
   }, [clock, id, queryClient, sessionQuery.data, timeAnchor]);
   useEffect(() => {
@@ -229,7 +309,8 @@ export function SessionPage() {
       conceptId: activity.conceptId ?? undefined,
       conceptTitle: activity.conceptTitle ?? undefined,
       activityId: activity.id,
-      exerciseId,
+      exerciseId: recapPoint ? undefined : exerciseId,
+      knowledgePointId: recapPoint?.id,
       questionLabel:
         activity.kind === 'learn' && lesson?.final === exerciseId
           ? 'Explain it'
@@ -237,7 +318,9 @@ export function SessionPage() {
             ? `Question ${activity.exerciseIds.indexOf(exerciseId) + 1} of ${activity.exerciseIds.length}`
             : undefined,
       page: 'session',
-      pageLabel: activity.conceptTitle ?? undefined,
+      pageLabel: recapPoint
+        ? `${activity.conceptTitle} · ${recapPoint.title}`
+        : (activity.conceptTitle ?? undefined),
       allowed,
       enabled: sessionQuery.data.tutorEnabled,
     });
@@ -247,6 +330,7 @@ export function SessionPage() {
     exerciseId,
     lesson?.final,
     lessonRunnerActive,
+    recapPoint,
     sessionQuery.data.tutorEnabled,
     tutorSidebar,
   ]);
@@ -450,10 +534,20 @@ export function SessionPage() {
   }, [activity, currentResult, exerciseId, id, queryClient]);
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      if (
+        recapPoint ||
+        event.defaultPrevented ||
+        event.isComposing ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.altKey
+      )
+        return;
       const target = event.target;
       if (
         target instanceof HTMLElement &&
-        (['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) ||
+        (target.isContentEditable ||
+          ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) ||
           ['radio', 'checkbox', 'combobox'].includes(target.getAttribute('role') ?? ''))
       ) {
         return;
@@ -470,7 +564,7 @@ export function SessionPage() {
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [continueNext, currentResult]);
+  }, [continueNext, currentResult, recapPoint]);
   const continueLessonRunner = async (_status: 'quiz' | 'completed', stage: 'final' | 'done') => {
     if (!activity) return;
     const finalQuestionPending =
@@ -634,6 +728,7 @@ export function SessionPage() {
   if (lessonRunnerActive && activity?.kind === 'learn' && activity.conceptId) {
     return (
       <LessonRunner
+        key={activity.id}
         conceptId={activity.conceptId}
         activityId={activity.id}
         sessionId={id}
@@ -743,154 +838,186 @@ export function SessionPage() {
         title={activityTitle}
         label={activityLabel}
         lessonLink={isExplainQuestion && canSubmitAnswer ? undefined : lessonLink}
-        subtitle={isExplainQuestion ? 'Explain it in your own words' : undefined}
+        subtitle={
+          recapPoint?.title ?? (isExplainQuestion ? 'Explain it in your own words' : undefined)
+        }
       />
       {explainRun ? (
         <LessonSteps
           state={explainRun}
-          viewingPastStep={false}
-          viewingPointId={null}
+          viewingPastStep={Boolean(recapPoint)}
+          viewingPointId={recapPoint?.id ?? null}
           currentPointId={explainRun.currentPointId ?? undefined}
-          viewStep={() => {}}
-          returnToCurrentStep={() => {}}
+          viewStep={(pointId) => {
+            if (
+              !explainRun.points.some((point) => point.id === pointId && point.status === 'passed')
+            )
+              return;
+            setStepRecap({ activityId: activity.id, pointId });
+            window.scrollTo({ top: 0 });
+          }}
+          returnToCurrentStep={() => {
+            setStepRecap(null);
+            window.scrollTo({ top: 0 });
+          }}
           explain="current"
-          readOnly
         />
       ) : null}
-      {progressError ? (
-        <p role="alert" className="text-sm text-destructive">
-          {progressError}
-        </p>
+      {recapPoint ? (
+        <section data-testid="explain-step-recap" className="space-y-4">
+          <Button
+            type="button"
+            onClick={() => {
+              setStepRecap(null);
+              window.scrollTo({ top: 0 });
+            }}
+          >
+            Back to Explain it
+          </Button>
+          <div data-testid="lesson-step-content" className="space-y-4">
+            <Markdown>{recapPoint.explain}</Markdown>
+            <LessonBlock kind="worked" md={recapPoint.worked} />
+          </div>
+        </section>
       ) : null}
-      {exerciseId && exerciseQuery.isPending ? (
-        <Card
-          data-testid="question-loading"
-          role="status"
-          aria-label="Loading question"
-          aria-busy="true"
-        >
-          <CardContent className="flex min-h-[36rem] flex-col gap-5 sm:min-h-[26rem]">
-            <QuestionProgress states={questionStates} />
-            <div className="space-y-2" aria-hidden="true">
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-11/12" />
-              <Skeleton className="h-4 w-2/3" />
-            </div>
-            <div className="h-24 rounded-md border" aria-hidden="true" />
-            <Skeleton className="mt-auto h-10 w-48 max-w-full" />
-            <span className="sr-only">Loading question</span>
-          </CardContent>
-        </Card>
-      ) : exerciseQuery.data ? (
-        <Card data-testid="session-exercise" data-exercise-container="">
-          <CardContent className="space-y-5">
-            <QuestionProgress states={questionStates} />
-            {isExplainQuestion ? (
-              <p data-testid="explain-memory-note" className="text-sm text-muted-foreground">
-                Write it from memory, without looking back at the steps. It isn&apos;t part of the
-                quiz score.
-              </p>
-            ) : null}
-            <div data-testid="exercise-prompt">
-              <Markdown>{exerciseQuery.data.prompt}</Markdown>
-            </div>
-            <ExerciseForm
-              key={`${activity.id}:${exerciseId}`}
-              exercise={exerciseQuery.data}
-              onSubmit={submitAnswer}
-              explainStep={
-                currentResult?.status === 'self_check_required' ? 'self-check' : 'answer'
-              }
-              readOnlyAnswer={
-                typeof currentResult?.yourAnswer === 'string' ? currentResult.yourAnswer : undefined
-              }
-              submittedAnswer={currentResult?.yourAnswer}
-              answerOptions={currentResult?.answerOptions as AnswerOptions | undefined}
-              locked={!canSubmitAnswer && currentResult?.status !== 'invalid'}
-              submitLabel={submitLabel}
-              primaryAction={
-                !canSubmitAnswer
-                  ? { label: 'Continue', onClick: () => void continueNext(), loading: continuing }
-                  : undefined
-              }
-              loading={submittingAnswer}
-              actions={helpActions}
-            />
-            {submitError ? (
-              <p role="alert" className="text-sm text-destructive">
-                {submitError}
-              </p>
-            ) : null}
-            {currentResult && currentResult.status !== 'invalid' ? (
-              <FeedbackPanel
-                result={currentResult}
-                hideAnswerLines={['mc', 'debug', 'explain'].includes(exerciseQuery.data.type)}
-              />
-            ) : null}
-            {isFinalRetryResult(currentResult) ? <FinalRetryNote /> : null}
-            {currentResult?.status === 'invalid' ? (
-              <Alert variant="destructive">
-                <AlertDescription>
-                  <Markdown inline>{String(currentResult.feedback)}</Markdown>
-                </AlertDescription>
-              </Alert>
-            ) : null}
-            {hints.length || tutorUnavailable ? (
-              <div className="space-y-3">
-                {hints.map((hint) => (
-                  <div key={hint.level} className="rounded-lg bg-muted p-4 text-sm">
-                    <p className="font-medium">
-                      {hint.revealedSolution ? 'Solution' : `Hint ${hint.level}`}
-                    </p>
-                    <Markdown>{hint.text}</Markdown>
-                  </div>
-                ))}
-                {tutorUnavailable ? (
-                  <p className="text-xs text-muted-foreground">Tutor unavailable right now.</p>
-                ) : null}
+      <div ref={questionFrame} hidden={Boolean(recapPoint)} className="space-y-6">
+        {progressError ? (
+          <p role="alert" className="text-sm text-destructive">
+            {progressError}
+          </p>
+        ) : null}
+        {exerciseId && exerciseQuery.isPending ? (
+          <Card
+            data-testid="question-loading"
+            role="status"
+            aria-label="Loading question"
+            aria-busy="true"
+            style={{ minHeight: questionMinHeight }}
+          >
+            <CardContent className="flex flex-1 flex-col gap-5">
+              <QuestionProgress states={questionStates} />
+              <div className="flex flex-1 items-center justify-center py-6">
+                <ThinkingIndicator />
               </div>
-            ) : null}
-          </CardContent>
-        </Card>
-      ) : !exerciseId ? (
-        <Card>
-          <CardContent className="space-y-4">
-            <h2 className="text-lg font-semibold capitalize">
-              {activity.kind === 'lab'
-                ? (labProjectQuery.data?.project.title ?? 'Project')
-                : activity.kind.replace('_', ' ')}
-            </h2>
-            <p className="max-w-[70ch] text-sm leading-6 text-muted-foreground">
-              {activity.kind === 'lab'
-                ? labProjectQuery.data?.latestSubmission
-                  ? `${
-                      labProjectQuery.data.latestSubmission.results.tests.filter(
-                        (test) => test.passed,
-                      ).length
-                    } of ${labProjectQuery.data.checksTotal} checks passed`
-                  : 'Not started'
-                : activity.kind === 'teachback'
-                  ? 'Summarize the main idea from memory before continuing.'
-                  : activity.kind === 'reflect'
-                    ? 'Take a moment to reflect on what you learned and what remains unclear.'
-                    : 'No eligible exercise is available for this activity yet.'}
-            </p>
-            {activity.kind === 'lab' &&
-            activity.projectId &&
-            labProjectQuery.data?.project.status === 'authored' &&
-            labProjectQuery.data.checksTotal > 0 ? (
-              <Button variant="outline" asChild>
-                <Link to="/projects/$projectId" params={{ projectId: activity.projectId }}>
-                  Open project
-                </Link>
+            </CardContent>
+          </Card>
+        ) : exerciseQuery.data ? (
+          <Card
+            data-testid="session-exercise"
+            data-exercise-container=""
+            style={{ minHeight: questionMinHeight }}
+          >
+            <CardContent ref={questionContent} className="space-y-5">
+              <QuestionProgress states={questionStates} />
+              <div data-testid="exercise-prompt">
+                <Markdown>{exerciseQuery.data.prompt}</Markdown>
+              </div>
+              <ExerciseForm
+                key={`${activity.id}:${exerciseId}`}
+                exercise={exerciseQuery.data}
+                onSubmit={submitAnswer}
+                explainStep={
+                  currentResult?.status === 'self_check_required' ? 'self-check' : 'answer'
+                }
+                readOnlyAnswer={
+                  typeof currentResult?.yourAnswer === 'string'
+                    ? currentResult.yourAnswer
+                    : undefined
+                }
+                submittedAnswer={currentResult?.yourAnswer}
+                answerOptions={currentResult?.answerOptions as AnswerOptions | undefined}
+                locked={!canSubmitAnswer && currentResult?.status !== 'invalid'}
+                submitLabel={submitLabel}
+                primaryAction={
+                  !canSubmitAnswer
+                    ? {
+                        label: 'Continue',
+                        onClick: () => void continueNext(),
+                        loading: continuing,
+                        disabled: Boolean(recapPoint),
+                      }
+                    : undefined
+                }
+                loading={submittingAnswer}
+                disabled={Boolean(recapPoint)}
+                actions={helpActions}
+              />
+              {submitError ? (
+                <p role="alert" className="text-sm text-destructive">
+                  {submitError}
+                </p>
+              ) : null}
+              {currentResult && currentResult.status !== 'invalid' ? (
+                <FeedbackPanel
+                  result={currentResult}
+                  hideAnswerLines={['mc', 'debug', 'explain'].includes(exerciseQuery.data.type)}
+                />
+              ) : null}
+              {isFinalRetryResult(currentResult) ? <FinalRetryNote /> : null}
+              {currentResult?.status === 'invalid' ? (
+                <Alert variant="destructive">
+                  <AlertDescription>
+                    <Markdown inline>{String(currentResult.feedback)}</Markdown>
+                  </AlertDescription>
+                </Alert>
+              ) : null}
+              {hints.length || tutorUnavailable ? (
+                <div className="space-y-3">
+                  {hints.map((hint) => (
+                    <div key={hint.level} className="rounded-lg bg-muted p-4 text-sm">
+                      <p className="font-medium">
+                        {hint.revealedSolution ? 'Solution' : `Hint ${hint.level}`}
+                      </p>
+                      <Markdown>{hint.text}</Markdown>
+                    </div>
+                  ))}
+                  {tutorUnavailable ? (
+                    <p className="text-xs text-muted-foreground">Tutor unavailable right now.</p>
+                  ) : null}
+                </div>
+              ) : null}
+            </CardContent>
+          </Card>
+        ) : !exerciseId ? (
+          <Card>
+            <CardContent className="space-y-4">
+              <h2 className="text-lg font-semibold capitalize">
+                {activity.kind === 'lab'
+                  ? (labProjectQuery.data?.project.title ?? 'Project')
+                  : activity.kind.replace('_', ' ')}
+              </h2>
+              <p className="max-w-[70ch] text-sm leading-6 text-muted-foreground">
+                {activity.kind === 'lab'
+                  ? labProjectQuery.data?.latestSubmission
+                    ? `${
+                        labProjectQuery.data.latestSubmission.results.tests.filter(
+                          (test) => test.passed,
+                        ).length
+                      } of ${labProjectQuery.data.checksTotal} checks passed`
+                    : 'Not started'
+                  : activity.kind === 'teachback'
+                    ? 'Summarize the main idea from memory before continuing.'
+                    : activity.kind === 'reflect'
+                      ? 'Take a moment to reflect on what you learned and what remains unclear.'
+                      : 'No eligible exercise is available for this activity yet.'}
+              </p>
+              {activity.kind === 'lab' &&
+              activity.projectId &&
+              labProjectQuery.data?.project.status === 'authored' &&
+              labProjectQuery.data.checksTotal > 0 ? (
+                <Button variant="outline" asChild>
+                  <Link to="/projects/$projectId" params={{ projectId: activity.projectId }}>
+                    Open project
+                  </Link>
+                </Button>
+              ) : null}
+              <Button type="button" onClick={completeActivity} loading={continuing}>
+                {activity.kind === 'lab' ? 'Done for today' : 'Continue'}
               </Button>
-            ) : null}
-            <Button type="button" onClick={completeActivity} loading={continuing}>
-              {activity.kind === 'lab' ? 'Done for today' : 'Continue'}
-            </Button>
-          </CardContent>
-        </Card>
-      ) : null}
+            </CardContent>
+          </Card>
+        ) : null}
+      </div>
     </section>
   );
 }

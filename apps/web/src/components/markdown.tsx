@@ -70,6 +70,50 @@ function rehypeWrapTutorDisplayMath() {
   };
 }
 
+function rehypeKeepMathPunctuation() {
+  return (tree: DisplayMathNode) => {
+    const visit = (node: DisplayMathNode) => {
+      for (let index = 0; index < (node.children?.length ?? 0); index += 1) {
+        const child = node.children?.[index];
+        const next = node.children?.[index + 1];
+        const classes = child?.properties?.className;
+        if (child && Array.isArray(classes) && classes.includes('katex') && next?.type === 'text') {
+          const punctuation = next.value?.match(/^[.,;:!?]+/)?.[0];
+          const html = child.children?.find((item) =>
+            (item.properties?.className as string[] | undefined)?.includes('katex-html'),
+          );
+          const lastBase = html?.children
+            ?.filter((item) =>
+              (item.properties?.className as string[] | undefined)?.includes('katex-base'),
+            )
+            .at(-1);
+          if (punctuation && lastBase?.children && node.children) {
+            // The final base is already atomic. Attach the visible punctuation
+            // there without disabling breaks between earlier math fragments.
+            lastBase.children.push({
+              type: 'element',
+              tagName: 'span',
+              properties: { className: ['math-trailing-punctuation'] },
+              children: [{ type: 'text', value: punctuation }],
+            });
+            next.value = next.value?.slice(punctuation.length);
+            // KaTeX hides its visual HTML from assistive technology; retain
+            // the prose punctuation outside that hidden subtree as well.
+            node.children.splice(index + 1, 0, {
+              type: 'element',
+              tagName: 'span',
+              properties: { className: ['sr-only'] },
+              children: [{ type: 'text', value: punctuation }],
+            });
+          }
+        }
+        if (child) visit(child);
+      }
+    };
+    visit(tree);
+  };
+}
+
 export const Markdown = React.memo(function Markdown({
   children,
   inline = false,
@@ -82,7 +126,7 @@ export const Markdown = React.memo(function Markdown({
   wrapDisplayMath?: boolean;
 }) {
   const markdownComponents: Components = {
-    code({ className, children: codeChildren, ...props }) {
+    code({ className, children: codeChildren, node: _node, ...props }) {
       if (/\blanguage-svg\b/.test(className ?? '')) {
         const svg = plainText(codeChildren).replace(/\n$/, '');
         const label = svg.match(/\baria-label\s*=\s*["']([^"']+)["']/)?.[1] ?? '';
@@ -128,8 +172,14 @@ export const Markdown = React.memo(function Markdown({
       remarkPlugins={[remarkGfm, remarkMath]}
       rehypePlugins={
         wrapDisplayMath
-          ? [rehypeNormalizeUnicodeMath, rehypeWrapTutorDisplayMath, rehypeKatex, rehypeHighlight]
-          : [rehypeNormalizeUnicodeMath, rehypeKatex, rehypeHighlight]
+          ? [
+              rehypeNormalizeUnicodeMath,
+              rehypeWrapTutorDisplayMath,
+              rehypeKatex,
+              rehypeKeepMathPunctuation,
+              rehypeHighlight,
+            ]
+          : [rehypeNormalizeUnicodeMath, rehypeKatex, rehypeKeepMathPunctuation, rehypeHighlight]
       }
     >
       {normalizeDisplayMath(children)}

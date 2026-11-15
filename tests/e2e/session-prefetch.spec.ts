@@ -71,7 +71,14 @@ async function answer(page: Page) {
 async function finishFirstTopic(page: Page) {
   await answer(page);
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Submit answer', exact: true })).toBeVisible();
+  await page.evaluate(() => document.fonts.ready);
+  const unanswered = await page
+    .getByTestId('session-exercise')
+    .locator('[data-slot="card-content"]')
+    .boundingBox();
   await answer(page);
+  return unanswered?.height;
 }
 
 async function observeTransition(page: Page) {
@@ -107,11 +114,19 @@ test('prefetches the next review topic before continuing and keeps the page moun
 for (const viewport of [
   { width: 1440, height: 900, name: 'desktop' },
   { width: 390, height: 844, name: 'mobile' },
+  { width: 390, height: 844, name: 'mobile with larger text' },
 ]) {
   test(`a delayed next question loads only its card at ${viewport.name}`, async ({
     page,
   }, testInfo) => {
     await page.setViewportSize(viewport);
+    if (viewport.name === 'mobile with larger text') {
+      await page.addInitScript(() => {
+        document.addEventListener('DOMContentLoaded', () => {
+          document.documentElement.style.fontSize = '20px';
+        });
+      });
+    }
     let release!: () => void;
     const gate = new Promise<void>((resolve) => {
       release = resolve;
@@ -122,7 +137,7 @@ for (const viewport of [
       await route.fallback();
     });
     await page.goto(`/session/${sessionId}`);
-    await finishFirstTopic(page);
+    const previousQuestionHeight = await finishFirstTopic(page);
     await observeTransition(page);
     release();
     await page.getByRole('button', { name: 'Continue', exact: true }).click();
@@ -142,6 +157,10 @@ for (const viewport of [
     );
     expect(loadingBox).not.toBeNull();
     expect(loadedBox).not.toBeNull();
+    expect(previousQuestionHeight).toBeDefined();
+    expect(Math.abs((loadingBox?.height ?? 0) - (previousQuestionHeight ?? 0))).toBeLessThanOrEqual(
+      1,
+    );
     expect(Math.abs((loadingBox?.height ?? 0) - (loadedBox?.height ?? 0))).toBeLessThanOrEqual(24);
     expect(await page.evaluate(() => Reflect.get(window, 'transitionState').skeleton)).toBe(false);
   });

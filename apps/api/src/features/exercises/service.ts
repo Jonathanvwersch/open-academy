@@ -278,7 +278,7 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
     : [];
   const session = activityRow ? await repo.session(activityRow.sessionId) : undefined;
   const activity = session?.activities.find((item) => item.id === body.data.activityId);
-  if (activityRow && !activity) {
+  if (body.data.activityId && !activity) {
     return serviceResult({ error: 'Activity not found' }, 404);
   }
   const inlineLessonExercise =

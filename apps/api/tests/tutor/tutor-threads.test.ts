@@ -520,11 +520,11 @@ test('session explain context exposes partial grader feedback until the retry is
   const { exercise, activity } = await createExerciseActivity('mlp-explain');
   if (exercise.type !== 'explain') throw new Error('Expected an explanation exercise');
   explanationGrade = {
-    criteria: [
-      { id: 'r1', judgement: 'met', evidence: 'describes the forward pass' },
-      { id: 'r2', judgement: 'partial', evidence: 'misses a batch dimension' },
-      { id: 'r3', judgement: 'missing', evidence: null },
-    ],
+    criteria: exercise.rubric.map((criterion, index) => ({
+      id: criterion.id,
+      judgement: criterion.required ? (index === 0 ? 'met' : 'partial') : 'missing',
+      evidence: criterion.required ? 'Describes part of the forward pass.' : null,
+    })),
     feedback_md: 'Almost: clarify the batch shapes.',
   };
   const answer = 'The layers transform each input and then combine the batch.';
@@ -560,8 +560,10 @@ test('session explain context exposes partial grader feedback until the retry is
     ).status,
   ).toBe(200);
   const retrying = captured.at(-1);
-  const criteria = exercise.rubric.map((criterion, index) => {
-    const marker = index === 0 ? '✓' : index === 1 ? '½' : '✗';
+  const judgements = new Map(explanationGrade.criteria.map((item) => [item.id, item.judgement]));
+  const criteria = exercise.rubric.map((criterion) => {
+    const judgement = judgements.get(criterion.id);
+    const marker = judgement === 'met' ? '✓' : judgement === 'partial' ? '½' : '✗';
     return `${marker} ${criterion.criterion}`;
   });
   expect(retrying).toMatchObject({
@@ -925,7 +927,12 @@ test('provider failure stores no thread or messages; another user cannot read a 
   expect((await send('fail')).status).toBe(503);
   expect(await db.select().from(tutorThreads)).toHaveLength(0);
   expect(await db.select().from(tutorMessages)).toHaveLength(0);
-  expect(await db.select().from(llmCalls)).toHaveLength(llmCallsBefore.length);
+  const callsAfter = await db.select().from(llmCalls);
+  expect(callsAfter).toHaveLength(llmCallsBefore.length + 1);
+  const previousIds = new Set(llmCallsBefore.map((call) => call.id));
+  expect(callsAfter.filter((call) => !previousIds.has(call.id))).toMatchObject([
+    { status: 'fallback' },
+  ]);
   failing = false;
   const response = await send('private');
   const thread = (await response.json()).thread;

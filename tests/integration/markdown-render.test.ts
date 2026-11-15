@@ -15,6 +15,18 @@ test('lesson Markdown renders GFM tables', () => {
   expect(html).toContain('katex');
 });
 
+test('trailing punctuation stays attached to inline math without changing code or display math', () => {
+  const html = renderToStaticMarkup(
+    createElement(Markdown, null, 'The slope is $-0.12$. Next, $p-1$, and `$x$.`\n\n$$\nx=1\n$$'),
+  );
+  expect(html.match(/class="math-trailing-punctuation"/g)).toHaveLength(2);
+  expect(html).toContain('<span class="math-trailing-punctuation">.</span>');
+  expect(html).toContain('<span class="sr-only">.</span> Next');
+  expect(html).toContain('<span class="sr-only">,</span> and');
+  expect(html).toContain('<code>$x$.</code>');
+  expect(html).toContain('class="katex-display"');
+});
+
 test('repaired tutor Markdown renders malformed inline math without KaTeX errors', () => {
   const broken = 'slope is $$\\sigma(z)(1-\\sigma(z))$, so near $0$ or $1$.';
   const html = renderToStaticMarkup(

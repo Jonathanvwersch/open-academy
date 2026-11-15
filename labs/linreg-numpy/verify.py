@@ -37,6 +37,22 @@ def load(path):
     return module
 
 
+def valid_split(x, y, train_x, val_x, train_y, val_y, repeated):
+    if not (len(train_x) > 0 and len(val_x) > 0 and len(train_x) + len(val_x) == len(x)):
+        return False
+    if not all(np.array_equal(actual, again) for actual, again in zip(
+        (train_x, val_x, train_y, val_y), repeated
+    )):
+        return False
+    # Each generated feature row is unique. Check the full examples, including targets,
+    # so duplicates, dropped examples, overlap and shuffled labels all fail.
+    original = np.column_stack((x, y))
+    combined = np.concatenate((np.column_stack((train_x, train_y)), np.column_stack((val_x, val_y))))
+    order = np.lexsort(original.T)
+    combined_order = np.lexsort(combined.T)
+    return np.array_equal(original[order], combined[combined_order])
+
+
 def run(path, output):
     model = load(path)
     project = yaml.safe_load((ROOT / "../../content/projects/linreg-numpy.yaml").read_text())
@@ -63,7 +79,7 @@ def run(path, output):
     check("test_mse_is_mean", abs(model.mse(np.array([0., 2.]), np.array([0., 0.])) - 2) < 1e-9, "MSE is averaged")
     check("test_gradients_match_finite_differences", np.allclose(dw, numeric, rtol=1e-5, atol=1e-7) and abs(db - np.mean((model.predict(train_x[:16], np.zeros(2), 0) - train_y[:16])) * 2) < 1e-5, "Analytic gradients match finite differences")
     check("test_fit_decreases_loss", len(history) > 1 and history[-1][0] < history[0][0], "Gradient descent decreases loss")
-    check("test_split_is_disjoint_and_seeded", np.array_equal(train_x, model.train_val_split(x, y, .2, 91)[0]) and len(train_x) + len(val_x) == len(x), "Split is seeded and disjoint")
+    check("test_split_is_disjoint_and_seeded", valid_split(x, y, train_x, val_x, train_y, val_y, model.train_val_split(x, y, .2, 91)), "Split is seeded and disjoint, preserving every example and target")
     val_mse = model.mse(model.predict(val_x, w, b), val_y)
     weight_error = float(np.max(np.abs(w - TRUE_W)))
     check(

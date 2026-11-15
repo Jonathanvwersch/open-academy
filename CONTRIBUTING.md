@@ -4,7 +4,24 @@ Bug reports, fixes and new course packs are all welcome.
 
 ## Setup
 
-You need Node 24, pnpm and Docker.
+You need Node 24, pnpm 12.16.1 and Docker Compose. Install the Python lab dependencies
+in a virtual environment before running tests:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+if [ "$(uname -s)" = Linux ]; then
+  python3 -m pip install 'torch>=2.2,<3' --index-url https://download.pytorch.org/whl/cpu
+fi
+requirements=()
+for requirements_file in labs/*/requirements.txt; do
+  requirements+=(-r "$requirements_file")
+done
+python3 -m pip install "${requirements[@]}"
+```
+
+Run these commands in Bash. They install the dependencies for every lab, including the
+PyTorch verifiers. On Linux, PyTorch uses the CPU build; the labs do not require a GPU.
 
 ```sh
 pnpm bootstrap   # installs dependencies and the pre-commit hook
@@ -15,11 +32,21 @@ pnpm dev         # starts Postgres, the API on :3001 and the web app on :5173
 
 ```sh
 pnpm check       # architecture rules, lint, types, content validation
+pnpm test:unit   # unit tests, including the Python lab verifiers; no database
 pnpm test        # API and unit tests (starts a test database)
 pnpm test:e2e    # browser tests
+pnpm build       # production builds
 ```
 
 `pnpm check` needs no database or API keys. The end-to-end tests use a small fixture pack in `tests/fixtures/content` by default. Tests that need the full demo pack run with `PLAYWRIGHT_CONTENT_DIR=content`.
+
+Install Chromium before your first browser run with `pnpm exec playwright install chromium`
+(on Linux, use `pnpm exec playwright install --with-deps chromium`). Tests use `academy_test`
+and clear its learner data. Use a dedicated `TEST_DATABASE_URL`; never point it at a database
+whose contents you want to keep. `pnpm db:reset` clears the development database.
+
+Keep secrets in injected environment variables; `.env.example` documents the supported names.
+Do not include keys, learner exports or private source documents in issues and pull requests.
 
 ## Where things go
 
