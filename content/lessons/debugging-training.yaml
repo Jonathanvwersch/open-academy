@@ -88,7 +88,7 @@ knowledge_points:
     explain: |-
       ### Make a test with a known answer
 
-      The curve suggests a problem, but not which line of code to fix. Before another full run, pick two or a handful of training examples. A model with enough parameters can usually fit so few examples almost exactly, giving a target loss close to zero.
+      A loss curve suggests a problem, but not which line of code to fix. Before another full run, pick two or a handful of training examples. A model with enough parameters can usually fit so few examples almost exactly, giving a target loss close to zero.
 
       Our robot now records distance too. A $1$ metre trip took $3$ seconds and a $2$ metre trip took $5$ seconds. The model predicts:
 
@@ -152,7 +152,7 @@ knowledge_points:
     explain: |-
       ### A falling loss can hide a mistake
 
-      A tiny-batch success does not prove every slope correct. Take a trip with distance $x=2$ metres and recorded time (target) $y=5$ seconds. Use $w=1$, $b=0$. The prediction is $2$, error $e=\hat y-y$ is $-3$, and loss is $9$.
+      Fitting a few examples doesn't prove every slope correct. Take a trip with distance $x=2$ metres and recorded time (target) $y=5$ seconds. Use $w=1$, $b=0$. The prediction is $2$, error $e=\hat y-y$ is $-3$, and loss is $9$.
 
       Suppose the code uses $2e$, forgetting $x$. Since $x$ is positive, multiplying by it does not change the sign. The buggy slope therefore has the correct direction but the wrong size, so a small step can still go downhill.
 
@@ -225,7 +225,7 @@ knowledge_points:
     explain: |-
       ### Start with checks that cost little
 
-      Read the loss curve, then try fitting a tiny batch with a known answer. Run a gradient check whenever you write or change slope code, especially if the tiny batch fails or the curve looks odd. Once these checks support the code, tune the rate, batch size or model.
+      Read the loss curve, then fit a tiny batch, a handful of examples with a known answer. Check slope code with a gradient check: compare its slope with one from two nudged losses. Once these checks support the code, tune the rate, batch size or model.
 
       These symptoms suggest causes, rather than proving them:
 
@@ -238,7 +238,7 @@ knowledge_points:
 
       ### Too big a step, or the wrong direction?
 
-      For our constant model starting at $w=0$, correct subtraction at rate $1.25$ multiplies the gap by $-1.5$. The flipped code adds the slope, so its new gap is:
+      A constant model predicts one time $w$ for trips lasting $1,3,5,7$ seconds; its gap $w-4$ measures the signed distance from their mean. Starting at $w=0$, subtraction at rate $1.25$ multiplies the gap by $-1.5$. Flipped code adds the slope, so its new gap is:
 
       $$w-4+2\eta(w-4)=(1+2\eta)(w-4).$$
 

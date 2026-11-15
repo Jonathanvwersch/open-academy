@@ -21,9 +21,9 @@ knowledge_points:
     explain: |
       ### Prepare the vectors we need
 
-      We first score how well each source matches what a token needs. Our running sentence is "the cat sat on the mat". To keep this calculation small, our entire input is its first two words, "the cat", with one token per word. Position 1 holds "the" and position 2 holds "cat". We'll build cat's new vector, called its output, using information from both tokens. Including cat's own value lets its output contain information about itself too.
+      We first score how well each source, a token supplying information, matches what a token needs. Our running sentence is "the cat sat on the mat". To keep this calculation small, our entire input is its first two words, "the cat", with one token per word. Position 1 holds "the" and position 2 holds "cat". We'll build cat's new vector, called its output, using information from both tokens.
 
-      A matrix is a grid of numbers. Three learned matrices transform each embedding into three vectors, using dot products with the matrix columns to compute the components. The matrix $W_Q$ produces a **query** to compare with sources' keys. The matrix $W_K$ produces each source's **key**. The matrix $W_V$ produces its **value**, the information to contribute to the output. Separate matrices let a model learn what to compare and what to pass along independently. We'll start from invented results of these transformations.
+      A matrix is a grid of numbers. Three learned matrices transform each embedding into three vectors, using dot products with the matrix columns to compute the components. The matrix $W_Q$ produces a **query** to compare with sources' keys. The matrix $W_K$ produces each source's **key**. The matrix $W_V$ produces its **value**, the information to contribute to the output. Including cat's own value lets its output contain information about itself too. Separate matrices let a model learn what to compare and what to pass along independently. We'll start from invented results of these transformations.
 
       ### Compare the query with every key
 
@@ -83,7 +83,7 @@ knowledge_points:
     explain: |
       ### Give each value a share
 
-      To mix source values, we need a weight to multiply each one by. Scaled scores can be negative or exceed 1. Softmax turns them into positive shares that add up to 1, letting us form a weighted average. For cat's query in the two-token input "the cat", the scaled scores are 1 for "the" and 0 for "cat".
+      Each source token supplies a value vector, the information it contributes. To mix these values, we need a weight to multiply each one by. A query vector represents what a token needs; each source's key vector represents what it offers for comparison. Their dot product divided by the square root of the key width is a scaled score. These scores can be negative or exceed 1. Softmax turns them into positive shares that add up to 1, letting us form a weighted average. For cat's query in the two-token input "the cat", the scaled scores are 1 for "the" and 0 for "cat".
 
       The blue bars show the scores; the green bars show the resulting shares. A zero score still gets a positive share because raising $e$ to the power 0 gives 1.
 
@@ -145,7 +145,7 @@ knowledge_points:
     explain: |
       ### Add the weighted value vectors
 
-      We now multiply source values by their weights to build cat's output for "the cat". Suppose multiplying embeddings by $W_V$ gives "the" the vector $v_1=(2,0)$ and "cat" the vector $v_2=(0,2)$. We chose these values so the first output component tracks the contribution from "the", and the second tracks the contribution from "cat".
+      Each source token supplies a value vector, the information it contributes. We multiply these values by their weights to build cat's output, its new vector, for "the cat". Suppose multiplying embeddings by the learned value-producing matrix $W_V$ gives "the" the vector $v_1=(2,0)$ and "cat" the vector $v_2=(0,2)$. We chose these values so the first output component tracks the contribution from "the", and the second tracks the contribution from "cat".
 
       The diagram multiplies each value by its green weight, about 0.73 and 0.27, then adds the contributions to give the orange output vector.
 
@@ -166,7 +166,7 @@ knowledge_points:
 
       ### A weighted sum of values
 
-      **Scaled dot-product attention** uses query–key scores to make weights, then adds the weighted values:
+      A query vector represents what a token needs; a key vector represents what a source offers for comparison. **Scaled dot-product attention** divides their dot products by the square root of the key width, applies softmax to make weights, then adds the weighted values:
 
       $$o_t=\sum_{j=1}^{T}a_{tj}v_j.$$
 

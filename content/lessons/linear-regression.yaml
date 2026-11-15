@@ -88,7 +88,7 @@ knowledge_points:
     explain: |
       ### Changing one feature at a time
 
-      What does each number in our model say? The way to find out is to change one feature and watch the prediction.
+      Our model prices houses in thousands of pounds: area times $3$, plus bedrooms times $10$, plus $50$. Change one feature (measurement) and watch the prediction.
 
       The picture plots the predicted price against area. If we keep the bedrooms at $2$, the model becomes $3\times\text{area}+10\times2+50=3\times\text{area}+70$, which is a straight line. Keeping them at $3$ gives $3\times\text{area}+10\times3+50=3\times\text{area}+80$, a parallel line $10$ higher. Start at our house, $100$ m² with $2$ bedrooms, predicted at $370$. Following the blue dashed path, $10$ more square metres takes the price up $30$, to $400$. Following the orange arrow instead, one more bedroom at the same area takes it up $10$, to $380$.
 
@@ -186,7 +186,7 @@ knowledge_points:
 
       So far we've priced one house at a time. But a dataset can hold hundreds of houses, and training compares the prediction with the target for every one of them, so we need all their predictions, with the same weights and bias. How do we get them all in one calculation?
 
-      In the matrices lesson, a matrix times a vector took one dot product per row. So we stack the houses as the rows of a matrix $X$, each row holding one house's features in the same order as $w$. Multiplying $X$ by $w$ then gives one dot product per house, and we add the bias to each result. In the picture, row 1 is our house $(100,2)$, which gives $3\times100+10\times2+50=370$, and the other two rows give $320$ and $420$.
+      In the matrices lesson, matrix–vector multiplication took one dot product per row. So we stack the houses as the rows of a matrix $X$, each row holding one house's features (measurements) in the same order as weight vector $w$. Multiplying $X$ by $w$ then gives one dot product per house, and we add the bias to each result. In the picture, row 1 is our house $(100,2)$, which gives $3\times100+10\times2+50=370$, and the other two rows give $320$ and $420$.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 250" aria-label="The matrix X has one house per row: (100, 2), (80, 3) and (120, 1), with columns area and bedrooms. It is multiplied by the weights w = (3, 10), and the green bias 50 is added, giving one predicted price per row: 370, 320 and 420. The first row and its price are outlined in black, with the sum 3 times 100 plus 10 times 2 plus 50 beside it">

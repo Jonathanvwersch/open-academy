@@ -78,9 +78,9 @@ knowledge_points:
     explain: |
       ### Choose which prediction losses count
 
-      SFT teaches answers to prompts. We want training to concentrate on producing responses. Each prediction has a **loss**, a number training tries to reduce. **Response-only loss masking** selects the losses on response predictions and averages those. A list of zeros and ones controls this selection.
+      Supervised fine-tuning (SFT) trains a pretrained model to answer prompts (requests) with example responses (answers). We want training to concentrate on producing responses. Each prediction has a **loss**, a number training tries to reduce. **Response-only loss masking** selects the losses on response predictions and averages those. A list of zeros and ones controls this selection.
 
-      For a small calculation, shrink our sentence-completion task to four word-level toy tokens, “the cat sat on”. The prompt is “the cat”, and the response is “sat on”. We omit instruction text and chat markers. Each token needs a preceding position to predict it. The first token has none here, so it has no prediction loss.
+      For a small calculation, use four word-level toy tokens, “the cat sat on”. The prompt is “the cat”, and the response is “sat on”. We omit instruction text and chat markers, tokens identifying speakers and message boundaries. Each token needs a preceding position to predict it. The first token has none here, so it has no prediction loss.
 
       The model predicts “sat” after “the cat”, then “on” after “the cat sat”. Training supplies the demonstrated earlier tokens, so each probability is evaluated in the intended context. In the picture, ones select the green response tokens' prediction losses.
 
@@ -107,7 +107,7 @@ knowledge_points:
 
       $$L=\frac{\sum_{t=1}^{T-1}m_{t+1}\ell_{t+1}}{\sum_{t=1}^{T-1}m_{t+1}}.$$
 
-      Positions $1$ to $T-1$ predict tokens $2$ to $T$. Here $t=2$ predicts $x_3$, “sat”, so $m_3\ell_3$ counts. The last prompt position predicts the first response token. In the full chat format, select the ending marker too, so the model learns to stop.
+      Positions $1$ to $T-1$ predict tokens $2$ to $T$. Here $t=2$ predicts $x_3$, “sat”, so $m_3\ell_3$ counts. The last prompt position predicts the first response token. A chat template arranges messages with markers; select its answer-ending marker too, so the model learns to stop.
 
       ### Keep the prompt in the input
 

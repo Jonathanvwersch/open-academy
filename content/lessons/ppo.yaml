@@ -20,7 +20,7 @@ knowledge_points:
 
       Our robot lives in a corridor of 4 cells, numbered 1 to 4 from the left. It starts in cell 1 and moves left or right. If it moves into a wall, it stays where it is. Reaching cell 4 ends the episode with reward $+10$, and every other step gives $-1$. We use $\gamma=0.9$.
 
-      PPO also trains a second model, the **critic**, to predict returns. We write its estimates as $V(s)$, without the $\pi$. Say they are $V(1)=5$, $V(2)=7$ and $V(3)=9$. The critic is still learning, so these are rough guesses. Nothing happens after cell 4, so its value is $0$.
+      PPO (proximal policy optimization) trains a policy while limiting each batch's changes to action probabilities. It also trains a second model, the **critic**, to predict returns. We write its estimates as $V(s)$, without the $\pi$. Say they are $V(1)=5$, $V(2)=7$ and $V(3)=9$. The critic is still learning, so these are rough guesses. Nothing happens after cell 4, so its value is $0$.
 
       ### Better or worse than usual
 
@@ -91,7 +91,7 @@ knowledge_points:
     explain: |
       ### Two ways to estimate
 
-      The one-step estimate $\delta_t$ trusts the critic for everything after the first step. If the critic's value for the next state is too high, the estimate is too high every time we use it. An error that leans the same way on average is called **bias**.
+      A critic predicts state values $V(s)$, the expected returns. The one-step advantage estimate $\delta_t$ is the reward plus discounted next-state value minus current-state value. It scores how much better an action did than expected. If the critic overvalues the next state, this estimate is too high. An error leaning the same way on average is called **bias**.
 
       At the other extreme we can use the critic only for the starting state, and the real return for everything after it, $\hat A_t=G_t-V(s_t)$. That has no bias, because the real return is exactly what the critic is trying to predict. But it depends on every later move. A few unlucky moves late in the episode drag down the score of a good first move. This spread from episode to episode is called **variance**.
 
@@ -152,9 +152,9 @@ knowledge_points:
     explain: |
       ### Reusing a batch
 
-      A batch is the steps the current policy collected. A plain policy gradient method takes one gradient step on a batch and then throws it away, because the batch only shows how that exact policy behaves. We'd like several passes per batch, where a pass is one sweep of gradient steps through the whole batch. Each sample in the batch is one state, the action taken there and its advantage estimate.
+      A batch is the steps the current policy collected. A plain policy gradient method takes one gradient step on a batch and then throws it away, because the batch only shows how that exact policy behaves. We'd like several passes per batch, where a pass is one sweep of gradient steps through the whole batch. Each sample in the batch is one state, the action taken there and its advantage estimate, how much better its return was than expected.
 
-      The trouble is that after the first step the policy has changed, while the batch came from the old one. We call the policy that collected the batch $\pi_{\theta_\text{old}}$.
+      We call the policy that collected the batch $\pi_{\theta_\text{old}}$. An update changes it.
 
       ### The probability ratio
 
@@ -162,7 +162,7 @@ knowledge_points:
 
       $$\rho_t(\theta)=\frac{\pi_\theta(a_t\mid s_t)}{\pi_{\theta_\text{old}}(a_t\mid s_t)}.$$
 
-      A ratio of $1$ means no change. Above $1$, the action got more likely. Below $1$, it got less likely. Say the old policy moved right from cell 3 with probability $0.5$. If the new policy gives $0.6$, the ratio is $1.2$.
+      A ratio of $1$ means no change. Above $1$, the action got more likely. Below $1$, it got less likely. A robot moves through four corridor cells towards goal cell 4. Say the old policy moved right from cell 3 with probability $0.5$. If the new policy gives $0.6$, the ratio is $1.2$.
 
       ### The surrogate objective
 
@@ -178,7 +178,7 @@ knowledge_points:
 
       This is the problem PPO's clipping solves.
     worked: |
-      Let's see which changes the surrogate prefers. Suppose the old policy moves right from cell 3 with probability $0.5$. That move reaches the goal, so with the critic from step 1 its advantage is $\hat A=10+0-9=1$.
+      Let's see which changes the surrogate prefers. Suppose the old policy moves right from cell 3 with probability $0.5$. Reaching the goal pays $10$ and ends the episode. A critic, a model predicting returns, estimates cell 3's value as $9$, so the advantage is $\hat A=10+0-9=1$.
 
       1. **Raise the probability to $0.6$.** The ratio is $0.6/0.5=1.2$, so the term grows.
          $$\rho\hat A=1.2\times1=1.2.$$
@@ -186,7 +186,7 @@ knowledge_points:
       2. **Raise it to $0.95$.** The ratio is $0.95/0.5=1.9$, so the term is larger still, and the objective prefers this bigger jump.
          $$\rho\hat A=1.9\times1=1.9.$$
 
-      3. **Try a bad move.** Suppose the old policy also moves left from cell 2 with probability $0.5$. Step 1 found this move's advantage, $\hat A=-3.5$. Lowering the probability to $0.4$ gives the ratio $0.4/0.5=0.8$.
+      3. **Try a bad move.** Suppose the old policy moves left from cell 2 with probability $0.5$. Its estimated advantage is $\hat A=-3.5$. Lowering the probability to $0.4$ gives the ratio $0.4/0.5=0.8$.
          $$\rho\hat A=0.8\times(-3.5)=-2.8.$$
 
       4. **Lower it to $0.1$.** The ratio is $0.1/0.5=0.2$. The term rises towards $0$, so again the objective prefers the bigger change.
@@ -207,9 +207,9 @@ knowledge_points:
     explain: |
       ### Clipping the ratio
 
-      PPO's fix is to stop rewarding the ratio once it leaves a range around $1$. We pick a **clip range** $c$, usually $c=0.2$, so the range is $0.8$ to $1.2$. The PPO paper calls this number $\epsilon$. We use $c$, because other RL lessons use $\varepsilon$ for the exploration rate, how often an agent tries a random action. The function $\text{clip}(\rho,1-c,1+c)$ leaves $\rho$ alone inside the range and replaces it with the nearest end outside.
+      The probability ratio divides an action's new probability by its old one. PPO stops rewarding it once it leaves a range around $1$. We pick a **clip range** $c$, usually $c=0.2$, so the range is $0.8$ to $1.2$. The PPO paper calls this number $\epsilon$. We use $c$, because other RL lessons use $\varepsilon$ for the exploration rate, how often an agent tries a random action. The function $\text{clip}(\rho,1-c,1+c)$ leaves $\rho$ alone inside the range and replaces it with the nearest end outside.
 
-      PPO's **clipped objective** takes, for each sample, the smaller of the plain term and the clipped term. The picture below shows what that does.
+      PPO's **clipped objective** takes the smaller term per sample: the plain term, ratio times advantage $\hat A$ (estimated improvement over usual return), or the clipped term, using the clipped ratio.
 
       $$L^\text{CLIP}(\theta)=\text{average of }\min\big(\rho_t\hat A_t,\ \text{clip}(\rho_t,1-c,1+c)\,\hat A_t\big).$$
 
@@ -263,7 +263,7 @@ knowledge_points:
 
       ### What clipping prevents
 
-      Clipping takes away any gain from pushing an action's probability past $1\pm c$ times its old value, so noisy estimates can't drag the policy far in one batch. That makes it safe to take several passes over each batch. The paper's MuJoCo robot-control runs used 10 passes. The limit is soft, though. All samples share the same parameters $\theta$, so a step that raises one action's probability can also change probabilities in other states. People often track how far the new probabilities have moved from the old ones on the batch, and stop the passes once that gets too large.
+      Clipping limits noisy estimates' influence past $1\pm c$ times the old probability. That makes it safe to take several passes over each batch. The paper's runs in MuJoCo, a robot-control physics simulator, used 10 passes. The limit is soft, though. All samples share the same parameters $\theta$, so a step that raises one action's probability can also change probabilities in other states. People often track how far the new probabilities have moved from the old ones on the batch, and stop the passes once that gets too large.
     worked: |
       Let's evaluate the clipped term with $c=0.2$, so ratios are clipped to the range $0.8$ to $1.2$. Each old probability is $0.5$.
 

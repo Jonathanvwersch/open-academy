@@ -21,9 +21,9 @@ knowledge_points:
     explain: |
       ### Attention as three kernels
 
-      A chat assistant runs Llama 3 8B on one NVIDIA H100 SXM GPU, and a user sends a prompt of $T=1{,}000$ tokens. Each layer splits attention into 32 query heads that run in parallel, and each head's queries, keys and values have width $d_h=128$, the recap's $d_k$. Follow one head. Its queries form a matrix $Q$ with $T$ rows, one per token, and $d_h$ columns. Its keys $K$ and values $V$ have the same shape.
+      A chat assistant runs Llama 3 8B on one NVIDIA H100 SXM GPU, and a user sends a prompt of $T=1{,}000$ tokens. Each layer uses 32 query heads, parallel attention calculations with separate queries. Each head's queries, keys and values have width $d_h=128$, the recap's $d_k$. Follow one head. Its queries form a matrix $Q$ with $T$ rows, one per token, and $d_h$ columns. Its keys $K$ and values $V$ have the same shape.
 
-      A **kernel** is one program that the GPU runs on many compute units at once, each working on part of the data. A kernel's on-chip memory is cleared when it finishes, so its result is written to HBM, and the next kernel reads it back from there. The usual way, which the FlashAttention paper calls standard attention, uses three kernels. The first finds the score table $S$, with $s_{tj}$ in row $t$, column $j$. The second applies softmax to each row of $S$ to give the weight table $P$, which holds the weights $a_{tj}$. The third multiplies $P$ by $V$ to give the outputs $O$, one row per token.
+      A **kernel** is one program that the GPU runs on many compute units at once, each working on part of the data. A kernel's on-chip memory is cleared when it finishes, so its result is written to HBM, and the next kernel reads it back from there. The usual way, called standard attention, uses three kernels. The first finds the score table $S$, with $s_{tj}$ in row $t$, column $j$. The second applies softmax to each row of $S$ to give the weight table $P$, which holds the weights $a_{tj}$. The third multiplies $P$ by $V$ to give the outputs $O$, one row per token.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 282" aria-label="Standard attention for one head with 1,000 tokens and head size 128 at 16-bit. Kernel 1 reads Q and K, 0.512 MB, and writes S, 2 MB. Kernel 2 reads S, 2 MB, and writes P, 2 MB. Kernel 3 reads P, 2 MB, and V, 0.256 MB, and writes O, 0.256 MB. The total is 9.024 MB, of which 8 MB is S and P. Sizes are in MB, where 1 MB is 1,000,000 bytes">
@@ -104,7 +104,7 @@ knowledge_points:
     explain: |
       ### One kernel for the whole calculation
 
-      In standard attention, the score and weight tables were most of the bytes, and they only went to HBM to pass between kernels. **Kernel fusion** joins several kernels into one, so the results in between stay on chip. A fused attention kernel only reads $Q$, $K$ and $V$ and writes $O$. So the least it can move is
+      Standard attention uses three GPU programs (kernels): scoring, softmax, mixing. Its score and weight tables hold every query–key pair and pass through HBM between kernels. **Kernel fusion** joins several kernels into one, so the results in between stay on chip. A fused attention kernel reads $Q$, $K$ and $V$ and writes $O$. The least it can move is
 
       $$4Td_h \text{ numbers}.$$
 
@@ -180,7 +180,7 @@ knowledge_points:
     explain: |
       ### The total that comes last
 
-      Let's follow one query, so we can drop the subscript $t$ and write its scores as $s_j$ and the keys' values as $v_j$. Softmax gives key $j$ the weight $e^{s_j}/\ell$, where $\ell$ is the total of the exponentials of all $T$ scores. But an SM working through key blocks has only seen some of the keys. How can it weigh their values before it knows the total?
+      Let's follow one query, so we can drop the subscript $t$ and write its scores as $s_j$ and the keys' values as $v_j$. Softmax gives key $j$ the weight $e^{s_j}/\ell$, where $\ell$ is the total of the exponentials of all $T$ scores. But a GPU compute unit working through key blocks, groups of keys loaded together, has only seen some keys. How can it weigh their values before it knows the total?
 
       ### Divide once at the end
 
@@ -188,9 +188,9 @@ knowledge_points:
 
       $$o=\frac{\sum_{j=1}^{T}e^{s_j}v_j}{\sum_{j=1}^{T}e^{s_j}}.$$
 
-      The top and the bottom are both plain sums, and a sum can be added up a few terms at a time. So the kernel keeps two running totals for each query. One is $\ell$, the sum of $e^{s_j}$ over the keys seen so far. The other is $u$, the sum of $e^{s_j}v_j$. Like a value, $u$ is a vector of $d_h$ numbers, and dividing it by $\ell$ divides each of them. Each new block adds its own terms to both. After the last block, the output is $u/\ell$. This way of computing softmax is called **online softmax**, because it updates its totals as each block arrives. The kernel never stores the weights $P$; it builds the output directly.
+      Both sums accumulate a few terms at a time. So the kernel keeps two running totals for each query. One is $\ell$, the sum of $e^{s_j}$ over the keys seen so far. The other is $u$, the sum of $e^{s_j}v_j$. Like a value, $u$ is a vector of $d_h$ numbers, and dividing it by $\ell$ divides each of them. Each new block adds its own terms to both. After the last block, the output is $u/\ell$. This way of computing softmax is called **online softmax**, because it updates its totals as each block arrives. The kernel never stores the weights $P$; it builds the output directly.
 
-      It's exact: the maths is the same as softmax on the whole row, with the additions done in a different order. Computers round each sum slightly, so only the last digits can differ. FlashAttention computes exact attention this way.
+      It's exact: the maths is the same as softmax on the whole row, with the additions done in a different order. Computers round each sum slightly, so only the last digits can differ. FlashAttention, a GPU program keeping attention's intermediate results on chip, computes exact attention this way.
 
       ### Four keys in two blocks
 
@@ -248,23 +248,23 @@ knowledge_points:
     explain: |
       ### Big scores break the exponential
 
-      Online softmax adds up $e^{s_j}$, and exponentials grow very fast. A number too big for its format turns into infinity, which is called **overflow**. In FP16, a common 16-bit format, the largest number is $65{,}504$. $e^{11}\approx59{,}874$ fits, but $e^{12}\approx162{,}755$ doesn't, so a score of $12$ would ruin the output.
+      Online softmax processes groups of keys in turn, accumulating exponentials of scores $s_j$ and exponential-weighted values $v_j$, then dividing the totals. Exponentials grow fast. A number too big for its format becomes infinity, called **overflow**. In FP16, a 16-bit format, the largest number is $65{,}504$. $e^{11}\approx59{,}874$ fits, but $e^{12}\approx162{,}755$ doesn't, ruining the output.
 
-      If we subtract the same number $c$ from every score, each exponential is multiplied by $e^{-c}$, because $e^{s_j-c}=e^{s_j}e^{-c}$. That factor appears on the top and the bottom of every weight, so it cancels. So in practice softmax first subtracts the largest score $m$ from every score, making every exponential at most $e^0=1$.
+      Subtracting the same $c$ from every score multiplies each exponential by $e^{-c}$, because $e^{s_j-c}=e^{s_j}e^{-c}$. That factor cancels between each weight's top and bottom. Softmax subtracts the largest score $m$, making every exponential at most $e^0=1$.
 
       ### A running largest score
 
-      But a kernel working in blocks only knows the largest score after the last block. So it keeps $m$, the largest score so far, and subtracts it from each score, adding $e^{s_j-m}$ to $\ell$ and $e^{s_j-m}v_j$ to $u$. When a new block raises the largest score to $m_{\text{new}}$, each old term $e^{s_j-m}$ should now be $e^{s_j-m_{\text{new}}}$, which is $e^{m-m_{\text{new}}}$ times as big. So the kernel multiplies both totals by $e^{m-m_{\text{new}}}$ before adding the new block's terms:
+      A kernel, a GPU program, working in blocks only knows the largest score after the last block. It keeps $m$, the largest score so far, and subtracts it from each score, adding $e^{s_j-m}$ to the exponential total $\ell$ and $e^{s_j-m}v_j$ to the weighted-value total $u$. When a block raises the maximum to $m_{\text{new}}$, each old term needs multiplying by $e^{m-m_{\text{new}}}$. The kernel rescales both totals before adding the block's terms:
 
       $$\ell_{\text{new}}=e^{m-m_{\text{new}}}\,\ell+\sum_{j\in\text{block}}e^{s_j-m_{\text{new}}},$$
 
       $$u_{\text{new}}=e^{m-m_{\text{new}}}\,u+\sum_{j\in\text{block}}e^{s_j-m_{\text{new}}}v_j.$$
 
-      The sums run over the keys in the new block. Rescaling shrinks both old totals by the same factor, so it doesn't change their ratio. FlashAttention does this for each query row.
+      The sums run over the keys in the new block. Rescaling shrinks both old totals by the same factor, so it doesn't change their ratio. FlashAttention, an attention kernel keeping intermediate results on chip, does this for each query row.
 
       ### Limitations of fast attention kernels
 
-      A fused kernel must move at least $4Td_h$ numbers. A real kernel reads every block of $K$ and $V$ again for each block of queries, so it reads more. The FlashAttention paper shows that the extra traffic of a blocked kernel shrinks as the on-chip memory grows, because bigger blocks mean fewer passes over the data. But the $T\times T$ tables still never go to HBM. So the earlier $1.024$ MB and intensity of $500$ are best cases.
+      A fused kernel, combining attention's operations in one program, must move at least $4Td_h$ numbers for $T$ tokens of width $d_h$. A real kernel reads every block of keys $K$ and values $V$ again for each block of queries, so it reads more. The FlashAttention paper shows that the extra traffic of a blocked kernel shrinks as the on-chip memory grows, because bigger blocks mean fewer passes over the data. But the $T\times T$ tables still never go to HBM. With $T=1{,}000$, $d_h=128$ and 2 bytes per number, $1.024$ MB and intensity $500$ FLOPs per byte are best cases.
 
       Fusion doesn't cut any FLOPs either. The matrix multiplies still cost $4T^2d_h$ FLOPs, and the extra softmax work is small, so doubling a long prompt still makes attention about four times slower. PyTorch's `scaled_dot_product_attention`, in `torch.nn.functional`, picks a kernel itself. On GPUs that support it, that can be a FlashAttention kernel.
     worked: |

@@ -129,9 +129,9 @@ knowledge_points:
 
       Here's what three sizes do for $n=100$ inputs:
 
-      - $a=1$ gives scores of typical size $\sqrt{100}=10$, so the activations explode over several layers.
+      - $a=1$ gives scores of typical size $\sqrt{100}=10$, so activations (layer outputs) explode, growing rapidly over several layers.
       - $a=0.1$ gives typical size $1$, so the size is kept.
-      - $a=0.01$ gives typical size $0.1$, so the activations vanish over several layers.
+      - $a=0.01$ gives typical size $0.1$, so activations vanish, shrinking towards zero.
 
       A random score is as likely negative as positive, so a ReLU turns about half of them into $0$, halving the average square. So for ReLU layers we use $a=\sqrt{2/n}$, called **He initialization**.
 
@@ -160,11 +160,11 @@ knowledge_points:
     explain: |
       ### Why a good start isn't enough
 
-      A good starting size only helps at the start. Training changes the weights at every step, and the outputs are made from those weights, so a layer's outputs may become ten times bigger or all move up together, and the next layers see numbers of the wrong size. Normalization fixes the size on every forward pass instead.
+      A good starting size only helps at the start. Training changes the weights at every step, and the outputs are made from those weights, so a layer's outputs may become ten times bigger or all move up together, and the next layers see numbers of the wrong size. Normalization rescales outputs to keep their size steady on every forward pass.
 
       ### Rescaling four outputs
 
-      Let's take one example, such as one set of sensor readings fed to a robot's network, and say a layer with four neurons gives the outputs $1$, $7$, $9$ and $15$. Their mean is $8$, so we first subtract $8$, which leaves $-7$, $-1$, $1$ and $7$. The typical size of these differences from the mean is called the **standard deviation**, and here it's $\sqrt{(49+1+1+49)/4}=5$, so we divide by $5$. That gives $-1.4$, $-0.2$, $0.2$ and $1.4$, the green dots in the picture, which are centred on $0$ with typical size $1$.
+      Let's take one example, such as one set of sensor readings fed to a robot's network, and say a layer with four neurons gives the outputs $1$, $7$, $9$ and $15$. Their mean is $8$, so we first subtract $8$, which leaves $-7$, $-1$, $1$ and $7$. We measure **typical size** by squaring numbers, averaging the squares and taking the square root. For differences from the mean, this is the **standard deviation**: here it's $\sqrt{(49+1+1+49)/4}=5$, so we divide by $5$. That gives $-1.4$, $-0.2$, $0.2$ and $1.4$, the green dots, centred on $0$ with typical size $1$.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" aria-label="Top number line from 0 to 16 with the four layer outputs of one example 1, 7, 9 and 15, and their mean 8 marked. Their differences from the mean are minus 7, minus 1, 1 and 7, with a standard deviation of 5. Bottom number line from minus 2 to 2 with the normalized outputs minus 1.4, minus 0.2, 0.2 and 1.4 in green, centred on 0">
@@ -239,7 +239,7 @@ knowledge_points:
     explain: |
       ### Rows and columns of a batch
 
-      Layer normalization works on one example at a time. Another common method works across a batch, the group of examples the network processes together. When a layer runs on a batch, its outputs form a grid with one row per example and one column per neuron. Below, example 1's row holds the outputs $1$, $7$, $9$ and $15$ from the last step's picture.
+      Layer normalization, or LayerNorm, rescales one example's layer outputs by subtracting their mean and dividing by their standard deviation. Standard deviation measures spread: square the differences from the mean, average them and take the square root. Another common method works across a batch, the group of examples the network processes together. When a layer runs on a batch, its outputs form a grid with one row per example and one column per neuron. Below, example 1's row holds the outputs $1$, $7$, $9$ and $15$.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 258" aria-label="A grid of the outputs of a layer for a batch, with one row per example and one column per neuron. The row for example 1 is 1, 7, 9, 15 and is outlined in green: layer normalization rescales along a row. The column for neuron 1 is 1, 5, 1, 5 and is outlined in orange: batch normalization rescales down a column">
@@ -278,7 +278,7 @@ knowledge_points:
 
       ### Batch normalization
 
-      **Batch normalization**, or BatchNorm, normalizes each neuron's column separately: it subtracts that neuron's mean over the examples in the batch and divides by its standard deviation over them. Then, like LayerNorm, it applies a learned gain and shift. BatchNorm came first, and it's still common in networks trained on large batches. The two methods do the same arithmetic in different directions. LayerNorm goes along a row, the green outline, and BatchNorm goes down a column, the orange outline.
+      **Batch normalization**, or BatchNorm, normalizes each neuron's column separately: it subtracts that neuron's mean over the examples in the batch and divides by its standard deviation over them. Then, like LayerNorm, it multiplies by a learned gain and adds a learned shift. BatchNorm came first, and it's still common in networks trained on large batches. The two methods do the same arithmetic in different directions. LayerNorm goes along a row, the green outline, and BatchNorm goes down a column, the orange outline.
 
       Neuron 1's column holds $1$, $5$, $1$ and $5$, and the worked example below normalizes it.
 
