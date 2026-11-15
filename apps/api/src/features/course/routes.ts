@@ -43,6 +43,7 @@ import {
   isLearnableConcept,
   planSession,
   type SessionKind,
+  schedulerRecentLearnMinutesBySubject,
   sessionBudget,
 } from '../../learning/scheduler.js';
 import { buildStreak } from '../../learning/streak.js';
@@ -255,6 +256,21 @@ export function registerLearnCourseRoutes(
     const completedRows = completedRowsRaw.filter(({ activity }) =>
       sessionActivityIsInContent(index, activity),
     );
+    const recentLearnMinutesByConcept: Record<string, number> = {};
+    const recentLearnCutoff = new Date(now.getTime() - 7 * 86_400_000);
+    for (const { activity } of completedRows) {
+      if (
+        activity.kind !== 'learn' ||
+        !activity.conceptId ||
+        !activity.completedAt ||
+        activity.completedAt < recentLearnCutoff ||
+        activity.completedAt > now
+      ) {
+        continue;
+      }
+      recentLearnMinutesByConcept[activity.conceptId] =
+        (recentLearnMinutesByConcept[activity.conceptId] ?? 0) + activity.plannedMinutes;
+    }
     const projectRows = projectRowsRaw.filter((project) =>
       index.projectsById.has(project.projectId),
     );
@@ -627,6 +643,18 @@ export function registerLearnCourseRoutes(
     const finishProjectionCourses = focusSubjectId
       ? buildProjectionCourses(index, focusedCourseIds, topicState, completionDates, focusSubjectId)
       : projectionCourses;
+    const projectionSchedulerState = schedulerState ?? {
+      activeCourseId,
+      studyCourseIds,
+      focusSubjectId: focusSubjectId ?? undefined,
+      mastery,
+      lessonRuns: lessonRunState,
+      recentLearnMinutesByConcept,
+    };
+    const recentLearnMinutesBySubject = schedulerRecentLearnMinutesBySubject(
+      projectionSchedulerState,
+      index,
+    );
     const averageXp = averageDailyXp(events, todayLocal);
     const dailyXpAtPace = averageXp > 0 ? averageXp : defaultAverageDailyXp(prefs);
     const dailyXpAtGoal = defaultAverageDailyXp(prefs);
@@ -634,11 +662,13 @@ export function registerLearnCourseRoutes(
       courses: finishProjectionCourses,
       dailyXp: dailyXpAtPace,
       today: todayLocal,
+      spentBySubject: recentLearnMinutesBySubject,
     });
     const finishesAtGoal = projectCourseFinishes({
       courses: finishProjectionCourses,
       dailyXp: dailyXpAtGoal,
       today: todayLocal,
+      spentBySubject: recentLearnMinutesBySubject,
     });
     const todayTopics = activeLearnTopics(activeActivities, projectionCourses, index, todayLocal);
     const todayConceptIds = new Set(todayTopics.map((topic) => topic.conceptId));
@@ -647,6 +677,7 @@ export function registerLearnCourseRoutes(
       dailyXp: dailyXpAtPace,
       today: addLocalDays(todayLocal, todayTopics.length > 0 ? 1 : 0),
       assumedDoneConceptIds: todayConceptIds,
+      spentBySubject: recentLearnMinutesBySubject,
     });
     const upNext = {
       upcoming: [

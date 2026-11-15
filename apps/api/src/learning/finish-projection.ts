@@ -64,6 +64,7 @@ export function courseTopicAttribution(
 export function projectCourseFinishes(input: {
   courses: ProjectionCourse[];
   assumedDoneConceptIds?: ReadonlySet<string>;
+  spentBySubject?: Readonly<Record<string, number>>;
   dailyXp: number;
   today: string;
   xpPerTopic?: number;
@@ -113,7 +114,7 @@ export function projectCourseFinishes(input: {
       .filter((course) => course.topics.some((topic) => !doneConcepts.has(topic.conceptId)))
       .map((course) => course.id),
   );
-  const spentBySubject = new Map<string, number>();
+  const spentBySubject = new Map(Object.entries(input.spentBySubject ?? {}));
   const progressByConcept = new Map<string, number>();
   const upcomingByConcept = new Map<string, DatedProjectedTopic>();
   let partialTopic: { conceptId: string; courseId: string; subjectId: string } | null = null;

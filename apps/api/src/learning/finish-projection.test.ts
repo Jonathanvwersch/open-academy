@@ -173,6 +173,26 @@ describe('projectCourseFinishes', () => {
     expect(result.upcoming[0]?.courseId).toBe('math');
   });
 
+  it('uses recent learn minutes to balance the first projected subject', () => {
+    const result = projectCourseFinishes({
+      courses: [
+        { id: 'ai', subjectId: 'ai', subjectOrder: 1, topics: topics('ai', 1) },
+        {
+          id: 'math',
+          subjectId: 'mathematics',
+          subjectOrder: 0,
+          topics: topics('math', 1),
+        },
+      ],
+      dailyXp: 40,
+      maxNewTopicsPerDay: 1,
+      spentBySubject: { mathematics: 1 },
+      today,
+    });
+
+    expect(result.upcoming[0]?.courseId).toBe('ai');
+  });
+
   it('waits for a prerequisite topic in another active course', () => {
     const alone = projectCourseFinishes({
       courses: [{ id: 'a', topics: topics('a', 2) }],

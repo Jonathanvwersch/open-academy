@@ -132,6 +132,11 @@ interface SchedulerCourseContext {
   newConceptIds: Set<string>;
 }
 
+type SchedulerCourseContextState = Pick<
+  SchedulerState,
+  'activeCourseId' | 'studyCourseIds' | 'focusSubjectId' | 'mastery' | 'lessonRuns'
+>;
+
 const noTerms = (): PriorityTerms => ({
   goal: 0,
   week_fit: 0,
@@ -202,7 +207,7 @@ export function currentLearnerUnit(
 }
 
 function schedulerCourseContexts(
-  state: SchedulerState,
+  state: SchedulerCourseContextState,
   content: ContentIndex,
 ): SchedulerCourseContext[] {
   const focusSubjectId = effectiveFocusSubjectId(state, content);
@@ -216,7 +221,53 @@ function schedulerCourseContexts(
     });
 }
 
-function effectiveFocusSubjectId(state: SchedulerState, content: ContentIndex): string | undefined {
+export function schedulerRecentLearnMinutesBySubject(
+  state: SchedulerCourseContextState & Pick<SchedulerState, 'recentLearnMinutesByConcept'>,
+  content: ContentIndex,
+): Record<string, number> {
+  const coursesBySubject = groupSchedulerCoursesBySubject(
+    schedulerCourseContexts(state, content),
+    content,
+  );
+  return Object.fromEntries(recentLearnMinutesForSubjects(state, coursesBySubject));
+}
+
+function groupSchedulerCoursesBySubject(
+  courseContexts: readonly SchedulerCourseContext[],
+  content: ContentIndex,
+): Map<string, SchedulerCourseContext[]> {
+  const coursesBySubject = new Map<string, SchedulerCourseContext[]>();
+  for (const course of courseContexts) {
+    const subjectId = content.subjectForCourse(course.course.id).id;
+    const group = coursesBySubject.get(subjectId) ?? [];
+    group.push(course);
+    coursesBySubject.set(subjectId, group);
+  }
+  return coursesBySubject;
+}
+
+function recentLearnMinutesForSubjects(
+  state: Pick<SchedulerState, 'recentLearnMinutesByConcept'>,
+  coursesBySubject: ReadonlyMap<string, SchedulerCourseContext[]>,
+): Map<string, number> {
+  const subjectRecentMinutes = new Map<string, number>();
+  for (const [subjectId, courses] of coursesBySubject) {
+    const conceptIds = new Set(courses.flatMap((course) => [...course.newConceptIds]));
+    subjectRecentMinutes.set(
+      subjectId,
+      [...conceptIds].reduce(
+        (sum, conceptId) => sum + (state.recentLearnMinutesByConcept[conceptId] ?? 0),
+        0,
+      ),
+    );
+  }
+  return subjectRecentMinutes;
+}
+
+function effectiveFocusSubjectId(
+  state: Pick<SchedulerState, 'studyCourseIds' | 'focusSubjectId'>,
+  content: ContentIndex,
+): string | undefined {
   const focus = state.focusSubjectId;
   if (!focus || !content.curriculum?.subjects?.some((subject) => subject.id === focus)) {
     return undefined;
@@ -227,7 +278,7 @@ function effectiveFocusSubjectId(state: SchedulerState, content: ContentIndex): 
 }
 
 function schedulerCourseContextFor(
-  state: SchedulerState,
+  state: SchedulerCourseContextState,
   content: ContentIndex,
   courseId: string,
 ): SchedulerCourseContext | undefined {
@@ -247,7 +298,7 @@ function schedulerCourseContextFor(
 }
 
 function fallbackCourseContext(
-  state: SchedulerState,
+  state: SchedulerCourseContextState,
   content: ContentIndex,
   courseId?: string,
 ): SchedulerCourseContext | undefined {
@@ -417,28 +468,12 @@ function packWeekday(
     candidatesByCourse.set(candidate.courseId, group);
   }
   for (const group of candidatesByCourse.values()) group.sort(compareLearnCandidates);
-  const coursesBySubject = new Map<string, SchedulerCourseContext[]>();
-  for (const course of courseContexts) {
-    const subjectId = content.subjectForCourse(course.course.id).id;
-    const group = coursesBySubject.get(subjectId) ?? [];
-    group.push(course);
-    coursesBySubject.set(subjectId, group);
-  }
+  const coursesBySubject = groupSchedulerCoursesBySubject(courseContexts, content);
   const subjectOrder = new Map(
     (content.curriculum?.subjects ?? []).map((subject, position) => [subject.id, position]),
   );
   const selectedLearnMinutesBySubject = new Map<string, number>();
-  const subjectRecentMinutes = new Map<string, number>();
-  for (const [subjectId, courses] of coursesBySubject) {
-    const conceptIds = new Set(courses.flatMap((course) => [...course.newConceptIds]));
-    subjectRecentMinutes.set(
-      subjectId,
-      [...conceptIds].reduce(
-        (sum, conceptId) => sum + (state.recentLearnMinutesByConcept[conceptId] ?? 0),
-        0,
-      ),
-    );
-  }
+  const subjectRecentMinutes = recentLearnMinutesForSubjects(state, coursesBySubject);
   while (newConceptCount < SCHEDULER_CONFIG.weekday.maxNewConcepts) {
     const frontCourseBySubject = new Map<string, SchedulerCourseContext>();
     for (const [subjectId, courses] of coursesBySubject) {
