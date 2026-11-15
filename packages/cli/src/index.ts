@@ -291,7 +291,7 @@ async function init(directory: string, title: string) {
       },
     ],
   });
-  writeYaml(join(directory, 'notation.yaml'), { terms: [], avoid: [] });
+  copyFileSync(join(templateRoot, 'notation.yaml'), join(directory, 'notation.yaml'));
   writeYaml(join(directory, 'sources', 'index.yaml'), { sources: [] });
   writeFileSync(join(directory, 'sources', '.gitignore'), '*\n!index.yaml\n!.gitignore\n');
   writeFileSync(

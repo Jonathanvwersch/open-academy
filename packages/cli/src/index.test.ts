@@ -90,7 +90,27 @@ describe('academy CLI', () => {
       expect(readFileSync(join(pack, 'concepts/main.yaml'), 'utf8')).toContain(
         'id: applied-science-first-topic',
       );
-      expect(readFileSync(join(pack, 'notation.yaml'), 'utf8')).toContain('avoid: []');
+      const notation = parse(readFileSync(join(pack, 'notation.yaml'), 'utf8')) as {
+        avoid: unknown[];
+        terms: { id: string; introduced_by: string[] }[];
+      };
+      expect(notation.terms.map(({ id }) => id)).toEqual([
+        'real-space',
+        'sum',
+        'transpose',
+        'matrix',
+        'limit',
+        'exp',
+        'ln',
+        'partial',
+        'nabla',
+        'composition',
+        'argmin',
+        'hadamard',
+        'indicator',
+      ]);
+      expect(notation.terms.every(({ introduced_by }) => introduced_by.length === 0)).toBe(true);
+      expect(notation.avoid).toEqual([]);
       const result = run(['check', pack]);
       expect(result.status).toBe(0);
       expect(result.stdout).toContain('1 topics, 0 lessons, 0 questions, 1 courses');
@@ -156,6 +176,64 @@ describe('academy CLI', () => {
       rmSync(parent, { recursive: true, force: true });
     }
   }, 30_000);
+
+  it('explains how to teach notation before using it in a lesson', () => {
+    const parent = temporaryDirectory();
+    try {
+      const pack = join(parent, 'pack');
+      cpSync(join(root, 'tests/fixtures/content'), pack, { recursive: true });
+
+      const notationFile = join(pack, 'notation.yaml');
+      const notation = parse(readFileSync(notationFile, 'utf8')) as {
+        terms: {
+          id: string;
+          label: string;
+          match: string[];
+          introduced_by: string[];
+        }[];
+        avoid?: unknown[];
+      };
+      notation.terms.push({
+        id: 'sum',
+        label: 'Σ summation',
+        match: [String.raw`\\sum`],
+        introduced_by: [],
+      });
+
+      const lessonFile = join(pack, 'lessons/vectors.yaml');
+      const lesson = parse(readFileSync(lessonFile, 'utf8')) as {
+        knowledge_points: { explain: string }[];
+      };
+      const firstPoint = lesson.knowledge_points[0];
+      if (!firstPoint) throw new Error('Missing vector knowledge point');
+      firstPoint.explain = `${firstPoint.explain}\n\nThe symbol ${String.raw`\sum`} adds values.`;
+
+      writeFileSync(notationFile, stringify(notation));
+      writeFileSync(lessonFile, stringify(lesson));
+      for (const directory of ['lessons', 'exercises']) {
+        for (const concept of ['switching-topic', 'supervised-learning']) {
+          const contentFile = join(pack, directory, `${concept}.yaml`);
+          const content = readFileSync(contentFile, 'utf8');
+          const sumPattern = directory === 'lessons' ? String.raw`\sum` : String.raw`\\sum`;
+          writeFileSync(contentFile, content.replaceAll(sumPattern, 'sum'));
+        }
+      }
+
+      const missingIntroducer = run(['check', pack]);
+      expect(missingIntroducer.status).toBe(1);
+      expect(missingIntroducer.stderr).toContain(
+        'uses Σ summation, but no topic teaches it yet: add the topic that does to introduced_by in notation.yaml',
+      );
+
+      const sum = notation.terms.find(({ id }) => id === 'sum');
+      if (!sum) throw new Error('Missing summation notation term');
+      sum.introduced_by = ['vectors'];
+      writeFileSync(notationFile, stringify(notation));
+      expect(run(['check', pack]).status).toBe(0);
+    } finally {
+      rmSync(parent, { recursive: true, force: true });
+    }
+  });
 
   it('creates topics and courses while preserving YAML comments', () => {
     const parent = temporaryDirectory();
