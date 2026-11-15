@@ -623,26 +623,19 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 4
-    prompt: 'Explain to a colleague how a language model is trained on the sentence "the cat sat on the mat", treating each word as one token, and how it then writes new text: what it predicts at each position, how the inputs and targets give training examples, how their loss is calculated, and how one token is chosen at a time.'
+    prompt: "Explain how a language model predicts the next token from a prefix, how the true next tokens give its training loss, and how it generates a longer text."
     rubric:
       - id: r1
-        criterion: Says the model gives a next-token distribution at each position, a softmax over the vocabulary given the tokens so far
-        weight: 1
-        required: true
-      - id: r2
-        criterion: "Explain that the $6$ tokens give $5$ examples: the input omits the last token and the targets are shifted left by one."
+        criterion: Describe a softmax distribution over the vocabulary for the next token given the prefix.
         weight: 1
         required: true
       - id: loss
-        criterion: Explain that the loss averages minus the log of each true next token's probability.
+        criterion: Explain averaging minus the log of each true next token's predicted probability.
         weight: 1
         required: true
       - id: r3
-        criterion: Describes generation as repeatedly choosing a token, greedily or by sampling, and appending it to the input
+        criterion: Describe repeatedly choosing a next token, appending it to the prefix and running the model again.
         weight: 1
         required: true
-      - id: r4
-        criterion: Mention that a causal mask and teacher forcing let one training run score every position.
-        weight: 1
-    exemplar: At every position the model turns the vector for the tokens so far into one score per vocabulary word, and softmax makes them a next-token distribution. The sentence has 6 tokens, so it gives 5 examples, "the" to cat up to "the cat sat on the" to mat. The input is the sentence without its last token and the targets are the sentence shifted left by one; the causal mask and teacher forcing let one run score them all, and the loss is the average of minus the log of the probability of each true next word. To write, the model takes a prompt, chooses a next token, the top one or a random draw weighted by probability, appends it and runs again, so its own earlier choices become its input and each token needs another run.
-    solution: At every position the model turns the vector for the tokens so far into one score per vocabulary word, and softmax makes them a next-token distribution. The sentence has 6 tokens, so it gives 5 examples, "the" to cat up to "the cat sat on the" to mat. The input is the sentence without its last token and the targets are the sentence shifted left by one; the causal mask and teacher forcing let one run score them all, and the loss is the average of minus the log of the probability of each true next word. To write, the model takes a prompt, chooses a next token, the top one or a random draw weighted by probability, appends it and runs again, so its own earlier choices become its input and each token needs another run.
+    exemplar: "Given the prefix, the model produces one score per vocabulary token and uses softmax to make next-token probabilities. Training averages minus the log of the probability given to each true next token. To generate, it chooses a token greedily or by sampling those probabilities, appends it to the prefix and runs again."
+    solution: "Given the prefix, the model produces one score per vocabulary token and uses softmax to make next-token probabilities. Training averages minus the log of the probability given to each true next token. To generate, it chooses a token greedily or by sampling those probabilities, appends it to the prefix and runs again."

@@ -628,51 +628,21 @@ exercises:
     role: "core"
     difficulty: 3
     est_minutes: 4
-    prompt: "Explain why a convolution usually needs far fewer parameters than a fully connected layer producing the same number of outputs. Then describe how to compute its CHW output shape from input channels, height, width, filter count, filter side, padding and stride, and what 2×2 stride-2 max pooling changes."
+    prompt: "Explain how local patches and filter reuse each reduce a convolution's parameter count, and how the number of filters determines its output channels."
     rubric:
-      [
-        {
-          "id": "local-shared",
-          "criterion": "Explain that each convolution output reads a small local patch, limiting the weights it needs.",
-          "weight": 0.5,
-          "required": true,
-        },
-        {
-          "id": "sharing",
-          "criterion": "Explain that reusing each filter's weights and bias at every position avoids separate parameters for every output position.",
-          "weight": 0.5,
-          "required": true,
-        },
-        {
-          "id": "parameter-count",
-          "criterion": "Mention the parameter count $C_{\\text{out}}(C_{\\text{in}}k^2+1)$, including one bias per filter.",
-          "weight": 0.5,
-          "required": false,
-        },
-        {
-          "id": "shape",
-          "criterion": "Compute each spatial side as $\\lfloor(\\text{input side}+2p-k)/s\\rfloor+1$.",
-          "weight": 0.5,
-          "required": true,
-        },
-        {
-          "id": "channels",
-          "criterion": "Put one output channel per filter first in the CHW output shape.",
-          "weight": 0.5,
-          "required": true,
-        },
-        {
-          "id": "pool",
-          "criterion": "Explain that $2\\times2$ stride-$2$ max pooling without padding halves even spatial sides while keeping channels unchanged.",
-          "weight": 0.5,
-          "required": true,
-        },
-        {
-          "id": "pool-parameters",
-          "criterion": "Say that max pooling has no weights or biases.",
-          "weight": 0.5,
-          "required": true,
-        },
-      ]
-    exemplar: "A convolution reads local patches and reuses each filter's weights at every position, unlike a fully connected layer with separate connections from every input to every output. With $C_{\\text{in}}$ input channels and $C_{\\text{out}}$ filters of side $k$, it has $C_{\\text{out}}(C_{\\text{in}}k^2+1)$ parameters. Its output is $(C_{\\text{out}},H_{\\text{out}},W_{\\text{out}})$, where each spatial side is $\\lfloor(\\text{input side}+2p-k)/s\\rfloor+1$. Max pooling takes the largest value in each patch. With $2\\times2$ patches, stride-$2$ pooling with no padding halves even spatial sides, preserves channels and has no weights or biases."
-    solution: "Local patches limit the weights per filter, and sharing prevents positions from multiplying that count. Count patch starts separately for height and width, put the filter count first, and apply the same patch-counting rule for pooling."
+      - id: local-shared
+        criterion: Explain that each output reads a small local patch, limiting the weights it needs.
+        weight: 1
+        required: true
+      - id: sharing
+        criterion:
+          Explain that reusing each filter's weights and bias across positions avoids separate parameters at
+          every position.
+        weight: 1
+        required: true
+      - id: channels
+        criterion: Explain that each filter produces one output channel.
+        weight: 1
+        required: true
+    exemplar: "Each convolution output reads a small local patch, limiting the number of input connections it needs. The same filter weights and bias are reused across positions, so extra positions need no extra filter parameters. Each filter produces one output channel."
+    solution: "Each convolution output reads a small local patch, limiting the number of input connections it needs. The same filter weights and bias are reused across positions, so extra positions need no extra filter parameters. Each filter produces one output channel."

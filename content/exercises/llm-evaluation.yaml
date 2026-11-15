@@ -460,54 +460,20 @@ exercises:
     role: core
     difficulty: 3
     est_minutes: 4
-    prompt: "You fine-tuned a reading assistant and want to compare it with its starting model. Explain why a public benchmark score might mislead you, how you would compute a pairwise score with ties, and how you would check an LLM judge's position bias without counting each prompt twice. Include one limitation that swapping order does not fix."
+    prompt: "You want to compare a fine-tuned reading assistant with its starting model. Explain why a public benchmark score might mislead, which tasks you would reserve for final evaluation, and how to compute a pairwise preference rate when some comparisons are ties."
     rubric:
       - id: clean-tasks
         criterion:
-          Explain that exposure to benchmark questions, answers or close copies during training can raise the
-          score by recall.
-        weight: 1
-        required: true
-      - id: defined-score
-        criterion:
-          Compute a tie-adjusted rate as $(\text{wins}+0.5\times\text{ties})/(\text{wins}+\text{ties}+\text{losses})$,
-          using final decisions.
-        weight: 1
-        required: true
-      - id: judge-checks
-        criterion: Judge the same answer pair in both display orders to check whether position changes the choice.
-        weight: 0.4
-        required: true
-      - id: map-votes
-        criterion: Map each displayed Left/Right choice back to the model that supplied the answer.
-        weight: 0.3
-        required: true
-      - id: one-decision
-        criterion:
-          Keep an agreed winner or tie, send disagreements for human resolution, and count one final decision
-          per prompt.
-        weight: 0.3
-        required: true
-      - id: remaining-bias
-        criterion: Give a limitation that swapping order leaves, such as a preference for longer answers or familiar wording.
+          Explain that training exposure to benchmark questions, answers or close copies can raise the score
+          by recall.
         weight: 1
         required: true
       - id: fresh-tasks
-        criterion:
-          Mention reserving fresh, representative final evaluation questions and answers outside training and
-          development.
-        weight: 0.5
-        required: false
-      - id: interpretation
-        criterion: Mention that a pairwise rate measures preference against a specified opponent under the judging rule.
-        weight: 0.5
-        required: false
-      - id: blind-rubric
-        criterion: Mention hiding model names so reputation cannot influence the rating.
-        weight: 0.5
-        required: false
-      - id: human-sample
-        criterion: Mention human checks of a sample, including pairs where both orders chose the same model.
-        weight: 0.5
-        required: false
-    exemplar: "Public benchmark questions or answers may have entered pretraining or fine-tuning, so a high score can partly reflect familiar material. I would reserve fresh, representative questions and keep their answers out of development and training.\n\nI would compare both models on the same prompts under explicit criteria. With ties worth half a win, the rate is (wins + 0.5 × ties) divided by all prompts with final decisions, including losses; I would report the counts and unresolved prompts too. This measures preference against the specified opponent under our criteria.\n\nI would hide model names, keep the rubric fixed, randomise the initial order and judge each pair in both orders. After mapping displayed choices to models, I would keep a shared winner or a shared tie, but send disagreements for human resolution and count the prompt once. Human-reviewed samples, including agreements, are still needed because a judge can consistently favour length or familiar wording even after swapping.\n"
+        criterion: Reserve fresh, representative final evaluation questions and answers outside training and development.
+        weight: 1
+        required: true
+      - id: defined-score
+        criterion: Compute $(\text{wins}+0.5\times\text{ties})/(\text{wins}+\text{ties}+\text{losses})$ from final decisions.
+        weight: 1
+        required: true
+    exemplar: "Public benchmark questions or answers may have entered training, so a high score can partly reflect recall. Reserve fresh, representative evaluation questions and keep their answers out of training and development. Count ties as half a win and compute $(\\text{wins}+0.5\\times\\text{ties})/(\\text{wins}+\\text{ties}+\\text{losses})$ from the final decisions."

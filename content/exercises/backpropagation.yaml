@@ -686,29 +686,21 @@ exercises:
     role: "core"
     difficulty: 3
     est_minutes: 5
-    prompt: "Explain how you would calculate and check all parameter slopes for a small network trained on several examples. Connect the saved forward values, backward steps, shared parameters and a two-sided nudge check."
+    prompt: "A network is trained on the mean loss over several examples, and its forward values have been saved. Explain how backpropagation works backward from the loss, how it combines contributions to a shared parameter, and how to check one slope with a two-sided nudge."
     rubric:
-      [
-        {
-          "id": "reuse",
-          "criterion": "Explain saving forward values and reusing loss slopes while multiplying local derivatives backwards.",
-          "weight": 0.4,
-          "required": true,
-        },
-        {
-          "id": "batch",
-          "criterion": "Explain adding contributions to shared parameters, with mean-loss scaling included only once.",
-          "weight": 0.3,
-          "required": true,
-        },
-        {
-          "id": "check",
-          "criterion": "Explain comparing a derivative to two-sided loss changes while keeping other parameters and data fixed.",
-          "weight": 0.3,
-          "required": true,
-        },
-      ]
-    exemplar: "Save intermediate values during the forward pass so local derivatives can be evaluated at those values. Work backwards from the loss, multiplying by local derivatives and adding contributions where routes or examples share a parameter; array products perform these sums and loss averaging is included once. For selected parameters, hold everything else fixed and compare the backward slope with the loss difference between equal positive and negative nudges divided by twice the nudge size."
+      - id: reuse
+        criterion: Explain multiplying arriving loss slopes by local derivatives evaluated using saved forward values.
+        weight: 1
+        required: true
+      - id: batch
+        criterion: Explain adding contributions to a shared parameter, with mean-loss scaling included once.
+        weight: 1
+        required: true
+      - id: check
+        criterion: Compare the backward slope with two-sided loss changes while keeping other parameters and data fixed.
+        weight: 1
+        required: true
+    exemplar: "Work backward from the loss, multiplying arriving slopes by local derivatives evaluated at the saved forward values. Add contributions where paths or examples share a parameter, including the mean-loss scaling once. Check a chosen parameter by holding the others and the data fixed, taking equal positive and negative nudges, and dividing the loss difference by twice the nudge size."
   - id: lab-nn-gradient-check-eps
     dimension: implementation
     type: mc

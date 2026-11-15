@@ -582,39 +582,24 @@ exercises:
     role: core
     difficulty: 3
     est_minutes: 4
-    prompt: Why is cross-entropy used as the loss for classification? Connect surprise, the
-      observed-class probability, and KL. Explain what accuracy misses.
+    prompt: "Explain how an observed class's forecast probability gives its surprise, how averaging surprise over actual outcomes gives cross-entropy, and why lowering cross-entropy lowers KL."
     rubric:
       - id: surprise
-        criterion: Score a labelled example using the surprise of its observed class under the predicted probabilities.
-        weight: 1
-        required: true
-      - id: confidence
         criterion:
-          Explain that a tiny observed-class probability gives a large loss, while accuracy records only whether
-          the chosen class was right.
+          Explain using the base-two logarithm of the reciprocal of the observed class's forecast probability
+          as its surprise.
         weight: 1
         required: true
       - id: kl
-        criterion: Explain that averaging the observed-class surprises using actual outcome probabilities gives cross-entropy.
-        weight: 0.5
+        criterion: Explain averaging the forecast surprises using actual outcome probabilities to obtain cross-entropy.
+        weight: 1
         required: true
       - id: fixed-entropy
-        criterion:
-          Explain that lowering cross-entropy lowers KL by the same amount because the actual-outcome entropy
-          stays fixed.
-        weight: 0.5
+        criterion: Explain that actual-outcome entropy stays fixed, so lowering cross-entropy lowers KL by the same amount.
+        weight: 1
         required: true
-    exemplar:
-      "For a labelled weather example, the loss is the forecast surprise of the observed class,
-      log base two of the reciprocal of its forecast probability. A tiny observed-class probability
-      gets a large loss. Accuracy only records whether the app picked the observed class and misses
-      this confidence. Averaging these daily losses using actual weather probabilities gives cross-entropy.
-      Reducing it reduces KL by the same amount because the actual-outcome entropy stays fixed.
-      KL is smallest when forecast and actual probabilities match."
-    solution:
-      The loss rewards probability on the correct class, not merely a correct pick. With fixed
-      observed outcomes, reducing average cross-entropy also reduces the extra surprise measured by KL.
+    exemplar: "An observed class's surprise is the base-$2$ logarithm of the reciprocal of its forecast probability. Averaging those surprises using actual outcome probabilities gives cross-entropy. Actual-outcome entropy stays fixed, so reducing cross-entropy reduces KL by the same amount."
+    solution: "An observed class's surprise is the base-$2$ logarithm of the reciprocal of its forecast probability. Averaging those surprises using actual outcome probabilities gives cross-entropy. Actual-outcome entropy stays fixed, so reducing cross-entropy reduces KL by the same amount."
   - id: lab-gauss-forecast-gap
     dimension: math
     type: numeric

@@ -641,32 +641,20 @@ exercises:
     role: core
     difficulty: 3
     est_minutes: 4
-    prompt: Explain how a token ID becomes an embedding by table lookup and by multiplying a one-hot vector by a matrix. Describe the shapes for vocabulary size $N$ and width $d$, why both methods give the same result, and how the table's numbers are learned.
+    prompt: "An embedding table $E$ has $N$ rows and $d$ columns. For token ID $i$, describe lookup, describe its one-hot row, and explain why multiplying that row by $E$ gives the same embedding."
     rubric:
-      - {
-          id: r1,
-          criterion: "Describes an $N\\times d$ table $E$ with one learned width-$d$ row per vocabulary token, selected by token ID",
-          weight: 1,
-          required: true,
-        }
-      - {
-          id: r2,
-          criterion: "Describes $u_i$ as a $1\\times N$ row with a 1 at token ID $i$ and zeros elsewhere",
-          weight: 1,
-          required: true,
-        }
-      - {
-          id: r3,
-          criterion: "Explains that $u_iE$ has shape $1\\times d$ and equals row $i$ because every other row is multiplied by zero",
-          weight: 2,
-          required: true,
-        }
-      - {
-          id: r4,
-          criterion: "States that training adjusts the randomly initialized table entries as model weights",
-          weight: 1,
-          required: true,
-        }
+      - id: r1
+        criterion: Describe token ID $i$ selecting row $i$ of the $N\times d$ table $E$.
+        weight: 1
+        required: true
+      - id: r2
+        criterion: Describe a $1\times N$ row $u_i$ with $1$ at token ID $i$ and $0$ elsewhere.
+        weight: 1
+        required: true
+      - id: r3
+        criterion: Explain that $u_iE$ keeps row $i$ because every other row is multiplied by zero.
+        weight: 1
+        required: true
     hints: ["Describe each row's coefficient in the product."]
-    exemplar: The table $E$ has $N$ rows and $d$ columns, one vector per vocabulary token. Token ID $i$ selects row $i$. Its one-hot row $u_i$ has $N$ entries with a 1 in place $i$ and zeros elsewhere. The product $u_iE$ has shape $1\times d$ and keeps row $i$, since every other row is multiplied by zero. Lookup reads that same row directly. The table starts randomly, and training adjusts its entries as model weights.
-    solution: The $1\times N$ one-hot row $u_i$ selects row $i$ of the $N\times d$ table $E$, producing a $1\times d$ embedding. Its zeros remove every other row, so multiplication and direct lookup agree; training learns the entries.
+    exemplar: "Lookup selects row $i$ of $E$, a vector of $d$ numbers. The one-hot row $u_i$ has $N$ entries, with $1$ at position $i$ and $0$ elsewhere. Multiplying $u_iE$ keeps row $i$ because all other rows are multiplied by zero, giving the same embedding."
+    solution: "Lookup selects row $i$ of $E$, a vector of $d$ numbers. The one-hot row $u_i$ has $N$ entries, with $1$ at position $i$ and $0$ elsewhere. Multiplying $u_iE$ keeps row $i$ because all other rows are multiplied by zero, giving the same embedding."

@@ -501,39 +501,21 @@ exercises:
     role: core
     difficulty: 3
     est_minutes: 4
-    prompt: A factory camera has 94% test accuracy with TP = 6, FP = 2, FN = 4 and TN = 88. Explain
-      its precision and recall, why accuracy alone is not enough when missing a fault is dangerous,
-      and why a house-price model instead needs an error score, naming one you would use.
+    prompt: "A factory camera has $94\\%$ test accuracy with TP $=6$, FP $=2$, FN $=4$ and TN $=88$. Calculate and interpret precision, calculate and interpret recall, and explain why the accuracy can be misleading when missed faults are dangerous."
     rubric:
       - id: scores
         criterion: Calculate precision as $6/8=0.75$, the genuine share of flagged parts.
-        weight: 0.5
+        weight: 1
         required: true
       - id: recall
         criterion: Calculate recall as $6/10=0.60$, the caught share of actually faulty parts.
-        weight: 0.5
+        weight: 1
         required: true
       - id: cost
-        criterion: Explain that the many correctly cleared fine parts make accuracy high even though
-          four of ten faults were missed.
+        criterion:
+          Explain that the $88$ correctly cleared fine parts make accuracy high even though four of ten faults
+          were missed.
         weight: 1
         required: true
-      - id: priority
-        criterion: Mention favouring recall when missed faults are dangerous while checking that a person can handle the false alarms.
-        weight: 0.5
-        required: false
-      - id: regression
-        criterion: Distinguishes counting faulty-or-fine answers from measuring price error sizes and names MAE or RMSE for prices.
-        weight: 1
-        required: true
-    exemplar:
-      "Precision is 6/8 = 0.75, so three quarters of flags are genuine faults. Recall is 6/10 =
-      0.60, so four of the ten faults were missed. The 88 true negatives make accuracy look high
-      without removing the danger of those misses, so I would prioritise recall but also monitor
-      precision to keep the number of parts checked by hand manageable. A house-price model predicts numbers, not fault
-      categories, so I would measure error sizes with MAE and use RMSE too if large misses are
-      especially costly."
-    solution:
-      Precision starts from flagged parts, while recall starts from actually faulty parts. The
-      task's costly mistakes determine which scores matter. Price predictions instead need an error score
-      of how far their numbers miss.
+    exemplar: "Precision is $6/8=0.75$, so three quarters of flags are genuine faults. Recall is $6/10=0.60$, so four of ten faults were missed. The $88$ true negatives make accuracy high while those dangerous misses remain."
+    solution: "Precision is $6/8=0.75$, so three quarters of flags are genuine faults. Recall is $6/10=0.60$, so four of ten faults were missed. The $88$ true negatives make accuracy high while those dangerous misses remain."

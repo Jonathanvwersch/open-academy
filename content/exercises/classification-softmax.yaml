@@ -492,31 +492,19 @@ exercises:
     role: core
     difficulty: 3
     est_minutes: 5
-    prompt: "On a fresh image the robot gives cup, ball and box scores (3, 1, 1), but the object is really a box. Explain how softmax turns these into probabilities, how cross-entropy scores this prediction, and how the score slopes determine a gradient descent update of only the biases. Use a calculator, give probabilities, loss and slopes to 2 decimal places, and explain why a wrong class changes too."
-    solution: Softmax shares the total of the e-powers to give about (0.79, 0.11, 0.11); the box probability gives loss 2.24. Subtracting the one-hot box label gives slopes about (0.79, 0.11, -0.89), so updating only biases raises box and lowers both wrong-class scores.
+    prompt: "A robot gives cup, ball and box scores $(3,1,1)$ for an image whose true class is box. Calculate the softmax probabilities, the cross-entropy loss and the slopes with respect to the three scores. Explain each calculation and round results to two decimal places."
+    solution: "Divide $(e^3,e,e)$ by $e^3+2e$ to get probabilities about $(0.79,0.11,0.11)$. Box is true, so the loss is $-\\ln(e/(e^3+2e))\\approx2.24$. Subtracting $(0,0,1)$ from the unrounded probabilities gives slopes about $(0.79,0.11,-0.89)$."
     rubric:
-      - {
-          id: probabilities,
-          criterion: "Divides each e-power by their shared total and obtains probabilities approximately (0.79, 0.11, 0.11), allowing rounded entries not to sum exactly to one",
-          weight: 1,
-          required: true,
-        }
-      - {
-          id: loss,
-          criterion: "Selects the true box probability and computes its negative natural log, approximately 2.24",
-          weight: 1,
-          required: true,
-        }
-      - {
-          id: slopes,
-          criterion: "Subtract label $(0,0,1)$ from the probabilities to obtain score slopes approximately $(0.79,0.11,-0.89)$.",
-          weight: 0.5,
-          required: true,
-        }
-      - {
-          id: update,
-          criterion: "Explain that subtracting learning-rate-scaled slopes from the biases raises the box score and lowers both wrong-class scores because their slopes are positive.",
-          weight: 0.5,
-          required: true,
-        }
-    exemplar: "Raise e to each score and divide by $e^3+e+e\\approx25.52$, giving probabilities about (0.79, 0.11, 0.11); the displayed probabilities sum to 1.01 only because of rounding. Box is true, so the loss is $-\\ln(e/(e^3+2e))\\approx2.24$. Subtract label (0, 0, 1) from the unrounded probabilities to get slopes about (0.79, 0.11, -0.89). With only biases changing, subtracting learning-rate-scaled slopes raises the box score and lowers the cup and ball scores; wrong classes change because their positive probabilities also give positive slopes."
+      - id: probabilities
+        criterion: Divide each score's exponential by their total to obtain probabilities about $(0.79,0.11,0.11)$.
+        weight: 1
+        required: true
+      - id: loss
+        criterion: Take minus the natural log of the true box probability to obtain a loss about $2.24$.
+        weight: 1
+        required: true
+      - id: slopes
+        criterion: Subtract the label $(0,0,1)$ from the probabilities to obtain score slopes about $(0.79,0.11,-0.89)$.
+        weight: 1
+        required: true
+    exemplar: "Divide $(e^3,e,e)$ by $e^3+2e$ to get probabilities about $(0.79,0.11,0.11)$. Box is true, so the loss is $-\\ln(e/(e^3+2e))\\approx2.24$. Subtracting $(0,0,1)$ from the unrounded probabilities gives slopes about $(0.79,0.11,-0.89)$."

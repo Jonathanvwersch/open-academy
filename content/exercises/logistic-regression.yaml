@@ -523,40 +523,18 @@ exercises:
     role: core
     difficulty: 3
     est_minutes: 5
-    prompt: How would you train a model to predict whether a house sells within a month, rather than its price? Explain how the score, the probability, the decision, the loss and the update to the weight and bias connect, and why a correct decision can still have a loss above zero.
+    prompt: "A logistic model predicts whether a house sells within a month from feature $x$. Explain how it forms a weighted score, turns that score into a sale probability, and scores the observed outcome during training."
     rubric:
       - id: prediction
-        criterion: Compute a weighted score plus bias, $z=wx+b$.
-        weight: 0.4
+        criterion: Form the score $z=wx+b$.
+        weight: 1
         required: true
       - id: probability
-        criterion: Use $p=\sigma(z)$ as the estimated probability that the house sells within a month.
-        weight: 0.3
-        required: true
-      - id: decision
-        criterion: Compare $p$ with a threshold to make the sold-or-unsold decision.
-        weight: 0.3
+        criterion: Use $p=\sigma(z)$ as the estimated probability of a sale within a month.
+        weight: 1
         required: true
       - id: loss
-        criterion: Score the observed label with minus the natural log of the probability given to it.
-        weight: 0.5
+        criterion: Score the observed label with minus the natural log of the probability assigned to it.
+        weight: 1
         required: true
-      - id: correct-loss
-        criterion:
-          Explain that a correct decision can still assign the observed label probability below $1$, giving positive
-          loss.
-        weight: 0.5
-        required: true
-      - id: update
-        criterion: Give $(p-y)x$ as the weight slope, where $y$ is the observed label.
-        weight: 0.4
-        required: true
-      - id: bias-slope
-        criterion: Give $p-y$ as the bias slope.
-        weight: 0.2
-        required: true
-      - id: step
-        criterion: Subtract learning rate times each slope from its parameter and repeat with fresh predictions.
-        weight: 0.4
-        required: true
-    exemplar: Encode sold within a month as 1 and not sold as 0. Compute a weighted score plus bias, use the sigmoid to estimate the chance of label 1, and compare that chance with a chosen threshold for the decision. Binary cross-entropy is the negative natural log of the probability assigned to the observed label; even a correct decision can leave that probability below one and hence a positive loss. The score slope is p-y, each weight slope multiplies it by its input, and the bias slope is p-y. Subtract learning-rate-scaled slopes from the parameters and repeat with fresh predictions.
+    exemplar: "The model forms the weighted score $z=wx+b$. Applying sigmoid gives $p=\\sigma(z)$, the estimated chance of a sale within a month. Training scores the observed outcome with $-\\ln p$ for a sale and $-\\ln(1-p)$ for no sale."

@@ -719,54 +719,24 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 4
-    prompt:
-      An estate agent wants to understand the rule $3\cdot\text{area}+10\cdot\text{bedrooms}+50$,
-      which predicts prices in thousands of pounds from area in m² and bedroom count. Explain how
-      to write it with vectors and what each weight means. Then explain how NumPy can price many
-      houses at once, and how adding a feature that is always 1 can replace the separate bias.
+    prompt: "An estate agent uses $3\\cdot\\text{area}+10\\cdot\\text{bedrooms}+50$ to predict prices in thousands of pounds from area in square metres and bedroom count. Explain its vector form, what the weights mean, and how NumPy can price many houses at once."
     rubric:
       - id: r1
-        criterion:
-          Write the ordered feature vector $x=(\text{area},\text{bedrooms})$, weight vector $w=(3,10)$ and model
-          $\hat y=w\cdot x+50$.
+        criterion: Write $x=(\text{area},\text{bedrooms})$, $w=(3,10)$ and $\hat y=w\cdot x+50$.
         weight: 1
         required: true
       - id: r2
         criterion:
-          Explain that each extra square metre adds $3$ thousand pounds and each extra bedroom adds $10$ thousand
-          pounds to the prediction when the other feature stays fixed.
+          Explain that an extra square metre adds $3$ thousand pounds and an extra bedroom adds $10$ thousand
+          pounds when the other feature stays fixed.
         weight: 1
         required: true
       - id: r3
         criterion: Use `X @ w + b` with one house per row to get one prediction per house.
-        weight: 0.5
+        weight: 1
         required: true
-      - id: bias-feature
-        criterion: Add a constant-$1$ feature with weight $50$ to include the bias, then leave out the separate bias addition.
-        weight: 0.5
-        required: true
-      - id: units
-        criterion:
-          Mention that feature units affect weight size, so the numbers alone do not show which feature matters
-          more.
-        weight: 0.5
-        required: false
-    exemplar:
-      I put the features in x = (area, bedrooms), the weights in w = (3, 10), and the bias in b = 50.
-      For a house with area 100 m² and 2 bedrooms, the dot product plus bias gives 300 + 20 + 50 = 370
-      thousand pounds. The bedroom weight means one extra bedroom adds 10 thousand pounds to the
-      prediction when area stays the same. The weights use different units, so their numbers alone
-      do not show which feature matters more. For many houses, I store one house per row of X and
-      use X @ w + b to get one price per row. Alternatively, I add a column containing 1 for every
-      house and give that column weight 50. This already adds the bias, so I do not add it again.
-    solution:
-      I put the features in x = (area, bedrooms), the weights in w = (3, 10), and the bias in b = 50.
-      For a house with area 100 m² and 2 bedrooms, the dot product plus bias gives 300 + 20 + 50 = 370
-      thousand pounds. The bedroom weight means one extra bedroom adds 10 thousand pounds to the
-      prediction when area stays the same. The weights use different units, so their numbers alone
-      do not show which feature matters more. For many houses, I store one house per row of X and
-      use X @ w + b to get one price per row. Alternatively, I add a column containing 1 for every
-      house and give that column weight 50. This already adds the bias, so I do not add it again.
+    exemplar: "Use $x=(\\text{area},\\text{bedrooms})$, $w=(3,10)$ and $b=50$, giving $\\hat y=w\\cdot x+b$. Holding the other feature fixed, an extra square metre adds $3$ thousand pounds and an extra bedroom adds $10$ thousand pounds. For many houses, put one house per row of $X$ and use `X @ w + b` to get one price per row."
+    solution: "Use $x=(\\text{area},\\text{bedrooms})$, $w=(3,10)$ and $b=50$, giving $\\hat y=w\\cdot x+b$. Holding the other feature fixed, an extra square metre adds $3$ thousand pounds and an extra bedroom adds $10$ thousand pounds. For many houses, put one house per row of $X$ and use `X @ w + b` to get one price per row."
   - id: lrp-add-self-explain
     lesson_only: true
     dimension: conceptual
