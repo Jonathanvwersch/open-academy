@@ -10,7 +10,7 @@ exercises:
     rubric:
       - {
           id: cause,
-          criterion: "Explain that dropout randomly sets some of its input numbers to $0$ on each training call, so losses can differ with fixed model inputs and weights.",
+          criterion: "Explain that dropout randomly sets some of its input numbers to $0$ in training mode, so the same input images and the same weights can give different losses.",
           weight: 1,
           required: true,
         }
@@ -28,11 +28,11 @@ exercises:
         }
       - {
           id: recording,
-          criterion: "Mention keeping `torch.no_grad()` to pause recording the calculations needed to find slopes; it leaves the model's mode unchanged.",
+          criterion: "Mention keeping `torch.no_grad()` to pause recording the calculations needed to find slopes; dropout stays active in training mode.",
           weight: 0.5,
           required: false,
         }
-    exemplar: "Training mode keeps dropout active, so some numbers are randomly set to $0$ on each call. I would call `model.eval()` to turn dropout off and keep `torch.no_grad()` to pause recording the calculations needed to find slopes. I would measure loss twice on unchanged images and weights and check that the losses agree. Before training again, I would call `model.train()`."
+    exemplar: "Training mode keeps dropout active, so some numbers are randomly set to $0$ on each call. I would call `model.eval()` to turn dropout off and keep `torch.no_grad()` to pause recording the calculations needed to find slopes. I would measure loss twice on the same images with the same weights and check that the losses agree. Before training again, I would call `model.train()`."
     solution: "Training mode keeps dropout active even inside `torch.no_grad()`. Call `model.eval()` with `torch.no_grad()` and compare repeated losses on unchanged inputs and weights."
   - id: dx-dl-5
     dimension: transfer
