@@ -19,7 +19,7 @@ knowledge_points:
     explain: |
       ### Waiting for the next token
 
-      In the Prefill and decode lesson, we saw that prefill processes prompt tokens together, while decode waits for each token before producing the next. Suppose a small **draft** model guesses the next $k$ tokens and a large **target** model checks them. Could checking guesses together reduce that waiting?
+      In the Prefill and decode lesson, we saw that prefill processes prompt tokens together, while decode waits for each token before producing the next. Suppose a **draft** model guesses the next $k$ tokens and a larger **target** model checks them. Could checking guesses together reduce that waiting?
 
       In the Memory-bound vs compute-bound lesson, we saw that arithmetic intensity measures FLOPs per byte moved. A FLOP is one floating-point operation, and FLOPs is the plural count. At batch size one, decode does little maths with each weight it reads, so waiting for memory limits its speed.
 
@@ -44,7 +44,7 @@ knowledge_points:
       </g></svg>
       ```
 
-      The target row checks each guess using its preceding text. The third fails, so output ends with "The". The target's later "is" used the wrong prefix ending in "It", so we ignore it. No bonus appears here because a guess failed.
+      The third fails, so output ends with "The". The target's later "is" used the wrong prefix ending in "It", so we ignore it. No bonus appears here because a guess failed.
 
       For readers who've met top-k sampling, which keeps the $k$ most probable tokens, its $k$ is unrelated to draft length.
 
