@@ -103,7 +103,7 @@ knowledge_points:
 
       $$p_i=\frac{e^{z_i/\tau}}{\sum_j e^{z_j/\tau}},\qquad \tau>0.$$
 
-      The sum runs over all vocabulary tokens $j$. At $\tau=1$, this is ordinary softmax. At $\tau=0.5$, Yes has probability about $0.94$; at $\tau=2$, about $0.67$. Positive temperature preserves which token leads, while changing its chance of being drawn.
+      The sum runs over all vocabulary tokens $j$. At $\tau=1$, this is ordinary softmax. At $\tau=0.5$, Yes has probability about $0.94$; at $\tau=2$, about $0.67$. Positive temperature preserves the score order. Raising it makes the distribution more even: the leader loses probability and the lowest-ranked tokens gain. An individual token between them can gain or lose probability.
 
       ### Random draws and greedy choices
 
@@ -307,7 +307,11 @@ knowledge_points:
 
       This complete Python example takes a nonempty list of positive probabilities summing to 1. As in top-k, tied probabilities keep their input order. We use `append` to add an index to `keep` before checking the threshold. Once the total reaches $p$, `break` exits the loop, leaving the crossing token included. The final loop repeats the worked draw $u=0.85$.
 
+      Floating-point sums can land just under $p$, so `math.fsum` adds the retained probabilities more accurately at the boundary.
+
       ```python
+      import math
+
       def top_p(probs, p):
           if not 0 < p <= 1:
               raise ValueError("p must be in (0, 1]")
@@ -319,7 +323,7 @@ knowledge_points:
           total = 0.0
           for i in order:
               keep.append(i)
-              total += probs[i]
+              total = math.fsum(probs[j] for j in keep)
               if total >= p:
                   break
           result = [0.0] * len(probs)

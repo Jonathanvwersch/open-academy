@@ -89,9 +89,9 @@ exercises:
         }
       - {
           id: b,
-          text: "Raise the sampling temperature.",
+          text: "Reduce the number of later decode passes.",
           correct: false,
-          feedback: "Temperature changes token probabilities; it does not remove the measured prompt-processing work.",
+          feedback: "Fewer later passes shorten the answer's total generation time; the initial prompt-processing delay remains.",
         }
       - {
           id: c,
@@ -159,9 +159,9 @@ exercises:
         }
       - {
           id: c,
-          text: "Sampling temperature for both the long answer and the long prompt.",
+          text: "Prefill for both the long answer and the long prompt.",
           correct: false,
-          feedback: "Temperature controls the choice distribution rather than explaining these different amounts of model work.",
+          feedback: "Prefill handles the prompt; a long answer adds many later decode passes to inspect.",
         }
     solution: Many output tokens require many sequential decode passes. A long known prompt adds prefill work before its first output can be chosen.
   - id: pd-temp-basics
@@ -257,7 +257,7 @@ exercises:
           correct: false,
           feedback: "Finite logits keep positive softmax probabilities; higher temperature spreads probability more evenly.",
         }
-    solution: Positive temperature preserves the logits' order. Raising it makes the distribution more even, so lower-ranked tokens gain probability.
+    solution: Positive temperature preserves the logits' order. Raising it makes the distribution more even; an individual non-leading token's probability can rise or fall, while the lowest-ranked tokens gain and the unique leader loses probability.
   - id: pd-temp-zero
     dimension: implementation
     type: mc
@@ -295,7 +295,7 @@ exercises:
     code: |
       import math
       weight = math.exp(____)
-    accept: ["(z - largest) / tau", "(z-largest)/tau", "z / tau - largest / tau"]
+    accept: ["(z - largest) / tau", "(z-largest)/tau"]
     solution: Divide the logit difference by temperature. Subtracting the same largest logit from every entry cancels out during normalisation and avoids large positive exponents.
   - id: pd-temp-new-setting
     dimension: conceptual
@@ -307,7 +307,7 @@ exercises:
     options:
       - {
           id: a,
-          text: "Lower-ranked tokens gain chance, and every continuation becomes correct.",
+          text: "The distribution becomes more even, and every continuation becomes correct.",
           correct: false,
           feedback: "Temperature changes probabilities and gives no guarantee that a continuation is suitable.",
         }
@@ -319,7 +319,7 @@ exercises:
         }
       - {
           id: c,
-          text: "Lower-ranked tokens gain chance, and some continuations may fit poorly.",
+          text: "The distribution becomes more even, and some continuations may fit poorly.",
           correct: true,
           feedback: "Higher temperature increases variety while still allowing unsuitable tokens.",
         }
