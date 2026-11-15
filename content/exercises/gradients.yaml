@@ -222,8 +222,9 @@ exercises:
         }
       - {
           id: descent,
-          criterion: "Explains that $\\nabla f\\cdot u = \\|\\nabla f\\|\\cos\\theta$ is most negative at $\\theta=180^\\circ$, so $-\\nabla f$ gives the steepest local decrease.",
+          criterion: "Explain that $\\nabla f\\cdot u = \\|\\nabla f\\|\\cos\\theta$ is most negative at $\\theta=180^\\circ$, so $-\\nabla f$ gives the steepest local decrease.",
           weight: 1,
+          required: true,
         }
     exemplar: "The gradient at a point collects the partial derivatives, here $(3, 4)$. As an arrow it points in the direction where $f$ rises fastest, and its length, $5$, is that fastest slope. To get the slope in any other direction, take a unit vector $u$ for that direction and compute $\\nabla f\\cdot u$: for $u=(0.6, 0.8)$ it is $5$, for $(0.8, -0.6)$ it is $0$, and for $(-0.6, -0.8)$ it is $-5$. Because $\\nabla f\\cdot u = \\|\\nabla f\\|\\cos\\theta$, the slope is most negative when $u$ points opposite the gradient, so stepping along $-\\nabla f$ lowers $f$ fastest for a small step, which is what gradient descent does."
   - id: gradp-why-vector

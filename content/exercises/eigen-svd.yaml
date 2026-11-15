@@ -762,21 +762,26 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 5
-    prompt: Explain to a colleague what the SVD of a matrix does to an input vector, what the singular values measure, and why keeping only the biggest singular values gives a good copy of the matrix in fewer numbers.
-    exemplar: The SVD writes any matrix as $A=USV^\top$. Read right to left, $V^\top$ turns perpendicular input directions onto the axes, $S$ stretches each axis by a singular value, and $U$ turns the result to the output directions, so $Av_i=s_iu_i$. Either turn may include a mirror flip. Singular values are the lengths that $v_1$ and $v_2$ come out at, never negative. Keeping the $k$ biggest pieces $s_iu_iv_i^\top$ gives the closest rank-$k$ matrix, off by at most the first dropped singular value, and it needs $k(m+n)$ numbers in place of $mn$.
+    prompt: Explain to a colleague what the SVD of a matrix does to an input vector, what the singular values measure, and why keeping only the biggest singular values gives a good copy of the matrix in fewer numbers. How large can the copy's output error be for a length-$1$ input?
+    exemplar: The SVD writes any matrix as $A=USV^\top$. Read right to left, $V^\top$ turns perpendicular unit input directions onto the axes, $S$ stretches each axis by a singular value, and $U$ turns the result to the output directions, so $Av_i=s_iu_i$. Either turn may include a mirror flip. Singular values are the output lengths for these unit input directions, and are never negative. Keeping the $k$ biggest pieces $s_iu_iv_i^\top$ gives the closest rank-$k$ matrix. For any length-$1$ input, its output is off by at most the first dropped singular value. The copy needs $k(m+n)$ numbers in place of $mn$.
     rubric:
       - id: r1
         criterion: "Describes the SVD as turn, stretch along the axes, turn ($V^\\top$, then $S$, then $U$), where a turn may include a mirror flip"
         required: true
         weight: 2
       - id: r2
-        criterion: Singular values are how much each input direction is stretched (the output lengths of $v_1$ and $v_2$), never negative
+        criterion: Explain that singular values are the nonnegative output lengths for the perpendicular unit input directions.
         required: true
         weight: 2
       - id: r3
-        criterion: Keeping the biggest pieces gives the closest low-rank copy, with error set by the dropped singular values
+        criterion: Explain that keeping the $k$ biggest singular-value pieces gives the closest rank-$k$ copy.
         required: true
-        weight: 2
-      - id: r4
-        criterion: "A rank-k copy of an m×n matrix needs k(m+n) numbers in place of mn"
         weight: 1
+      - id: error
+        criterion: Say that for a length-$1$ input the output error is at most the first dropped singular value.
+        required: true
+        weight: 1
+      - id: r4
+        criterion: Explain that storing $k$ columns of $m$ numbers and $k$ rows of $n$ numbers uses $k(m+n)$ numbers in place of $mn$.
+        weight: 1
+        required: true

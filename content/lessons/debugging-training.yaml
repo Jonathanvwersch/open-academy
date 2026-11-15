@@ -266,6 +266,8 @@ knowledge_points:
          $$L_1=5+16(1.5625)=30,\qquad L_2=5+16(2.44140625)=44.0625.$$
 
       The original identical losses did not identify the cause, but reducing the rates separated these possibilities. A still-rising curve is a reason to inspect the update sign, not proof by itself.
+
+      In a neural network, dropout randomly sets some units' outputs to $0$ on each training-mode call, so fixed weights and inputs can still give different losses. `model.eval()` turns dropout off and `model.train()` turns it back on. `torch.no_grad()` only stops recording slopes, so use it with `model.eval()` for validation and check that two calls on the same inputs with fixed weights give the same loss.
     problems:
       - dbt-symptom-basics
       - dbt-halve-why

@@ -931,16 +931,44 @@ exercises:
     prompt: Explain to a friend how a large language model is trained, from raw web text to an assistant. Say what happens at each stage, which stage uses most of the compute, and how a team can decide how big a model to train for its budget.
     rubric:
       - id: stages
-        criterion: "Names the stages in order: collect, filter and deduplicate text; tokenize; pretrain on next-token prediction; post-train; with evaluation alongside"
-        weight: 2
+        criterion: Describe collecting text, filtering out poor writing and removing duplicates.
+        weight: 0.5
+        required: true
+      - id: tokens
+        criterion: Describe tokenizing the cleaned text and packing it into fixed-length windows.
+        weight: 0.5
+        required: true
+      - id: pretraining
+        criterion: Describe next-token training over the text to produce a base model that continues text.
+        weight: 0.5
+        required: true
+      - id: post-training
+        criterion:
+          Describe training on example conversations, often followed by preference training, to make the base
+          model respond as an assistant.
+        weight: 0.5
         required: true
       - id: compute
-        criterion: "Says pretraining uses by far the most compute, about $6PD$ FLOPs, and gives the model most of its knowledge, while post-training changes how it responds"
+        criterion: Identify pretraining as the stage that uses by far the most compute.
         weight: 1
         required: true
       - id: scaling
-        criterion: "Explains that scaling laws predict loss from compute, and that a fixed budget gives the lowest loss at about $20$ tokens per parameter"
+        criterion: Explain fitting scaling laws from small runs to predict the loss of a larger run.
+        weight: 0.5
+        required: false
+      - id: budget
+        criterion:
+          Use $C\approx6PD$ with roughly $D=20P$ tokens to choose parameter count $P$ and token count $D$ for
+          a fixed compute budget $C$.
         weight: 1
+        required: true
+      - id: knowledge
+        criterion: Mention that pretraining supplies most model knowledge while post-training mainly changes how it responds.
+        weight: 0.5
+        required: false
+      - id: evaluation
+        criterion: Mention evaluating on tests excluded from training throughout the pipeline.
+        weight: 0.5
         required: false
     exemplar: "First the team gathers a huge amount of text, mostly from the web plus books and code, filters out spam and gibberish, and removes duplicates. A tokenizer turns the text into tokens, which are packed into fixed-length windows. Pretraining then trains the model to predict the next token across all of it, which takes about $6PD$ FLOPs for $P$ parameters and $D$ tokens; this is by far the most expensive stage and gives the model most of its knowledge. The result is a base model that continues text, so post-training fine-tunes it on example conversations, and often on people's preferences, to make it answer like an assistant. Throughout, the team evaluates on tests the model never trained on. To choose a size, the team uses scaling laws, which show the loss falling by a steady factor for each tenfold increase in compute, and splits its budget at about $20$ tokens per parameter."
     solution: "A good answer walks through data, tokenizer, pretraining and post-training, with evaluation alongside. It says pretraining dominates the compute, about $6PD$, and that scaling laws plus about $20$ tokens per parameter guide the choice of model size."

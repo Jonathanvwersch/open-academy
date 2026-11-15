@@ -256,7 +256,10 @@ test('authored neural-network project loads with its reflection exercises', asyn
     'symmetry',
     'output-bias',
   ]);
-  expect(zeroInitialization.exemplar).toContain('identical gradients');
+  expect(zeroInitialization.exemplar).toContain('ReLU output is $0$');
+  expect(zeroInitialization.exemplar).toContain(
+    'the slope passed back through each hidden ReLU is $0$',
+  );
 });
 
 test('every real lesson knowledge point has non-basics problems at difficulties one through three', async () => {

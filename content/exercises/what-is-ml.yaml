@@ -540,21 +540,24 @@ exercises:
     est_minutes: 4
     prompt: "In your own words, explain what machine learning is. Then describe how the parts of the house-price problem (inputs, target, weights, loss, training) carry over to teaching a robot arm to pick up a cup from human demonstrations."
     rubric:
-      - {
-          id: r1,
-          criterion: "Defines machine learning as learning a rule from examples rather than writing it by hand",
-          weight: 2,
-          required: true,
-        }
-      - {
-          id: r2,
-          criterion: "Names the robot's inputs (e.g. camera image, joint angles) and target (the demonstrated movement)",
-          weight: 2,
-          required: true,
-        }
-      - {
-          id: r3,
-          criterion: "Explains that the loss measures how far predictions are from the targets and that training changes the weights to reduce it",
-          weight: 1,
-        }
+      - id: r1
+        criterion: Define machine learning as fitting a rule to examples by choosing its adjustable weights.
+        weight: 2
+        required: true
+      - id: r2
+        criterion: Identify the robot's sensed inputs, such as its camera image and joint angles.
+        weight: 1
+        required: true
+      - id: target
+        criterion: Identify the demonstrated movement as the robot's target.
+        weight: 1
+        required: true
+      - id: r3
+        criterion: Explain that the loss measures how far the robot's predicted movement is from the demonstrated movement.
+        weight: 0.5
+        required: true
+      - id: training
+        criterion: Explain that training changes the robot model's weights to make that loss smaller.
+        weight: 0.5
+        required: true
     exemplar: "Machine learning means a computer learns a rule from examples instead of a person writing the rule. For house prices, the inputs are a house's measurements, the target is its sale price, and the model multiplies the measurements by weights. The loss measures how far the predicted prices are from the real ones, and training changes the weights to make the loss smaller. For a robot arm, the inputs are the camera image and joint angles, and the target is the movement the person made. A neural network predicts a movement, the loss measures how far it is from the person's movement, and training changes the network's weights to shrink that gap."

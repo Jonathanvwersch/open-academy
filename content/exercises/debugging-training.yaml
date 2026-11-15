@@ -10,23 +10,29 @@ exercises:
     rubric:
       - {
           id: cause,
-          criterion: "Connects train mode to fresh dropout masks during each validation call.",
+          criterion: "Explain that training mode makes dropout randomly zero unit outputs on each call, so validation losses can differ with fixed weights.",
           weight: 1,
           required: true,
         }
       - {
           id: fix,
-          criterion: "Calls `model.eval()` for evaluation and retains `no_grad()`, explaining their distinct roles.",
+          criterion: "Call `model.eval()` to turn dropout off during evaluation.",
           weight: 1,
           required: true,
         }
       - {
           id: check,
-          criterion: "Repeats evaluation on unchanged inputs and weights and checks that scores agree.",
+          criterion: "Repeat evaluation on unchanged inputs and weights and check that the losses agree.",
           weight: 1,
           required: true,
         }
-    exemplar: "Training mode keeps dropout active, so each call can use a different mask. I would call `model.eval()` to disable dropout during evaluation and keep `no_grad()` to avoid recording gradients. Then I would evaluate the same images twice with fixed weights and check that both losses agree. Training should call `model.train()` again for the next epoch."
+      - {
+          id: recording,
+          criterion: "Mention keeping `torch.no_grad()` to stop recording slopes; it leaves dropout active on its own.",
+          weight: 0.5,
+          required: false,
+        }
+    exemplar: "Training mode keeps dropout active, randomly zeroing unit outputs on each call. I would call `model.eval()` to disable dropout during evaluation and keep `torch.no_grad()` to stop recording slopes. Then I would evaluate the same images twice with fixed weights and check that both losses agree. Training should call `model.train()` again for the next epoch."
     solution: "Dropout remains active in train mode even inside `no_grad()`. Use `eval()` with `no_grad()` and compare repeated scores on unchanged data."
   - id: dx-dl-5
     dimension: transfer
@@ -883,15 +889,19 @@ exercises:
     est_minutes: 4
     prompt:
       A friend says their training loss levels off high. Explain how you would distinguish a bug from
-      a setting or model limitation using a loss curve, a tiny-batch test and a gradient check.
+      a setting or model limitation using training and validation loss curves, a tiny-batch test and a gradient check.
     rubric:
       - id: curve
         criterion: Uses the curve and validation trend as clues rather than proof of a single cause.
         weight: 1
         required: true
       - id: tiny
-        criterion: Tests a tiny batch with a known achievable loss and checks updates if it fails.
-        weight: 1
+        criterion: Repeatedly fit a tiny batch with a known achievable loss to test whether training can reach it.
+        weight: 0.5
+        required: true
+      - id: updates
+        criterion: If the tiny-batch test fails, inspect whether updates reach every parameter.
+        weight: 0.5
         required: true
       - id: slope
         criterion: Compares code slopes with numerical nudges before deciding what to tune.
@@ -900,7 +910,7 @@ exercises:
     exemplar:
       I would first see whether loss was flat from the start, fell slowly or fell before levelling
       off, and compare the validation trend. I would repeatedly fit a tiny batch whose achievable loss I
-      know, checking whether every parameter changes if the test fails. I would compare suspicious code
+      know, checking whether updates reach every parameter if the test fails. I would compare suspicious code
       slopes with two-nudge numerical slopes, keeping other parameters fixed. If those checks support the
       code, I would try a suitable rate or model change; a plateau alone is not proof of a bug because the
       model may have reached its best fit.

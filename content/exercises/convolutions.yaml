@@ -633,20 +633,44 @@ exercises:
       [
         {
           "id": "local-shared",
-          "criterion": "Explains local patches and shared weights and counts $C_{\\text{out}}(C_{\\text{in}}k^2+1)$ parameters including biases",
-          "weight": 1,
+          "criterion": "Explain that each convolution output reads a small local patch, limiting the weights it needs.",
+          "weight": 0.5,
           "required": true,
         },
         {
+          "id": "sharing",
+          "criterion": "Explain that reusing each filter's weights and bias at every position avoids separate parameters for every output position.",
+          "weight": 0.5,
+          "required": true,
+        },
+        {
+          "id": "parameter-count",
+          "criterion": "Mention the parameter count $C_{\\text{out}}(C_{\\text{in}}k^2+1)$, including one bias per filter.",
+          "weight": 0.5,
+          "required": false,
+        },
+        {
           "id": "shape",
-          "criterion": "Uses floor((input side+2p−k)/s)+1 for each spatial side and one output channel per filter",
-          "weight": 1,
+          "criterion": "Compute each spatial side as $\\lfloor(\\text{input side}+2p-k)/s\\rfloor+1$.",
+          "weight": 0.5,
+          "required": true,
+        },
+        {
+          "id": "channels",
+          "criterion": "Put one output channel per filter first in the CHW output shape.",
+          "weight": 0.5,
           "required": true,
         },
         {
           "id": "pool",
-          "criterion": "Pooling keeps channel count, halves even spatial sides and adds no parameters",
-          "weight": 1,
+          "criterion": "Explain that $2\\times2$ stride-$2$ max pooling without padding halves even spatial sides while keeping channels unchanged.",
+          "weight": 0.5,
+          "required": true,
+        },
+        {
+          "id": "pool-parameters",
+          "criterion": "Say that max pooling has no weights or biases.",
+          "weight": 0.5,
           "required": true,
         },
       ]

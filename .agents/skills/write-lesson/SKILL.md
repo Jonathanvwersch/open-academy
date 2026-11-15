@@ -64,6 +64,8 @@ Then the `worked` example, then the questions.
 
 ### The end (`final`, `summary`)
 
+Follow [Explain questions: rubrics and exemplars](../write-questions/SKILL.md#explain-questions-rubrics-and-exemplars) in the questions skill for rubric rules.
+
 - **final:** the "Explain it" self-check before the quiz. It is one `explain` question that makes the learner connect the steps in their own words, because recalling beats rereading. The learner sees the model answer and marks their own work, so it is not part of the quiz score. Give it 2–3 rubric criteria and an exemplar.
 - **summary:** 3–4 bullets that restate the main results, each a complete sentence a learner could revise from, formula included where there is one. Add nothing new. Finish with the `**Next:**` line saying what the next lesson does with this idea.
 

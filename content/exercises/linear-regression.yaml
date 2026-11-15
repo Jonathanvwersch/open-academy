@@ -726,21 +726,31 @@ exercises:
       houses at once, and how adding a feature that is always 1 can replace the separate bias.
     rubric:
       - id: r1
-        criterion: Identifies ordered input and weight vectors and adds the bias once in the dot-product model
+        criterion:
+          Write the ordered feature vector $x=(\text{area},\text{bedrooms})$, weight vector $w=(3,10)$ and model
+          $\hat y=w\cdot x+50$.
         weight: 1
         required: true
       - id: r2
         criterion:
-          Interprets a weight as a per-unit prediction change with other inputs fixed, and notes
-          that units affect weight size
+          Explain that each extra square metre adds $3$ thousand pounds and each extra bedroom adds $10$ thousand
+          pounds to the prediction when the other feature stays fixed.
         weight: 1
         required: true
       - id: r3
-        criterion:
-          Uses X @ w + b with one output per row and explains appending a constant-1 feature with
-          bias weight without double-counting
-        weight: 1
+        criterion: Use `X @ w + b` with one house per row to get one prediction per house.
+        weight: 0.5
         required: true
+      - id: bias-feature
+        criterion: Add a constant-$1$ feature with weight $50$ to include the bias, then leave out the separate bias addition.
+        weight: 0.5
+        required: true
+      - id: units
+        criterion:
+          Mention that feature units affect weight size, so the numbers alone do not show which feature matters
+          more.
+        weight: 0.5
+        required: false
     exemplar:
       I put the features in x = (area, bedrooms), the weights in w = (3, 10), and the bias in b = 50.
       For a house with area 100 m² and 2 bedrooms, the dot product plus bias gives 300 + 20 + 50 = 370

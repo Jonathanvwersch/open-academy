@@ -494,12 +494,24 @@ exercises:
         weight: 1
         required: true
       - id: scale
-        criterion: Convert to float, divide by 255, and apply the model's own channel means and standard deviations with matching broadcasting axes.
-        weight: 1
+        criterion: Convert uint8 values to float and divide by $255$ before standardisation.
+        weight: 0.5
+        required: true
+      - id: standardise
+        criterion: Subtract the model's own channel means and divide by its standard deviations with axes aligned to the channels.
+        weight: 0.5
         required: true
       - id: axes
-        criterion: Use transpose to move channels; explain why reshape cannot substitute and why adding a size-one batch axis is safe.
-        weight: 1
+        criterion: Use transpose with axis order $(2,0,1)$ to move HWC to CHW while keeping values with their pixels.
+        weight: 0.4
+        required: true
+      - id: reshape
+        criterion: Explain that reshape regroups the default index-order sequence and can mix channels from different pixels.
+        weight: 0.4
+        required: true
+      - id: batch
+        criterion: Add a size-$1$ axis at the front to make a single-image batch without regrouping the existing axes.
+        weight: 0.2
         required: true
     exemplar: I start with (480, 640, 3). I convert to float and divide by 255, then subtract the model's RGB means and divide by its standard deviations in HWC, where (3,) statistics align with channels. I transpose with (2, 0, 1) to get (3, 480, 640), then add a first axis of size one for (1, 3, 480, 640). Reshape is not a general way to move the channels because it regroups default index-order numbers instead of keeping each number with its own pixel; adding a size-one batch axis is safe because it does not regroup the existing axes.
     solution: The pipeline must preserve each pixel's channel values while matching both the model's axis order and its expected scale.

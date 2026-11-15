@@ -443,14 +443,38 @@ exercises:
         }
       - {
           id: errors-and-interval,
-          criterion: Gives both standard-error formulas and explains the approximate interval as estimate plus or minus two standard errors.,
-          weight: 1,
+          criterion: 'Give $s/\sqrt n$ as the estimated standard error of a mean from independent trials.',
+          weight: 0.25,
+          required: true,
+        }
+      - {
+          id: rate-error,
+          criterion: 'Give $\sqrt{\hat p(1-\hat p)/n}$ as the estimated standard error of a success rate from independent trials.',
+          weight: 0.25,
+          required: true,
+        }
+      - {
+          id: interval,
+          criterion: 'Explain building an approximate $95\%$ interval as estimate $\pm2\mathrm{SE}$ when the approximation applies.',
+          weight: 0.5,
           required: true,
         }
       - {
           id: small-counts,
-          criterion: Combines independent rate uncertainties and uses exclusion of zero to judge the larger experiment while recognising that the smaller one includes zero and fails the count rule.,
-          weight: 1,
+          criterion: "Explain that the $7/10$ versus $9/10$ experiment includes zero in its rough difference interval and fails the rule of at least $10$ successes and $10$ failures per version.",
+          weight: 0.4,
+          required: true,
+        }
+      - {
+          id: combine,
+          criterion: 'Combine independent rate standard errors as $\sqrt{\mathrm{SE}_1^2+\mathrm{SE}_2^2}$ for the rate difference.',
+          weight: 0.3,
+          required: true,
+        }
+      - {
+          id: larger-experiment,
+          criterion: "Explain that the difference interval of about $[0.03,0.17]$ for $160/200$ versus $180/200$ excludes zero and supports improvement under the assumptions.",
+          weight: 0.3,
           required: true,
         }
     exemplar: |

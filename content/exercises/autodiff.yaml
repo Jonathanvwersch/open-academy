@@ -487,7 +487,7 @@ exercises:
     est_minutes: 4
     prompt:
       A friend writes a model's forward calculation and calls `loss.backward()`. Explain what was
-      recorded, what the call does and why reverse mode suits many weights and one loss. Say whether
+      recorded, how the call finds and stores slopes and why reverse mode suits many weights and one loss. Say whether
       the call changes the weights.
     rubric:
       - id: record
@@ -498,12 +498,20 @@ exercises:
         required: true
       - id: reverse
         criterion:
-          Explains reverse chain-rule multiplication and path summation, accumulation in leaf
-          .grad, and that backward does not update weights.
-        weight: 1
+          Explain walking the recorded operations backward, multiplying local slopes along each
+          path and adding where paths meet.
+        weight: 0.5
+        required: true
+      - id: storage
+        criterion: Say that each requested leaf slope is added to that tensor's `.grad`.
+        weight: 0.25
+        required: true
+      - id: weights
+        criterion: Say that `loss.backward()` leaves the weights unchanged.
+        weight: 0.25
         required: true
       - id: cost
-        criterion: Contrasts one forward derivative pass per input with one recording pass plus one backward pass per output, favouring reverse for many weights and one loss.
+        criterion: Explain that reverse mode needs one recording pass and one backward pass for one loss, while forward mode needs one pass per weight, so reverse mode suits many weights.
         weight: 1
         required: true
     exemplar:

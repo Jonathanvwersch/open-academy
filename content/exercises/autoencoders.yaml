@@ -699,8 +699,12 @@ exercises:
     prompt: A robot team wants a short summary of each $64\times64$ RGB camera frame, but nobody has labelled the frames. Explain how an autoencoder can learn such a summary from the frames alone, compare the input length with a latent vector of $256$ numbers, and say why the latent vector has to be shorter than the input.
     rubric:
       - id: mechanism
-        criterion: Describe the encoder squeezing the frame into a latent vector and the decoder rebuilding the frame from it, trained to make the reconstruction error small with the frame itself as the target, so no labels are needed.
-        weight: 1
+        criterion: Describe the encoder squeezing the frame into a latent vector and the decoder rebuilding the frame from it.
+        weight: 0.5
+        required: true
+      - id: training
+        criterion: Explain that training makes the reconstruction error small using each frame as its own target, so no labels are needed.
+        weight: 0.5
         required: true
       - id: sizes
         criterion: Give the input length $64\times64\times3=12{,}288$ and the compression factor $12{,}288/256=48$.
@@ -710,5 +714,5 @@ exercises:
         criterion: Explain that a latent vector as long as the input could pass every pixel straight through, while a short one forces the network to keep the patterns that matter for rebuilding the frame.
         weight: 1
         required: true
-    exemplar: The encoder turns each frame into a latent vector of $256$ numbers, and the decoder rebuilds the frame from that vector. Training compares the rebuilt frame with the frame itself, squaring and adding the pixel differences, and nudges the weights to make that error small, so the frames are their own targets and need no labels. A frame flattens to $64\times64\times3=12{,}288$ numbers, so the compression factor is $12{,}288/256=48$. The latent vector must be shorter than the input, because otherwise the network could copy each pixel straight through and learn nothing; squeezing through $256$ numbers forces it to keep the patterns that matter most for rebuilding the frame.
+    exemplar: The encoder turns each frame into a latent vector of $256$ numbers, and the decoder rebuilds the frame from that vector. Training compares the rebuilt frame with the frame itself, squaring and adding the pixel differences, and nudges the weights to make that error small, so the frames are their own targets and need no labels. A frame flattens to $64\times64\times3=12{,}288$ numbers, so the compression factor is $12{,}288/256=48$. A latent vector as long as the input could copy each pixel straight through without needing to find patterns; squeezing through $256$ numbers forces it to keep the patterns that matter for rebuilding the frame.
     solution: An autoencoder learns a summary because rebuilding the frame through a narrow latent vector forces it to capture the frame's main patterns.

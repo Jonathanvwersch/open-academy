@@ -932,21 +932,21 @@ exercises:
     prompt: Explain to a colleague what the learning rate controls in gradient descent, what happens when it is too small or too large, and how you would tell from a loss curve.
     rubric:
       - id: r1
-        criterion: Learning rate scales the step taken along the negative gradient
+        criterion: Explain that the learning rate multiplies the gradient in the step taken against it.
         weight: 1
         required: true
       - id: r2
-        criterion: "Too small: slow, smooth, steady decrease"
+        criterion: Explain that a learning rate that is too small makes the loss fall by only a sliver each step.
         weight: 2
         required: true
       - id: r3
-        criterion: "Too large: overshooting, oscillation or divergence (loss increases / NaN)"
+        criterion: Explain that a learning rate that is too large can make overshoots land farther from the bottom, so the loss curve rises.
         weight: 2
         required: true
       - id: r4
-        criterion: Mentions that the steepest-curvature direction limits stability (or that the safe range depends on the problem)
+        criterion: Mention that the safe learning-rate range depends on how steep the curve is, with the steeper bowl direction giving the smaller limit.
         weight: 1
-    exemplar: The learning rate is the multiplier on the gradient step. Too small and the loss falls smoothly but painfully slowly; too large and each step overshoots the minimum, so the loss oscillates or explodes, often to NaN. The steepest direction of the loss sets the stability limit, so the right value depends on the problem and the feature scaling.
+    exemplar: The learning rate multiplies the gradient in the step taken against it. If it is too small, the loss falls by only a sliver each step. If it is too large, overshoots can land farther from the bottom and the loss grows. Crossing the bottom can still work when each landing is closer and the loss falls. The safe range depends on how steep the curve is. On $x^2+2y^2$, the $y$ direction needs a learning rate below $0.5$, so it sets the limit for the whole bowl.
   - id: lab-linreg-lr-predict
     dimension: transfer
     type: mc
@@ -981,20 +981,20 @@ exercises:
     role: core
     difficulty: 3
     est_minutes: 5
-    prompt: Using your loss and parameter-trajectory plots, explain what you observed for the largest learning rate you tried, and *why* it happens in terms of the update rule.
+    prompt: Using your loss and parameter-trajectory plots, describe what the largest learning rate did. Then explain how the gradient-descent update rule can produce growing overshoots when the learning rate is too large.
     rubric:
       - id: r1
-        criterion: Accurately describes the observed curve (e.g. oscillating or exploding loss, zig-zagging parameters)
+        criterion: Describe the loss trend and parameter movements actually shown in your plots, whether the run improved or diverged.
         weight: 2
         required: true
       - id: r2
-        criterion: "Explains overshoot: the step $\\eta\\nabla L$ jumps past the minimum to a point with larger error, which compounds"
+        criterion: Explain that subtracting learning rate times the current gradient can jump past the bottom and land farther away, making the next jump larger.
         weight: 2
         required: true
       - id: r3
-        criterion: Connects to curvature/feature scale or the $|1-2a\eta|>1$ condition
+        criterion: Mention that on $f(w)=w^2$ each update multiplies $w$ by $1-2\eta$, so its distance grows when this multiplier is below $-1$ or above $1$.
         weight: 1
-    exemplar: At $\eta = 0.5$ the loss dropped once and then grew every step until it hit inf, and the weight trajectory zig-zagged across the minimum with growing amplitude. Each step moves by $\eta$ times the gradient; when $\eta$ is too large relative to the curvature, the step jumps past the minimum to a point where the error (and so the gradient) is larger, so the next jump is bigger again — the factor $|1 - 2a\eta|$ exceeds 1.
+    exemplar: A diverging run's plots can show rising loss and parameters crossing back and forth with growing distance from the bottom; I would describe whether my own plots show that pattern. Each update subtracts learning rate times the current gradient. On $f(w)=w^2$, the gradient is $2w$, so a step can cross the bottom and land farther away, where the next gradient and jump are larger. With $\eta=1.25$, each step multiplies $w$ by $1-2\eta=-1.5$, so the sign alternates while the distance grows.
   - id: lab-linreg-val-vs-train
     dimension: conceptual
     type: mc
@@ -1029,19 +1029,27 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 4
-    prompt: "Explain how you would train the model $\\hat y=wx+b$ with gradient descent: where each update comes from, what the loop recomputes, and how you would respond to slow or growing loss."
+    prompt: "Explain how you would train the model $\\hat y=wx+b$ with gradient descent and mean squared error: where each update comes from, what the loop recomputes, and how you would respond to slow or growing loss."
     rubric:
       - id: r1
         criterion: Subtracts learning rate times current gradient and explains the sign and step-size roles
         weight: 1
         required: true
       - id: r2
-        criterion: Describes prediction, error, mean weight and bias gradients, and updates followed by recomputation
-        weight: 1
+        criterion: Explain averaging $2ex$ for the weight slope and $2e$ for the bias slope, where $e$ is prediction minus true output.
+        weight: 0.5
+        required: true
+      - id: recompute
+        criterion: Describe repeating prediction, loss, slopes and update using the new weight and bias on every pass.
+        weight: 0.5
         required: true
       - id: r3
-        criterion: Distinguishes slow progress, shrinking oscillation and divergence using losses or distances, and proposes cautious rate adjustment
-        weight: 1
+        criterion: Explain trying a larger learning rate if the loss falls by only a sliver each step.
+        weight: 0.5
+        required: true
+      - id: growing-loss
+        criterion: Explain reducing the learning rate when growing overshoots make the loss rise.
+        weight: 0.5
         required: true
     exemplar: I predict the training outputs and subtract true outputs to get errors. For MSE I average twice the error times each input for its weight slope, and twice the errors for the bias slope, then subtract the learning rate times these gradients and recompute predictions for the next step. A small rate can be slow; if a cautious increase helps without instability I can keep it, whereas growing losses suggest reducing the rate; crossing the minimum is not itself failure if distance and loss shrink.
     solution: I predict the training outputs and subtract true outputs to get errors. For MSE I average twice the error times each input for its weight slope, and twice the errors for the bias slope, then subtract the learning rate times these gradients and recompute predictions for the next step. A small rate can be slow; if a cautious increase helps without instability I can keep it, whereas growing losses suggest reducing the rate; crossing the minimum is not itself failure if distance and loss shrink.

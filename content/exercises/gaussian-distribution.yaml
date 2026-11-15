@@ -557,16 +557,29 @@ exercises:
       interval probability, and why the model may or may not fit real noise.
     rubric:
       - id: shape
-        criterion: Connects mean to centre, square root of variance to width, and greater width to lower peak.
-        weight: 1
+        criterion: Explain that the mean sets the Gaussian's centre.
+        weight: 0.5
+        required: true
+      - id: width
+        criterion: Explain that standard deviation is the square root of variance and sets the width.
+        weight: 0.5
+        required: true
+      - id: peak
+        criterion: Mention that increasing standard deviation makes the bell wider and lowers its peak so the area stays $1$.
+        weight: 0.5
+        required: false
       - id: area
-        criterion: Distinguishes density height from interval probability and states that total area is 1.
+        criterion: Explain that interval probability is area under the curve, whose height is density.
         weight: 1
+        required: true
       - id: limits
-        criterion:
-          Explains the many-independent-effects justification and one reason to question a Gaussian
-          model.
-        weight: 1
+        criterion: Explain that adding many small independent effects can make a Gaussian model plausible.
+        weight: 0.5
+        required: true
+      - id: warning
+        criterion: Give a reason to question the model, such as frequent extreme errors or small whole-number counts.
+        weight: 0.5
+        required: true
     exemplar:
       The mean sets the centre; standard deviation is the square root of variance and sets the
       width. A larger standard deviation makes the bell wider and lower so its area stays 1.

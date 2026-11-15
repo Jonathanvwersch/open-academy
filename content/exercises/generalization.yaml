@@ -397,14 +397,32 @@ exercises:
         }
       - {
           id: leakage,
-          criterion: Identify the copied sales as leakage and keep related records together while removing duplicate scoring rows.,
-          weight: 1,
+          criterion: "Identify copied training sales in the held-out table as leakage.",
+          weight: 0.25,
+          required: true,
+        }
+      - {
+          id: grouping,
+          criterion: "Keep each house's related records together when splitting training, validation and test data.",
+          weight: 0.5,
+          required: true,
+        }
+      - {
+          id: duplicates,
+          criterion: "Score each distinct held-out house once so duplicates do not count as extra evidence.",
+          weight: 0.25,
           required: true,
         }
       - {
           id: shift,
-          criterion: Explain that B may differ and propose evaluating separate B sales covering the kinds of houses the model will price without claiming a guarantee.,
-          weight: 1,
+          criterion: "Explain that city B can have a different mix of houses or different prices at the same sizes, making city A's score insufficient.",
+          weight: 0.5,
+          required: true,
+        }
+      - {
+          id: evaluation,
+          criterion: "Propose evaluating on separate city B sales covering the kinds of houses the model will price.",
+          weight: 0.5,
           required: true,
         }
     exemplar: Generalization means useful predictions on unseen houses. Independent examples from the same distribution make a held-out average informative about future average error. Copies of training sales are not independent evidence about new houses, so I would keep records of each house together and remove duplicates when scoring. City B may have a different mix of houses or different prices at the same sizes, so I would gather B sales covering the kinds of houses the model will price and keep separate validation and untouched test houses there. Even a good test average would estimate performance rather than guarantee every prediction.

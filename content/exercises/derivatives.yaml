@@ -255,10 +255,11 @@ exercises:
     est_minutes: 4
     prompt: "A model's loss, a score of how wrong its predictions are, depends on one adjustable number, its weight $w$, as $L(w) = (2w - 6)^2$. Expand $L(w)$, find $L'(w)$ and $L'(2)$, then explain in 2–4 sentences what a small increase in $w$ near 2 will do to the loss."
     rubric:
+      - { id: r1, criterion: "Expand $L(w)$ to $4w^2-24w+36$.", weight: 1, required: true }
       - {
-          id: r1,
-          criterion: "Expands $L(w)$ to $4w^2 - 24w + 36$ and differentiates to $L'(w) = 8w - 24$",
-          weight: 2,
+          id: derivative,
+          criterion: "Differentiate to get $L'(w)=8w-24$.",
+          weight: 1,
           required: true,
         }
       - { id: r2, criterion: "Evaluates $L'(2) = -8$", weight: 1, required: true }

@@ -611,22 +611,36 @@ exercises:
     est_minutes: 5
     prompt: "How would you train a model that scores an assistant's responses by how much people like them? Explain why you would collect comparisons of two responses rather than scores, how the Bradley–Terry model turns two rewards into the probability that one response is preferred, and how its loss changes the rewards during training."
     rubric:
-      - {
-          id: comparisons,
-          criterion: "Explains that different raters use score scales differently but can agree on which of two responses is better, so data is stored as chosen and rejected pairs",
-          weight: 1,
-          required: true,
-        }
-      - {
-          id: bradley-terry,
-          criterion: "States that the probability one response is preferred is the sigmoid of the reward difference, so only differences between rewards matter",
-          weight: 1,
-          required: true,
-        }
-      - {
-          id: loss,
-          criterion: "Gives the loss as minus the log of the sigmoid of chosen minus rejected reward, and explains that training raises the chosen reward and lowers the rejected one, most when the order is wrong",
-          weight: 1,
-          required: true,
-        }
-    exemplar: "Show people two responses to the same prompt and ask which is better, storing each answer as a chosen and a rejected response. Scores would clash, because one rater's 9 can mean the same as another's 5, but both raters still agree on the order. The reward model gives each response one number, its reward, and the Bradley–Terry model says the chance a person prefers A over B is the sigmoid of A's reward minus B's, so adding the same amount to every reward changes nothing. Train with the loss minus the log of the sigmoid of the chosen reward minus the rejected reward, averaged over the pairs. Its slopes are p-1 for the chosen reward and 1-p for the rejected one, so gradient descent pushes the chosen reward up and the rejected one down, strongly when the model has the order backwards and only gently when it is already confident and right."
+      - id: comparisons
+        criterion: Explain that raters use number scales differently but can agree which of two responses is better.
+        weight: 1
+        required: true
+      - id: bradley-terry
+        criterion: Give $P(A\text{ over }B)=\sigma(r_A-r_B)$, where $r_A$ and $r_B$ are the two responses' rewards.
+        weight: 1
+        required: true
+      - id: loss
+        criterion:
+          Give $-\ln\sigma(r_w-r_l)$ as one pair's loss, where $r_w$ is the chosen reward and $r_l$ the rejected
+          reward.
+        weight: 0.5
+        required: true
+      - id: reward-change
+        criterion:
+          Explain that training changes the network's weights to increase the chosen reward minus the rejected
+          reward.
+        weight: 0.5
+        required: true
+      - id: offset
+        criterion: Mention that adding the same number to both rewards leaves the preference probability unchanged.
+        weight: 0.5
+        required: false
+      - id: slopes
+        criterion: Mention the reward slopes $p-1$ and $1-p$ for the chosen and rejected responses, where $p=\sigma(r_w-r_l)$.
+        weight: 0.25
+        required: false
+      - id: strength
+        criterion: Mention that the push is stronger when $p$ is small and fades as $p$ approaches $1$.
+        weight: 0.25
+        required: false
+    exemplar: "Show people two responses to the same prompt and store which was chosen and which was rejected. Raters use number scales differently but can agree which answer is better. The model gives each response a reward, and Bradley–Terry gives $P(A\\text{ over }B)=\\sigma(r_A-r_B)$; adding the same number to both rewards changes nothing. Train with $-\\ln\\sigma(r_w-r_l)$ for chosen reward $r_w$ and rejected reward $r_l$, averaged over pairs. With $p=\\sigma(r_w-r_l)$, the reward slopes are $p-1$ and $1-p$. If the rewards could be set directly, gradient descent would raise the chosen reward and lower the rejected one. In a shared network, training changes weights to increase their difference. The push is strong when $p$ is small and fades near $1$."

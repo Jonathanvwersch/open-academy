@@ -196,26 +196,26 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 4
-    prompt: "Explain why neural networks need nonlinear activation functions, and why the choice of activation affects training, not just expressiveness."
+    prompt: "Explain why neural networks need nonlinear activation functions, and how an activation's slope affects how much its output changes when training nudges the weights."
     rubric:
       - {
           id: r1,
-          criterion: "Composition of linear/affine layers is affine, so depth adds no expressive power without nonlinearity",
+          criterion: "Explain that a stack of weighted sums plus biases is still one weighted sum plus bias, so extra layers need a nonlinear activation to add a bend.",
           weight: 2,
           required: true,
         }
       - {
           id: r2,
-          criterion: "Activation derivatives multiply gradients in backprop, so saturating activations (sigmoid/tanh) can shrink gradients",
+          criterion: "Explain that a small output change is about the activation's slope times the score change, so a nearly flat activation barely responds and training learns slowly.",
           weight: 2,
           required: true,
         }
       - {
           id: r3,
-          criterion: "Mentions ReLU's derivative of 1 for positive inputs, or dead units",
+          criterion: "Mention that a ReLU neuron with a negative score for every input has slope $0$ and stops learning.",
           weight: 1,
         }
-    exemplar: "Stacking linear layers gives another linear layer, so without a nonlinearity a deep network is no more expressive than a single layer. During backprop each activation's derivative multiplies the gradient, and saturating functions such as sigmoid have derivatives at most 0.25, so gradients vanish over many layers. ReLU passes gradients with slope 1 when active, but units can die if they are always negative."
+    exemplar: "A stack of weighted sums plus biases is still one weighted sum plus bias, so a nonlinear activation is needed to add a bend. When training nudges the weights, the output changes by about the activation's slope times the change in score. Far from $z=0$, sigmoid and tanh are nearly flat, so their outputs barely respond and training learns slowly. A ReLU neuron whose score is negative for every input always outputs $0$ with slope $0$, so it stops learning."
   - id: act-explain-layers
     dimension: conceptual
     type: explain
@@ -232,13 +232,19 @@ exercises:
         }
       - {
           id: r2,
-          criterion: "States that ReLU's slope is 1 for positive scores and 0 for negative ones, and that sigmoid's slope is at most 0.25 (at z = 0) and near 0 far from 0",
-          weight: 2,
+          criterion: "Explain that ReLU's slope is $1$ for positive scores and $0$ for negative scores, so a small change passes through in full or leaves the output unchanged.",
+          weight: 1,
+          required: true,
+        }
+      - {
+          id: sigmoid-slope,
+          criterion: "Explain that sigmoid's slope is at most $0.25$ at $z=0$ and close to $0$ far from there, so its output responds less to a small change in score.",
+          weight: 1,
           required: true,
         }
       - {
           id: r3,
-          criterion: "Mentions saturation (a flat sigmoid barely responds) or dead ReLU units that always output 0",
+          criterion: "Mention that a ReLU neuron with a negative score for every input always outputs $0$ and stops learning.",
           weight: 1,
         }
     exemplar: "If you feed one weighted sum plus bias into another, you can multiply it out into a single weighted sum plus bias, so a stack of layers with nothing between them draws the same straight boundaries as one layer. A nonlinear activation such as ReLU or sigmoid bends each score, which stops the stack collapsing. ReLU's slope is 1 for a positive score, so changes pass through in full, and 0 for a negative score, so they're blocked; a unit that is always negative is dead. Sigmoid's slope is at most 0.25 at z = 0 and close to 0 far from it, where the curve is flat and the output barely responds."

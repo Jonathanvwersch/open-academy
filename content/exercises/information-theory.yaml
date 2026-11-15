@@ -586,20 +586,24 @@ exercises:
       observed-class probability, and KL. Explain what accuracy misses.
     rubric:
       - id: surprise
-        criterion: Explains that one labelled example is scored by the predicted surprise of its observed class.
+        criterion: Score a labelled example using the surprise of its observed class under the predicted probabilities.
         weight: 1
         required: true
       - id: confidence
         criterion:
-          Explains that small correct-class probabilities incur large loss, unlike accuracy which
-          only counts picks.
+          Explain that a tiny observed-class probability gives a large loss, while accuracy records only whether
+          the chosen class was right.
         weight: 1
         required: true
       - id: kl
+        criterion: Explain that averaging the observed-class surprises using actual outcome probabilities gives cross-entropy.
+        weight: 0.5
+        required: true
+      - id: fixed-entropy
         criterion:
-          Explains that averaging daily losses gives cross-entropy and lowering it lowers KL because
-          actual-outcome entropy is fixed.
-        weight: 1
+          Explain that lowering cross-entropy lowers KL by the same amount because the actual-outcome entropy
+          stays fixed.
+        weight: 0.5
         required: true
     exemplar:
       "For a labelled weather example, the loss is the forecast surprise of the observed class,

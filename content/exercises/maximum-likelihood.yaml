@@ -631,33 +631,43 @@ exercises:
     role: core
     difficulty: 3
     est_minutes: 5
-    prompt:
-      Explain what the likelihood of a guess is, why we usually work with the log-likelihood, and why
-      assuming Gaussian noise turns maximum likelihood into minimising the mean squared error.
+    prompt: "Explain what the likelihood of a guess is and how maximum likelihood chooses a guess, why we usually work with the log-likelihood, and why assuming Gaussian noise turns maximum likelihood into minimising the mean squared error."
     rubric:
       - id: likelihood
         criterion:
-          Defines the likelihood as the probability of the observed data under a guess, and the
-          estimate as the guess that makes it largest, not the probability that the guess is true.
+          Define likelihood as the observed data's probability under a guess for discrete outcomes, or a product
+          of density heights for measured readings.
         weight: 1
+        required: true
+      - id: estimate
+        criterion: Explain that maximum likelihood chooses the guess that makes the observed data's likelihood largest.
+        weight: 1
+        required: true
       - id: logs
-        criterion:
-          Explains that logs turn the product over independent readings into a sum and, because
-          the log always rises, keep the same best guess.
-        weight: 1
+        criterion: Explain that logs turn the product over independent readings into a sum.
+        weight: 0.5
+        required: true
+      - id: numbers
+        criterion: Explain that summing log values avoids products too tiny for a computer to store accurately.
+        weight: 0.25
+        required: false
+      - id: ordering
+        criterion: Explain that the log always rises, so taking it keeps the same best guess.
+        weight: 0.25
+        required: true
       - id: mse
-        criterion: Explains that a Gaussian log height is a constant minus a squared error over
-          $2\sigma^2$, so with fixed $\sigma$ the highest likelihood has the lowest MSE, and names a limit
-          such as outliers or non-Gaussian data.
+        criterion:
+          Explain that each Gaussian log height is a constant minus squared error over $2\sigma^2$, so independent
+          Gaussian noise with fixed $\sigma$ makes maximum likelihood equivalent to minimising MSE.
         weight: 1
-    exemplar:
-      The likelihood of a guess is the probability of the data we saw if that guess were true, and
-      maximum likelihood picks the guess that makes it largest. Independent readings multiply, which
-      gives tiny numbers, so we take logs, turning the product into a sum; the log always rises, so
-      the best guess doesn't move. With Gaussian noise, each log height is a constant minus the squared
-      error over $2\sigma^2$, so with a fixed $\sigma$ the highest likelihood comes from the lowest sum
-      of squared errors, which is the lowest MSE. Big outliers dominate squared error, and other kinds
-      of data need other losses.
+        required: true
+      - id: limits
+        criterion:
+          Mention a limitation such as wild erroneous readings dominating squared error, or yes-or-no outcomes
+          needing another loss.
+        weight: 0.5
+        required: false
+    exemplar: "For discrete outcomes, likelihood is the probability of the observed data if a guess were true; for measured readings we use a product of density heights. Maximum likelihood picks the guess that makes this largest. Independent readings multiply, giving tiny numbers, so we take logs to turn the product into a sum; the log always rises, so the best guess stays the same. With independent Gaussian noise of fixed $\\sigma$, each log height is a constant minus squared error over $2\\sigma^2$, so maximising their sum minimises the sum of squared errors and hence MSE. Wild erroneous readings can dominate squared error, and yes-or-no data need another loss."
     solution:
       Maximum likelihood ranks guesses by how probable they make the data. Logs keep that ranking
       while turning products into sums, and with Gaussian noise the log-likelihood is a constant minus

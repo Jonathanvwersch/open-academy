@@ -348,20 +348,25 @@ exercises:
     est_minutes: 5
     prompt: Explain how a mixture-of-experts layer can store more parameters than it uses on one token, and why that saving does not remove the need for load balancing.
     rubric:
-      - {
-          id: routing,
-          criterion: "Explains scoring all experts but running only the selected k and combining their outputs.",
-          weight: 1,
-        }
-      - {
-          id: counts,
-          criterion: "Distinguishes nC+nd total from kC+nd active for equal experts and a bias-free width-d router.",
-          weight: 1,
-        }
-      - {
-          id: balance,
-          criterion: "Explains unused experts or busy-device bottlenecks and balancing alongside the main prediction loss.",
-          weight: 1,
-        }
+      - id: routing
+        criterion: Explain that the router scores all $n$ experts but runs only the selected $k$ and combines their outputs.
+        weight: 1
+        required: true
+      - id: counts
+        criterion:
+          Distinguish $nC+nd$ stored parameters from $kC+nd$ active per token, for equal experts with $C$ parameters
+          and a bias-free width-$d$ router.
+        weight: 1
+        required: true
+      - id: balance
+        criterion:
+          Explain that tokens can crowd onto a few experts, leaving others idle and possibly making the busiest
+          device hold up the rest.
+        weight: 1
+        required: true
+      - id: balancing-loss
+        criterion: Mention adding a load-balancing loss alongside prediction loss to encourage the router to spread work.
+        weight: 0.5
+        required: false
     exemplar: The router scores all n experts, selects k for each token, and combines their outputs. With C parameters per expert and a bias-free width-d router, the layer stores nC+nd parameters but uses kC+nd per token. Different tokens can still crowd onto the same experts, leaving others idle and possibly creating device bottlenecks, so a balancing loss encourages sharing work while the main loss teaches prediction.
     solution: Running only selected experts reduces work per token. The router also needs to spread tokens across experts to use them well and avoid bottlenecks.

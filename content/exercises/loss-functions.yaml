@@ -825,21 +825,35 @@ exercises:
       which constant baseline each would choose.
     rubric:
       - id: r1
-        criterion:
-          Computes MSE by averaging squares and MAE by averaging absolute errors, preventing
-          cancellation
-        weight: 1
+        criterion: Compute MSE by averaging the squared prediction errors.
+        weight: 0.5
+        required: true
+      - id: mae
+        criterion: Compute MAE by averaging the absolute prediction errors.
+        weight: 0.5
         required: true
       - id: r2
         criterion:
-          Explains that squared-error slopes grow with the error while absolute-error slopes have
-          constant magnitude away from zero, and relates this to outliers
-        weight: 1
+          Explain that squared-error slopes are $2e$, so their size grows with the error and large misses pull
+          harder.
+        weight: 0.5
+        required: true
+      - id: absolute-slope
+        criterion:
+          Explain that absolute-error slopes have size $1$ away from zero, so large misses do not get steeper
+          slopes.
+        weight: 0.5
         required: true
       - id: r3
-        criterion:
-          Chooses the mean for a constant MSE baseline and a median for MAE, with a reason tied to
-          the cost of mistakes
+        criterion: Choose the mean as the best constant prediction under MSE.
+        weight: 0.5
+        required: true
+      - id: median
+        criterion: Choose a median as the best constant prediction under MAE.
+        weight: 0.5
+        required: true
+      - id: choice
+        criterion: Justify choosing MSE or MAE using how heavily large errors should count.
         weight: 1
         required: true
     exemplar:

@@ -684,24 +684,36 @@ exercises:
     est_minutes: 5
     prompt: "Write Adam's update rule for one parameter, starting its two averages at zero. Explain what the two memories, the correction, and epsilon each do, and why an adaptive update still needs a suitable learning rate."
     rubric:
-      - {
-          id: memories,
-          criterion: "Give $m_t = \\beta_1m_{t-1} + (1-\\beta_1)g_t$ and $v_t = \\beta_2v_{t-1} + (1-\\beta_2)g_t^2$ with zero starts, distinguishing signed direction from squared size.",
-          weight: 1,
-          required: true,
-        }
-      - {
-          id: correction,
-          criterion: "Give $\\hat m_t = m_t/(1-\\beta_1^t)$ and $\\hat v_t = v_t/(1-\\beta_2^t)$, with $t$ counting updates, to remove the zero-start distortion while retaining raw memories.",
-          weight: 1,
-          required: true,
-        }
-      - {
-          id: move,
-          criterion: "Give $w_t = w_{t-1} - \\eta\\hat m_t/(\\sqrt{\\hat v_t}+\\epsilon)$, explain positive $\\epsilon$ prevents division by zero, and note an excessive $\\eta$ can still raise loss.",
-          weight: 1,
-          required: true,
-        }
+      - id: memories
+        criterion: Start $m_0=0$ and update $m_t=\beta_1m_{t-1}+(1-\beta_1)g_t$ to remember signed gradient directions.
+        weight: 0.5
+        required: true
+      - id: squared-memory
+        criterion: Start $v_0=0$ and update $v_t=\beta_2v_{t-1}+(1-\beta_2)g_t^2$ to remember squared gradient sizes.
+        weight: 0.5
+        required: true
+      - id: correction
+        criterion:
+          Give $\hat m_t=m_t/(1-\beta_1^t)$ and $\hat v_t=v_t/(1-\beta_2^t)$, with $t$ counting updates, to remove
+          the starting zero's influence.
+        weight: 1
+        required: true
+      - id: move
+        criterion: Update with $w_t=w_{t-1}-\eta\hat m_t/(\sqrt{\hat v_t}+\epsilon)$.
+        weight: 0.4
+        required: true
+      - id: epsilon
+        criterion: Explain that positive $\epsilon$ keeps the denominator above zero.
+        weight: 0.3
+        required: true
+      - id: learning-rate
+        criterion: Explain that $\eta$ still scales the move, so an excessive value can overshoot and raise loss.
+        weight: 0.3
+        required: true
+      - id: raw-memory
+        criterion: Mention keeping the raw averages for the next batch and using corrected averages only for the move.
+        weight: 0.5
+        required: false
     exemplar: |
       Start $m_0=v_0=0$. For a fresh batch gradient $g_t$ at the current parameter, update $m_t=\beta_1m_{t-1}+(1-\beta_1)g_t$ and $v_t=\beta_2v_{t-1}+(1-\beta_2)g_t^2$. The first remembers signed directions and the second remembers squared sizes, separately for every parameter. Correct the zero start with $\hat m_t=m_t/(1-\beta_1^t)$ and $\hat v_t=v_t/(1-\beta_2^t)$, where $t$ counts batch updates. Then use $w_t=w_{t-1}-\eta\hat m_t/(\sqrt{\hat v_t}+\epsilon)$; positive epsilon prevents a zero denominator. Keep the raw averages for the next fresh gradient. The learning rate still scales the move, so an excessive value can overshoot and increase loss.
     solution: "Adam combines a signed gradient memory with a squared-size memory, corrects both for zero initialisation, and divides corrected direction by corrected size plus epsilon before taking the scaled step. Its learning rate remains a choice that affects whether training improves."

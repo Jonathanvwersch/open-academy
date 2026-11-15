@@ -251,20 +251,21 @@ exercises:
     est_minutes: 4
     prompt: "An estate agent has 1,000 sales and wants to choose among three price models. Explain in 2–4 sentences why the agent needs a validation set and a separate test set, rather than one set for both jobs."
     rubric:
-      - {
-          id: r1,
-          criterion: "Validation is used repeatedly for model/hyperparameter selection",
-          weight: 2,
-          required: true,
-        }
-      - {
-          id: r2,
-          criterion: "Repeated selection makes validation performance optimistic, so an untouched test set is needed for an unbiased final estimate",
-          weight: 2,
-          required: true,
-        }
-      - { id: r3, criterion: "Mentions that test should be used once / at the end", weight: 1 }
-    exemplar: "Use validation sales to compare the three models and choose one. The winner may happen to suit those houses unusually well, so its validation error can look better than its error on other houses. Reserve separate test sales for checking the final choice without using them to change it."
+      - id: r1
+        criterion: Use validation houses to compare the trained models and choose one.
+        weight: 2
+        required: true
+      - id: r2
+        criterion:
+          Explain that choosing the lowest validation error can pick a model whose score is low partly through
+          luck.
+        weight: 1
+        required: true
+      - id: r3
+        criterion: Score the final choice once on separate test houses whose scores did not help make any choices.
+        weight: 1
+        required: true
+    exemplar: "Use validation sales to compare the three models and choose one. The winner may happen to suit those houses unusually well, so its validation error can look better than its error on other houses. Score the final choice once on separate test sales without using that score to change it."
   - id: ttsp-honest-estimate
     dimension: conceptual
     type: mc

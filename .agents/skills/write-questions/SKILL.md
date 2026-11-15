@@ -44,6 +44,14 @@ Each step needs at least five questions across difficulties 1, 2 and 3. Cover th
 
 Every idea in a step gets at least two questions from different angles. Cover the distinct cases of the idea (for exponents: positive, negative, zero power, zero to a power), one question each where they matter. The lesson skill adds two fixed items: a concept MC first (`role: basics`) and a `lesson_only` self-explanation MC about the worked example.
 
+### Explain questions: rubrics and exemplars
+
+- Every rubric criterion, required or optional, and every claim in the exemplar must be explicitly taught in the lesson step or in a prerequisite lesson listed in the recap. Taught means said in plain words in an explain, worked example or summary. A diagram alone or an implication does not count.
+- When an answer is partly right, the app says "Almost" and lists the criteria the learner missed. The learner has to be able to find each one in what they read.
+- Each criterion names one concrete point in the lesson's own words, written as an instruction (for example "Explain that ..."), so the missed-points list tells the learner exactly what to add.
+- Required criteria are exactly the parts the prompt asks for, and every part of the prompt has at least one required criterion. Extras are optional and never cost marks, and they still have to be taught.
+- When reviewing, check each criterion and each exemplar claim against the lesson text, and either teach it or drop it.
+
 ## 4. Multiple-choice options
 
 - **Wrong options are real mistakes.** Each wrong option is an answer a learner who made a specific error would give: the wrong sign, forgetting to divide, using the score as a probability, the other row or column. Give each one its own `feedback` naming that error.

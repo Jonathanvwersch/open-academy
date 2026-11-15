@@ -509,8 +509,14 @@ exercises:
         }
       - {
           id: slopes,
-          criterion: "Subtracts label (0, 0, 1) to obtain slopes approximately (0.79, 0.11, -0.89), and explains that subtracting scaled slopes raises box and lowers both wrong classes in a bias-only update",
-          weight: 1,
+          criterion: "Subtract label $(0,0,1)$ from the probabilities to obtain score slopes approximately $(0.79,0.11,-0.89)$.",
+          weight: 0.5,
+          required: true,
+        }
+      - {
+          id: update,
+          criterion: "Explain that subtracting learning-rate-scaled slopes from the biases raises the box score and lowers both wrong-class scores because their slopes are positive.",
+          weight: 0.5,
           required: true,
         }
     exemplar: "Raise e to each score and divide by $e^3+e+e\\approx25.52$, giving probabilities about (0.79, 0.11, 0.11); the displayed probabilities sum to 1.01 only because of rounding. Box is true, so the loss is $-\\ln(e/(e^3+2e))\\approx2.24$. Subtract label (0, 0, 1) from the unrounded probabilities to get slopes about (0.79, 0.11, -0.89). With only biases changing, subtracting learning-rate-scaled slopes raises the box score and lowers the cup and ball scores; wrong classes change because their positive probabilities also give positive slopes."

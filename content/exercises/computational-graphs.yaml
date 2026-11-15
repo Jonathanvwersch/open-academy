@@ -511,19 +511,25 @@ exercises:
     rubric:
       - {
           "id": "graph",
-          "criterion": "Describes one node per input and simple operation, arrows for dependencies, and a forward pass to compute values.",
-          "weight": 1,
+          "criterion": "Draw one node per input and simple operation, with arrows from values to the operations that use them.",
+          "weight": 0.5,
           "required": true,
         }
       - {
+          id: forward,
+          criterion: "Explain computing each operation after its inputs are ready in the forward pass.",
+          weight: 0.5,
+          required: true,
+        }
+      - {
           "id": "local",
-          "criterion": "Defines local derivatives for one operation and one input with other inputs fixed, using forward values when needed.",
+          "criterion": "Define a local derivative as one operation's output slope for one input, holding its other inputs fixed.",
           "weight": 1,
           "required": true,
         }
       - {
           "id": "paths",
-          "criterion": "Multiplies local derivatives along each path and adds all path contributions for an input's output derivative.",
+          "criterion": "Explain multiplying local derivatives along every path, then adding the path products to find the output derivative.",
           "weight": 2,
           "required": true,
         }

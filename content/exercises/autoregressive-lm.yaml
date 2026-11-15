@@ -7,22 +7,18 @@ exercises:
     difficulty: 3
     est_minutes: 4
     prompt: |
-      A character decoder's loss on fixed training windows falls from 3.3 to 1.1. Its generated text still repeats phrases and sometimes breaks words. Explain how these observations can occur together, and propose an evaluation that would give evidence about prediction on unseen text.
+      A character decoder's loss on fixed training windows falls from $3.3$ to $1.1$. Its generated text still contains mistakes. Explain what the lower training loss says about predictions after the true training prefixes, and why mistakes can build up when the model generates text from its own sampled characters.
     rubric:
       - id: training
         criterion: Explains that lower training cross-entropy means higher probability on the observed next characters given their true prefixes.
         weight: 1
         required: true
       - id: generation
-        criterion: Explains that generation conditions on the model's own sampled characters, so errors can accumulate, or that a tiny repeated corpus encourages familiar phrases.
+        criterion: Explain that a sampled mistake stays in the prefix used for later predictions, so one mistake can lead to more.
         weight: 1
         required: true
-      - id: evaluation
-        criterion: Proposes next-character loss on separate unseen text that is excluded from training, with the same tokenizer and causal evaluation.
-        weight: 1
-        required: true
-    exemplar: The loss measures next-character predictions after true training prefixes. A tiny repeated story can become easier to predict while encouraging repeated phrases. During generation the model sees its own samples, so an unusual character can lead to unfamiliar prefixes and more errors. Keep a separate paragraph out of training and measure causal next-character loss with the same vocabulary. That gives evidence about predictions beyond the memorized story.
-    solution: Training loss scores predictions on true training prefixes, while sampling feeds the model's own choices back into the context. Evaluate loss on separate unseen text to check whether the learned predictions transfer.
+    exemplar: Lower training loss means the model gives the observed next characters a higher chance after their true training prefixes. During generation it uses its own sampled characters as the prefix. A sampled mistake stays in that prefix, which training only supplied as real text, so later predictions can be poor and one mistake can lead to more.
+    solution: Lower training loss means better predictions after true training prefixes. During generation a sampled mistake becomes part of the next input and can lead to more mistakes.
   - id: alm-next-basics
     dimension: conceptual
     type: mc
@@ -627,22 +623,26 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 4
-    prompt: 'Explain to a colleague how a language model is trained on the sentence "the cat sat on the mat" and how it then writes new text: what it predicts at each position, how many training examples the sentence gives and how they are scored, and how one token is chosen at a time.'
+    prompt: 'Explain to a colleague how a language model is trained on the sentence "the cat sat on the mat", treating each word as one token, and how it then writes new text: what it predicts at each position, how the inputs and targets give training examples, how their loss is calculated, and how one token is chosen at a time.'
     rubric:
       - id: r1
         criterion: Says the model gives a next-token distribution at each position, a softmax over the vocabulary given the tokens so far
         weight: 1
         required: true
       - id: r2
-        criterion: "Says the 6-token sentence gives 5 examples: inputs shifted against targets by one, scored together with a causal mask and teacher forcing, with loss the average of minus the log of each true next token's probability"
-        weight: 2
+        criterion: "Explain that the $6$ tokens give $5$ examples: the input omits the last token and the targets are shifted left by one."
+        weight: 1
+        required: true
+      - id: loss
+        criterion: Explain that the loss averages minus the log of each true next token's probability.
+        weight: 1
         required: true
       - id: r3
         criterion: Describes generation as repeatedly choosing a token, greedily or by sampling, and appending it to the input
         weight: 1
         required: true
       - id: r4
-        criterion: Notes that during generation the model's own earlier choices become its input, or that each new token needs another run
+        criterion: Mention that a causal mask and teacher forcing let one training run score every position.
         weight: 1
     exemplar: At every position the model turns the vector for the tokens so far into one score per vocabulary word, and softmax makes them a next-token distribution. The sentence has 6 tokens, so it gives 5 examples, "the" to cat up to "the cat sat on the" to mat. The input is the sentence without its last token and the targets are the sentence shifted left by one; the causal mask and teacher forcing let one run score them all, and the loss is the average of minus the log of the probability of each true next word. To write, the model takes a prompt, chooses a next token, the top one or a random draw weighted by probability, appends it and runs again, so its own earlier choices become its input and each token needs another run.
     solution: At every position the model turns the vector for the tokens so far into one score per vocabulary word, and softmax makes them a next-token distribution. The sentence has 6 tokens, so it gives 5 examples, "the" to cat up to "the cat sat on the" to mat. The input is the sentence without its last token and the targets are the sentence shifted left by one; the causal mask and teacher forcing let one run score them all, and the loss is the average of minus the log of the probability of each true next word. To write, the model takes a prompt, chooses a next token, the top one or a random draw weighted by probability, appends it and runs again, so its own earlier choices become its input and each token needs another run.

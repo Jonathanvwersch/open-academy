@@ -786,15 +786,37 @@ exercises:
     prompt: Explain how LoRA fine-tunes a $d\times k$ weight matrix $W$. Say how many numbers it trains and why that is far fewer, why such a low-rank change can be enough, and what happens to the change after training.
     rubric:
       - id: r1
-        criterion: Says $W$ is frozen and a change $\Delta W=BA$ is trained, with $B$ of shape $d\times r$ and $A$ of shape $r\times k$ and small $r$, and the layer computes $Wx+BAx$
-        weight: 1
+        criterion: Explain freezing the pretrained matrix $W$ so training updates only the added change.
+        weight: 0.3
+        required: true
+      - id: factors
+        criterion: Build $\Delta W=BA$ with $B$ of shape $d\times r$ and $A$ of shape $r\times k$.
+        weight: 0.4
+        required: true
+      - id: layer
+        criterion: Give the layer output as $Wx+B(Ax)$.
+        weight: 0.3
         required: true
       - id: r2
-        criterion: Counts $r(d+k)$ trainable numbers against $dk$, notes this saves only when $r$ is much smaller than $d$ and $k$, and explains that the change needed is usually close to low rank
-        weight: 1
+        criterion:
+          Count $r(d+k)$ trainable numbers against $dk$, explaining that the saving is large when $r$ is much
+          smaller than $d$ and $k$.
+        weight: 0.5
+        required: true
+      - id: low-rank
+        criterion:
+          Explain that the needed change is often close to low rank, so a few large singular-value pieces can
+          capture most of it.
+        weight: 0.5
         required: true
       - id: r3
-        criterion: Says $B$ starts at zero so the model starts as the pretrained one, and that the change is merged as $W'=W+BA$ at no extra cost or kept as a separate adapter per task
+        criterion:
+          Describe merging $W'=W+BA$ for prediction at the original cost, or keeping a small separate adapter
+          to swap per task.
         weight: 1
         required: true
+      - id: zero-start
+        criterion: Mention starting $B$ at zero so the model initially gives the pretrained answers.
+        weight: 0.5
+        required: false
     exemplar: LoRA freezes the pretrained matrix $W$ and trains only a change built from two thin matrices, $\Delta W=BA$, where $B$ is $d\times r$, $A$ is $r\times k$ and the rank $r$ is small, so the layer computes $Wx+B(Ax)$. That trains $r(d+k)$ numbers instead of $dk$; for a $4096\times4096$ matrix at rank 8 that is $65{,}536$ instead of about 16.8 million, and gradients and training extras are needed only for those. A small change is enough because the change fine-tuning needs is usually close to low rank, so keeping its few largest scaled column-times-row tables captures most of it. Training starts with $B=0$, so the model begins as the pretrained one. Afterwards we can merge, $W'=W+BA$, so predicting costs the same as before, or keep the small adapter separate and swap it per task.

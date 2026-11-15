@@ -741,22 +741,40 @@ exercises:
     est_minutes: 5
     prompt: "From memory, explain how you would train a one-output linear model in PyTorch: how you arrange the input and target tensors, how you connect the module to its loss and optimiser, and what happens in each repeated update. Explain why both clearing gradients and recalculating predictions matter."
     rubric:
-      - {
-          id: setup,
-          criterion: "Describes floating-point input rows, matching target and output shapes, a linear module and SGD receiving model.parameters()",
-          weight: 1,
-          required: true,
-        }
-      - {
-          id: order,
-          criterion: "Gives clear gradients, predict, measure loss, backward, step in order and distinguishes gradients from parameter updates",
-          weight: 1,
-          required: true,
-        }
-      - {
-          id: fresh,
-          criterion: "Explains accumulation without clearing and why updated parameters require fresh predictions and loss",
-          weight: 1,
-          required: true,
-        }
+      - id: setup
+        criterion:
+          Arrange floating-point inputs with one example per row and targets of shape `(n, 1)` matching the one-output
+          model.
+        weight: 0.3
+        required: true
+      - id: module
+        criterion: Create `nn.Linear` with the input count per example and one output.
+        weight: 0.2
+        required: true
+      - id: loss
+        criterion: Apply `nn.MSELoss()` to the model's predictions and matching targets.
+        weight: 0.25
+        required: true
+      - id: optimizer
+        criterion: Give `model.parameters()` and a learning rate to `torch.optim.SGD`.
+        weight: 0.25
+        required: true
+      - id: order
+        criterion: Repeat clearing gradients, predicting, measuring loss, calling backward and stepping, in that order.
+        weight: 0.5
+        required: true
+      - id: roles
+        criterion: Explain that `loss.backward()` stores slopes in `.grad` and `optimizer.step()` updates parameters.
+        weight: 0.5
+        required: true
+      - id: fresh
+        criterion:
+          Explain that changed parameters need new predictions and loss because the old values do not recalculate
+          themselves.
+        weight: 0.5
+        required: true
+      - id: clearing
+        criterion: Explain that backward adds to stored slopes, so clearing prevents accumulation across updates.
+        weight: 0.5
+        required: true
     exemplar: "I put examples in rows of a floating-point input tensor and use targets of shape `(n, 1)` to match the one-output model. I create `nn.Linear` with the input count per example and one output, use `nn.MSELoss()` for the loss, and give `model.parameters()` and a learning rate to SGD. Each pass calls `optimizer.zero_grad()`, calls the model, measures loss, calls `loss.backward()`, then `optimizer.step()`. Backward stores slopes in `.grad`; step changes parameters. Without clearing, slopes add up across passes. After the loop I call the changed model again inside `torch.no_grad()` to measure a fresh loss, because old predictions and loss do not recalculate themselves."

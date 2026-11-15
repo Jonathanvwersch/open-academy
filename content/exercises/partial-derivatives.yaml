@@ -204,24 +204,23 @@ exercises:
     est_minutes: 4
     prompt: "A house price formula $P(s, a)$ uses size $s$ (tens of m²) and age $a$ (years). At one house, $\\frac{\\partial P}{\\partial s} = 28$ and $\\frac{\\partial P}{\\partial a} = -3$, in thousands of pounds. Explain in 2–4 sentences what each number means and why the other input must be held fixed."
     rubric:
-      - {
-          id: r1,
-          criterion: "Says $\\partial P/\\partial s = 28$ means the price rises about £28k per extra 10 m² when the age stays the same",
-          weight: 2,
-          required: true,
-        }
-      - {
-          id: r2,
-          criterion: "Says $\\partial P/\\partial a = -3$ means the price falls about £3k per extra year when the size stays the same",
-          weight: 2,
-          required: true,
-        }
-      - {
-          id: r3,
-          criterion: "Explains that holding the other input fixed isolates the effect of one input, so the two changes aren't mixed up",
-          weight: 1,
-        }
-    exemplar: "∂P/∂s = 28 means that, keeping the house the same age, each extra 10 m² adds about £28k to the price. ∂P/∂a = -3 means that, keeping the size the same, each extra year takes about £3k off. Holding the other input fixed isolates the effect of one input; if both moved at once you couldn't tell which caused the change."
+      - id: r1
+        criterion:
+          Explain that near this house, price rises about $28$ thousand pounds per extra $10$ m² when age stays
+          fixed.
+        weight: 2
+        required: true
+      - id: r2
+        criterion:
+          Explain that near this house, price falls about $3$ thousand pounds per extra year when size stays
+          fixed.
+        weight: 2
+        required: true
+      - id: r3
+        criterion: Explain that holding the other input fixed separates the effect of the input being changed.
+        weight: 1
+        required: true
+    exemplar: "Near this house, $\\partial P/\\partial s=28$ means price rises about $28$ thousand pounds per extra $10$ m² when age stays the same. Likewise, $\\partial P/\\partial a=-3$ means price falls about $3$ thousand pounds per extra year when size stays the same. A partial derivative changes only one input so we measure its effect separately."
   - id: pdp-meaning
     dimension: conceptual
     type: mc
