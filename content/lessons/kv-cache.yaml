@@ -5,6 +5,10 @@ objective: |
 recap:
   - concept: multi-head-attention
     text: "Each attention head makes queries, keys and values. A query scores the keys, and softmax turns those scores into weights for mixing the values. Several heads combine their outputs."
+  - concept: prefill-decode
+    text: "Prefill processes all prompt tokens together, while decode adds one output token at a time; each new token depends on earlier ones."
+  - concept: gpu-inference-basics
+    text: "Llama 3 8B has about 8 billion parameters, and at 16-bit precision its weights take about 16 GB of an H100's 80 GB."
 where_this_fits: |
   ### What is a KV cache?
 

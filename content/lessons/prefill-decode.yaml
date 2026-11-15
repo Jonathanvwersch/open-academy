@@ -5,6 +5,8 @@ objective: |
 recap:
   - concept: autoregressive-lm
     text: "A language model gives a score to each possible next token. Softmax turns scores into probabilities adding to 1. A causal mask preserves allowed dependencies. Generation chooses, appends and repeats. Greedy decoding chooses the highest score."
+  - concept: inference-metrics
+    text: "Time to first token is the wait for a reply's first token; inter-token latency is the gap between consecutive output tokens."
 where_this_fits: |
   ### What are prefill and decode?
 

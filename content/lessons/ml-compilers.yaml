@@ -5,6 +5,10 @@ objective: |
 recap:
   - concept: computational-graphs
     text: "A computational graph has a node for each input and each simple operation, with an arrow from each value to the operations that use it. The forward pass computes each node once its inputs are ready."
+  - concept: fast-attention
+    text: "FlashAttention avoids writing the full attention score table to HBM by keeping blocks on chip and updating a running softmax."
+  - concept: gpu-inference-basics
+    text: "GPUs store weights in HBM and use smaller, faster on-chip memory for calculations; HBM bandwidth limits memory-bound operations."
 where_this_fits: |
   ### What is an ML compiler?
 

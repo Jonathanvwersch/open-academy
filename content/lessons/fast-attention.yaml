@@ -5,6 +5,10 @@ objective: |
 recap:
   - concept: attention
     text: "Attention scores query $t$ against key $j$ with $s_{tj}=q_t\\cdot k_j/\\sqrt{d_k}$, where $d_k$ is the key width, turns each query's scores into softmax weights $a_{tj}$, and outputs the weighted sum of the values, $o_t=\\sum_j a_{tj}v_j$."
+  - concept: arithmetic-intensity
+    text: "Arithmetic intensity is the FLOPs done per byte moved between GPU memory and computing units; comparing it with the GPU's ops:byte ratio predicts its bottleneck."
+  - concept: gpu-inference-basics
+    text: "An H100 has high-bandwidth memory for weights and smaller, faster on-chip memory for calculations; moving data between them has a speed limit."
 where_this_fits: |
   ### What is a fast attention kernel?
 

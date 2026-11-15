@@ -5,6 +5,10 @@ objective: |
 recap:
   - concept: mixture-of-experts
     text: "A mixture-of-experts layer holds several expert MLPs and a router that sends each token to only its top-k experts. Every expert must be stored, but each token runs through only the few it was sent to."
+  - concept: kv-cache
+    text: "A KV cache keeps earlier tokens' attention keys and values so each decode step does not recompute the growing prompt."
+  - concept: inference-metrics
+    text: "Throughput is total generated tokens per second across users; inter-token latency is the gap between successive tokens for one user."
 where_this_fits: |
   ### What is LLM serving?
 

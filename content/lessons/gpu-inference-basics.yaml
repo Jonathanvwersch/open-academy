@@ -5,6 +5,8 @@ objective: |
 recap:
   - concept: pytorch-basics
     text: "A PyTorch tensor is an array of numbers with a shape and a data type, its `dtype`. Decimal numbers are stored as `torch.float32` unless we ask for another type."
+  - concept: arithmetic-intensity
+    text: "Arithmetic intensity is FLOPs per byte moved; if it is below the GPU's ops:byte ratio, memory movement rather than arithmetic limits speed."
 where_this_fits: |
   ### What does a GPU do during inference?
 

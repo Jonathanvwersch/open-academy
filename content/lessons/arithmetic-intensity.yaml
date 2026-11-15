@@ -4,6 +4,8 @@ objective: "**Goal:** compute a matrix multiply's arithmetic intensity and use a
 recap:
   - concept: matrices
     text: 'A matrix product takes a dot product of each row of the first matrix with each column of the second. Multiplying shapes $(m\times k)(k\times n)$ gives $mn$ output entries, each combining $k$ pairs.'
+  - concept: prefill-decode
+    text: "Prefill processes all prompt tokens together, while decode adds one output token at a time; each new token depends on earlier ones."
 where_this_fits: |
   ### What is arithmetic intensity?
 
