@@ -1,7 +1,7 @@
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, gte } from 'drizzle-orm';
 import type { IndexedLesson } from '../content/types.js';
 import type { Database } from '../db/client.js';
-import { attempts } from '../db/schema.js';
+import { attempts, lessonRuns } from '../db/schema.js';
 import { attemptAllowsRetry } from './retry.js';
 import type { PlannedActivity } from './scheduler.js';
 
@@ -22,6 +22,13 @@ export async function initialLearnProgress(
     return undefined;
   }
 
+  const [lessonRun] = await db
+    .select({ startedAt: lessonRuns.startedAt })
+    .from(lessonRuns)
+    .where(and(eq(lessonRuns.userId, userId), eq(lessonRuns.conceptId, activity.conceptId)))
+    .limit(1);
+  if (!lessonRun) return undefined;
+
   const previousAttempts = await db
     .select({
       mode: attempts.mode,
@@ -36,6 +43,7 @@ export async function initialLearnProgress(
         eq(attempts.userId, userId),
         eq(attempts.exerciseId, finalExerciseId),
         eq(attempts.conceptId, activity.conceptId),
+        gte(attempts.createdAt, lessonRun.startedAt),
       ),
     )
     .orderBy(desc(attempts.createdAt), desc(attempts.attemptNo));

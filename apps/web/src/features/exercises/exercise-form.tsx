@@ -3,7 +3,7 @@ import { emptyAnswerMessage } from '@academy/shared/answer-validation';
 import { onScreenOptions } from '@academy/shared/shuffle';
 import { Check, X } from 'lucide-react';
 import type { FormEvent, KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Markdown } from '../../components/markdown.js';
 import { Badge } from '../../components/ui/badge.js';
 import { Button } from '../../components/ui/button.js';
@@ -22,6 +22,22 @@ import { Textarea } from '../../components/ui/textarea.js';
 import { prefillExerciseAnswer } from './submitted-answer.js';
 
 const EXERCISE_CONTAINER_SELECTOR = '[data-exercise-container]';
+const isTextEntryField = (element: Element | null) =>
+  element instanceof HTMLTextAreaElement ||
+  (element instanceof HTMLInputElement &&
+    ![
+      'button',
+      'checkbox',
+      'color',
+      'file',
+      'hidden',
+      'image',
+      'radio',
+      'range',
+      'reset',
+      'submit',
+    ].includes(element.type)) ||
+  (element instanceof HTMLElement && element.isContentEditable);
 
 export function ExerciseForm({
   exercise,
@@ -38,6 +54,7 @@ export function ExerciseForm({
   primaryAction,
   actions,
   compactActions = false,
+  autoFocus = true,
 }: {
   exercise: ClientExercise;
   onSubmit: (answer: unknown) => void;
@@ -58,12 +75,15 @@ export function ExerciseForm({
   };
   actions?: ReactNode;
   compactActions?: boolean;
+  autoFocus?: boolean;
 }) {
   const [value, setValue] = useState('');
   const [line, setLine] = useState('');
   const [selected, setSelected] = useState<string[]>([]);
   const [criteria, setCriteria] = useState<string[]>([]);
   const [answerError, setAnswerError] = useState('');
+  const answerInputRef = useRef<HTMLInputElement>(null);
+  const answerTextareaRef = useRef<HTMLTextAreaElement>(null);
   const options = exercise.options;
   const orderedOptions = useMemo(
     () => onScreenOptions(options ?? [], exercise.id),
@@ -77,6 +97,21 @@ export function ExerciseForm({
     [exercise.id, fixOptions],
   );
   const inputsLocked = locked || disabled || loading;
+  useEffect(() => {
+    const answerInput = answerInputRef.current ?? answerTextareaRef.current;
+    if (!autoFocus || inputsLocked || !answerInput) return;
+
+    const activeElement = document.activeElement;
+    if (
+      isTextEntryField(activeElement) &&
+      activeElement !== answerInput &&
+      !answerInput.closest(EXERCISE_CONTAINER_SELECTOR)?.contains(activeElement)
+    ) {
+      return;
+    }
+
+    answerInput.focus({ preventScroll: true });
+  }, [autoFocus, inputsLocked]);
   useEffect(() => {
     if (!primaryAction) return;
     const handleGlobalKeyDown = (event: KeyboardEvent) => {
@@ -413,6 +448,7 @@ export function ExerciseForm({
           exercise.type === 'code_read' ||
           exercise.type === 'text' ? (
             <Input
+              ref={answerInputRef}
               className="h-10 w-full"
               aria-label="Your answer"
               value={value}
@@ -422,6 +458,7 @@ export function ExerciseForm({
             />
           ) : (
             <Textarea
+              ref={answerTextareaRef}
               className={`min-h-28 w-full ${exercise.type === 'explain' ? '' : 'font-mono'}`}
               aria-label="Your answer"
               value={value}

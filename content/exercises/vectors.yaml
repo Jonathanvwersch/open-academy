@@ -687,22 +687,19 @@ exercises:
     est_minutes: 4
     prompt: "A house app records area, bedrooms and age as $(120,3,15)$. In 2–4 sentences, explain what this vector represents and why the numerical range of each measurement matters when comparing houses by distance."
     rubric:
-      - {
-          id: r1,
-          criterion: "Each feature becomes one coordinate, so an example is a point (or arrow) in feature space",
-          weight: 2,
-          required: true,
-        }
-      - {
-          id: r2,
-          criterion: "Distance sums (squared) differences over coordinates, so features with large numeric ranges dominate",
-          weight: 2,
-          required: true,
-        }
-      - {
-          id: r3,
-          criterion: "Explains that features should be rescaled to comparable numerical ranges",
-          weight: 1,
-        }
-    exemplar: "Each measurement is one coordinate in a fixed order, so all three numbers describe the same house. Distance adds squared differences for each coordinate; an area difference of 50 adds 2500, while two bedrooms add only 4. Area can therefore overwhelm the comparison even if bedrooms matter to the buyer. Rescaling the measurements to comparable numerical ranges makes this comparison more useful."
+      - id: r1
+        criterion: Explain that $(120,3,15)$ records one house's area, bedroom count and age in a fixed order.
+        weight: 2
+        required: true
+      - id: r2
+        criterion:
+          Explain that large numerical differences in one measurement can dominate the sum of squares used to
+          calculate distance.
+        weight: 2
+        required: true
+      - id: r3
+        criterion: Suggest dividing measurements by typical sizes so that none swamps the others.
+        weight: 1
+        required: false
+    exemplar: "The coordinates $(120,3,15)$ record one house's area, bedroom count and age in a fixed order. Distance squares coordinate differences, adds them and takes the square root. An area difference of $50$ adds $2500$ to the sum, while a bedroom difference of $2$ adds $4$, so area can overwhelm the comparison. Dividing measurements by typical sizes keeps one measurement from swamping the others."
     solution: "Each coordinate records a feature of one house. The units and numerical ranges affect how strongly each feature contributes to distance."

@@ -582,16 +582,17 @@ exercises:
     prompt: For houses with area in tens of square metres, bedroom count and age in years, explain how NumPy can predict both sale price and monthly rent for five houses. State the shapes of $X$, $W$ and $XW$, and explain adding one fixed amount per output.
     rubric:
       - id: rows
-        criterion: Each output entry is one house row dotted with one output-weight column
+        criterion: Compute each output entry by dotting one house row with one output-weight column.
         weight: 2
         required: true
       - id: shapes
-        criterion: For X shape (5, 3), W has shape (3, 2) and X @ W has shape (5, 2), with matching inner measurement counts
+        criterion: Give $X$ shape $(5,3)$, $W$ shape $(3,2)$ and $XW$ shape $(5,2)$, with matching inner measurement counts.
         weight: 2
         required: true
       - id: bias
-        criterion: A bias of shape (2,) is broadcast across the five house rows in X @ W + b
+        criterion: Add a bias of shape `(2,)` in `X @ W + b`, reusing the same price and rent adjustments for each house.
         weight: 1
+        required: true
     exemplar: Each output entry is one house row dotted with one output-weight column. Five houses with three measurements give X shape (5, 3). Sale-price and monthly-rent weights give W shape (3, 2), so X @ W has shape (5, 2). Adding b with shape (2,) reuses one fixed adjustment for each output across all five rows.
     solution: Each house row meets both output-weight columns. The matching inner measurement counts produce two predictions per house, and broadcasting adds one fixed adjustment per output without changing the shape.
   - id: mat-check-shape

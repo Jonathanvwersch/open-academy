@@ -192,26 +192,31 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 4
-    prompt: "Using a 2 → 2 → 1 network of your choice, explain in 2–4 sentences what a two-layer multilayer perceptron computes from an input $x$, and how the array shapes change when you feed it a batch of $B$ examples."
+    prompt: "For a $2\\to2\\to1$ network, explain in 2–4 sentences what a two-layer multilayer perceptron computes from an input $x$, and how the array shapes change when you feed it a batch of $B$ examples."
     rubric:
-      - {
-          id: r1,
-          criterion: "Describes the forward pass in order: first-layer scores $W_1x + b_1$, an activation applied to each score to give hidden values $h$, then the output $W_2h + b_2$",
-          weight: 2,
-          required: true,
-        }
-      - {
-          id: r2,
-          criterion: "States that a batch $X$ of shape $B \\times d_\\text{in}$ passes through a layer with $d_\\text{out}$ neurons to give $B \\times d_\\text{out}$, keeping one row per example",
-          weight: 2,
-          required: true,
-        }
-      - {
-          id: r3,
-          criterion: "Mentions that each row of a weight matrix is one neuron, or that a layer has $d_\\text{in} \\cdot d_\\text{out} + d_\\text{out}$ parameters, or that the activation stops the layers collapsing into one",
-          weight: 1,
-        }
-    exemplar: "The first layer multiplies the input by $W_1$, where each row is one neuron's weights, and adds the bias $b_1$ to get one score per hidden neuron. An activation such as ReLU is applied to each score to give the hidden values $h$, and the output layer computes $\\hat y = W_2h + b_2$. For a batch, $X$ has one example per row, shape $B \\times d_\\text{in}$; each layer turns it into $B \\times d_\\text{out}$, so the hidden array is $B \\times (\\text{number of hidden neurons})$ and the output is $B \\times (\\text{number of outputs})$. Each layer has $d_\\text{in} \\cdot d_\\text{out}$ weights plus $d_\\text{out}$ biases, whatever the batch size."
+      - id: r1
+        criterion: Compute hidden values $h=\phi(W_1x+b_1)$ by applying the activation to each first-layer score.
+        weight: 1
+        required: true
+      - id: output
+        criterion: Feed the hidden values into the output layer to compute $\hat y=W_2h+b_2$.
+        weight: 1
+        required: true
+      - id: r2
+        criterion:
+          State that the batch shapes are $X:B\times2$, hidden values $H:B\times2$ and predictions $\hat Y:B\times1$,
+          keeping one row per example.
+        weight: 2
+        required: true
+      - id: r3
+        criterion: Mention that each row of a weight matrix stores one neuron's weights.
+        weight: 0.5
+        required: false
+      - id: parameters
+        criterion: Mention that a layer has $d_\text{in}d_\text{out}+d_\text{out}$ parameters, independent of batch size.
+        weight: 0.5
+        required: false
+    exemplar: "The first layer computes $h=\\phi(W_1x+b_1)$, applying an activation such as ReLU to each score, then the output layer computes $\\hat y=W_2h+b_2$. In this $2\\to2\\to1$ network, a batch starts as $X:B\\times2$, gives hidden values $H:B\\times2$ and ends as $\\hat Y:B\\times1$, keeping one row per example. Each row of a weight matrix stores one neuron's weights, and a layer has $d_\\text{in}d_\\text{out}+d_\\text{out}$ parameters whatever the batch size."
   - id: mlpp-layer-values
     dimension: math
     type: mc

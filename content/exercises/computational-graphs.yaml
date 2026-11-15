@@ -507,25 +507,21 @@ exercises:
     role: "core"
     difficulty: 3
     est_minutes: 4
-    prompt: "How does a computational graph turn a big output derivative into small steps? Explain how you draw and evaluate the graph, find local derivatives, and combine all the paths from an input to the output."
+    prompt: "Explain how a computational graph represents a calculation, what a local derivative means, and how the local derivatives give the output's derivative for one input."
     rubric:
-      - {
-          "id": "graph",
-          "criterion": "Describes one node per input and simple operation, arrows for dependencies, and a forward pass to compute values.",
-          "weight": 1,
-          "required": true,
-        }
-      - {
-          "id": "local",
-          "criterion": "Defines local derivatives for one operation and one input with other inputs fixed, using forward values when needed.",
-          "weight": 1,
-          "required": true,
-        }
-      - {
-          "id": "paths",
-          "criterion": "Multiplies local derivatives along each path and adds all path contributions for an input's output derivative.",
-          "weight": 2,
-          "required": true,
-        }
-    exemplar: "I draw one node per input and simple operation, joining each value to every operation that uses it. I compute the nodes in arrow order to get their forward values. For each operation, I find the derivative of its output with respect to each of its inputs while holding the others fixed; these local rules may use the forward values. I then trace every path from the chosen input to the final output, multiply the local derivatives along each path, and add the path products. That gives the output's derivative without differentiating the whole formula at once."
-    solution: "The graph exposes the dependencies, local rules supply each local derivative, and the chain rule combines every path product into the full output derivative."
+      - id: graph
+        criterion:
+          Describe one node per input and simple operation, with arrows from values to the operations that use
+          them.
+        weight: 1
+        required: true
+      - id: local
+        criterion: Define a local derivative as one operation's output slope for one input, holding its other inputs fixed.
+        weight: 1
+        required: true
+      - id: paths
+        criterion: Explain multiplying local derivatives along each input-to-output path and adding the path products.
+        weight: 1
+        required: true
+    exemplar: "The graph has one node per input and simple operation, with arrows showing which values each operation uses. A local derivative gives one operation's output slope for one input while holding its other inputs fixed. Multiply these derivatives along every path from the chosen input to the output, then add the path products."
+    solution: "The graph has one node per input and simple operation, with arrows showing which values each operation uses. A local derivative gives one operation's output slope for one input while holding its other inputs fixed. Multiply these derivatives along every path from the chosen input to the output, then add the path products."

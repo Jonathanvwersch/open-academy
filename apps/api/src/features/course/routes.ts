@@ -21,6 +21,7 @@ import {
 } from '../../learning/content-filters.js';
 import { buildCourseStartState, needsCourseChoice } from '../../learning/course-start.js';
 import { topicIsComplete } from '../../learning/course-status.js';
+import { type ProjectionCourse, projectCourseFinishes } from '../../learning/finish-projection.js';
 import { deriveLessonState } from '../../learning/lesson-runner.js';
 import {
   activeCourseFor,
@@ -31,6 +32,7 @@ import {
 import type { PlannedActivity, SessionPreferences } from '../../learning/scheduler.js';
 import {
   currentLearnerUnit,
+  isLearnableConcept,
   planSession,
   type SessionKind,
   sessionBudget,
@@ -39,17 +41,73 @@ import { buildStreak } from '../../learning/streak.js';
 import {
   averageDailyXp,
   coursePercent,
-  estimatedFinishDate,
+  defaultAverageDailyXp,
   estimateTaskXp,
   localDateKey,
   sessionKindForDate,
   weekXp,
   xpGoalFor,
 } from '../../learning/xp.js';
-import { buildCoursePayload, placedOutConceptsFromRuns, suggestedNextCourses } from './service.js';
+import {
+  buildCoursePayload,
+  courseTopicState,
+  placedOutConceptsFromRuns,
+  restartTopic,
+  suggestedNextCourses,
+} from './service.js';
 
 type RouteContext = Context<ApiEnv>;
 type ActivityRecord = typeof sessionActivities.$inferSelect;
+
+function buildProjectionCourses(
+  index: ContentIndex,
+  courseIds: string[],
+  topicState: ReturnType<typeof courseTopicState>,
+): ProjectionCourse[] {
+  const activeTopicIds = new Set(
+    courseIds.flatMap((courseId) => {
+      const course = index.coursesById.get(courseId);
+      return course?.units.flatMap((unit) => unit.concepts) ?? [];
+    }),
+  );
+  return courseIds.flatMap((courseId) => {
+    const course = index.coursesById.get(courseId);
+    if (!course) return [];
+    const schedulableFoundations = courseFoundationIds(index, courseId);
+    const visited = new Set<string>();
+    const topics: ProjectionCourse['topics'] = [];
+    const addTopic = (conceptId: string) => {
+      const concept = index.conceptsById.get(conceptId);
+      if (!concept || visited.has(conceptId)) return;
+      visited.add(conceptId);
+      const state = topicState(concept);
+      const hardPrereqIds = concept.prereqs
+        .filter((prerequisite) => prerequisite.strength === 'hard')
+        .map((prerequisite) => prerequisite.id);
+      for (const prereqId of hardPrereqIds) {
+        if (activeTopicIds.has(prereqId)) continue;
+        const prerequisite = index.conceptsById.get(prereqId);
+        if (!prerequisite) continue;
+        const alreadyDone = topicState(prerequisite).status === 'complete';
+        if (
+          alreadyDone ||
+          (schedulableFoundations.has(prereqId) && isLearnableConcept(prerequisite, index))
+        ) {
+          addTopic(prereqId);
+        }
+      }
+      topics.push({
+        conceptId,
+        done: state.status === 'complete',
+        hardPrereqIds,
+      });
+    };
+    for (const unit of course.units) {
+      for (const conceptId of unit.concepts) addTopic(conceptId);
+    }
+    return [{ id: courseId, topics }];
+  });
+}
 
 export function registerLearnCourseRoutes(
   api: Hono<ApiEnv>,
@@ -338,6 +396,24 @@ export function registerLearnCourseRoutes(
     );
     await completePayloadCourses(repo, coursePayload, now);
     const topics = coursePayload.units.flatMap((unit) => unit.topics);
+    const projectionCourses = buildProjectionCourses(
+      index,
+      studyCourseIds,
+      courseTopicState(index, mastery, runRows, placedOutConcepts),
+    );
+    const averageXp = averageDailyXp(events, todayLocal);
+    const dailyXpAtPace = averageXp > 0 ? averageXp : defaultAverageDailyXp(prefs);
+    const dailyXpAtGoal = defaultAverageDailyXp(prefs);
+    const finishesAtPace = projectCourseFinishes({
+      courses: projectionCourses,
+      dailyXp: dailyXpAtPace,
+      today: todayLocal,
+    });
+    const finishesAtGoal = projectCourseFinishes({
+      courses: projectionCourses,
+      dailyXp: dailyXpAtGoal,
+      today: todayLocal,
+    });
     const studyCourses = studyCourseIds.flatMap((courseId) => {
       const course = index.coursesById.get(courseId);
       const progress = coursePayload.courses.find((item) => item.id === courseId);
@@ -346,7 +422,6 @@ export function registerLearnCourseRoutes(
         { activeCourseId: courseId, mastery, lessonRuns: runRows },
         index,
       );
-      const remainingTopics = progress.topicsTotal - progress.topicsDone;
       return [
         {
           id: course.id,
@@ -354,40 +429,24 @@ export function registerLearnCourseRoutes(
           topicsDone: progress.topicsDone,
           topicsTotal: progress.topicsTotal,
           unitTitle: course.units[unit - 1]?.title ?? `Unit ${unit}`,
-          estimatedFinish:
-            remainingTopics > 0
-              ? estimatedFinishDate(
-                  remainingTopics,
-                  averageDailyXp(events, todayLocal),
-                  todayLocal,
-                  prefs,
-                )
-              : null,
-          estimatedFinishAtGoal:
-            remainingTopics > 0 ? estimatedFinishDate(remainingTopics, 0, todayLocal, prefs) : null,
+          estimatedFinish: finishesAtPace.byCourse.get(courseId) ?? null,
+          estimatedFinishAtGoal: finishesAtGoal.byCourse.get(courseId) ?? null,
         },
       ];
     });
     const topicsDone = topics.filter((topic) => topic.status === 'complete').length;
-    const estimatedFinish =
-      topicsDone < topics.length
-        ? estimatedFinishDate(
-            topics.length - topicsDone,
-            averageDailyXp(events, todayLocal),
-            todayLocal,
-            prefs,
-          )
-        : null;
-    const estimatedFinishAtGoal =
-      topicsDone < topics.length
-        ? estimatedFinishDate(topics.length - topicsDone, 0, todayLocal, prefs)
-        : null;
+    const estimatedFinish = finishesAtPace.byCourse.get(currentCourseId ?? '') ?? null;
+    const estimatedFinishAtGoal = finishesAtGoal.byCourse.get(currentCourseId ?? '') ?? null;
     return context.json({
       streak: buildStreak(events, todayLocal),
       today: {
         needsCourseChoice: needsChoice,
         courseStart: startState.courseStart,
         studyCourses,
+        studyFinish: {
+          atPace: finishesAtPace.overall,
+          atGoal: finishesAtGoal.overall,
+        },
         sessionKind: sessionKindForDate(todayLocal),
       },
       xp: {
@@ -609,6 +668,16 @@ export function registerLearnCourseRoutes(
     }
     await deps.withRepo(context).setActiveCourseId(body.courseId);
     return context.json({ courseId: body.courseId });
+  });
+
+  api.post('/concepts/:id/restart', async (context) => {
+    const index = await deps.content();
+    const conceptId = context.req.param('id');
+    if (!index.conceptsById.has(conceptId)) {
+      return context.json({ error: 'Concept not found' }, 404);
+    }
+    await restartTopic({ db: deps.db, userId: context.get('userId'), conceptId, content: index });
+    return context.json({ conceptId });
   });
 
   api.put('/courses/:id/enrollment', async (context) => {

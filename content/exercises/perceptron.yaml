@@ -304,7 +304,7 @@ exercises:
         }
       - {
           id: r3,
-          criterion: "Mentions that the weights set the line's direction and the bias shifts it, or that AND and OR do work",
+          criterion: "Mention that changing the bias slides the straight decision boundary.",
           weight: 1,
         }
     exemplar: "A perceptron multiplies each input by its weight, adds the results and a bias to get a score, then outputs 1 if the score is above zero and 0 otherwise. The inputs that score exactly zero form a straight line (a hyperplane with more inputs), so the perceptron can only say yes on one side of a straight boundary; the weights set its direction and the bias slides it. XOR needs yes at (0,1) and (1,0) and no at (0,0) and (1,1). Those pairs are diagonally opposite corners of a square, so any straight line that puts both yes corners on one side also puts a no corner there."

@@ -733,24 +733,25 @@ exercises:
     role: core
     difficulty: 3
     est_minutes: 4
-    prompt: Describe a pre-norm transformer block from input to output. Explain the jobs of attention and the MLP, how LayerNorm and the shortcuts are arranged, and why blocks can be stacked.
+    prompt: "In a transformer block, explain the job of attention, the job of the MLP, and what each residual connection does."
     rubric:
-      - {
-          id: sublayers,
-          criterion: "Describes attention mixing tokens followed by an MLP applied separately with shared weights at every position.",
-          weight: 1,
-          required: true,
-        }
-      - {
-          id: layout,
-          criterion: "Places LayerNorm before each sublayer on a copy and adds each output to the original sublayer input through a shortcut.",
-          weight: 1,
-          required: true,
-        }
-      - {
-          id: stack,
-          criterion: "Explains preservation of T by d shape and the final LayerNorm after the pre-norm stack.",
-          weight: 1,
-        }
-    exemplar: A pre-norm block normalizes each token vector for attention, which shares information between tokens, and adds attention's output to the original token vector. It then normalizes that sum for an MLP with shared weights applied separately at each position, and adds the MLP output to the sum through another shortcut. Every block preserves the token count and width, so its output can feed the next block, and a final LayerNorm rescales the vector carried along the shortcuts after the last block.
-    solution: Each sublayer gets a normalized input copy and contributes an update through a residual addition. Attention mixes information across tokens, the MLP transforms each token separately, and preserving $T\times d$ lets these blocks be repeated.
+      - id: sublayers
+        criterion: Describe attention letting tokens share information.
+        weight: 1
+        required: true
+      - id: mlp
+        criterion:
+          Describe the MLP's nonlinearity computing features for each token separately, with shared weights at
+          every position.
+        weight: 1
+        required: true
+      - id: shortcuts
+        criterion: Add each sublayer's output to its original input through a shortcut.
+        weight: 1
+        required: true
+      - id: stack
+        criterion: Explain that each block preserves shape $T\times d$, so its output can feed the next block.
+        weight: 0.25
+        required: false
+    exemplar: "Attention lets tokens share information. The MLP computes features for each token separately, using the same weights at every position. Each residual connection adds a sublayer's output to its original input. Blocks preserve shape $T\\times d$, so one block's output can feed the next."
+    solution: "Attention lets tokens share information. The MLP computes features for each token separately, using the same weights at every position. Each residual connection adds a sublayer's output to its original input. Blocks preserve shape $T\\times d$, so one block's output can feed the next."

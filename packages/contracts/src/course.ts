@@ -41,7 +41,12 @@ export interface CourseCatalogPayload {
 
 export interface LearnPayload {
   streak: StreakPayload;
-  today: Pick<TodayPayload, 'needsCourseChoice' | 'courseStart' | 'sessionKind' | 'studyCourses'>;
+  today: Pick<
+    TodayPayload,
+    'needsCourseChoice' | 'courseStart' | 'sessionKind' | 'studyCourses'
+  > & {
+    studyFinish: { atPace: string | null; atGoal: string | null };
+  };
   xp: {
     total: number;
     today: number;

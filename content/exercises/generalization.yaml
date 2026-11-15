@@ -387,24 +387,18 @@ exercises:
     role: core
     difficulty: 3
     est_minutes: 4
-    prompt: A house model has low error on a held-out table from city A. Some rows copy training sales. The model will be used in city B. Explain why the score is not enough to claim good generalization and how you would make the evaluation more useful.
+    prompt: "A house model scores well on held-out city A sales, but some rows copy training sales and the model will be used in city B. Explain why the copied rows weaken the evidence, why the city change matters, and which sales you would reserve for a better evaluation."
     rubric:
-      - {
-          id: assumptions,
-          criterion: Explain that held-out evidence needs independent examples from the same distribution as intended use.,
-          weight: 1,
-          required: true,
-        }
-      - {
-          id: leakage,
-          criterion: Identify the copied sales as leakage and keep related records together while removing duplicate scoring rows.,
-          weight: 1,
-          required: true,
-        }
-      - {
-          id: shift,
-          criterion: Explain that B may differ and propose evaluating separate B sales covering the kinds of houses the model will price without claiming a guarantee.,
-          weight: 1,
-          required: true,
-        }
-    exemplar: Generalization means useful predictions on unseen houses. Independent examples from the same distribution make a held-out average informative about future average error. Copies of training sales are not independent evidence about new houses, so I would keep records of each house together and remove duplicates when scoring. City B may have a different mix of houses or different prices at the same sizes, so I would gather B sales covering the kinds of houses the model will price and keep separate validation and untouched test houses there. Even a good test average would estimate performance rather than guarantee every prediction.
+      - id: leakage
+        criterion: Explain that copied training sales are leakage and give no independent evidence about unseen houses.
+        weight: 1
+        required: true
+      - id: shift
+        criterion: Explain that city B can have a different mix of houses or different prices at the same sizes.
+        weight: 1
+        required: true
+      - id: evaluation
+        criterion: Propose evaluating on separate city B sales covering the kinds of houses the model will price.
+        weight: 1
+        required: true
+    exemplar: "Copied training sales give no independent evidence about unseen houses. City B can have a different mix of houses or different prices at the same sizes, so city A's score is insufficient. I would reserve separate city B sales covering the kinds of houses the model will price."

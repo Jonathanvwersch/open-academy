@@ -1,0 +1,554 @@
+concept: exploration
+exercises:
+  # Step 1: why greedy gets stuck
+  - id: xpl-trap-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What does it mean for an agent that learns from rewards to explore?
+    options:
+      - id: a
+        text: To take an action, usually not the best-looking one, to learn more about what it pays.
+        correct: true
+        feedback: Exploring gives up some reward now to improve the agent's estimate of another action.
+      - id: b
+        text: To take the action with the highest estimated reward so far, to collect reward now.
+        correct: false
+        category: misunderstood_definition
+        feedback: That is exploiting, which uses what the agent already knows.
+      - id: c
+        text: To change the rewards the environment gives, so that good actions are easier to find.
+        correct: false
+        category: misunderstood_definition
+        feedback: The agent can't change the rewards. It can only choose which actions to take.
+      - id: d
+        text: To reset every estimate to zero, so that past rewards no longer affect its choices.
+        correct: false
+        category: misunderstood_definition
+        feedback: Exploring keeps the estimates and adds information to them by trying other actions.
+    solution: Exploring means trying an action that doesn't currently look best, so the agent learns more about what it pays. Exploiting means taking the best-looking action.
+  - id: xpl-trap-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example, why does arm B's estimate stay at $0$ for all 100 pulls?
+    options:
+      - id: a
+        text: The greedy agent never pulls B again, and an estimate only changes when its arm is pulled.
+        correct: true
+        feedback: B's estimate is the average of B's own rewards, and no new rewards from B ever arrive.
+      - id: b
+        text: Arm B's true average reward is $0$, so its estimate is already correct.
+        correct: false
+        category: incorrect_reasoning
+        feedback: "B's true average is $4\\times0.5+0\\times0.5=2$. Its estimate is wrong but never gets corrected."
+      - id: c
+        text: Arm A pays $1$ every time, so A's estimate keeps rising and pushes B's down.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Each arm's estimate is the average of that arm's own rewards. A's pulls don't change B's estimate, and A's stays at $1$.
+    solution: B's estimate is the average of B's rewards. A greedy agent with estimates $1$ and $0$ always pulls A, so B never pays anything new and its estimate stays at $0$.
+  - id: xpl-trap-estimate
+    dimension: conceptual
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: An agent has pulled arm B of a slot machine four times, and it paid ${{=a}}$, $0$, $0$ and ${{=b}}$. The agent's estimate for an arm is built from the rewards that arm has paid so far. What is its estimate for arm B?
+    params:
+      a: { min: 1, max: 9 }
+      b: { min: 1, max: 9 }
+    constraints:
+      - "abs((a + b) / 4 - a) > 0.001"
+      - "abs((a + b) / 4 - b) > 0.001"
+    answer_expr: (a + b) / 4
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer_expr: (a + b) / 2
+        category: math_error
+        feedback: The two pulls that paid $0$ count too. Divide the total by all four pulls.
+      - answer_expr: a + b
+        category: misunderstood_definition
+        feedback: That's the total reward. The estimate is the average per pull, so divide by the four pulls.
+    solution: The estimate is the average reward per pull, $({{=a}}+0+0+{{=b}})/4={{=(a+b)/4}}$.
+  - id: xpl-trap-next-pull
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A greedy agent on a two-armed slot machine has an estimate of $3.0$ for arm A, from 20 pulls, and $2.5$ for arm B, from a single pull. What does it do next, and what is the risk?
+    options:
+      - id: a
+        text: It pulls A, and may never learn whether B is really better, since B was judged on one pull.
+        correct: true
+        feedback: A greedy agent takes the higher estimate, and B's estimate rests on a single random reward.
+      - id: b
+        text: It pulls B, because B has had fewer pulls and needs more of them to be reliable.
+        correct: false
+        category: misunderstood_definition
+        feedback: Pulling the less-tried arm is exploring. A greedy agent always takes the higher estimate.
+      - id: c
+        text: It pulls A, and there is no risk, because $3.0>2.5$ shows that A pays more on average.
+        correct: false
+        category: incorrect_reasoning
+        feedback: One pull says little about B's average. B's true average could easily be above $3.0$.
+    solution: Greedy means taking the higher estimate, so it pulls A. B's estimate comes from one random reward, and because the agent won't pull B again, it never finds out if B is better.
+  - id: xpl-trap-tried-once
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: 'A learner says: "My agent pulled every arm once, then always pulled the arm with the best estimate. It tried them all, so it can''t miss the best arm." What is wrong with this?'
+    options:
+      - id: a
+        text: One pull gives one random reward, which can be far from the arm's average, and the agent never checks again.
+        correct: true
+        feedback: A single unlucky reward can make a good arm look bad for ever under a greedy rule.
+      - id: b
+        text: Nothing is wrong, because after one pull of each arm every estimate equals that arm's true average.
+        correct: false
+        category: incorrect_reasoning
+        feedback: An estimate from one pull is one random reward. It equals the average only by luck.
+      - id: c
+        text: The agent should pull the arm with the lowest estimate, because that arm has the most to gain.
+        correct: false
+        category: misunderstood_definition
+        feedback: Always pulling the lowest estimate wastes pulls on arms that really are poor. The fix is to keep trying others some of the time.
+    solution: Each arm's estimate after one pull is just one random reward. A greedy agent never pulls the unlucky arm again, so it can miss the best arm.
+  - id: xpl-trap-cost
+    dimension: conceptual
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: Arm A of a slot machine pays ${{=a}}$ on every pull. Arm B pays ${{=x}}$ with probability $0.5$ and $0$ otherwise. A greedy agent got unlucky on its first pull of B and will pull only A for its next 100 pulls. How much less total reward does it expect over those 100 pulls than if it had pulled only B?
+    params:
+      a: { min: 1, max: 3 }
+      x: { min: 4, max: 12, step: 2 }
+    constraints:
+      - "x / 2 > a"
+      - "abs(100 * (x / 2 - a) - 100) > 0.001"
+    answer_expr: 100 * (x / 2 - a)
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer_expr: 100 * (x - a)
+        category: misunderstood_definition
+        feedback: B pays ${{=x}}$ only half the time, so its average is $0.5\times{{=x}}={{=x/2}}$ per pull.
+      - answer_expr: x / 2 - a
+        category: math_error
+        feedback: That's the gap per pull. Multiply by the 100 pulls.
+    solution: B's average is $0.5\times{{=x}}={{=x/2}}$ per pull and A's is ${{=a}}$. Over 100 pulls that's $100\times({{=x/2}}-{{=a}})={{=100*(x/2-a)}}$ less.
+  - id: xpl-trap-robot-grip
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A robot arm learns which of two grips picks up a cup. Grip 1 worked on its first try. Grip 2 dropped the cup on its first try. Since then the robot has used only grip 1. Which statement is right?
+    options:
+      - id: a
+        text: The robot can't yet tell which grip is better, because grip 2 was judged on one try that may have been bad luck.
+        correct: true
+        feedback: One failure is one random result. The robot needs to try grip 2 again to know.
+      - id: b
+        text: Grip 2 is shown to be worse, because it failed the only time it was tried.
+        correct: false
+        category: incorrect_reasoning
+        feedback: One try can't show an average. A grip that usually works can still fail once.
+      - id: c
+        text: The robot is exploring, because it keeps testing grip 1 on every new cup.
+        correct: false
+        category: misunderstood_definition
+        feedback: Using the grip that looks best is exploiting. Exploring would mean trying grip 2.
+      - id: d
+        text: The robot should switch to grip 2 for good, to make up for not trying it.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Switching for good just gets stuck the other way. It needs to keep trying both now and then.
+    solution: This is a greedy agent stuck after one unlucky result. Grip 2's single failure says little about how often it works, so the robot should keep trying it some of the time.
+  # Step 2: epsilon-greedy
+  - id: xpl-eps-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What does an epsilon-greedy agent do before each choice?
+    options:
+      - id: a
+        text: With probability $\varepsilon$ it picks an action at random, and otherwise it takes the best-looking action.
+        correct: true
+        feedback: That's the rule, so the agent mostly exploits but keeps trying every action now and then.
+      - id: b
+        text: With probability $\varepsilon$ it takes the best-looking action, and otherwise it picks at random.
+        correct: false
+        category: misunderstood_definition
+        feedback: That swaps the two branches. $\varepsilon$ is the chance of exploring, and it's usually small.
+      - id: c
+        text: It takes the best-looking action, after adding $\varepsilon$ to every action's estimate.
+        correct: false
+        category: misunderstood_definition
+        feedback: Adding the same amount to every estimate doesn't change which is best, so the agent would stay greedy.
+      - id: d
+        text: It picks at random for the first $\varepsilon$ choices, and then always takes the best-looking action.
+        correct: false
+        category: misunderstood_definition
+        feedback: $\varepsilon$ is a probability used on every choice. It isn't a number of choices.
+    solution: Epsilon-greedy explores with probability $\varepsilon$, by picking an action at random, and exploits with probability $1-\varepsilon$, by taking the action with the best estimate.
+  - id: xpl-eps-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example, with $\varepsilon=0.1$, why is arm A pulled with probability $0.95$ while it looks best?
+    options:
+      - id: a
+        text: The exploit branch gives $0.9$, and the random pick lands on A half the time, adding $0.05$.
+        correct: true
+        feedback: "A is reached through both branches: $0.9+0.1/2=0.95$."
+      - id: b
+        text: A pays $1$ every time, so the agent adds an extra $0.05$ to its chance for being reliable.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Epsilon-greedy doesn't look at how steady an arm's rewards are. The extra $0.05$ comes from the random pick.
+      - id: c
+        text: The exploit branch alone has probability $0.95$, because $\varepsilon/2$ is taken from it.
+        correct: false
+        category: math_error
+        feedback: The exploit branch has probability $1-\varepsilon=0.9$. The other $0.05$ comes from the explore branch.
+    solution: A is pulled when the agent exploits, with probability $0.9$, and also when the random pick chooses it, with probability $0.1/2=0.05$. Together that's $0.95$.
+  - id: xpl-eps-best-prob
+    dimension: conceptual
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: An agent uses epsilon-greedy with $\varepsilon={{=eps}}$ and has ${{=k}}$ actions. Its random pick chooses among all ${{=k}}$ actions with equal chance. What is the probability that it takes the action with the best estimate? Give a decimal answer.
+    params:
+      eps: { min: 0.1, max: 0.4, step: 0.1 }
+      k: { min: 2, max: 4 }
+    constraints:
+      - "abs(eps - 0.1) + abs(k - 2) > 0.000001"
+    answer_expr: 1 - eps + eps / k
+    tolerance:
+      abs: 0.006
+    common_wrong:
+      - answer_expr: 1 - eps
+        category: incorrect_reasoning
+        feedback: The random pick can land on the best action too, which adds $\varepsilon/k$.
+      - answer_expr: eps / k
+        category: misunderstood_definition
+        feedback: That's the chance of each other action. The best action also gets the whole exploit branch.
+    solution: It exploits with probability $1-{{=eps}}$, and the random pick lands on the best action with probability ${{=eps}}/{{=k}}$, so the probability is $1-{{=eps}}+{{=eps}}/{{=k}}$, which is about ${{=round(1-eps+eps/k, 2)}}$.
+  - id: xpl-eps-zero
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: Which exploration rate makes an epsilon-greedy agent behave exactly like a greedy agent?
+    options:
+      - id: a
+        text: $\varepsilon=0$
+        correct: true
+        feedback: With $\varepsilon=0$ it never explores, so it always takes the best-looking action.
+      - id: b
+        text: $\varepsilon=1$
+        correct: false
+        category: misunderstood_definition
+        feedback: With $\varepsilon=1$ every choice is random, so it never uses its estimates.
+      - id: c
+        text: $\varepsilon=0.5$
+        correct: false
+        category: misunderstood_definition
+        feedback: With $\varepsilon=0.5$ half its choices are random, which is a lot of exploring.
+    solution: $\varepsilon$ is the chance of exploring. At $\varepsilon=0$ the agent never explores, which is the greedy rule.
+  - id: xpl-eps-other-prob
+    dimension: conceptual
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A robot has 4 actions and uses epsilon-greedy with $\varepsilon=0.2$. Its random pick chooses among all 4 actions with equal chance. One action, turn left, is not the best-looking action. What is the probability that the robot turns left on its next choice?
+    answer: 0.05
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer: 0.2
+        category: incorrect_reasoning
+        feedback: $0.2$ is the chance of exploring at all. That chance is shared among the 4 actions.
+      - answer: 0.0667
+        tolerance: { abs: 0.001 }
+        category: misapplied_technique
+        feedback: The random pick chooses among all 4 actions, including the best one, so divide by 4.
+    solution: Turning left can only happen through the random pick, with probability $0.2$, and then left is one of 4 equally likely actions, so $0.2/4=0.05$.
+  - id: xpl-eps-expected
+    dimension: conceptual
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt: A slot machine has two arms. Arm A pays ${{=a}}$ on average and arm B pays ${{=b}}$ on average. An epsilon-greedy agent with $\varepsilon={{=eps}}$ currently has the best estimate for arm B. What reward per pull, on average, can it expect on its next pull?
+    params:
+      a: { min: 1, max: 3 }
+      b: { min: 4, max: 6 }
+      eps: { min: 0.1, max: 0.4, step: 0.1 }
+    answer_expr: (1 - eps / 2) * b + (eps / 2) * a
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer_expr: (1 - eps) * b + eps * a
+        category: incorrect_reasoning
+        feedback: The random pick lands on B half the time, so B's chance is $1-\varepsilon/2$, and A's is only $\varepsilon/2$.
+      - answer_expr: b
+        category: incorrect_reasoning
+        feedback: The agent still explores on some pulls, and those can pull arm A.
+    solution: B is pulled with probability $1-{{=eps}}+{{=eps}}/2={{=1-eps/2}}$ and A with ${{=eps/2}}$. The expected reward is ${{=1-eps/2}}\times{{=b}}+{{=eps/2}}\times{{=a}}={{=(1-eps/2)*b+(eps/2)*a}}$.
+  - id: xpl-eps-schedule
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: An agent's estimates are poor at the start of training and get better as it learns. How should its epsilon-greedy exploration rate change over training?
+    options:
+      - id: a
+        text: Start high, so it tries everything while it knows little, then lower it as the estimates improve.
+        correct: true
+        feedback: Early on, exploring is worth a lot. Later, the estimates are good enough to exploit most of the time.
+      - id: b
+        text: Start low, so it collects reward early, then raise it once it has learned which action is best.
+        correct: false
+        category: incorrect_reasoning
+        feedback: That exploits while the estimates are poorest and explores once it already knows the answer.
+      - id: c
+        text: Keep it at $1$ throughout, so the estimates for every action keep improving.
+        correct: false
+        category: incorrect_reasoning
+        feedback: With $\varepsilon=1$ every choice is random, so the agent never uses what it learns.
+      - id: d
+        text: Keep it at $0$ throughout, so the agent never wastes a choice on a worse action.
+        correct: false
+        category: incorrect_reasoning
+        feedback: With $\varepsilon=0$ the agent is greedy and can stay stuck after one unlucky reward.
+    solution: Exploring is most useful when the estimates are poor, so agents often start with a large $\varepsilon$ and lower it as they learn. The 2015 DQN agent lowered it from $1$ to $0.1$.
+  - id: xpl-eps-headlines
+    dimension: transfer
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: A news site shows each visitor one of 3 headlines for a story, and learns which one gets the most clicks. It uses epsilon-greedy with $\varepsilon=0.3$, and its random pick chooses among all 3 headlines with equal chance. What fraction of visitors see a headline other than the one that currently looks best?
+    answer: 0.2
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer: 0.3
+        category: incorrect_reasoning
+        feedback: A third of the random picks still land on the best-looking headline.
+      - answer: 0.1
+        category: math_error
+        feedback: That's the chance of one particular other headline. There are two other headlines.
+    solution: Each of the 2 other headlines is shown with probability $0.3/3=0.1$, so together they're shown to $0.2$ of visitors.
+  # Step 3: entropy bonus
+  - id: xpl-ent-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What does the entropy of a policy in a state measure?
+    options:
+      - id: a
+        text: How spread out the policy's probabilities over the actions are.
+        correct: true
+        feedback: It's largest when all actions are equally likely and $0$ when one action is certain.
+      - id: b
+        text: How much return the agent expects to get from that state.
+        correct: false
+        category: misunderstood_definition
+        feedback: Expected return is a separate quantity. An entropy bonus adds entropy to it.
+      - id: c
+        text: The probability of the action with the highest probability.
+        correct: false
+        category: misunderstood_definition
+        feedback: Entropy depends on how all the probabilities are spread, not on one of them alone.
+      - id: d
+        text: How many different states the agent has visited so far.
+        correct: false
+        category: misunderstood_definition
+        feedback: Entropy is about the action probabilities in one state, not about states visited.
+    solution: Entropy measures how spread out a policy's action probabilities are. It's largest for equal probabilities and $0$ when one action has probability $1$.
+  - id: xpl-ent-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example, why does policy Y win once the bonus is added, even though its expected return is lower?
+    options:
+      - id: a
+        text: Its bonus, $0.5\times0.33$, is $0.135$ more than X's, which outweighs the $0.09$ of return it gives up.
+        correct: true
+        feedback: "Y's objective is $1.065$ and X's is $1.02$, because the bonus gap is bigger than the return gap."
+      - id: b
+        text: Its expected return becomes higher than X's once both policies have pulled arm B a few times.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The comparison uses the rewards seen so far, where Y's expected return is $0.9$ and X's is $0.99$.
+      - id: c
+        text: The bonus is multiplied by the expected return, and Y's smaller return makes its product larger.
+        correct: false
+        category: math_error
+        feedback: The bonus is added to the expected return. It's $\beta$ times the entropy.
+    solution: "X gets $0.99+0.5\\times0.06=1.02$ and Y gets $0.9+0.5\\times0.33=1.065$. Y loses $0.09$ of return but gains $0.135$ more bonus."
+  - id: xpl-ent-highest
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A policy chooses between two actions. Which of these probability pairs gives it the highest entropy?"
+    options:
+      - id: a
+        text: $0.5$ and $0.5$
+        correct: true
+        feedback: Equal probabilities are as spread out as two actions can be, so the entropy is largest.
+      - id: b
+        text: $0.7$ and $0.3$
+        correct: false
+        category: misunderstood_definition
+        feedback: This leans towards one action, so it's less spread out than an even split.
+      - id: c
+        text: $1$ and $0$
+        correct: false
+        category: misunderstood_definition
+        feedback: When one action is certain the entropy is $0$, the smallest it can be.
+    solution: Entropy measures spread, and an even split, $0.5$ and $0.5$, is the most spread out a two-action policy can be.
+  - id: xpl-ent-objective
+    dimension: conceptual
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: An agent's policy has an expected return of ${{=r}}$ and an entropy of ${{=h}}$ in its start state. Training uses an entropy bonus with weight $\beta={{=b}}$. What objective value does training try to make large?
+    params:
+      r: { min: 2, max: 8, step: 0.5 }
+      h: { min: 0.1, max: 0.6, step: 0.1 }
+      b: { min: 0.1, max: 0.5, step: 0.1 }
+    answer_expr: r + b * h
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer_expr: r + h
+        category: math_error
+        feedback: The entropy is scaled by $\beta$ before it's added.
+      - answer_expr: r - b * h
+        category: misunderstood_definition
+        feedback: The bonus rewards spread, so it's added to the return.
+    solution: The objective is the expected return plus $\beta$ times the entropy, ${{=r}}+{{=b}}\times{{=h}}={{=r+b*h}}$.
+  - id: xpl-ent-huge-weight
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A learner adds an entropy bonus with a very large weight, $\\beta=100$, to an agent whose returns are between $0$ and $10$. What is most likely to happen?"
+    options:
+      - id: a
+        text: The bonus outweighs the return, so the policy stays close to picking every action equally and barely improves.
+        correct: true
+        feedback: With $\beta=100$, staying spread out is worth far more than any return the agent can earn.
+      - id: b
+        text: The policy quickly puts all its probability on the best action, because the bonus speeds up learning.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Committing to one action drops the entropy to $0$ and loses the whole bonus.
+      - id: c
+        text: Nothing changes, because the entropy bonus only matters once the return stops improving.
+        correct: false
+        category: misunderstood_definition
+        feedback: The bonus is part of the objective on every update, so a large weight matters all the time.
+    solution: The objective is return plus $100$ times entropy. Entropy changes are worth far more than the returns of $0$ to $10$, so training keeps the policy near random.
+  - id: xpl-ent-break-even
+    dimension: conceptual
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "Two policies are compared with an entropy bonus. Policy X has expected return $5.0$ and entropy $0.06$. Policy Y has expected return $4.8$ and entropy $0.69$. What is the smallest weight $\\beta$ at which Y's objective is at least as large as X's? Give two decimal places."
+    answer: 0.32
+    tolerance:
+      abs: 0.005
+    common_wrong:
+      - answer: 0.29
+        tolerance: { abs: 0.005 }
+        category: math_error
+        feedback: Use the gap in entropy, $0.69-0.06=0.63$, not Y's entropy alone.
+      - answer: 0.2
+        category: incorrect_reasoning
+        feedback: $0.2$ is the gap in return. Divide it by the gap in entropy to find the weight.
+    solution: Y catches up when $4.8+0.69\beta=5.0+0.06\beta$, so $0.63\beta=0.2$ and $\beta=0.2/0.63\approx0.32$.
+  - id: xpl-ent-sparse-reward
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A robot gets a reward only after it makes 20 exact moves in a row, and $0$ otherwise. It explores with epsilon-greedy and an entropy bonus, and after many episodes it has still never seen a reward. What is the most likely reason?
+    options:
+      - id: a
+        text: Random actions almost never produce that exact sequence, so it has no reward to learn from.
+        correct: true
+        feedback: Both methods explore by acting at random, which rarely finds a reward that needs a long, exact sequence.
+      - id: b
+        text: Its exploration rate is too large, so it should set $\varepsilon=0$ and act greedily.
+        correct: false
+        category: incorrect_reasoning
+        feedback: A greedy agent with no rewards seen has nothing better to exploit, and it explores even less.
+      - id: c
+        text: The entropy bonus has made the policy put all its probability on one action.
+        correct: false
+        category: misunderstood_definition
+        feedback: An entropy bonus pushes the probabilities to spread out, the opposite of collapsing.
+    solution: Epsilon-greedy and entropy bonuses both explore at random. When reward needs 20 exact moves, random actions almost never stumble on it, so the robot never sees a reward.
+  # Final
+  - id: xpl-explain-problem
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 2
+    est_minutes: 4
+    prompt: Explain to a friend why an agent that always takes its best-looking action can end up doing badly, and how epsilon-greedy and an entropy bonus each keep it trying other actions.
+    rubric:
+      - id: r1
+        criterion:
+          Explain that an agent learns only about actions it takes, so an unlucky early reward can leave a good
+          action looking bad.
+        weight: 2
+        required: true
+      - id: r2
+        criterion:
+          Describe choosing a random action with probability $\varepsilon$ and the best-looking action otherwise,
+          so alternatives keep being tried.
+        weight: 1
+        required: true
+      - id: r3
+        criterion:
+          Explain that adding $\beta$ times entropy to the objective rewards more spread-out action probabilities,
+          helping exploration continue.
+        weight: 1
+        required: true
+    exemplar: "An agent only finds out what an action pays by taking it. If it always takes the action with the best estimate, an action that paid badly once by bad luck may never be tried again, leaving the agent stuck on a worse action. Epsilon-greedy picks a random action with probability $\\varepsilon$, so alternatives keep getting tried and their estimates can recover. A policy that learns action probabilities directly can concentrate on one action too early. Adding $\\beta$ times entropy to expected return rewards more spread-out probabilities and helps the policy keep trying alternatives. Training moves toward a more concentrated policy only when the extra expected return outweighs the lost bonus."

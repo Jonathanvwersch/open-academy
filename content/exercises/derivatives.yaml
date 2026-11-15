@@ -253,22 +253,21 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 4
-    prompt: "A model's loss, a score of how wrong its predictions are, depends on one adjustable number, its weight $w$, as $L(w) = (2w - 6)^2$. Expand $L(w)$, find $L'(w)$ and $L'(2)$, then explain in 2–4 sentences what a small increase in $w$ near 2 will do to the loss."
+    prompt: "A model has loss $L(w)=4w^2-24w+36$. Find its derivative, evaluate it at $w=2$, and explain what a small positive change in $w$ near $2$ does to the loss."
     rubric:
-      - {
-          id: r1,
-          criterion: "Expands $L(w)$ to $4w^2 - 24w + 36$ and differentiates to $L'(w) = 8w - 24$",
-          weight: 2,
-          required: true,
-        }
-      - { id: r2, criterion: "Evaluates $L'(2) = -8$", weight: 1, required: true }
-      - {
-          id: r3,
-          criterion: "Explains that a small increase in $w$ near 2 lowers the loss by about 8 times the increase",
-          weight: 2,
-          required: true,
-        }
-    exemplar: "Expanding gives $L(w) = 4w^2 - 24w + 36$, so $L'(w) = 8w - 24$. At $w = 2$, the derivative is $-8$. Near 2, a small positive nudge to the weight lowers the loss by about 8 times the nudge; this local rate tells us the direction without trying many weights."
+      - id: derivative
+        criterion: Differentiate to obtain $L'(w)=8w-24$.
+        weight: 1
+        required: true
+      - id: r2
+        criterion: Evaluate the derivative at $w=2$ to obtain $L'(2)=-8$.
+        weight: 1
+        required: true
+      - id: r3
+        criterion: Explain that a small positive change in $w$ near $2$ lowers loss by about $8$ times that change.
+        weight: 1
+        required: true
+    exemplar: "Differentiating gives $L'(w)=8w-24$. At $w=2$, this is $-8$. A small positive change in $w$ near $2$ therefore lowers the loss by about $8$ times that change."
   - id: derp-meaning
     dimension: conceptual
     type: mc

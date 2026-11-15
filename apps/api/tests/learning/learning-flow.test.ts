@@ -155,6 +155,12 @@ async function createSessionWithPreviousFinalAttempt(attempt: {
     })
     .returning();
   if (!previousActivity) throw new Error('Could not create previous final-question activity');
+  await db.insert(lessonRuns).values({
+    userId,
+    conceptId: 'vectors',
+    status: 'completed',
+    startedAt: new Date('2026-01-01T11:00:00.000Z'),
+  });
   await db.insert(attempts).values({
     userId,
     sessionId: previousSession.id,
@@ -1094,7 +1100,7 @@ test('partial explain answers get one follow-up before the exemplar and activity
   expect(firstResponse.status).toBe(200);
   const firstBody = await firstResponse.json();
   expect(firstBody).toMatchObject({
-    correct: 0.6,
+    correct: 0.75,
     graded_by: 'llm',
     feedback: 'Good start.',
     retryAllowed: true,
@@ -1180,7 +1186,7 @@ test('partial explain answers get one follow-up before the exemplar and activity
   expect(await thirdResponse.json()).toMatchObject({ error: 'No retries remain.' });
 });
 
-test('review mode partial explain answers do not allow a follow-up', async () => {
+test('review mode partial explain answers get one retry before card rating and completion', async () => {
   await resetLearner();
   const exercise = content.exercisesById.get('sl-explain-setup');
   if (exercise?.type !== 'explain') throw new Error('Missing explain exercise');
@@ -1214,6 +1220,7 @@ test('review mode partial explain answers do not allow a follow-up', async () =>
     })
     .returning();
   if (!activity) throw new Error('Could not create a review activity fixture');
+  const card = await createReviewCard(exercise.concept, exercise.dimension, new Date(now));
 
   const response = await partialApp.request('/api/attempts', {
     method: 'POST',
@@ -1228,13 +1235,50 @@ test('review mode partial explain answers do not allow a follow-up', async () =>
   expect(response.status).toBe(200);
   const body = await response.json();
   expect(body).toMatchObject({
-    correct: 0.6,
+    correct: 0.75,
     graded_by: 'llm',
     feedback: 'Good start.',
-    retryAllowed: false,
-    exemplar: exercise.exemplar,
+    retryAllowed: true,
+    followUp: true,
+    activityCompleted: false,
   });
-  expect(body).not.toHaveProperty('followUp');
+  expect(body).not.toHaveProperty('exemplar');
+  expect(body).not.toHaveProperty('solution');
+  expect(await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, card.id))).toHaveLength(0);
+  const cardBeforeRetry = await db.select().from(reviewCards).where(eq(reviewCards.id, card.id));
+  expect(cardBeforeRetry[0]?.dueAt).toEqual(card.dueAt);
+  expect(cardBeforeRetry[0]?.reps).toBe(card.reps);
+  const activityBeforeRetry = await db
+    .select()
+    .from(sessionActivities)
+    .where(eq(sessionActivities.id, activity.id));
+  expect(activityBeforeRetry[0]?.status).toBe('in_progress');
+  expect(activityBeforeRetry[0]?.progress).toEqual(activity.progress);
+  const replay = await partialApp.request(`/api/sessions/${session.id}`);
+  const replayBody = await replay.json();
+  expect(replayBody.activities[0].lastAttempt).toMatchObject({
+    followUp: true,
+    retryAllowed: true,
+    yourAnswer: 'A partial explanation.',
+    rubric: body.rubric,
+  });
+  const [storedAttempt] = await db
+    .select()
+    .from(attempts)
+    .where(eq(attempts.id, body.attemptId))
+    .limit(1);
+  if (!storedAttempt) throw new Error('Could not load the stored explain attempt');
+  const storedFeedback = storedAttempt.feedback as Record<string, unknown>;
+  const storedRubric = storedFeedback.rubric as Array<Record<string, unknown>>;
+  expect(storedRubric).toEqual(body.rubric);
+  const legacyRubric = storedRubric.map(({ required: _required, ...item }) => item);
+  await db
+    .update(attempts)
+    .set({ feedback: { ...storedFeedback, rubric: legacyRubric } })
+    .where(eq(attempts.id, body.attemptId));
+  const legacyReplay = await partialApp.request(`/api/sessions/${session.id}`);
+  const legacyReplayBody = await legacyReplay.json();
+  expect(legacyReplayBody.activities[0].lastAttempt.rubric).toEqual(legacyRubric);
   const secondResponse = await partialApp.request('/api/attempts', {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'X-Now': now },
@@ -1245,7 +1289,114 @@ test('review mode partial explain answers do not allow a follow-up', async () =>
       mode: 'review',
     }),
   });
-  expect(secondResponse.status).toBe(409);
+  expect(secondResponse.status).toBe(200);
+  const secondBody = await secondResponse.json();
+  expect(secondBody).toMatchObject({
+    correct: 0.75,
+    attemptNo: 2,
+    retryAllowed: false,
+    exemplar: exercise.exemplar,
+    activityCompleted: true,
+  });
+  expect(secondBody).not.toHaveProperty('followUp');
+  const logs = await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, card.id));
+  expect(logs).toHaveLength(1);
+  expect(logs[0]?.attemptId).toBe(secondBody.attemptId);
+  const cardAfterRetry = await db.select().from(reviewCards).where(eq(reviewCards.id, card.id));
+  expect(cardAfterRetry[0]?.reps).toBeGreaterThan(card.reps);
+  const completedActivity = await db
+    .select({ status: sessionActivities.status })
+    .from(sessionActivities)
+    .where(eq(sessionActivities.id, activity.id));
+  expect(completedActivity[0]?.status).toBe('completed');
+});
+
+test('a missing optional explain point keeps a review answer correct and rates the card', async () => {
+  await resetLearner();
+  const authoredContent = await loadContent('content');
+  const exercise = authoredContent.exercisesById.get('gd-explain-lr');
+  if (exercise?.type !== 'explain') throw new Error('Missing gradient-descent explain exercise');
+  // Optional-point behavior needs an explicit fixture, independent of authored rubric revisions.
+  exercise.rubric = [
+    ...['r1', 'r2', 'r3'].map((id) => ({
+      id,
+      criterion: `Required point ${id}.`,
+      weight: 1,
+      required: true,
+    })),
+    { id: 'r4', criterion: 'Optional context.', weight: 1, required: false },
+  ];
+  const [session] = await db
+    .insert(studySessions)
+    .values({ userId, plannedMinutes: 15, status: 'active', kind: 'weekday' })
+    .returning();
+  if (!session) throw new Error('Could not create a session fixture');
+  const [activity] = await db
+    .insert(sessionActivities)
+    .values({
+      sessionId: session.id,
+      idx: 0,
+      kind: 'review',
+      conceptId: exercise.concept,
+      exerciseIds: [exercise.id],
+      plannedMinutes: 5,
+      status: 'in_progress',
+    })
+    .returning();
+  if (!activity) throw new Error('Could not create a review activity fixture');
+  const card = await createReviewCard(exercise.concept, exercise.dimension, new Date(now));
+  const optionalMissingApp = createApp({
+    db,
+    content: authoredContent,
+    tutorProvider: new FakeProvider(undefined, {
+      criteria: exercise.rubric.map((criterion) => ({
+        id: criterion.id,
+        judgement: criterion.required ? 'met' : 'missing',
+        evidence: criterion.required ? 'Addressed.' : null,
+      })),
+      feedback_md: 'Correct.',
+    }),
+  });
+
+  const response = await optionalMissingApp.request('/api/attempts', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'X-Now': now },
+    body: JSON.stringify({
+      exerciseId: exercise.id,
+      activityId: activity.id,
+      answer: { text: 'The learning rate controls gradient step size.' },
+      mode: 'review',
+    }),
+  });
+  expect(response.status).toBe(200);
+  const body = await response.json();
+  expect(body).toMatchObject({
+    correct: 1,
+    feedback: 'Correct.',
+    retryAllowed: false,
+    activityCompleted: true,
+    rubric: [
+      { id: 'r1', required: true },
+      { id: 'r2', required: true },
+      { id: 'r3', required: true },
+      { id: 'r4', required: false },
+    ],
+  });
+  const replay = await optionalMissingApp.request(`/api/sessions/${session.id}`, {
+    headers: headersAt(now),
+  });
+  expect(replay.status).toBe(200);
+  expect((await replay.json()).activities[0].lastAttempt).toMatchObject({
+    rubric: [
+      { id: 'r1', required: true },
+      { id: 'r2', required: true },
+      { id: 'r3', required: true },
+      { id: 'r4', required: false },
+    ],
+  });
+  const logs = await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, card.id));
+  expect(logs).toHaveLength(1);
+  expect(Number(logs[0]?.rating)).toBeGreaterThanOrEqual(Rating.Good);
 });
 
 test('no-tutor explain flow returns model answer before the capped self-check result', async () => {

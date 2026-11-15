@@ -155,7 +155,7 @@ function hasCoreExercise(
   );
 }
 
-function isLearnableConcept(concept: IndexedConcept, content: ContentIndex): boolean {
+export function isLearnableConcept(concept: IndexedConcept, content: ContentIndex): boolean {
   return (
     concept.status !== 'stub' &&
     (hasKnowledgePointLessonContent(concept.id, content) ||

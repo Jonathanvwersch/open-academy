@@ -43,7 +43,7 @@ export function InlineLessonCheck({
       } else {
         setSubmitError(typeof data.error === 'string' ? data.error : 'Your answer was not saved.');
       }
-      if (response.ok && data.status !== 'invalid') onDone();
+      if (response.ok && data.status !== 'invalid' && data.retryAllowed !== true) onDone();
     } catch {
       setSubmitError('Your answer was not saved. Check your connection and try again.');
     } finally {
@@ -77,6 +77,7 @@ export function InlineLessonCheck({
             {!result || result.status === 'invalid' || result.retryAllowed ? (
               <ExerciseForm
                 key={`${activityId}:${exerciseId}`}
+                autoFocus={false}
                 exercise={exercise}
                 onSubmit={submit}
                 loading={submitting}

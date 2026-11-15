@@ -1,0 +1,847 @@
+concept: simulation-for-rl
+exercises:
+  - id: sim-reset-step-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: In a simulation environment, what does reset do?
+    options:
+      - id: a
+        text: "It starts a new episode: it puts the task back in its start state and returns that state."
+        correct: true
+        feedback: reset begins every episode from the start state.
+      - id: b
+        text: It undoes the last action and returns the state from one step earlier.
+        correct: false
+        category: misunderstood_definition
+        feedback: reset doesn't go back one step. It starts the whole episode again from the start state.
+      - id: c
+        text: It applies the agent's action and returns the next state and the reward.
+        correct: false
+        category: misunderstood_definition
+        feedback: That is what step does. reset takes no action and starts a new episode.
+      - id: d
+        text: It wipes what the agent has learned, so training starts from scratch.
+        correct: false
+        category: incorrect_reasoning
+        feedback: reset only restarts the environment's task. The agent keeps what it has learned.
+    solution: reset starts a new episode. It puts the task in its start state, such as the robot back in cell 1, and returns that state. step is the command that applies actions.
+  - id: sim-reset-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: In the worked example, the first action is left and step returns $s'=1$ and $r=-1$. Why does the robot stay in cell 1 and still get $-1$?
+    options:
+      - id: a
+        text: It is against the left wall, so the move leaves it in place, and every step that doesn't reach cell 4 gives $-1$.
+        correct: true
+        feedback: The wall keeps it in cell 1, and the reward depends only on whether the step reached cell 4.
+      - id: b
+        text: The move failed by chance, as on a slippery floor.
+        correct: false
+        category: misunderstood_definition
+        feedback: In the worked example every move works. The robot stays because of the wall.
+      - id: c
+        text: $-1$ is the reward for still being in the start cell.
+        correct: false
+        category: misunderstood_definition
+        feedback: The reward is for the step. Any step that doesn't reach cell 4 gives $-1$, wherever the robot ends up.
+      - id: d
+        text: step was called before reset had finished, so it was penalised.
+        correct: false
+        category: incorrect_reasoning
+        feedback: reset had already returned $s=1$. The $-1$ is the usual reward for a step that doesn't reach cell 4.
+    solution: Moving left from cell 1 runs into the wall, so the robot stays in cell 1. The step still counts, and every step that doesn't reach cell 4 gives $-1$.
+  - id: sim-terminal-state
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: In a simulation environment, what is a terminal state?
+    options:
+      - id: a
+        text: A state where the episode ends, so the next call must be reset.
+        correct: true
+        feedback: Reaching a terminal state, like the goal cell, ends the episode.
+      - id: b
+        text: The state that reset returns at the start of an episode.
+        correct: false
+        category: misunderstood_definition
+        feedback: That is the start state. A terminal state is where an episode ends.
+      - id: c
+        text: Any state where the step's reward is negative.
+        correct: false
+        category: misunderstood_definition
+        feedback: Negative rewards can come mid-episode. A terminal state is one where the episode ends, whatever the reward.
+    solution: A terminal state ends the episode. In a corridor where reaching cell 4 ends the task, cell 4 is terminal. After reaching it, the next call is reset.
+  - id: sim-episode-total-template
+    dimension: implementation
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A robot moves in a corridor of 4 cells, numbered 1 to 4 from left to right, and starts in cell 1. Moving into a wall leaves it where it is. Reaching cell 4 gives $+{{=goal}}$ and ends the episode, and every other step gives $-1$. The number of left moves at the start is {{=k}}. Then the robot moves right until the episode ends. What is the episode's total reward?
+    params:
+      goal:
+        min: 14
+        max: 18
+        step: 2
+      k:
+        min: 1
+        max: 2
+        step: 1
+    answer_expr: goal - k - 2
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer_expr: goal - k - 1
+        category: incorrect_reasoning
+        feedback: Count every move into the wall as a step with reward $-1$.
+      - answer_expr: goal - k - 3
+        category: math_error
+        feedback: The move into cell 4 gives the goal reward and no step cost.
+    solution: The left moves ({{=k}} of them) bump the wall, so the robot is still in cell 1 after them. Then it takes 3 steps right to reach cell 4. That is {{=k+2}} steps at $-1$ and one at $+{{=goal}}$, so the total is ${{=goal}}-{{=k+2}}={{=goal-k-2}}$.
+  - id: sim-step-after-end
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A student's code plays a maze game through a simulation environment. step returns that the episode has ended, and the code then calls step again with the next action. What is wrong?
+    options:
+      - id: a
+        text: The episode is over, so the next call must be reset to start a new episode.
+        correct: true
+        feedback: After an episode ends, only reset makes sense. The environment has no task left to step.
+      - id: b
+        text: Nothing. The environment carries on from the terminal state as normal.
+        correct: false
+        category: incorrect_reasoning
+        feedback: At a terminal state the task is over. Stepping on gives results that don't belong to any episode.
+      - id: c
+        text: The last reward is lost unless step is called once more to collect it.
+        correct: false
+        category: misunderstood_definition
+        feedback: The final step already returned its reward. Nothing is waiting to be collected.
+      - id: d
+        text: The code should call reset before every step, not only when an episode ends.
+        correct: false
+        category: misapplied_technique
+        feedback: Calling reset before every step would restart the task each time, so the agent could never get past its first move.
+    solution: Once step reports that the episode ended, the task is over. The code should call reset to start a new episode, then step from the new start state.
+  - id: sim-seed
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A robot simulator has a slippery floor, so the same actions give different episodes on each run. A bug shows up only sometimes, which makes it hard to study. What makes a run repeat exactly?
+    options:
+      - id: a
+        text: Fix the random seed, so the random-number generator gives the same numbers on every run.
+        correct: true
+        feedback: With the same seed, the same draws decide every slip, so the run repeats.
+      - id: b
+        text: Run many more episodes and average their results.
+        correct: false
+        category: misapplied_technique
+        feedback: Averaging gives a steadier estimate, but each run still draws different random numbers, so the bug still comes and goes.
+      - id: c
+        text: Call reset twice before each episode.
+        correct: false
+        category: incorrect_reasoning
+        feedback: reset puts the robot back at the start, but the slips still come from new random numbers each run.
+    solution: Each slip is decided by a random number. Fixing the seed, the number the generator starts from, makes it produce the same numbers each run, so the same actions give the same episode.
+  - id: sim-slip-template
+    dimension: implementation
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "A robot moves in a corridor of 4 cells, numbered 1 to 4 from left to right, and starts in cell 1. Reaching cell 4 ends the episode. The floor is slippery: each move works with probability {{=p}}, and otherwise the robot stays where it is. The robot always moves right. What is the probability that the episode lasts exactly 4 steps? Give your answer to 3 decimal places."
+    params:
+      p:
+        min: 0.5
+        max: 0.9
+        step: 0.1
+    answer_expr: 3 * (1 - p) * p^3
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer_expr: (1 - p) * p^3
+        category: incorrect_reasoning
+        feedback: The one slip can happen on step 1, 2 or 3, so there are 3 different ways.
+      - answer_expr: p^3
+        category: misunderstood_definition
+        feedback: That is the chance the robot reaches cell 4 in exactly 3 steps, with no slips.
+    solution: The robot needs 3 moves that work. To take exactly 4 steps, one of the first 3 steps slips and step 4 works. The slip can be on step 1, 2 or 3, and each way has probability $(1-{{=p}})\times{{=p}}^3$. So the answer is $3\times{{=1-p}}\times{{=p}}^3={{=3*(1-p)*p^3}}$, which is ${{=round(3*(1-p)*p^3, 3)}}$ to 3 decimal places.
+  - id: sim-game-step
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: "A team trains a chat model with reinforcement learning by making an environment: reset returns a user's prompt, the action is the model's whole reply, and step scores the reply with a separate scoring model, then ends the episode. Which statement about this environment is right?"
+    options:
+      - id: a
+        text: "Each episode is one step long: reset gives the prompt, and one step takes the reply and returns the score with the episode ended."
+        correct: true
+        feedback: The whole reply is a single action, so one step ends each episode.
+      - id: b
+        text: The scoring model is the rule that picks actions, because it decides the reward.
+        correct: false
+        category: misunderstood_definition
+        feedback: The chat model is the rule that picks actions. The scoring model is part of the environment and supplies the reward.
+      - id: c
+        text: step must leave the episode running, because an episode always lasts many steps.
+        correct: false
+        category: incorrect_reasoning
+        feedback: An episode lasts until it ends, which can be after one step.
+      - id: d
+        text: reset should return the score of the previous reply, so the model can learn from it.
+        correct: false
+        category: misunderstood_definition
+        feedback: reset starts a new episode and returns its start state, here a prompt. The score comes back from step.
+    solution: reset returns the start state, a prompt. The rule that picks actions is the chat model, and it picks one action, a reply. step returns the reward from the scoring model and reports that the episode has ended. So each episode is one step.
+  - id: sim-loop-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What does the interaction loop do to run one episode?
+    options:
+      - id: a
+        text: "It calls reset once, then repeats: the policy picks an action, step applies it, and the reward is added, until the episode ends."
+        correct: true
+        feedback: "That's the interaction loop: reset once, then step until the episode ends."
+      - id: b
+        text: It calls step again and again with the same action until the reward is positive.
+        correct: false
+        category: misunderstood_definition
+        feedback: The policy picks a new action from each new state, and the loop stops when the episode ends.
+      - id: c
+        text: It calls reset before every step, then lets the policy pick an action.
+        correct: false
+        category: misapplied_technique
+        feedback: Resetting before every step would put the agent back at the start each time. reset comes once per episode.
+      - id: d
+        text: It runs the policy once on every state and adds up the rewards.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The loop follows one path through the states, starting from reset and taking one step at a time.
+    solution: "The loop calls reset once to start the episode. Then it repeats three things: the policy picks an action from the current state, step applies it, and the reward is added. It stops when step says terminated or truncated."
+  - id: sim-loop-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: In the worked example, why does the always-left episode end with truncated instead of terminated?
+    options:
+      - id: a
+        text: The robot never reaches cell 4, the terminal state, so only the 5-step time limit stops the episode.
+        correct: true
+        feedback: The task never ends by itself, so the time limit cuts it short.
+      - id: b
+        text: Its total reward is negative, and episodes with a negative total count as truncated.
+        correct: false
+        category: misunderstood_definition
+        feedback: The flags don't depend on the reward. Truncated means the time limit stopped the episode.
+      - id: c
+        text: The left wall is a terminal state, and hitting it truncates the episode.
+        correct: false
+        category: misunderstood_definition
+        feedback: The left wall only stops the robot moving. Cell 4 is the only terminal state.
+      - id: d
+        text: It ended sooner than the always-right episode, and truncated means ended early.
+        correct: false
+        category: incorrect_reasoning
+        feedback: It took 5 steps, longer than always right's 3. Truncated means the time limit, not the task, ended it.
+    solution: Always left keeps the robot in cell 1, so it never reaches the terminal cell 4. After 5 steps the time limit stops the episode, so step says truncated.
+  - id: sim-truncated-meaning
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: On the last step of an episode, step returns terminated = false and truncated = true. What happened?
+    options:
+      - id: a
+        text: The time limit cut the episode short before the task ended.
+        correct: true
+        feedback: Truncated means the step limit stopped the episode, and the task wasn't over.
+      - id: b
+        text: The agent reached a terminal state.
+        correct: false
+        category: misunderstood_definition
+        feedback: Reaching a terminal state sets terminated to true.
+      - id: c
+        text: The agent chose an action the environment doesn't allow.
+        correct: false
+        category: misunderstood_definition
+        feedback: Neither flag is about bad actions. Truncated means the time limit stopped the episode.
+    solution: terminated = false means no terminal state was reached. truncated = true means the time limit stopped the episode, so the agent could have carried on.
+  - id: sim-loop-stop-code
+    dimension: implementation
+    type: code_complete
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: Complete the condition that ends the interaction loop. `terminated` and `truncated` are the two true-or-false values that `env.step` returns.
+    code: |
+      state = env.reset()
+      while True:
+          action = policy(state)
+          state, reward, terminated, truncated = env.step(action)
+          if ____:
+              break
+    accept:
+      - terminated or truncated
+      - truncated or terminated
+    solution: Use `terminated or truncated`. The episode is over when either one is true. Checking only `terminated` loops forever when the agent never reaches a terminal state.
+  - id: sim-limit-template
+    dimension: implementation
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A robot moves in a corridor of 4 cells, numbered 1 to 4 from left to right, and starts in cell 1. Moving into a wall leaves it where it is. Reaching cell 4 gives $+{{=goal}}$ and ends the episode, and every other step gives $-1$. The environment also truncates an episode after {{=n}} steps. The robot moves left {{=k}} times, then moves right until the episode ends. What is the episode's total reward?
+    params:
+      goal:
+        min: 14
+        max: 18
+        step: 2
+      n:
+        min: 3
+        max: 5
+        step: 1
+      k:
+        min: 1
+        max: 2
+        step: 1
+    answer_expr: "k + 3 <= n ? goal - k - 2 : -n"
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer_expr: "k + 3 <= n ? -n : 8 - k"
+        category: incorrect_reasoning
+        feedback: Count the steps first. The robot needs {{=k+3}} steps to reach cell 4, and the time limit is {{=n}} steps. Compare the two to see whether the task ends or the time limit cuts it off.
+      - answer_expr: "k + 3 <= n ? 7 - k : 11 - n"
+        category: misunderstood_definition
+        feedback: Check the last step. Reaching cell 4 gives $+{{=goal}}$ and no $-1$. A time-limit cutoff gives no goal reward, just the usual $-1$.
+    solution: "The robot needs {{=k}} steps bumping the left wall plus 3 steps right, so {{=k+3}} steps, to reach cell 4. The time limit is {{=n}} steps. If the robot needs no more steps than the limit, it reaches cell 4 and the episode terminates: {{=k+2}} steps at $-1$ and one at $+{{=goal}}$ give ${{=goal}}-{{=k+2}}={{=goal-k-2}}$. Otherwise the time limit truncates the episode after {{=n}} steps, all at $-1$, giving ${{=-n}}$. Here the robot needs {{=k+3}} steps and the limit is {{=n}}, so the total is ${{=k + 3 <= n ? goal - k - 2 : -n}}$."
+  - id: sim-loop-reset-bug
+    dimension: implementation
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: |-
+      A student writes this loop for a corridor where the robot starts in cell 1 and must reach cell 4. The policy always moves right.
+
+      ```python
+      while True:
+          state = env.reset()
+          action = policy(state)
+          state, reward, terminated, truncated = env.step(action)
+          if terminated or truncated:
+              break
+      ```
+
+      What goes wrong?
+    options:
+      - id: a
+        text: reset is inside the loop, so the robot goes back to cell 1 before every step and never gets past cell 2.
+        correct: true
+        feedback: reset belongs before the loop, once per episode.
+      - id: b
+        text: Nothing. The robot reaches cell 4 after 3 steps and the loop stops.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Each pass calls reset first, so every step starts again from cell 1.
+      - id: c
+        text: The policy is called before step, but it should be called after step.
+        correct: false
+        category: misunderstood_definition
+        feedback: The policy must pick the action before step can apply it, so that order is right.
+      - id: d
+        text: The loop should test only terminated, since truncated is for errors.
+        correct: false
+        category: misunderstood_definition
+        feedback: Truncated means the time limit stopped the episode, and the loop must stop on it too.
+    solution: Calling reset inside the loop restarts the episode on every pass, so each step starts from cell 1 and moves only to cell 2. reset should be called once, before the loop.
+  - id: sim-why-two-flags
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A method estimates how much more reward an agent could have collected after the last step of an episode. Why does it need to know whether the episode was terminated or truncated?
+    options:
+      - id: a
+        text: After termination no more reward can come, so it counts 0. After truncation the agent could have carried on, so more reward could still come.
+        correct: true
+        feedback: Only termination means the task is over.
+      - id: b
+        text: It doesn't need to. Both flags mean the episode is over, so it counts 0 either way.
+        correct: false
+        category: incorrect_reasoning
+        feedback: After truncation the task wasn't over. Counting 0 there treats a time limit as if the task had ended.
+      - id: c
+        text: After truncation it counts 0, and after termination it counts the reward of the terminal state again.
+        correct: false
+        category: misunderstood_definition
+        feedback: Termination ends the task, so nothing more comes after it. Truncation is the case where more could come.
+    solution: Terminated means the task itself ended, so no more reward can follow. Truncated means a time limit cut the episode short while the task could have gone on, so more reward could still have come.
+  - id: sim-drone-hover
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A drone simulator's task is to hover for as long as possible. An episode ends when the drone crashes, and the engineers also cap every episode at 1,000 steps. On its 1,000th step the drone is still hovering. What do the two flags say on that step?
+    options:
+      - id: a
+        text: terminated = false and truncated = true, because the cap stopped the episode while the task could have gone on.
+        correct: true
+        feedback: The drone didn't crash, so the task hadn't ended. The cap did the stopping.
+      - id: b
+        text: terminated = true and truncated = false, because the drone succeeded.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Terminated means a terminal state was reached, here a crash. Hovering well isn't one.
+      - id: c
+        text: Both false, because the drone didn't crash, so the episode carries on.
+        correct: false
+        category: misunderstood_definition
+        feedback: The cap of 1,000 steps ends the episode, and it reports that with truncated.
+      - id: d
+        text: Both true, because the episode ended and it was the last step.
+        correct: false
+        category: misunderstood_definition
+        feedback: Only a crash would set terminated. The episode ended because of the cap, so only truncated is true.
+    solution: The drone didn't crash, so no terminal state was reached and terminated is false. The 1,000-step cap stopped the episode, so truncated is true.
+  - id: sim-vector-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What does one call to step do in a vectorised environment with $N$ copies, when each copy is active?
+    options:
+      - id: a
+        text: It takes $N$ actions, one for each copy, and returns $N$ next states, $N$ rewards and $N$ of each ending flag.
+        correct: true
+        feedback: Each active copy takes one step. With Gymnasium's default next-step autoreset, the call after a copy finishes only resets it, so that entry is left out of experience.
+      - id: b
+        text: It applies one action to a single copy $N$ times in a row.
+        correct: false
+        category: misunderstood_definition
+        feedback: The copies run side by side, and each takes one step per call.
+      - id: c
+        text: It applies one action to every copy and returns their average reward.
+        correct: false
+        category: misunderstood_definition
+        feedback: Each copy gets its own action and returns its own reward.
+      - id: d
+        text: It runs $N$ whole episodes and returns their total rewards.
+        correct: false
+        category: incorrect_reasoning
+        feedback: One call is one step in each copy. Episodes take many calls.
+    solution: A vectorised environment steps all $N$ copies at once. It takes one action per copy and returns one next state, one reward and one value of each flag per copy.
+  - id: sim-vector-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: In the worked example, copy A moves right from cell 3 on call 3, yet step returns state 1 for it. Why?
+    options:
+      - id: a
+        text: A reached cell 4 and its episode ended, so it was reset straight away, and the 1 is the start of its next episode.
+        correct: true
+        feedback: The terminated flag shows that A's episode ended on that call.
+      - id: b
+        text: Moving right from cell 3 runs into a wall, so A bounces back.
+        correct: false
+        category: misunderstood_definition
+        feedback: Cell 3's right neighbour is cell 4. The wall is to the right of cell 4.
+      - id: c
+        text: The copies share one state, so A was given B's state.
+        correct: false
+        category: misunderstood_definition
+        feedback: Each copy has its own state. B happens to be in cell 1 too.
+      - id: d
+        text: A's episode was truncated by the 5-step time limit.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Call 3 is only A's third step. A ended because it reached cell 4.
+    solution: A moved into cell 4, which ends its episode with $+10$. The vectorised environment reset A straight away, so the state it returned is cell 1, the start of A's next episode.
+  - id: sim-transitions-template
+    dimension: implementation
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: A vectorised environment runs {{=n}} copies of a simulator. A finished copy restarts within the same call, so every copy applies an action on every call. A training run calls its step function {{=c}} times. How many transitions does it collect?
+    params:
+      n:
+        min: 4
+        max: 16
+        step: 4
+      c:
+        min: 100
+        max: 500
+        step: 100
+    answer_expr: n * c
+    tolerance:
+      abs: 0.5
+    common_wrong:
+      - answer_expr: c
+        category: incorrect_reasoning
+        feedback: The same-call restart means each copy applies an action on every call, giving {{=n}} transitions per call.
+    solution: Each copy applies one action on every call, so each call gives {{=n}} transitions. Over {{=c}} calls that is ${{=n}}\times{{=c}}={{=n*c}}$.
+  - id: sim-why-vector
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: Training a walking-robot policy is slow. Its simulator runs on one of the computer's 16 processor cores while the rest sit idle. Which change speeds up collecting experience most directly?
+    options:
+      - id: a
+        text: Use a multi-process vectorised environment, such as Gymnasium's AsyncVectorEnv, with 16 copies, one per core.
+        correct: true
+        feedback: Each copy runs in its own process, so up to 16 copies can step at once, one per core.
+      - id: b
+        text: Make the time limit longer, so each episode has more steps.
+        correct: false
+        category: misapplied_technique
+        feedback: Longer episodes don't make steps any faster. One core still does all the work.
+      - id: c
+        text: Call reset less often, so less time goes on restarting.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Each episode needs one reset, and that's a small part of the time. Putting the 15 idle cores to work helps far more.
+    solution: A multi-process vectorised environment can run each copy of the simulator in its own process, so all 16 cores work at once. Each call then steps up to 16 copies instead of one.
+  - id: sim-episodes-template
+    dimension: implementation
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "{{=n}} copies of a corridor of 4 cells, numbered 1 to 4, run in a vectorised environment. Each copy's robot starts in cell 1, and reaching cell 4 ends its episode. A finished copy is reset straight away, so its next call starts from cell 1. Every robot always moves right. After {{=3*m+1}} calls, how many episodes have finished in total across all copies?"
+    params:
+      n:
+        min: 2
+        max: 4
+        step: 1
+      m:
+        min: 2
+        max: 4
+        step: 1
+    constraints:
+      - n * m != 4
+    answer_expr: n * m
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer_expr: n * (3 * m + 1) / 3
+        category: math_error
+        feedback: Only whole episodes finish. The last call starts a new episode that isn't over yet.
+      - answer_expr: m
+        category: incorrect_reasoning
+        feedback: That is one copy's count. All {{=n}} copies finish episodes at the same rate.
+      - answer_expr: n * (m + 1)
+        category: incorrect_reasoning
+        feedback: The episode begun on the last call has only taken 1 step, so it hasn't finished.
+    solution: 'Each episode takes 3 calls: cell 1 to 2, 2 to 3 and 3 to 4. In {{=3*m+1}} calls each copy finishes {{=m}} episodes and starts one more. Over {{=n}} copies that''s ${{=n}}\times{{=m}}={{=n*m}}$.'
+  - id: sim-final-state-mistake
+    dimension: implementation
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A student stores transitions from a vectorised environment that resets each finished copy straight away. For a copy that has just reached its goal, the student stores the state that step returned as that transition's next state. What is wrong?
+    options:
+      - id: a
+        text: That state is the start of the copy's next episode. The action really led to the terminal state, and the terminated flag marks this.
+        correct: true
+        feedback: After a reset, the returned state no longer shows where the action led.
+      - id: b
+        text: Nothing. The state step returns is always where the action led.
+        correct: false
+        category: incorrect_reasoning
+        feedback: For a copy that has just finished, the vectorised environment has already reset it, so the returned state is a start state.
+      - id: c
+        text: The reward should be thrown away too, since the copy was reset.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The reward belongs to the step that reached the goal and must be kept.
+      - id: d
+        text: The copy should have waited until every copy finished before being reset.
+        correct: false
+        category: misunderstood_definition
+        feedback: Copies finish at different times, so each is reset on its own while the others carry on.
+    solution: A finished copy is reset at once, so step returns its new start state. The transition's next state should be the terminal state the action reached, and the terminated flag says the episode ended there.
+  - id: sim-walker-fall
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A vectorised environment runs 4 copies of a walking-robot simulator. On one call, copy 2's robot falls over and its episode terminates, while copies 1, 3 and 4 are partway through their episodes. What happens to the copies?
+    options:
+      - id: a
+        text: Copy 2 is reset and starts a new episode, while copies 1, 3 and 4 carry on with theirs.
+        correct: true
+        feedback: Each copy is reset on its own when it finishes.
+      - id: b
+        text: All 4 copies are reset, so their episodes stay in step.
+        correct: false
+        category: misunderstood_definition
+        feedback: Resetting the others would throw away their unfinished episodes.
+      - id: c
+        text: The loop must stop and call reset on the whole environment.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The loop never stops the whole batch. Finished copies restart on their own.
+      - id: d
+        text: Copy 2 waits, unstepped, until the other three finish.
+        correct: false
+        category: misunderstood_definition
+        feedback: An idle copy would waste its share of every call. It is reset on its own and starts a new episode.
+    solution: Episodes in different copies end at different times. The vectorised environment resets copy 2 by itself and keeps stepping copies 1, 3 and 4.
+  - id: sim-gap-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What is the sim-to-real gap?
+    options:
+      - id: a
+        text: The drop in performance when a policy trained in simulation runs on the real robot, because the simulator doesn't match the real world exactly.
+        correct: true
+        feedback: No simulator gets friction, masses, delays and noise exactly right.
+      - id: b
+        text: The time it takes to move a trained policy from the computer onto the robot.
+        correct: false
+        category: misunderstood_definition
+        feedback: The gap is about how well the policy works, not about the time taken.
+      - id: c
+        text: The difference in reward between a policy's first and last training episodes.
+        correct: false
+        category: misunderstood_definition
+        feedback: That is how much training improved the policy, all inside the simulator.
+      - id: d
+        text: How much faster a simulator runs than the real robot.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Speed is a reason to use a simulator. The gap is about performance on the real robot.
+    solution: A simulator is only a model of the world. The sim-to-real gap is how much worse a policy trained there does on the real robot.
+  - id: sim-gap-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: In the worked example, why does the agent in the randomised simulator learn to walk?
+    options:
+      - id: a
+        text: Averaged over the three randomised settings, jumping is worth $4.25$, below walking's $8$.
+        correct: true
+        feedback: The fall's $-10$ drags jumping's average below walking.
+      - id: b
+        text: Randomisation makes walking worth more than 8.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Walking doesn't use the jump, so it is worth $8$ in every version.
+      - id: c
+        text: The randomised simulator matches the real floor exactly.
+        correct: false
+        category: misunderstood_definition
+        feedback: Its average success chance is 0.75, and the real floor's is 0.5. It covers the real floor without matching it.
+      - id: d
+        text: Randomisation stops the agent from using the jump.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The jump is still allowed. It's just worth less on average than walking.
+    solution: Under the three settings jumping is worth $-0.5$, $4.25$ and $9$, which average to $4.25$. Walking is worth $8$, so walking wins.
+  - id: sim-randomise-meaning
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: What is domain randomisation?
+    options:
+      - id: a
+        text: At every reset, the simulator draws its uncertain settings, such as friction and masses, at random from a range, so the policy must work across all of them.
+        correct: true
+        feedback: If the real world lies inside the range, it's one more variation the policy has seen.
+      - id: b
+        text: Having the agent pick random actions during training.
+        correct: false
+        category: misunderstood_definition
+        feedback: Random actions help an agent try things. Domain randomisation changes the simulator's settings.
+      - id: c
+        text: Adding random noise to the rewards.
+        correct: false
+        category: misunderstood_definition
+        feedback: Domain randomisation changes how the simulated world behaves. The rewards stay the same.
+    solution: Domain randomisation varies the simulator's uncertain settings at every reset, so a policy trained in it has to cope with the whole range.
+  - id: sim-jump-template
+    dimension: implementation
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A robot can reach its goal with a jump. An episode that uses the jump earns 9 when the jump works, and $-10$ when the jump fails and the robot falls. On the real floor the jump works with probability {{=p}}. What is the expected total reward of a jumping episode on the real floor?
+    params:
+      p:
+        min: 0.3
+        max: 0.9
+        step: 0.1
+    answer_expr: 19 * p - 10
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer_expr: 9 * p
+        category: incorrect_reasoning
+        feedback: A failed jump earns $-10$, so it counts too, with probability {{=1-p}}.
+      - answer_expr: 9 * p - 10
+        category: math_error
+        feedback: Weight the $-10$ by the chance of falling, {{=1-p}}, not by 1.
+    solution: 'Weight each outcome by its probability: ${{=p}}\times9+{{=1-p}}\times(-10)={{=19*p-10}}$.'
+  - id: sim-measure-gripper
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A robot arm trained in simulation drops objects that the real arm holds. The team finds the simulator's gripper friction is set far below the real gripper's, and they can measure the real friction. Which fix targets this most directly?
+    options:
+      - id: a
+        text: Measure the real gripper's friction and set the simulator to match it.
+        correct: true
+        feedback: The simulator was wrong about one setting that can be measured, so correct it.
+      - id: b
+        text: Randomise the friction at each reset between 0 and its current, too-low value.
+        correct: false
+        category: misapplied_technique
+        feedback: That range doesn't include the real friction, so the policy never sees the real setting.
+      - id: c
+        text: Train for many more steps in the same simulator.
+        correct: false
+        category: incorrect_reasoning
+        feedback: More training in a simulator with the wrong friction learns the wrong grip better.
+      - id: d
+        text: Run 16 copies of the simulator in a vectorised environment.
+        correct: false
+        category: misapplied_technique
+        feedback: More copies collect experience faster, but every copy still has the wrong friction.
+    solution: The gap comes from one wrong, measurable setting. Measuring the real friction and setting the simulator to match closes it directly.
+  - id: sim-top-score-mistake
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: 'An engineer says: "Our policy scores the highest reward possible in the simulator, so it''s ready for the real robot." What is wrong with this reasoning?'
+    options:
+      - id: a
+        text: A top score can come from using things the simulator gets wrong, so it says little about the real robot until the policy is tested there.
+        correct: true
+        feedback: Policies find shortcuts that only work in the simulator.
+      - id: b
+        text: Nothing. The simulator is built from the real robot, so a top score there carries over.
+        correct: false
+        category: incorrect_reasoning
+        feedback: No simulator matches the real world exactly, so a score can drop on the real robot.
+      - id: c
+        text: A top score means the policy is overtrained, so it should be trained for less time.
+        correct: false
+        category: misapplied_technique
+        feedback: Training less doesn't fix a mismatch between simulator and world.
+    solution: A policy can earn its top score by using a flaw in the simulator, like a jump that never fails there. Training across varied simulated settings can improve transfer. Testing on the real robot measures how well the policy actually works there.
+  - id: sim-range-outside
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A policy is trained with domain randomisation, with the floor friction drawn between 0.6 and 0.9 at every reset. The real floor's friction is 0.3. What should you expect on the real floor?
+    options:
+      - id: a
+        text: It may still fail, because 0.3 lies outside the range the policy trained on.
+        correct: true
+        feedback: Choose a range that covers plausible real-world conditions. Outside the training range, transfer is uncertain.
+      - id: b
+        text: It will work, because domain randomisation makes a policy work on any floor.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The policy only saw frictions from 0.6 to 0.9. A much more slippery floor is new to it.
+      - id: c
+        text: It will do exactly as well as a policy trained at friction 0.3.
+        correct: false
+        category: incorrect_reasoning
+        feedback: It never trained at 0.3, so there's no reason to expect that.
+    solution: Domain randomisation prepares a policy for the settings in its range. The real friction 0.3 is outside 0.6 to 0.9, so the policy may fail. Widening the range to include 0.3 would help.
+  - id: sim-drone-camera
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A drone's policy was trained in a simulator whose camera images are perfectly sharp. On the real drone, whose images are blurry and noisy, it crashes. Which change to training is most likely to help?
+    options:
+      - id: a
+        text: At every reset, add random blur and noise to the simulated images, over a range that includes the real camera's.
+        correct: true
+        feedback: This is domain randomisation applied to the camera.
+      - id: b
+        text: Train for longer on the sharp images.
+        correct: false
+        category: incorrect_reasoning
+        feedback: More training on sharp images doesn't prepare the policy for blurry ones.
+      - id: c
+        text: Run more copies of the sharp simulator at once.
+        correct: false
+        category: misapplied_technique
+        feedback: More copies collect experience faster, but every copy still has sharp images.
+    solution: The simulator gets the camera wrong. Randomising blur and noise over a range that includes the real camera's makes the policy work across all of them.
+  - id: sim-explain-loop
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 2
+    est_minutes: 4
+    prompt: "For a simulation environment, explain what `reset` does, what `step` returns after an action, and how the policy uses those calls to run an episode."
+    rubric:
+      - id: r1
+        criterion: Describe reset as starting an episode and returning the start state.
+        weight: 1
+        required: true
+      - id: step
+        criterion: Describe step as applying one action and returning the next state, reward and ending flags.
+        weight: 1
+        required: true
+      - id: r2
+        criterion:
+          Repeat policy action selection, step and reward accumulation using the returned state until either
+          ending flag is true.
+        weight: 1
+        required: true
+    exemplar: "Call `reset` to start an episode and get the start state. The policy chooses an action, and `step` applies it and returns the next state, reward and ending flags. Add up the reward and continue from the returned state until either ending flag is true."
+    solution: "Call `reset` to start an episode and get the start state. The policy chooses an action, and `step` applies it and returns the next state, reward and ending flags. Add up the reward and continue from the returned state until either ending flag is true."

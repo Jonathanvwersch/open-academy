@@ -631,37 +631,26 @@ exercises:
     role: core
     difficulty: 3
     est_minutes: 5
-    prompt:
-      Explain what the likelihood of a guess is, why we usually work with the log-likelihood, and why
-      assuming Gaussian noise turns maximum likelihood into minimising the mean squared error.
+    prompt: "For independent measured readings, explain what a parameter guess's likelihood is, how maximum likelihood chooses a guess, and why Gaussian noise with fixed standard deviation $\\sigma$ leads to minimising MSE."
     rubric:
       - id: likelihood
         criterion:
-          Defines the likelihood as the probability of the observed data under a guess, and the
-          estimate as the guess that makes it largest, not the probability that the guess is true.
+          Define likelihood for independent measured readings as the product of their density heights under the
+          parameter guess.
         weight: 1
-      - id: logs
-        criterion:
-          Explains that logs turn the product over independent readings into a sum and, because
-          the log always rises, keep the same best guess.
+        required: true
+      - id: estimate
+        criterion: Explain choosing the parameter guess with the largest likelihood.
         weight: 1
+        required: true
       - id: mse
-        criterion: Explains that a Gaussian log height is a constant minus a squared error over
-          $2\sigma^2$, so with fixed $\sigma$ the highest likelihood has the lowest MSE, and names a limit
-          such as outliers or non-Gaussian data.
+        criterion:
+          Explain that the Gaussian log-likelihood is a constant minus the sum of squared errors over $2\sigma^2$,
+          so maximising it minimises MSE.
         weight: 1
-    exemplar:
-      The likelihood of a guess is the probability of the data we saw if that guess were true, and
-      maximum likelihood picks the guess that makes it largest. Independent readings multiply, which
-      gives tiny numbers, so we take logs, turning the product into a sum; the log always rises, so
-      the best guess doesn't move. With Gaussian noise, each log height is a constant minus the squared
-      error over $2\sigma^2$, so with a fixed $\sigma$ the highest likelihood comes from the lowest sum
-      of squared errors, which is the lowest MSE. Big outliers dominate squared error, and other kinds
-      of data need other losses.
-    solution:
-      Maximum likelihood ranks guesses by how probable they make the data. Logs keep that ranking
-      while turning products into sums, and with Gaussian noise the log-likelihood is a constant minus
-      the sum of squared errors over $2\sigma^2$.
+        required: true
+    exemplar: "For independent measured readings, likelihood multiplies their density heights under the parameter guess. Maximum likelihood chooses the guess making that product largest. With Gaussian noise of fixed $\\sigma$, log-likelihood is a constant minus the sum of squared errors over $2\\sigma^2$, so maximising it minimises MSE."
+    solution: "For independent measured readings, likelihood multiplies their density heights under the parameter guess. Maximum likelihood chooses the guess making that product largest. With Gaussian noise of fixed $\\sigma$, log-likelihood is a constant minus the sum of squared errors over $2\\sigma^2$, so maximising it minimises MSE."
   - id: lab-gauss-front-factor
     dimension: transfer
     type: mc

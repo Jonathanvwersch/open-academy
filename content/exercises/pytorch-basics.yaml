@@ -739,24 +739,51 @@ exercises:
     role: core
     difficulty: 3
     est_minutes: 5
-    prompt: "From memory, explain how you would train a one-output linear model in PyTorch: how you arrange the input and target tensors, how you connect the module to its loss and optimiser, and what happens in each repeated update. Explain why both clearing gradients and recalculating predictions matter."
+    prompt: "Assume a PyTorch model, loss and optimiser are already created. Explain one update's call order, the different jobs of backward and step, and why gradients must be cleared between updates."
     rubric:
-      - {
-          id: setup,
-          criterion: "Describes floating-point input rows, matching target and output shapes, a linear module and SGD receiving model.parameters()",
-          weight: 1,
-          required: true,
-        }
-      - {
-          id: order,
-          criterion: "Gives clear gradients, predict, measure loss, backward, step in order and distinguishes gradients from parameter updates",
-          weight: 1,
-          required: true,
-        }
-      - {
-          id: fresh,
-          criterion: "Explains accumulation without clearing and why updated parameters require fresh predictions and loss",
-          weight: 1,
-          required: true,
-        }
-    exemplar: "I put examples in rows of a floating-point input tensor and use targets of shape `(n, 1)` to match the one-output model. I create `nn.Linear` with the input count per example and one output, use `nn.MSELoss()` for the loss, and give `model.parameters()` and a learning rate to SGD. Each pass calls `optimizer.zero_grad()`, calls the model, measures loss, calls `loss.backward()`, then `optimizer.step()`. Backward stores slopes in `.grad`; step changes parameters. Without clearing, slopes add up across passes. After the loop I call the changed model again inside `torch.no_grad()` to measure a fresh loss, because old predictions and loss do not recalculate themselves."
+      - id: order
+        criterion: Repeat clearing gradients, predicting, measuring loss, calling backward and stepping, in that order.
+        weight: 1
+        required: true
+      - id: roles
+        criterion: Explain that `loss.backward()` stores slopes in `.grad` and `optimizer.step()` updates parameters.
+        weight: 1
+        required: true
+      - id: clearing
+        criterion: Explain that backward adds to stored slopes, so clearing prevents accumulation across updates.
+        weight: 1
+        required: true
+    exemplar: "Clear gradients with `optimizer.zero_grad()`, compute predictions and loss, call `loss.backward()`, then call `optimizer.step()`. Backward stores slopes in `.grad`, and step uses them to change parameters. Clearing prevents backward from adding the new slopes to slopes left by an earlier update."
+  - id: ptb-loop-dropout-mode
+    dimension: implementation
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: |
+      `model` is a PyTorch model with dropout and starts in training mode. `x` holds inputs, `y` holds targets, and `loss_fn` measures loss. If the `model.eval()` line were left out, what would happen during the indented loss calculation?
+
+      ```python
+      model.eval()
+      with torch.no_grad():
+          loss = loss_fn(model(x), y)
+      model.train()
+      ```
+    options:
+      - id: a
+        text: "Dropout is off; calculation recording is on."
+        correct: false
+        feedback: "This swaps the two controls. `train()` enables dropout, while `no_grad()` pauses recording calculations for slopes."
+      - id: b
+        text: "Dropout is on; calculation recording is off."
+        correct: true
+        feedback: "Without the `model.eval()` call, the model stays in training mode during the loss calculation. `torch.no_grad()` pauses recording calculations for slopes."
+      - id: c
+        text: "Dropout is off; calculation recording is off."
+        correct: false
+        feedback: "`torch.no_grad()` pauses calculation recording. Turning dropout off requires `model.eval()`."
+      - id: d
+        text: "Dropout is on; calculation recording is on."
+        correct: false
+        feedback: "Training mode keeps dropout active, but `torch.no_grad()` still pauses calculation recording."
+    solution: "Leaving out `model.eval()` keeps dropout active during the loss calculation. `torch.no_grad()` still stops recording the calculations needed to find slopes."

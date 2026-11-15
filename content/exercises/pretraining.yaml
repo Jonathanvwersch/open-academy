@@ -928,19 +928,19 @@ exercises:
     role: core
     difficulty: 3
     est_minutes: 5
-    prompt: Explain to a friend how a large language model is trained, from raw web text to an assistant. Say what happens at each stage, which stage uses most of the compute, and how a team can decide how big a model to train for its budget.
+    prompt: "Starting with cleaned text, explain how it is prepared as model inputs, what pretraining teaches, and how post-training turns the base model into an assistant."
     rubric:
-      - id: stages
-        criterion: "Names the stages in order: collect, filter and deduplicate text; tokenize; pretrain on next-token prediction; post-train; with evaluation alongside"
-        weight: 2
-        required: true
-      - id: compute
-        criterion: "Says pretraining uses by far the most compute, about $6PD$ FLOPs, and gives the model most of its knowledge, while post-training changes how it responds"
+      - id: tokens
+        criterion: Describe tokenizing the cleaned text and packing it into fixed-length windows.
         weight: 1
         required: true
-      - id: scaling
-        criterion: "Explains that scaling laws predict loss from compute, and that a fixed budget gives the lowest loss at about $20$ tokens per parameter"
+      - id: pretraining
+        criterion: Describe next-token training over the text to produce a base model that continues text.
         weight: 1
-        required: false
-    exemplar: "First the team gathers a huge amount of text, mostly from the web plus books and code, filters out spam and gibberish, and removes duplicates. A tokenizer turns the text into tokens, which are packed into fixed-length windows. Pretraining then trains the model to predict the next token across all of it, which takes about $6PD$ FLOPs for $P$ parameters and $D$ tokens; this is by far the most expensive stage and gives the model most of its knowledge. The result is a base model that continues text, so post-training fine-tunes it on example conversations, and often on people's preferences, to make it answer like an assistant. Throughout, the team evaluates on tests the model never trained on. To choose a size, the team uses scaling laws, which show the loss falling by a steady factor for each tenfold increase in compute, and splits its budget at about $20$ tokens per parameter."
-    solution: "A good answer walks through data, tokenizer, pretraining and post-training, with evaluation alongside. It says pretraining dominates the compute, about $6PD$, and that scaling laws plus about $20$ tokens per parameter guide the choice of model size."
+        required: true
+      - id: post-training
+        criterion: Describe continuing training on example conversations so the model responds as an assistant.
+        weight: 1
+        required: true
+    exemplar: "Tokenize the cleaned text and pack the tokens into fixed-length windows. Pretraining predicts the next token across that text, producing a base model that continues text. Post-training continues training on example conversations so it responds as an assistant."
+    solution: "Tokenize the cleaned text and pack the tokens into fixed-length windows. Pretraining predicts the next token across that text, producing a base model that continues text. Post-training continues training on example conversations so it responds as an assistant."

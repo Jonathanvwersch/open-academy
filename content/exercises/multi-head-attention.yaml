@@ -10,18 +10,20 @@ exercises:
       A tensor has shape (batch, time, features) = (1, 2, 4). Its two token vectors are [0, 1, 2, 3] and [4, 5, 6, 7]. We want two heads with shape (1, 2, 2, 2), ordered as batch, head, time, feature. A learner reshapes directly to that shape. What two token vectors should head zero receive, and why can the direct reshape pass a shape check while giving the wrong attention inputs?
     rubric:
       - id: values
-        criterion: Gives head zero the vectors [0, 1] and [4, 5].
+        criterion: Give head zero the token vectors $[0,1]$ and $[4,5]$.
         weight: 1
         required: true
       - id: order
-        criterion: Explains that a direct reshape assigns [0, 1] and [2, 3] to head zero, mixing feature groups with token positions.
+        criterion:
+          Explain that the direct reshape gives head zero $[0,1]$ and $[2,3]$, so its second vector is another
+          feature group of the first token.
         weight: 1
         required: true
       - id: correction
-        criterion: Splits the feature axis first and then transposes the time and head axes.
+        criterion: Mention splitting the feature axis into heads first, then transposing the time and head axes.
         weight: 1
-        required: true
-    exemplar: Head zero should receive [0, 1] from the first token and [4, 5] from the second. A direct reshape preserves flat storage order, so it gives that head [0, 1] and [2, 3]. The shape is legal but the second vector belongs to the first token's other feature group. Reshape to (1, 2, 2, 2) interpreted as batch, time, head, feature, then transpose time and head.
+        required: false
+    exemplar: "Head zero should receive $[0,1]$ from the first token and $[4,5]$ from the second. Reshaping cuts each token's feature row into head-width pieces, so reading the direct reshape as batch, head, time, feature gives head zero $[0,1]$ and $[2,3]$. The shape is legal, but the second vector is the first token's other feature group. To fix it, first reshape to $(1,2,2,2)$ interpreted as batch, time, head, feature, then transpose time and head."
     solution: Head zero needs [0, 1] and [4, 5]. Splitting the feature axis and then transposing puts the two token positions within each head in the correct order.
   - id: mha-heads-basics
     dimension: conceptual
@@ -577,19 +579,21 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 4
-    prompt: Explain how multi-head attention turns $T$ token embeddings of width $d$ into $T$ outputs of width $d$, giving the shape at each stage, and why running $h$ heads is useful.
+    prompt: "Multi-head attention uses $h$ heads with width $d_k=d/h$ on $T$ tokens of model width $d$. Explain how the heads can learn different views, how their outputs are joined, and how the joined result is mixed."
     rubric:
       - id: r1
-        criterion: "Says each head has its own $d\\times d_k$ query, key and value matrices with $d_k=d/h$, giving $T\\times d_k$ queries, keys and values and a $T\\times T$ matrix of softmax weights"
+        criterion:
+          Explain that giving each head its own learned query, key and value matrices lets heads learn different
+          token relationships.
         weight: 1
         required: true
       - id: r2
-        criterion: "Says each head's $T\\times d_k$ outputs are concatenated into $T\\times d$ and multiplied by a $d\\times d$ output matrix $W_O$, so every output entry can use every head"
+        criterion: Concatenate the $h$ outputs of shape $T\times d_k$ side by side to make $T\times d$.
         weight: 1
         required: true
-      - id: r3
-        criterion: Explains that each head gives every token its own set of weights, so different heads can attend to different tokens, while the layer still learns $4d^2$ numbers whatever $h$ is
+      - id: output-mix
+        criterion: Multiply by a learned $d\times d$ matrix $W_O$ so each output entry can use every head.
         weight: 1
         required: true
-    exemplar: "We stack the embeddings into a $T\\times d$ matrix $X$. Each of the $h$ heads multiplies $X$ by its own $d\\times d_k$ query, key and value matrices, with $d_k=d/h$, giving $T\\times d_k$ queries, keys and values. Its scores $QK^\\top/\\sqrt{d_k}$ form a $T\\times T$ matrix, a softmax along each row turns them into weights, and multiplying by the values gives a $T\\times d_k$ output. Writing the $h$ outputs side by side gives $T\\times d$, and the $d\\times d$ output matrix $W_O$ mixes the heads and keeps the shape $T\\times d$. It's useful because one head's weights for a token add up to 1, so whatever it needs from the sentence has to share that total; with several heads each token gets several separate sets of weights, for example one on its subject and one on itself. Since the heads share out the width, the layer still learns four $d\\times d$ matrices, $4d^2$ numbers."
-    solution: "We stack the embeddings into a $T\\times d$ matrix $X$. Each of the $h$ heads multiplies $X$ by its own $d\\times d_k$ query, key and value matrices, with $d_k=d/h$, giving $T\\times d_k$ queries, keys and values. Its scores $QK^\\top/\\sqrt{d_k}$ form a $T\\times T$ matrix, a softmax along each row turns them into weights, and multiplying by the values gives a $T\\times d_k$ output. Writing the $h$ outputs side by side gives $T\\times d$, and the $d\\times d$ output matrix $W_O$ mixes the heads and keeps the shape $T\\times d$. It's useful because one head's weights for a token add up to 1, so whatever it needs from the sentence has to share that total; with several heads each token gets several separate sets of weights, for example one on its subject and one on itself. Since the heads share out the width, the layer still learns four $d\\times d$ matrices, $4d^2$ numbers."
+    exemplar: "Each head has its own learned query, key and value matrices, so heads can learn different token relationships. Concatenating their $T\\times d_k$ outputs side by side gives $T\\times d$. A learned $d\\times d$ matrix $W_O$ mixes that joined result so each output entry can use every head."
+    solution: "Each head has its own learned query, key and value matrices, so heads can learn different token relationships. Concatenating their $T\\times d_k$ outputs side by side gives $T\\times d$. A learned $d\\times d$ matrix $W_O$ mixes that joined result so each output entry can use every head."

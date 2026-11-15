@@ -19,6 +19,7 @@ import { updateActivityAndAdvance } from '../../learning/activity-completion.js'
 import { answerOptionsFor } from '../../learning/answer-options.js';
 import { mapReviewRating, reviewActivityRating, scheduleReview } from '../../learning/fsrs.js';
 import { gradeExercise } from '../../learning/grading/index.js';
+import { rubricFeedbackWithScoredFlags } from '../../learning/grading/rubric-score.js';
 import { calculateCredit } from '../../learning/mastery.js';
 import { applyMastery } from '../../learning/mastery-service.js';
 import { bringWeakestPrerequisiteCardDueNow } from '../../learning/prerequisite-review.js';
@@ -41,7 +42,12 @@ type TutorGradeResult = {
   feedback: string;
   graded_by: 'llm';
   mistake_category?: string;
-  rubric: Array<{ id: string; criterion: string; judgement: 'met' | 'partial' | 'missing' }>;
+  rubric: Array<{
+    id: string;
+    criterion: string;
+    judgement: 'met' | 'partial' | 'missing';
+    required: boolean;
+  }>;
   exemplar: string;
 };
 export async function getExercisesById(deps: FeatureServices, request: FeatureRequest) {
@@ -309,6 +315,7 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
   const previousAttempts = body.data.activityId
     ? await repo.attemptsForActivity(body.data.activityId, exercise.id)
     : [];
+  const priorAttemptForRetry = previousAttempts.at(-1);
   if (body.data.mode === 'practice' && previousAttempts.length >= 2) {
     return serviceResult(
       {
@@ -320,7 +327,11 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
       409,
     );
   }
-  if (body.data.mode !== 'practice' && previousAttempts.length >= 1) {
+  if (
+    body.data.mode !== 'practice' &&
+    priorAttemptForRetry &&
+    !attemptAllowsRetry(priorAttemptForRetry)
+  ) {
     return serviceResult({ error: 'This activity allows one attempt.' }, 409);
   }
   const attemptNo = previousAttempts.length + 1;
@@ -352,6 +363,7 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
         rubric: exercise.rubric.map((criterion) => ({
           id: criterion.id,
           criterion: criterion.criterion,
+          required: criterion.required,
           judgement:
             judged.value?.criteria.find((entry) => entry.id === criterion.id)?.judgement ??
             'missing',
@@ -364,11 +376,16 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
   } else {
     result = await gradeExercise(exercise, body.data.answer);
   }
+  const rubricForFeedback =
+    exercise.type === 'explain' && 'rubric' in result && Array.isArray(result.rubric)
+      ? rubricFeedbackWithScoredFlags(exercise.rubric, result.rubric)
+      : undefined;
   if (result.status !== 'graded') {
     return serviceResult(
       exercise.type === 'explain' && result.status === 'self_check_required'
         ? {
             ...result,
+            ...(rubricForFeedback ? { rubric: rubricForFeedback } : {}),
             ...(typeof body.data.answer === 'object' &&
             body.data.answer !== null &&
             'text' in body.data.answer &&
@@ -383,7 +400,7 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
     );
   }
   const followUp =
-    body.data.mode === 'practice' &&
+    (body.data.mode === 'practice' || body.data.mode === 'review') &&
     exercise.type === 'explain' &&
     result.correct > 0 &&
     result.correct < 1 &&
@@ -449,7 +466,7 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
       message: result.feedback,
       status: result.status,
       ...('yourAnswer' in result ? { yourAnswer: result.yourAnswer } : {}),
-      ...('rubric' in result ? { rubric: result.rubric } : {}),
+      ...('rubric' in result ? { rubric: rubricForFeedback ?? result.rubric } : {}),
       ...(exercise.type === 'explain' && !followUp
         ? {
             exemplar: exercise.exemplar,
@@ -477,7 +494,7 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
     now,
     timeZone: request.timeZone,
   });
-  if (body.data.mode === 'review') {
+  if (body.data.mode === 'review' && !followUp) {
     const [card] = await db
       .select()
       .from(reviewCards)
@@ -514,7 +531,7 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
           if (!existingLog) {
             const rating = reviewActivityRating(
               exerciseAttempts.map((items) => ({
-                correct: items[0]?.correct ?? 0,
+                correct: items.at(-1)?.correct ?? 0,
                 hintsUsed: items.reduce((total, attempt) => total + attempt.hintsUsed, 0),
               })),
             );
@@ -619,7 +636,9 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
     }
   }
   const retryAllowed =
-    body.data.mode === 'practice' && attemptNo < 2 && (result.correct === 0 || followUp);
+    attemptNo < 2 &&
+    ((body.data.mode === 'practice' && result.correct === 0) ||
+      ((body.data.mode === 'practice' || body.data.mode === 'review') && followUp));
   const answerOptions = answerOptionsFor(exercise, body.data.answer, !retryAllowed);
   let activityCompleted = false;
   if (activityRow && activity && !retryAllowed) {
@@ -709,7 +728,7 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
                 ...(exercise.solution ? { solution: exercise.solution } : {}),
               }
             : {}),
-          ...('rubric' in result ? { rubric: result.rubric } : {}),
+          ...('rubric' in result ? { rubric: rubricForFeedback ?? result.rubric } : {}),
         }
       : {}),
   } satisfies AttemptResponse);

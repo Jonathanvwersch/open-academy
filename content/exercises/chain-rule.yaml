@@ -182,18 +182,22 @@ exercises:
     rubric:
       - {
           id: r1,
-          criterion: "Describes multiplying the derivatives of successive calculations",
+          criterion: "Explain multiplying kilometres per hour by litres per kilometre to find litres per hour.",
           weight: 2,
           required: true,
         }
       - {
           id: r2,
-          criterion: "States that contributions from multiple paths are summed",
+          criterion: "Explain adding the extra fuel cost and extra wages caused by an extra kilometre to find the total extra cost.",
           weight: 2,
           required: true,
         }
-      - { id: r3, criterion: "Gives or references a concrete example", weight: 1 }
-    exemplar: "Multiply kilometres per hour by litres per kilometre to find litres per hour, because every extra kilometre uses fuel. More generally, multiply the derivatives of successive calculations to find how the final result changes. When an extra kilometre adds both fuel costs and wages, calculate each added cost separately and add them, since both appear on the bill."
+      - {
+          id: r3,
+          criterion: "Mention that the intermediate units cancel when multiplying the rates along the chain.",
+          weight: 1,
+        }
+    exemplar: "Multiply kilometres per hour by litres per kilometre to find litres per hour; the kilometres cancel from the units. More generally, multiply the derivatives of successive calculations to find how the final result changes. When an extra kilometre adds both fuel costs and wages, calculate each added cost separately and add them, since both appear on the bill."
   - id: crp-why-multiply
     lesson_only: true
     dimension: conceptual

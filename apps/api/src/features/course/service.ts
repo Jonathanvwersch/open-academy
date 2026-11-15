@@ -1,6 +1,17 @@
+import { and, eq, inArray, or } from 'drizzle-orm';
 import type { ContentIndex, IndexedConcept, IndexedCourse } from '../../content/types.js';
+import type { Database } from '../../db/client.js';
 import type { LearnerRepository } from '../../db/repository.js';
-import type { lessonRuns } from '../../db/schema.js';
+import {
+  courseEnrollments,
+  lessonRuns,
+  mastery,
+  masteryEvents,
+  remediationFlags,
+  reviewCards,
+  sessionActivities,
+  studySessions,
+} from '../../db/schema.js';
 import { lowestMasteryState, masteryLabel, topicStatus } from '../../learning/course-status.js';
 import { courseTopicPosition } from '../../learning/lesson-course-context.js';
 import {
@@ -17,6 +28,129 @@ type RunRecords = Array<typeof lessonRuns.$inferSelect>;
 type PaperStatuses = Map<string, 'not_started' | 'reading' | 'completed'>;
 type ProjectStatuses = Map<string, 'not_started' | 'in_progress' | 'completed'>;
 type EnrollmentStatus = 'not_started' | 'active' | 'paused' | 'completed';
+
+export async function restartTopic(input: {
+  db: Database;
+  userId: string;
+  conceptId: string;
+  content: ContentIndex;
+}) {
+  await input.db.transaction(async (tx) => {
+    await tx
+      .delete(masteryEvents)
+      .where(
+        and(eq(masteryEvents.userId, input.userId), eq(masteryEvents.conceptId, input.conceptId)),
+      );
+    await tx
+      .delete(mastery)
+      .where(and(eq(mastery.userId, input.userId), eq(mastery.conceptId, input.conceptId)));
+    await tx
+      .delete(reviewCards)
+      .where(and(eq(reviewCards.userId, input.userId), eq(reviewCards.conceptId, input.conceptId)));
+    await tx
+      .delete(lessonRuns)
+      .where(and(eq(lessonRuns.userId, input.userId), eq(lessonRuns.conceptId, input.conceptId)));
+    await tx
+      .delete(remediationFlags)
+      .where(
+        and(
+          eq(remediationFlags.userId, input.userId),
+          or(
+            eq(remediationFlags.conceptId, input.conceptId),
+            eq(remediationFlags.targetPrereqId, input.conceptId),
+          ),
+        ),
+      );
+
+    const affectedCourseIds = input.content.courses
+      .filter((course) => course.units.some((unit) => unit.concepts.includes(input.conceptId)))
+      .map((course) => course.id);
+    if (affectedCourseIds.length > 0) {
+      await tx
+        .update(courseEnrollments)
+        .set({ status: 'active', completedAt: null })
+        .where(
+          and(
+            eq(courseEnrollments.userId, input.userId),
+            eq(courseEnrollments.status, 'completed'),
+            inArray(courseEnrollments.courseId, affectedCourseIds),
+          ),
+        );
+    }
+
+    const sessions = await tx
+      .select({ id: studySessions.id })
+      .from(studySessions)
+      .where(eq(studySessions.userId, input.userId));
+    if (!sessions.length) return;
+    const sessionIds = sessions.map((session) => session.id);
+    await tx
+      .update(sessionActivities)
+      .set({ status: 'skipped' })
+      .where(
+        and(
+          eq(sessionActivities.conceptId, input.conceptId),
+          inArray(sessionActivities.sessionId, sessionIds),
+          or(eq(sessionActivities.status, 'planned'), eq(sessionActivities.status, 'in_progress')),
+        ),
+      );
+
+    const plannedActivities = await tx
+      .select({ id: sessionActivities.id, conceptId: sessionActivities.conceptId })
+      .from(sessionActivities)
+      .where(
+        and(
+          inArray(sessionActivities.sessionId, sessionIds),
+          eq(sessionActivities.status, 'planned'),
+        ),
+      );
+    const [masteryRows, runRows] = await Promise.all([
+      tx
+        .select({
+          conceptId: mastery.conceptId,
+          dimension: mastery.dimension,
+          state: mastery.state,
+          inferred: mastery.inferred,
+        })
+        .from(mastery)
+        .where(eq(mastery.userId, input.userId)),
+      tx
+        .select({ conceptId: lessonRuns.conceptId, status: lessonRuns.status })
+        .from(lessonRuns)
+        .where(eq(lessonRuns.userId, input.userId)),
+    ]);
+    const masteryByKey = new Map(
+      masteryRows.map((record) => [
+        masteryKey(record.conceptId, record.dimension),
+        { state: record.state, inferred: record.inferred },
+      ]),
+    );
+    const activitiesToSkip = plannedActivities
+      .filter((activity) => {
+        if (!activity.conceptId) return false;
+        const concept = input.content.conceptsById.get(activity.conceptId);
+        return (
+          concept?.prereqs.some(
+            (prerequisite) =>
+              prerequisite.strength === 'hard' &&
+              !prerequisiteMet(prerequisite.id, masteryByKey, runRows, input.content),
+          ) ?? false
+        );
+      })
+      .map((activity) => activity.id);
+    if (activitiesToSkip.length) {
+      await tx
+        .update(sessionActivities)
+        .set({ status: 'skipped' })
+        .where(
+          and(
+            inArray(sessionActivities.id, activitiesToSkip),
+            eq(sessionActivities.status, 'planned'),
+          ),
+        );
+    }
+  });
+}
 
 export function placedOutConceptsFromRuns(runs: readonly { state: unknown }[]): Set<string> {
   const conceptIds = new Set<string>();

@@ -1,0 +1,204 @@
+concept: policies-returns
+version: 1
+objective: |
+  **Goal:** describe deterministic and stochastic policies, compute a discounted return, and explain how the discount changes the weight of later rewards.
+recap:
+  - concept: mdp
+    text: "A Markov decision process (MDP) describes a task through states, actions, transitions, rewards and a discount factor. A state is the current situation, an action is a choice, and reward $r_{t+1}$ scores that step."
+where_this_fits: |
+  ### What are policies and returns?
+
+  A policy is a rule for choosing actions. A return is a score made by adding the rewards still to come. Together they let us compare behaviour over a sequence of choices.
+
+  Useful rewards can arrive several steps after a choice, so the return scores the rewards still to come. The discount factor controls how much each later reward counts.
+knowledge_points:
+  - id: pr-choose-actions
+    title: Choose actions in each state
+    explain: |
+      ### A rule for the robot
+
+      We now need a rule for choosing an action. Imagine a robot that starts in cell 1 of a corridor with four cells, numbered 1 to 4 from left to right. Its state is its cell, and its actions are left and right. A move into a wall leaves it in place. A step that reaches cell 4 earns $+10$ and ends the trip. Every other step, including a wall bump, earns $-1$.
+
+      The picture shows one possible rule: choose right in cells 1, 2 and 3. Each blue arrow starts in the cell where the choice is made and points toward the next cell. There are no choices after reaching cell 4.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 140" aria-label="Four corridor cells, 1 to 4, from left to right. The robot starts in cell 1. Blue arrows choose right from 1 to 2, 2 to 3, and 3 to 4. Cell 4 ends the trip.">
+      <defs><marker id="pr-right" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#3b82f6"/></marker></defs>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="16" fill="#171717">
+      <path d="M40 35 H440 V95 H40 Z M140 35 V95 M240 35 V95 M340 35 V95" fill="#d4d4d4" fill-opacity="0" stroke="#d4d4d4" stroke-width="2"/>
+      <text x="90" y="60" text-anchor="middle">1</text><text x="190" y="60" text-anchor="middle">2</text><text x="290" y="60" text-anchor="middle">3</text><text x="390" y="60" text-anchor="middle">4</text>
+      <path d="M90 78 H182" stroke="#3b82f6" stroke-width="2" marker-end="url(#pr-right)"/>
+      <path d="M190 78 H282" stroke="#3b82f6" stroke-width="2" marker-end="url(#pr-right)"/>
+      <path d="M290 78 H382" stroke="#3b82f6" stroke-width="2" marker-end="url(#pr-right)"/>
+      <text x="90" y="120" text-anchor="middle">start</text><text x="240" y="22" text-anchor="middle" fill="#3b82f6">choose right</text><text x="390" y="120" text-anchor="middle">end</text>
+      </g></svg>
+      ```
+
+      A **policy** specifies how to choose an action in each state. A **deterministic policy** always chooses the same action when given the same state. We write its chosen action as $\pi(s)$, read "pi of s", where $s$ is the state. For the pictured rule,
+
+      $$\pi(1)=\pi(2)=\pi(3)=\text{right}.$$
+
+      ### Allowing random choices
+
+      A **stochastic policy** assigns a probability to each action in a state. A deterministic rule is the special case that puts probability $1$ on one action. We keep the symbol $\pi$, with both the action and state inside the parentheses:
+
+      $$\pi(a\mid s)=\text{probability of choosing action }a\text{ in state }s.$$
+
+      Read $\pi(\text{right}\mid2)$ as "the probability of choosing right when in cell 2". Each action's probability lies between $0$ and $1$. Add the probabilities for all available actions to get $1$. Here are three possible rules for cell 2:
+
+      | Rule | Left | Right |
+      | --- | --- | --- |
+      | Always right | 0 | 1 |
+      | Usually right | 0.2 | 0.8 |
+      | Either equally | 0.5 | 0.5 |
+
+      Random choices can take the robot from cell 1 to 2, back to 1, then to 2 again. Trying different actions lets us compare the rewards they earn.
+
+      Be careful not to read $\pi(\text{right}\mid2)=0.8$ as the chance that a chosen move succeeds. It is the probability of choosing right. In this corridor, choosing right from cell 2 always reaches cell 3.
+    worked: |
+      Let's verify the "usually right" policy in cell 2 and describe what its probabilities mean.
+
+      1. **Check the left probability.** Left and right are the only choices, so their probabilities must add to one.
+         $$\pi(\text{left}\mid2)=1-0.8=0.2.$$
+
+      2. **Follow a chosen action.** If the robot chooses right, it moves one cell to the right.
+         $$\text{next cell}=2+1=3.$$
+
+      This policy is stochastic because both left and right have a chance of being chosen. Once it chooses an action in this corridor, the resulting movement is certain.
+    problems:
+      - pr-policy-basics
+      - pr-policy-self
+      - pr-policy-tool
+      - pr-policy-complement
+      - pr-policy-interpret
+      - pr-policy-mistake
+      - pr-policy-deterministic
+      - pr-policy-new
+  - id: pr-add-rewards
+    title: Add the rewards from a trip
+    explain: |
+      ### Rewards arrive after actions
+
+      A policy tells our robot how to choose actions. Let's score the trip produced by three right moves, using the rewards that arrive after each action.
+
+      An **episode** is one complete trip. It starts at time $t=0$. Each action advances time by one. After $T$ actions, the episode ends at time $T$. We label rewards by their arrival time, so the action at time $0$ earns reward $r_1$ at time $1$. Let's follow three right moves on the timeline. This episode has $T=3$.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 135" aria-label="A trip with states at times 0, 1, 2 and 3: cells 1, 2, 3 and 4. Three right moves earn rewards r1=-1, r2=-1 and r3=+10. The episode ends at T=3.">
+      <defs><marker id="pr-time" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#3b82f6"/></marker></defs>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="16" fill="#171717" text-anchor="middle">
+      <text x="60" y="25">t = 0</text><text x="180" y="25">t = 1</text><text x="300" y="25">t = 2</text><text x="420" y="25">T = 3</text>
+      <text x="60" y="57">cell 1</text><text x="180" y="57">cell 2</text><text x="300" y="57">cell 3</text><text x="420" y="57">cell 4</text>
+      <path d="M60 75 H172" stroke="#3b82f6" stroke-width="2" marker-end="url(#pr-time)"/>
+      <path d="M180 75 H292" stroke="#3b82f6" stroke-width="2" marker-end="url(#pr-time)"/>
+      <path d="M300 75 H412" stroke="#3b82f6" stroke-width="2" marker-end="url(#pr-time)"/>
+      <text x="120" y="102">r₁ = −1</text><text x="240" y="102">r₂ = −1</text><text x="360" y="102">r₃ = +10</text>
+      <text x="420" y="126">end</text>
+      </g></svg>
+      ```
+
+      ### A score for the remaining trip
+
+      The **discounted return** adds the rewards still to come, each multiplied by a **weight** that sets how much it counts. At time $t$, we write it $G_t$ and start with $r_{t+1}$ from the action at time $t$. Rewards up to $r_t$ have already arrived and are left out. The discount factor $\gamma$ (gamma) sets these weights.
+
+      The next reward gets weight $1$, the following reward gets $\gamma$, and the one after that gets $\gamma^2$. For our three moves this gives
+
+      $$G_0=r_1+\gamma r_2+\gamma^2r_3.$$
+
+      For this example, we choose $\gamma=0.9$. Each extra step of delay multiplies a reward's weight by another $0.9$.
+
+      For any finite episode ending at time $T$, the return at an earlier time is
+
+      $$G_t=r_{t+1}+\gamma r_{t+2}+\gamma^2r_{t+3}+\dots.$$
+
+      Here $r_{t+1}$ is the reward from the action at time $t$. Each later reward gets one more factor of $\gamma$. Stop after the term containing the final reward $r_T$. At time $T$, reward $r_T$ has already arrived. No rewards remain, so $G_T=0$.
+
+      ### Score the remaining rewards
+
+      After the first move, $G_1$ includes only the last two rewards. Be careful not to discount the first reward of a return. Even when the episode is already underway, the next reward gets weight $1$. Then use $\gamma$, $\gamma^2$ and so on for the later rewards.
+    worked: |
+      Let's score the corridor trip at its start, then score what remains after one move. Its rewards are $r_1=-1$, $r_2=-1$, $r_3=10$, and we use $\gamma=0.9$.
+
+      1. **Assign weights from the start.** The goal reward arrives on the third action, two steps later than the next reward.
+         $$(1,\gamma,\gamma^2)=(1,0.9,0.81).$$
+
+      2. **Add the weighted rewards.** Each reward keeps its sign when we multiply by its weight.
+         $$G_0=(-1)+0.9(-1)+0.81(10)=6.2.$$
+
+      3. **Score what remains after one move.** The first reward has already happened, so the new return starts with $r_2$ at full weight.
+         $$G_1=(-1)+0.9(10)=8.$$
+
+      $G_1$ is larger because the first cost has already happened and the goal is closer. $G_0$ starts before the first action, while $G_1$ starts before the second action. This lets us score what remains of a trip as the robot moves. At the end, $G_3=0$ because no rewards remain.
+    problems:
+      - pr-return-basics
+      - pr-return-self
+      - pr-return-tool
+      - pr-return-template
+      - pr-return-later
+      - pr-return-mistake
+      - pr-return-interpret
+      - pr-return-new
+  - id: pr-weight-delay
+    title: Choose how much delay matters
+    explain: |
+      ### The same trip with different weights
+
+      Changing the discount factor lets us score the same trip in different ways. Keep the three rewards $-1$, $-1$, then $+10$ fixed as we change $\gamma$.
+
+      The **discount factor** $\gamma$ controls the weight given to each extra step of delay. It lies between $0$ and $1$, including both ends. The first three weights are
+
+      $$1,\quad\gamma,\quad\gamma^2.$$
+
+      Let's compare three values of $\gamma$. The rewards and movements stay fixed.
+
+      | $\gamma$ | Weights | $G_0$ |
+      | --- | --- | --- |
+      | $0$ | $(1,0,0)$ | $-1$ |
+      | $0.9$ | $(1,0.9,0.81)$ | $6.2$ |
+      | $1$ | $(1,1,1)$ | $8$ |
+
+      With $\gamma=0$, only the next reward counts. The delayed success has no weight in the starting score. With $\gamma=1$, all remaining rewards count fully, so a finite trip's return is their ordinary sum. Between these ends, a larger $\gamma$ gives distant rewards more weight.
+
+      ### Delayed gains and penalties
+
+      For $0<\gamma<1$, the same positive reward counts for more when it arrives sooner.
+
+      Discounting also reduces the weight of delayed penalties. Be careful not to assume that raising $\gamma$ always raises a return. Imagine a two-action game to see why. Its first action earns $0$. Its second action earns $-10$ and ends the game. Raising $\gamma$ from $0.5$ to $0.9$ changes its starting return from $-5$ to $-9$.
+
+      ### Limitations
+
+      A single trip's return gives limited evidence about a policy. Suppose left and right each have probability $0.5$ in cells 1 to 3. With $\gamma=0.9$, three rights give return $6.2$. A left wall bump followed by three rights gives $4.58$. Both trips can occur under this policy. Judging it requires considering the possible trips and how often they occur.
+
+      We use $\gamma=1$ only for finite episodes here. Some tasks have no set end, such as a robot that keeps patrolling. If it keeps earning $+1$ each step, the totals after one, two and three actions are $1$, $2$ and $3$. The total keeps growing without a finite limit. Choosing $\gamma<1$ makes the total finite in this example.
+    worked: |
+      Let's compare how much the end reward adds to our three-move corridor return at $\gamma=0.5$ and $\gamma=0.9$.
+
+      1. **Find its delay.** Two rewards come before the end reward, so its contribution uses two factors of the discount.
+         $$\text{end reward contribution}=\gamma^2\times10.$$
+
+      2. **Score with the smaller factor.** At $\gamma=0.5$, the goal's contribution is $2.5$, and we include the two step costs.
+         $$G_0=(-1)+0.5(-1)+0.5^2(10)=1.$$
+
+      3. **Score with the usual factor.** At $\gamma=0.9$, the goal's contribution is $8.1$.
+         $$G_0=(-1)+0.9(-1)+0.9^2(10)=6.2.$$
+
+      The trip earned the same rewards both times. The larger $\gamma$ gave the delayed goal more weight in its score.
+    problems:
+      - pr-discount-basics
+      - pr-discount-self
+      - pr-discount-tool
+      - pr-discount-template
+      - pr-discount-endpoints
+      - pr-discount-mistake
+      - pr-discount-runs
+      - pr-discount-continuing
+      - pr-discount-patrol
+      - pr-discount-new
+final: pr-explain-trip
+summary: |
+  - A deterministic policy $\pi(s)$ picks one action in each state. A stochastic policy $\pi(a\mid s)$ assigns action probabilities that add to $1$.
+  - A return adds rewards from the current time onward, with weights $1,\gamma,\gamma^2,\dots$: $G_t=r_{t+1}+\gamma r_{t+2}+\dots$ through the episode's end.
+  - The discount $\gamma$ controls the weight of delay: $0$ counts only the next reward, while $1$ counts every reward fully in a finite episode.
+  - A return scores one episode. Judging a policy with random outcomes requires considering the possible episodes and how often they occur.
+
+  **Next:** Value functions use the possible returns under a policy to describe how promising a state or an action is.

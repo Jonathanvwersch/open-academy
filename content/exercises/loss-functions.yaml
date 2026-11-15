@@ -820,39 +820,19 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 4
-    prompt: Your house-price model has many small errors and a few very large ones. Explain how you
-      would compute and choose between MSE and MAE, how their slopes treat the large errors, and
-      which constant baseline each would choose.
+    prompt: "A house-price model makes many small errors and a few very large ones. Explain how MSE is computed, how MAE is computed, and how you would choose between them based on the importance of large misses."
     rubric:
       - id: r1
-        criterion:
-          Computes MSE by averaging squares and MAE by averaging absolute errors, preventing
-          cancellation
+        criterion: Compute MSE by averaging squared prediction errors.
         weight: 1
         required: true
-      - id: r2
-        criterion:
-          Explains that squared-error slopes grow with the error while absolute-error slopes have
-          constant magnitude away from zero, and relates this to outliers
+      - id: mae
+        criterion: Compute MAE by averaging absolute prediction errors.
         weight: 1
         required: true
-      - id: r3
-        criterion:
-          Chooses the mean for a constant MSE baseline and a median for MAE, with a reason tied to
-          the cost of mistakes
+      - id: choice
+        criterion: Justify choosing MSE or MAE using how heavily large errors should count.
         weight: 1
         required: true
-    exemplar:
-      I subtract each actual price from its prediction, then average either the squared errors
-      for MSE or their absolute values for MAE; opposite misses cannot cancel. Squared-error slopes
-      are twice the errors, whereas absolute-error slopes have magnitude 1 away from zero, so large
-      misses pull harder under MSE. I would use MSE if large misses deserve a much bigger penalty
-      and MAE if typical absolute distance matters more; the constant baselines are the mean and a
-      median respectively.
-    solution:
-      I subtract each actual price from its prediction, then average either the squared errors
-      for MSE or their absolute values for MAE; opposite misses cannot cancel. Squared-error slopes
-      are twice the errors, whereas absolute-error slopes have magnitude 1 away from zero, so large
-      misses pull harder under MSE. I would use MSE if large misses deserve a much bigger penalty
-      and MAE if typical absolute distance matters more; the constant baselines are the mean and a
-      median respectively.
+    exemplar: "MSE averages squared prediction errors. MAE averages absolute prediction errors. I would choose MSE when large misses deserve a much bigger penalty, or MAE when typical absolute distance matters more."
+    solution: "MSE averages squared prediction errors. MAE averages absolute prediction errors. I would choose MSE when large misses deserve a much bigger penalty, or MAE when typical absolute distance matters more."

@@ -911,36 +911,27 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 2
-    prompt:
-      Explain why a deep network's activations and slopes can vanish or explode, how the starting
-      weight size prevents that at the start, and what LayerNorm does during training.
-    solution:
-      Repeated multiplication makes depth amplify even modest size changes, so initialization
-      sets a steady starting size. LayerNorm then recentres and rescales each example's outputs as
-      training changes the weights, before applying learned gain and shift.
+    prompt: "Explain why activations can shrink or grow with depth, how starting weight size helps, and how LayerNorm transforms one example's layer outputs."
+    solution: "Repeated multiplication makes activations shrink when factors have size below $1$ and grow when their size is above $1$. More randomly weighted inputs require smaller starting weights to keep typical score size steady. LayerNorm subtracts one example's layer-output mean and divides by its standard deviation. It then applies a learned gain and shift so training can choose another size and centre."
     rubric:
       - id: depth
         criterion:
-          Explains repeated multiplication of activations and backward slopes, shrinking for
-          factors below 1 and growing for factors above 1.
+          Explain that repeated multiplication makes activations shrink when factors have size below $1$ and
+          grow when their size is above $1$.
         weight: 1
         required: true
       - id: initialization
         criterion:
-          Explains choosing random starting weight size to preserve typical size, with LeCun for no
-          activation or He for ReLU.
+          Explain that more randomly weighted inputs require smaller starting weights to keep typical output
+          size steady.
         weight: 1
         required: true
       - id: layernorm
-        criterion:
-          Explains subtracting one example's layer-output mean, dividing by its standard deviation,
-          then applying learned gain and shift during training.
+        criterion: Normalize one example's layer outputs by subtracting their mean and dividing by their standard deviation.
         weight: 1
         required: true
-    exemplar: Every layer multiplies its inputs, and backpropagation multiplies slopes by local
-      derivatives on the way back. Repeated factors below 1 make activations and slopes vanish,
-      while factors above 1 make them explode. Random starting weights with LeCun typical size 1
-      divided by the square root of the input count preserve score size; He uses the square root of
-      2 divided by the input count to compensate for ReLU. During training weights change, so
-      LayerNorm subtracts the mean of one example's layer outputs and divides by their standard
-      deviation, then applies learned gain and shift.
+      - id: gain-shift
+        criterion: Apply a learned gain and shift after normalization so training can choose another size and centre.
+        weight: 1
+        required: true
+    exemplar: "Repeated multiplication makes activations shrink when factors have size below $1$ and grow when their size is above $1$. More randomly weighted inputs require smaller starting weights to keep typical score size steady. LayerNorm subtracts one example's layer-output mean and divides by its standard deviation. It then applies a learned gain and shift so training can choose another size and centre."

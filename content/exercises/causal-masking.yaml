@@ -10,19 +10,19 @@ exercises:
       A decoder predicts each next character from a whole training window. Its attention code takes softmax over every key, then sets future weights to zero without rescaling the remaining weights. The future weights test passes, but the row-sum test fails. Explain the failure and describe a correction that also preserves causal prediction.
     rubric:
       - id: normalization
-        criterion: Explains that the removed future entries held some probability mass, so the remaining row generally sums to less than one.
+        criterion: Explain that removing the future weights takes away part of the row's total, leaving the remaining weights adding up to less than $1$.
         weight: 1
         required: true
       - id: correction
-        criterion: Places negative infinity in future scores before softmax, keeping the diagonal allowed.
+        criterion: Set future scores to $-\infty$ before softmax, keeping the diagonal allowed so the remaining weights add up to $1$.
         weight: 2
         required: true
       - id: causality
-        criterion: Explains that the corrected weights sum to one over allowed positions and later tokens cannot influence earlier outputs.
+        criterion: Explain that the corrected output at each position depends only on that token and earlier tokens.
         weight: 1
         required: true
-    exemplar: Softmax shared probability mass with the future keys. Removing their weights leaves the allowed weights with a total below one, and their sizes still depend on the future scores through the original denominator. Fill the future scores with negative infinity before softmax and keep the diagonal. Softmax then normalizes over the allowed keys, so those weights sum to one and depend only on the visible prefix.
-    solution: Mask the future scores before softmax so its denominator uses only allowed keys. Zeroing future probabilities afterward loses mass and leaves a dependence on future scores.
+    exemplar: Before masking, softmax gives future keys a share of the total weight of $1$. Removing their weights leaves the remaining weights adding up to less than $1$. Set future scores to $-\infty$ before softmax and keep the diagonal allowed. The allowed weights then add up to $1$, and each output depends only on its own token and earlier tokens.
+    solution: Add $-\infty$ to future scores before softmax so future weights are $0$ and the allowed weights add up to $1$. Zeroing future weights afterward removes part of the total without sharing it among the allowed positions.
   - id: dx-tf-4
     dimension: conceptual
     type: mc
@@ -687,14 +687,15 @@ exercises:
     prompt: Explain to a friend why a language model trained on whole sentences needs a causal mask in its attention, how the mask is built and applied to the scores, and what it guarantees about each position's output.
     rubric:
       - id: r1
-        criterion: Without a mask, each position could attend to the next token, which is the one it must predict, so it could copy the answer.
+        criterion: Explain that without a mask each position could attend to the next token and copy the answer it must predict.
         weight: 2
         required: true
       - id: r2
-        criterion: The mask is a $T\times T$ grid with 0 where $j\le t$ and $-\infty$ where $j>t$, added to the scores before the softmax, so blocked weights are exactly 0 and allowed weights still add up to 1.
+        criterion: Describe a $T\times T$ mask with $0$ where $j\le t$ and $-\infty$ where $j>t$, added to the scores before softmax.
         weight: 2
         required: true
       - id: r3
-        criterion: With the mask, output $o_t$ depends only on tokens 1 to $t$, so one pass trains every next-token prediction honestly.
+        criterion: Explain that output $o_t$ depends only on tokens $1$ to $t$, so each position predicts without seeing its answer.
         weight: 1
+        required: true
     exemplar: A language model learns to predict each next token, and in training the whole sentence goes in at once. With plain attention, position $t$ could attend to token $x_{t+1}$ and copy it. The causal mask is a $T\times T$ grid with 0 on and below the diagonal and $-\infty$ above it. Adding it to the scores before the softmax gives every later position $e^{-\infty}=0$ weight, while the allowed weights still add up to 1. So each output $o_t$ mixes only $v_1$ to $v_t$ and depends only on the first $t$ tokens, which means every prediction in one pass is made without seeing its answer.

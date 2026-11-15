@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest';
 import {
   averageDailyXp,
   coursePercent,
-  estimatedFinishDate,
+  defaultAverageDailyXp,
   estimateTaskXp,
   localDateKey,
   weekXp,
@@ -90,17 +90,14 @@ describe('XP calculations', () => {
     expect(coursePercent(0, 0)).toBe(0);
   });
 
-  test('estimates finish using recent XP or the daily-goal average', () => {
-    expect(estimatedFinishDate(2, 20, '2026-01-01')).toBe('2026-01-05');
-    expect(estimatedFinishDate(1, 0, '2026-01-01')).toBe('2026-01-02');
+  test('averages daily study goals for the finish projection pace', () => {
     expect(
-      estimatedFinishDate(1, 0, '2026-01-01', {
+      defaultAverageDailyXp({
         scheduleMinutes: 30,
         saturdayMinutes: 45,
         sundayMinutes: 75,
       }),
-    ).toBe('2026-01-03');
-    expect(estimatedFinishDate(0, 0, '2026-01-01')).toBe('2026-01-01');
+    ).toBe(270 / 7);
     expect(
       averageDailyXp(
         [
