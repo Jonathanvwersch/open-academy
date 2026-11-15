@@ -1,0 +1,315 @@
+concept: inverses-linear-systems
+version: 1
+objective: |
+  **Goal:** find and check the inverse of a $2\times2$ matrix, solve a small linear system $Ax=b$ by elimination, use the transpose rules including $(AB)^\top=B^\top A^\top$ to recognise symmetric matrices, and solve systems in NumPy with `np.linalg.solve`.
+recap:
+  - concept: determinants
+    text: 'An inverse undoes a matrix, recovering each input from its output. A $2\times2$ matrix $A=\begin{bmatrix}a&b\\c&d\end{bmatrix}$ has an inverse exactly when its determinant, $\det(A)=ad-bc$, is not zero.'
+where_this_fits: |
+  ### What is a matrix inverse?
+
+  The inverse of a matrix is a second matrix that undoes the first one. If a matrix sends an input to an output, its inverse sends that output back to the same input.
+
+  That's useful when we know the output and want the input. At a café, suppose two coffees and a tea cost £8, and one coffee and one tea cost £5. What does each drink cost? Each total is that order's drink counts dotted with the unknown prices. So the counts form a matrix that turns prices into totals, and finding the prices means undoing it.
+
+  We'll also learn rules for the transpose, the matrix with rows and columns swapped. We'll need them later in the course to fit lines to data.
+knowledge_points:
+  - id: inv-identity-inverse
+    title: "Undo a matrix with its inverse"
+    explain: |
+      ### A matrix that changes nothing
+
+      To find the matrix that undoes another, we first need a matrix that leaves everything alone.
+
+      The **identity matrix**, written $I$, has 1s down its **main diagonal**, from the top left to the bottom right, and 0s everywhere else:
+
+      $$I=\begin{bmatrix}1&0\\0&1\end{bmatrix}$$
+
+      In $AI$, each column of $I$ picks out the matching entry from each row of $A$. In $IA$, each row of $I$ picks out the matching row of $A$. Both products leave $A$ unchanged:
+
+      $$AI=IA=A$$
+
+      ### The matrix that undoes A
+
+      Take $A=\begin{bmatrix}2&1\\1&1\end{bmatrix}$. Its determinant is $2\times1-1\times1=1$, so it can be undone. In the picture, $A$ sends the blue input $(3,2)$ to the green output $(8,5)$, along the orange arrow. The grey arrow goes back.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 360" aria-label="The matrix A with rows (2, 1) and (1, 1) sends the blue input point (3, 2) to the green output point (8, 5), shown by an orange curved arrow labelled A. A grey curved arrow labelled A inverse goes from the output back to the input." font-family="ui-sans-serif, system-ui, sans-serif">
+      <defs><marker id="inv-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#3b82f6"/></marker><marker id="inv-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#10b981"/></marker><marker id="inv-orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#f59e0b"/></marker><marker id="inv-grey" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker></defs>
+      <g font-size="16" fill="#171717">
+      <path d="M40 320 H370 M60 340 V120" stroke="#d4d4d4"/>
+      <circle cx="150" cy="260" r="7" fill="#3b82f6"/>
+      <circle cx="300" cy="170" r="7" fill="#10b981"/>
+      <path d="M150 252 Q 190 160 290 164" fill="#ffffff" fill-opacity="0" stroke="#f59e0b" stroke-width="2.5" marker-end="url(#inv-orange)"/>
+      <path d="M300 180 Q 260 270 160 266" fill="#ffffff" fill-opacity="0" stroke="#737373" stroke-width="2.5" marker-end="url(#inv-grey)"/>
+      <text x="96" y="248" fill="#3b82f6">(3, 2)</text>
+      <text x="308" y="166" fill="#10b981">(8, 5)</text>
+      <text x="188" y="168" fill="#f59e0b">A</text>
+      <text x="262" y="262" fill="#737373">A⁻¹</text>
+      <text x="20" y="344">(0, 0)</text>
+      </g></svg>
+      ```
+
+      The **inverse** of $A$, written $A^{-1}$, sends every output back to its input. A matrix with an inverse is **invertible**. Every vector $y$ then comes from exactly one input. Applying $A^{-1}$ to $y$ finds that input, and applying $A$ returns $y$. In a product like $A^{-1}Ax$, the matrix next to $x$ acts first. Here $x$ is a column vector. Both orders give $I$:
+
+      $$AA^{-1}=A^{-1}A=I$$
+
+      ### A formula for $2\times2$ inverses
+
+      For $A=\begin{bmatrix}a&b\\c&d\end{bmatrix}$, swap the two diagonal entries, change the signs of the other two, and divide every entry by the determinant:
+
+      $$A^{-1}=\frac{1}{ad-bc}\begin{bmatrix}d&-b\\-c&a\end{bmatrix}$$
+
+      Why does this work? Multiply $A$ by $\begin{bmatrix}d&-b\\-c&a\end{bmatrix}$. The diagonal entries are $ad+b(-c)=ad-bc$ and $c(-b)+da=ad-bc$. The top right is $a(-b)+ba=0$. The bottom left is $cd+d(-c)=0$. Dividing by $ad-bc$ leaves $I$. When $ad-bc=0$, there is no inverse.
+
+      Be careful not to take $1$ over each entry. The inverse of $\begin{bmatrix}2&1\\1&1\end{bmatrix}$ is not $\begin{bmatrix}0.5&1\\1&1\end{bmatrix}$.
+
+      ### Undoing two matrices in a row
+
+      Matrix products can be grouped either way: $ABx=A(Bx)$. So $B$ acts first, then $A$. To undo this, apply $A^{-1}$ first, then $B^{-1}$. The inverse of a product reverses the order:
+
+      $$(AB)^{-1}=B^{-1}A^{-1}$$
+    worked: |
+      Let's find the inverse of $A=\begin{bmatrix}2&1\\1&1\end{bmatrix}$, check it, and use it to take the output $(8,5)$ back to its input.
+
+      1. **Find the determinant.** The formula divides by it, so it must not be zero.
+         $$\det(A)=2\times1-1\times1=1$$
+
+      2. **Apply the formula.** We swap the 2 and the 1 on the diagonal, change the signs of the other two entries, and divide by 1.
+         $$A^{-1}=\begin{bmatrix}1&-1\\-1&2\end{bmatrix}$$
+
+      3. **Check by multiplying.** Each entry is a row of $A$ dotted with a column of $A^{-1}$, for example $2\times1+1\times(-1)=1$ for the top left.
+         $$AA^{-1}=\begin{bmatrix}2-1&-2+2\\1-1&-1+2\end{bmatrix}=\begin{bmatrix}1&0\\0&1\end{bmatrix}$$
+
+      4. **Undo the output.** $A^{-1}$ times $(8,5)$ should give back the input.
+         $$A^{-1}\begin{bmatrix}8\\5\end{bmatrix}=\begin{bmatrix}8-5\\-8+10\end{bmatrix}=\begin{bmatrix}3\\2\end{bmatrix}$$
+
+      We got $(3,2)$ back, the input that $A$ sent to $(8,5)$, so $A^{-1}$ really does undo $A$.
+    problems:
+      - inv-identity-inverse-basics
+      - inv-ii-self-explain
+      - inv-ii-identity-product
+      - inv-ii-pick-inverse
+      - inv-ii-entry-template
+      - inv-ii-missing-entry
+      - inv-ii-product-order
+      - inv-ii-colour-filter
+  - id: inv-elimination
+    title: "Solve equations by removing unknowns"
+    explain: |
+      ### Equations as one matrix product
+
+      Let's answer the café question from the start. Each order gives one equation. Two coffees and a tea cost £8, and one coffee and one tea cost £5. If we call the price of a coffee $x_1$ and of a tea $x_2$, in pounds, then
+
+      $$\begin{aligned}2x_1+x_2&=8\\x_1+x_2&=5\end{aligned}$$
+
+      Each left side is a row of counts dotted with the prices $x=(x_1,x_2)$, so the two equations are one matrix product:
+
+      $$\begin{bmatrix}2&1\\1&1\end{bmatrix}\begin{bmatrix}x_1\\x_2\end{bmatrix}=\begin{bmatrix}8\\5\end{bmatrix}$$
+
+      A **linear system** is a set of equations like these. Each unknown is multiplied by a number and the results are added. We write it $Ax=b$: $A$ holds those numbers, $x$ lists the unknowns, and $b$ lists the right-hand sides. This is the $A$ from step 1, with $b=(8,5)$. We already found $x=A^{-1}b=(3,2)$: £3 for coffee and £2 for tea.
+
+      Each equation on its own is a straight line of points $(x_1,x_2)$. In the picture, the blue line is the first equation and the orange line is the second. The answer is the green point where they cross, $(3,2)$.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 380" aria-label="The blue line 2 x1 plus x2 equals 8 runs from (0, 8) to (4, 0). The orange line x1 plus x2 equals 5 runs from (0, 5) to (5, 0). They cross at the green point (3, 2), the solution." font-family="ui-sans-serif, system-ui, sans-serif">
+      <g font-size="16" fill="#171717">
+      <path d="M40 330 H360 M60 350 V60" stroke="#d4d4d4"/>
+      <path d="M60 90 L180 330" stroke="#3b82f6" stroke-width="3"/>
+      <path d="M60 180 L210 330" stroke="#f59e0b" stroke-width="3"/>
+      <circle cx="150" cy="270" r="6" fill="#10b981"/>
+      <text x="164" y="266" fill="#10b981">(3, 2)</text>
+      <text x="72" y="80" fill="#3b82f6">2x₁ + x₂ = 8</text>
+      <text x="196" y="300" fill="#f59e0b">x₁ + x₂ = 5</text>
+      <text x="346" y="352">x₁</text><text x="30" y="70">x₂</text>
+      <g font-size="13" fill="#737373"><text x="176" y="348">4</text><text x="206" y="348">5</text><text x="44" y="95">8</text><text x="44" y="185">5</text></g>
+      </g></svg>
+      ```
+
+      ### Removing one unknown at a time
+
+      For bigger systems, we have no inverse formula here. **Elimination** finds $x$ without computing $A^{-1}$. It subtracts a multiple of one equation from another to remove an unknown. Both sides of a true equation are equal. Subtracting equal amounts from both sides keeps the solution unchanged. For a system with one solution, we repeat until one equation has a single unknown. We solve it, then put that value back into the others.
+
+      Here, subtracting the second equation from the first removes $x_2$ and leaves $x_1=3$. Then $x_1+x_2=5$ gives $x_2=2$, so a coffee costs £3 and a tea £2.
+
+      Sometimes elimination removes every unknown at once. Suppose a careless till gives $2x_1+2x_2=8$ and $x_1+x_2=5$. Their matrix has rows $(2,2)$ and $(1,1)$, with determinant zero. Subtracting twice the second equation from the first leaves $0=-2$. That's false, so no prices fit both orders. Dividing the first equation by 2 gives $x_1+x_2=4$. Both left sides are $x_1+x_2$, but they must equal 4 and 5. The lines have the same slope and different totals, so they are parallel and never cross.
+    worked: |
+      Let's add juice to the café menu and solve for three prices from three orders. One coffee, one tea and one juice cost £9. One coffee, two teas and three juices cost £19. One coffee, three teas and six juices cost £33. With $x_3$ for the price of a juice:
+
+      $$\begin{aligned}x_1+x_2+x_3&=9\\x_1+2x_2+3x_3&=19\\x_1+3x_2+6x_3&=33\end{aligned}$$
+
+      1. **Remove $x_1$ from the second equation.** Both equations start with one $x_1$, so subtracting the first equation from the second removes it.
+         $$x_2+2x_3=10$$
+
+      2. **Remove $x_1$ from the third equation.** Subtracting the first equation from the third does the same.
+         $$2x_2+5x_3=24$$
+
+      3. **Remove $x_2$.** The last two results now have only $x_2$ and $x_3$. Subtracting twice the result of step 1 from the result of step 2 leaves one unknown.
+         $$\begin{aligned}(2x_2+5x_3)-2(x_2+2x_3)&=24-2\times10\\
+         (2x_2-2x_2)+(5x_3-4x_3)&=24-20\\
+         x_3&=4\end{aligned}$$
+
+      4. **Put the values back.** The equation $x_2+2x_3=10$ gives $x_2=10-8=2$, and then the first equation gives $x_1$.
+         $$x_1=9-2-4=3$$
+
+      So a coffee costs £3, a tea £2 and a juice £4. Checking the third order, $3+3\times2+6\times4=33$, as it should.
+    problems:
+      - inv-elimination-basics
+      - inv-el-self-explain
+      - inv-el-write-matrix
+      - inv-el-two-template
+      - inv-el-inverse-route
+      - inv-el-no-solution
+      - inv-el-three-unknowns
+      - inv-el-fertiliser
+  - id: inv-transpose
+    title: "Swap a matrix's rows and columns"
+    explain: |
+      ### Rows become columns
+
+      In the matrices lesson, we used `.T` in NumPy to make shapes fit. The transpose also has rules of its own. We need them to write dot products as matrix products, and later in the course to fit a line to data.
+
+      The **transpose** of a matrix $A$, written $A^\top$, turns each row of $A$ into a column: row 1 becomes column 1, row 2 becomes column 2, and so on. Writing $A_{ij}$ for the entry of $A$ in row $i$, column $j$:
+
+      $$(A^\top)_{ij}=A_{ji}$$
+
+      In the picture, the blue row of $B$ becomes the blue column of $B^\top$, and the orange row becomes the orange column, so a $2\times3$ matrix becomes $3\times2$.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 220" aria-label="B, a 2 by 3 matrix with rows (1, 2, 3) in blue and (4, 5, 6) in orange, becomes its 3 by 2 transpose, with columns (1, 2, 3) in blue and (4, 5, 6) in orange." font-family="ui-sans-serif, system-ui, sans-serif">
+      <g font-size="16" fill="#171717" text-anchor="middle">
+      <rect x="40" y="60" width="120" height="40" fill="#3b82f6" fill-opacity="0.15" stroke="#3b82f6" stroke-width="1.5"/>
+      <rect x="40" y="100" width="120" height="40" fill="#f59e0b" fill-opacity="0.15" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="60" y="86">1</text><text x="100" y="86">2</text><text x="140" y="86">3</text>
+      <text x="60" y="126">4</text><text x="100" y="126">5</text><text x="140" y="126">6</text>
+      <text x="100" y="180" fill="#737373">B: 2 × 3</text>
+      <path d="M190 100 H270 M258 92 L270 100 L258 108" stroke="#737373" stroke-width="2" fill="#ffffff" fill-opacity="0"/>
+      <text x="230" y="88" fill="#737373">transpose</text>
+      <rect x="300" y="40" width="40" height="120" fill="#3b82f6" fill-opacity="0.15" stroke="#3b82f6" stroke-width="1.5"/>
+      <rect x="340" y="40" width="40" height="120" fill="#f59e0b" fill-opacity="0.15" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="320" y="66">1</text><text x="320" y="106">2</text><text x="320" y="146">3</text>
+      <text x="360" y="66">4</text><text x="360" y="106">5</text><text x="360" y="146">6</text>
+      <text x="340" y="190" fill="#737373">Bᵀ: 3 × 2</text>
+      </g></svg>
+      ```
+
+      ### Dot products as matrix products
+
+      In matrix maths we write a vector as a column, even when we write it as $(1,2)$ in a sentence. A column is a matrix with one column, so its transpose $x^\top$ is a matrix with one row. For two vectors with $n$ entries each, $x^\top y$ is a $1\times n$ matrix times an $n\times1$ matrix. The product has one entry, the row dotted with the column, which is the dot product of $x$ and $y$. For $x=(1,2)$ and $y=(3,4)$, $x^\top y=1\times3+2\times4=11$.
+
+      ### The transpose of a product
+
+      Transposing a product reverses its order:
+
+      $$(AB)^\top=B^\top A^\top$$
+
+      Here's why. Recall that entry $(i,j)$ of $AB$ is row $i$ of $A$ dotted with column $j$ of $B$. Entry $(i,j)$ of $(AB)^\top$ is entry $(j,i)$ of $AB$, which is row $j$ of $A$ dotted with column $i$ of $B$. That row of $A$ is column $j$ of $A^\top$, and that column of $B$ is row $i$ of $B^\top$, so the same dot product is row $i$ of $B^\top$ dotted with column $j$ of $A^\top$. That's entry $(i,j)$ of $B^\top A^\top$.
+
+      ### Symmetric matrices
+
+      A square matrix is **symmetric** when $A^\top=A$, so each entry matches its mirror image across the main diagonal. $\begin{bmatrix}2&1\\1&1\end{bmatrix}$ is one. For any matrix $A$, the product $A^\top A$ is symmetric. Applying the product rule to $A^\top$ times $A$ gives $(A^\top A)^\top=A^\top(A^\top)^\top$, and transposing $A^\top$ swaps its rows and columns back, giving $A$. So $(A^\top A)^\top=A^\top A$.
+    worked: |
+      Let's check the product rule on $A=\begin{bmatrix}1&2\\0&1\end{bmatrix}$ and $B=\begin{bmatrix}1&0\\3&1\end{bmatrix}$, then check that $A^\top A$ is symmetric.
+
+      1. **Multiply $A$ by $B$.** Each entry is a row of $A$ dotted with a column of $B$, for example $1\times1+2\times3=7$ for the top left.
+         $$AB=\begin{bmatrix}7&2\\3&1\end{bmatrix}$$
+
+      2. **Transpose the product.** Row 1 of $AB$ becomes column 1.
+         $$(AB)^\top=\begin{bmatrix}7&3\\2&1\end{bmatrix}$$
+
+      3. **Multiply the transposes in reverse order.** $B^\top=\begin{bmatrix}1&3\\0&1\end{bmatrix}$ and $A^\top=\begin{bmatrix}1&0\\2&1\end{bmatrix}$, and the top left is $1\times1+3\times2=7$.
+         $$B^\top A^\top=\begin{bmatrix}7&3\\2&1\end{bmatrix}$$
+
+      4. **Try the original order.** Keeping the order the same gives a different matrix, so the reversal matters.
+         $$A^\top B^\top=\begin{bmatrix}1&3\\2&7\end{bmatrix}$$
+
+      5. **Multiply $A^\top$ by $A$.** Row 1 of $A^\top$ is column 1 of $A$, so the top right is column 1 of $A$ dotted with column 2 of $A$, $1\times2+0\times1=2$. The bottom left dots column 2 with column 1, which gives the same 2.
+         $$A^\top A=\begin{bmatrix}1&2\\2&5\end{bmatrix}$$
+
+      Steps 2 and 3 agree, as the rule says, and $A^\top A$ matches its mirror image across the diagonal, so it is symmetric.
+    problems:
+      - inv-transpose-basics
+      - inv-tr-self-explain
+      - inv-tr-entry-template
+      - inv-tr-dot-template
+      - inv-tr-product-shapes
+      - inv-tr-pick-symmetric
+      - inv-tr-gram-template
+      - inv-tr-ratings
+  - id: inv-numpy
+    title: "Solve a system in NumPy"
+    explain: |
+      ### Letting the computer eliminate
+
+      Real systems can have thousands of unknowns, so we let a computer do the elimination. In the matrices lesson, we built matrices with `np.array` and multiplied them with `@`. NumPy keeps tools for matrix problems like ours in `np.linalg`, short for linear algebra, the maths of vectors and matrices. We'll use two of them, plus `np.eye`.
+
+      - `np.linalg.solve(A, b)` returns the $x$ that solves $Ax=b$.
+      - `np.linalg.inv(A)` returns the inverse $A^{-1}$.
+      - `np.eye(3)` builds the $3\times3$ identity matrix; `eye` sounds like "I".
+
+      The order of the inputs to `solve` matters: the matrix comes first, then the right-hand side.
+
+      ### Why `solve` is the better choice
+
+      Since $x=A^{-1}b$, we could also write `np.linalg.inv(A) @ b`. For small, tidy matrices both give the same answer, but `solve` is the one to use. It runs elimination directly on the equations $Ax=b$. To use `inv`, NumPy first has to work out every entry of the whole inverse, which is more arithmetic, and then still multiply by $b$.
+
+      More arithmetic also means more rounding. A computer stores each number with a limited number of digits, so most calculations round a little. Each extra calculation can add a tiny error, which is why `solve` is usually at least as accurate as `inv(A) @ b`.
+
+      NumPy usually stores numbers to about 16 digits. The `==` check asks whether each pair of entries is exactly equal. That check can report a mismatch over a tiny error in the last digit. Because of this rounding, we use `np.allclose(A @ x, b)`. It returns `True` when the arrays match apart from tiny differences.
+
+      ### When there is no answer to find
+
+      A **singular** matrix is a square matrix with no inverse. For a $2\times2$ matrix, that means its determinant is zero. Then `np.linalg.solve(A, b)` can't find a single answer and stops with the error `LinAlgError: Singular matrix`.
+
+      Be careful not to read that error as a bug in NumPy. It's telling you the equations don't pin down one answer, just as elimination did when every unknown vanished.
+    worked: |
+      Let's solve the three-price café system from the elimination step in NumPy. By hand, elimination gave a coffee at £3, a tea at £2 and a juice at £4:
+
+      $$\begin{bmatrix}1&1&1\\1&2&3\\1&3&6\end{bmatrix}\begin{bmatrix}x_1\\x_2\\x_3\end{bmatrix}=\begin{bmatrix}9\\19\\33\end{bmatrix}$$
+
+      1. **Build the arrays.** Each inner list of `A` is one order, and `b` holds the three totals.
+
+      2. **Solve.** `np.linalg.solve(A, b)` returns decimal (floating-point) numbers, even with whole-number inputs. NumPy prints `3.` for 3.0.
+
+      3. **Check the answer.** Multiplying the prices by `A` should give the totals back, apart from rounding.
+
+      4. **Check the inverse.** We compute `inv` here only to check it. `A @ np.linalg.inv(A)` should be the identity, `np.eye(3)`.
+
+      5. **Try a singular matrix.** The matrix with rows $(2,2)$ and $(1,1)$, from the careless till, has determinant zero, so `solve` stops with an error. Python runs the lines under `try:`, and if one raises an error, it runs the lines under `except` instead. Writing `as error` gives the error a name so we can print it.
+
+      ```python
+      import numpy as np
+
+      A = np.array([[1, 1, 1], [1, 2, 3], [1, 3, 6]])
+      b = np.array([9, 19, 33])
+
+      x = np.linalg.solve(A, b)
+      print(x)                                  # [3. 2. 4.]
+      print(np.allclose(A @ x, b))              # True
+      A_inv = np.linalg.inv(A)
+      print(np.allclose(A @ A_inv, np.eye(3)))  # True
+
+      C = np.array([[2, 2], [1, 1]])
+      try:
+          np.linalg.solve(C, np.array([8, 5]))
+      except np.linalg.LinAlgError as error:
+          print(error)                          # Singular matrix
+      ```
+
+      The code finds the same prices as elimination by hand, and it refuses the singular system.
+    problems:
+      - inv-numpy-basics
+      - inv-np-self-explain
+      - inv-np-complete-solve
+      - inv-np-read-solve
+      - inv-np-why-solve
+      - inv-np-singular
+      - inv-np-robot-debug
+final: inv-explain-solve
+summary: |
+  - The identity matrix $I$ has 1s on its main diagonal and 0s elsewhere, so $AI=IA=A$. The inverse $A^{-1}$ undoes $A$, so $AA^{-1}=A^{-1}A=I$, and for a $2\times2$ matrix $A^{-1}=\frac{1}{ad-bc}\begin{bmatrix}d&-b\\-c&a\end{bmatrix}$ when $ad-bc\neq0$. The inverse of a product reverses the order, $(AB)^{-1}=B^{-1}A^{-1}$.
+  - A linear system can be written $Ax=b$. Elimination solves it by subtracting multiples of equations to remove one unknown at a time, and when $A$ is invertible the answer is $x=A^{-1}b$.
+  - The transpose swaps rows and columns, $(A^\top)_{ij}=A_{ji}$. The dot product is $x^\top y$, and a product's transpose reverses the order, $(AB)^\top=B^\top A^\top$. A symmetric matrix has $A^\top=A$, and $A^\top A$ is always symmetric.
+  - In NumPy, `np.linalg.solve(A, b)` solves $Ax=b$. It is preferred to `np.linalg.inv(A) @ b` because it does less arithmetic and is usually at least as accurate.
+
+  **Next:** We'll ask which vectors can be built from a matrix's columns, which tells us when $Ax=b$ has one solution, none or infinitely many.
