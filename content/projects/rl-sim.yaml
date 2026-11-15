@@ -22,14 +22,6 @@ background: |
   Setup preserves existing work. Upload `labs/rl-sim/work/results.json` below. The lab README gives the shapes and equations for each function.
 prereqs: [policy-gradients, ppo, simulation-for-rl]
 tasks:
-  - id: t-episode
-    title: Collect one episode
-    md: |
-      We first need an interaction record. Read `environment.py`, then implement `collect_episode(env, theta, seed, rng)`. Reset once with the supplied seed. Sample each action using the supplied random generator and `action_probs`. Return aligned arrays containing the state before each action, the action, and its reward $r_{t+1}$. Stop when `done` is true. Done means the two-transition check records both rewards and stops at termination. This function will run once `action_probs` is implemented.
-  - id: t-returns
-    title: Discount the future rewards
-    md: |
-      We can now turn each reward sequence into returns. Implement `returns_to_go(rewards, gamma)` by working backwards from a final return of zero. Use $G_t=r_{t+1}+\gamma G_{t+1}$, where $\gamma$ is the discount. Empty rewards give an empty array. Done means rewards `[1, 1, 1]` with discount `0.9` give `[2.71, 1.9, 1]`.
   - id: t-probabilities
     title: Turn state logits into action probabilities
     md: |
@@ -38,6 +30,14 @@ tasks:
     title: Keep log probabilities finite
     md: |
       The update uses the log probability of the sampled action. Implement `log_prob(theta, state, action)` directly from the shifted logits and their log-sum-exp. Done means it agrees with the natural log of an ordinary probability and stays finite for an action whose probability underflows to zero.
+  - id: t-episode
+    title: Collect one episode
+    md: |
+      We can now collect an interaction record. Read `environment.py`, then implement `collect_episode(env, theta, seed, rng)`. Reset once with the supplied seed. Sample each action using the supplied random generator and `action_probs`. Return aligned arrays containing the state before each action, the action, and its reward $r_{t+1}$. Stop when `done` is true. Done means the two-transition check records both rewards and stops at termination.
+  - id: t-returns
+    title: Discount the future rewards
+    md: |
+      We can now turn each reward sequence into returns. Implement `returns_to_go(rewards, gamma)` by working backwards from a final return of zero. Use $G_t=r_{t+1}+\gamma G_{t+1}$, where $\gamma$ is the discount. Empty rewards give an empty array. Done means rewards `[1, 1, 1]` with discount `0.9` give `[2.71, 1.9, 1]`.
   - id: t-gradient
     title: Find the policy gradient by hand
     md: |

@@ -51,7 +51,29 @@ def run_checks(model):
         np.testing.assert_array_equal(first[0], [2, 3])
         np.testing.assert_array_equal(first[2], [1, 2])
         for a, b in zip(first, second):
-            np.testing.assert_array_equal(a, b)
+            np.testing.assert_array_equal(a, b, err_msg="Sample actions with the supplied rng.")
+
+        class Long:
+            def reset(self, seed):
+                self.t = 0
+                return 0
+
+            def step(self, action):
+                self.t += 1
+                assert self.t <= 30, "Stop when done is True."
+                return 0, 0., self.t == 30
+
+        global_state = np.random.get_state()
+        try:
+            np.random.seed(123)
+            actions = [
+                model.collect_episode(Long(), np.zeros((25, 4)), 7, np.random.default_rng(k))[1]
+                for k in (1, 1, 2)
+            ]
+        finally:
+            np.random.set_state(global_state)
+        np.testing.assert_array_equal(actions[0], actions[1], err_msg="Sample actions with the supplied rng.")
+        assert not np.array_equal(actions[0], actions[2]), "Sample actions with the supplied rng."
         env = GridWorld()
         starts = [env.reset(seed) for seed in range(100)]
         expected = [int(np.random.default_rng(seed).integers(24)) for seed in range(100)]
@@ -104,7 +126,6 @@ def run_checks(model):
 
     check("policy-gradient", "The active row is one_hot(a) - pi_theta(.|s); other rows are zero.", gradient)
     s, a, adv = np.array([0, 1]), np.array([2, 0]), np.array([1.5, -0.5])
-    old = np.array([-1., -0.7])
 
     def reinforce():
         original = theta.copy()
@@ -130,14 +151,24 @@ def run_checks(model):
             np.testing.assert_allclose(value, expected, err_msg="Take the smaller of ratio times advantage and clipped ratio times advantage, including negative advantages.")
             if (ratio > 1.2 and advantage > 0) or (ratio < 0.8 and advantage < 0):
                 np.testing.assert_allclose(grad, 0, atol=1e-12, err_msg="The clipped branch is flat. Its gradient must be zero.")
+            else:
+                expected_grad = ratio * advantage * (np.eye(4)[0] - 0.25)
+                np.testing.assert_allclose(grad, expected_grad[None, :], err_msg="Unclipped samples use ratio times advantage times the log-probability gradient, even outside [1-c, 1+c].")
 
     check("ppo-objective", "Clipping must cap favorable changes for both advantage signs.", objective)
 
     def ppo_gradient():
         original = theta.copy()
+        s = np.array([0, 0, 1, 1, 0, 1])
+        a = np.array([0, 1, 2, 3, 2, 0])
+        adv = np.array([2., -2., 2., -2., 1., -1.])
+        ratios = np.array([0.5, 0.5, 1.5, 1.5, 0.95, 1.05])
+        shifted = theta - theta.max(axis=1, keepdims=True)
+        log_probs = shifted - np.log(np.exp(shifted).sum(axis=1, keepdims=True))
+        old = log_probs[s, a] - np.log(ratios)
         value, grad = model.ppo_clipped_objective(theta, s, a, old, adv)
         numeric = numerical(lambda t: model.ppo_clipped_objective(t, s, a, old, adv)[0], theta)
-        np.testing.assert_allclose(grad, numeric, atol=1e-8)
+        np.testing.assert_allclose(grad, numeric, atol=1e-8, err_msg="Differentiate each sample's active branch. Unclipped samples use ratio times advantage times the log-probability gradient, even outside [1-c, 1+c].")
         np.testing.assert_array_equal(theta, original)
         repeated, repeated_grad = model.ppo_clipped_objective(theta, np.tile(s, 2), np.tile(a, 2), np.tile(old, 2), np.tile(adv, 2))
         np.testing.assert_allclose(repeated, value)

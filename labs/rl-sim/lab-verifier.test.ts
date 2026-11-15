@@ -106,6 +106,39 @@ test.each([
   }
 });
 
+test.each([
+  [
+    'zero-outside',
+    ['ppo-objective', 'ppo-gradient'],
+    'Unclipped samples use ratio times advantage',
+  ],
+  [
+    'clipped-weight',
+    ['ppo-objective', 'ppo-gradient'],
+    'Unclipped samples use ratio times advantage',
+  ],
+  ['own-rng', ['collect-episode'], 'Sample actions with the supplied rng.'],
+  ['global-rng', ['collect-episode'], 'Sample actions with the supplied rng.'],
+] as const)('%s mutant fails the intended checks', (name, failures, message) => {
+  const script = [
+    'import json, sys',
+    'sys.path[:0] = [sys.argv[1], sys.argv[2]]',
+    'from mutants import make_mutant',
+    'from checks import run_checks',
+    'checks, _ = run_checks(make_mutant(sys.argv[3]))',
+    'print(json.dumps(checks))',
+  ].join('; ');
+  const checks = JSON.parse(
+    execFileSync('python3', ['-c', script, root, join(root, 'tests'), name], {
+      encoding: 'utf8',
+      timeout: 30_000,
+    }),
+  ) as Results['tests'];
+  const failed = checks.filter(({ passed }) => !passed);
+  expect(failed.map(({ id }) => id)).toEqual(failures);
+  expect(failed[0]?.message).toContain(message);
+});
+
 test('load failure emits every public id and setup preserves existing work', () => {
   const directory = mkdtempSync(join(tmpdir(), 'academy-rl-load-'));
   try {

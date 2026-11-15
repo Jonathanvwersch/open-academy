@@ -39,16 +39,16 @@ Their difference is an advantage. We estimate it using sampled returns and a bas
 
 ## Small functions
 
-1. `collect_episode(env, theta, seed, rng)` resets once and samples actions with
-   `rng.choice`. Return three aligned arrays of length $T$. Entry $t$ holds $s_t$,
-   $a_t$ and $r_{t+1}$. Record the state before the action. Stop at done.
-2. `returns_to_go(rewards, gamma)` computes the return $G_t$ backwards.
-   Use $G_t=r_{t+1}+\gamma G_{t+1}$, with $G_T=0$ and discount $\gamma$.
-   Empty rewards give an empty array.
-3. `action_probs(theta, state)` returns four probabilities. Subtract the
+1. `action_probs(theta, state)` returns four probabilities. Subtract the
    largest logit before exponentiation. `log_prob` returns the scalar natural
    log probability directly from shifted logits and log-sum-exp. It must stay
    finite when an unlikely action's probability underflows to zero.
+2. `collect_episode(env, theta, seed, rng)` resets once and samples actions with
+   `rng.choice`. Return three aligned arrays of length $T$. Entry $t$ holds $s_t$,
+   $a_t$ and $r_{t+1}$. Record the state before the action. Stop at done.
+3. `returns_to_go(rewards, gamma)` computes the return $G_t$ backwards.
+   Use $G_t=r_{t+1}+\gamma G_{t+1}$, with $G_T=0$ and discount $\gamma$.
+   Empty rewards give an empty array.
 4. `grad_log_prob` returns an array shaped like theta. Its active row is
    $\operatorname{one\_hot}(a)-\pi_\theta(\cdot\mid s)$. Every other row is zero.
 5. `reinforce_update(theta, states, actions, advantages, eta)` returns a new

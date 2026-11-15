@@ -98,20 +98,21 @@ exercises:
     est_minutes: 2
     prompt: |
       We train a policy in a deterministic gridworld. It beats a random policy
-      on 100 evaluation seeds excluded from training. The seeds select start
-      cells and action-sampling sequences. Which conclusion does this support?
+      on 100 evaluation seeds excluded from training. Training and evaluation
+      draw start cells from the same 24 cells. The seeds select start cells
+      and action-sampling sequences. Which conclusion does this support?
     options:
       - id: a
-        text: The policy improves mean return on the evaluated episodes under the same gridworld dynamics.
+        text: The comparison supports higher mean return on the evaluated episodes under the original gridworld dynamics.
         correct: true
       - id: b
-        text: The policy improves mean return on every possible episode under the same gridworld dynamics.
+        text: The comparison supports higher mean return on start cells held out from training under the original gridworld dynamics.
         correct: false
-        feedback: A mean over 100 episodes does not establish improvement on every possible episode.
+        feedback: Holding out seeds separates episodes. Both seed sets draw start cells from the same pool, so this comparison leaves performance on held-out start cells unmeasured.
       - id: c
-        text: The policy improves mean return in a physical robot task with different transition dynamics.
+        text: The comparison supports higher mean return on the evaluated start cells under gridworld dynamics with random action slips.
         correct: false
-        feedback: These episodes provide evidence for the simulated gridworld. Changed dynamics require a separate evaluation.
+        feedback: Action sampling varies the chosen actions. Action slips change how chosen actions affect the environment and require a separate evaluation.
     solution: |
       The comparison supports improved mean return on the stated evaluation episodes.
       Different seeds keep evaluation episodes separate from training while retaining the same environment dynamics.
