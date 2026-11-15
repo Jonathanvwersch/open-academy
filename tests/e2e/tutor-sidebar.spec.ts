@@ -1005,6 +1005,7 @@ test('Stop and steering keep tutor messages server-backed at desktop and mobile 
     await page.setViewportSize({ width, height: 900 });
 
     let threadId = '';
+    let firstThreadId = '';
     let messageCount = 0;
     let releaseFirstRequest = () => {};
     let firstRequestReceived = () => {};
@@ -1038,6 +1039,9 @@ test('Stop and steering keep tutor messages server-backed at desktop and mobile 
       const url = route.request().url();
       if (route.request().method() === 'POST') {
         const body = route.request().postDataJSON() as { question: string; threadId: string };
+        expect(url.endsWith('/api/tutor/threads')).toBe(true);
+        if (messageCount === 0) firstThreadId = body.threadId;
+        else expect(body.threadId).toBe(firstThreadId);
         threadId = body.threadId;
         messageCount += 1;
         const userMessage: MockedTutorMessage = {
@@ -1100,6 +1104,24 @@ test('Stop and steering keep tutor messages server-backed at desktop and mobile 
       await expect(tutor.getByTestId('tutor-user-message')).toHaveCount(1);
       await expect(tutor.getByTestId('tutor-thinking-bubble')).toHaveCount(0);
       await expect(tutor.getByRole('alert')).toHaveCount(0);
+      releaseFirstRequest();
+      await textarea.fill('Try again in the same chat.');
+      await textarea.press('Enter');
+      await expect(
+        tutor.getByTestId('tutor-user-message').filter({
+          hasText: 'Show me the first step.',
+        }),
+      ).toHaveCount(1);
+      await expect(
+        tutor.getByTestId('tutor-user-message').filter({
+          hasText: 'Try again in the same chat.',
+        }),
+      ).toHaveCount(1);
+      await expect(
+        tutor.getByTestId('tutor-assistant-message').filter({
+          hasText: 'Tutor reply to: Try again in the same chat.',
+        }),
+      ).toHaveCount(1);
     } else {
       await textarea.press('Enter');
       await expect(

@@ -309,6 +309,18 @@ export function TutorContextProvider({
     threads.data,
     threads.isSuccess,
   ]);
+  useEffect(() => {
+    const threadId = newThreadId.current;
+    if (
+      !newChatSelected ||
+      !threadId ||
+      (pendingSend && pendingSend.threadId !== threadId) ||
+      !threads.data?.some((thread) => thread.id === threadId)
+    ) {
+      return;
+    }
+    setSelectedId(threadId);
+  }, [newChatSelected, pendingSend, threads.data]);
   const mutation = useMutation({
     mutationFn: async ({
       question,
@@ -358,10 +370,6 @@ export function TutorContextProvider({
       }
       if (payload.superseded) {
         if (payload.thread) {
-          setSelectedId(payload.thread.id);
-          setNewChatSelected(false);
-          setView('conversation');
-          if (newThreadId.current === payload.thread.id) newThreadId.current = '';
           void queryClient.invalidateQueries({
             queryKey: ['tutor', 'thread', payload.thread.id],
           });
@@ -427,11 +435,6 @@ export function TutorContextProvider({
       }
       setPendingSend((current) => (current?.id === variables.optimisticId ? null : current));
       if (variables.signal.aborted) {
-        if (!selectedId && variables.createThread) {
-          setSelectedId(variables.threadId);
-          setNewChatSelected(false);
-          if (newThreadId.current === variables.threadId) newThreadId.current = '';
-        }
         void queryClient.invalidateQueries({ queryKey: ['tutor', 'threads'] });
         void queryClient.invalidateQueries({
           queryKey: ['tutor', 'thread', variables.threadId],
@@ -546,11 +549,6 @@ export function TutorContextProvider({
         activeRequestController.current?.abort();
         activeRequestController.current = null;
         setPendingSend((current) => (current?.id === visiblePendingSend.id ? null : current));
-        if (!selectedId) {
-          setSelectedId(visiblePendingSend.threadId);
-          setNewChatSelected(false);
-          if (newThreadId.current === visiblePendingSend.threadId) newThreadId.current = '';
-        }
         void queryClient.invalidateQueries({ queryKey: ['tutor', 'threads'] });
         void queryClient.invalidateQueries({
           queryKey: ['tutor', 'thread', visiblePendingSend.threadId],
@@ -562,8 +560,8 @@ export function TutorContextProvider({
       setError(tutorQuestionTooLongMessage());
       return;
     }
-    const createThread = !selectedId;
-    const threadId = selectedId || newThreadId.current || crypto.randomUUID();
+    const createThread = newChatSelected || !selectedId;
+    const threadId = createThread ? newThreadId.current || crypto.randomUUID() : selectedId;
     if (createThread) newThreadId.current = threadId;
     activeRequestController.current?.abort();
     const controller = new AbortController();
