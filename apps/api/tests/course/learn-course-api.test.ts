@@ -1391,6 +1391,58 @@ test('focus persists and replans only planned activities', async () => {
   expect((await (await get('/learn')).json()).focusSubjectId).toBeNull();
 });
 
+test('a stored focus is ignored when only one subject is active', async () => {
+  const mathsCourse = content.coursesById.get('maths-for-ml');
+  const aiCourse = content.coursesById.get('ml-foundations');
+  if (!mathsCourse || !aiCourse) throw new Error('Missing single-subject focus test courses');
+  const aiFoundations = courseFoundationIds(content, aiCourse.id);
+  const reviewExercise = mathsCourse.units
+    .flatMap((unit) => unit.concepts)
+    .filter((conceptId) => !aiFoundations.has(conceptId))
+    .flatMap((conceptId) =>
+      (content.exercisesByConcept.get(conceptId) ?? []).map((exercise) => ({
+        conceptId,
+        exercise,
+      })),
+    )
+    .find(({ exercise }) =>
+      ['review', 'core', 'practice', 'transfer', 'basics'].includes(exercise.role),
+    );
+  if (!reviewExercise) throw new Error('Missing a Mathematics review exercise');
+  await db.insert(courseEnrollments).values({
+    userId,
+    courseId: aiCourse.id,
+    status: 'active',
+    startMethod: 'beginning',
+  });
+  await db
+    .update(users)
+    .set({
+      activeCourseId: aiCourse.id,
+      studySetInitializedAt: new Date('2026-01-01T00:00:00.000Z'),
+      prefs: { scheduleMinutes: 60, focusSubjectId: 'ai' },
+    })
+    .where(eq(users.id, userId));
+  await db.insert(reviewCards).values({
+    userId,
+    conceptId: reviewExercise.conceptId,
+    dimension: reviewExercise.exercise.dimension,
+    fsrs: {},
+    dueAt: new Date('2026-01-06T00:00:00.000Z'),
+  });
+
+  const learn = await (await get('/learn')).json();
+
+  expect(learn.activeSubjects.map((subject: { id: string }) => subject.id)).toEqual(['ai']);
+  expect(learn.focusSubjectId).toBeNull();
+  expect(
+    learn.tasks.some(
+      (task: { activityKind: string; conceptId?: string }) =>
+        task.activityKind === 'review' && task.conceptId === reviewExercise.conceptId,
+    ),
+  ).toBe(true);
+});
+
 test('lesson choices are empty while a session is active', async () => {
   const started = await app.request('/api/sessions', {
     method: 'POST',

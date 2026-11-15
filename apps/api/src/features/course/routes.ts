@@ -282,6 +282,24 @@ export function registerLearnCourseRoutes(
       ? (user?.activeCourseId ?? null)
       : null;
     const studyCourseIds = await repo.studyCourseIds(index);
+    const prefs = (user?.prefs ?? {}) as SessionPreferences & { focusSubjectId?: unknown };
+    const activeSubjectIds = new Set(
+      studyCourseIds.map((courseId) => index.subjectForCourse(courseId).id),
+    );
+    const activeSubjects = (index.curriculum?.subjects ?? [])
+      .filter((subject) => activeSubjectIds.has(subject.id))
+      .map(({ id, title }) => ({ id, title }));
+    if (activeSubjects.length === 0 && studyCourseIds.length > 0) {
+      activeSubjects.push(index.subjectForCourse(studyCourseIds[0] ?? ''));
+    }
+    const storedFocusSubjectId =
+      typeof prefs.focusSubjectId === 'string' ? prefs.focusSubjectId : undefined;
+    const focusSubjectId =
+      activeSubjects.length > 1 &&
+      storedFocusSubjectId &&
+      activeSubjects.some((subject) => subject.id === storedFocusSubjectId)
+        ? storedFocusSubjectId
+        : null;
     const placementCourseId = placementRuns
       .map((run) => (run.state as { courseId?: unknown }).courseId)
       .find((id): id is string => typeof id === 'string' && index.coursesById.has(id));
@@ -302,7 +320,6 @@ export function registerLearnCourseRoutes(
       activePlacementRuns: placementRuns,
     });
     const placedOutConcepts = placedOutConceptsFromRuns(completedPlacementRuns);
-    const prefs = (user?.prefs ?? {}) as SessionPreferences & { focusSubjectId?: unknown };
     const todayLocal = localDateKey(now, timeZone);
     const totalXp = events.reduce((total, event) => total + event.amount, 0);
     const todayXp = events
@@ -335,14 +352,14 @@ export function registerLearnCourseRoutes(
     let activeSession = active ? await repo.session(active.id, active) : undefined;
     let schedulerState: Awaited<ReturnType<LearnerRepository['schedulerState']>> | undefined;
     const loadSchedulerState = async () => {
-      schedulerState ??= filterSchedulerStateForContent(
-        index,
-        await repo.schedulerState(now, index, {
+      schedulerState ??= filterSchedulerStateForContent(index, {
+        ...(await repo.schedulerState(now, index, {
           mastery,
           lessonRuns: runRows,
           projectProgress: projectRows,
-        }),
-      );
+        })),
+        focusSubjectId: focusSubjectId ?? undefined,
+      });
       return schedulerState;
     };
     const masteryByKey = new Map(
@@ -532,21 +549,6 @@ export function registerLearnCourseRoutes(
     );
     await completePayloadCourses(repo, coursePayload, now);
     const topics = coursePayload.units.flatMap((unit) => unit.topics);
-    const activeSubjectIds = new Set(
-      studyCourseIds.map((courseId) => index.subjectForCourse(courseId).id),
-    );
-    const activeSubjects = (index.curriculum?.subjects ?? [])
-      .filter((subject) => activeSubjectIds.has(subject.id))
-      .map(({ id, title }) => ({ id, title }));
-    if (activeSubjects.length === 0 && studyCourseIds.length > 0) {
-      activeSubjects.push(index.subjectForCourse(studyCourseIds[0] ?? ''));
-    }
-    const storedFocusSubjectId =
-      typeof prefs.focusSubjectId === 'string' ? prefs.focusSubjectId : undefined;
-    const focusSubjectId =
-      storedFocusSubjectId && activeSubjects.some((subject) => subject.id === storedFocusSubjectId)
-        ? storedFocusSubjectId
-        : null;
     const focusedCourseIds = focusSubjectId
       ? studyCourseIds.filter((courseId) => index.subjectForCourse(courseId).id === focusSubjectId)
       : studyCourseIds;
