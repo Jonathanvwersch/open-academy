@@ -23,6 +23,7 @@ import {
 import { calculateCredit } from '../../src/learning/mastery.js';
 
 const tutorContent = {
+  subjectsByCourseId: new Map(),
   curriculum: {
     subject: {
       title: 'Fixture subject',

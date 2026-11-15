@@ -1,5 +1,7 @@
 import { resolve } from 'node:path';
+import { deserialize, serialize } from 'node:v8';
 import { expect, test } from 'vitest';
+import { buildContentIndex, subjectForCourse } from '../../src/content/index.js';
 import { loadContent } from '../../src/content/load.js';
 import {
   CurriculumSchema,
@@ -56,10 +58,15 @@ test('loads the fixture graph and builds lookup indexes', async () => {
     title: 'Fixture subject',
     tutor_context: 'The learner is working through a fixture course.',
   });
-  expect(content.subjectForCourse('fixture-course')).toEqual({
+  expect(subjectForCourse(content, 'fixture-course')).toEqual({
     id: 'default',
     title: 'Fixture subject',
   });
+  expect(subjectForCourse(content, 'missing-course')).toEqual({
+    id: 'default',
+    title: 'Fixture subject',
+  });
+  expect(new Set(content.subjectsByCourseId.keys())).toEqual(new Set(content.coursesById.keys()));
   expect(content.sourceIndex?.sources).toEqual([
     {
       id: 'fixture-notes',
@@ -98,6 +105,20 @@ test('loads the fixture graph and builds lookup indexes', async () => {
     ]),
   );
   expect(content.concepts[0]?.contentVersion).toMatch(/^[a-f0-9]{12}$/);
+});
+
+test('real content indexes round-trip through V8 serialization with subject lookups intact', async () => {
+  const loadedContent = await loadContent('content');
+  const content = buildContentIndex(sourceDataFromIndex(loadedContent));
+  const roundTripped = deserialize(serialize(content)) as ContentIndex;
+
+  expect(roundTripped.subjectsByCourseId).toBeInstanceOf(Map);
+  expect(roundTripped.courses.map(({ id }) => id)).toEqual(content.courses.map(({ id }) => id));
+  for (const course of loadedContent.courses) {
+    expect(subjectForCourse(roundTripped, course.id)).toEqual(
+      subjectForCourse(loadedContent, course.id),
+    );
+  }
 });
 
 test('source citations reject duplicate IDs, unknown references, and grounded lessons without citations', async () => {

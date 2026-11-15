@@ -61,6 +61,15 @@ function makeContent(ids: string[], prerequisites: Record<string, string[]> = {}
     },
     courses: [course],
     coursesById: new Map([[course.id, course]]),
+    subjectsByCourseId: new Map([
+      [
+        course.id,
+        baseContent.subjectsByCourseId.get(baseCourse.id) ?? {
+          id: 'default',
+          title: curriculum.subject?.title ?? 'Courses',
+        },
+      ],
+    ]),
     concepts,
     conceptsById: new Map(concepts.map((concept) => [concept.id, concept])),
     exercises,

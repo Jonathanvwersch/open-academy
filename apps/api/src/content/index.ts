@@ -46,13 +46,17 @@ export function buildContentIndex(data: ContentSourceData): ContentIndex {
   const coursesById = new Map(courses.map((course) => [course.id, course]));
   const subjects = data.curriculum?.value.subjects ?? [];
   const fallbackSubjectTitle = data.curriculum?.value.subject?.title ?? 'Courses';
-  const subjectForCourse = (courseId: string) => {
-    const course = coursesById.get(courseId);
-    const subject = subjects.find((candidate) => candidate.id === course?.subject);
-    return subject
-      ? { id: subject.id, title: subject.title }
-      : { id: 'default', title: fallbackSubjectTitle };
-  };
+  const subjectsByCourseId = new Map(
+    courses.map((course) => {
+      const subject = subjects.find((candidate) => candidate.id === course.subject);
+      return [
+        course.id,
+        subject
+          ? { id: subject.id, title: subject.title }
+          : { id: 'default', title: fallbackSubjectTitle },
+      ] as const;
+    }),
+  );
   const orderedCourses = (data.curriculum?.value.courses ?? []).flatMap((courseId) => {
     const course = coursesById.get(courseId);
     return course ? [course] : [];
@@ -107,7 +111,7 @@ export function buildContentIndex(data: ContentSourceData): ContentIndex {
     curriculum: data.curriculum
       ? { ...data.curriculum.value, contentVersion: contentVersion(data.curriculum.value) }
       : undefined,
-    subjectForCourse,
+    subjectsByCourseId,
     courses: orderedCourses,
     coursesById,
     concepts,
@@ -126,4 +130,16 @@ export function buildContentIndex(data: ContentSourceData): ContentIndex {
     papersById,
     sourceIndex: data.sourceIndex?.value,
   };
+}
+
+export function subjectForCourse(
+  content: Pick<ContentIndex, 'curriculum' | 'subjectsByCourseId'>,
+  courseId: string,
+): { id: string; title: string } {
+  return (
+    content.subjectsByCourseId.get(courseId) ?? {
+      id: 'default',
+      title: content.curriculum?.subject?.title ?? 'Courses',
+    }
+  );
 }

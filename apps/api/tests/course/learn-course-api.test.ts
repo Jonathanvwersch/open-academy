@@ -2,6 +2,7 @@ import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest';
 import { createApp } from '../../src/app.js';
 import { env } from '../../src/config.js';
+import { subjectForCourse } from '../../src/content/index.js';
 import { loadContent } from '../../src/content/load.js';
 import type { ContentIndex } from '../../src/content/types.js';
 import { createDb } from '../../src/db/client.js';
@@ -742,7 +743,7 @@ test('course catalogue and enrollment routes start, pause, and reactivate course
   for (const subject of catalog.subjects as Array<{ id: string; courses: Array<{ id: string }> }>) {
     expect(subject.courses.map((course) => course.id)).toEqual(
       (content.curriculum?.courses ?? content.courses.map((course) => course.id)).filter(
-        (courseId) => content.subjectForCourse(courseId).id === subject.id,
+        (courseId) => subjectForCourse(content, courseId).id === subject.id,
       ),
     );
   }
