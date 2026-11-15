@@ -161,7 +161,7 @@ knowledge_points:
     explain: |
       ### Three points and no exact line
 
-      Suppose we measure at the times $t=-1$, $0$ and $1$ and get $y=1$, $3$ and $2$. We'd like a straight line $y=c+mt$ through all three points, where $c$ is its height at $t=0$ and $m$ its slope. Each point gives one equation:
+      Suppose we measure at the times $t=-1$, $0$ and $1$ and get $y=1$, $3$ and $2$. We'd like a straight line $y=c+mt$ through all three points, where $c$ is its height at $t=0$ and $m$ is its slope, the change in its height when $t$ goes up by $1$. Each point gives one equation:
 
       $$\begin{bmatrix}1&-1\\1&0\\1&1\end{bmatrix}\begin{bmatrix}c\\m\end{bmatrix}=\begin{bmatrix}1\\3\\2\end{bmatrix}.$$
 
@@ -169,17 +169,17 @@ knowledge_points:
 
       ### The closest point instead
 
-      The two columns of $A$ are independent, so they span a flat plane through the origin in three dimensions. Picture a sheet of paper through the origin, with $b$ sticking out of it. Every $Ax$ lies in that plane, the column space. So we look for the point in that plane closest to $b$. We write it $A\hat x$, where $\hat x$ ("x hat") holds the best $c$ and $m$. As with a line, the leftover, now called the error $e=b-A\hat x$, at the closest point is orthogonal to the plane, so to every arrow in it, including each column of $A$.
+      The two columns of $A$ are independent, so they span a plane through the origin in three dimensions. Picture a sheet of paper through the origin, with $b$ sticking out. Every $Ax$ lies in that plane, the column space, so we look for its point closest to $b$. We write it $A\hat x$, where $\hat x$ ("x hat") holds the best $c$ and $m$. As with a line, the leftover, now called the error $e=b-A\hat x$, at the closest point is orthogonal to the plane, so to every arrow in it, including each column of $A$.
 
       Each entry of $A^\top e$ is a column of $A$ dotted with $e$, so we need $A^\top(b-A\hat x)=0$. Multiplying out gives $A^\top b-A^\top A\hat x=0$. Moving one term across gives the **normal equations** (normal means perpendicular):
 
       $$A^\top A\,\hat x=A^\top b.$$
 
-      Here $A^\top A$ has determinant $6$, as the worked example shows, so there's one solution.
+      Here $A^\top A$ has determinant $6$, so there's one solution.
 
       ### What least squares makes smallest
 
-      The squared length of $e$ is the sum of the squared errors. The closest point makes $e$ as short as possible, so $\hat x$ gives the line with the smallest sum of squared errors. That's why this is called **least squares**. In the picture, the orange line is the fit, $y=2+0.5t$, and the red dashes are the errors.
+      The squared length of $e$ is the sum of the squared errors. The closest point makes $e$ as short as possible, so $\hat x$ gives the line with the smallest such sum. That's why this is called **least squares**. In the picture, the orange line is the fit, $y=2+0.5t$, and the red dashes are the errors.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="95 30 460 300" aria-label="The three points (minus 1, 1), (0, 3) and (1, 2) on axes of t and y, with the orange least-squares line y = 2 + 0.5t. Red dashed vertical gaps show the errors: minus 0.5 at t = minus 1, 1 at t = 0 and minus 0.5 at t = 1">
@@ -240,7 +240,7 @@ knowledge_points:
     explain: |
       ### Least squares in NumPy
 
-      Three points are easy by hand, but real data sets have thousands of rows. NumPy's `np.linalg.lstsq(A, b, rcond=None)` finds the least-squares $\hat x$ for us. It gives back four results, in order: $\hat x$, the sum of squared errors, the rank of $A$, and a fourth result we won't need here. The `rcond=None` part picks NumPy's default setting, so we can leave it as written.
+      Three points are easy by hand, but real data sets have thousands of rows. NumPy's `np.linalg.lstsq(A, b, rcond=None)` finds the least-squares $\hat x$. It gives back four results, in order: $\hat x$, an array holding the sum of squared errors, the rank of $A$, and a fourth we won't need. Writing `rcond=None` picks NumPy's default setting.
 
       As in the matrices lesson, `@` multiplies arrays. So `A @ x_hat` gives the fitted values, which are the projection of $b$ onto the column space of $A$. Projecting onto a line also takes one line of code, since for two vectors `u @ x` is the dot product $u^\top x$.
 
@@ -252,7 +252,7 @@ knowledge_points:
 
       $$A^\top A=\begin{bmatrix}3&3\\3&3\end{bmatrix},$$
 
-      whose determinant is $3\times3-3\times3=0$. Picture the three points stacked on one vertical line at $t=1$. At $t=1$ a line has one height, $c+m$, and the best height is the average of the three measurements. Every line through that height at $t=1$ has the same errors, whatever its slope, so there's no single best line. `lstsq` still returns one answer, the $\hat x=(c,m)$ with the smallest length $\sqrt{c^2+m^2}$. The rank it reports tells us when this happens. A rank below the number of columns means other answers fit just as well.
+      whose determinant is $3\times3-3\times3=0$. Picture the three points stacked on one vertical line at $t=1$. At $t=1$ a line has one height, $c+m$, and the best height is the average of the three measurements. Every line through that height at $t=1$ has the same errors, whatever its slope, so there's no single best line. `lstsq` still returns one answer, the $\hat x=(c,m)$ with the smallest length $\sqrt{c^2+m^2}$. The rank it reports tells us when this happens. A rank below the number of columns means other answers fit just as well. Then the second result is an empty array.
 
       ### One bad point pulls the line
 
@@ -281,7 +281,7 @@ knowledge_points:
 
       1. **Project $x$ onto $u$.** `(u @ x) / (u @ u)` is the fraction $50/100$, and multiplying by `u` gives $p=(3,4)$.
 
-      2. **Fit the line.** `lstsq` returns $\hat x=(2,0.5)$, so the line is $y=2+0.5t$, and the sum of squared errors is $1.5$, as by hand. It prints as `[1.5]` because `lstsq` returns the sum inside an array with one entry.
+      2. **Fit the line.** `lstsq` returns $\hat x=(2,0.5)$, so the line is $y=2+0.5t$, and the sum of squared errors is $1.5$, as by hand. It prints as `[1.5]`, an array with one entry, because $A$ has more rows than columns and its rank equals its number of columns. When either of those fails, the array is empty, so get the sum yourself with `np.sum((b - A @ x_hat) ** 2)`, where `**` raises to a power.
 
       3. **Read the rank.** It's $2$, the number of columns, so this is the only best line.
 
@@ -302,6 +302,6 @@ summary: |
   - Two vectors are orthogonal when their dot product is zero. The projection of $x$ onto the line through $u$ is $p=\frac{u^\top x}{u^\top u}u$, the closest point on that line to $x$, and the leftover $x-p$ is orthogonal to $u$.
   - Vectors are orthonormal when each has length 1 and every pair is orthogonal. A square matrix $Q$ with orthonormal columns is an orthogonal matrix, so $Q^\top Q=I$ and $Q^{-1}=Q^\top$.
   - When $Ax=b$ has no solution, least squares finds the closest $A\hat x$ to $b$. The error $b-A\hat x$ is orthogonal to every column of $A$, which gives the normal equations $A^\top A\hat x=A^\top b$, and $\hat x$ makes the sum of squared errors as small as possible.
-  - In NumPy, `np.linalg.lstsq(A, b, rcond=None)` returns $\hat x$, the sum of squared errors and the rank. A rank below the number of columns means the best fit isn't unique.
+  - In NumPy, `np.linalg.lstsq(A, b, rcond=None)` returns $\hat x$, an array holding the sum of squared errors, and the rank. A rank below the number of columns means the best fit isn't unique, and then that array is empty.
 
   **Next:** The eigenvalues and SVD lesson looks for the directions a matrix only stretches, and describes any matrix using two orthogonal matrices and a stretch.

@@ -184,7 +184,7 @@ exercises:
       k:
         min: 1
         max: 3
-    constraints: ["c != k"]
+    constraints: ["c != k", "3 * c != k", "c != 2 * k"]
     answer_expr: 5 * k
     tolerance:
       abs: 0.001
@@ -350,7 +350,7 @@ exercises:
         min: -10
         max: 10
         step: 5
-    constraints: ["q != 0"]
+    constraints: ["q != 0", "q != 2 * p"]
     answer_expr: q
     tolerance:
       abs: 0.001
@@ -596,38 +596,32 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 4
-    prompt: Fit the line $y=c+mt$ by least squares to the points $(0,{{=p}})$, $(1,{{=q}})$ and $(2,{{=r}})$. What is $c$?
+    prompt: Fit the line $y=c+mt$ by least squares to the points $(0,{{=h+d}})$, $(1,{{=h+v-2*d}})$ and $(2,{{=h+2*v+d}})$. What is $c$?
     params:
-      p:
+      h:
         min: 1
-        max: 6
-      q:
+        max: 5
+      v:
         min: 1
-        max: 6
-      r:
+        max: 3
+        step: 2
+      d:
         min: 1
-        max: 6
-    constraints:
-      [
-        "mod(5 * p + 2 * q - r, 6) == 0",
-        "5 * p + 2 * q - r != 6 * p",
-        "3 * (5 * p + 2 * q - r) != 6 * (p + q + r)",
-        "5 * p + 2 * q - r != 6 * q",
-      ]
-    answer_expr: (5 * p + 2 * q - r) / 6
+        max: 2
+    answer_expr: h
     tolerance:
       abs: 0.001
     common_wrong:
-      - answer_expr: p
+      - answer_expr: h + d
         category: incorrect_reasoning
         feedback: The fitted line doesn't have to pass through the point at $t=0$. Solve the normal equations.
-      - answer_expr: (p + q + r) / 3
+      - answer_expr: h + v
         category: misapplied_technique
         feedback: That is the average $y$. Here $A^\top A$ has nonzero off-diagonal entries, so $c$ and $m$ must be solved together.
-      - answer_expr: q
+      - answer_expr: h + v - 2 * d
         category: incorrect_reasoning
         feedback: That is the middle measurement. Solve the normal equations for $c$ and $m$.
-    solution: $A^\top A=\begin{bmatrix}3&3\\3&5\end{bmatrix}$ and $A^\top b=({{=p+q+r}},{{=q+2*r}})$. Subtracting the first equation from the second gives $2m={{=r-p}}$, so $m={{=(r-p)/2}}$. Then the first equation, $3c+3m={{=p+q+r}}$, gives $c={{=(5*p+2*q-r)/6}}$.
+    solution: $A^\top A=\begin{bmatrix}3&3\\3&5\end{bmatrix}$ and $A^\top b=({{=3*h+3*v}},{{=3*h+5*v}})$. Subtracting the first equation from the second gives $2m={{=2*v}}$, so $m={{=v}}$. Then the first equation, $3c+3m={{=3*h+3*v}}$, gives $c={{=h}}$.
   - id: orthp-sensor-fit
     dimension: transfer
     type: numeric
@@ -662,7 +656,7 @@ exercises:
       - id: b
         text: The least-squares solution $\hat x$, one entry per column of $A$.
         correct: true
-        feedback: The first result is $\hat x$. The others are the sum of squared errors, the rank and one more list.
+        feedback: The first result is $\hat x$. The others are an array holding the sum of squared errors, the rank and one more list.
       - id: c
         text: The error vector $b-A\hat x$, one entry for each row of $A$.
         correct: false
@@ -672,8 +666,8 @@ exercises:
         text: The sum of squared errors of the best fit, as one number.
         correct: false
         category: recall_failure
-        feedback: The sum of squared errors is the second result.
-    solution: The first result is the least-squares solution $\hat x$. Then come the sum of squared errors, the rank of $A$ and one more list.
+        feedback: The sum of squared errors is in the second result, an array with one entry when $A$ has more rows than columns and full rank.
+    solution: The first result is the least-squares solution $\hat x$. Then come an array holding the sum of squared errors, the rank of $A$ and one more list.
   - id: orthp-numpy-self-explain
     lesson_only: true
     dimension: implementation
