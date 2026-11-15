@@ -85,7 +85,7 @@ concepts:
       est_minutes: 30,
       goal_weight: 3,
       dimensions: [conceptual, math, implementation],
-      prereqs: [{ id: prefill-decode }, { id: multi-head-attention }],
+      prereqs: [{ id: prefill-decode }, { id: multi-head-attention }, { id: gpu-inference-basics }],
       objectives:
         [
           {
@@ -174,8 +174,7 @@ concepts:
       est_minutes: 30,
       goal_weight: 2,
       dimensions: [conceptual, transfer],
-      prereqs:
-        [{ id: kv-cache }, { id: inference-metrics }, { id: mixture-of-experts, strength: soft }],
+      prereqs: [{ id: kv-cache }, { id: inference-metrics }, { id: mixture-of-experts }],
       objectives:
         [
           { text: "Explain how continuous batching raises throughput", dimension: conceptual },
