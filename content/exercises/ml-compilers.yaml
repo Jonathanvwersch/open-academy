@@ -9,9 +9,9 @@ exercises:
     prompt: What does eager execution do when it runs a model?
     options:
       - id: a
-        text: It runs each operation as its own kernel as soon as the code reaches it.
+        text: It dispatches each operation as soon as Python reaches that operation.
         correct: true
-        feedback: Eager execution launches one kernel per operation, straight away, so each result goes to GPU memory.
+        feedback: Eager execution dispatches operations as Python reaches them. The kernel count and memory traffic depend on the operation.
       - id: b
         text: It records every operation first, then runs the model as one kernel.
         correct: false
@@ -27,7 +27,7 @@ exercises:
         correct: false
         category: misunderstood_definition
         feedback: That is lowering, which a compiler does to a recorded graph.
-    solution: Eager execution runs each operation as its own kernel the moment the code reaches it, and each kernel writes its result to GPU memory.
+    solution: Eager execution dispatches operations as Python reaches them. An operation can use one or several kernels, an existing fused kernel, or a view that moves no data.
   - id: mlcp-lower-self-explain
     lesson_only: true
     dimension: conceptual
@@ -45,7 +45,7 @@ exercises:
         text: Division is slower than addition, so the GPU always schedules it last.
         correct: false
         category: incorrect_reasoning
-        feedback: The order comes from which values each operation needs, not from how slow it is.
+        feedback: The order comes from which values each operation needs. The divide needs the completed sum.
       - id: c
         text: The sum is elementwise, and elementwise steps always run before any reduce.
         correct: false
@@ -63,7 +63,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "Eager PyTorch runs `y = x * 2 + 1` on a large tensor as two kernels, so the result of `x * 2` goes to GPU memory and comes straight back. Why can't it merge the two into one kernel?"
+    prompt: "Assume eager PyTorch runs `y = x * 2 + 1` on a large tensor as two kernels, writing the intermediate to HBM. Fusion would preserve the arithmetic order and rounding. Why doesn't eager execution merge these operations?"
     options:
       - id: a
         text: When it runs `x * 2`, it hasn't yet seen the `+ 1` that uses the result.
@@ -78,12 +78,12 @@ exercises:
         text: Merging them would give slightly different values for `y`.
         correct: false
         category: incorrect_reasoning
-        feedback: The fused kernel does the same arithmetic in the same order, so the values are the same.
+        feedback: This example assumes fusion preserves arithmetic order and rounding, so changing the values isn't the obstacle.
       - id: d
         text: Merging them would need more FLOPs than running them separately.
         correct: false
         category: misunderstood_definition
-        feedback: Fusion does exactly the same FLOPs. It only moves fewer bytes.
+        feedback: This fusion keeps the same FLOPs while reducing intermediate memory traffic and kernel-launch overhead.
     solution: Eager execution runs each operation the moment it reaches it, so when it runs `x * 2` it doesn't know a `+ 1` follows. A compiler records the graph first, so it can see both and merge them.
   - id: mlcp-primitive-kind
     dimension: conceptual
@@ -114,7 +114,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "A softmax over one row of {{= n }} scores is lowered to three primitives: exponentiate each score, add up the exponentials, then divide each exponential by that total. Under eager execution, how many numbers are written to GPU memory in total?"
+    prompt: "A softmax over one row of {{= n }} scores is lowered to three primitives: exponentiate each score, add up the exponentials, then divide each exponential by that total. Assume each primitive runs as a separate eager kernel and writes its output to HBM. How many numbers are written in total?"
     params:
       n:
         min: 3
@@ -125,13 +125,13 @@ exercises:
     common_wrong:
       - answer_expr: 3 * n
         category: incorrect_reasoning
-        feedback: The sum is a reduce, so it writes a single number, not one for each score.
+        feedback: The sum is a reduce, so the whole row produces a single output number.
       - answer_expr: 2 * n
         category: incorrect_reasoning
-        feedback: Under eager execution the sum is its own kernel too, so it also writes its one number.
+        feedback: In this model the sum is its own kernel too, so it also writes its one number.
       - answer_expr: n
         category: misunderstood_definition
-        feedback: That counts only the final answer. Eager execution also writes every in-between result.
+        feedback: That counts only the final answer. The separate kernels in this model also write the intermediate results.
     solution: Each primitive is its own kernel. The exp kernel writes {{= n }} numbers, the sum kernel writes 1 and the divide kernel writes {{= n }}, so {{= n }} + 1 + {{= n }} = {{= 2 * n + 1 }}.
   - id: mlcp-graph-break
     dimension: conceptual
@@ -159,7 +159,7 @@ exercises:
         text: It lowers the `if` into an elementwise primitive and fuses it with the next step.
         correct: false
         category: misunderstood_definition
-        feedback: The `if` is a Python decision about which code runs, not arithmetic on each number.
+        feedback: The `if` is a Python decision about which code runs. It chooses a branch using the tensor's mean.
     solution: The branch depends on the value of `h.mean()`, which isn't known until the model runs. So `torch.compile` splits the model into separate graphs at that line, and it can't fuse across the split.
   - id: mlcp-what-graph-shows
     dimension: conceptual
@@ -177,12 +177,12 @@ exercises:
         text: They can be skipped, because nothing returns them.
         correct: false
         category: incorrect_reasoning
-        feedback: "`y` is computed from them, so they still have to be computed, just not stored."
+        feedback: "`y` depends on both intermediate values. A fused kernel computes them and keeps them on chip."
       - id: c
         text: They must be written to GPU memory, because every result of a kernel goes there.
         correct: false
         category: incorrect_reasoning
-        feedback: That's true for separate eager kernels. A fused kernel keeps in-between values on chip.
+        feedback: Separate eager kernels write the intermediate tensors in our model. A fused kernel can keep them on chip.
       - id: d
         text: They can be computed at lower precision, because they're only in-between values.
         correct: false
@@ -205,12 +205,12 @@ exercises:
         text: The compiler turns the new layer into a reduce, which GPUs run faster.
         correct: false
         category: misunderstood_definition
-        feedback: Each output depends on one input number, so every step is elementwise, not a reduce.
+        feedback: Each output depends on one input number, so every step is elementwise. A reduce would combine several input numbers.
       - id: c
         text: The compiler runs unknown layers eagerly, which is fast for small steps.
         correct: false
         category: incorrect_reasoning
-        feedback: Eager execution writes every in-between result to GPU memory, which is the slow part for small steps.
+        feedback: Running these primitives in separate kernels writes and rereads intermediate tensors. Fusion can avoid that traffic.
       - id: d
         text: The compiler times the layer once and stores its outputs to reuse later.
         correct: false
@@ -262,7 +262,7 @@ exercises:
         text: It does a third of the FLOPs, so it needs a third of the bytes.
         correct: false
         category: misunderstood_definition
-        feedback: The fused kernel does the same three FLOPs per number. Only the bytes change.
+        feedback: The fused kernel keeps all three FLOPs per number. It removes intermediate tensor writes and reads.
       - id: c
         text: It stores each number in fewer bytes than the eager kernels do.
         correct: false
@@ -290,7 +290,7 @@ exercises:
       - id: b
         text: The fused kernel does the same FLOPs and is faster because it moves fewer bytes.
         correct: true
-        feedback: In-between results stay on chip, so less data travels to and from GPU memory.
+        feedback: In-between results stay on chip, reducing memory traffic. Merging kernels also reduces launch overhead.
       - id: c
         text: Fusion only speeds up compute-bound kernels, so this chain isn't faster.
         correct: false
@@ -300,8 +300,8 @@ exercises:
         text: The fused kernel is faster because it runs at a higher clock speed.
         correct: false
         category: misunderstood_definition
-        feedback: Fusion doesn't change the GPU's speed. It changes how much data moves.
-    solution: Fusion does exactly the same arithmetic. It's faster because the in-between results stay on chip, so fewer bytes move to and from GPU memory, which is what sets the time for memory-bound steps.
+        feedback: Fusion doesn't raise the GPU's clock speed. It reduces intermediate memory traffic and kernel-launch overhead.
+    solution: Fusing this chain keeps the same FLOPs while reducing intermediate memory traffic and kernel-launch overhead. For large memory-bound tensors, bytes moved provide the time estimate.
   - id: mlcp-bytes-saved-template
     dimension: implementation
     type: numeric
@@ -345,7 +345,7 @@ exercises:
         step: 10
     answer_expr: 4 * n * (k - 1) / 3.35
     tolerance:
-      abs: 0.6
+      abs: 0.71
     common_wrong:
       - answer_expr: 2 * n * (k - 1) / 3.35
         category: math_error
@@ -472,7 +472,7 @@ exercises:
         text: $(a+a)\div2$ doesn't equal $a$, so the greedy rewrite was a mistake.
         correct: false
         category: incorrect_reasoning
-        feedback: $(a+a)\div2$ does equal $a$. The rewrite was valid, it just blocked a later rule.
+        feedback: $(a+a)\div2$ equals $a$ in the toy exact-real model. The rewrite was valid, it just blocked a later rule.
       - id: d
         text: The greedy compiler ignores costs, and the e-graph uses a cost model.
         correct: false
@@ -485,7 +485,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: A compiler may only use rewrite rules whose two sides always give the same value. Which of these rules is valid?
+    prompt: A toy compiler uses exact real arithmetic, with no rounding and all divisors nonzero. Which rewrite preserves the value for every allowed choice of $x$, $y$ and $z$?
     options:
       - id: a
         text: $(x+y)\times z$ can become $x\times z+y\times z$.
@@ -506,7 +506,7 @@ exercises:
         correct: false
         category: math_error
         feedback: Subtracting $(y-z)$ adds $z$ back. With $x=3$, $y=2$, $z=1$ the left is $2$ and the right is $0$.
-    solution: Only $(x+y)\times z=x\times z+y\times z$ holds for every value. Each of the others gives a different number for at least one choice of values.
+    solution: Distributivity, $(x+y)\times z=x\times z+y\times z$, holds for all real values in this exact-arithmetic model. Each other rule has a counterexample with nonzero divisors. Floating-point compilers must also respect their supported numerical semantics.
   - id: mlcp-versions-template
     dimension: implementation
     type: numeric
@@ -550,7 +550,7 @@ exercises:
         feedback: That's only the cheapest version of the inner group. The division by $3$ costs 4 more.
       - answer: 9
         category: incorrect_reasoning
-        feedback: The group holds alternatives, so extraction picks one of them, not both.
+        feedback: The group holds alternatives, so extraction picks the cheaper one. Adding their costs would count both alternatives.
     solution: Extraction picks $b+b$, cost 1, from the inner group, then adds the division, cost 4. The cheapest version, $(b+b)\div3$, costs $1+4=5$.
   - id: mlcp-greedy-order
     dimension: conceptual
@@ -614,7 +614,7 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: "In one attention head, the query matrix $Q$ and the key matrix $K$ each have $T={{= t }}$ rows of 128 numbers, and the scores are $(QK^\\top)\\div s$ for a constant $s$, where $K^\\top$ is $K$ transposed. That version divides every entry of the $T\\times T$ score matrix by $s$. An equal version is $(Q\\div s)K^\\top$, which divides the entries of $Q$ instead. An e-graph holds both, and its cost model counts divisions. How many divisions does the version that extraction picks need?"
+    prompt: "In one attention head, the query matrix $Q$ and the key matrix $K$ each have $T={{= t }}$ rows of 128 numbers, and the scores are $(QK^\\top)\\div s$ for a nonzero constant $s$, where $K^\\top$ is $K$ transposed. That version divides every entry of the $T\\times T$ score matrix by $s$. In an exact-real-arithmetic model with no rounding, an equal version is $(Q\\div s)K^\\top$, which divides the entries of $Q$ instead. An e-graph holds both, and its cost model counts divisions. How many divisions does the version that extraction picks need?"
     params:
       t:
         min: 256
@@ -724,7 +724,7 @@ exercises:
     common_wrong:
       - answer_expr: m * 3.35
         category: math_error
-        feedback: Time is bytes divided by bandwidth, not multiplied.
+        feedback: Time is bytes divided by bandwidth. Multiplying gives the wrong units.
       - answer_expr: m / 3350
         category: math_error
         feedback: 3.35 TB/s is 3.35 MB per microsecond, so divide the MB by 3.35.
@@ -849,7 +849,7 @@ exercises:
     prompt: Explain why recording the whole model as a graph lets a compiler fuse operations that eager execution runs one at a time, what fusing a chain of elementwise operations saves, and how an e-graph helps the compiler pick a cheaper equal version of the graph.
     rubric:
       - id: r1
-        criterion: Explain that eager execution runs each operation as its own kernel as soon as it reaches it, so it can't see the next operation, while the recorded graph shows which results are used only by the next operation.
+        criterion: Explain that eager execution dispatches operations as Python reaches them, while the recorded graph shows which results are used only by the next operation and exposes opportunities for fusion.
         weight: 1
         required: true
       - id: r2
@@ -861,11 +861,11 @@ exercises:
         weight: 1
         required: true
       - id: r4
-        criterion: Mention that elementwise chains are memory-bound, so moving fewer bytes cuts the time by about the same factor.
+        criterion: Mention that for the large, memory-bound chain in our traffic model, estimated time falls by about the same factor as bytes moved.
         weight: 1
         required: false
       - id: r5
         criterion: Mention that a greedy rewriter can throw away a version a later rule needed, which the e-graph avoids.
         weight: 1
         required: false
-    exemplar: Eager execution runs each operation as its own kernel the moment it reaches it, so it never knows what comes next and writes every result to GPU memory. A compiler records the whole graph first, so it can see that a result is used only by the next operation. A fused kernel then keeps those in-between results on chip, reading the input once and writing the output once, so it moves far fewer bytes; since elementwise chains are memory-bound, the time falls by about the same factor. An e-graph keeps every equal version of the graph in groups of equal value and never deletes one, so a rewrite can't block a better rule later. After the rules stop adding anything, extraction picks the cheapest version using a cost model.
+    exemplar: Eager execution dispatches each operation as Python reaches it. A compiler records the graph first, so it can see that a result is used only by the next operation. In our chain, the separate eager kernels write and reread intermediate tensors. A fused kernel keeps those results on chip, reading the input once and writing the output once. This reduces memory traffic and kernel-launch overhead. For our large, memory-bound chain, the estimated time falls by about the same factor as bytes moved. An e-graph keeps equivalent versions in groups under its numerical rules, which use exact real arithmetic in our toy search. Keeping alternatives lets later rules reach versions a greedy rewrite could lose. Extraction picks the cheapest version using a cost model.
