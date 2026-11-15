@@ -6,6 +6,7 @@ import { Badge } from '../../components/ui/badge.js';
 import { Button } from '../../components/ui/button.js';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card.js';
 import { Progress } from '../../components/ui/progress.js';
+import { studyMapQueryOptions } from '../map/queries.js';
 import { StreakCard } from '../progress/streak-card.js';
 import { todayQueryOptions } from '../sessions/queries.js';
 import { useStartSession } from '../sessions/start-session.js';
@@ -74,6 +75,9 @@ export function LearnPage() {
       if (context?.previous) {
         queryClient.setQueryData(learnQueryOptions().queryKey, context.previous);
       }
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: studyMapQueryOptions().queryKey });
     },
     onSettled: async () => {
       await Promise.all([

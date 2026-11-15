@@ -215,6 +215,20 @@ test('Home focus changes the plan and keeps outside reviews visible', async ({ p
         prerequisites: [],
       },
     ];
+    learn.upNext = {
+      upcoming: [
+        {
+          conceptId: focusSubjectId ? 'ai-projected' : 'maths-projected',
+          courseId: focusSubjectId ? 'ml-foundations' : 'maths-for-ml',
+          courseTitle: focusSubjectId ? 'ML Foundations' : 'Mathematics for Machine Learning',
+          title: focusSubjectId ? 'AI projected topic' : 'Mathematics projected topic',
+          unitTitle: 'Unit 1',
+          date: '2026-01-07',
+          dayLabel: 'Today',
+        },
+      ],
+      finished: [],
+    };
     await route.fulfill({ response, json: learn });
   });
   await page.route('**/api/focus', async (route) => {
@@ -227,6 +241,10 @@ test('Home focus changes the plan and keeps outside reviews visible', async ({ p
   });
   await markCourseStarted();
   await page.goto('/');
+
+  await page.getByRole('link', { name: 'Up next', exact: true }).click();
+  await expect(page.getByRole('link', { name: /Mathematics projected topic/ })).toBeVisible();
+  await page.getByRole('link', { name: 'Home', exact: true }).click();
 
   const focus = page.getByRole('group', { name: 'Focus' });
   const all = focus.getByRole('button', { name: 'All', exact: true });
@@ -241,6 +259,10 @@ test('Home focus changes the plan and keeps outside reviews visible', async ({ p
   await expect(page.getByRole('link', { name: 'Review them' })).toHaveAttribute('href', '/reviews');
   await expect(page.getByText('Paused while you focus on AI')).toBeVisible();
   await expect(page.getByText(/^All current AI lessons done by /)).toBeVisible();
+  await page.getByRole('link', { name: 'Up next', exact: true }).click();
+  await expect(page.getByRole('link', { name: /AI projected topic/ })).toBeVisible();
+  await expect(page.getByRole('link', { name: /Mathematics projected topic/ })).toHaveCount(0);
+  await page.getByRole('link', { name: 'Home', exact: true }).click();
   await all.click();
   await expect(all).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByText('Mathematics Topic', { exact: true })).toBeVisible();
