@@ -3,6 +3,7 @@ import type { ContentIndex, IndexedConcept, IndexedCourse } from '../../content/
 import type { Database } from '../../db/client.js';
 import type { LearnerRepository } from '../../db/repository.js';
 import {
+  courseEnrollments,
   lessonRuns,
   mastery,
   masteryEvents,
@@ -65,6 +66,22 @@ export async function restartTopic(input: {
           ),
         ),
       );
+
+    const affectedCourseIds = input.content.courses
+      .filter((course) => course.units.some((unit) => unit.concepts.includes(input.conceptId)))
+      .map((course) => course.id);
+    if (affectedCourseIds.length > 0) {
+      await tx
+        .update(courseEnrollments)
+        .set({ status: 'active', completedAt: null })
+        .where(
+          and(
+            eq(courseEnrollments.userId, input.userId),
+            eq(courseEnrollments.status, 'completed'),
+            inArray(courseEnrollments.courseId, affectedCourseIds),
+          ),
+        );
+    }
 
     const sessions = await tx
       .select({ id: studySessions.id })

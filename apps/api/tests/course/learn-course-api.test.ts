@@ -341,6 +341,43 @@ test('restarting a topic clears only its progress while preserving history', asy
   expect((await post('/concepts/missing-concept/restart', {})).status).toBe(404);
 });
 
+test('restarting a completed course topic reactivates the course and removes its completion', async () => {
+  const course = content.coursesById.get('ml-foundations');
+  const conceptId = 'vectors';
+  if (!course?.units.some((unit) => unit.concepts.includes(conceptId))) {
+    throw new Error('Expected vectors to be part of ml-foundations');
+  }
+  const conceptIds = [...new Set(course.units.flatMap((unit) => unit.concepts))];
+  await db.insert(courseEnrollments).values({
+    userId,
+    courseId: course.id,
+    status: 'completed',
+    startMethod: 'beginning',
+    completedAt: new Date('2026-01-07T12:00:00.000Z'),
+  });
+  await db
+    .insert(lessonRuns)
+    .values(conceptIds.map((id) => ({ userId, conceptId: id, status: 'completed' as const })));
+
+  const response = await post(`/concepts/${conceptId}/restart`, {});
+  expect(response.status).toBe(200);
+  const [enrollment] = await db
+    .select()
+    .from(courseEnrollments)
+    .where(eq(courseEnrollments.courseId, course.id));
+  expect(enrollment).toMatchObject({ status: 'active', completedAt: null });
+
+  const today = await (await get('/today')).json();
+  expect(today.studyCourses.map((studyCourse: { id: string }) => studyCourse.id)).toContain(
+    course.id,
+  );
+  const coursePayload = await (await get(`/courses/${course.id}`)).json();
+  const restartedTopic = coursePayload.units
+    .flatMap((unit: { topics: Array<{ conceptId: string; status: string }> }) => unit.topics)
+    .find((topic: { conceptId: string }) => topic.conceptId === conceptId);
+  expect(restartedTopic?.status).toBe('not_started');
+});
+
 test('restarting a prerequisite skips planned dependent activities', async () => {
   const prerequisiteId = 'tokenization';
   const dependentId = 'embeddings';
