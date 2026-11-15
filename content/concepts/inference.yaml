@@ -18,7 +18,7 @@ concepts:
           { text: "Explain the latency–throughput trade-off of batching", dimension: conceptual },
         ],
       projects: [inference-engine],
-      status: stub,
+      status: authored,
     }
   - {
       id: prefill-decode,
