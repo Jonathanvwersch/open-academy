@@ -80,7 +80,7 @@ knowledge_points:
     explain: |
       ### From one day to many
 
-      We can score one outcome now. To summarise many days, we need an average that accounts for how often each weather happens.
+      To summarise many days, we average how unexpected each weather outcome is. Its **surprise** is the base-two logarithm of its probability's reciprocal. Written $\log_2$, this logarithm counts doublings from 1. Surprise is measured in **bits**: one bit is the surprise of either outcome of a fair coin.
 
       **Entropy** is the expected surprise of a distribution, written $H(p)$. Here $p$ gives the actual outcome probabilities.
 
@@ -148,9 +148,9 @@ knowledge_points:
     explain: |
       ### Score one day's forecast
 
-      To keep the arithmetic simple, suppose the app gives the same forecast $q=(1/4,1/4,1/2)$ for sun, cloud and rain every day.
+      A weather app predicts probabilities for sun, cloud and rain. To keep arithmetic simple, it gives the same forecast $q=(1/4,1/4,1/2)$ every day.
 
-      For each recorded day, we know the weather that happened. We call this answer its label and pair it with the forecast to make a labelled example. To score the forecast, use the label's surprise under the forecast probabilities. This is the **classification loss**.
+      Each weather category is a **class**. The weather recorded on a day is its label. Pairing it with the forecast makes a labelled example. **Surprise** measures how unexpected an outcome is: take its probability's reciprocal and count doublings from 1 with the base-two logarithm $\log_2$. The unit is a **bit**, the surprise of either fair-coin outcome. Using the label's forecast probability gives the **classification loss**, a score for the forecast's mistake.
 
       $$\text{loss}=\log_2\frac{1}{q_{\text{actual}}}$$
 
@@ -162,7 +162,7 @@ knowledge_points:
       - A probability of $1/8$ gives $\log_2 8=3$ bits.
       - A probability of 1 gives $\log_2 1=0$ bits.
 
-      When a forecast strongly favours the wrong answer, it gives the observed class a tiny probability. Its loss is then larger than a less confident mistake's, whereas accuracy records both as simply wrong.
+      Strongly favouring a wrong answer gives the observed class a tiny probability and a large loss. **Accuracy**, the fraction of correct class predictions, counts confident and uncertain mistakes alike.
 
       ### Average the daily losses
 
@@ -184,7 +184,7 @@ knowledge_points:
       2. **Average across days.** Imagine 100 days with 50 sunny, 25 cloudy and 25 rainy days. Weight each daily loss by its fraction of those days.
          $$H(p,q)=\frac{50\times2+25\times2+25\times1}{100}=1.75\text{ bits}$$
 
-      This average classification loss is cross-entropy. Its 1.75 bits exceed the 1.5-bit entropy baseline.
+      This average classification loss is cross-entropy. **Entropy** averages surprise using the actual probabilities for both scoring and weighting. For this weather it is 1.5 bits, below the forecast's 1.75 bits.
     problems:
       [
         it-cross-basics,
@@ -200,7 +200,7 @@ knowledge_points:
     explain: |
       ### Compare with the baseline
 
-      The app's excess loss, beyond weather's entropy, measures how much its wrong probabilities cost.
+      How much do wrong forecast probabilities cost? A weather app assigns probabilities $q$ to outcomes whose actual distribution is $p$. **Surprise** scores an outcome by the base-two logarithm of its probability's reciprocal, in bits. **Cross-entropy** $H(p,q)$ averages surprise using forecast probabilities for scoring and actual probabilities for weighting. This is the app's average **loss**, its mistake score. **Entropy** $H(p)$ uses actual probabilities for both scoring and weighting, giving a baseline.
 
       **Kullback–Leibler divergence**, or **KL divergence**, measures the extra average surprise from predicting $q$ when outcomes follow $p$. In $\mathrm{KL}(p\Vert q)$, the double bar separates actual $p$ on the left from forecast $q$ on the right.
 

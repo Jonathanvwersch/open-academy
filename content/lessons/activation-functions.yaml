@@ -106,7 +106,7 @@ knowledge_points:
     explain: |
       ### Why not use the step?
 
-      The perceptron's step is an activation function, and it does bend a stack of layers. But it's flat everywhere except at $z=0$, where it jumps. In the derivatives lesson, we saw that a nudge changes the output by about the slope times the nudge. The step's slope is $0$ wherever it has one, so nudging a score, or a weight behind it, changes nothing, and training can't tell which way to move. So we want functions that bend and still have a slope that training can use.
+      The perceptron's step is an activation function: it turns a neuron's score into its output. A **layer** groups neurons reading the same inputs; stacking layers feeds one group's outputs into the next. The step bends this stack's response, but it's flat except at $z=0$, where it jumps. A nudge changes the output by about slope times nudge. The step's slope is $0$ wherever it exists, so nudging a score or weight changes nothing, and training can't tell which way to move. Training needs bends with usable slopes.
 
       ### Three curves
 
@@ -187,11 +187,11 @@ knowledge_points:
     explain: |
       ### How much does the output move?
 
-      Training improves a network by nudging its weights, and each nudge changes a neuron's score a little. So we need to know how much an activation's output moves when its score moves. In the derivatives lesson, we saw that the answer is the slope. For a small change in score, the change in output is about the slope times the change in score.
+      Training nudges weights, changing a neuron's score. How much does its activation's output move? As the derivatives lesson showed, for a small score change, the output change is about slope times score change.
 
       ### The slope of each curve
 
-      The picture shows the blue sigmoid curve again, with two red lines that each just touch the curve at one score. These are its tangent lines. At $z=0$ the curve is at its steepest, with slope $0.25$. At $z=3$ the output is about $0.95$ and the curve has nearly levelled off, so its slope is only about $0.045$, and a nudge to the score there barely moves the output.
+      The **sigmoid**, written $\sigma$, turns score $z$ into $1/(1+e^{-z})$, a smooth rise from near $0$ to near $1$. The picture shows it in blue with two red tangent lines, each touching it at one score. At $z=0$ the curve is at its steepest, with slope $0.25$. At $z=3$ its output is about $0.95$ and its slope only about $0.045$, so a nudge barely moves the output.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 400" aria-label="The sigmoid curve with two tangent lines. At z = 0 the curve is steepest and the tangent has slope 0.25. At z = 3 the curve has flattened and the tangent has slope about 0.045.">
@@ -220,7 +220,7 @@ knowledge_points:
       </svg>
       ```
 
-      An **activation's slope** is its derivative, how fast its output changes as its score changes. For our three activations, the slopes are
+      **ReLU** keeps positive scores and turns negative scores into $0$. **Tanh** is a smooth S-shaped function from near $-1$ to near $1$. An **activation's slope** is its derivative, how fast its output changes as its score changes. Their slopes are
 
       $$\operatorname{ReLU}'(z)=\begin{cases}1 & \text{if } z>0\\ 0 & \text{if } z<0\end{cases}$$
 
@@ -234,7 +234,7 @@ knowledge_points:
 
       The sigmoid and tanh have a real weakness. Far from $z=0$ both curves are almost flat, so their slopes are close to $0$. A flat stretch like this is called **saturation**. At $z=-4$ the sigmoid's slope is only about $0.018$, so changing the weights behind that neuron hardly changes anything, and training learns very slowly. ReLU never flattens for positive scores, which is the main reason it's the usual choice between layers. But a ReLU neuron whose score is negative for every input always outputs $0$ with slope $0$, so it stops learning altogether. This is called a dead unit, unit being another word for neuron.
 
-      Be careful not to read a big output as a big slope. At $z=4$ the sigmoid outputs $0.982$, close to its largest value, but that's just where the curve is almost flat, so its slope is tiny.
+      Be careful: a big output can have a tiny slope. At $z=4$ the sigmoid outputs $0.982$, but its curve is almost flat, so its slope is tiny.
     worked: |
       Let's find the sigmoid's slope with the quotient rule from the derivatives lesson, use it at $z=0$, and check the answer by nudging the score from $0$ to $0.1$.
 

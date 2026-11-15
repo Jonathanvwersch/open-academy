@@ -77,11 +77,11 @@ knowledge_points:
     explain: |
       ### Look at one operation
 
-      We have the forward values. Now we need the rate of change at each small operation before combining them with the chain rule.
+      A **forward pass** evaluates operations in order as their inputs become ready. Its results are the **forward values**. We need each operation's rate of change before combining rates with the chain rule.
 
-      Zoom in on the multiplication $p=w\cdot x$. We'll keep $x=3$ while changing $w$. Increasing $w$ by 0.1 raises $p$ by 0.3, three times as much. The picture leaves out subtraction and squaring so we can focus on how multiplication responds.
+      Our prediction $p=w\cdot x$ multiplies weight $w$ by input $x$. Keep $x=3$ while changing $w$: increasing $w$ by 0.1 raises $p$ by 0.3. The picture isolates multiplication.
 
-      A **local derivative** is the rate of change of one operation's output with respect to one input, with other inputs fixed. Here it describes $p$, not the final score: $p$ rises by 0.3 when $w$ rises by 0.1, so the rate is 3.
+      A **local derivative** is one operation's rate of change with respect to one input, with other inputs fixed. Here it describes how prediction $p$ responds, with rate 3. Reaching the final score still requires following the later operations.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 280" aria-label="With x fixed at 3, w changes from 2 to 2.1 and multiplication p changes from 6 to 6.3. The local derivative of p with respect to w is 3.">
@@ -101,17 +101,17 @@ knowledge_points:
 
       $$\frac{\partial p}{\partial w}=x.$$
 
-      The top names the output $p$; the bottom names the input $w$ we're changing. With $x=3$, every increase in $w$ is multiplied by 3, so $p$ changes three times as much.
+      The top names output $p$; the bottom names the changing input $w$. With $x=3$, $p$ changes three times as much as $w$.
 
       ### Rules for the small operations
 
       For addition, each input has local derivative 1: increasing 2 to 3 in $2+3$ raises the sum from 5 to 6. For multiplication, each input's derivative is the other input's value: increasing $w$ from 2 to 3 in $w\cdot3$ raises $p$ from 6 to 9. For subtraction, the first input has derivative 1 and the subtracted input has derivative $-1$: in $6-5$, raising 6 to 7 raises the error to 2, while raising 5 to 6 lowers it to 0.
 
-      Squaring depends on its input value:
+      Subtract target $t$ from prediction $p$ to get error $e$. Squaring $e$ gives mistake score $L$. Its derivative depends on the error:
 
       $$\frac{\partial L}{\partial e}=2e.$$
 
-      Let's see why the squaring rule needs the error's value. With $x=3$ and $t=5$, three different weights give different errors, so squaring has a different local derivative in each case:
+      With $x=3$ and $t=5$, three weights give different errors and therefore different local derivatives for squaring:
 
       | Weight $w$ | Error $e$ | Slope $2e$ |
       | --- | --- | --- |
@@ -151,9 +151,9 @@ knowledge_points:
     explain: |
       ### One number changes two sums
 
-      We now combine local derivatives to find how the final output responds. A derivative label tells us how a change travels along an arrow. For example, rate 3 on the arrow from $w$ into multiplication means a 0.1 increase in $w$ raises $p$ by 0.3.
+      We combine **local derivatives**, each operation's rate of change with respect to one input, to find how the final output responds. A derivative label tells us how a change travels along an arrow. For prediction $p=w\cdot x$, weight $w$ multiplies input $x$. Rate 3 from $w$ into multiplication means raising $w$ by 0.1 raises $p$ by 0.3.
 
-      Let's see what happens when one input is used twice. Add $x$ to $y$ to get $a$, add $y$ to $z$ to get $b$, then multiply the sums to get $g$. We'll set $x=1$, $y=2$ and $z=4$, giving $a=3$, $b=6$ and $g=18$. One $y$ node feeds both additions, so changing $y$ changes both sums.
+      What happens when one input is used twice? Add $x$ to $y$ to get $a$, add $y$ to $z$ to get $b$, then multiply the sums to get $g$. Set $x=1$, $y=2$ and $z=4$, giving $a=3$, $b=6$ and $g=18$. A **node** represents an input or operation. One $y$ node feeds both additions, so changing $y$ changes both sums.
 
       Each addition passes a change in $y$ on at rate 1. Multiplication's derivative is the other input's value. Holding $b=6$ fixed, raising $a$ from 3 to 4 raises $g$ from 18 to 24, so the rate is 6. Holding $a=3$ fixed gives rate 3 for changes in $b$. The diagram's two contributions multiply these rates by addition's rate 1, giving $6\cdot1$ and $3\cdot1$.
 
@@ -194,7 +194,7 @@ knowledge_points:
 
       Be careful not to stop after one path from a reused input. That would give 6 or 3 for $y$, missing the other effect. The paths add because a small change in $y$ moves the output through both sums, just as in the chain rule recap.
     worked: |
-      Let's return to our prediction score $L=(w\cdot x-t)^2$ at $w=2$, $x=3$, $t=5$. Each input has just one path to $L$.
+      Let's differentiate a mistake score $L=(w\cdot x-t)^2$: prediction $p=w\cdot x$ minus target $t$ gives error $e$, which we square. Use weight $w=2$, input $x=3$ and target $t=5$. Each input has one path to $L$.
 
       1. **Follow the weight's path.** The path goes through prediction, error and squaring, so multiply their local rates.
          $$\frac{\partial L}{\partial w}=\frac{\partial L}{\partial e}\frac{\partial e}{\partial p}\frac{\partial p}{\partial w}=2\cdot1\cdot3=6.$$

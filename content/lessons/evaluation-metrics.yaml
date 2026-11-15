@@ -16,11 +16,11 @@ knowledge_points:
     explain: |
       ### Four outcomes for a factory camera
 
-      Our camera says faulty or fine for each test part. When the camera says faulty, we say it **flags** the part. Flagged parts are counted in the column labelled Camera says faulty. They go to a person to check by hand. We call faulty the **positive** class, the thing we're trying to detect. Fine is the negative class. Positive doesn't mean good.
+      Our camera says faulty or fine for each test part. When the camera says faulty, we say it **flags** the part. Flagged parts go to a person to check by hand. We call faulty the **positive** class, the thing we're trying to detect. Fine is the negative class. Positive doesn't mean good.
 
       A true positive (TP) is a correctly flagged faulty part. A false positive (FP) is a fine part wrongly flagged, a false alarm. A false negative (FN) is a missed faulty part. A true negative (TN) is a fine part correctly called fine. True means the camera was right. Positive or negative names what the camera said.
 
-      There are 100 test parts, of which 10 are actually faulty. A **confusion matrix** compares what parts actually are with what the camera says. Each cell counts parts. Each part goes in exactly one cell. Rows tell us whether parts are actually faulty or fine. Columns tell us what the camera says.
+      There are 100 test parts, of which 10 are actually faulty. A **confusion matrix** compares what parts actually are with what the camera says. Each cell counts parts. Each part goes in exactly one cell. Rows tell us whether parts are actually faulty or fine. Columns tell us what the camera says, so flagged parts go in the Camera says faulty column.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 156" aria-label="Confusion matrix of counts. Columns are Camera says faulty and Camera says fine. The Actually faulty row has 6 true positives and 4 false negatives. The Actually fine row has 2 false positives and 88 true negatives.">
@@ -75,7 +75,9 @@ knowledge_points:
     explain: |
       ### Of the flagged parts, how many were faulty?
 
-      Our camera's accuracy includes fine parts it clears. Precision instead starts from the Camera says faulty column. Its eight flagged parts include six actually faulty parts and two fine parts.
+      A factory camera labels parts faulty or fine. Its **accuracy**, the fraction of all parts labelled correctly, includes fine parts it clears. Calling a part faulty **flags** it for a person's check. A **confusion matrix** counts actual labels in rows and camera labels in columns. The Camera says faulty column holds eight flagged parts: six faulty and two fine.
+
+      True positives (TP) are caught faults; false positives (FP) are fine parts flagged by mistake. False negatives (FN) are missed faults, and true negatives (TN) are fine parts correctly cleared.
 
       **Precision** is the fraction of flagged parts that are actually faulty.
 
@@ -85,7 +87,7 @@ knowledge_points:
 
       ### Of the faulty parts, how many did we catch?
 
-      **Recall** is the fraction of actually faulty parts the camera flags. It starts from the Actually faulty row. Of those ten faulty parts, six were caught and four missed.
+      **Recall** is the fraction of actually faulty parts the camera flags. The matrix's Actually faulty row counts these parts across both camera labels. Of those ten faulty parts, six were caught and four missed.
 
       $$\text{recall}=\frac{\text{TP}}{\text{TP}+\text{FN}}.$$
 
@@ -93,23 +95,23 @@ knowledge_points:
 
       ### Two comparison cameras
 
-      Imagine two comparison cameras on these 100 parts.
+      Compare two cameras on these 100 parts.
 
       - **All-parts** flags all 100 parts.
       - **One-part** flags just one part, and happens to be right.
 
-      The table scores these two imaginary cameras. Our camera's scores are calculated in the worked example, then compared with both.
+      The table scores both; the worked example calculates our camera's scores.
 
       | Camera | Precision | Recall |
       | --- | --- | --- |
       | All-parts | 10/100 | 10/10 |
       | One-part | 1/1 | 1/10 |
 
-      All-parts catches every fault but sends all the fine parts to a person to check by hand. One-part avoids false alarms but misses most faults.
+      All-parts catches every fault but sends every fine part for checking. One-part avoids false alarms but misses most faults.
 
       ### Which mistakes cost more?
 
-      If a missed fault can hurt someone, favour high recall while checking that the person can handle the false alarms. When false alarms are costly, precision matters more. Choose this priority before comparing models. Never use the test set to choose.
+      If missed faults can hurt someone, favour high recall while checking the person can handle the false alarms. Costly false alarms favour precision. Set this priority before comparing models; keep the test set out of the choice.
 
       Be careful with a camera that flags nothing. No false alarms might look perfect, but precision is 0/0. Report that it can't be computed because there are no flags. Recall is 0/10 = 0, so it catches nothing. If there are no actually faulty parts, recall can't be computed either.
     worked: |

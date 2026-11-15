@@ -101,7 +101,7 @@ knowledge_points:
     explain: |
       ### One choice, then stop
 
-      How can we get the slope from played episodes? Let's leave the corridor for a moment and take the simplest case, where the agent makes one choice and the episode ends. A slot machine has two arms. Arm A always pays $1$ and arm B always pays $3$, but the agent isn't told this. Its policy pulls B with probability $p=\pi_\theta(B)=e^\theta/(e^\theta+1)$ and A otherwise. The expected payout is each payout times its chance,
+      How can played episodes tell us how expected return changes with a policy parameter? Take a one-choice episode on a slot machine with two arms. Arm A always pays $1$ and arm B always pays $3$, but the agent isn't told this. The policy's adjustable parameter is $\theta$. It pulls B with probability $p=\pi_\theta(B)=e^\theta/(e^\theta+1)$ and A otherwise. Its expected payout, $J(\theta)$, is each payout times its chance,
 
       $$J(\theta)=3\,\pi_\theta(B)+1\,\pi_\theta(A),$$
 
@@ -170,7 +170,7 @@ knowledge_points:
     explain: |
       ### From one choice to an episode
 
-      In the corridor, the robot makes several choices before the episode ends. We'll use the same trick on whole episodes. We write an episode as $\tau$ (tau), the list of states and actions it went through, $s_0,a_0,s_1,a_1,\dots$. The episode's probability multiplies the policy's chance of each action by the world's chance of each move:
+      Our robot starts in cell 1 of four cells numbered left to right. Left and right moves succeed unless blocked by an end wall. Entering cell 4 ends the episode with $+10$; other moves pay $-1$, and $\gamma=0.9$. The policy's parameter $\theta$ sets its chance of moving right, $p=e^\theta/(e^\theta+1)$, and it moves left otherwise. We use the **log-derivative trick**, which writes a probability's derivative as that probability times the derivative of its log, on whole episodes. An episode $\tau$ (tau) lists states and actions, $s_0,a_0,s_1,a_1,\dots$. Its probability is:
 
       $$P(\tau)=\pi_\theta(a_0\mid s_0)\,p(s_1\mid s_0,a_0)\,\pi_\theta(a_1\mid s_1)\,p(s_2\mid s_1,a_1)\cdots$$
 
@@ -182,11 +182,11 @@ knowledge_points:
 
       $$\nabla_\theta\ln P(\tau)=\sum_{t=0}^{T-1}\nabla_\theta\ln\pi_\theta(a_t\mid s_t).$$
 
-      The episode ends at step $T$, so the last action is $a_{T-1}$. Now we repeat the slot-machine argument with episodes in place of arms. $J$ adds up each episode's $G_0$ times $P(\tau)$. The trick gives $\nabla_\theta P(\tau)=P(\tau)\,\nabla_\theta\ln P(\tau)$, so each term is again weighted by its probability, and
+      The episode ends at step $T$, so the last action is $a_{T-1}$. The expected return $J$ adds up each episode's $G_0$ times $P(\tau)$. The trick gives $\nabla_\theta P(\tau)=P(\tau)\,\nabla_\theta\ln P(\tau)$, so each term is weighted by its probability, and
 
       $$\nabla_\theta J=E\Big[G_0\sum_{t=0}^{T-1}\nabla_\theta\ln\pi_\theta(a_t\mid s_t)\Big].$$
 
-      So the robot never needs to know the world's rules. **REINFORCE**, published by Ronald Williams in 1992, plays one episode with $\pi_\theta$ and takes one gradient-ascent step with this estimate:
+      So the robot never needs to know the world's rules. **REINFORCE**, published by Ronald Williams in 1992, plays one episode with $\pi_\theta$ and takes one **gradient-ascent** step, adding the estimated gradient to raise expected return:
 
       $$\theta_{\text{new}}=\theta+\eta\,G_0\sum_{t=0}^{T-1}\nabla_\theta\ln\pi_\theta(a_t\mid s_t).$$
 
@@ -248,7 +248,7 @@ knowledge_points:
     explain: |
       ### Noisy estimates
 
-      REINFORCE's estimate is right on average, but one episode's estimate can be far off, so learning takes many episodes. It gets worse when every return is positive, as this example shows. Suppose the slot machine's arm A pays $11$ and arm B pays $13$, with the same policy as before, which pulls B with probability $p$. At $\theta=0$, pulling B gives $13\times0.5=6.5$ and pulling A gives $11\times(-0.5)=-5.5$. They still average $0.5$, but each estimate is more than ten times that, and they disagree about which way to move. We call this spread between estimates noise.
+      **REINFORCE** estimates the expected-return gradient by multiplying an episode's return by the sum of its chosen actions' log-probability gradients. This is right on average, but individual estimates can be far off. It gets worse when every return is positive, as this example shows. Consider one-choice episodes on a two-arm slot machine. Arm A pays $11$ and B pays $13$. A policy parameter $\theta$ sets B's probability $p=e^\theta/(e^\theta+1)$; otherwise it pulls A. One pull estimates the gradient as $G\,\nabla_\theta\ln\pi_\theta(a)$, where $G$ is the payout and $a$ the arm. At $\theta=0$, the log-probability gradients are $0.5$ for B and $-0.5$ for A. Pulling B gives $13\times0.5=6.5$ and A gives $11\times(-0.5)=-5.5$. They average $0.5$, but each estimate is more than ten times that average, and they disagree about which way to move. We call this spread noise.
 
       ### Subtracting a baseline
 
@@ -278,11 +278,11 @@ knowledge_points:
 
       ### Why the average stays the same
 
-      The part we subtracted averages to zero. Using the trick backwards, $\pi\,\nabla\ln\pi=\nabla\pi$, so
+      The part we subtracted averages to zero. The **log-derivative trick** says that a probability times its log's gradient equals its gradient, $\pi\,\nabla\ln\pi=\nabla\pi$, so
 
       $$E\big[b\,\nabla_\theta\ln\pi_\theta(a)\big]=b\sum_a\pi_\theta(a)\,\nabla_\theta\ln\pi_\theta(a)=b\sum_a\nabla_\theta\pi_\theta(a)=0.$$
 
-      The last sum is $0$ because the probabilities always add up to $1$, so their changes cancel. Any number that doesn't depend on the action keeps the average right. A baseline near the typical return, kept up to date as the policy learns, usually cuts the noise, and $G-b$ then says whether things went better or worse than usual. A badly chosen baseline can add noise.
+      Probabilities sum to $1$, so their changes cancel, giving $0$. Any action-independent number keeps the average right. A baseline near the typical return, kept up to date as the policy learns, usually cuts the noise, and $G-b$ then says whether things went better or worse than usual. A badly chosen baseline can add noise.
 
       ### Limitations
 

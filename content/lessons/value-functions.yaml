@@ -93,13 +93,13 @@ knowledge_points:
     explain: |
       ### Asking about one move
 
-      A state value says how good a cell is when the robot follows its policy. To choose between moves, we'd like to know how good each one is. What would happen if the robot made one different move and then went back to its policy?
+      A state value is the expected return from a cell under a policy. To choose between moves, we'd like to know how good each one is. What if the robot made one different move and then followed its policy?
 
-      We'll keep the same corridor and $\gamma=0.9$. Under "always move right", we found the values are $6.2$, $8$, $10$ and $0$ for cells 1 to 4.
+      Our robot moves left or right along four cells numbered left to right, staying put at a wall. Entering cell 4 ends the episode with $+10$; other moves pay $-1$. With $\gamma=0.9$, "always move right" gives returns $6.2$, $8$, $10$ and $0$ from cells 1 to 4: each adds the remaining rewards with later ones discounted.
 
       ### Two moves from cell 2
 
-      In cell 2, moving right costs $-1$ and puts the robot in cell 3, which is worth $10$ from there on. Moving left also costs $-1$, but puts the robot in cell 1. From cell 1 it goes back to always moving right, which is worth $6.2$. Those values count rewards from the next cell on, which all arrive one step later, so we shrink each value by $0.9$.
+      In cell 2, moving right costs $-1$ and reaches cell 3, worth $10$ from there on. Moving left costs $-1$ and reaches cell 1, where following "always move right" is worth $6.2$. Those values count rewards from the next cell on, one step later, so we shrink each by $0.9$.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 240" aria-label="The four-cell corridor with values 6.2, 8, 10 and 0 under the policy always move right. From cell 2, an orange arrow moves right to cell 3 and is worth minus 1 plus 0.9 times 10, which is 8. A blue arrow moves left to cell 1 and is worth minus 1 plus 0.9 times 6.2, which is 4.58">
@@ -131,7 +131,7 @@ knowledge_points:
 
       $$Q^\pi(s,a)=r+\gamma V^\pi(s').$$
 
-      So in cell 2, moving right is worth $8$ and moving left is worth $4.58$, and the right move is better.
+      In cell 2, right is worth $8$ and left $4.58$, so right is better.
 
       ### Back from moves to the cell
 
@@ -170,7 +170,7 @@ knowledge_points:
     explain: |
       ### One step plus the rest
 
-      In the same corridor, take "always move right" from cell 2. The robot pays $-1$ and lands in cell 3. Everything after that is the return from cell 3, which is worth $10$, just one step later. So $V^\pi(2)=-1+0.9\times10=8$.
+      Our robot moves left or right along four cells numbered left to right, staying put at a wall. Entering cell 4 ends the episode with $+10$; other moves pay $-1$, and $\gamma=0.9$. Take "always move right" from cell 2. The robot pays $-1$ and lands in cell 3, whose remaining return is $10$, one step later. The **state value** $V^\pi(s)$ is the expected return from state $s$ following policy $\pi$. So $V^\pi(2)=-1+0.9\times10=8$.
 
       This works because the return splits into the next reward plus the discounted return from the next step on:
 
@@ -182,7 +182,7 @@ knowledge_points:
 
       $$V^\pi(s)=E\big[\,r+\gamma V^\pi(s')\,\big].$$
 
-      The average is over the action $a$, picked with probability $\pi(a\mid s)$. If moves can fail, it's also over the next state $s'$, and $p(s'\mid s,a)$ is the chance of landing in $s'$ after action $a$ in state $s$. Here's what gets averaged in three corridors:
+      We average over actions $a$ with probabilities $\pi(a\mid s)$. If moves can fail, we also average over next states $s'$, using their chances $p(s'\mid s,a)$. Three examples show what gets averaged:
 
       - With "always move right" and reliable moves, there's only one outcome.
       - With a policy that goes right with probability $0.8$ and left with $0.2$, the two moves get weights $0.8$ and $0.2$.
@@ -190,7 +190,7 @@ knowledge_points:
 
       ### One Bellman backup
 
-      Usually we don't know the values, so we start from guesses, called estimates, and write them as plain $V(s)$. Putting them into the right-hand side gives a new estimate for one state. That's one **Bellman backup**. One backup can even move a single estimate further from its true value. Still, repeating backups for every state brings the estimates to $V^\pi$ when $\gamma<1$, because each round shrinks the largest gap from the true values to at most $\gamma$ times its size.
+      We start from guesses, called estimates, written $V(s)$. Putting them into the right-hand side gives a new estimate for one state: one **Bellman backup**. A single backup can worsen an estimate. Still, repeating backups for every state brings estimates to $V^\pi$ when $\gamma<1$, because each round shrinks the largest gap from true values to at most $\gamma$ times its size.
 
       The picture sets up a backup for cell 2 under the policy that goes right with probability $0.8$, from made-up estimates $V(1)=5$ and $V(3)=9$.
 
@@ -244,13 +244,13 @@ knowledge_points:
     explain: |
       ### The best the robot can do
 
-      Now we want the most return any policy could collect from each cell. We'll keep the corridor and $\gamma=0.9$, and we know where each move leads and what it pays.
+      We want the most return any policy could collect from each cell. Our robot moves left or right along four cells numbered left to right, staying put at a wall. Entering cell 4 ends the episode with $+10$; other moves pay $-1$, and $\gamma=0.9$. We know where each move leads and what it pays.
 
-      The **optimal state value** $V^*(s)$ is the largest value any policy can reach from state $s$. The **optimal action value** $Q^*(s,a)$ is the expected return from taking action $a$ in state $s$ and acting as well as possible after that.
+      The **optimal state value** $V^*(s)$ is that largest return from state $s$. The **optimal action value** $Q^*(s,a)$ is the expected return from taking action $a$ in state $s$ and acting as well as possible after that.
 
       ### The Bellman optimality equation
 
-      Here we take the best action. The **Bellman optimality equation** is
+      The **Bellman optimality equation** takes the best action:
 
       $$V^*(s)=\max_a E\big[\,r+\gamma V^*(s')\,\big].$$
 
@@ -260,7 +260,7 @@ knowledge_points:
 
       ### Backups that spread the reward
 
-      One **sweep** backs up every cell once from the previous sweep's estimates. Cell 4 stays at $0$, because the episode ends there. Starting every other estimate at $0$, we get:
+      An **estimate** is a guessed state value. A **backup** updates it using the equation above. One **sweep** updates every cell from the previous sweep's estimates. Cell 4 stays at $0$ because the episode ends there. Starting other estimates at $0$ gives:
 
       | Sweep | $V(1)$ | $V(2)$ | $V(3)$ |
       | --- | --- | --- | --- |
@@ -270,13 +270,13 @@ knowledge_points:
       | 3 | $6.2$ | $8$ | $10$ |
       | 4 | $6.2$ | $8$ | $10$ |
 
-      In sweep 1, only cell 3 can reach the goal, so it gets $10$, and every other move gives $-1+0.9\times0=-1$. In sweep 2, cell 2 sees cell 3's $10$ and gets $8$, while cell 1 gets $-1+0.9\times(-1)=-1.9$. Each sweep carries the $+10$ one cell further back. After sweep 3 nothing changes, so these are $V^*$. These are the values of "always move right", so it's a best policy.
+      In sweep 1, only cell 3 reaches the goal, earning $10$; every other move gives $-1+0.9\times0=-1$. In sweep 2, cell 2 uses cell 3's $10$ to get $8$, while cell 1 gets $-1+0.9\times(-1)=-1.9$. Each sweep carries the $+10$ one cell back. After sweep 3 nothing changes, so these are $V^*$, matching "always move right", a best policy.
 
-      Repeating sweeps like this is called **value iteration**.
+      Repeating sweeps is **value iteration**.
 
       ### Reading off the best move
 
-      With $V^*$ known, the best action in each state is the one with the largest $Q^*$. In cell 2, $Q^*(2,\text{right})=-1+0.9\times10=8$ and $Q^*(2,\text{left})=-1+0.9\times6.2=4.58$, so the best move is right.
+      With $V^*$ known, choose the action with largest $Q^*$. In cell 2, $Q^*(2,\text{right})=-1+0.9\times10=8$ and $Q^*(2,\text{left})=-1+0.9\times6.2=4.58$, so the best move is right.
 
       Be careful not to pick a move by its next reward alone. In cell 2 both moves give $-1$, and only the values of the cells they lead to tell them apart.
     worked: |
