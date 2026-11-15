@@ -15,24 +15,37 @@ function shape(overrides: Partial<Shape> = {}): Shape {
   };
 }
 
+function textShape(overrides: Partial<Shape> = {}): Shape & { source: 'text' } {
+  return { ...shape(overrides), source: 'text' };
+}
+
 describe('mergeLineShapes', () => {
   it('merges abutting fragments on the same line', () => {
     expect(
       mergeLineShapes([
-        shape({ x: 10, y: 20, width: 20 }),
-        shape({ x: 30, y: 20, width: 15, radius: 2 }),
+        textShape({ x: 10, y: 20, width: 20 }),
+        textShape({ x: 30, y: 20, width: 15, radius: 2 }),
       ]),
     ).toEqual([shape({ x: 10, y: 20, width: 35, radius: 2 })]);
   });
 
   it('keeps fragments on different lines separate', () => {
-    expect(mergeLineShapes([shape({ x: 0, y: 0 }), shape({ x: 0, y: 16 })])).toHaveLength(2);
+    expect(mergeLineShapes([textShape({ x: 0, y: 0 }), textShape({ x: 0, y: 16 })])).toHaveLength(
+      2,
+    );
   });
 
   it('keeps fragments separated by a 20 pixel gap apart', () => {
-    expect(mergeLineShapes([shape({ x: 0, width: 10 }), shape({ x: 30, width: 10 })])).toHaveLength(
-      2,
-    );
+    expect(
+      mergeLineShapes([textShape({ x: 0, width: 10 }), textShape({ x: 30, width: 10 })]),
+    ).toHaveLength(2);
+  });
+
+  it('keeps block shapes separated by four pixels apart', () => {
+    const first = shape({ x: 0, width: 10 });
+    const second = shape({ x: 14, width: 10 });
+
+    expect(mergeLineShapes([first, second])).toEqual([first, second]);
   });
 
   it('does not merge or alter frames', () => {
@@ -40,9 +53,9 @@ describe('mergeLineShapes', () => {
     const secondFrame = shape({ x: 30, y: 10, width: 20, kind: 'frame' });
     const result = mergeLineShapes([
       firstFrame,
-      shape({ x: 0, y: 0, width: 10 }),
+      textShape({ x: 0, y: 0, width: 10 }),
       secondFrame,
-      shape({ x: 10, y: 0, width: 10 }),
+      textShape({ x: 10, y: 0, width: 10 }),
     ]);
 
     expect(result.filter((item) => item.kind === 'frame')).toEqual([firstFrame, secondFrame]);
@@ -53,9 +66,9 @@ describe('mergeLineShapes', () => {
 
   it('produces order-independent output and repeats merges until stable', () => {
     const fragments = [
-      shape({ x: 0, y: -2, width: 10, height: 4, radius: 4 }),
-      shape({ x: 0, y: -1, width: 10, height: 6, radius: 3 }),
-      shape({ x: 0, y: -2.2, width: 10, height: 11, radius: 2 }),
+      textShape({ x: 0, y: -2, width: 10, height: 4, radius: 4 }),
+      textShape({ x: 0, y: -1, width: 10, height: 6, radius: 3 }),
+      textShape({ x: 0, y: -2.2, width: 10, height: 11, radius: 2 }),
     ];
     const expected = [shape({ x: 0, y: -2.2, width: 10, height: 11, radius: 2 })];
 
@@ -64,7 +77,7 @@ describe('mergeLineShapes', () => {
   });
   it('puts frames before content so cards paint underneath their text', () => {
     const frame = shape({ x: 0, y: 0, width: 100, height: 50, kind: 'frame' });
-    const text = shape({ x: 10, y: 10, width: 20 });
+    const text = textShape({ x: 10, y: 10, width: 20 });
     const result = mergeLineShapes([text, frame]);
     expect(result.map((item) => item.kind)).toEqual(['frame', 'content']);
   });

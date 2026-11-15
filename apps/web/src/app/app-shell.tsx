@@ -37,7 +37,7 @@ import { useCurrentCourseId } from '../lib/current-course.js';
 
 const SIDEBAR_STORAGE_KEY = 'academy.app-sidebar.open';
 const SIDEBAR_COURSE_GROUPS_KEY = 'academy.sidebar-course-groups';
-const SIDEBAR_COURSE_LAYOUT_KEY = `academy.sidebar-course-layout.${import.meta.env.PROD ? new URL(import.meta.url).pathname : 'dev-2'}`;
+const SIDEBAR_COURSE_LAYOUT_KEY = `academy.sidebar-course-layout.${import.meta.env.PROD ? new URL(import.meta.url).pathname : 'dev-3'}`;
 const DEFAULT_SIDEBAR_COURSE_GROUP_COUNTS = [1, 3];
 const COURSE_SKELETON_TITLE_WIDTHS = ['w-3/4', 'w-3/5', 'w-[68%]'];
 const COURSE_SKELETON_GROUP_KEYS = Array.from({ length: 12 }, (_, index) => `group-${index + 1}`);

@@ -6,7 +6,7 @@ import { isLayout, LayoutShapeLayer } from './layout-shapes.js';
 
 export type { Layout, Shape } from './layout-shapes.js';
 
-const storageKey = `academy.page-layout.${import.meta.env.PROD ? new URL(import.meta.url).pathname : 'dev-2'}`;
+const storageKey = `academy.page-layout.${import.meta.env.PROD ? new URL(import.meta.url).pathname : 'dev-3'}`;
 const memory = new Map<string, Layout>();
 const frameSelector = '[data-slot=card], [data-slot=alert]';
 
@@ -28,19 +28,38 @@ function compareShapes(left: Shape, right: Shape) {
   );
 }
 
-export function mergeLineShapes(shapes: Shape[]): Shape[] {
-  const content = shapes.filter((shape) => shape.kind === 'content').map((shape) => ({ ...shape }));
-  const frames = shapes.filter((shape) => shape.kind === 'frame');
-  const rules = shapes.filter((shape) => shape.kind === 'rule');
-  content.sort(compareShapes);
+type MeasuredShape = Shape & { source?: 'text' };
+
+function withoutSource(shape: MeasuredShape): Shape {
+  if (shape.source === undefined) return shape;
+  return {
+    x: shape.x,
+    y: shape.y,
+    width: shape.width,
+    height: shape.height,
+    radius: shape.radius,
+    kind: shape.kind,
+  };
+}
+
+export function mergeLineShapes(shapes: MeasuredShape[]): Shape[] {
+  const content = shapes
+    .filter((shape) => shape.kind === 'content' && shape.source !== 'text')
+    .map(withoutSource);
+  const text = shapes
+    .filter((shape) => shape.kind === 'content' && shape.source === 'text')
+    .map(withoutSource);
+  const frames = shapes.filter((shape) => shape.kind === 'frame').map(withoutSource);
+  const rules = shapes.filter((shape) => shape.kind === 'rule').map(withoutSource);
+  text.sort(compareShapes);
 
   while (true) {
     let merged = false;
-    for (let leftIndex = 0; leftIndex < content.length && !merged; leftIndex += 1) {
-      const left = content[leftIndex];
+    for (let leftIndex = 0; leftIndex < text.length && !merged; leftIndex += 1) {
+      const left = text[leftIndex];
       if (!left) continue;
-      for (let rightIndex = leftIndex + 1; rightIndex < content.length; rightIndex += 1) {
-        const right = content[rightIndex];
+      for (let rightIndex = leftIndex + 1; rightIndex < text.length; rightIndex += 1) {
+        const right = text[rightIndex];
         if (!right) continue;
         const verticalCenterDifference = Math.abs(
           left.y + left.height / 2 - (right.y + right.height / 2),
@@ -56,7 +75,7 @@ export function mergeLineShapes(shapes: Shape[]): Shape[] {
         const y = Math.min(left.y, right.y);
         const rightEdge = Math.max(left.x + left.width, right.x + right.width);
         const bottom = Math.max(left.y + left.height, right.y + right.height);
-        content.splice(leftIndex, 1, {
+        text.splice(leftIndex, 1, {
           x,
           y,
           width: rightEdge - x,
@@ -64,8 +83,8 @@ export function mergeLineShapes(shapes: Shape[]): Shape[] {
           radius: Math.min(left.radius, right.radius),
           kind: 'content',
         });
-        content.splice(rightIndex, 1);
-        content.sort(compareShapes);
+        text.splice(rightIndex, 1);
+        text.sort(compareShapes);
         merged = true;
         break;
       }
@@ -73,7 +92,7 @@ export function mergeLineShapes(shapes: Shape[]): Shape[] {
     if (!merged) break;
   }
 
-  return [...frames, ...rules, ...content].sort(compareShapes);
+  return [...frames, ...rules, ...content, ...text].sort(compareShapes);
 }
 
 export function loadLayout(key: string): Layout | undefined {
@@ -125,13 +144,14 @@ export function measureLayout(element: HTMLElement): Layout {
     width: bounds.width - left - right,
     height: bounds.height - top - bottom,
   };
-  const shapes: Shape[] = [];
+  const shapes: MeasuredShape[] = [];
   const clips = new Map<Element, { x: boolean; y: boolean; bounds: DOMRect }>();
   const add = (
     rect: DOMRect,
     radius: number,
     kind: Shape['kind'] = 'content',
     clipFrom: Element | null = null,
+    source?: MeasuredShape['source'],
   ) => {
     let left = rect.left;
     let right = rect.right;
@@ -165,10 +185,78 @@ export function measureLayout(element: HTMLElement): Layout {
     const x = left - origin.left;
     const y = top - origin.top;
     if (x < -8 || y < -8 || x + width > origin.width + 8) return;
-    shapes.push({ x, y, width, height, radius, kind });
+    shapes.push({ x, y, width, height, radius, kind, ...(source ? { source } : {}) });
   };
+  const visibleBorder = (width: string, style: string, color: string) => {
+    const normalizedColor = color.trim().toLowerCase();
+    return (
+      Number.parseFloat(width) >= 1 &&
+      style !== 'none' &&
+      style !== 'hidden' &&
+      normalizedColor !== 'transparent' &&
+      !/(?:,|\/)\s*0(?:\.0+)?%?\s*\)$/.test(normalizedColor)
+    );
+  };
+  const hasVisibleBorder = (style: CSSStyleDeclaration) =>
+    visibleBorder(style.borderTopWidth, style.borderTopStyle, style.borderTopColor) ||
+    visibleBorder(style.borderRightWidth, style.borderRightStyle, style.borderRightColor) ||
+    visibleBorder(style.borderBottomWidth, style.borderBottomStyle, style.borderBottomColor) ||
+    visibleBorder(style.borderLeftWidth, style.borderLeftStyle, style.borderLeftColor);
+  const hasVisibleBackground = (style: CSSStyleDeclaration) => {
+    const color = style.backgroundColor.trim().toLowerCase();
+    return (
+      (color !== 'transparent' && !/(?:,|\/)\s*0(?:\.0+)?%?\s*\)$/.test(color)) ||
+      style.backgroundImage !== 'none'
+    );
+  };
+  const radiusAlong = (value: string, size: number) =>
+    value
+      .trim()
+      .split(/\s+/)
+      .reduce((maximum, part) => {
+        const radius = Number.parseFloat(part);
+        if (!Number.isFinite(radius)) return maximum;
+        return Math.max(maximum, part.endsWith('%') ? (radius / 100) * size : radius);
+      }, 0);
+  const borderRadius = (style: CSSStyleDeclaration, bounds: DOMRect) => {
+    const corners = [
+      style.borderTopLeftRadius,
+      style.borderTopRightRadius,
+      style.borderBottomRightRadius,
+      style.borderBottomLeftRadius,
+    ];
+    const radius = Math.max(
+      ...corners.map((corner) => {
+        const [horizontal = '0px', vertical = horizontal] = corner.trim().split(/\s+/);
+        return Math.min(
+          radiusAlong(horizontal, bounds.width),
+          radiusAlong(vertical, bounds.height),
+        );
+      }),
+    );
+    return Math.min(radius, bounds.width / 2, bounds.height / 2);
+  };
+  const roundedBorderBlocks = new Set<Element>();
+  const hasRoundedBorderAncestor = (node: Element | null) => {
+    for (let ancestor = node; ancestor && ancestor !== element; ancestor = ancestor.parentElement) {
+      if (roundedBorderBlocks.has(ancestor)) return true;
+    }
+    return false;
+  };
+  for (const block of element.querySelectorAll<HTMLElement>('*')) {
+    if (block.matches(`${frameSelector}, ${blocks}`) || hasRoundedBorderAncestor(block)) continue;
+    const style = getComputedStyle(block);
+    if (style.visibility === 'hidden' || style.display === 'none' || !hasVisibleBorder(style))
+      continue;
+    const bounds = block.getBoundingClientRect();
+    const radius = borderRadius(style, bounds);
+    if (radius <= 2) continue;
+    roundedBorderBlocks.add(block);
+    add(bounds, radius, 'content', block.parentElement);
+  }
   const frames = [...element.querySelectorAll<HTMLElement>(frameSelector)];
   for (const frame of frames) {
+    if (hasRoundedBorderAncestor(frame)) continue;
     add(
       frame.getBoundingClientRect(),
       Number.parseFloat(getComputedStyle(frame).borderRadius) || 0,
@@ -177,6 +265,7 @@ export function measureLayout(element: HTMLElement): Layout {
     );
   }
   for (const block of element.querySelectorAll<HTMLElement>(blocks)) {
+    if (hasRoundedBorderAncestor(block.parentElement)) continue;
     const svg = block.tagName.toLowerCase() === 'svg';
     const style = getComputedStyle(block);
     const bounds = block.getBoundingClientRect();
@@ -190,6 +279,31 @@ export function measureLayout(element: HTMLElement): Layout {
           style.display === 'none'))
     )
       continue;
+    if (block.matches('[role=img]') && !svg) {
+      const visualDescendants = [...block.querySelectorAll<HTMLElement>('*')].filter((child) => {
+        const childStyle = getComputedStyle(child);
+        const childBounds = child.getBoundingClientRect();
+        return (
+          childStyle.visibility !== 'hidden' &&
+          childStyle.display !== 'none' &&
+          childBounds.width >= 2 &&
+          childBounds.height >= 2 &&
+          hasVisibleBackground(childStyle)
+        );
+      });
+      if (visualDescendants.length > 0) {
+        for (const visual of visualDescendants) {
+          const visualStyle = getComputedStyle(visual);
+          add(
+            visual.getBoundingClientRect(),
+            Number.parseFloat(visualStyle.borderRadius) || 4,
+            'content',
+            visual.parentElement,
+          );
+        }
+        continue;
+      }
+    }
     add(bounds, Number.parseFloat(style.borderRadius) || 4, 'content', block.parentElement);
   }
   const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
@@ -199,26 +313,17 @@ export function measureLayout(element: HTMLElement): Layout {
     if (
       node.textContent?.trim() &&
       parent &&
-      !parent.closest(`${blocks}, [aria-hidden=true], .sr-only, svg, script, style`)
+      !parent.closest(`${blocks}, [aria-hidden=true], .sr-only, svg, script, style`) &&
+      !hasRoundedBorderAncestor(parent)
     ) {
       const range = document.createRange();
       range.selectNodeContents(node);
-      for (const rect of range.getClientRects()) add(rect, 3, 'content', parent);
+      for (const rect of range.getClientRects()) add(rect, 3, 'content', parent, 'text');
     }
     node = walker.nextNode();
   }
-  const visibleBorder = (width: string, style: string, color: string) => {
-    const normalizedColor = color.trim().toLowerCase();
-    return (
-      Number.parseFloat(width) >= 1 &&
-      style !== 'none' &&
-      style !== 'hidden' &&
-      normalizedColor !== 'transparent' &&
-      !/(?:,|\/)\s*0(?:\.0+)?%?\s*\)$/.test(normalizedColor)
-    );
-  };
   for (const block of element.querySelectorAll<HTMLElement>('*')) {
-    if (block.matches(`${frameSelector}, ${blocks}`)) continue;
+    if (block.matches(`${frameSelector}, ${blocks}`) || hasRoundedBorderAncestor(block)) continue;
     const style = getComputedStyle(block);
     if (style.visibility === 'hidden' || style.display === 'none') continue;
     const bounds = block.getBoundingClientRect();
