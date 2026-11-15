@@ -2,7 +2,7 @@ import type { CourseCatalogPayload } from '@academy/contracts/course';
 import { useQuery } from '@tanstack/react-query';
 import { Link, Outlet, useRouterState } from '@tanstack/react-router';
 import { Activity, BookOpen, House, ListOrdered, RotateCcw, Settings } from 'lucide-react';
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
 import { Toaster } from 'sonner';
 import { BrandLockup } from '../components/brand-lockup.js';
 import { isLayout, LayoutShapeLayer } from '../components/layout-shapes.js';
@@ -157,7 +157,7 @@ function AppSidebarView({
       .filter((subject) => subject.courses.length > 0) ?? [];
   const activeCourses = activeCourseGroups.flatMap((subject) => subject.courses);
   const [loadingCourseGroupCounts] = useState(readSidebarCourseGroupCounts);
-  const courseSectionRef = useRef<HTMLDivElement>(null);
+  const [courseSection, setCourseSection] = useState<HTMLDivElement | null>(null);
   const [sidebarCourseLayout, setSidebarCourseLayout] = useState<Layout>();
   useEffect(() => {
     if (loadingCourses || !courses) return;
@@ -167,7 +167,7 @@ function AppSidebarView({
     if (counts.length) writeSidebarCourseGroupCounts(counts);
   }, [courses, loadingCourses]);
   useLayoutEffect(() => {
-    const element = courseSectionRef.current;
+    const element = courseSection;
     if (!element || !showCourseSection) return;
     const update = () => {
       const width = element.getBoundingClientRect().width;
@@ -177,9 +177,9 @@ function AppSidebarView({
     const observer = new ResizeObserver(update);
     observer.observe(element);
     return () => observer.disconnect();
-  }, [showCourseSection]);
+  }, [courseSection, showCourseSection]);
   useEffect(() => {
-    const element = courseSectionRef.current;
+    const element = courseSection;
     const hasActiveCourses =
       courses?.subjects.some((subject) =>
         subject.courses.some((course) => course.status === 'active'),
@@ -212,7 +212,7 @@ function AppSidebarView({
       resize.disconnect();
       mutations.disconnect();
     };
-  }, [courses, loadingCourses, showCourseSection]);
+  }, [courseSection, courses, loadingCourses, showCourseSection]);
   const closeMobile = () => {
     if (isMobile) setOpenMobile(false);
   };
@@ -354,7 +354,7 @@ function AppSidebarView({
         </SidebarGroup>
         {showCourseSection ? (
           <div
-            ref={courseSectionRef}
+            ref={setCourseSection}
             data-testid="sidebar-course-section"
             className="w-full min-w-0"
           >

@@ -217,6 +217,86 @@ test('sidebar skeleton replays captured course geometry after a loaded visit', a
   }
 });
 
+test('mobile sidebar replays captured course geometry after closing and reopening the sheet', async ({
+  page,
+}) => {
+  await db.insert(courseEnrollments).values({
+    userId,
+    courseId: 'fixture-third-course',
+    status: 'active',
+    startMethod: 'beginning',
+  });
+  let coursesRequests = 0;
+  let delayCourses = false;
+  const createGate = () => {
+    let release = () => {};
+    const promise = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    return { promise, release: () => release() };
+  };
+  let coursesGate = createGate();
+  await page.route('**/api/courses', async (route) => {
+    coursesRequests += 1;
+    if (delayCourses) await coursesGate.promise;
+    await fulfillCoursesWithThreeSubjects(route);
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: 'Next up', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Open navigation' }).click();
+
+  const navigation = page.getByRole('navigation', { name: 'Main navigation' });
+  for (const subject of ['Mathematics', 'AI', 'Robotics']) {
+    await expect(navigation.getByText(subject, { exact: true })).toBeVisible();
+  }
+  const storedMobileLayoutShapeCount = () =>
+    page.evaluate(() => {
+      const section = document.querySelector('[data-testid="sidebar-course-section"]');
+      if (!section) return 0;
+      const width = String(Math.round(section.getBoundingClientRect().width));
+      const key = Object.keys(localStorage).find((item) =>
+        item.startsWith('academy.sidebar-course-layout.'),
+      );
+      if (!key) return 0;
+      const layouts = JSON.parse(localStorage.getItem(key) ?? '{}') as Record<
+        string,
+        { shapes?: unknown[] }
+      >;
+      return layouts[width]?.shapes?.length ?? 0;
+    });
+  await expect.poll(storedMobileLayoutShapeCount).toBeGreaterThan(0);
+  await page.keyboard.press('Escape');
+  await expect(navigation).not.toBeVisible();
+
+  const previousCoursesRequests = coursesRequests;
+  delayCourses = true;
+  coursesGate = createGate();
+  const replayedSkeleton = navigation.getByTestId('sidebar-course-layout-skeleton');
+  try {
+    await page.reload();
+    await expect.poll(() => coursesRequests > previousCoursesRequests).toBe(true);
+    await page.getByRole('button', { name: 'Open navigation' }).click();
+    await expect(replayedSkeleton).toBeVisible();
+    const verticalRuleCount = await replayedSkeleton
+      .locator('[data-layout-shape="rule"]')
+      .evaluateAll(
+        (rules) =>
+          rules.filter((rule) => {
+            const bounds = rule.getBoundingClientRect();
+            return bounds.height > bounds.width;
+          }).length,
+      );
+    expect(verticalRuleCount).toBeGreaterThanOrEqual(3);
+  } finally {
+    coursesGate.release();
+  }
+  await expect(replayedSkeleton).toHaveCount(0);
+  for (const subject of ['Mathematics', 'AI', 'Robotics']) {
+    await expect(navigation.getByText(subject, { exact: true })).toBeVisible();
+  }
+});
+
 test('auth-pending shell shows the real sidebar without shifting navigation', async ({
   page,
 }, testInfo) => {
