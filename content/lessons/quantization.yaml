@@ -46,7 +46,7 @@ knowledge_points:
 
       At 16 bits that's $16\times10^9/(3.35\times10^{12})\approx4.8$ ms, so at most about 209 tokens per second. Halving the bytes halves this time, so INT8 weights allow about twice as many tokens per second. The smaller model also leaves more of the 80 GB free for the other numbers each request stores while it generates, so the GPU can serve more requests at once.
 
-      Prefill doesn't get this speed-up. When the model reads the prompt, it does many multiplications for each weight it reads, so its time is set by how fast the GPU does maths. Smaller weights alone don't make that faster. We'll see what does in the third step.
+      Prefill, when the model reads the prompt, doesn't get this speed-up. It does many multiplications for each weight it reads, so its time is set by how fast the GPU does maths. Smaller weights alone don't make that faster. We'll see what does in the third step.
     worked: |
       Let's estimate the fastest decode speed for Llama 3 8B on the H100 when its weights are stored as INT4, with one request at a time. We'll ignore everything except reading the weights, so this is a best case.
 
@@ -112,7 +112,7 @@ knowledge_points:
 
       $$s=\frac{\max|x|}{127}.$$
 
-      Each number becomes the integer $q=\text{round}(x/s)$. Then we clamp it to $[-127,127]$. This moves any value outside the range to the nearest end. Here nothing lands outside. Clamping matters when the scale came from other numbers, as with activations in the third step. To use the integer, we dequantise it, turning it back into a real number: $\hat x=q\cdot s$. We store the integers plus the scale.
+      Each number becomes the integer $q=\text{round}(x/s)$. Then we clamp it to $[-127,127]$. This moves any value outside the range to the nearest end. Here nothing lands outside. Clamping matters when the scale came from other numbers, as with activations, the numbers flowing between layers, in the third step. To use the integer, we dequantise it, turning it back into a real number: $\hat x=q\cdot s$. We store the integers plus the scale.
 
       ### How big is the error?
 
