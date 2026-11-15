@@ -1,0 +1,580 @@
+concept: kv-cache
+exercises:
+  - id: kvc-reuse-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What does a decoder's KV cache retain between generation calls?
+    options:
+      - {
+          id: a,
+          text: "Earlier tokens' queries and attention weights at every layer.",
+          correct: false,
+          feedback: "A new query computes its own attention weights; earlier queries have finished their job.",
+        }
+      - {
+          id: b,
+          text: "Earlier tokens' keys and values at every layer.",
+          correct: true,
+          feedback: "A new token's query reads the earlier keys and mixes their values.",
+        }
+      - {
+          id: c,
+          text: "Earlier tokens' predicted next-token probabilities at every layer.",
+          correct: false,
+          feedback: "The cache holds attention inputs. Next-token probabilities come from the model's final output.",
+        }
+    solution: The cache retains earlier keys and values so new tokens can attend to them without recomputing their representations.
+  - id: kvc-reuse-self
+    dimension: implementation
+    type: mc
+    role: practice
+    lesson_only: true
+    difficulty: 1
+    est_minutes: 1
+    prompt: Why does the worked example print cache lengths 3 and 4 after generating two tokens?
+    options:
+      - {
+          id: a,
+          text: "Each call discards one prompt token before appending a prediction.",
+          correct: false,
+          feedback: "The example retains every processed token. No prompt entries are discarded.",
+        }
+      - {
+          id: b,
+          text: "Generated tokens enter the cache immediately when their scores select them.",
+          correct: false,
+          feedback: "Selecting an ID does not run it through attention. It enters the cache on the next call.",
+        }
+      - {
+          id: c,
+          text: "The first call processes the prompt; the second processes its prediction.",
+          correct: true,
+          feedback: "The second generated token has been selected but has not been processed yet.",
+        }
+    solution: Prefill processes three prompt tokens and predicts the first new token. Feeding that prediction back grows the cache to four and predicts the second new token.
+  - id: kvc-processed-template
+    dimension: implementation
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A causal decoder prefills a {{= p }}-token prompt, then makes {{= c }} one-token decode calls. How many token entries does each layer's key cache hold after the calls? Assume no entries are removed."
+    params:
+      p: { min: 3, max: 7, step: 2 }
+      c: { min: 2, max: 4, step: 1 }
+    answer_expr: p + c
+    tolerance: { abs: 0 }
+    common_wrong:
+      - {
+          answer_expr: "p + c + 1",
+          category: implementation_error,
+          feedback: "The last predicted token has not been processed. A decode call appends the input token only.",
+        }
+    solution: "Prefill stores {{= p }} entries and each decode call appends one, giving {{= p }} + {{= c }} = {{= p + c }} entries per layer."
+  - id: kvc-query-mistake
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A programmer stores all previous queries but discards previous keys and values. What happens when the decoder processes the next token?
+    options:
+      - {
+          id: a,
+          text: "The new query lacks the earlier keys and values it needs to read.",
+          correct: true,
+          feedback: "Its scores need the old keys, and its weighted output needs the old values.",
+        }
+      - {
+          id: b,
+          text: "The old queries supply the same scores and values without extra work.",
+          correct: false,
+          feedback: "Queries have a different role from keys and values and cannot substitute for them.",
+        }
+      - {
+          id: c,
+          text: "The old queries supply values, so only earlier keys need rebuilding.",
+          correct: false,
+          feedback: "Old queries do not supply the earlier value vectors either.",
+        }
+    solution: Each new query needs the earlier keys to compute scores and the earlier values to form its output. Caching queries alone cannot provide them.
+  - id: kvc-loop-complete
+    dimension: implementation
+    type: code_complete
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A decoder returns `(next_token_scores, updated_cache)` after processing its input tokens. Complete the next call after prefill so it reuses the cache and processes only the selected token."
+    code: |
+      scores, cache = decoder(prompt, ([], []))
+      token = 0 if scores[0] >= scores[1] else 1
+      scores, cache = decoder(____)
+    accept: ["[token], cache"]
+    solution: "Pass `[token], cache`. Passing the full prompt again would append duplicate prompt entries to this cache."
+  - id: kvc-edit-history
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A code assistant cached a conversation, then the user replaced its first token. The model weights are unchanged. How should the assistant handle the old cache for this edited conversation?
+    options:
+      - {
+          id: a,
+          text: "Keep every entry because the model weights are unchanged.",
+          correct: false,
+          feedback: "Representations also depend on the earlier tokens, which have changed.",
+        }
+      - {
+          id: b,
+          text: "Recompute the entries because their earlier context has changed.",
+          correct: true,
+          feedback: "Changing the first token can affect every later representation in causal attention.",
+        }
+      - {
+          id: c,
+          text: "Replace the first entry and keep every later entry unchanged.",
+          correct: false,
+          feedback: "Later tokens can attend to the changed first token, so their cached representations may change too.",
+        }
+    solution: Changing the first token can affect all later tokens. Recompute the edited sequence's cache to keep its keys and values consistent with the input.
+  - id: kvc-heads-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: How does grouped-query attention organise its heads?
+    options:
+      - {
+          id: a,
+          text: "Each query head reads its own separate key-value head.",
+          correct: false,
+          feedback: "That is ordinary multi-head attention without sharing.",
+        }
+      - {
+          id: b,
+          text: "Each group shares its query and keeps separate key-value heads.",
+          correct: false,
+          feedback: "The queries stay separate. The keys and values are shared.",
+        }
+      - {
+          id: c,
+          text: "Each group keeps separate queries and shares a key-value head.",
+          correct: true,
+          feedback: "The queries can produce different attention weights while reading the same stored keys and values.",
+        }
+    solution: In GQA, a group of query heads reads one stored key-value head, while each query head keeps its own query.
+  - id: kvc-heads-self
+    dimension: conceptual
+    type: mc
+    role: practice
+    lesson_only: true
+    difficulty: 1
+    est_minutes: 1
+    prompt: Why does the worked example's two-head GQA cache use half the bytes of its four-head MHA cache?
+    options:
+      - {
+          id: a,
+          text: "It stores two key-value heads while keeping four query heads.",
+          correct: true,
+          feedback: "Only two sets of keys and values are stored, so storage halves.",
+        }
+      - {
+          id: b,
+          text: "It stores four key-value heads but halves each vector's width.",
+          correct: false,
+          feedback: "The vector width remains two numbers in every case.",
+        }
+      - {
+          id: c,
+          text: "It stores two query heads while keeping four key-value heads.",
+          correct: false,
+          feedback: "Query count remains four and queries are not the retained cache entries.",
+        }
+    solution: The example keeps the same head size and precision. Reducing the stored key-value heads from four to two halves the cache.
+  - id: kvc-sharing-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A GQA model has {{= h }} query heads and {{= kv }} key-value heads, shared in equal groups. How many query heads read each key-value head?"
+    params:
+      h: { min: 24, max: 48, step: 24 }
+      kv: { min: 2, max: 3, step: 1 }
+    answer_expr: h / kv
+    tolerance: { abs: 0 }
+    solution: "Divide query heads by stored key-value heads: {{= h }} / {{= kv }} = {{= h / kv }} query heads per group."
+  - id: kvc-mqa-count
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A model has 12 query heads. Keeping head size and precision fixed, by what factor is an MHA cache larger than an MQA cache for the same tokens and layers? Give the MHA size divided by the MQA size.
+    answer: 12
+    tolerance: { abs: 0 }
+    solution: MHA stores 12 key-value heads and MQA stores one. The size ratio is 12 / 1 = 12.
+  - id: kvc-sharing-mistake
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A trained MHA model has eight independent key-value heads. An engineer deletes seven cached heads and lets all eight queries read the remaining head. What should they expect?
+    options:
+      - {
+          id: a,
+          text: "Identical outputs because the query heads have not changed.",
+          correct: false,
+          feedback: "The queries now read different keys and values, so keeping queries unchanged does not preserve outputs.",
+        }
+      - {
+          id: b,
+          text: "Changed outputs because queries lost their trained key-value sets.",
+          correct: true,
+          feedback: "Head sharing is an architectural choice the model must be trained to use.",
+        }
+      - {
+          id: c,
+          text: "Identical outputs because one cached head contains every other head.",
+          correct: false,
+          feedback: "Separate trained heads generally contain different keys and values.",
+        }
+    solution: An MHA model learned separate key-value projections. Deleting those sets changes the attention calculation and can change the output.
+  - id: kvc-heads-new-model
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A new speech decoder will have 16 query heads. Its designers want four query heads to read each stored key-value set. Which architecture matches that plan?
+    options:
+      - {
+          id: a,
+          text: "MQA with one key-value head.",
+          correct: false,
+          feedback: "One shared head would serve all 16 query heads.",
+        }
+      - {
+          id: b,
+          text: "MHA with 16 key-value heads.",
+          correct: false,
+          feedback: "Each query would have a separate key-value head.",
+        }
+      - {
+          id: c,
+          text: "GQA with four key-value heads.",
+          correct: true,
+          feedback: "Sixteen queries divided among four stored heads gives groups of four.",
+        }
+    solution: Four key-value heads each serve 16 / 4 = 4 query heads. This is grouped-query attention.
+  - id: kvc-memory-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What does the factor 2 count in the KV-cache size formula?
+    options:
+      - {
+          id: a,
+          text: "A stored key vector and a stored value vector.",
+          correct: true,
+          feedback: "Each stored head needs both a key and a value for every token.",
+        }
+      - {
+          id: b,
+          text: "A stored query vector and a stored key vector.",
+          correct: false,
+          feedback: "The retained cache holds keys and values. Queries do not supply the second set.",
+        }
+      - {
+          id: c,
+          text: "A prompt token vector and an output token vector.",
+          correct: false,
+          feedback: "Processed prompt and output tokens both have their own key-value entries; they are counted by sequence length.",
+        }
+    solution: The factor 2 counts keys and values. Bytes per number are accounted for separately by the precision factor.
+  - id: kvc-memory-self
+    dimension: conceptual
+    type: mc
+    role: practice
+    lesson_only: true
+    difficulty: 1
+    est_minutes: 1
+    prompt: Why does the worked example multiply 131,072 bytes by 4,000?
+    options:
+      - {
+          id: a,
+          text: "Each of the 32 layers contains 4,000 separate heads.",
+          correct: false,
+          feedback: "Layers and heads are already included in 131,072 bytes per token.",
+        }
+      - {
+          id: b,
+          text: "The four conversations contain 4,000 processed tokens in total.",
+          correct: true,
+          feedback: "Each of the four conversations has 1,000 tokens with its own entries.",
+        }
+      - {
+          id: c,
+          text: "Each token needs 4,000 bytes for its query and key.",
+          correct: false,
+          feedback: "131,072 is already the key-value byte count for one token across the model.",
+        }
+    solution: Four independent conversations with 1,000 processed tokens each require entries for 4,000 tokens in total.
+  - id: kvc-bytes-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A decoder has {{= layers }} layers, {{= kv }} key-value heads per layer and head size {{= width }}. It stores 16-bit keys and values at 2 bytes per number. How many bytes does its KV cache need per processed token?"
+    params:
+      layers: { min: 2, max: 4, step: 2 }
+      kv: { min: 2, max: 4, step: 2 }
+      width: { min: 4, max: 8, step: 4 }
+    answer_expr: 2 * layers * kv * width * 2
+    tolerance: { abs: 0 }
+    common_wrong:
+      - {
+          answer_expr: "layers * kv * width * 2",
+          category: math_error,
+          feedback: "This counts one vector per head. Include both keys and values.",
+        }
+    solution: "Count keys and values across all layers and heads: 2 × {{= layers }} × {{= kv }} × {{= width }} × 2 = {{= 2 * layers * kv * width * 2 }} bytes per token."
+  - id: kvc-batch-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A decoder has 4 layers, 2 key-value heads per layer and head size 8. Each number takes 2 bytes. How many cache bytes hold {{= batch }} independent sequences with {{= tokens }} processed tokens each? Ignore allocation overhead."
+    params:
+      batch: { min: 2, max: 4, step: 2 }
+      tokens: { min: 10, max: 30, step: 10 }
+    answer_expr: 2 * 4 * 2 * 8 * 2 * batch * tokens
+    tolerance: { abs: 0 }
+    solution: "One token needs 2 × 4 × 2 × 8 × 2 = 256 bytes. Across the batch the cache needs 256 × {{= batch }} × {{= tokens }} = {{= 256 * batch * tokens }} bytes."
+  - id: kvc-unequal-lengths
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A decoder needs 200 cache bytes per token. Three independent sequences have 10, 20 and 40 processed tokens. How many bytes store their entries with no padding or allocation overhead?
+    answer: 14000
+    tolerance: { abs: 0 }
+    solution: The sequences have 10 + 20 + 40 = 70 tokens altogether. Their entries take 70 × 200 = 14,000 bytes.
+  - id: kvc-memory-mistake
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A GQA decoder has 32 query heads and 8 key-value heads. A cache estimate uses 32 in the head-count factor. What is the error?
+    options:
+      - {
+          id: a,
+          text: "It counts each stored head four times, making the estimate four times too large.",
+          correct: true,
+          feedback: "The cache stores 8 heads. Using 32 multiplies storage by 32 / 8 = 4.",
+        }
+      - {
+          id: b,
+          text: "It counts each stored head once, so the estimate has the correct head count.",
+          correct: false,
+          feedback: "Query heads share key-value sets; only 8 stored sets belong in the formula.",
+        }
+      - {
+          id: c,
+          text: "It leaves out four stored heads, making the estimate four times too small.",
+          correct: false,
+          feedback: "Using 32 instead of 8 overcounts the stored sets.",
+        }
+    solution: The memory formula counts stored key-value heads. The estimate is four times too large because 32 / 8 = 4.
+  - id: kvc-budget-new-model
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: A robot's decoder has 2 layers, 2 key-value heads and head size 4, with 2 bytes per number. Exactly 6,400 bytes are reserved for stored cache data after leaving room for everything else. What is the maximum total number of processed tokens that fit? Ignore allocation overhead.
+    answer: 100
+    tolerance: { abs: 0 }
+    solution: One token takes 2 × 2 × 2 × 4 × 2 = 64 bytes. The reserved cache budget fits 6,400 / 64 = 100 tokens in total.
+  - id: kvc-prefix-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: Which match allows two prompts to share cached entries when the model weights and token positions match?
+    options:
+      - {
+          id: a,
+          text: "The same words appearing after different earlier instructions.",
+          correct: false,
+          feedback: "Those tokens have different earlier context, so their representations can differ.",
+        }
+      - {
+          id: b,
+          text: "The same number of tokens with different token IDs.",
+          correct: false,
+          feedback: "Equal lengths do not make the token representations identical.",
+        }
+      - {
+          id: c,
+          text: "The same token IDs from the beginning of both prompts.",
+          correct: true,
+          feedback: "An identical beginning has identical causal context under the same model and positions.",
+        }
+    solution: Prefix caching reuses an identical initial sequence of token IDs. Earlier context, model weights and positions must match.
+  - id: kvc-prefix-self
+    dimension: conceptual
+    type: mc
+    role: practice
+    lesson_only: true
+    difficulty: 1
+    est_minutes: 1
+    prompt: In the worked example, why does the second 800-token prompt need 200 tokens processed?
+    options:
+      - {
+          id: a,
+          text: "Its initial 600 tokens have retained entries with matching context.",
+          correct: true,
+          feedback: "The shared instructions can reuse their keys and values, leaving the new user message.",
+        }
+      - {
+          id: b,
+          text: "Its final 200 tokens can reuse the first user's cached message.",
+          correct: false,
+          feedback: "The two user messages differ. It is the initial instructions that match.",
+        }
+      - {
+          id: c,
+          text: "Its 800 tokens can reuse entries because the lengths are equal.",
+          correct: false,
+          feedback: "Equal lengths do not guarantee equal tokens or representations.",
+        }
+    solution: The second request reuses the retained 600-token beginning and processes its different 200-token ending.
+  - id: kvc-prefix-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A request has {{= total }} prompt tokens. Its initial {{= prefix }} tokens exactly match a retained cache under the same model weights and positions. The rest are new. How many prompt tokens still need processing?"
+    params:
+      prefix: { min: 100, max: 300, step: 100 }
+      total: { min: 500, max: 900, step: 200 }
+    answer_expr: total - prefix
+    tolerance: { abs: 0 }
+    solution: "Reuse the matching beginning, leaving {{= total }} − {{= prefix }} = {{= total - prefix }} prompt tokens to process."
+  - id: kvc-middle-mistake
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: Two prompts have different first tokens but identical token IDs from position two onward. An engineer reuses all cached entries after position one. Why can this change the result?
+    options:
+      - {
+          id: a,
+          text: "Every key depends only on its own token ID, so the reused keys are exact.",
+          correct: false,
+          feedback: "At later layers a token's representation includes information from earlier tokens.",
+        }
+      - {
+          id: b,
+          text: "The later tokens can have different representations because their earlier context differs.",
+          correct: true,
+          feedback: "Causal attention lets each later token read the changed beginning.",
+        }
+      - {
+          id: c,
+          text: "Every value depends only on its position, so the reused values are exact.",
+          correct: false,
+          feedback: "Values depend on the token representation, including token content and earlier context.",
+        }
+    solution: Matching a middle or ending segment does not ensure matching representations. A changed beginning can affect every later token.
+  - id: kvc-full-hit
+    dimension: implementation
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A service has keys and values for an entire matching prompt, but discarded its final output. How can it obtain the next-token prediction using those retained entries?
+    options:
+      - {
+          id: a,
+          text: "Treat the final cached value vector as the next-token probabilities.",
+          correct: false,
+          feedback: "A value vector is an attention input, not the model's final next-token output.",
+        }
+      - {
+          id: b,
+          text: "Append the last prompt token to the complete saved cache again.",
+          correct: false,
+          feedback: "That duplicates the last token. Rebuild it using only the preceding entries.",
+        }
+      - {
+          id: c,
+          text: "Recompute the last prompt token using the preceding cached entries.",
+          correct: true,
+          feedback: "That recovers the final output while retaining the earlier prefix work.",
+        }
+    solution: Keys and values alone do not contain the final next-token output. Recompute the last prompt token with the cache up to its preceding position.
+  - id: kvc-prefix-new-setting
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A legal assistant receives many requests beginning with identical policy tokens, followed by different cases. It retains the policy's cache under fixed model weights and positions. Which work can later requests save?
+    options:
+      - {
+          id: a,
+          text: "The policy's prefill work; new case tokens and reply decoding still run.",
+          correct: true,
+          feedback: "The initial policy entries match, while each case and generated reply still needs processing.",
+        }
+      - {
+          id: b,
+          text: "The reply's decode work; the policy and case prefill still run in full.",
+          correct: false,
+          feedback: "A shared prompt prefix saves prompt processing, not the future reply's decode calls.",
+        }
+      - {
+          id: c,
+          text: "The case's prefill work; the policy and reply still run in full.",
+          correct: false,
+          feedback: "The cases differ. Only the identical initial policy tokens can reuse their entries.",
+        }
+    solution: Retained identical policy entries save prefill computation on that beginning. New case tokens still attend to the policy, and reply tokens still require decode calls.
+  - id: kvc-explain-cache
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 3
+    est_minutes: 4
+    prompt: Explain how a causal decoder updates and reuses a KV cache during generation, how to calculate its stored bytes for a batch of equal-length sequences, and when another request can reuse a prompt prefix.
+    rubric:
+      - id: reuse
+        criterion: Explain that prefill stores prompt keys and values at every layer, and decode appends the new token's keys and values while reading earlier entries.
+        weight: 1
+        required: true
+      - id: size
+        criterion: Give the size as 2 times layers times key-value heads times head size times bytes per number times tokens per sequence times sequences, with 2 counting keys and values.
+        weight: 1
+        required: true
+      - id: prefix
+        criterion: Explain that retained prefix entries can be reused when the initial token IDs, model weights and positions match, saving prefill work for that beginning.
+        weight: 1
+        required: true
+    exemplar: Prefill stores the prompt's keys and values at every layer. Decode appends each newly processed token's keys and values and uses its query to read the cache. Stored bytes are 2 times layers times key-value heads times head size times bytes per number times tokens per sequence times sequences; the 2 counts keys and values. Another request can reuse a retained initial sequence when token IDs, model weights and positions match, saving prefill work on those tokens.

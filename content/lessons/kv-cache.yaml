@@ -1,0 +1,278 @@
+concept: kv-cache
+version: 1
+objective: |
+  **Goal:** reuse keys and values in a decoder's generation loop, calculate their memory cost with shared heads, and explain when a shared prompt prefix can reuse them.
+recap:
+  - concept: multi-head-attention
+    text: "Each attention head makes queries, keys and values. A query scores the keys, and softmax turns those scores into weights for mixing the values. Several heads combine their outputs."
+where_this_fits: |
+  ### What is a KV cache?
+
+  A KV cache stores earlier tokens' attention keys and values so a language model can reuse them while generating text. Without one, a simple generation loop would process the whole growing history again for each prediction, delaying the reply.
+
+  Prefill processes the prompt together, then decode processes one new token at a time. The saved entries occupy GPU memory alongside model weights. Each stored cache number takes 2 bytes at 16-bit precision.
+
+  We'll follow a chat assistant using Llama 3 8B, a language model with about 8 billion parameters, on one NVIDIA H100 SXM GPU. Its weights take about 16 GB within the GPU's 80 GB. We'll update a cache, count its memory and reuse matching prompt beginnings.
+knowledge_points:
+  - id: kvc-reuse
+    title: Reuse earlier keys and values
+    explain: |
+      ### Reuse three stored tokens
+
+      Our chat assistant has processed a three-token prompt. Its last output predicts a fourth token. When we pass that prediction into the model to get another prediction, what can we keep from the prompt?
+
+      In **causal attention**, each token attends only to itself and earlier tokens. Its hidden representation is the list of numbers carried for that token between layers. Each layer computes keys and values from its input representation. Appending a token cannot change the earlier representations, so their keys and values stay the same under fixed model weights.
+
+      A token's position is its place in the full sequence. The fourth token keeps position four even when passed alone. Models can use position information when computing keys, so restarting at one could change its key. Each blue box below contains a stored key and value for one prompt token. The orange box holds the fourth token's new entry.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 180" aria-label="One layer keeps a key and value for each of prompt tokens 1, 2 and 3 in blue, then appends token 4's key and value in orange. The new query reads all four entries.">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="22" fill="#171717">
+      <text x="10" y="26">One layer's keys and values</text>
+      <rect x="10" y="42" width="110" height="68" rx="5" fill="#3b82f6" fill-opacity="0.15" stroke="#3b82f6"/>
+      <rect x="130" y="42" width="110" height="68" rx="5" fill="#3b82f6" fill-opacity="0.15" stroke="#3b82f6"/>
+      <rect x="250" y="42" width="110" height="68" rx="5" fill="#3b82f6" fill-opacity="0.15" stroke="#3b82f6"/>
+      <rect x="370" y="42" width="110" height="68" rx="5" fill="#f59e0b" fill-opacity="0.15" stroke="#f59e0b"/>
+      <text x="65" y="68" text-anchor="middle">token 1</text><text x="185" y="68" text-anchor="middle">token 2</text><text x="305" y="68" text-anchor="middle">token 3</text><text x="425" y="68" text-anchor="middle">token 4</text>
+      <text x="65" y="96" text-anchor="middle">key/value</text><text x="185" y="96" text-anchor="middle">key/value</text><text x="305" y="96" text-anchor="middle">key/value</text><text x="425" y="96" text-anchor="middle">key/value</text>
+      <path d="M10 120 V128 H480 V120" stroke="#737373" fill="#737373" fill-opacity="0"/>
+      <text x="245" y="162" text-anchor="middle">New query reads all four entries.</text>
+      </g></svg>
+      ```
+
+      ### Feed back one token
+
+      A **decoder** is the language model that predicts what token comes next. Prefill builds its **KV cache** at every layer. A decode call runs it on the next input token, appends that token's key and value, then uses its query to read the whole cache. Once a query has produced its token's attention output, its job is finished. The cache can leave that query out.
+
+      A **generation loop** repeatedly calls the decoder and selects a token from its next-token scores. Each call takes input tokens and a cache, then returns scores and the updated cache. The loop keeps that cache and feeds back only the selected token, at the next position in the full sequence.
+
+      ### Limitations
+
+      Each new query still scores all stored keys and mixes their values, so long histories cost time and memory. Editing the conversation's first token can change later representations. Loading updated model weights can also invalidate a saved cache. The assistant must then recompute affected entries before continuing.
+    worked: |
+      Let's trace two generated tokens after a three-token prompt, using a tiny one-layer, one-head decoder. Write the number of processed tokens as $T$. Each processed token contributes one key and one value, the pair inside each diagram box.
+
+      1. **Prefill the prompt.** Processing its three tokens stores three keys and three values. The final prompt output predicts the first generated token.
+         $$T=3.$$
+
+      2. **Feed back the prediction.** The next call processes only that token, appends its key and value and predicts the second generated token.
+         $$T=3+1=4.$$
+
+      The four entries belong to the three prompt tokens and the first generated token. The second generated token is only a prediction so far. Across both calls, caching computes four key-value pairs. Reprocessing the full history each time would compute three pairs and then four, making seven in total.
+
+      Here is that trace in runnable Python. The outer generation loop first passes the prompt, then one selected token. Our toy decoder uses token IDs 0 and 1, with one-number embeddings 1 and 2. Its query, key and value all equal the embedding, so its head size is 1.
+
+      `exp` is the exponential function used by softmax, and `zip` pairs weights with values for their weighted average. The toy gives token 0 a score equal to that average and token 1 a score of 3 minus that average. The scores tie at an average of 1.5. We chose this output rule so the prediction changes as the cache grows. Higher scores win.
+
+      The cache is a pair of lists, `(keys, values)`, and `append` adds one entry. Processing prompt tokens in order means future entries have not been added yet, enforcing causal attention. We keep only the last token's scores because they predict the next token after the input. Real prefill batches the prompt. This toy isolates cache growth; a full decoder also needs the position handling described above and its other components.
+
+      ```python
+      from math import exp
+
+      def decoder(tokens, cache):
+          keys, values = cache
+          for token in tokens:
+              embedding = 1.0 + token
+              q = embedding
+              keys.append(q)
+              values.append(q)
+              scores = [q * k for k in keys]
+              weights = [exp(s) for s in scores]
+              mixed = sum(w * v for w, v in zip(weights, values))
+              mixed = mixed / sum(weights)
+              next_scores = [mixed, 3 - mixed]
+          return next_scores, (keys, values)
+
+      input_tokens, cache = [0, 1, 0], ([], [])
+      generated, lengths = [], []
+      for _ in range(2):
+          scores, cache = decoder(input_tokens, cache)
+          token = 0 if scores[0] >= scores[1] else 1
+          generated.append(token)
+          lengths.append(len(cache[0]))
+          input_tokens = [token]
+      print(generated, lengths)
+      # prints [0, 1] [3, 4]
+      ```
+
+      The first call fills the cache and the second appends one entry. A full decoder follows this pattern at every layer.
+    problems:
+      - kvc-reuse-basics
+      - kvc-reuse-self
+      - kvc-processed-template
+      - kvc-query-mistake
+      - kvc-loop-complete
+      - kvc-edit-history
+  - id: kvc-heads
+    title: Share keys and values between heads
+    explain: |
+      ### Share one key-value set
+
+      We now know what each layer stores. The next question is how many copies of keys and values the model needs for its heads.
+
+      We'll call the query-producing parts of attention **query heads** and the key-and-value-producing parts **key-value heads**. Ordinary multi-head attention gives each query head its own key-value head for each token. We can also organise a model so several query heads share one key-value head. Shared keys and values still let each query produce its own attention weights.
+
+      Imagine four query heads. We can give them four key-value heads, two heads shared in pairs, or one head shared by all four. The picture shows the middle case. Each line connects a query head to the key-value head it reads.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 165" aria-label="Four query heads in two groups. Query heads 1 and 2 read key-value head A. Query heads 3 and 4 read key-value head B. Each key-value head is stored once.">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="22" fill="#171717">
+      <text x="12" y="29">Queries</text>
+      <text x="125" y="29" text-anchor="middle">1</text><text x="225" y="29" text-anchor="middle">2</text><text x="325" y="29" text-anchor="middle">3</text><text x="425" y="29" text-anchor="middle">4</text>
+      <path d="M125 39 L175 94 M225 39 L175 94 M325 39 L375 94 M425 39 L375 94" stroke="#737373" stroke-width="2"/>
+      <rect x="90" y="94" width="170" height="42" rx="5" fill="#3b82f6" fill-opacity="0.15" stroke="#3b82f6"/>
+      <rect x="290" y="94" width="170" height="42" rx="5" fill="#3b82f6" fill-opacity="0.15" stroke="#3b82f6"/>
+      <text x="175" y="121" text-anchor="middle">Key/value A</text><text x="375" y="121" text-anchor="middle">Key/value B</text>
+      <text x="12" y="157">Each shared set is stored once.</text>
+      </g></svg>
+      ```
+
+      ### Count the stored heads
+
+      Write the number of query heads as $n_h$ and the number of key-value heads as $n_{kv}$. With evenly sized groups, each stored set serves this number of query heads.
+
+      $$\text{query heads per KV head}=\frac{n_h}{n_{kv}}.$$
+
+      - **Multi-head attention (MHA)** uses $n_{kv}=n_h$, with no sharing.
+      - **Grouped-query attention (GQA)** shares a key-value head within each group. There is more than one group, each containing several query heads.
+      - **Multi-query attention (MQA)** uses $n_{kv}=1$, shared by every query head.
+
+      Llama 3 8B uses GQA with 32 query heads and 8 key-value heads. Four query heads read each stored key-value head. If we used its query-head count in a storage estimate, we would count four times as many sets as it actually stores.
+
+      ### Limitations
+
+      Sharing is part of the model's architecture and training. Suppose we delete heads from an existing MHA cache to save memory. Its queries would read different keys and values from those used in training, so the outputs could change.
+    worked: |
+      Let's compare storage for four query heads. Suppose each key or value vector has two numbers, and each number takes 2 bytes.
+
+      1. **Count one stored head.** We count one token in one layer. There are two vectors, two numbers in each vector and 2 bytes per number, giving the three factors below.
+         $$\underbrace{2}_{\text{vectors}}\times\underbrace{2}_{\text{numbers each}}\times\underbrace{2}_{\text{bytes each}}=8\text{ bytes}.$$
+
+      2. **Give every query head its own set.** MHA stores four key-value heads.
+         $$4\times8=32\text{ bytes per token per layer}.$$
+
+      3. **Share in pairs.** GQA stores two key-value heads.
+         $$2\times8=16\text{ bytes per token per layer}.$$
+
+      4. **Share across all four queries.** MQA stores one key-value head.
+         $$1\times8=8\text{ bytes per token per layer}.$$
+
+      The query count stays at four in every case. The number of stored key-value heads determines these cache sizes.
+    problems:
+      - kvc-heads-basics
+      - kvc-heads-self
+      - kvc-sharing-template
+      - kvc-mqa-count
+      - kvc-sharing-mistake
+      - kvc-heads-new-model
+  - id: kvc-memory
+    title: Work out the cache's memory
+    explain: |
+      ### Build the size from one token
+
+      Our assistant's cache grows whenever it processes another token. To plan GPU memory, we count the entries for one token and then multiply by the number of tokens and sequences.
+
+      Picture one token's storage as a pair of vectors in each key-value head, repeated in every layer. A key has $d_h$ numbers, where $d_h$ is the head size. Its value has another $d_h$ numbers. Each number takes $b$ bytes.
+
+      The **KV-cache size** is their total storage in bytes, across all layers and stored heads. With $L$ layers and $n_{kv}$ key-value heads per layer,
+
+      $$\text{bytes per token}=2\times L\times n_{kv}\times d_h\times b.$$
+
+      The factor 2 counts keys and values. For a batch of $B$ independent sequences, each with $T$ processed tokens,
+
+      $$\text{cache bytes}=2\times L\times n_{kv}\times d_h\times b\times T\times B.$$
+
+      For unequal lengths, replace $T\times B$ with the total processed tokens across the sequences.
+
+      ### Sizes for our assistant
+
+      Llama 3 8B has 32 layers, 8 key-value heads and head size 128. With 16-bit keys and values, $b=2$. We'll report its total cache in GB, where one GB is $10^9$ bytes.
+
+      Keeping these model settings fixed, doubling the sequence length doubles the cache. Doubling the batch size also doubles it. Changing both makes it four times as large.
+
+      ### Limitations
+
+      This counts the stored numbers alone. Systems often reserve memory in chunks. A chunk with space for 128 entries would have 28 unused slots when holding 100 entries. Temporary calculations also need room. On our 80 GB GPU, the roughly 16 GB of weights already consume part of the budget. A growing cache can use up the remaining space, so we must limit the total tokens kept across conversations.
+    worked: |
+      Let's estimate the 16-bit cache for four independent Llama 3 8B conversations, each with 1,000 processed tokens.
+
+      1. **Count bytes per token.** Include both keys and values at every layer and stored head.
+         $$2\times32\times8\times128\times2=131{,}072\text{ bytes}.$$
+
+      2. **Count the batch's tokens.** Four separate conversations each have their own entries.
+         $$T\times B=1{,}000\times4=4{,}000.$$
+
+      3. **Multiply and convert to GB.** Divide bytes by one billion, then round to two decimal places.
+         $$\frac{131{,}072\times4{,}000}{10^9}=0.524288\text{ GB}\approx0.52\text{ GB}.$$
+
+      If the assistant instead keeps 500 conversations of 1,000 tokens each, it must store 500,000 processed tokens. That cache would take about 65.54 GB, rounded to two decimal places. It exceeds the roughly 64 GB left after the weights, even before temporary calculations and unused reserved space. Long histories and many conversations can therefore fill this GPU.
+    problems:
+      - kvc-memory-basics
+      - kvc-memory-self
+      - kvc-bytes-template
+      - kvc-batch-template
+      - kvc-unequal-lengths
+      - kvc-memory-mistake
+      - kvc-budget-new-model
+  - id: kvc-prefix
+    title: Reuse the start of a prompt
+    explain: |
+      ### Two requests start the same way
+
+      A cache can also save work across requests. Our assistant receives system instructions, which are rules placed before the user's message. Many requests may share these rules. A **prefix** is a sequence of tokens at the beginning of a prompt.
+
+      Suppose one request has cached keys and values for token IDs `[7, 8, 9, 2]`. A new request starts `[7, 8, 9, 5]`. Causal attention keeps the first three tokens' representations unchanged by the different ending, so their stored entries can be reused, shown in blue. The old ending is grey. The new token, ID 5 at position four, is orange and needs processing to get the new prompt's next-token scores.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 150" aria-label="Two four-token requests share the first three token IDs, 7, 8 and 9, in blue. The old ending, ID 2, is grey and cannot be reused. The new ending, ID 5, is orange and needs fresh computation.">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="22" fill="#171717">
+      <text x="10" y="55">Old</text><text x="10" y="115">New</text>
+      <rect x="65" y="25" width="290" height="104" rx="5" fill="#3b82f6" fill-opacity="0.15" stroke="#3b82f6"/>
+      <rect x="380" y="25" width="100" height="44" rx="5" fill="#d4d4d4" fill-opacity="0.3" stroke="#737373"/>
+      <rect x="380" y="85" width="100" height="44" rx="5" fill="#f59e0b" fill-opacity="0.15" stroke="#f59e0b"/>
+      <text x="115" y="55" text-anchor="middle">7</text><text x="215" y="55" text-anchor="middle">8</text><text x="315" y="55" text-anchor="middle">9</text><text x="430" y="55" text-anchor="middle">2</text>
+      <text x="115" y="115" text-anchor="middle">7</text><text x="215" y="115" text-anchor="middle">8</text><text x="315" y="115" text-anchor="middle">9</text><text x="430" y="115" text-anchor="middle">5</text>
+      </g></svg>
+      ```
+
+      ### Reuse the matching beginning
+
+      **Prefix caching** retains prompt keys and values for later requests with an identical beginning. Reuse requires the same token IDs, model weights and original position numbers. Matching tokens in the middle can have different earlier context and therefore different representations.
+
+      When new prompt tokens follow the matching prefix, the number of prompt tokens still to process is
+
+      $$\text{new prefill tokens}=\text{prompt tokens}-\text{reused prefix tokens}.$$
+
+      In our four-token example, three tokens reuse cache entries. The fourth still scores their keys and mixes their values, so it can take more than one quarter of the time for a full prefill.
+
+      ### Limitations
+
+      We must keep prefix entries in memory to reuse them. If we discard them to free memory, a later request must recompute them. Now suppose the new prompt is exactly `[7, 8, 9, 2]`. All four entries match, but keys and values alone do not supply the final next-token scores. Saving those scores as well would allow immediate selection. With only keys and values, we can reuse `[7, 8, 9]` and process token ID 2 again. That rebuilds the fourth entry and recovers the scores, so only three entries are reused in this case.
+    worked: |
+      Let's count saved token computations for two requests. Here one token computation means processing one token through the model. Both requests begin with the same 600-token system instructions. Each then has a different 200-token user message, making 800 prompt tokens per request. Assume the model weights and token positions match, and the shared entries are retained.
+
+      1. **Process the first prompt.** There are no earlier entries to reuse.
+         $$600+200=800\text{ prompt tokens}.$$
+
+      2. **Reuse the second prompt's beginning.** It shares the initial 600 tokens, so only the new user message needs processing.
+         $$800-600=200\text{ prompt tokens}.$$
+
+      3. **Count the saved work in tokens.** Without reuse, both full prompts would be processed. Subtract the tokens we actually process.
+         $$2\times800-(800+200)=600\text{ token computations saved}.$$
+
+      The second request saves prefill work. Generating its reply still needs decode calls and reads of the stored history.
+    problems:
+      - kvc-prefix-basics
+      - kvc-prefix-self
+      - kvc-prefix-template
+      - kvc-middle-mistake
+      - kvc-full-hit
+      - kvc-prefix-new-setting
+final: kvc-explain-cache
+summary: |
+  - A KV cache stores each processed token's keys and values at every layer. Prefill fills it, and each decode call appends its input token's keys and values while reusing earlier entries. Its predicted token enters the cache when fed back in a later call.
+  - Shared key-value heads reduce storage. Llama 3 8B has 32 query heads and 8 key-value heads, so four query heads share each stored set.
+  - For $B$ independent sequences of $T$ tokens each, the cache takes $2L n_{kv}d_h bTB$ bytes for the stored numbers. At 16-bit precision, Llama 3 8B needs 131,072 bytes per token.
+  - Prefix caching reuses an identical beginning under the same model and positions. It saves prefill work, uses memory and still leaves new prompt tokens and decode to process.
+
+  **Next:** Fast attention reduces how much data the attention calculation moves to and from GPU memory.
