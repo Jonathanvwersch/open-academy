@@ -325,6 +325,19 @@ test('does not save a stale reply after a newer learner message and keeps unansw
   ]);
 });
 
+test('does not save a learner message when the request is already aborted', async () => {
+  const controller = new AbortController();
+  controller.abort();
+
+  const response = await send('discard this stopped question', undefined, {}, controller.signal);
+
+  expect(response.status).toBe(200);
+  expect(await response.json()).toMatchObject({ superseded: true });
+  expect(await db.select().from(tutorThreads)).toHaveLength(0);
+  expect(await db.select().from(tutorMessages)).toHaveLength(0);
+  expect(captured).toHaveLength(0);
+});
+
 test('keeps an aborted learner message and includes it in the next request history', async () => {
   const controller = new AbortController();
   const providerStarted = deferred<boolean>();

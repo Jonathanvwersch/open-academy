@@ -380,12 +380,19 @@ export function registerTutorThreadRoutes(
     const service = deps.tutor(c);
     if (!service) return c.json({ error: 'Tutor unavailable' }, 503);
 
+    const signal = c.req.raw.signal;
     const request = await db.transaction(async (tx) => {
       await tx
         .select({ id: users.id })
         .from(users)
         .where(eq(users.id, c.get('userId')))
         .for('update');
+      if (signal.aborted) {
+        return {
+          superseded: true as const,
+          ...(thread ? { thread } : {}),
+        };
+      }
       const [latestThread] = await tx
         .select({ updatedAt: tutorThreads.updatedAt })
         .from(tutorThreads)
@@ -465,7 +472,8 @@ export function registerTutorThreadRoutes(
       };
     });
 
-    const signal = c.req.raw.signal;
+    if ('superseded' in request) return c.json(request);
+
     const rollbackFailedMessage = async () => {
       const abortedDuringRollback = new Error('Tutor request aborted during failure rollback');
       try {
