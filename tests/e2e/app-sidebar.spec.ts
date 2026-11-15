@@ -188,6 +188,16 @@ test('sidebar skeleton replays captured course geometry after a loaded visit', a
   await expect(navigation.getByTestId('sidebar-course-skeleton-group')).toHaveCount(0);
   const replayedShapeCount = await replayedSkeleton.locator('[data-layout-shape]').count();
   expect(replayedShapeCount).toBeGreaterThanOrEqual(loadedCourseRows);
+  const verticalRuleCount = await replayedSkeleton
+    .locator('[data-layout-shape="rule"]')
+    .evaluateAll(
+      (rules) =>
+        rules.filter((rule) => {
+          const bounds = rule.getBoundingClientRect();
+          return bounds.height > bounds.width;
+        }).length,
+    );
+  expect(verticalRuleCount).toBeGreaterThanOrEqual(3);
   const replayedSectionHeight = await navigation
     .getByTestId('sidebar-course-section')
     .evaluate((element) => element.getBoundingClientRect().height);

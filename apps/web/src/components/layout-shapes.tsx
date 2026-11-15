@@ -34,7 +34,13 @@ export function isLayout(value: unknown): value is Layout {
   );
 }
 
-export function LayoutShapeLayer({ shapes }: { shapes: Shape[] }) {
+export function LayoutShapeLayer({
+  shapes,
+  ruleColor = 'border',
+}: {
+  shapes: Shape[];
+  ruleColor?: 'border' | 'sidebar-border';
+}) {
   return (
     <div aria-hidden="true" data-layout-shape-layer>
       {shapes.map((shape) => (
@@ -45,14 +51,16 @@ export function LayoutShapeLayer({ shapes }: { shapes: Shape[] }) {
             shape.kind === 'frame'
               ? 'bg-card ring-1 ring-foreground/10'
               : shape.kind === 'rule'
-                ? 'bg-border'
+                ? ruleColor === 'sidebar-border'
+                  ? 'bg-sidebar-border'
+                  : 'bg-border'
                 : 'animate-pulse bg-muted motion-reduce:animate-none'
           }`}
           style={{
             left: shape.x,
             top: shape.y,
             width: shape.width,
-            height: shape.kind === 'rule' ? 1 : shape.height,
+            height: shape.height,
             borderRadius: shape.kind === 'rule' ? 0 : shape.radius,
           }}
         />

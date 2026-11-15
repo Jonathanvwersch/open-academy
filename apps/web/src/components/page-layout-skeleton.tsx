@@ -218,8 +218,7 @@ export function measureLayout(element: HTMLElement): Layout {
     );
   };
   for (const block of element.querySelectorAll<HTMLElement>('*')) {
-    const frame = block.closest(frameSelector);
-    if (!frame || block.matches(frameSelector)) continue;
+    if (block.matches(`${frameSelector}, ${blocks}`)) continue;
     const style = getComputedStyle(block);
     if (style.visibility === 'hidden' || style.display === 'none') continue;
     const bounds = block.getBoundingClientRect();
@@ -232,10 +231,28 @@ export function measureLayout(element: HTMLElement): Layout {
         block.parentElement,
       );
     }
+    if (visibleBorder(style.borderRightWidth, style.borderRightStyle, style.borderRightColor)) {
+      const width = Number.parseFloat(style.borderRightWidth);
+      add(
+        new DOMRect(bounds.right - width, bounds.top, width, bounds.height),
+        0,
+        'rule',
+        block.parentElement,
+      );
+    }
     if (visibleBorder(style.borderBottomWidth, style.borderBottomStyle, style.borderBottomColor)) {
       const height = Number.parseFloat(style.borderBottomWidth);
       add(
         new DOMRect(bounds.left, bounds.bottom - height, bounds.width, height),
+        0,
+        'rule',
+        block.parentElement,
+      );
+    }
+    if (visibleBorder(style.borderLeftWidth, style.borderLeftStyle, style.borderLeftColor)) {
+      const width = Number.parseFloat(style.borderLeftWidth);
+      add(
+        new DOMRect(bounds.left, bounds.top, width, bounds.height),
         0,
         'rule',
         block.parentElement,

@@ -366,7 +366,10 @@ function AppSidebarView({
                   className="relative w-full"
                   style={{ height: sidebarCourseLayout.height }}
                 >
-                  <LayoutShapeLayer shapes={sidebarCourseLayout.shapes} />
+                  <LayoutShapeLayer
+                    shapes={sidebarCourseLayout.shapes}
+                    ruleColor="sidebar-border"
+                  />
                 </div>
               ) : loadingCourseGroupCounts.length > 1 ? (
                 COURSE_SKELETON_GROUP_KEYS.slice(0, loadingCourseGroupCounts.length).map(
