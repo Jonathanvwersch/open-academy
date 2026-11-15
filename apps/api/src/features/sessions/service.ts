@@ -400,16 +400,6 @@ export async function getSessionsById(deps: FeatureServices, request: FeatureReq
               const followUp = feedback.followUp === true;
               const retryAllowed = attemptAllowsRetry(attempt);
               const exercise = index.exercisesById.get(attempt.exerciseId);
-              const rubric = Array.isArray(feedback.rubric)
-                ? feedback.rubric.map((item) => {
-                    if (typeof item !== 'object' || item === null || !('id' in item)) return item;
-                    const criterion =
-                      exercise?.type === 'explain'
-                        ? exercise.rubric.find((entry) => entry.id === item.id)
-                        : undefined;
-                    return criterion ? { ...item, required: criterion.required } : item;
-                  })
-                : feedback.rubric;
               const answerOptions = exercise
                 ? answerOptionsFor(exercise, answer, !retryAllowed)
                 : undefined;
@@ -422,7 +412,7 @@ export async function getSessionsById(deps: FeatureServices, request: FeatureReq
                 ...(followUp ? { followUp: true } : {}),
                 ...(answerOptions ? { answerOptions } : {}),
                 feedback: feedback.message ?? '',
-                rubric,
+                rubric: feedback.rubric,
                 exemplar: feedback.exemplar,
                 solution: feedback.solution,
                 yourAnswer:

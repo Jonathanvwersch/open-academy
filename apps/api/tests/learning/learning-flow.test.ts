@@ -1254,7 +1254,25 @@ test('review mode partial explain answers get one retry before card rating and c
     followUp: true,
     retryAllowed: true,
     yourAnswer: 'A partial explanation.',
+    rubric: body.rubric,
   });
+  const [storedAttempt] = await db
+    .select()
+    .from(attempts)
+    .where(eq(attempts.id, body.attemptId))
+    .limit(1);
+  if (!storedAttempt) throw new Error('Could not load the stored explain attempt');
+  const storedFeedback = storedAttempt.feedback as Record<string, unknown>;
+  const storedRubric = storedFeedback.rubric as Array<Record<string, unknown>>;
+  expect(storedRubric).toEqual(body.rubric);
+  const legacyRubric = storedRubric.map(({ required: _required, ...item }) => item);
+  await db
+    .update(attempts)
+    .set({ feedback: { ...storedFeedback, rubric: legacyRubric } })
+    .where(eq(attempts.id, body.attemptId));
+  const legacyReplay = await partialApp.request(`/api/sessions/${session.id}`);
+  const legacyReplayBody = await legacyReplay.json();
+  expect(legacyReplayBody.activities[0].lastAttempt.rubric).toEqual(legacyRubric);
   const secondResponse = await partialApp.request('/api/attempts', {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'X-Now': now },
