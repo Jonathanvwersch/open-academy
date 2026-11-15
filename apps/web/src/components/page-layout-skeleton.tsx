@@ -189,14 +189,20 @@ function measureLayout(element: HTMLElement): Layout {
     );
   }
   for (const block of element.querySelectorAll<HTMLElement>(blocks)) {
-    if (block.parentElement?.closest(blocks) || block.closest('[aria-hidden=true], .sr-only'))
+    const svg = block.tagName.toLowerCase() === 'svg';
+    const style = getComputedStyle(block);
+    const bounds = block.getBoundingClientRect();
+    if (
+      block.closest('.sr-only, [data-layout-shape-layer]') ||
+      (!svg && (block.parentElement?.closest(blocks) || block.closest('[aria-hidden=true]'))) ||
+      (svg &&
+        (bounds.width === 0 ||
+          bounds.height === 0 ||
+          style.visibility === 'hidden' ||
+          style.display === 'none'))
+    )
       continue;
-    add(
-      block.getBoundingClientRect(),
-      Number.parseFloat(getComputedStyle(block).borderRadius) || 4,
-      false,
-      block.parentElement,
-    );
+    add(bounds, Number.parseFloat(style.borderRadius) || 4, false, block.parentElement);
   }
   const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
   let node = walker.nextNode();
@@ -291,7 +297,7 @@ export function PageLayoutSkeleton({ fallback }: { fallback?: ReactNode } = {}) 
       style={layout ? { height: layout.height } : undefined}
     >
       {layout ? (
-        <div aria-hidden="true">
+        <div aria-hidden="true" data-layout-shape-layer>
           {layout.shapes.map((shape) => (
             <div
               key={`${shape.frame}-${shape.x}-${shape.y}-${shape.width}-${shape.height}`}
