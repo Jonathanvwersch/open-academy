@@ -104,13 +104,13 @@ export async function restartTopic(input: {
         ),
       );
 
-    const plannedActivities = await tx
+    const dependentActivities = await tx
       .select({ id: sessionActivities.id, conceptId: sessionActivities.conceptId })
       .from(sessionActivities)
       .where(
         and(
           inArray(sessionActivities.sessionId, sessionIds),
-          eq(sessionActivities.status, 'planned'),
+          or(eq(sessionActivities.status, 'planned'), eq(sessionActivities.status, 'in_progress')),
         ),
       );
     const [masteryRows, runRows] = await Promise.all([
@@ -134,7 +134,7 @@ export async function restartTopic(input: {
         { state: record.state, inferred: record.inferred },
       ]),
     );
-    const activitiesToSkip = plannedActivities
+    const activitiesToSkip = dependentActivities
       .filter((activity) => {
         if (!activity.conceptId) return false;
         const concept = input.content.conceptsById.get(activity.conceptId);
@@ -154,7 +154,10 @@ export async function restartTopic(input: {
         .where(
           and(
             inArray(sessionActivities.id, activitiesToSkip),
-            eq(sessionActivities.status, 'planned'),
+            or(
+              eq(sessionActivities.status, 'planned'),
+              eq(sessionActivities.status, 'in_progress'),
+            ),
           ),
         );
     }
@@ -168,7 +171,7 @@ export async function replanSessionActivities(input: {
   content: ContentIndex;
   now: Date;
   session: NonNullable<Awaited<ReturnType<LearnerRepository['session']>>>;
-  skipPlannedActivityIds?: readonly string[];
+  skipActivityIds?: readonly string[];
   activatePlannedActivityId?: string;
   schedulerState?: SchedulerState;
 }) {
@@ -176,7 +179,7 @@ export async function replanSessionActivities(input: {
     input.content,
     input.schedulerState ?? (await input.repo.schedulerState(input.now, input.content)),
   );
-  const skipIds = new Set(input.skipPlannedActivityIds ?? []);
+  const skipIds = new Set(input.skipActivityIds ?? []);
   const planningActivities = input.session.activities.map((activity) => ({
     ...activity,
     status: skipIds.has(activity.id)
@@ -197,12 +200,14 @@ export async function replanSessionActivities(input: {
     planningActivities,
     input.session.kind,
   );
-  const preserved = input.session.activities.filter(
-    (activity) =>
-      activity.status !== 'planned' ||
-      skipIds.has(activity.id) ||
-      activity.id === input.activatePlannedActivityId,
-  );
+  const preserved = input.session.activities
+    .filter(
+      (activity) =>
+        activity.status !== 'planned' ||
+        skipIds.has(activity.id) ||
+        activity.id === input.activatePlannedActivityId,
+    )
+    .map((activity) => (skipIds.has(activity.id) ? { ...activity, status: 'skipped' } : activity));
   const planned = await Promise.all(
     plan.activities
       .filter((activity) => activity.status !== 'in_progress')
@@ -226,7 +231,10 @@ export async function replanSessionActivities(input: {
           and(
             eq(sessionActivities.sessionId, input.session.id),
             inArray(sessionActivities.id, [...skipIds]),
-            eq(sessionActivities.status, 'planned'),
+            or(
+              eq(sessionActivities.status, 'planned'),
+              eq(sessionActivities.status, 'in_progress'),
+            ),
           ),
         );
     }

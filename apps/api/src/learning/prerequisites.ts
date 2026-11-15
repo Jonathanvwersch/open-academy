@@ -31,7 +31,7 @@ export function prerequisiteMet(
   });
 }
 
-export function plannedLearnActivitiesWithUnmetPrerequisites(
+export function learnActivitiesWithUnmetPrerequisites(
   activities: readonly {
     id: string;
     kind: string;
@@ -44,7 +44,11 @@ export function plannedLearnActivitiesWithUnmetPrerequisites(
 ): string[] {
   return activities
     .filter((activity) => {
-      if (activity.status !== 'planned' || activity.kind !== 'learn' || !activity.conceptId) {
+      if (
+        (activity.status !== 'planned' && activity.status !== 'in_progress') ||
+        activity.kind !== 'learn' ||
+        !activity.conceptId
+      ) {
         return false;
       }
       const concept = content.conceptsById.get(activity.conceptId);

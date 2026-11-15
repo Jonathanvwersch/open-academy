@@ -114,9 +114,11 @@ export function MapPage() {
                           {topic.courseTitle} · {topic.unitTitle}
                         </span>
                       </span>
-                      <span className="shrink-0 text-sm text-muted-foreground">
-                        {dateLabel(topic.date)}
-                      </span>
+                      {topic.date ? (
+                        <span className="shrink-0 text-sm text-muted-foreground">
+                          {dateLabel(topic.date)}
+                        </span>
+                      ) : null}
                     </li>
                   ))}
                 </ol>

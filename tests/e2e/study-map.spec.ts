@@ -64,6 +64,13 @@ test('Up next lists projected topics by week and keeps Finished collapsed', asyn
               unitTitle: 'First unit',
               date: '2026-01-07',
             },
+            {
+              conceptId: 'topic-undated',
+              courseId: 'fixture-course',
+              courseTitle: 'Fixture course',
+              title: 'Undated Topic',
+              unitTitle: 'First unit',
+            },
           ],
         },
       },
@@ -79,11 +86,14 @@ test('Up next lists projected topics by week and keeps Finished collapsed', asyn
   await expect(page.getByRole('link', { name: /Topic Two/ })).toContainText(
     'Fixture switching course · Second unit',
   );
-  const finished = page.getByRole('button', { name: 'Finished (1)', exact: true });
+  const finished = page.getByRole('button', { name: 'Finished (2)', exact: true });
   await expect(finished).toHaveAttribute('aria-expanded', 'false');
   await expect(page.getByText('Finished Topic', { exact: true })).not.toBeVisible();
   await finished.click();
   await expect(page.getByText('Finished Topic', { exact: true })).toBeVisible();
+  const undatedRow = page.getByText('Undated Topic', { exact: true }).locator('xpath=../..');
+  await expect(undatedRow).toBeVisible();
+  await expect(undatedRow).not.toContainText('2026');
 });
 
 test('Up next explains when no topics are projected', async ({ page }) => {

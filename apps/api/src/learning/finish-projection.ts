@@ -13,6 +13,7 @@ export interface ProjectionCourse {
     hardPrereqIds: string[];
     title?: string;
     unitTitle?: string;
+    completionDate?: string;
     displayCourseId?: string;
     displayCourseTitle?: string;
     displayUnitTitle?: string;
@@ -25,8 +26,10 @@ export interface ProjectedTopic {
   courseTitle: string;
   title: string;
   unitTitle: string;
-  date: string;
+  date?: string;
 }
+
+type DatedProjectedTopic = ProjectedTopic & { date: string };
 
 export interface TopicAttribution {
   courseId: string;
@@ -39,11 +42,19 @@ export function courseTopicAttribution(
   orderedCourses: readonly {
     id: string;
     title: string;
+    subjectId?: string;
     units: readonly { title: string; concepts: readonly string[] }[];
   }[],
   foundationCourse: TopicAttribution,
+  preferredSubjectId?: string,
 ): TopicAttribution {
-  for (const course of orderedCourses) {
+  const prioritizedCourses = preferredSubjectId
+    ? [
+        ...orderedCourses.filter((course) => course.subjectId === preferredSubjectId),
+        ...orderedCourses.filter((course) => course.subjectId !== preferredSubjectId),
+      ]
+    : orderedCourses;
+  for (const course of prioritizedCourses) {
     const unit = course.units.find((candidate) => candidate.concepts.includes(conceptId));
     if (unit) return { courseId: course.id, courseTitle: course.title, unitTitle: unit.title };
   }
@@ -61,7 +72,7 @@ export function projectCourseFinishes(input: {
 }): {
   byCourse: Map<string, string | null>;
   overall: string | null;
-  upcoming: ProjectedTopic[];
+  upcoming: DatedProjectedTopic[];
   finished: ProjectedTopic[];
 } {
   const courses = input.courses.map((course) => ({
@@ -73,11 +84,16 @@ export function projectCourseFinishes(input: {
   for (const course of courses) {
     for (const topic of course.topics) {
       if (!topic.done || finishedByConcept.has(topic.conceptId)) continue;
-      finishedByConcept.set(topic.conceptId, projectedTopic(course, topic, input.today));
+      finishedByConcept.set(topic.conceptId, projectedTopic(course, topic, topic.completionDate));
     }
   }
   if (input.dailyXp <= 0 || courses.length === 0) {
-    return { byCourse, overall: null, upcoming: [], finished: [...finishedByConcept.values()] };
+    return {
+      byCourse,
+      overall: null,
+      upcoming: [],
+      finished: newestFirst(finishedByConcept.values()),
+    };
   }
 
   const xpPerTopic = input.xpPerTopic ?? XP_PER_REMAINING_TOPIC;
@@ -99,7 +115,7 @@ export function projectCourseFinishes(input: {
   );
   const spentBySubject = new Map<string, number>();
   const progressByConcept = new Map<string, number>();
-  const upcomingByConcept = new Map<string, ProjectedTopic>();
+  const upcomingByConcept = new Map<string, DatedProjectedTopic>();
   let partialTopic: { conceptId: string; courseId: string; subjectId: string } | null = null;
   for (let day = 1; day <= maxDays && unfinishedCourses.size > 0; day += 1) {
     if (maxNewTopicsPerDay === 0) break;
@@ -176,8 +192,12 @@ export function projectCourseFinishes(input: {
     byCourse,
     overall,
     upcoming: [...upcomingByConcept.values()].slice(0, 20),
-    finished: [...finishedByConcept.values()],
+    finished: newestFirst(finishedByConcept.values()),
   };
+}
+
+function newestFirst(topics: Iterable<ProjectedTopic>): ProjectedTopic[] {
+  return [...topics].sort((left, right) => (right.date ?? '').localeCompare(left.date ?? ''));
 }
 
 function nextAvailableTopic(
@@ -241,6 +261,16 @@ function projectedTopic(
   course: ProjectionCourse,
   topic: ProjectionCourse['topics'][number],
   date: string,
+): DatedProjectedTopic;
+function projectedTopic(
+  course: ProjectionCourse,
+  topic: ProjectionCourse['topics'][number],
+  date?: string,
+): ProjectedTopic;
+function projectedTopic(
+  course: ProjectionCourse,
+  topic: ProjectionCourse['topics'][number],
+  date?: string,
 ): ProjectedTopic {
   return {
     conceptId: topic.conceptId,
@@ -248,7 +278,7 @@ function projectedTopic(
     courseTitle: topic.displayCourseTitle ?? course.title ?? course.id,
     title: topic.title ?? topic.conceptId,
     unitTitle: topic.displayUnitTitle ?? topic.unitTitle ?? '',
-    date,
+    ...(date ? { date } : {}),
   };
 }
 

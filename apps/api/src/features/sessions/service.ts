@@ -22,8 +22,8 @@ import { recordLessonViewed } from '../../learning/mastery.js';
 import {
   activeCourseFor,
   compareOutlinePosition,
+  learnActivitiesWithUnmetPrerequisites,
   masteryKey,
-  plannedLearnActivitiesWithUnmetPrerequisites,
   prerequisiteMet,
 } from '../../learning/prerequisites.js';
 import { attemptAllowsRetry } from '../../learning/retry.js';
@@ -473,7 +473,12 @@ async function updateActivityProgress(deps: FeatureServices, request: FeatureReq
   const completed = body.data.complete === true;
   const { complete: _complete, ...progress } = body.data;
   const now = request.now();
-  if (session?.status === 'active' && activity.status === 'planned' && activity.kind === 'learn') {
+  if (
+    session?.status === 'active' &&
+    activity.kind === 'learn' &&
+    (activity.status === 'planned' ||
+      (activity.status === 'in_progress' && body.data.lessonViewed === true))
+  ) {
     const index = await content();
     const state = filterSchedulerStateForContent(
       index,
@@ -485,7 +490,7 @@ async function updateActivityProgress(deps: FeatureServices, request: FeatureReq
         { state: record.state, inferred: record.inferred },
       ]),
     );
-    const blockedActivities = plannedLearnActivitiesWithUnmetPrerequisites(
+    const blockedActivities = learnActivitiesWithUnmetPrerequisites(
       session.activities,
       masteryByKey,
       state.lessonRuns ?? [],
@@ -500,8 +505,10 @@ async function updateActivityProgress(deps: FeatureServices, request: FeatureReq
         content: index,
         now,
         session,
-        skipPlannedActivityIds: blockedActivities,
-        ...(blockedTarget ? {} : { activatePlannedActivityId: activity.id }),
+        skipActivityIds: blockedActivities,
+        ...(blockedTarget || activity.status !== 'planned'
+          ? {}
+          : { activatePlannedActivityId: activity.id }),
         schedulerState: state,
       });
       if (blockedTarget) {

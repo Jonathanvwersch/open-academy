@@ -1655,7 +1655,7 @@ test('stale sessions are hidden for today, abandoned by new sessions, and keep l
   const progressResponse = await app.request('/api/progress', {
     headers: headersAt(dayTwo),
   });
-  expect((await progressResponse.json()).hours).toBe(0);
+  expect((await progressResponse.json()).studyTimeHours).toBe(0);
 
   const activeResponse = await app.request('/api/sessions/active', {
     headers: headersAt(dayTwo),

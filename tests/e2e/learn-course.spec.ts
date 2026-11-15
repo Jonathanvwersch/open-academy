@@ -833,7 +833,7 @@ test('navigation cleanup pages render at desktop and mobile widths', async ({ pa
 
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto('/progress');
-  await expect(page.getByRole('heading', { name: 'Mastery by domain' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'By course' })).toBeVisible();
   await page.screenshot({
     path: `${navCleanupScreenshotDir}/progress-desktop.png`,
     fullPage: true,

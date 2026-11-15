@@ -450,7 +450,7 @@ test('a restarted lesson does not restore its previous final answer', async () =
   ).not.toMatchObject({ completedExerciseIds: [lesson.final] });
 });
 
-test('restarting a prerequisite skips planned dependent activities', async () => {
+test('restarting a prerequisite skips planned and in-progress dependent activities', async () => {
   const prerequisiteId = 'tokenization';
   const dependentId = 'embeddings';
   const dependent = content.conceptsById.get(dependentId);
@@ -498,10 +498,25 @@ test('restarting a prerequisite skips planned dependent activities', async () =>
     .values({ userId, plannedMinutes: 60, status: 'active' })
     .returning();
   if (!session) throw new Error('Could not create prerequisite restart session');
-  await db.insert(lessonRuns).values([
-    { userId, conceptId: prerequisiteId, status: 'completed' },
-    { userId, conceptId: 'matrices', status: 'completed' },
-  ]);
+  const runs = await db
+    .insert(lessonRuns)
+    .values([
+      { userId, conceptId: prerequisiteId, status: 'completed' },
+      { userId, conceptId: 'matrices', status: 'completed' },
+      { userId, conceptId: dependentId, status: 'in_progress' },
+    ])
+    .returning();
+  const dependentRun = runs.find((run) => run.conceptId === dependentId);
+  if (!dependentRun) throw new Error('Could not create dependent lesson run');
+  await db.insert(lessonProblems).values({
+    runId: dependentRun.id,
+    knowledgePointId: `${dependentId}-preserved`,
+    round: 0,
+    position: 0,
+    exerciseId: `${dependentId}-preserved-answer`,
+    answeredAt: new Date('2026-01-07T09:00:00.000Z'),
+    correct: 1,
+  });
   await db.insert(mastery).values({
     userId,
     conceptId: assistedPrerequisiteConcept.id,
@@ -524,6 +539,8 @@ test('restarting a prerequisite skips planned dependent activities', async () =>
       conceptId: dependentId,
       plannedMinutes: 10,
       status: 'in_progress',
+      startedAt: new Date('2026-01-07T09:00:00.000Z'),
+      progress: { lessonViewed: true, savedAnswer: 'keep-me' },
     },
     {
       sessionId: session.id,
@@ -563,10 +580,25 @@ test('restarting a prerequisite skips planned dependent activities', async () =>
       .map((activity) => [activity.conceptId, activity.status]),
   ).toEqual([
     [dependentId, 'skipped'],
-    [dependentId, 'in_progress'],
+    [dependentId, 'skipped'],
     [dependentId, 'completed'],
     [unrelated.id, 'planned'],
     [assistedDependent.id, 'planned'],
+  ]);
+  expect(activities.find((activity) => activity.idx === 1)?.progress).toEqual({
+    lessonViewed: true,
+    savedAnswer: 'keep-me',
+  });
+  expect(
+    await db.select().from(lessonRuns).where(eq(lessonRuns.id, dependentRun.id)),
+  ).toMatchObject([{ status: 'in_progress', id: dependentRun.id }]);
+  expect(
+    await db.select().from(lessonProblems).where(eq(lessonProblems.runId, dependentRun.id)),
+  ).toMatchObject([
+    {
+      knowledgePointId: `${dependentId}-preserved`,
+      exerciseId: `${dependentId}-preserved-answer`,
+    },
   ]);
 });
 
@@ -1884,6 +1916,35 @@ async function seedStaleEmbeddingsSession() {
   return { session, activity };
 }
 
+async function seedInProgressStaleEmbeddingsSession() {
+  const seeded = await seedStaleEmbeddingsSession();
+  const progress = { lessonViewed: true, savedAnswer: 'keep-embeddings-progress' };
+  const startedAt = new Date('2026-01-07T11:00:00.000Z');
+  const [run] = await db
+    .insert(lessonRuns)
+    .values({ userId, conceptId: 'embeddings', status: 'in_progress' })
+    .returning();
+  if (!run) throw new Error('Could not create in-progress Embeddings run');
+  const [problem] = await db
+    .insert(lessonProblems)
+    .values({
+      runId: run.id,
+      knowledgePointId: 'embeddings-preserved',
+      round: 0,
+      position: 0,
+      exerciseId: 'embeddings-preserved-answer',
+      answeredAt: startedAt,
+      correct: 1,
+    })
+    .returning();
+  if (!problem) throw new Error('Could not create Embeddings lesson progress');
+  await db
+    .update(sessionActivities)
+    .set({ status: 'in_progress', startedAt, progress })
+    .where(eq(sessionActivities.id, seeded.activity.id));
+  return { ...seeded, run, problem, progress, startedAt };
+}
+
 test('Home skips a planned lesson with an unmet prerequisite and replans the front AI course', async () => {
   const { session, activity } = await seedStaleEmbeddingsSession();
 
@@ -1895,6 +1956,42 @@ test('Home skips a planned lesson with an unmet prerequisite and replans the fro
     .from(sessionActivities)
     .where(eq(sessionActivities.sessionId, session.id));
   expect(sessionRows.find((row) => row.id === activity.id)?.status).toBe('skipped');
+  const frontCourse = content.coursesById.get('ml-foundations');
+  if (!frontCourse) throw new Error('Expected the ML Foundations course');
+  const frontConceptIds = new Set(frontCourse.units.flatMap((unit) => unit.concepts));
+  expect(
+    sessionRows.some(
+      (row) =>
+        row.kind === 'learn' &&
+        row.status === 'planned' &&
+        row.conceptId !== 'embeddings' &&
+        frontConceptIds.has(row.conceptId ?? ''),
+    ),
+  ).toBe(true);
+});
+
+test('Home skips a stale in-progress lesson without changing its run or progress', async () => {
+  const { session, activity, run, problem, progress, startedAt } =
+    await seedInProgressStaleEmbeddingsSession();
+
+  const response = await get('/learn');
+  expect(response.status).toBe(200);
+
+  const sessionRows = await db
+    .select()
+    .from(sessionActivities)
+    .where(eq(sessionActivities.sessionId, session.id));
+  expect(sessionRows.find((row) => row.id === activity.id)).toMatchObject({
+    status: 'skipped',
+    startedAt,
+    progress,
+  });
+  expect(await db.select().from(lessonRuns).where(eq(lessonRuns.id, run.id))).toMatchObject([
+    { id: run.id, status: 'in_progress' },
+  ]);
+  expect(
+    await db.select().from(lessonProblems).where(eq(lessonProblems.runId, run.id)),
+  ).toMatchObject([problem]);
   const frontCourse = content.coursesById.get('ml-foundations');
   if (!frontCourse) throw new Error('Expected the ML Foundations course');
   const frontConceptIds = new Set(frontCourse.units.flatMap((unit) => unit.concepts));
@@ -1930,6 +2027,34 @@ test('starting a planned lesson with an unmet prerequisite skips it instead of o
     .where(eq(sessionActivities.id, activity.id));
   expect(row?.status).toBe('skipped');
   expect(row?.startedAt).toBeNull();
+});
+
+test('starting a stale in-progress lesson skips it without changing its run or progress', async () => {
+  const { session, activity, run, progress } = await seedInProgressStaleEmbeddingsSession();
+  const response = await app.request(
+    `/api/sessions/${session.id}/activities/${activity.id}/progress`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Now': '2026-01-07T12:00:00.000Z',
+      },
+      body: JSON.stringify({ lessonViewed: true }),
+    },
+  );
+
+  expect(response.status).toBe(409);
+  expect(
+    await db.select().from(sessionActivities).where(eq(sessionActivities.id, activity.id)),
+  ).toMatchObject([{ status: 'skipped', progress }]);
+  expect(await db.select().from(lessonRuns).where(eq(lessonRuns.id, run.id))).toMatchObject([
+    { id: run.id, status: 'in_progress' },
+  ]);
+  expect(
+    await db.select().from(lessonProblems).where(eq(lessonProblems.runId, run.id)),
+  ).toMatchObject([
+    { knowledgePointId: 'embeddings-preserved', exerciseId: 'embeddings-preserved-answer' },
+  ]);
 });
 
 test('Up next starts with active-session lessons in order and projects future topics from tomorrow', async () => {
@@ -1985,4 +2110,73 @@ test('Up next starts with active-session lessons in order and projects future to
   expect(
     learn.upNext.upcoming.slice(2).every((topic: { date: string }) => topic.date >= '2026-01-08'),
   ).toBe(true);
+});
+
+test('Finished topics use lesson completion dates or the earliest mastery transition', async () => {
+  const studySetInitializedAt = new Date('2026-01-01T00:00:00.000Z');
+  await db
+    .update(users)
+    .set({ activeCourseId: 'ml-foundations', studySetInitializedAt })
+    .where(eq(users.id, userId));
+  await db.insert(courseEnrollments).values({
+    userId,
+    courseId: 'ml-foundations',
+    startMethod: 'beginning',
+  });
+  await db.insert(lessonRuns).values([
+    {
+      userId,
+      conceptId: 'supervised-learning',
+      status: 'completed',
+      completedAt: new Date('2026-01-06T18:00:00.000Z'),
+    },
+    { userId, conceptId: 'probability-basics', status: 'completed' },
+  ]);
+  const statistics = content.conceptsById.get('descriptive-statistics');
+  if (!statistics) throw new Error('Expected descriptive statistics in authored content');
+  await db.insert(mastery).values(
+    statistics.dimensions.map((dimension) => ({
+      userId,
+      conceptId: statistics.id,
+      dimension,
+      state: 'assisted' as const,
+    })),
+  );
+  await db.insert(masteryEvents).values([
+    {
+      userId,
+      conceptId: 'supervised-learning',
+      dimension: 'conceptual',
+      fromState: 'not_assessed',
+      toState: 'assisted',
+      rule: 'test',
+      createdAt: new Date('2026-01-03T08:00:00.000Z'),
+    },
+    {
+      userId,
+      conceptId: statistics.id,
+      dimension: statistics.dimensions[0] ?? 'conceptual',
+      fromState: 'not_assessed',
+      toState: 'assisted',
+      rule: 'test',
+      createdAt: new Date('2026-01-05T08:00:00.000Z'),
+    },
+  ]);
+
+  const response = await get('/learn');
+  expect(response.status).toBe(200);
+  const learn = await response.json();
+  expect(
+    learn.upNext.finished
+      .filter((topic: { conceptId: string }) =>
+        ['supervised-learning', 'descriptive-statistics', 'probability-basics'].includes(
+          topic.conceptId,
+        ),
+      )
+      .map((topic: { conceptId: string; date?: string }) => [topic.conceptId, topic.date]),
+  ).toEqual([
+    ['supervised-learning', '2026-01-06'],
+    ['descriptive-statistics', '2026-01-05'],
+    ['probability-basics', undefined],
+  ]);
 });

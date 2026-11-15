@@ -1,16 +1,10 @@
+import type { ProgressSubjectPayload } from '@academy/contracts/progress';
+import { orderCourseIdsBySubject } from '../content/course-order.js';
 import type { ContentIndex } from '../content/types.js';
 import { deriveLearningDebt } from './debt.js';
 import { buildStreak } from './streak.js';
-import type { MasteryEvent, MasteryRecord, MasteryState } from './types.js';
+import type { MasteryEvent, MasteryRecord } from './types.js';
 import { localDateKey, type XpEventDate } from './xp.js';
-
-const states: MasteryState[] = [
-  'not_assessed',
-  'introduced',
-  'assisted',
-  'independent',
-  'retained',
-];
 
 export interface ProgressAttempt {
   id: string;
@@ -33,7 +27,7 @@ export function buildProgress(input: {
   attempts: ProgressAttempt[];
   flags: Array<{ conceptId: string; targetPrereqId?: string | null }>;
   submissions: Array<{ projectId: string; results: unknown }>;
-  sessions: Array<{ activeSeconds: number; status: string; startedAt: Date | null }>;
+  subjects: ProgressSubjectPayload[];
   xpEvents: readonly XpEventDate[];
   now: Date;
   timeZone: string;
@@ -72,62 +66,27 @@ export function buildProgress(input: {
     })),
     labFailures,
   });
-  const goalConceptIds = [
-    ...new Set(content.curriculum?.goals.flatMap((goal) => goal.concepts) ?? []),
-  ].filter((id) => content.conceptsById.get(id)?.status === 'authored');
-  const mastered = goalConceptIds.filter((conceptId) => {
-    const concept = content.conceptsById.get(conceptId);
-    return Boolean(
-      concept?.dimensions.length &&
-        concept.dimensions.every((dimension) =>
-          records.some(
-            (record) =>
-              record.conceptId === conceptId &&
-              record.dimension === dimension &&
-              (record.state === 'independent' || record.state === 'retained'),
-          ),
-        ),
-    );
-  });
   const dateKey = (date: Date) => localDateKey(date, timeZone);
   const today = dateKey(now);
-  const seconds = input.sessions.reduce(
-    (total, session) =>
-      total +
-      session.activeSeconds +
-      (session.status === 'active' && session.startedAt && dateKey(session.startedAt) === today
-        ? Math.max(0, Math.floor((now.getTime() - session.startedAt.getTime()) / 1000))
-        : 0),
-    0,
-  );
+  const studyTimeHours = input.xpEvents.reduce((total, event) => total + event.amount, 0) / 60;
   const streak = buildStreak(input.xpEvents, today);
-  const domains = (content.curriculum?.domains ?? []).map((domain) => {
-    const concepts = content.concepts.filter(
-      (concept) => concept.domain === domain.id && concept.status === 'authored',
+  const orderedCourseIds = orderCourseIdsBySubject(content);
+  const courseUrl = (conceptId: string) => {
+    const courseId = orderedCourseIds.find((id) =>
+      content.coursesById.get(id)?.units.some((unit) => unit.concepts.includes(conceptId)),
     );
-    const masteryByKey = new Map(
-      records.map((record) => [`${record.conceptId}:${record.dimension}`, record.state]),
-    );
-    const authoredStates = concepts.flatMap((concept) =>
-      concept.dimensions.map(
-        (dimension) => masteryByKey.get(`${concept.id}:${dimension}`) ?? ('not_assessed' as const),
-      ),
-    );
-    const counts = Object.fromEntries(
-      states.map((state) => [
-        state,
-        authoredStates.filter((masteryState) => masteryState === state).length,
-      ]),
-    ) as Record<MasteryState, number>;
-    return { id: domain.id, title: domain.title, counts };
-  });
+    return courseId ? `/courses/${courseId}` : '/courses';
+  };
+  const courses = input.subjects.flatMap((subject) => subject.courses);
   return {
-    domains,
-    goal: { mastered: mastered.length, total: goalConceptIds.length },
+    topicsDone: courses.reduce((total, course) => total + course.topicsDone, 0),
+    topicsTotal: courses.reduce((total, course) => total + course.topicsTotal, 0),
+    studyTimeHours,
+    subjects: input.subjects,
     debt: debt.map((item) => ({
       ...item,
       title: content.conceptsById.get(item.conceptId)?.title ?? item.conceptId,
-      studyUrl: `/map?concept=${item.conceptId}`,
+      studyUrl: courseUrl(item.conceptId),
     })),
     evidence: attempts.slice(0, 20).map((attempt) => ({
       id: attempt.id,
@@ -138,8 +97,6 @@ export function buildProgress(input: {
       createdAt: attempt.createdAt,
       event: input.events.find((event) => event.attemptId === attempt.id)?.rule ?? null,
     })),
-    hours: seconds / 3600,
-    planHours: 132,
     streakDays: streak.current,
     streak,
   };

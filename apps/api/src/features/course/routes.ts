@@ -9,6 +9,7 @@ import {
   diagnosticRuns,
   lessonProblems,
   lessonRuns,
+  masteryEvents,
   paperProgress,
   projectProgress,
   sessionActivities,
@@ -32,8 +33,8 @@ import { deriveLessonState } from '../../learning/lesson-runner.js';
 import {
   activeCourseFor,
   courseFoundationIds,
+  learnActivitiesWithUnmetPrerequisites,
   masteryKey,
-  plannedLearnActivitiesWithUnmetPrerequisites,
   prerequisiteMet,
 } from '../../learning/prerequisites.js';
 import type { PlannedActivity, SessionPreferences } from '../../learning/scheduler.js';
@@ -45,6 +46,7 @@ import {
   sessionBudget,
 } from '../../learning/scheduler.js';
 import { buildStreak } from '../../learning/streak.js';
+import { masteryRank } from '../../learning/types.js';
 import {
   averageDailyXp,
   coursePercent,
@@ -72,18 +74,31 @@ function buildProjectionCourses(
   index: ContentIndex,
   courseIds: string[],
   topicState: ReturnType<typeof courseTopicState>,
+  completionDates: ReadonlyMap<string, string>,
+  preferredSubjectId: string | null,
 ): ProjectionCourse[] {
   const subjectOrder = new Map(
     (index.curriculum?.subjects ?? []).map((subject, position) => [subject.id, position]),
   );
   const orderedCourseIds = orderCourseIdsBySubject(index, courseIds);
-  const attributionCourses = orderedCourseIds.flatMap((activeCourseId) => {
+  const preferredCourseIds = preferredSubjectId
+    ? [
+        ...orderedCourseIds.filter(
+          (courseId) => index.subjectForCourse(courseId).id === preferredSubjectId,
+        ),
+        ...orderedCourseIds.filter(
+          (courseId) => index.subjectForCourse(courseId).id !== preferredSubjectId,
+        ),
+      ]
+    : orderedCourseIds;
+  const attributionCourses = preferredCourseIds.flatMap((activeCourseId) => {
     const activeCourse = index.coursesById.get(activeCourseId);
     return activeCourse
       ? [
           {
             id: activeCourse.id,
             title: activeCourse.title,
+            subjectId: index.subjectForCourse(activeCourseId).id,
             units: activeCourse.units.map(({ title, concepts }) => ({ title, concepts })),
           },
         ]
@@ -125,11 +140,17 @@ function buildProjectionCourses(
           addTopic(prereqId, unitTitle);
         }
       }
-      const attribution = courseTopicAttribution(conceptId, attributionCourses, {
-        courseId,
-        courseTitle: course.title,
-        unitTitle,
-      });
+      const attribution = courseTopicAttribution(
+        conceptId,
+        attributionCourses,
+        {
+          courseId,
+          courseTitle: course.title,
+          unitTitle,
+        },
+        preferredSubjectId ?? undefined,
+      );
+      const completionDate = completionDates.get(conceptId);
       topics.push({
         conceptId,
         status: concept.status,
@@ -137,6 +158,7 @@ function buildProjectionCourses(
         hardPrereqIds,
         title: concept.title,
         unitTitle,
+        ...(completionDate ? { completionDate } : {}),
         displayCourseId: attribution.courseId,
         displayCourseTitle: attribution.courseTitle,
         displayUnitTitle: attribution.unitTitle,
@@ -329,7 +351,7 @@ export function registerLearnCourseRoutes(
     const lessonRunState = runRows.map(({ conceptId, status }) => ({ conceptId, status }));
     const blockedActivities =
       activeSession?.status === 'active'
-        ? plannedLearnActivitiesWithUnmetPrerequisites(
+        ? learnActivitiesWithUnmetPrerequisites(
             activeSession.activities,
             masteryByKey,
             lessonRunState,
@@ -344,7 +366,7 @@ export function registerLearnCourseRoutes(
         content: index,
         now,
         session: activeSession,
-        skipPlannedActivityIds: blockedActivities,
+        skipActivityIds: blockedActivities,
         schedulerState: await loadSchedulerState(),
       });
       activeSession = await repo.session(activeSession.id);
@@ -529,9 +551,79 @@ export function registerLearnCourseRoutes(
       ? studyCourseIds.filter((courseId) => index.subjectForCourse(courseId).id === focusSubjectId)
       : studyCourseIds;
     const topicState = courseTopicState(index, mastery, runRows, placedOutConcepts);
-    const projectionCourses = buildProjectionCourses(index, studyCourseIds, topicState);
+    const latestRunsByConcept = new Map<string, (typeof runRows)[number]>();
+    for (const run of runRows) {
+      const current = latestRunsByConcept.get(run.conceptId);
+      if (!current || run.startedAt >= current.startedAt) {
+        latestRunsByConcept.set(run.conceptId, run);
+      }
+    }
+    const completionDates = new Map<string, string>();
+    for (const run of latestRunsByConcept.values()) {
+      if (run.completedAt) {
+        completionDates.set(run.conceptId, localDateKey(run.completedAt, timeZone));
+      }
+    }
+    const projectionConceptIds = new Set(
+      studyCourseIds.flatMap((courseId) => {
+        const activeCourse = index.coursesById.get(courseId);
+        return activeCourse
+          ? [
+              ...activeCourse.units.flatMap((unit) => unit.concepts),
+              ...courseFoundationIds(index, courseId),
+            ]
+          : [];
+      }),
+    );
+    const conceptsWithoutRunDates = [...projectionConceptIds].filter((conceptId) => {
+      const concept = index.conceptsById.get(conceptId);
+      return (
+        !completionDates.has(conceptId) &&
+        concept !== undefined &&
+        topicState(concept).status === 'complete'
+      );
+    });
+    if (conceptsWithoutRunDates.length > 0) {
+      const completionEvents = await deps.db
+        .select({
+          conceptId: masteryEvents.conceptId,
+          fromState: masteryEvents.fromState,
+          toState: masteryEvents.toState,
+          createdAt: masteryEvents.createdAt,
+        })
+        .from(masteryEvents)
+        .where(
+          and(
+            eq(masteryEvents.userId, userId),
+            inArray(masteryEvents.conceptId, conceptsWithoutRunDates),
+          ),
+        );
+      const earliestEvents = new Map<string, Date>();
+      for (const event of completionEvents) {
+        if (
+          masteryRank(event.toState) < masteryRank('assisted') ||
+          masteryRank(event.fromState) >= masteryRank('assisted')
+        ) {
+          continue;
+        }
+        const earliest = earliestEvents.get(event.conceptId);
+        if (!earliest || event.createdAt < earliest) {
+          earliestEvents.set(event.conceptId, event.createdAt);
+        }
+      }
+      for (const [conceptId, completedAt] of earliestEvents) {
+        completionDates.set(conceptId, localDateKey(completedAt, timeZone));
+      }
+    }
+    const projectionCourses = buildProjectionCourses(
+      index,
+      studyCourseIds,
+      topicState,
+      completionDates,
+      focusSubjectId,
+    );
     const finishProjectionCourses = focusSubjectId
-      ? buildProjectionCourses(index, focusedCourseIds, topicState)
+      ? buildProjectionCourses(index, focusedCourseIds, topicState, completionDates, focusSubjectId)
       : projectionCourses;
     const averageXp = averageDailyXp(events, todayLocal);
     const dailyXpAtPace = averageXp > 0 ? averageXp : defaultAverageDailyXp(prefs);

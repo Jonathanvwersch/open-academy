@@ -173,6 +173,6 @@ export interface UpNextPayload {
     courseTitle: string;
     title: string;
     unitTitle: string;
-    date: string;
+    date?: string;
   }>;
 }

@@ -5,11 +5,33 @@ export interface StreakPayload {
   days: Array<{ date: string; complete: boolean }>;
 }
 
+export type ProgressMasteryState =
+  | 'not_assessed'
+  | 'introduced'
+  | 'assisted'
+  | 'independent'
+  | 'retained';
+
+export interface ProgressCoursePayload {
+  id: string;
+  title: string;
+  topicsDone: number;
+  topicsTotal: number;
+  masteryCounts: Record<ProgressMasteryState, number>;
+  lessonsComingSoon: number;
+}
+
+export interface ProgressSubjectPayload {
+  id: string;
+  title: string;
+  courses: ProgressCoursePayload[];
+}
+
 export interface ProgressPayload {
-  domains: Array<{ id: string; title: string; counts: Record<string, number> }>;
-  goal: { mastered: number; total: number };
-  hours: number;
-  planHours: number;
+  topicsDone: number;
+  topicsTotal: number;
+  studyTimeHours: number;
+  subjects: ProgressSubjectPayload[];
   streakDays: number;
   streak: StreakPayload;
 }

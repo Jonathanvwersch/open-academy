@@ -27,6 +27,12 @@ describe('projectCourseFinishes', () => {
           units: [{ title: 'Post-training', concepts: ['eigen-svd'] }],
         },
         {
+          id: 'ml-foundations',
+          subjectId: 'ai',
+          title: 'ML Foundations',
+          units: [{ title: 'Statistics', concepts: ['descriptive-statistics'] }],
+        },
+        {
           id: 'deep-learning',
           subjectId: 'ai',
           title: 'Deep Learning',
@@ -50,6 +56,7 @@ describe('projectCourseFinishes', () => {
 
     expect(orderedCourses.map(({ id }) => id)).toEqual([
       'maths-for-ml',
+      'ml-foundations',
       'deep-learning',
       'transformers-llms',
     ]);
@@ -68,6 +75,47 @@ describe('projectCourseFinishes', () => {
       courseId: 'transformers-llms',
       courseTitle: 'Transformers and LLMs · Foundations',
       unitTitle: 'Post-training',
+    });
+    expect(
+      courseTopicAttribution(
+        'descriptive-statistics',
+        orderedCourses,
+        {
+          courseId: 'maths-for-ml',
+          courseTitle: 'Mathematics for ML',
+          unitTitle: 'Linear algebra',
+        },
+        'ai',
+      ),
+    ).toEqual({
+      courseId: 'ml-foundations',
+      courseTitle: 'ML Foundations',
+      unitTitle: 'Statistics',
+    });
+  });
+
+  it('prefers direct course ownership over a foundations fallback', () => {
+    expect(
+      courseTopicAttribution(
+        'shared-concept',
+        [
+          {
+            id: 'course-a',
+            subjectId: 'math',
+            title: 'Course A',
+            units: [{ title: 'Direct unit', concepts: ['shared-concept'] }],
+          },
+        ],
+        {
+          courseId: 'course-b',
+          courseTitle: 'Course B · Foundations',
+          unitTitle: 'Prerequisites',
+        },
+      ),
+    ).toEqual({
+      courseId: 'course-a',
+      courseTitle: 'Course A',
+      unitTitle: 'Direct unit',
     });
   });
 
@@ -220,6 +268,39 @@ describe('projectCourseFinishes', () => {
     expect(result.byCourse.get('robotics')).toBeNull();
     expect(result.overall).toBeNull();
     expect(result.upcoming).toEqual([]);
+  });
+
+  it('uses real completion dates and lists finished topics newest first', () => {
+    const result = projectCourseFinishes({
+      courses: [
+        {
+          id: 'course',
+          topics: [
+            {
+              conceptId: 'older',
+              done: true,
+              hardPrereqIds: [],
+              completionDate: '2025-12-31',
+            },
+            {
+              conceptId: 'newer',
+              done: true,
+              hardPrereqIds: [],
+              completionDate: '2026-01-02',
+            },
+            { conceptId: 'undated', done: true, hardPrereqIds: [] },
+          ],
+        },
+      ],
+      dailyXp: 0,
+      today,
+    });
+
+    expect(result.finished.map(({ conceptId, date }) => [conceptId, date])).toEqual([
+      ['newer', '2026-01-02'],
+      ['older', '2025-12-31'],
+      ['undated', undefined],
+    ]);
   });
 
   it('continues projecting after topics planned for today are assumed done', () => {
