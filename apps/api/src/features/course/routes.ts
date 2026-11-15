@@ -684,14 +684,18 @@ export function registerLearnCourseRoutes(
       spentBySubject: recentLearnMinutesBySubject,
     });
     const todayTopics = activeLearnTopics(activeActivities, projectionCourses, index, todayLocal);
-    const projectUpcoming = (courses: ProjectionCourse[], topicsForToday: typeof todayTopics) => {
+    const projectUpcoming = (
+      courses: ProjectionCourse[],
+      topicsForToday: typeof todayTopics,
+      spentBySubject: Record<string, number>,
+    ) => {
       const todayConceptIds = new Set(topicsForToday.map((topic) => topic.conceptId));
       const projection = projectCourseFinishes({
         courses,
         dailyXp: dailyXpAtPace,
         today: addLocalDays(todayLocal, topicsForToday.length > 0 ? 1 : 0),
         assumedDoneConceptIds: todayConceptIds,
-        spentBySubject: recentLearnMinutesBySubject,
+        spentBySubject,
       });
       return [
         ...topicsForToday,
@@ -704,13 +708,23 @@ export function registerLearnCourseRoutes(
     const allSubjectsProjectionCourses = focusSubjectId
       ? buildProjectionCourses(index, studyCourseIds, topicState, completionDates, null)
       : projectionCourses;
+    const allSubjectsRecentLearnMinutesBySubject = focusSubjectId
+      ? schedulerRecentLearnMinutesBySubject(
+          { ...projectionSchedulerState, focusSubjectId: undefined },
+          index,
+        )
+      : recentLearnMinutesBySubject;
     const allSubjectsTodayTopics = focusSubjectId
       ? activeLearnTopics(activeActivities, allSubjectsProjectionCourses, index, todayLocal)
       : todayTopics;
     const upNext = {
-      upcoming: projectUpcoming(finishProjectionCourses, todayTopics),
+      upcoming: projectUpcoming(finishProjectionCourses, todayTopics, recentLearnMinutesBySubject),
       allSubjects: focusSubjectId
-        ? projectUpcoming(allSubjectsProjectionCourses, allSubjectsTodayTopics)
+        ? projectUpcoming(
+            allSubjectsProjectionCourses,
+            allSubjectsTodayTopics,
+            allSubjectsRecentLearnMinutesBySubject,
+          )
         : null,
       finished: finishesAtPace.finished,
     };

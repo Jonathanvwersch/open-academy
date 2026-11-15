@@ -1280,6 +1280,117 @@ test('course details report incomplete foundation counts and source courses', as
   });
 });
 
+test('all-subject projection uses recent learn minutes from outside the focus', async () => {
+  const mathsCourse = content.coursesById.get('maths-for-ml');
+  const aiCourse = content.coursesById.get('ml-foundations');
+  if (!mathsCourse || !aiCourse) throw new Error('Missing subject projection test courses');
+  const mathsCourseConcepts = new Set(mathsCourse.units.flatMap((unit) => unit.concepts));
+  const aiCourseConcepts = new Set(aiCourse.units.flatMap((unit) => unit.concepts));
+  const mathsFoundations = courseFoundationIds(content, mathsCourse.id);
+  const hasIndependentLesson = (conceptId: string) => {
+    const concept = content.conceptsById.get(conceptId);
+    return (
+      concept?.status !== 'stub' &&
+      concept?.prereqs.every((prerequisite) => prerequisite.strength !== 'hard') &&
+      (content.lessonsByConcept.get(conceptId)?.knowledge_points?.length ?? 0) > 0
+    );
+  };
+  const mathsConceptId = [...mathsCourseConcepts].find((conceptId) => {
+    return hasIndependentLesson(conceptId);
+  });
+  const aiConceptId = [...aiCourseConcepts].find((conceptId) => {
+    return (
+      !mathsCourseConcepts.has(conceptId) &&
+      !mathsFoundations.has(conceptId) &&
+      hasIndependentLesson(conceptId)
+    );
+  });
+  if (!mathsConceptId || !aiConceptId) {
+    throw new Error('Missing independent Mathematics and AI lessons for subject balancing');
+  }
+  await db.insert(courseEnrollments).values(
+    [mathsCourse.id, aiCourse.id].map((courseId) => ({
+      userId,
+      courseId,
+      status: 'active' as const,
+      startMethod: 'beginning' as const,
+    })),
+  );
+  const [session] = await db
+    .insert(studySessions)
+    .values({
+      userId,
+      kind: 'weekday',
+      plannedMinutes: 30,
+      status: 'completed',
+      startedAt: new Date('2026-01-07T09:30:00.000Z'),
+      endedAt: new Date('2026-01-07T10:00:00.000Z'),
+    })
+    .returning();
+  if (!session) throw new Error('Could not create recent learn session');
+  await db.insert(sessionActivities).values([
+    {
+      sessionId: session.id,
+      idx: 0,
+      kind: 'learn',
+      conceptId: mathsConceptId,
+      plannedMinutes: 10,
+      status: 'completed',
+      completedAt: new Date('2026-01-07T10:00:00.000Z'),
+    },
+    {
+      sessionId: session.id,
+      idx: 1,
+      kind: 'learn',
+      conceptId: aiConceptId,
+      plannedMinutes: 20,
+      status: 'completed',
+      completedAt: new Date('2026-01-07T10:00:00.000Z'),
+    },
+  ]);
+
+  const allSubjects = await (await get('/learn')).json();
+  expect(allSubjects.focusSubjectId).toBeNull();
+  expect(allSubjects.upNext.upcoming[0]?.courseId).toBe(mathsCourse.id);
+
+  expect((await put('/focus', { subjectId: 'mathematics' })).status).toBe(200);
+  const focused = await (await get('/learn')).json();
+  expect(focused.upNext.allSubjects).not.toBeNull();
+  expect(
+    focused.upNext.allSubjects.map(
+      ({
+        conceptId,
+        courseId,
+        dayLabel,
+      }: {
+        conceptId: string;
+        courseId: string;
+        dayLabel: string;
+      }) => ({
+        conceptId,
+        courseId,
+        dayLabel,
+      }),
+    ),
+  ).toEqual(
+    allSubjects.upNext.upcoming.map(
+      ({
+        conceptId,
+        courseId,
+        dayLabel,
+      }: {
+        conceptId: string;
+        courseId: string;
+        dayLabel: string;
+      }) => ({
+        conceptId,
+        courseId,
+        dayLabel,
+      }),
+    ),
+  );
+});
+
 test('focus persists and replans only planned activities', async () => {
   const mathsCourse = content.coursesById.get('maths-for-ml');
   const aiCourse = content.coursesById.get('ml-foundations');
