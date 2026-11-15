@@ -9,10 +9,10 @@ exercises:
     prompt: What is the projection of a vector $x$ onto the line through a vector $u$?
     options:
       - id: a
-        text: The length of the shadow that $x$ casts on the line through $u$.
+        text: The number $u^\top x/u^\top u$ of copies of $u$ that make the shadow.
         correct: false
         category: misunderstood_definition
-        feedback: That length is one number. The projection is the vector from the origin to where the shadow ends.
+        feedback: That number only scales $u$. The projection is the vector $\frac{u^\top x}{u^\top u}u$, from the origin to where the shadow ends.
       - id: b
         text: The vector on the line through $u$ that is closest to $x$.
         correct: true
@@ -40,7 +40,7 @@ exercises:
       - id: a
         text: "Dividing by $u^\\top u$ makes the leftover orthogonal to $u$, giving $p=0.5u=(3,4)$."
         correct: true
-        feedback: Setting $u^\top(x-cu)=0$ gives $c=u^\top x/u^\top u=0.5$, and the leftover $(4,-3)$ dots to zero with $u$.
+        feedback: Setting $u^\top(x-ku)=0$ gives $k=u^\top x/u^\top u=0.5$, and the leftover $(4,-3)$ dots to zero with $u$.
       - id: b
         text: "Dividing by $10$ would make the projection shorter than the shadow."
         correct: false
@@ -56,7 +56,7 @@ exercises:
         correct: false
         category: misunderstood_definition
         feedback: "A unit vector comes from dividing $u$ by its length $10$, giving $(0.6,0.8)$."
-    solution: We want $c$ with $u^\top(x-cu)=0$, which gives $c=u^\top x/u^\top u=50/100=0.5$. Then $p=(3,4)$, and the leftover $(4,-3)$ is orthogonal to $u$.
+    solution: We want $k$ with $u^\top(x-ku)=0$, which gives $k=u^\top x/u^\top u=50/100=0.5$. Then $p=(3,4)$, and the leftover $(4,-3)$ is orthogonal to $u$.
   - id: orthp-orthogonal-test
     dimension: math
     type: numeric
@@ -169,7 +169,7 @@ exercises:
         correct: false
         category: incorrect_reasoning
         feedback: The shadow is $5$ long, but $5u=(15,0)$ is $15$ long because $u$ has length $3$.
-    solution: The projection is $\frac{u^\top x}{u^\top u}u=\frac{15}{9}(3,0)=(5,0)$. Dividing by the length $3$ gives the shadow's length, $5$, which is a number of units and not a number of copies of $u$.
+    solution: The projection is $\frac{u^\top x}{u^\top u}u=\frac{15}{9}(3,0)=(5,0)$. Dividing by the length $3$ gives the shadow's length, $5$, a number of units. Scaling $u$ needs the number of copies of $u$, $15/9$.
   - id: orthp-leftover-template
     dimension: math
     type: numeric
@@ -322,7 +322,13 @@ exercises:
         min: 1
         max: 3
     constraints:
-      ["a != d", "b != c", "a * c + b * d != a * a + b * b", "a * c + b * d != c * c + d * d"]
+      [
+        "a != d",
+        "b != c",
+        "a * c + b * d != a * a + b * b",
+        "a * c + b * d != c * c + d * d",
+        "a * b + c * d != a * a + b * b",
+      ]
     answer_expr: a * c + b * d
     tolerance:
       abs: 0.001
@@ -350,7 +356,7 @@ exercises:
         min: -10
         max: 10
         step: 5
-    constraints: ["q != 0", "q != 2 * p"]
+    constraints: ["q != 0", "q != 2 * p", "p != q"]
     answer_expr: q
     tolerance:
       abs: 0.001
@@ -433,7 +439,7 @@ exercises:
         text: The line through the first and the last data points.
         correct: false
         category: misunderstood_definition
-        feedback: Least squares uses every point, not just two of them.
+        feedback: A line through two points ignores the others. Least squares uses all the points.
       - id: c
         text: The unknowns that make the plain sum of the errors smallest.
         correct: false
@@ -466,7 +472,7 @@ exercises:
         text: "The normal equations make every error zero, which $Ax=b$ can't do for three points."
         correct: false
         category: misunderstood_definition
-        feedback: "The errors are $(-0.5,1,-0.5)$. The normal equations make them as small as possible, not zero."
+        feedback: "The errors are $(-0.5,1,-0.5)$. The normal equations make the sum of their squares as small as possible, and here that sum is $1.5$."
       - id: d
         text: "Multiplying by $A^\\top$ drops the middle point, which leaves two equations in two unknowns."
         correct: false
@@ -603,11 +609,12 @@ exercises:
         max: 5
       v:
         min: 1
-        max: 3
+        max: 5
         step: 2
       d:
         min: 1
         max: 2
+    constraints: ["h != v", "d != v", "v != 3 * d"]
     answer_expr: h
     tolerance:
       abs: 0.001
@@ -656,7 +663,7 @@ exercises:
       - id: b
         text: The least-squares solution $\hat x$, one entry per column of $A$.
         correct: true
-        feedback: The first result is $\hat x$. The others are an array holding the sum of squared errors, the rank and one more list.
+        feedback: The first result is $\hat x$. The others are an array holding the sum of squared errors, the rank and one more array.
       - id: c
         text: The error vector $b-A\hat x$, one entry for each row of $A$.
         correct: false
@@ -667,7 +674,7 @@ exercises:
         correct: false
         category: recall_failure
         feedback: The sum of squared errors is in the second result, an array with one entry when $A$ has more rows than columns and full rank.
-    solution: The first result is the least-squares solution $\hat x$. Then come an array holding the sum of squared errors, the rank of $A$ and one more list.
+    solution: The first result is the least-squares solution $\hat x$. Then come an array holding the sum of squared errors, the rank of $A$ and one more array.
   - id: orthp-numpy-self-explain
     lesson_only: true
     dimension: implementation
