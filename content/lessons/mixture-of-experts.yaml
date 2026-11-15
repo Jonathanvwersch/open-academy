@@ -15,11 +15,11 @@ where_this_fits: |
   Language models predict the next token: the token following the text so far. More parameters can help represent learned patterns. Running only a few experts lets us store more parameters while limiting each token's calculations.
 knowledge_points:
   - id: moe-choose
-    title: Choose experts for each token
+    title: Choose MLPs for each token
     explain: |
       ### A router scores the experts
 
-      We have several MLPs in place of one. How does a token choose between them? A **router** is a learned scoring layer that reads the token's vector and assigns one score to each expert.
+      We have several MLPs, called **experts**, in place of one. How does a token choose between them? A **router** is a learned scoring layer that reads the token's vector and assigns one score to each expert.
 
       We'll use the sentence “the cat sat on the mat” and treat each word as one token. For “cat,” let its vector at this point in the model be $x=(1,0)$, with width $d=2$. The router computes scores $(1,1,0,0)$ for four experts. The orange paths select the two highest scores. Given expert outputs $(2,0)$ and $(0,4)$, equal weights combine them into $(1,2)$. The worked example shows how.
 
@@ -83,9 +83,9 @@ knowledge_points:
     explain: |
       ### Parameters we store and use
 
-      We ran two of four experts for “cat.” Why count what we store and what we use separately? The total determines the memory needed to store the layer's parameters. The active count helps estimate computation per token. Choosing a few experts lets the layer store more expert parameters while doing the same amount of expert calculation per token.
+      An **expert** is one of several MLPs available for each token. For the token “cat,” a **router**, a learned scoring layer, selects two of four experts. **Top-k routing** chooses the $k$ highest-scoring experts. Why count parameters stored and used separately?
 
-      **Total parameters** count every weight and bias in the layer. **Active parameters per token** count the router and the selected experts.
+      **Total parameters** count every weight and bias in the layer, determining storage. **Active parameters per token** count the router and selected experts, helping estimate computation. Choosing a few experts lets us store more expert parameters while keeping expert calculation per token fixed.
 
       Imagine four boxes, each storing 17 parameters. All four must be stored, but only the two orange boxes are used for this token. The router is always used too. We'll count the 17 parameters below.
 
@@ -139,13 +139,13 @@ knowledge_points:
         moe-count-memory,
       ]
   - id: moe-balance
-    title: Avoid overloading one expert
+    title: Spread tokens across MLPs
     explain: |
       ### When most tokens pick one expert
 
-      To use the stored parameters well, we need tokens to reach different experts. For the balancing example we use a smaller layer: two experts, top-1, and four tokens, “the cat sat on.” If all four choose expert 1, expert 2 stays idle.
+      An **expert** is one of several MLPs available for each token. A **router** scores them, and softmax turns its scores into **router probabilities**, one per expert. To use stored parameters well, tokens need to reach different experts. Here we use two experts and **top-1 routing**, choosing only the highest-scoring expert, for four tokens, “the cat sat on.” If all four choose expert 1, expert 2 stays idle.
 
-      Big models can spread experts over several GPUs, processors that run neural-network calculations. Tokens go to the GPU holding their expert; if one GPU's expert gets most tokens, the others wait. Each orange bar counts tokens assigned to an expert. Concentrating almost all work on a few experts is called routing collapse.
+      Models can spread experts over GPUs, processors for neural-network calculations. Tokens go to the GPU holding their expert; if one gets most tokens, the others wait. Each orange bar counts assigned tokens. Concentrating work on a few experts is called routing collapse.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 190" aria-label="Top-1 routing of four tokens to two experts. Balanced assignment counts are 2 and 2. Collapsed assignment counts are 4 and 0. Orange bar lengths are proportional to token counts.">
@@ -161,7 +161,7 @@ knowledge_points:
 
       ### A penalty for uneven routing
 
-      A **load-balancing loss** encourages work to spread across experts. A batch is the group of tokens processed together in one training step. Let $f_i$ be the fraction assigned to expert $i$, and $P_i$ its router probability averaged over all batch tokens, whichever expert they chose. With $n$ experts, one penalty is
+      A **load-balancing loss** encourages work to spread across experts. A batch groups tokens processed together in one training step. Let $f_i$ be the fraction assigned to expert $i$, and $P_i$ its router probability averaged over all batch tokens, whichever expert they chose. With $n$ experts, one penalty is
 
       $$L_{\text{aux}}=n\sum_{i=1}^{n}f_iP_i.$$
 

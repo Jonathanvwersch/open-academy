@@ -176,7 +176,7 @@ knowledge_points:
 
       Our assistant's cache grows whenever it processes another token. To plan GPU memory, we count the entries for one token and then multiply by the number of tokens and sequences.
 
-      Picture one token's storage as a pair of vectors in each key-value head, repeated in every layer. A key has $d_h$ numbers, where $d_h$ is the head size. Its value has another $d_h$ numbers. Each number takes $b$ bytes.
+      A **key-value head** produces one key vector and one value vector per token; one or more query heads read this pair. Picture one token's pair in each key-value head, repeated in every layer. A key has $d_h$ numbers, where $d_h$ is the head size. Its value has another $d_h$ numbers. Each number takes $b$ bytes.
 
       The **KV-cache size** is their total storage in bytes, across all layers and stored heads. With $L$ layers and $n_{kv}$ key-value heads per layer,
 

@@ -80,11 +80,11 @@ knowledge_points:
     explain: |
       ### Explore at random, now and then
 
-      The greedy agent got stuck because it never pulled arm B again. The simplest fix is to make it pull a random arm every now and then. Before each choice, the agent makes a random draw. With probability $\varepsilon$ (the Greek letter epsilon) it explores, by picking one of the actions at random, each equally likely. Otherwise, with probability $1-\varepsilon$, it exploits and takes the action with the best estimate. This rule is called **epsilon-greedy**, and $\varepsilon$ is the **exploration rate**, a number between $0$ and $1$ that we choose. The random pick sometimes lands on the best-looking action anyway. It still counts as exploring, because the agent ignored its estimates.
+      A slot machine has two arms, A and B. The agent estimates each arm's reward by the mean reward observed from its pulls. A **greedy** agent always pulls the arm with the best estimate, so an unlucky reward can stop it trying B again. A fix is to pull a random arm sometimes. With probability $\varepsilon$ (the Greek letter epsilon), it **explores**, picking each action equally likely. Otherwise, with probability $1-\varepsilon$, it **exploits**, taking the best estimate. This is **epsilon-greedy**; $\varepsilon$ is the **exploration rate**, between $0$ and $1$. A random pick can land on the best-looking action too; it counts as exploring because it ignores estimates.
 
       ### The chance of each action
 
-      The tree shows the slot machine from before, with $\varepsilon=0.1$, and arm A still has the best estimate. The blue branch exploits and always pulls A. The orange branch explores and pulls A or B with equal chance.
+      The tree shows this slot machine with $\varepsilon=0.1$ and arm A having the best estimate. The blue branch exploits and always pulls A. The orange branch explores and pulls A or B with equal chance.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 400" aria-label="Probability tree for epsilon-greedy on the slot machine with epsilon 0.1, while arm A has the best estimate. Before each pull, the blue exploit branch, probability 0.9, pulls arm A. The orange explore branch, probability 0.1, picks an arm at random: arm A with probability 0.05 and arm B with probability 0.05. In total arm A is pulled with probability 0.95 and arm B with probability 0.05">
@@ -150,11 +150,11 @@ knowledge_points:
     explain: |
       ### Agents that learn their probabilities
 
-      Some agents don't pick the best-looking action at all. They learn the policy's probabilities directly, nudging them up for actions that led to a high return. Later lessons show how. Such an agent explores on its own, because it picks each action at random using its probabilities. But whenever an action does well, its probability goes up, so it gets tried more, and its probability goes up again. This can push one action's probability towards $1$ early, and then the agent stops trying the others. It's the same problem the greedy agent had.
+      Some agents learn the policy's probabilities directly, nudging them up for actions that led to a high return. Such an agent explores by picking actions at random using its probabilities. But whenever an action does well, its probability goes up, so it gets tried more. This can push one action's probability towards $1$ early, and the agent stops trying others. A **greedy** agent, which always takes the action with the best estimated reward, has the same problem.
 
       ### How spread out a policy is
 
-      The **entropy** of a policy in a state is a number that says how spread out its action probabilities are. It's largest when every action is equally likely, and it's $0$ when one action has probability $1$. For two actions the largest it can be is about $0.69$, the natural log of $2$. It's worked out from the probabilities with natural logs, but here we only need its values. The chart shows three policies over two actions, with their entropies rounded to two decimal places.
+      The **entropy** of a policy in a state measures how spread out its action probabilities are. It's largest when every action is equally likely, and $0$ when one action has probability $1$. For two actions its maximum is about $0.69$. Here we use supplied entropy values. The chart shows three policies over two actions, with entropies rounded to two decimal places.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" aria-label="Three policies over two actions A and B, drawn as blue probability bars. Probabilities 0.5 and 0.5 have entropy 0.69, the largest. Probabilities 0.9 and 0.1 have entropy 0.33. Probabilities 0.99 and 0.01 have entropy 0.06, close to 0">
@@ -176,7 +176,7 @@ knowledge_points:
 
       ### Limitations
 
-      Epsilon-greedy and the entropy bonus both explore by acting at random. That works when a few random actions can stumble on a reward. It fails when the first reward needs a long, exact sequence of actions. The 2015 DQN agent explored with epsilon-greedy and scored $0$ on the Atari game Montezuma's Revenge, where scoring takes many precise moves. On a real robot, random actions can also cause damage, so much of the exploring is done in simulation.
+      **Epsilon-greedy** picks an equally random action with a chosen probability and otherwise takes the best estimated action. Like the entropy bonus, it explores through random actions. This works when a few random actions can stumble on a reward, but fails when the first reward needs a long, exact sequence. The 2015 DQN agent used epsilon-greedy and scored $0$ on the Atari game Montezuma's Revenge, where scoring takes many precise moves. On a real robot, random actions can cause damage, so much exploring happens in simulation.
     worked: |
       Let's see an entropy bonus change which policy the agent prefers, on the slot machine with arms A and B. Suppose the agent has pulled B only a few times and got unlucky, so every pull of B has paid $0$, and every pull of A has paid $1$. Each pull is complete on its own, so a pull's return is just its reward. We compare two policies. Policy X pulls A with probability $0.99$, and policy Y pulls A with probability $0.9$. To make the effect easy to see we use a large weight, $\beta=0.5$.
 

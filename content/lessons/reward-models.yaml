@@ -19,7 +19,7 @@ knowledge_points:
     explain: |
       ### Scores that don't line up
 
-      To train a reward model, we first need data on what people like. The obvious way is to show someone a response and ask for a score from 0 to 10.
+      A **reward model** reads a prompt and response and gives a number, higher for responses people prefer. To train it, we need data on what people like. The obvious way is to show someone a response and ask for a score from 0 to 10.
 
       Take the prompt "Write one sentence about a cat" and two responses. Response A is "The cat sat on the mat." Response B is "Cat mat the sat on." The picture shows the scores two raters gave them, with A in green and B in red.
 
@@ -67,7 +67,7 @@ knowledge_points:
       </svg>
       ```
 
-      Rater 1 is generous and gives A a 9 and B a 6. Rater 2 is strict and gives A a 5 and B a 2. If we trained on the scores, the model would be told that A is worth 9 and also that it's worth 5. It can't match both, and the 4-point difference only shows how generous each rater is. Their gaps match here only by chance, since a third rater could give A a 4 and B a 3. Yet every rater agrees that A is better than B.
+      Rater 1 generously gives A a 9 and B a 6. Rater 2 strictly gives A a 5 and B a 2. Training on scores would tell the model A is worth both 9 and 5. It can't match both; the 4-point difference reflects rater generosity. Their gaps match only by chance: a third rater could give A a 4 and B a 3. Yet every rater agrees A is better than B.
 
       ### Comparing two responses
 
@@ -110,9 +110,9 @@ knowledge_points:
     explain: |
       ### From two rewards to a chance
 
-      A reward model gives each response its own reward. We'll write $r_A$ for the reward of response A and $r_B$ for the reward of response B, both for the same prompt. To learn from preference pairs, we need to connect these two numbers to what a person chose.
+      A **reward model** reads a prompt and response and gives a **reward**, a number higher for responses people prefer. Write $r_A$ and $r_B$ for the rewards of responses A and B to the same prompt. **Preference pairs** record a prompt, a chosen response and a rejected response. To learn from them, we connect the rewards to what a person chose.
 
-      People don't always agree. Different people pick differently, and so can one person on different days. So we use the two rewards to work out the probability that a person prefers A over B. We'll write it $P(A\text{ over }B)$. That probability should be $0.5$ when the rewards are equal and close to $1$ when A's reward is much higher.
+      People's choices vary, even for one person on different days. We use the rewards to predict the probability that a person prefers A over B, written $P(A\text{ over }B)$. It should be $0.5$ for equal rewards and close to $1$ when A's reward is much higher.
 
       ### The Bradley–Terry model
 
@@ -190,17 +190,17 @@ knowledge_points:
       - rmp-match-raters
       - rmp-robot-grasp
   - id: rm-preference-loss
-    title: "Train the reward model on comparisons"
+    title: "Train scores from people's comparisons"
     explain: |
       ### A loss for one comparison
 
-      To train the reward model, we want a high probability for the choice people actually made. We'll write $r_w$ for the chosen response's reward and $r_l$ for the rejected one's, with w for winner and l for loser.
+      A **reward model** reads a prompt and response and gives a **reward**, a number higher for responses people prefer. A **preference pair** records the prompt, chosen response and rejected response. Training should give the chosen response a high chance of winning. Write $r_w$ for its reward and $r_l$ for the rejected one's, with w for winner and l for loser.
 
-      As in logistic regression, the loss for something that happened is $-\ln p$. Here what happened is that the chosen response won, and the Bradley–Terry model says the probability of that is $p=\sigma(r_w-r_l)$. So the **Bradley–Terry loss** for one preference pair is
+      As in logistic regression, the loss for something that happened is $-\ln p$. The **Bradley–Terry model** applies the sigmoid to the reward difference, giving the chosen response probability $p=\sigma(r_w-r_l)$ of winning. So the **Bradley–Terry loss** for one preference pair is
 
       $$L=-\ln\sigma(r_w-r_l).$$
 
-      For a whole dataset, we average this loss across all the preference pairs. InstructGPT trained its reward model with this loss.
+      We average this loss across all preference pairs. InstructGPT, an OpenAI language model from 2022, trained its reward model this way.
 
       The red curve shows the loss against the difference $r_w-r_l$.
 
@@ -237,7 +237,7 @@ knowledge_points:
 
       ### Which way the rewards move
 
-      In the logistic regression lesson, the slope of the loss against the score was $p-y$. Here the score is the difference $r_w-r_l$ and the label is $y=1$, since the chosen response won. So the slope of the loss against the difference is $p-1$. Raising $r_w$ raises the difference by the same amount, so the slope against $r_w$ is also $p-1$. Raising $r_l$ lowers the difference, so its slope has the opposite sign.
+      Logistic regression's loss slope against the score was $p-y$. Here the score is $r_w-r_l$ and the label is $y=1$, since the chosen response won. The slope against the difference is therefore $p-1$. Raising $r_w$ raises the difference equally, so its slope is also $p-1$. Raising $r_l$ lowers the difference, giving the opposite slope.
 
       $$\frac{\partial L}{\partial r_w}=p-1,\qquad\frac{\partial L}{\partial r_l}=1-p.$$
 

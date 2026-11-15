@@ -139,7 +139,7 @@ knowledge_points:
     explain: |
       ### Add zeros around the image
 
-      Our five-by-five image produces only a three-by-three map. Border pixels appear in fewer patches, so there are fewer chances to detect an edge near the border. We can add a border to keep more positions in the output.
+      Take a five-by-five image with every row $(0,0,1,1,1)$, a dark-to-bright edge. A **filter** is a grid of weights reused on each **patch**, a small square of pixels. With filter side $k=3$, moving one pixel at a time gives a three-by-three **feature map**, the grid of weighted sums plus bias. Border pixels appear in fewer patches. Adding a border keeps more output positions.
 
       **Padding** adds a border so patches can extend past the original image without shrinking the output as much. We use zeros because they add no pixel contribution to the weighted sum. Padding $p$ adds $p$ rows above and below and $p$ columns on each side.
 
@@ -267,7 +267,7 @@ knowledge_points:
 
       Each colour grid is called a **channel**. Let's start with a five-by-five RGB image. Every row is $(0,0,1,1,1)$ in red, $(0,0,2,2,2)$ in green and $(0,0,3,3,3)$ in blue.
 
-      We'll return to $k=3$ so each patch is the same size as in step 1. One filter has a separate weight grid for each input channel. We multiply each patch pixel by its matching weight, add the products across all channels and add one bias.
+      A **patch** is a small square of pixels. A **filter** holds weights reused across patches, with side $k=3$ here and a separate weight grid for each input channel. We multiply each patch pixel by its matching weight, add the products across all channels and add one bias.
 
       This time, choose every weight as 1 to make each channel's contribution easy to add, rather than detect an edge. Bias 1 makes it easy to see that one bias joins all three contributions in a single score. The top-left patch contributes 3 from red, 6 from green and 9 from blue.
 
@@ -345,7 +345,7 @@ knowledge_points:
       </svg>
       ```
 
-      Each filter produces one feature map, which we call an **output channel**. With $C_{\text{in}}$ input channels, a square filter has shape $(C_{\text{in}},k,k)$. Using $C_{\text{out}}$ filters gives CHW output shape
+      Each filter produces a **feature map**, a grid of these scores, which we call an **output channel**. With $C_{\text{in}}$ input channels, a square filter has shape $(C_{\text{in}},k,k)$. Using $C_{\text{out}}$ filters gives CHW output shape
 
       $$(C_{\text{out}},H_{\text{out}},W_{\text{out}}).$$
 
@@ -359,7 +359,7 @@ knowledge_points:
 
       $$C_{\text{out}}(C_{\text{in}}k^2+1)$$
 
-      parameters. Let's apply both the shape and parameter rules to a $32\times32$ RGB image. Suppose we choose 16 filters for patterns such as edges at different angles. With $k=3,p=1,s=1$, the output is $(16,32,32)$, and the parameter count is $16(3\cdot3^2+1)=448$.
+      parameters. For a $32\times32$ RGB image, choose 16 filters for patterns such as edges at different angles. Padding $p$ adds border pixels on each side; stride $s$ measures pixels between patch starts. With $k=3,p=1,s=1$, the output is $(16,32,32)$, and the parameter count is $16(3\cdot3^2+1)=448$.
 
     worked: |
       Let's compare 16 convolutional filters with a fully connected layer producing the same number of outputs from the $32\times32$ colour image.
@@ -389,9 +389,9 @@ knowledge_points:
     explain: |
       ### Stack one layer after another
 
-      Like fully connected layers, convolutional layers can run in sequence. A second convolution reads the first one's feature map, not the original image. Let's trace which image pixels reach its output.
+      A **convolutional layer** slides grids of weights across pixel patches, computing weighted sums plus bias. Each output grid is a **feature map**. Stacking layers lets a second convolution read the first map. Let's trace which image pixels reach its output.
 
-      A **receptive field** is the input region that can affect one output cell. To recognise a whole object, an output must see all of it. We'll run two $3\times3$ convolutions on a $5\times5$ image, both with stride 1 and no padding.
+      A **receptive field** is the input region that can affect one output cell. We'll run two $3\times3$ convolutions on a $5\times5$ image. Both use **stride** 1, moving one pixel between patch starts, and no **padding**, the added border around an input.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 310" aria-label="Two stride 1 convolutions with no padding turn a 5 by 5 input into a 3 by 3 first map, then one green output cell. Both arrows are labelled 3 by 3 filter. Only the final output cell is highlighted. The blank grids show sizes." font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
@@ -446,13 +446,13 @@ knowledge_points:
 
       $$1+L(k-1).$$
 
-      For the picture, $L=2,k=3$ gives $1+2(3-1)=5$. This rule assumes stride 1 without pooling between convolutions.
+      For the picture, $L=2,k=3$ gives $1+2(3-1)=5$. This assumes stride 1 without **pooling**, which shrinks maps by combining nearby cells, between convolutions.
 
       ### Keep the strongest nearby response
 
       We can shrink maps to reduce work for the next layer. **Max pooling** takes the largest value in each patch, separately in each channel, with no weights or biases.
 
-      The pooling patch's side plays the role of $k$ in the size formula. With input map height $H$ and $k=2,s=2,p=0$, we get
+      For input height $H$, patch side $k$, padding $p$ and stride $s$, output height is $\lfloor(H+2p-k)/s\rfloor+1$. The floor brackets $\lfloor\ \rfloor$ mean round down. With $k=2,s=2,p=0$, we get
 
       $$H_{\text{out}}=\lfloor(H-2)/2\rfloor+1.$$
 

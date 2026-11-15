@@ -83,9 +83,9 @@ knowledge_points:
     explain: |
       ### Two limits on speed
 
-      To predict time spent on the assistant's matrix products, first predict their arithmetic rate. Time is work divided by rate, so for fixed work, higher FLOP/s means less time. **Peak compute rate** is the GPU's greatest arithmetic rate for the storage format used. Different formats may have different rates. **Memory bandwidth** is the GPU's greatest transfer rate in bytes per second. We'll call each rate limit a ceiling.
+      A **FLOP** is one arithmetic operation on floating-point numbers, such as addition. FLOP/s counts these operations per second. For fixed work, higher FLOP/s means less time. **Peak compute rate** is the GPU's greatest arithmetic rate for the storage format used. **Memory bandwidth** is its greatest transfer rate in bytes per second. We'll call each rate limit a ceiling.
 
-      To keep the arithmetic small, we'll use a toy device with peak 120 FLOP/s and bandwidth 20 bytes/s. The graph compares operations of different intensities on this device. Its horizontal axis is intensity, and its vertical axis is arithmetic rate. At intensity 3, each byte supports 3 FLOPs. Moving 20 bytes each second can therefore supply $3\times20=60$ FLOP/s. This gives the blue point. The rising blue line reaches the orange compute ceiling at intensity 6.
+      **Arithmetic intensity**, $I$, counts FLOPs per byte moved. On a toy device with peak 120 FLOP/s and bandwidth 20 bytes/s, the graph compares different intensities. Its horizontal axis is intensity; its vertical axis is arithmetic rate. At intensity 3, each byte supports 3 FLOPs. Moving 20 bytes each second supplies $3\times20=60$ FLOP/s, the blue point. The rising blue line reaches the orange compute ceiling at intensity 6.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 240" aria-label="Toy roofline: intensity on the horizontal axis, FLOP/s on the vertical axis. The memory ceiling rises from (0, 0) through (3, 60) to (6, 120). The compute ceiling stays at 120 from intensity 6 to 12." font-family="ui-sans-serif, system-ui, sans-serif" font-size="16" fill="#171717">
@@ -108,7 +108,7 @@ knowledge_points:
 
       $$\text{rate}\leq\min(\text{peak compute rate},\ I\times\text{bandwidth}).$$
 
-      The symbol $\leq$ means at most, and $\min$ chooses the smaller value. The GPU's **ops:byte ratio** is the intensity where these ceilings meet. Here ops means FLOPs. It is a hardware property calculated from its two rates:
+      The symbol $\leq$ means at most, and $\min$ chooses the smaller value. With ops meaning FLOPs, the GPU's **ops:byte ratio** is the intensity where these ceilings meet. It is a hardware property calculated from its two rates:
 
       $$\text{ops:byte ratio}=\frac{\text{peak FLOP/s}}{\text{bandwidth in bytes/s}}.$$
 
@@ -145,11 +145,11 @@ knowledge_points:
     explain: |
       ### Use each weight read for several rows
 
-      Our Llama 3 8B assistant keeps $d=4096$ numbers for each token, updated as the model uses earlier tokens. These numbers form a row whose length is the model width. We'll study one internal update on the H100 SXM using a square $d\times d$ weight matrix. This keeps $d$ numbers in each output row. Our numbers use 2 bytes each.
+      Llama 3 8B keeps $d=4096$ numbers per token, a row whose length is the model width. We'll study an update on the H100 SXM using a square $d\times d$ weight matrix, keeping $d$ numbers per output row. Each number uses 2 bytes.
 
       A **batch size**, $B$, counts sequences processed together. Decode uses one row per sequence, giving $m=B$. For a prompt of $T$ tokens, we'll model prefill processing all $T$ rows together, giving $m=T$.
 
-      Read a small block of the weights into fast storage. Use that block for several input rows before loading the next block. The picture shows two rows reusing a read. More rows means fewer weight bytes read per row.
+      Read a weight block into fast storage and use it for several rows before loading another. The picture shows two rows reusing a read. More rows means fewer weight bytes read per row.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 180" aria-label="One weight matrix read is shared by two token rows. Input row 1 times the shared weights gives output row 1, and input row 2 times the same weights gives output row 2." font-family="ui-sans-serif, system-ui, sans-serif" font-size="16" fill="#171717">
@@ -164,15 +164,15 @@ knowledge_points:
 
       ### Count the shared read
 
-      Input and output have shape $m\times d$. Setting $k=n=d$ gives $F=2md^2$ FLOPs, counting 2 per multiply-add. Reading each input once and writing the output once gives $D=2(md+d^2+md)$ bytes, counting 2 per number. Divide numerator and denominator by $2d$ to simplify:
+      A **FLOP** is one floating-point arithmetic operation. A **multiply-add** multiplies a pair and adds the product to a running total, counting 2 FLOPs. Input and output have shape $m\times d$. Setting $k=n=d$ gives $F=2md^2$ FLOPs. Reading each input once and writing the output once gives $D=2(md+d^2+md)$ bytes. **Arithmetic intensity**, $I=F/D$, counts FLOPs per byte moved. Dividing by $2d$ gives:
 
       $$I=\frac{F}{D}=\frac{2md^2}{2(md+d^2+md)}=\frac{md}{d+2m}.$$
 
-      Weights contribute $d^2$ numbers; input and output contribute $2md$. If $d$ is much larger than $2m$, weights dominate. Dropping $2m$ then gives $I\approx md/d=m$ FLOPs per byte. We'll use the exact formula for comparisons.
+      Weights contribute $d^2$ numbers; input and output contribute $2md$. If $d$ is much larger than $2m$, dropping $2m$ gives $I\approx md/d=m$ FLOPs per byte.
 
       ### Compare with the H100
 
-      Our dense count includes every matrix entry, even a zero. For our 16-bit numbers, the H100's dense rate is about 990 TFLOP/s, rounded here to 1,000 TFLOP/s. Its bandwidth is about 3.35 TB/s. Here TB means $10^{12}$ bytes and TFLOP/s means $10^{12}$ FLOP/s. The ops:byte ratio rounds to about 300 FLOPs per byte.
+      TFLOP/s means $10^{12}$ FLOPs per second; TB means $10^{12}$ bytes. Our dense count includes every entry, even zero. For 16-bit numbers, the H100's dense rate is about 990 TFLOP/s, rounded to 1,000 TFLOP/s. Its **bandwidth**, the greatest memory transfer rate, is about 3.35 TB/s. With ops meaning FLOPs, the **ops:byte ratio** divides peak FLOPs per second by bandwidth in bytes per second, giving about 300 FLOPs per byte. Below this, products are **memory-bound**: memory limits speed. Above it, they are **compute-bound**: arithmetic limits speed.
 
       Substituting $d=4096$ into the exact formula gives:
 
@@ -180,11 +180,9 @@ knowledge_points:
       - 64-sequence decode, $m=64$: about 62 FLOPs per byte, memory-bound.
       - 512-token prefill, $m=512$: 409.6 FLOPs per byte, compute-bound.
 
-      The first two intensities are rounded to whole numbers.
-
       ### Limitations
 
-      More rows mean more work, so higher intensity does not promise less total time. Short prefills can remain memory-bound. Larger decode batches also reuse weights. A response uses many matrix products and creates tokens in order, so this product alone cannot determine the whole response's speed.
+      More rows mean more work, so higher intensity does not promise less total time. Short prefills can remain memory-bound. Larger decode batches also reuse weights. A response uses many products and creates tokens in order; this product alone cannot determine response speed.
     worked: |
       Let's check the assistant's square matrix product during prefill of a 512-token prompt. Use $m=512$, $d=4096$, 2 bytes per number and the rounded H100 rates above.
 
