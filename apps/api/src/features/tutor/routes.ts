@@ -407,6 +407,8 @@ export function registerTutorThreadRoutes(
               .limit(1)
           )[0]
         : thread;
+      const createdThread = !target;
+      const previousUpdatedAt = target?.updatedAt ?? null;
       if (!target) {
         const [created] = await tx
           .insert(tutorThreads)
@@ -454,6 +456,8 @@ export function registerTutorThreadRoutes(
       return {
         thread: { ...target, updatedAt: learnerMessageAt },
         learnerMessage,
+        createdThread,
+        previousUpdatedAt,
         history: historyRows.reverse().map((message) => ({
           role: message.role === 'assistant' ? ('tutor' as const) : ('learner' as const),
           content: message.content,
@@ -462,48 +466,124 @@ export function registerTutorThreadRoutes(
     });
 
     const signal = c.req.raw.signal;
-    const result = await service.respond(
-      {
-        conceptTitle: concept?.title ?? 'General',
-        objectives: concept?.objectives.map((o) => o.text) ?? [],
-        lessonSummary:
-          lesson?.blocks
-            .filter((b) => b.kind === 'summary')
-            .map((b) => b.md)
-            .join('\n') ?? '',
-        exercisePrompt: exercise?.prompt ?? '',
-        exerciseLabel: exercise ? input.questionLabel || 'Current question' : '',
-        exerciseOptions: optionTexts.map(
-          ({ text }, index) => `${String.fromCharCode(65 + index)}. ${text}`,
-        ),
-        answerKey: tutorAnswerKeyFor(exercise, optionTexts),
-        learnerAnswer:
-          (status === 'retrying' || status === 'answered') && currentAttempt && exercise
-            ? tutorAnswerFor(exercise, currentAttempt.answer)
-            : '',
-        graderVerdict:
-          status === 'retrying' || status === 'answered' ? graderVerdictFor(correct) : '',
-        graderFeedback:
-          (status === 'retrying' || status === 'answered') && currentAttempt
-            ? formatGraderFeedback(currentAttempt.feedback, status === 'retrying')
-            : '',
-        hintLevel: 0,
-        authoredHints:
-          status === 'unanswered' || status === 'retrying' ? (exercise?.hints ?? []) : [],
-        solution:
-          status === 'unanswered' || status === 'retrying' ? '' : tutorSolutionFor(exercise),
-        recentMistakes: [],
-        question: input.question,
-        mode: 'practice',
-        history: request.history,
-        problem_status: status,
-        page: input.page ?? 'none',
-        page_content: pageContent,
-      },
-      status === 'unanswered' ? 'nudge' : status === 'retrying' ? 'hint' : 'worked_step',
-      index,
-      signal,
-    );
+    const rollbackFailedMessage = async () => {
+      const abortedDuringRollback = new Error('Tutor request aborted during failure rollback');
+      try {
+        return await db.transaction(async (tx) => {
+          await tx
+            .select({ id: users.id })
+            .from(users)
+            .where(eq(users.id, c.get('userId')))
+            .for('update');
+          if (signal.aborted) return false;
+          const [latestMessage] = await tx
+            .select({ seq: tutorMessages.seq })
+            .from(tutorMessages)
+            .where(eq(tutorMessages.threadId, request.thread.id))
+            .orderBy(desc(tutorMessages.seq))
+            .limit(1);
+          await tx
+            .delete(tutorMessages)
+            .where(
+              and(
+                eq(tutorMessages.id, request.learnerMessage.id),
+                eq(tutorMessages.threadId, request.thread.id),
+                eq(tutorMessages.userId, c.get('userId')),
+              ),
+            );
+          if (signal.aborted) throw abortedDuringRollback;
+          const [remainingMessage] = await tx
+            .select({ id: tutorMessages.id })
+            .from(tutorMessages)
+            .where(eq(tutorMessages.threadId, request.thread.id))
+            .limit(1);
+          if (request.createdThread && !remainingMessage) {
+            await tx
+              .delete(tutorThreads)
+              .where(
+                and(
+                  eq(tutorThreads.id, request.thread.id),
+                  eq(tutorThreads.userId, c.get('userId')),
+                ),
+              );
+          } else if (
+            !request.createdThread &&
+            latestMessage?.seq === request.learnerMessage.seq &&
+            request.previousUpdatedAt
+          ) {
+            await tx
+              .update(tutorThreads)
+              .set({ updatedAt: request.previousUpdatedAt })
+              .where(eq(tutorThreads.id, request.thread.id));
+          }
+          if (signal.aborted) throw abortedDuringRollback;
+          return true;
+        });
+      } catch (cause) {
+        if (cause === abortedDuringRollback) return false;
+        throw cause;
+      }
+    };
+    let result: Awaited<ReturnType<typeof service.respond>>;
+    try {
+      result = await service.respond(
+        {
+          conceptTitle: concept?.title ?? 'General',
+          objectives: concept?.objectives.map((o) => o.text) ?? [],
+          lessonSummary:
+            lesson?.blocks
+              .filter((b) => b.kind === 'summary')
+              .map((b) => b.md)
+              .join('\n') ?? '',
+          exercisePrompt: exercise?.prompt ?? '',
+          exerciseLabel: exercise ? input.questionLabel || 'Current question' : '',
+          exerciseOptions: optionTexts.map(
+            ({ text }, index) => `${String.fromCharCode(65 + index)}. ${text}`,
+          ),
+          answerKey: tutorAnswerKeyFor(exercise, optionTexts),
+          learnerAnswer:
+            (status === 'retrying' || status === 'answered') && currentAttempt && exercise
+              ? tutorAnswerFor(exercise, currentAttempt.answer)
+              : '',
+          graderVerdict:
+            status === 'retrying' || status === 'answered' ? graderVerdictFor(correct) : '',
+          graderFeedback:
+            (status === 'retrying' || status === 'answered') && currentAttempt
+              ? formatGraderFeedback(currentAttempt.feedback, status === 'retrying')
+              : '',
+          hintLevel: 0,
+          authoredHints:
+            status === 'unanswered' || status === 'retrying' ? (exercise?.hints ?? []) : [],
+          solution:
+            status === 'unanswered' || status === 'retrying' ? '' : tutorSolutionFor(exercise),
+          recentMistakes: [],
+          question: input.question,
+          mode: 'practice',
+          history: request.history,
+          problem_status: status,
+          page: input.page ?? 'none',
+          page_content: pageContent,
+        },
+        status === 'unanswered' ? 'nudge' : status === 'retrying' ? 'hint' : 'worked_step',
+        index,
+        signal,
+      );
+    } catch {
+      if (signal.aborted) {
+        return c.json({
+          superseded: true,
+          thread: request.thread,
+        });
+      }
+      await rollbackFailedMessage();
+      if (signal.aborted) {
+        return c.json({
+          superseded: true,
+          thread: request.thread,
+        });
+      }
+      return c.json({ error: 'Tutor unavailable' }, 503);
+    }
     if (signal.aborted) {
       return c.json({
         superseded: true,
@@ -511,6 +591,13 @@ export function registerTutorThreadRoutes(
       });
     }
     if (result.status !== 'ok' || !result.value) {
+      await rollbackFailedMessage();
+      if (signal.aborted) {
+        return c.json({
+          superseded: true,
+          thread: request.thread,
+        });
+      }
       return c.json({ error: 'Tutor unavailable' }, 503);
     }
     const reply = result.value.message_md;

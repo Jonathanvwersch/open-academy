@@ -1045,13 +1045,12 @@ test('explain tutor context accepts an omitted solution', async () => {
   expect(captured.at(-1)).toMatchObject({ solution: '', problem_status: 'unanswered' });
 });
 
-test('provider failure leaves the learner message saved; another user cannot read a thread', async () => {
+test('provider failure removes a new learner message and thread; another user cannot read a thread', async () => {
   const llmCallsBefore = await db.select().from(llmCalls);
   failing = true;
   expect((await send('fail')).status).toBe(503);
-  const failedThreads = await db.select().from(tutorThreads);
-  expect(failedThreads).toHaveLength(1);
-  expect(await db.select().from(tutorMessages)).toMatchObject([{ role: 'user', content: 'fail' }]);
+  expect(await db.select().from(tutorThreads)).toHaveLength(0);
+  expect(await db.select().from(tutorMessages)).toHaveLength(0);
   const callsAfter = await db.select().from(llmCalls);
   expect(callsAfter).toHaveLength(llmCallsBefore.length + 1);
   const previousIds = new Set(llmCallsBefore.map((call) => call.id));
@@ -1071,6 +1070,37 @@ test('provider failure leaves the learner message saved; another user cannot rea
   await db.update(tutorThreads).set({ userId: secondUserId }).where(eq(tutorThreads.id, thread.id));
   expect((await app.request(`/api/tutor/threads/${thread.id}`, { headers })).status).toBe(404);
   await db.delete(users).where(eq(users.id, secondUserId));
+});
+
+test('provider failure in an existing thread removes only the failed learner message', async () => {
+  const created = await send('keep this message');
+  expect(created.status).toBe(200);
+  const threadId = (await created.json()).thread.id as string;
+  const originalMessages = await db
+    .select()
+    .from(tutorMessages)
+    .where(eq(tutorMessages.threadId, threadId))
+    .orderBy(tutorMessages.seq);
+  const [originalThread] = await db
+    .select()
+    .from(tutorThreads)
+    .where(eq(tutorThreads.id, threadId));
+
+  failing = true;
+  expect((await send('do not keep this failed message', threadId)).status).toBe(503);
+
+  expect(
+    await db
+      .select()
+      .from(tutorMessages)
+      .where(eq(tutorMessages.threadId, threadId))
+      .orderBy(tutorMessages.seq),
+  ).toEqual(originalMessages);
+  const [threadAfterFailure] = await db
+    .select()
+    .from(tutorThreads)
+    .where(eq(tutorThreads.id, threadId));
+  expect(threadAfterFailure?.updatedAt).toEqual(originalThread?.updatedAt);
 });
 
 test('placement exercises and review activities are forbidden', async () => {
