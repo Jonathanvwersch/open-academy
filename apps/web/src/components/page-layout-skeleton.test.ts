@@ -1,5 +1,7 @@
-import { describe, expect, it } from 'vitest';
-import { mergeLineShapes, type Shape } from './page-layout-skeleton.js';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { loadLayout, mergeLineShapes, type Shape } from './page-layout-skeleton.js';
+
+afterEach(() => vi.unstubAllGlobals());
 
 function shape(overrides: Partial<Shape> = {}): Shape {
   return {
@@ -8,7 +10,7 @@ function shape(overrides: Partial<Shape> = {}): Shape {
     width: 10,
     height: 8,
     radius: 4,
-    frame: false,
+    kind: 'content',
     ...overrides,
   };
 }
@@ -34,8 +36,8 @@ describe('mergeLineShapes', () => {
   });
 
   it('does not merge or alter frames', () => {
-    const firstFrame = shape({ x: 10, y: 10, width: 20, frame: true });
-    const secondFrame = shape({ x: 30, y: 10, width: 20, frame: true });
+    const firstFrame = shape({ x: 10, y: 10, width: 20, kind: 'frame' });
+    const secondFrame = shape({ x: 30, y: 10, width: 20, kind: 'frame' });
     const result = mergeLineShapes([
       firstFrame,
       shape({ x: 0, y: 0, width: 10 }),
@@ -43,8 +45,10 @@ describe('mergeLineShapes', () => {
       shape({ x: 10, y: 0, width: 10 }),
     ]);
 
-    expect(result.filter((item) => item.frame)).toEqual([firstFrame, secondFrame]);
-    expect(result.filter((item) => !item.frame)).toEqual([shape({ x: 0, y: 0, width: 20 })]);
+    expect(result.filter((item) => item.kind === 'frame')).toEqual([firstFrame, secondFrame]);
+    expect(result.filter((item) => item.kind === 'content')).toEqual([
+      shape({ x: 0, y: 0, width: 20 }),
+    ]);
   });
 
   it('produces order-independent output and repeats merges until stable', () => {
@@ -59,9 +63,33 @@ describe('mergeLineShapes', () => {
     expect(mergeLineShapes([...fragments].reverse())).toEqual(expected);
   });
   it('puts frames before content so cards paint underneath their text', () => {
-    const frame = shape({ x: 0, y: 0, width: 100, height: 50, frame: true });
+    const frame = shape({ x: 0, y: 0, width: 100, height: 50, kind: 'frame' });
     const text = shape({ x: 10, y: 10, width: 20 });
     const result = mergeLineShapes([text, frame]);
-    expect(result.map((item) => item.frame)).toEqual([true, false]);
+    expect(result.map((item) => item.kind)).toEqual(['frame', 'content']);
   });
+
+  it('keeps rules unchanged between frames and content', () => {
+    const frame = shape({ kind: 'frame' });
+    const rule = shape({ y: 10, height: 1, radius: 0, kind: 'rule' });
+    const content = shape({ y: 20 });
+    const result = mergeLineShapes([content, rule, frame]);
+
+    expect(result).toEqual([frame, rule, content]);
+    expect(result[1]).toBe(rule);
+  });
+});
+
+it('rejects cached layouts with an unknown shape kind', () => {
+  vi.stubGlobal('sessionStorage', {
+    getItem: () =>
+      JSON.stringify({
+        invalid: {
+          height: 100,
+          shapes: [{ x: 0, y: 0, width: 10, height: 8, radius: 4, kind: 'unknown' }],
+        },
+      }),
+  });
+
+  expect(loadLayout('invalid')).toBeUndefined();
 });

@@ -8,14 +8,15 @@ export interface Shape {
   width: number;
   height: number;
   radius: number;
-  frame: boolean;
+  kind: 'frame' | 'content' | 'rule';
 }
 interface Layout {
   height: number;
   shapes: Shape[];
 }
-const storageKey = `academy.page-layout.${import.meta.env.PROD ? new URL(import.meta.url).pathname : 'dev-1'}`;
+const storageKey = `academy.page-layout.${import.meta.env.PROD ? new URL(import.meta.url).pathname : 'dev-2'}`;
 const memory = new Map<string, Layout>();
+const frameSelector = '[data-slot=card], [data-slot=alert]';
 
 function layoutKey(path: string, width: number) {
   const breakpoint =
@@ -24,8 +25,9 @@ function layoutKey(path: string, width: number) {
 }
 
 function compareShapes(left: Shape, right: Shape) {
+  const kindOrder = { frame: 0, rule: 1, content: 2 };
   return (
-    Number(right.frame) - Number(left.frame) ||
+    kindOrder[left.kind] - kindOrder[right.kind] ||
     left.y - right.y ||
     left.x - right.x ||
     left.height - right.height ||
@@ -35,8 +37,9 @@ function compareShapes(left: Shape, right: Shape) {
 }
 
 export function mergeLineShapes(shapes: Shape[]): Shape[] {
-  const content = shapes.filter((shape) => !shape.frame).map((shape) => ({ ...shape }));
-  const frames = shapes.filter((shape) => shape.frame);
+  const content = shapes.filter((shape) => shape.kind === 'content').map((shape) => ({ ...shape }));
+  const frames = shapes.filter((shape) => shape.kind === 'frame');
+  const rules = shapes.filter((shape) => shape.kind === 'rule');
   content.sort(compareShapes);
 
   while (true) {
@@ -67,7 +70,7 @@ export function mergeLineShapes(shapes: Shape[]): Shape[] {
           width: rightEdge - x,
           height: bottom - y,
           radius: Math.min(left.radius, right.radius),
-          frame: false,
+          kind: 'content',
         });
         content.splice(rightIndex, 1);
         content.sort(compareShapes);
@@ -78,10 +81,10 @@ export function mergeLineShapes(shapes: Shape[]): Shape[] {
     if (!merged) break;
   }
 
-  return [...content, ...frames].sort(compareShapes);
+  return [...frames, ...rules, ...content].sort(compareShapes);
 }
 
-function loadLayout(key: string): Layout | undefined {
+export function loadLayout(key: string): Layout | undefined {
   if (memory.has(key)) return memory.get(key);
   try {
     const saved = JSON.parse(sessionStorage.getItem(storageKey) ?? '{}') as Record<string, Layout>;
@@ -95,7 +98,7 @@ function loadLayout(key: string): Layout | undefined {
       layout.shapes.every(
         (shape) =>
           shape &&
-          typeof shape.frame === 'boolean' &&
+          (shape.kind === 'frame' || shape.kind === 'content' || shape.kind === 'rule') &&
           [shape.x, shape.y, shape.width, shape.height, shape.radius].every(Number.isFinite),
       )
     ) {
@@ -144,7 +147,12 @@ function measureLayout(element: HTMLElement): Layout {
   };
   const shapes: Shape[] = [];
   const clips = new Map<Element, { x: boolean; y: boolean; bounds: DOMRect }>();
-  const add = (rect: DOMRect, radius: number, frame = false, clipFrom: Element | null = null) => {
+  const add = (
+    rect: DOMRect,
+    radius: number,
+    kind: Shape['kind'] = 'content',
+    clipFrom: Element | null = null,
+  ) => {
     let left = rect.left;
     let right = rect.right;
     let top = rect.top;
@@ -172,19 +180,19 @@ function measureLayout(element: HTMLElement): Layout {
     }
     const width = right - left;
     const height = bottom - top;
-    if (width < 2 || height < 2) return;
+    const minimumDimension = kind === 'rule' ? 1 : 2;
+    if (width < minimumDimension || height < minimumDimension) return;
     const x = left - origin.left;
     const y = top - origin.top;
     if (x < -8 || y < -8 || x + width > origin.width + 8) return;
-    shapes.push({ x, y, width, height, radius, frame });
+    shapes.push({ x, y, width, height, radius, kind });
   };
-  for (const frame of element.querySelectorAll<HTMLElement>(
-    '[data-slot=card], [data-slot=alert]',
-  )) {
+  const frames = [...element.querySelectorAll<HTMLElement>(frameSelector)];
+  for (const frame of frames) {
     add(
       frame.getBoundingClientRect(),
       Number.parseFloat(getComputedStyle(frame).borderRadius) || 0,
-      true,
+      'frame',
       frame.parentElement,
     );
   }
@@ -202,7 +210,7 @@ function measureLayout(element: HTMLElement): Layout {
           style.display === 'none'))
     )
       continue;
-    add(bounds, Number.parseFloat(style.borderRadius) || 4, false, block.parentElement);
+    add(bounds, Number.parseFloat(style.borderRadius) || 4, 'content', block.parentElement);
   }
   const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
   let node = walker.nextNode();
@@ -215,13 +223,48 @@ function measureLayout(element: HTMLElement): Layout {
     ) {
       const range = document.createRange();
       range.selectNodeContents(node);
-      for (const rect of range.getClientRects()) add(rect, 3, false, parent);
+      for (const rect of range.getClientRects()) add(rect, 3, 'content', parent);
     }
     node = walker.nextNode();
   }
+  const visibleBorder = (width: string, style: string, color: string) => {
+    const normalizedColor = color.trim().toLowerCase();
+    return (
+      Number.parseFloat(width) >= 1 &&
+      style !== 'none' &&
+      style !== 'hidden' &&
+      normalizedColor !== 'transparent' &&
+      !/(?:,|\/)\s*0(?:\.0+)?%?\s*\)$/.test(normalizedColor)
+    );
+  };
+  for (const block of element.querySelectorAll<HTMLElement>('*')) {
+    const frame = block.closest(frameSelector);
+    if (!frame || block.matches(frameSelector)) continue;
+    const style = getComputedStyle(block);
+    if (style.visibility === 'hidden' || style.display === 'none') continue;
+    const bounds = block.getBoundingClientRect();
+    if (visibleBorder(style.borderTopWidth, style.borderTopStyle, style.borderTopColor)) {
+      const height = Number.parseFloat(style.borderTopWidth);
+      add(
+        new DOMRect(bounds.left, bounds.top, bounds.width, height),
+        0,
+        'rule',
+        block.parentElement,
+      );
+    }
+    if (visibleBorder(style.borderBottomWidth, style.borderBottomStyle, style.borderBottomColor)) {
+      const height = Number.parseFloat(style.borderBottomWidth);
+      add(
+        new DOMRect(bounds.left, bounds.bottom - height, bounds.width, height),
+        0,
+        'rule',
+        block.parentElement,
+      );
+    }
+  }
   const unique = new Map(
     mergeLineShapes(shapes).map((shape) => [
-      `${shape.frame}-${shape.x}-${shape.y}-${shape.width}-${shape.height}`,
+      `${shape.kind}-${shape.x}-${shape.y}-${shape.width}-${shape.height}`,
       shape,
     ]),
   );
@@ -300,19 +343,21 @@ export function PageLayoutSkeleton({ fallback }: { fallback?: ReactNode } = {}) 
         <div aria-hidden="true" data-layout-shape-layer>
           {layout.shapes.map((shape) => (
             <div
-              key={`${shape.frame}-${shape.x}-${shape.y}-${shape.width}-${shape.height}`}
-              data-layout-shape={shape.frame ? 'frame' : 'content'}
-              className={
-                shape.frame
-                  ? 'absolute bg-card ring-1 ring-foreground/10'
-                  : 'absolute animate-pulse bg-muted motion-reduce:animate-none'
-              }
+              key={`${shape.kind}-${shape.x}-${shape.y}-${shape.width}-${shape.height}`}
+              data-layout-shape={shape.kind}
+              className={`absolute ${
+                shape.kind === 'frame'
+                  ? 'bg-card ring-1 ring-foreground/10'
+                  : shape.kind === 'rule'
+                    ? 'bg-border'
+                    : 'animate-pulse bg-muted motion-reduce:animate-none'
+              }`}
               style={{
                 left: shape.x,
                 top: shape.y,
                 width: shape.width,
-                height: shape.height,
-                borderRadius: shape.radius,
+                height: shape.kind === 'rule' ? 1 : shape.height,
+                borderRadius: shape.kind === 'rule' ? 0 : shape.radius,
               }}
             />
           ))}

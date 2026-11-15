@@ -133,7 +133,9 @@ test('course skeleton replays visible decorative icons', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/courses/fixture-course');
   await expect(page.getByRole('heading', { name: /Unit 1/ })).toBeVisible();
-  await page.evaluate(() => document.fonts.ready);
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+  });
   await expect
     .poll(() =>
       page.evaluate(() =>
@@ -145,7 +147,7 @@ test('course skeleton replays visible decorative icons', async ({ page }) => {
   const firstUnitCard = page.locator('[data-page-frame] [data-slot=card]').first();
   await expect(firstUnitCard).toBeVisible();
   const firstUnitBounds = await firstUnitCard.boundingBox();
-  expect(firstUnitBounds).not.toBeNull();
+  if (!firstUnitBounds) throw new Error('Expected the first unit card to have a bounding box');
 
   let release: () => void = () => {};
   const gate = new Promise<void>((resolve) => {
@@ -161,6 +163,9 @@ test('course skeleton replays visible decorative icons', async ({ page }) => {
     await page.reload();
     const skeleton = page.getByTestId('route-skeleton');
     await expect(skeleton).toBeVisible();
+    const ruleShape = skeleton.locator('[data-layout-shape="rule"]').first();
+    await expect(ruleShape).toBeVisible();
+    expect((await ruleShape.boundingBox())?.height).toBe(1);
     const iconShapes = await skeleton.locator('[data-layout-shape="content"]').evaluateAll(
       (shapes, card) =>
         shapes.filter((shape) => {
