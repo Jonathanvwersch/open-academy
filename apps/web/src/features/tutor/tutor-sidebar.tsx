@@ -157,6 +157,7 @@ interface PendingTutorMessage {
   role: 'user';
   content: string;
   createdAt: string;
+  reason?: string;
 }
 
 function localDayOrdinal(date: Date): number {
@@ -359,7 +360,11 @@ export function TutorContextProvider({
         }),
       });
       const payload = (await response.json().catch(() => ({}))) as TutorSendResponse;
-      if (!response.ok) throw new Error(payload.error ?? 'Tutor is unavailable.');
+      if (!response.ok) {
+        throw Object.assign(new Error(payload.error ?? 'Tutor is unavailable.'), {
+          reason: payload.error,
+        });
+      }
       return payload;
     },
     onMutate: ({
@@ -446,7 +451,7 @@ export function TutorContextProvider({
       void queryClient.invalidateQueries({ queryKey: ['tutor', 'threads'] });
       void queryClient.invalidateQueries({ queryKey: ['tutor', 'thread'] });
     },
-    onError: async (_cause, variables) => {
+    onError: async (cause, variables) => {
       if (activeRequestController.current?.signal === variables.signal) {
         activeRequestController.current = null;
       }
@@ -475,6 +480,10 @@ export function TutorContextProvider({
           message.content === variables.question,
       );
       if (questionWasSaved) return;
+      const failureReason =
+        cause && typeof cause === 'object' && 'reason' in cause
+          ? (cause as { reason?: unknown }).reason
+          : undefined;
       setFailedSend({
         id: variables.optimisticId,
         threadId: variables.threadId,
@@ -484,6 +493,10 @@ export function TutorContextProvider({
         role: 'user',
         content: variables.question,
         createdAt: new Date().toISOString(),
+        reason:
+          typeof failureReason === 'string' && failureReason !== 'Tutor unavailable'
+            ? failureReason
+            : undefined,
       });
       setError('');
     },
@@ -1019,7 +1032,10 @@ export function TutorContextProvider({
                               <TutorMarkdown>{visibleFailedSend.content}</TutorMarkdown>
                             </MessageContent>
                             <div className="flex items-center justify-end gap-2 text-xs text-muted-foreground">
-                              <span>Didn't send.</span>
+                              <span>
+                                Didn't send.
+                                {visibleFailedSend.reason ? ` ${visibleFailedSend.reason}` : ''}
+                              </span>
                               <Button
                                 type="button"
                                 variant="link"

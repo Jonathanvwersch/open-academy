@@ -1058,6 +1058,7 @@ test('a failed tutor message can be edited into the draft', async ({ page }) => 
 
   const failedBubble = tutor.getByTestId('tutor-failed-message');
   await expect(failedBubble).toContainText("Didn't send.");
+  await expect(failedBubble).not.toContainText('Tutor unavailable');
   await expect(textarea).toHaveValue('');
   await page.screenshot({ path: `${tutorSteerScreenshotDir}/failed-retry-edit-390.png` });
 
@@ -1065,6 +1066,31 @@ test('a failed tutor message can be edited into the draft', async ({ page }) => 
   await expect(textarea).toHaveValue(question);
   await expect(tutor.getByTestId('tutor-failed-message')).toHaveCount(0);
   await expect(tutor.getByRole('alert')).toHaveCount(0);
+});
+
+test('a failed tutor bubble shows a non-generic server reason', async ({ page }) => {
+  await page.route('**/api/tutor/threads**', async (route) => {
+    if (route.request().method() === 'POST') {
+      await route.fulfill({
+        status: 429,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: 'Daily tutor limit reached' }),
+      });
+      return;
+    }
+    await route.continue();
+  });
+  await page.goto(`/session/${sessionId}`);
+  await page.getByRole('button', { name: 'Ask the tutor' }).click();
+  const tutor = page.getByRole('complementary', { name: 'Tutor' });
+  const textarea = tutor.getByLabel('Ask the tutor');
+  await textarea.fill('What should I do next?');
+  await textarea.press('Enter');
+
+  const failedBubble = tutor.getByTestId('tutor-failed-message');
+  await expect(failedBubble).toContainText("Didn't send. Daily tutor limit reached");
+  await expect(failedBubble.getByRole('button', { name: 'Retry' })).toBeVisible();
+  await expect(failedBubble.getByRole('button', { name: 'Edit' })).toBeVisible();
 });
 
 test('a repeated tutor question stays visible once while the second reply is pending', async ({
