@@ -60,6 +60,26 @@ function formatThreadTitle(question: string): string {
   return collapsed.length > 80 ? `${collapsed.slice(0, 79)}…` : collapsed;
 }
 
+function tutorFailureLogDetails(error: unknown, fallbackStatus?: string) {
+  const failure =
+    error && typeof error === 'object'
+      ? (error as {
+          name?: unknown;
+          status?: unknown;
+          code?: unknown;
+          reason?: unknown;
+          incomplete_details?: { reason?: unknown } | null;
+        })
+      : null;
+  const reason = failure?.reason ?? failure?.incomplete_details?.reason;
+  return {
+    name: typeof failure?.name === 'string' ? failure.name : 'Error',
+    status: typeof failure?.status === 'number' ? failure.status : fallbackStatus,
+    code: typeof failure?.code === 'string' ? failure.code : undefined,
+    reason: typeof reason === 'string' ? reason : fallbackStatus,
+  };
+}
+
 function threadTitleFromMessages() {
   const firstUserMessage = sql<
     string | null
@@ -576,13 +596,14 @@ export function registerTutorThreadRoutes(
         index,
         signal,
       );
-    } catch {
+    } catch (cause) {
       if (signal.aborted) {
         return c.json({
           superseded: true,
           thread: request.thread,
         });
       }
+      console.error('tutor reply failed', tutorFailureLogDetails(cause));
       await rollbackFailedMessage();
       if (signal.aborted) {
         return c.json({
@@ -599,6 +620,13 @@ export function registerTutorThreadRoutes(
       });
     }
     if (result.status !== 'ok' || !result.value) {
+      if (signal.aborted) {
+        return c.json({
+          superseded: true,
+          thread: request.thread,
+        });
+      }
+      console.error('tutor reply failed', tutorFailureLogDetails(result.failure, result.status));
       await rollbackFailedMessage();
       if (signal.aborted) {
         return c.json({

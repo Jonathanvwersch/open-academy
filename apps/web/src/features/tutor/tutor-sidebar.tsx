@@ -132,6 +132,7 @@ interface TutorSendVariables {
   context: TutorRequestContext;
   optimisticId: string;
   signal: AbortSignal;
+  sendId: number;
 }
 
 interface TutorSendResponse {
@@ -149,6 +150,8 @@ interface TutorSendResponse {
 interface PendingTutorMessage {
   id: string;
   threadId: string;
+  createThread: boolean;
+  context: TutorRequestContext;
   role: 'user';
   content: string;
   createdAt: string;
@@ -226,7 +229,9 @@ export function TutorContextProvider({
   const [draft, setDraft] = useState('');
   const [error, setError] = useState('');
   const [pendingSend, setPendingSend] = useState<PendingTutorMessage | null>(null);
+  const [failedSend, setFailedSend] = useState<PendingTutorMessage | null>(null);
   const activeRequestController = useRef<AbortController | null>(null);
+  const latestSendId = useRef(0);
   const newThreadId = useRef('');
   const [sidebarWidth, setSidebarWidth] = useState(initialSidebarWidth);
   const [viewportWidth, setViewportWidth] = useState(() => window.innerWidth);
@@ -355,10 +360,12 @@ export function TutorContextProvider({
       if (!response.ok) throw new Error(payload.error ?? 'Tutor is unavailable.');
       return payload;
     },
-    onMutate: ({ question, threadId, optimisticId }) => {
+    onMutate: ({ question, threadId, createThread, context: requestContext, optimisticId }) => {
       setPendingSend({
         id: optimisticId,
         threadId,
+        createThread,
+        context: requestContext,
         role: 'user',
         content: question,
         createdAt: new Date().toISOString(),
@@ -429,7 +436,7 @@ export function TutorContextProvider({
       void queryClient.invalidateQueries({ queryKey: ['tutor', 'threads'] });
       void queryClient.invalidateQueries({ queryKey: ['tutor', 'thread'] });
     },
-    onError: (cause, variables) => {
+    onError: async (_cause, variables) => {
       if (activeRequestController.current?.signal === variables.signal) {
         activeRequestController.current = null;
       }
@@ -441,10 +448,23 @@ export function TutorContextProvider({
         });
         return;
       }
-      setDraft((current) =>
-        current.trim() ? `${variables.question}\n${current}` : variables.question,
-      );
-      setError(cause instanceof Error ? cause.message : 'Tutor is unavailable.');
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['tutor', 'threads'] }),
+        queryClient.invalidateQueries({
+          queryKey: ['tutor', 'thread', variables.threadId],
+        }),
+      ]);
+      if (variables.signal.aborted || variables.sendId !== latestSendId.current) return;
+      setFailedSend({
+        id: variables.optimisticId,
+        threadId: variables.threadId,
+        createThread: variables.createThread,
+        context: variables.context,
+        role: 'user',
+        content: variables.question,
+        createdAt: new Date().toISOString(),
+      });
+      setError('');
     },
   });
   const clearContext = useCallback(() => {
@@ -517,6 +537,11 @@ export function TutorContextProvider({
     (greeting !== null && greeting.threadId !== null && greeting.threadId === selectedId);
   const visibleThreadId = selectedId || (newChatSelected ? newThreadId.current : '');
   const visiblePendingSend = pendingSend?.threadId === visibleThreadId ? pendingSend : null;
+  const visibleFailedSend = failedSend?.threadId === visibleThreadId ? failedSend : null;
+  const pendingMessageIsServerBacked =
+    visiblePendingSend !== null &&
+    messages.at(-1)?.role === 'user' &&
+    messages.at(-1)?.content === visiblePendingSend.content;
   const isSending = visiblePendingSend !== null;
   const threadGroups = groupThreads(threads.data ?? []);
   const noChats = !threads.isPending && !threads.isError && threadGroups.length === 0;
@@ -542,6 +567,34 @@ export function TutorContextProvider({
   };
   const draftLength = draft.trim().length;
   const draftTooLong = draftLength > TUTOR_QUESTION_MAX_LENGTH;
+  const submitQuestion = (
+    question: string,
+    threadId: string,
+    createThread: boolean,
+    requestContext: TutorRequestContext,
+  ) => {
+    if (createThread) newThreadId.current = threadId;
+    activeRequestController.current?.abort();
+    const controller = new AbortController();
+    activeRequestController.current = controller;
+    const optimisticId = crypto.randomUUID();
+    const sendId = latestSendId.current + 1;
+    latestSendId.current = sendId;
+    setDraft('');
+    setError('');
+    setFailedSend(null);
+    mutation.mutate({
+      question,
+      threadId,
+      createThread,
+      context: requestContext,
+      optimisticId,
+      signal: controller.signal,
+      sendId,
+    });
+    conversationContextRef.current?.scrollToBottom();
+    if (requestContext.selection) clearSelection();
+  };
   const send = () => {
     const question = draft.trim();
     if (!question) {
@@ -562,23 +615,24 @@ export function TutorContextProvider({
     }
     const createThread = newChatSelected || !selectedId;
     const threadId = createThread ? newThreadId.current || crypto.randomUUID() : selectedId;
-    if (createThread) newThreadId.current = threadId;
-    activeRequestController.current?.abort();
-    const controller = new AbortController();
-    activeRequestController.current = controller;
-    const optimisticId = crypto.randomUUID();
-    setDraft('');
+    submitQuestion(question, threadId, createThread, context);
+  };
+  const retryFailedSend = () => {
+    if (!visibleFailedSend) return;
+    submitQuestion(
+      visibleFailedSend.content,
+      visibleFailedSend.threadId,
+      visibleFailedSend.createThread,
+      visibleFailedSend.context,
+    );
+  };
+  const editFailedSend = () => {
+    if (!visibleFailedSend) return;
+    setDraft((current) =>
+      current.trim() ? `${visibleFailedSend.content}\n${current}` : visibleFailedSend.content,
+    );
+    setFailedSend((current) => (current?.id === visibleFailedSend.id ? null : current));
     setError('');
-    mutation.mutate({
-      question,
-      threadId,
-      createThread,
-      context,
-      optimisticId,
-      signal: controller.signal,
-    });
-    conversationContextRef.current?.scrollToBottom();
-    if (context.selection) clearSelection();
   };
   const handleResizePointerDown = (event: React.PointerEvent<HTMLHRElement>) => {
     if (event.button !== 0 || isMobile) return;
@@ -924,20 +978,53 @@ export function TutorContextProvider({
                             </MessageContent>
                           </Message>
                         ))}
+                        {visibleFailedSend ? (
+                          <Message data-testid="tutor-failed-message" from="user">
+                            <p className="w-full text-right text-xs font-medium text-muted-foreground">
+                              You
+                            </p>
+                            <MessageContent>
+                              <TutorMarkdown>{visibleFailedSend.content}</TutorMarkdown>
+                            </MessageContent>
+                            <div className="flex items-center justify-end gap-2 text-xs text-muted-foreground">
+                              <span>Didn't send.</span>
+                              <Button
+                                type="button"
+                                variant="link"
+                                size="sm"
+                                className="h-auto px-0 py-0 text-xs"
+                                onClick={retryFailedSend}
+                              >
+                                Retry
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="link"
+                                size="sm"
+                                className="h-auto px-0 py-0 text-xs"
+                                onClick={editFailedSend}
+                              >
+                                Edit
+                              </Button>
+                            </div>
+                          </Message>
+                        ) : null}
                         {visiblePendingSend ? (
                           <>
-                            <Message
-                              data-testid="tutor-user-message"
-                              from="user"
-                              key={visiblePendingSend.id}
-                            >
-                              <p className="w-full text-right text-xs font-medium text-muted-foreground">
-                                You
-                              </p>
-                              <MessageContent>
-                                <TutorMarkdown>{visiblePendingSend.content}</TutorMarkdown>
-                              </MessageContent>
-                            </Message>
+                            {!pendingMessageIsServerBacked ? (
+                              <Message
+                                data-testid="tutor-user-message"
+                                from="user"
+                                key={visiblePendingSend.id}
+                              >
+                                <p className="w-full text-right text-xs font-medium text-muted-foreground">
+                                  You
+                                </p>
+                                <MessageContent>
+                                  <TutorMarkdown>{visiblePendingSend.content}</TutorMarkdown>
+                                </MessageContent>
+                              </Message>
+                            ) : null}
                             {mutation.isPending ? (
                               <Message data-testid="tutor-thinking-bubble" from="assistant">
                                 <p className="w-full text-xs font-medium text-muted-foreground">
@@ -982,9 +1069,9 @@ export function TutorContextProvider({
                       }}
                     >
                       {error ? (
-                        <Alert variant="destructive">
-                          <AlertDescription>{error}</AlertDescription>
-                        </Alert>
+                        <p role="alert" className="px-2 text-xs text-destructive">
+                          {error}
+                        </p>
                       ) : null}
                       <PromptInputTextarea
                         className="max-h-[min(30dvh,16rem)] min-h-24 resize-none overflow-y-auto rounded-lg border-0 bg-transparent px-2 py-1.5 shadow-none focus-visible:border-transparent focus-visible:ring-0"
@@ -1004,8 +1091,14 @@ export function TutorContextProvider({
                       />
                       <div className="flex items-center justify-end gap-2">
                         {isSending && !draft.trim() ? (
-                          <Button type="submit" size="icon" variant="outline" aria-label="Stop">
-                            <Square aria-hidden="true" />
+                          <Button
+                            type="submit"
+                            size="icon"
+                            variant="default"
+                            className="rounded-full"
+                            aria-label="Stop"
+                          >
+                            <Square className="size-3.5 fill-current" aria-hidden="true" />
                           </Button>
                         ) : (
                           <PromptInputSubmit disabled={!draft.trim() || draftTooLong}>
