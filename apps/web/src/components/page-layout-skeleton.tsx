@@ -1,21 +1,14 @@
 import { useRouterState } from '@tanstack/react-router';
 import { Loader2 } from 'lucide-react';
 import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import type { Layout, Shape } from './layout-shapes.js';
+import { isLayout, LayoutShapeLayer } from './layout-shapes.js';
 
-export interface Shape {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  radius: number;
-  frame: boolean;
-}
-interface Layout {
-  height: number;
-  shapes: Shape[];
-}
-const storageKey = `academy.page-layout.${import.meta.env.PROD ? new URL(import.meta.url).pathname : 'dev-1'}`;
+export type { Layout, Shape } from './layout-shapes.js';
+
+const storageKey = `academy.page-layout.${import.meta.env.PROD ? new URL(import.meta.url).pathname : 'dev-3'}`;
 const memory = new Map<string, Layout>();
+const frameSelector = '[data-slot=card], [data-slot=alert]';
 
 function layoutKey(path: string, width: number) {
   const breakpoint =
@@ -24,8 +17,9 @@ function layoutKey(path: string, width: number) {
 }
 
 function compareShapes(left: Shape, right: Shape) {
+  const kindOrder = { frame: 0, rule: 1, content: 2 };
   return (
-    Number(right.frame) - Number(left.frame) ||
+    kindOrder[left.kind] - kindOrder[right.kind] ||
     left.y - right.y ||
     left.x - right.x ||
     left.height - right.height ||
@@ -34,18 +28,38 @@ function compareShapes(left: Shape, right: Shape) {
   );
 }
 
-export function mergeLineShapes(shapes: Shape[]): Shape[] {
-  const content = shapes.filter((shape) => !shape.frame).map((shape) => ({ ...shape }));
-  const frames = shapes.filter((shape) => shape.frame);
-  content.sort(compareShapes);
+type MeasuredShape = Shape & { source?: 'text' };
+
+function withoutSource(shape: MeasuredShape): Shape {
+  if (shape.source === undefined) return shape;
+  return {
+    x: shape.x,
+    y: shape.y,
+    width: shape.width,
+    height: shape.height,
+    radius: shape.radius,
+    kind: shape.kind,
+  };
+}
+
+export function mergeLineShapes(shapes: MeasuredShape[]): Shape[] {
+  const content = shapes
+    .filter((shape) => shape.kind === 'content' && shape.source !== 'text')
+    .map(withoutSource);
+  const text = shapes
+    .filter((shape) => shape.kind === 'content' && shape.source === 'text')
+    .map(withoutSource);
+  const frames = shapes.filter((shape) => shape.kind === 'frame').map(withoutSource);
+  const rules = shapes.filter((shape) => shape.kind === 'rule').map(withoutSource);
+  text.sort(compareShapes);
 
   while (true) {
     let merged = false;
-    for (let leftIndex = 0; leftIndex < content.length && !merged; leftIndex += 1) {
-      const left = content[leftIndex];
+    for (let leftIndex = 0; leftIndex < text.length && !merged; leftIndex += 1) {
+      const left = text[leftIndex];
       if (!left) continue;
-      for (let rightIndex = leftIndex + 1; rightIndex < content.length; rightIndex += 1) {
-        const right = content[rightIndex];
+      for (let rightIndex = leftIndex + 1; rightIndex < text.length; rightIndex += 1) {
+        const right = text[rightIndex];
         if (!right) continue;
         const verticalCenterDifference = Math.abs(
           left.y + left.height / 2 - (right.y + right.height / 2),
@@ -61,16 +75,16 @@ export function mergeLineShapes(shapes: Shape[]): Shape[] {
         const y = Math.min(left.y, right.y);
         const rightEdge = Math.max(left.x + left.width, right.x + right.width);
         const bottom = Math.max(left.y + left.height, right.y + right.height);
-        content.splice(leftIndex, 1, {
+        text.splice(leftIndex, 1, {
           x,
           y,
           width: rightEdge - x,
           height: bottom - y,
           radius: Math.min(left.radius, right.radius),
-          frame: false,
+          kind: 'content',
         });
-        content.splice(rightIndex, 1);
-        content.sort(compareShapes);
+        text.splice(rightIndex, 1);
+        text.sort(compareShapes);
         merged = true;
         break;
       }
@@ -78,27 +92,15 @@ export function mergeLineShapes(shapes: Shape[]): Shape[] {
     if (!merged) break;
   }
 
-  return [...content, ...frames].sort(compareShapes);
+  return [...frames, ...rules, ...content, ...text].sort(compareShapes);
 }
 
-function loadLayout(key: string): Layout | undefined {
+export function loadLayout(key: string): Layout | undefined {
   if (memory.has(key)) return memory.get(key);
   try {
     const saved = JSON.parse(sessionStorage.getItem(storageKey) ?? '{}') as Record<string, Layout>;
     const layout = saved[key];
-    if (
-      layout &&
-      Number.isFinite(layout.height) &&
-      layout.height >= 0 &&
-      Array.isArray(layout.shapes) &&
-      layout.shapes.length <= 2000 &&
-      layout.shapes.every(
-        (shape) =>
-          shape &&
-          typeof shape.frame === 'boolean' &&
-          [shape.x, shape.y, shape.width, shape.height, shape.radius].every(Number.isFinite),
-      )
-    ) {
+    if (isLayout(layout)) {
       memory.set(key, layout);
       return layout;
     }
@@ -129,7 +131,7 @@ function saveLayout(key: string, layout: Layout) {
 const blocks =
   '[data-slot=button], input:not([type=hidden]), textarea, select, [data-slot=badge], [data-slot=progress], [role=radio], [role=checkbox], [role=img], pre, img, canvas, svg, .katex';
 
-function measureLayout(element: HTMLElement): Layout {
+export function measureLayout(element: HTMLElement): Layout {
   const bounds = element.getBoundingClientRect();
   const style = getComputedStyle(element);
   const left = Number.parseFloat(style.paddingLeft) || 0;
@@ -142,9 +144,15 @@ function measureLayout(element: HTMLElement): Layout {
     width: bounds.width - left - right,
     height: bounds.height - top - bottom,
   };
-  const shapes: Shape[] = [];
+  const shapes: MeasuredShape[] = [];
   const clips = new Map<Element, { x: boolean; y: boolean; bounds: DOMRect }>();
-  const add = (rect: DOMRect, radius: number, frame = false, clipFrom: Element | null = null) => {
+  const add = (
+    rect: DOMRect,
+    radius: number,
+    kind: Shape['kind'] = 'content',
+    clipFrom: Element | null = null,
+    source?: MeasuredShape['source'],
+  ) => {
     let left = rect.left;
     let right = rect.right;
     let top = rect.top;
@@ -172,31 +180,131 @@ function measureLayout(element: HTMLElement): Layout {
     }
     const width = right - left;
     const height = bottom - top;
-    if (width < 2 || height < 2) return;
+    const minimumDimension = kind === 'rule' ? 1 : 2;
+    if (width < minimumDimension || height < minimumDimension) return;
     const x = left - origin.left;
     const y = top - origin.top;
     if (x < -8 || y < -8 || x + width > origin.width + 8) return;
-    shapes.push({ x, y, width, height, radius, frame });
+    shapes.push({ x, y, width, height, radius, kind, ...(source ? { source } : {}) });
   };
-  for (const frame of element.querySelectorAll<HTMLElement>(
-    '[data-slot=card], [data-slot=alert]',
-  )) {
+  const visibleBorder = (width: string, style: string, color: string) => {
+    const normalizedColor = color.trim().toLowerCase();
+    return (
+      Number.parseFloat(width) >= 1 &&
+      style !== 'none' &&
+      style !== 'hidden' &&
+      normalizedColor !== 'transparent' &&
+      !/(?:,|\/)\s*0(?:\.0+)?%?\s*\)$/.test(normalizedColor)
+    );
+  };
+  const hasVisibleBorder = (style: CSSStyleDeclaration) =>
+    visibleBorder(style.borderTopWidth, style.borderTopStyle, style.borderTopColor) ||
+    visibleBorder(style.borderRightWidth, style.borderRightStyle, style.borderRightColor) ||
+    visibleBorder(style.borderBottomWidth, style.borderBottomStyle, style.borderBottomColor) ||
+    visibleBorder(style.borderLeftWidth, style.borderLeftStyle, style.borderLeftColor);
+  const hasVisibleBackground = (style: CSSStyleDeclaration) => {
+    const color = style.backgroundColor.trim().toLowerCase();
+    return (
+      (color !== 'transparent' && !/(?:,|\/)\s*0(?:\.0+)?%?\s*\)$/.test(color)) ||
+      style.backgroundImage !== 'none'
+    );
+  };
+  const radiusAlong = (value: string, size: number) =>
+    value
+      .trim()
+      .split(/\s+/)
+      .reduce((maximum, part) => {
+        const radius = Number.parseFloat(part);
+        if (!Number.isFinite(radius)) return maximum;
+        return Math.max(maximum, part.endsWith('%') ? (radius / 100) * size : radius);
+      }, 0);
+  const borderRadius = (style: CSSStyleDeclaration, bounds: DOMRect) => {
+    const corners = [
+      style.borderTopLeftRadius,
+      style.borderTopRightRadius,
+      style.borderBottomRightRadius,
+      style.borderBottomLeftRadius,
+    ];
+    const radius = Math.max(
+      ...corners.map((corner) => {
+        const [horizontal = '0px', vertical = horizontal] = corner.trim().split(/\s+/);
+        return Math.min(
+          radiusAlong(horizontal, bounds.width),
+          radiusAlong(vertical, bounds.height),
+        );
+      }),
+    );
+    return Math.min(radius, bounds.width / 2, bounds.height / 2);
+  };
+  const roundedBorderBlocks = new Set<Element>();
+  const hasRoundedBorderAncestor = (node: Element | null) => {
+    for (let ancestor = node; ancestor && ancestor !== element; ancestor = ancestor.parentElement) {
+      if (roundedBorderBlocks.has(ancestor)) return true;
+    }
+    return false;
+  };
+  for (const block of element.querySelectorAll<HTMLElement>('*')) {
+    if (block.matches(`${frameSelector}, ${blocks}`) || hasRoundedBorderAncestor(block)) continue;
+    const style = getComputedStyle(block);
+    if (style.visibility === 'hidden' || style.display === 'none' || !hasVisibleBorder(style))
+      continue;
+    const bounds = block.getBoundingClientRect();
+    const radius = borderRadius(style, bounds);
+    if (radius <= 2) continue;
+    roundedBorderBlocks.add(block);
+    add(bounds, radius, 'content', block.parentElement);
+  }
+  const frames = [...element.querySelectorAll<HTMLElement>(frameSelector)];
+  for (const frame of frames) {
+    if (hasRoundedBorderAncestor(frame)) continue;
     add(
       frame.getBoundingClientRect(),
       Number.parseFloat(getComputedStyle(frame).borderRadius) || 0,
-      true,
+      'frame',
       frame.parentElement,
     );
   }
   for (const block of element.querySelectorAll<HTMLElement>(blocks)) {
-    if (block.parentElement?.closest(blocks) || block.closest('[aria-hidden=true], .sr-only'))
+    if (hasRoundedBorderAncestor(block.parentElement)) continue;
+    const svg = block.tagName.toLowerCase() === 'svg';
+    const style = getComputedStyle(block);
+    const bounds = block.getBoundingClientRect();
+    if (
+      block.closest('.sr-only, [data-layout-shape-layer]') ||
+      (!svg && (block.parentElement?.closest(blocks) || block.closest('[aria-hidden=true]'))) ||
+      (svg &&
+        (bounds.width === 0 ||
+          bounds.height === 0 ||
+          style.visibility === 'hidden' ||
+          style.display === 'none'))
+    )
       continue;
-    add(
-      block.getBoundingClientRect(),
-      Number.parseFloat(getComputedStyle(block).borderRadius) || 4,
-      false,
-      block.parentElement,
-    );
+    if (block.matches('[role=img]') && !svg) {
+      const visualDescendants = [...block.querySelectorAll<HTMLElement>('*')].filter((child) => {
+        const childStyle = getComputedStyle(child);
+        const childBounds = child.getBoundingClientRect();
+        return (
+          childStyle.visibility !== 'hidden' &&
+          childStyle.display !== 'none' &&
+          childBounds.width >= 2 &&
+          childBounds.height >= 2 &&
+          hasVisibleBackground(childStyle)
+        );
+      });
+      if (visualDescendants.length > 0) {
+        for (const visual of visualDescendants) {
+          const visualStyle = getComputedStyle(visual);
+          add(
+            visual.getBoundingClientRect(),
+            Number.parseFloat(visualStyle.borderRadius) || 4,
+            'content',
+            visual.parentElement,
+          );
+        }
+        continue;
+      }
+    }
+    add(bounds, Number.parseFloat(style.borderRadius) || 4, 'content', block.parentElement);
   }
   const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
   let node = walker.nextNode();
@@ -205,17 +313,60 @@ function measureLayout(element: HTMLElement): Layout {
     if (
       node.textContent?.trim() &&
       parent &&
-      !parent.closest(`${blocks}, [aria-hidden=true], .sr-only, svg, script, style`)
+      !parent.closest(`${blocks}, [aria-hidden=true], .sr-only, svg, script, style`) &&
+      !hasRoundedBorderAncestor(parent)
     ) {
       const range = document.createRange();
       range.selectNodeContents(node);
-      for (const rect of range.getClientRects()) add(rect, 3, false, parent);
+      for (const rect of range.getClientRects()) add(rect, 3, 'content', parent, 'text');
     }
     node = walker.nextNode();
   }
+  for (const block of element.querySelectorAll<HTMLElement>('*')) {
+    if (block.matches(`${frameSelector}, ${blocks}`) || hasRoundedBorderAncestor(block)) continue;
+    const style = getComputedStyle(block);
+    if (style.visibility === 'hidden' || style.display === 'none') continue;
+    const bounds = block.getBoundingClientRect();
+    if (visibleBorder(style.borderTopWidth, style.borderTopStyle, style.borderTopColor)) {
+      const height = Number.parseFloat(style.borderTopWidth);
+      add(
+        new DOMRect(bounds.left, bounds.top, bounds.width, height),
+        0,
+        'rule',
+        block.parentElement,
+      );
+    }
+    if (visibleBorder(style.borderRightWidth, style.borderRightStyle, style.borderRightColor)) {
+      const width = Number.parseFloat(style.borderRightWidth);
+      add(
+        new DOMRect(bounds.right - width, bounds.top, width, bounds.height),
+        0,
+        'rule',
+        block.parentElement,
+      );
+    }
+    if (visibleBorder(style.borderBottomWidth, style.borderBottomStyle, style.borderBottomColor)) {
+      const height = Number.parseFloat(style.borderBottomWidth);
+      add(
+        new DOMRect(bounds.left, bounds.bottom - height, bounds.width, height),
+        0,
+        'rule',
+        block.parentElement,
+      );
+    }
+    if (visibleBorder(style.borderLeftWidth, style.borderLeftStyle, style.borderLeftColor)) {
+      const width = Number.parseFloat(style.borderLeftWidth);
+      add(
+        new DOMRect(bounds.left, bounds.top, width, bounds.height),
+        0,
+        'rule',
+        block.parentElement,
+      );
+    }
+  }
   const unique = new Map(
     mergeLineShapes(shapes).map((shape) => [
-      `${shape.frame}-${shape.x}-${shape.y}-${shape.width}-${shape.height}`,
+      `${shape.kind}-${shape.x}-${shape.y}-${shape.width}-${shape.height}`,
       shape,
     ]),
   );
@@ -291,26 +442,7 @@ export function PageLayoutSkeleton({ fallback }: { fallback?: ReactNode } = {}) 
       style={layout ? { height: layout.height } : undefined}
     >
       {layout ? (
-        <div aria-hidden="true">
-          {layout.shapes.map((shape) => (
-            <div
-              key={`${shape.frame}-${shape.x}-${shape.y}-${shape.width}-${shape.height}`}
-              data-layout-shape={shape.frame ? 'frame' : 'content'}
-              className={
-                shape.frame
-                  ? 'absolute bg-card ring-1 ring-foreground/10'
-                  : 'absolute animate-pulse bg-muted motion-reduce:animate-none'
-              }
-              style={{
-                left: shape.x,
-                top: shape.y,
-                width: shape.width,
-                height: shape.height,
-                borderRadius: shape.radius,
-              }}
-            />
-          ))}
-        </div>
+        <LayoutShapeLayer shapes={layout.shapes} />
       ) : fallback ? (
         fallback
       ) : (
