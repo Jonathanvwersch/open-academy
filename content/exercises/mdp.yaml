@@ -6,18 +6,36 @@ exercises:
     role: diagnostic
     difficulty: 2
     est_minutes: 2
-    prompt: "Which of these is **not** part of the definition of a Markov decision process?"
+    prompt: Which item specifies how the agent chooses actions within a given Markov decision process?
     options:
-      - { id: a, text: "The agent's policy", correct: true }
+      - {
+          id: a,
+          text: "The agent's policy",
+          correct: true,
+          feedback: A policy specifies how the agent chooses actions within the task described by the MDP.,
+        }
       - {
           id: b,
-          text: "The transition probabilities $P(s' \\mid s, a)$",
+          text: "The transition probabilities $p(s' \\mid s, a)$",
           correct: false,
           category: misunderstood_definition,
+          feedback: These describe which next state follows an action that has already been chosen.,
         }
-      - { id: c, text: "The reward function", correct: false, category: misunderstood_definition }
-      - { id: d, text: "The set of actions", correct: false, category: misunderstood_definition }
-    solution: "An MDP is $(S, A, P, R, \\gamma)$: it describes the environment. The policy is what the agent chooses in order to act within it."
+      - {
+          id: c,
+          text: "The reward function",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: This assigns numerical rewards to the outcomes of actions.,
+        }
+      - {
+          id: d,
+          text: "The set of actions",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: This lists available choices; a policy specifies which choice to make.,
+        }
+    solution: "An MDP is $(S, A, p, R, \\gamma)$ and describes the task. The agent's policy specifies how it chooses actions within that task."
   - id: mdpp-state-basics
     dimension: conceptual
     type: mc
@@ -49,9 +67,9 @@ exercises:
     prompt: In the worked example, why does the left command from cell 1 still produce reward $-1$?
     options:
       - id: a
-        text: A wall collision always has a special penalty equal to the current cell number.
+        text: A wall collision always cancels the ordinary step cost and gives zero reward.
         correct: false
-        feedback: No collision-specific penalty was defined; the rule gives every non-goal step the same reward.
+        feedback: The step still occurs when the robot stays in place, so the ordinary reward $-1$ applies.
       - id: b
         text: The command still uses one time step, and it ends outside the goal cell.
         correct: true
@@ -111,7 +129,7 @@ exercises:
       - id: c
         text: The reward is the sum of the first three rewards in the episode.
         correct: false
-        feedback: The subscript is a time index; $r_3$ is one reward, not a total.
+        feedback: The subscript is a time index; $r_3$ denotes the reward received at time 3.
     solution: The action at time 2 produces the reward indexed 3 and the next state indexed 3.
   - id: mdpp-terminal-mistake
     dimension: conceptual
@@ -227,7 +245,7 @@ exercises:
     est_minutes: 2
     params:
       chance: { min: 6, max: 8, step: 2 }
-      goal: { min: 10, max: 14, step: 2 }
+      goal: { min: 12, max: 16, step: 2 }
       cost: { min: 1, max: 3, step: 2 }
     prompt: A four-cell corridor robot is in cell 3. Choosing right reaches terminal cell 4 with probability ${{= chance / 10 }}$ and otherwise stays at 3. Entry to 4 gives reward ${{= goal }}$; staying at 3 gives $-{{= cost }}$. What is the expected reward of this one command? Give an exact decimal.
     answer_expr: (chance / 10) * goal - (1 - chance / 10) * cost
@@ -253,7 +271,7 @@ exercises:
         text: The reward per attempt averages toward $7.8$ over many repetitions.
         correct: true
         feedback: An expected reward summarises repeated outcomes, even when no single reward equals it.
-    solution: $7.8$ is the long-run average reward per attempt from the stated state, while individual rewards remain $10$ or $-1$.
+    solution: $7.8$ is the long-run average reward per attempt of this action, while individual rewards remain $10$ or $-1$.
   - id: mdpp-wall-mistake
     dimension: conceptual
     type: mc
@@ -304,7 +322,7 @@ exercises:
     est_minutes: 3
     params:
       chance: { min: 7, max: 9, step: 2 }
-      bonus: { min: 8, max: 12, step: 4 }
+      bonus: { min: 10, max: 16, step: 6 }
       penalty: { min: 2, max: 4, step: 2 }
     prompt: A delivery task has states waiting, delivered and delayed. A dispatch action from waiting reaches delivered with probability ${{= chance / 10 }}$ and delayed otherwise. Its reward is ${{= bonus }}$ on delivery and $-{{= penalty }}$ on delay. What is its expected next reward from waiting? Give an exact decimal.
     answer_expr: (chance / 10) * bonus - (1 - chance / 10) * penalty
@@ -316,7 +334,7 @@ exercises:
     role: basics
     difficulty: 1
     est_minutes: 1
-    prompt: What does the discount factor $\gamma$ control in a return?
+    prompt: What does the discount factor $\gamma$ control in an MDP?
     options:
       - id: a
         text: The probability that a chosen action reaches its intended destination.
@@ -347,98 +365,110 @@ exercises:
       - id: b
         text: It requires two independent successful moves, so its chance has two probability factors.
         correct: false
-        feedback: This example uses reliable moves; $0.9$ weights delay and is not a success probability.
+        feedback: This example uses reliable moves; $0.9$ controls how delay changes a reward's weight.
       - id: c
         text: It is received in the second cell, so the cell number supplies the discount exponent.
         correct: false
         feedback: The goal reward is received in cell 4; the exponent counts extra delay from the first reward.
     solution: The goal reward is third in the reward sequence, two delays beyond the first, so its weight is $\gamma^2=0.81$.
-  - id: mdpp-discount-tool
+  - id: mdpp-weight-rule
     dimension: conceptual
     type: mc
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: An episode has exactly three actions left and then ends. Which expression gives the return at time $t$?
+    prompt: A task uses discount factor $\gamma$. A reward $r$ arrives after the third command from now. Which expression weights that one reward from before the first command?
     options:
       - id: a
-        text: $\gamma r_{t+1}+\gamma^2r_{t+2}+\gamma^3r_{t+3}$
+        text: $\gamma^3r$
         correct: false
-        feedback: The first reward has full weight; this shifts every exponent one step too far.
+        feedback: The reward after the first command has weight 1, so the third reward has only two extra steps of delay.
       - id: b
-        text: $r_{t+1}+\gamma r_{t+2}+\gamma r_{t+3}$
+        text: $\gamma r$
         correct: false
-        feedback: The third reward has two extra delays, so it needs two factors of $\gamma$.
+        feedback: One factor accounts for only one extra step; this reward arrives two extra steps later.
       - id: c
-        text: $r_{t+1}+\gamma r_{t+2}+\gamma^2r_{t+3}$
+        text: $\gamma^2r$
         correct: true
-        feedback: Weights begin at 1 and gain one discount factor for each later reward.
-    solution: The three rewards have weights $1,\gamma,\gamma^2$ because the first has no extra delay and the third has two.
-  - id: mdpp-return-template
+        feedback: Two extra steps beyond the next reward give two factors of $\gamma$.
+    solution: The reward arrives two extra steps beyond the next reward, so its weight is $\gamma^2$ and its weighted amount is $\gamma^2r$.
+  - id: mdpp-weight-template
     dimension: math
     type: numeric
     role: practice
     difficulty: 2
     est_minutes: 2
     params:
-      cost: { min: 1, max: 2, step: 1 }
-      goal: { min: 8, max: 12, step: 2 }
-    prompt: A robot makes three right moves from cell 1 to terminal cell 4. The first two moves each give reward $-{{= cost }}$ and the final move gives ${{= goal }}$. With $\gamma=0.9$, what is the return from the start? Give an exact decimal.
-    answer_expr: -cost - 0.9 * cost + 0.81 * goal
+      factor: { min: 5, max: 9, step: 4 }
+      reward: { min: 12, max: 20, step: 4 }
+      delay: { min: 1, max: 2, step: 1 }
+    prompt: A robot task uses $\gamma={{= factor / 10 }}$. A reward of ${{= reward }}$ arrives ${{= delay }}$ extra time steps beyond the next reward. What is its weighted amount when viewed from now? Give an exact decimal.
+    answer_expr: (factor / 10)^delay * reward
     tolerance: { abs: 0.001 }
-    solution: The first reward has full weight and the next two have weights $0.9$ and $0.81$. The return is $-{{= cost }}+0.9\times(-{{= cost }})+0.81\times{{= goal }}={{= -cost - 0.9 * cost + 0.81 * goal }}$.
+    solution: Each extra step contributes one discount factor, so the weighted amount is ${{= factor / 10 }}^{ {{= delay }} }\times{{= reward }}={{= (factor / 10)^delay * reward }}$.
   - id: mdpp-zero-meaning
     dimension: conceptual
     type: mc
     role: practice
     difficulty: 2
     est_minutes: 1
-    prompt: A task's discount factor is changed from $0.9$ to $0$. What happens to its return at a given time?
+    prompt: A task's discount factor changes from $0.9$ to $0$. How are the next reward and those received later weighted?
     options:
       - id: a
-        text: It becomes the next reward, with every later reward given zero weight.
+        text: The next reward keeps weight 1, and every later reward gets weight 0.
         correct: true
         feedback: The next reward keeps weight 1; all positive powers of zero vanish.
       - id: b
-        text: It becomes zero, with every reward including the next given zero weight.
+        text: The next reward gets weight 0, and every later reward also gets weight 0.
         correct: false
         feedback: The next reward has no factor of $\gamma$, so it keeps full weight.
       - id: c
-        text: It becomes the final reward, with every earlier reward given zero weight.
+        text: The final reward keeps weight 1, and every earlier reward gets weight 0.
         correct: false
-        feedback: Zero discount removes delayed rewards from the return; it does not select the terminal one.
-    solution: At $\gamma=0$, the return is $G_t=r_{t+1}$ because only the next reward has nonzero weight.
-  - id: mdpp-exponent-mistake
+        feedback: Every reward after the next gets weight 0, including the final reward when it arrives later.
+    solution: The next reward keeps weight 1. Every extra step multiplies a later reward's weight by zero.
+  - id: mdpp-weight-mistake
     dimension: conceptual
     type: mc
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: An episode gives rewards $2,0,10$ and ends. With $\gamma=0.9$, a learner writes $G_0=2+0.9\times0+0.9\times10$. Which part needs changing?
+    prompt: A reward arrives after the third command from now. With $\gamma=0.9$, a learner gives it weight $0.9$ when evaluating it from before the first command. Which timing error caused this?
     options:
       - id: a
-        text: The first reward should also be multiplied by $0.9$.
+        text: They included the first command as an extra step of delay.
         correct: false
-        feedback: The first reward has full weight because it has no extra delay.
+        feedback: Including that command would give three factors of $0.9$, more than the learner used.
       - id: b
-        text: The final reward should be multiplied by $0.9^2$.
+        text: They counted only one extra step of delay instead of two.
         correct: true
-        feedback: The third reward is two extra steps away from the first, so it needs two factors.
+        feedback: Two steps separate this reward from the next reward, so its weight needs two factors of $0.9$.
       - id: c
-        text: The final reward should be dropped because the episode ends.
+        text: They ignored every extra step and kept the reward's weight unchanged.
         correct: false
-        feedback: The terminal transition's reward belongs in the return; only rewards after termination are absent.
-    solution: The final reward needs weight $0.81$, giving $G_0=2+0+8.1=10.1$.
-  - id: mdpp-undiscounted
-    dimension: math
-    type: numeric
+        feedback: Ignoring every extra step would leave weight 1, above the learner's weight of $0.9$.
+    solution: The next reward has weight 1. The third reward arrives two extra steps later, so its weight is $0.9^2=0.81$.
+  - id: mdpp-delay-neutral
+    dimension: conceptual
+    type: mc
     role: practice
     difficulty: 2
     est_minutes: 1
-    prompt: An episode gives rewards $-2,-2,10$ and ends. With $\gamma=1$, what is the return from the start?
-    answer: 6
-    tolerance: { abs: 0 }
-    solution: Every reward has weight 1, so the return is $-2-2+10=6$.
+    prompt: An MDP changes its discount factor from $0.9$ to $1$. Which effect comes from this change?
+    options:
+      - id: a
+        text: Every action becomes certain to reach its intended destination.
+        correct: false
+        feedback: Transition probabilities determine the destinations; discounting controls reward weights.
+      - id: b
+        text: Every reward after the next command is given zero weight.
+        correct: false
+        feedback: A discount factor of zero would remove these delayed rewards' weights.
+      - id: c
+        text: Every reward keeps its full size when weighted for delay.
+        correct: true
+        feedback: Multiplying by 1 for every extra step leaves the reward unchanged.
+    solution: With $\gamma=1$, each delay factor equals 1, so both positive and negative rewards keep their full size.
   - id: mdpp-complete-task
     dimension: conceptual
     type: mc
@@ -460,23 +490,23 @@ exercises:
         correct: true
         feedback: The reward rule supplies the numerical feedback that transition probabilities alone do not describe.
     solution: An MDP needs a reward rule as well as states, actions, transition probabilities and a discount factor.
-  - id: mdpp-charger-return
+  - id: mdpp-charger-weight
     dimension: math
     type: numeric
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: A charger controller takes two actions, receiving reward $-2$ after the first and $8$ after the second, then the episode ends. This task uses $\gamma=0.5$. What is the return before the first action?
+    prompt: A charger controller receives a reward of $8$ after its third command. This task uses $\gamma=0.5$. What is the weighted amount of that reward when evaluated from before its first command?
     answer: 2
     tolerance: { abs: 0.001 }
-    solution: The first reward keeps full weight and the second gets one discount factor, so the return is $-2+0.5\times8=2$.
+    solution: The reward arrives two extra steps beyond the next reward, so its weighted amount is $0.5^2\times8=2$.
   - id: mdpp-explain
     dimension: conceptual
     type: explain
     role: core
     difficulty: 2
     est_minutes: 4
-    prompt: Describe how you would turn a robot navigation task into an MDP. Explain what the state must contain, how actions lead to next states and rewards, and how the discount factor affects a sequence of rewards.
+    prompt: Describe how you would turn a robot navigation task into an MDP. Explain what the state must contain, how actions lead to next states and rewards, and how the discount factor affects a delayed reward's weight.
     rubric:
       - id: state
         criterion: Chooses state information sufficient to predict next-state and reward probabilities given an action, without earlier history.
@@ -487,8 +517,8 @@ exercises:
         weight: 1
         required: true
       - id: delay
-        criterion: Explains that the next reward has weight 1 and each extra delay adds a discount factor in the return.
+        criterion: Explains that the next reward has weight 1 and each extra step of delay multiplies a later reward's weight by the discount factor.
         weight: 1
         required: true
-    exemplar: I choose a state such as the robot's position and velocity if both affect its motion. I list available commands, give the chance of every next state for each command so those chances total 1, assign rewards to transitions and mark which arrivals end the episode. The discount factor controls timing in the return, with weights 1 for the next reward, gamma for the following one and gamma squared for the third.
-    solution: A complete task description needs sufficient state information, available actions, transition probabilities, rewards and a discount factor, with the start and termination specified for an episodic task. Return weights each later reward by one more factor of gamma.
+    exemplar: I choose a state such as the robot's position and velocity if both affect its motion. I list available commands, give the chance of every next state for each command so those chances total 1, assign rewards to transitions and mark which arrivals end the episode. The discount factor gives the next reward weight 1 and multiplies a later reward's weight once per extra step of delay.
+    solution: A complete task description needs sufficient state information, available actions, transition probabilities, rewards and a discount factor, with the start and termination specified for an episodic task. Discounting specifies how delay changes the weight of a reward.

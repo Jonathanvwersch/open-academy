@@ -29,7 +29,7 @@ knowledge_points:
           <rect x="180" y="55" width="80" height="65" fill="#d4d4d4" fill-opacity="0.2" stroke="#737373"/>
           <rect x="335" y="55" width="80" height="65" fill="#d4d4d4" fill-opacity="0.2" stroke="#737373"/>
           <rect x="490" y="55" width="80" height="65" fill="#10b981" fill-opacity="0.2" stroke="#10b981"/>
-          <path d="M14 55 V120 M588 55 V120" stroke="#737373" stroke-width="4"/>
+          <path d="M14 55 V120 M581 55 V120" stroke="#737373" stroke-width="4"/>
           <text x="65" y="95">1</text><text x="220" y="95">2</text><text x="375" y="95">3</text><text x="530" y="95">4</text>
           <path d="M110 88 H170" stroke="#3b82f6" stroke-width="3" marker-end="url(#mdp-task-arrow)"/>
           <path d="M265 88 H325" stroke="#3b82f6" stroke-width="3" marker-end="url(#mdp-task-arrow)"/>
@@ -81,7 +81,7 @@ knowledge_points:
     explain: |
       ### One choice can have two outcomes
 
-      An unreliable motor can make one command lead to different scores. We need the chance of each outcome to describe its behaviour. Keep the four cells, wall rule and rewards. Away from walls, a command moves one cell as intended with probability $0.8$ and otherwise leaves the robot in place.
+      An unreliable motor can make one command lead to different scores. We need the chance of each outcome to describe its behaviour. Keep the four cells, wall rule and rewards. When a command does not point into a wall, it moves one cell as intended with probability $0.8$ and otherwise leaves the robot in place.
 
       From cell 3, choosing right now has two possible next states. The boxes on the right show alternatives after one command. The upper branch ends at cell 4 with reward $+10$. The lower branch shows cell 3 again, because the robot stays where the command began.
 
@@ -130,7 +130,7 @@ knowledge_points:
       3. **Compare a left command.** Its two possible destinations are cells 2 and 3. Both give reward $-1$.
          $$0.8\times(-1)+0.2\times(-1)=-1.$$
 
-      Right has the higher expected immediate reward: $7.8$ compared with $-1$. To picture these averages, imagine repeatedly placing the robot in cell 3 and issuing one command. These are one-command experiments, separate from full corridor episodes that start at cell 1.
+      Right has the higher expected immediate reward: $7.8$ compared with $-1$. To picture these averages, imagine repeatedly placing the robot in cell 3. Each experiment is a single command from cell 3.
     problems:
       - mdpp-transition-basics
       - mdpp-transition-why
@@ -141,16 +141,16 @@ knowledge_points:
       - mdpp-row-mistake
       - mdpp-delivery-template
   - id: mdp-discount
-    title: Score a sequence of rewards
+    title: Weight later rewards
     explain: |
       ### Rewards arrive at different times
 
-      An expected next reward averages the outcomes of one command. We also need to score whole runs, where a goal reward can arrive several commands later. Discounting lets us choose how much reward timing matters. For a clear calculation, use the reliable motor again: three right moves give rewards $-1,-1,+10$.
+      An expected next reward averages the outcomes of one command. A task also needs to specify how much reward timing matters. **Discounting** gives later rewards smaller weights when we prefer progress sooner. Use the reliable corridor again: three right moves from cell 1 reach the goal in cell 4. Its reward $+10$ arrives after the third command.
 
-      At time $t$, we are about to take an action. A reward's **weight** is the number we multiply it by when scoring from that time. The next reward has weight 1. A **discount factor**, $\gamma$ (gamma), is between 0 and 1, including both endpoints. Each step of delay multiplies the previous weight by $\gamma$. We choose $\gamma=0.9$ as an illustration. The three weights are 1, $0.9$ and $0.81$.
+      At time $t$, we are about to take an action. A reward's **weight** is the number we multiply it by when evaluating it from that time. The next reward, after the first command, has weight 1. The goal reward has two extra steps of delay beyond that next reward.
 
       ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 180" aria-label="Three right moves from cell 1 through 2 and 3 to terminal cell 4. Rewards minus 1, minus 1 and plus 10 have weights 1, 0.9 and 0.81 when viewed from the start.">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 180" aria-label="Three right moves from cell 1 through 2 and 3 to terminal cell 4. Rewards minus 1, minus 1 and plus 10 arrive with 0, 1 and 2 extra steps of delay beyond the first reward.">
         <defs><marker id="mdp-time-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#3b82f6"/></marker></defs>
         <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="20" fill="#171717" text-anchor="middle">
           <rect x="10" y="20" width="50" height="50" fill="#d4d4d4" fill-opacity="0.2" stroke="#737373"/><rect x="185" y="20" width="50" height="50" fill="#d4d4d4" fill-opacity="0.2" stroke="#737373"/><rect x="360" y="20" width="50" height="50" fill="#d4d4d4" fill-opacity="0.2" stroke="#737373"/><rect x="535" y="20" width="50" height="50" fill="#10b981" fill-opacity="0.2" stroke="#10b981"/>
@@ -159,24 +159,24 @@ knowledge_points:
           <path d="M240 45 H350" stroke="#3b82f6" stroke-width="3" marker-end="url(#mdp-time-arrow)"/>
           <path d="M415 45 H525" stroke="#3b82f6" stroke-width="3" marker-end="url(#mdp-time-arrow)"/>
           <text x="122" y="105">reward −1</text><text x="297" y="105">reward −1</text><text x="472" y="105">reward +10</text>
-          <text x="122" y="145">weight 1</text><text x="297" y="145">weight 0.9</text><text x="472" y="145">weight 0.81</text>
+          <text x="122" y="145">delay 0</text><text x="297" y="145">delay 1</text><text x="472" y="145">delay 2</text>
         </g>
       </svg>
       ```
 
-      ### Add the weighted rewards
+      ### Choose how delay affects a reward
 
-      The **return**, $G_t$, is the total of the rewards after time $t$, weighted by their delay. For an episode with three actions left, it is
+      A **discount factor**, $\gamma$ (gamma), is between 0 and 1, including both endpoints. Each extra step of delay multiplies the previous weight by $\gamma$. For a later reward $r$ delayed by $k\ge1$ extra steps beyond the next reward, the weighted amount is
 
-      $$G_t=r_{t+1}+\gamma r_{t+2}+\gamma^2r_{t+3}.$$
+      $$\gamma^k r.$$
 
-      The subscripts say when rewards arrive. Each extra delay adds one factor of $\gamma$. The square means multiply by $\gamma$ twice. The episode ends at time $T$. Longer episodes continue this pattern until then.
+      Here $k$ counts those extra steps. For example, $k=2$ means multiply by $\gamma$ twice. We use $\gamma=0.9$ for the corridor.
 
       - With $\gamma=0$, only the next reward counts.
       - With $\gamma=0.9$, later rewards have smaller weights.
       - With $\gamma=1$, every reward has weight 1.
 
-      Be careful: discounting also makes delayed penalties count less strongly, which can encourage delaying costs. A very small discount factor can almost ignore a distant goal.
+      Be careful: discounting also makes delayed penalties count less strongly, which can encourage delaying costs. A very small discount factor can almost ignore a distant goal. The agent still receives the reward specified by the task; discounting changes how we weight it.
 
       ### The complete task description
 
@@ -190,44 +190,35 @@ knowledge_points:
 
       For an episodic task, we also specify how to start and end a run. Here we start in cell 1 and mark cell 4 terminal, with no available actions.
     worked: |
-      Let's evaluate the three right moves from cell 1, starting at time $t=0$, with rewards $-1,-1,+10$ and discount factor $0.9$.
+      Let's weight the goal reward and one step cost for three reliable right moves from cell 1, using $\gamma=0.9$ and viewing the rewards from before the first command.
 
-      1. **Keep the next reward at full weight.** It arrives immediately after the first action.
-         $$r_1=-1.$$
+      1. **Count the goal reward's delay.** It arrives after the third command, two extra steps beyond the next reward. Its weight has two factors of $0.9$.
+         $$\gamma^2=0.9\times0.9=0.81.$$
 
-      2. **Weight the second reward.** It arrives one extra step later, so its weight is $0.9$.
-         $$\gamma r_2=0.9\times(-1)=-0.9.$$
+      2. **Weight the goal reward.** Entry to cell 4 gives $10$, which we multiply by its weight.
+         $$0.81\times10=8.1.$$
 
-      3. **Weight the goal reward.** It arrives two extra steps later, so its weight is $0.9^2$.
-         $$\gamma^2r_3=0.81\times10=8.1.$$
+      3. **Weight one step cost.** The reward after the second command is $-1$, with one extra step of delay.
+         $$0.9\times(-1)=-0.9.$$
 
-      4. **Add the contributions.** The return includes all three rewards and stops at the terminal cell.
-         $$G_0=-1-0.9+8.1=6.2.$$
-
-      5. **Compare an extra command.** A left command into the wall, followed by three right moves, gives four rewards $-1,-1,-1,+10$.
-         $$\begin{aligned}
-         G_0&=-1-0.9-0.81+7.29\\
-         &=4.58.
-         \end{aligned}$$
-
-      With $\gamma=0.9$, the direct path scores $6.2$, above the extra-command path's $4.58$. With $\gamma=1$, the direct path scores $-1-1+10=8$. Compare paths using the same discount factor.
+      Discounting reduces the size of both the delayed goal reward and the delayed cost. With $\gamma=1$, each would keep its full size.
     problems:
       - mdpp-discount-basics
       - mdpp-discount-why
-      - mdpp-discount-tool
-      - mdpp-return-template
+      - mdpp-weight-rule
+      - mdpp-weight-template
       - mdpp-zero-meaning
-      - mdpp-exponent-mistake
-      - mdpp-undiscounted
+      - mdpp-weight-mistake
+      - mdpp-delay-neutral
       - mdpp-complete-task
-      - mdpp-charger-return
+      - mdpp-charger-weight
 final: mdpp-explain
 summary: |
   - An MDP describes states, available actions, transition probabilities, a reward rule and a discount factor, written $(S,A,p,R,\gamma)$.
   - A state has the Markov property when the current state and action suffice to predict the next state and reward probabilities without earlier history.
   - Transition probabilities $p(s'\mid s,a)$ add to 1 over next states for each fixed state and action; expected next reward weights each possible reward by its probability.
-  - The discount factor controls how much delay reduces a reward's weight, so three future rewards give $G_t=r_{t+1}+\gamma r_{t+2}+\gamma^2r_{t+3}$.
+  - The next reward has weight 1. The discount factor $\gamma$ gives a later reward weight $\gamma^k$ for $k\ge1$ extra steps of delay.
 
   The MDP defines which runs can occur and how to score them.
 
-  **Next:** The next lesson introduces policies, rules for choosing actions, so we can compare how different choices score in the same task.
+  **Next:** The next lesson introduces policies, rules for choosing actions, and combines weighted rewards into a discounted return.
