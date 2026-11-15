@@ -2,6 +2,11 @@ concept: speculative-decoding
 version: 1
 objective: |
   **Goal:** explain draft-and-check decoding, estimate its speed-up, and explain how its acceptance rule preserves the target model's output distribution.
+recap:
+  - concept: prefill-decode
+    text: "Prefill processes all prompt tokens in one pass, while decode produces one token per pass, and each new token depends on the tokens before it."
+  - concept: arithmetic-intensity
+    text: "Arithmetic intensity is FLOPs per byte moved. Decoding one token has low intensity, so the GPU waits on memory, and processing several tokens in one pass reuses each weight read for more FLOPs."
 where_this_fits: |
   ### What is speculative decoding?
 

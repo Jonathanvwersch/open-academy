@@ -2,6 +2,9 @@ concept: quantization
 version: 1
 objective: |
   **Goal:** store a model's numbers in 8 or 4 bits, work out how much memory and time that saves, choose which numbers to shrink, and check that the model still gives good answers.
+recap:
+  - concept: gpu-inference-basics
+    text: "A model's weights take its parameter count times the bytes per number, so Llama 3 8B at 16 bits fills about 16 GB of an H100's 80 GB. Each decode step reads every weight from memory."
 where_this_fits: |
   ### What is quantisation?
 
