@@ -1,0 +1,214 @@
+concept: arithmetic-intensity
+version: 1
+objective: "**Goal:** compute a matrix multiply's arithmetic intensity and use a GPU's roofline to predict whether memory movement or computation limits its speed."
+recap:
+  - concept: matrices
+    text: 'A matrix product takes a dot product of each row of the first matrix with each column of the second. Multiplying shapes $(m\times k)(k\times n)$ gives $mn$ output entries, each combining $k$ pairs.'
+where_this_fits: |
+  ### What is arithmetic intensity?
+
+  Arithmetic intensity measures the calculation done per byte moved from or to a GPU's memory. It helps predict whether data movement or arithmetic limits speed, so we know which to improve.
+
+  We'll follow a chat assistant running Llama 3 8B on one NVIDIA H100 SXM GPU. Llama 3 8B has about eight billion learned numbers called weights, or parameters. A GPU is a processor with memory for numbers and computing units that do arithmetic.
+
+  Recall that prefill processes the prompt's tokens together. A sequence is one prompt and the response being generated for it. Decode adds one token to each sequence, then repeats, because each new token depends on earlier tokens. We'll compare their calculation per byte moved.
+knowledge_points:
+  - id: ai-count-work-bytes
+    title: Count calculations and bytes
+    explain: |
+      ### Follow the numbers through a product
+
+      The assistant describes each token using a row of numbers, and matrix products update those rows. A tiny product lets us count every operation and transfer before tackling its large ones. Picture GPU memory as a store of numbers. The computing units read from that store, do arithmetic, and write results back. We'll multiply two $2\times2$ inputs to make a fresh $2\times2$ output.
+
+      Different storage formats use different amounts of space. We'll use a format called floating point, which can represent fractions. Our chosen format stores each number in 16 bits. Since a byte holds 8 bits, each number takes 2 bytes.
+
+      The blue boxes show reads and the green box shows a write. Assume each input is read once and the output written once. The middle box contains computing units and small, fast storage for reusing read values. If needed values no longer fit there, they must be read again from GPU memory.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 245" aria-label="Two 2 by 2 input matrices, 8 bytes each, are read from GPU memory into fast storage beside computing units, which reuse the read values. One 2 by 2 output, 8 bytes, is written back. Total traffic is 24 bytes." font-family="ui-sans-serif, system-ui, sans-serif" font-size="16" fill="#171717">
+      <rect x="15" y="15" width="150" height="50" rx="4" fill="#3b82f6" fill-opacity="0.1" stroke="#3b82f6"/>
+      <text x="90" y="36" text-anchor="middle">input 1: 2 × 2</text><text x="90" y="56" text-anchor="middle">read 8 bytes</text>
+      <rect x="235" y="15" width="150" height="50" rx="4" fill="#3b82f6" fill-opacity="0.1" stroke="#3b82f6"/>
+      <text x="310" y="36" text-anchor="middle">input 2: 2 × 2</text><text x="310" y="56" text-anchor="middle">read 8 bytes</text>
+      <path d="M90 65 L90 90 L175 90 L175 105 M310 65 L310 90 L225 90 L225 105" fill="#171717" fill-opacity="0" stroke="#3b82f6" stroke-width="2"/>
+      <path d="M170 100 L175 105 L180 100 M220 100 L225 105 L230 100" fill="#171717" fill-opacity="0" stroke="#3b82f6" stroke-width="2"/>
+      <rect x="100" y="105" width="200" height="55" rx="4" fill="#171717" fill-opacity="0" stroke="#737373"/><text x="200" y="125" text-anchor="middle">fast storage</text><text x="200" y="147" text-anchor="middle">computing units</text>
+      <path d="M200 160 V185 M195 180 L200 185 L205 180" fill="#171717" fill-opacity="0" stroke="#10b981" stroke-width="2"/>
+      <rect x="110" y="185" width="180" height="50" rx="4" fill="#10b981" fill-opacity="0.1" stroke="#10b981"/>
+      <text x="200" y="206" text-anchor="middle">output: 2 × 2</text><text x="200" y="226" text-anchor="middle">write 8 bytes</text>
+      </svg>
+      ```
+
+      ### Count the operations and transfers
+
+      A **FLOP** is one arithmetic operation on floating-point numbers, like a multiplication or addition. For a dot product, imagine a running total starting at zero. Each multiply-add multiplies one pair and adds the result to that total. We count 2 FLOPs per pair by convention. An $(m\times k)$ by $(k\times n)$ product has $mn$ outputs with $k$ pairs each, so its work is
+
+      $$F=2mkn.$$
+
+      Here $m$, $k$ and $n$ are the matrix sizes and $F$ is the FLOP count. The inputs contain $mk$ and $kn$ numbers, and the output contains $mn$. With $b$ bytes per number, reading each input once and writing the output once moves
+
+      $$D=b(mk+kn+mn).$$
+
+      $D$ counts bytes moved between GPU memory and its computing units. **Arithmetic intensity**, $I$, is the work done per byte moved:
+
+      $$I=\frac{F}{D}.$$
+
+      Its units are FLOPs per byte. Be careful to include output writes, because they move bytes too. If inputs must be reread from GPU memory, add those extra bytes to $D$ too; they lower intensity.
+    worked: |
+      Let's count the work and traffic for the two $2\times2$ inputs above, using 2 bytes per number.
+
+      1. **Count the arithmetic.** Four outputs each need two multiply-adds, and each multiply-add counts as 2 FLOPs.
+         $$F=4\times2\times2=16\text{ FLOPs}.$$
+
+      2. **Count the memory traffic.** Read four numbers from each input and write four output numbers.
+         $$D=2\times(4+4+4)=24\text{ bytes}.$$
+
+      3. **Divide work by traffic.** This tells us how much arithmetic each transferred byte supports.
+         $$I=\frac{16}{24}=\frac{2}{3}\approx0.67\text{ FLOPs per byte}.$$
+
+      Rounded to two decimal places, this product does 0.67 FLOPs for each byte moved under our one-read assumption. Whether that is enough to keep the GPU busy depends on its calculation and memory speeds, which we'll compare next.
+    problems:
+      - aip-intensity-basics
+      - aip-count-self-explain
+      - aip-flops-template
+      - aip-traffic
+      - aip-intensity-template
+      - aip-missing-write
+      - aip-reread
+      - aip-image-product
+  - id: ai-speed-limits
+    title: Compare memory and calculation speeds
+    explain: |
+      ### Two limits on speed
+
+      To predict time spent on the assistant's matrix products, first predict their arithmetic rate. Time is work divided by rate, so for fixed work, higher FLOP/s means less time. **Peak compute rate** is the GPU's greatest arithmetic rate for the storage format used. Different formats may have different rates. **Memory bandwidth** is the GPU's greatest transfer rate in bytes per second. We'll call each rate limit a ceiling.
+
+      To keep the arithmetic small, we'll use a toy device with peak 120 FLOP/s and bandwidth 20 bytes/s. The graph compares operations of different intensities on this device. Its horizontal axis is intensity, and its vertical axis is arithmetic rate. At intensity 3, each byte supports 3 FLOPs. Moving 20 bytes each second can therefore supply $3\times20=60$ FLOP/s. This gives the blue point. The rising blue line reaches the orange compute ceiling at intensity 6.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 240" aria-label="Toy roofline: intensity on the horizontal axis, FLOP/s on the vertical axis. The memory ceiling rises from (0, 0) through (3, 60) to (6, 120). The compute ceiling stays at 120 from intensity 6 to 12." font-family="ui-sans-serif, system-ui, sans-serif" font-size="16" fill="#171717">
+      <text x="15" y="23">rate (FLOP/s)</text>
+      <path d="M70 40 V180 H380" fill="#171717" fill-opacity="0" stroke="#737373"/>
+      <path d="M70 60 H370 M220 60 V180" fill="#171717" fill-opacity="0" stroke="#d4d4d4" stroke-dasharray="4 4"/>
+      <path d="M70 180 L220 60" stroke="#3b82f6" stroke-width="3" fill="#171717" fill-opacity="0"/>
+      <path d="M220 60 H370" stroke="#f59e0b" stroke-width="3"/>
+      <circle cx="145" cy="120" r="4" fill="#3b82f6"/><circle cx="220" cy="60" r="4" fill="#171717"/>
+      <text x="58" y="185" text-anchor="end">0</text><text x="58" y="125" text-anchor="end">60</text><text x="58" y="65" text-anchor="end">120</text>
+      <text x="70" y="204" text-anchor="middle">0</text><text x="145" y="204" text-anchor="middle">3</text><text x="220" y="204" text-anchor="middle">6</text><text x="370" y="204" text-anchor="middle">12</text>
+      <text x="80" y="92" fill="#3b82f6">memory</text><text x="290" y="47" fill="#f59e0b">compute</text>
+      <text x="225" y="231" text-anchor="middle">intensity (FLOPs per byte)</text>
+      </svg>
+      ```
+
+      ### Find the maximum possible rate
+
+      The **roofline model** gives a maximum possible arithmetic rate. The coloured roof traces the smaller of two separate limits. Multiplying FLOPs per byte by bytes per second gives the rate memory can supply. The compute limit also applies, so we take the smaller:
+
+      $$\text{rate}\leq\min(\text{peak compute rate},\ I\times\text{bandwidth}).$$
+
+      The symbol $\leq$ means at most, and $\min$ chooses the smaller value. The GPU's **ops:byte ratio** is the intensity where these ceilings meet. Here ops means FLOPs. It is a hardware property calculated from its two rates:
+
+      $$\text{ops:byte ratio}=\frac{\text{peak FLOP/s}}{\text{bandwidth in bytes/s}}.$$
+
+      Below that ratio the operation is **memory-bound** in this model, because data movement sets the lower ceiling. Above it the operation is **compute-bound**, because arithmetic sets the lower ceiling. At equality both limits meet.
+
+      ### Limitations
+
+      Actual rates can be lower. Small products may leave computing units idle, and starting an operation takes time. Extra reads lower intensity, moving the operation left on this graph. They do not change the GPU's peak rates.
+    worked: |
+      Let's compare two operations on the toy device, whose peak is 120 FLOP/s and whose bandwidth is 20 bytes/s. Operation A does 60 FLOPs and moves 20 bytes, so its intensity is 3. Operation B does 240 FLOPs and moves 20 bytes, so its intensity is 12.
+
+      1. **Find the meeting point.** Divide the peak compute rate by memory bandwidth.
+         $$\text{ops:byte ratio}=120/20=6\text{ FLOPs per byte}.$$
+
+      2. **Check operation A.** Its intensity of 3 lies below 6, so memory sets the lower ceiling.
+         $$\text{rate}\leq\min(120,3\times20)=60\text{ FLOP/s}.$$
+
+      3. **Check operation B.** At intensity 12, memory can support more arithmetic than the device can perform.
+         $$\text{rate}\leq\min(120,12\times20)=120\text{ FLOP/s}.$$
+
+      The first operation is memory-bound and the second is compute-bound in the roofline model. Raising intensity beyond 6 cannot raise this device's 120 FLOP/s compute ceiling. Even at these ceilings, A needs $60/60=1$ second and B needs $240/120=2$ seconds, because time depends on both work and rate.
+    problems:
+      - aip-roofline-basics
+      - aip-roof-self-explain
+      - aip-ratio-template
+      - aip-memory-rate-template
+      - aip-compute-rate
+      - aip-equality
+      - aip-add-ceilings
+      - aip-measured-rate
+      - aip-robot-roof
+  - id: ai-weight-reuse
+    title: Reuse weights for more tokens
+    explain: |
+      ### Use each weight read for several rows
+
+      Our Llama 3 8B assistant keeps $d=4096$ numbers for each token, updated as the model uses earlier tokens. These numbers form a row whose length is the model width. We'll study one internal update on the H100 SXM using a square $d\times d$ weight matrix. This keeps $d$ numbers in each output row. Our numbers use 2 bytes each.
+
+      A **batch size**, $B$, counts sequences processed together. Decode uses one row per sequence, giving $m=B$. For a prompt of $T$ tokens, we'll model prefill processing all $T$ rows together, giving $m=T$.
+
+      Read a small block of the weights into fast storage. Use that block for several input rows before loading the next block. The picture shows two rows reusing a read. More rows means fewer weight bytes read per row.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 180" aria-label="One weight matrix read is shared by two token rows. Input row 1 times the shared weights gives output row 1, and input row 2 times the same weights gives output row 2." font-family="ui-sans-serif, system-ui, sans-serif" font-size="16" fill="#171717">
+      <rect x="110" y="5" width="180" height="48" rx="4" fill="#3b82f6" fill-opacity="0.1" stroke="#3b82f6"/>
+      <text x="200" y="25" text-anchor="middle">weight blocks</text><text x="200" y="45" text-anchor="middle">read once, reused</text>
+      <path d="M200 53 V72 H100 V100 M200 72 H300 V100 M95 95 L100 100 L105 95 M295 95 L300 100 L305 95" fill="#171717" fill-opacity="0" stroke="#3b82f6" stroke-width="2"/>
+      <text x="100" y="121" text-anchor="middle">input row 1 × weights</text><text x="300" y="121" text-anchor="middle">input row 2 × weights</text>
+      <path d="M100 130 V150 M300 130 V150 M95 145 L100 150 L105 145 M295 145 L300 150 L305 145" fill="#171717" fill-opacity="0" stroke="#10b981" stroke-width="2"/>
+      <text x="100" y="173" text-anchor="middle" fill="#10b981">output row 1</text><text x="300" y="173" text-anchor="middle" fill="#10b981">output row 2</text>
+      </svg>
+      ```
+
+      ### Count the shared read
+
+      Input and output have shape $m\times d$. Setting $k=n=d$ gives $F=2md^2$ FLOPs, counting 2 per multiply-add. Reading each input once and writing the output once gives $D=2(md+d^2+md)$ bytes, counting 2 per number. Divide numerator and denominator by $2d$ to simplify:
+
+      $$I=\frac{F}{D}=\frac{2md^2}{2(md+d^2+md)}=\frac{md}{d+2m}.$$
+
+      Weights contribute $d^2$ numbers; input and output contribute $2md$. If $d$ is much larger than $2m$, weights dominate. Dropping $2m$ then gives $I\approx md/d=m$ FLOPs per byte. We'll use the exact formula for comparisons.
+
+      ### Compare with the H100
+
+      Our dense count includes every matrix entry, even a zero. For our 16-bit numbers, the H100's dense rate is about 990 TFLOP/s, rounded here to 1,000 TFLOP/s. Its bandwidth is about 3.35 TB/s. Here TB means $10^{12}$ bytes and TFLOP/s means $10^{12}$ FLOP/s. The ops:byte ratio rounds to about 300 FLOPs per byte.
+
+      Substituting $d=4096$ into the exact formula gives:
+
+      - One-sequence decode, $m=1$: about 1 FLOP per byte, memory-bound.
+      - 64-sequence decode, $m=64$: about 62 FLOPs per byte, memory-bound.
+      - 512-token prefill, $m=512$: 409.6 FLOPs per byte, compute-bound.
+
+      The first two intensities are rounded to whole numbers.
+
+      ### Limitations
+
+      More rows mean more work, so higher intensity does not promise less total time. Short prefills can remain memory-bound. Larger decode batches also reuse weights. A response uses many matrix products and creates tokens in order, so this product alone cannot determine the whole response's speed.
+    worked: |
+      Let's check the assistant's square matrix product during prefill of a 512-token prompt. Use $m=512$, $d=4096$, 2 bytes per number and the rounded H100 rates above.
+
+      1. **Identify the matrices.** Each prompt token supplies a row, and every row uses the same square weights.
+         $$(512\times4096)(4096\times4096)\to512\times4096.$$
+
+      2. **Find the intensity.** Use our square-product formula, which includes input reads, the shared weight read and output writes.
+         $$I=\frac{512\times4096}{4096+2\times512}=409.6\text{ FLOPs per byte}.$$
+
+      3. **Compare with the hardware.** The powers of ten cancel because both rates use trillions per second.
+         $$\text{ops:byte ratio}=\frac{1000\times10^{12}}{3.35\times10^{12}}\approx300\text{ FLOPs per byte}.$$
+
+      Since 409.6 is above about 300, arithmetic sets the lower ceiling for this product. A single decode row with the same weights has intensity $4096/(4096+2\times1)\approx1$, so memory sets its lower ceiling. Both predictions assume the reads and writes we counted.
+    problems:
+      - aip-reuse-basics
+      - aip-reuse-self-explain
+      - aip-square-template
+      - aip-prefill-limit
+      - aip-decode-batch
+      - aip-weight-only-error
+      - aip-short-prompt
+      - aip-vision-rows
+final: aip-explain-serving
+summary: |
+  - Arithmetic intensity is $I=F/D$, the FLOPs done per byte moved to and from GPU memory. For $(m\times k)(k\times n)$, count $F=2mkn$ and, under one-read and one-write assumptions, $D=b(mk+kn+mn)$ bytes.
+  - The roofline rate is at most $\min(\text{peak FLOP/s},I\times\text{bandwidth})$. Below the GPU's ops:byte ratio an operation is memory-bound; above it the operation is compute-bound, and at equality both ceilings meet.
+  - Sharing a weight read across more token rows raises intensity. This helps explain why small-batch decode products are often memory-bound and sufficiently large prefill products can become compute-bound. Actual speed also depends on extra traffic and how well the computing units are used.
+
+  **Next:** The lesson *GPUs for inference* looks inside the GPU at the computing units and memory that set these limits.
