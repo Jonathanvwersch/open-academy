@@ -1,7 +1,7 @@
 concept: inference-metrics
 version: 1
 objective: |
-  **Goal:** compute time to first token, inter-token latency, tokens per second and end-to-end latency from a request trace, summarise many requests with percentiles, and explain why batching raises a server's throughput but slows each user's reply.
+  **Goal:** compute time to first token, inter-token latency, tokens per second and end-to-end latency from a request trace, summarise many requests with percentiles, and explain how batching can improve throughput, lengthen each user's wait and reach a throughput plateau.
 recap:
   - concept: autoregressive-lm
     text: "A language model writes text one token at a time. It predicts a next-token distribution, chooses a token, adds it to the text and runs again, so each new token needs another run of the model."
@@ -10,14 +10,14 @@ where_this_fits: |
 
   Inference means running a trained model to answer requests. Inference metrics are the numbers that say how fast it does that. They tell us how long a user waits before the reply starts, how quickly the rest appears, and how many tokens the server writes per second for all its users together.
 
-  Why do we need them? A reply can feel slow because it takes long to start or because it then trickles in, and these have different causes and fixes. Users care about their own wait, while whoever pays for the computer chips that run the model cares about how many users they serve. We'll see that serving more users at once makes each reply slower, so we need numbers for both sides.
+  Why do we need them? A reply can feel slow because it takes long to start or because it then trickles in, and these have different causes and fixes. Users care about their own wait, while whoever pays for the computer chips that run the model cares about how many users they serve. Serving more users at once can improve throughput while making replies slower, so we need numbers for both sides.
 knowledge_points:
   - id: infm-one-request
     title: "Measure the wait for one reply"
     explain: |
       ### Following one request
 
-      Our example in this course is a chat assistant that runs the Llama 3 8B model. It has about 8 billion parameters, the learned numbers inside it. It runs on one NVIDIA H100 GPU, a chip built for the maths that models do.
+      Our example in this course is a chat assistant that runs the Llama 3 8B model. It has about 8 billion parameters, the learned numbers inside it. It runs on one NVIDIA H100 SXM GPU, a chip built for the maths that models do.
 
       A user sends a message at time 0. Before anything appears, the server has to run the model over the whole prompt and choose the first token. This first run usually takes much longer than each later token. After that, as we saw in the autoregressive language models lesson, each new token needs another run of the model, so the reply arrives one token at a time. Chat apps usually show each token as soon as it's made, which is called **streaming**.
 
@@ -134,13 +134,13 @@ knowledge_points:
 
       ### Percentiles
 
-      Instead, we can ask how long 90% of the requests took. In our list, 9 of the 10 users waited 400 ms or less, so we say the 90th percentile, written **p90**, is 400 ms. In general, a **percentile** is the time that a given share of the requests are at or below. **p50** is the time half the requests are at or below, the typical experience, and **p99** is the time that only the slowest 1 in 100 requests go past. The slowest few requests are called the **tail**.
+      In our list, 9 of the 10 users waited 400 ms or less, so the 90th percentile, written **p90**, is 400 ms. A **percentile** is a value at a chosen position in the sorted times. **p50** describes a typical wait, and **p99** describes the slow end. The slowest few requests are called the **tail**.
 
-      When the share doesn't land exactly on one request, we need a rule for which value to pick. We'll use the simplest, called nearest rank. Sort the $n$ values from fastest to slowest. The $p$th percentile is the value at position $p\times n/100$, rounded up to a whole number. Rounding up makes sure at least $p$% of the values are at or below it.
+      We'll use the nearest-rank rule. Sort the $n$ values from fastest to slowest. The $p$th percentile is the value at position $p\times n/100$, rounded up to a whole number. At least $p$% of the values are at or below it, and at most $(100-p)$% are strictly above it. Ties can put many requests exactly at that value; none may be strictly above it.
 
       ### Why the tail matters
 
-      Someone who sends 100 messages a day will, on average, hit about one reply a day slower than p99. So heavy users meet the tail often, even when the typical reply is fast. That's why the people who run a service usually set their goals on percentiles, such as "p90 TTFT under 500 ms". A goal like this is called a latency target. Measuring p99 well needs hundreds of requests or more.
+      A fast typical reply can coexist with much slower replies. Percentiles help expose those waits, but a sample p99 gives no guaranteed daily count of slow replies for one user. Service operators often set goals such as "p90 TTFT under 500 ms". This is a latency target. Measuring p99 well needs hundreds of requests or more.
     worked: |
       Let's summarise the ten times to first token from our chat assistant, sorted from fastest to slowest in milliseconds: 180, 190, 200, 200, 210, 220, 230, 250, 400 and 1200.
 
@@ -181,7 +181,7 @@ knowledge_points:
 
       At 2 bytes (16 bits) per weight that's about 16 GB, where 1 GB is $10^9$ bytes. The H100's main memory delivers about 3.35 TB, or 3,350 GB, per second, where 1 TB is $10^{12}$ bytes, so one read takes about $16/3350$ s, or 5 ms. The maths grows with $B$, but the read is the same for any batch.
 
-      ### A bigger batch helps the server and slows each user
+      ### Throughput and each user's wait
 
       Here are made-up numbers. These are the runs after the first token, so each run's time is each user's ITL.
 
@@ -216,7 +216,7 @@ knowledge_points:
 
       $$\text{throughput}=\frac{B}{\text{ITL}}.$$
 
-      A bigger batch raises throughput. But each run takes longer, so every user's reply streams more slowly. Once the batch is large, the maths takes longer than the read, and the run time grows in proportion to $B$. From 32 to 64 the run time doubles, so throughput stays at 1,600 tokens/s.
+      Sharing weight reads can raise throughput before the GPU is fully occupied. Larger batches can also lengthen each run and increase each user's ITL. In this example every larger batch does so. Once the maths takes most of each run, throughput can level off, or saturate. From 32 to 64 the run time doubles, so throughput stays at 1,600 tokens/s.
 
       So teams pick the batch with the most throughput that still meets their targets for each user, and the smaller one if two tie.
     worked: |
@@ -242,7 +242,7 @@ final: infm-explain-final
 summary: |
   - Time to first token (TTFT) is the wait from sending a request until the first output token arrives, and inter-token latency (ITL) is the gap between consecutive output tokens.
   - A reply of $N$ tokens has end-to-end latency $\text{TTFT}+(N-1)\times\text{ITL}$, and while it streams, the user sees $1/\text{ITL}$ tokens per second.
-  - Over many requests, we report percentiles such as p50, p90 and p99, the times that 50%, 90% and 99% of requests are at or below, because a few slow requests can pull the mean far from what users feel.
-  - Batching gives every sequence in a batch its next token in one run, so throughput is $B/\text{ITL}$. A bigger batch raises throughput until the maths takes most of each run, but each run takes longer, so every user's reply streams more slowly.
+  - With nearest rank, at least 50%, 90% and 99% of requests are at or below p50, p90 and p99 respectively. At most 1% are strictly above p99, and ties can put many requests exactly at it. Percentiles help reveal slow waits that the mean can hide.
+  - Batching gives every sequence in a batch its next token in one run, so throughput is $B/\text{ITL}$. Sharing weight reads can improve throughput before saturation, but gains can plateau. Larger batches can lengthen runs and slow each user's stream, as they do in our example.
 
   **Next:** The prefill and decode lesson splits a request into its two phases, reading the prompt and writing tokens one at a time, and shows which one sets the TTFT and which sets the ITL.
