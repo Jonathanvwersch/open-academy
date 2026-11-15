@@ -52,7 +52,7 @@ knowledge_points:
       1. **Check how much maths the pass needs.** Each weight contributes a multiply and an add, giving 2 FLOPs per token, and takes 2 bytes at 16-bit precision. For $n$ positions, we therefore do $2n/2=n$ FLOPs per byte of weights. We also read stored values for earlier tokens, but short text has few such values compared with billions of weights. With five positions the weight-only intensity is 5 FLOPs per byte. Llama 3 8B has about $8\times10^9$ parameters. The H100's dense 16-bit rate is about 990 TFLOP/s, meaning $990\times10^{12}$ operations per second, which we round to 1,000 TFLOP/s. We multiply seconds by 1000 to express the result in milliseconds.
          $$\text{maths time}=\frac{2\times8\times10^9\times5}{1000\times10^{12}}\times1000=0.08\text{ ms}$$
 
-      2. **Compare maths with reading weights.** The H100's memory bandwidth is 3.35 TB/s, so reading 16 GB takes about 4.8 ms. Here GB means $10^9$ bytes and TB means $10^{12}$ bytes. Dividing the rounded maths rate by bandwidth gives about $1000/3.35\approx300$ FLOPs per byte. This is the threshold because below it reading bytes takes longer than doing the maths. Our intensity of 5 is far below it. The draft is also memory-bound at batch size one, so we estimate target pass time $t$ and draft pass time $t_d$ from their weight reads. We call $c$ the draft's time as a fraction of the target's, which the next lesson step uses. Because the draft reads one tenth as many bytes, $c=1.6/16=0.1$.
+      2. **Compare maths with reading weights.** The H100's memory bandwidth is 3.35 TB/s, so reading 16 GB takes about 4.8 ms. Here GB means $10^9$ bytes and TB means $10^{12}$ bytes. Dividing the rounded maths rate by bandwidth gives the GPU's **ops:byte ratio**, about $1000/3.35\approx300$ FLOPs per byte. This is the threshold because below it reading bytes takes longer than doing the maths. Our intensity of 5 is far below it. The draft is also memory-bound at batch size one, so we estimate target pass time $t$ and draft pass time $t_d$ from their weight reads. We call $c$ the draft's time as a fraction of the target's, which the next lesson step uses. Because the draft reads one tenth as many bytes, $c=1.6/16=0.1$.
          $$t=\frac{16\times10^9}{3.35\times10^{12}}\times1000\approx4.7761\text{ ms},\qquad t_d=0.1t\approx0.4776\text{ ms}.$$
 
       3. **Find how many tokens survive.** The draft proposes "Paris", ".", "It", "is". Because the target agrees twice and then chooses "The", we keep two guesses and add that correction.
@@ -87,7 +87,7 @@ knowledge_points:
 
       ### Average tokens and time
 
-      In the probability lesson, we met the **expected value**, an average weighted by outcome probabilities. Multiplying each outcome's token count by its chance gives
+      In the Probability basics lesson, we met the **expected value**, an average weighted by outcome probabilities. Multiplying each outcome's token count by its chance gives
 
       $$1(1-\alpha)+2\alpha(1-\alpha)+3\alpha^2=1+\alpha+\alpha^2.$$
 
@@ -234,7 +234,7 @@ knowledge_points:
 
       Suppose our assistant's prompt contains `return total + tax ;` and its answer ends in `return total`. Lookup proposes `+ tax ;`. Here words and symbols are tokens. If the target wants `+ fee ;`, it keeps `+`, corrects `tax` to `fee`, and discards the draft's semicolon.
 
-      Whatever produces the guesses, the target still checks them with the sampling lesson step's rule to preserve its distribution. Lookup proposes only the copied token, giving it draft probability 1 and acceptance chance $p(x)$.
+      Whatever produces the guesses, checking them with the sampling lesson step's rule preserves the target's distribution. Medusa's paper also offers a faster acceptance rule that gives up this guarantee. Lookup proposes only the copied token, giving it draft probability 1 and acceptance chance $p(x)$.
     worked: |
       Let's follow the code-edit lookup using greedy checking, as in the first lesson step. The prompt contains `return total + tax ;`, and the answer so far ends with `return total`. Treat words and symbols as tokens.
 
