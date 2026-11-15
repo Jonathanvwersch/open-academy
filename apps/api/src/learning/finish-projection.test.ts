@@ -131,7 +131,57 @@ describe('projectCourseFinishes', () => {
 
     expect(result.byCourse.get('done')).toBeNull();
     expect(result.byCourse.get('remaining')).toBe('2026-01-02');
+    expect(result.overall).toBe('2026-01-02');
+  });
+
+  it('omits stub topics and leaves their prerequisites unmet', () => {
+    const result = projectCourseFinishes({
+      courses: [
+        {
+          id: 'robotics',
+          topics: [
+            {
+              conceptId: 'stub-frame',
+              status: 'stub',
+              done: false,
+              hardPrereqIds: [],
+            },
+            {
+              conceptId: 'dependent-topic',
+              done: false,
+              hardPrereqIds: ['stub-frame'],
+            },
+          ],
+        },
+      ],
+      dailyXp: 40,
+      today,
+    });
+
+    expect(result.byCourse.get('robotics')).toBeNull();
     expect(result.overall).toBeNull();
+    expect(result.upcoming).toEqual([]);
+  });
+
+  it('continues projecting after topics planned for today are assumed done', () => {
+    const result = projectCourseFinishes({
+      courses: [
+        {
+          id: 'transformers',
+          topics: [
+            { conceptId: 'tokenization', done: false, hardPrereqIds: [] },
+            { conceptId: 'embeddings', done: false, hardPrereqIds: ['tokenization'] },
+          ],
+        },
+      ],
+      assumedDoneConceptIds: new Set(['tokenization']),
+      dailyXp: 40,
+      today: '2026-01-02',
+    });
+
+    expect(result.upcoming.map(({ conceptId, date }) => [conceptId, date])).toEqual([
+      ['embeddings', '2026-01-02'],
+    ]);
   });
 
   it('limits the number of topics completed each day when XP is plentiful', () => {

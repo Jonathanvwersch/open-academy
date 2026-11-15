@@ -118,7 +118,7 @@ test('Home shows XP and tasks, starts a session, and Course links to lessons and
   ).toBeVisible();
   await expect(page.getByText(/^At your pace:/)).toBeVisible();
   await expect(page.getByText(/^At your daily goal:/)).toBeVisible();
-  await expect(page.getByText(/^All your courses done by /)).toBeVisible();
+  await expect(page.getByText(/^All current lessons done by /)).toBeVisible();
   await expect(page.getByRole('main').getByText('Fixture course', { exact: true })).toBeVisible();
   await expect(page.getByText('Total XP').locator('..')).toContainText('45');
   await expect(page.getByRole('button', { name: 'Start learning' })).toBeEnabled();

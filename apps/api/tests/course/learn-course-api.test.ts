@@ -1830,3 +1830,145 @@ test('invalid timezone is ignored and a missing header uses the stored timezone'
   });
   expect((await missing.json()).sessionKind).toBe('sunday');
 });
+
+async function seedStaleEmbeddingsSession() {
+  const now = new Date('2026-01-07T10:00:00.000Z');
+  await db
+    .update(users)
+    .set({ activeCourseId: 'ml-foundations', studySetInitializedAt: now })
+    .where(eq(users.id, userId));
+  await db.insert(courseEnrollments).values(
+    ['ml-foundations', 'transformers-llms'].map((courseId) => ({
+      userId,
+      courseId,
+      startMethod: 'beginning' as const,
+    })),
+  );
+  const [session] = await db
+    .insert(studySessions)
+    .values({
+      userId,
+      kind: 'weekday',
+      plannedMinutes: 60,
+      status: 'active',
+      startedAt: now,
+    })
+    .returning();
+  if (!session) throw new Error('Could not create stale-activity session');
+  const [activity] = await db
+    .insert(sessionActivities)
+    .values({
+      sessionId: session.id,
+      idx: 0,
+      kind: 'learn',
+      conceptId: 'embeddings',
+      plannedMinutes: 20,
+      status: 'planned',
+    })
+    .returning();
+  if (!activity) throw new Error('Could not create stale Embeddings activity');
+  return { session, activity };
+}
+
+test('Home skips a planned lesson with an unmet prerequisite and replans the front AI course', async () => {
+  const { session, activity } = await seedStaleEmbeddingsSession();
+
+  const response = await get('/learn');
+  expect(response.status).toBe(200);
+
+  const sessionRows = await db
+    .select()
+    .from(sessionActivities)
+    .where(eq(sessionActivities.sessionId, session.id));
+  expect(sessionRows.find((row) => row.id === activity.id)?.status).toBe('skipped');
+  const frontCourse = content.coursesById.get('ml-foundations');
+  if (!frontCourse) throw new Error('Expected the ML Foundations course');
+  const frontConceptIds = new Set(frontCourse.units.flatMap((unit) => unit.concepts));
+  expect(
+    sessionRows.some(
+      (row) =>
+        row.kind === 'learn' &&
+        row.status === 'planned' &&
+        row.conceptId !== 'embeddings' &&
+        frontConceptIds.has(row.conceptId ?? ''),
+    ),
+  ).toBe(true);
+});
+
+test('starting a planned lesson with an unmet prerequisite skips it instead of opening it', async () => {
+  const { session, activity } = await seedStaleEmbeddingsSession();
+  const response = await app.request(
+    `/api/sessions/${session.id}/activities/${activity.id}/progress`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Now': '2026-01-07T12:00:00.000Z',
+      },
+      body: JSON.stringify({ lessonViewed: true }),
+    },
+  );
+
+  expect(response.status).toBe(409);
+  const [row] = await db
+    .select()
+    .from(sessionActivities)
+    .where(eq(sessionActivities.id, activity.id));
+  expect(row?.status).toBe('skipped');
+  expect(row?.startedAt).toBeNull();
+});
+
+test('Up next starts with active-session lessons in order and projects future topics from tomorrow', async () => {
+  const now = new Date('2026-01-07T10:00:00.000Z');
+  await db
+    .update(users)
+    .set({ activeCourseId: 'ml-foundations', studySetInitializedAt: now })
+    .where(eq(users.id, userId));
+  await db.insert(courseEnrollments).values({
+    userId,
+    courseId: 'ml-foundations',
+    startMethod: 'beginning',
+  });
+  const [session] = await db
+    .insert(studySessions)
+    .values({
+      userId,
+      kind: 'weekday',
+      plannedMinutes: 60,
+      status: 'active',
+      startedAt: now,
+    })
+    .returning();
+  if (!session) throw new Error('Could not create Up next session');
+  await db.insert(sessionActivities).values([
+    {
+      sessionId: session.id,
+      idx: 0,
+      kind: 'learn',
+      conceptId: 'supervised-learning',
+      plannedMinutes: 20,
+      status: 'in_progress',
+    },
+    {
+      sessionId: session.id,
+      idx: 1,
+      kind: 'learn',
+      conceptId: 'what-is-ml',
+      plannedMinutes: 20,
+      status: 'planned',
+    },
+  ]);
+
+  const learn = await (await get('/learn')).json();
+  expect(
+    learn.upNext.upcoming.slice(0, 2).map((topic: { conceptId: string }) => topic.conceptId),
+  ).toEqual(['supervised-learning', 'what-is-ml']);
+  expect(
+    learn.upNext.upcoming
+      .slice(0, 2)
+      .every((topic: { dayLabel: string }) => topic.dayLabel === 'Today'),
+  ).toBe(true);
+  expect(
+    learn.upNext.upcoming.slice(2).every((topic: { date: string }) => topic.date >= '2026-01-08'),
+  ).toBe(true);
+});

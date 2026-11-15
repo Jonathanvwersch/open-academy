@@ -617,6 +617,27 @@ test('a completed KP lesson satisfies a prerequisite despite introduced mastery'
   ).toBe(true);
 });
 
+test('stub concepts never satisfy a prerequisite', async () => {
+  const fullContent = await loadContent();
+  const stub = fullContent.concepts.find((concept) => concept.status === 'stub');
+  if (!stub) throw new Error('Expected a stub concept');
+  const masteryByKey = new Map([
+    [
+      masteryKey(stub.id, stub.dimensions[0] ?? 'conceptual'),
+      { state: 'independent' as const, inferred: true },
+    ],
+  ]);
+
+  expect(
+    prerequisiteMet(
+      stub.id,
+      masteryByKey,
+      [{ conceptId: stub.id, status: 'completed' }],
+      fullContent,
+    ),
+  ).toBe(false);
+});
+
 test('an existing lesson run requires quiz completion regardless of assisted mastery', async () => {
   const fullContent = await loadContent();
   const masteryByKey = new Map([

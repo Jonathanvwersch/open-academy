@@ -24,7 +24,12 @@ import {
   masteryKey,
   prerequisiteMet,
 } from '../../learning/prerequisites.js';
-import { currentLearnerUnit, type PlannedActivity, replan } from '../../learning/scheduler.js';
+import {
+  currentLearnerUnit,
+  type PlannedActivity,
+  replan,
+  type SchedulerState,
+} from '../../learning/scheduler.js';
 
 type MasteryRecords = Awaited<ReturnType<LearnerRepository['masteryRecords']>>;
 type RunRecords = Array<typeof lessonRuns.$inferSelect>;
@@ -155,6 +160,112 @@ export async function restartTopic(input: {
   });
 }
 
+export async function replanSessionActivities(input: {
+  db: Database;
+  repo: LearnerRepository;
+  userId: string;
+  content: ContentIndex;
+  now: Date;
+  session: NonNullable<Awaited<ReturnType<LearnerRepository['session']>>>;
+  skipPlannedActivityIds?: readonly string[];
+  activatePlannedActivityId?: string;
+  schedulerState?: SchedulerState;
+}) {
+  const state = filterSchedulerStateForContent(
+    input.content,
+    input.schedulerState ?? (await input.repo.schedulerState(input.now, input.content)),
+  );
+  const skipIds = new Set(input.skipPlannedActivityIds ?? []);
+  const planningActivities = input.session.activities.map((activity) => ({
+    ...activity,
+    status: skipIds.has(activity.id)
+      ? 'skipped'
+      : activity.id === input.activatePlannedActivityId
+        ? 'in_progress'
+        : activity.status,
+  })) as unknown as PlannedActivity[];
+  const existingMinutes = planningActivities
+    .filter((activity) => activity.status === 'completed' || activity.status === 'in_progress')
+    .reduce((total, activity) => total + activity.plannedMinutes, 0);
+  const remaining = Math.max(0, input.session.plannedMinutes - existingMinutes);
+  const plan = replan(
+    state,
+    input.content,
+    input.now,
+    remaining,
+    planningActivities,
+    input.session.kind,
+  );
+  const preserved = input.session.activities.filter(
+    (activity) =>
+      activity.status !== 'planned' ||
+      skipIds.has(activity.id) ||
+      activity.id === input.activatePlannedActivityId,
+  );
+  const planned = await Promise.all(
+    plan.activities
+      .filter((activity) => activity.status !== 'in_progress')
+      .map(async (activity) => ({
+        activity,
+        progress: await initialLearnProgress(
+          input.db,
+          input.userId,
+          activity,
+          activity.conceptId ? input.content.lessonsByConcept.get(activity.conceptId) : undefined,
+        ),
+      })),
+  );
+  const nextIndex = Math.max(-1, ...preserved.map((activity) => activity.idx)) + 1;
+  await input.db.transaction(async (tx) => {
+    if (skipIds.size > 0) {
+      await tx
+        .update(sessionActivities)
+        .set({ status: 'skipped' })
+        .where(
+          and(
+            eq(sessionActivities.sessionId, input.session.id),
+            inArray(sessionActivities.id, [...skipIds]),
+            eq(sessionActivities.status, 'planned'),
+          ),
+        );
+    }
+    if (input.activatePlannedActivityId) {
+      await tx
+        .update(sessionActivities)
+        .set({ status: 'in_progress', startedAt: input.now })
+        .where(
+          and(
+            eq(sessionActivities.id, input.activatePlannedActivityId),
+            eq(sessionActivities.status, 'planned'),
+          ),
+        );
+    }
+    await tx
+      .delete(sessionActivities)
+      .where(
+        and(
+          eq(sessionActivities.sessionId, input.session.id),
+          eq(sessionActivities.status, 'planned'),
+        ),
+      );
+    for (const [idx, entry] of planned.entries()) {
+      const { activity, progress } = entry;
+      await tx.insert(sessionActivities).values({
+        sessionId: input.session.id,
+        idx: nextIndex + idx,
+        kind: activity.kind,
+        conceptId: activity.conceptId,
+        projectId: activity.projectId,
+        exerciseIds: activity.exerciseIds,
+        plannedMinutes: activity.plannedMinutes,
+        status: 'planned',
+        reason: activity.reason,
+        ...(progress ? { progress } : {}),
+      });
+    }
+  });
+}
+
 export async function updateLearningFocus(input: {
   db: Database;
   repo: LearnerRepository;
@@ -176,44 +287,15 @@ export async function updateLearningFocus(input: {
     input.content,
     await input.repo.schedulerState(input.now, input.content),
   );
-  const activities = session.activities as unknown as PlannedActivity[];
-  const existingMinutes = activities
-    .filter((activity) => activity.status === 'completed' || activity.status === 'in_progress')
-    .reduce((total, activity) => total + activity.plannedMinutes, 0);
-  const remaining = Math.max(0, session.plannedMinutes - existingMinutes);
-  const plan = replan(state, input.content, input.now, remaining, activities, session.kind);
-  await Promise.all(
-    session.activities
-      .filter((activity) => activity.status === 'planned')
-      .map((activity) =>
-        input.db.delete(sessionActivities).where(eq(sessionActivities.id, activity.id)),
-      ),
-  );
-  const preserved = session.activities.filter((activity) => activity.status !== 'planned');
-  await Promise.all(
-    plan.activities
-      .filter((activity) => activity.status !== 'in_progress')
-      .map(async (activity, idx) => {
-        const progress = await initialLearnProgress(
-          input.db,
-          input.userId,
-          activity,
-          activity.conceptId ? input.content.lessonsByConcept.get(activity.conceptId) : undefined,
-        );
-        await input.db.insert(sessionActivities).values({
-          sessionId: session.id,
-          idx: preserved.length + idx,
-          kind: activity.kind,
-          conceptId: activity.conceptId,
-          projectId: activity.projectId,
-          exerciseIds: activity.exerciseIds,
-          plannedMinutes: activity.plannedMinutes,
-          status: 'planned',
-          reason: activity.reason,
-          ...(progress ? { progress } : {}),
-        });
-      }),
-  );
+  await replanSessionActivities({
+    db: input.db,
+    repo: input.repo,
+    userId: input.userId,
+    content: input.content,
+    now: input.now,
+    session,
+    schedulerState: state,
+  });
 }
 
 export function placedOutConceptsFromRuns(runs: readonly { state: unknown }[]): Set<string> {

@@ -350,7 +350,7 @@ export function LearnPage() {
                       <p className="text-sm text-muted-foreground">
                         Estimated finish {formatDate(course.estimatedFinish)}
                       </p>
-                    ) : (
+                    ) : course.estimatedFinish || course.estimatedFinishAtGoal ? (
                       <>
                         {course.estimatedFinish ? (
                           <p className="text-sm text-muted-foreground">
@@ -363,15 +363,17 @@ export function LearnPage() {
                           </p>
                         ) : null}
                       </>
-                    )}
+                    ) : course.topicsDone < course.topicsTotal ? (
+                      <p className="text-sm text-muted-foreground">Lessons coming soon</p>
+                    ) : null}
                   </div>
                 );
               })}
               {data.today.studyFinish.atPace && data.today.studyFinish.atGoal ? (
                 <p className="text-sm text-muted-foreground">
                   {data.today.studyFinish.atPace === data.today.studyFinish.atGoal
-                    ? `All your courses done by ${formatDate(data.today.studyFinish.atPace)}`
-                    : `All your courses done by ${formatDate(data.today.studyFinish.atPace)} at your pace, or ${formatDate(data.today.studyFinish.atGoal)} at your daily goal`}
+                    ? `All current lessons done by ${formatDate(data.today.studyFinish.atPace)}`
+                    : `All current lessons done by ${formatDate(data.today.studyFinish.atPace)} at your pace, or ${formatDate(data.today.studyFinish.atGoal)} at your daily goal`}
                 </p>
               ) : null}
             </div>

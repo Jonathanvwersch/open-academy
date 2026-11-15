@@ -18,7 +18,7 @@ export function prerequisiteMet(
   content: ContentIndex,
 ): boolean {
   const concept = content.conceptsById.get(prereqId);
-  if (!concept) return false;
+  if (!concept || concept.status === 'stub') return false;
 
   const lessonRun = lessonRuns.find((run) => run.conceptId === prereqId);
   if (lessonRun) return lessonRun.status === 'completed';
@@ -28,6 +28,34 @@ export function prerequisiteMet(
       record?.inferred || masteryRank(record?.state ?? 'not_assessed') >= masteryRank('assisted')
     );
   });
+}
+
+export function plannedLearnActivitiesWithUnmetPrerequisites(
+  activities: readonly {
+    id: string;
+    kind: string;
+    status: string;
+    conceptId: string | null;
+  }[],
+  masteryByKey: ReadonlyMap<string, Pick<MasteryRecord, 'state' | 'inferred'>>,
+  lessonRuns: readonly LessonRun[],
+  content: ContentIndex,
+): string[] {
+  return activities
+    .filter((activity) => {
+      if (activity.status !== 'planned' || activity.kind !== 'learn' || !activity.conceptId) {
+        return false;
+      }
+      const concept = content.conceptsById.get(activity.conceptId);
+      return (
+        concept?.prereqs.some(
+          (prerequisite) =>
+            prerequisite.strength === 'hard' &&
+            !prerequisiteMet(prerequisite.id, masteryByKey, lessonRuns, content),
+        ) ?? false
+      );
+    })
+    .map(({ id }) => id);
 }
 
 export function activeCourseFor(

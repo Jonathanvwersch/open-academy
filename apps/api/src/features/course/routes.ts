@@ -28,6 +28,7 @@ import {
   activeCourseFor,
   courseFoundationIds,
   masteryKey,
+  plannedLearnActivitiesWithUnmetPrerequisites,
   prerequisiteMet,
 } from '../../learning/prerequisites.js';
 import type { PlannedActivity, SessionPreferences } from '../../learning/scheduler.js';
@@ -53,6 +54,7 @@ import {
   buildCoursePayload,
   courseTopicState,
   placedOutConceptsFromRuns,
+  replanSessionActivities,
   restartTopic,
   suggestedNextCourses,
   updateLearningFocus,
@@ -81,7 +83,11 @@ function buildProjectionCourses(
   const activeTopicIds = new Set(
     orderedCourseIds.flatMap((courseId) => {
       const course = index.coursesById.get(courseId);
-      return course?.units.flatMap((unit) => unit.concepts) ?? [];
+      return (
+        course?.units
+          .flatMap((unit) => unit.concepts)
+          .filter((conceptId) => index.conceptsById.get(conceptId)?.status !== 'stub') ?? []
+      );
     }),
   );
   return orderedCourseIds.flatMap((courseId) => {
@@ -92,7 +98,7 @@ function buildProjectionCourses(
     const topics: ProjectionCourse['topics'] = [];
     const addTopic = (conceptId: string, unitTitle: string) => {
       const concept = index.conceptsById.get(conceptId);
-      if (!concept || visited.has(conceptId)) return;
+      if (!concept || concept.status === 'stub' || visited.has(conceptId)) return;
       visited.add(conceptId);
       const state = topicState(concept);
       const hardPrereqIds = concept.prereqs
@@ -112,6 +118,7 @@ function buildProjectionCourses(
       }
       topics.push({
         conceptId,
+        status: concept.status,
         done: state.status === 'complete',
         hardPrereqIds,
         title: concept.title,
@@ -132,6 +139,49 @@ function buildProjectionCourses(
       },
     ];
   });
+}
+
+function activeLearnTopics(
+  activities: readonly ActivityRecord[],
+  courses: ProjectionCourse[],
+  index: ContentIndex,
+  date: string,
+) {
+  const added = new Set<string>();
+  return activities.flatMap((activity) => {
+    const conceptId = activity.conceptId;
+    if (
+      activity.kind !== 'learn' ||
+      !conceptId ||
+      added.has(conceptId) ||
+      index.conceptsById.get(conceptId)?.status === 'stub'
+    ) {
+      return [];
+    }
+    const projectedCourse = courses.find((course) =>
+      course.topics.some((topic) => topic.conceptId === conceptId),
+    );
+    const projectedTopic = projectedCourse?.topics.find((topic) => topic.conceptId === conceptId);
+    if (!projectedCourse || !projectedTopic) return [];
+    added.add(conceptId);
+    return [
+      {
+        conceptId,
+        courseId: projectedCourse.id,
+        courseTitle: projectedCourse.title ?? projectedCourse.id,
+        title: projectedTopic.title ?? conceptId,
+        unitTitle: projectedTopic.unitTitle ?? '',
+        date,
+        dayLabel: 'Today',
+      },
+    ];
+  });
+}
+
+function addLocalDays(localDate: string, days: number): string {
+  const date = new Date(`${localDate}T00:00:00.000Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
 }
 
 export function registerLearnCourseRoutes(
@@ -242,7 +292,7 @@ export function registerLearnCourseRoutes(
       return topicIsComplete(runsByConcept.get(conceptId)?.status, states);
     };
 
-    const activeSession = active ? await repo.session(active.id, active) : undefined;
+    let activeSession = active ? await repo.session(active.id, active) : undefined;
     let schedulerState: Awaited<ReturnType<LearnerRepository['schedulerState']>> | undefined;
     const loadSchedulerState = async () => {
       schedulerState ??= filterSchedulerStateForContent(
@@ -255,6 +305,32 @@ export function registerLearnCourseRoutes(
       );
       return schedulerState;
     };
+    const masteryByKey = new Map(
+      mastery.map((record) => [masteryKey(record.conceptId, record.dimension), record]),
+    );
+    const lessonRunState = runRows.map(({ conceptId, status }) => ({ conceptId, status }));
+    const blockedActivities =
+      activeSession?.status === 'active'
+        ? plannedLearnActivitiesWithUnmetPrerequisites(
+            activeSession.activities,
+            masteryByKey,
+            lessonRunState,
+            index,
+          )
+        : [];
+    if (activeSession && blockedActivities.length > 0) {
+      await replanSessionActivities({
+        db: deps.db,
+        repo,
+        userId,
+        content: index,
+        now,
+        session: activeSession,
+        skipPlannedActivityIds: blockedActivities,
+        schedulerState: await loadSchedulerState(),
+      });
+      activeSession = await repo.session(activeSession.id);
+    }
     const activeActivities =
       activeSession?.activities.filter(
         (activity) =>
@@ -301,10 +377,6 @@ export function registerLearnCourseRoutes(
     });
 
     const recommendedConceptId = tasks.find((task) => task.activityKind === 'learn')?.conceptId;
-    const masteryByKey = new Map(
-      mastery.map((record) => [masteryKey(record.conceptId, record.dimension), record]),
-    );
-    const lessonRunState = runRows.map(({ conceptId, status }) => ({ conceptId, status }));
     const outlineConceptIds = Array.from(
       new Set([
         ...studyCourseIds.flatMap((courseId) => {
@@ -438,11 +510,22 @@ export function registerLearnCourseRoutes(
       dailyXp: dailyXpAtGoal,
       today: todayLocal,
     });
+    const todayTopics = activeLearnTopics(activeActivities, projectionCourses, index, todayLocal);
+    const todayConceptIds = new Set(todayTopics.map((topic) => topic.conceptId));
+    const futureProjection = projectCourseFinishes({
+      courses: projectionCourses,
+      dailyXp: dailyXpAtPace,
+      today: addLocalDays(todayLocal, todayTopics.length > 0 ? 1 : 0),
+      assumedDoneConceptIds: todayConceptIds,
+    });
     const upNext = {
-      upcoming: finishesAtPace.upcoming.map((topic) => ({
-        ...topic,
-        dayLabel: projectedDayLabel(topic.date, todayLocal),
-      })),
+      upcoming: [
+        ...todayTopics,
+        ...futureProjection.upcoming.map((topic) => ({
+          ...topic,
+          dayLabel: projectedDayLabel(topic.date, todayLocal),
+        })),
+      ],
       finished: finishesAtPace.finished,
     };
     const studyCourses = studyCourseIds.flatMap((courseId) => {

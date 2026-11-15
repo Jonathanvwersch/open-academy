@@ -8,6 +8,7 @@ export interface ProjectionCourse {
   title?: string;
   topics: Array<{
     conceptId: string;
+    status?: 'authored' | 'stub';
     done: boolean;
     hardPrereqIds: string[];
     title?: string;
@@ -26,6 +27,7 @@ export interface ProjectedTopic {
 
 export function projectCourseFinishes(input: {
   courses: ProjectionCourse[];
+  assumedDoneConceptIds?: ReadonlySet<string>;
   dailyXp: number;
   today: string;
   xpPerTopic?: number;
@@ -37,15 +39,19 @@ export function projectCourseFinishes(input: {
   upcoming: ProjectedTopic[];
   finished: ProjectedTopic[];
 } {
-  const byCourse = new Map<string, string | null>(input.courses.map((course) => [course.id, null]));
+  const courses = input.courses.map((course) => ({
+    ...course,
+    topics: course.topics.filter((topic) => topic.status !== 'stub'),
+  }));
+  const byCourse = new Map<string, string | null>(courses.map((course) => [course.id, null]));
   const finishedByConcept = new Map<string, ProjectedTopic>();
-  for (const course of input.courses) {
+  for (const course of courses) {
     for (const topic of course.topics) {
       if (!topic.done || finishedByConcept.has(topic.conceptId)) continue;
       finishedByConcept.set(topic.conceptId, projectedTopic(course, topic, input.today));
     }
   }
-  if (input.dailyXp <= 0 || input.courses.length === 0) {
+  if (input.dailyXp <= 0 || courses.length === 0) {
     return { byCourse, overall: null, upcoming: [], finished: [...finishedByConcept.values()] };
   }
 
@@ -55,13 +61,14 @@ export function projectCourseFinishes(input: {
     Math.floor(input.maxNewTopicsPerDay ?? SCHEDULER_CONFIG.weekday.maxNewConcepts),
   );
   const maxDays = Math.max(0, Math.floor(input.maxDays ?? 3650));
-  const doneConcepts = new Set(
-    input.courses.flatMap((course) =>
+  const doneConcepts = new Set([
+    ...courses.flatMap((course) =>
       course.topics.filter((topic) => topic.done).map((topic) => topic.conceptId),
     ),
-  );
+    ...(input.assumedDoneConceptIds ?? []),
+  ]);
   const unfinishedCourses = new Set(
-    input.courses
+    courses
       .filter((course) => course.topics.some((topic) => !doneConcepts.has(topic.conceptId)))
       .map((course) => course.id),
   );
@@ -91,15 +98,10 @@ export function projectCourseFinishes(input: {
     }
 
     while (remainingXp > 0 && topicsToday < maxNewTopicsPerDay) {
-      const topic = nextAvailableTopic(
-        input.courses,
-        unfinishedCourses,
-        doneConcepts,
-        spentBySubject,
-      );
+      const topic = nextAvailableTopic(courses, unfinishedCourses, doneConcepts, spentBySubject);
       if (!topic) break;
       topicsToday += 1;
-      const topicCourse = input.courses.find((course) => course.id === topic.courseId);
+      const topicCourse = courses.find((course) => course.id === topic.courseId);
       const topicDetails = topicCourse?.topics.find(
         (candidate) => candidate.conceptId === topic.conceptId,
       );
@@ -131,7 +133,7 @@ export function projectCourseFinishes(input: {
 
     if (topicsToday === 0) break;
     const date = addLocalDays(input.today, day);
-    for (const course of input.courses) {
+    for (const course of courses) {
       if (
         unfinishedCourses.has(course.id) &&
         course.topics.every((topic) => doneConcepts.has(topic.conceptId))
@@ -144,10 +146,7 @@ export function projectCourseFinishes(input: {
 
   const dates = [...byCourse.values()];
   const nonNullDates = dates.filter((date): date is string => date !== null).sort();
-  const overall =
-    dates.length === 0 || nonNullDates.length !== dates.length
-      ? null
-      : (nonNullDates.at(-1) ?? null);
+  const overall = nonNullDates.at(-1) ?? null;
   return {
     byCourse,
     overall,
