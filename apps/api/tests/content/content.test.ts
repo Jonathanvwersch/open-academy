@@ -107,7 +107,10 @@ test('loads the fixture graph and builds lookup indexes', async () => {
   expect(content.concepts[0]?.contentVersion).toMatch(/^[a-f0-9]{12}$/);
 });
 
-test('real content indexes round-trip through V8 serialization with subject lookups intact', async () => {
+// Loading the full curriculum can exceed Vitest's five-second default on CI runners.
+test('real content indexes round-trip through V8 serialization with subject lookups intact', {
+  timeout: 30_000,
+}, async () => {
   const loadedContent = await loadContent('content');
   const content = buildContentIndex(sourceDataFromIndex(loadedContent));
   const roundTripped = deserialize(serialize(content)) as ContentIndex;

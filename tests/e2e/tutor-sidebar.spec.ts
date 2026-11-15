@@ -8,6 +8,7 @@ import { sessionActivities, studySessions, users } from '../../apps/api/src/db/s
 declare global {
   interface Window {
     __layoutShifts: number[];
+    __tutorScrollSamples: number[];
   }
 }
 
@@ -264,7 +265,12 @@ async function openMockedLongTutorThread(page: Page, threadId: string) {
   await tutor.getByLabel('Ask the tutor').fill(question);
   await tutor.getByLabel('Ask the tutor').press('Enter');
   await expect(tutor.getByTestId('tutor-assistant-message').last()).toContainText('Reply 20:');
-  await waitForTutorSidebarToSettle(page, '[data-slot="sidebar-container"]');
+  await waitForTutorSidebarToSettle(
+    page,
+    (page.viewportSize()?.width ?? 1440) < 768
+      ? '[data-slot="sidebar"][data-mobile="true"]'
+      : '[data-slot="sidebar-container"]',
+  );
   return { tutor, conversation: tutor.locator('.tutor-message-scroll-area') };
 }
 
@@ -1303,6 +1309,51 @@ test('lesson step tutor request includes the visible question label', async ({ p
   expect(visibleQuestionLabel).toMatch(/^Question \d+$/);
   expect(requestBody).toMatchObject({ questionLabel: visibleQuestionLabel });
 });
+
+for (const viewport of [
+  { width: 1440, height: 900 },
+  { width: 375, height: 812 },
+]) {
+  test(`opening a long tutor conversation jumps directly to the latest message at ${viewport.width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize(viewport);
+    const { tutor, conversation } = await openMockedLongTutorThread(
+      page,
+      '00000000-0000-4000-8000-000000000016',
+    );
+    await tutor.getByRole('button', { name: 'Chats', exact: true }).click();
+    await tutor.getByRole('button', { name: 'Close tutor' }).click();
+    await page.evaluate(() => {
+      window.__tutorScrollSamples = [];
+      const sample = () => {
+        const element = document.querySelector('.tutor-message-scroll-area');
+        if (element && element.clientHeight > 0 && element.scrollHeight > element.clientHeight) {
+          const remaining = element.scrollHeight - element.clientHeight - element.scrollTop;
+          if (element.scrollTop > 2 && remaining > 2) {
+            window.__tutorScrollSamples.push(element.scrollTop);
+          }
+        }
+        requestAnimationFrame(sample);
+      };
+      requestAnimationFrame(sample);
+    });
+    await page.getByRole('button', { name: 'Open tutor' }).click();
+    await tutor.getByTestId('tutor-thread-00000000-0000-4000-8000-000000000016').click();
+    await expect(tutor.getByTestId('tutor-assistant-message').last()).toContainText('Reply 20:');
+    await expect
+      .poll(() =>
+        conversation.evaluate(
+          (element) => element.scrollTop + element.clientHeight >= element.scrollHeight - 2,
+        ),
+      )
+      .toBe(true);
+    expect(await page.evaluate(() => window.__tutorScrollSamples)).toEqual([]);
+    await page.screenshot({
+      path: `${tutorSidebarScreenshotDir}/opens-at-latest-${viewport.width}.png`,
+    });
+  });
+}
 
 test('sending a tutor message scrolls back to the latest message', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
