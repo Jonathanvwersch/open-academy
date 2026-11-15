@@ -86,7 +86,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "A model's weights take {{=g}} GB at 16 bits. It is quantised to INT8 and served on an H100 with 3.35 TB/s of bandwidth, one request at a time. Counting only the reading of the weights, what is the shortest possible time per decoded token, in milliseconds?"
+    prompt: "A model's weights take {{=g}} GB at 16 bits. It is quantised to INT8 and served on an H100 with 3.35 TB/s of bandwidth, one request at a time. Counting only the reading of the weights, what is the shortest possible time per decoded token, in milliseconds? Give 2 significant figures."
     params:
       g:
         min: 4
@@ -102,7 +102,7 @@ exercises:
       - answer_expr: g / 4 / 3.35
         category: math_error
         feedback: That's a quarter of the bytes, which is INT4. INT8 uses 1 byte, half of the 2 bytes at 16 bits.
-    solution: "At INT8 the weights take {{= g / 2 }} GB. Dividing by 3.35 TB/s gives {{= g / 2 }} × $10^9$ / 3.35 × $10^{12}$ ≈ {{= g / 2 / 3.35 }} ms per token."
+    solution: 'At INT8 the weights take {{= g / 2 }} GB. Dividing by 3.35 TB/s gives $\frac{ {{= g / 2 }}\times10^9}{3.35\times10^{12}}$ s ≈ {{= round(g / 2 / 3.35 * 10^(1 - floor(log10(g / 2 / 3.35)))) / 10^(1 - floor(log10(g / 2 / 3.35))) }} ms per token.'
   - id: qzp-prefill-speed
     dimension: conceptual
     type: mc
@@ -137,7 +137,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: A larger model has 70 billion parameters. Its weights are stored as INT4 on one H100 with 80 GB of memory. How many GB of memory are left for everything else? Use GB = $10^9$ bytes.
+    prompt: A larger model has 70 billion parameters. Its weights are stored as INT4 on one H100 with 80 GB of memory. How many GB of memory are left for everything else? Ignore the scales, and use GB = $10^9$ bytes.
     answer: 45
     tolerance:
       abs: 0.01
@@ -259,7 +259,7 @@ exercises:
       - answer_expr: m / 255
         category: misapplied_technique
         feedback: Symmetric INT8 uses 127 on each side of 0, so divide by 127.
-    solution: '$s={{=m}}/127\approx{{= m / 127 }}$.'
+    solution: '$s={{=m}}/127\approx{{= round(m / 127 * 10^(3 - floor(log10(m / 127)))) / 10^(3 - floor(log10(m / 127))) }}$.'
   - id: qzp-quantise-value-template
     dimension: math
     type: numeric
@@ -480,7 +480,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: A service summarises long documents. Prompts are about 20,000 tokens and replies about 20 tokens, so most of the time goes on prefill. Which quantisation is most likely to cut the time per request?
+    prompt: A service summarises long documents on an H100 GPU. Prompts are about 20,000 tokens and replies about 20 tokens, so most of the time goes on prefill. Which quantisation is most likely to cut the time per request?
     options:
       - id: a
         text: FP8 weight-and-activation quantisation, because faster 8-bit maths speeds up a prefill limited by maths.
@@ -637,7 +637,7 @@ exercises:
       - answer_expr: 10 ^ L
         category: misunderstood_definition
         feedback: The loss uses natural logs, so perplexity is $e^{\text{loss}}$, with base $e$.
-    solution: 'Perplexity is $e^{ {{=L}} }\approx{{= exp(L) }}$.'
+    solution: 'Perplexity is $e^{ {{=L}} }\approx{{= round(exp(L) * 10^(2 - floor(log10(exp(L))))) / 10^(2 - floor(log10(exp(L)))) }}$.'
   - id: qzp-held-out
     dimension: conceptual
     type: mc
@@ -744,7 +744,7 @@ exercises:
       - answer_expr: exp(2 + d)
         category: incomplete_explanation
         feedback: That is the new perplexity. Divide it by the old perplexity, $e^2$, to get the factor.
-    solution: 'The factor is $e^{ {{= 2 + d }} }/e^{2}=e^{ {{=d}} }\approx{{= exp(d) }}$.'
+    solution: 'The factor is $e^{ {{= 2 + d }} }/e^{2}=e^{ {{=d}} }\approx{{= round(exp(d), 3) }}$.'
   - id: qz-explain
     dimension: conceptual
     type: explain

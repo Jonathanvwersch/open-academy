@@ -151,7 +151,7 @@ knowledge_points:
       0.004
       ```
 
-      If the row also held an outlier of $12.7$, the scale would be $0.1$ and $0.333$ would come back as $0.3$, an error of $0.033$. One large number made the errors for all the others about ten times bigger.
+      If the row also held an outlier of $12.7$, the scale would be $0.1$ and $0.333$ would come back as $0.3$, an error of $0.033$. One large number made the step ten times bigger, and with it the largest possible error for every other weight. The error on $0.333$ grew about ten times, from $0.003$ to $0.033$.
 
       INT4 works the same way. It holds $-8$ to $7$, and symmetric INT4 uses $-7$ to $7$, so $s=\max|x|/7$. That step is about $127/7\approx18$ times larger than INT8's for the same group, and so is the largest error. This is why INT4 almost always uses a separate scale for each small group, such as 128 weights.
     problems:
@@ -269,7 +269,7 @@ knowledge_points:
       3. **Time the prefill for FP8.** The maths runs at twice the rate.
          $$\frac{1.6\times10^{13}}{2000\times10^{12}}=0.008\text{ s}=8\text{ ms}$$
 
-      4. **Time one decode step for each.** Each decode step reads all the weights once. That's 4 GB for INT4 and 8 GB for FP8. Again we leave out the conversion cost.
+      4. **Time one decode step for each.** Each decode step reads all the weights once. That's 4 GB for INT4 and 8 GB for FP8. For INT4 we again leave out the cost of turning the weights back into 16 bits.
          $$\frac{4\times10^9}{3.35\times10^{12}}\approx1.2\text{ ms},\qquad\frac{8\times10^9}{3.35\times10^{12}}\approx2.4\text{ ms}$$
 
       FP8 saves 8 ms once per prompt, and INT4 saves about 1.2 ms on every reply token. So INT4 is faster overall once the reply is longer than about $8/1.2\approx7$ tokens, which almost every chat reply is. FP8 would win for long prompts with very short replies, such as sorting documents into a few labels. This compares speed only. The next step checks whether quality survives.
