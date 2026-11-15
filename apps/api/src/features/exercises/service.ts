@@ -19,6 +19,7 @@ import { updateActivityAndAdvance } from '../../learning/activity-completion.js'
 import { answerOptionsFor } from '../../learning/answer-options.js';
 import { mapReviewRating, reviewActivityRating, scheduleReview } from '../../learning/fsrs.js';
 import { gradeExercise } from '../../learning/grading/index.js';
+import { rubricFeedbackWithScoredFlags } from '../../learning/grading/rubric-score.js';
 import { calculateCredit } from '../../learning/mastery.js';
 import { applyMastery } from '../../learning/mastery-service.js';
 import { bringWeakestPrerequisiteCardDueNow } from '../../learning/prerequisite-review.js';
@@ -374,6 +375,12 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
     }
   } else {
     result = await gradeExercise(exercise, body.data.answer);
+  }
+  if (exercise.type === 'explain' && 'rubric' in result && Array.isArray(result.rubric)) {
+    result = {
+      ...result,
+      rubric: rubricFeedbackWithScoredFlags(exercise.rubric, result.rubric),
+    };
   }
   if (result.status !== 'graded') {
     return serviceResult(

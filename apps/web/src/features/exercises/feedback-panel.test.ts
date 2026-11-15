@@ -177,6 +177,25 @@ test('unmet optional criteria are neutral and do not count as an Almost shortfal
   expect(html).not.toContain('✗ Mentions curvature');
 });
 
+test('a missing criterion in an optional-only rubric counts as an Almost shortfall', () => {
+  const html = renderFeedback({
+    correct: 0.5,
+    followUp: true,
+    rubric: [
+      {
+        id: 'optional',
+        criterion: 'Mentions curvature',
+        judgement: 'missing',
+        required: true,
+      },
+    ],
+  });
+
+  expect(html).toContain('✗ Mentions curvature');
+  expect(html).toContain('Add the points marked ½ or ✗');
+  expect(html).not.toContain('Also worth mentioning');
+});
+
 test('old rubric feedback without required flags keeps the existing shortfall marker', () => {
   const html = renderFeedback({
     correct: 0.5,
