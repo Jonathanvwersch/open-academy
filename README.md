@@ -1,8 +1,10 @@
 # Open Academy
 
-Open Academy is a learning app you host yourself. It's modelled on [Math Academy](https://www.mathacademy.com): short lessons that each end in a quiz, spaced reviews so you don't forget what you learned, and a placement check so you can skip what you already know. It keeps track of which topics you've passed and how well you still remember them, and uses that to plan each day.
+Open Academy is a self-hosted learning app where you use AI to create courses on whatever you want to learn. You ask an AI coding agent such as Claude Code or Codex for a course, and it plans the topics and writes the lessons and questions. It can start from scratch or from your own notes and textbooks.
 
-It comes with courses on maths for machine learning, AI and robotics. You can also write a course on any subject, either from scratch or from your own notes and textbooks. An AI coding agent can do most of the writing.
+The way you learn is modelled on [Math Academy](https://www.mathacademy.com). Lessons are short and each one ends in a quiz. Spaced reviews bring topics back before you forget them, and a placement check lets you skip what you already know. The app keeps track of which topics you've passed and how well you still remember them, and uses that to plan each day.
+
+It comes with courses on maths for machine learning, AI and robotics, so you can try it straight away.
 
 There's a demo at [open-academy-demo.vercel.app](https://open-academy-demo.vercel.app). You don't need an account: each browser gets its own learner, and its progress is deleted after 24 hours. The tutor is turned off in the demo.
 
