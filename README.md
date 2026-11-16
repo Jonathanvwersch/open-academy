@@ -4,7 +4,7 @@ Open Academy is a self-hosted learning app where you use AI to create courses on
 
 The way you learn is modelled on [Math Academy](https://www.mathacademy.com). Lessons are short and each one ends in a quiz. Spaced reviews bring topics back before you forget them, and a placement check lets you skip what you already know. The app keeps track of which topics you've passed and how well you still remember them, and uses that to plan each day.
 
-It comes with courses on maths for machine learning, AI and robotics, so you can try it straight away.
+This repo comes with example courses in maths and AI, so you can try it straight away. The real point is making your own.
 
 There's a demo at [open-academy-demo.vercel.app](https://open-academy-demo.vercel.app). You don't need an account: each browser gets its own learner, and its progress is deleted after 24 hours. The tutor is turned off in the demo.
 
@@ -24,15 +24,14 @@ If you add an OpenAI API key, there's a tutor next to every lesson. It can see t
 
 ![A course page](docs/images/course.png)
 
-## The included courses
+## The example courses
 
 ```text
 Mathematics   Mathematics for Machine Learning
 AI            ML Foundations → Deep Learning → Transformers and LLMs → LLM Inference → Reinforcement Learning
-Robotics      Classical Robotics → Robot Learning
 ```
 
-Most maths and AI topics have lessons. A few are still being written, and the two robotics courses are planned but have no lessons yet. Topics without a lesson show "Lessons coming soon".
+Most topics have lessons. The few that don't yet show "Lessons coming soon".
 
 Courses are never locked as a whole. A topic opens as soon as the topics it needs are done, even when they belong to a different course. Each course page lists the courses it builds on and how much of each you've finished.
 
@@ -51,7 +50,7 @@ pnpm bootstrap
 pnpm dev
 ```
 
-Then open http://localhost:5173. The included courses load by default. To turn on the tutor, set `OPENAI_API_KEY` in your environment.
+Then open http://localhost:5173. The example courses load by default. To turn on the tutor, set `OPENAI_API_KEY` in your environment.
 
 ![A lesson](docs/images/lesson.png)
 
@@ -66,7 +65,7 @@ pnpm academy dev ~/courses/organic-chemistry
 
 To write it with an agent, open the pack folder in Claude Code, Codex or a similar tool and say what you want, for example: "Plan a first-year organic chemistry course and write the first unit." Each pack comes with an `AGENTS.md` and skills for planning a course, writing lessons and working from your sources. The agent runs `academy check` until everything passes.
 
-If you have lecture notes or a textbook, add them first. The lessons are then written from them, with citations.
+Agents write better courses when they have good material to work from. If there's a course you like online, or you have lecture notes or a textbook, save them as files, such as PDFs, and add them to the pack first. The lessons are then written from that material, with citations.
 
 ```sh
 pnpm academy sources add ~/Downloads/week-3-notes.pdf --pack ~/courses/organic-chemistry
@@ -89,7 +88,7 @@ Your source files stay on your machine and aren't committed. [Writing your first
 | `apps/api`                              | The API: loading content, grading, mastery, scheduling, tutor    |
 | `packages/cli`                          | The `academy` CLI                                                |
 | `packages/contracts`, `packages/shared` | Types and helpers used by both the web app and the API           |
-| `content`                               | The included course pack (maths, AI and robotics)                |
+| `content`                               | The example course pack (maths and AI)                           |
 | `labs`                                  | Starter code and tests for the programming projects in that pack |
 
 [Architecture](docs/architecture.md) and [Content format](docs/CONTENT_FORMAT.md) go into more detail.
