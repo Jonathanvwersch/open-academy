@@ -174,6 +174,7 @@ and reduced-motion verification. Include the visual in the normal cold-reader re
 ## 6. Plan before writing
 
 1. Read the concept in `content/concepts/*.yaml` and the lessons of its prerequisites. List what the learner already knows (terms, symbols, results) and what they don't. Then list every term, symbol and result the lesson will use. Each must be taught in this lesson or in a hard prerequisite (direct or indirect). If one isn't, add the missing prerequisite to the concept's `prereqs` or teach the idea in this lesson. Don't rely on a soft prerequisite or a later topic. If the lesson introduces a new symbol or term, add it to `content/notation.yaml` with this concept in `introduced_by`.
+   If a topic is easily confused with another (two methods that solve the same problem in similar ways, such as RLHF and DPO), list it under `confused_with` so the two are never learned on the same day.
 2. Write down, in one line each:
    - the plain-words answer to "what is it?";
    - why it's useful, and why what the learner already knows isn't enough;

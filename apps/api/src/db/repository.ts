@@ -234,7 +234,11 @@ export class LearnerRepository {
           .where(eq(projectProgress.userId, this.userId)),
       loaded.lessonRuns ??
         this.db
-          .select({ conceptId: lessonRuns.conceptId, status: lessonRuns.status })
+          .select({
+            conceptId: lessonRuns.conceptId,
+            status: lessonRuns.status,
+            startedAt: lessonRuns.startedAt,
+          })
           .from(lessonRuns)
           .where(eq(lessonRuns.userId, this.userId)),
       this.db.select().from(paperProgress).where(eq(paperProgress.userId, this.userId)),
@@ -304,6 +308,7 @@ export class LearnerRepository {
       lessonRuns: lessonRunRows.map((run) => ({
         conceptId: run.conceptId,
         status: run.status,
+        startedAt: run.startedAt,
       })),
       startDate: user?.startDate || localDateKey(now, user?.timezone ?? 'UTC'),
     };

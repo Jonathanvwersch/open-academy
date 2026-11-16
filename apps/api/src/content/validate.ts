@@ -265,7 +265,7 @@ export function validateContent(data: ContentSourceData): ContentIssue[] {
     }
   }
 
-  for (const { value, domain } of data.concepts) {
+  for (const { value, domain, file } of data.concepts) {
     for (const prerequisite of value.prereqs) {
       if (!concepts.has(prerequisite.id)) {
         addIssue(
@@ -274,6 +274,13 @@ export function validateContent(data: ContentSourceData): ContentIssue[] {
           value.id,
           `missing prerequisite "${prerequisite.id}"`,
         );
+      }
+    }
+    for (const confusedId of value.confused_with ?? []) {
+      if (confusedId === value.id) {
+        addIssue(issues, file, value.id, 'concept cannot be confused with itself');
+      } else if (!concepts.has(confusedId)) {
+        addIssue(issues, file, value.id, `unknown confused-with concept "${confusedId}"`);
       }
     }
     for (const relatedId of value.related) {

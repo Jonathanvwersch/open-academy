@@ -107,15 +107,76 @@ test('loads the fixture graph and builds lookup indexes', async () => {
   expect(content.concepts[0]?.contentVersion).toMatch(/^[a-f0-9]{12}$/);
 });
 
+test('confused_with rejects unknown concepts and self-references', async () => {
+  const unknownReference = await notationFixture();
+  const unknownConcept = unknownReference.concepts.find(({ value }) => value.id === 'vectors');
+  if (!unknownConcept) throw new Error('Missing vectors fixture');
+  unknownConcept.value.confused_with = ['unknown-concept'];
+
+  expect(validateContent(unknownReference)).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        id: 'vectors',
+        message: 'unknown confused-with concept "unknown-concept"',
+      }),
+    ]),
+  );
+
+  const selfReference = await notationFixture();
+  const selfConcept = selfReference.concepts.find(({ value }) => value.id === 'vectors');
+  if (!selfConcept) throw new Error('Missing vectors fixture');
+  selfConcept.value.confused_with = ['vectors'];
+
+  expect(validateContent(selfReference)).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        id: 'vectors',
+        message: 'concept cannot be confused with itself',
+      }),
+    ]),
+  );
+});
+
+test('confusable topic index is symmetric when only one concept lists the pair', async () => {
+  const data = await notationFixture();
+  const vectors = data.concepts.find(({ value }) => value.id === 'vectors');
+  if (!vectors) throw new Error('Missing vectors fixture');
+  vectors.value.confused_with = ['derivatives'];
+
+  const index = buildContentIndex(data);
+
+  expect(index.confusablesById.get('vectors')).toEqual(new Set(['derivatives']));
+  expect(index.confusablesById.get('derivatives')).toEqual(new Set(['vectors']));
+});
+
 // Loading the full curriculum can exceed Vitest's five-second default on CI runners.
-test('real content indexes round-trip through V8 serialization with subject lookups intact', {
+test('real content indexes round-trip with subject and confusable lookups intact', {
   timeout: 30_000,
 }, async () => {
   const loadedContent = await loadContent('content');
   const content = buildContentIndex(sourceDataFromIndex(loadedContent));
   const roundTripped = deserialize(serialize(content)) as ContentIndex;
+  const expectedPairs = [
+    ['backpropagation', 'autodiff'],
+    ['determinants', 'rank-span'],
+    ['logistic-regression', 'classification-softmax'],
+    ['rlhf', 'dpo'],
+    ['sgd-minibatch', 'momentum-adam'],
+    ['value-functions', 'q-learning'],
+  ] as const;
+  const listedPairs = loadedContent.concepts.flatMap(({ id, confused_with }) =>
+    (confused_with ?? []).map((confusedId) => `${id}:${confusedId}`),
+  );
 
   expect(roundTripped.subjectsByCourseId).toBeInstanceOf(Map);
+  expect(roundTripped.confusablesById).toEqual(content.confusablesById);
+  expect(listedPairs.sort()).toEqual(
+    expectedPairs.map(([conceptId, confusedId]) => `${conceptId}:${confusedId}`).sort(),
+  );
+  for (const [conceptId, confusedId] of expectedPairs) {
+    expect(roundTripped.confusablesById.get(conceptId)).toEqual(new Set([confusedId]));
+    expect(roundTripped.confusablesById.get(confusedId)).toEqual(new Set([conceptId]));
+  }
   expect(roundTripped.courses.map(({ id }) => id)).toEqual(content.courses.map(({ id }) => id));
   for (const course of loadedContent.courses) {
     expect(subjectForCourse(roundTripped, course.id)).toEqual(

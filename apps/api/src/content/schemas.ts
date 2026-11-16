@@ -138,6 +138,7 @@ export const ConceptSchema = z
           .strict(),
       )
       .default([]),
+    confused_with: z.array(IdSchema).optional(),
     related: z.array(IdSchema).default([]),
     objectives: z
       .array(

@@ -67,6 +67,15 @@ export function buildContentIndex(data: ContentSourceData): ContentIndex {
     contentVersion: contentVersion({ ...value, domain }),
   }));
   const conceptsById = new Map(concepts.map((concept) => [concept.id, concept]));
+  const confusablesById = new Map(
+    concepts.map((concept) => [concept.id, new Set<string>()] as const),
+  );
+  for (const concept of concepts) {
+    for (const confusableId of concept.confused_with ?? []) {
+      confusablesById.get(concept.id)?.add(confusableId);
+      confusablesById.get(confusableId)?.add(concept.id);
+    }
+  }
   const edges = concepts.flatMap((concept) =>
     concept.prereqs.map((prerequisite) => ({
       conceptId: concept.id,
@@ -116,6 +125,7 @@ export function buildContentIndex(data: ContentSourceData): ContentIndex {
     coursesById,
     concepts,
     conceptsById,
+    confusablesById,
     edges,
     exercises,
     exercisesById,

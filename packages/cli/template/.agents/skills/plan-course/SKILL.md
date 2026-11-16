@@ -22,6 +22,7 @@ A course is a path through a graph of topics. Get the graph right first; lessons
 - No cycles. If two topics seem to need each other, one of them is really two topics.
 - Every topic except the first few should require something. A topic with no prerequisites deep in a course is usually a missing edge.
 - Soft links (`strength: soft` in a topic's `prereqs`) are background that helps but doesn't block. Use them for "useful to have seen", never to hide a hard dependency.
+- If a topic is easily confused with another (two methods that solve the same problem in similar ways, such as RLHF and DPO), list it under `confused_with` so the two are never learned on the same day.
 
 ### Check every link before you create anything
 For each topic, write one line listing every idea, term and symbol its lesson will use. For each one, name where the learner learns it: this topic, or a topic in its `requires` chain (direct or indirect). Anything without an answer is a missing link: add the topic that teaches it to `requires`, or teach it in this topic.

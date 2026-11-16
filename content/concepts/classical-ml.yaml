@@ -100,6 +100,7 @@ concepts:
         { id: gradient-descent },
         { id: probability-basics, strength: soft },
       ]
+    confused_with: [classification-softmax]
     objectives:
       - { text: "Compute sigmoid outputs and binary cross-entropy", dimension: math }
     status: authored

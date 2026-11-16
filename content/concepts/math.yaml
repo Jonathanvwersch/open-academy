@@ -46,6 +46,7 @@ concepts:
     goal_weight: 2
     dimensions: [conceptual, math, transfer]
     prereqs: [{ id: matrices }]
+    confused_with: [rank-span]
     related: [eigen-svd]
     objectives:
       - { text: "Interpret a determinant as signed area scaling", dimension: conceptual }
