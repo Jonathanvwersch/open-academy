@@ -520,6 +520,213 @@ describe('academy CLI', () => {
     }
   });
 
+  it('removes an untouched placeholder created for a new course', () => {
+    const parent = temporaryDirectory();
+    try {
+      const pack = join(parent, 'pack');
+      expect(run(['init', pack, '--title', 'Applied Science']).status).toBe(0);
+      expect(
+        run(['new', 'course', 'advanced-path', '--title', 'Advanced path', '--pack', pack]).status,
+      ).toBe(0);
+      const created = run([
+        'new',
+        'topic',
+        'advanced-topic',
+        '--title',
+        'Advanced topic',
+        '--course',
+        'advanced-path',
+        '--unit',
+        '1',
+        '--pack',
+        pack,
+      ]);
+      expect(created.status, created.stderr).toBe(0);
+      expect(created.stdout.trim()).toBe('Removed the starter topic advanced-path-first-topic.');
+      const course = parse(readFileSync(join(pack, 'courses/advanced-path.yaml'), 'utf8')) as {
+        units: Array<{ concepts: string[] }>;
+      };
+      expect(course.units[0]?.concepts).toEqual(['advanced-topic']);
+      const checked = run(['check', pack]);
+      expect(checked.status).toBe(0);
+      expect(checked.stdout).toContain('2 topics, 0 lessons, 0 questions, 2 courses');
+    } finally {
+      rmSync(parent, { recursive: true, force: true });
+    }
+  });
+
+  it('keeps a new-course starter after its course title is changed', () => {
+    const parent = temporaryDirectory();
+    try {
+      const pack = join(parent, 'pack');
+      expect(run(['init', pack, '--title', 'Applied Science']).status).toBe(0);
+      expect(
+        run(['new', 'course', 'advanced-path', '--title', 'Advanced path', '--pack', pack]).status,
+      ).toBe(0);
+      const courseFile = join(pack, 'courses/advanced-path.yaml');
+      const courseData = parse(readFileSync(courseFile, 'utf8')) as {
+        title: string;
+        units: Array<{ concepts: string[] }>;
+      };
+      courseData.title = 'Renamed path';
+      writeFileSync(courseFile, stringify(courseData));
+
+      const created = run([
+        'new',
+        'topic',
+        'advanced-topic',
+        '--title',
+        'Advanced topic',
+        '--course',
+        'advanced-path',
+        '--unit',
+        '1',
+        '--pack',
+        pack,
+      ]);
+      expect(created.status, created.stderr).toBe(0);
+      expect(created.stdout).not.toContain('Removed the starter topic advanced-path-first-topic.');
+      expect(courseData.units[0]?.concepts).toEqual(['advanced-path-first-topic']);
+      const updatedCourse = parse(readFileSync(courseFile, 'utf8')) as {
+        units: Array<{ concepts: string[] }>;
+      };
+      expect(updatedCourse.units[0]?.concepts).toEqual([
+        'advanced-path-first-topic',
+        'advanced-topic',
+      ]);
+      expect(run(['check', pack]).status).toBe(0);
+    } finally {
+      rmSync(parent, { recursive: true, force: true });
+    }
+  });
+
+  it('keeps a starter topic when its title has been edited', () => {
+    const parent = temporaryDirectory();
+    try {
+      const pack = join(parent, 'pack');
+      expect(run(['init', pack, '--title', 'Applied Science']).status).toBe(0);
+      const starterId = 'applied-science-first-topic';
+      const conceptsFile = join(pack, 'concepts/main.yaml');
+      const conceptFile = parse(readFileSync(conceptsFile, 'utf8')) as {
+        concepts: Array<{ id: string; title: string }>;
+      };
+      const starter = conceptFile.concepts.find(({ id }) => id === starterId);
+      if (!starter) throw new Error('Missing starter topic');
+      starter.title = 'Foundations';
+      writeFileSync(conceptsFile, stringify(conceptFile));
+
+      const created = run([
+        'new',
+        'topic',
+        'second-topic',
+        '--title',
+        'Second topic',
+        '--pack',
+        pack,
+      ]);
+      expect(created.status, created.stderr).toBe(0);
+      expect(created.stdout).not.toContain(`Removed the starter topic ${starterId}.`);
+      expect(readFileSync(conceptsFile, 'utf8')).toContain('title: Foundations');
+      expect(run(['check', pack]).status).toBe(0);
+    } finally {
+      rmSync(parent, { recursive: true, force: true });
+    }
+  });
+
+  it('keeps a starter topic owned by a differently named exercises file', () => {
+    const parent = temporaryDirectory();
+    try {
+      const pack = join(parent, 'pack');
+      expect(run(['init', pack, '--title', 'Applied Science']).status).toBe(0);
+      const starterId = 'applied-science-first-topic';
+      mkdirSync(join(pack, 'exercises'), { recursive: true });
+      writeFileSync(
+        join(pack, 'exercises/other-name.yaml'),
+        stringify({
+          concept: starterId,
+          exercises: [
+            {
+              id: 'starter-diagnostic',
+              dimension: 'conceptual',
+              type: 'mc',
+              role: 'diagnostic',
+              difficulty: 1,
+              est_minutes: 1,
+              prompt: 'Choose the starter topic.',
+              hints: [],
+              solution: 'This exercise belongs to the starter topic.',
+              options: [
+                { id: 'starter', text: 'The starter topic', correct: true },
+                { id: 'other', text: 'Another topic', correct: false },
+              ],
+            },
+          ],
+        }),
+      );
+
+      const created = run([
+        'new',
+        'topic',
+        'second-topic',
+        '--title',
+        'Second topic',
+        '--pack',
+        pack,
+      ]);
+      expect(created.status, created.stderr).toBe(0);
+      expect(created.stdout).not.toContain(`Removed the starter topic ${starterId}.`);
+      const course = parse(
+        readFileSync(join(pack, 'courses/applied-science-basics.yaml'), 'utf8'),
+      ) as { units: Array<{ concepts: string[] }> };
+      expect(course.units[0]?.concepts).toEqual([starterId, 'second-topic']);
+      expect(run(['check', pack]).status).toBe(0);
+    } finally {
+      rmSync(parent, { recursive: true, force: true });
+    }
+  });
+
+  it('keeps a starter topic referenced by a curriculum goal when removal fails validation', () => {
+    const parent = temporaryDirectory();
+    try {
+      const pack = join(parent, 'pack');
+      expect(run(['init', pack, '--title', 'Applied Science']).status).toBe(0);
+      const starterId = 'applied-science-first-topic';
+      const curriculumFile = join(pack, 'curriculum.yaml');
+      const curriculum = parse(readFileSync(curriculumFile, 'utf8')) as {
+        goals: Array<{ id: string; text: string; concepts: string[] }>;
+      };
+      curriculum.goals = [
+        { id: 'foundations', text: 'Learn the foundations.', concepts: [starterId] },
+      ];
+      writeFileSync(curriculumFile, stringify(curriculum));
+      expect(run(['check', pack]).status).toBe(0);
+
+      const created = run([
+        'new',
+        'topic',
+        'second-topic',
+        '--title',
+        'Second topic',
+        '--pack',
+        pack,
+      ]);
+      expect(created.status, created.stderr).toBe(0);
+      expect(created.stdout).not.toContain(`Removed the starter topic ${starterId}.`);
+      const course = parse(
+        readFileSync(join(pack, 'courses/applied-science-basics.yaml'), 'utf8'),
+      ) as { units: Array<{ concepts: string[] }> };
+      expect(course.units[0]?.concepts).toEqual([starterId, 'second-topic']);
+      const concepts = parse(readFileSync(join(pack, 'concepts/main.yaml'), 'utf8')) as {
+        concepts: Array<{ id: string }>;
+      };
+      expect(concepts.concepts.map(({ id }) => id)).toContain(starterId);
+      expect(concepts.concepts.map(({ id }) => id)).toContain('second-topic');
+      expect(run(['check', pack]).status).toBe(0);
+    } finally {
+      rmSync(parent, { recursive: true, force: true });
+    }
+  });
+
   it('finds concept files by their domain header and topic ID', () => {
     const parent = temporaryDirectory();
     try {
