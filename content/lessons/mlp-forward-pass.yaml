@@ -16,6 +16,10 @@ where_this_fits: |
 knowledge_points:
   - id: mlp-layer-of-neurons
     title: "Compute several neurons together"
+    tldr: |
+      - Several neurons can read the same inputs with different weights and biases.
+      - Each neuron computes its own score and applies an activation.
+      - A matrix stores one neuron's weights per row so we can compute the whole layer together.
     explain: |
       ### Two neurons read the same inputs
 
@@ -82,12 +86,16 @@ knowledge_points:
       - mlpp-robot-layer
   - id: mlp-two-layers
     title: "Run the layers in order"
+    tldr: |
+      - One layer's outputs become the next layer's inputs.
+      - The values between the input and prediction are called hidden values.
+      - Running the layers in order, with their activations, gives the prediction.
     explain: |
       ### The outputs become the next inputs
 
       Our first layer produces two numbers, but we want one prediction. We can feed those numbers into one more neuron. It uses weights $(3,2)$ and bias $1$. We leave its score unchanged so it can predict a price without being squeezed into a fixed range, as we will discuss below.
 
-      Read the picture from top to bottom. The first layer turns $(2,1)$ into $(2,0)$ after ReLU. The output neuron reads those new values, not the original inputs, and produces $7$.
+      Read the picture from top to bottom. The first layer turns $(2,1)$ into $(2,0)$ after ReLU. The output neuron reads those new values and produces $7$.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 300" aria-label="Input (2,1) passes through layer 1 and ReLU to hidden values (2,0). Layer 2 uses weights (3,2) and bias 1 with no activation, giving prediction 7.">
@@ -117,7 +125,12 @@ knowledge_points:
 
       You might wonder whether we could merge the two weighted sums into one. Without ReLU, we can. Substituting the first layer scores into the output gives one weighted sum of the original inputs.
 
-      $$3(x_1+x_2-1)+2(-x_1+x_2)+1=x_1+5x_2-2.$$
+      $$
+      \begin{aligned}
+      3(x_1+x_2-1)+2(-x_1+x_2)+1&=3x_1+3x_2-3-2x_1+2x_2+1 &&\text{expand both brackets}\\
+      &=x_1+5x_2-2 &&\text{collect matching terms}
+      \end{aligned}
+      $$
 
       At $(2,1)$, this gives $5$. But ReLU changes the hidden scores $(2,-1)$ into $(2,0)$, giving $7$. Be careful not to merge the layers and skip the activation. As we just saw, removing ReLU changes the prediction.
 
@@ -157,6 +170,10 @@ knowledge_points:
       - mlpp-robot-forward
   - id: mlp-shapes
     title: "Keep one row per example"
+    tldr: |
+      - A batch groups examples as rows and reuses the same weights for each.
+      - Transposing the weights puts each neuron's weights in a column for multiplication.
+      - Each row keeps its example through to the prediction, without adding any learned weights or biases.
     explain: |
       ### Several inputs travel together
 
@@ -183,7 +200,13 @@ knowledge_points:
 
       ### Why we transpose the weights
 
-      A matrix product pairs a row with a column. Our blue neuron has weight row $(1,1)$ in $W_1$; transposing makes it the first column of $W_1^\top$. The example row $(2,1)$ then gives $2\cdot1+1\cdot1=3$, and adding its bias $-1$ gives score $2$.
+      A matrix product pairs a row with a column. Our blue neuron's weight row $(1,1)$ becomes the first column of $W_1^\top$. For example row $(2,1)$:
+      $$
+      \begin{aligned}
+      2\cdot1+1\cdot1&=3 &&\text{dot with the weight column}\\
+      3+(-1)&=2 &&\text{add the neuron's bias}
+      \end{aligned}
+      $$
 
       More generally, let $B$ count examples, $d_\text{in}$ count inputs and $d_\text{out}$ count neurons. Transposing puts the input count first in the weight shape, so the inner sizes match:
 
@@ -199,7 +222,13 @@ knowledge_points:
 
       Be careful not to rely on compatible sizes alone to check the calculation. Without the transpose, our first row instead gives
 
-      $$(2,1)W_1+(-1,0)=(2-1,2+1)+(-1,0)=(0,3).$$
+      $$
+      \begin{aligned}
+      (2,1)W_1+(-1,0)&=(2-1,2+1)+(-1,0) &&\text{multiply without transposing}\\
+      &=(1,3)+(-1,0) &&\text{evaluate the product}\\
+      &=(0,3) &&\text{add biases}
+      \end{aligned}
+      $$
 
       Those are not the intended scores $(2,-1)$, because the columns of $W_1$ mix weights from different neurons.
 
@@ -209,7 +238,7 @@ knowledge_points:
 
       $$d_\text{out}d_\text{in}+d_\text{out}.$$
 
-      Our layers have $6$ and $3$ parameters, giving $9$ in total. Be careful not to multiply that count by the batch size. More examples make larger arrays of computed values, not more learned weights.
+      Our layers have $6$ and $3$ parameters, giving $9$ in total. Be careful not to multiply that count by the batch size. More examples make larger arrays of computed values; the learned weights stay the same.
     worked: |
       Let's send our three examples through the same network and check the shapes as we go.
 
@@ -225,10 +254,10 @@ knowledge_points:
       4. **Compute one prediction per row.** The output product has shape $(3\times2)(2\times1)=3\times1$.
          $$\hat Y=\begin{pmatrix}2&0\\2&1\\0&1\end{pmatrix}\begin{pmatrix}3\\2\end{pmatrix}+1=\begin{pmatrix}7\\9\\3\end{pmatrix}$$
 
-      5. **Count the stored parameters.** Add each layer's weights and biases, not the computed hidden values.
+      5. **Count the stored parameters.** Add each layer's weights and biases; computed hidden values are excluded.
          $$(2\cdot2+2)+(1\cdot2+1)=6+3=9$$
 
-      Changing only the batch size changes the row counts, not the parameters:
+      Changing only the batch size changes the row counts while keeping the parameters fixed:
 
       | Batch size | $X$ | $H$ | $\hat Y$ | Parameters |
       | --- | --- | --- | --- | --- |
