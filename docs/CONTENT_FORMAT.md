@@ -96,6 +96,7 @@ recap:
 knowledge_points:
   - id: sl-inputs-targets
     title: Inputs, targets and the model
+    tldr: "The input is the information a model uses; the target is what it learns to predict." # optional, shown before explain, maximum 40 words
     explain: "A short explanation."
     worked: "A worked example with the steps shown."
     problems: [slp-predict, slp-input-target, slp-parameters]

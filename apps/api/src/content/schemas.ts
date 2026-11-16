@@ -201,7 +201,7 @@ export const NotationSchema = z
 
 const BlockMarkdownSchema = z
   .object({
-    kind: z.enum(['objective', 'intuition', 'example', 'math', 'worked', 'summary']),
+    kind: z.enum(['objective', 'intuition', 'example', 'math', 'worked', 'summary', 'tldr']),
     md: z.string(),
   })
   .strict();
@@ -235,7 +235,17 @@ const LegacyLessonSchema = LessonFieldsSchema.extend({
   blocks: z.array(LessonBlockSchema).min(1),
   fast_path: z
     .array(
-      z.enum(['objective', 'intuition', 'example', 'check', 'math', 'worked', 'faded', 'summary']),
+      z.enum([
+        'objective',
+        'intuition',
+        'example',
+        'check',
+        'math',
+        'worked',
+        'faded',
+        'summary',
+        'tldr',
+      ]),
     )
     .default([]),
 }).strict();
@@ -244,6 +254,7 @@ const KnowledgePointSchema = z
   .object({
     id: IdSchema,
     title: z.string(),
+    tldr: z.string().min(1).optional(),
     explain: z.string(),
     worked: z.string(),
     problems: z.array(IdSchema),
@@ -296,6 +307,7 @@ export function normalizeLesson(
 ): Lesson {
   const blocks: LessonBlock[] = [{ kind: 'objective', md: lesson.objective }];
   for (const point of lesson.knowledge_points) {
+    if (point.tldr) blocks.push({ kind: 'tldr', md: point.tldr });
     blocks.push({ kind: 'intuition', md: `### ${point.title}\n\n${point.explain}` });
     blocks.push({ kind: 'worked', md: point.worked });
     const fixedProblem = point.problems.slice(1).find((problemId) => !isTemplateProblem(problemId));

@@ -272,6 +272,7 @@ test('knowledge-point lesson review shows explanations, final check and summary 
 }) => {
   await page.goto('/lessons/supervised-learning');
   await expect(page.getByRole('heading', { name: 'Supervised learning' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'In short', exact: true })).toHaveCount(0);
   await expect(page.getByText('Worked example').first()).toBeVisible();
   await expect(page.getByTestId('lesson-problem')).toHaveCount(0);
   await expect(page.getByText(/Pick any real problem you care about/)).toBeVisible();
@@ -302,6 +303,35 @@ test('knowledge-point lesson review shows explanations, final check and summary 
     }),
   ).toBe(true);
   await page.screenshot({ path: `${screenshotDir}/knowledge-point-lesson.png`, fullPage: true });
+});
+
+test('eigen-svd full lesson shows the short summary before its derivation', async ({
+  page,
+}, testInfo) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto('/lessons/eigen-svd');
+  const step = page.locator('article').filter({
+    has: page.getByRole('heading', {
+      name: '4. Approximate a matrix with fewer numbers',
+      exact: true,
+    }),
+  });
+  await expect(step).toHaveCount(1);
+  await step.scrollIntoViewIfNeeded();
+  await expect(step.getByRole('heading', { name: 'In short', exact: true })).toBeVisible();
+  await expect(
+    step.getByText(/Each singular direction contributes a rank-one piece/),
+  ).toBeVisible();
+  await expect(step.locator('.katex').first()).toBeVisible();
+  await expect(step.locator('.katex-error')).toHaveCount(0);
+
+  mkdirSync(testInfo.outputDir, { recursive: true });
+  await step.screenshot({ path: testInfo.outputPath('eigen-svd-low-rank-1280.png') });
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await step.scrollIntoViewIfNeeded();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await step.screenshot({ path: testInfo.outputPath('eigen-svd-low-rank-390.png') });
 });
 
 test('legacy lesson review presents labelled blocks as cards with checks inside', async ({

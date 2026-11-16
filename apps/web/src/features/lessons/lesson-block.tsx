@@ -9,6 +9,7 @@ const lessonBlockLabels: Partial<Record<LessonBlockKind, string>> = {
   example: 'Example',
   math: 'Key formula',
   worked: 'Worked example',
+  tldr: 'In short',
   check: 'Check yourself',
   faded: 'Fill in the steps',
   summary: 'Key takeaways',
@@ -90,6 +91,21 @@ export function LessonBlock({
         {content ? <Markdown>{content}</Markdown> : null}
         {children}
       </div>
+    );
+  }
+  if (kind === 'tldr') {
+    return (
+      <Card className="gap-1 border-muted-foreground/15 bg-muted/20">
+        <CardHeader className="gap-0 px-4 pb-0 pt-3">
+          <CardTitle className="text-xs font-medium text-muted-foreground">
+            {lessonBlockLabels[kind]}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="px-4 pb-3 pt-2 text-sm">
+          {content ? <Markdown>{content}</Markdown> : null}
+          {children}
+        </CardContent>
+      </Card>
     );
   }
   return (

@@ -144,5 +144,18 @@ export function contentWarnings(data: ContentSourceData, content: ContentIndex):
     }
   }
 
+  for (const { value: lesson, file } of data.lessons) {
+    for (const point of lesson.knowledge_points ?? []) {
+      if (!point.tldr) continue;
+      const wordCount = point.tldr.trim().split(/\s+/).filter(Boolean).length;
+      if (wordCount <= 40) continue;
+      warnings.push({
+        file,
+        id: point.id,
+        message: `step tldr has ${wordCount} words; maximum is 40`,
+      });
+    }
+  }
+
   return warnings;
 }

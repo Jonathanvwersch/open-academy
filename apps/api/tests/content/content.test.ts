@@ -1194,6 +1194,7 @@ test('knowledge-point lessons derive the legacy block shape', () => {
       {
         id: 'kp-one',
         title: 'First',
+        tldr: 'A short summary.',
         explain: 'Explain.\n\n**Why this is useful.** It supports the next calculation.',
         worked: 'Work.',
         problems: ['kp-one-basics', 'template', 'fixed'],
@@ -1215,6 +1216,7 @@ test('knowledge-point lessons derive the legacy block shape', () => {
   ]);
   expect(lesson.blocks).toEqual([
     { kind: 'objective', md: 'Learn the idea.' },
+    { kind: 'tldr', md: 'A short summary.' },
     {
       kind: 'intuition',
       md: '### First\n\nExplain.\n\n**Why this is useful.** It supports the next calculation.',

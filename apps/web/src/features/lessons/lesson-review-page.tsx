@@ -198,6 +198,7 @@ export function LessonReviewPage() {
               <h2 className="text-xl font-semibold">
                 {index + 1}. {point.title}
               </h2>
+              {point.tldr ? <LessonBlock kind="tldr" md={point.tldr} /> : null}
               <Markdown>{point.explain}</Markdown>
               <LessonBlock kind="worked" md={point.worked} />
             </article>

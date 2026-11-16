@@ -398,6 +398,25 @@ test('GET run is read-only and POST creates exactly one pending problem', async 
   expect(await db.select().from(lessonProblems)).toHaveLength(1);
 });
 
+test('run current point includes its optional tldr', async () => {
+  const point = content.lessonsByConcept.get(conceptId)?.knowledge_points?.[0];
+  if (!point) throw new Error('Missing first knowledge point');
+  const originalTldr = point.tldr;
+  point.tldr = 'A short summary before the explanation.';
+
+  try {
+    const response = await startRun();
+    expect(response.status).toBe(200);
+    expect((await response.json()).run.currentPoint).toMatchObject({
+      id: point.id,
+      tldr: point.tldr,
+    });
+  } finally {
+    if (originalTldr === undefined) delete point.tldr;
+    else point.tldr = originalTldr;
+  }
+});
+
 test('lesson GETs do not backfill an uninitialized learner with prior lesson evidence', async () => {
   expect((await startRun()).status).toBe(200);
   await db.delete(courseEnrollments).where(eq(courseEnrollments.userId, userId));

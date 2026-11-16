@@ -580,7 +580,6 @@ export function LessonRunner({
   const lastQuizQuestion = quizQuestionIndex === quizItems.length - 1;
   const stableHeightForCurrentPoint =
     stableCardHeights?.pointId === state.currentPointId ? stableCardHeights : null;
-  const backButtonLabel = 'Back';
   const stepContent = displayedPoint ? (
     <section data-testid="lesson-step-content" className="space-y-4">
       {displayedPoint.id === lesson?.knowledge_points?.[0]?.id &&
@@ -591,6 +590,7 @@ export function LessonRunner({
           prerequisites={state.prerequisites ?? lesson?.prerequisites}
         />
       ) : null}
+      {displayedPoint.tldr ? <LessonBlock kind="tldr" md={displayedPoint.tldr} /> : null}
       <Markdown>{displayedPoint.explain}</Markdown>
       <LessonBlock kind="worked" md={displayedPoint.worked} />
     </section>
@@ -735,15 +735,9 @@ export function LessonRunner({
           <>
             {stepContent}
             {practiceQuestionCard(false)}
-            <Button type="button" variant="ghost" onClick={returnToCurrentStep}>
-              Back
-            </Button>
           </>
         ) : (
           <>
-            <Button type="button" onClick={returnToCurrentStep}>
-              {state.status === 'quiz' ? 'Back to quiz results' : backButtonLabel}
-            </Button>
             {stepContent}
             {pointStatus?.status === 'passed' && displayedPoint ? (
               <Button
@@ -754,9 +748,6 @@ export function LessonRunner({
                 Practise this step
               </Button>
             ) : null}
-            <Button type="button" onClick={returnToCurrentStep}>
-              {backButtonLabel}
-            </Button>
           </>
         )
       ) : state.quiz.current ? (
