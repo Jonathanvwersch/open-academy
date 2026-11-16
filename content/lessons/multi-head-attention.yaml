@@ -16,6 +16,10 @@ where_this_fits: |
 knowledge_points:
   - id: mha-heads
     title: "Run attention heads side by side"
+    tldr: |
+      - One attention mixture can blur information from different tokens.
+      - We run several attention calculations, called heads, each with its own learned comparisons.
+      - Each token gets several mixtures that can focus on different information.
     explain: |
       ### Two heads reading "the cat sat"
 
@@ -91,7 +95,16 @@ knowledge_points:
       3. **Average head 1's values.** Each value is scaled by its weight and the results are added.
          $$o^{(1)}_3=0.164\,(1,0)+0.673\,(0,2)+0.164\,(1,0)=(0.33,\,1.35)$$
 
-      4. **Do the same in head 2.** Its query $(2,0)$ dotted with the keys $(0,1)$, $(0,2)$ and $(1,0)$ gives $0$, $0$ and $2$. Dividing by $\sqrt2$ gives the scores $0$, $0$ and $1.414$, so the softmax gives $0.164$, $0.164$ and $0.673$, with the large weight now on "sat".
+      4. **Compare head 2's query with its keys.** Dot $(2,0)$ with the keys for "the", "cat" and "sat".
+         $$(q^{(2)}_3\cdot k^{(2)}_1,\ q^{(2)}_3\cdot k^{(2)}_2,\ q^{(2)}_3\cdot k^{(2)}_3)=(0,0,2)$$
+
+      5. **Scale head 2's comparisons.** Divide by the square root of the key width.
+         $$(s^{(2)}_{31},s^{(2)}_{32},s^{(2)}_{33})=(0,0,2/\sqrt2)\approx(0,0,1.414)$$
+
+      6. **Apply softmax.** The same scores in a different order give the same weights in that order, now favouring "sat".
+         $$(a^{(2)}_{31},a^{(2)}_{32},a^{(2)}_{33})\approx(0.164,0.164,0.673)$$
+
+      7. **Average head 2's values.** Use its weights to mix its values.
          $$o^{(2)}_3=0.164\,(0,1)+0.164\,(1,0)+0.673\,(3,1)=(2.18,\,0.84)$$
 
       So "sat" now has two outputs of width 2. Head 1's $(0.33,1.35)$ is pulled toward the value of "cat", $(0,2)$, and head 2's $(2.18,0.84)$ is pulled toward the value of "sat" itself, $(3,1)$. Head 1 mixed the value of "cat", the word that did the sitting, into the output for "sat", and head 2 kept mostly the value of "sat" itself.
@@ -106,6 +119,10 @@ knowledge_points:
       - mhap-robot-heads
   - id: mha-combine
     title: "Join the heads into one output"
+    tldr: |
+      - Each head gives a token its own output vector.
+      - We write those vectors side by side and use learned weights to mix their entries.
+      - The result combines the heads into one vector with the original embedding width.
     explain: |
       ### Two outputs for one token
 
@@ -197,14 +214,33 @@ knowledge_points:
       - mhap-joint-readings
   - id: mha-shapes
     title: "Follow the shapes for a whole sentence"
+    tldr: |
+      - Matrix products compute attention for every token at once.
+      - Each head compares every token with every other token, then mixes their values.
+      - Adding heads adds no learned numbers, but each head needs its own grid of attention weights, which gets large for long inputs.
     explain: |
       ### All tokens at once
 
       In code, a model works out every token's output at once with matrix products, and tracking each matrix's shape is the quickest way to check such code.
 
-      We stack the $T$ embeddings as the rows of a $T\times d$ matrix $X$. For head $i$, the queries are $Q^{(i)}=XW_Q^{(i)}$, a $(T\times d)(d\times d_k)=T\times d_k$ matrix whose row $t$ is $q^{(i)}_t$. The keys $K^{(i)}$ and values $V^{(i)}$ are made the same way.
+      Stack the $T$ embeddings as rows of $X$, with shape $T\times d$. Follow head $i$ through these products to check that the sizes fit:
 
-      The scores are $Q^{(i)}K^{(i)\top}/\sqrt{d_k}$. Here $K^{(i)\top}$ is $K^{(i)}$ transposed, with its rows turned into columns, so it is $d_k\times T$. The product $(T\times d_k)(d_k\times T)$ is $T\times T$, and row $t$ holds token $t$'s scores against every token. A softmax along each row gives the $T\times T$ weights, and multiplying them by $V^{(i)}$, which is $T\times d_k$, gives head $i$'s $T\times d_k$ output. The $h$ outputs side by side make $T\times d$, and $W_O$ keeps it $T\times d$. The picture uses $T=3$, $d=4$ and $h=2$.
+      1. **Make queries.** Row $t$ is $q^{(i)}_t$. Keys $K^{(i)}$ and values $V^{(i)}$ have the same shape.
+         $$Q^{(i)}=XW_Q^{(i)}:\quad(T\times d)(d\times d_k)=T\times d_k$$
+      2. **Transpose keys.** Rows become columns.
+         $$K^{(i)\top}:\quad d_k\times T$$
+      3. **Score token pairs.** Row $t$ compares token $t$ with every token; scaling keeps the shape.
+         $$Q^{(i)}K^{(i)\top}/\sqrt{d_k}:\quad(T\times d_k)(d_k\times T)=T\times T$$
+      4. **Apply softmax along rows.** Each query gets its own weights.
+         $$A^{(i)}:\quad T\times T$$
+      5. **Mix values.** Each token gets one head output.
+         $$A^{(i)}V^{(i)}:\quad(T\times T)(T\times d_k)=T\times d_k$$
+      6. **Join heads.** Write the outputs side by side.
+         $$T\times(hd_k)=T\times d$$
+      7. **Mix the joined entries.** The output keeps the input shape.
+         $$(T\times d)(d\times d)=T\times d$$
+
+      The picture uses $T=3$, $d=4$ and $h=2$.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 470" aria-label="Shapes through multi-head attention for 3 tokens, width 4 and 2 heads. The embeddings X are 3 by 4. Each head, head 1 in blue and head 2 in orange, makes queries, keys and values of shape 3 by 2, then weights of shape 3 by 3, then a head output of shape 3 by 2. The two head outputs are concatenated into 3 by 4, and multiplying by W O, which is 4 by 4, gives the green output of shape 3 by 4">

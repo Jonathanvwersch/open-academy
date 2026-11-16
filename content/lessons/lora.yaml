@@ -16,6 +16,10 @@ where_this_fits: |
 knowledge_points:
   - id: lora-frozen-change
     title: "Keep the weights, train a change"
+    tldr: |
+      - Fine-tuning normally changes the model's existing weights.
+      - Instead, keep those weights fixed and train a separate change to add to them.
+      - Adding the old output and the change's output gives the same result as using the changed weights.
     explain: |
       ### Fine-tuning changes every weight
 
@@ -88,10 +92,14 @@ knowledge_points:
       - lorp-robot-freeze
   - id: lora-two-thin-matrices
     title: "Build the change from two thin matrices"
+    tldr: |
+      - A full change has as many entries as the original weight matrix.
+      - Build it from two thin matrices with only a few matching columns and rows.
+      - Applying these smaller pieces in turn gives the change's output without building the full grid.
     explain: |
       ### One column times one row
 
-      $\Delta W$ is as big as $W$. LoRA describes it with far fewer numbers by building it from two thin matrices, while $\Delta W$ keeps its full shape. Let's start with a column $B$ and a row $A$, each with 4 entries. Here $B$ is $4\times1$ and $A$ is $1\times4$, so the inner sizes are both 1 and $BA$ is a $4\times4$ matrix.
+      $\Delta W$ is as big as $W$. LoRA describes it with fewer numbers using two thin matrices. Start with a column $B$ and a row $A$, each with 4 entries. Here $B$ is $4\times1$ and $A$ is $1\times4$, so $BA$ is a $4\times4$ matrix.
 
       Write $b_i$ for entry $i$ of $B$ and $a_j$ for entry $j$ of $A$. The entry in row $i$ and column $j$ of $BA$ is $b_ia_j$. So the product is a multiplication table, with $B$ down the side and $A$ along the top.
 
@@ -125,9 +133,12 @@ knowledge_points:
 
       ### Never building the grid
 
-      The layer never builds the $d\times k$ grid. It works out $Ax$ first, which is just $r$ numbers, and then multiplies those by $B$:
+      The layer can apply the change without building the $d\times k$ grid. Follow the input through the two small products:
 
-      $$\Delta Wx=B(Ax)$$
+      1. **Apply A.** Its $r$ rows each give one number.
+         $$Ax:\quad(r\times k)(k\times1)=r\times1$$
+      2. **Apply B.** Turn those numbers into the full output width.
+         $$\Delta Wx=B(Ax):\quad(d\times r)(r\times1)=d\times1$$
     worked: |
       Let's build the rank-1 change from the diagram and apply it to the input $x=(1,0,2,1)$ both ways. The column is $B=(1,2,0,-1)$, written down the side, and the row is $A=(2,1,0,1)$.
 
@@ -154,6 +165,10 @@ knowledge_points:
       - lorp-rank-shape-robot
   - id: lora-count-savings
     title: "Count the numbers LoRA trains"
+    tldr: |
+      - Only the entries in the two thin matrices need training.
+      - Keeping them thin can make this count much smaller than the full weight matrix.
+      - This saves training memory when a change built from a few pieces is enough for the task.
     explain: |
       ### Counting the numbers to train
 
@@ -208,10 +223,30 @@ knowledge_points:
       - lorp-raise-rank
   - id: lora-merge
     title: "Start B at zero, then merge"
+    tldr: |
+      - Start one small matrix at zero so the model initially behaves exactly as before.
+      - Keep the other random so training can begin changing the pair.
+      - After training, add their product to the original weights, or keep the small pair separate to switch tasks.
     explain: |
       ### Starting from no change
 
-      We want training to start from the pretrained model, so $BA$ should start at zero. LoRA sets $B$ to all zeros and $A$ to small random numbers. Why not make both zero? Take the rank-1 case, where $B$ is a column with entries $b_i$ and $A$ is a row. Entry $i$ of $BAx$ is $b_i$ times the number $Ax=a_1x_1+\dots+a_kx_k$. Nudging $b_i$ moves that entry by $Ax$ times the nudge, and nudging $a_j$ moves it by $b_ix_j$ times the nudge. By the chain rule, the gradient for $b_i$ is $Ax$ times the loss's slope for entry $i$. The gradient for $a_j$ adds up $b_ix_j$ times the loss's slope for entry $i$, over every entry $i$. If $B$ and $A$ are both zero, then $Ax=0$ and every $b_i=0$, so every gradient is zero and nothing moves. With $A$ random, $Ax$ is almost never zero, so $B$ gets a gradient and moves. Once some $b_i$ is nonzero, $A$ gets gradients too.
+      Training should start from the pretrained model, so $BA$ starts at zero. LoRA sets $B$ to zero and $A$ to small random numbers. Why not make both zero? In the rank-1 case, $B$ is a column with entries $b_i$ and $A$ is a row. Follow the products and their slopes:
+      $$
+      \begin{aligned}
+      Ax&=a_1x_1+\dots+a_kx_k &&\text{dot the row with the input}\\
+      (BAx)_i&=b_i(Ax) &&\text{scale by entry }b_i\\
+      \frac{\partial(BAx)_i}{\partial b_i}&=Ax &&\text{slope when }b_i\text{ changes}\\
+      \frac{\partial(BAx)_i}{\partial a_j}&=b_ix_j &&\text{slope when }a_j\text{ changes}
+      \end{aligned}
+      $$
+      Let $L$ be the loss. The chain rule combines these slopes with the loss's slope for each output entry:
+      $$
+      \begin{aligned}
+      \frac{\partial L}{\partial b_i}&=\frac{\partial L}{\partial(BAx)_i}(Ax) &&\text{follow the path through entry }i\\
+      \frac{\partial L}{\partial a_j}&=\sum_i\frac{\partial L}{\partial(BAx)_i}b_ix_j &&\text{add paths through all entries}
+      \end{aligned}
+      $$
+      If both matrices are zero, $Ax=0$ and every $b_i=0$, so every gradient is zero. With $A$ random, $Ax$ is almost never zero, so $B$ can move. Once some $b_i$ is nonzero, $A$ can get gradients too.
 
       In practice, LoRA code also multiplies $BA$ by a fixed number, so that the size of the change stays similar when $r$ is changed. It doesn't change the count $r(d+k)$. We leave it out here. With it, each $BA$ below becomes that number times $BA$.
 

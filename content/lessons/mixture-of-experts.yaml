@@ -16,6 +16,10 @@ where_this_fits: |
 knowledge_points:
   - id: moe-choose
     title: Choose experts for each token
+    tldr: |
+      - A layer can hold several small neural networks, called experts.
+      - A learned router scores them and chooses a few for each token.
+      - Only the chosen experts run, and their weighted outputs become the token's result.
     explain: |
       ### A router scores the experts
 
@@ -80,6 +84,10 @@ knowledge_points:
       [moe-route-basics, moe-route-why-half, moe-route-weight, moe-route-all, moe-route-output]
   - id: moe-count
     title: Count parameters stored and used
+    tldr: |
+      - All experts need storage even when only a few run for one token.
+      - Count every expert for storage, and only the selected experts for the work per token.
+      - Adding more experts grows storage, but the work per token stays the same as long as each token still uses the same number of experts.
     explain: |
       ### Parameters we store and use
 
@@ -103,9 +111,15 @@ knowledge_points:
 
       ### Count one expert first
 
-      Use a two-layer expert with input width $d$, hidden width $m$, and output width $d$. Include a bias for every hidden and output unit. We use an activation with no learned parameters between the layers. The first weight matrix has shape $m\times d$ and the second $d\times m$. Each has $dm$ entries, so one expert has
-
-      $$C=2dm+m+d.$$
+      Use a two-layer expert with input width $d$, hidden width $m$, and output width $d$. Include a bias for every hidden and output unit. The activation between layers has no learned parameters. Count the matrices and biases separately to get one expert's count $C$:
+      $$
+      \begin{aligned}
+      \text{first matrix}&=md &&\text{hidden width times input width}\\
+      \text{second matrix}&=dm &&\text{output width times hidden width}\\
+      \text{biases}&=m+d &&\text{one per hidden and output unit}\\
+      C&=2dm+m+d &&\text{add all contributions}
+      \end{aligned}
+      $$
 
       Our bias-free router has $nd$ weights. For $n$ equal-sized experts and top-$k$ routing, the counts are
 
@@ -140,6 +154,10 @@ knowledge_points:
       ]
   - id: moe-balance
     title: Avoid overloading one expert
+    tldr: |
+      - If most tokens choose one expert, other experts sit idle and processing can slow down.
+      - An extra training penalty encourages the router to spread work across experts.
+      - This balances use of the experts while still training the model to predict tokens well.
     explain: |
       ### When most tokens pick one expert
 
@@ -171,9 +189,14 @@ knowledge_points:
 
       We use probabilities before selection. Afterward, unchosen experts have weight 0 regardless of score. Nudging their scores leaves those weights unchanged, so they give zero gradient for adjusting those scores.
 
-      Under perfect balance, each $f_i=1/n$ and each $P_i=1/n$. We call this uniform. Each product is $1/n^2$. The factor $n$ makes the balanced value 1 for any $n$:
-
-      $$n\times n\times\frac{1}{n^2}=1.$$
+      Under perfect balance, each $f_i=1/n$ and each $P_i=1/n$. We call this uniform. Substitute those fractions to check the penalty's size:
+      $$
+      \begin{aligned}
+      f_iP_i&=\frac1n\frac1n=\frac1{n^2} &&\text{multiply the uniform fractions}\\
+      \sum_{i=1}^n f_iP_i&=n\frac1{n^2} &&\text{add the identical products}\\
+      L_{\text{aux}}&=n\times n\times\frac1{n^2}=1 &&\text{apply the outer factor}
+      \end{aligned}
+      $$
 
       Training multiplies this penalty by a small positive number $\alpha$ and adds it to the next-token cross-entropy loss $L_{\text{main}}$:
 
