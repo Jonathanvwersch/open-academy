@@ -11,6 +11,11 @@ where_this_fits: |
 knowledge_points:
   - id: ml-what-it-is
     title: "Learn a rule from examples"
+
+    tldr: |
+      - A computer can learn a rule by trying it on examples with known answers.
+      - Learning adjusts numbers called weights to bring predictions closer to those answers.
+      - The learned rule can then predict answers for new examples.
     explain: |
       ### Three sales and three possible rules
 
@@ -102,6 +107,11 @@ knowledge_points:
       - ml-fit-weight
   - id: ml-house-model
     title: "What a computer needs to learn"
+
+    tldr: |
+      - We write each house as numbers and combine them with weights to predict a price.
+      - A score called a loss measures how far the predictions miss the sale prices.
+      - Training repeatedly changes the weights to make that loss smaller.
     explain: |
       ### A house as a list of numbers
 
@@ -115,7 +125,15 @@ knowledge_points:
 
       $$\text{prediction}=w_1x_1+w_2x_2+w_3x_3.$$
 
-      With weights $(25,10,-1)$, each ten square metres adds £25k, each bedroom adds £10k and each year of age takes off £1k, so this house is predicted at £310k. It actually sold for £330k.
+      With weights $(25,10,-1)$, each ten square metres adds £25k, each bedroom adds £10k and each year of age takes off £1k. Combine those contributions to price the house:
+      $$
+      \begin{aligned}
+      \text{prediction}&=25\times12+10\times3-1\times20 &&\text{apply the weights}\\
+      &=300+30-20 &&\text{multiply each pair}\\
+      &=310 &&\text{add the contributions}
+      \end{aligned}
+      $$
+      It actually sold for £330k.
 
       ### Scoring the weights and improving them
 
@@ -204,6 +222,11 @@ knowledge_points:
       - ml-why-new-houses
   - id: ml-to-robots
     title: "Teach a robot the same way"
+
+    tldr: |
+      - A robot uses a model to turn what it senses into its next movement.
+      - It can learn by copying recorded movements or by trying actions and receiving scores.
+      - House models and robot models both improve by changing their weights using feedback.
     explain: |
       ### From house prices to a robot arm
 

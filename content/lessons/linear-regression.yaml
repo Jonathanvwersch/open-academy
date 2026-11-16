@@ -20,12 +20,26 @@ where_this_fits: |
 knowledge_points:
   - id: lr-add-contributions
     title: "Make one prediction"
+
+    tldr: |
+      - Each measurement contributes its value multiplied by its weight.
+      - We add those contributions and then add one shared amount called the bias.
+      - That total is the model's predicted price.
     explain: |
       ### Pricing one house
 
       Let's start with one house. We know its area, $100$ m², and its number of bedrooms, $2$. We want one predicted sale price, measured in thousands of pounds.
 
-      Our rule has three numbers, which for now we simply take as given. Each square metre adds $3$ thousand pounds, each bedroom adds $10$ thousand, and on top of that we always add $50$ thousand. So the area gives $3\times100=300$, the bedrooms give $10\times2=20$, and the fixed $50$ is added once, whatever the house. In the picture these are the blue, orange and green pieces of one bar, and laid end to end they make the prediction, $370$.
+      Our rule has three given numbers. Each square metre adds $3$ thousand pounds, each bedroom adds $10$ thousand, and we always add $50$ thousand. Build the price one piece at a time:
+      $$
+      \begin{aligned}
+      3\times100&=300 &&\text{area contribution}\\
+      10\times2&=20 &&\text{bedroom contribution}\\
+      300+20&=320 &&\text{add the feature pieces}\\
+      320+50&=370 &&\text{add the fixed amount once}
+      \end{aligned}
+      $$
+      The picture lays these blue, orange and green pieces end to end.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 250" aria-label="A bar for the house with area 100 square metres and 2 bedrooms, built from three pieces laid end to end: the blue area piece, 3 times 100 equals 300; the orange bedrooms piece, 10 times 2 equals 20; and the green bias piece, 50. Together they make the predicted price, 370 thousand pounds">
@@ -60,7 +74,7 @@ knowledge_points:
       - With no bias, the prediction is just $w\cdot x=320$.
       - With the bias added once, it's $320+50=370$.
 
-      Adding it once per piece instead would give $320+50+50=420$, which is wrong, because the bias belongs to the whole prediction, not to any one feature, which is why the bar has only one green piece.
+      Adding it once per piece instead would give $320+50+50=420$, which is wrong. The bias belongs to the whole prediction, so the bar has only one green piece.
     worked: |
       Let's predict the price of a second house, with area $90$ m² and $4$ bedrooms, using the same weights $w=(3,10)$ and bias $b=50$.
 
@@ -70,7 +84,7 @@ knowledge_points:
       2. **Take the dot product.** Each feature times its weight gives one piece, and we add the pieces.
          $$w\cdot x=3\times90+10\times4=270+40=310$$
 
-      3. **Add the bias once.** The bias is added to the whole total, not to each piece.
+      3. **Add the bias once.** The bias is added to the whole total.
          $$\hat y=310+50=360$$
 
       So the model predicts $360$ thousand pounds, or £360,000, for this house.
@@ -85,12 +99,28 @@ knowledge_points:
       - lrp-new-task
   - id: lr-interpret-weights
     title: "Read the weights and the bias"
+
+    tldr: |
+      - A weight tells us how much one extra unit changes the prediction when other measurements stay fixed.
+      - Its size depends on the units used for that measurement.
+      - Each unit always adds the same amount, so predictions follow straight lines.
     explain: |
       ### Changing one feature at a time
 
       What does each number in our model say? The way to find out is to change one feature and watch the prediction.
 
-      The picture plots the predicted price against area. If we keep the bedrooms at $2$, the model becomes $3\times\text{area}+10\times2+50=3\times\text{area}+70$, which is a straight line. Keeping them at $3$ gives $3\times\text{area}+10\times3+50=3\times\text{area}+80$, a parallel line $10$ higher. Start at our house, $100$ m² with $2$ bedrooms, predicted at $370$. Following the blue dashed path, $10$ more square metres takes the price up $30$, to $400$. Following the orange arrow instead, one more bedroom at the same area takes it up $10$, to $380$.
+      The picture plots predicted price against area. Fix the bedroom count to see how each line comes from the model:
+      $$
+      \begin{aligned}
+      \hat y&=3\times\text{area}+10\times2+50 &&\text{keep two bedrooms}\\
+      &=3\times\text{area}+20+50 &&\text{multiply the bedroom piece}\\
+      &=3\times\text{area}+70 &&\text{combine the fixed pieces}\\
+      \hat y&=3\times\text{area}+10\times3+50 &&\text{keep three bedrooms}\\
+      &=3\times\text{area}+30+50 &&\text{multiply the bedroom piece}\\
+      &=3\times\text{area}+80 &&\text{combine the fixed pieces}
+      \end{aligned}
+      $$
+      These are parallel straight lines, $10$ apart. Start at our house, $100$ m² with $2$ bedrooms, predicted at $370$. Following the blue dashed path, $10$ more square metres takes the price up $30$, to $400$. Following the orange arrow instead, one more bedroom at the same area takes it up $10$, to $380$.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 450" aria-label="Predicted price against area, drawn as two parallel straight lines, one for 2-bedroom houses and one for 3-bedroom houses. Starting from the 2-bedroom house of 100 square metres at 370, the blue path moves 10 square metres to the right and rises 30, to 400. The orange arrow goes straight up from the 2-bedroom line to the 3-bedroom line at 100 square metres, a rise of 10, from 370 to 380">
@@ -181,12 +211,25 @@ knowledge_points:
       - lrp-straight-line
   - id: lr-batch-predictions
     title: "Predict every example at once"
+
+    tldr: |
+      - We can put each house's measurements in its own row of a matrix.
+      - Multiplying by the weights gives one total per house.
+      - Adding the bias to every total gives all the predicted prices at once.
     explain: |
       ### Many houses in one matrix
 
       So far we've priced one house at a time. But a dataset can hold hundreds of houses, and training compares the prediction with the target for every one of them, so we need all their predictions, with the same weights and bias. How do we get them all in one calculation?
 
-      In the matrices lesson, a matrix times a vector took one dot product per row. So we stack the houses as the rows of a matrix $X$, each row holding one house's features in the same order as $w$. Multiplying $X$ by $w$ then gives one dot product per house, and we add the bias to each result. In the picture, row 1 is our house $(100,2)$, which gives $3\times100+10\times2+50=370$, and the other two rows give $320$ and $420$.
+      A matrix times a vector takes one dot product per row. Stack the houses as rows of a matrix $X$, with features in the same order as $w$. For row 1, our house $(100,2)$:
+      $$
+      \begin{aligned}
+      w\cdot x&=3\times100+10\times2 &&\text{pair features with weights}\\
+      &=320 &&\text{multiply and add}\\
+      \hat y&=320+50=370 &&\text{add the bias}
+      \end{aligned}
+      $$
+      The other rows give $320$ and $420$ after adding the same bias.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 250" aria-label="The matrix X has one house per row: (100, 2), (80, 3) and (120, 1), with columns area and bedrooms. It is multiplied by the weights w = (3, 10), and the green bias 50 is added, giving one predicted price per row: 370, 320 and 420. The first row and its price are outlined in black, with the sum 3 times 100 plus 10 times 2 plus 50 beside it">
@@ -237,9 +280,9 @@ knowledge_points:
 
       $$\hat y=Xw+b\mathbf 1.$$
 
-      Now $\hat y$ is a vector, not one number. It has $n$ entries, one prediction per row. The bold $\mathbf 1$ is a vector of $n$ ones, so $b\mathbf 1$ adds $b$ to every entry. In NumPy this is `X @ w + b`, since NumPy adds a single number to every entry.
+      Now $\hat y$ is a vector with $n$ entries, one prediction per row. The bold $\mathbf 1$ is a vector of $n$ ones, so $b\mathbf 1$ adds $b$ to every entry. In NumPy this is `X @ w + b`, since NumPy adds a single number to every entry.
 
-      One mistake to avoid is writing `X * w + b`. The `*` multiplies matching entries without adding them. So our house's row becomes two pieces, $300$ and $20$, not one price. Over all three houses, `X * w` gives three rows of two pieces each, not three prices.
+      Avoid writing `X * w + b`. The `*` multiplies matching entries without adding them. Our house's row becomes two pieces, $300$ and $20$. Over all three houses, `X * w` gives three rows of two pieces each; we still need to add each row's pieces to get prices.
 
       ### Storing the bias as a weight
 

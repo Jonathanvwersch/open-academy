@@ -18,6 +18,11 @@ where_this_fits: |
 knowledge_points:
   - id: lr-classification
     title: "Predict a yes-or-no answer"
+
+    tldr: |
+      - We write the two possible answers as labels called zero and one.
+      - A weighted input plus a bias gives each house a score.
+      - That score needs another step before it can represent a probability.
     explain: |
       ### Two answers written as 0 and 1
 
@@ -96,6 +101,11 @@ knowledge_points:
       - lr-classification-transfer
   - id: lr-sigmoid
     title: "Turn a score into a probability"
+
+    tldr: |
+      - A function called the sigmoid squeezes any score between zero and one.
+      - The result estimates the probability that the answer is yes.
+      - We compare that probability with a cutoff to choose a label.
     explain: |
       ### Squeezing a score between 0 and 1
 
@@ -172,6 +182,11 @@ knowledge_points:
       - lr-sigmoid-transfer
   - id: lr-binary-cross-entropy
     title: "Measure how wrong a probability is"
+
+    tldr: |
+      - A useful loss checks the probability given to the answer that actually happened.
+      - Binary cross-entropy takes minus the natural log of that probability.
+      - It charges confident mistakes much more than uncertain guesses.
     explain: |
       ### What a good loss should do
 
@@ -212,7 +227,15 @@ knowledge_points:
 
       $$L=-\left[y\ln p+(1-y)\ln(1-p)\right].$$
 
-      Only one of the two terms is ever used. If $y=1$, the second term is multiplied by 0, so $L=-\ln p$. If $y=0$, it is $L=-\ln(1-p)$, using the chance of label 0.
+      Only one of the two terms is ever used. Substitute each label to see which probability the loss uses:
+      $$
+      \begin{aligned}
+      y=1:\quad L&=-[1\ln p+0\ln(1-p)] &&\text{substitute label one}\\
+      &=-\ln p &&\text{keep the chance of label one}\\
+      y=0:\quad L&=-[0\ln p+1\ln(1-p)] &&\text{substitute label zero}\\
+      &=-\ln(1-p) &&\text{keep the chance of label zero}
+      \end{aligned}
+      $$
 
       ### Three houses that sold
 
@@ -247,6 +270,11 @@ knowledge_points:
       - lr-bce-squared-error
   - id: lr-gradient
     title: "Update the weight and bias"
+
+    tldr: |
+      - The loss slope for the score is the predicted probability minus the label.
+      - Multiplying that slope by the input gives the weight's slope.
+      - Gradient descent subtracts the scaled slopes to improve the weight and bias.
     explain: |
       ### The slope of the loss against the score
 
@@ -312,8 +340,12 @@ knowledge_points:
       3. **Subtract the scaled slopes.** Both slopes are negative, so subtracting them raises both parameters.
          $$w=1-0.5\times(-1.76)=1.88,\qquad b=-4-0.5\times(-0.88)=-3.56.$$
 
-      4. **Check the new prediction.** The new score is $1.88\times2-3.56=0.2$, so the new probability is $\sigma(0.2)\approx0.55$.
-         $$L=-\ln0.55\approx0.60.$$
+      4. **Check the new prediction.** Recompute the score, probability and loss using the updated parameters.
+         $$\begin{aligned}
+         z&=1.88\times2-3.56=0.2 &&\text{compute the new score}\\
+         p&=\sigma(0.2)\approx0.55 &&\text{apply the sigmoid}\\
+         L&=-\ln0.55\approx0.60 &&\text{score the observed sale}
+         \end{aligned}$$
 
       The loss fell from $2.13$ to $0.60$ in one step. In training we average each parameter's slopes over all the houses, take one step and repeat.
 

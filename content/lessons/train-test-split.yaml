@@ -16,6 +16,11 @@ where_this_fits: |
 knowledge_points:
   - id: tts-why-hold-out
     title: "Test on houses the model hasn't seen"
+
+    tldr: |
+      - A model can fit its training examples closely and still predict new examples badly.
+      - We keep some examples out of training and score the model on them.
+      - That test score estimates how well it predicts new examples of the same kind.
     explain: |
       ### Two ways to fit four sales
 
@@ -109,6 +114,11 @@ knowledge_points:
       - ttsp-robot-heldout
   - id: tts-three-splits
     title: "Split the data into three sets"
+
+    tldr: |
+      - We need separate examples for learning, choosing a model and giving its final score.
+      - Training examples fit the weights, and validation examples help us choose between models.
+      - We score the chosen model once on the test examples after all choices are made.
     explain: |
       ### Choosing between models
 
@@ -168,6 +178,11 @@ knowledge_points:
       - ttsp-swap-after-test
   - id: tts-hyperparameters
     title: "Choose the settings training can't learn"
+
+    tldr: |
+      - Training learns weights and bias, while we choose settings such as the learning rate.
+      - These fixed settings are called hyperparameters, and we train a model for each choice.
+      - We choose using validation error and save the test set for the final score.
     explain: |
       ### What training learns, and what we choose
 
@@ -244,6 +259,11 @@ knowledge_points:
       - ttsp-why-best-of-many
   - id: tts-leakage
     title: "Keep test data out of training"
+
+    tldr: |
+      - Held-out information can reach training through duplicate records or data processing.
+      - This leakage can make the model's test score look better than it should.
+      - We prevent it by splitting first, learning processing values from training alone and keeping related records together.
     explain: |
       ### Two ways test data sneaks in
 
