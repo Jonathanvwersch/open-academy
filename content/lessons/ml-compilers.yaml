@@ -18,6 +18,11 @@ where_this_fits: |
 knowledge_points:
   - id: mlc-record-graph
     title: "Turn the model into a graph"
+
+    tldr: |
+      - Normal PyTorch runs each operation the moment Python reaches it, so it can't see what comes next.
+      - A compiler first records the whole calculation as a graph of operations and how they connect.
+      - It breaks them into simple pieces, so it can merge them and write fast GPU programs.
     explain: |
       ### Running one operation at a time
 
@@ -94,6 +99,11 @@ knowledge_points:
       - mlcp-new-op
   - id: mlc-fuse-elementwise
     title: "Merge a chain of small operations"
+
+    tldr: |
+      - Each separate GPU program writes its results to main memory, and the next one reads them back.
+      - Merging a chain of simple operations into one program keeps those results on the chip.
+      - The arithmetic is the same, but far fewer bytes move, so a memory-limited chain runs faster.
     explain: |
       ### Three kernels on one big tensor
 
@@ -133,7 +143,16 @@ knowledge_points:
 
       $$\text{eager bytes}=2kS,\qquad\text{fused bytes}=2S.$$
 
-      The fused kernel reads 2 bytes and writes 2 bytes per number. It does 3 FLOPs on each number, one per operation. That's an arithmetic intensity of $0.75$ FLOPs per byte. In the memory-bound vs compute-bound lesson, we saw that anything far below the GPU's ops:byte ratio, about 300 for an H100, is memory-bound. So its time is about bytes moved divided by bandwidth.
+      The fused kernel does 3 FLOPs on each number, one per operation. Count its reads and writes to find intensity:
+
+      $$
+      \begin{aligned}
+      \text{bytes per number}&=2+2=4 &&\text{read once and write once}\\
+      I&=3/4=0.75\text{ FLOPs per byte} &&\text{divide work by bytes moved}
+      \end{aligned}
+      $$
+
+      In the memory-bound vs compute-bound lesson, we saw that anything far below the GPU's ops:byte ratio, about 300 for an H100, is memory-bound. So its time is about bytes moved divided by bandwidth.
 
       ### What a compiler can merge
 
@@ -192,6 +211,11 @@ knowledge_points:
       - mlcp-robot-camera
   - id: mlc-egraph
     title: "Search for a cheaper equal calculation"
+
+    tldr: |
+      - The same answer can often be computed in cheaper or costlier ways.
+      - Always taking the cheapest swap right away can throw out a version that leads somewhere cheaper.
+      - An e-graph is a structure that keeps every equal version, so the compiler can pick the cheapest at the end.
     explain: |
       ### Rewriting a graph
 
@@ -208,7 +232,16 @@ knowledge_points:
 
       ### Getting stuck after one choice
 
-      Start from $(a\times2)\div2$, equal to $a$ in exact arithmetic. A greedy rewriter takes the cheapest swap and throws the old version away. Turning $a\times2$ into $a+a$ lowers the cost from 6 to 5, giving $(a+a)\div2$. The second rule can no longer match, because the multiplication is gone, so it never reaches $a$.
+      Start from $(a\times2)\div2$, equal to $a$ in exact arithmetic. A greedy rewriter takes the cheapest swap and throws the old version away. Turning $a\times2$ into $a+a$ gives $(a+a)\div2$:
+
+      $$
+      \begin{aligned}
+      \text{original cost}&=2+4=6 &&\text{count multiplication and division}\\
+      \text{rewritten cost}&=1+4=5 &&\text{replace multiplication with addition}
+      \end{aligned}
+      $$
+
+      The second rule can no longer match, because the multiplication is gone, so it never reaches $a$.
 
       ### Keeping every version
 
@@ -255,8 +288,14 @@ knowledge_points:
       3. **Apply the second rule.** It matches $(a\times2)\div2$, which the e-graph kept, and adds $a\times(2\div2)$ to the top group.
          $$a\times(2\div2):\quad2+4=6.$$
 
-      4. **Apply the last two rules.** The third puts $1$ in the group for $2\div2$, so the node $a\times(2\div2)$ now also stands for $a\times1$. The fourth shows that $a\times1$ equals $a$, so the e-graph merges the top group, which holds that node, with the group for $a$. Merging joins the two boxes into one box holding the nodes of both, and every arrow that pointed at either now points at the joined box. So the $\times$ node now points back at its own box, which just records that $a\times1$ is in the same group as $a$.
-         $$a\times1:\quad2,\qquad a:\quad0.$$
+      4. **Apply the last two rules.** Simplify the retained version with the division and identity rules:
+         $$\begin{aligned}
+         a\times(2\div2)&=a\times1 &&\text{the third rule replaces the division with one}\\
+         &=a &&\text{the fourth rule removes multiplication by one}\\
+         a\times1:\quad2,&\qquad a:\quad0 &&\text{compare the remaining operation costs}
+         \end{aligned}$$
+
+         The e-graph merges the top group, which holds the $a\times(2\div2)$ node, with the group for $a$. Merging joins the two boxes into one box holding the nodes of both, and every arrow that pointed at either now points at the joined box. So the $\times$ node now points back at its own box, which just records that $a\times1$ is in the same group as $a$.
 
       5. **Extract the cheapest.** Nothing new appears after this, so saturation stops. Extraction picks the cheapest of the versions we've costed in the top group.
          $$\min(6,\ 5,\ 6,\ 2,\ 0)=0.$$
@@ -275,6 +314,11 @@ knowledge_points:
       - mlcp-attention-scale-template
   - id: mlc-autotune
     title: "Tune each kernel for one GPU"
+
+    tldr: |
+      - One GPU program can split its work into blocks of many different sizes.
+      - Which size is fastest depends on the GPU and on the shape of the data.
+      - So the compiler times several choices on the real GPU and keeps the fastest for that shape.
     explain: |
       ### Many ways to run one kernel
 

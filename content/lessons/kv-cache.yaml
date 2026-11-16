@@ -20,6 +20,11 @@ where_this_fits: |
 knowledge_points:
   - id: kvc-reuse
     title: Reuse earlier keys and values
+
+    tldr: |
+      - Each token only looks back at earlier tokens, so a new token can't change their keys and values.
+      - So the model can store those keys and values, called the KV cache, instead of recomputing them.
+      - Each new step then processes only the newest token and adds its key and value to the cache.
     explain: |
       ### Reuse three stored tokens
 
@@ -109,6 +114,11 @@ knowledge_points:
       - kvc-edit-history
   - id: kvc-heads
     title: Share keys and values between heads
+
+    tldr: |
+      - Each query head reads keys and values that the model stores for every token.
+      - Several query heads can share one stored set of keys and values.
+      - Sharing shrinks the cache, and each query head still makes its own attention weights.
     explain: |
       ### Share one key-value set
 
@@ -171,6 +181,11 @@ knowledge_points:
       - kvc-heads-new-model
   - id: kvc-memory
     title: Work out the cache's memory
+
+    tldr: |
+      - Every processed token stores a key and a value in every layer.
+      - Longer conversations and more conversations both mean more stored numbers.
+      - Adding them up shows that a long or busy workload can fill the GPU memory left after the weights.
     explain: |
       ### Build the size from one token
 
@@ -209,7 +224,17 @@ knowledge_points:
       3. **Multiply and convert to GB.** Divide bytes by one billion, then round to two decimal places.
          $$\frac{131{,}072\times4{,}000}{10^9}=0.524288\text{ GB}\approx0.52\text{ GB}.$$
 
-      If the assistant instead keeps 500 conversations of 1,000 tokens each, it must store 500,000 processed tokens. That cache would take about 65.54 GB, rounded to two decimal places. It exceeds the roughly 64 GB left after the weights, even before temporary calculations and unused reserved space. Long histories and many conversations can therefore fill this GPU.
+      If the assistant instead keeps 500 conversations of 1,000 tokens each, compare the cache with the space left after the weights:
+
+      $$
+      \begin{aligned}
+      \text{processed tokens}&=500\times1000=500{,}000 &&\text{count every conversation's entries}\\
+      \text{cache GB}&=\frac{131{,}072\times500{,}000}{10^9}\approx65.54 &&\text{multiply by bytes per token}\\
+      \text{remaining GB}&=80-16=64 &&\text{leave room for the weights}
+      \end{aligned}
+      $$
+
+      The cache exceeds that space, even before temporary calculations and unused reserved space. Long histories and many conversations can therefore fill this GPU.
     problems:
       - kvc-memory-basics
       - kvc-memory-self
@@ -220,6 +245,11 @@ knowledge_points:
       - kvc-budget-new-model
   - id: kvc-prefix
     title: Reuse the start of a prompt
+
+    tldr: |
+      - Many requests start with the same tokens, such as shared instructions.
+      - If the tokens, their positions and the model all match, the stored keys and values for that start can be reused.
+      - Then only the tokens after that shared start need processing.
     explain: |
       ### Two requests start the same way
 
