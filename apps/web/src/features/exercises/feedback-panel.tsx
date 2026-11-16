@@ -107,7 +107,7 @@ export function FeedbackPanel({
       ) : null}
       {correct && slowTargetSeconds !== undefined ? (
         <p className="mt-2 text-sm leading-5">
-          Correct. Try to get this one in under {slowTargetSeconds} seconds next time.
+          Try to get this one in under {slowTargetSeconds} seconds next time.
         </p>
       ) : null}
       {rubric.some((item) => item.judgement) ? (

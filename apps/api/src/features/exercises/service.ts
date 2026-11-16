@@ -530,11 +530,10 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
             .limit(1);
           if (!existingLog) {
             const rating = reviewActivityRating(
-              exerciseAttempts.map((items, exerciseIndex) => {
+              exerciseAttempts.map((items) => {
                 const lastAttempt = items.at(-1);
-                const exerciseId = activity.exerciseIds[exerciseIndex];
-                const reviewedExercise = exerciseId
-                  ? index.exercisesById.get(exerciseId)
+                const reviewedExercise = lastAttempt
+                  ? index.exercisesById.get(lastAttempt.exerciseId)
                   : undefined;
                 return {
                   correct: lastAttempt?.correct ?? 0,

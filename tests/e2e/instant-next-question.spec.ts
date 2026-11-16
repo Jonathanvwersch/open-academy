@@ -172,7 +172,7 @@ test('slow correct review answers show the target-time feedback', async ({ page 
   await page.clock.fastForward('00:31');
   await answerCorrectly(page, '5');
   await expect(
-    page.getByText('Correct. Try to get this one in under 30 seconds next time.', {
+    page.getByText('Try to get this one in under 30 seconds next time.', {
       exact: true,
     }),
   ).toBeVisible();
