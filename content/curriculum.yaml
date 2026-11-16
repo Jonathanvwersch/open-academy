@@ -76,7 +76,7 @@ courses:
 default_course: ml-foundations
 subject:
   title: machine learning, AI and robotics
-  tutor_context: The learner is a strong software engineer working towards understanding and building modern robot-learning systems.
+  tutor_context: The learner may be new to the subject but can program. Explain ideas from first principles and connect them to how real machine learning, AI and robotics systems are built.
 goals:
   - {
       id: g-training,

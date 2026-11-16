@@ -19,7 +19,7 @@ we'd want frequencies (e.g. a hum in a recording is invisible in the waveform bu
   and shown how it works than when asked to discover it. So each new idea is defined first, then worked, then justified.
 - **Advance organisers** (Ausubel 1960): a short overview of how new material connects to what you know makes it easier to
   learn. Hence the course introduction lesson, the "Where this fits" opening of every lesson and the week intros.
-- **Learner feedback (decided with the user):** opening on a question or an invented scenario ("a housing app scores
+- **Learner feedback:** opening on a question or an invented scenario ("a housing app scores
   buyers") before saying what the thing is felt disordered. Lessons must read in the order: where this fits → what it is →
   how it works → why it is useful.
 
