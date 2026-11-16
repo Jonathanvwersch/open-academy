@@ -20,8 +20,8 @@ knowledge_points:
     title: Score each source of information
     tldr: |
       - Each token makes a query vector describing what information it needs.
-      - Each source token makes a key vector describing what it offers.
-      - A dot product compares them, then scaling based on the key's number of entries keeps scores a sensible size.
+      - Each source, a token that supplies information, makes a key vector describing what it offers.
+      - A dot product compares them, and dividing by a number set by the key's size keeps scores sensible.
       - A higher score means a better match for what the token needs.
     explain: |
       ### Prepare the vectors we need
