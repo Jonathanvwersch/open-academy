@@ -19,9 +19,9 @@ knowledge_points:
   - id: dqn-q-network
     title: "Replace the table with a network"
     tldr: |
-      - A Q-network reads a state and predicts a value for each action.
-      - We train the chosen action's prediction toward a target built from the move's result.
-      - Changing the network's weights also changes its predictions for other states.
+      - A Q-network is a neural network that reads a state and gives a value for each action.
+      - We train it like Q-learning, nudging the value of the move made toward the Q-learning target.
+      - One set of weights makes every value, so training on one cell also changes the values of other cells.
     explain: |
       ### The corridor task
 
@@ -116,9 +116,9 @@ knowledge_points:
   - id: dqn-replay
     title: "Train on a store of past moves"
     tldr: |
-      - Consecutive moves often look alike, so training only on recent moves can erase earlier learning.
-      - A replay buffer stores past moves and lets us train on random groups of them.
-      - This mixes experience from different times and reuses each move for learning.
+      - Moves in a row look alike, so training on each move as it happens can undo what earlier moves taught.
+      - A replay buffer is a store of past moves, and we train on random handfuls drawn from it.
+      - So each training step mixes old and new moves, and each move gets used many times.
     explain: |
       ### Two problems with learning as we go
 
@@ -209,9 +209,9 @@ knowledge_points:
   - id: dqn-target-network
     title: "Use a frozen network copy for targets"
     tldr: |
-      - Training a Q-network can change the target it is trying to reach.
-      - A frozen copy of the network holds those targets steady during training.
-      - We refresh the copy occasionally so its targets catch up with learning.
+      - The network computes its own targets, so a training step can move the target too.
+      - A target network is a frozen copy used only to compute targets, so they hold still.
+      - Every so often we copy the trained weights into it, so the targets catch up.
     explain: |
       ### The target moves when we train
 
@@ -318,9 +318,9 @@ knowledge_points:
   - id: dqn-training-loop
     title: "Put the whole training loop together"
     tldr: |
-      - DQN chooses actions, stores moves and trains on random groups of stored moves.
-      - A frozen network supplies the targets, and the learning network supplies the predictions.
-      - Repeating this loop learns action values for tasks with too many states for a table.
+      - Each pass of the DQN loop picks a move, stores it and trains on a random handful of stored moves.
+      - The frozen copy gives the targets, and the network being trained gives the predictions.
+      - This loop learned dozens of Atari games from the screen, but it needs a short list of actions and lots of practice.
     explain: |
       ### The DQN loop
 

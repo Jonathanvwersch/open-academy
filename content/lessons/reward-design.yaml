@@ -15,9 +15,9 @@ knowledge_points:
   - id: rd-sparse
     title: "Reward only at the goal"
     tldr: |
-      - Rewarding only success tells the agent what the goal is.
-      - Before it finds that reward, it gets little guidance about which moves help.
-      - Once it finds the goal, discounting makes reaching it sooner worth more.
+      - A sparse reward pays only at the goal, so it is easy to write and clear about what we want.
+      - Until the agent stumbles on the goal, every move looks the same, and in a long task that can take a very long time.
+      - Once it has found the goal, discounting makes the shortest path worth the most.
     explain: |
       ### A robot in a corridor
 
@@ -87,9 +87,9 @@ knowledge_points:
   - id: rd-shaping
     title: "Add rewards that guide the way"
     tldr: |
-      - Extra rewards can show the agent which moves make progress.
-      - We can base each bonus on the change in a state's progress score.
-      - When these bonuses cancel along the way, they guide learning without changing the best path.
+      - Reward shaping adds rewards along the way, so the agent can tell which moves make progress.
+      - Give each state a progress score, and reward each move by how much it raises that score.
+      - Along any path these bonuses add up to the last score minus the first, so the best path stays the best.
     explain: |
       ### Rewards along the way
 
@@ -179,9 +179,9 @@ knowledge_points:
   - id: rd-hacking
     title: "When the robot finds a loophole"
     tldr: |
-      - Extra rewards can give the agent a way to score without finishing the task.
-      - A repeatable bonus can make endless looping more profitable than reaching the goal.
-      - Check for these loopholes and watch what the trained agent actually does.
+      - An agent finds the easiest way to earn reward, even if that skips the task.
+      - If a bonus can be collected again and again, looping forever can earn more than reaching the goal.
+      - This is called reward hacking, so check rewards for loopholes before training and watch what the agent does after.
     explain: |
       ### A bonus with a loophole
 
@@ -257,7 +257,7 @@ knowledge_points:
       $$
       \begin{aligned}
       \text{round trip}&=(-1+1)+(-1-1) &&\text{add the two shaped rewards}\\
-      &=0-2=-2 &&\text{the bonuses cancel}
+      &=0-2=-2 &&\text{add the two moves}
       \end{aligned}
       $$
       With this bonus, looping always costs.

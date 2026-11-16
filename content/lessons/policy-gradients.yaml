@@ -17,9 +17,10 @@ knowledge_points:
   - id: pg-score
     title: "Score a policy by its average return"
     tldr: |
-      - A policy's score is its average return over many episodes.
-      - Its adjustable numbers control how likely each action is.
-      - Moving those numbers up the score's slope improves the policy.
+      - We score a policy by its average return over many episodes.
+      - The policy has adjustable numbers that set how likely each action is.
+      - Nudging those numbers uphill on the score, called gradient ascent, improves the policy.
+      - The robot doesn't know the world's rules, so it has to estimate the uphill direction from episodes it plays.
     explain: |
       ### A robot that picks a direction
 
@@ -111,9 +112,10 @@ knowledge_points:
   - id: pg-log-trick
     title: "Estimate the slope by trying actions"
     tldr: |
-      - We need a way to estimate the score's slope from actions we actually try.
-      - The log of an action's probability tells us how that probability changes.
-      - Multiplying that slope by the return gives an estimate that is right on average.
+      - We need the score's slope, but the agent can only try actions.
+      - A trick with logs rewrites that slope as an average over the actions the policy actually picks.
+      - Each try gives an estimate: its reward times the slope of the log of its probability.
+      - One estimate can point the wrong way, but their average is the true slope.
     explain: |
       ### One choice, then stop
 
@@ -204,9 +206,9 @@ knowledge_points:
   - id: pg-reinforce
     title: "Learn from whole episodes"
     tldr: |
-      - An episode's chance depends on the policy's choices and the world's responses.
-      - When we find its slope, the world's fixed rules drop out.
-      - The return and the action slopes together tell us how to update the policy.
+      - An episode's chance is the policy's chance for each action times the world's chance for each move.
+      - The world's chances don't depend on the policy's numbers, so they drop out when we take the slope.
+      - That gives REINFORCE: play an episode, then make its actions more likely if the return was good and less likely if it was bad.
     explain: |
       ### From one choice to an episode
 
@@ -228,7 +230,8 @@ knowledge_points:
       Repeat the slot-machine argument with episodes in place of arms:
       $$
       \begin{aligned}
-      \nabla_\theta J&=\sum_\tau G_0\,\nabla_\theta P(\tau) &&\text{differentiate the weighted returns}\\
+      J&=\sum_\tau G_0\,P(\tau) &&\text{weight each episode's return}\\
+      \nabla_\theta J&=\sum_\tau G_0\,\nabla_\theta P(\tau) &&\text{only the probabilities depend on }\theta\\
       &=\sum_\tau G_0 P(\tau)\,\nabla_\theta\ln P(\tau) &&\text{apply the log trick}\\
       &=E\Big[G_0\sum_{t=0}^{T-1}\nabla_\theta\ln\pi_\theta(a_t\mid s_t)\Big] &&\text{average the policy slopes}
       \end{aligned}
@@ -294,9 +297,9 @@ knowledge_points:
   - id: pg-baseline
     title: "Compare each return with a typical one"
     tldr: |
-      - One episode can give a misleading slope estimate even when the average is right.
-      - A baseline is a typical return that we subtract before weighting the action's slope.
-      - A well-chosen baseline reduces the spread of estimates while keeping their average unchanged.
+      - Single estimates can be far off, even when their average is right.
+      - A baseline is a typical return that we subtract from each return, so we ask whether it went better or worse than usual.
+      - The average stays the same, and a baseline close to the typical return makes the estimates much less noisy.
     explain: |
       ### Noisy estimates
 

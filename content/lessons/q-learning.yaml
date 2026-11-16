@@ -15,9 +15,9 @@ knowledge_points:
   - id: ql-q-table
     title: "Score every move in every cell"
     tldr: |
-      - A Q-table stores a score for each action in each state.
-      - Each score includes the reward now and the best rewards expected afterward.
-      - Choosing the largest score gives the best-looking move.
+      - Q-learning keeps a table with one number for each move in each state.
+      - Each number is the move's reward plus the most return the robot can collect after it.
+      - In each state, the robot picks the move with the biggest number.
     explain: |
       ### A robot in a corridor
 
@@ -102,9 +102,10 @@ knowledge_points:
   - id: ql-update-rule
     title: "Update one value after each move"
     tldr: |
-      - Each move gives a real reward and a new state to learn from.
-      - The reward and the best next-state guess form a target for the move's value.
-      - We move the stored value partway toward that target.
+      - After each move, the robot sees the reward and the state it lands in.
+      - The reward plus the discounted best table value in the new state gives a target.
+      - The robot moves that move's value part of the way toward the target, because one move can mislead.
+      - Over many moves, the goal's reward spreads back along the corridor.
     explain: |
       ### Learning from one move
 
@@ -193,9 +194,9 @@ knowledge_points:
   - id: ql-explore
     title: "Try other moves now and then"
     tldr: |
-      - Early guesses can make a poor move look best.
-      - Occasionally choosing at random lets the robot discover better moves.
-      - Q-learning still builds its targets from the best next move while it explores.
+      - Always picking the move that looks best can get stuck on a bad early guess.
+      - So now and then the robot picks a move at random, which lets it find better ones.
+      - The target still uses the best value in the next state, so the table learns the best values while the robot explores.
     explain: |
       ### Always picking the best can get stuck
 
@@ -250,8 +251,8 @@ knowledge_points:
       Let's return to the corridor without the charger and continue the example from Step 2. Episode 2 also updated two other entries. Each closes half the gap to its target:
       $$
       \begin{aligned}
-      Q(1,\text{right})&\leftarrow-0.5+0.5(-1-(-0.5))=-0.75 &&\text{target minus one}\\
-      Q(3,\text{right})&\leftarrow5+0.5(10-5)=7.5 &&\text{target ten}
+      Q(1,\text{right})&\leftarrow-0.5+0.5(-1-(-0.5))=-0.75 &&\text{the target is }-1\\
+      Q(3,\text{right})&\leftarrow5+0.5(10-5)=7.5 &&\text{the target is }10
       \end{aligned}
       $$
       So the table holds $Q(1,\text{right})=-0.75$, $Q(2,\text{right})=1.5$ and $Q(3,\text{right})=7.5$, and every left value is still $0$. From episode 3 on, the robot moves epsilon-greedily with $\varepsilon=0.1$, and still $\eta=0.5$ and $\gamma=0.9$.
@@ -285,9 +286,9 @@ knowledge_points:
   - id: ql-full-run
     title: "Run Q-learning on the corridor"
     tldr: |
-      - Q-learning repeats choosing a move, seeing its result and updating one table entry.
-      - Repeated visits let the goal reward improve guesses farther along the path.
-      - The table can learn the best moves when there are few enough states to revisit.
+      - Q-learning repeats three things: pick a move, see what happens, and update that move's value.
+      - Over many episodes, the goal's reward spreads back until the table holds the best values.
+      - A table only works when there are few enough states for every move to be tried many times.
     explain: |
       ### The whole algorithm
 

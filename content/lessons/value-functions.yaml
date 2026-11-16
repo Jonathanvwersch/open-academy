@@ -15,9 +15,9 @@ knowledge_points:
   - id: vf-state-value
     title: "Measure how good each state is"
     tldr: |
-      - A state's value is the average return from starting there and following a policy.
-      - It counts rewards all the way to the end of the trip.
-      - Changing the policy can change the value of the same state.
+      - A state's value is the return we expect if the robot starts there and follows its policy.
+      - It counts every reward still to come, so a cell near the goal is worth more.
+      - The same cell can be worth a lot under one policy and very little under another.
     explain: |
       ### A robot in a corridor
 
@@ -114,9 +114,9 @@ knowledge_points:
   - id: vf-action-value
     title: "Measure how good each move is"
     tldr: |
-      - We can score one chosen move before returning to the policy.
-      - Its action value includes the immediate reward and the discounted value of where it leads.
-      - Comparing action values shows which move would improve the policy.
+      - An action value scores one move: make it, then go back to following the policy.
+      - It is the move's reward plus the discounted value of the cell it lands in.
+      - Comparing the values of different moves shows where the policy could do better.
     explain: |
       ### Asking about one move
 
@@ -202,9 +202,10 @@ knowledge_points:
   - id: vf-bellman-expectation
     title: "Get a state's value from the next state"
     tldr: |
-      - A return splits into the next reward and the discounted return after that.
-      - Averaging these pieces gives the state's value under its policy.
-      - Using current guesses for the next states gives a new guess for this state.
+      - A state's value is the next reward plus the discounted value of the state it leads to.
+      - When choices or moves are random, we average over what can happen.
+      - Using guesses for the next states gives a new guess for this one, a Bellman backup.
+      - Repeating backups for every state brings the guesses to the true values.
     explain: |
       ### One step plus the rest
 
@@ -287,9 +288,10 @@ knowledge_points:
   - id: vf-bellman-optimality
     title: "Find the most reward the robot can get"
     tldr: |
-      - The best state value is the most return any policy can earn from there.
-      - We update each guess using the best move and the current guesses for later states.
-      - Repeating this spreads the goal reward backward and reveals the best moves.
+      - A state's best value is the most return any policy can collect from it.
+      - It equals the best move's reward plus the discounted best value of where it lands.
+      - Repeating this spreads the goal's reward back one cell at a time.
+      - When the values stop changing, the best move in each cell is the one worth the most.
     explain: |
       ### The best the robot can do
 

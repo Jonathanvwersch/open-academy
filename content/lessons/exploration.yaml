@@ -18,7 +18,7 @@ knowledge_points:
     tldr: |
       - An agent learns about an action by trying it and recording its rewards.
       - One unlucky result can make a good action look poor.
-      - Always picking the best-looking action can leave that mistake uncorrected forever.
+      - A greedy agent never tries that action again, so the mistake is never fixed.
     explain: |
       ### A slot machine with two arms
 
@@ -82,9 +82,10 @@ knowledge_points:
   - id: xpl-epsilon-greedy
     title: "Pick a random action some of the time"
     tldr: |
-      - Occasionally picking at random gives overlooked actions another chance.
-      - This random pick can also choose the action that already looks best.
-      - We can explore often at first and less as our estimates improve.
+      - Epsilon-greedy usually takes the best-looking action, but now and then picks one at random.
+      - The random pick can also land on the best-looking action, which adds a little to its chance.
+      - Every action keeps being tried, so a good action that started out unlucky gets found.
+      - Agents often explore a lot at first and less as their estimates improve.
     explain: |
       ### Explore at random, now and then
 
@@ -162,9 +163,9 @@ knowledge_points:
   - id: xpl-entropy-bonus
     title: "Keep a policy's choices spread out"
     tldr: |
-      - A policy that learns action probabilities can settle on one action too early.
-      - Entropy measures how spread out those probabilities are.
-      - Giving extra credit for higher entropy encourages the policy to keep trying other actions.
+      - Some agents learn their action probabilities directly, and they can pile all the probability on one action too early.
+      - Entropy is a number that measures how spread out the probabilities are.
+      - Adding a bonus for entropy to the score keeps the probabilities spread out, so the agent keeps trying other actions.
     explain: |
       ### Agents that learn their probabilities
 

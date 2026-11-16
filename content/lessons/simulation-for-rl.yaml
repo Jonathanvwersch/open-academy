@@ -15,9 +15,9 @@ knowledge_points:
   - id: sim-reset-step
     title: "Start the task and take one step"
     tldr: |
-      - A simulation environment is a program that responds to the agent's actions.
-      - Reset starts an episode, and step returns the result of one action.
-      - After an episode ends, reset must start the next one.
+      - A simulation environment is a program that plays the world for the agent.
+      - Reset starts a new try, and step applies one action and reports the next state, the reward and whether the try is over.
+      - After a try ends, call reset before stepping again.
     explain: |
       ### The corridor as a program
 
@@ -107,9 +107,9 @@ knowledge_points:
   - id: sim-interaction-loop
     title: "Write the loop that runs an episode"
     tldr: |
-      - Running an episode means repeatedly choosing an action and recording its result.
-      - The loop stops when the task ends or a time limit cuts it short.
-      - Keeping these endings separate tells learning methods whether more reward could have followed.
+      - To run an episode, we call reset once, then keep letting the policy pick an action and calling step.
+      - The loop stops when the task ends or when a time limit cuts it short.
+      - Step reports these two endings separately, because only a time-limit stop could have been followed by more reward.
     explain: |
       ### The loop
 
@@ -317,9 +317,9 @@ knowledge_points:
   - id: sim-to-real
     title: "Move from the simulator to a real robot"
     tldr: |
-      - A simulator can make an action look safer than it is on a real robot.
-      - Training across varied conditions helps the policy cope with uncertain settings.
-      - Testing realistic variations and measuring the robot help close the gap to the real world.
+      - No simulator matches the real world exactly, so a policy that scores best in simulation can fail on a real robot.
+      - Domain randomisation changes the simulator's uncertain settings, such as friction, at random on every reset.
+      - A policy trained across all those settings learns actions that still work when the real world is one of them.
     explain: |
       ### No simulator is exact
 

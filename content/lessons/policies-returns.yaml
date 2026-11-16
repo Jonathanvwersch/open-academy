@@ -15,9 +15,9 @@ knowledge_points:
   - id: pr-choose-actions
     title: Choose actions in each state
     tldr: |
-      - A policy is a rule for choosing actions in each state.
-      - The rule can always pick the same action or give each action a chance.
-      - Those chances describe the robot's choices and add to one in each state.
+      - A policy is the robot's rule for which action to take in each state.
+      - The rule can always pick the same action, or give each action a chance of being picked.
+      - In each state those chances add up to one, and they say how often each action is chosen.
     explain: |
       ### A rule for the robot
 
@@ -82,8 +82,8 @@ knowledge_points:
     title: Add the rewards from a trip
     tldr: |
       - A return is a score for the rewards still to come on a trip.
-      - The next reward counts fully, and each later reward gets another discount.
-      - Adding these weighted rewards gives the return from the current time.
+      - The next reward counts in full, and each reward after it counts a bit less than the one before.
+      - Adding them up gives the return, and rewards that have already arrived are left out.
     explain: |
       ### Rewards arrive after actions
 
@@ -161,9 +161,10 @@ knowledge_points:
   - id: pr-weight-delay
     title: Choose how much delay matters
     tldr: |
-      - The discount factor controls how much delayed rewards count.
-      - Raising it gives later gains and later penalties more weight.
-      - A trip's score depends on this setting, and judging a policy needs its possible trips.
+      - The discount factor sets how much a reward counts for each step it is delayed.
+      - Raising it makes a far-off goal count for more.
+      - It also makes a far-off penalty hurt more, so raising it can lower the score too.
+      - One trip's score can't judge a random policy, since it can take many trips.
     explain: |
       ### The same trip with different weights
 

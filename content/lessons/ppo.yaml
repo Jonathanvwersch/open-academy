@@ -16,9 +16,9 @@ knowledge_points:
   - id: ppo-advantage
     title: "Score each action by how much better it did than usual"
     tldr: |
-      - A critic is a model that predicts the return from each state.
-      - An action's advantage says how much better it did than the critic expected.
-      - This comparison can favor a useful move even when its immediate reward is negative.
+      - A critic is a second model that predicts the return from each state.
+      - An action's advantage is how much better it did than the critic expected.
+      - So a move can score well even when its own reward is negative, because it leads somewhere better.
     explain: |
       ### A corridor robot
 
@@ -93,9 +93,9 @@ knowledge_points:
   - id: ppo-gae
     title: "Look several steps ahead"
     tldr: |
-      - We can judge a move using the next reward or the whole remaining trip.
-      - The first choice relies more on the critic, while the second varies more between episodes.
-      - Combining several steps lets us balance these two sources of error.
+      - We can judge a move by its next reward plus the critic's guess, or by all the real rewards after it.
+      - The first trusts guesses that can be off, and the second jumps around between episodes.
+      - Generalized advantage estimation (GAE) blends the two, with a setting we choose for the mix.
     explain: |
       ### Two ways to estimate
 
@@ -188,9 +188,10 @@ knowledge_points:
   - id: ppo-ratio
     title: "Compare the new policy with the old"
     tldr: |
-      - We want to learn several times from the same group of actions.
-      - A probability ratio compares how likely each recorded action is under the new and old policies.
-      - Weighting advantages by these ratios lets us reuse experience, but large changes can hurt the policy.
+      - Collecting experience is slow, so we want to learn from the same batch several times.
+      - For each recorded action, the ratio is its new probability divided by its old one.
+      - Multiplying each advantage by its ratio gives a score we can push up several times.
+      - Nothing stops that score from rewarding bigger and bigger changes, which can wreck the policy.
     explain: |
       ### Reusing a batch
 
@@ -274,9 +275,9 @@ knowledge_points:
   - id: ppo-clip
     title: "Cap how far one update can go"
     tldr: |
-      - Repeated updates can push a policy too far on the strength of noisy estimates.
-      - PPO stops giving an action extra credit once its probability has moved far enough.
-      - This makes reusing experience safer, though shared parameters can still move other probabilities.
+      - PPO stops rewarding a change once an action's probability has moved more than a set amount, usually 20 percent, from its old value.
+      - Pushing further earns nothing, so noisy estimates can't drag the policy far in one batch.
+      - That makes several passes over each batch safe, though the limit is soft because one update also shifts other probabilities.
     explain: |
       ### Clipping the ratio
 

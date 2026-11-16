@@ -15,9 +15,9 @@ knowledge_points:
   - id: mdp-task
     title: Describe a robot's task
     tldr: |
-      - A robot chooses an action and receives a reward after each step.
-      - Its state records the situation before it acts.
-      - The state must contain enough information to predict what can happen next.
+      - At each time step, the robot picks an action and gets a score called a reward.
+      - Its state is a record of its situation, such as which cell it is in.
+      - A good state holds everything needed to predict what happens next, so the earlier history adds nothing.
     explain: |
       ### A robot in four cells
 
@@ -83,9 +83,9 @@ knowledge_points:
   - id: mdp-transitions
     title: Describe uncertain moves
     tldr: |
-      - One command can lead to several possible outcomes.
-      - We give each outcome a chance, and those chances add to one.
-      - Multiplying each reward by its chance and adding gives the average reward.
+      - With an unreliable motor, one command can lead to more than one outcome.
+      - We give each outcome a chance, and the chances add up to one.
+      - A command's average reward is each reward times its chance, added up.
     explain: |
       ### One choice can have two outcomes
 
