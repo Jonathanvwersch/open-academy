@@ -8,11 +8,12 @@ import {
   readdirSync,
   readFileSync,
   statSync,
+  unlinkSync,
   writeFileSync,
 } from 'node:fs';
 import { basename, dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseArgs } from 'node:util';
+import { isDeepStrictEqual, parseArgs } from 'node:util';
 import { ContentValidationError, loadContent, loadContentReport } from '@academy/api/content';
 import { isMap, isSeq, parse, parseDocument, stringify } from 'yaml';
 
@@ -44,7 +45,39 @@ const helpText: Record<string, string> = {
 };
 
 function showHelp(command = 'root') {
+  if (command === 'root') {
+    const commands = Object.entries(helpText)
+      .filter(([name]) => name !== 'root')
+      .map(([, usage]) => `  ${usage}`)
+      .join('\n');
+    console.log(`Usage:\n${commands}`);
+    return;
+  }
   console.log(helpText[command] ?? helpText.root);
+}
+
+export function packSkillText(text: string): string {
+  return text
+    .replaceAll(
+      'Run `pnpm content:check` and the content tests (`pnpm exec vitest run apps/api/tests/content/*.test.ts` or the full `pnpm test`)',
+      'Run `academy check`',
+    )
+    .replaceAll(
+      'Run `pnpm content:check`, `pnpm exec vitest run apps/api/tests/content/` and `pnpm check`',
+      'Run `academy check`',
+    )
+    .replaceAll(
+      'Every lesson in `content/lessons/` has been rewritten with this skill. `content/lessons/gradient-descent.yaml` is the reference lesson.',
+      '`.agents/skills/write-lesson/reference/lesson.yaml` is the reference lesson.',
+    )
+    .replaceAll('pnpm content:check', 'academy check')
+    .replaceAll('pnpm dev', 'academy dev')
+    .replaceAll(
+      'docs/design/lesson-standard.md',
+      '.agents/skills/write-lesson/reference/lesson-standard.md',
+    )
+    .replaceAll('docs/CONTENT_FORMAT.md', '.agents/skills/write-lesson/reference/CONTENT_FORMAT.md')
+    .replaceAll('content/', '');
 }
 
 function parseOptions(args: string[]) {
@@ -82,6 +115,42 @@ function slug(value: string): string {
   );
 }
 
+function initStarterTopic(id: string, subjectTitle: string) {
+  return {
+    id,
+    title: 'First topic',
+    description: `The first topic in ${subjectTitle}.`,
+    difficulty: 1,
+    est_minutes: 30,
+    goal_weight: 0,
+    dimensions: ['conceptual'],
+    prereqs: [],
+    related: [],
+    objectives: [{ text: `Understand the basics of ${subjectTitle}.`, dimension: 'conceptual' }],
+    projects: [],
+    sources: [],
+    status: 'stub',
+  };
+}
+
+function courseStarterTopic(id: string, courseTitle: string) {
+  return {
+    id,
+    title: `${courseTitle} topic`,
+    description: `A placeholder topic for ${courseTitle}.`,
+    difficulty: 1,
+    est_minutes: 30,
+    goal_weight: 0,
+    dimensions: ['conceptual'],
+    prereqs: [],
+    related: [],
+    objectives: [{ text: `Understand ${courseTitle}.`, dimension: 'conceptual' }],
+    projects: [],
+    sources: [],
+    status: 'stub',
+  };
+}
+
 function writeYaml(file: string, value: unknown) {
   mkdirSync(dirname(file), { recursive: true });
   writeFileSync(file, stringify(value), 'utf8');
@@ -95,6 +164,67 @@ function editYaml(
   if (document.errors.length) fail(`Cannot parse ${file}: ${document.errors[0]?.message}`);
   update(document);
   return document.toString();
+}
+
+function addConceptToFile(file: string, domain: string, concept: unknown) {
+  if (existsSync(file)) {
+    const source = editYaml(file, (document) => {
+      const concepts = document.get('concepts', true);
+      if (!isSeq(concepts)) fail(`Expected concepts sequence in ${file}.`);
+      concepts.add(concept);
+    });
+    writeFileSync(file, source);
+  } else {
+    writeYaml(file, { domain, concepts: [concept] });
+  }
+}
+
+function addTopicToUnit(file: string, unit: string, topicId: string, starterIds: string[] = []) {
+  const unitIndex = Number(unit) - 1;
+  const source = editYaml(file, (document) => {
+    const units = document.get('units', true);
+    if (!isSeq(units)) fail(`Expected units sequence in ${file}.`);
+    const unitNode = units.items[unitIndex];
+    if (!isMap(unitNode)) fail(`Expected unit mapping in ${file}.`);
+    const concepts = unitNode.get('concepts', true);
+    if (!isSeq(concepts)) fail(`Expected concepts sequence in unit ${unit}.`);
+    concepts.add(topicId);
+    for (const starterId of starterIds) {
+      for (let index = concepts.items.length - 1; index >= 0; index -= 1) {
+        if (concepts.get(index) === starterId) concepts.delete(index);
+      }
+    }
+  });
+  writeFileSync(file, source);
+}
+
+function removeConceptFromFile(file: string, topicId: string) {
+  const source = editYaml(file, (document) => {
+    const concepts = document.get('concepts', true);
+    if (!isSeq(concepts)) fail(`Expected concepts sequence in ${file}.`);
+    const index = concepts.items.findIndex((node) => isMap(node) && node.get('id') === topicId);
+    if (index < 0) fail(`Could not find starter topic "${topicId}" in ${file}.`);
+    concepts.delete(index);
+  });
+  writeFileSync(file, source);
+}
+
+function snapshotFiles(files: string[]): Map<string, string | undefined> {
+  const snapshots = new Map<string, string | undefined>();
+  for (const file of new Set(files)) {
+    snapshots.set(file, existsSync(file) ? readFileSync(file, 'utf8') : undefined);
+  }
+  return snapshots;
+}
+
+function restoreFiles(snapshots: Map<string, string | undefined>) {
+  for (const [file, contents] of snapshots) {
+    if (contents === undefined) {
+      if (existsSync(file)) unlinkSync(file);
+    } else {
+      writeFileSync(file, contents);
+    }
+  }
 }
 
 function fileIsNonempty(directory: string): boolean {
@@ -117,19 +247,21 @@ function conceptFileData(file: string): { domain?: unknown; concepts?: unknown }
   return value as { domain?: unknown; concepts?: unknown };
 }
 
-function conceptFileContains(file: string, topicId: string): boolean {
+function conceptFileEntry(file: string, topicId: string): unknown {
   const concepts = conceptFileData(file)?.concepts;
-  return (
-    Array.isArray(concepts) &&
-    concepts.some(
-      (concept) =>
-        Boolean(concept) &&
-        typeof concept === 'object' &&
-        !Array.isArray(concept) &&
-        'id' in concept &&
-        concept.id === topicId,
-    )
+  if (!Array.isArray(concepts)) return undefined;
+  return concepts.find(
+    (concept) =>
+      Boolean(concept) &&
+      typeof concept === 'object' &&
+      !Array.isArray(concept) &&
+      'id' in concept &&
+      concept.id === topicId,
   );
+}
+
+function conceptFileContains(file: string, topicId: string): boolean {
+  return conceptFileEntry(file, topicId) !== undefined;
 }
 
 function conceptFileForTopic(directory: string, topicId: string, domain: string): string {
@@ -140,6 +272,52 @@ function conceptFileForTopic(directory: string, topicId: string, domain: string)
     if (file !== indexedFile && conceptFileContains(file, topicId)) return file;
   }
   fail(`Could not find topic "${topicId}" in concepts/*.yaml.`);
+}
+
+function unusedStarterTopics(
+  content: Awaited<ReturnType<typeof loadContent>>,
+  directory: string,
+  courseId: string,
+  unitIndex: number,
+  newPrerequisites: string[],
+): Array<{ id: string; file: string }> {
+  const course = content.coursesById.get(courseId);
+  const unit = course?.units[unitIndex];
+  if (!course || !unit) return [];
+  const subjectTitle = content.curriculum?.subject?.title;
+  const seen = new Set<string>();
+  return unit.concepts.flatMap((topicId) => {
+    if (seen.has(topicId)) return [];
+    seen.add(topicId);
+    if (!topicId.endsWith('-first-topic')) return [];
+    const concept = content.conceptsById.get(topicId);
+    if (concept?.status !== 'stub') return [];
+    if (content.lessonsByConcept.has(topicId)) return [];
+    if (content.exercises.some((exercise) => exercise.concept === topicId)) return [];
+    const file = conceptFileForTopic(directory, topicId, concept.domain);
+    const rawConcept = conceptFileEntry(file, topicId);
+    const generatedConcepts = [
+      ...(subjectTitle ? [initStarterTopic(topicId, subjectTitle)] : []),
+      courseStarterTopic(topicId, course.title),
+    ];
+    if (!generatedConcepts.some((generated) => isDeepStrictEqual(rawConcept, generated))) return [];
+    if (
+      newPrerequisites.includes(topicId) ||
+      content.concepts.some((item) =>
+        item.prereqs.some((prerequisite) => prerequisite.id === topicId),
+      )
+    ) {
+      return [];
+    }
+    const referencedElsewhere = [...content.coursesById.values()].some((otherCourse) =>
+      otherCourse.units.some(
+        (otherUnit, index) =>
+          otherUnit.concepts.includes(topicId) &&
+          !(otherCourse.id === courseId && index === unitIndex),
+      ),
+    );
+    return referencedElsewhere ? [] : [{ id: topicId, file }];
+  });
 }
 
 function conceptFileForDomain(directory: string, domain: string): string {
@@ -230,28 +408,39 @@ async function init(directory: string, title: string) {
   if (!title.trim()) fail('Pass a non-empty --title.');
   if (fileIsNonempty(directory)) fail(`Refusing to initialize non-empty directory: ${directory}`);
   mkdirSync(directory, { recursive: true });
-  cpSync(join(templateRoot, 'AGENTS.md'), join(directory, 'AGENTS.md'));
+  const agents = readFileSync(join(templateRoot, 'AGENTS.md'), 'utf8').replaceAll(
+    '{{ACADEMY}}',
+    repoRoot,
+  );
+  writeFileSync(join(directory, 'AGENTS.md'), agents);
   cpSync(join(templateRoot, '.agents'), join(directory, '.agents'), { recursive: true });
   const writeLessonDirectory = join(directory, '.agents/skills/write-lesson');
   const referenceDirectory = join(writeLessonDirectory, 'reference');
   mkdirSync(referenceDirectory, { recursive: true });
-  copyFileSync(
-    join(repoRoot, '.agents/skills/write-lesson/SKILL.md'),
+  writeFileSync(
     join(writeLessonDirectory, 'SKILL.md'),
+    packSkillText(readFileSync(join(repoRoot, '.agents/skills/write-lesson/SKILL.md'), 'utf8')),
   );
   const writeQuestionsDirectory = join(directory, '.agents/skills/write-questions');
   mkdirSync(writeQuestionsDirectory, { recursive: true });
-  copyFileSync(
-    join(repoRoot, '.agents/skills/write-questions/SKILL.md'),
+  writeFileSync(
     join(writeQuestionsDirectory, 'SKILL.md'),
+    packSkillText(readFileSync(join(repoRoot, '.agents/skills/write-questions/SKILL.md'), 'utf8')),
   );
   for (const [source, target] of [
     ['content/lessons/gradient-descent.yaml', 'lesson.yaml'],
     ['content/exercises/gradient-descent.yaml', 'exercises.yaml'],
+  ]) {
+    copyFileSync(join(repoRoot, source), join(referenceDirectory, target));
+  }
+  for (const [source, target] of [
     ['docs/CONTENT_FORMAT.md', 'CONTENT_FORMAT.md'],
     ['docs/design/lesson-standard.md', 'lesson-standard.md'],
   ]) {
-    copyFileSync(join(repoRoot, source), join(referenceDirectory, target));
+    writeFileSync(
+      join(referenceDirectory, target),
+      packSkillText(readFileSync(join(repoRoot, source), 'utf8')),
+    );
   }
   const courseId = `${slug(title)}-basics`;
   const topicId = `${slug(title)}-first-topic`;
@@ -273,30 +462,14 @@ async function init(directory: string, title: string) {
   });
   writeYaml(join(directory, 'concepts', 'main.yaml'), {
     domain: 'main',
-    concepts: [
-      {
-        id: topicId,
-        title: 'First topic',
-        description: `The first topic in ${title}.`,
-        difficulty: 1,
-        est_minutes: 30,
-        goal_weight: 0,
-        dimensions: ['conceptual'],
-        prereqs: [],
-        related: [],
-        objectives: [{ text: `Understand the basics of ${title}.`, dimension: 'conceptual' }],
-        projects: [],
-        sources: [],
-        status: 'stub',
-      },
-    ],
+    concepts: [initStarterTopic(topicId, title)],
   });
   copyFileSync(join(templateRoot, 'notation.yaml'), join(directory, 'notation.yaml'));
   writeYaml(join(directory, 'sources', 'index.yaml'), { sources: [] });
   writeFileSync(join(directory, 'sources', '.gitignore'), '*\n!index.yaml\n!.gitignore\n');
   writeFileSync(
     join(directory, 'README.md'),
-    `This folder is a course pack for ${title}.\nRun \`academy dev\` to launch Open Academy with this pack.\nRun \`academy check\` to validate the pack.\nUse a separate database per pack, or give every topic an ID that's unique across your packs.\n`,
+    `This folder is a course pack for ${title}.\nRun \`academy dev\` to launch Open Academy with this pack.\nRun \`academy check\` to validate the pack.\nRunning the CLI: \`academy\` means \`CONTENT_DIR=. pnpm --dir "${repoRoot}" academy\`; run it from this folder, for example \`CONTENT_DIR=. pnpm --dir "${repoRoot}" academy check\`.\nUse a separate database per pack, or give every topic an ID that's unique across your packs.\n`,
   );
   if ((await check(directory)) !== 0) fail('Generated course pack did not pass academy check.');
 }
@@ -357,28 +530,42 @@ async function newTopic(
     sources: [],
     status: 'stub',
   };
-  if (existsSync(conceptFile)) {
-    const source = editYaml(conceptFile, (document) => {
-      const concepts = document.get('concepts', true);
-      if (!isSeq(concepts)) fail(`Expected concepts sequence in ${conceptFile}.`);
-      concepts.add(concept);
-    });
-    writeFileSync(conceptFile, source);
+  const selectedCourseId = courseId;
+  const selectedUnit = unit;
+  if (!selectedCourseId || !selectedUnit) fail('The curriculum must define a course unit.');
+  const courseFile = courseFileForId(directory, selectedCourseId);
+  const startersToRemove = unusedStarterTopics(
+    content,
+    directory,
+    selectedCourseId,
+    Number(selectedUnit) - 1,
+    prerequisites,
+  );
+  const addTopic = (starterIds: string[] = []) => {
+    addConceptToFile(conceptFile, domain, concept);
+    addTopicToUnit(courseFile, selectedUnit, id, starterIds);
+  };
+  if (startersToRemove.length === 0) {
+    addTopic();
   } else {
-    writeYaml(conceptFile, { domain, concepts: [concept] });
-  }
-  if (courseId && unit) {
-    const courseFile = courseFileForId(directory, courseId);
-    const source = editYaml(courseFile, (document) => {
-      const units = document.get('units', true);
-      if (!isSeq(units)) fail(`Expected units sequence in ${courseFile}.`);
-      const unitNode = units.items[Number(unit) - 1];
-      if (!isMap(unitNode)) fail(`Expected unit mapping in ${courseFile}.`);
-      const concepts = unitNode.get('concepts', true);
-      if (!isSeq(concepts)) fail(`Expected concepts sequence in unit ${unit}.`);
-      concepts.add(id);
-    });
-    writeFileSync(courseFile, source);
+    const snapshots = snapshotFiles([
+      courseFile,
+      conceptFile,
+      ...startersToRemove.map((starter) => starter.file),
+    ]);
+    try {
+      addTopic(startersToRemove.map((starter) => starter.id));
+      for (const starter of startersToRemove) {
+        removeConceptFromFile(starter.file, starter.id);
+      }
+      await loadContentReport(directory);
+      for (const starter of startersToRemove) {
+        console.log(`Removed the starter topic ${starter.id}.`);
+      }
+    } catch {
+      restoreFiles(snapshots);
+      addTopic();
+    }
   }
   if (defaultCourse) console.log(`Added ${id} to ${defaultCourse.title}, unit ${unit}.`);
 }
@@ -525,31 +712,7 @@ async function newCourse(id: string, title: string, directory: string) {
   const placeholderId = `${id}-first-topic`;
   if (!content.conceptsById.has(placeholderId)) {
     const conceptFile = conceptFileForDomain(directory, domain);
-    const concept = {
-      id: placeholderId,
-      title: `${title} topic`,
-      description: `A placeholder topic for ${title}.`,
-      difficulty: 1,
-      est_minutes: 30,
-      goal_weight: 0,
-      dimensions: ['conceptual'],
-      prereqs: [],
-      related: [],
-      objectives: [{ text: `Understand ${title}.`, dimension: 'conceptual' }],
-      projects: [],
-      sources: [],
-      status: 'stub',
-    };
-    if (existsSync(conceptFile)) {
-      const source = editYaml(conceptFile, (document) => {
-        const concepts = document.get('concepts', true);
-        if (!isSeq(concepts)) fail(`Expected concepts sequence in ${conceptFile}.`);
-        concepts.add(concept);
-      });
-      writeFileSync(conceptFile, source);
-    } else {
-      writeYaml(conceptFile, { domain, concepts: [concept] });
-    }
+    addConceptToFile(conceptFile, domain, courseStarterTopic(placeholderId, title));
   }
   const subjectId = content.curriculum?.subjects?.[0]?.id;
   writeYaml(join(directory, 'courses', `${id}.yaml`), {
