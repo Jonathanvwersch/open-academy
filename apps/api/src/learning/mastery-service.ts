@@ -1,12 +1,61 @@
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
+import type { Card } from 'ts-fsrs';
 import type { Dimension } from '../content/schemas.js';
-import type { IndexedExercise } from '../content/types.js';
+import type { ContentIndex, IndexedExercise } from '../content/types.js';
+import type { Database } from '../db/client.js';
 import type { LearnerRepository } from '../db/repository.js';
 import { masteryEvents, reviewCards } from '../db/schema.js';
 import { mapReviewRating, newReviewCard, scheduleInitialReview } from './fsrs.js';
 import { DefaultMasteryModel } from './mastery.js';
+import { layeringCredit } from './prerequisite-review.js';
 import type { LearningMode } from './types.js';
 import { masteryRank } from './types.js';
+
+type ReviewCardDatabase = Pick<Database, 'select' | 'update'>;
+
+export async function creditHardPrerequisites(
+  db: ReviewCardDatabase,
+  input: {
+    userId: string;
+    conceptId: string;
+    index: ContentIndex;
+    now: Date;
+    timeZone: string;
+  },
+) {
+  const prerequisiteIds =
+    input.index.conceptsById
+      .get(input.conceptId)
+      ?.prereqs.filter((prerequisite) => prerequisite.strength === 'hard')
+      .map((prerequisite) => prerequisite.id) ?? [];
+  if (prerequisiteIds.length === 0) return;
+
+  const cards = await db
+    .select({
+      id: reviewCards.id,
+      dueAt: reviewCards.dueAt,
+      lastReviewAt: reviewCards.lastReviewAt,
+      fsrs: reviewCards.fsrs,
+    })
+    .from(reviewCards)
+    .where(
+      and(eq(reviewCards.userId, input.userId), inArray(reviewCards.conceptId, prerequisiteIds)),
+    );
+  for (const card of cards) {
+    const credit = layeringCredit(
+      { ...card, fsrs: card.fsrs as Card },
+      input.now,
+      input.timeZone,
+      process.env.NODE_ENV !== 'test',
+    );
+    if (!credit) continue;
+    await db
+      .update(reviewCards)
+      .set({ fsrs: credit.fsrs, dueAt: credit.dueAt })
+      .where(eq(reviewCards.id, credit.id));
+  }
+}
+
 export async function applyMastery(input: {
   repo: LearnerRepository;
   userId: string;

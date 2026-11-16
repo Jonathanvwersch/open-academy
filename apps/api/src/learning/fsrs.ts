@@ -83,7 +83,7 @@ export function retrievability(card: Card, now: Date, enableFuzz = true): number
   return fsrsScheduler(enableFuzz).retrievability(card, now);
 }
 
-function startOfNextCalendarDay(now: Date, timezone: string): Date {
+export function startOfNextCalendarDay(now: Date, timezone: string): Date {
   const fields = (date: Date) => {
     const parts = new Intl.DateTimeFormat('en-US', {
       timeZone: timezone,
