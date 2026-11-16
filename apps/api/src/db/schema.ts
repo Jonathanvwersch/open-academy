@@ -264,6 +264,7 @@ export const lessonQuizItems = pgTable(
     seed: integer('seed'),
     answer: jsonb('answer'),
     correct: real('correct'),
+    durationMs: integer('duration_ms'),
     attemptId: uuid('attempt_id').references(() => attempts.id, { onDelete: 'set null' }),
     answeredAt: timestamp('answered_at', { withTimezone: true, mode: 'date' }),
   },

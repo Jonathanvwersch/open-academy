@@ -118,12 +118,15 @@ exercises:
     type: numeric                 # see below
     role: core                    # core | transfer | review | diagnostic | check | practice
     difficulty: 2
+    target_seconds: 30             # optional response target, 5-600 seconds
     est_minutes: 3
     prompt: "..."
     hints: ["L1 general", "L2 principle", "L3 intermediate step", "L4 partial solution"]  # 0-4 authored; L5 = solution
     solution: "full worked explanation shown after submission"
     # type-specific fields:
 ```
+`target_seconds` is an optional integer from 5 to 600. In review and lesson quizzes, a correct answer that takes longer than this is rated Hard.
+
 Type-specific fields:
 - `mc`: `options: [{ id, text, correct: bool, feedback?, category? }]`, `multi?: bool` (default single).
 - `numeric`: `answer: number`, `tolerance: { abs?: number, rel?: number }` (default abs 1e-6), `common_wrong?: [{ answer, tolerance?, category, feedback }]`.

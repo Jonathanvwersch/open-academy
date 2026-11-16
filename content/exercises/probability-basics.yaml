@@ -5,6 +5,7 @@ exercises:
     type: mc
     role: basics
     difficulty: 1
+    target_seconds: 30
     est_minutes: 1
     prompt: "What is an event?"
     options:
@@ -62,6 +63,7 @@ exercises:
     type: numeric
     role: practice
     difficulty: 1
+    target_seconds: 30
     est_minutes: 2
     prompt: "In 10 past house sales, 4 were above asking. Estimate the probability that a sale was above asking."
     hints: ["Divide the number of above-asking sales by the total number of sales."]
@@ -161,6 +163,7 @@ exercises:
     type: mc
     role: basics
     difficulty: 1
+    target_seconds: 30
     est_minutes: 1
     prompt: "What does the distribution of a random variable list?"
     options:
@@ -218,6 +221,7 @@ exercises:
     type: numeric
     role: practice
     difficulty: 1
+    target_seconds: 30
     est_minutes: 2
     prompt: "In 20 spins of a spinner, 10 gave 0 points, 6 gave 1 point and 4 gave 2 points. Let $X$ be the points from one spin. Estimate $P(X=1)$."
     hints: ["Divide the number of spins that gave 1 point by all 20 spins."]
@@ -307,6 +311,7 @@ exercises:
     type: mc
     role: basics
     difficulty: 1
+    target_seconds: 30
     est_minutes: 1
     prompt: "How do you find the expected value of a random variable?"
     options:
@@ -364,6 +369,7 @@ exercises:
     type: numeric
     role: practice
     difficulty: 1
+    target_seconds: 30
     est_minutes: 2
     prompt: "A random variable $X$ is 1, 2 or 3 with probabilities 0.5, 0.3 and 0.2. What is $E[X]$?"
     hints: ["Multiply each value by its probability, then add."]
@@ -466,6 +472,7 @@ exercises:
     type: mc
     role: basics
     difficulty: 1
+    target_seconds: 30
     est_minutes: 1
     prompt: "What does $P(A\\mid B)$ mean?"
     options:
@@ -523,6 +530,7 @@ exercises:
     type: numeric
     role: practice
     difficulty: 1
+    target_seconds: 30
     est_minutes: 2
     prompt: "A fair die is rolled and you are told the roll is odd. What is the probability that it is at most 3?"
     hints:

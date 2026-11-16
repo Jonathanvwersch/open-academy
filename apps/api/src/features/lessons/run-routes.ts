@@ -25,7 +25,7 @@ import type { ApiEnv } from '../../http/context.js';
 import { updateActivityAndAdvance } from '../../learning/activity-completion.js';
 import { answerDisplay, answerText } from '../../learning/answer-display.js';
 import { answerOptionsFor } from '../../learning/answer-options.js';
-import { newReviewCard, scheduleReview } from '../../learning/fsrs.js';
+import { isSlowCorrectAnswer, newReviewCard, scheduleReview } from '../../learning/fsrs.js';
 import { gradeExercise } from '../../learning/grading/index.js';
 import { MULTIPLE_CHOICE_FALLBACK_FEEDBACK } from '../../learning/grading/multiple-choice.js';
 import { QUIZ_PASS_MARK, scoreLessonQuiz, selectQuizItems } from '../../learning/lesson-quiz.js';
@@ -1080,6 +1080,7 @@ export function registerLessonRunRoutes(
         itemId: z.string().uuid(),
         answer: z.unknown(),
         activityId: z.string().uuid().optional(),
+        durationMs: z.number().int().nonnegative().optional(),
       })
       .safeParse(await context.req.json().catch(() => ({})));
     if (!body.success) return context.json({ error: 'Invalid quiz answer' }, 400);
@@ -1132,6 +1133,7 @@ export function registerLessonRunRoutes(
         .set({
           answer: body.data.answer,
           correct: graded.correct,
+          durationMs: body.data.durationMs ?? null,
           answeredAt: now,
         })
         .where(eq(lessonQuizItems.id, joined.item.id));
@@ -1243,6 +1245,7 @@ export function registerLessonRunRoutes(
           gradedBy,
           feedback: { message: graded.feedback },
           mistakeCategory: graded.mistake_category,
+          durationMs: pending.item.durationMs,
           createdAt: now,
         });
         await deps.applyMastery({
@@ -1316,11 +1319,22 @@ export function registerLessonRunRoutes(
               )
               .for('update')
               .limit(1);
-            const rating = dimensionItems.every(
-              (item) => item.correct !== null && item.correct >= 1,
-            )
-              ? Rating.Good
-              : Rating.Hard;
+            const hasSlowCorrectAnswer = dimensionItems.some((item) => {
+              const exercise = resolved.index.exercisesById.get(item.exerciseId);
+              return (
+                exercise !== undefined &&
+                isSlowCorrectAnswer({
+                  correct: item.correct ?? 0,
+                  durationMs: item.durationMs,
+                  targetSeconds: exercise.target_seconds,
+                })
+              );
+            });
+            const rating =
+              !hasSlowCorrectAnswer &&
+              dimensionItems.every((item) => item.correct !== null && item.correct >= 1)
+                ? Rating.Good
+                : Rating.Hard;
             const scheduled = scheduleReview(
               existingCard ? (existingCard.fsrs as never) : newReviewCard(now),
               now,
@@ -1475,6 +1489,7 @@ export function registerLessonRunRoutes(
           answerOptions: answerOptionsFor(exercise, item.answer, true),
           solution: exercise.solution ?? '',
           correct: item.correct,
+          durationMs: item.durationMs,
         },
       ];
     });

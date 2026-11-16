@@ -180,11 +180,21 @@ async function startQuiz(activityId?: string) {
   });
 }
 
-async function answerQuizItem(itemId: string, answer: unknown, activityId?: string) {
+async function answerQuizItem(
+  itemId: string,
+  answer: unknown,
+  activityId?: string,
+  durationMs?: number,
+) {
   return app.request(`/api/lessons/${conceptId}/quiz/answer`, {
     method: 'POST',
     headers,
-    body: JSON.stringify({ itemId, answer, ...(activityId ? { activityId } : {}) }),
+    body: JSON.stringify({
+      itemId,
+      answer,
+      ...(activityId ? { activityId } : {}),
+      ...(durationMs === undefined ? {} : { durationMs }),
+    }),
   });
 }
 
@@ -1106,6 +1116,68 @@ test('passing and retaking a quiz awards quiz XP only once and enables review', 
       .from(xpEvents)
       .where(and(eq(xpEvents.userId, userId), eq(xpEvents.kind, 'quiz'))),
   ).toHaveLength(1);
+});
+
+test('a slow correct lesson quiz answer rates its dimension Hard and stores its duration', async () => {
+  await finishLessonSteps();
+  const started = (await (await startQuiz()).json()).run;
+  const quizRows = await db
+    .select()
+    .from(lessonQuizItems)
+    .where(eq(lessonQuizItems.quizAttemptId, started.quiz.current.attemptId))
+    .orderBy(lessonQuizItems.position);
+  const targetItem = quizRows[0];
+  if (!targetItem) throw new Error('Expected a lesson quiz item');
+  const originalExercise = content.exercisesById.get(targetItem.exerciseId);
+  if (!originalExercise) throw new Error(`Missing exercise ${targetItem.exerciseId}`);
+  content.exercisesById.set(targetItem.exerciseId, {
+    ...originalExercise,
+    target_seconds: 30,
+  });
+
+  try {
+    for (const item of quizRows) {
+      const response = await answerQuizItem(
+        item.id,
+        correctAnswer(item.exerciseId, item.seed),
+        undefined,
+        item.id === targetItem.id ? 30_001 : 1_000,
+      );
+      expect(response.status).toBe(200);
+    }
+
+    const submitted = await submitQuiz();
+    expect(submitted.status).toBe(200);
+
+    const [storedTargetItem] = await db
+      .select()
+      .from(lessonQuizItems)
+      .where(eq(lessonQuizItems.id, targetItem.id));
+    expect(storedTargetItem?.durationMs).toBe(30_001);
+    if (!storedTargetItem?.attemptId) throw new Error('Expected an attempt for the slow answer');
+
+    const [attempt] = await db
+      .select()
+      .from(attempts)
+      .where(eq(attempts.id, storedTargetItem.attemptId));
+    expect(attempt?.durationMs).toBe(30_001);
+
+    const [card] = await db
+      .select()
+      .from(reviewCards)
+      .where(
+        and(
+          eq(reviewCards.userId, userId),
+          eq(reviewCards.conceptId, conceptId),
+          eq(reviewCards.dimension, originalExercise.dimension),
+        ),
+      );
+    if (!card) throw new Error('Expected a review card for the slow-answer dimension');
+    const [log] = await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, card.id));
+    expect(log?.rating).toBe(String(Rating.Hard));
+  } finally {
+    content.exercisesById.set(targetItem.exerciseId, originalExercise);
+  }
 });
 
 test('quiz submission completes its attached learn activity after pass or fail', async () => {

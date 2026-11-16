@@ -248,7 +248,7 @@ export function LessonRunner({
     }
   }, [activityId, conceptId, state, updateState, startAttempt]);
 
-  const submit = async (answer: unknown) => {
+  const submit = async (answer: unknown, durationMs: number) => {
     const pending = practiceMode ? state?.pendingPracticeProblem : state?.pendingProblem;
     if (!state || !pending) return;
     setBusy(true);
@@ -258,7 +258,7 @@ export function LessonRunner({
       const response = await apiFetch(`/api/lessons/${encodeURIComponent(conceptId)}/run/answer`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ problemId: pending.id, answer, activityId }),
+        body: JSON.stringify({ problemId: pending.id, answer, activityId, durationMs }),
       });
       const data = (await response.json()) as LessonRunAnswerPayload & { error?: string };
       if (!response.ok || !data.state) throw new Error(data.error ?? 'Your answer was not saved.');
@@ -329,6 +329,7 @@ export function LessonRunner({
   const submitQuizAnswer = async (
     itemId: string,
     answer: unknown,
+    durationMs: number,
     attemptId: string,
     index: number,
     last: boolean,
@@ -340,7 +341,7 @@ export function LessonRunner({
       const response = await apiFetch(`/api/lessons/${encodeURIComponent(conceptId)}/quiz/answer`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ itemId, answer, activityId }),
+        body: JSON.stringify({ itemId, answer, activityId, durationMs }),
       });
       const data = (await response.json()) as {
         run?: NonNullable<LessonRunPayload['run']>;
@@ -632,6 +633,9 @@ export function LessonRunner({
             key={shownProblem.id}
             exercise={shownProblem.exercise}
             onSubmit={submit}
+            timerResetKey={state.lastAnsweredProblem?.result.attemptNo ?? 0}
+            restartTimerOnInteraction={practiceRetryAllowed}
+            autoFocus={!practiceRetryAllowed}
             loading={busyAction === 'submit'}
             disabled={busy && busyAction !== 'submit'}
             locked={showingAnswer}
@@ -768,11 +772,12 @@ export function LessonRunner({
               <ExerciseForm
                 key={currentQuizItem.id}
                 exercise={currentQuizItem.exercise}
-                onSubmit={(answer) => {
+                onSubmit={(answer, durationMs) => {
                   if (!quizAttemptId || currentQuizItem.locked) return;
                   void submitQuizAnswer(
                     currentQuizItem.id,
                     answer,
+                    durationMs,
                     quizAttemptId,
                     quizQuestionIndex,
                     lastQuizQuestion,
@@ -960,6 +965,9 @@ export function LessonRunner({
                     key={shownProblem.id}
                     exercise={shownProblem.exercise}
                     onSubmit={submit}
+                    timerResetKey={state.lastAnsweredProblem?.result.attemptNo ?? 0}
+                    restartTimerOnInteraction={practiceRetryAllowed}
+                    autoFocus={!practiceRetryAllowed}
                     loading={busyAction === 'submit'}
                     disabled={busy && busyAction !== 'submit'}
                     locked={showingAnswer}

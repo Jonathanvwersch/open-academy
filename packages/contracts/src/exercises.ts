@@ -3,6 +3,7 @@ export interface ClientExercise {
   type: string;
   multi?: boolean;
   lesson_only?: boolean;
+  target_seconds?: number;
   hintCount?: number;
   prompt: string;
   options?: Array<{ id: string; text: string }>;

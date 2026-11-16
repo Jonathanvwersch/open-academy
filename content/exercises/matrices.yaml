@@ -22,6 +22,7 @@ exercises:
     type: mc
     role: basics
     difficulty: 1
+    target_seconds: 30
     est_minutes: 1
     prompt: What is a matrix?
     options:
@@ -76,6 +77,7 @@ exercises:
     type: mc
     role: practice
     difficulty: 1
+    target_seconds: 30
     est_minutes: 2
     prompt: A matrix has three rows and two columns. It multiplies a vector with two entries. What comes out?
     solution: The shapes are $(3\times2)(2\times1)$, giving $3\times1$. There is one output entry per matrix row.
@@ -97,6 +99,7 @@ exercises:
     type: mc
     role: practice
     difficulty: 1
+    target_seconds: 30
     est_minutes: 2
     prompt: One house's three measurements are written as a $1\times3$ matrix and multiplied by the 3-entry weight vector. How many numbers come out?
     options:
@@ -125,6 +128,7 @@ exercises:
     type: mc
     role: practice
     difficulty: 1
+    target_seconds: 30
     est_minutes: 2
     prompt: Why does each row of a matrix produce exactly one output when the matrix multiplies a vector?
     options:
@@ -219,6 +223,7 @@ exercises:
     type: mc
     role: basics
     difficulty: 1
+    target_seconds: 30
     est_minutes: 1
     prompt: What does multiplying two matrices produce?
     options:
@@ -273,6 +278,7 @@ exercises:
     type: mc
     role: practice
     difficulty: 1
+    target_seconds: 30
     est_minutes: 2
     prompt: A matrix has shape $2\times3$ and another has shape $3\times4$. What is the shape of their product in that order?
     solution: Each of two left rows meets each of four right columns. This gives two rows and four columns of outputs.
@@ -294,6 +300,7 @@ exercises:
     type: mc
     role: practice
     difficulty: 1
+    target_seconds: 30
     est_minutes: 2
     prompt: Why can't a $2\times3$ matrix multiply a $2\times4$ matrix in that order?
     solution: Each left row has three entries but each right column has two. Their dot product is undefined, so this matrix product is undefined.
@@ -398,6 +405,7 @@ exercises:
     type: mc
     role: basics
     difficulty: 1
+    target_seconds: 30
     est_minutes: 1
     prompt: In NumPy, each row of `X` is a house and `w` holds one weight per measurement. What does `X @ w` compute?
     options:
@@ -452,6 +460,7 @@ exercises:
     type: mc
     role: practice
     difficulty: 1
+    target_seconds: 30
     est_minutes: 2
     prompt: A NumPy product holds sale-price and monthly-rent predictions for five houses, shape (5, 2). You add b, an array of shape (2,) holding a sale-price bias and a rent bias. What does broadcasting do?
     solution: NumPy reuses the two bias entries across the five rows, so every house's sale price gets the first bias and every rent gets the second. The output shape stays (5, 2).
@@ -600,6 +609,7 @@ exercises:
     type: mc
     role: check
     difficulty: 1
+    target_seconds: 30
     est_minutes: 1
     prompt: $A$ has shape $128 \times 512$ and $B$ has shape $512 \times 64$. What is the shape of $AB$?
     options:
@@ -627,6 +637,7 @@ exercises:
     type: mc
     role: diagnostic
     difficulty: 1
+    target_seconds: 30
     est_minutes: 1
     prompt: Each of 32 images is stored as a row of 784 pixel brightness numbers in $X\in\mathbb{R}^{32\times784}$. A model has weights for ten scores in $W\in\mathbb{R}^{784\times10}$. What is the shape of $XW$?
     options:

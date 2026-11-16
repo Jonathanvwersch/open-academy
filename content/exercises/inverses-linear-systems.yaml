@@ -5,6 +5,7 @@ exercises:
     type: mc
     role: basics
     difficulty: 1
+    target_seconds: 30
     est_minutes: 2
     prompt: What do $I$ and $A^{-1}$ do when $A$ is invertible?
     options:
@@ -48,6 +49,7 @@ exercises:
     type: numeric
     role: practice
     difficulty: 1
+    target_seconds: 30
     est_minutes: 2
     prompt: Matrix $A$ has rows $(4,-2)$ and $(3,5)$. Find entry $(2,1)$ of $AI$.
     answer: 3
@@ -149,6 +151,7 @@ exercises:
     type: mc
     role: basics
     difficulty: 1
+    target_seconds: 30
     est_minutes: 2
     prompt: What does elimination do to solve equations?
     options:
@@ -192,6 +195,7 @@ exercises:
     type: mc
     role: practice
     difficulty: 1
+    target_seconds: 30
     est_minutes: 2
     prompt: Which pair writes $3x_1+2x_2=12$ and $x_1+4x_2=14$ as $Ax=b$ with $x=(x_1,x_2)$?
     options:
@@ -290,6 +294,7 @@ exercises:
     type: mc
     role: basics
     difficulty: 1
+    target_seconds: 30
     est_minutes: 2
     prompt: What does $A^\top$ do to $A$?
     options:
@@ -333,6 +338,7 @@ exercises:
     type: numeric
     role: practice
     difficulty: 1
+    target_seconds: 30
     est_minutes: 2
     prompt: Matrix $A$ has rows $(1,{{=p}})$ and $({{=q}},2)$. Find $(A^\top)_{12}$.
     params:
@@ -453,6 +459,7 @@ exercises:
     type: mc
     role: basics
     difficulty: 1
+    target_seconds: 30
     est_minutes: 2
     prompt: Which NumPy call returns $x$ for $Ax=b$?
     options:

@@ -16,6 +16,7 @@ exercises:
     type: mc
     role: basics
     difficulty: 1
+    target_seconds: 30
     est_minutes: 1
     prompt: "What is a partial derivative?"
     options:
@@ -49,6 +50,7 @@ exercises:
     type: mc
     role: basics
     difficulty: 1
+    target_seconds: 30
     est_minutes: 1
     prompt: "You have worked out the partial-derivative formula $\\frac{\\partial f}{\\partial x}$ for a function $f(x, y)$. What does that formula give you?"
     options:
@@ -82,6 +84,7 @@ exercises:
     type: mc
     role: basics
     difficulty: 1
+    target_seconds: 30
     est_minutes: 1
     prompt: "For one house, the error is $e$ = prediction minus price, and the loss is $e^2$. The bias $b$ is added to the prediction. What is the loss's partial derivative with respect to $b$?"
     options:
@@ -177,6 +180,7 @@ exercises:
     type: mc
     role: review
     difficulty: 1
+    target_seconds: 30
     est_minutes: 1
     prompt: "A model's total prediction error $L$ depends on three adjustable numbers, called parameters: $w_1, w_2, w_3$. When finding $\\partial L/\\partial w_3$, which quantities are treated as constants?"
     options:
@@ -226,6 +230,7 @@ exercises:
     type: mc
     role: practice
     difficulty: 1
+    target_seconds: 30
     est_minutes: 1
     prompt: "For a price formula $P(s, a)$ with size $s$ and age $a$, what does $\\frac{\\partial P}{\\partial s}$ measure?"
     options:
@@ -279,6 +284,7 @@ exercises:
     type: mc
     role: practice
     difficulty: 1
+    target_seconds: 30
     est_minutes: 1
     prompt: "Why must $x$ and $z$ stay fixed when computing $\\frac{\\partial f}{\\partial y}$ for $f(x, y, z)$?"
     options:
@@ -308,6 +314,7 @@ exercises:
     type: mc
     role: practice
     difficulty: 1
+    target_seconds: 30
     est_minutes: 1
     prompt: "For a price formula $P(s, a)$, a house has $\\frac{\\partial P}{\\partial a} = -3$ (thousands of pounds per year). What happens to its estimated price if it is one year older and the same size?"
     options:
@@ -354,6 +361,7 @@ exercises:
     type: mc
     role: practice
     difficulty: 1
+    target_seconds: 30
     est_minutes: 1
     prompt: "A delivery cost $C$ depends on distance, parcel weight and time of day. How many partial derivatives does $C$ have?"
     options:
@@ -429,6 +437,7 @@ exercises:
     type: mc
     role: practice
     difficulty: 1
+    target_seconds: 30
     est_minutes: 1
     prompt: "Why does $e^y$ contribute 0 to $\\frac{\\partial f}{\\partial x}$ when $f(x, y) = x^3 + e^y$?"
     options:
@@ -576,6 +585,7 @@ exercises:
     type: mc
     role: practice
     difficulty: 1
+    target_seconds: 30
     est_minutes: 1
     prompt: "A house-price model predicts $wx + b$, with adjustable numbers $w$ and $b$. The house has area $x = 3$ and recorded sale price $y = 1$. Why do we keep $x$ and $y$ constant when using $f(w, b) = (wx + b - y)^2$ to improve the model?"
     options:

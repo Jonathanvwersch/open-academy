@@ -45,6 +45,7 @@ exercises:
     type: mc
     role: basics
     difficulty: 1
+    target_seconds: 30
     est_minutes: 1
     prompt: What is an eigenvector of a square matrix $A$?
     options:
@@ -102,6 +103,7 @@ exercises:
     type: numeric
     role: practice
     difficulty: 1
+    target_seconds: 30
     est_minutes: 1
     prompt: For $A=\begin{bmatrix}3&1\\2&4\end{bmatrix}$, the vector $(1,2)$ is an eigenvector. What is its eigenvalue?
     answer: 5
@@ -210,6 +212,7 @@ exercises:
     type: mc
     role: basics
     difficulty: 1
+    target_seconds: 30
     est_minutes: 1
     prompt: For $A=\begin{bmatrix}a&b\\c&d\end{bmatrix}$, which equation do the eigenvalues $\lambda$ solve?
     options:
@@ -267,6 +270,7 @@ exercises:
     type: numeric
     role: practice
     difficulty: 1
+    target_seconds: 30
     est_minutes: 2
     prompt: What is the larger eigenvalue of $A=\begin{bmatrix}5&1\\2&4\end{bmatrix}$?
     answer: 6
@@ -396,6 +400,7 @@ exercises:
     type: mc
     role: basics
     difficulty: 1
+    target_seconds: 30
     est_minutes: 1
     prompt: The SVD writes a matrix as $A=USV^\top$. What do the three moves do to an input vector, in the order they happen?
     options:
@@ -453,6 +458,7 @@ exercises:
     type: mc
     role: practice
     difficulty: 1
+    target_seconds: 30
     est_minutes: 1
     prompt: Can a singular value be negative?
     options:
@@ -574,6 +580,7 @@ exercises:
     type: mc
     role: basics
     difficulty: 1
+    target_seconds: 30
     est_minutes: 1
     prompt: How do you make the closest rank-1 matrix to $A$ from its SVD?
     options:
@@ -631,6 +638,7 @@ exercises:
     type: numeric
     role: practice
     difficulty: 1
+    target_seconds: 30
     est_minutes: 1
     prompt: A $4\times4$ matrix has singular values $7$, $3$, $0$ and $0$. What is its rank?
     answer: 2

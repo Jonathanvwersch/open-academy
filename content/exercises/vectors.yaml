@@ -5,6 +5,7 @@ exercises:
     type: mc
     role: basics
     difficulty: 1
+    target_seconds: 30
     est_minutes: 1
     prompt: "What is a vector?"
     options:
@@ -60,6 +61,7 @@ exercises:
     tolerance: { abs: 0.000001 }
     role: practice
     difficulty: 1
+    target_seconds: 30
     est_minutes: 2
     prompt: "A robot moves $({{=a}},{{=b}})$ and then $({{=c}},{{=d}})$, in metres east and north. What is the north component of its combined move, in metres?"
     solution: "Add the north (second) components: ${{=b}}+({{=d}})={{=b+d}}$. The east components only affect the first component."
@@ -74,6 +76,7 @@ exercises:
     type: mc
     role: practice
     difficulty: 1
+    target_seconds: 30
     est_minutes: 2
     prompt: "A house's feature vector is $(120,3,15)$, in the order area in square metres, bedrooms, age in years. What does it represent?"
     solution: "All three components describe the same house. The order gives their meaning: 120 square metres, 3 bedrooms and 15 years old."
@@ -96,6 +99,7 @@ exercises:
     tolerance: { abs: 0.000001 }
     role: practice
     difficulty: 1
+    target_seconds: 30
     est_minutes: 2
     prompt: "A house has feature vector $x=(120,3,15)$: area in square metres, bedrooms, age in years. What is $x_2$?"
     solution: "The subscript picks a component by position, so $x_2$ is the second component: 3, the number of bedrooms."
@@ -147,6 +151,7 @@ exercises:
     type: mc
     role: practice
     difficulty: 1
+    target_seconds: 30
     est_minutes: 2
     prompt: "A robot records positions as (metres east, metres north) of its dock. Which statement about the positions $(2,5)$ and $(5,2)$ is true?"
     solution: "The first component is the distance east and the second the distance north. Swapping them gives a different place."
@@ -185,6 +190,7 @@ exercises:
     type: mc
     role: basics
     difficulty: 1
+    target_seconds: 30
     est_minutes: 1
     prompt: "What does multiplying a vector by a scalar do?"
     options:
@@ -240,6 +246,7 @@ exercises:
     tolerance: { abs: 0.000001 }
     role: practice
     difficulty: 1
+    target_seconds: 30
     est_minutes: 2
     prompt: "A robot's planned move is $x=({{=a}},{{=b}})$ metres east and north. It scales the move by $c={{=c}}$. What is the east component of $cx$, in metres?"
     solution: "Multiply the first component by the scalar: ${{=c}}\\cdot({{=a}})={{=c*a}}$. Scaling multiplies every component the same way."
@@ -253,6 +260,7 @@ exercises:
     type: mc
     role: practice
     difficulty: 1
+    target_seconds: 30
     est_minutes: 2
     prompt: "A robot's planned move is $(6,2)$ metres east and north. A parcel sits halfway along that move. Which move reaches it?"
     solution: "Multiply both components by $0.5$: $(0.5\\cdot6,\\;0.5\\cdot2)=(3,1)$. A positive scalar keeps the direction."
@@ -274,6 +282,7 @@ exercises:
     type: mc
     role: practice
     difficulty: 1
+    target_seconds: 30
     est_minutes: 2
     prompt: "A robot's planned move is $(3,4)$ metres east and north. What is the result of multiplying this vector by the scalar $0$?"
     solution: "Scalar multiplication multiplies every component, so both become zero: $(0,0)$, the zero vector. It is still a vector, with no length and no direction."
@@ -375,6 +384,7 @@ exercises:
     type: mc
     role: basics
     difficulty: 1
+    target_seconds: 30
     est_minutes: 1
     prompt: "What is the L2 norm of a vector?"
     options:
@@ -429,6 +439,7 @@ exercises:
     type: mc
     role: practice
     difficulty: 1
+    target_seconds: 30
     est_minutes: 1
     prompt: "What does the L2 norm of a vector measure?"
     options:
@@ -559,6 +570,7 @@ exercises:
     type: numeric
     role: diagnostic
     difficulty: 1
+    target_seconds: 30
     est_minutes: 1
     prompt: "A flying warehouse robot is 3 metres east, 4 north and 12 above its dock. What is the L2 length of its position vector $x=(3,4,12)$, in metres?"
     answer: 13
@@ -576,6 +588,7 @@ exercises:
     type: numeric
     role: core
     difficulty: 1
+    target_seconds: 30
     est_minutes: 2
     prompt: "A flying robot travels $v=(1,-2,2)$ metres in east, north, upward order. What is its straight-line distance from its start, $\\|v\\|_2$, in metres?"
     answer: 3
@@ -599,6 +612,7 @@ exercises:
     type: numeric
     role: review
     difficulty: 1
+    target_seconds: 30
     est_minutes: 2
     prompt: "A robot is at $(1,1)$ and its parcel at $(4,5)$, in metres east and north from the dock. What is their Euclidean distance, in metres?"
     answer: 5
@@ -653,6 +667,7 @@ exercises:
     type: mc
     role: review
     difficulty: 1
+    target_seconds: 30
     est_minutes: 1
     prompt: "A model compares houses by the length of a difference vector $x\\in\\mathbb{R}^n$. Which expression gives that L2 length?"
     options:

@@ -170,10 +170,11 @@ export type QuizReviewPayload = {
     position: number;
     pointId: string;
     title: string;
-    exercise: { prompt: string; type: string };
+    exercise: { prompt: string; type: string; target_seconds?: number };
     yourAnswer: string;
     correctAnswer: string;
     solution: string;
     correct: number | null;
+    durationMs?: number | null;
   }>;
 };

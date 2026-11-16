@@ -22,6 +22,7 @@ Before anything else, ask: could someone who hasn't read the lesson answer this 
 - **Trivial template.** For some parameter values the answer is constant, equals a parameter, or equals a number already shown.
 
 Easy questions are fine. A difficulty-1 question can be one short step, as long as that step is the idea being taught.
+Basic-skill questions in maths courses (difficulty 1, numeric or multiple choice) get `target_seconds: 30`, because these skills should become fast enough to use without thinking.
 
 ## 2. What a good question does
 

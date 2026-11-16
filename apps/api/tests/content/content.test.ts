@@ -107,6 +107,28 @@ test('loads the fixture graph and builds lookup indexes', async () => {
   expect(content.concepts[0]?.contentVersion).toMatch(/^[a-f0-9]{12}$/);
 });
 
+test('exercise target_seconds must be an integer from 5 to 600', () => {
+  const exercise = {
+    id: 'targeted-question',
+    dimension: 'math',
+    role: 'core',
+    difficulty: 1,
+    est_minutes: 1,
+    prompt: 'What is 1 + 1?',
+    hints: [],
+    solution: 'Add the two values.',
+    type: 'numeric',
+    answer: 2,
+    tolerance: {},
+  };
+
+  expect(ExerciseSchema.safeParse({ ...exercise, target_seconds: 5 }).success).toBe(true);
+  expect(ExerciseSchema.safeParse({ ...exercise, target_seconds: 600 }).success).toBe(true);
+  expect(ExerciseSchema.safeParse({ ...exercise, target_seconds: 4 }).success).toBe(false);
+  expect(ExerciseSchema.safeParse({ ...exercise, target_seconds: 601 }).success).toBe(false);
+  expect(ExerciseSchema.safeParse({ ...exercise, target_seconds: 5.5 }).success).toBe(false);
+});
+
 // Loading the full curriculum can exceed Vitest's five-second default on CI runners.
 test('real content indexes round-trip through V8 serialization with subject lookups intact', {
   timeout: 30_000,

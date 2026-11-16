@@ -5,6 +5,7 @@ exercises:
     type: mc
     role: basics
     difficulty: 1
+    target_seconds: 30
     est_minutes: 2
     prompt: What does the standard deviation describe?
     options:
@@ -136,6 +137,7 @@ exercises:
     type: mc
     role: basics
     difficulty: 1
+    target_seconds: 30
     est_minutes: 2
     prompt: How does a continuous Gaussian model assign probability to an interval?
     options:
@@ -277,6 +279,7 @@ exercises:
     type: mc
     role: basics
     difficulty: 1
+    target_seconds: 30
     est_minutes: 2
     prompt:
       Keep the mean fixed and double a Gaussian's standard deviation. What happens to its density
@@ -421,6 +424,7 @@ exercises:
     type: mc
     role: basics
     difficulty: 1
+    target_seconds: 30
     est_minutes: 2
     prompt: Which situation supports an approximately Gaussian total under the central limit theorem?
     options:

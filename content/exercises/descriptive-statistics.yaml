@@ -5,6 +5,7 @@ exercises:
     type: mc
     role: basics
     difficulty: 1
+    target_seconds: 30
     est_minutes: 1
     prompt: What does the sample standard deviation describe?
     options:
@@ -64,6 +65,7 @@ exercises:
     type: numeric
     role: practice
     difficulty: 1
+    target_seconds: 30
     est_minutes: 2
     prompt: "Three grasp times are ${{=m-2*d}}$, ${{=m-d}}$ and ${{=m+3*d}}$ seconds. What is their sample mean in seconds?"
     params:
@@ -134,6 +136,7 @@ exercises:
     type: mc
     role: basics
     difficulty: 1
+    target_seconds: 30
     est_minutes: 1
     prompt: What does the standard error of a sample mean measure?
     options:
@@ -275,6 +278,7 @@ exercises:
     type: mc
     role: practice
     difficulty: 1
+    target_seconds: 30
     est_minutes: 1
     prompt: What is a confidence interval for a success chance intended to describe?
     options:
@@ -457,6 +461,7 @@ exercises:
     type: mc
     role: basics
     difficulty: 1
+    target_seconds: 30
     est_minutes: 1
     prompt: Why can we treat a success rate as an average?
     options:
@@ -516,6 +521,7 @@ exercises:
     type: mc
     role: basics
     difficulty: 1
+    target_seconds: 30
     est_minutes: 1
     prompt: "Independent tests have enough successes and failures for the approximate 95% interval rule to apply. The interval for updated minus original success chance is 0.02 to 0.08. What does it support?"
     options:

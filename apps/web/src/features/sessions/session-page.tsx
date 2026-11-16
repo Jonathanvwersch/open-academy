@@ -372,7 +372,7 @@ export function SessionPage() {
     }
   };
 
-  const submitAnswer = async (answer: unknown) => {
+  const submitAnswer = async (answer: unknown, durationMs: number) => {
     if (!exerciseId || !activity) return;
     setSubmittingAnswer(true);
     setSubmitError('');
@@ -386,7 +386,7 @@ export function SessionPage() {
       const response = await apiFetch('/api/attempts', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ exerciseId, activityId: activity.id, answer, mode }),
+        body: JSON.stringify({ exerciseId, activityId: activity.id, answer, mode, durationMs }),
       });
       const data = (await response.json().catch(() => ({}))) as AttemptResponse;
       const { activityCompleted, ...attemptResult } = data;
@@ -395,7 +395,7 @@ export function SessionPage() {
         return;
       }
       if (response.ok || (response.status === 422 && data.status === 'invalid')) {
-        setResult({ ...data, exerciseId });
+        setResult({ ...data, exerciseId, durationMs });
       } else {
         setSubmitError(typeof data.error === 'string' ? data.error : 'Your answer was not saved.');
       }
@@ -407,7 +407,7 @@ export function SessionPage() {
                 ...session,
                 activities: session.activities.map((item) =>
                   item.id === activity.id
-                    ? { ...item, lastAttempt: { ...attemptResult, exerciseId } }
+                    ? { ...item, lastAttempt: { ...attemptResult, exerciseId, durationMs } }
                     : item,
                 ),
               }
@@ -916,6 +916,9 @@ export function SessionPage() {
                 key={`${activity.id}:${exerciseId}`}
                 exercise={exerciseQuery.data}
                 onSubmit={submitAnswer}
+                timerResetKey={Number(currentResult?.attemptNo ?? 0)}
+                restartTimerOnInteraction={currentResult?.retryAllowed === true}
+                autoFocus={currentResult?.retryAllowed !== true}
                 explainStep={
                   currentResult?.status === 'self_check_required' ? 'self-check' : 'answer'
                 }
@@ -950,6 +953,14 @@ export function SessionPage() {
               {currentResult && currentResult.status !== 'invalid' ? (
                 <FeedbackPanel
                   result={currentResult}
+                  slowTargetSeconds={
+                    activity.kind === 'review' &&
+                    typeof currentResult.durationMs === 'number' &&
+                    typeof exerciseQuery.data.target_seconds === 'number' &&
+                    currentResult.durationMs > exerciseQuery.data.target_seconds * 1000
+                      ? exerciseQuery.data.target_seconds
+                      : undefined
+                  }
                   hideAnswerLines={['mc', 'debug', 'explain'].includes(exerciseQuery.data.type)}
                 />
               ) : null}

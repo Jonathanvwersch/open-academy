@@ -42,6 +42,8 @@ const isTextEntryField = (element: Element | null) =>
 export function ExerciseForm({
   exercise,
   onSubmit,
+  timerResetKey,
+  restartTimerOnInteraction = false,
   disabled = false,
   loading = false,
   submitLabel = 'Submit answer',
@@ -57,7 +59,9 @@ export function ExerciseForm({
   autoFocus = true,
 }: {
   exercise: ClientExercise;
-  onSubmit: (answer: unknown) => void;
+  onSubmit: (answer: unknown, durationMs: number) => void;
+  timerResetKey?: number | string;
+  restartTimerOnInteraction?: boolean;
   disabled?: boolean;
   loading?: boolean;
   submitLabel?: string;
@@ -84,6 +88,9 @@ export function ExerciseForm({
   const [answerError, setAnswerError] = useState('');
   const answerInputRef = useRef<HTMLInputElement>(null);
   const answerTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const answerStartedAt = useRef(performance.now());
+  const restartTimerAfterFeedback = useRef(false);
+  const currentTimerResetKey = useRef(timerResetKey);
   const options = exercise.options;
   const orderedOptions = useMemo(
     () => onScreenOptions(options ?? [], exercise.id),
@@ -97,6 +104,18 @@ export function ExerciseForm({
     [exercise.id, fixOptions],
   );
   const inputsLocked = locked || disabled || loading;
+  useEffect(() => {
+    if (currentTimerResetKey.current !== timerResetKey) {
+      answerStartedAt.current = performance.now();
+      currentTimerResetKey.current = timerResetKey;
+    }
+    restartTimerAfterFeedback.current = restartTimerOnInteraction;
+  }, [restartTimerOnInteraction, timerResetKey]);
+  const startTimerAfterFeedback = () => {
+    if (!restartTimerAfterFeedback.current) return;
+    answerStartedAt.current = performance.now();
+    restartTimerAfterFeedback.current = false;
+  };
   useEffect(() => {
     const answerInput = answerInputRef.current ?? answerTextareaRef.current;
     if (!autoFocus || inputsLocked || !answerInput) return;
@@ -247,7 +266,8 @@ export function ExerciseForm({
       return;
     }
     setAnswerError('');
-    onSubmit(answer);
+    startTimerAfterFeedback();
+    onSubmit(answer, Math.max(0, Math.round(performance.now() - answerStartedAt.current)));
   };
   const handleKeyDown = (event: ReactKeyboardEvent<HTMLFormElement>) => {
     if (event.nativeEvent.isComposing || event.altKey || event.ctrlKey || event.metaKey) return;
@@ -282,7 +302,15 @@ export function ExerciseForm({
     }
   };
   return (
-    <form onSubmit={submit} onKeyDown={handleKeyDown} className="space-y-4">
+    <form
+      onSubmit={submit}
+      onKeyDown={handleKeyDown}
+      onKeyDownCapture={startTimerAfterFeedback}
+      onFocusCapture={startTimerAfterFeedback}
+      onPointerDownCapture={startTimerAfterFeedback}
+      onChangeCapture={startTimerAfterFeedback}
+      className="space-y-4"
+    >
       {answerError ? (
         <p role="alert" className="text-sm text-destructive">
           {answerError}

@@ -16,6 +16,7 @@ exercises:
     type: mc
     role: basics
     difficulty: 1
+    target_seconds: 30
     est_minutes: 1
     prompt: "What is a derivative?"
     options:
@@ -49,6 +50,7 @@ exercises:
     type: mc
     role: basics
     difficulty: 1
+    target_seconds: 30
     est_minutes: 1
     prompt: "What does the power rule say about $x^n$?"
     options:
@@ -82,6 +84,7 @@ exercises:
     type: mc
     role: basics
     difficulty: 1
+    target_seconds: 30
     est_minutes: 1
     prompt: "What does the natural logarithm $\\ln x$ ask?"
     options:
@@ -115,6 +118,7 @@ exercises:
     type: mc
     role: basics
     difficulty: 1
+    target_seconds: 30
     est_minutes: 1
     prompt: "What do the product and quotient rules differentiate?"
     options:
@@ -214,6 +218,7 @@ exercises:
     type: numeric
     role: review
     difficulty: 1
+    target_seconds: 30
     est_minutes: 2
     prompt: "For $f(x) = 3x^4 - 2x + \\ln x$, what is $f'(1)$?"
     answer: 11
@@ -273,6 +278,7 @@ exercises:
     type: mc
     role: practice
     difficulty: 1
+    target_seconds: 30
     est_minutes: 1
     prompt: "A function has $f'(4) = 3$. What does this tell you?"
     options:
@@ -328,6 +334,7 @@ exercises:
     type: mc
     role: practice
     difficulty: 1
+    target_seconds: 30
     est_minutes: 1
     prompt: "On a graph of $f$, what does $f'(2)$ measure?"
     options:
@@ -409,6 +416,7 @@ exercises:
     type: mc
     role: practice
     difficulty: 1
+    target_seconds: 30
     est_minutes: 1
     prompt: "A delivery robot's battery charge after $t$ minutes is $b(t)$ percent, and $b'(10) = -0.5$. What does this mean?"
     options:
@@ -489,6 +497,7 @@ exercises:
     type: mc
     role: practice
     difficulty: 1
+    target_seconds: 30
     est_minutes: 1
     prompt: "What is the derivative of $x^3$?"
     options:
@@ -579,6 +588,7 @@ exercises:
     type: numeric
     role: practice
     difficulty: 1
+    target_seconds: 30
     est_minutes: 2
     prompt: "Let $f(x) = {{=a}}\\ln x$. What is the slope $f'({{=x0}})$? Round to 2 decimal places if needed."
     hints: ["The derivative of $\\ln x$ is $\\frac1x$, and the constant stays in front."]
@@ -599,6 +609,7 @@ exercises:
     type: mc
     role: practice
     difficulty: 1
+    target_seconds: 30
     est_minutes: 1
     prompt: "Why is the slope of $f(x) = e^x$ at any point equal to the function's value there?"
     options:
@@ -627,6 +638,7 @@ exercises:
     type: mc
     role: practice
     difficulty: 1
+    target_seconds: 30
     est_minutes: 1
     prompt: "A calculator says $\\ln 20 \\approx 3$. What does that tell you?"
     options:
@@ -685,6 +697,7 @@ exercises:
     type: numeric
     role: practice
     difficulty: 1
+    target_seconds: 30
     est_minutes: 2
     prompt: "At $x = 2$, a function $u$ has $u(2) = {{=a}}$ and $u'(2) = {{=b}}$, and a function $v$ has $v(2) = {{=c}}$ and $v'(2) = {{=d}}$. Let $f(x) = u(x)\\,v(x)$. What is $f'(2)$?"
     hints: ["Product rule: $f' = u'v + uv'$."]
@@ -763,6 +776,7 @@ exercises:
     type: mc
     role: practice
     difficulty: 1
+    target_seconds: 30
     est_minutes: 1
     prompt: "Which of these functions needs the product rule?"
     options:

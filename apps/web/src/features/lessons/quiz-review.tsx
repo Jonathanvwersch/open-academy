@@ -42,6 +42,16 @@ export function QuizReview({
               ) : null}
             </div>
             <Markdown>{item.exercise.prompt}</Markdown>
+            {item.correct != null &&
+            item.correct >= 1 &&
+            item.durationMs != null &&
+            item.exercise.target_seconds !== undefined &&
+            item.durationMs > item.exercise.target_seconds * 1000 ? (
+              <p className="text-sm text-muted-foreground">
+                Correct. Try to get this one in under {item.exercise.target_seconds} seconds next
+                time.
+              </p>
+            ) : null}
             <p className={item.correct === 0 ? 'text-red-700' : undefined}>
               <span className="font-medium">Your answer: </span>
               <Markdown inline>{item.yourAnswer}</Markdown>

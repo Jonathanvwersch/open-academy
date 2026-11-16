@@ -1,6 +1,6 @@
 import { Rating, State } from 'ts-fsrs';
 import { describe, expect, it } from 'vitest';
-import { newReviewCard, reviewActivityRating } from '../../src/learning/fsrs.js';
+import { mapReviewRating, newReviewCard, reviewActivityRating } from '../../src/learning/fsrs.js';
 import { bringWeakestPrerequisiteCardDueNow } from '../../src/learning/prerequisite-review.js';
 
 describe('reviewActivityRating', () => {
@@ -40,6 +40,44 @@ describe('reviewActivityRating', () => {
     },
   ])('rates $items as $rating', ({ items, rating }) => {
     expect(reviewActivityRating(items)).toBe(rating);
+  });
+
+  it('rates slow correct answers as Hard without changing the correct-answer threshold', () => {
+    const slow = {
+      correct: 1,
+      hintsUsed: 0,
+      durationMs: 30_001,
+      targetSeconds: 30,
+    };
+
+    expect(
+      reviewActivityRating([slow, { correct: 1, hintsUsed: 0 }, { correct: 1, hintsUsed: 0 }]),
+    ).toBe(Rating.Hard);
+    expect(
+      reviewActivityRating([
+        { ...slow, durationMs: undefined },
+        { correct: 1, hintsUsed: 0 },
+        { correct: 1, hintsUsed: 0 },
+      ]),
+    ).toBe(Rating.Good);
+    expect(
+      reviewActivityRating([slow, { correct: 1, hintsUsed: 0 }, { correct: 0, hintsUsed: 0 }]),
+    ).toBe(Rating.Hard);
+  });
+
+  it('rates a slow correct first review as Hard', () => {
+    expect(
+      mapReviewRating({
+        correct: 1,
+        hintsUsed: 0,
+        attemptNo: 1,
+        durationMs: 30_001,
+        targetSeconds: 30,
+      }),
+    ).toBe(Rating.Hard);
+    expect(mapReviewRating({ correct: 1, hintsUsed: 0, attemptNo: 1, targetSeconds: 30 })).toBe(
+      Rating.Good,
+    );
   });
 });
 

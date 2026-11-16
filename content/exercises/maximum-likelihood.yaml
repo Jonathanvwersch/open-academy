@@ -5,6 +5,7 @@ exercises:
     type: mc
     role: basics
     difficulty: 1
+    target_seconds: 30
     est_minutes: 2
     prompt: A bent coin gave some flips. What is the likelihood of a guess $p$ for its chance of heads?
     options:
@@ -51,6 +52,7 @@ exercises:
     type: numeric
     role: practice
     difficulty: 1
+    target_seconds: 30
     est_minutes: 3
     prompt: A bent coin lands heads with probability {{= k/10}}. Its independent flips come up
       heads, tails, heads. What is the likelihood of the guess $p={{= k/10}}$ for these flips? Give
@@ -71,6 +73,7 @@ exercises:
     type: numeric
     role: practice
     difficulty: 1
+    target_seconds: 30
     est_minutes: 2
     prompt: A bent coin is flipped {{= h+t}} times and comes up heads {{= h}} times. What is the
       maximum likelihood estimate of its chance of heads? Give two decimal places.
@@ -154,6 +157,7 @@ exercises:
     type: mc
     role: basics
     difficulty: 1
+    target_seconds: 30
     est_minutes: 2
     prompt: Why does the guess with the largest log-likelihood $\ln L$ also have the largest likelihood $L$?
     options:
@@ -201,6 +205,7 @@ exercises:
     type: mc
     role: practice
     difficulty: 1
+    target_seconds: 30
     est_minutes: 2
     prompt: Which expression equals $\ln(0.5\times0.2)$?
     options:
@@ -309,6 +314,7 @@ exercises:
     type: mc
     role: basics
     difficulty: 1
+    target_seconds: 30
     est_minutes: 2
     prompt:
       Readings have Gaussian noise with a fixed $\sigma$ around an unknown centre $\mu$. Which $\mu$
@@ -358,6 +364,7 @@ exercises:
     type: numeric
     role: practice
     difficulty: 1
+    target_seconds: 30
     est_minutes: 2
     prompt: "A sensor with Gaussian noise of fixed $\\sigma$ gives the readings {{= m-2*d}}, {{= m}} and {{= m+5*d}} cm. What is the maximum likelihood estimate of the true distance $\\mu$, in cm?"
     params:
@@ -470,6 +477,7 @@ exercises:
     type: mc
     role: basics
     difficulty: 1
+    target_seconds: 30
     est_minutes: 2
     prompt: When is training a model to minimise the mean squared error the same as maximum likelihood?
     options:
@@ -516,6 +524,7 @@ exercises:
     type: numeric
     role: practice
     difficulty: 1
+    target_seconds: 30
     est_minutes: 2
     prompt: A model's errors on four readings are {{= a}}, {{= -b}}, {{= c}} and 0. What is its mean
       squared error? Give two decimal places.
