@@ -20,12 +20,25 @@ where_this_fits: |
 knowledge_points:
   - id: bp-why-backprop
     title: "Work backwards from the loss"
+    tldr: |
+      - Several parameters can affect the loss through the same prediction.
+      - Backpropagation starts at the loss and passes slopes backwards through each operation.
+      - Reusing shared slopes gives every parameter's loss slope in one backward sweep.
     explain: |
       ### A model with two parameters
 
       Let's start with the smallest model, which predicts $\hat y=wx+b$ from one input $x$. It has two parameters, a weight $w$ and a bias $b$, and we want the loss's partial derivative for each. We'll take one example with input $x=2$ and target $y=0$, and start from $w=1$ and $b=1$.
 
-      The forward pass, along the grey arrows, gives the prediction $\hat y=3$ and the squared-error loss $L=9$. We keep these values for the way back, where, for example, the weight's local derivative is the input $x$.
+      The forward pass follows the grey arrows:
+
+      $$
+      \begin{aligned}
+      \hat y&=1\times2+1=3 &&\text{compute the prediction}\\
+      L&=(3-0)^2=9 &&\text{square the error}
+      \end{aligned}
+      $$
+
+      We keep these values for the way back, where, for example, the weight's local derivative is the input $x$.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 230" aria-label="Computational graph for the prediction 2w plus b. Grey arrows run forward from w equals 1 and b equals 1 to the prediction 3, then to the loss 9. Blue arrows run back. The loss hands the slope 6 to the prediction once, and the prediction hands 6 times 2, which is 12, to w and 6 times 1, which is 6, to b">
@@ -58,7 +71,14 @@ knowledge_points:
       Let's find both slopes with $x=2$, $y=0$, $w=1$ and $b=1$.
 
       1. **Run the forward pass.** We keep the values for later.
-         $$\hat y=1\times2+1=3,\qquad L=(3-0)^2=9$$
+
+         $$
+         \begin{aligned}
+         \hat y&=1\times2+1=3 &&\text{compute the prediction}\\
+         L&=(3-0)^2=9 &&\text{square the error}
+         \end{aligned}
+         $$
+
       2. **Find the shared slope at the prediction.** It's twice the error, and both parameters pass through it.
          $$\frac{\partial L}{\partial\hat y}=2(\hat y-y)=2(3-0)=6$$
       3. **Multiply by the weight's local derivative.** Raising $w$ by one raises $\hat y$ by $x=2$.
@@ -78,10 +98,23 @@ knowledge_points:
       ]
   - id: bp-by-hand
     title: "Work backwards through a small network"
+    tldr: |
+      - Each backward step multiplies an arriving loss slope by a local derivative.
+      - ReLU passes the slope through for positive saved scores and blocks it otherwise.
+      - Following these steps through the network gives both weights' loss slopes.
     explain: |
       ### A network with a ReLU
 
-      A network has layers with an activation between them, so let's go backwards through the smallest one, with two layers of one neuron. It multiplies the input $x=2$ by the weight $w_1=1$ to get the score $z=2$, and ReLU gives the hidden value $h=2$. The output layer multiplies by $w_2=3$ to predict $\hat y=6$, and with target $y=5$ the loss is $L=1$.
+      Let's go backwards through two layers of one neuron, with ReLU between them. First compute the forward values using $x=2$, $w_1=1$, $w_2=3$ and target $y=5$:
+
+      $$
+      \begin{aligned}
+      z&=w_1x=1\times2=2 &&\text{first layer score}\\
+      h&=\max(0,2)=2 &&\text{apply ReLU}\\
+      \hat y&=w_2h=3\times2=6 &&\text{output layer prediction}\\
+      L&=(6-5)^2=1 &&\text{square the error}
+      \end{aligned}
+      $$
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 190" aria-label="A chain of five boxes. Grey arrows run forward from x equals 2, times w1 equals 1, to z equals 2, through ReLU to h equals 2, times w2 equals 3, to the prediction 6, and on to the loss 1 with target 5. Underneath, blue arrows run back with the slopes 2 for the prediction, 6 for h and 6 for z. The weight w2 gets 4 and the weight w1 gets 12">
@@ -160,10 +193,27 @@ knowledge_points:
       ]
   - id: bp-arrays
     title: "Find the slopes for a whole batch"
+    tldr: |
+      - Every example in a batch uses the same weights and biases.
+      - Each example contributes to their loss slopes, and those contributions add.
+      - A matrix product adds the weight contributions, while column sums give the bias slopes.
     explain: |
       ### One weight, many examples
 
-      Every example in a batch shares the same weights and bias. Let's go back to the model $\hat y=wx+b$, now with $w=2$ and $b=1$, and a batch of two examples: input $1$ with target $1$, and input $2$ with target $1$. The predictions are $3$ and $5$, the errors $2$ and $4$, and the mean squared error $10$. The MSE divides the sum by $2$, so each prediction's slope is twice its error divided by $2$, which is just the error.
+      Every example shares the same weights and bias. Use $\hat y=wx+b$ with $w=2$, $b=1$, inputs $1$ and $2$, and target $1$ for both:
+
+      $$
+      \begin{aligned}
+      \hat y_1&=2\times1+1=3 &&\text{first prediction}\\
+      \hat y_2&=2\times2+1=5 &&\text{second prediction}\\
+      e_1&=3-1=2 &&\text{first error}\\
+      e_2&=5-1=4 &&\text{second error}\\
+      L&=(2^2+4^2)/2=10 &&\text{mean squared error}\\
+      \frac{\partial L}{\partial\hat y_i}&=2e_i/2=e_i &&\text{differentiate the mean}
+      \end{aligned}
+      $$
+
+      The subscript $i$ identifies the example. Each prediction's slope equals its error because the MSE divides by two.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 220" aria-label="One weight w equals 2 feeds two predictions with grey arrows, 3 for the input 1 and 5 for the input 2, and both feed the mean squared error 10. The predictions get the slopes 2 and 4. In blue, the weight collects 2 times 1, which is 2, from the first example and 4 times 2, which is 8, from the second, and adds them to get 10">
@@ -234,6 +284,10 @@ knowledge_points:
       ]
   - id: bp-checking
     title: "Check a slope by nudging a weight"
+    tldr: |
+      - We can check a loss slope by changing one weight and measuring the loss again.
+      - Measuring equally far above and below the weight gives a slope estimate.
+      - Agreement with backpropagation checks that slope at the tested point.
     explain: |
       ### Measuring a slope directly
 
@@ -272,7 +326,16 @@ knowledge_points:
 
       Comparing it with backpropagation's answer is a **gradient check**. Here are two mistakes it catches at $w=1$:
 
-      - Nudging only upwards, $(10.24-9)/0.1$, gives $12.4$, which is off because the curve bends, so we nudge both ways.
+      - Nudging only upwards is off because the curve bends:
+
+        $$
+        \begin{aligned}
+        10.24-9&=1.24 &&\text{loss change for an upward nudge}\\
+        1.24/0.1&=12.4 &&\text{divide by the nudge}
+        \end{aligned}
+        $$
+
+        We nudge both ways to reduce this error.
       - Code that forgot to multiply by $x$ returns $6$, only half of the measured $12$.
 
       ### What a check can't do
