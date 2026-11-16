@@ -18,10 +18,7 @@ where_this_fits: |
 knowledge_points:
   - id: eig-stretch-directions
     title: "Find directions a matrix only stretches"
-    tldr: >-
-      An eigenvector is a direction a matrix stretches without turning; its eigenvalue gives the
-      stretch or reversal. For $A=\begin{bmatrix}2&1\\1&2\end{bmatrix}$, $(1,1)$ and $(1,-1)$
-      have eigenvalues $3$ and $1$.
+    tldr: "Most arrows get turned by a matrix, but some directions only get stretched. These are the eigenvectors, and the stretch factor is the eigenvalue. We find them for one matrix by trying a few arrows."
     explain: |
       ### What a matrix does to arrows
 
@@ -90,10 +87,7 @@ knowledge_points:
       - eigp-check-pair
   - id: eig-find-eigenvalues
     title: "Find how much each direction stretches"
-    tldr: >-
-      For $A=\begin{bmatrix}a&b\\c&d\end{bmatrix}$, its eigenvalues solve
-      $\lambda^2-(a+d)\lambda+(ad-bc)=0$. They add to $a+d$ and multiply to $ad-bc$; put each
-      value in both row equations to find its direction.
+    tldr: "Instead of guessing directions, we solve for them. Rewriting the stretch condition as one equation gives the stretch factors first. Putting each factor back in gives its direction."
     explain: |
       ### From guessing to solving
 
@@ -221,10 +215,7 @@ knowledge_points:
       - eigp-population-growth
   - id: eig-svd-three-moves
     title: "Split any matrix into turn, stretch, turn"
-    tldr: >-
-      The SVD works for every matrix by turning input directions to axes, stretching them, then
-      turning to output directions. For $B=\begin{bmatrix}4&-3\\6&8\end{bmatrix}$, the stretches
-      are $10$ and $5$.
+    tldr: "Some matrices have no stretch-only directions. The SVD describes every matrix as a turn, a stretch along the axes, then another turn, and we find those three moves for one example."
     explain: |
       ### A matrix with no stretch-only direction
 
@@ -343,10 +334,7 @@ knowledge_points:
       - eigp-robot-arm
   - id: eig-low-rank
     title: "Approximate a matrix with fewer numbers"
-    tldr: >-
-      Each singular direction contributes a rank-one piece, a column times a row. Keeping the
-      largest $k$ pieces gives a rank-$k$ copy whose worst-case error on a unit input is the first
-      singular value dropped.
+    tldr: "A matrix can be split into pieces, one per stretch. Keeping only the biggest pieces gives a copy that needs far fewer numbers, and its error is never more than the largest stretch you dropped."
     explain: |
       ### A matrix as a sum of pieces
 
