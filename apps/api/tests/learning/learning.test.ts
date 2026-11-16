@@ -23,9 +23,10 @@ import {
   outlinePosition,
   prerequisiteMet,
 } from '../../src/learning/prerequisites.js';
-import type { PlannedActivity, SchedulerState } from '../../src/learning/scheduler.js';
+import type { Candidate, PlannedActivity, SchedulerState } from '../../src/learning/scheduler.js';
 import {
   currentLearnerUnit,
+  mixReviewActivities,
   planSession,
   replan,
   SCHEDULER_CONFIG,
@@ -41,6 +42,39 @@ function required<T>(value: T | undefined, label: string): T {
     throw new Error(`Missing fixture ${label}`);
   }
   return value;
+}
+
+function reviewCandidate(
+  conceptId: string,
+  courseId: string,
+  score: number,
+  exerciseIds = [`${conceptId}-1`, `${conceptId}-2`, `${conceptId}-3`],
+): Candidate {
+  return {
+    activity: {
+      kind: 'review',
+      conceptId,
+      exerciseIds,
+      plannedMinutes: exerciseIds.length * 2,
+      reason: {
+        courseId,
+        terms: {
+          goal: 0,
+          week_fit: 0,
+          project: 0,
+          unlock: 0,
+          gap: 0,
+          review: score,
+          cost: 0,
+        },
+        summary: `Review ${conceptId}.`,
+      },
+    },
+    score,
+    adjustedMinutes: exerciseIds.length * 2,
+    newConcept: false,
+    courseId,
+  };
 }
 
 beforeAll(async () => {
@@ -867,6 +901,96 @@ test('Overdue reviews are scheduled', () => {
   expect(review).toBeDefined();
   expect(review?.reason.summary).toContain('Due since 13 Jan 2026');
   expect(review?.reason.summary).toContain('~70% recall');
+});
+
+test('three due topics from two courses become one interleaved mixed review', () => {
+  const reviews = [
+    reviewCandidate('vectors', 'fixture-course', 9, ['v1', 'v2', 'v3']),
+    reviewCandidate('derivatives', 'fixture-course', 8, ['d1', 'd2', 'd3']),
+    reviewCandidate('switching-topic', 'fixture-switching-course', 7, ['s1', 's2', 's3']),
+  ];
+
+  const [mixed] = mixReviewActivities(reviews, content);
+
+  expect(mixed?.activity).toMatchObject({
+    kind: 'review',
+    conceptId: null,
+    exerciseIds: ['v1', 's1', 'd1', 'v2', 's2', 'd2', 'v3', 's3', 'd3'],
+    plannedMinutes: 18,
+    reason: {
+      summary: 'Mixed review: Vectors, Switching topic, Derivatives.',
+      terms: { review: 9 },
+    },
+  });
+});
+
+test('one selected due topic stays a single-topic review', () => {
+  const onlyReview = reviewCandidate('vectors', 'fixture-course', 4);
+  const [result] = mixReviewActivities([onlyReview], content);
+  expect(result).toBe(onlyReview);
+  expect(result?.activity.conceptId).toBe('vectors');
+});
+
+test('a review alongside a lesson of the same concept stays separate', () => {
+  const learn: Candidate = {
+    ...reviewCandidate('vectors', 'fixture-course', 1, ['learn']),
+    activity: {
+      kind: 'learn',
+      conceptId: 'vectors',
+      exerciseIds: ['learn'],
+      plannedMinutes: 5,
+      reason: reviewCandidate('vectors', 'fixture-course', 1).activity.reason,
+    },
+  };
+  const sameConceptReview = reviewCandidate('vectors', 'fixture-course', 10, ['vr']);
+  const otherReviews = [
+    reviewCandidate('derivatives', 'fixture-course', 8, ['d1', 'd2']),
+    reviewCandidate('switching-topic', 'fixture-switching-course', 7, ['s1', 's2']),
+  ];
+
+  const result = mixReviewActivities([learn, sameConceptReview, ...otherReviews], content);
+
+  expect(result[0]).toBe(learn);
+  expect(result).toContain(sameConceptReview);
+  expect(result.filter((candidate) => candidate.activity.kind === 'review')).toHaveLength(2);
+  expect(result.find((candidate) => candidate.activity.kind === 'review')?.activity.conceptId).toBe(
+    'vectors',
+  );
+  expect(
+    result.find((candidate) => candidate.activity.conceptId === null)?.activity.exerciseIds,
+  ).toEqual(['d1', 's1', 'd2', 's2']);
+});
+
+test('four due topics spread into two mixed reviews of two topics each', () => {
+  const reviews = [
+    reviewCandidate('vectors', 'fixture-course', 9),
+    reviewCandidate('derivatives', 'fixture-course', 8),
+    reviewCandidate('switching-topic', 'fixture-switching-course', 7),
+    reviewCandidate('linear-models', 'fixture-switching-course', 6),
+  ];
+
+  const result = mixReviewActivities(reviews, content);
+
+  expect(result).toHaveLength(2);
+  expect(result.every((candidate) => candidate.activity.conceptId === null)).toBe(true);
+  expect(result.map((candidate) => candidate.activity.exerciseIds)).toEqual([
+    [
+      'vectors-1',
+      'switching-topic-1',
+      'vectors-2',
+      'switching-topic-2',
+      'vectors-3',
+      'switching-topic-3',
+    ],
+    [
+      'derivatives-1',
+      'linear-models-1',
+      'derivatives-2',
+      'linear-models-2',
+      'derivatives-3',
+      'linear-models-3',
+    ],
+  ]);
 });
 
 test('a due review is skipped on the attempt day and planned the next local day', () => {

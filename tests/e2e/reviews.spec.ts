@@ -168,6 +168,54 @@ test('Reviews page shows due and upcoming topics at desktop and mobile widths', 
   }
 });
 
+test('mixed reviews show their topics on Home and beside each session question', async ({
+  page,
+}) => {
+  await db
+    .update(users)
+    .set({ prefs: { scheduleMinutes: 180 } })
+    .where(eq(users.id, userId));
+  for (const conceptId of ['vectors', 'linear-models']) {
+    await db.insert(reviewCards).values({
+      userId,
+      conceptId,
+      dimension: 'math',
+      fsrs: newReviewCard(new Date('2026-01-01T12:00:00.000Z')),
+      dueAt: new Date('2026-01-01T00:00:00.000Z'),
+      reps: 1,
+      lapses: 0,
+    });
+  }
+
+  for (const viewport of [
+    { width: 1440, height: 900, name: 'desktop' },
+    { width: 390, height: 844, name: 'mobile' },
+  ]) {
+    await page.setViewportSize({ width: viewport.width, height: viewport.height });
+    await page.goto('/');
+    await expect(page.getByRole('heading', { name: 'Mixed review' })).toBeVisible();
+    await expect(page.getByText(/(?:Vectors, Linear models|Linear models, Vectors)/)).toBeVisible();
+    await page.screenshot({
+      path: `/home/ubuntu/briefs/mixed-shots/home-${viewport.name}.png`,
+      fullPage: true,
+    });
+  }
+
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.getByRole('button', { name: 'Start learning' }).click();
+  await expect(page.getByRole('heading', { name: 'Mixed review' })).toBeVisible();
+  await expect(page.getByText(/^From:/)).toBeVisible();
+  await page.screenshot({
+    path: '/home/ubuntu/briefs/mixed-shots/session-desktop.png',
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({
+    path: '/home/ubuntu/briefs/mixed-shots/session-mobile.png',
+    fullPage: true,
+  });
+});
+
 test('Reviews labels topics due tomorrow as Tomorrow', async ({ page }) => {
   const fsrs = newReviewCard(new Date('2026-01-01T12:00:00.000Z'));
   await db.insert(reviewCards).values({

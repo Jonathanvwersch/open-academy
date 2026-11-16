@@ -614,14 +614,22 @@ export function SessionPage() {
       />
     );
   }
+  const reviewTopics = activity.reviewTopics ?? [];
+  const isMixedReview = activity.kind === 'review' && reviewTopics.length >= 2;
+  const reviewTopicTitles = reviewTopics.map((topic) => topic.title).join(', ');
   if (showingRequestedCompletedActivity) {
-    const title =
-      activity.kind === 'paper'
+    const title = isMixedReview
+      ? 'Mixed review'
+      : activity.kind === 'paper'
         ? 'Paper reading'
         : (activity.conceptTitle ?? sessionActivityLabel(activity.kind));
     return (
       <section className="space-y-6">
-        <SessionActivityHeader title={title} label={sessionActivityLabel(activity.kind)} />
+        <SessionActivityHeader
+          title={title}
+          label={sessionActivityLabel(activity.kind)}
+          subtitle={isMixedReview ? reviewTopicTitles : undefined}
+        />
         <p role="status">{title} complete.</p>
         <Button asChild>
           <Link to="/session/$id" params={{ id }} search={{}}>
@@ -639,6 +647,7 @@ export function SessionPage() {
         : 'practice';
   const activityLabel = sessionActivityLabel(activity.kind);
   const activityTitle =
+    (isMixedReview ? 'Mixed review' : undefined) ??
     (activity.kind === 'lab' ? labProjectQuery.data?.project.title : undefined) ??
     activity.conceptTitle ??
     (activity.kind === 'paper'
@@ -837,9 +846,14 @@ export function SessionPage() {
       <SessionActivityHeader
         title={activityTitle}
         label={activityLabel}
-        lessonLink={isExplainQuestion && canSubmitAnswer ? undefined : lessonLink}
+        lessonLink={
+          isMixedReview || (isExplainQuestion && canSubmitAnswer) ? undefined : lessonLink
+        }
         subtitle={
-          recapPoint?.title ?? (isExplainQuestion ? 'Explain it in your own words' : undefined)
+          isMixedReview
+            ? reviewTopicTitles
+            : (recapPoint?.title ??
+              (isExplainQuestion ? 'Explain it in your own words' : undefined))
         }
       />
       {explainRun ? (
@@ -909,6 +923,15 @@ export function SessionPage() {
           >
             <CardContent ref={questionContent} className="space-y-5">
               <QuestionProgress states={questionStates} />
+              {isMixedReview ? (
+                <p className="text-sm text-muted-foreground">
+                  From:{' '}
+                  {
+                    reviewTopics.find((topic) => topic.conceptId === exerciseQuery.data?.concept)
+                      ?.title
+                  }
+                </p>
+              ) : null}
               <div data-testid="exercise-prompt">
                 <Markdown>{exerciseQuery.data.prompt}</Markdown>
               </div>

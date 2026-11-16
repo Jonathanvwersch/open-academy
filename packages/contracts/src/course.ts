@@ -81,6 +81,7 @@ export interface LearnPayload {
     activityKind: string;
     label: 'Lesson' | 'Review' | 'Practice' | 'Project' | 'Quiz';
     conceptId?: string;
+    reviewTopics?: Array<{ conceptId: string; title: string }>;
     title: string;
     xp: number;
     prerequisites: Array<{ id: string; title: string; done: boolean }>;

@@ -42,6 +42,7 @@ export const SCHEDULER_CONFIG = {
     reviewBudgetRatio: 0.3,
     maxNewConcepts: 2,
     maxActivities: 6,
+    mixedReviewTopics: 3,
   },
   repeatWindowDays: 7,
   consolidationMinutes: 5,
@@ -65,7 +66,7 @@ export interface ActivityReason {
 
 export interface PlannedActivity {
   kind: ActivityKind;
-  conceptId?: string;
+  conceptId?: string | null;
   projectId?: string;
   exerciseIds: string[];
   plannedMinutes: number;
@@ -117,7 +118,7 @@ export interface SessionPlan {
   reasons: ActivityReason[];
 }
 
-interface Candidate {
+export interface Candidate {
   activity: PlannedActivity;
   score: number;
   adjustedMinutes: number;
@@ -526,15 +527,128 @@ function packWeekday(
     .sort((left, right) => right.score - left.score);
   for (const candidate of otherCandidates) add(candidate);
 
+  const mixedReviewCandidates = mixReviewActivities(selected, content);
   const optionalActivities = optionalProjectAndPaperActivities(
     state,
     content,
     Math.max(0, budget - usedMinutes),
-    selected.length,
+    mixedReviewCandidates.length,
     selected.find((candidate) => candidate.activity.kind === 'learn')?.courseId,
   );
-  const activities = [...selected.map((candidate) => candidate.activity), ...optionalActivities];
+  const activities = [
+    ...mixedReviewCandidates.map((candidate) => candidate.activity),
+    ...optionalActivities,
+  ];
   return { activities, reasons: activities.map((activity) => activity.reason) };
+}
+
+export function mixReviewActivities(selected: Candidate[], content: ContentIndex): Candidate[] {
+  const selectedLearnConcepts = new Set(
+    selected.flatMap((candidate) =>
+      candidate.activity.kind === 'learn' && candidate.activity.conceptId
+        ? [candidate.activity.conceptId]
+        : [],
+    ),
+  );
+  const mergeableReviews = selected.flatMap((candidate, index) =>
+    candidate.activity.kind === 'review' &&
+    candidate.activity.conceptId &&
+    !selectedLearnConcepts.has(candidate.activity.conceptId)
+      ? [{ candidate, index }]
+      : [],
+  );
+  if (mergeableReviews.length < 2) return selected;
+
+  const reviewsByCourse = new Map<string, typeof mergeableReviews>();
+  for (const review of [...mergeableReviews].sort(
+    (left, right) => right.candidate.score - left.candidate.score || left.index - right.index,
+  )) {
+    const courseId = review.candidate.courseId ?? review.candidate.activity.reason.courseId ?? '';
+    const courseReviews = reviewsByCourse.get(courseId) ?? [];
+    courseReviews.push(review);
+    reviewsByCourse.set(courseId, courseReviews);
+  }
+
+  const roundRobinReviews = [];
+  while (true) {
+    let addedReview = false;
+    for (const courseReviews of reviewsByCourse.values()) {
+      const review = courseReviews.shift();
+      if (review) {
+        roundRobinReviews.push(review);
+        addedReview = true;
+      }
+    }
+    if (!addedReview) break;
+  }
+
+  const groupCount = Math.ceil(
+    roundRobinReviews.length / SCHEDULER_CONFIG.weekday.mixedReviewTopics,
+  );
+  const groupSize = Math.floor(roundRobinReviews.length / groupCount);
+  const largerGroups = roundRobinReviews.length % groupCount;
+  const mergedByReview = new Map<Candidate, Candidate>();
+  let offset = 0;
+  for (let groupIndex = 0; groupIndex < groupCount; groupIndex += 1) {
+    const size = groupSize + (groupIndex < largerGroups ? 1 : 0);
+    const group = roundRobinReviews.slice(offset, offset + size);
+    offset += size;
+    const firstReview = group[0]?.candidate;
+    if (!firstReview) continue;
+    const reviews = group.map(({ candidate }) => candidate);
+    const titles = reviews.map(
+      ({ activity }) =>
+        content.conceptsById.get(activity.conceptId ?? '')?.title ?? activity.conceptId ?? '',
+    );
+    const firstReason = firstReview.activity.reason;
+    const merged: Candidate = {
+      activity: {
+        kind: 'review',
+        conceptId: null,
+        exerciseIds: interleaveReviewExercises(reviews),
+        plannedMinutes: reviews.reduce(
+          (minutes, review) => minutes + review.activity.plannedMinutes,
+          0,
+        ),
+        reason: {
+          terms: {
+            ...firstReason.terms,
+            review: Math.max(...reviews.map((review) => review.activity.reason.terms.review)),
+          },
+          summary: `Mixed review: ${titles.join(', ')}.`,
+        },
+      },
+      score: Math.max(...reviews.map((review) => review.score)),
+      adjustedMinutes: reviews.reduce((minutes, review) => minutes + review.adjustedMinutes, 0),
+      newConcept: false,
+    };
+    for (const review of reviews) mergedByReview.set(review, merged);
+  }
+
+  const result: Candidate[] = [];
+  const emitted = new Set<Candidate>();
+  for (const candidate of selected) {
+    const merged = mergedByReview.get(candidate);
+    if (!merged) {
+      result.push(candidate);
+    } else if (!emitted.has(merged)) {
+      result.push(merged);
+      emitted.add(merged);
+    }
+  }
+  return result;
+}
+
+function interleaveReviewExercises(reviews: Candidate[]): string[] {
+  const exerciseIds: string[] = [];
+  const maxQuestions = Math.max(...reviews.map((review) => review.activity.exerciseIds.length));
+  for (let questionIndex = 0; questionIndex < maxQuestions; questionIndex += 1) {
+    for (const review of reviews) {
+      const exerciseId = review.activity.exerciseIds[questionIndex];
+      if (exerciseId) exerciseIds.push(exerciseId);
+    }
+  }
+  return exerciseIds;
 }
 
 function generateCandidates(state: SchedulerState, content: ContentIndex, now: Date): Candidate[] {

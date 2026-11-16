@@ -242,6 +242,11 @@ export function LearnPage() {
                         <div className="min-w-0 space-y-1">
                           <Badge variant="secondary">{task.label}</Badge>
                           <h2 className="font-medium leading-6">{task.title}</h2>
+                          {task.reviewTopics && task.reviewTopics.length > 1 ? (
+                            <p className="text-sm text-muted-foreground">
+                              {task.reviewTopics.map((topic) => topic.title).join(', ')}
+                            </p>
+                          ) : null}
                         </div>
                         {task.activityKind !== 'paper' ? (
                           <span className="shrink-0 text-sm font-medium text-muted-foreground">

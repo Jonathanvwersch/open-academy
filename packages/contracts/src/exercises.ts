@@ -1,5 +1,6 @@
 export interface ClientExercise {
   id: string;
+  concept: string;
   type: string;
   multi?: boolean;
   lesson_only?: boolean;
