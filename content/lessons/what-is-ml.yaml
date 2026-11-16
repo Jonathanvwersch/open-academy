@@ -13,9 +13,9 @@ knowledge_points:
     title: "Learn a rule from examples"
 
     tldr: |
-      - A computer can learn a rule by trying it on examples with known answers.
-      - Learning adjusts numbers called weights to bring predictions closer to those answers.
-      - The learned rule can then predict answers for new examples.
+      - Machine learning means a computer finds a rule from examples whose answers we know.
+      - The rule has adjustable numbers called weights, and learning means choosing them so the rule fits the examples.
+      - The chosen rule can then give answers for new examples it has never seen.
     explain: |
       ### Three sales and three possible rules
 
@@ -225,8 +225,8 @@ knowledge_points:
 
     tldr: |
       - A robot uses a model to turn what it senses into its next movement.
-      - It can learn by copying recorded movements or by trying actions and receiving scores.
-      - House models and robot models both improve by changing their weights using feedback.
+      - It can learn by copying a person's recorded movements, or by trial and error with a score called a reward.
+      - Either way, the model predicts, gets scored and changes its weights, just like the house model.
     explain: |
       ### From house prices to a robot arm
 

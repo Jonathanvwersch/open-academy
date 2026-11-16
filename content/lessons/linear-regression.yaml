@@ -22,8 +22,8 @@ knowledge_points:
     title: "Make one prediction"
 
     tldr: |
-      - Each measurement contributes its value multiplied by its weight.
-      - We add those contributions and then add one shared amount called the bias.
+      - Each measurement is multiplied by its own weight.
+      - We add up those pieces, then add one fixed amount called the bias.
       - That total is the model's predicted price.
     explain: |
       ### Pricing one house
@@ -101,9 +101,10 @@ knowledge_points:
     title: "Read the weights and the bias"
 
     tldr: |
-      - A weight tells us how much one extra unit changes the prediction when other measurements stay fixed.
-      - Its size depends on the units used for that measurement.
-      - Each unit always adds the same amount, so predictions follow straight lines.
+      - A weight is how much the prediction changes when its measurement goes up by one and the others stay the same.
+      - The bias is the prediction when every measurement is zero.
+      - A weight's size depends on its measurement's units, so size alone can't show importance.
+      - Every unit adds the same amount, so the price changes in a straight line.
     explain: |
       ### Changing one feature at a time
 
@@ -213,15 +214,15 @@ knowledge_points:
     title: "Predict every example at once"
 
     tldr: |
-      - We can put each house's measurements in its own row of a matrix.
-      - Multiplying by the weights gives one total per house.
+      - We put each house's measurements in its own row of a matrix.
+      - Multiplying that matrix by the weights gives one total per house.
       - Adding the bias to every total gives all the predicted prices at once.
     explain: |
       ### Many houses in one matrix
 
       So far we've priced one house at a time. But a dataset can hold hundreds of houses, and training compares the prediction with the target for every one of them, so we need all their predictions, with the same weights and bias. How do we get them all in one calculation?
 
-      A matrix times a vector takes one dot product per row. Stack the houses as rows of a matrix $X$, with features in the same order as $w$. For row 1, our house $(100,2)$:
+      In the matrices lesson, a matrix times a vector took one dot product per row. So we stack the houses as rows of a matrix $X$, with features in the same order as $w$. For row 1, our house $(100,2)$:
       $$
       \begin{aligned}
       w\cdot x&=3\times100+10\times2 &&\text{pair features with weights}\\

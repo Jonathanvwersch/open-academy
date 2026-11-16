@@ -18,9 +18,9 @@ knowledge_points:
     title: Turn scores into probabilities
 
     tldr: |
-      - A model gives each possible class its own score.
-      - Softmax makes those scores positive and divides each result by their total.
-      - The resulting probabilities sum to one, with the highest score getting the biggest share.
+      - The model gives each possible answer, or class, its own score.
+      - Softmax makes each score positive, then divides by the total.
+      - The results are probabilities that add up to 1, and the highest score gets the biggest share.
     explain: |
       ### One score for each class
 
@@ -32,10 +32,8 @@ knowledge_points:
 
       Softmax fixes this in two moves:
 
-      1. **Make the numbers positive.** Raise $e\approx2.72$ to each score, keeping the biggest score biggest.
-         $$(e^2,e^1,e^0)\approx(7.39,2.72,1)$$
-      2. **Share out the total.** Divide each result by their sum so the probabilities add up to 1.
-         $$\left(\frac{7.39}{11.11},\frac{2.72}{11.11},\frac{1}{11.11}\right)\approx(0.67,0.24,0.09)$$
+      1. **Make the numbers positive.** Raise $e\approx2.72$ to the power of each score. Every result is positive, and the biggest score still gives the biggest result.
+      2. **Share out the total.** Divide each result by their total, so the results add up to 1.
 
       Squaring would also make numbers positive, but it would wrongly rank a score of $-3$ above a score of 2.
 
@@ -137,9 +135,9 @@ knowledge_points:
     title: Measure how wrong the probabilities are
 
     tldr: |
-      - We score the probability assigned to the class that actually happened.
+      - The loss looks at the probability the model gave to the true class.
       - Cross-entropy takes minus the natural log of that probability.
-      - Confidently predicting the wrong class therefore gives a large loss.
+      - So a probability near 1 costs almost nothing, and a confident wrong answer costs the most.
     explain: |
       ### The loss looks at the true class
 
@@ -218,9 +216,9 @@ knowledge_points:
     title: Adjust the scores to lower the loss
 
     tldr: |
-      - Each class's loss slope is its probability minus its label.
-      - Gradient descent subtracts each scaled slope from its score.
-      - This raises the true class's score and lowers the others.
+      - We write the label as 1 for the true class and 0 for every other class.
+      - The slope of the loss for each class's score is its probability minus that label.
+      - Gradient descent moves each score against its slope, so the true class's score goes up and the others go down.
     explain: |
       ### Which way should each score move?
 

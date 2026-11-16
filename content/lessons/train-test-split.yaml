@@ -261,9 +261,9 @@ knowledge_points:
     title: "Keep test data out of training"
 
     tldr: |
-      - Held-out information can reach training through duplicate records or data processing.
-      - This leakage can make the model's test score look better than it should.
-      - We prevent it by splitting first, learning processing values from training alone and keeping related records together.
+      - Test data can sneak into training, for example through a sale recorded twice or an average worked out over all the houses.
+      - This is called leakage, and it makes test scores look better than they should.
+      - We stop it by removing duplicates and splitting first, working out values like averages from the training set only, and keeping related records together.
     explain: |
       ### Two ways test data sneaks in
 

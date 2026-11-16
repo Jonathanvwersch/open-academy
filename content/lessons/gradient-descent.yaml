@@ -20,9 +20,10 @@ knowledge_points:
     title: "Take one step downhill"
 
     tldr: |
-      - The gradient points uphill on the loss, so its opposite points downhill.
-      - A small positive number called the learning rate sets how far we step.
-      - Subtracting the scaled gradient moves the weights downhill.
+      - The gradient points the way the loss rises fastest, so the opposite way goes downhill fastest.
+      - Gradient descent takes a small step that way.
+      - A small positive number called the learning rate sets the size of each step.
+      - Repeating the step from wherever we land keeps lowering the loss.
     explain: |
       ### Walking downhill
 
@@ -112,9 +113,10 @@ knowledge_points:
     title: "Choose how big each step is"
 
     tldr: |
-      - A small learning rate can make progress very slow.
-      - A large learning rate can jump past the bottom and make the loss grow.
-      - We watch the loss after each step to choose a rate that keeps it falling.
+      - A small learning rate makes slow progress.
+      - A learning rate that is too large jumps past the bottom and can make the loss grow.
+      - Steeper curves need smaller rates to stay safe.
+      - In practice we watch the loss after each step and pick a rate that keeps it falling.
     explain: |
       ### Why the step size matters
 
@@ -241,9 +243,10 @@ knowledge_points:
     title: "Work out which way to move each weight"
 
     tldr: |
-      - Changing a weight changes the prediction, which changes the loss.
-      - With squared error, a weight's slope is twice the prediction error times its input.
-      - The bias's slope is twice the error, and we update both against their own slopes.
+      - A weight changes the loss only through the prediction it helps make.
+      - With squared error, a weight's slope is twice the error times that weight's input.
+      - The bias's slope is just twice the error.
+      - The error's sign says whether each one should move up or down.
     explain: |
       ### Where the slopes come from
 
@@ -294,7 +297,7 @@ knowledge_points:
 
       ### The slope of each weight
 
-      If we nudge $w$ up by $0.01$, the prediction rises by $x$ times that. The squared error's slope with respect to the prediction is $2e$, so we can estimate the loss change:
+      If we nudge $w$ up by $0.01$, the prediction rises by $x$ times that. In the loss-functions lesson, we saw that the squared error's slope with respect to the prediction is $2e$, so we can estimate the loss change:
       $$
       \begin{aligned}
       \text{prediction change}&=2\times0.01=0.02 &&\text{input times weight nudge}\\
@@ -354,9 +357,10 @@ knowledge_points:
     title: "Repeat until the loss stops falling"
 
     tldr: |
-      - Training repeats prediction, loss measurement, slope calculation and weight updates.
-      - Each update moves the model, so we calculate fresh slopes on every pass.
-      - We stop when the loss barely falls, though the point reached may be only a nearby dip.
+      - Training repeats four moves: predict, measure the loss, find the slopes and update.
+      - The slopes change as the weights move, so we work them out again on every pass.
+      - We stop once the loss barely falls.
+      - Where we stop may be the bottom of a nearby dip, with a deeper one somewhere else.
     explain: |
       ### Repeating the step
 

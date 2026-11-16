@@ -15,9 +15,9 @@ knowledge_points:
     title: Count right and wrong answers
 
     tldr: |
-      - A confusion matrix counts correct predictions, false alarms and missed faults.
-      - Accuracy measures the share of all answers that are correct.
-      - When faults are rare, high accuracy can still hide many missed faults.
+      - A confusion matrix is a table that counts the camera's right answers, false alarms and missed faults.
+      - Accuracy is the share of all parts the camera gets right.
+      - When faults are rare, a camera can score high accuracy while missing every fault.
     explain: |
       ### Four outcomes for a factory camera
 
@@ -79,9 +79,9 @@ knowledge_points:
     title: Measure caught faults and false alarms
 
     tldr: |
-      - Precision measures how many flagged parts are genuinely faulty.
-      - Recall measures how many faulty parts we catch.
-      - We choose which score matters most based on which mistakes cost more.
+      - Precision is the share of flagged parts that are actually faulty.
+      - Recall is the share of faulty parts the camera flags.
+      - Which one matters more depends on which mistake costs more, a missed fault or a false alarm.
     explain: |
       ### Of the flagged parts, how many were faulty?
 
@@ -146,9 +146,10 @@ knowledge_points:
     title: Score predicted prices
 
     tldr: |
-      - For predicted prices, we measure how far each prediction misses.
-      - Mean absolute error averages miss sizes, while mean squared error emphasises large misses.
-      - Taking the square root of mean squared error restores the original units.
+      - When we predict a price, we measure how far each prediction misses.
+      - Mean absolute error averages the sizes of the misses.
+      - Mean squared error averages the squared misses, so one big miss counts much more.
+      - Its square root puts the score back in thousands of pounds.
     explain: |
       ### From faulty parts to house prices
 

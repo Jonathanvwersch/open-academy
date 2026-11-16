@@ -20,9 +20,9 @@ knowledge_points:
     title: "Predict a yes-or-no answer"
 
     tldr: |
-      - We write the two possible answers as labels called zero and one.
-      - A weighted input plus a bias gives each house a score.
-      - That score needs another step before it can represent a probability.
+      - We write a yes-or-no answer as a label, 1 for yes and 0 for no.
+      - As in linear regression, each house gets a score, its weighted input plus a bias.
+      - A score can be any number, so it isn't yet a label or a probability.
     explain: |
       ### Two answers written as 0 and 1
 
@@ -103,9 +103,9 @@ knowledge_points:
     title: "Turn a score into a probability"
 
     tldr: |
-      - A function called the sigmoid squeezes any score between zero and one.
-      - The result estimates the probability that the answer is yes.
-      - We compare that probability with a cutoff to choose a label.
+      - A function called the sigmoid squeezes any score into a number between 0 and 1.
+      - That number is the model's probability that the answer is yes.
+      - To decide, we predict yes when the probability is at least one half.
     explain: |
       ### Squeezing a score between 0 and 1
 
@@ -184,9 +184,9 @@ knowledge_points:
     title: "Measure how wrong a probability is"
 
     tldr: |
-      - A useful loss checks the probability given to the answer that actually happened.
+      - A good loss looks at the probability the model gave to what actually happened.
       - Binary cross-entropy takes minus the natural log of that probability.
-      - It charges confident mistakes much more than uncertain guesses.
+      - So a probability near 1 costs almost nothing, and a confident wrong answer costs a lot.
     explain: |
       ### What a good loss should do
 
@@ -272,9 +272,9 @@ knowledge_points:
     title: "Update the weight and bias"
 
     tldr: |
-      - The loss slope for the score is the predicted probability minus the label.
-      - Multiplying that slope by the input gives the weight's slope.
-      - Gradient descent subtracts the scaled slopes to improve the weight and bias.
+      - The loss's slope against the score is the probability minus the label.
+      - The weight's slope is that times the input, and the bias's slope is the same as the score's.
+      - Gradient descent moves the weight and bias against their slopes, which lowers the loss.
     explain: |
       ### The slope of the loss against the score
 

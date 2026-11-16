@@ -16,9 +16,9 @@ knowledge_points:
     title: "Name the inputs, target and model"
 
     tldr: |
-      - The input is what we know, and the target is the answer we want.
-      - A model turns the input into a prediction using adjustable numbers called parameters.
-      - Learning chooses those parameters while the inputs and targets stay fixed.
+      - The input is what we know, like a house's size, and the target is the answer we want, like its price.
+      - A model is a rule that turns the input into a guess, called a prediction.
+      - The rule's adjustable numbers are called parameters, and learning means choosing them well.
     explain: |
       ### A rule for pricing houses
 
@@ -96,23 +96,24 @@ knowledge_points:
     title: "Score one prediction"
 
     tldr: |
-      - Subtracting the target from a prediction tells us how far it missed.
-      - Positive and negative misses can cancel even when every prediction is wrong.
-      - Squaring each miss prevents cancellation and gives bigger misses much higher scores.
+      - The error is the prediction minus the target, so it says how far a guess missed and in which direction.
+      - If we add up errors, misses that are too high and too low can cancel out.
+      - Squaring each error stops the cancelling and makes big misses count much more.
     explain: |
       ### How wrong is one guess?
 
       Setting A ($w=3$, $b=50$) priced the 100 m² house at 350 when it sold for 370. To improve, the computer needs "how wrong" as one number that it can try to make smaller. Which number should that be?
 
-      The obvious first try is the **error**, the prediction minus the target. Add two past sales: an 80 m² house that sold for 280, and a 120 m² house that sold for 400. Let's calculate the errors in order of size:
+      The obvious first try is the **error**, the prediction minus the target. Add two past sales: an 80 m² house that sold for 280, and a 120 m² house that sold for 400. Number the houses by size, 80, 100 and 120 m², and work out Setting A's errors:
       $$
       \begin{aligned}
-      (\hat y_1,\hat y_2,\hat y_3)&=(290,350,410) &&\text{predict with Setting A}\\
+      (\hat y_1,\hat y_2,\hat y_3)&=(3\times80+50,\ 3\times100+50,\ 3\times120+50) &&\text{use Setting A}\\
+      &=(290,350,410) &&\text{work out the predictions}\\
       (290-280,\ 350-370,\ 410-400)&=(10,-20,10) &&\text{subtract each target}\\
       10-20+10&=0 &&\text{add the signed errors}
       \end{aligned}
       $$
-      Here the subscripts number the houses. The total looks perfect because the high misses cancel the low one.
+      The total looks perfect because the high misses cancel the low one.
 
       ### Squaring each error
 
@@ -182,8 +183,8 @@ knowledge_points:
 
     tldr: |
       - Each choice of weight and bias gives a squared error for every house.
-      - Averaging those errors gives one score for that choice.
-      - Training chooses the weight and bias that make the average score smallest.
+      - Averaging those squared errors gives that choice one score.
+      - Training picks the weight and bias with the smallest average.
     explain: |
       ### One score for a whole dataset
 
@@ -285,9 +286,9 @@ knowledge_points:
     title: "Test on new houses, and target types"
 
     tldr: |
-      - A model needs to work on examples it never learned from.
-      - Scoring held-back examples checks how well it handles new inputs.
-      - Predicting categories instead of numbers needs a different way to score mistakes.
+      - A model is only useful if it works on examples it never learned from.
+      - So we keep some examples back from training and score the model on those.
+      - When the answer is a category, like yes or no, we can't subtract answers, so we need a different loss.
     explain: |
       ### Scoring houses the model hasn't seen
 
