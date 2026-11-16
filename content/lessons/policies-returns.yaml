@@ -14,6 +14,10 @@ where_this_fits: |
 knowledge_points:
   - id: pr-choose-actions
     title: Choose actions in each state
+    tldr: |
+      - A policy is a rule for choosing actions in each state.
+      - The rule can always pick the same action or give each action a chance.
+      - Those chances describe the robot's choices and add to one in each state.
     explain: |
       ### A rule for the robot
 
@@ -76,6 +80,10 @@ knowledge_points:
       - pr-policy-new
   - id: pr-add-rewards
     title: Add the rewards from a trip
+    tldr: |
+      - A return is a score for the rewards still to come on a trip.
+      - The next reward counts fully, and each later reward gets another discount.
+      - Adding these weighted rewards gives the return from the current time.
     explain: |
       ### Rewards arrive after actions
 
@@ -123,10 +131,22 @@ knowledge_points:
          $$(1,\gamma,\gamma^2)=(1,0.9,0.81).$$
 
       2. **Add the weighted rewards.** Each reward keeps its sign when we multiply by its weight.
-         $$G_0=(-1)+0.9(-1)+0.81(10)=6.2.$$
+         $$
+         \begin{aligned}
+         G_0&=(-1)+0.9(-1)+0.81(10) &&\text{insert rewards and weights}\\
+         &=-1-0.9+8.1 &&\text{multiply each reward by its weight}\\
+         &=6.2 &&\text{add the contributions}
+         \end{aligned}
+         $$
 
       3. **Score what remains after one move.** The first reward has already happened, so the new return starts with $r_2$ at full weight.
-         $$G_1=(-1)+0.9(10)=8.$$
+         $$
+         \begin{aligned}
+         G_1&=(-1)+0.9(10) &&\text{use the remaining rewards}\\
+         &=-1+9 &&\text{weight the goal reward}\\
+         &=8 &&\text{add the contributions}
+         \end{aligned}
+         $$
 
       $G_1$ is larger because the first cost has already happened and the goal is closer. $G_0$ starts before the first action, while $G_1$ starts before the second action. This lets us score what remains of a trip as the robot moves. At the end, $G_3=0$ because no rewards remain.
     problems:
@@ -140,6 +160,10 @@ knowledge_points:
       - pr-return-new
   - id: pr-weight-delay
     title: Choose how much delay matters
+    tldr: |
+      - The discount factor controls how much delayed rewards count.
+      - Raising it gives later gains and later penalties more weight.
+      - A trip's score depends on this setting, and judging a policy needs its possible trips.
     explain: |
       ### The same trip with different weights
 
@@ -149,7 +173,7 @@ knowledge_points:
 
       $$1,\quad\gamma,\quad\gamma^2.$$
 
-      Let's compare three values of $\gamma$. The rewards and movements stay fixed.
+      Compare three values of $\gamma$:
 
       | $\gamma$ | Weights | $G_0$ |
       | --- | --- | --- |
@@ -163,11 +187,29 @@ knowledge_points:
 
       For $0<\gamma<1$, the same positive reward counts for more when it arrives sooner.
 
-      Discounting also reduces the weight of delayed penalties. Be careful not to assume that raising $\gamma$ always raises a return. Imagine a two-action game to see why. Its first action earns $0$. Its second action earns $-10$ and ends the game. Raising $\gamma$ from $0.5$ to $0.9$ changes its starting return from $-5$ to $-9$.
+      Discounting also reduces the weight of delayed penalties. Be careful not to assume that raising $\gamma$ always raises a return. Imagine a two-action game. Its first action earns $0$. Its second earns $-10$ and ends the game. Weight that penalty to compare the starting returns:
+      $$
+      \begin{aligned}
+      G_0&=0+0.5(-10) &&\text{use the smaller discount factor}\\
+      &=0-5 &&\text{weight the penalty}\\
+      &=-5 &&\text{add}\\
+      G_0&=0+0.9(-10) &&\text{use the larger discount factor}\\
+      &=0-9 &&\text{weight the penalty}\\
+      &=-9 &&\text{add}
+      \end{aligned}
+      $$
 
       ### Limitations
 
-      A single trip's return gives limited evidence about a policy. Suppose left and right each have probability $0.5$ in cells 1 to 3. With $\gamma=0.9$, three rights give return $6.2$. A left wall bump followed by three rights gives $4.58$. Both trips can occur under this policy. Judging it requires considering the possible trips and how often they occur.
+      A single trip's return gives limited evidence about a policy. Suppose left and right each have probability $0.5$ in cells 1 to 3. With $\gamma=0.9$, three rights give return $6.2$. A left wall bump followed by three rights adds a cost and delays those rewards:
+      $$
+      \begin{aligned}
+      G_0&=-1+0.9(6.2) &&\text{add the bump and discount the rest}\\
+      &=-1+5.58 &&\text{multiply}\\
+      &=4.58 &&\text{add}
+      \end{aligned}
+      $$
+      Both trips can occur under this policy. Judging it requires their chances too.
 
       We use $\gamma=1$ only for finite episodes here. Some tasks have no set end, such as a robot that keeps patrolling. If it keeps earning $+1$ each step, the totals after one, two and three actions are $1$, $2$ and $3$. The total keeps growing without a finite limit. Choosing $\gamma<1$ makes the total finite in this example.
     worked: |
@@ -177,10 +219,26 @@ knowledge_points:
          $$\text{end reward contribution}=\gamma^2\times10.$$
 
       2. **Score with the smaller factor.** At $\gamma=0.5$, the goal's contribution is $2.5$, and we include the two step costs.
-         $$G_0=(-1)+0.5(-1)+0.5^2(10)=1.$$
+         $$
+         \begin{aligned}
+         G_0&=(-1)+0.5(-1)+0.5^2(10) &&\text{insert rewards and weights}\\
+         &=(-1)+0.5(-1)+0.25(10) &&\text{square the discount}\\
+         &=-1-0.5+0.25(10) &&\text{weight the step cost}\\
+         &=-1-0.5+2.5 &&\text{weight the goal reward}\\
+         &=1 &&\text{add the contributions}
+         \end{aligned}
+         $$
 
       3. **Score with the usual factor.** At $\gamma=0.9$, the goal's contribution is $8.1$.
-         $$G_0=(-1)+0.9(-1)+0.9^2(10)=6.2.$$
+         $$
+         \begin{aligned}
+         G_0&=(-1)+0.9(-1)+0.9^2(10) &&\text{insert rewards and weights}\\
+         &=(-1)+0.9(-1)+0.81(10) &&\text{square the discount}\\
+         &=-1-0.9+0.81(10) &&\text{weight the step cost}\\
+         &=-1-0.9+8.1 &&\text{weight the goal reward}\\
+         &=6.2 &&\text{add the contributions}
+         \end{aligned}
+         $$
 
       The trip earned the same rewards both times. The larger $\gamma$ gave the delayed goal more weight in its score.
     problems:

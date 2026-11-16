@@ -14,6 +14,10 @@ where_this_fits: |
 knowledge_points:
   - id: mdp-task
     title: Describe a robot's task
+    tldr: |
+      - A robot chooses an action and receives a reward after each step.
+      - Its state records the situation before it acts.
+      - The state must contain enough information to predict what can happen next.
     explain: |
       ### A robot in four cells
 
@@ -78,6 +82,10 @@ knowledge_points:
       - mdpp-coasting-state
   - id: mdp-transitions
     title: Describe uncertain moves
+    tldr: |
+      - One command can lead to several possible outcomes.
+      - We give each outcome a chance, and those chances add to one.
+      - Multiplying each reward by its chance and adding gives the average reward.
     explain: |
       ### One choice can have two outcomes
 
@@ -125,10 +133,20 @@ knowledge_points:
       1. **List both outcomes.** With probability $0.8$, the robot enters cell 4 and receives $10$. With probability $0.2$, it stays in cell 3 and receives $-1$. These chances cover every possibility.
 
       2. **Weight each reward by its chance.** Each outcome contributes in proportion to how often it occurs.
-         $$0.8\times10+0.2\times(-1)=7.8.$$
+         $$
+         \begin{aligned}
+         0.8\times10+0.2\times(-1)&=8-0.2 &&\text{weight both rewards}\\
+         &=7.8 &&\text{add the contributions}
+         \end{aligned}
+         $$
 
       3. **Compare a left command.** Its two possible destinations are cells 2 and 3. Both give reward $-1$.
-         $$0.8\times(-1)+0.2\times(-1)=-1.$$
+         $$
+         \begin{aligned}
+         0.8\times(-1)+0.2\times(-1)&=-0.8-0.2 &&\text{weight both rewards}\\
+         &=-1 &&\text{add the contributions}
+         \end{aligned}
+         $$
 
       Right has the higher expected immediate reward: $7.8$ compared with $-1$. To picture these averages, imagine repeatedly placing the robot in cell 3. Each experiment is a single command from cell 3.
     problems:
@@ -142,6 +160,10 @@ knowledge_points:
       - mdpp-delivery-template
   - id: mdp-discount
     title: Weight later rewards
+    tldr: |
+      - Rewards can arrive several steps after a choice.
+      - A discount factor sets how much less each extra step of delay counts.
+      - Together with states, actions, movement chances and rewards, it completes the task description.
     explain: |
       ### Rewards arrive at different times
 
