@@ -110,7 +110,7 @@ knowledge_points:
   - id: der-power-rule
     title: "Find slopes of powers and sums"
     tldr: |
-      - A power's slope multiplies by the old power and lowers the power by one.
+      - To find the slope of a power of x, bring the power down in front and lower the power by one.
       - A number multiplying a term stays, while a number added on its own contributes no slope.
       - These rules let us find a sum's slope one term at a time.
     explain: |
@@ -279,7 +279,7 @@ knowledge_points:
     tldr: |
       - When two changing quantities are multiplied, either one's change affects the result.
       - The product rule adds those two effects to find the slope.
-      - Rearranging that rule gives the quotient rule for a fraction's slope.
+      - Rearranging that rule gives a similar rule for the slope of a fraction.
     explain: |
       ### Two changing parts
 

@@ -153,6 +153,7 @@ knowledge_points:
       | $1$ | $4$ | $8\times3=24$ |
       | $-\frac13$ | $0$ | $0$ |
       | $-1$ | $-2$ | $-4\times3=-12$ |
+
       A zero inner value makes the outer step flat here; a negative one makes the curve fall.
 
       Be careful not to stop at the power rule and write $2(3x+1)$. That's only the outer rate. The bracket changes $3$ times as fast as $x$, so we still have to multiply by $3$.
@@ -254,6 +255,7 @@ knowledge_points:
       | $1$ | $2$ | $4$ | $8$ | $2$ | $10$ |
       | $-1.5$ | $-3$ | $1.5$ | $3$ | $-3$ | $0$ |
       | $-2$ | $-4$ | $1$ | $2$ | $-4$ | $-2$ |
+
       The routes can reinforce each other, cancel, or give a negative total.
 
       Don't stop after one route. The product $\frac{\partial f}{\partial u}\cdot\frac{du}{dx}$ looks like a complete chain rule, but it holds $v$ fixed, and nudging $x$ moves $v$ too. Leaving out the green route would give $8$ instead of $10$.

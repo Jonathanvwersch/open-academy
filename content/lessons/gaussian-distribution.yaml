@@ -129,7 +129,7 @@ knowledge_points:
   - id: gauss-density-formula
     title: Calculate the bell's height
     tldr: |
-      - Measuring distance from the centre in standard deviations lets us compare different bells.
+      - We measure each reading's distance from the centre in standard deviations.
       - Squaring that distance makes the formula give matching heights on either side.
       - Scaling those heights to keep total area at one gives the Gaussian density formula.
     explain: |

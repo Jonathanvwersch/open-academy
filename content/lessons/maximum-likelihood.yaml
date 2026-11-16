@@ -143,7 +143,7 @@ knowledge_points:
     title: Fit a bell curve's centre to readings
     tldr: |
       - We compare possible centres by how high their Gaussian curves are at the readings.
-      - Taking logs turns that score into a constant minus the sum of squared distances.
+      - Taking logs turns that score into a fixed number minus the sum of squared distances to the readings.
       - Making those distances smallest chooses the readings' mean as the most likely centre.
     explain: |
       ### Noisy readings of one distance
@@ -200,8 +200,8 @@ knowledge_points:
     title: Turn likelihood into mean squared error
     tldr: |
       - A prediction model gives each reading its own predicted centre.
-      - With independent Gaussian noise of fixed spread, likelihood rewards small squared prediction errors.
-      - Minimising their average, the mean squared error, therefore finds the highest-likelihood model.
+      - If readings scatter around the predictions in a bell shape of fixed width, small squared errors mean high likelihood.
+      - So the model with the smallest average squared error, the mean squared error, is the most likely one.
     explain: |
       ### From one centre to many predictions
 
@@ -226,7 +226,7 @@ knowledge_points:
 
       Squaring makes a miss of 10 count 100 times as much as a miss of 1. That suits Gaussian noise, which rarely lands far away. Be careful if the sensor misfires, reading 50 m where 7 m was predicted:
       $$\begin{aligned}50-7&=43 &&\text{prediction error}\\43^2&=1849 &&\text{squared error}\end{aligned}$$
-      This swamps the other errors, pulling predictions towards the bad reading. For yes-or-no outcomes, use the coin-style probabilities from step 1 and minimise their negative log-likelihood.
+      This swamps the other errors, pulling predictions towards the bad reading. Yes-or-no outcomes, like whether a coin lands heads, aren't a number plus bell-shaped noise. For them we minimise the negative log-likelihood from step 2.
     worked: |
       Model A has MSE 1.5, from the picture. Model B predicts 6, 8, 9 and 5 m for the same four readings. Let's check that the model with the lower MSE also has the higher likelihood, taking $\sigma=1$ m.
 

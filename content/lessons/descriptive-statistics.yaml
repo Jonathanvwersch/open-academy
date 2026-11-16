@@ -18,7 +18,7 @@ knowledge_points:
     title: Find the average and spread
     tldr: |
       - The mean adds the results and divides by how many there are.
-      - Variance summarises spread using squared distances from that mean.
+      - Averaging the squared distances from the mean gives the variance, a measure of spread.
       - Taking its square root gives the standard deviation, so spread uses the original units again.
     explain: |
       ### Average grasp time
@@ -93,8 +93,8 @@ knowledge_points:
     title: How sure is an average?
     tldr: |
       - Repeating an experiment gives slightly different averages.
-      - Standard error measures that variation, and more trials make it smaller.
-      - Extending the observed average by about two standard errors each way gives a range for the long-run average.
+      - The standard error measures how much the average typically wobbles, and more trials make it smaller.
+      - Going two standard errors either side of our average gives a range that usually holds the long-run average.
     explain: |
       ### Repeating the experiment
 
@@ -179,7 +179,7 @@ knowledge_points:
     tldr: |
       - A success rate is the average when successes count as one and failures as zero.
       - Its standard error measures how much that rate varies between experiments.
-      - With enough independent successes and failures, two standard errors each way give an approximate range for the true chance.
+      - With enough successes and failures, two standard errors either side give a range for the true chance of success.
     explain: |
       ### Count each success as 1
 
@@ -231,7 +231,7 @@ knowledge_points:
     tldr: |
       - Subtracting the original success rate from the updated rate estimates the improvement.
       - Both rates are uncertain, so the difference needs a range that combines their standard errors.
-      - A range excluding zero supports a real improvement or decline when the tests meet the assumptions.
+      - If that range stays clear of zero, it's good evidence that the two success rates really differ.
     explain: |
       ### Look at the difference in rates
 

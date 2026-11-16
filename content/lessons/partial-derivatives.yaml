@@ -30,7 +30,7 @@ knowledge_points:
       ### Walking with only x changing
 
       Let's walk along the orange line on the left, where $y$ stays at $1$. This leaves a function of $x$ alone, drawn on the right:
-      $$\begin{aligned}f(x,1)&=x^2+2 &&\text{freeze }y=1\\\text{slope along }x&=2x &&\text{use the power rule}\\2\times1.5&=3 &&\text{find the slope at }P\end{aligned}$$
+      $$\begin{aligned}f(x,1)&=x^2+2 &&\text{freeze }y=1\\\text{slope along }x&=2x &&\text{use the power rule}\\\text{slope at }P&=2\times1.5=3 &&\text{put in }x=1.5\end{aligned}$$
       The blue line touches the curve at $P$ with this slope.
 
       ```svg
@@ -123,7 +123,8 @@ knowledge_points:
     title: "Work out a partial derivative"
     tldr: |
       - To find one input's slope, treat every other input as a fixed number.
-      - Fixed multipliers stay, while terms without the changing input contribute nothing.
+      - A fixed input that multiplies the changing one stays in the answer as a number.
+      - A term without the changing input has no slope, so it drops out.
       - The usual derivative rules then give a slope formula we can use at any point.
     explain: |
       ### Inputs that are multiplied together
@@ -209,7 +210,7 @@ knowledge_points:
     tldr: |
       - A prediction model has adjustable numbers, and training changes them to reduce its error.
       - The recorded data stay fixed while we measure each adjustable number's effect.
-      - Partial derivatives tell us whether raising each number a little will lower the squared error.
+      - The partial derivatives say how fast the error changes as we raise each number, so we know which way to move it.
     explain: |
       ### A model with two adjustable numbers
 

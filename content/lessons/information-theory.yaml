@@ -17,9 +17,10 @@ knowledge_points:
   - id: it-surprise
     title: Measure how surprising an outcome is
     tldr: |
-      - Rare outcomes are more surprising than likely outcomes when they happen.
-      - We measure that surprise in bits, with one bit for choosing between two equally likely outcomes.
-      - Halving an outcome's probability adds one bit, so independent outcomes' surprises add together.
+      - Rare outcomes surprise us more than likely ones when they happen.
+      - We measure surprise in bits, where a fair coin's result is one bit.
+      - Each halving of an outcome's chance adds one more bit.
+      - When independent outcomes happen together, their surprises add up.
     explain: |
       ### Rare outcomes tell us more
 
@@ -157,8 +158,8 @@ knowledge_points:
     title: Score the app's forecasts
     tldr: |
       - A forecast receives a larger penalty when it gives less probability to what actually happens.
-      - Averaging those penalties using how often outcomes actually happen gives cross-entropy.
-      - This scores a forecast's confidence, even when its top choice stays the same.
+      - Averaging those penalties over how often each outcome really happens gives cross-entropy.
+      - So a forecast that is confidently wrong scores worse than one that is only slightly wrong.
     explain: |
       ### Score one day's forecast
 
@@ -212,7 +213,7 @@ knowledge_points:
   - id: it-kl
     title: Measure the cost of wrong forecasts
     tldr: |
-      - Entropy is the average surprise that remains even with matching forecasts.
+      - Even a perfect forecast leaves some surprise, and that average is the entropy.
       - Subtracting it from cross-entropy gives KL divergence, the extra surprise from mismatched forecasts.
       - Lowering cross-entropy lowers that extra cost, which reaches zero when forecasts match actual probabilities.
     explain: |

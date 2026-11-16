@@ -76,7 +76,7 @@ knowledge_points:
     title: Find the slope in a chosen direction
     tldr: |
       - A chosen direction can change several inputs together.
-      - The dot product of the gradient and a unit direction adds up those inputs' effects.
+      - The dot product of the gradient with a direction of length one adds up each input's effect.
       - That gives the slope in that direction, which estimates the output change for a small move.
     explain: |-
       ### Walk along x first
@@ -92,7 +92,7 @@ knowledge_points:
       ### How each input changes the height
 
       The **directional derivative** is the slope at a point in a chosen unit direction. Write $D_{\mathbf u}f(P)$, read “the slope of f at P in direction u”. Write $\Delta$ for a change and $\approx$ for "approximately". For $\mathbf u=(u_x,u_y)$, a distance $h$ in the input plane gives:
-      $$\begin{aligned}\Delta x&=hu_x &&\text{horizontal change}\\\Delta y&=hu_y &&\text{vertical change}\\\Delta f&=3hu_x+4hu_y+h^2(u_x^2+2u_y^2) &&\text{expand the bowl's height change}\\&\approx3hu_x+4hu_y &&\text{drop the squared-nudge terms}\\\frac{\Delta f}{h}&\approx3u_x+4u_y &&\text{divide by distance}\end{aligned}$$
+      $$\begin{aligned}\Delta x&=hu_x &&\text{change in }x\\\Delta y&=hu_y &&\text{change in }y\\\Delta f&=3hu_x+4hu_y+h^2(u_x^2+2u_y^2) &&\text{expand the bowl's height change}\\&\approx3hu_x+4hu_y &&\text{drop the squared-nudge terms}\\\frac{\Delta f}{h}&\approx3u_x+4u_y &&\text{divide by distance}\end{aligned}$$
       As $h$ shrinks, this gives the dot product:
 
       $$D_{\mathbf u}f(P)=\nabla f(P)\cdot\mathbf u.$$
@@ -155,7 +155,7 @@ knowledge_points:
     tldr: |
       - We compare directions using moves of equal length.
       - The slope is largest along the gradient and smallest in the opposite direction.
-      - The negative gradient gives the steepest local decrease, which can differ from the direct route to the bottom.
+      - So the opposite of the gradient is the steepest way down from here, though it may not point straight at the bottom.
     explain: |-
       ### Compare walks of equal length
 
