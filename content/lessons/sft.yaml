@@ -13,6 +13,10 @@ where_this_fits: |
 knowledge_points:
   - id: sft-example-responses
     title: Learn from example responses
+    tldr: |
+      - Give the pretrained model requests paired with the answers we want.
+      - Mark who is speaking and where each answer ends using the model's expected format.
+      - Further training changes its weights to make those example answers more likely.
     explain: |
       ### From continuing text to answering
 
@@ -75,6 +79,10 @@ knowledge_points:
       - sft-new-task
   - id: sft-response-loss
     title: Calculate the loss on responses
+    tldr: |
+      - Keep the prompt available so the model can use it to predict the answer.
+      - Count prediction losses only for the answer tokens, including the ending marker.
+      - Averaging those selected losses focuses training on producing the response.
     explain: |
       ### Choose which prediction losses count
 

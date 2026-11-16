@@ -18,6 +18,10 @@ where_this_fits: |
 knowledge_points:
   - id: attn-score-matches
     title: Score each source of information
+    tldr: |
+      - Each token gets a query for seeking information and a key for matching it.
+      - A dot product compares the query with each source's key.
+      - Dividing by the square root of the key width gives scores for deciding how much to use each source.
     explain: |
       ### Prepare the vectors we need
 
@@ -64,11 +68,17 @@ knowledge_points:
       1. **Find the divisor.** Each key has four components, so $d_k=4$.
          $$\sqrt{d_k}=\sqrt4=2.$$
 
-      2. **Score the first source.** Multiply matching components for "the", add, and divide by 2. In $s_{21}$, the first subscript names cat's position and the second names the source "the".
-         $$s_{21}=\frac{2\times1+0\times0+0\times0+0\times0}{2}=1.$$
+      2. **Compare with the first source.** Multiply matching components for "the" and add.
+         $$q_2\cdot k_1=2\times1+0\times0+0\times0+0\times0=2.$$
 
-      3. **Score the second source.** Compare cat's query with its own key to score information from cat itself.
-         $$s_{22}=\frac{2\times0+0\times1+0\times0+0\times0}{2}=0.$$
+      3. **Scale the first comparison.** Divide by the square root of the key width. In $s_{21}$, the first subscript names cat's position and the second names the source "the".
+         $$s_{21}=\frac{2}{2}=1.$$
+
+      4. **Compare with the second source.** Compare cat's query with its own key to score information from cat itself.
+         $$q_2\cdot k_2=2\times0+0\times1+0\times0+0\times0=0.$$
+
+      5. **Scale the second comparison.** Use the same divisor for both sources.
+         $$s_{22}=\frac{0}{2}=0.$$
 
       For this invented query, "the" scores higher than "cat", so it will have more influence on cat's output. Training adjusts the matrices to make useful comparisons.
     problems:
@@ -80,6 +90,10 @@ knowledge_points:
       - attn-score-transfer
   - id: attn-make-weights
     title: Turn scores into mixing weights
+    tldr: |
+      - Each source needs a share of the information we mix together.
+      - Softmax turns its score into a positive share, with all shares adding up to one.
+      - A higher score gives a source a larger share of the mixture.
     explain: |
       ### Give each value a share
 
@@ -142,6 +156,10 @@ knowledge_points:
       - attn-weight-transfer
   - id: attn-mix-values
     title: Mix information using the weights
+    tldr: |
+      - Each source has a value vector containing information to pass along.
+      - Multiply each value by its share and add the results.
+      - The output now contains a mixture of information from the tokens in the sequence.
     explain: |
       ### Add the weighted value vectors
 
@@ -174,7 +192,16 @@ knowledge_points:
 
       ### Limitations
 
-      A single mixture can lose distinctions between sources. Weights $(0.5,0.5)$ on $(2,0)$ and $(0,2)$ give $(1,1)$. If the source values were $(1,0)$ and $(1,2)$, those weights would also give $(1,1)$. The output alone cannot identify the original sources, which can hide information useful for a prediction. Several separate mixtures can retain more information, as the next lesson shows.
+      A single mixture can lose distinctions between sources. Compare two pairs of values with the same weights:
+      $$
+      \begin{aligned}
+      0.5(2,0)+0.5(0,2)&=(1,0)+(0,1) &&\text{weight the first pair}\\
+      &=(1,1) &&\text{add the contributions}\\
+      0.5(1,0)+0.5(1,2)&=(0.5,0)+(0.5,1) &&\text{weight the second pair}\\
+      &=(1,1) &&\text{add the contributions}
+      \end{aligned}
+      $$
+      The output alone cannot identify the original sources, which can hide useful information. Several separate mixtures can retain more information, as the next lesson shows.
 
       With $T$ tokens, each of $T$ queries scores all $T$ keys, giving $T^2$ scores. Storing all those scores uses computer memory. Computing them in blocks can reduce the amount that must be stored at once.
 

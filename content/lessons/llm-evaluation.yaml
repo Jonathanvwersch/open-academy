@@ -15,6 +15,10 @@ where_this_fits: |
 knowledge_points:
   - id: lev-clean-benchmarks
     title: Keep test answers out of training
+    tldr: |
+      - Test questions should show how the model handles requests it has yet to learn from.
+      - Questions or answers seen during training can make the score look better than its performance on fresh questions.
+      - Keep evaluation data separate and report what the tested tasks actually measure.
     explain: |
       ### Seen questions can raise scores
 
@@ -71,6 +75,10 @@ knowledge_points:
       - lev-domain-limit
   - id: lev-pairwise-scores
     title: Compare two answers to each request
+    tldr: |
+      - Two models can give different reasonable answers to the same request.
+      - Judge each pair with a stated rule, allowing ties when the answers are equally good.
+      - Counting wins and giving half credit for ties gives a comparison score against that opponent.
     explain: |
       ### Two answers can both be reasonable
 
@@ -124,6 +132,10 @@ knowledge_points:
       - lev-report-counts
   - id: lev-judge-bias
     title: Check a model that rates answers
+    tldr: |
+      - A language model can judge answers using written criteria, but its choices can be biased.
+      - Hide model names and compare the same answers in both orders to check whether position changes its choice.
+      - Resolve disagreements with human review and check samples for biases that swapping misses.
     explain: |
       ### The judge may favour Left
 

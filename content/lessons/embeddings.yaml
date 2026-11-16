@@ -16,6 +16,10 @@ where_this_fits: |
 knowledge_points:
   - id: emb-lookup-table
     title: "Look up a vector for each token"
+    tldr: |
+      - A token number tells the model which piece of text it has.
+      - The model uses that number to look up a vector in a table, called the token's embedding.
+      - Looking up each token in order turns a sentence into a grid of numbers.
     explain: |
       ### A table with one row per token
 
@@ -89,6 +93,10 @@ knowledge_points:
       - embp-vocab-growth
   - id: emb-onehot-product
     title: "Write the lookup as a multiplication"
+    tldr: |
+      - We can select a token's row using zeros and a single one in that token's place.
+      - Multiplying this list by the table keeps the chosen row and cancels the others.
+      - This gives the same embedding as looking up the row directly.
     explain: |
       ### Picking out a row with zeros and a one
 
@@ -96,7 +104,16 @@ knowledge_points:
 
       Yes, if we multiply by a vector of zeros with a single 1. We keep the table from the last step. For cat, ID 1, we write $u=(1,0,0,0)$, with the 1 in place 1. As a $1\times4$ matrix, $u$ times the $4\times2$ table $E$ gives a $1\times2$ answer.
 
-      Each entry of the answer is $u$ dotted with one column of $E$. Since $u$ is 0 everywhere except place 1, every product in each sum is 0 except the one that uses row 1 of $E$. So $uE$ is $(2,1)$, the embedding of cat.
+      Each entry of the answer is $u$ dotted with one column of $E$. Only place 1 contributes, so the product selects cat's row:
+      $$
+      \begin{aligned}
+      (uE)_1&=1\times2+0\times1+0\times0+0\times3 &&\text{dot with column one}\\
+      &=2 &&\text{drop the zero products}\\
+      (uE)_2&=1\times1+0\times3+0\times2+0\times1 &&\text{dot with column two}\\
+      &=1 &&\text{drop the zero products}\\
+      uE&=(2,1) &&\text{collect the components}
+      \end{aligned}
+      $$
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 275" aria-label="The orange one-hot row u = (1, 0, 0, 0), with one entry each for cat, on, sat and the, times the 4 by 2 table E, whose first row (2, 1) for cat is blue, equals the green 1 by 2 result (2, 1). Below, u dotted with column 1 of E is 1·2 + 0·1 + 0·0 + 0·3 = 2, and with column 2 is 1·1 + 0·3 + 0·2 + 0·1 = 1">
@@ -170,6 +187,10 @@ knowledge_points:
       - embp-onehot-matrix
   - id: emb-learned-similar
     title: "How a model learns the table"
+    tldr: |
+      - Training adjusts the table so the model gets better at predicting text.
+      - Tokens used in similar ways tend to get vectors pointing in similar directions.
+      - Comparing those directions helps us see which tokens the model treats alike.
     explain: |
       ### Where the numbers come from
 
@@ -183,7 +204,7 @@ knowledge_points:
 
       ### Comparing two embeddings
 
-      Recall that a dot product multiplies matching entries and adds them. For two arrows of given lengths, the dot product is largest when they point the same way and 0 at right angles. For vectors $a$ and $b$ with lengths $\|a\|$ and $\|b\|$, dividing the dot product by both lengths gives **cosine similarity**, the cosine of the angle between the arrows. It compares directions whatever the lengths:
+      Recall that a dot product multiplies matching entries and adds them. For two vectors of given lengths, the dot product is largest when they point the same way and 0 at right angles. For vectors $a$ and $b$ with lengths $\|a\|$ and $\|b\|$, dividing the dot product by both lengths gives **cosine similarity**, the cosine of the angle between the vectors. It compares directions whatever the lengths:
 
       $$\cos=\frac{a\cdot b}{\|a\|\,\|b\|}.$$
 
@@ -209,7 +230,7 @@ knowledge_points:
       </svg>
       ```
 
-      Cosine similarity runs from 1 for arrows pointing the same way, through 0 at right angles, to $-1$ for opposite arrows. Cat and dog point almost the same way, on is at a right angle to cat, and dog and on fall between, with cosine 0.28. People use it to see which tokens a trained model treats alike.
+      Cosine similarity runs from 1 for vectors pointing the same way, through 0 at right angles, to $-1$ for opposite vectors. Cat and dog point almost the same way, on is at a right angle to cat, and dog and on fall between, with cosine 0.28. People use it to see which tokens a trained model treats alike.
     worked: |
       Let's measure how alike cat $(3,4)$ and dog $(4,3)$ are, and compare that with cat and on $(4,-3)$.
 
@@ -219,11 +240,17 @@ knowledge_points:
       2. **Find the lengths.** We use Pythagoras for cat, and dog has the same two numbers swapped, so its length is also 5.
          $$\|(3,4)\|=\sqrt{3^2+4^2}=\sqrt{25}=5$$
 
-      3. **Divide by the lengths.** Dividing removes the effect of how long the arrows are, leaving only their directions.
+      3. **Divide by the lengths.** Dividing removes the effect of how long the vectors are, leaving only their directions.
          $$\cos=\frac{24}{5\times5}=0.96$$
 
-      4. **Repeat for cat and on.** On also has length 5, and the products cancel, so the dot product and the cosine are both 0.
-         $$\cos=\frac{3\times4+4\times(-3)}{5\times5}=\frac{0}{25}=0$$
+      4. **Find the length of on.** We need it to compare directions.
+         $$\|(4,-3)\|=\sqrt{4^2+(-3)^2}=5$$
+
+      5. **Dot cat with on.** The products cancel.
+         $$3\times4+4\times(-3)=12-12=0$$
+
+      6. **Divide by their lengths.** A zero dot product gives zero cosine similarity.
+         $$\cos=\frac{0}{5\times5}=0$$
 
       Cat and dog have cosine similarity $0.96$, close to the largest possible value of 1, while cat and on have $0$. These vectors treat cat and dog as alike, and on as different from cat.
     problems:

@@ -16,6 +16,10 @@ where_this_fits: |
 knowledge_points:
   - id: rm-comparisons
     title: "Ask people which answer is better"
+    tldr: |
+      - People may use number scales differently while agreeing on which answer is better.
+      - Ask them to compare answers to the same request and record the chosen and rejected responses.
+      - Ranking several answers gives many such pairs for training a reward model.
     explain: |
       ### Scores that don't line up
 
@@ -73,9 +77,13 @@ knowledge_points:
 
       So we ask a simpler question. We show a person two responses to the same prompt and ask which is better. No one has to decide what a 9 means, and the two raters above give the same answer. Each answer is stored as a **preference pair**. It holds the prompt and two responses, the one the person chose and the one they rejected.
 
-      To get more pairs from each prompt, we can ask a person to put several responses in order from best to worst. Every two responses in that order then make a pair. Each of the $k$ responses pairs with the $k-1$ others, and that counts every pair twice, so ranking $k$ responses gives
-
-      $$\frac{k(k-1)}{2}\ \text{pairs}.$$
+      To get more pairs per prompt, ask a person to rank responses from best to worst. Every two then make a pair. Count them without counting either order twice:
+      $$
+      \begin{aligned}
+      k(k-1)& &&\text{pair each response with every other one}\\
+      \frac{k(k-1)}2& &&\text{divide by two to remove double counting}
+      \end{aligned}
+      $$
 
       InstructGPT, an OpenAI model from 2022, collected its preferences this way. People ranked between 4 and 9 responses from OpenAI's own models to each prompt. Its reward model was a language model whose last layer was swapped for one that gives a single number.
 
@@ -107,6 +115,10 @@ knowledge_points:
       - rmp-robot-pour
   - id: rm-bradley-terry
     title: "Predict which response a person picks"
+    tldr: |
+      - The reward model gives each response a number.
+      - Subtract one response's reward from the other's and turn the difference into a probability with the sigmoid.
+      - A larger reward gap predicts a stronger preference, while equal rewards predict an even split.
     explain: |
       ### From two rewards to a chance
 
@@ -191,6 +203,10 @@ knowledge_points:
       - rmp-robot-grasp
   - id: rm-preference-loss
     title: "Train the reward model on comparisons"
+    tldr: |
+      - Training should make people's chosen response more likely to win the comparison.
+      - Use a loss that gets smaller as that probability rises.
+      - Reducing it raises the chosen response's reward relative to the rejected one's, learning the raters' preferences.
     explain: |
       ### A loss for one comparison
 
@@ -237,9 +253,14 @@ knowledge_points:
 
       ### Which way the rewards move
 
-      In the logistic regression lesson, the slope of the loss against the score was $p-y$. Here the score is the difference $r_w-r_l$ and the label is $y=1$, since the chosen response won. So the slope of the loss against the difference is $p-1$. Raising $r_w$ raises the difference by the same amount, so the slope against $r_w$ is also $p-1$. Raising $r_l$ lowers the difference, so its slope has the opposite sign.
-
-      $$\frac{\partial L}{\partial r_w}=p-1,\qquad\frac{\partial L}{\partial r_l}=1-p.$$
+      In logistic regression, the loss's slope against the score was $p-y$. Here the score is $r_w-r_l$ and the label is $y=1$, since the chosen response won. Follow each reward's effect on that score:
+      $$
+      \begin{aligned}
+      \frac{\partial L}{\partial(r_w-r_l)}&=p-1 &&\text{substitute the label}\\
+      \frac{\partial L}{\partial r_w}&=(p-1)\times1=p-1 &&\text{raising the chosen reward raises the score}\\
+      \frac{\partial L}{\partial r_l}&=(p-1)\times(-1)=1-p &&\text{raising the rejected reward lowers the score}
+      \end{aligned}
+      $$
 
       Gradient descent moves against these slopes. If we could set the two rewards directly, it would push $r_w$ up and $r_l$ down by the same amount. The push is strong when $p$ is small and fades as $p$ nears $1$. In a real reward model, one neural network computes every reward, so gradient descent changes the network's weights in the way that raises $r_w-r_l$.
 

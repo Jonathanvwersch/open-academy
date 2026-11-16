@@ -11,6 +11,10 @@ where_this_fits: |
 knowledge_points:
   - id: tok-text-to-ids
     title: "Turn text into a list of numbers"
+    tldr: |
+      - A model needs text to become numbers before it can use it.
+      - We cut text into pieces called tokens and give each piece a number from a fixed list.
+      - The text becomes a list of these numbers, with the same piece always getting the same number.
     explain: |
       ### Pieces and their numbers
 
@@ -68,7 +72,14 @@ knowledge_points:
       | word | $5$ | $6$ |
       | character | $10$ | $22$ |
 
-      Characters can spell any word made from them, including "mats". But the $10$ characters, the $9$ letters and the space, give a list of $22$ tokens, $17$ letters and $5$ spaces. The model does work for every token, so a longer list is slower. So we'd like tokens that are shorter than words when a word is rare, and whole words when a word is common.
+      Characters can spell any word made from them, including "mats". Count the different characters for the vocabulary, then every occurrence for the text length:
+      $$
+      \begin{aligned}
+      N&=9+1=10 &&\text{different letters plus the space}\\
+      T&=17+5=22 &&\text{letter occurrences plus spaces}
+      \end{aligned}
+      $$
+      The model does work for every token, so a longer list is slower. We'd like shorter pieces for rare words and whole words for common ones.
     worked: |
       Let's encode a new sentence, "the mat sat on the cat", with the word vocabulary from the picture, and then decode a list of ids back into text. In it, the is $0$, cat is $1$, sat is $2$, on is $3$ and mat is $4$.
 
@@ -94,16 +105,29 @@ knowledge_points:
       - tok-ids-robot
   - id: tok-bpe-merges
     title: "Build a vocabulary by merging pairs"
+    tldr: |
+      - Start with letters and count which neighbouring pairs appear most often in example text.
+      - Join the most common pair into a new token, then count again.
+      - Repeating this builds a vocabulary of larger pieces and makes the text use fewer tokens.
     explain: |
       ### Start from letters, then join the commonest pairs
 
-      **Byte-pair encoding**, or BPE, finds tokens in between letters and words. It starts with a vocabulary of single characters and then learns longer tokens from a large amount of example text called the training text. Over and over, it finds the pair of neighbouring tokens that appears most often and adds the two joined together as a new token. Common words end up as one token, and rare words are left as smaller pieces.
+      **Byte-pair encoding**, or BPE, finds tokens in between letters and words. It starts with single characters and learns longer tokens from example text called the training text. Repeatedly, it finds the pair of neighbouring tokens that appears most often and adds the two joined together as a new token. Common words end up as one token, and rare words are left as smaller pieces.
 
       ### Three merges on our sentence
 
       Let's pretend "the cat sat on the mat" is our whole training text. We first split it at the spaces and only join tokens inside a word, so no token ever contains a space. Real tokenizers keep the spaces, usually as part of the next word's token, so decoding gives back the exact text. We drop them here only to keep the example small. That leaves $17$ letters, and the starting vocabulary is the $9$ different letters, a, c, e, h, m, n, o, s and t.
 
-      Now we count every pair of neighbouring tokens. "a" followed by "t" appears $3$ times, in cat, sat and mat, which is more than any other pair. So the first merge joins them, "at" becomes a token, and the text shrinks from $17$ tokens to $14$. Two more rounds of counting give th and then the. Each orange box is the token made in that row.
+      Now we count every pair of neighbouring tokens. "a" followed by "t" appears $3$ times, in cat, sat and mat, more than any other pair. Each merge replaces two tokens with one at every occurrence:
+
+      1. **Join a and t.** Making "at" removes one token in each of three words.
+         $$17-3=14$$
+      2. **Join t and h.** Making "th" removes one token in each "the".
+         $$14-2=12$$
+      3. **Join th and e.** Making "the" removes one more in each copy.
+         $$12-2=10$$
+
+      Each orange box is the token made in that row.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 310" aria-label="Byte-pair encoding on the cat sat on the mat, one row per merge. Start: 17 single-letter tokens. Merge 1 joins a and t into at in cat, sat and mat, giving 14 tokens. Merge 2 joins t and h into th in both copies of the, giving 12. Merge 3 joins th and e into the, giving 10 tokens. Each new token is outlined in orange">
@@ -179,7 +203,13 @@ knowledge_points:
 
       Be careful not to just pick the commonest letter. "t" is the commonest letter here, but BPE counts pairs of neighbours, because a new token has to be a piece that actually occurs together in the text.
 
-      GPT-2, an OpenAI language model, has a BPE tokenizer that starts from the $256$ possible bytes, the numbers computers store text as, so it can encode anything. It then learns $50{,}000$ merges. With one extra token that marks where a text ends, its vocabulary has $50{,}257$ tokens.
+      GPT-2, an OpenAI language model, starts from the $256$ possible bytes, the numbers computers store text as, so it can encode anything. It learns $50{,}000$ merges and adds one token marking where text ends:
+      $$
+      \begin{aligned}
+      256+50{,}000&=50{,}256 &&\text{starting bytes plus merges}\\
+      50{,}256+1&=50{,}257 &&\text{add the end token}
+      \end{aligned}
+      $$
     worked: |
       Let's carry out merges 2 and 3 on "the cat sat on the mat", counting the pairs each time. After merge 1, the words are t h e, c at, s at, o n, t h e and m at, which is $14$ tokens.
 
@@ -208,6 +238,10 @@ knowledge_points:
       - tok-bpe-two-merges
   - id: tok-bpe-encode
     title: "Split new text with the learned merges"
+    tldr: |
+      - Once training ends, the vocabulary and merge order stay fixed.
+      - To split new text, start with letters and replay the learned merges in order.
+      - This handles unseen words as smaller pieces, while more merges usually make texts shorter.
     explain: |
       ### Using the merges on new text
 
