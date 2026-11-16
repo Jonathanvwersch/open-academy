@@ -1,0 +1,629 @@
+concept: inverses-linear-systems
+exercises:
+  - id: inv-identity-inverse-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 2
+    prompt: What do $I$ and $A^{-1}$ do when $A$ is invertible?
+    options:
+      - id: a
+        text: I leaves vectors unchanged; the inverse undoes A.
+        correct: true
+        feedback: The identity leaves every vector unchanged.
+      - id: b
+        text: I sends vectors to zero; the inverse undoes A.
+        correct: false
+        feedback: The zero matrix sends vectors to zero.
+      - id: c
+        text: I leaves vectors unchanged; the inverse applies A twice.
+        correct: false
+        feedback: Repeating A does not generally undo it.
+    solution: The identity leaves every input unchanged, and $A^{-1}A=I$.
+  - id: inv-ii-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example, why multiply $A$ by the inverse that the formula gave?
+    options:
+      - id: a
+        text: Getting A would show that doing both matrices gives back every input.
+        correct: false
+        feedback: A can change the input.
+      - id: b
+        text: Getting zero would show that doing both matrices gives back every input.
+        correct: false
+        feedback: A zero product loses the input.
+      - id: c
+        text: Getting I would show that doing both matrices gives back every input.
+        correct: true
+        feedback: That is the inverse property.
+    solution: The product must equal $I$ to show the two matrices undo each other.
+    lesson_only: true
+  - id: inv-ii-identity-product
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: Matrix $A$ has rows $(4,-2)$ and $(3,5)$. Find entry $(2,1)$ of $AI$.
+    answer: 3
+    solution: Since $AI=A$, the entry is 3.
+    tolerance:
+      abs: 0.000001
+  - id: inv-ii-pick-inverse
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: Matrix $A$ has rows $(3,1)$ and $(1,1)$. Which rows form $A^{-1}$?
+    options:
+      - id: a
+        text: (1,-1) and (-1,3)
+        correct: false
+        feedback: This forgets to divide by the determinant, 2.
+      - id: b
+        text: (0.5,0.5) and (0.5,1.5)
+        correct: false
+        feedback: The top-right and bottom-left entries must change signs.
+      - id: c
+        text: (0.5,-0.5) and (-0.5,1.5)
+        correct: true
+        feedback: The determinant is 2, so divide the swapped and sign-changed entries by 2.
+      - id: d
+        text: (1/3,1) and (1,1)
+        correct: false
+        feedback: Taking 1 over each entry does not undo a matrix.
+    solution: The determinant is 2. Swap diagonal entries, change the other signs, and divide by 2.
+  - id: inv-ii-entry-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: Matrix $A$ has rows $({{=p}},1)$ and $({{=p*q-1}},{{=q}})$. Find entry $(2,1)$ of $A^{-1}$.
+    params:
+      p:
+        min: 2
+        max: 4
+      q:
+        min: 2
+        max: 4
+    answer_expr: 1-p*q
+    solution: The determinant is 1. Change the sign of entry $(2,1)$ to get {{=1-p*q}}.
+    tolerance:
+      abs: 0.000001
+  - id: inv-ii-missing-entry
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      Matrix $A$ has rows $(2,1)$ and $(1,1)$. Matrix $C$ has rows $(1,-1)$ and $(-1,k)$. Find $k$
+      so that $C=A^{-1}$.
+    answer: 2
+    solution: Entry $(1,2)$ of $AC$ must be zero, so $-2+k=0$. With $k=2$, both products give $I$.
+    tolerance:
+      abs: 0.000001
+  - id: inv-ii-product-order
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: Which matrix takes $ABx$ back to $x$ for invertible $A$ and $B$?
+    options:
+      - id: a
+        text: $B^{-1}A^{-1}$
+        correct: true
+        feedback: Undo A first, then B.
+      - id: b
+        text: $A^{-1}B^{-1}$
+        correct: false
+        feedback: Keeping the old order need not bring inverse factors together.
+      - id: c
+        text: $AB$
+        correct: false
+        feedback: Repeating a transformation does not generally undo it.
+    solution: The rule is $(AB)^{-1}=B^{-1}A^{-1}$.
+  - id: inv-ii-colour-filter
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt:
+      A filter maps original colour intensities $x=(r,g)$ to $b=Ax$. Matrix $A$ has rows $(2,1)$
+      and $(1,1)$. A filtered pixel is $(17,10)$. What was its original red intensity $r$?
+    answer: 7
+    solution: The first row of the inverse is $(1,-1)$, so $r=17-10=7$.
+    tolerance:
+      abs: 0.000001
+  - id: inv-elimination-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 2
+    prompt: What does elimination do to solve equations?
+    options:
+      - id: a
+        text: Replaces each number in the equations with 1 over that number.
+        correct: false
+        feedback: Taking 1 over each number does not solve the equations.
+      - id: b
+        text: Changes numbers multiplying unknowns while keeping all totals fixed.
+        correct: false
+        feedback: Equation operations must also update right-hand sides.
+      - id: c
+        text: Subtracts multiples of equations to remove unknowns.
+        correct: true
+        feedback: These operations leave the solution unchanged.
+    solution: Elimination removes unknowns, then puts solved values back.
+  - id: inv-el-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example, why subtract twice $x_2+2x_3=10$ from $2x_2+5x_3=24$?
+    options:
+      - id: a
+        text: It makes both right-hand sides zero.
+        correct: false
+        feedback: The resulting right-hand side is 24-20=4.
+      - id: b
+        text: It removes $x_2$ and leaves an equation for $x_3$.
+        correct: true
+        feedback: The $2x_2$ terms cancel.
+      - id: c
+        text: It removes $x_3$ and leaves an equation for $x_2$.
+        correct: false
+        feedback: The $x_3$ terms become $5x_3-4x_3=x_3$.
+    solution: The subtraction gives $x_3=4$, which can be put back into the other equations.
+    lesson_only: true
+  - id: inv-el-write-matrix
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: Which pair writes $3x_1+2x_2=12$ and $x_1+4x_2=14$ as $Ax=b$ with $x=(x_1,x_2)$?
+    options:
+      - id: a
+        text: A has rows (3,2), (1,4); b=(12,14).
+        correct: true
+        feedback: Each equation supplies one row and its total.
+      - id: b
+        text: A has rows (3,1), (2,4); b=(12,14).
+        correct: false
+        feedback: This puts the equations in columns.
+      - id: c
+        text: A has rows (3,2), (1,4); b=(14,12).
+        correct: false
+        feedback: This reverses totals without reversing rows.
+    solution: Keep the numbers multiplying unknowns and the total from each equation together.
+  - id: inv-el-two-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: Solve $2x_1+x_2={{=u}}$ and $x_1+x_2={{=v}}$. What is $x_1$?
+    params:
+      u:
+        min: 11
+        max: 13
+      v:
+        min: 7
+        max: 9
+    answer_expr: u-v
+    solution: Subtracting the second equation from the first leaves $x_1={{=u}}-{{=v}}={{=u-v}}$.
+    tolerance:
+      abs: 0.000001
+  - id: inv-el-inverse-route
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: For $Ax=b$, the rows of $A^{-1}$ are $(2,-1)$ and $(-1,1)$, and $b=(7,4)$. Find $x_2$.
+    answer: -3
+    solution: The second row of $A^{-1}$ dotted with $b$ gives $-7+4=-3$.
+    tolerance:
+      abs: 0.000001
+  - id: inv-el-no-solution
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: Eliminating on $2x_1+2x_2=8$ and $x_1+x_2=5$ leaves $0=-2$. What does this mean?
+    options:
+      - id: a
+        text: Every pair satisfies both equations.
+        correct: false
+        feedback: That would need a true statement after removing unknowns.
+      - id: b
+        text: The unique solution is (0,-2).
+        correct: false
+        feedback: The remaining statement has no unknowns and is false.
+      - id: c
+        text: No pair satisfies both equations.
+        correct: true
+        feedback: The false statement rules out every pair.
+    solution: Subtracting twice the second equation gives a contradiction, so no solution exists.
+  - id: inv-el-three-unknowns
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: Solve $x_1+x_2+x_3=10$, $x_1+2x_2+3x_3=23$, and $x_1+3x_2+6x_3=41$. Find $x_3$.
+    answer: 5
+    solution:
+      Subtract the first equation from the other two to get $x_2+2x_3=13$ and $2x_2+5x_3=31$.
+      Subtract twice the first result to get $x_3=5$.
+    tolerance:
+      abs: 0.000001
+  - id: inv-el-fertiliser
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt:
+      Each kg of fertiliser P has 2 nitrogen units and 1 potassium unit. Each kg of Q has 1 unit
+      of each. A crop needs 16 nitrogen units and 10 potassium units. How many kg of P should be
+      used?
+    answer: 6
+    solution: For amounts $p,q$ in kg, $2p+q=16$ and $p+q=10$. Subtract to get $p=6$ kg.
+    tolerance:
+      abs: 0.000001
+  - id: inv-transpose-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 2
+    prompt: What does $A^\top$ do to $A$?
+    options:
+      - id: a
+        text: Changes the signs of the top-right and bottom-left entries.
+        correct: false
+        feedback: Those sign changes belong to the 2 by 2 inverse formula.
+      - id: b
+        text: Turns each row into the corresponding column.
+        correct: true
+        feedback: Entry (i,j) moves to (j,i).
+      - id: c
+        text: Reverses entries within each row.
+        correct: false
+        feedback: Reversing a row does not swap row and column positions.
+    solution: The transpose swaps rows and columns.
+  - id: inv-tr-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: Why does $B^\top A^\top$ match $(AB)^\top$ in the worked example?
+    options:
+      - id: a
+        text: Transposing a product reverses the order of the matrices.
+        correct: true
+        feedback: The reversed order reproduces each dot product.
+      - id: b
+        text: Transposing a product keeps the order of the matrices unchanged.
+        correct: false
+        feedback: The worked product in the original order gives different entries.
+      - id: c
+        text: Transposing a product makes it symmetric.
+        correct: false
+        feedback: The example has different top-right and bottom-left entries.
+    solution: The product rule is $(AB)^\top=B^\top A^\top$.
+    lesson_only: true
+  - id: inv-tr-entry-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: Matrix $A$ has rows $(1,{{=p}})$ and $({{=q}},2)$. Find $(A^\top)_{12}$.
+    params:
+      p:
+        min: 3
+        max: 5
+      q:
+        min: 6
+        max: 8
+    answer_expr: q
+    solution: Entry $(1,2)$ of the transpose comes from entry $(2,1)$ of $A$, which is {{=q}}.
+    tolerance:
+      abs: 0.000001
+  - id: inv-tr-dot-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: For column vectors $x=({{=p}},2)$ and $y=(3,{{=q}})$, find $x^\top y$.
+    params:
+      p:
+        min: 2
+        max: 4
+      q:
+        min: 4
+        max: 6
+    answer_expr: 3*p+2*q
+    solution: "Pair matching entries: ${{=p}}\\times3+2\\times{{=q}}={{=3*p+2*q}}$."
+    tolerance:
+      abs: 0.000001
+  - id: inv-tr-product-shapes
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: If $A$ is $2\times3$ and $B$ is $3\times4$, what shape is $(AB)^\top$?
+    options:
+      - id: a
+        text: $2\times4$
+        correct: false
+        feedback: This is the shape before transposing.
+      - id: b
+        text: $3\times3$
+        correct: false
+        feedback: The inner dimensions check compatibility. The outer dimensions give the product shape.
+      - id: c
+        text: $4\times2$
+        correct: true
+        feedback: AB is 2 by 4, then transposing swaps dimensions.
+    solution: AB has 2 rows and 4 columns, so its transpose has 4 rows and 2 columns.
+  - id: inv-tr-pick-symmetric
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: Which matrix is symmetric?
+    options:
+      - id: a
+        text: Rows (2,-3) and (5,2).
+        correct: false
+        feedback: Equal diagonal entries do not ensure matching mirrored entries.
+      - id: b
+        text: Rows (2,-3) and (-3,5).
+        correct: true
+        feedback: Its mirrored entries match.
+      - id: c
+        text: Rows (2,-3) and (3,5).
+        correct: false
+        feedback: The top-right and bottom-left entries have different signs.
+    solution: The matrix with rows $(2,-3)$ and $(-3,5)$ equals its transpose because its mirrored entries match.
+  - id: inv-tr-gram-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: Matrix $A$ has rows $({{=p}},1)$ and $(2,{{=q}})$. Find entry $(1,2)$ of $A^\top A$.
+    params:
+      p:
+        min: 3
+        max: 5
+      q:
+        min: 4
+        max: 6
+    constraints: ["p != q"]
+    answer_expr: p+2*q
+    solution: "Dot column 1 with column 2: ${{=p}}\\times1+2\\times{{=q}}={{=p+2*q}}$."
+    tolerance:
+      abs: 0.000001
+  - id: inv-tr-ratings
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt:
+      A ratings matrix $A$ has users as rows and films as columns. Entry $(i,j)$ of $A^\top A$ is
+      the dot product of films $i,j$ across users. What does symmetry mean here?
+    options:
+      - id: a
+        text: Swapping the two films gives the same dot product.
+        correct: true
+        feedback: Mirrored entries pair the same ratings.
+      - id: b
+        text: Each user gave the same rating to both films.
+        correct: false
+        feedback: Symmetry holds even when ratings differ.
+      - id: c
+        text: All films have the same dot product with themselves.
+        correct: false
+        feedback: Symmetry does not require equal diagonal entries.
+    solution: $A^\top A$ is symmetric, so entries $(i,j)$ and $(j,i)$ match.
+  - id: inv-numpy-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 2
+    prompt: Which NumPy call returns $x$ for $Ax=b$?
+    options:
+      - id: a
+        text: "`np.linalg.inv(A)`"
+        correct: false
+        feedback: This returns the entire inverse.
+      - id: b
+        text: "`np.eye(3)`"
+        correct: false
+        feedback: This builds an identity matrix.
+      - id: c
+        text: "`np.linalg.solve(A, b)`"
+        correct: true
+        feedback: The matrix comes first and the right-hand side second.
+    solution: Use `np.linalg.solve(A, b)` to obtain the solution vector.
+  - id: inv-np-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the NumPy worked example, why check `np.allclose(A @ x, b)`?
+    options:
+      - id: a
+        text: It checks that A equals the identity within rounding.
+        correct: false
+        feedback: Checking A times its inverse is a separate calculation.
+      - id: b
+        text: It checks that the prices reproduce totals within rounding.
+        correct: true
+        feedback: A solution must reproduce b when multiplied by A.
+      - id: c
+        text: It checks that prices equal totals within rounding.
+        correct: false
+        feedback: Prices must first be multiplied by A.
+    solution: Multiplying by A reconstructs the totals, and allclose allows tiny rounding differences.
+    lesson_only: true
+  - id: inv-np-complete-solve
+    dimension: implementation
+    type: code_complete
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: Complete the call that solves $Ax=b$. NumPy is imported as `np`.
+    code: |
+      x = np.linalg.solve(____)
+    accept:
+      - A, b
+    solution: "Pass the matrix first and the right-hand side second: `A, b`."
+  - id: inv-np-read-solve
+    dimension: implementation
+    type: code_read
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: What number does this code print?
+    code: |
+      import numpy as np
+      A = np.array([[3, 1], [1, 1]])
+      b = np.array([13, 7])
+      x = np.linalg.solve(A, b)
+      print(x[1])
+    answer: 4
+    solution: The solution is $(3,4)$. Index 1 selects the second entry, so the code prints 4.0.
+    tolerance:
+      abs: 0.000001
+  - id: inv-np-why-solve
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: Why prefer `np.linalg.solve(A, b)` to `np.linalg.inv(A) @ b` for one right-hand side?
+    options:
+      - id: a
+        text: It uses less arithmetic and usually introduces less rounding error.
+        correct: true
+        feedback: Solving directly avoids computing the entire inverse.
+      - id: b
+        text: It stores exact fractions and has no rounding error.
+        correct: false
+        feedback: NumPy still stores numbers with limited precision.
+      - id: c
+        text: It gives a unique solution for a singular matrix.
+        correct: false
+        feedback: A singular matrix still causes an error.
+    solution: Solving directly avoids the extra arithmetic of computing every inverse entry.
+  - id: inv-np-singular
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: Matrix $A$ has rows $(2,2)$ and $(1,1)$, and $b=(8,5)$. What happens when NumPy runs solve?
+    options:
+      - id: a
+        text: It returns a zero vector.
+        correct: false
+        feedback: The zero vector does not reproduce these totals.
+      - id: b
+        text: It returns an identity matrix.
+        correct: false
+        feedback: Solve returns a solution vector when a unique solution exists.
+      - id: c
+        text: "It raises `LinAlgError: Singular matrix`."
+        correct: true
+        feedback: The determinant is zero, so there is no unique solution.
+    solution: The matrix is singular, so NumPy raises a singular-matrix error.
+  - id: inv-np-robot-debug
+    dimension: implementation
+    type: debug
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt:
+      A robot solves for two motor settings. Its check should accept tiny rounding differences.
+      Select the line to fix and its replacement.
+    code: |
+      import numpy as np
+      A = np.array([[0.1, 0.2], [0.3, 0.5]])
+      b = np.array([0.1, 0.1])
+      x = np.linalg.solve(A, b)
+      print(A @ x == b)
+    buggy_line: 5
+    fix_options:
+      - id: a
+        text: print(np.allclose(A @ x, b))
+        correct: true
+        feedback: This checks reconstructed totals with tolerance for rounding.
+      - id: b
+        text: print(np.allclose(x, b))
+        correct: false
+        feedback: The settings must be multiplied by A before comparing with totals.
+      - id: c
+        text: print(np.allclose(A @ b, x))
+        correct: false
+        feedback: This reverses the roles of settings and totals.
+    solution:
+      Replace line 5 with `print(np.allclose(A @ x, b))`. Exact equality can reject a correct
+      solution because of rounding.
+  - id: inv-explain-solve
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 2
+    est_minutes: 5
+    prompt:
+      For invertible $A$, explain how the inverse describes the solution of $Ax=b$. Describe how
+      elimination finds the solution. Explain why you would use `np.linalg.solve(A, b)` instead of
+      computing the inverse.
+    rubric:
+      - id: inverse
+        criterion: Explain that the inverse undoes A, giving x = A^{-1}b.
+        weight: 1
+        required: true
+      - id: elimination
+        criterion:
+          Explain that elimination subtracts multiples of equations to remove unknowns, then puts
+          solved values back.
+        weight: 1
+        required: true
+      - id: solve
+        criterion:
+          Explain that solve works directly on b with less arithmetic and usually less rounding
+          error than computing the whole inverse.
+        weight: 1
+        required: true
+    exemplar:
+      The inverse undoes $A$, so $x=A^{-1}b$. Elimination subtracts multiples of equations until
+      one unknown can be solved, then puts values back into the other equations. NumPy solve works
+      directly on this $b$, avoiding the whole inverse, so it uses less arithmetic and usually
+      introduces less rounding error.
+    solution: Connect undoing $A$ with finding its input. Elimination and solve find that input directly.

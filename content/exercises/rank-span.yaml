@@ -1,0 +1,750 @@
+concept: rank-span
+exercises:
+  - id: rsp-span-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What is the span of a set of vectors?
+    options:
+      - id: a
+        text: The single vector obtained by adding them.
+        correct: false
+        category: misunderstood_definition
+        feedback: Adding them gives just one combination, with each amount equal to 1.
+      - id: b
+        text: The set of all their linear combinations.
+        correct: true
+        feedback: Each amount can be any real number.
+      - id: c
+        text: The set of all multiples of one chosen vector.
+        correct: false
+        category: misunderstood_definition
+        feedback: A single vector's multiples may leave out combinations of the other vectors.
+      - id: d
+        text: The region between their arrows in a drawing.
+        correct: false
+        category: misunderstood_definition
+        feedback: Combinations can extend beyond the arrows and include negative amounts.
+    solution: The span contains every vector formed by multiplying the given vectors by real numbers and adding them.
+  - id: rspp-span-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    lesson_only: true
+    difficulty: 1
+    est_minutes: 1
+    prompt: In the worked example, why does the third component decide whether $(2,3,4)$ is in the span of $p=(1,0,1)$ and $q=(0,1,1)$?
+    options:
+      - id: a
+        text: The third component can be chosen separately after setting the first two.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The same two amounts determine all three components.
+      - id: b
+        text: Two vectors can reach every third component once their lengths differ.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Different lengths do not supply a third adjustable amount.
+      - id: c
+        text: The first two components fix both amounts, and those amounts give a different third component.
+        correct: true
+        feedback: With $c_1=2$ and $c_2=3$, the third component must be $2+3=5$.
+    solution: The first two equations fix the amounts at 2 and 3. The third component is then 5, so $(2,3,4)$ cannot be reached.
+  - id: rspp-combination-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "For $u=({{= a }},{{= b }})$ and $v=({{= c }},{{= d }})$, find the first component of $({{= s }})u+({{= t }})v$."
+    params:
+      a: { min: 1, max: 3 }
+      b: { min: 1, max: 3 }
+      c: { min: 1, max: 3 }
+      d: { min: 1, max: 2 }
+      s: { min: 2, max: 3 }
+      t: { min: 2, max: 3 }
+    constraints: ["b != c"]
+    answer_expr: s*a+t*c
+    tolerance: { abs: 0 }
+    common_wrong:
+      - answer_expr: s*a+t*b
+        category: misapplied_technique
+        feedback: The contribution from $v$ uses its first component ${{= c }}$.
+    solution: "The first component is $({{= s }})({{= a }})+({{= t }})({{= c }})={{= s*a+t*c }}$."
+  - id: rspp-amounts-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "Find $c_2$ if $c_1(1,1)+c_2(1,-1)=({{= m+n }},{{= m-n }})$."
+    params:
+      m: { min: 2, max: 6 }
+      n: { min: 1, max: 4 }
+    constraints: ["m > n", "m != 2*n", "n != 1"]
+    answer_expr: n
+    tolerance: { abs: 0 }
+    common_wrong:
+      - answer_expr: m
+        category: misapplied_technique
+        feedback: That is $c_1$. Subtract the second component equation from the first to isolate $2c_2$.
+    solution: "Subtracting the component equations gives $2c_2={{= m+n }}-{{= m-n }}={{= 2*n }}$, so $c_2={{= n }}$."
+  - id: rspp-in-span
+    dimension: math
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: Is $b=(3,1,4)$ in the span of $(1,0,2)$ and $(0,1,1)$?
+    options:
+      - id: a
+        text: Yes, amounts 3 and 1 match the required vector.
+        correct: false
+        category: incomplete_explanation
+        feedback: Those amounts give third component 7.
+      - id: b
+        text: Yes, two vectors in three dimensions span the whole space.
+        correct: false
+        category: misunderstood_definition
+        feedback: Two vectors span at most a plane, so they cannot span three-dimensional space.
+      - id: c
+        text: No, the required amounts give third component 7.
+        correct: true
+        feedback: The first two components force amounts 3 and 1, giving $2(3)+1=7$.
+      - id: d
+        text: No, because $b$ is a multiple of neither given vector.
+        correct: false
+        category: incorrect_reasoning
+        feedback: A combination can belong to a span without being a multiple of either individual vector.
+    solution: The first two components require amounts 3 and 1. Their combination is $(3,1,7)$, so $b$ is outside the span.
+  - id: rspp-span-line
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: What is the span of $(1,-2,3)$ and $(-2,4,-6)$?
+    options:
+      - id: a
+        text: A plane through the origin.
+        correct: false
+        category: misunderstood_definition
+        feedback: A plane needs two directions that don't lie on one line.
+      - id: b
+        text: A line through the origin.
+        correct: true
+        feedback: The second vector is $-2$ times the first.
+      - id: c
+        text: All of three-dimensional space.
+        correct: false
+        category: misunderstood_definition
+        feedback: These vectors supply only one direction.
+      - id: d
+        text: Just the two given points.
+        correct: false
+        category: misunderstood_definition
+        feedback: A span includes every real linear combination.
+    solution: The second vector is $-2$ times the first. Every combination lies on the first vector's line through the origin.
+  - id: rspp-led-mix
+    dimension: transfer
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A lamp mixes two LEDs. Each unit of LED 1 adds $(2,1,0)$ to the (red, green, blue) levels, and each unit of LED 2 adds $(0,1,2)$. How many units of LED 2 give exactly $(4,5,6)$?
+    answer: 3
+    tolerance: { abs: 0 }
+    common_wrong:
+      - answer: 2
+        category: misapplied_technique
+        feedback: Two units is the amount of LED 1 required by the red component.
+    solution: Blue requires $2c_2=6$, so LED 2 needs 3 units. Red requires 2 units of LED 1, and green checks as $2+3=5$.
+  - id: rsp-independence-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What does it mean for vectors to be linearly independent?
+    options:
+      - id: a
+        text: None is a multiple of another vector in the set.
+        correct: false
+        category: misunderstood_definition
+        feedback: With three or more vectors, a vector can combine several others without being a multiple of one.
+      - id: b
+        text: All are perpendicular to each other in the set.
+        correct: false
+        category: misunderstood_definition
+        feedback: Independent vectors can meet at angles other than right angles.
+      - id: c
+        text: All have different lengths from others in the set.
+        correct: false
+        category: misunderstood_definition
+        feedback: Scaling a vector changes its length while leaving it dependent on the original.
+      - id: d
+        text: None is a linear combination of the others in the set.
+        correct: true
+        feedback: Each vector adds an independent direction to the span.
+    solution: Linear independence means no vector can be made as a linear combination of the others.
+  - id: rspp-rank-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    lesson_only: true
+    difficulty: 1
+    est_minutes: 1
+    prompt: In the worked example, why does $A$ have rank 2?
+    options:
+      - id: a
+        text: Two pivots remain; column 3 equals column 1 plus column 2.
+        correct: true
+        feedback: There are two independent columns, and the third adds no direction.
+      - id: b
+        text: Every $3\times3$ matrix loses one pivot during elimination.
+        correct: false
+        category: incorrect_reasoning
+        feedback: A $3\times3$ matrix with three independent columns has three pivots.
+      - id: c
+        text: A negative entry in row 3 removes one independent direction.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Negative entries do not determine the number of independent columns.
+      - id: d
+        text: Rank counts the nonzero entries in the final row alone.
+        correct: false
+        category: misunderstood_definition
+        feedback: Rank counts pivots across all rows.
+    solution: Elimination leaves two pivots. Column 3 is the sum of the first two columns, so there are only two independent columns.
+  - id: rspp-dependent-pair
+    dimension: math
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: Which pair of vectors is linearly dependent?
+    options:
+      - id: a
+        text: $(1,2)$ and $(2,1)$.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The component ratios differ, so neither vector is a multiple of the other.
+      - id: b
+        text: $(1,0)$ and $(0,1)$.
+        correct: false
+        category: incorrect_reasoning
+        feedback: These vectors supply the two coordinate directions.
+      - id: c
+        text: $(2,-1)$ and $(-6,3)$.
+        correct: true
+        feedback: Multiplying the first vector by $-3$ gives the second.
+      - id: d
+        text: $(3,1)$ and $(1,3)$.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Scaling the first component by $1/3$ fails to match the second component.
+    solution: $(-6,3)=-3(2,-1)$, so that pair is dependent.
+  - id: rspp-rank-fixed
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt: 'Find $\operatorname{rank}(A)$ for $A=\begin{bmatrix}1&2&1\\2&4&3\\3&6&4\end{bmatrix}$.'
+    answer: 2
+    tolerance: { abs: 0 }
+    common_wrong:
+      - answer: 3
+        category: misunderstood_definition
+        feedback: Having three columns does not mean they are independent.
+      - answer: 1
+        category: incorrect_reasoning
+        feedback: Column 3 is independent of column 1, even though column 2 is twice column 1.
+    solution: Subtracting twice row 1 from row 2 and three times row 1 from row 3 leaves two identical rows $(0,0,1)$. Subtract one from the other to leave two pivots, so the rank is 2.
+  - id: rspp-dependent-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: 'For $A=\begin{bmatrix}1&0&{{= a }}\\0&1&{{= b }}\\2&1&t\end{bmatrix}$, which value of $t$ makes the columns linearly dependent?'
+    params:
+      a: { min: 1, max: 4 }
+      b: { min: 1, max: 4 }
+    constraints: ["a != b"]
+    answer_expr: 2*a+b
+    tolerance: { abs: 0 }
+    common_wrong:
+      - answer_expr: a+b
+        category: math_error
+        feedback: Row 3 of column 1 is 2, so the amount of column 1 counts twice.
+      - answer_expr: 2*a
+        category: incomplete_explanation
+        feedback: Include the contribution from column 2 in row 3.
+    solution: "Rows 1 and 2 force column 3 to use ${{= a }}$ times column 1 plus ${{= b }}$ times column 2. Its third entry must be $2({{= a }})+{{= b }}={{= 2*a+b }}$."
+  - id: rspp-pairs-trap
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A learner says $(1,0,1),(0,1,1),(1,1,2)$ are independent because no vector is a multiple of another. Which assessment is sound?"
+    options:
+      - id: a
+        text: The learner is right; checking pairs is enough for independence.
+        correct: false
+        category: misapplied_technique
+        feedback: A vector can be a combination of two others without being a multiple of either.
+      - id: b
+        text: The learner is wrong; the third vector is the sum of the first two.
+        correct: true
+        feedback: $(1,0,1)+(0,1,1)=(1,1,2)$ supplies a dependence.
+      - id: c
+        text: The learner is wrong; any three vectors in three dimensions are dependent.
+        correct: false
+        category: misunderstood_definition
+        feedback: The three coordinate vectors are independent in three dimensions.
+      - id: d
+        text: The learner is right; the vectors' different lengths ensure independence.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Lengths do not establish independence; the first two even have equal lengths here.
+    solution: The third vector equals the first plus the second. Pairwise multiple checks miss this dependence.
+  - id: rspp-too-many
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: Can four vectors with three components each be linearly independent?
+    options:
+      - id: a
+        text: Yes, provided no vector is a multiple of another.
+        correct: false
+        category: misapplied_technique
+        feedback: Pairwise checks cannot establish independence of four vectors.
+      - id: b
+        text: Yes, provided each vector has at least one nonzero entry.
+        correct: false
+        category: misunderstood_definition
+        feedback: Nonzero vectors can still be combinations of one another.
+      - id: c
+        text: It depends on the particular entries in the four vectors.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The three-row bound applies to every choice of entries.
+      - id: d
+        text: No, their matrix has three rows and rank at most 3.
+        correct: true
+        feedback: Four independent columns would need four pivots in distinct rows.
+    solution: A $3\times4$ matrix has at most three pivots. Its four columns must be dependent.
+  - id: rspp-duplicate-feature
+    dimension: transfer
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: "A data matrix has five houses as rows and three columns: area in square metres, the same area in square feet (exactly a fixed multiple), and bedrooms. What is its largest possible rank?"
+    answer: 2
+    tolerance: { abs: 0 }
+    common_wrong:
+      - answer: 3
+        category: misunderstood_definition
+        feedback: The two area columns are dependent.
+      - answer: 5
+        category: misunderstood_definition
+        feedback: Five rows cannot supply five independent columns when there are only three columns.
+    solution: The area columns supply one independent direction. Bedrooms can supply a second, so the largest possible rank is 2.
+  - id: rsp-solutions-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What is the column space of a matrix $A$?
+    options:
+      - id: a
+        text: The span of its columns, containing every vector $Ax$.
+        correct: true
+        feedback: Multiplying by $x$ forms a linear combination of the columns.
+      - id: b
+        text: The list of its columns, containing only those given vectors.
+        correct: false
+        category: misunderstood_definition
+        feedback: The column space also includes every linear combination.
+      - id: c
+        text: The number of its columns, counting each column once.
+        correct: false
+        category: misunderstood_definition
+        feedback: A space is a set of vectors; a column count is a number.
+      - id: d
+        text: The set of input vectors $x$ that $A$ can multiply.
+        correct: false
+        category: misunderstood_definition
+        feedback: The column space consists of outputs $Ax$.
+    solution: The column space is the span of the columns of $A$. It contains exactly the outputs $Ax$.
+  - id: rspp-solutions-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    lesson_only: true
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example, why does $b=(3,4,5)$ give infinitely many solutions?
+    options:
+      - id: a
+        text: Every $3\times3$ system has a solution for every possible $b$.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The same matrix has no solution for $b=(3,4,6)$.
+      - id: b
+        text: The final row $0=0$ puts $b$ outside the column space.
+        correct: false
+        category: misunderstood_definition
+        feedback: A row $0=0$ is always true, so it allows a solution. Only a nonzero right side would be a contradiction.
+      - id: c
+        text: The system has a solution and rank 2 is less than the three unknowns.
+        correct: true
+        feedback: The last row is $0=0$, and two pivots cannot fix all three unknowns.
+      - id: d
+        text: Every linear system that has a solution allows more than one input vector.
+        correct: false
+        category: misunderstood_definition
+        feedback: A system that has a solution and a pivot for every unknown has exactly one solution.
+    solution: Elimination leaves $0=0$ with no contradiction, so $b$ is in the column space. Rank 2 is below the three unknowns, giving infinitely many solutions.
+  - id: rspp-zero-row-count
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "Elimination for three unknowns leaves $x+y-z=2$, $y+2z=1$, and $0=4$. How many solutions are there?"
+    options:
+      - id: a
+        text: Infinitely many solutions.
+        correct: false
+        category: misunderstood_definition
+        feedback: Rank below the number of unknowns gives infinitely many solutions only when no row says $0$ equals a nonzero number.
+      - id: b
+        text: No solutions.
+        correct: true
+        feedback: No values can satisfy $0=4$.
+      - id: c
+        text: Exactly one solution.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The contradictory last equation rules out every candidate.
+      - id: d
+        text: Exactly two solutions.
+        correct: false
+        category: misunderstood_definition
+        feedback: Two pivots count independent columns, and the contradiction still prevents a solution.
+    solution: The last equation is impossible. The system has no solutions.
+  - id: rspp-reachable-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: 'For $B=\begin{bmatrix}1&{{= k }}\\{{= m }}&{{= k*m }}\end{bmatrix}$ and $b=({{= s }},t)$, which value of $t$ makes $Bx=b$ solvable?'
+    params:
+      m: { min: 2, max: 4 }
+      k: { min: 2, max: 3 }
+      s: { min: 1, max: 5 }
+    constraints: ["s != k", "s != 1"]
+    answer_expr: m*s
+    tolerance: { abs: 0 }
+    common_wrong:
+      - answer_expr: s
+        category: misapplied_technique
+        feedback: Compare the second row to the first row to find the required output ratio.
+    solution: "Row 2 is ${{= m }}$ times row 1, so a solution exists only when $t=({{= m }})({{= s }})={{= m*s }}$."
+  - id: rspp-tall-unique
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A $4\times3$ matrix $A$ has rank 3, and $b$ is in its column space. How many solutions does $Ax=b$ have?
+    options:
+      - id: a
+        text: Infinitely many, because there are more rows than columns.
+        correct: false
+        category: misunderstood_definition
+        feedback: Three pivots fix all three unknowns when a solution exists.
+      - id: b
+        text: None, because the matrix is rectangular.
+        correct: false
+        category: misunderstood_definition
+        feedback: Being in the column space guarantees at least one solution even for a rectangular matrix.
+      - id: c
+        text: Undetermined, because the individual entries are missing.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Knowing that a solution exists and that each unknown has a pivot determines the solution count.
+      - id: d
+        text: Exactly one, because all three unknowns have pivots.
+        correct: true
+        feedback: Membership in the column space ensures a solution exists, and rank equals the number of unknowns.
+    solution: A solution exists because $b$ lies in the column space. Rank 3 equals the three unknowns, so the solution is unique.
+  - id: rspp-free-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: 'For $B=\begin{bmatrix}1&2\\2&4\end{bmatrix}$ and $b=(3,6)$, find $x_1$ in the solution of $Bx=b$ with $x_2={{= k }}$.'
+    params:
+      k: { min: -2, max: 3 }
+    constraints: ["k != 0", "k != 1"]
+    answer_expr: 3-2*k
+    tolerance: { abs: 0 }
+    common_wrong:
+      - answer_expr: 3+2*k
+        category: math_error
+        feedback: Move $2x_2$ to the right side by subtracting it.
+    solution: "The first equation gives $x_1=3-2({{= k }})={{= 3-2*k }}$. The second equation is twice the first, so this also satisfies it."
+  - id: rspp-not-invertible
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: In a $3\times3$ matrix $A$, column 3 equals column 1 minus twice column 2. What follows about invertibility?
+    options:
+      - id: a
+        text: It is invertible whenever all three columns are nonzero.
+        correct: false
+        category: misunderstood_definition
+        feedback: Nonzero columns may still be dependent.
+      - id: b
+        text: Its rank is at most 2, so it is not invertible.
+        correct: true
+        feedback: The stated relationship makes the columns dependent.
+      - id: c
+        text: It is invertible because it has exactly three columns.
+        correct: false
+        category: misunderstood_definition
+        feedback: A square matrix also needs full rank to be invertible.
+      - id: d
+        text: Its invertibility requires calculating a full determinant.
+        correct: false
+        category: misapplied_technique
+        feedback: Column dependence already establishes that the matrix lacks full rank.
+    solution: Column 3 adds no independent direction, so the rank is at most 2. An invertible $3\times3$ matrix needs rank 3.
+  - id: rspp-robot-arm
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: 'At one pose, a robot hand velocity is $Jq$, where $q$ contains joint speeds and $J=\begin{bmatrix}1&2\\2&4\end{bmatrix}$. Can the hand move in direction $(1,0)$?'
+    options:
+      - id: a
+        text: Yes, choosing joint speeds with $J^{-1}$ reaches that direction.
+        correct: false
+        category: misapplied_technique
+        feedback: The dependent columns mean $J$ has no inverse.
+      - id: b
+        text: Yes, two joints always control two independent hand directions.
+        correct: false
+        category: misunderstood_definition
+        feedback: At this pose the two columns give the same line of motion.
+      - id: c
+        text: No, every possible hand velocity is a multiple of $(1,2)$.
+        correct: true
+        feedback: Both columns lie on that line, which excludes direction $(1,0)$.
+      - id: d
+        text: Yes, sufficiently fast joints can overcome the restricted direction.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Larger joint speeds only move the hand faster along the same line.
+    solution: $Jq=(q_1+2q_2)(1,2)$. Every nonzero reachable velocity has second component twice its first, so direction $(1,0)$ is unreachable.
+  - id: rsp-low-rank-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: Why does $uv^\top$ have rank 1 when $u$ and $v$ are nonzero column vectors?
+    options:
+      - id: a
+        text: Every column is a multiple of $u$, with at least one nonzero column.
+        correct: true
+        feedback: Each entry of $v$ scales $u$ to form one column.
+      - id: b
+        text: The product has just one row, regardless of the length of $u$.
+        correct: false
+        category: misunderstood_definition
+        feedback: The number of rows equals the number of entries in $u$.
+      - id: c
+        text: The vectors have equal lengths, forcing one independent direction.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The vectors can have different numbers of entries and different lengths.
+      - id: d
+        text: Every entry of the product has the same value as every other entry.
+        correct: false
+        category: misunderstood_definition
+        feedback: Entries are products $u_i v_j$ and can differ throughout the matrix.
+    solution: Column $j$ is $v_j u$, so all columns lie on one line. Both vectors are nonzero, ensuring the product has at least one nonzero column and rank 1.
+  - id: rspp-low-rank-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    lesson_only: true
+    difficulty: 1
+    est_minutes: 1
+    prompt: In the worked example, why can $FG$ have rank at most 2?
+    options:
+      - id: a
+        text: The product $FG$ has exactly two rows available for pivots.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The product has three rows.
+      - id: b
+        text: The rank always equals the number of columns of $G$ minus one.
+        correct: false
+        category: misunderstood_definition
+        feedback: Subtracting one from a column count is not a rank rule.
+      - id: c
+        text: The rank equals the number of rows of $F$ minus the rows of $G$.
+        correct: false
+        category: misunderstood_definition
+        feedback: Subtracting row counts does not give the number of independent columns.
+      - id: d
+        text: Every column of $FG$ is a combination of the two columns of $F$.
+        correct: true
+        feedback: The product's columns stay in the span of those two columns.
+    solution: Multiplication by each column of $G$ combines the two columns of $F$. These combinations have at most two independent directions.
+  - id: rspp-outer-entry-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: 'For $u=(1,{{= a }},2)$ and $v=({{= b }},1,{{= c }})$, find the entry in row 2, column 3 of $uv^\top$.'
+    params:
+      a: { min: 3, max: 6 }
+      b: { min: 1, max: 4 }
+      c: { min: 2, max: 5 }
+    answer_expr: a*c
+    tolerance: { abs: 0 }
+    common_wrong:
+      - answer_expr: a+c
+        category: misapplied_technique
+        feedback: An entry of $uv^\top$ multiplies the selected entries from the two vectors.
+    solution: "The entry is $u_2v_3=({{= a }})({{= c }})={{= a*c }}$."
+  - id: rspp-storage-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: 'An ${{= m }}\times{{= n }}$ matrix is stored as an ${{= m }}\times{{= k }}$ factor times a ${{= k }}\times{{= n }}$ factor. How many numbers do the two factors hold in total?'
+    params:
+      m: { min: 200, max: 400, step: 100 }
+      n: { min: 300, max: 500, step: 100 }
+      k: { min: 2, max: 4 }
+    answer_expr: k*(m+n)
+    tolerance: { abs: 0 }
+    common_wrong:
+      - answer_expr: m*n
+        category: misapplied_technique
+        feedback: That counts entries in the full product matrix.
+      - answer_expr: m*k*n
+        category: misapplied_technique
+        feedback: Count entries in each factor separately and add the two counts.
+    solution: "The factors hold ${{= m }}({{= k }})+({{= k }}){{= n }}={{= k*(m+n) }}$ numbers in total."
+  - id: rspp-product-rank-bound
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: If $A$ is $6\times2$ and $B$ is $2\times5$, what is the largest possible rank of $AB$?
+    answer: 2
+    tolerance: { abs: 0 }
+    common_wrong:
+      - answer: 5
+        category: misunderstood_definition
+        feedback: The five product columns are all combinations of only two columns of $A$.
+      - answer: 6
+        category: misunderstood_definition
+        feedback: Six rows do not guarantee six independent columns.
+    solution: Every column of $AB$ is a combination of the two columns of $A$. Two independent columns can survive multiplication, so the largest possible rank is 2.
+  - id: rspp-dependent-factor
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: 'Let $A=\begin{bmatrix}1&2\\2&4\\3&6\end{bmatrix}$ and let $B$ be any $2\times3$ matrix. A learner says $AB$ must have rank 2. Which assessment is sound?'
+    options:
+      - id: a
+        text: The rank must be 3 because the product is a $3\times3$ matrix.
+        correct: false
+        category: misunderstood_definition
+        feedback: A square shape does not guarantee independent columns.
+      - id: b
+        text: The rank is at most 1 because all product columns are multiples of $(1,2,3)$.
+        correct: true
+        feedback: Column 2 of $A$ is twice column 1, so its column space is a line.
+      - id: c
+        text: The learner is right because the shared factor dimension is exactly 2.
+        correct: false
+        category: misunderstood_definition
+        feedback: The shared dimension gives an upper bound; dependence can reduce the rank further.
+      - id: d
+        text: The rank must be 0 because dependent columns force every entry to vanish.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Dependence restricts the column space but does not force a zero product.
+    solution: Both columns of $A$ are multiples of $(1,2,3)$. Every column of $AB$ remains on that line, so its rank is at most 1.
+  - id: rspp-ratings-rank
+    dimension: transfer
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A streaming service predicts a ratings matrix for 1,000,000 users and 10,000 films as a $1{,}000{,}000\times20$ factor times a $20\times10{,}000$ factor. What is the largest possible rank of the predicted matrix?
+    answer: 20
+    tolerance: { abs: 0 }
+    common_wrong:
+      - answer: 10000
+        category: misunderstood_definition
+        feedback: All film columns come from combinations of just 20 columns in the first factor.
+    solution: Each predicted column lies in the span of the first factor's 20 columns. With independent factor directions the rank can reach 20.
+  - id: rsp-explain-rank
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 2
+    est_minutes: 4
+    prompt: Explain how elimination gives the rank of $A$, and how the rank tells whether $Ax=b$ has one or infinitely many solutions when $b$ is in the column space.
+    rubric:
+      - id: count-pivots
+        criterion: Explain that row elimination leaves pivots and that their count is the rank, the number of independent columns.
+        weight: 1
+        required: true
+      - id: unique
+        criterion: Explain that rank equal to the number of unknowns gives exactly one solution when $b$ is in the column space.
+        weight: 1
+        required: true
+      - id: infinite
+        criterion: Explain that rank below the number of unknowns gives infinitely many solutions when $b$ is in the column space.
+        weight: 1
+        required: true
+      - id: missing-pivot
+        criterion: Explain that a column without a pivot is a combination of earlier columns.
+        weight: 1
+        required: false
+      - id: unreachable
+        criterion: Explain that $b$ outside the column space leaves a row $0=$ a nonzero number and gives no solution.
+        weight: 1
+        required: false
+    exemplar: Row elimination clears entries below pivots. Counting those pivots gives the rank, which is the number of independent columns. When $b$ is in the column space, rank equal to the number of unknowns gives exactly one solution; smaller rank leaves infinitely many solutions.
+    solution: Row elimination reveals the pivots, and their count equals the rank and the number of independent columns. For $b$ in the column space, a pivot for every unknown gives one solution, while fewer pivots than unknowns give infinitely many solutions.

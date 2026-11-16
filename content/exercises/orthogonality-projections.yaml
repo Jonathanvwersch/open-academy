@@ -1,0 +1,889 @@
+concept: orthogonality-projections
+exercises:
+  - id: orth-line-projection-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What is the projection of a vector $x$ onto the line through a vector $u$?
+    options:
+      - id: a
+        text: The number $u^\top x/u^\top u$ of copies of $u$ that make the shadow.
+        correct: false
+        category: misunderstood_definition
+        feedback: That number only scales $u$. The projection is the vector $\frac{u^\top x}{u^\top u}u$, from the origin to where the shadow ends.
+      - id: b
+        text: The vector on the line through $u$ that is closest to $x$.
+        correct: true
+        feedback: The projection is a multiple of $u$, and its tip is the point on the line nearest to $x$'s tip.
+      - id: c
+        text: The vector $x-u$ that runs from the tip of $u$ to the tip of $x$.
+        correct: false
+        category: misunderstood_definition
+        feedback: That is the difference of the two vectors. The projection lies on $u$'s line.
+      - id: d
+        text: The vector at right angles to $u$ that has the same length as $x$.
+        correct: false
+        category: misunderstood_definition
+        feedback: The part of $x$ at right angles to $u$ is the leftover. The projection lies along $u$'s line.
+    solution: The projection is the vector on the line through $u$ closest to $x$. It is a multiple of $u$, and the leftover $x$ minus the projection is orthogonal to $u$.
+  - id: orthp-project-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example projecting $x=(7,1)$ onto $u=(6,8)$, why is $u^\top x=50$ divided by $u^\top u=100$ rather than by $u$'s length $10$?
+    options:
+      - id: a
+        text: "Dividing by $u^\\top u$ makes the leftover orthogonal to $u$, giving $p=0.5u=(3,4)$."
+        correct: true
+        feedback: Setting $u^\top(x-ku)=0$ gives $k=u^\top x/u^\top u=0.5$, and the leftover $(4,-3)$ dots to zero with $u$.
+      - id: b
+        text: "Dividing by $10$ would make the projection shorter than the shadow."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "It would make it longer: $50/10=5$, and $5u=(30,40)$ lands far past $(3,4)$."
+      - id: c
+        text: "The number $100$ is the dot product of $x$ and $u$, the top of the fraction."
+        correct: false
+        category: math_error
+        feedback: "The dot product of $x$ and $u$ is $6\\times7+8\\times1=50$. The number $100$ is $u^\\top u=6^2+8^2$."
+      - id: d
+        text: "Dividing $u$ by $100$ turns it into a unit vector pointing the same way."
+        correct: false
+        category: misunderstood_definition
+        feedback: "A unit vector comes from dividing $u$ by its length $10$, giving $(0.6,0.8)$."
+    solution: We want $k$ with $u^\top(x-ku)=0$, which gives $k=u^\top x/u^\top u=50/100=0.5$. Then $p=(3,4)$, and the leftover $(4,-3)$ is orthogonal to $u$.
+  - id: orthp-orthogonal-test
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: For which number $s$ are the vectors $({{=a}},2)$ and $(4,s)$ orthogonal?
+    params:
+      a:
+        min: 1
+        max: 6
+    answer_expr: -2 * a
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer_expr: 2 * a
+        category: math_error
+        feedback: Check the sign. The dot product $4\times{{=a}}+2s$ must be zero, so $2s$ has to cancel a positive number.
+      - answer_expr: -a / 2
+        category: math_error
+        feedback: The dot product is $4\times{{=a}}+2s$. Setting it to zero gives $2s=-{{=4*a}}$, so divide ${{=4*a}}$ by $2$.
+    solution: Orthogonal vectors have a zero dot product, so $4\times{{=a}}+2s=0$. That gives $2s=-{{=4*a}}$ and $s={{=-2*a}}$.
+  - id: orthp-negative-copies
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: The projection of a vector $x$ onto the line through a vector $u$ comes out as $-2u$. What does this tell you about $x$ and $u$?
+    options:
+      - id: a
+        text: "$u^\\top x$ is negative, so $x$ points partly against $u$."
+        correct: true
+        feedback: The number of copies is $u^\top x/u^\top u$. The bottom is positive, so a negative result means $u^\top x$ is negative.
+      - id: b
+        text: "$x$ is orthogonal to $u$, so their dot product is zero."
+        correct: false
+        category: misunderstood_definition
+        feedback: If $x$ were orthogonal to $u$, the number of copies would be $0$ and the projection would be the zero vector.
+      - id: c
+        text: "$x$ lies on the line through $u$, twice as long as $u$."
+        correct: false
+        category: incorrect_reasoning
+        feedback: The projection only says where the shadow ends. $x$ can also have a leftover part at right angles to $u$.
+      - id: d
+        text: "$x$ is twice as long as $u$, pointing in some other direction."
+        correct: false
+        category: incorrect_reasoning
+        feedback: The projection gives the part of $x$ along $u$. Its length alone doesn't fix how long $x$ is.
+    solution: The projection is $\frac{u^\top x}{u^\top u}u$, and $u^\top u$ is always positive. A multiple of $-2$ means $u^\top x$ is negative, so $x$ points partly against $u$.
+  - id: orthp-project-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: Project $x=({{=a}},{{=b}})$ onto the line through $u=(1,2)$. What is the second entry of the projection?
+    params:
+      a:
+        min: 1
+        max: 9
+      b:
+        min: 1
+        max: 9
+    constraints:
+      [
+        "mod(a + 2 * b, 5) == 0",
+        "b != 2 * a",
+        "2 * (a + 2 * b) != 5 * a",
+        "2 * (a + 2 * b) != 5 * b",
+      ]
+    answer_expr: 2 * (a + 2 * b) / 5
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer_expr: 2 * (a + 2 * b)
+        category: math_error
+        feedback: The fraction needs its bottom. Divide $u^\top x$ by $u^\top u=1^2+2^2=5$ before scaling $u$.
+      - answer_expr: b - 2 * (a + 2 * b) / 5
+        category: misunderstood_definition
+        feedback: That is the second entry of the leftover $x-p$. The projection itself is the multiple of $u$.
+      - answer_expr: (a + 2 * b) / 5
+        category: math_error
+        feedback: That is the number of copies of $u$. Multiply it by $u$'s second entry, $2$.
+    solution: $u^\top x={{=a}}+2\times{{=b}}={{=a+2*b}}$ and $u^\top u=5$, so the projection is ${{=(a+2*b)/5}}\times(1,2)$. Its second entry is ${{=2*(a+2*b)/5}}$.
+  - id: orthp-length-not-squared
+    dimension: math
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A learner projects $x=(5,2)$ onto the line through $u=(3,0)$. They find $u^\\top x=15$, divide by $u$'s length $3$ to get $5$, and answer $5u=(15,0)$. What went wrong?"
+    options:
+      - id: a
+        text: "They should divide by $u^\\top u=9$, which gives the projection $(5,0)$."
+        correct: true
+        feedback: "The fraction is $u^\\top x/u^\\top u=15/9$, and $\\frac{15}{9}(3,0)=(5,0)$."
+      - id: b
+        text: "They should divide by $x$'s length $\\sqrt{29}$, the vector being projected."
+        correct: false
+        category: misapplied_technique
+        feedback: The projection formula never uses $x$'s length. The bottom of the fraction is $u^\top u$.
+      - id: c
+        text: "They should use $x^\\top x=29$ on top in place of $u^\\top x$."
+        correct: false
+        category: misunderstood_definition
+        feedback: The top is the dot product of $u$ and $x$, which measures how much of $x$ lies along $u$.
+      - id: d
+        text: "Nothing, because $5$ is the shadow's length, so $(15,0)$ is right."
+        correct: false
+        category: incorrect_reasoning
+        feedback: The shadow is $5$ long, but $5u=(15,0)$ is $15$ long because $u$ has length $3$.
+    solution: The projection is $\frac{u^\top x}{u^\top u}u=\frac{15}{9}(3,0)=(5,0)$. Dividing by the length $3$ gives the shadow's length, $5$, a number of units. Scaling $u$ needs the number of copies of $u$, $15/9$.
+  - id: orthp-leftover-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: How far is the tip of $x=({{=3*c+4*k}},{{=4*c-3*k}})$ from the line through $u=(3,4)$?
+    params:
+      c:
+        min: 1
+        max: 3
+      k:
+        min: 1
+        max: 3
+    constraints: ["c != k", "3 * c != k", "c != 2 * k"]
+    answer_expr: 5 * k
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer_expr: 5 * c
+        category: misunderstood_definition
+        feedback: That is the length of the projection, the distance along the line. The distance from the line is the length of the leftover.
+      - answer_expr: c
+        category: math_error
+        feedback: That is the number of copies of $u$ in the projection. Find the leftover $x-p$ and its length.
+    solution: $u^\top x={{=25*c}}$ and $u^\top u=25$, so the projection is ${{=c}}u=({{=3*c}},{{=4*c}})$. The leftover is $({{=4*k}},{{=-3*k}})$, with length $\sqrt{ {{=16*k*k}}+{{=9*k*k}} }={{=5*k}}$.
+  - id: orthp-wall-distance
+    dimension: transfer
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: A robot drives from the origin along a straight track in the direction $u=(4,3)$, measured in metres. A charger sits at $(2,9)$. How many metres is the charger from the closest point of the track?
+    answer: 6
+    tolerance:
+      abs: 0.01
+    common_wrong:
+      - answer: 7
+        category: misunderstood_definition
+        feedback: That is how far along the track the closest point is. The charger's distance is the length of the leftover.
+      - answer: 9.22
+        tolerance:
+          abs: 0.01
+        category: incorrect_reasoning
+        feedback: That is the charger's distance from the origin. The closest point of the track is the projection.
+    solution: $u^\top x=8+27=35$ and $u^\top u=25$, so the closest point is $1.4u=(5.6,4.2)$. The leftover is $(-3.6,4.8)$, with length $\sqrt{12.96+23.04}=6$.
+  - id: orth-orthogonal-matrices-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What is an orthogonal matrix?
+    options:
+      - id: a
+        text: A square matrix whose columns are orthogonal, whatever their lengths.
+        correct: false
+        category: misunderstood_definition
+        feedback: The columns must also have length 1. Orthogonal columns of length 5 give $25I$ in place of $I$.
+      - id: b
+        text: A square matrix that is equal to its own transpose.
+        correct: false
+        category: misunderstood_definition
+        feedback: A matrix equal to its transpose is symmetric. An orthogonal matrix has its transpose as its inverse.
+      - id: c
+        text: A square matrix whose columns have length 1 and are orthogonal.
+        correct: true
+        feedback: Orthonormal columns make $Q^\top Q=I$, so the transpose is the inverse.
+      - id: d
+        text: A square matrix whose determinant is zero, so it has no inverse.
+        correct: false
+        category: misunderstood_definition
+        feedback: An orthogonal matrix always has an inverse, its transpose.
+    solution: An orthogonal matrix is a square matrix whose columns are orthonormal. That makes $Q^\top Q=I$, so $Q^{-1}=Q^\top$.
+  - id: orthp-transpose-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example solving $Qx=b$ for $Q=\begin{bmatrix}0.6&-0.8\\0.8&0.6\end{bmatrix}$ and $b=(2,11)$, why does multiplying $b$ by $Q^\top$ give $x$?
+    options:
+      - id: a
+        text: "$Q$ equals its own transpose, so multiplying by $Q^\\top$ is the same as by $Q$."
+        correct: false
+        category: math_error
+        feedback: "$Q^\\top$ has $0.8$ and $-0.8$ swapped, so it is a different matrix from $Q$."
+      - id: b
+        text: "The first two checks show orthonormal columns, so $Q^\\top Q=I$ and $Q^\\top$ undoes $Q$."
+        correct: true
+        feedback: With orthonormal columns $Q^\top Q=I$, so $Q^{-1}=Q^\top$ and $x=Q^\top b=(10,5)$.
+      - id: c
+        text: "Every $2\\times2$ matrix has its transpose as its inverse, so no checks are needed."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "This only works for orthogonal matrices. For $\\begin{bmatrix}3&-4\\\\4&3\\end{bmatrix}$ the transpose times the matrix is $25I$."
+      - id: d
+        text: "Multiplying by $Q^\\top$ projects $b$ onto $Q$'s first column, which is $x$."
+        correct: false
+        category: misunderstood_definition
+        feedback: Each entry of $Q^\top b$ is one column dotted with $b$. Together they undo $Q$, giving both entries of $x$.
+    solution: The checks show the columns have length 1 and are orthogonal, so $Q^\top Q=I$ and $Q^{-1}=Q^\top$. Then $x=Q^\top b=(10,5)$, and $Q(10,5)=(2,11)$ confirms it.
+  - id: orthp-orthonormal-check
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: Which pair of vectors is orthonormal?
+    options:
+      - id: a
+        text: "$(1,1)$ and $(1,-1)$"
+        correct: false
+        category: misunderstood_definition
+        feedback: "Their dot product is $0$, but each has length $\\sqrt2$, so they aren't unit vectors."
+      - id: b
+        text: "$(0.6,0.8)$ and $(0.8,0.6)$"
+        correct: false
+        category: misunderstood_definition
+        feedback: "Each has length 1, but their dot product is $0.48+0.48=0.96$, so they aren't orthogonal."
+      - id: c
+        text: "$(0.8,0.6)$ and $(-0.6,0.8)$"
+        correct: true
+        feedback: "Each has length $\\sqrt{0.64+0.36}=1$, and their dot product is $-0.48+0.48=0$."
+      - id: d
+        text: "$(1,0)$ and $(0,2)$"
+        correct: false
+        category: misunderstood_definition
+        feedback: "They are orthogonal, but $(0,2)$ has length $2$."
+    solution: Orthonormal vectors each have length 1 and a zero dot product. Only $(0.8,0.6)$ and $(-0.6,0.8)$ pass both checks.
+  - id: orthp-qtq-entry
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A $2\times2$ matrix $A$ has first column $({{=a}},{{=b}})$ and second column $({{=c}},{{=d}})$. What is the entry in row 1, column 2 of $A^\top A$?
+    params:
+      a:
+        min: 1
+        max: 3
+      b:
+        min: 1
+        max: 3
+      c:
+        min: 1
+        max: 3
+      d:
+        min: 1
+        max: 3
+    constraints:
+      [
+        "a != d",
+        "b != c",
+        "a * c + b * d != a * a + b * b",
+        "a * c + b * d != c * c + d * d",
+        "a * b + c * d != a * a + b * b",
+      ]
+    answer_expr: a * c + b * d
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer_expr: a * b + c * d
+        category: math_error
+        feedback: That dots the rows of $A$, which gives an entry of $AA^\top$. Entries of $A^\top A$ dot columns of $A$.
+      - answer_expr: a * a + b * b
+        category: math_error
+        feedback: That is the first column dotted with itself, the entry in row 1, column 1.
+    solution: Entry $(1,2)$ of $A^\top A$ is column 1 of $A$ dotted with column 2, ${{=a}}\times{{=c}}+{{=b}}\times{{=d}}={{=a*c+b*d}}$.
+  - id: orthp-solve-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt: The matrix $Q=\begin{bmatrix}0.8&0.6\\-0.6&0.8\end{bmatrix}$ has orthonormal columns. Solve $Qx=b$ for $b=({{=0.8*p+0.6*q}},{{=-0.6*p+0.8*q}})$. What is the second entry of $x$?
+    params:
+      p:
+        min: 5
+        max: 15
+        step: 5
+      q:
+        min: -10
+        max: 10
+        step: 5
+    constraints: ["q != 0", "q != 2 * p", "p != q"]
+    answer_expr: q
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer_expr: -0.6 * (0.8 * p + 0.6 * q) + 0.8 * (-0.6 * p + 0.8 * q)
+        category: misapplied_technique
+        feedback: That multiplies $b$ by $Q$. To undo $Q$, multiply $b$ by $Q^\top$.
+    solution: Since $Q^{-1}=Q^\top$, $x=Q^\top b$. The second entry is column 2 of $Q$ dotted with $b$, $0.6\times({{=0.8*p+0.6*q}})+0.8\times({{=-0.6*p+0.8*q}})={{=q}}$.
+  - id: orthp-scaled-columns
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: For $A=\begin{bmatrix}3&-4\\4&3\end{bmatrix}$, what is the entry in row 1, column 2 of $A^{-1}$?
+    answer: 0.16
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer: 4
+        category: misunderstood_definition
+        feedback: The columns are orthogonal but have length 5, so $A^\top A=25I$. Divide the transpose by 25.
+      - answer: 0.8
+        category: math_error
+        feedback: The columns have length 5, so $A^\top A=25I$. Divide by the length squared, 25.
+      - answer: -0.16
+        category: math_error
+        feedback: Entry $(1,2)$ of $A^\top$ is entry $(2,1)$ of $A$, which is $4$, a positive number.
+    solution: The columns are orthogonal with length 5, so $A^\top A=25I$ and $A^{-1}=A^\top/25$. Entry $(1,2)$ of $A^\top$ is $4$, so the answer is $4/25=0.16$.
+  - id: orthp-length-kept
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: $Q$ is a $3\times3$ orthogonal matrix and $x=(2,3,6)$. What is the length of $Qx$?
+    answer: 7
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer: 49
+        category: math_error
+        feedback: That is the squared length. Take its square root.
+      - answer: 11
+        category: math_error
+        feedback: Adding the entries doesn't give a length. Square them, add, and take the square root.
+    solution: An orthogonal matrix keeps lengths, because $(Qx)^\top Qx=x^\top Q^\top Qx=x^\top x$. So $Qx$ has the length of $x$, $\sqrt{4+9+36}=7$.
+  - id: orthp-robot-frame
+    dimension: transfer
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "A drone's camera is turned relative to the ground. The orthogonal matrix $Q=\\begin{bmatrix}0.8&-0.6\\\\0.6&0.8\\end{bmatrix}$ turns camera coordinates $c$ into ground coordinates $g=Qc$. A target is at ground coordinates $g=(5,10)$. What is its first camera coordinate?"
+    answer: 10
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer: -2
+        category: misapplied_technique
+        feedback: That multiplies $g$ by $Q$, which turns it further. To undo $Q$, multiply by $Q^\top$.
+      - answer: 5
+        category: incorrect_reasoning
+        feedback: The turn changes coordinates, so the camera reading differs from the ground reading.
+    solution: Since $Q^{-1}=Q^\top$, $c=Q^\top g$. The first entry is column 1 of $Q$ dotted with $g$, $0.8\times5+0.6\times10=10$.
+  - id: orth-least-squares-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What does a least-squares fit choose?
+    options:
+      - id: a
+        text: The unknowns that make every error exactly zero.
+        correct: false
+        category: misunderstood_definition
+        feedback: When $Ax=b$ has no solution, no choice makes every error zero. Least squares finds the closest fit.
+      - id: b
+        text: The line through the first and the last data points.
+        correct: false
+        category: misunderstood_definition
+        feedback: A line through two points ignores the others. Least squares uses all the points.
+      - id: c
+        text: The unknowns that make the plain sum of the errors smallest.
+        correct: false
+        category: misunderstood_definition
+        feedback: Positive and negative errors would cancel in a plain sum. Least squares squares each error first.
+      - id: d
+        text: The unknowns that make the sum of squared errors smallest.
+        correct: true
+        feedback: That's the meaning of least squares. It makes the error vector $b-A\hat x$ as short as possible.
+    solution: Least squares picks the $\hat x$ that makes the sum of squared errors, the squared length of $b-A\hat x$, as small as possible.
+  - id: orthp-normal-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example fitting $y=c+mt$ to $(-1,1)$, $(0,3)$ and $(1,2)$, why do we solve $A^\top A\hat x=A^\top b$ instead of $Ax=b$?
+    options:
+      - id: a
+        text: "$Ax=b$ has no solution here, and the normal equations give the $\\hat x$ whose error is orthogonal to both columns."
+        correct: true
+        feedback: The error $(-0.5,1,-0.5)$ dots to zero with both columns, so $A\hat x$ is the closest point to $b$.
+      - id: b
+        text: "Both have the same solution, and $A^\\top A$ is $2\\times2$, so the normal equations are just quicker."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "$Ax=b$ has no solution: the first and third rows need $c=1.5$, the middle row needs $c=3$."
+      - id: c
+        text: "The normal equations make every error zero, which $Ax=b$ can't do for three points."
+        correct: false
+        category: misunderstood_definition
+        feedback: "The errors are $(-0.5,1,-0.5)$. The normal equations make the sum of their squares as small as possible, and here that sum is $1.5$."
+      - id: d
+        text: "Multiplying by $A^\\top$ drops the middle point, which leaves two equations in two unknowns."
+        correct: false
+        category: misunderstood_definition
+        feedback: "Every point counts: $A^\\top b=(1+3+2,\\,-1+0+2)$ uses all three measurements."
+    solution: The three equations have no exact solution. The normal equations pick $\hat x=(2,0.5)$, whose error $(-0.5,1,-0.5)$ is orthogonal to both columns of $A$, so $A\hat x$ is the closest point to $b$.
+  - id: orthp-error-orthogonal
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: A least-squares fit has error vector $e=b-A\hat x$. Which statement is true?
+    options:
+      - id: a
+        text: "$e$ is orthogonal to every column of $A$, so $A^\\top e=0$."
+        correct: true
+        feedback: The closest point in the column space leaves an error at right angles to every column.
+      - id: b
+        text: "$e$ is the zero vector, because $\\hat x$ solves $A\\hat x=b$."
+        correct: false
+        category: misunderstood_definition
+        feedback: Least squares is used when $Ax=b$ has no solution, so the error is usually not zero.
+      - id: c
+        text: "$e$ is orthogonal to $b$, so $b^\\top e=0$."
+        correct: false
+        category: incorrect_reasoning
+        feedback: The right angle is with the columns of $A$. $b$ itself usually lies outside the column space.
+      - id: d
+        text: "$e$ has the same length as $b$, because projection keeps lengths."
+        correct: false
+        category: misunderstood_definition
+        feedback: Projection usually shortens vectors. Keeping lengths is a property of orthogonal matrices.
+    solution: The best $\hat x$ makes $A\hat x$ the closest point to $b$ in the column space, so the error $e$ is orthogonal to every column of $A$. That is $A^\top e=0$.
+  - id: orthp-ata-entry
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: You fit a line $y=c+mt$ to three points measured at $t=1$, $t=2$ and $t={{=k}}$, so each row of $A$ is $(1,t)$. What is the entry in row 2, column 2 of $A^\top A$?
+    params:
+      k:
+        min: 3
+        max: 6
+    answer_expr: 1 + 4 + k^2
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer_expr: 1 + 2 + k
+        category: math_error
+        feedback: That dots the column of ones with the column of times, the entry in row 1, column 2. Row 2, column 2 dots the times with themselves.
+      - answer_expr: (1 + 2 + k)^2
+        category: math_error
+        feedback: Square each time first and then add.
+    solution: Entry $(2,2)$ is the column of times dotted with itself, $1^2+2^2+{{=k}}^2={{=5+k*k}}$.
+  - id: orthp-intercept-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt: Fit the line $y=c+mt$ by least squares to the points $(-1,{{=p}})$, $(0,{{=q}})$ and $(1,{{=r}})$. What is $c$?
+    params:
+      p:
+        min: 1
+        max: 6
+      q:
+        min: 1
+        max: 6
+      r:
+        min: 1
+        max: 6
+    constraints:
+      [
+        "mod(p + q + r, 3) == 0",
+        "3 * q != p + q + r",
+        "3 * (p + r) != 2 * (p + q + r)",
+        "p + q + r != 3 * p",
+        "p + q + r != 3 * r",
+      ]
+    answer_expr: (p + q + r) / 3
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer_expr: q
+        category: incorrect_reasoning
+        feedback: The line's height at $t=0$ doesn't have to pass through the middle point. Solve the normal equations.
+      - answer_expr: (p + r) / 2
+        category: incorrect_reasoning
+        feedback: That is the height at $t=0$ of the line through the two outer points. Least squares uses all three.
+      - answer_expr: p + q + r
+        category: math_error
+        feedback: The first normal equation is $3c={{=p+q+r}}$, so divide by $3$.
+    solution: Here $A^\top A=\begin{bmatrix}3&0\\0&2\end{bmatrix}$ and the first entry of $A^\top b$ is ${{=p}}+{{=q}}+{{=r}}={{=p+q+r}}$. So $3c={{=p+q+r}}$ and $c={{=(p+q+r)/3}}$.
+  - id: orthp-vertical-errors
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A learner says a least-squares line makes the distances from the points to the line, measured at right angles to the line, as small as possible. What is wrong?
+    options:
+      - id: a
+        text: Least squares measures each error vertically, in $y$ at each $t$, and minimises their squares.
+        correct: true
+        feedback: Each error is a measured $y$ minus the line's height at that $t$, a vertical gap.
+      - id: b
+        text: Nothing is wrong, because least squares minimises those right-angle distances.
+        correct: false
+        category: misunderstood_definition
+        feedback: The errors are entries of $b-A\hat x$, one vertical gap per point.
+      - id: c
+        text: Least squares measures each error sideways, in $t$, at each measured value of $y$.
+        correct: false
+        category: misunderstood_definition
+        feedback: The times $t$ are fixed inputs. Errors compare the measured $y$ with the line's $y$.
+      - id: d
+        text: Least squares makes the single largest error as small as possible, whatever the rest.
+        correct: false
+        category: misunderstood_definition
+        feedback: Least squares adds up every squared error and makes that sum smallest.
+    solution: Each least-squares error is a vertical gap, a measured $y$ minus the line's height at that $t$. The fit makes the sum of their squares smallest.
+  - id: orthp-shifted-fit
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 4
+    prompt: Fit the line $y=c+mt$ by least squares to the points $(0,{{=h+d}})$, $(1,{{=h+v-2*d}})$ and $(2,{{=h+2*v+d}})$. What is $c$?
+    params:
+      h:
+        min: 1
+        max: 5
+      v:
+        min: 1
+        max: 5
+        step: 2
+      d:
+        min: 1
+        max: 2
+    constraints: ["h != v", "d != v", "v != 3 * d"]
+    answer_expr: h
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer_expr: h + d
+        category: incorrect_reasoning
+        feedback: The fitted line doesn't have to pass through the point at $t=0$. Solve the normal equations.
+      - answer_expr: h + v
+        category: misapplied_technique
+        feedback: That is the average $y$. Here $A^\top A$ has nonzero off-diagonal entries, so $c$ and $m$ must be solved together.
+      - answer_expr: h + v - 2 * d
+        category: incorrect_reasoning
+        feedback: That is the middle measurement. Solve the normal equations for $c$ and $m$.
+    solution: $A^\top A=\begin{bmatrix}3&3\\3&5\end{bmatrix}$ and $A^\top b=({{=3*h+3*v}},{{=3*h+5*v}})$. Subtracting the first equation from the second gives $2m={{=2*v}}$, so $m={{=v}}$. Then the first equation, $3c+3m={{=3*h+3*v}}$, gives $c={{=h}}$.
+  - id: orthp-sensor-fit
+    dimension: transfer
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: A scale weighs one parcel three times and reads $4.0$, $4.1$ and $4.5$ kg. Model every reading as the same unknown weight $w$, so $A$ is a column of three ones. What is the least-squares $w$, in kg?
+    answer: 4.2
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer: 4.1
+        category: incorrect_reasoning
+        feedback: That is the middle reading. The normal equation is $3w=4.0+4.1+4.5$.
+      - answer: 12.6
+        category: math_error
+        feedback: That is $A^\top b$. Divide by $A^\top A=3$.
+    solution: $A^\top A=3$ and $A^\top b=4.0+4.1+4.5=12.6$, so $w=12.6/3=4.2$ kg. Fitting one constant by least squares gives the average.
+  - id: orth-numpy-fits-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What is the first result returned by `np.linalg.lstsq(A, b, rcond=None)`?
+    options:
+      - id: a
+        text: The fitted values $A\hat x$, one for each row of $A$.
+        correct: false
+        category: misunderstood_definition
+        feedback: The fitted values come from `A @ x_hat` after the fit.
+      - id: b
+        text: The least-squares solution $\hat x$, one entry per column of $A$.
+        correct: true
+        feedback: The first result is $\hat x$. The others are an array holding the sum of squared errors, the rank and one more array.
+      - id: c
+        text: The error vector $b-A\hat x$, one entry for each row of $A$.
+        correct: false
+        category: misunderstood_definition
+        feedback: The errors come from `b - A @ x_hat` after the fit.
+      - id: d
+        text: The sum of squared errors of the best fit, as one number.
+        correct: false
+        category: recall_failure
+        feedback: The sum of squared errors is in the second result, an array with one entry when $A$ has more rows than columns and full rank.
+    solution: The first result is the least-squares solution $\hat x$. Then come an array holding the sum of squared errors, the rank of $A$ and one more array.
+  - id: orthp-numpy-self-explain
+    lesson_only: true
+    dimension: implementation
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example's code, why does the last line check `np.allclose(A.T @ e, 0)` instead of `A.T @ e == 0`?
+    options:
+      - id: a
+        text: "NumPy leaves tiny rounding errors such as $2\\times10^{-16}$, so an exact test can fail."
+        correct: true
+        feedback: Computers store most decimals approximately, so exact zeros become tiny numbers.
+      - id: b
+        text: "The `==` operator can't compare a NumPy array with a single number at all."
+        correct: false
+        category: implementation_error
+        feedback: "`==` compares each entry with the number and gives an array of True and False."
+      - id: c
+        text: "`np.allclose` also checks that `e` is the shortest possible error vector."
+        correct: false
+        category: implementation_error
+        feedback: "`np.allclose` only checks that numbers are nearly equal."
+      - id: d
+        text: "`A.T @ e` should be close to `b`, and `np.allclose` measures that gap."
+        correct: false
+        category: misunderstood_definition
+        feedback: The error is orthogonal to every column, so `A.T @ e` should be zero.
+    solution: The exact answer is zero, but NumPy gets numbers like $2\times10^{-16}$ from rounding. `np.allclose` treats those as equal to zero.
+  - id: orthp-code-solve
+    dimension: implementation
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "`A` is a NumPy array with 5 rows and 2 columns, and `b` has 5 entries. What happens when you run `np.linalg.solve(A, b)`?"
+    options:
+      - id: a
+        text: It returns the least-squares solution, just as `lstsq` would.
+        correct: false
+        category: implementation_error
+        feedback: "`solve` only handles square matrices with an inverse. Use `lstsq` for a tall matrix."
+      - id: b
+        text: It stops with an error, because `solve` needs a square matrix.
+        correct: true
+        feedback: A $5\times2$ matrix isn't square, so `solve` raises an error.
+      - id: c
+        text: It solves the first two rows exactly and ignores the rest.
+        correct: false
+        category: implementation_error
+        feedback: "`solve` doesn't drop rows. It refuses a matrix that isn't square."
+      - id: d
+        text: It returns a solution with 5 entries, one for each row.
+        correct: false
+        category: misunderstood_definition
+        feedback: The unknowns match the columns, so any solution would have 2 entries. Here `solve` raises an error.
+    solution: "`np.linalg.solve` needs a square matrix with an inverse, so a $5\\times2$ `A` gives an error. `np.linalg.lstsq` finds the least-squares solution."
+  - id: orthp-code-fitted
+    dimension: implementation
+    type: code_read
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt: This code fits $y=c+mt$ to the points $(0,1)$, $(1,2)$ and $(2,6)$. What number does it print, to two decimal places?
+    code: |
+      import numpy as np
+      A = np.array([[1, 0], [1, 1], [1, 2]])
+      b = np.array([1, 2, 6])
+      x_hat, sse, rank, _ = np.linalg.lstsq(A, b, rcond=None)
+      print((A @ x_hat)[2])
+    answer: 5.5
+    tolerance:
+      abs: 0.01
+    common_wrong:
+      - answer: 6
+        category: misunderstood_definition
+        feedback: That is the measured $y$ at $t=2$. The code prints the fitted value there.
+      - answer: 2.5
+        category: implementation_error
+        feedback: That is the slope $m$. `(A @ x_hat)[2]` is the fitted value for the third point.
+    solution: The fit is $c=0.5$ and $m=2.5$, and `(A @ x_hat)[2]` is the fitted value at $t=2$, $0.5+2.5\times2=5.5$.
+  - id: orthp-outlier-weight
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: In a least-squares fit, one point has an error of {{=k}} and every other point has an error of $1$. How many errors of $1$ add up to the same amount as the one error of {{=k}} in the sum of squared errors?
+    params:
+      k:
+        min: 3
+        max: 9
+    answer_expr: k^2
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer_expr: k
+        category: misunderstood_definition
+        feedback: Least squares adds squared errors, so the error of {{=k}} counts as ${{=k}}^2$.
+      - answer_expr: 2 * k
+        category: math_error
+        feedback: Squaring multiplies a number by itself, ${{=k}}\times{{=k}}$.
+    solution: The squared errors are ${{=k}}^2={{=k*k}}$ and $1^2=1$, so the one big error counts as much as {{=k*k}} errors of $1$.
+  - id: orthp-same-time
+    dimension: implementation
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: You fit $y=c+mt$ to five readings that were all taken at $t=3$, so every row of `A` is `[1, 3]`. What does `np.linalg.lstsq` report?
+    options:
+      - id: a
+        text: Rank $1$, because the columns are dependent and many lines fit equally well.
+        correct: true
+        feedback: Column 2 is three times column 1, so $A^\top A$ has no inverse and the best line isn't unique.
+      - id: b
+        text: An error, because the normal equations have no solution here.
+        correct: false
+        category: implementation_error
+        feedback: "`lstsq` still returns an answer, the one with the shortest $\\hat x$, and reports the low rank."
+      - id: c
+        text: Rank $2$, with one best line through the average reading.
+        correct: false
+        category: misunderstood_definition
+        feedback: The two columns are multiples of each other, so the rank is $1$ and many lines fit equally well.
+      - id: d
+        text: Rank $5$, one for each reading, with every error zero.
+        correct: false
+        category: misunderstood_definition
+        feedback: The rank can't exceed the number of columns, $2$. Here it is $1$.
+    solution: Every row is $(1,3)$, so column 2 is three times column 1 and the rank is $1$. Every line through the average reading at $t=3$ fits equally well, and `lstsq` returns one of them.
+  - id: orthp-outlier
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A line is fitted by least squares to 20 sensor readings. One reading is a glitch, 50 units away from where the others suggest. Why can this one reading move the fitted line a lot?
+    options:
+      - id: a
+        text: Its error is squared, so it can outweigh all the other errors and pull the line towards it.
+        correct: true
+        feedback: An error of 50 adds 2500 to the sum, so the best line tilts to shrink it.
+      - id: b
+        text: Least squares counts each reading's error once, so the glitch can shift the line by about a twentieth.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Errors are squared before adding, so large errors count far more than small ones.
+      - id: c
+        text: Least squares leaves out readings far from the rest, so the line is fitted to too few points.
+        correct: false
+        category: misunderstood_definition
+        feedback: Least squares uses every reading. Nothing is left out automatically.
+      - id: d
+        text: Squaring makes its error negative, so it cancels the errors of the other readings.
+        correct: false
+        category: math_error
+        feedback: A square is never negative. Squaring makes the glitch's error count more.
+    solution: Least squares adds squared errors, so an error of 50 contributes 2500. Making that one error smaller can lower the sum more than keeping the other errors small, so the line tilts towards the glitch.
+  - id: orthp-code-projection
+    dimension: transfer
+    type: code_read
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "This code works with vectors that have three entries. `np.linalg.norm(v)` gives the length of a vector `v`. What does it print, to two decimal places?"
+    code: |
+      import numpy as np
+      x = np.array([3, 1, 2])
+      u = np.array([1, 1, 0])
+      p = (u @ x) / (u @ u) * u
+      print(np.linalg.norm(x - p))
+    answer: 2.45
+    tolerance:
+      abs: 0.01
+    common_wrong:
+      - answer: 2.83
+        tolerance:
+          abs: 0.01
+        category: implementation_error
+        feedback: That is the length of `p`, the projection. The code prints the length of the leftover `x - p`.
+      - answer: 3.74
+        tolerance:
+          abs: 0.01
+        category: implementation_error
+        feedback: That is the length of `x`. The code prints the length of the leftover `x - p`.
+    solution: "`u @ x` is $4$ and `u @ u` is $2$, so `p` is $2u=(2,2,0)$. The leftover is $(1,-1,2)$, with length $\\sqrt6\\approx2.45$."
+  - id: orth-explain
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 2
+    est_minutes: 4
+    prompt: "When $Ax=b$ has no solution, explain why the best $\\hat x$ leaves an error $b-A\\hat x$ orthogonal to every column of $A$, how that gives the normal equations, and what $\\hat x$ makes as small as possible."
+    rubric:
+      - id: r1
+        criterion: Explain that $A\hat x$ is the point in the column space of $A$ closest to $b$, so the error $b-A\hat x$ is orthogonal to every column, just as a projection onto a line leaves a leftover orthogonal to the line.
+        weight: 1
+        required: true
+      - id: r2
+        criterion: Explain that $A^\top(b-A\hat x)$ dots every column with the error, so setting it to zero and rearranging gives $A^\top A\hat x=A^\top b$.
+        weight: 1
+        required: true
+      - id: r3
+        criterion: Explain that $\hat x$ makes the sum of squared errors as small as possible.
+        weight: 1
+        required: true
+      - id: r4
+        criterion: Mention that `np.linalg.lstsq` finds $\hat x$ in NumPy.
+        weight: 1
+        required: false
+    exemplar: "Every $Ax$ lies in the column space of $A$, so the best we can do is the point $A\\hat x$ in it closest to $b$. Like a projection onto a line, the closest point leaves an error $b-A\\hat x$ orthogonal to every column. $A^\\top(b-A\\hat x)$ dots every column with the error, so it is zero, and rearranging gives the normal equations $A^\\top A\\hat x=A^\\top b$. The solution $\\hat x$ makes the sum of squared errors as small as possible."
