@@ -18,7 +18,11 @@ where_this_fits: |
 knowledge_points:
   - id: eig-stretch-directions
     title: "Find directions a matrix only stretches"
-    tldr: "Most arrows get turned by a matrix, but some directions only get stretched. These are the eigenvectors, and the stretch factor is the eigenvalue. We find them for one matrix by trying a few arrows."
+
+    tldr: |
+      - A matrix moves each arrow to a new arrow, and usually turns it.
+      - Some directions don't turn. The matrix only stretches them.
+      - Those directions are the eigenvectors, and how much each one stretches is its eigenvalue.
     explain: |
       ### What a matrix does to arrows
 
@@ -87,7 +91,11 @@ knowledge_points:
       - eigp-check-pair
   - id: eig-find-eigenvalues
     title: "Find how much each direction stretches"
-    tldr: "Instead of guessing directions, we solve for them. Rewriting the stretch condition as one equation gives the stretch factors first. Putting each factor back in gives its direction."
+
+    tldr: |
+      - Guessing directions only works for easy matrices, so we solve for them instead.
+      - Asking for an arrow that is only stretched gives one equation for the stretch amount.
+      - Solving it gives the eigenvalues, and putting each one back in gives its direction.
     explain: |
       ### From guessing to solving
 
@@ -215,7 +223,11 @@ knowledge_points:
       - eigp-population-growth
   - id: eig-svd-three-moves
     title: "Split any matrix into turn, stretch, turn"
-    tldr: "Some matrices have no stretch-only directions. The SVD describes every matrix as a turn, a stretch along the axes, then another turn, and we find those three moves for one example."
+
+    tldr: |
+      - Some matrices turn every direction, so they have no eigenvectors.
+      - But every matrix can be done in three moves: turn, stretch along the axes, turn again.
+      - That's the SVD. The stretch amounts are called singular values.
     explain: |
       ### A matrix with no stretch-only direction
 
@@ -334,7 +346,11 @@ knowledge_points:
       - eigp-robot-arm
   - id: eig-low-rank
     title: "Approximate a matrix with fewer numbers"
-    tldr: "A matrix can be split into pieces, one per stretch. Keeping only the biggest pieces gives a copy that needs far fewer numbers, and its error is never more than the largest stretch you dropped."
+
+    tldr: |
+      - The SVD lets us write a matrix as a sum of pieces, one per stretch.
+      - Big stretches matter most, so we keep the biggest pieces and drop the rest.
+      - The copy needs far fewer numbers, and its error is at most the biggest stretch we dropped.
     explain: |
       ### A matrix as a sum of pieces
 

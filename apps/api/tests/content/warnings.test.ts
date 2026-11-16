@@ -87,17 +87,17 @@ function warningsFor(data: ContentSourceData) {
 }
 
 describe('contentWarnings', () => {
-  it('warns when a step tldr exceeds 40 words', () => {
+  it('warns when a step tldr exceeds 60 words', () => {
     const warnings = warningsFor(
       contentData([topic('one')], [course('course', 'Course', [['one']])], undefined, [
-        pointLesson(Array.from({ length: 41 }, () => 'word').join(' ')),
+        pointLesson(Array.from({ length: 61 }, () => 'word').join(' ')),
       ]),
     );
 
     expect(warnings).toContainEqual({
       file: 'lessons/one.yaml',
       id: 'one-step',
-      message: 'step tldr has 41 words; maximum is 40',
+      message: 'step tldr has 61 words; maximum is 60',
     });
   });
 
