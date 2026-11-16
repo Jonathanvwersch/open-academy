@@ -166,12 +166,12 @@ export function buildTutorPageContent(input: {
         `# ${title}`,
         section('Recap', recapFor(index, lesson)),
         section("What you're learning", lesson.where_this_fits ?? ''),
+        section('Summary', summaryFor(lesson)),
         ...points.flatMap((point) => [
           `## ${point.title}`,
           point.explain,
           section('Worked example', point.worked),
         ]),
-        section('Summary', summaryFor(lesson)),
       ]
         .filter(Boolean)
         .join('\n\n'),
