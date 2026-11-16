@@ -17,6 +17,10 @@ where_this_fits: |
 knowledge_points:
   - id: conv-slide
     title: Slide a small grid of weights
+    tldr: |
+      - A filter is a small grid of weights that responds to a pattern, such as an edge.
+      - We slide it across the image, multiplying it with each small square of pixels and adding up.
+      - The results form a smaller grid, called a feature map, showing where the pattern appears.
     explain: |
       ### Find a dark-to-bright edge
 
@@ -95,9 +99,15 @@ knowledge_points:
 
       ### Count the output rows and columns
 
-      Keeping each patch inside the image, a height-$H$ image allows row starts from $0$ through $H-k$. Including zero gives $H-k+1$ starts. For image width $W$, moving one pixel at a time along rows and columns gives output shape
-
-      $$(H-k+1,\ W-k+1).$$
+      Move one pixel at a time, keeping patches inside an image of height $H$ and width $W$:
+      $$
+      \begin{aligned}
+      \text{last row start}&=H-k &&\text{leave room for the patch}\\
+      \text{row count}&=H-k+1 &&\text{include the start at zero}\\
+      \text{column count}&=W-k+1 &&\text{count columns the same way}
+      \end{aligned}
+      $$
+      The output shape is $(H-k+1,\ W-k+1)$.
     worked: |
       Let's compute the diagram's $3\times3$ feature map with bias $b=0$.
 
@@ -136,6 +146,11 @@ knowledge_points:
       ]
   - id: conv-size
     title: Work out the output size
+    tldr: |
+      - The output has one cell for each place the filter fits inside the image.
+      - Padding adds a border of zeros, so the filter fits in more places and the output shrinks less.
+      - Stride is how far the filter jumps between places, so a bigger stride gives a smaller output.
+      - Counting the places that fit gives the output's height and width.
     explain: |
       ### Add zeros around the image
 
@@ -224,9 +239,15 @@ knowledge_points:
 
       With stride 1, the padded $7\times7$ image gives side $7-3+1=5$. Its $5\times5$ output has the same size as the original image.
 
-      Rows and columns work the same way. Padding makes the height $H+2p$. A patch of side $k$ can start no later than $H+2p-k$. To count how many full moves of $s$ pixels fit before that limit, we divide by $s$ and round down. Then we add one for the patch starting at zero.
-
-      $$H_{\text{out}}=\left\lfloor\frac{H+2p-k}{s}\right\rfloor+1.$$
+      Rows and columns work the same way. To count patch starts:
+      $$
+      \begin{aligned}
+      \text{padded height}&=H+2p &&\text{add both borders}\\
+      \text{last possible start}&=H+2p-k &&\text{leave room for the patch}\\
+      \text{full moves}&=\left\lfloor\frac{H+2p-k}{s}\right\rfloor &&\text{divide by stride and round down}\\
+      H_{\text{out}}&=\left\lfloor\frac{H+2p-k}{s}\right\rfloor+1 &&\text{include the start at zero}
+      \end{aligned}
+      $$
 
       The brackets $\lfloor\ \rfloor$ mean “round down”. For output width, replace image height $H$ with image width $W$. We use the same square filter, padding and stride in both directions.
 
@@ -238,7 +259,15 @@ knowledge_points:
 
       Be careful not to round up. With height 6, $k=3,p=0,s=2$, the side is $\lfloor3/2\rfloor+1=2$, not 3. Starts 0 and 2 fit, but start 4 would extend beyond the image.
     worked: |
-      Let's use a larger image of $32\times32$ grayscale pixels. We choose $k=5$ to read a larger area and $p=2$ to include patches centred on border pixels. With stride 1, this would preserve the side because $(32+2\cdot2-5)+1=32$. We'll use $s=2$ instead to reduce the number of calculations.
+      Let's use a larger image of $32\times32$ grayscale pixels. We choose $k=5$ to read a larger area and $p=2$ to include patches centred on border pixels. With stride 1, the side would stay at 32:
+      $$
+      \begin{aligned}
+      \text{padded side}&=32+2\cdot2=36 &&\text{add both borders}\\
+      \text{last start}&=36-5=31 &&\text{leave room for the patch}\\
+      \text{output side}&=31+1=32 &&\text{include the start at zero}
+      \end{aligned}
+      $$
+      We'll use $s=2$ instead to reduce the number of calculations.
 
       1. **Include both borders.** Padding adds two pixels at each end.
          $$32+2\cdot2=36.$$
@@ -262,6 +291,10 @@ knowledge_points:
       ]
   - id: conv-channels
     title: Use filters on a colour image
+    tldr: |
+      - On a colour image, a filter has weights for every colour channel and adds them all into one score.
+      - Sliding it gives one output map, and using more filters gives more maps.
+      - Each filter reuses the same weights at every position, so it needs far fewer weights than a fully connected layer.
     explain: |
       ### Read all the colour channels
 
@@ -359,7 +392,15 @@ knowledge_points:
 
       $$C_{\text{out}}(C_{\text{in}}k^2+1)$$
 
-      parameters. Let's apply both the shape and parameter rules to a $32\times32$ RGB image. Suppose we choose 16 filters for patterns such as edges at different angles. With $k=3,p=1,s=1$, the output is $(16,32,32)$, and the parameter count is $16(3\cdot3^2+1)=448$.
+      parameters. For a $32\times32$ RGB image, choose 16 filters for patterns such as edges at different angles, with $k=3,p=1,s=1$:
+      $$
+      \begin{aligned}
+      H_{\text{out}}=W_{\text{out}}&=(32+2-3)+1=32 &&\text{count patch starts}\\
+      \text{output shape}&=(16,32,32) &&\text{one channel per filter}\\
+      \text{parameters per filter}&=3\cdot3^2+1=28 &&\text{count weights and one bias}\\
+      \text{layer parameters}&=16\cdot28=448 &&\text{count all filters}
+      \end{aligned}
+      $$
 
     worked: |
       Let's compare 16 convolutional filters with a fully connected layer producing the same number of outputs from the $32\times32$ colour image.
@@ -368,9 +409,11 @@ knowledge_points:
          $$H_{\text{out}}=W_{\text{out}}=(32+2-3)+1=32.$$
       2. **Count shared parameters.** Each filter reads three channels and has one bias.
          $$16(3\cdot3\cdot3+1)=16\cdot28=448.$$
-      3. **Count inputs and outputs.** Multiplying the CHW sizes gives the number of values in each tensor.
-         $$\text{inputs}=3\cdot32\cdot32=3072,\qquad \text{outputs}=16\cdot32\cdot32=16384.$$
-      4. **Count fully connected parameters.** Each output has a separate weight for every input and its own bias.
+      3. **Count inputs.** Multiply the input CHW sizes.
+         $$\text{inputs}=3\cdot32\cdot32=3072.$$
+      4. **Count outputs.** Multiply the output CHW sizes.
+         $$\text{outputs}=16\cdot32\cdot32=16384.$$
+      5. **Count fully connected parameters.** Each output has a separate weight for every input and its own bias.
          $$16384\cdot3072+16384=50{,}348{,}032.$$
 
       That's about 50 million parameters, compared with 448 for convolution. The convolution produces the same number of values with far fewer parameters because it uses small patches and shared weights.
@@ -386,6 +429,10 @@ knowledge_points:
       ]
   - id: conv-pool
     title: Stack layers and shrink their maps
+    tldr: |
+      - Stacking layers lets each output depend on a larger region of the original image.
+      - Max pooling shrinks a map by keeping the largest value in each small patch.
+      - This cuts the work for later layers and widens what each cell sees, but loses exactly where the pattern was.
     explain: |
       ### Stack one layer after another
 
@@ -440,13 +487,17 @@ knowledge_points:
       </svg>
       ```
 
-      The final cell reads a $3\times3$ patch of the first map. Across a row, those map cells read image patches starting at columns 0, 1 and 2. Each spans three pixels, so together they cover columns 0 through 4, giving $3+(3-1)=5$ pixels. The same count applies down a column.
+      The final cell reads a $3\times3$ patch of the first map. Across a row, those map cells read image patches starting at columns 0, 1 and 2. Together they cover columns 0 through 4; the same holds down a column.
 
-      After one layer, the first start covers $k$ pixels. To combine $k$ neighbouring map cells, the last start is $k-1$ pixels further along. So each further stride-1 layer grows the region by $k-1$. Before any layers, each pixel depends on itself, giving side 1. After $L$ layers, the side is
-
-      $$1+L(k-1).$$
-
-      For the picture, $L=2,k=3$ gives $1+2(3-1)=5$. This rule assumes stride 1 without pooling between convolutions, where pooling shrinks a map by keeping the largest nearby values.
+      Each further stride-1 layer combines $k$ neighbouring cells, adding $k-1$ pixels to the region's side:
+      $$
+      \begin{aligned}
+      \text{initial side}&=1 &&\text{each pixel depends on itself}\\
+      \text{side after }L\text{ layers}&=1+L(k-1) &&\text{add }k-1\text{ per layer}\\
+      \text{side in the picture}&=1+2(3-1)=5 &&\text{use two layers of side three}
+      \end{aligned}
+      $$
+      This assumes stride 1 without pooling, which shrinks a map by keeping the largest nearby values.
 
       ### Keep the strongest nearby response
 
@@ -568,9 +619,15 @@ knowledge_points:
 
       1. **Take the first maximum.** The top-left block is $\begin{pmatrix}1&3\\4&2\end{pmatrix}$, so we keep its largest value.
          $$\max(1,3,4,2)=4.$$
-      2. **Move to the other patches.** The top-right block is $\begin{pmatrix}2&0\\1&5\end{pmatrix}$, whose largest value is 5. The bottom-left block is $\begin{pmatrix}0&1\\2&3\end{pmatrix}$, whose largest value is 3. The bottom-right block is $\begin{pmatrix}6&2\\1&4\end{pmatrix}$, whose largest value is 6.
+      2. **Read the top-right block.** Its values are $\begin{pmatrix}2&0\\1&5\end{pmatrix}$.
+         $$\max(2,0,1,5)=5.$$
+      3. **Read the bottom-left block.** Its values are $\begin{pmatrix}0&1\\2&3\end{pmatrix}$.
+         $$\max(0,1,2,3)=3.$$
+      4. **Read the bottom-right block.** Its values are $\begin{pmatrix}6&2\\1&4\end{pmatrix}$.
+         $$\max(6,2,1,4)=6.$$
+      5. **Arrange the four results.** Keep each maximum in its patch's position.
          $$\text{pooled map}=\begin{pmatrix}4&5\\3&6\end{pmatrix}.$$
-      3. **Check the size.** The patch-counting formula gives two starts on each side.
+      6. **Check the size.** The patch-counting formula gives two starts on each side.
          $$\lfloor(4-2)/2\rfloor+1=2.$$
 
       We have reduced sixteen map cells to four by keeping one maximum from each block.
