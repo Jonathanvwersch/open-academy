@@ -16,6 +16,10 @@ where_this_fits: |
 knowledge_points:
   - id: ds-centre-spread
     title: Find the average and spread
+    tldr: |
+      - The mean adds the results and divides by how many there are.
+      - Variance summarises spread using squared distances from that mean.
+      - Taking its square root gives the standard deviation, so spread uses the original units again.
     explain: |
       ### Average grasp time
 
@@ -29,7 +33,9 @@ knowledge_points:
 
       ### Distances from the average
 
-      On the number line, 4 sits between 2 and 6. An observation minus the mean is its **deviation**. These deviations are $-2$, $0$ and $2$ seconds.
+      On the number line, 4 sits between 2 and 6. An observation minus the mean is its **deviation**:
+      $$\begin{aligned}2-4&=-2 &&\text{first grasp}\\4-4&=0 &&\text{second grasp}\\6-4&=2 &&\text{third grasp}\end{aligned}$$
+      All three deviations are in seconds.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 180" aria-label="Grasp times 2, 4 and 6 seconds on a number line. Their mean is 4. Deviations are minus 2, 0 and plus 2 seconds.">
@@ -85,6 +91,10 @@ knowledge_points:
       ]
   - id: ds-average-wobble
     title: How sure is an average?
+    tldr: |
+      - Repeating an experiment gives slightly different averages.
+      - Standard error measures that variation, and more trials make it smaller.
+      - Extending the observed average by about two standard errors each way gives a range for the long-run average.
     explain: |
       ### Repeating the experiment
 
@@ -135,7 +145,7 @@ knowledge_points:
 
       $$\text{estimate}\;\pm\;2\times\mathrm{SE}.$$
 
-      The sign $\pm$ means subtract and add to get the endpoints. "Confidence" refers to the method, because about 95% of ranges built this way contain the long-run average, not 95% of individual grasp times.
+      The sign $\pm$ means subtract and add to get the endpoints. "Confidence" refers to the method, because about 95% of ranges built this way contain the long-run average. Individual grasp times can lie well outside them.
 
       Below, four experiments' ranges contain 4 and one misses it. Over very many experiments, about 1 in 20 would miss the long-run average.
 
@@ -158,7 +168,7 @@ knowledge_points:
          $$\mathrm{SE}(\bar x)=\frac{2}{\sqrt{100}}=0.2\text{ seconds}.$$
 
       2. **Find the interval.** We extend our estimate by two standard errors each way for an approximate 95% range.
-         $$4\pm2(0.2)=[3.6,\;4.4]\text{ seconds}.$$
+         $$\begin{aligned}2(0.2)&=0.4 &&\text{margin in seconds}\\4-0.4&=3.6 &&\text{lower endpoint}\\4+0.4&=4.4 &&\text{upper endpoint}\end{aligned}$$
 
       We estimated the long-run average, so this isn't a limit on individual grasp times.
 
@@ -166,6 +176,10 @@ knowledge_points:
       [ds-se-basics, ds-se-why, ds-mean-se-template, ds-interval-template, ds-fourfold, ds-coverage]
   - id: ds-success-uncertainty
     title: How sure is a success rate?
+    tldr: |
+      - A success rate is the average when successes count as one and failures as zero.
+      - Its standard error measures how much that rate varies between experiments.
+      - With enough independent successes and failures, two standard errors each way give an approximate range for the true chance.
     explain: |
       ### Count each success as 1
 
@@ -175,17 +189,11 @@ knowledge_points:
 
       ### Where the spread comes from
 
-      We need the spread of these zeros and ones. A success is $1-\hat p$ above their average, while a failure is $\hat p$ below it. Of the 100 squared distances, 80 are $(1-\hat p)^2$ and 20 are $\hat p^2$. Adding them and dividing by $n=100$ gives
-
-      $$\frac{80(1-\hat p)^2+20\hat p^2}{100}=\hat p(1-\hat p)^2+(1-\hat p)\hat p^2.$$
-
-      We can factor out $\hat p(1-\hat p)$ because both terms contain it:
-
-      $$\hat p(1-\hat p)[(1-\hat p)+\hat p]=\hat p(1-\hat p).$$
-
-      Taking the square root gives spread $\sqrt{\hat p(1-\hat p)}$. We divided by 100 rather than 99, which changes this answer by about half a percent, so we'll use this simpler form. Because the rate is an average, we divide its spread by $\sqrt n$:
-
-      $$\mathrm{SE}(\hat p)=\sqrt{\frac{\hat p(1-\hat p)}{n}}.$$
+      We need the spread of these zeros and ones. A success is $1-\hat p$ above their average; a failure is $\hat p$ below it. Average their squared distances:
+      $$\begin{aligned}\frac{80(1-\hat p)^2+20\hat p^2}{100}&=\hat p(1-\hat p)^2+(1-\hat p)\hat p^2 &&\text{replace fractions by rates}\\&=\hat p(1-\hat p)[(1-\hat p)+\hat p] &&\text{factor the shared terms}\\&=\hat p(1-\hat p) &&\text{the bracket equals one}\end{aligned}$$
+      We divided by 100 instead of 99, changing the standard deviation by about half a percent. We'll use this simpler form. Take its square root, then apply the previous step's rule for an average:
+      $$\begin{aligned}s&\approx\sqrt{\hat p(1-\hat p)} &&\text{estimate individual spread}\\\mathrm{SE}(\hat p)&\approx\frac{\sqrt{\hat p(1-\hat p)}}{\sqrt n} &&\text{divide by the square root of count}\\&=\sqrt{\frac{\hat p(1-\hat p)}n} &&\text{combine square roots}\end{aligned}$$
+      We use this approximation as our standard-error formula.
 
       This reads "the standard error of $\hat p$". The failure fraction is $1-\hat p$, because every attempt either succeeds or fails, and $n$ counts all attempts.
 
@@ -204,9 +212,9 @@ knowledge_points:
          $$\mathrm{SE}(\hat p)=\sqrt{\frac{0.8(0.2)}{100}}=0.04.$$
 
       3. **Build the interval.** Both counts pass our rule of thumb, so we extend the rate by two standard errors.
-         $$0.8\pm2(0.04)=[0.72,\;0.88].$$
+         $$\begin{aligned}2(0.04)&=0.08 &&\text{margin}\\0.8-0.08&=0.72 &&\text{lower endpoint}\\0.8+0.08&=0.88 &&\text{upper endpoint}\end{aligned}$$
 
-      Our range is 72% to 88%, which is 8 **percentage points** either side of 80%. Percentage points means subtracting the percentages, not calculating a relative percent change.
+      Our range is 72% to 88%, which is 8 **percentage points** either side of 80%. Percentage points measure the difference between two percentages.
 
     problems:
       [
@@ -220,6 +228,10 @@ knowledge_points:
       ]
   - id: ds-compare-rates
     title: Tell if two success rates differ
+    tldr: |
+      - Subtracting the original success rate from the updated rate estimates the improvement.
+      - Both rates are uncertain, so the difference needs a range that combines their standard errors.
+      - A range excluding zero supports a real improvement or decline when the tests meet the assumptions.
     explain: |
       ### Look at the difference in rates
 
@@ -269,18 +281,18 @@ knowledge_points:
       Let's compare both experiments using the difference in long-run success chances.
 
       1. **Find the improvement.** We compare the rates by subtracting original from updated.
-         $$d=\frac{180}{200}-\frac{160}{200}=0.90-0.80=0.10.$$
+         $$\begin{aligned}\hat p_1&=160/200=0.80 &&\text{original rate}\\\hat p_2&=180/200=0.90 &&\text{updated rate}\\d&=0.90-0.80=0.10 &&\text{subtract original from updated}\end{aligned}$$
 
       2. **Combine the uncertainties.** Either estimated rate could change in a fresh test, so ignoring one would understate uncertainty in their difference.
          $$\mathrm{SE}_{\mathrm{diff}}=\sqrt{\frac{0.8(0.2)}{200}+\frac{0.9(0.1)}{200}}\approx0.035.$$
 
       3. **Check the interval.** Both versions pass the count rule, so we can judge the difference.
-         $$d\pm2\mathrm{SE}_{\mathrm{diff}}\approx[0.03,\;0.17].$$
+         $$\begin{aligned}2\mathrm{SE}_{\mathrm{diff}}&\approx2(0.035)=0.07 &&\text{approximate margin}\\0.10-0.07&=0.03 &&\text{lower endpoint}\\0.10+0.07&=0.17 &&\text{upper endpoint}\end{aligned}$$
 
       4. **Answer the opening question.** We repeat the calculation for 7 versus 9 successes because that quick test first made us wonder whether the update helped.
-         $$d=0.20,\quad\mathrm{SE}_{\mathrm{diff}}\approx0.173,\quad d\pm2\mathrm{SE}_{\mathrm{diff}}\approx[-0.15,\;0.55].$$
+         $$\begin{aligned}d&=0.9-0.7=0.20 &&\text{difference in observed rates}\\\mathrm{SE}_{\mathrm{diff}}&=\sqrt{\frac{0.7(0.3)}{10}+\frac{0.9(0.1)}{10}}\approx0.173 &&\text{combine both uncertainties}\\2\mathrm{SE}_{\mathrm{diff}}&\approx0.35 &&\text{round the margin}\\0.20-0.35&=-0.15 &&\text{lower endpoint}\\0.20+0.35&=0.55 &&\text{upper endpoint}\end{aligned}$$
 
-      The larger range excludes zero, so it supports improvement without proving it. The smaller range includes zero and fails the count rule, so it doesn't settle whether the long-run success chances differ.
+      The range from the larger experiment excludes zero, so it supports improvement without proving it. The range from the smaller experiment includes zero and fails the count rule, so it doesn't settle whether the long-run success chances differ.
     problems:
       [
         ds-difference-basics,

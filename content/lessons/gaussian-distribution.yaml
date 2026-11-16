@@ -16,6 +16,11 @@ where_this_fits: |
 knowledge_points:
   - id: gauss-centre-spread
     title: Find the centre and spread
+    tldr: |
+      - The mean is the average and gives the centre of the readings.
+      - Averaging squared distances from it gives the variance, a measure of spread.
+      - The square root of variance is the standard deviation, which puts spread back in the original units.
+      - The mean and standard deviation fix a Gaussian's centre and shape.
     explain: |
       ### Readings around a centre
 
@@ -25,7 +30,9 @@ knowledge_points:
 
       ### Why we square the distances
 
-      Subtract the mean to get each reading's **deviation**, its signed distance from the centre. Signed means it can be negative, for readings below the mean. Our deviations are $-3,-1,0,1,3$ cm. Their average is zero despite the variation.
+      Subtract the mean to get each reading's **deviation**, its signed distance from the centre. Readings below the mean give negative deviations:
+      $$\begin{aligned}97-100&=-3 &&\text{first reading}\\99-100&=-1 &&\text{second reading}\\100-100&=0 &&\text{middle reading}\\101-100&=1 &&\text{fourth reading}\\103-100&=3 &&\text{last reading}\end{aligned}$$
+      Their average is zero despite the variation.
 
       Absolute distances, with minus signs dropped, would stop that cancellation too. We use squared distances because they give the **variance**, the spread measure that the Gaussian formula uses. In step 3 we will see how the bell formula is built from squared distance.
 
@@ -41,7 +48,7 @@ knowledge_points:
 
       $$\sigma=\sqrt{\text{variance}}$$
 
-      Our variance is 4 square centimetres, so $\sigma=2$ cm because $2^2=4$. Think of it as roughly the typical distance from the mean, not a limit. Our readings are 0, 1 or 3 cm away. Step 2 gives a more precise meaning for a Gaussian using its 68% rule.
+      Our variance is 4 square centimetres, so $\sigma=2$ cm because $2^2=4$. It describes roughly the typical distance from the mean; individual distances vary. Our readings are 0, 1 or 3 cm away. Step 2 gives a more precise Gaussian meaning using its 68% rule.
     worked: |
       Let's find the centre and spread of our five sensor readings.
 
@@ -64,6 +71,10 @@ knowledge_points:
       - gauss-scale
   - id: gauss-bell-area
     title: Read chances from a bell
+    tldr: |
+      - A smooth curve describes chances for measurements along a number line.
+      - The area under the curve over an interval gives the chance of landing there.
+      - For a Gaussian, about two thirds of readings fall within one standard deviation of the mean.
     explain: |
       ### From bars to a curve
 
@@ -91,14 +102,15 @@ knowledge_points:
 
       ### Areas we can reuse
 
-      For a Gaussian, about 68%, 95% and 99.7% of the area lies within one, two and three standard deviations of the mean. A computer measures these areas once. Measuring in standard deviations makes the percentages the same for every centre and spread. Our sensor's ranges are 98–102, 96–104 and 94–106 cm.
+      For a Gaussian, about 68%, 95% and 99.7% of the area lies within one, two and three standard deviations of the mean. A computer measures these areas once. Measuring in standard deviations makes the percentages the same for every centre and spread. Subtract and add to find our sensor's range endpoints:
+      $$\begin{aligned}100-2&=98 &&\text{one standard deviation, lower}\\100+2&=102 &&\text{one, upper}\\100-2(2)&=96 &&\text{two, lower}\\100+2(2)&=104 &&\text{two, upper}\\100-3(2)&=94 &&\text{three, lower}\\100+3(2)&=106 &&\text{three, upper}\end{aligned}$$
 
       Be careful not to apply this rule to every distribution. The mean gives the centre and $\sigma$ gives spread, but only a Gaussian shape gives these percentages.
     worked: |
       Let's estimate how often our Gaussian sensor model falls outside 96–104 cm. Let $X$ be a reading before rounding.
 
       1. **Measure the distance.** Each endpoint is two standard deviations from 100 cm.
-         $$\frac{104-100}{2}=2,\qquad\frac{96-100}{2}=-2$$
+         $$\begin{aligned}\frac{104-100}{2}&=2 &&\text{upper endpoint in standard deviations}\\\frac{96-100}{2}&=-2 &&\text{lower endpoint in standard deviations}\end{aligned}$$
 
       2. **Use the bell rule.** About 95% lies inside this range.
          $$P(96\le X\le104)\approx0.95$$
@@ -116,6 +128,10 @@ knowledge_points:
       - gauss-range-transfer
   - id: gauss-density-formula
     title: Calculate the bell's height
+    tldr: |
+      - Measuring distance from the centre in standard deviations lets us compare different bells.
+      - Squaring that distance makes the formula give matching heights on either side.
+      - Scaling those heights to keep total area at one gives the Gaussian density formula.
     explain: |
       ### Why calculate a height?
 
@@ -139,13 +155,9 @@ knowledge_points:
 
       Like $\pi\approx3.14$, $e\approx2.718$ is fixed. Negative powers mean reciprocals, so $e^{-1}=1/e$, $e^{-2}=1/e^2$, and $e^{-0.5}=1/\sqrt e$. A calculator handles these powers for us. Bigger squared distances give smaller values, which is all we need here.
 
-      We square the distance so left and right match.
-
-      $$z^2=\frac{(x-\mu)^2}{\sigma^2}$$
-
-      The shape factor is
-
-      $$e^{-z^2/2}=e^{-(x-\mu)^2/(2\sigma^2)}$$
+      We build matching heights on either side in three moves:
+      $$\begin{aligned}z^2&=\frac{(x-\mu)^2}{\sigma^2} &&\text{square the standardised distance}\\-z^2/2&=-\frac{(x-\mu)^2}{2\sigma^2} &&\text{negate and halve}\\e^{-z^2/2}&=e^{-(x-\mu)^2/(2\sigma^2)} &&\text{use it as the power of }e\end{aligned}$$
+      The last expression is the shape factor.
 
       We use $e$ as the conventional base. Dividing by 2 makes $\sigma$ equal the curve's standard deviation. We will take that fact on trust. The factor is 1 at the centre, about 0.61 one standard deviation away, and 0.14 two away.
 
@@ -157,9 +169,11 @@ knowledge_points:
 
       The standard deviation $\sigma$ must be positive, and variance is $\sigma^2$. The bars' areas add up to 1, including bars beyond the picture. The curve needs total area 1 too.
 
-      The exact front factor, the fraction in front of the shape factor, needs maths beyond this lesson. Numerically, the shape-factor curve's area along the $z$ axis is $\sqrt{2\pi}\approx2.507$. Stretching width by $\sigma$ multiplies area by $\sigma$, so dividing by both gives area 1. Doubling the width makes the peak half as high. For 100 and 102 cm, the shape factors give $1/e^{-1/2}\approx1/0.607\approx1.65$. Both readings share the front factor, so it cancels.
-
-      Height is not probability. With $\sigma=0.1$ cm the peak is about 3.99 per cm. A narrow curve can be that tall while its area stays 1.
+      We take the exact front factor on trust. The shape-factor curve's area along the $z$ axis is $\sqrt{2\pi}\approx2.507$. Scaling and then dividing gives:
+      $$\begin{aligned}\text{stretched area}&=\sigma\sqrt{2\pi} &&\text{stretch width by }\sigma\\\text{scaled area}&=\frac{\sigma\sqrt{2\pi}}{\sigma\sqrt{2\pi}}=1 &&\text{divide by the front denominator}\end{aligned}$$
+      Doubling width halves the peak. For 100 and 102 cm, the shared front factor cancels:
+      $$\begin{aligned}\frac{f(100)}{f(102)}&=\frac1{e^{-1/2}} &&\text{divide the shape factors}\\&\approx\frac1{0.607}\approx1.65 &&\text{evaluate the power and ratio}\end{aligned}$$
+      With $\sigma=0.1$ cm the peak is about 3.99 per cm. Such a tall, narrow curve still has area 1; height measures density.
     worked: |
       Let's find the height at 102 cm for mean 100 cm and standard deviation 2 cm. Use a calculator for powers and square roots.
 
@@ -167,7 +181,7 @@ knowledge_points:
          $$z=\frac{102-100}{2}=1$$
 
       2. **Find the shape factor.** We square that distance and divide by 2 in the negative exponent.
-         $$e^{-z^2/2}=e^{-1/2}=1/\sqrt e\approx0.61$$
+         $$\begin{aligned}e^{-z^2/2}&=e^{-1/2} &&\text{substitute }z=1\\&=1/\sqrt e &&\text{rewrite the negative power}\\&\approx0.61 &&\text{evaluate}\end{aligned}$$
 
       3. **Scale the height.** We keep the unrounded factor until the end.
          $$f(102)=\frac{e^{-1/2}}{2\sqrt{2\pi}}\approx0.12\text{ per cm}$$
@@ -182,6 +196,10 @@ knowledge_points:
       - gauss-width-transfer
   - id: gauss-small-effects
     title: See why sums form a bell
+    tldr: |
+      - Adding several random contributions makes middle totals easier to reach than extreme ones.
+      - Many independent small contributions can therefore give a roughly Gaussian total.
+      - This model needs checking when effects depend on each other or large errors occur often.
     explain: |
       ### Adding independent changes
 
@@ -213,11 +231,13 @@ knowledge_points:
 
       The **central limit theorem** explains why sums or averages can become approximately Gaussian. One simple version uses many independent effects with the same distribution and a limited range of possible sizes, as dice have. As we add dice, their total becomes more bell-shaped even though each die still has six equally likely faces.
 
-      Sensor effects need not all have the same distribution. Other versions allow different small effects, provided no single effect accounts for most of the variation. This makes a Gaussian plausible, not guaranteed.
+      Sensor effects need not all have the same distribution. Other versions allow different small effects, provided no single effect accounts for most of the variation. This makes a Gaussian plausible, though we still need to check it.
 
       ### Limitations
 
-      Be careful if stray reflections sometimes make our sensor report 150 cm. That is 25 standard deviations above 100 cm when $\sigma=2$, so our Gaussian gives nearby readings essentially no probability. Frequent readings there would contradict the model.
+      Be careful if stray reflections sometimes make our sensor report 150 cm. Measure how far that is from the centre:
+      $$\begin{aligned}150-100&=50 &&\text{distance in centimetres}\\50/2&=25 &&\text{distance in standard deviations}\end{aligned}$$
+      Our Gaussian gives readings near 150 cm essentially no probability. Frequent readings there would contradict the model.
 
       The bell argument needs independent effects within a reading. A motor driving both noise and vibration breaks that independence. Counts are whole numbers, never negative. A Gaussian can approximate large counts far from zero, but fits small counts poorly.
 
@@ -225,8 +245,8 @@ knowledge_points:
     worked: |
       Let's count the two-dice picture, then find the centre and spread for five dice.
 
-      1. **Count pairs.** Two dice have $6\times6=36$ equally likely results. The six pairs for 7 are $(1,6),(2,5),(3,4),(4,3),(5,2),(6,1)$, but only $(1,1)$ gives 2.
-         $$P(\text{sum is }7)=\frac6{36}=\frac16,\qquad P(\text{sum is }2)=\frac1{36}$$
+      1. **Count pairs.** The six pairs for 7 are $(1,6),(2,5),(3,4),(4,3),(5,2),(6,1)$; only $(1,1)$ gives 2. Divide each count by all equally likely pairs.
+         $$\begin{aligned}6\times6&=36 &&\text{all ordered pairs}\\P(\text{sum is }7)&=6/36=1/6 &&\text{six qualifying pairs}\\P(\text{sum is }2)&=1/36 &&\text{one qualifying pair}\end{aligned}$$
 
       2. **Find one die's mean.** We average its six equally likely faces.
          $$\mu=\frac{1+2+3+4+5+6}{6}=3.5$$
@@ -235,7 +255,7 @@ knowledge_points:
          $$\text{variance}=\frac{2.5^2+1.5^2+0.5^2+0.5^2+1.5^2+2.5^2}{6}=\frac{35}{12}$$
 
       4. **Add five independent dice.** Means add, and for independent effects variances add too. Five dice have $6^5=7776$ equally likely ordered results.
-         $$\mu=5\times3.5=17.5,\qquad\text{variance}=5\times\frac{35}{12}=\frac{175}{12}$$
+         $$\begin{aligned}\mu&=5\times3.5=17.5 &&\text{add five means}\\\text{variance}&=5\times\frac{35}{12}=\frac{175}{12} &&\text{add five independent variances}\end{aligned}$$
 
       The overlaid Gaussian uses this mean and variance, with standard deviation equal to the square root of variance.
     problems:

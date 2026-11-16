@@ -16,12 +16,18 @@ where_this_fits: |
 knowledge_points:
   - id: cr-rates-multiply
     title: "Multiply the rates along a chain"
+    tldr: |
+      - In a chain of calculations, each step passes its change to the next.
+      - Each step scales the change it receives by its own rate.
+      - Multiplying those rates gives the output's rate of change from the original input.
     explain: |
       ### A nudge passing through two steps
 
       Let's start with the simplest chain we can draw. A first step triples its input, so $u=3x$, and a second step doubles what it receives, so $y=2u$. We'll call $u$ the in-between value, because it's the output of the first step and the input of the second.
 
-      The picture shows $x$, $u$ and $y$ on three number lines with the same scale. Suppose we nudge $x$ by $0.1$, shown in orange on the top line. The first step triples that nudge, so $u$ moves by $0.3$. The second step doubles the $0.3$ it receives, so $y$ moves by $0.6$. The output moved $6$ times as far as the input, and $6$ is exactly $3\times2$.
+      The picture shows $x$, $u$ and $y$ on three number lines with the same scale. Nudge $x$ by $0.1$, shown in orange on the top line. Write $\Delta$ for "change in" and follow the nudge:
+      $$\begin{aligned}\Delta u&=3\times0.1=0.3 &&\text{triple the input nudge}\\\Delta y&=2\times0.3=0.6 &&\text{double the received change}\\\frac{\Delta y}{\Delta x}&=0.6/0.1=6 &&\text{compare output and input changes}\end{aligned}$$
+      The total rate $6$ is the product of the rates $3$ and $2$.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" aria-label="Three number lines for x, u and y on the same scale. An orange nudge of 0.1 in x becomes 0.3 in u after the step u equals 3x, and 0.6 in y after the step y equals 2u">
@@ -51,7 +57,7 @@ knowledge_points:
 
       So a nudge passes through each step in turn and gets scaled by that step's rate, which means the rates multiply. When a step's rate changes from place to place, this still holds for small nudges, and small nudges are what derivatives describe.
 
-      To write this down, we write $\frac{du}{dx}$, read "d u by d x", for the derivative of $u$ with respect to $x$, meaning how many units $u$ moves per unit of $x$. It's a single symbol, not a fraction. The **chain rule** says that if $y$ depends on $u$ and $u$ depends on $x$, then
+      We write $\frac{du}{dx}$, read "d u by d x", for the derivative of $u$ with respect to $x$, meaning units $u$ moves per unit of $x$. Read the whole symbol as a derivative. The **chain rule** says that if $y$ depends on $u$ and $u$ depends on $x$, then
 
       $$\frac{dy}{dx}=\frac{dy}{du}\cdot\frac{du}{dx}$$
 
@@ -70,7 +76,7 @@ knowledge_points:
       Let's use the chain rule on an everyday chain of rates. A car drives at $50$ km per hour, uses $0.08$ litres of fuel per km, and fuel costs $1.5$ pounds per litre. Time $t$ determines the distance $s$, distance determines the fuel used $F$, and fuel determines the cost $C$. How fast does the cost grow, in pounds per hour?
 
       1. **Write down each step's rate.** Each number in the question is the rate of one step in the chain.
-         $$\frac{ds}{dt}=50,\qquad \frac{dF}{ds}=0.08,\qquad \frac{dC}{dF}=1.5$$
+         $$\begin{aligned}\frac{ds}{dt}&=50 &&\text{distance per hour}\\\frac{dF}{ds}&=0.08 &&\text{fuel per kilometre}\\\frac{dC}{dF}&=1.5 &&\text{cost per litre}\end{aligned}$$
 
       2. **Write the chain rule for three steps.** With three steps there are three rates to multiply.
          $$\frac{dC}{dt}=\frac{dC}{dF}\cdot\frac{dF}{ds}\cdot\frac{ds}{dt}$$
@@ -90,12 +96,17 @@ knowledge_points:
       - crp-three-steps
   - id: cr-nested-formulas
     title: "Differentiate a formula inside a formula"
+    tldr: |
+      - A formula inside another formula is a chain of two steps.
+      - The outer step's slope depends on the value the inner step gives it.
+      - Find that outer slope and multiply by the inner slope to get the full derivative.
     explain: |
       ### Splitting a formula into two steps
 
       So far every step had a fixed rate. How would we differentiate $y=(3x+1)^2$ without expanding the bracket? The power rule handles $u^2$, and $3x+1$ is easy, but here one sits inside the other.
 
-      The trick is to read the formula as a chain. First an **inner** step turns $x$ into $u=3x+1$. Then an **outer** step squares it, $y=u^2$. The picture follows $x=1$ through both steps. The inner step gives $u=4$, and its rate is $3$ everywhere. The outer step gives $y=16$, and by the power rule its rate is $2u$. But which $u$? The outer step receives $u=4$, so its rate there is $2\times4=8$. Multiplying gives a slope of $8\times3=24$, so a nudge of $0.01$ in $x$ moves $y$ by about $0.24$.
+      Read the formula as a chain. An **inner** step gives $u=3x+1$, then an **outer** step squares it, $y=u^2$. Follow $x=1$ through the picture, evaluating the outer rate at the value it receives:
+      $$\begin{aligned}u&=3\times1+1=4 &&\text{find the inner value}\\y&=4^2=16 &&\text{square it}\\\frac{du}{dx}&=3 &&\text{differentiate the inner step}\\\frac{dy}{du}&=2\times4=8 &&\text{evaluate the outer rate}\\\frac{dy}{dx}&=8\times3=24 &&\text{multiply the rates}\\\Delta y&\approx24\times0.01=0.24 &&\text{estimate a small change}\end{aligned}$$
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 250" aria-label="The value x equals 1 passes through two boxes. The inner step u equals 3x plus 1 gives u equals 4 with rate 3. The outer step y equals u squared gives y equals 16 with rate 2u, which is 8 at u equals 4. So the slope is 8 times 3, which is 24, and a nudge of 0.01 in x moves y by about 0.24">
@@ -130,15 +141,19 @@ knowledge_points:
 
       $$(f\circ g)'(x)=f'(g(x))\cdot g'(x)$$
 
-      In words, $f'(g(x))$ is the outer rate, worked out at the inner value $g(x)$, and $g'(x)$ is the inner rate. For $(3x+1)^2$, the inner function is $g(x)=3x+1$ and the outer one is $f(u)=u^2$, so $f'(g(x))=2(3x+1)$ and $g'(x)=3$. Multiplying them gives $2(3x+1)\cdot3=6(3x+1)$.
+      Here $f'(g(x))$ is the outer rate at the inner value, and $g'(x)$ is the inner rate. For $g(x)=3x+1$ and $f(u)=u^2$:
+      $$\begin{aligned}f'(g(x))&=2(3x+1) &&\text{evaluate the outer rate}\\g'(x)&=3 &&\text{differentiate the inner step}\\(f\circ g)'(x)&=2(3x+1)\cdot3 &&\text{multiply the rates}\\&=6(3x+1) &&\text{combine the constants}\end{aligned}$$
 
       ### The outer rate depends on x
 
       The inner rate stays $3$, but the outer rate $2u$ changes with the value it receives:
 
-      - At $x=1$, $u=4$, so the slope is $8\times3=24$.
-      - At $x=-\frac13$, $u=0$, so the outer step is flat and the slope is $0$.
-      - At $x=-1$, $u=-2$, so the slope is $-4\times3=-12$ and the curve is falling.
+      | Input | Inner value | Slope |
+      | --- | --- | --- |
+      | $1$ | $4$ | $8\times3=24$ |
+      | $-\frac13$ | $0$ | $0$ |
+      | $-1$ | $-2$ | $-4\times3=-12$ |
+      A zero inner value makes the outer step flat here; a negative one makes the curve fall.
 
       Be careful not to stop at the power rule and write $2(3x+1)$. That's only the outer rate. The bracket changes $3$ times as fast as $x$, so we still have to multiply by $3$.
 
@@ -150,16 +165,16 @@ knowledge_points:
          $$u=2x-1,\qquad y=u^3$$
 
       2. **Find the inner value and the inner rate.** We need the value of $u$ at $x=2$, because the outer rate depends on it.
-         $$u=2\times2-1=3,\qquad \frac{du}{dx}=2$$
+         $$\begin{aligned}u&=2\times2-1=3 &&\text{find the inner value}\\\frac{du}{dx}&=2 &&\text{differentiate the inner step}\end{aligned}$$
 
       3. **Find the outer rate at that inner value.** The power rule gives $3u^2$, and we put in $u=3$.
-         $$\frac{dy}{du}=3u^2=3\times3^2=27$$
+         $$\begin{aligned}\frac{dy}{du}&=3u^2 &&\text{use the power rule}\\&=3\times3^2=27 &&\text{evaluate at }u=3\end{aligned}$$
 
       4. **Multiply.** The chain rule multiplies the outer rate by the inner rate.
          $$\frac{dy}{dx}=27\times2=54$$
 
-      5. **Check with a nudge of $0.01$.** The slope predicts that $y$ rises by about $54\times0.01=0.54$. Moving $x$ to $2.01$ makes $u=3.02$, so
-         $$3.02^3-3^3=27.543608-27\approx0.54$$
+      5. **Check with a nudge of $0.01$.** Compare the slope's prediction with the actual change.
+         $$\begin{aligned}\Delta y&\approx54\times0.01=0.54 &&\text{predict the rise}\\u&=2(2.01)-1=3.02 &&\text{find the new inner value}\\3.02^3&=27.543608 &&\text{cube it}\\\Delta y&=27.543608-27\approx0.54 &&\text{subtract the old output}\end{aligned}$$
 
       So the slope at $x=2$ is $54$, and the nudge agrees with it.
     problems:
@@ -171,6 +186,10 @@ knowledge_points:
       - crp-root-slope
   - id: cr-two-routes
     title: "When one input feeds two values"
+    tldr: |
+      - One input can affect the output through several routes.
+      - Multiplying the rates along one route measures that route's contribution.
+      - Add every route's contribution to get the full derivative.
     explain: |
       ### One input, two routes
 
@@ -178,7 +197,9 @@ knowledge_points:
 
       Let's take $u=2x$ and $v=x+3$, and let the output be their product, $f=uv$. In the picture, each arrow shows what depends on what, labelled with its rate at $x=1$. There are two **routes** from $x$ to $f$, one through $u$ in blue and one through $v$ in green.
 
-      Because $f$ has two inputs, $u$ and $v$, the rates out of $u$ and $v$ are partial derivatives. Holding $v$ fixed, $f=uv$ changes at $\frac{\partial f}{\partial u}=v=4$, and holding $u$ fixed it changes at $\frac{\partial f}{\partial v}=u=2$. So each partial measures one route only, but a real nudge to $x$ moves $u$ and $v$ at once.
+      Since $f$ has two inputs, the rates out of $u$ and $v$ are partial derivatives. At $x=1$:
+      $$\begin{aligned}u&=2 &&\text{evaluate the first value}\\v&=4 &&\text{evaluate the second value}\\\frac{\partial f}{\partial u}&=v=4 &&\text{hold }v\text{ fixed}\\\frac{\partial f}{\partial v}&=u=2 &&\text{hold }u\text{ fixed}\end{aligned}$$
+      Each partial measures one route; a nudge to $x$ moves both values.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" aria-label="A diagram at x equals 1. A blue route goes from x to u equals 2x with rate 2, then to f equals uv with rate v equals 4. A green route goes from x to v equals x plus 3 with rate 1, then to f with rate u equals 2. The blue route gives 4 times 2, which is 8, the green route gives 2 times 1, which is 2, and df/dx is 10">
@@ -216,7 +237,9 @@ knowledge_points:
 
       ### Multiply along each route, then add
 
-      Along the blue route the rates are $2$ and $4$, which multiply to $8$. Along the green route they're $1$ and $2$, giving $2$. So $\frac{df}{dx}=8+2=10$. In general, if $f$ depends on $u$ and $v$, and both depend on $x$, the **multivariable chain rule** is
+      Calculate each route's contribution before adding them:
+      $$\begin{aligned}\frac{\partial f}{\partial u}\frac{du}{dx}&=4\times2=8 &&\text{blue route}\\\frac{\partial f}{\partial v}\frac{dv}{dx}&=2\times1=2 &&\text{green route}\\\frac{df}{dx}&=8+2=10 &&\text{add both routes}\end{aligned}$$
+      If $f$ depends on $u$ and $v$, and both depend on $x$, the **multivariable chain rule** is
 
       $$\frac{df}{dx}=\frac{\partial f}{\partial u}\cdot\frac{du}{dx}+\frac{\partial f}{\partial v}\cdot\frac{dv}{dx}$$
 
@@ -226,16 +249,19 @@ knowledge_points:
 
       The blue route gives $v\times2$ and the green route gives $u\times1$, so their sizes change with $x$:
 
-      - At $x=1$, $v=4$ and $u=2$, giving $8$ and $2$, so both push $f$ up and $\frac{df}{dx}=10$.
-      - At $x=-1.5$, $v=1.5$ and $u=-3$, giving $3$ and $-3$, so they cancel and $\frac{df}{dx}=0$.
-      - At $x=-2$, $v=1$ and $u=-4$, giving $2$ and $-4$, so the green route wins and $\frac{df}{dx}=-2$.
+      | Input $x$ | $u$ | $v$ | Blue route | Green route | Total slope |
+      | --- | --- | --- | --- | --- | --- |
+      | $1$ | $2$ | $4$ | $8$ | $2$ | $10$ |
+      | $-1.5$ | $-3$ | $1.5$ | $3$ | $-3$ | $0$ |
+      | $-2$ | $-4$ | $1$ | $2$ | $-4$ | $-2$ |
+      The routes can reinforce each other, cancel, or give a negative total.
 
       Don't stop after one route. The product $\frac{\partial f}{\partial u}\cdot\frac{du}{dx}$ looks like a complete chain rule, but it holds $v$ fixed, and nudging $x$ moves $v$ too. Leaving out the green route would give $8$ instead of $10$.
     worked: |
       Let's find $\frac{df}{dx}$ for $f=uv$ with $u=x^2$ and $v=3x+1$, at $x=2$, by adding the two routes.
 
       1. **Find the in-between values and their rates.** Each route needs the values of $u$ and $v$ and how fast each one moves.
-         $$u=4,\qquad v=7,\qquad \frac{du}{dx}=2x=4,\qquad \frac{dv}{dx}=3$$
+         $$\begin{aligned}u&=2^2=4 &&\text{first value}\\v&=3(2)+1=7 &&\text{second value}\\\frac{du}{dx}&=2x=4 &&\text{first rate at }x=2\\\frac{dv}{dx}&=3 &&\text{second rate}\end{aligned}$$
 
       2. **Multiply along the route through $u$.** Holding $v$ fixed, $\frac{\partial f}{\partial u}=v=7$.
          $$\frac{\partial f}{\partial u}\cdot\frac{du}{dx}=7\times4=28$$
@@ -247,7 +273,7 @@ knowledge_points:
          $$\frac{df}{dx}=28+12=40$$
 
       5. **Check by substituting first.** Writing $f$ in terms of $x$ alone gives a polynomial we can differentiate with the power rule.
-         $$f=x^2(3x+1)=3x^3+x^2,\qquad f'(2)=9\times2^2+2\times2=40$$
+         $$\begin{aligned}f&=x^2(3x+1) &&\text{substitute both values' formulas}\\&=3x^3+x^2 &&\text{expand the brackets}\\f'(x)&=9x^2+2x &&\text{differentiate each term}\\f'(2)&=9\times2^2+2\times2=40 &&\text{evaluate at }x=2\end{aligned}$$
 
       Both ways give $40$. The route method only used each step's own rate and never needed the combined formula for $f$, which is what lets it work for a model whose combined formula would be far too long to write out.
     problems:

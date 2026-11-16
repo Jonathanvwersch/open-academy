@@ -11,6 +11,10 @@ where_this_fits: |
 knowledge_points:
   - id: pb-events
     title: Measure how likely something is
+    tldr: |
+      - An event is a set of possible outcomes, such as rolling at least five.
+      - Its probability measures how likely it is, from impossible to certain.
+      - Subtracting that probability from one gives the chance that it will not happen.
     explain: |
       ### Six faces of a die
 
@@ -48,13 +52,15 @@ knowledge_points:
 
       $$P(A)=\frac{\text{number of outcomes in }A}{\text{number of all outcomes}}$$
 
-      For the die, $P(\text{at least 5})=\frac26=\frac13$.
+      For the die, count the two faces and simplify:
+      $$\begin{aligned}P(\text{at least 5})&=\frac26 &&\text{count faces that qualify}\\&=\frac13 &&\text{simplify the fraction}\end{aligned}$$
 
       The other four faces make up the **complement** of $A$, written "not $A$". Every roll lands in exactly one of the two, so their probabilities add up to 1, and we can always get one from the other:
 
       $$P(\text{not }A)=1-P(A)$$
 
-      Here that's $1-\frac13=\frac23$.
+      Here that's
+      $$P(\text{not }A)=1-\frac13=\frac23.$$
 
       ### Counting past cases
 
@@ -73,8 +79,8 @@ knowledge_points:
       3. **Subtract from 1 for the complement.** Every sale was either above asking or not, so the two probabilities add up to 1.
          $$P(\text{not }A)\approx1-0.45=0.55$$
 
-      4. **Check by counting.** The other $20-9=11$ sales weren't above asking, and their fraction should give the same answer.
-         $$\frac{11}{20}=0.55$$
+      4. **Check by counting.** Count the remaining sales, then find their fraction.
+         $$\begin{aligned}20-9&=11 &&\text{sales that were not above asking}\\\frac{11}{20}&=0.55 &&\text{their share of all sales}\end{aligned}$$
 
       So from these records, a sale is a little less likely than not to go above asking.
     problems:
@@ -86,6 +92,10 @@ knowledge_points:
       - pb-robot-grasp-failures
   - id: pb-distributions
     title: List the chance of each possible number
+    tldr: |
+      - A random variable is a number decided by chance.
+      - Its distribution lists each possible value and its probability.
+      - Adding the probabilities of the values we want gives their combined chance.
     explain: |
       ### A number decided by chance
 
@@ -127,13 +137,14 @@ knowledge_points:
 
       Every spin gives exactly one value, so the probabilities in a distribution are each between 0 and 1, and they add up to 1:
 
-      $$P(X=0)+P(X=1)+P(X=2)=\frac12+\frac14+\frac14=1$$
+      $$\begin{aligned}P(X=0)+P(X=1)+P(X=2)&=\frac12+\frac14+\frac14 &&\text{insert each chance}\\&=1 &&\text{check their sum}\end{aligned}$$
 
       ### Chances of several values
 
-      We can also ask about several values at once, such as "at least 1 point". We write that as $X\ge1$, where $\ge$ means "is at least". It's an event too, because it picks out the spins that give 1 or 2 points, and its probability is the sum of the chances of the values it covers, so $P(X\ge1)=\frac14+\frac14=\frac12$.
+      We can also ask about "at least 1 point", written $X\ge1$, where $\ge$ means "is at least". This event covers spins giving 1 or 2 points, so add their chances:
+      $$\begin{aligned}P(X\ge1)&=P(X=1)+P(X=2) &&\text{include both values}\\&=\frac14+\frac14 &&\text{substitute their chances}\\&=\frac12 &&\text{add}\end{aligned}$$
 
-      Be careful not to give each value the same chance just because there are three values. The equally likely outcomes are the four sectors, not the three values, and 0 is printed on two sectors, so it's twice as likely as each of the others.
+      Be careful not to give each value the same chance just because there are three values. Each of the four sectors is equally likely, and 0 appears twice, so it's twice as likely as each other value.
     worked: |
       Let's estimate the distribution of the number of offers a house gets, from the same 20 past sales. Of those sales, 4 got no offers, 6 got 1 offer, 8 got 2 offers and 2 got 3 offers. Let $X$ be the number of offers a sale gets.
 
@@ -141,7 +152,7 @@ knowledge_points:
          $$P(X=0)\approx\frac{4}{20}=0.2$$
 
       2. **Do the same for 1, 2 and 3 offers.** Dividing $6$, $8$ and $2$ by $20$ gives the other three entries.
-         $$P(X=1)\approx0.3,\quad P(X=2)\approx0.4,\quad P(X=3)\approx0.1$$
+         $$\begin{aligned}P(X=1)&\approx6/20=0.3 &&\text{one offer}\\P(X=2)&\approx8/20=0.4 &&\text{two offers}\\P(X=3)&\approx2/20=0.1 &&\text{three offers}\end{aligned}$$
 
       3. **Check that they add up to 1.** Every sale got exactly one number of offers, so no chance should be missing.
          $$0.2+0.3+0.4+0.1=1$$
@@ -159,16 +170,19 @@ knowledge_points:
       - pb-valid-distribution
   - id: pb-expectation
     title: Average the results over many tries
+    tldr: |
+      - Over many tries, more likely values appear more often.
+      - Multiply each value by its probability to give it the right share of the average.
+      - Adding those shares gives the expected value, the long-run average per try.
     explain: |
       ### Averaging many spins
 
       A distribution gives a chance for every value, but often we want one number that sums it up. If we spun the spinner from the last step many times, how many points would we get per spin, on average?
 
-      Imagine 400 spins. About half of them, 200, stop on 0, about 100 stop on 1, and about 100 stop on 2. That's about $0\times200+1\times100+2\times100=300$ points, or $\frac{300}{400}=0.75$ points per spin.
-
-      Dividing each count by 400 gives the fraction of spins that landed on that value, which is about its probability, so the average is each value times its probability, added up:
-
-      $$0\times\frac12+1\times\frac14+2\times\frac14=0.75$$
+      Imagine 400 spins. About 200 stop on 0, 100 on 1 and 100 on 2. Count the points, then divide by the number of spins:
+      $$\begin{aligned}0\times200+1\times100+2\times100&=300 &&\text{approximate total points}\\300/400&=0.75 &&\text{points per spin}\end{aligned}$$
+      Dividing each count by 400 gives about its probability. That lets us write the average directly from the probabilities:
+      $$\begin{aligned}\frac{0\times200+1\times100+2\times100}{400}&=0\times\frac12+1\times\frac14+2\times\frac14 &&\text{divide each count by }400\\&=0.75 &&\text{add the weighted values}\end{aligned}$$
 
       ### The expected value
 
@@ -176,7 +190,8 @@ knowledge_points:
 
       $$E[X]=x_1\,P(X=x_1)+x_2\,P(X=x_2)+\dots$$
 
-      Here $x_1$, $x_2$ and so on are the values $X$ can take, and the dots mean we carry on until every value is included. Because it's an average per try, multiplying it by the number of tries gives roughly the total. So 400 spins give about $400\times0.75=300$ points.
+      Here $x_1$, $x_2$ and so on are the possible values, and the dots mean we include every value. Multiplying this average per try by the number of tries estimates the total:
+      $$400\times0.75=300\text{ points}.$$
 
       ### The balance point
 
@@ -214,7 +229,7 @@ knowledge_points:
       Let's find the expected number of offers per sale, using the distribution we estimated from the 20 past sales in the last step, $P(X=0)=0.2$, $P(X=1)=0.3$, $P(X=2)=0.4$ and $P(X=3)=0.1$.
 
       1. **Multiply each value by its probability.** Each product is that value's share of the average.
-         $$0\times0.2=0,\quad1\times0.3=0.3,\quad2\times0.4=0.8,\quad3\times0.1=0.3$$
+         $$\begin{aligned}0\times0.2&=0 &&\text{share from zero offers}\\1\times0.3&=0.3 &&\text{share from one offer}\\2\times0.4&=0.8 &&\text{share from two offers}\\3\times0.1&=0.3 &&\text{share from three offers}\end{aligned}$$
 
       2. **Add the products.** Their sum is the expected value.
          $$E[X]=0+0.3+0.8+0.3=1.4$$
@@ -232,6 +247,10 @@ knowledge_points:
       - pb-robot-expected-reward
   - id: pb-conditional
     title: Update a chance with new information
+    tldr: |
+      - New information rules out some possible outcomes.
+      - A conditional probability counts only the outcomes still possible.
+      - If that new information leaves the chance unchanged, the two events are independent.
     explain: |
       ### Ruling out faces
 
@@ -274,7 +293,9 @@ knowledge_points:
 
       ### When knowing changes nothing
 
-      Sometimes the extra fact doesn't help. If we're told the roll is at most 4, the faces left are 1, 2, 3 and 4. Two of them are even, so $P(\text{even}\mid\text{at most 4})=\frac24=\frac12$, the same as before. When $P(A\mid B)=P(A)$, the events are **independent**, which means knowing $B$ tells us nothing about $A$.
+      Sometimes the extra fact doesn't help. Knowing the roll is at most 4 leaves faces 1, 2, 3 and 4, of which two are even:
+      $$\begin{aligned}P(\text{even}\mid\text{at most 4})&=\frac24 &&\text{count within the remaining faces}\\&=\frac12 &&\text{simplify}\end{aligned}$$
+      The chance stayed the same. When $P(A\mid B)=P(A)$, the events are **independent**, meaning knowing $B$ tells us nothing about $A$.
 
       With counts from data, two estimates can differ a little just by chance. Telling how big a gap has to be before it means something takes statistics, which comes later in the course, so here we only compare gaps that are clearly large.
     worked: |
@@ -286,8 +307,8 @@ knowledge_points:
       2. **Keep only the sales in $B$.** Knowing $B$ rules out the other 10 sales, so we count the above-asking sales among the 10 that are left.
          $$P(A\mid B)\approx\frac{7}{10}=0.7$$
 
-      3. **Do the same for the sales not in $B$.** The other 10 sales got fewer than two offers, and $9-7=2$ of them sold above asking.
-         $$P(A\mid\text{not }B)\approx\frac{2}{10}=0.2$$
+      3. **Do the same for the sales not in $B$.** Subtract the known counts to find the sales with fewer than two offers.
+         $$\begin{aligned}20-10&=10 &&\text{sales outside }B\\9-7&=2 &&\text{above-asking sales outside }B\\P(A\mid\text{not }B)&\approx\frac{2}{10}=0.2 &&\text{divide within that group}\end{aligned}$$
 
       So the chance of selling above asking rises from $0.45$ to $0.7$ when a house has at least two offers, and falls to $0.2$ when it doesn't. In this data, the two events are clearly not independent.
     problems:
