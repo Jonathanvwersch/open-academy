@@ -19,9 +19,10 @@ knowledge_points:
   - id: attn-score-matches
     title: Score each source of information
     tldr: |
-      - Each token gets a query for seeking information and a key for matching it.
-      - A dot product compares the query with each source's key.
-      - Dividing by the square root of the key width gives scores for deciding how much to use each source.
+      - Each token makes a query vector describing what information it needs.
+      - Each source token makes a key vector describing what it offers.
+      - A dot product compares them, then scaling based on the key's number of entries keeps scores a sensible size.
+      - A higher score means a better match for what the token needs.
     explain: |
       ### Prepare the vectors we need
 
@@ -91,9 +92,9 @@ knowledge_points:
   - id: attn-make-weights
     title: Turn scores into mixing weights
     tldr: |
-      - Each source needs a share of the information we mix together.
-      - Softmax turns its score into a positive share, with all shares adding up to one.
-      - A higher score gives a source a larger share of the mixture.
+      - Each source now has a score, but scores can be any size, even negative.
+      - Softmax turns the scores into shares that are all positive and add up to one.
+      - A higher score gets a bigger share of the mix.
     explain: |
       ### Give each value a share
 

@@ -16,9 +16,9 @@ knowledge_points:
   - id: lev-clean-benchmarks
     title: Keep test answers out of training
     tldr: |
-      - Test questions should show how the model handles requests it has yet to learn from.
-      - Questions or answers seen during training can make the score look better than its performance on fresh questions.
-      - Keep evaluation data separate and report what the tested tasks actually measure.
+      - A test should show how the model does on questions it has never seen.
+      - If test questions or answers leaked into the training text, the score can look better than the model really is.
+      - So keep test data out of training, and say what the test actually measures.
     explain: |
       ### Seen questions can raise scores
 

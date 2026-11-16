@@ -101,8 +101,8 @@ knowledge_points:
   - id: pt-training-compute
     title: "Estimate the cost of a training run"
     tldr: |
-      - Training costs arithmetic operations for every parameter and every token.
-      - Multiplying those counts gives a rough estimate of the total work.
+      - Training does about six arithmetic steps for every parameter, for every token it reads.
+      - Multiplying six by the number of parameters and the number of tokens gives the total work.
       - Dividing that work by the hardware's speed estimates how long training takes.
     explain: |
       ### Counting operations

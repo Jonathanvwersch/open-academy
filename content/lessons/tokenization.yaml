@@ -241,7 +241,7 @@ knowledge_points:
     tldr: |
       - Once training ends, the vocabulary and merge order stay fixed.
       - To split new text, start with letters and replay the learned merges in order.
-      - This handles unseen words as smaller pieces, while more merges usually make texts shorter.
+      - Words never seen in training still get split into smaller pieces, and more merges usually mean fewer tokens per text.
     explain: |
       ### Using the merges on new text
 

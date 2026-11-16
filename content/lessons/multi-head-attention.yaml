@@ -217,7 +217,7 @@ knowledge_points:
     tldr: |
       - Matrix products compute attention for every token at once.
       - Each head compares every token with every other token, then mixes their values.
-      - More heads keep the learned weight count fixed but require more attention weights for the sequence.
+      - Adding heads adds no learned numbers, but each head needs its own grid of attention weights, which gets large for long inputs.
     explain: |
       ### All tokens at once
 

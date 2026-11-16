@@ -80,8 +80,8 @@ knowledge_points:
       To get more pairs per prompt, ask a person to rank responses from best to worst. Every two then make a pair. Count them without counting either order twice:
       $$
       \begin{aligned}
-      k(k-1)& &&\text{pair each response with every other one}\\
-      \frac{k(k-1)}2& &&\text{divide by two to remove double counting}
+      \text{ordered pairs}&=k(k-1) &&\text{pair each response with every other one}\\
+      \text{pairs}&=\frac{k(k-1)}2 &&\text{each pair was counted twice}
       \end{aligned}
       $$
 

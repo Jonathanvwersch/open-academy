@@ -87,7 +87,7 @@ knowledge_points:
     tldr: |
       - All experts need storage even when only a few run for one token.
       - Count every expert for storage, and only the selected experts for the work per token.
-      - Adding experts increases storage while leaving the selected expert work unchanged if we keep choosing the same number.
+      - Adding more experts grows storage, but the work per token stays the same as long as each token still uses the same number of experts.
     explain: |
       ### Parameters we store and use
 

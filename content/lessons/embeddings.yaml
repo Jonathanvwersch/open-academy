@@ -94,8 +94,8 @@ knowledge_points:
   - id: emb-onehot-product
     title: "Write the lookup as a multiplication"
     tldr: |
-      - We can select a token's row using zeros and a single one in that token's place.
-      - Multiplying this list by the table keeps the chosen row and cancels the others.
+      - We can pick out a token's row with a vector of zeros that has a single one in that token's place.
+      - Multiplying this vector by the table keeps the chosen row and cancels the others.
       - This gives the same embedding as looking up the row directly.
     explain: |
       ### Picking out a row with zeros and a one
