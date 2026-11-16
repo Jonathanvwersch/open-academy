@@ -16,6 +16,10 @@ where_this_fits: |
 knowledge_points:
   - id: inv-identity-inverse
     title: "Undo a matrix with its inverse"
+    tldr: |
+      - The identity matrix leaves every vector unchanged.
+      - Multiplying a matrix by its inverse gives the identity.
+      - For a square matrix, a nonzero determinant tells us that this inverse exists.
     explain: |
       ### A matrix that changes nothing
 
@@ -31,7 +35,15 @@ knowledge_points:
 
       ### The matrix that undoes A
 
-      Take $A=\begin{bmatrix}2&1\\1&1\end{bmatrix}$. Its determinant is $2\times1-1\times1=1$, so it can be undone. In the picture, $A$ sends the blue input $(3,2)$ to the green output $(8,5)$, along the orange arrow. The grey arrow goes back.
+      Take $A=\begin{bmatrix}2&1\\1&1\end{bmatrix}$. Check its determinant:
+      $$
+      \begin{aligned}
+      \det(A)&=2\times1-1\times1 &&\text{use the determinant formula}\\
+      &=2-1 &&\text{multiply each pair}\\
+      &=1 &&\text{subtract the products}
+      \end{aligned}
+      $$
+      Its nonzero determinant means it can be undone. In the picture, $A$ sends the blue input $(3,2)$ to the green output $(8,5)$, along the orange arrow. The grey arrow goes back.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 360" aria-label="The matrix A with rows (2, 1) and (1, 1) sends the blue input point (3, 2) to the green output point (8, 5), shown by an orange curved arrow labelled A. A grey curved arrow labelled A inverse goes from the output back to the input." font-family="ui-sans-serif, system-ui, sans-serif">
@@ -60,13 +72,30 @@ knowledge_points:
 
       $$A^{-1}=\frac{1}{ad-bc}\begin{bmatrix}d&-b\\-c&a\end{bmatrix}$$
 
-      Why does this work? Multiply $A$ by $\begin{bmatrix}d&-b\\-c&a\end{bmatrix}$. The diagonal entries are $ad+b(-c)=ad-bc$ and $c(-b)+da=ad-bc$. The top right is $a(-b)+ba=0$. The bottom left is $cd+d(-c)=0$. Dividing by $ad-bc$ leaves $I$. When $ad-bc=0$, there is no inverse.
+      Why does this work? Multiply before dividing by the determinant:
+      $$
+      \begin{aligned}
+      A\begin{bmatrix}d&-b\\-c&a\end{bmatrix}&=\begin{bmatrix}ad-bc&-ab+ba\\cd-dc&-cb+da\end{bmatrix} &&\text{dot each row with each column}\\
+      &=\begin{bmatrix}ad-bc&0\\0&ad-bc\end{bmatrix} &&\text{cancel the off-diagonal terms}\\
+      AA^{-1}&=I &&\text{divide by }ad-bc
+      \end{aligned}
+      $$
+      When $ad-bc=0$, there is no inverse.
 
       Be careful not to take $1$ over each entry. The inverse of $\begin{bmatrix}2&1\\1&1\end{bmatrix}$ is not $\begin{bmatrix}0.5&1\\1&1\end{bmatrix}$.
 
       ### Undoing two matrices in a row
 
-      Matrix products can be grouped either way: $ABx=A(Bx)$. So $B$ acts first, then $A$. To undo this, apply $A^{-1}$ first, then $B^{-1}$. The inverse of a product reverses the order:
+      Matrix products can be grouped either way:
+      $$(AB)x=A(Bx).$$
+      So $B$ acts first, then $A$. When both have inverses, undo them in reverse order:
+
+      1. Undo $A$:
+         $$A^{-1}(ABx)=Bx.$$
+      2. Undo $B$:
+         $$B^{-1}(Bx)=x.$$
+
+      The inverse of a product reverses the order:
 
       $$(AB)^{-1}=B^{-1}A^{-1}$$
     worked: |
@@ -78,8 +107,14 @@ knowledge_points:
       2. **Apply the formula.** We swap the 2 and the 1 on the diagonal, change the signs of the other two entries, and divide by 1.
          $$A^{-1}=\begin{bmatrix}1&-1\\-1&2\end{bmatrix}$$
 
-      3. **Check by multiplying.** Each entry is a row of $A$ dotted with a column of $A^{-1}$, for example $2\times1+1\times(-1)=1$ for the top left.
-         $$AA^{-1}=\begin{bmatrix}2-1&-2+2\\1-1&-1+2\end{bmatrix}=\begin{bmatrix}1&0\\0&1\end{bmatrix}$$
+      3. **Check by multiplying.** Each entry is a row of $A$ dotted with a column of $A^{-1}$.
+         $$
+         \begin{aligned}
+         AA^{-1}&=\begin{bmatrix}2\times1+1\times(-1)&2\times(-1)+1\times2\\1\times1+1\times(-1)&1\times(-1)+1\times2\end{bmatrix} &&\text{pair each row with each column}\\
+         &=\begin{bmatrix}2-1&-2+2\\1-1&-1+2\end{bmatrix} &&\text{multiply matching entries}\\
+         &=\begin{bmatrix}1&0\\0&1\end{bmatrix} &&\text{add the products}
+         \end{aligned}
+         $$
 
       4. **Undo the output.** $A^{-1}$ times $(8,5)$ should give back the input.
          $$A^{-1}\begin{bmatrix}8\\5\end{bmatrix}=\begin{bmatrix}8-5\\-8+10\end{bmatrix}=\begin{bmatrix}3\\2\end{bmatrix}$$
@@ -96,6 +131,11 @@ knowledge_points:
       - inv-ii-colour-filter
   - id: inv-elimination
     title: "Solve equations by removing unknowns"
+    tldr: |
+      - Several equations can describe the same unknown numbers.
+      - Subtracting multiples of equations removes unknowns one at a time.
+      - Once one value is known, put it back to find the others.
+      - If the same quantities must have different totals, there is no solution.
     explain: |
       ### Equations as one matrix product
 
@@ -130,9 +170,27 @@ knowledge_points:
 
       For bigger systems, we have no inverse formula here. **Elimination** finds $x$ without computing $A^{-1}$. It subtracts a multiple of one equation from another to remove an unknown. Both sides of a true equation are equal. Subtracting equal amounts from both sides keeps the solution unchanged. For a system with one solution, we repeat until one equation has a single unknown. We solve it, then put that value back into the others.
 
-      Here, subtracting the second equation from the first removes $x_2$ and leaves $x_1=3$. Then $x_1+x_2=5$ gives $x_2=2$, so a coffee costs £3 and a tea £2.
+      Here we remove $x_2$, then put the coffee price back into the second equation:
+      $$
+      \begin{aligned}
+      (2x_1+x_2)-(x_1+x_2)&=8-5 &&\text{subtract the second equation}\\
+      x_1&=3 &&\text{collect the remaining terms}\\
+      3+x_2&=5 &&\text{put }x_1\text{ back}\\
+      x_2&=2 &&\text{subtract }3
+      \end{aligned}
+      $$
+      A coffee costs £3 and a tea £2.
 
-      Sometimes elimination removes every unknown at once. Suppose a careless till gives $2x_1+2x_2=8$ and $x_1+x_2=5$. Their matrix has rows $(2,2)$ and $(1,1)$, with determinant zero. Subtracting twice the second equation from the first leaves $0=-2$. That's false, so no prices fit both orders. Dividing the first equation by 2 gives $x_1+x_2=4$. Both left sides are $x_1+x_2$, but they must equal 4 and 5. Both lines go in the same direction but sit at different heights, so they are parallel and never cross.
+      Sometimes every unknown vanishes. Suppose a careless till gives $2x_1+2x_2=8$ and $x_1+x_2=5$. Their matrix has rows $(2,2)$ and $(1,1)$, with determinant zero:
+      $$
+      \begin{aligned}
+      (2x_1+2x_2)-2(x_1+x_2)&=8-2\times5 &&\text{subtract twice the second equation}\\
+      0&=-2 &&\text{cancel the unknowns}
+      \end{aligned}
+      $$
+      That's false, so no prices fit both orders. Divide the original first equation by 2:
+      $$x_1+x_2=4.$$
+      The same left side must equal both 4 and 5. The lines are parallel and never cross.
     worked: |
       Let's add juice to the café menu and solve for three prices from three orders. One coffee, one tea and one juice cost £9. One coffee, two teas and three juices cost £19. One coffee, three teas and six juices cost £33. With $x_3$ for the price of a juice:
 
@@ -145,14 +203,34 @@ knowledge_points:
          $$2x_2+5x_3=24$$
 
       3. **Remove $x_2$.** The last two results now have only $x_2$ and $x_3$. Subtracting twice the result of step 1 from the result of step 2 leaves one unknown.
-         $$\begin{aligned}(2x_2+5x_3)-2(x_2+2x_3)&=24-2\times10\\
-         (2x_2-2x_2)+(5x_3-4x_3)&=24-20\\
-         x_3&=4\end{aligned}$$
+         $$
+         \begin{aligned}
+         (2x_2+5x_3)-2(x_2+2x_3)&=24-2\times10 &&\text{subtract twice the earlier equation}\\
+         (2x_2-2x_2)+(5x_3-4x_3)&=24-20 &&\text{expand the subtraction}\\
+         x_3&=4 &&\text{collect the remaining terms}
+         \end{aligned}
+         $$
 
-      4. **Put the values back.** The equation $x_2+2x_3=10$ gives $x_2=10-8=2$, and then the first equation gives $x_1$.
-         $$x_1=9-2-4=3$$
+      4. **Put the values back.** Use $x_3=4$ in the two-unknown equation, then use both known prices in the first order.
+         $$
+         \begin{aligned}
+         x_2+2\times4&=10 &&\text{put the juice price back}\\
+         x_2&=10-8 &&\text{subtract the juice cost}\\
+         &=2 &&\text{find the tea price}\\
+         x_1&=9-2-4 &&\text{remove tea and juice from the first order}\\
+         &=3 &&\text{find the coffee price}
+         \end{aligned}
+         $$
 
-      So a coffee costs £3, a tea £2 and a juice £4. Checking the third order, $3+3\times2+6\times4=33$, as it should.
+      5. **Check the third order.** Put the three prices into its total.
+         $$
+         \begin{aligned}
+         3+3\times2+6\times4&=3+6+24 &&\text{multiply each price by its count}\\
+         &=33 &&\text{add the costs}
+         \end{aligned}
+         $$
+
+      So a coffee costs £3, a tea £2 and a juice £4, and the third order checks out.
     problems:
       - inv-elimination-basics
       - inv-el-self-explain
@@ -164,6 +242,11 @@ knowledge_points:
       - inv-el-fertiliser
   - id: inv-transpose
     title: "Swap a matrix's rows and columns"
+    tldr: |
+      - Transposing a matrix swaps its rows and columns.
+      - Transposing a product also reverses the order of its two matrices.
+      - Multiplying a transpose by its original matrix makes entries on opposite sides of the diagonal match.
+      - That matching pattern is called symmetry.
     explain: |
       ### Rows become columns
 
@@ -195,7 +278,14 @@ knowledge_points:
 
       ### Dot products as matrix products
 
-      In matrix maths we write a vector as a column, even when we write it as $(1,2)$ in a sentence. A column is a matrix with one column, so its transpose $x^\top$ is a matrix with one row. For two vectors with $n$ entries each, $x^\top y$ is a $1\times n$ matrix times an $n\times1$ matrix. The product has one entry, the row dotted with the column, which is the dot product of $x$ and $y$. For $x=(1,2)$ and $y=(3,4)$, $x^\top y=1\times3+2\times4=11$.
+      In matrix maths we write a vector as a column, even when we write it as $(1,2)$ in a sentence. Its transpose $x^\top$ is a matrix with one row. For two vectors with $n$ entries each, $x^\top y$ has shape $(1\times n)(n\times1)$, so its single entry is their dot product. For $x=(1,2)$ and $y=(3,4)$:
+      $$
+      \begin{aligned}
+      x^\top y&=1\times3+2\times4 &&\text{dot the row with the column}\\
+      &=3+8 &&\text{multiply matching entries}\\
+      &=11 &&\text{add the products}
+      \end{aligned}
+      $$
 
       ### The transpose of a product
 
@@ -203,28 +293,62 @@ knowledge_points:
 
       $$(AB)^\top=B^\top A^\top$$
 
-      Here's why. Recall that entry $(i,j)$ of $AB$ is row $i$ of $A$ dotted with column $j$ of $B$. Entry $(i,j)$ of $(AB)^\top$ is entry $(j,i)$ of $AB$, which is row $j$ of $A$ dotted with column $i$ of $B$. That row of $A$ is column $j$ of $A^\top$, and that column of $B$ is row $i$ of $B^\top$, so the same dot product is row $i$ of $B^\top$ dotted with column $j$ of $A^\top$. That's entry $(i,j)$ of $B^\top A^\top$.
+      Follow one entry to see why:
+
+      1. Transposing swaps the entry's row and column:
+         $$((AB)^\top)_{ij}=(AB)_{ji}.$$
+      2. Read that entry as a dot product:
+         $$(AB)_{ji}=(\text{row }j\text{ of }A)\cdot(\text{column }i\text{ of }B).$$
+      3. Transposing turns that row into a column and that column into a row. Reverse their dot product, which keeps the same sum:
+         $$(\text{row }i\text{ of }B^\top)\cdot(\text{column }j\text{ of }A^\top)=(B^\top A^\top)_{ij}.$$
 
       ### Symmetric matrices
 
-      A square matrix is **symmetric** when $A^\top=A$, so each entry matches its mirror image across the main diagonal. $\begin{bmatrix}2&1\\1&1\end{bmatrix}$ is one. For any matrix $A$, the product $A^\top A$ is symmetric. Applying the product rule to $A^\top$ times $A$ gives $(A^\top A)^\top=A^\top(A^\top)^\top$, and transposing $A^\top$ swaps its rows and columns back, giving $A$. So $(A^\top A)^\top=A^\top A$.
+      A square matrix is **symmetric** when $A^\top=A$, so each entry matches its mirror image across the main diagonal. $\begin{bmatrix}2&1\\1&1\end{bmatrix}$ is one. For any matrix $A$, the product $A^\top A$ is symmetric:
+      $$
+      \begin{aligned}
+      (A^\top A)^\top&=A^\top(A^\top)^\top &&\text{reverse the factors}\\
+      &=A^\top A &&\text{transposing twice restores }A
+      \end{aligned}
+      $$
     worked: |
       Let's check the product rule on $A=\begin{bmatrix}1&2\\0&1\end{bmatrix}$ and $B=\begin{bmatrix}1&0\\3&1\end{bmatrix}$, then check that $A^\top A$ is symmetric.
 
-      1. **Multiply $A$ by $B$.** Each entry is a row of $A$ dotted with a column of $B$, for example $1\times1+2\times3=7$ for the top left.
-         $$AB=\begin{bmatrix}7&2\\3&1\end{bmatrix}$$
+      1. **Multiply $A$ by $B$.** Each entry is a row of $A$ dotted with a column of $B$. Work out the top left before collecting all four entries.
+         $$
+         \begin{aligned}
+         (AB)_{11}&=1\times1+2\times3 &&\text{pair row 1 with column 1}\\
+         &=1+6 &&\text{multiply matching entries}\\
+         &=7 &&\text{add the products}\\
+         AB&=\begin{bmatrix}7&2\\3&1\end{bmatrix} &&\text{collect all four row-column results}
+         \end{aligned}
+         $$
 
       2. **Transpose the product.** Row 1 of $AB$ becomes column 1.
          $$(AB)^\top=\begin{bmatrix}7&3\\2&1\end{bmatrix}$$
 
-      3. **Multiply the transposes in reverse order.** $B^\top=\begin{bmatrix}1&3\\0&1\end{bmatrix}$ and $A^\top=\begin{bmatrix}1&0\\2&1\end{bmatrix}$, and the top left is $1\times1+3\times2=7$.
-         $$B^\top A^\top=\begin{bmatrix}7&3\\2&1\end{bmatrix}$$
+      3. **Multiply the transposes in reverse order.** $B^\top=\begin{bmatrix}1&3\\0&1\end{bmatrix}$ and $A^\top=\begin{bmatrix}1&0\\2&1\end{bmatrix}$. Check the top left again.
+         $$
+         \begin{aligned}
+         (B^\top A^\top)_{11}&=1\times1+3\times2 &&\text{pair row 1 with column 1}\\
+         &=1+6 &&\text{multiply matching entries}\\
+         &=7 &&\text{add the products}\\
+         B^\top A^\top&=\begin{bmatrix}7&3\\2&1\end{bmatrix} &&\text{collect all four row-column results}
+         \end{aligned}
+         $$
 
       4. **Try the original order.** Keeping the order the same gives a different matrix, so the reversal matters.
          $$A^\top B^\top=\begin{bmatrix}1&3\\2&7\end{bmatrix}$$
 
-      5. **Multiply $A^\top$ by $A$.** Row 1 of $A^\top$ is column 1 of $A$, so the top right is column 1 of $A$ dotted with column 2 of $A$, $1\times2+0\times1=2$. The bottom left dots column 2 with column 1, which gives the same 2.
-         $$A^\top A=\begin{bmatrix}1&2\\2&5\end{bmatrix}$$
+      5. **Multiply $A^\top$ by $A$.** Row 1 of $A^\top$ is column 1 of $A$, so the top right dots column 1 with column 2. The bottom left reverses the pair and gives the same sum.
+         $$
+         \begin{aligned}
+         (A^\top A)_{12}&=1\times2+0\times1 &&\text{dot the two different columns}\\
+         &=2+0 &&\text{multiply matching entries}\\
+         &=2 &&\text{add the products}\\
+         A^\top A&=\begin{bmatrix}1&2\\2&5\end{bmatrix} &&\text{collect all four row-column results}
+         \end{aligned}
+         $$
 
       Steps 2 and 3 agree, as the rule says, and $A^\top A$ matches its mirror image across the diagonal, so it is symmetric.
     problems:
@@ -238,6 +362,10 @@ knowledge_points:
       - inv-tr-ratings
   - id: inv-numpy
     title: "Solve a system in NumPy"
+    tldr: |
+      - When there is one answer, NumPy can solve a system with as many equations as unknowns.
+      - Solving directly usually takes less work and adds less rounding error than finding an inverse.
+      - Putting the answer back into the original equations checks that it works.
     explain: |
       ### Letting the computer eliminate
 
