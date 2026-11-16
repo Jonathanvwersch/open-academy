@@ -101,6 +101,17 @@ describe('contentWarnings', () => {
     });
   });
 
+  it('does not count bullet markers as words', () => {
+    const bullet = Array.from({ length: 20 }, () => 'word').join(' ');
+    const warnings = warningsFor(
+      contentData([topic('one')], [course('course', 'Course', [['one']])], undefined, [
+        pointLesson(`- ${bullet}\n- ${bullet}\n- ${bullet}\n`),
+      ]),
+    );
+
+    expect(warnings.some(({ message }) => message.includes('tldr'))).toBe(false);
+  });
+
   it('does not warn when a step has no tldr', () => {
     const warnings = warningsFor(
       contentData([topic('one')], [course('course', 'Course', [['one']])], undefined, [
