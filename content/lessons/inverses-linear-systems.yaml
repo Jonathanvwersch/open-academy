@@ -17,9 +17,9 @@ knowledge_points:
   - id: inv-identity-inverse
     title: "Undo a matrix with its inverse"
     tldr: |
-      - An inverse is a matrix that takes each output back to its original input.
-      - A square matrix has an inverse only when its determinant is nonzero.
-      - Multiplying by the inverse undoes the original matrix.
+      - The identity matrix leaves every vector unchanged.
+      - Multiplying a matrix by its inverse gives the identity.
+      - For a square matrix, a nonzero determinant tells us that this inverse exists.
     explain: |
       ### A matrix that changes nothing
 
@@ -86,10 +86,14 @@ knowledge_points:
 
       ### Undoing two matrices in a row
 
-      Matrix products can be grouped either way: $(AB)x=A(Bx)$. So $B$ acts first, then $A$. To undo both, reverse these moves:
+      Matrix products can be grouped either way:
+      $$(AB)x=A(Bx).$$
+      So $B$ acts first, then $A$. When both have inverses, undo them in reverse order:
 
-      1. Apply $A^{-1}$ to undo $A$, leaving $Bx$.
-      2. Apply $B^{-1}$ to undo $B$, leaving $x$.
+      1. Undo $A$:
+         $$A^{-1}(ABx)=Bx.$$
+      2. Undo $B$:
+         $$B^{-1}(Bx)=x.$$
 
       The inverse of a product reverses the order:
 
@@ -130,7 +134,8 @@ knowledge_points:
     tldr: |
       - Several equations can describe the same unknown numbers.
       - Subtracting multiples of equations removes unknowns one at a time.
-      - Solve the remaining unknown, then put its value back to find the others.
+      - Once one value is known, put it back to find the others.
+      - If the same quantities must have different totals, there is no solution.
     explain: |
       ### Equations as one matrix product
 
@@ -240,7 +245,8 @@ knowledge_points:
     tldr: |
       - Transposing a matrix swaps its rows and columns.
       - Transposing a product also reverses the order of its two matrices.
-      - Multiplying the transpose by the original gives matching entries across the diagonal.
+      - Multiplying a transpose by its original matrix makes entries on opposite sides of the diagonal match.
+      - That matching pattern is called symmetry.
     explain: |
       ### Rows become columns
 
@@ -289,11 +295,12 @@ knowledge_points:
 
       Follow one entry to see why:
 
-      1. Entry $(i,j)$ of $(AB)^\top$ is entry $(j,i)$ of $AB$.
-      2. By the multiplication rule, that entry dots row $j$ of $A$ with column $i$ of $B$.
-      3. Transposing turns that row of $A$ into column $j$ of $A^\top$.
-      4. It turns that column of $B$ into row $i$ of $B^\top$.
-      5. Dot the new row with the new column. This is the same sum of products, now entry $(i,j)$ of $B^\top A^\top$.
+      1. Transposing swaps the entry's row and column:
+         $$((AB)^\top)_{ij}=(AB)_{ji}.$$
+      2. Read that entry as a dot product:
+         $$(AB)_{ji}=(\text{row }j\text{ of }A)\cdot(\text{column }i\text{ of }B).$$
+      3. Transposing turns that row into a column and that column into a row. Reverse their dot product, which keeps the same sum:
+         $$(\text{row }i\text{ of }B^\top)\cdot(\text{column }j\text{ of }A^\top)=(B^\top A^\top)_{ij}.$$
 
       ### Symmetric matrices
 
@@ -356,9 +363,9 @@ knowledge_points:
   - id: inv-numpy
     title: "Solve a system in NumPy"
     tldr: |
-      - NumPy can solve a square system of equations directly.
+      - When there is one answer, NumPy can solve a system with as many equations as unknowns.
       - Solving directly usually takes less work and adds less rounding error than finding an inverse.
-      - Check the answer by putting it back into the original equations.
+      - Putting the answer back into the original equations checks that it works.
     explain: |
       ### Letting the computer eliminate
 

@@ -218,9 +218,10 @@ knowledge_points:
   - id: mat-batches-transpose
     title: "Multiply matrices in NumPy"
     tldr: |
-      - NumPy is a set of Python tools that can multiply grids of numbers.
-      - It can also add the same fixed amount to every prediction in a column.
-      - Swapping rows and columns makes differently stored weights fit the same calculation.
+      - NumPy provides Python tools for grids of numbers.
+      - It can multiply matrices and add a fixed amount to each prediction.
+      - Swap rows and columns if the weights are stored the other way round.
+      - Then one calculation gives all predictions for a group of examples.
     explain: |
       ### Matrices in Python
 
@@ -294,7 +295,15 @@ knowledge_points:
 
       Some code stores the weights the other way round, with one row per prediction, so the price and rent weights make a $2\times3$ array. Then `X @ W_rows` stops with an error, because the inner sizes 3 and 2 differ. The **transpose** fixes this. It swaps a matrix's rows and columns, so the entry in row $i$, column $j$ moves to row $j$, column $i$, and a $2\times3$ matrix becomes $3\times2$. We write it $W^\top$ in maths and `W.T` in NumPy.
 
-      Be careful not to use `*`, the usual multiplication sign in Python, for a matrix product. `X * W` multiplies the numbers in matching positions and adds nothing up. For two arrays of shape `(1, 3)`, `np.array([[1, 2, 3]]) * np.array([[4, 5, 6]])` gives `[[4, 10, 18]]`. Those three products sum to the dot product, 32. For shapes `(2, 3)` and `(3, 2)`, `*` stops with an error.
+      Be careful not to use `*`, the usual multiplication sign in Python, for a matrix product. `X * W` multiplies matching entries and adds nothing up. For two arrays of shape `(1, 3)`:
+
+      ```python
+      products = np.array([[1, 2, 3]]) * np.array([[4, 5, 6]])
+      print(products)         # [[ 4 10 18]]
+      print(np.sum(products)) # 32
+      ```
+
+      Here `np.sum` adds the entries to give the dot product. For shapes `(2, 3)` and `(3, 2)`, `*` stops with an error.
     worked: |
       Let's predict the price and the rent of both houses in NumPy, this time with the bias. In the code, a list of lists makes a matrix with one inner list per row, `print` shows a result, `np.array_equal` checks whether two arrays hold the same numbers, and everything after a `#` is a comment, which here shows what each line prints.
 

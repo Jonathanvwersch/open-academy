@@ -15,9 +15,10 @@ knowledge_points:
   - id: orth-line-projection
     title: "Project a vector onto a line"
     tldr: |
-      - A projection finds the vector on a line closest to a given vector.
-      - The leftover from that closest point meets the line at a right angle.
-      - A dot product tells us how much of the line's direction to use.
+      - A projection is the shadow vector on a line.
+      - Dividing two dot products tells us how many copies of the line's direction vector to use.
+      - Scaling by that amount gives the closest vector on the line.
+      - The leftover is at right angles to the line.
     explain: |
       ### The shadow as a vector
 
@@ -85,7 +86,15 @@ knowledge_points:
       \end{aligned}
       $$
 
-      Be careful not to divide by $u$'s length instead of its length squared. That gives $50/10=5$ copies, so $5u=(30,40)$, far past the shadow.
+      Be careful not to divide by $u$'s length instead of its length squared. That mistake gives:
+      $$
+      \begin{aligned}
+      \text{wrong number of copies}&=50/10 &&\text{divide by length}\\
+      &=5 &&\text{work out the quotient}\\
+      5u&=(30,40) &&\text{scale }u
+      \end{aligned}
+      $$
+      That is far past the shadow.
     worked: |
       Let's project $x=(7,1)$ onto the line through $u=(6,8)$, and check that the leftover really is orthogonal to $u$.
 
@@ -112,7 +121,16 @@ knowledge_points:
       6. **Check that the leftover is orthogonal to $u$.** Its dot product with $u$ should be zero.
          $$u^\top(x-p)=6\times4+8\times(-3)=0$$
 
-      So $x$ splits into $(3,4)$ along the line plus $(4,-3)$ at right angles to it. The distance from $x$'s tip to the line is the leftover's length, $\sqrt{4^2+3^2}=5$. The shadow's length is also 5 here, just by chance.
+      So $x$ splits into $(3,4)$ along the line plus $(4,-3)$ at right angles to it. Measure the leftover to find the distance to the line:
+      $$
+      \begin{aligned}
+      \|x-p\|&=\sqrt{4^2+(-3)^2} &&\text{use the leftover's components}\\
+      &=\sqrt{16+9} &&\text{square them}\\
+      &=\sqrt{25} &&\text{add the squares}\\
+      &=5 &&\text{take the square root}
+      \end{aligned}
+      $$
+      The shadow's length is also 5 here, just by chance.
     problems:
       - orth-line-projection-basics
       - orthp-project-self-explain
@@ -125,9 +143,9 @@ knowledge_points:
   - id: orth-orthogonal-matrices
     title: "Matrices whose inverse is their transpose"
     tldr: |
-      - Unit vectors at right angles make especially useful matrix columns.
-      - A square matrix with these columns is called orthogonal.
-      - Its transpose undoes it, and multiplying by it keeps lengths unchanged.
+      - A square matrix is called orthogonal when its columns have length one and meet at right angles.
+      - Those columns make the transpose its inverse.
+      - It can turn or flip vectors while keeping every length the same.
     explain: |
       ### Orthogonal vectors of length 1
 
@@ -265,7 +283,8 @@ knowledge_points:
     tldr: |
       - Measured points often do not all lie on one straight line.
       - Least squares chooses the line with the smallest sum of squared vertical errors.
-      - We find it by making the leftover vector perpendicular to every column of the data matrix.
+      - Those errors form a vector, one entry per measured point.
+      - At the best fit, it is perpendicular to every column of the matrix that makes the predictions.
     explain: |
       ### Three points and no exact line
 
@@ -431,7 +450,16 @@ knowledge_points:
 
       ### One bad point pulls the line
 
-      Least squares squares each error, so big errors count a lot. In our fit, the error of $1$ adds $1$ to the sum, while each error of $0.5$ adds only $0.25$. One error of $4$ counts as much as sixteen errors of $1$. A single bad measurement, such as a sensor glitch, can drag the line towards itself. So after a fit, print the errors, `b - A @ x_hat`, and check any point with a much larger error.
+      Least squares squares each error, so big errors count a lot:
+      $$
+      \begin{aligned}
+      1^2&=1 &&\text{square our largest error}\\
+      (-0.5)^2&=0.25 &&\text{square either smaller error}\\
+      4^2&=16 &&\text{square a much larger error}\\
+      &=16\times1^2 &&\text{the same cost as sixteen errors of one}
+      \end{aligned}
+      $$
+      A single bad measurement, such as a sensor glitch, can drag the line towards itself. After a fit, print the errors, `b - A @ x_hat`, and check any point with a much larger error.
     worked: |
       Let's do the line fit and the projection from earlier in NumPy. In the code, `x_hat, sse, rank, _ = ...` stores the four results under four names (`sse` is short for sum of squared errors, and `_` is a name for a result we don't need), and `np.allclose` checks whether numbers are equal apart from tiny rounding errors.
 
@@ -454,9 +482,25 @@ knowledge_points:
       print(np.allclose(A.T @ e, 0))   # True
       ```
 
-      1. **Project $x$ onto $u$.** `(u @ x) / (u @ u)` is the fraction $50/100$, and multiplying by `u` gives $p=(3,4)$.
+      1. **Project $x$ onto $u$.** The two dot products give the scale, then multiplication by `u` gives the shadow:
+         $$
+         \begin{aligned}
+         k&=50/100 &&\text{divide the dot products}\\
+         &=0.5 &&\text{work out the scale}\\
+         p&=0.5\times(6,8) &&\text{scale the direction vector}\\
+         &=(3,4) &&\text{multiply each component}
+         \end{aligned}
+         $$
 
-      2. **Fit the line.** `lstsq` returns $\hat x=(2,0.5)$, so the line is $y=2+0.5t$, and the sum of squared errors is $1.5$, as by hand. It prints as `[1.5]`, an array with one entry, because $A$ has more rows than columns and its rank equals its number of columns. When either of those fails, the array is empty, so get the sum yourself with `np.sum((b - A @ x_hat) ** 2)`, where `**` raises to a power.
+      2. **Fit the line.** Read the returned intercept and slope:
+         $$
+         \begin{aligned}
+         \hat x&=(2,0.5) &&\text{read the fitted coefficients}\\
+         y&=2+0.5t &&\text{put them into the line}\\
+         \text{sum of squared errors}&=1.5 &&\text{read the second result}
+         \end{aligned}
+         $$
+         The sum prints as `[1.5]`, an array with one entry, because $A$ has more rows than columns and its rank equals its number of columns. When either of those fails, the array is empty, so get the sum yourself with `np.sum((b - A @ x_hat) ** 2)`, where `**` raises to a power.
 
       3. **Read the rank.** It's $2$, the number of columns, so this is the only best line.
 

@@ -17,7 +17,7 @@ knowledge_points:
     title: "Measure changes to a square"
     tldr: |
       - A matrix can stretch or flip a square into a new shape.
-      - The determinant tells you how much its area changes.
+      - The size of the determinant tells you what number the area is multiplied by.
       - A negative determinant also tells you the shape has flipped.
     explain: |
       ### Moving a square with a matrix
@@ -99,9 +99,9 @@ knowledge_points:
   - id: det-two-by-two
     title: "Calculate a determinant"
     tldr: |
-      - For a matrix with two rows and two columns, the determinant comes from two products.
-      - Multiply along each diagonal, then subtract the second product from the first.
-      - The result gives the area scale and whether the shape flips.
+      - For two rows and two columns, start with the top-left entry times the bottom-right entry.
+      - Then subtract the top-right entry times the bottom-left entry.
+      - That gives the determinant, whose size tells how area scales and whose sign records a flip.
     explain: |
       ### A square can become slanted
 
@@ -253,9 +253,17 @@ knowledge_points:
 
       Return to $A=\begin{bmatrix}3&1\\1&2\end{bmatrix}$ and output $(4,3)$. Follow the recovery one move at a time:
 
-      1. Draw a line parallel to column 2 until it meets column 1's line at $(3,1)$, one copy of column 1.
-      2. Subtract that contribution: $(4,3)-(3,1)=(1,2)$, one copy of column 2.
-      3. Read the two amounts as the input, $(1,1)$.
+      1. Draw a line parallel to column 2 until it meets column 1's line. The meeting point uses one copy of column 1:
+         $$1\times(3,1)=(3,1).$$
+      2. Subtract that contribution to find what's left:
+         $$
+         \begin{aligned}
+         (4,3)-(3,1)&=(4-3,\;3-1) &&\text{subtract matching entries}\\
+         &=(1,2) &&\text{one copy of column 2}
+         \end{aligned}
+         $$
+      3. Read the two amounts as the input:
+         $$(x,y)=(1,1).$$
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" aria-label="Recovering input (1, 1) for the noncollapsed slanted map. From output (4, 3), an orange dashed line parallel to column 2 meets the blue column-1 line once, at (3, 1). One blue column plus one orange column reaches the output." font-family="ui-sans-serif, system-ui, sans-serif">

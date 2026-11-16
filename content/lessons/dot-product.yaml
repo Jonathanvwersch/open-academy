@@ -134,10 +134,10 @@ knowledge_points:
   - id: dot-arrow-alignment
     title: "How the dot product measures direction"
     tldr: |
-      - The shadow of one vector along another shows how far it points that way.
-      - The shadow counts as negative when it points the opposite way.
-      - The dot product multiplies this shadow length by the other vector's length.
-      - It is positive below a right angle, zero at one, and negative beyond it.
+      - A vector's shadow shows how far it points along another vector's line.
+      - Count it as negative when it points backwards.
+      - Multiplying this signed distance by the other vector's length gives the dot product.
+      - The result is positive below a right angle, zero at one and negative beyond it.
     explain: |
       ### A vector that points right
 
@@ -219,7 +219,14 @@ knowledge_points:
 
       So the dot product is positive below a right angle, zero when the vectors are **perpendicular**, meaning at a right angle, and negative beyond it.
 
-      Be careful not to read a bigger dot product as vectors that agree more. $(3,4)\cdot(1,0)=3$ is bigger than $(1,0)\cdot(1,0)=1$, even though $(3,4)$ points mostly up. That's because length counts too, which the next step deals with.
+      Be careful not to read a bigger dot product as vectors that agree more. Compare:
+      $$
+      \begin{aligned}
+      (3,4)\cdot(1,0)&=3 &&\text{the first vector points mostly up}\\
+      (1,0)\cdot(1,0)&=1 &&\text{both vectors point right}
+      \end{aligned}
+      $$
+      The less aligned pair scores higher because length counts too. The next step removes that effect.
     worked: |
       Let's check the rule on the tilted vectors $a=(7,1)$ and $b=(6,8)$. Here we can't read the shadow off an axis. So we'll use the rule to predict where the shadow ends, then check that a line from there to $a$'s tip really meets $b$ at a right angle.
 
@@ -263,7 +270,7 @@ knowledge_points:
   - id: dot-direction-only
     title: "Compare directions, ignoring length"
     tldr: |
-      - A dot product grows when the vectors grow, even if their directions stay the same.
+      - A dot product depends on vector lengths as well as their directions.
       - Dividing by both lengths removes that effect.
       - The result is cosine similarity, a score for how closely the directions agree.
     explain: |
