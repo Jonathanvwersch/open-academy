@@ -108,24 +108,6 @@ concepts:
       status: authored,
     }
   - {
-      id: world-models,
-      title: "World models and model-based RL",
-      description: "Learning a model of what happens next and training a policy inside it (World Models, Ha & Schmidhuber 2018; DreamerV3, 2023).",
-      difficulty: 4,
-      est_minutes: 35,
-      goal_weight: 3,
-      dimensions: [conceptual, math],
-      prereqs: [{ id: autoencoders }, { id: mdp }, { id: ppo, strength: soft }],
-      objectives:
-        [
-          {
-            text: "Explain how a learned world model can support policy training through simulated rollouts",
-            dimension: conceptual,
-          },
-        ],
-      status: stub,
-    }
-  - {
       id: simulation-for-rl,
       title: Simulation environments,
       description: "Gym-style environments, resets, episodes, vectorised envs, sim-to-real gap.",

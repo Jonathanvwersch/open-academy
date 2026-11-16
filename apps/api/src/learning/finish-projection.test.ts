@@ -279,7 +279,7 @@ describe('projectCourseFinishes', () => {
     const result = projectCourseFinishes({
       courses: [
         {
-          id: 'robotics',
+          id: 'stub-course',
           topics: [
             {
               conceptId: 'stub-frame',
@@ -299,7 +299,7 @@ describe('projectCourseFinishes', () => {
       today,
     });
 
-    expect(result.byCourse.get('robotics')).toBeNull();
+    expect(result.byCourse.get('stub-course')).toBeNull();
     expect(result.overall).toBeNull();
     expect(result.upcoming).toEqual([]);
   });

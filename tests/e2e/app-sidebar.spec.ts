@@ -31,7 +31,7 @@ async function fulfillCoursesWithLongTitle(route: Route) {
   await route.fulfill({ response, json: catalog });
 }
 
-async function fulfillCoursesWithThreeSubjects(route: Route) {
+async function fulfillCoursesWithTwoSubjects(route: Route) {
   const response = await route.fetch({
     headers: { ...route.request().headers(), 'x-now': '2026-01-01T12:00:00.000Z' },
   });
@@ -42,13 +42,19 @@ async function fulfillCoursesWithThreeSubjects(route: Route) {
     catalog.subjects.flatMap((subject) => subject.courses).map((course) => [course.id, course]),
   );
   catalog.subjects = [
-    { id: 'mathematics', title: 'Mathematics', courseId: 'fixture-course' },
-    { id: 'ai', title: 'AI', courseId: 'fixture-switching-course' },
-    { id: 'robotics', title: 'Robotics', courseId: 'fixture-third-course' },
-  ].map(({ id, title, courseId }) => {
-    const course = courses.get(courseId);
-    if (!course) throw new Error(`Missing ${courseId} in catalogue`);
-    return { id, title, courses: [course] };
+    { id: 'mathematics', title: 'Mathematics', courseIds: ['fixture-course'] },
+    {
+      id: 'ai',
+      title: 'AI',
+      courseIds: ['fixture-switching-course', 'fixture-third-course'],
+    },
+  ].map(({ id, title, courseIds }) => {
+    const subjectCourses = courseIds.map((courseId) => {
+      const course = courses.get(courseId);
+      if (!course) throw new Error(`Missing ${courseId} in catalogue`);
+      return course;
+    });
+    return { id, title, courses: subjectCourses };
   });
   await route.fulfill({ response, json: catalog });
 }
@@ -152,18 +158,18 @@ test('sidebar skeleton replays captured course geometry after a loaded visit', a
   await page.route('**/api/courses', async (route) => {
     coursesRequests += 1;
     if (delayCourses) await coursesGate.promise;
-    await fulfillCoursesWithThreeSubjects(route);
+    await fulfillCoursesWithTwoSubjects(route);
   });
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/');
 
   const navigation = page.getByRole('navigation', { name: 'Main navigation' });
-  for (const subject of ['Mathematics', 'AI', 'Robotics']) {
+  for (const subject of ['Mathematics', 'AI']) {
     await expect(navigation.getByText(subject, { exact: true })).toBeVisible();
   }
   await expect
     .poll(() => page.evaluate(() => localStorage.getItem('academy.sidebar-course-groups')))
-    .toBe('[1,1,1]');
+    .toBe('[1,2]');
   const loadedCourseSection = navigation.getByTestId('sidebar-course-section');
   const loadedSectionHeight = await loadedCourseSection.evaluate(
     (element) => element.getBoundingClientRect().height,
@@ -197,7 +203,7 @@ test('sidebar skeleton replays captured course geometry after a loaded visit', a
           return bounds.height > bounds.width;
         }).length,
     );
-  expect(verticalRuleCount).toBeGreaterThanOrEqual(3);
+  expect(verticalRuleCount).toBeGreaterThanOrEqual(2);
   const replayedSectionHeight = await navigation
     .getByTestId('sidebar-course-section')
     .evaluate((element) => element.getBoundingClientRect().height);
@@ -205,14 +211,14 @@ test('sidebar skeleton replays captured course geometry after a loaded visit', a
   await expect(navigation.getByText('My courses', { exact: true })).toHaveCount(0);
   mkdirSync(testInfo.outputDir, { recursive: true });
   await page.screenshot({
-    path: testInfo.outputPath('sidebar-three-subject-groups-loading-1440x900.png'),
+    path: testInfo.outputPath('sidebar-two-subject-groups-loading-1440x900.png'),
     animations: 'disabled',
     fullPage: true,
   });
 
   coursesGate.release();
   await expect(replayedSkeleton).toHaveCount(0);
-  for (const subject of ['Mathematics', 'AI', 'Robotics']) {
+  for (const subject of ['Mathematics', 'AI']) {
     await expect(navigation.getByText(subject, { exact: true })).toBeVisible();
   }
 });
@@ -239,7 +245,7 @@ test('mobile sidebar replays captured course geometry after closing and reopenin
   await page.route('**/api/courses', async (route) => {
     coursesRequests += 1;
     if (delayCourses) await coursesGate.promise;
-    await fulfillCoursesWithThreeSubjects(route);
+    await fulfillCoursesWithTwoSubjects(route);
   });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
@@ -247,7 +253,7 @@ test('mobile sidebar replays captured course geometry after closing and reopenin
   await page.getByRole('button', { name: 'Open navigation' }).click();
 
   const navigation = page.getByRole('navigation', { name: 'Main navigation' });
-  for (const subject of ['Mathematics', 'AI', 'Robotics']) {
+  for (const subject of ['Mathematics', 'AI']) {
     await expect(navigation.getByText(subject, { exact: true })).toBeVisible();
   }
   const storedMobileLayoutShapeCount = () =>
@@ -287,12 +293,12 @@ test('mobile sidebar replays captured course geometry after closing and reopenin
             return bounds.height > bounds.width;
           }).length,
       );
-    expect(verticalRuleCount).toBeGreaterThanOrEqual(3);
+    expect(verticalRuleCount).toBeGreaterThanOrEqual(2);
   } finally {
     coursesGate.release();
   }
   await expect(replayedSkeleton).toHaveCount(0);
-  for (const subject of ['Mathematics', 'AI', 'Robotics']) {
+  for (const subject of ['Mathematics', 'AI']) {
     await expect(navigation.getByText(subject, { exact: true })).toBeVisible();
   }
 });
@@ -1026,21 +1032,6 @@ test('active courses and the catalogue are grouped in subject order', async ({ p
               },
             ],
           },
-          {
-            id: 'robotics',
-            title: 'Robotics',
-            courses: [
-              {
-                id: 'robotics',
-                title: 'Robotics',
-                description: 'Robotics course',
-                topicsDone: 0,
-                topicsTotal: 10,
-                status: 'active',
-                startNeeded: false,
-              },
-            ],
-          },
         ],
       },
     }),
@@ -1048,7 +1039,7 @@ test('active courses and the catalogue are grouped in subject order', async ({ p
 
   await page.goto('/');
   const navigation = page.getByRole('navigation', { name: 'Main navigation' });
-  const subjectLabels = ['Mathematics', 'AI', 'Robotics'].map((subject) =>
+  const subjectLabels = ['Mathematics', 'AI'].map((subject) =>
     navigation.locator('[data-sidebar="group-label"]').filter({
       hasText: new RegExp(`^${subject}$`),
     }),
@@ -1062,7 +1053,6 @@ test('active courses and the catalogue are grouped in subject order', async ({ p
     }),
   );
   expect(subjectPositions[0]).toBeLessThan(subjectPositions[1] ?? Number.POSITIVE_INFINITY);
-  expect(subjectPositions[1]).toBeLessThan(subjectPositions[2] ?? Number.POSITIVE_INFINITY);
   await expect(
     navigation.getByRole('link', {
       name: 'Open Mathematics for Machine Learning',
@@ -1072,6 +1062,5 @@ test('active courses and the catalogue are grouped in subject order', async ({ p
   await page.goto('/courses');
   await expect(page.getByRole('heading', { name: 'Mathematics', exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'AI', exact: true })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Robotics', exact: true }).first()).toBeVisible();
   await expect(page.getByRole('heading', { name: 'ML Foundations', exact: true })).toBeVisible();
 });

@@ -606,15 +606,18 @@ test('restarting a prerequisite skips planned and in-progress dependent activiti
 });
 
 test('learners can switch to a listed course', async () => {
-  const response = await put('/course/active', { courseId: 'robotics' });
+  const response = await put('/course/active', { courseId: 'reinforcement-learning' });
   expect(response.status).toBe(200);
-  expect(await response.json()).toEqual({ courseId: 'robotics' });
+  expect(await response.json()).toEqual({ courseId: 'reinforcement-learning' });
   const [user] = await db.select().from(users).where(eq(users.id, userId));
-  expect(user?.activeCourseId).toBe('robotics');
+  expect(user?.activeCourseId).toBe('reinforcement-learning');
   const coursePayload = await (await get('/course')).json();
-  expect(coursePayload.course).toMatchObject({ id: 'robotics', title: 'Classical Robotics' });
+  expect(coursePayload.course).toMatchObject({
+    id: 'reinforcement-learning',
+    title: 'Reinforcement Learning',
+  });
   expect(
-    coursePayload.courses.find((course: { id: string }) => course.id === 'robotics'),
+    coursePayload.courses.find((course: { id: string }) => course.id === 'reinforcement-learning'),
   ).toMatchObject({
     active: true,
     topicsTotal: expect.any(Number),
@@ -628,7 +631,7 @@ test('learners can switch to a listed course', async () => {
   });
   expect(learnPayload.streak.days).toHaveLength(7);
   expect(learnPayload.course).toMatchObject({
-    title: 'Classical Robotics',
+    title: 'Reinforcement Learning',
     topicsTotal: coursePayload.units.reduce(
       (total: number, unit: { topics: unknown[] }) => total + unit.topics.length,
       0,
@@ -694,7 +697,7 @@ test('study-course membership refreshes after a course is started in the same re
 });
 
 test('course query views a requested course without changing the stored active course', async () => {
-  await put('/course/active', { courseId: 'robotics' });
+  await put('/course/active', { courseId: 'reinforcement-learning' });
 
   const response = await get('/course?course=deep-learning');
   expect(response.status).toBe(200);
@@ -704,14 +707,14 @@ test('course query views a requested course without changing the stored active c
     payload.courses.find((course: { id: string }) => course.id === 'deep-learning'),
   ).toMatchObject({ active: true });
   const [user] = await db.select().from(users).where(eq(users.id, userId));
-  expect(user?.activeCourseId).toBe('robotics');
+  expect(user?.activeCourseId).toBe('reinforcement-learning');
 
   const unknownCourse = await (await get('/course?course=missing-course')).json();
-  expect(unknownCourse.course).toMatchObject({ id: 'robotics' });
+  expect(unknownCourse.course).toMatchObject({ id: 'reinforcement-learning' });
 });
 
 test('starting a course uses a valid requested courseId instead of the active course', async () => {
-  await put('/course/active', { courseId: 'robotics' });
+  await put('/course/active', { courseId: 'reinforcement-learning' });
 
   const response = await post('/course/start', {
     method: 'beginning',
@@ -726,7 +729,7 @@ test('starting a course uses a valid requested courseId instead of the active co
     .where(eq(courseEnrollments.userId, userId));
   expect(enrollments.some((enrollment) => enrollment.courseId === 'deep-learning')).toBe(true);
   const [user] = await db.select().from(users).where(eq(users.id, userId));
-  expect(user?.activeCourseId).toBe('robotics');
+  expect(user?.activeCourseId).toBe('reinforcement-learning');
 });
 
 test('course catalogue and enrollment routes start, pause, and reactivate courses', async () => {
@@ -739,7 +742,6 @@ test('course catalogue and enrollment routes start, pause, and reactivate course
   ).toEqual([
     { id: 'mathematics', title: 'Mathematics' },
     { id: 'ai', title: 'AI' },
-    { id: 'robotics', title: 'Robotics' },
   ]);
   for (const subject of catalog.subjects as Array<{ id: string; courses: Array<{ id: string }> }>) {
     expect(subject.courses.map((course) => course.id)).toEqual(
@@ -803,9 +805,7 @@ test('course catalogue and enrollment routes start, pause, and reactivate course
 test('active subjects report whether their active courses have lessons', async () => {
   const courseIds = (
     content.curriculum?.courses ?? content.courses.map((course) => course.id)
-  ).filter((courseId) =>
-    ['mathematics', 'ai', 'robotics'].includes(subjectForCourse(content, courseId).id),
-  );
+  ).filter((courseId) => ['mathematics', 'ai'].includes(subjectForCourse(content, courseId).id));
   await db.insert(courseEnrollments).values(
     courseIds.map((courseId) => ({
       userId,
@@ -826,7 +826,6 @@ test('active subjects report whether their active courses have lessons', async (
   ).toEqual([
     { id: 'mathematics', title: 'Mathematics', hasLessons: true },
     { id: 'ai', title: 'AI', hasLessons: true },
-    { id: 'robotics', title: 'Robotics', hasLessons: false },
   ]);
 });
 

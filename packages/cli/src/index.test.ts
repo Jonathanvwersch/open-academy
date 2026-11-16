@@ -633,7 +633,7 @@ describe('academy CLI', () => {
     const parent = temporaryDirectory();
     try {
       const pack = join(parent, 'pack');
-      const source = join(parent, 'robotics-notes.pdf');
+      const source = join(parent, 'machine-learning-notes.pdf');
       run(['init', pack, '--title', 'Applied Science']);
       writeFileSync(source, 'fixture');
       expect(
@@ -641,9 +641,9 @@ describe('academy CLI', () => {
           [
             'sources',
             'add',
-            'robotics-notes.pdf',
+            'machine-learning-notes.pdf',
             '--title',
-            'Robot notes',
+            'Machine learning notes',
             '--kind',
             'pdf',
             '--pack',
@@ -657,7 +657,7 @@ describe('academy CLI', () => {
       };
       expect(sourceIndex.sources[0]?.added).toMatch(/^\d{4}-\d{2}-\d{2}$/);
       expect(runWithInitCwd(['sources', 'list', '--pack', 'pack'], parent).stdout).toContain(
-        'robotics-notes\tRobot notes',
+        'machine-learning-notes\tMachine learning notes',
       );
       writeFileSync(
         join(pack, 'sources/index.yaml'),

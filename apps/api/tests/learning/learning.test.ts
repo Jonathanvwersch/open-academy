@@ -1380,7 +1380,7 @@ test('paper read state does not change the current learner unit', () => {
 });
 
 test('an uncompleted trailing stub does not hold back the current learner unit', () => {
-  const sourceStub = courseContent.conceptsById.get('statistical-evaluation');
+  const sourceStub = courseContent.conceptsById.get('experimental-design');
   const defaultCourse = courseContent.coursesById.get('ml-foundations');
   if (!defaultCourse || !sourceStub) throw new Error('Expected course and stub fixture');
 
@@ -1831,10 +1831,10 @@ test('a concept shared by two study courses is scheduled only once', () => {
   ).toHaveLength(1);
 });
 
-test('a paused course is not a new-lesson candidate but its due cards remain reviews', () => {
+test('due cards from outside the selected course remain reviews', () => {
   const concept = required(courseContent.conceptsById.get('perceptron'), 'perceptron');
   const state = {
-    ...studyState(['robotics'], courseContent),
+    ...studyState(['maths-for-ml'], courseContent),
     cards: [
       {
         conceptId: concept.id,
