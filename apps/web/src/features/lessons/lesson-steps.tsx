@@ -116,6 +116,15 @@ export function LessonSteps({
               {quizPassed ? '✓ Quiz' : 'Quiz'}
             </button>
           </Badge>
+        ) : explain === 'current' ? (
+          <Badge
+            variant="outline"
+            data-testid="lesson-quiz-chip"
+            aria-label="Lesson quiz, upcoming"
+            className="border-border text-muted-foreground"
+          >
+            Quiz
+          </Badge>
         ) : state.status === 'quiz' ? (
           <Badge
             variant="outline"
@@ -133,15 +142,6 @@ export function LessonSteps({
             className="border-green-300 bg-green-50 text-green-900"
           >
             ✓ Quiz
-          </Badge>
-        ) : explain === 'current' ? (
-          <Badge
-            variant="outline"
-            data-testid="lesson-quiz-chip"
-            aria-label="Lesson quiz, upcoming"
-            className="border-border text-muted-foreground"
-          >
-            Quiz
           </Badge>
         ) : (
           <Badge
