@@ -15,6 +15,10 @@ where_this_fits: |
 knowledge_points:
   - id: det-area-orientation
     title: "Measure changes to a square"
+    tldr: |
+      - A matrix can stretch or flip a square into a new shape.
+      - The determinant tells you how much its area changes.
+      - A negative determinant also tells you the shape has flipped.
     explain: |
       ### Moving a square with a matrix
 
@@ -22,7 +26,14 @@ knowledge_points:
 
       Draw a **unit square** with corners $(0,0)$, $(1,0)$, $(1,1)$ and $(0,1)$. Each side has length 1.
 
-      Try $A=\begin{bmatrix}2&0\\0&4\end{bmatrix}$. It sends the rightward unit arrow $(1,0)$ to column 1, $(2,0)$, and the upward unit arrow $(0,1)$ to column 2, $(0,4)$. More generally, the output for $(x,y)$ is $x$ times column 1 plus $y$ times column 2. The square's fourth corner is $(1,1)$, so its output is the sum of the columns, $(2,4)$; $(0,0)$ stays fixed. We now know where all four corners go.
+      Try $A=\begin{bmatrix}2&0\\0&4\end{bmatrix}$. It sends the rightward unit vector $(1,0)$ to column 1, $(2,0)$, and the upward unit vector $(0,1)$ to column 2, $(0,4)$. More generally, the output for $(x,y)$ is $x$ times column 1 plus $y$ times column 2. The square's fourth corner is $(1,1)$, so:
+      $$
+      \begin{aligned}
+      A\begin{bmatrix}1\\1\end{bmatrix}&=1\begin{bmatrix}2\\0\end{bmatrix}+1\begin{bmatrix}0\\4\end{bmatrix} &&\text{use one copy of each column}\\
+      &=\begin{bmatrix}2\\4\end{bmatrix} &&\text{add the columns}
+      \end{aligned}
+      $$
+      The origin stays fixed, so we know where all four corners go.
 
       In the picture, the grey dashed square has area 1. Its blue first edge and orange second edge become the sides of a rectangle, 2 units across and 4 up.
 
@@ -62,7 +73,7 @@ knowledge_points:
 
       The sign records **orientation**. Turn from the original rightward edge towards the upward edge: that is counterclockwise. After the map, take the same ordered pair of edges. A positive determinant keeps that counterclockwise order; a negative one reverses it to clockwise.
 
-      Be careful with a negative determinant. The area is positive; the minus sign records the reversed orientation. A positive determinant can still turn arrows: a half-turn sends right to left and up to down while preserving their counterclockwise order.
+      Be careful with a negative determinant. The area is positive; the minus sign records the reversed orientation. A positive determinant can still turn vectors: a half-turn sends right to left and up to down while preserving their counterclockwise order.
     worked: |
       Let's find the signed area scale for $A=\begin{bmatrix}2&0\\0&4\end{bmatrix}$ and then change its first entry to $-2$.
 
@@ -87,12 +98,23 @@ knowledge_points:
       - det-area-camera-region
   - id: det-two-by-two
     title: "Calculate a determinant"
+    tldr: |
+      - For a matrix with two rows and two columns, the determinant comes from two products.
+      - Multiply along each diagonal, then subtract the second product from the first.
+      - The result gives the area scale and whether the shape flips.
     explain: |
       ### A square can become slanted
 
       The rectangle made the area easy to see. A matrix can also slant a square into a **parallelogram**, a four-sided shape with opposite sides parallel. We still follow the same two edges.
 
-      Take $A=\begin{bmatrix}3&1\\1&2\end{bmatrix}$. Its first column sends $(1,0)$ to $(3,1)$, the blue arrow, and its second sends $(0,1)$ to $(1,2)$, the orange arrow. The square's opposite corner is the input $(1,1)$. It uses one copy of each column, so its output is their sum, $(4,3)$. The green parallelogram is what the unit square becomes. The grey triangles fill the rest of an enclosing rectangle; we can find the green area by removing them. Call the top-right entry $b=1$ and the bottom-left entry $c=1$; these label distances in the picture.
+      Take $A=\begin{bmatrix}3&1\\1&2\end{bmatrix}$. Its first column sends $(1,0)$ to $(3,1)$, the blue arrow, and its second sends $(0,1)$ to $(1,2)$, the orange arrow. The opposite corner uses one copy of each column:
+      $$
+      \begin{aligned}
+      A\begin{bmatrix}1\\1\end{bmatrix}&=\begin{bmatrix}3\\1\end{bmatrix}+\begin{bmatrix}1\\2\end{bmatrix} &&\text{use both columns}\\
+      &=\begin{bmatrix}4\\3\end{bmatrix} &&\text{add matching entries}
+      \end{aligned}
+      $$
+      The green parallelogram is the transformed unit square. The grey triangles fill an enclosing rectangle. Call the top-right entry $b=1$ and the bottom-left entry $c=1$; these label distances in the picture.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 330" aria-label="The matrix with rows (3, 1) and (1, 2) maps a unit square to a parallelogram with corners (0, 0), (3, 1), (4, 3) and (1, 2). The enclosing rectangle is 4 wide and 3 high. The four outside grey triangles have areas 2, 2, 1.5 and 1.5, leaving green area 5." font-family="ui-sans-serif, system-ui, sans-serif">
@@ -128,9 +150,19 @@ knowledge_points:
 
       $$\det(A)=ad-bc$$
 
-      For positive $a,d$ with $b=c=0$, this is width times height. We can see the subtraction for the arrangement in our picture. The enclosing rectangle has width $a+b$ and height $c+d$. A triangle covers half a rectangle with the same base and height, so a pair of matching triangles covers a whole rectangle. Each top or bottom triangle has base $a+b$ and height $c$, so together they have area $c(a+b)$. Each side triangle has base $c+d$ and height $b$, giving $b(c+d)$ together. Removing them gives:
+      For positive $a,d$ with $b=c=0$, this is width times height. In our picture, the enclosing rectangle has width $a+b$ and height $c+d$. Two matching triangles cover a rectangle with the same base and height. Remove the top and bottom pair, then the side pair:
 
-      $$\begin{aligned}\text{area}&=(a+b)(c+d)\\&\quad-c(a+b)-b(c+d)\\&=(ac+ad+bc+bd)\\&\quad-(ac+2bc+bd)\\&=ad-bc\end{aligned}$$
+      $$
+      \begin{aligned}
+      \text{enclosing area}&=(a+b)(c+d) &&\text{width times height}\\
+      \text{top and bottom area}&=c(a+b) &&\text{base times height for the pair}\\
+      \text{side area}&=b(c+d) &&\text{base times height for the pair}\\
+      \text{green area}&=(a+b)(c+d)-c(a+b)-b(c+d) &&\text{remove both pairs}\\
+      &=ac+ad+bc+bd-(ac+bc)-(bc+bd) &&\text{expand the products}\\
+      &=ad+bc-2bc &&\text{cancel }ac\text{ and }bd\\
+      &=ad-bc &&\text{combine the remaining terms}
+      \end{aligned}
+      $$
 
       The terms $ac$ and $bd$ cancel; removing two copies of $bc$ from one leaves $-bc$. This picture preserves orientation, so its area is its determinant. Swapping columns reverses the edge order and changes the formula to $bc-ad$, reversing the sign.
 
@@ -145,8 +177,17 @@ knowledge_points:
       1. **Find the enclosing area.** The far corner is $(4,3)$, so the enclosing rectangle is 4 wide and 3 high.
          $$\text{enclosing area}=4\times3=12$$
 
-      2. **Count the outside triangles.** A triangle covers half a rectangle with the same base and height. The top and bottom triangles each have area $4\times1/2=2$. The left and right each have area $3\times1/2=1.5$.
-         $$\text{outside area}=2+2+1.5+1.5=7$$
+      2. **Count the outside triangles.** Each triangle covers half a rectangle with the same base and height. Find the areas before adding all four.
+         $$
+         \begin{aligned}
+         \text{each top or bottom triangle}&=4\times1/2 &&\text{halve base times height}\\
+         &=2 &&\text{work out the area}\\
+         \text{each side triangle}&=3\times1/2 &&\text{halve base times height}\\
+         &=1.5 &&\text{work out the area}\\
+         \text{outside area}&=2+2+1.5+1.5 &&\text{add all four triangles}\\
+         &=7 &&\text{work out the sum}
+         \end{aligned}
+         $$
 
       3. **Keep the green area.** Remove the grey triangles, which are outside the transformed square.
          $$\text{output area}=12-7=5$$
@@ -169,6 +210,10 @@ knowledge_points:
       - det-calculate-robot-region
   - id: det-zero-collapse
     title: "Check whether information is lost"
+    tldr: |
+      - A matrix can flatten a square into a line or a point.
+      - Then its determinant is zero, and different inputs share an output.
+      - Only a nonzero determinant lets us recover every input uniquely.
     explain: |
       ### When the area disappears
 
@@ -206,7 +251,11 @@ knowledge_points:
 
       With nonzero area, the columns point along different lines. To recover an input, start at its output and draw a line parallel to column 2 until it meets the line of column 1. Two nonparallel lines meet exactly once, telling us how many copies of column 1 were used. Subtract that contribution from the output. The remaining vector tells us how many copies of column 2 were used. These amounts, which can be negative, are $x$ and $y$.
 
-      To see recovery without a collapse, return to $A=\begin{bmatrix}3&1\\1&2\end{bmatrix}$. The line drawn from output $(4,3)$ parallel to column 2 meets the first column's line at $(3,1)$, one copy of column 1. The remaining move is $(1,2)$, one copy of column 2, so the input is $(1,1)$.
+      Return to $A=\begin{bmatrix}3&1\\1&2\end{bmatrix}$ and output $(4,3)$. Follow the recovery one move at a time:
+
+      1. Draw a line parallel to column 2 until it meets column 1's line at $(3,1)$, one copy of column 1.
+      2. Subtract that contribution: $(4,3)-(3,1)=(1,2)$, one copy of column 2.
+      3. Read the two amounts as the input, $(1,1)$.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" aria-label="Recovering input (1, 1) for the noncollapsed slanted map. From output (4, 3), an orange dashed line parallel to column 2 meets the blue column-1 line once, at (3, 1). One blue column plus one orange column reaches the output." font-family="ui-sans-serif, system-ui, sans-serif">

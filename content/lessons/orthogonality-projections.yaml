@@ -14,12 +14,16 @@ where_this_fits: |
 knowledge_points:
   - id: orth-line-projection
     title: "Project a vector onto a line"
+    tldr: |
+      - A projection finds the vector on a line closest to a given vector.
+      - The leftover from that closest point meets the line at a right angle.
+      - A dot product tells us how much of the line's direction to use.
     explain: |
       ### The shadow as a vector
 
-      In the dot product lesson, we found the shadow of the arrow $(7,1)$ on the line through $(6,8)$. A path dropped from the tip of $(7,1)$ meets the line through $(6,8)$ at a right angle at $(3,4)$. Here we call the arrows $x=(7,1)$ and $u=(6,8)$. We also saw that two vectors are **perpendicular** when their dot product is zero. The usual word for this in linear algebra is **orthogonal**.
+      In the dot product lesson, we found the shadow of the vector $(7,1)$ on the line through $(6,8)$. A path dropped from the tip of $(7,1)$ meets that line at a right angle at $(3,4)$. Here we call the vectors $x=(7,1)$ and $u=(6,8)$. Two vectors are **perpendicular** when their dot product is zero. The usual word for this in linear algebra is **orthogonal**.
 
-      That lesson called the shadow's length, $5$, the projection. From here on, the projection means the shadow itself, the arrow from the origin to $(3,4)$.
+      That lesson called the shadow's length, $5$, the projection. From here on, the projection means the shadow vector itself, $(3,4)$.
 
       ### The closest point on the line
 
@@ -56,9 +60,30 @@ knowledge_points:
 
       $$p=\frac{u^\top x}{u^\top u}\,u.$$
 
-      In the inverses lesson, we saw that $u^\top x$ is the dot product of $u$ and $x$, written as a row times a column. So the top of the fraction is $u\cdot x$, and the bottom, $u^\top u$, is $u$'s length squared. This number tells us how many copies of $u$ make the shadow. Here it's $50/100=0.5$, so $p$ is half of $u$.
+      As in the inverses lesson, $u^\top x$ is the dot product, and $u^\top u$ is $u$'s length squared. Their ratio tells us how many copies of $u$ make the shadow.
 
-      Why this fraction? Call the number of copies $k$, so the shadow is $ku$. We want the leftover $x-ku=(7-6k,\,1-8k)$ to be orthogonal to $u$. Its dot product with $u$ is $6(7-6k)+8(1-8k)=42-36k+8-64k=50-100k$. That is $u^\top x-k\,u^\top u$. Setting it to zero gives $k=50/100$, the fraction.
+      Why this fraction? Call the number of copies $k$, so the shadow is $ku$. The leftover must be orthogonal to $u$:
+      $$
+      \begin{aligned}
+      x-ku&=(7-6k,\;1-8k) &&\text{subtract the shadow}\\
+      u^\top(x-ku)&=6(7-6k)+8(1-8k) &&\text{dot the leftover with }u\\
+      &=42-36k+8-64k &&\text{expand the products}\\
+      &=50-100k &&\text{collect terms}\\
+      50-100k&=0 &&\text{require a right angle}\\
+      50&=100k &&\text{add }100k\\
+      k&=50/100 &&\text{divide by }100\\
+      &=0.5 &&\text{use half of }u
+      \end{aligned}
+      $$
+      The same moves work for any $x$ and nonzero $u$:
+      $$
+      \begin{aligned}
+      u^\top(x-ku)&=0 &&\text{require an orthogonal leftover}\\
+      u^\top x-k\,u^\top u&=0 &&\text{multiply out the dot product}\\
+      u^\top x&=k\,u^\top u &&\text{add }k\,u^\top u\text{ to both sides}\\
+      k&=\frac{u^\top x}{u^\top u} &&\text{divide by the squared length}
+      \end{aligned}
+      $$
 
       Be careful not to divide by $u$'s length instead of its length squared. That gives $50/10=5$ copies, so $5u=(30,40)$, far past the shadow.
     worked: |
@@ -76,7 +101,15 @@ knowledge_points:
       4. **Scale $u$ by that number.** The projection is a multiple of $u$, so it lies on $u$'s line.
          $$p=0.5\times(6,8)=(3,4)$$
 
-      5. **Check that the leftover is orthogonal to $u$.** The leftover is $x-p=(7,1)-(3,4)=(4,-3)$, and its dot product with $u$ should be zero.
+      5. **Find the leftover.** Subtract the projection from the original vector.
+         $$
+         \begin{aligned}
+         x-p&=(7,1)-(3,4) &&\text{subtract the projection}\\
+         &=(4,-3) &&\text{subtract matching entries}
+         \end{aligned}
+         $$
+
+      6. **Check that the leftover is orthogonal to $u$.** Its dot product with $u$ should be zero.
          $$u^\top(x-p)=6\times4+8\times(-3)=0$$
 
       So $x$ splits into $(3,4)$ along the line plus $(4,-3)$ at right angles to it. The distance from $x$'s tip to the line is the leftover's length, $\sqrt{4^2+3^2}=5$. The shadow's length is also 5 here, just by chance.
@@ -91,12 +124,34 @@ knowledge_points:
       - orthp-wall-distance
   - id: orth-orthogonal-matrices
     title: "Matrices whose inverse is their transpose"
+    tldr: |
+      - Unit vectors at right angles make especially useful matrix columns.
+      - A square matrix with these columns is called orthogonal.
+      - Its transpose undoes it, and multiplying by it keeps lengths unchanged.
     explain: |
-      ### Orthogonal arrows of length 1
+      ### Orthogonal vectors of length 1
 
-      The projection formula divides by $u^\top u$, which is $u$'s length squared. If $u$ is a unit vector, with length 1, then $u^\top u=1$ and the projection is just $(u^\top x)\,u$. With a unit vector the fraction goes away. Unit vectors at right angles to each other make matrices easy to undo too, so they have their own name. A set of vectors is **orthonormal** when each one has length 1 and every pair is orthogonal.
+      A unit vector has length 1, so its projection formula simplifies:
+      $$
+      \begin{aligned}
+      u^\top u&=1 &&\text{square its length}\\
+      p&=\frac{u^\top x}{1}u &&\text{put that into the projection formula}\\
+      &=(u^\top x)u &&\text{divide by one}
+      \end{aligned}
+      $$
+      Unit vectors at right angles also make matrices easy to undo. A set of vectors is **orthonormal** when each has length 1 and every pair is orthogonal.
 
-      The picture shows two orthonormal vectors, the blue $(0.6,0.8)$ and the green $(-0.8,0.6)$. Each has length $\sqrt{0.36+0.64}=1$, so both tips sit on the grey arc, part of the circle of radius 1. Their dot product is $-0.48+0.48=0$, so they meet at a right angle.
+      Take two vectors, the blue $(0.6,0.8)$ and green $(-0.8,0.6)$. Their component squares add to the same total:
+      $$
+      \begin{aligned}
+      \text{each length}&=\sqrt{0.36+0.64} &&\text{use the squared components}\\
+      &=\sqrt{1} &&\text{add the squares}\\
+      &=1 &&\text{take the square root}\\
+      \text{their dot product}&=-0.48+0.48 &&\text{multiply matching entries}\\
+      &=0 &&\text{add the products}
+      \end{aligned}
+      $$
+      Both tips sit on the grey circle of radius 1, and they meet at a right angle.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="100 60 440 220" aria-label="A grey half circle of radius 1 around the origin. The blue arrow (0.6, 0.8) and the green arrow (minus 0.8, 0.6) both end on the circle, so both have length 1, and a small square at the origin marks the right angle between them. Grey dashed arrows show (1, 0) and (0, 1) for comparison">
@@ -125,15 +180,50 @@ knowledge_points:
 
       $$Q=\begin{bmatrix}0.6&-0.8\\0.8&0.6\end{bmatrix}.$$
 
-      A square matrix whose columns are orthonormal is called an **orthogonal matrix**. Its transpose undoes it. Look at entry $(i,j)$ of $Q^\top Q$. It is row $i$ of $Q^\top$ dotted with column $j$ of $Q$. Row $i$ of $Q^\top$ is column $i$ of $Q$, so the entry is column $i$ dotted with column $j$. Each column dotted with itself gives 1, and the two different columns give 0, so
+      A square matrix with orthonormal columns is an **orthogonal matrix**. To find entry $(i,j)$ of $Q^\top Q$:
+
+      1. Dot row $i$ of $Q^\top$ with column $j$ of $Q$.
+      2. Row $i$ of $Q^\top$ is column $i$ of $Q$, so this dots two columns of $Q$.
+      3. Matching columns give 1; different columns give 0. Those entries make the identity:
 
       $$Q^\top Q=I.$$
 
-      Why is $Q^\top$ the inverse? If $Qx=0$, then $x=Q^\top Qx=0$, so the columns of $Q$ are independent and $Q$ has an inverse. Then $Q^\top=Q^\top QQ^{-1}=Q^{-1}$. So to solve $Qx=b$ we skip elimination and just work out $x=Q^\top b$.
+      To check for an inverse, ask whether a nonzero combination of columns can give zero. Suppose $Qx=0$:
+      $$
+      \begin{aligned}
+      Q^\top Qx&=Q^\top0 &&\text{multiply by the transpose}\\
+      x&=0 &&\text{use }Q^\top Q=I
+      \end{aligned}
+      $$
+      Only zero amounts work, so the columns are independent. A square matrix with independent columns has an inverse. Now:
+      $$
+      \begin{aligned}
+      Q^\top QQ^{-1}&=IQ^{-1} &&\text{multiply }Q^\top Q=I\text{ by the inverse}\\
+      Q^\top&=Q^{-1} &&\text{cancel }QQ^{-1}
+      \end{aligned}
+      $$
+      We can therefore solve $Qx=b$ with $x=Q^\top b$.
 
-      An orthogonal matrix never changes lengths. Using $(AB)^\top=B^\top A^\top$ from the inverses lesson, the squared length of $Qx$ is $(Qx)^\top Qx=x^\top Q^\top Qx=x^\top x$, the squared length of $x$. This $Q$ turns every arrow by the same angle, so it's called a rotation matrix. The course doesn't teach rotation matrices yet.
+      $Q$ also preserves lengths:
+      $$
+      \begin{aligned}
+      \|Qx\|^2&=(Qx)^\top Qx &&\text{write squared length as a self-dot product}\\
+      &=x^\top Q^\top Qx &&\text{transpose the product}\\
+      &=x^\top x &&\text{use }Q^\top Q=I\\
+      &=\|x\|^2 &&\text{recognise the original squared length}
+      \end{aligned}
+      $$
+      This $Q$ turns every vector by the same angle, so it's called a rotation matrix.
 
-      Be careful: each column of an orthogonal matrix must also have length 1. The columns of $\begin{bmatrix}3&-4\\4&3\end{bmatrix}$ are orthogonal, but each has length 5. Each column dotted with itself gives 25, so its transpose times itself is $25I$. So the inverse is the transpose divided by 25, because that times the matrix gives $I$.
+      Be careful to check the column lengths too. Take $M=\begin{bmatrix}3&-4\\4&3\end{bmatrix}$. Its columns are orthogonal but have length 5:
+      $$
+      \begin{aligned}
+      M^\top M&=25I &&\text{matching columns give }25\text{; different ones give }0\\
+      (M^\top/25)M&=I &&\text{divide by }25\\
+      M^{-1}&=M^\top/25 &&\text{read off the inverse}
+      \end{aligned}
+      $$
+      The inverse needs that extra division.
     worked: |
       Let's check that $Q=\begin{bmatrix}0.6&-0.8\\0.8&0.6\end{bmatrix}$ is orthogonal, then use its transpose to solve $Qx=b$ for $b=(2,11)$.
 
@@ -149,7 +239,18 @@ knowledge_points:
       4. **Check by multiplying by $Q$.** Putting $x$ back in should give $b$.
          $$Q\begin{bmatrix}10\\5\end{bmatrix}=\begin{bmatrix}6-4\\8+3\end{bmatrix}=\begin{bmatrix}2\\11\end{bmatrix}$$
 
-      So $x=(10,5)$. Both $x$ and $b$ have length $\sqrt{125}$, since $10^2+5^2=125$ and $2^2+11^2=125$. That fits with $Q$ never changing lengths.
+      So $x=(10,5)$. Check that the lengths agree:
+      $$
+      \begin{aligned}
+      \|x\|^2&=10^2+5^2 &&\text{square the input entries}\\
+      &=125 &&\text{add the squares}\\
+      \|b\|^2&=2^2+11^2 &&\text{square the output entries}\\
+      &=125 &&\text{add the squares}\\
+      \|x\|&=\sqrt{125} &&\text{take the input's square root}\\
+      \|b\|&=\sqrt{125} &&\text{take the output's square root}
+      \end{aligned}
+      $$
+      That fits with $Q$ preserving lengths.
     problems:
       - orth-orthogonal-matrices-basics
       - orthp-transpose-self-explain
@@ -161,6 +262,10 @@ knowledge_points:
       - orthp-robot-frame
   - id: orth-least-squares
     title: "Find the line closest to three points"
+    tldr: |
+      - Measured points often do not all lie on one straight line.
+      - Least squares chooses the line with the smallest sum of squared vertical errors.
+      - We find it by making the leftover vector perpendicular to every column of the data matrix.
     explain: |
       ### Three points and no exact line
 
@@ -168,15 +273,29 @@ knowledge_points:
 
       $$\begin{bmatrix}1&-1\\1&0\\1&1\end{bmatrix}\begin{bmatrix}c\\m\end{bmatrix}=\begin{bmatrix}1\\3\\2\end{bmatrix}.$$
 
-      We call the matrix $A$, the unknowns $x=(c,m)$ and the measurements $b$, so this is $Ax=b$. The first and third rows say $c-m=1$ and $c+m=2$, so $c=1.5$, but the middle row needs $c=3$. There's no solution, because $b$ isn't in the column space of $A$.
+      Call the matrix $A$, the unknowns $x=(c,m)$ and the measurements $b$, so this is $Ax=b$. Test the first and third rows:
+      $$
+      \begin{aligned}
+      (c-m)+(c+m)&=1+2 &&\text{add the two equations}\\
+      2c&=3 &&\text{cancel the slopes}\\
+      c&=1.5 &&\text{divide by two}
+      \end{aligned}
+      $$
+      The middle row needs $c=3$, so there's no solution. The vector $b$ lies outside $A$'s column space.
 
       ### The closest point instead
 
-      The two columns of $A$ are independent, so they span a plane through the origin in three dimensions. Picture a sheet of paper through the origin, with $b$ sticking out. Every $Ax$ lies in that plane, the column space, so we look for its point closest to $b$. We write it $A\hat x$, where $\hat x$ ("x hat") holds the best $c$ and $m$. As with a line, the leftover, now called the error $e=b-A\hat x$, at the closest point is orthogonal to the plane, so to every arrow in it, including each column of $A$.
+      The two columns of $A$ are independent, so they span a plane through the origin in three dimensions. Picture a sheet of paper through the origin, with $b$ sticking out. Every $Ax$ lies in that plane, the column space, so we look for its point closest to $b$. We write it $A\hat x$, where $\hat x$ ("x hat") holds the best $c$ and $m$. As with a line, the leftover, now called the error $e=b-A\hat x$, at the closest point is orthogonal to the plane, so to every vector in it, including each column of $A$.
 
-      Each entry of $A^\top e$ is a column of $A$ dotted with $e$, so we need $A^\top(b-A\hat x)=0$. Multiplying out gives $A^\top b-A^\top A\hat x=0$. Moving one term across gives the **normal equations** (normal means perpendicular):
-
-      $$A^\top A\,\hat x=A^\top b.$$
+      Each entry of $A^\top e$ dots a column with the error. Require these dot products to be zero:
+      $$
+      \begin{aligned}
+      A^\top(b-A\hat x)&=0 &&\text{make the error orthogonal to each column}\\
+      A^\top b-A^\top A\hat x&=0 &&\text{multiply out}\\
+      A^\top A\hat x&=A^\top b &&\text{move one term across}
+      \end{aligned}
+      $$
+      These are the **normal equations**; normal means perpendicular.
 
       Here $A^\top A$ has determinant $6$, so there's one solution.
 
@@ -213,22 +332,64 @@ knowledge_points:
     worked: |
       Let's fit $y=c+mt$ to the points $(-1,1)$, $(0,3)$ and $(1,2)$ with the normal equations, using $A$ and $b=(1,3,2)$ from above.
 
-      1. **Find $A^\top A$.** Each entry dots two columns of $A$. The first column $(1,1,1)$ with itself gives $3$, the two columns give $-1+0+1=0$, and the second column $(-1,0,1)$ with itself gives $2$.
-         $$A^\top A=\begin{bmatrix}3&0\\0&2\end{bmatrix}$$
+      1. **Find $A^\top A$.** Each entry dots two columns of $A$. The off-diagonal entries match because swapping the two vectors leaves a dot product unchanged.
+         $$
+         \begin{aligned}
+         (1,1,1)\cdot(1,1,1)&=3 &&\text{first column with itself}\\
+         (1,1,1)\cdot(-1,0,1)&=-1+0+1 &&\text{multiply matching entries}\\
+         &=0 &&\text{add the products}\\
+         (-1,0,1)\cdot(-1,0,1)&=2 &&\text{second column with itself}\\
+         A^\top A&=\begin{bmatrix}3&0\\0&2\end{bmatrix} &&\text{place the four dot products}
+         \end{aligned}
+         $$
 
       2. **Find $A^\top b$.** Each entry dots one column of $A$ with $b$.
          $$A^\top b=\begin{bmatrix}1+3+2\\-1+0+2\end{bmatrix}=\begin{bmatrix}6\\1\end{bmatrix}$$
 
-      3. **Solve the normal equations.** The zeros mean each row has one unknown, $3c=6$ and $2m=1$.
-         $$c=2,\qquad m=0.5$$
+      3. **Solve the normal equations.** The zeros leave one unknown per row.
+         $$
+         \begin{aligned}
+         3c&=6 &&\text{read the first row}\\
+         c&=2 &&\text{divide by three}\\
+         2m&=1 &&\text{read the second row}\\
+         m&=0.5 &&\text{divide by two}
+         \end{aligned}
+         $$
 
-      4. **Find the errors.** The fitted values, the line's heights at $t=-1$, $0$ and $1$, are $A\hat x=(1.5,2,2.5)$. Subtracting them from $b=(1,3,2)$ gives the errors.
-         $$e=(-0.5,1,-0.5)$$
+      4. **Find the errors.** First find the line's height at each time, then subtract those fitted values from $b=(1,3,2)$.
+         $$
+         \begin{aligned}
+         A\hat x&=(2-0.5,\;2,\;2+0.5) &&\text{put each time into the line}\\
+         &=(1.5,2,2.5) &&\text{work out the fitted heights}\\
+         e&=(1-1.5,\;3-2,\;2-2.5) &&\text{subtract from the measurements}\\
+         &=(-0.5,1,-0.5) &&\text{work out the errors}
+         \end{aligned}
+         $$
 
-      5. **Check that $e$ is orthogonal to both columns.** Dotting $e$ with $(1,1,1)$ gives $-0.5+1-0.5$, and with $(-1,0,1)$ gives $0.5+0-0.5$. Both are zero.
-         $$A^\top e=\begin{bmatrix}0\\0\end{bmatrix}$$
+      5. **Check that $e$ is orthogonal to both columns.** Each column's dot product with the error must be zero.
+         $$
+         \begin{aligned}
+         (1,1,1)\cdot e&=-0.5+1-0.5 &&\text{multiply by the first column's entries}\\
+         &=0 &&\text{add the products}\\
+         (-1,0,1)\cdot e&=0.5+0-0.5 &&\text{multiply by the second column's entries}\\
+         &=0 &&\text{add the products}\\
+         A^\top e&=\begin{bmatrix}0\\0\end{bmatrix} &&\text{stack the two checks}
+         \end{aligned}
+         $$
 
-      The best line is $y=2+0.5t$, with a sum of squared errors of $0.25+1+0.25=1.5$. Least squares guarantees that no other line has a smaller sum. For example, $y=2+t$ has errors $(0,1,-1)$ and a sum of $2$.
+      The best line is $y=2+0.5t$. Compare its squared errors with those for $y=2+t$:
+      $$
+      \begin{aligned}
+      \text{best line's sum}&=(-0.5)^2+1^2+(-0.5)^2 &&\text{square its errors}\\
+      &=0.25+1+0.25 &&\text{work out the squares}\\
+      &=1.5 &&\text{add them}\\
+      \text{other line's errors}&=(1-1,\;3-2,\;2-3) &&\text{subtract its fitted heights}\\
+      &=(0,1,-1) &&\text{work out the differences}\\
+      \text{other line's sum}&=0^2+1^2+(-1)^2 &&\text{square its errors}\\
+      &=2 &&\text{add the squares}
+      \end{aligned}
+      $$
+      Least squares guarantees that no other line has a smaller sum than 1.5.
     problems:
       - orth-least-squares-basics
       - orthp-normal-self-explain
@@ -240,6 +401,10 @@ knowledge_points:
       - orthp-sensor-fit
   - id: orth-numpy-fits
     title: "Fit a line in NumPy"
+    tldr: |
+      - NumPy can find the least-squares line for many measurements at once.
+      - Its reported rank tells us whether that best line is unique.
+      - Checking the errors helps us spot bad measurements that pull the line away.
     explain: |
       ### Least squares in NumPy
 
@@ -255,7 +420,14 @@ knowledge_points:
 
       $$A^\top A=\begin{bmatrix}3&3\\3&3\end{bmatrix},$$
 
-      whose determinant is $3\times3-3\times3=0$. Picture the three points stacked on one vertical line at $t=1$. At $t=1$ a line has one height, $c+m$, and the best height is the average of the three measurements. Every line through that height at $t=1$ has the same errors, whatever its slope, so there's no single best line. `lstsq` still returns one answer, the $\hat x=(c,m)$ with the smallest length $\sqrt{c^2+m^2}$. The rank it reports tells us when this happens. A rank below the number of columns means other answers fit just as well. Then the second result is an empty array.
+      whose determinant is:
+      $$
+      \begin{aligned}
+      \det(A^\top A)&=3\times3-3\times3 &&\text{use the diagonal rule}\\
+      &=0 &&\text{subtract equal products}
+      \end{aligned}
+      $$
+      Picture the three points stacked on one vertical line at $t=1$. At $t=1$ a line has one height, $c+m$, and the best height is the average of the three measurements. Every line through that height at $t=1$ has the same errors, whatever its slope, so there's no single best line. `lstsq` still returns one answer, the $\hat x=(c,m)$ with the smallest length $\sqrt{c^2+m^2}$. The rank it reports tells us when this happens. A rank below the number of columns means other answers fit just as well. Then the second result is an empty array.
 
       ### One bad point pulls the line
 

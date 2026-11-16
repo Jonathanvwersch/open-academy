@@ -14,6 +14,10 @@ where_this_fits: |
 knowledge_points:
   - id: mat-rows-shapes
     title: "Multiply a matrix by a vector"
+    tldr: |
+      - A matrix is a grid that can hold one example in each row.
+      - Multiplying it by a vector takes one dot product per row.
+      - The result gives one answer for every row.
     explain: |
       ### Two houses in one grid
 
@@ -77,10 +81,20 @@ knowledge_points:
       1. **Check that the shapes fit.** $X$ is $2\times3$ and $w$ has 3 entries, so every measurement in a row has a weight, and the answer will have 2 entries, one for each house.
 
       2. **Dot row 1 with the weights.** Row 1 is house 1, so this is its price.
-         $$12\times25+3\times10+20\times(-1)=300+30-20=310$$
+         $$
+         \begin{aligned}
+         12\times25+3\times10+20\times(-1)&=300+30-20 &&\text{multiply matching entries}\\
+         &=310 &&\text{add the contributions}
+         \end{aligned}
+         $$
 
       3. **Dot row 2 with the weights.** Row 2 is house 2, and it uses the same three weights.
-         $$8\times25+2\times10+5\times(-1)=200+20-5=215$$
+         $$
+         \begin{aligned}
+         8\times25+2\times10+5\times(-1)&=200+20-5 &&\text{multiply matching entries}\\
+         &=215 &&\text{add the contributions}
+         \end{aligned}
+         $$
 
       4. **Stack the two prices.** The first answer belongs to row 1, so it goes first.
          $$Xw=\begin{bmatrix}310\\215\end{bmatrix}$$
@@ -97,6 +111,10 @@ knowledge_points:
       - matp-recover-weight-template
   - id: mat-matrix-products
     title: "Multiply two matrices"
+    tldr: |
+      - Put each set of prediction weights in its own column of a second matrix.
+      - Dot each row of the first matrix with each column of the second.
+      - The result gives every prediction for every example.
     explain: |
       ### A second prediction for each house
 
@@ -169,10 +187,20 @@ knowledge_points:
       2. **Copy the prices from the last step.** Column 1 of $W$ holds the price weights from the last step, so it gives the same prices, 310 for house 1 and 215 for house 2.
 
       3. **Dot house 1 with the rent column.** This is the entry in the picture, row 1 with column 2.
-         $$12\times100+3\times50+20\times(-5)=1200+150-100=1250$$
+         $$
+         \begin{aligned}
+         12\times100+3\times50+20\times(-5)&=1200+150-100 &&\text{multiply matching entries}\\
+         &=1250 &&\text{add the contributions}
+         \end{aligned}
+         $$
 
       4. **Dot house 2 with the rent column.** Row 2 with column 2 gives house 2's rent.
-         $$8\times100+2\times50+5\times(-5)=800+100-25=875$$
+         $$
+         \begin{aligned}
+         8\times100+2\times50+5\times(-5)&=800+100-25 &&\text{multiply matching entries}\\
+         &=875 &&\text{add the contributions}
+         \end{aligned}
+         $$
 
       5. **Place each answer in the grid.** Rows are houses and columns are predictions.
          $$XW=\begin{bmatrix}310&1250\\215&875\end{bmatrix}$$
@@ -189,6 +217,10 @@ knowledge_points:
       - matp-recover-factor-entry
   - id: mat-batches-transpose
     title: "Multiply matrices in NumPy"
+    tldr: |
+      - NumPy is a set of Python tools that can multiply grids of numbers.
+      - It can also add the same fixed amount to every prediction in a column.
+      - Swapping rows and columns makes differently stored weights fit the same calculation.
     explain: |
       ### Matrices in Python
 
@@ -262,7 +294,7 @@ knowledge_points:
 
       Some code stores the weights the other way round, with one row per prediction, so the price and rent weights make a $2\times3$ array. Then `X @ W_rows` stops with an error, because the inner sizes 3 and 2 differ. The **transpose** fixes this. It swaps a matrix's rows and columns, so the entry in row $i$, column $j$ moves to row $j$, column $i$, and a $2\times3$ matrix becomes $3\times2$. We write it $W^\top$ in maths and `W.T` in NumPy.
 
-      Be careful not to use `*`, the usual multiplication sign in Python, for a matrix product. `X * W` multiplies the numbers in matching positions and adds nothing up. For two arrays of shape `(1, 3)`, `[[1, 2, 3]] * [[4, 5, 6]]` gives `[[4, 10, 18]]`, not the dot product 32, and for shapes `(2, 3)` and `(3, 2)` it stops with an error.
+      Be careful not to use `*`, the usual multiplication sign in Python, for a matrix product. `X * W` multiplies the numbers in matching positions and adds nothing up. For two arrays of shape `(1, 3)`, `np.array([[1, 2, 3]]) * np.array([[4, 5, 6]])` gives `[[4, 10, 18]]`. Those three products sum to the dot product, 32. For shapes `(2, 3)` and `(3, 2)`, `*` stops with an error.
     worked: |
       Let's predict the price and the rent of both houses in NumPy, this time with the bias. In the code, a list of lists makes a matrix with one inner list per row, `print` shows a result, `np.array_equal` checks whether two arrays hold the same numbers, and everything after a `#` is a comment, which here shows what each line prints.
 
