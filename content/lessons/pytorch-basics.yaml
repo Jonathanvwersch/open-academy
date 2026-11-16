@@ -99,8 +99,8 @@ knowledge_points:
   - id: ptb-linear
     title: "Build a linear model"
     tldr: |
-      - Training needs a way to find the weights and biases it should change.
-      - A PyTorch module keeps these parameters together with their calculation.
+      - Training has to know which numbers, the weights and bias, it is allowed to change.
+      - A PyTorch module is an object that does a calculation and keeps track of those numbers.
       - A linear module applies the same weights and bias to every example row.
     explain: |
       ### From a formula to a module
@@ -169,7 +169,7 @@ knowledge_points:
     title: "Measure the loss and update once"
     tldr: |
       - A loss function scores how far predictions are from their targets.
-      - The backward call stores each parameter's loss slope.
+      - Calling backward on the loss works out each parameter's slope and stores it.
       - The optimiser uses those slopes to update the weights and bias.
     explain: |
       ### Starting from a wrong guess

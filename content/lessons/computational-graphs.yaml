@@ -90,7 +90,7 @@ knowledge_points:
     title: Measure how each operation responds
     tldr: |
       - Each operation has its own rate of change for each input.
-      - This local derivative holds the operation's other inputs fixed.
+      - This rate, measured with the operation's other inputs held fixed, is called a local derivative.
       - Some local derivatives depend on the input value, so we save the forward values to find them.
     explain: |
       ### Look at one operation
@@ -99,7 +99,7 @@ knowledge_points:
 
       Zoom in on the multiplication $p=w\cdot x$. We'll keep $x=3$ while changing $w$. Increasing $w$ by 0.1 raises $p$ by 0.3, three times as much. The picture leaves out subtraction and squaring so we can focus on how multiplication responds.
 
-      A **local derivative** is the rate of change of one operation's output with respect to one input, with other inputs fixed. Here it describes $p$ alone:
+      A **local derivative** is the rate of change of one operation's output with respect to one input, with other inputs fixed. Here it describes $p$ alone. Writing $\Delta$ for a change in a value:
 
       $$
       \begin{aligned}
@@ -108,8 +108,6 @@ knowledge_points:
       \frac{\Delta p}{\Delta w}&=\frac{0.3}{0.1}=3 &&\text{divide the changes}
       \end{aligned}
       $$
-
-      Here $\Delta$ means a change in a value.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 280" aria-label="With x fixed at 3, w changes from 2 to 2.1 and multiplication p changes from 6 to 6.3. The local derivative of p with respect to w is 3.">
@@ -137,8 +135,8 @@ knowledge_points:
 
       1. **Add.** Changing $2+3=5$ to $3+3=6$ raises the output by $1$, giving local derivative $1$.
       2. **Multiply.** Changing $2\cdot3=6$ to $3\cdot3=9$ raises the output by $3$, the other input's value.
-      3. **Subtract the second input.** Changing $6-5=1$ to $6-6=0$ lowers the output by $1$, giving derivative $-1$.
-      4. **Raise the first input.** Changing $6-5=1$ to $7-5=2$ raises the output by $1$, giving derivative $1$.
+      3. **Subtract: raise the first input.** Changing $6-5=1$ to $7-5=2$ raises the output by $1$, giving local derivative $1$.
+      4. **Subtract: raise the subtracted input.** Changing $6-5=1$ to $6-6=0$ lowers the output by $1$, giving local derivative $-1$.
 
       Squaring depends on its input value:
 

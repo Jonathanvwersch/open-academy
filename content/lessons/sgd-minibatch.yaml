@@ -103,7 +103,7 @@ knowledge_points:
     title: "Repeat updates across the whole dataset"
     tldr: |
       - Each batch updates the parameters before the next batch is used.
-      - An epoch means using every example once and can contain several updates.
+      - One pass through every example is called an epoch, and it usually holds several updates.
       - Shuffle before the next epoch, and average a shorter final batch using its actual size.
     explain: |
       ### Moving through all four examples
@@ -177,9 +177,10 @@ knowledge_points:
   - id: sgm-choose-size
     title: "Choose how many examples to use"
     tldr: |
-      - A batch's average slope can disagree with the whole dataset's slope.
-      - Larger random batches usually give steadier directions but need more memory.
-      - Compare progress over time, since even a correct small-batch update can raise the full-data loss.
+      - A small batch's average slope can point a different way from the whole dataset's slope.
+      - Larger random batches usually give steadier directions, but they need more memory.
+      - Even a correct update from a small batch can raise the loss on the whole dataset.
+      - So compare batch sizes by how fast the whole dataset's loss falls over time.
     explain: |
       ### When two batches disagree
 

@@ -17,7 +17,7 @@ knowledge_points:
     tldr: |
       - One batch can ask us to reverse the previous batch's move.
       - Momentum keeps a fading average of recent slopes to soften sudden reversals.
-      - Updates follow that remembered direction, so a useful change of direction can also take longer.
+      - Updates follow that average, so they also take longer to turn when the right direction really changes.
     explain: |
       ### Letting several batches influence a move
 
@@ -172,9 +172,9 @@ knowledge_points:
   - id: mad-correct-start
     title: "Fix averages that start at zero"
     tldr: |
-      - Starting averages at zero makes the first stored values too small.
-      - We can calculate how much weight the real gradients have received.
-      - Dividing by that weight removes the starting zero's influence from both averages.
+      - Averages that start at zero come out too small for the first few updates.
+      - Part of each average's weight is still sitting on that starting zero.
+      - Dividing by the weight the real gradients have fixes both averages.
     explain: |
       ### How zero affects the first averages
 
@@ -187,7 +187,7 @@ knowledge_points:
       \end{aligned}
       $$
 
-      The gradient hasn't shrunk; the small average comes from its zero start.
+      The gradient hasn't shrunk; the average is small because it started at zero.
 
       The blue bars show the constant gradient. Orange shows the stored average, and green shows the average after removing the starting zero's influence.
 
@@ -268,8 +268,8 @@ knowledge_points:
     title: "Combine the pieces into Adam"
     tldr: |
       - Adam combines remembered slopes, separate size estimates and correction for a zero start.
-      - It uses the corrected averages for each move and keeps the raw averages for the next batch.
-      - A suitable learning rate is still needed because large moves can increase loss.
+      - It moves using the corrected averages, but stores the uncorrected ones for the next batch.
+      - A learning rate that is too large can still make the loss go up.
     explain: |
       ### Calculating one parameter's update
 
@@ -315,9 +315,9 @@ knowledge_points:
       $$
       \begin{aligned}
       \frac{\hat m}{\sqrt{\hat v}+\epsilon}&=\frac4{\sqrt{16}+1}=\frac45 &&\text{scaled direction}\\
-      0.2\times\frac45&=0.16 &&\text{move at rate zero point two}\\
+      0.2\times\frac45&=0.16 &&\text{move with learning rate }0.2\\
       w_{\text{new}}&=3-0.16=2.84 &&\text{subtract the small move}\\
-      10\times\frac45&=8 &&\text{move at rate ten}\\
+      10\times\frac45&=8 &&\text{move with learning rate }10\\
       w_{\text{new}}&=3-8=-5 &&\text{subtract the large move}\\
       L_{\text{before}}&=(3-1)^2=4 &&\text{original loss}\\
       L_{\text{after}}&=(-5-1)^2=36 &&\text{loss after the large move}

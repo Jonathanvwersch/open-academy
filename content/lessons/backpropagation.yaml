@@ -23,7 +23,7 @@ knowledge_points:
     tldr: |
       - Several parameters can affect the loss through the same prediction.
       - Backpropagation starts at the loss and passes slopes backwards through each operation.
-      - Reusing shared slopes gives every parameter's loss slope in one backward sweep.
+      - Each parameter multiplies the slope that reaches it by its own local derivative, so one backward sweep gives every parameter's slope.
     explain: |
       ### A model with two parameters
 
@@ -195,8 +195,8 @@ knowledge_points:
     title: "Find the slopes for a whole batch"
     tldr: |
       - Every example in a batch uses the same weights and biases.
-      - Each example contributes to their loss slopes, and those contributions add.
-      - A matrix product adds the weight contributions, while column sums give the bias slopes.
+      - Each example adds its own share to the weight's slope and the bias's slope.
+      - One matrix product adds up all the weight shares at once, and summing the prediction slopes gives the bias slopes.
     explain: |
       ### One weight, many examples
 
@@ -287,7 +287,7 @@ knowledge_points:
     tldr: |
       - We can check a loss slope by changing one weight and measuring the loss again.
       - Measuring equally far above and below the weight gives a slope estimate.
-      - Agreement with backpropagation checks that slope at the tested point.
+      - If that estimate matches backpropagation's answer, the backward code is right at that point.
     explain: |
       ### Measuring a slope directly
 

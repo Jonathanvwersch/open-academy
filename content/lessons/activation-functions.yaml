@@ -18,9 +18,9 @@ knowledge_points:
   - id: act-stacking-stays-straight
     title: "Why stacked layers stay straight"
     tldr: |
-      - A layer combines its inputs using weights and a bias.
-      - Stacking these sums still gives one weighted sum of the original inputs.
-      - A function that bends the result between layers lets the network make more complex rules.
+      - A layer multiplies its inputs by weights, adds them up and adds a bias.
+      - Stacking two such layers still gives one weighted sum of the original inputs, which is a straight line.
+      - Putting a function that bends between the layers lets the network make shapes a straight line can't.
     explain: |
       ### Feeding one score into another
 
@@ -137,9 +137,10 @@ knowledge_points:
   - id: act-relu-sigmoid-tanh
     title: "Three common activation functions"
     tldr: |
-      - Training needs activations whose slopes show how changing a score changes the output.
-      - ReLU keeps positive scores and replaces negative scores with zero.
-      - Sigmoid squeezes scores between zero and one, while tanh squeezes them between minus one and one.
+      - The step is flat almost everywhere, so training can't tell which way to move a weight.
+      - So we use functions that bend and still have a slope training can follow.
+      - ReLU keeps positive scores and turns negative scores into zero.
+      - Sigmoid squeezes any score to between zero and one, and tanh squeezes it to between minus one and one.
     explain: |
       ### Why not use the step?
 

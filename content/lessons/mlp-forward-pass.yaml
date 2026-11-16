@@ -171,9 +171,10 @@ knowledge_points:
   - id: mlp-shapes
     title: "Keep one row per example"
     tldr: |
-      - A batch groups examples as rows and reuses the same weights for each.
-      - Transposing the weights puts each neuron's weights in a column for multiplication.
-      - Each row keeps its example through to the prediction, without adding any learned weights or biases.
+      - A batch stacks several examples as rows, and every example uses the same weights.
+      - Transposing, or flipping, the weight matrix puts each neuron's weights in a column so the product lines up.
+      - Each example stays in its own row all the way to its prediction.
+      - A bigger batch gives bigger tables of results, but the same number of learned weights.
     explain: |
       ### Several inputs travel together
 

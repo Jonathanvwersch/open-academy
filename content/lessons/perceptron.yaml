@@ -106,7 +106,7 @@ knowledge_points:
   - id: perc-straight-boundary
     title: "Find the line between yes and no"
     tldr: |
-      - Each pair of inputs is a point on a map.
+      - We can draw each house as a point on a map, using its two inputs.
       - Points with a zero score form a straight line separating yes from no.
       - The weights turn this line, and the bias slides it.
     explain: |
@@ -211,7 +211,7 @@ knowledge_points:
     title: "Find what one perceptron can't do"
     tldr: |
       - A perceptron can separate yes inputs from no inputs with one straight line.
-      - XOR means yes when exactly one of two inputs is yes, putting its yes points on opposite corners.
+      - XOR says yes when exactly one of the two inputs is yes, and those two cases sit on opposite corners.
       - One line cannot separate those corners, so XOR needs several connected neurons.
     explain: |
       ### Houses described by yes or no

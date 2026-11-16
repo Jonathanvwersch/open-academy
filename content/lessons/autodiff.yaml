@@ -158,9 +158,9 @@ knowledge_points:
   - id: ad-modes
     title: "Forward or backward: which is faster"
     tldr: |
-      - The same chain rule can carry slopes forward from inputs or backward from outputs.
-      - Forward mode follows one input at a time, while reverse mode follows one output at a time.
-      - With many weights and one loss, reverse mode needs far fewer passes.
+      - The chain rule can carry slopes forward from the inputs or backward from the output.
+      - Going forward needs one pass per input, and going backward needs one pass per output.
+      - Training has millions of weights and one loss, so going backward needs far fewer passes.
     explain: |
       ### Two directions for one chain rule
 
