@@ -841,7 +841,7 @@ test('every concept, project, and paper must appear in at least one course unit'
 
 test('real content has a valid course graph', async () => {
   const content = await loadContent('content');
-  expect(content.courses).toHaveLength(8);
+  expect(content.courses).toHaveLength(6);
 });
 
 test.each([

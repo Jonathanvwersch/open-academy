@@ -43,12 +43,29 @@ function lessonedConceptIds(courseId: string): string[] {
     });
 }
 
-test('course queue status is null outside the study set and soon without lessons', () => {
-  const course = content.courses.find((candidate) => lessonedConceptIds(candidate.id).length === 0);
-  if (!course) throw new Error('Missing a course without lessoned topics');
+test('course queue status is null outside the study set and soon for stub-only topics', () => {
+  const course = content.coursesById.get('transformers-llms');
+  if (!course) throw new Error('Missing Transformers and LLMs course');
+  const lessonedTopics = new Set(lessonedConceptIds(course.id));
+  const courseWithOnlyStubTopics = {
+    ...course,
+    units: course.units
+      .map((unit) => ({
+        ...unit,
+        concepts: unit.concepts.filter((conceptId) => !lessonedTopics.has(conceptId)),
+      }))
+      .filter((unit) => unit.concepts.length > 0),
+  };
+  if (!courseWithOnlyStubTopics.units.length) {
+    throw new Error('Missing stub topics in Transformers and LLMs');
+  }
 
-  expect(courseQueueStatus(content, course, [], null, topicStateFor())).toBeNull();
-  expect(courseQueueStatus(content, course, [course.id], null, topicStateFor())).toEqual({
+  expect(
+    courseQueueStatus(content, courseWithOnlyStubTopics, [], null, topicStateFor()),
+  ).toBeNull();
+  expect(
+    courseQueueStatus(content, courseWithOnlyStubTopics, [course.id], null, topicStateFor()),
+  ).toEqual({
     kind: 'soon',
   });
 });
