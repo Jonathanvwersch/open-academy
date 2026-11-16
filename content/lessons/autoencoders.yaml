@@ -16,12 +16,23 @@ where_this_fits: |
 knowledge_points:
   - id: ae-encode-decode
     title: "Shrink an image, then rebuild it"
+    tldr: |
+      - Lay an image's pixel values into one list for a layer to read.
+      - An encoder turns that list into a shorter vector, and a decoder rebuilds the image from it.
+      - Repeated patterns let the shorter vector hold enough information for a good copy.
     explain: |
       ### A tiny image as one vector
 
-      In the images-as-tensors lesson, we saw that a grayscale image is a grid of brightnesses, which we divide by 255 so they lie between 0 and 1. A layer reads a vector, not a grid, so first we **flatten** the image: we lay its rows end to end. NumPy's `img.reshape(H * W)` does exactly this.
+      In the images-as-tensors lesson, we saw that a grayscale image is a grid of brightnesses, which we divide by 255 so they lie between 0 and 1. Our layer reads a vector, so first we **flatten** the image: we lay its rows end to end. NumPy's `img.reshape(H * W)` does exactly this.
 
-      Let's take a $2\times2$ image with pixel values 204 and 204 in its top row and 51 and 51 below. Divided by 255, that's $0.8$, $0.8$, $0.2$ and $0.2$, so flattening gives $x=(0.8,0.8,0.2,0.2)$.
+      Take a $2\times2$ image with 204 and 204 in its top row and 51 and 51 below:
+      $$
+      \begin{aligned}
+      \text{scaled image}&=\begin{pmatrix}204/255&204/255\\51/255&51/255\end{pmatrix} &&\text{divide each pixel by }255\\
+      &=\begin{pmatrix}0.8&0.8\\0.2&0.2\end{pmatrix} &&\text{evaluate the divisions}\\
+      x&=(0.8,0.8,0.2,0.2) &&\text{lay the rows end to end}
+      \end{aligned}
+      $$
 
       ### Through a narrow middle
 
@@ -92,6 +103,10 @@ knowledge_points:
       - aep-column-stripes
   - id: ae-reconstruction
     title: "Measure how good the copy is"
+    tldr: |
+      - An autoencoder learns by comparing each rebuilt image with its own input.
+      - Squaring the pixel differences makes every copying mistake count towards the error.
+      - A narrow middle forces the network to keep useful patterns while reducing that error.
     explain: |
       ### The input is its own answer
 
@@ -101,7 +116,14 @@ knowledge_points:
 
       ### Measuring a bad copy
 
-      Our network copies stripes perfectly, but what about $x=(0.8,0.4,0.2,0.2)$, whose two top pixels differ? The encoder averages the top row to $0.6$, so the reconstruction is $\hat x=(0.6,0.6,0.2,0.2)$.
+      Our network copies stripes perfectly, but what about $x=(0.8,0.4,0.2,0.2)$, whose top pixels differ?
+      $$
+      \begin{aligned}
+      z_1&=(0.8+0.4)/2=0.6 &&\text{average the top row}\\
+      z_2&=(0.2+0.2)/2=0.2 &&\text{average the bottom row}\\
+      \hat x&=(0.6,0.6,0.2,0.2) &&\text{copy each average twice}
+      \end{aligned}
+      $$
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 250" aria-label="Three 2 by 2 grids. The input image has top row 0.8 and 0.4 and bottom row 0.2 and 0.2. The autoencoder rebuilds it as top row 0.6 and 0.6 and bottom row 0.2 and 0.2. The differences, rebuilt minus input, are minus 0.2 and 0.2 on the top row, shown in red, and 0 and 0 on the bottom row. The differences add to 0, but their squares add to 0.08">
@@ -126,7 +148,14 @@ knowledge_points:
       </svg>
       ```
 
-      The differences $\hat x-x$ are $-0.2$, $0.2$, $0$ and $0$. Adding them gives $0$, as if the copy were perfect, because the two misses cancel. So we square each difference first, making every miss positive, and then add. The **reconstruction error** is
+      Simply adding differences would hide these mistakes:
+      $$
+      \begin{aligned}
+      \hat x-x&=(-0.2,0.2,0,0) &&\text{subtract the input pixels}\\
+      \text{sum}&=-0.2+0.2+0+0=0 &&\text{opposite misses cancel}
+      \end{aligned}
+      $$
+      Squaring each difference first makes every miss positive. The **reconstruction error** is
 
       $$E=\sum_{i=1}^{n}(\hat x_i-x_i)^2,$$
 
@@ -136,7 +165,14 @@ knowledge_points:
 
       What stops the network from simply passing every pixel straight through? Only the narrow middle stops it. Here is what three latent sizes can do for the stripe image $(0.8,0.8,0.2,0.2)$:
 
-      - **1 number:** it can't hold both row brightnesses. For example, if it keeps the average of all four pixels, $0.5$, every pixel is rebuilt as flat grey $0.5$ and misses by $0.3$, so $E=4\times0.3^2=0.36$.
+      - **1 number:** it can't hold both row brightnesses. If it keeps only their average:
+
+        1. **Average all pixels.** This is the one latent number.
+           $$(0.8+0.8+0.2+0.2)/4=0.5.$$
+        2. **Rebuild every pixel as grey.** Each differs from its input by $0.3$ in size.
+           $$\hat x=(0.5,0.5,0.5,0.5).$$
+        3. **Square and add the misses.** All four contribute equally.
+           $$E=4\times0.3^2=0.36.$$
       - **2 numbers:** one per row is enough, so every stripe image comes back exactly, with $E=0$.
       - **4 numbers:** as many as the input, so nothing is narrowed, and $E=0$ for any image at all, because each pixel can pass straight through. Nothing forces the network to find the stripe pattern, and its latent vector is as long as the image.
 
@@ -168,6 +204,10 @@ knowledge_points:
       - aep-robot-unusual
   - id: ae-sizes
     title: "Compare the image with its latent vector"
+    tldr: |
+      - Compare the input length with the shorter vector's length to measure how much each image shrinks.
+      - The network also stores weights and biases that perform the shrinking and rebuilding.
+      - Those learned values are shared across images, while each image gets its own short vector.
     explain: |
       ### From our tiny image to a real one
 
@@ -194,7 +234,13 @@ knowledge_points:
 
       which says how many input numbers there are for each latent number. For our stripe images it's $4/2=2$, and the worked example finds it for the digits.
 
-      In the images-as-tensors lesson, a colour image had three channels, one each for red, green and blue. So a robot camera's $64\times64$ colour frame flattens to $64\times64\times3=12{,}288$ numbers. If we pick a latent size of $256$ for such frames, again by trying sizes, the compression factor is $12{,}288/256=48$.
+      A colour image has red, green and blue channels. For a robot's $64\times64$ frame, try a latent size of $256$:
+      $$
+      \begin{aligned}
+      n&=64\times64\times3=12{,}288 &&\text{count all channel values}\\
+      n/k&=12{,}288/256=48 &&\text{divide by the latent size}
+      \end{aligned}
+      $$
 
       ### Counting the parameters
 
@@ -202,13 +248,24 @@ knowledge_points:
 
       $$\text{encoder: }kn+k,\qquad\text{decoder: }nk+n.$$
 
-      Both halves have $nk$ weights, but the decoder has more biases, one per rebuilt pixel. For our stripe network, $k=2$ and $n=4$, so the encoder has $2\times4+2=10$ and the decoder $4\times2+4=12$, which is $22$ parameters in all.
+      Both halves have $nk$ weights, but the decoder has more biases, one per rebuilt pixel. For our stripe network:
+      $$
+      \begin{aligned}
+      \text{encoder}&=2\times4+2=10 &&\text{use }k=2,\ n=4\\
+      \text{decoder}&=4\times2+4=12 &&\text{reverse the layer widths}\\
+      \text{total}&=10+12=22 &&\text{add both halves}
+      \end{aligned}
+      $$
 
       The digit network has about fifty thousand parameters, far more than $784$, so it can look as if nothing was saved. But they're stored once and shared by every image, and what shrinks is each image, now $32$ numbers instead of $784$.
 
       ### A batch of images
 
-      In the forward-pass lesson, a batch put one example in each row of a matrix $X$, and a layer computed $XW^\top+b$, which does $Wx+b$ for every row at once. So $B$ digit images make a $B\times784$ input. The encoder's $XW_e^\top+b_e$ is then $B\times32$, one latent vector per row, and the decoder turns it back into $B\times784$.
+      As in the forward-pass lesson, put one image per row in a matrix $X$. A layer computes $XW^\top+b$, applying $Wx+b$ to every row. For $B$ digit images:
+
+      1. **Flatten each image.** The input shape is $B\times784$.
+      2. **Encode each row.** $XW_e^\top+b_e$ has shape $B\times32$.
+      3. **Decode each row.** The reconstruction returns to shape $B\times784$.
     worked: |
       Let's size up the digit autoencoder, with $28\times28$ grayscale inputs and a latent vector of $32$ numbers.
 
@@ -239,6 +296,10 @@ knowledge_points:
       - aep-robot-camera-ratio
   - id: ae-latent-space
     title: "Find images that look alike"
+    tldr: |
+      - Each image's short vector is a point in a space with one direction per number.
+      - In this network, nearby points rebuild into similar images.
+      - The numbers can have different meanings, and details lost during copying may also be lost here.
     explain: |
       ### Every image becomes a point
 
@@ -295,7 +356,22 @@ knowledge_points:
 
       ### What the latent vector doesn't tell us
 
-      Don't read fixed meanings into the latent numbers. Our weights made $z_1$ the top row's brightness. But with row brightnesses $a$ and $b$, the latent vector $(a+b,\ a-b)$, from adding and subtracting the row averages, works just as well, since the decoder can rebuild each top pixel as $0.5z_1+0.5z_2=a$ and each bottom pixel as $0.5z_1-0.5z_2=b$. Training only rewards good copies, so it may find either, or many others.
+      Don't read fixed meanings into the latent numbers. Our weights made $z_1$ the top row's brightness. For row brightnesses $a$ and $b$, adding and subtracting works too:
+      $$
+      \begin{aligned}
+      z_1&=a+b &&\text{encode their sum}\\
+      z_2&=a-b &&\text{encode their difference}\\
+      \text{top pixel}&=0.5z_1+0.5z_2 &&\text{add the latent values}\\
+      &=0.5(a+b)+0.5(a-b) &&\text{substitute the sum and difference}\\
+      &=0.5a+0.5b+0.5a-0.5b &&\text{distribute both halves}\\
+      &=a &&\text{cancel the }b\text{ terms}\\
+      \text{bottom pixel}&=0.5z_1-0.5z_2 &&\text{subtract the latent values}\\
+      &=0.5(a+b)-0.5(a-b) &&\text{substitute the sum and difference}\\
+      &=0.5a+0.5b-0.5a+0.5b &&\text{distribute both halves}\\
+      &=b &&\text{cancel the }a\text{ terms}
+      \end{aligned}
+      $$
+      Training rewards good copies, so it may find either representation, or many others.
 
       The latent vector also keeps only what helps the copy. Say a camera frame shows a small screw. It covers few pixels, so dropping it from the copy barely raises $E$. The network may spend no latent numbers on it, so frames with and without it get almost the same point, even if the robot needed it.
     worked: |

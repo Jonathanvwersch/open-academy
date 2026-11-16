@@ -13,6 +13,10 @@ where_this_fits: |
 knowledge_points:
   - id: ovf-flexibility
     title: "Straight lines, smooth curves and wiggly curves"
+    tldr: |
+      - A model needs enough flexibility to follow useful patterns in the training houses.
+      - Too much flexibility can make it copy details that fail on new houses.
+      - Comparing errors on separate validation houses helps us choose a useful fit.
     explain: |
       ### Three shapes for predicting prices
 
@@ -123,6 +127,10 @@ knowledge_points:
       ]
   - id: ovf-error-gap
     title: "Compare training and validation errors"
+    tldr: |
+      - Training error shows how well a model fits the houses it learned from.
+      - Much higher validation error suggests it copied details that do not carry over.
+      - We want both errors low, because a small gap alone can hide poor predictions.
     explain: |
       ### Compare mistakes on training and validation houses
 
@@ -202,6 +210,10 @@ knowledge_points:
       ]
   - id: ovf-learning-curves
     title: "Choose when to stop training"
+    tldr: |
+      - Training can keep improving predictions on training houses while hurting new predictions.
+      - Watching validation error during training shows when this starts happening.
+      - Keep the saved model with the lowest validation error and then check the test houses.
     explain: |
       ### Watch predictions change during training
 
