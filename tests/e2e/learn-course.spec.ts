@@ -201,7 +201,6 @@ test('Home focus changes the plan and keeps outside reviews visible', async ({ p
     learn.activeSubjects = [
       { id: 'mathematics', title: 'Mathematics', hasLessons: true },
       { id: 'ai', title: 'AI', hasLessons: true },
-      { id: 'robotics', title: 'Robotics', hasLessons: false },
     ];
     learn.focusSubjectId = focusSubjectId;
     learn.activeSessionId = 'focus-session';
@@ -281,10 +280,8 @@ test('Home focus changes the plan and keeps outside reviews visible', async ({ p
   const focus = page.getByRole('group', { name: 'Study today' });
   const all = focus.getByRole('button', { name: 'All', exact: true });
   const ai = focus.getByRole('button', { name: 'AI', exact: true });
-  const robotics = focus.getByRole('button', { name: 'Robotics · soon', exact: true });
   await expect(all).toHaveAttribute('aria-pressed', 'true');
-  await expect(robotics).toBeDisabled();
-  await expect(robotics).toHaveAttribute('title', 'Lessons coming soon');
+  await expect(focus.getByRole('button')).toHaveCount(3);
   await expect(page.getByRole('link', { name: 'Resume session', exact: true })).toBeVisible();
   await expect(page.getByText('Mathematics Topic', { exact: true })).toBeVisible();
   await ai.click();

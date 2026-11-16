@@ -2,7 +2,7 @@
 
 Open Academy is a learning app you host yourself. It's modelled on [Math Academy](https://www.mathacademy.com): short lessons that each end in a quiz, spaced reviews so you don't forget what you learned, and a placement check so you can skip what you already know. It keeps track of which topics you've passed and how well you still remember them, and uses that to plan each day.
 
-It comes with courses on maths for machine learning, AI and robotics. You can also write a course on any subject, either from scratch or from your own notes and textbooks. An AI coding agent can do most of the writing.
+It comes with courses on maths for machine learning and AI. You can also write a course on any subject, either from scratch or from your own notes and textbooks. An AI coding agent can do most of the writing.
 
 There's a demo at [open-academy-demo.vercel.app](https://open-academy-demo.vercel.app). You don't need an account: each browser gets its own learner, and its progress is deleted after 24 hours. The tutor is turned off in the demo.
 
@@ -27,10 +27,9 @@ If you add an OpenAI API key, there's a tutor next to every lesson. It can see t
 ```text
 Mathematics   Mathematics for Machine Learning
 AI            ML Foundations → Deep Learning → Transformers and LLMs → LLM Inference → Reinforcement Learning
-Robotics      Classical Robotics → Robot Learning
 ```
 
-Most maths and AI topics have lessons. A few are still being written, and the two robotics courses are planned but have no lessons yet. Topics without a lesson show "Lessons coming soon".
+Most maths and AI topics have lessons. A few are still being written. Topics without a lesson show "Lessons coming soon".
 
 Courses are never locked as a whole. A topic opens as soon as the topics it needs are done, even when they belong to a different course. Each course page lists the courses it builds on and how much of each you've finished.
 
@@ -87,7 +86,7 @@ Your source files stay on your machine and aren't committed. [Writing your first
 | `apps/api`                              | The API: loading content, grading, mastery, scheduling, tutor    |
 | `packages/cli`                          | The `academy` CLI                                                |
 | `packages/contracts`, `packages/shared` | Types and helpers used by both the web app and the API           |
-| `content`                               | The included course pack (maths, AI and robotics)                |
+| `content`                               | The included course pack (maths and AI)                          |
 | `labs`                                  | Starter code and tests for the programming projects in that pack |
 
 [Architecture](docs/architecture.md) and [Content format](docs/CONTENT_FORMAT.md) go into more detail.

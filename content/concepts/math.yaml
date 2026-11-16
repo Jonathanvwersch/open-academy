@@ -253,17 +253,6 @@ concepts:
         }
     projects: [gaussian-mle]
     status: authored
-  - id: rotation-matrices
-    title: Rotation matrices
-    description: 2D/3D rotations as orthonormal matrices; composition.
-    difficulty: 2
-    est_minutes: 30
-    goal_weight: 2
-    dimensions: [conceptual, math, implementation]
-    prereqs: [{ id: matrices }]
-    objectives:
-      - { text: "Build and compose 2D rotation matrices", dimension: math }
-    status: stub
   - id: eigen-svd
     title: Eigenvalues, eigenvectors and SVD
     description: "Directions a matrix only stretches, SVD as rotate–stretch–rotate, and low-rank approximation, the idea behind LoRA."

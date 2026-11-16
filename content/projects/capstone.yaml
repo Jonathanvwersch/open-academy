@@ -1,7 +1,0 @@
-id: capstone
-title: "End-to-end robot-learning capstone"
-status: stub
-est_hours: 10
-objective: "Collect demonstrations, train and evaluate a policy end to end, analyse failures and write up results."
-background: ""
-prereqs: [data-pipelines-robotics, failure-analysis, system-design-ml]
