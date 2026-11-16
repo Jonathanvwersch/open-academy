@@ -14,6 +14,10 @@ where_this_fits: |
 knowledge_points:
   - id: vf-state-value
     title: "Measure how good each state is"
+    tldr: |
+      - A state's value is the return we expect if the robot starts there and follows its policy.
+      - It counts every reward still to come, so a cell near the goal is worth more.
+      - The same cell can be worth a lot under one policy and very little under another.
     explain: |
       ### A robot in a corridor
 
@@ -23,7 +27,18 @@ knowledge_points:
 
       ### Adding up the reward to come
 
-      From cell 1, the robot gets $-1$ for the step to cell 2, $-1$ for the step to cell 3 and $+10$ for reaching cell 4. Each later reward is shrunk by one more factor of $0.9$, and the total comes to $6.2$. Starting in cell 2 skips the first step and gives $-1+0.9\times10=8$. From cell 3, the next step pays $+10$, so the value is $10$. In cell 4 the episode is over, so its value is $0$.
+      From cell 1, the rewards are $-1$ for reaching cell 2, $-1$ for reaching cell 3 and $+10$ for reaching cell 4. Each later reward gets another factor of $0.9$:
+      $$
+      \begin{aligned}
+      G_0&=-1+0.9(-1)+0.9^2(10) &&\text{weight the rewards}\\
+      &=-1+0.9(-1)+0.81(10) &&\text{square the discount}\\
+      &=-1-0.9+8.1 &&\text{multiply by the rewards}\\
+      &=6.2 &&\text{add}
+      \end{aligned}
+      $$
+      Starting in cell 2 skips the first step:
+      $$-1+0.9\times10=8.$$
+      From cell 3, the next step pays $+10$, so the value is $10$. In cell 4 the episode is over, so its value is $0$.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 230" aria-label="A corridor of four cells in a row. Orange arrows show the policy always moving right, with reward minus 1 for the moves from cell 1 to 2 and from 2 to 3, and plus 10 for the move from 3 to 4. Under that policy the values are 6.2 in cell 1, where the robot starts, 8 in cell 2, 10 in cell 3 and 0 in cell 4, the goal, where the episode ends">
@@ -64,7 +79,15 @@ knowledge_points:
 
       ### Values depend on the policy
 
-      A value belongs to a cell and a policy together. Under "always move left", the robot never reaches cell 4 and gets $-1$ on every step. Its return, $-1-0.9-0.81-\dots$, is a sum of shrinking terms that adds up to $-1/(1-0.9)=-10$. So cells 1 to 3 are worth $-10$.
+      A value belongs to a cell and a policy together. Under "always move left", the robot never reaches cell 4 and gets $-1$ on every step. Add the shrinking terms:
+      $$
+      \begin{aligned}
+      G_0&=-1-0.9-0.81-\dots &&\text{discount each penalty}\\
+      &=-\frac{1}{1-0.9} &&\text{sum the shrinking terms}\\
+      &=-10 &&\text{divide}
+      \end{aligned}
+      $$
+      So cells 1 to 3 are worth $-10$.
 
       Be careful not to read a value as the next reward. In cell 2 the next reward is $-1$ whichever way the robot moves, but the value under "always move right" is $8$, because it counts the $+10$ that's coming.
     worked: |
@@ -90,6 +113,10 @@ knowledge_points:
       - vfp-game-two-outcomes
   - id: vf-action-value
     title: "Measure how good each move is"
+    tldr: |
+      - An action value scores one move: make it, then go back to following the policy.
+      - It is the move's reward plus the discounted value of the cell it lands in.
+      - Comparing the values of different moves shows where the policy could do better.
     explain: |
       ### Asking about one move
 
@@ -131,7 +158,14 @@ knowledge_points:
 
       $$Q^\pi(s,a)=r+\gamma V^\pi(s').$$
 
-      So in cell 2, moving right is worth $8$ and moving left is worth $4.58$, and the right move is better.
+      Apply this to cell 2:
+      $$
+      \begin{aligned}
+      Q^\pi(2,\text{right})&=-1+0.9\times10=8 &&\text{use cell three's value}\\
+      Q^\pi(2,\text{left})&=-1+0.9\times6.2=4.58 &&\text{use cell one's value}
+      \end{aligned}
+      $$
+      The right move is better.
 
       ### Back from moves to the cell
 
@@ -167,10 +201,16 @@ knowledge_points:
       - vfp-arm-three-actions
   - id: vf-bellman-expectation
     title: "Get a state's value from the next state"
+    tldr: |
+      - A state's value is the next reward plus the discounted value of the state it leads to.
+      - When choices or moves are random, we average over what can happen.
+      - Using guesses for the next states gives a new guess for this one, a Bellman backup.
+      - Repeating backups for every state brings the guesses to the true values.
     explain: |
       ### One step plus the rest
 
-      In the same corridor, take "always move right" from cell 2. The robot pays $-1$ and lands in cell 3. Everything after that is the return from cell 3, which is worth $10$, just one step later. So $V^\pi(2)=-1+0.9\times10=8$.
+      In the same corridor, take "always move right" from cell 2. The robot pays $-1$ and lands in cell 3. Everything after that is the return from cell 3, worth $10$, one step later:
+      $$V^\pi(2)=-1+0.9\times10=8.$$
 
       This works because the return splits into the next reward plus the discounted return from the next step on:
 
@@ -227,9 +267,15 @@ knowledge_points:
          $$-1+0.9\times5=3.5.$$
 
       3. **Average with the policy's probabilities.** The equation averages over the actions, weighted by how often the policy picks each one.
-         $$V(2)\leftarrow0.8\times7.1+0.2\times3.5=5.68+0.7=6.38.$$
+         $$
+         \begin{aligned}
+         V(2)&\leftarrow0.8\times7.1+0.2\times3.5 &&\text{weight each action's return}\\
+         &=5.68+0.7 &&\text{multiply}\\
+         &=6.38 &&\text{add}
+         \end{aligned}
+         $$
 
-      The arrow $\leftarrow$ means "replace with", since this is a new estimate built from old ones. We'd do the same for cells 1 and 3, then repeat.
+      The symbol $\leftarrow$ means "replace with", since this is a new estimate built from old ones. We'd do the same for cells 1 and 3, then repeat.
     problems:
       - vf-bellman-expectation-basics
       - vfp-backup-self-explain
@@ -241,6 +287,11 @@ knowledge_points:
       - vfp-arm-retry-backup
   - id: vf-bellman-optimality
     title: "Find the most reward the robot can get"
+    tldr: |
+      - A state's best value is the most return any policy can collect from it.
+      - It equals the best move's reward plus the discounted best value of where it lands.
+      - Repeating this spreads the goal's reward back one cell at a time.
+      - When the values stop changing, the best move in each cell is the one worth the most.
     explain: |
       ### The best the robot can do
 
@@ -270,13 +321,28 @@ knowledge_points:
       | 3 | $6.2$ | $8$ | $10$ |
       | 4 | $6.2$ | $8$ | $10$ |
 
-      In sweep 1, only cell 3 can reach the goal, so it gets $10$, and every other move gives $-1+0.9\times0=-1$. In sweep 2, cell 2 sees cell 3's $10$ and gets $8$, while cell 1 gets $-1+0.9\times(-1)=-1.9$. Each sweep carries the $+10$ one cell further back. After sweep 3 nothing changes, so these are $V^*$. These are the values of "always move right", so it's a best policy.
+      In sweep 1, only cell 3 can reach the goal, so it gets $10$. Follow how the other estimates change:
+      $$
+      \begin{aligned}
+      V(1)=V(2)&=-1+0.9\times0=-1 &&\text{sweep one: next estimates are zero}\\
+      V(2)&=-1+0.9\times10=8 &&\text{sweep two: use cell three's ten}\\
+      V(1)&=-1+0.9\times(-1)=-1.9 &&\text{sweep two: use cell two's old estimate}
+      \end{aligned}
+      $$
+      Each sweep carries the $+10$ one cell further back. After sweep 3 nothing changes, so these are $V^*$. They match "always move right", so it's a best policy.
 
       Repeating sweeps like this is called **value iteration**.
 
       ### Reading off the best move
 
-      With $V^*$ known, the best action in each state is the one with the largest $Q^*$. In cell 2, $Q^*(2,\text{right})=-1+0.9\times10=8$ and $Q^*(2,\text{left})=-1+0.9\times6.2=4.58$, so the best move is right.
+      With $V^*$ known, pick the largest $Q^*$. In cell 2:
+      $$
+      \begin{aligned}
+      Q^*(2,\text{right})&=-1+0.9\times10=8 &&\text{use cell three's value}\\
+      Q^*(2,\text{left})&=-1+0.9\times6.2=4.58 &&\text{use cell one's value}
+      \end{aligned}
+      $$
+      So the best move is right.
 
       Be careful not to pick a move by its next reward alone. In cell 2 both moves give $-1$, and only the values of the cells they lead to tell them apart.
     worked: |

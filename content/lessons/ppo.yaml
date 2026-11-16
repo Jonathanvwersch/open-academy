@@ -15,6 +15,10 @@ where_this_fits: |
 knowledge_points:
   - id: ppo-advantage
     title: "Score each action by how much better it did than usual"
+    tldr: |
+      - A critic is a second model that predicts the return from each state.
+      - An action's advantage is how much better it did than the critic expected.
+      - So a move can score well even when its own reward is negative, because it leads somewhere better.
     explain: |
       ### A corridor robot
 
@@ -88,6 +92,10 @@ knowledge_points:
       - ppoa-robot-arm
   - id: ppo-gae
     title: "Look several steps ahead"
+    tldr: |
+      - We can judge a move by its next reward plus the critic's guess, or by all the real rewards after it.
+      - The first trusts guesses that can be off, and the second jumps around between episodes.
+      - Generalized advantage estimation (GAE) blends the two, with a setting we choose for the mix.
     explain: |
       ### Two ways to estimate
 
@@ -104,10 +112,23 @@ knowledge_points:
       The sum stops at the end of the episode. The number $\lambda$ is between $0$ and $1$, and we choose it.
 
       - With $\lambda=0$, only $\delta_t$ is left, which is the one-step estimate.
-      - With $\lambda=1$, the sum equals $G_t-V(s_t)$ exactly. Each $\delta$ adds $\gamma V$ of the next state, and the next $\delta$, multiplied by $\gamma$, subtracts it again. So the critic's guesses for the later states cancel.
+      - With $\lambda=1$, later value guesses cancel, leaving $G_t-V(s_t)$.
       - Values in between give some of each: a little bias and a little variance.
 
-      Taking out the first term leaves $\gamma\lambda$ times the same sum started one step later. So we can compute it backwards from the end of the episode, using $\hat A_t=\delta_t+\gamma\lambda\,\hat A_{t+1}$.
+      For $\lambda=1$, expand two consecutive errors to see the cancellation:
+      $$
+      \begin{aligned}
+      \delta_t+\gamma\delta_{t+1}&=r_{t+1}+\gamma V(s_{t+1})-V(s_t)+\gamma[r_{t+2}+\gamma V(s_{t+2})-V(s_{t+1})] &&\text{insert both errors}\\
+      &=r_{t+1}+\gamma r_{t+2}-V(s_t)+\gamma^2V(s_{t+2}) &&\text{cancel the middle value}
+      \end{aligned}
+      $$
+      Continuing to the terminal state's zero value leaves $G_t-V(s_t)$. For any $\lambda$, split off the first error to compute backwards:
+      $$
+      \begin{aligned}
+      \hat A_t&=\delta_t+\gamma\lambda[\delta_{t+1}+\gamma\lambda\delta_{t+2}+\dots] &&\text{factor the later terms}\\
+      &=\delta_t+\gamma\lambda\hat A_{t+1} &&\text{reuse the next estimate}
+      \end{aligned}
+      $$
 
       In the worked example below, one corridor episode gives $\hat A_0=0.3$ with $\lambda=0$, about $0.55$ with $\lambda=0.5$, and $1.2$ with $\lambda=1$.
 
@@ -120,7 +141,13 @@ knowledge_points:
       1. **Find the first one-step error.** The first move earns $-1$ and goes from cell 1 to cell 2.
          $$\delta_0=-1+0.9\times7-5=0.3.$$
 
-      2. **Find the other two errors.** The same way, $\delta_1=-1+0.9\times9-7=0.1$. The last move earns $+10$ and lands in cell 4, worth $0$, so $\delta_2=10+0.9\times0-9=1$.
+      2. **Find the other two errors.** Repeat for the next move and the move into terminal cell 4, whose value is $0$.
+         $$
+         \begin{aligned}
+         \delta_1&=-1+0.9\times9-7=0.1 &&\text{use cell three's value}\\
+         \delta_2&=10+0.9\times0-9=1 &&\text{no return after the goal}
+         \end{aligned}
+         $$
 
       3. **Start at the last step.** Nothing comes after it, so its estimate is just its error.
          $$\hat A_2=\delta_2=1.$$
@@ -128,14 +155,25 @@ knowledge_points:
       4. **Step back once.** We add $0.45$ times the estimate we just found.
          $$\hat A_1=0.1+0.45\times1=0.55.$$
 
-      5. **Step back again.** We add $0.45\times0.55=0.2475$, keeping the exact value and rounding only at the end.
-         $$\hat A_0=0.3+0.2475=0.5475\approx0.55.$$
+      5. **Step back again.** Weight the next estimate, then add this step's error. Keep exact values until the end.
+         $$
+         \begin{aligned}
+         \hat A_0&=0.3+0.45\times0.55 &&\text{use the next estimate}\\
+         &=0.3+0.2475 &&\text{multiply}\\
+         &=0.5475\approx0.55 &&\text{add and round}
+         \end{aligned}
+         $$
 
       6. **Check the $\lambda=1$ case.** Then $\gamma\lambda=0.9$, and the factors are $1$, $0.9$ and $0.81$.
          $$\hat A_0=0.3+0.9\times0.1+0.81\times1=1.2.$$
 
-      7. **Compare with the return.** The rewards were $-1$, $-1$ and $+10$, so $G_0=-1-0.9+8.1=6.2$.
-         $$G_0-V(1)=6.2-5=1.2.$$
+      7. **Compare with the return.** Add the discounted rewards, then subtract the critic's starting estimate.
+         $$
+         \begin{aligned}
+         G_0&=-1-0.9+8.1=6.2 &&\text{add the weighted rewards}\\
+         G_0-V(1)&=6.2-5=1.2 &&\text{subtract the starting value}
+         \end{aligned}
+         $$
 
       Both ways give $1.2$, so with $\lambda=1$ the critic's guesses really do cancel. With $\lambda=0.5$, $\hat A_0$ happens to round to the same $0.55$ as $\hat A_1$.
     problems:
@@ -149,6 +187,11 @@ knowledge_points:
       - ppog-noisy-critic
   - id: ppo-ratio
     title: "Compare the new policy with the old"
+    tldr: |
+      - Collecting experience is slow, so we want to learn from the same batch several times.
+      - For each recorded action, the ratio is its new probability divided by its old one.
+      - Multiplying each advantage by its ratio gives a score we can push up several times.
+      - Nothing stops that score from rewarding bigger and bigger changes, which can wreck the policy.
     explain: |
       ### Reusing a batch
 
@@ -162,7 +205,7 @@ knowledge_points:
 
       $$\rho_t(\theta)=\frac{\pi_\theta(a_t\mid s_t)}{\pi_{\theta_\text{old}}(a_t\mid s_t)}.$$
 
-      A ratio of $1$ means no change. Above $1$, the action got more likely. Below $1$, it got less likely. Say the old policy moved right from cell 3 with probability $0.5$. If the new policy gives $0.6$, the ratio is $1.2$.
+      A ratio of $1$ means no change. Above $1$, the action got more likely. Below $1$, it got less likely. If the old policy moved right from cell 3 with probability $0.5$ and the new one gives $0.6$, the ratio is $1.2$.
 
       ### The surrogate objective
 
@@ -170,27 +213,54 @@ knowledge_points:
 
       $$L(\theta)=\text{average over the batch of }\rho_t(\theta)\,\hat A_t.$$
 
-      We climb it with gradient ascent, several times on the same batch. Raising $L$ makes actions with $\hat A_t>0$ more likely and actions with $\hat A_t<0$ less likely. Since $\nabla_\theta\pi_\theta=\pi_\theta\nabla_\theta\ln\pi_\theta$, the gradient of a ratio is the ratio times $\nabla_\theta\ln\pi_\theta(a_t\mid s_t)$. At $\theta=\theta_\text{old}$ every ratio is $1$, so the first step is the usual policy gradient step with $\hat A_t$ as the weight.
+      We climb it with gradient ascent several times per batch. Raising $L$ makes positive-advantage actions more likely and negative-advantage actions less likely. Hold the old policy fixed when differentiating:
+      $$
+      \begin{aligned}
+      \nabla_\theta\rho_t&=\frac{\nabla_\theta\pi_\theta(a_t\mid s_t)}{\pi_{\theta_\text{old}}(a_t\mid s_t)} &&\text{differentiate the numerator}\\
+      &=\rho_t\nabla_\theta\ln\pi_\theta(a_t\mid s_t) &&\text{apply the log trick}
+      \end{aligned}
+      $$
+      Initially every ratio is $1$, so the first step is the usual policy gradient step weighted by $\hat A_t$.
 
       ### Nothing limits the change
 
       For an action with a positive advantage, $\rho_t\hat A_t$ keeps growing as the ratio grows, so every pass pushes the probability further. But $\hat A_t$ is a noisy estimate from one batch, made while following the old policy. After many passes the new policy can be far from the old one, and the batch no longer tells us how it behaves. A policy that changes too much in one go can suddenly get much worse, and then it collects worse experience to learn from.
 
-      This is the problem PPO's clipping solves.
+      PPO's clipping solves this.
     worked: |
       Let's see which changes the surrogate prefers. Suppose the old policy moves right from cell 3 with probability $0.5$. That move reaches the goal, so with the critic from step 1 its advantage is $\hat A=10+0-9=1$.
 
-      1. **Raise the probability to $0.6$.** The ratio is $0.6/0.5=1.2$, so the term grows.
-         $$\rho\hat A=1.2\times1=1.2.$$
+      1. **Raise the probability to $0.6$.** Compute the ratio, then weight the advantage.
+         $$
+         \begin{aligned}
+         \rho&=0.6/0.5=1.2 &&\text{compare probabilities}\\
+         \rho\hat A&=1.2\times1=1.2 &&\text{weight the advantage}
+         \end{aligned}
+         $$
 
-      2. **Raise it to $0.95$.** The ratio is $0.95/0.5=1.9$, so the term is larger still, and the objective prefers this bigger jump.
-         $$\rho\hat A=1.9\times1=1.9.$$
+      2. **Raise it to $0.95$.** The larger term makes the objective prefer this bigger jump.
+         $$
+         \begin{aligned}
+         \rho&=0.95/0.5=1.9 &&\text{compare probabilities}\\
+         \rho\hat A&=1.9\times1=1.9 &&\text{weight the advantage}
+         \end{aligned}
+         $$
 
-      3. **Try a bad move.** Suppose the old policy also moves left from cell 2 with probability $0.5$. Step 1 found this move's advantage, $\hat A=-3.5$. Lowering the probability to $0.4$ gives the ratio $0.4/0.5=0.8$.
-         $$\rho\hat A=0.8\times(-3.5)=-2.8.$$
+      3. **Try a bad move.** The old policy also moves left from cell 2 with probability $0.5$. Step 1 found its advantage, $\hat A=-3.5$. Lower its probability to $0.4$.
+         $$
+         \begin{aligned}
+         \rho&=0.4/0.5=0.8 &&\text{compare probabilities}\\
+         \rho\hat A&=0.8\times(-3.5)=-2.8 &&\text{weight the advantage}
+         \end{aligned}
+         $$
 
-      4. **Lower it to $0.1$.** The ratio is $0.1/0.5=0.2$. The term rises towards $0$, so again the objective prefers the bigger change.
-         $$\rho\hat A=0.2\times(-3.5)=-0.7.$$
+      4. **Lower it to $0.1$.** The term rises towards $0$, so again the objective prefers the bigger change.
+         $$
+         \begin{aligned}
+         \rho&=0.1/0.5=0.2 &&\text{compare probabilities}\\
+         \rho\hat A&=0.2\times(-3.5)=-0.7 &&\text{weight the advantage}
+         \end{aligned}
+         $$
 
       In both cases a bigger change scores higher, however far it goes from the policy that collected the data.
     problems:
@@ -204,6 +274,10 @@ knowledge_points:
       - ppor-llm-token
   - id: ppo-clip
     title: "Cap how far one update can go"
+    tldr: |
+      - PPO stops rewarding a change once an action's probability has moved more than a set amount, usually 20 percent, from its old value.
+      - Pushing further earns nothing, so noisy estimates can't drag the policy far in one batch.
+      - That makes several passes over each batch safe, though the limit is soft because one update also shifts other probabilities.
     explain: |
       ### Clipping the ratio
 
@@ -267,18 +341,39 @@ knowledge_points:
     worked: |
       Let's evaluate the clipped term with $c=0.2$, so ratios are clipped to the range $0.8$ to $1.2$. Each old probability is $0.5$.
 
-      1. **Good action pushed far.** Moving right from cell 3, with $\hat A=1$, went from $0.5$ to $0.8$, so $\rho=1.6$. The plain term is $1.6\times1$ and the clipped term is $1.2\times1$.
-         $$\min(1.6,\ 1.2)=1.2.$$
+      1. **Good action pushed far.** Moving right from cell 3, with $\hat A=1$, went from $0.5$ to $0.8$. Compare the plain and clipped terms.
+         $$
+         \begin{aligned}
+         \rho&=0.8/0.5=1.6 &&\text{compare probabilities}\\
+         \rho\hat A&=1.6\times1=1.6 &&\text{plain term}\\
+         \text{clip}(\rho,0.8,1.2)\hat A&=1.2\times1=1.2 &&\text{cap the ratio}\\
+         \min(1.6,1.2)&=1.2 &&\text{keep the smaller term}
+         \end{aligned}
+         $$
 
       2. **Read the result.** The term is stuck at $1.2$, so raising this probability further earns nothing.
 
-      3. **Bad action pushed far.** Moving left from cell 2, with $\hat A=-3.5$, went from $0.5$ to $0.1$, so $\rho=0.2$. The plain term is $0.2\times(-3.5)$ and the clipped term is $0.8\times(-3.5)$.
-         $$\min(-0.7,\ -2.8)=-2.8.$$
+      3. **Bad action pushed far.** Moving left from cell 2, with $\hat A=-3.5$, went from $0.5$ to $0.1$.
+         $$
+         \begin{aligned}
+         \rho&=0.1/0.5=0.2 &&\text{compare probabilities}\\
+         \rho\hat A&=0.2(-3.5)=-0.7 &&\text{plain term}\\
+         \text{clip}(\rho,0.8,1.2)\hat A&=0.8(-3.5)=-2.8 &&\text{raise the ratio to the lower bound}\\
+         \min(-0.7,-2.8)&=-2.8 &&\text{keep the smaller term}
+         \end{aligned}
+         $$
 
       4. **Read the result.** The term is stuck at $-2.8$, the same as at $\rho=0.8$. The plain term was $-0.7$, but the clipped objective gives no credit for lowering the probability past $0.4$, where $\rho=0.8$.
 
-      5. **Good action that fell.** Suppose instead that moving right from cell 3 went from $0.5$ to $0.3$, so $\rho=0.6$. The plain term is $0.6\times1$ and the clipped term is $0.8\times1$.
-         $$\min(0.6,\ 0.8)=0.6.$$
+      5. **Good action that fell.** Suppose instead that moving right from cell 3 went from $0.5$ to $0.3$.
+         $$
+         \begin{aligned}
+         \rho&=0.3/0.5=0.6 &&\text{compare probabilities}\\
+         \rho\hat A&=0.6\times1=0.6 &&\text{plain term}\\
+         \text{clip}(\rho,0.8,1.2)\hat A&=0.8\times1=0.8 &&\text{raise the ratio to the lower bound}\\
+         \min(0.6,0.8)&=0.6 &&\text{keep the smaller term}
+         \end{aligned}
+         $$
 
       In the last case the plain term is the smaller one, so it stays in charge, and its slope still pushes the probability back up.
     problems:

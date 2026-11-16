@@ -18,6 +18,11 @@ where_this_fits: |
 knowledge_points:
   - id: fa-standard-traffic
     title: "Count the bytes attention moves"
+
+    tldr: |
+      - Standard attention runs as three separate GPU programs that pass big tables of scores through main memory.
+      - A longer prompt makes both the arithmetic and those tables grow at the same rate.
+      - So the arithmetic per byte stays low, and moving data sets the speed.
     explain: |
       ### Attention as three kernels
 
@@ -63,7 +68,16 @@ knowledge_points:
 
       ### Longer prompts stay memory-bound
 
-      Finding $S$ multiplies $Q$ by $K$ turned on its side, a $(T\times d_h)$ matrix times a $(d_h\times T)$ one, which costs $2T^2d_h$ FLOPs, and $PV$ costs the same. So the total is $4T^2d_h$. We leave out softmax's few FLOPs. When $T$ is much bigger than $d_h$, the bytes are almost all $4T^2b$, so the arithmetic intensity gets close to $d_h/b=64$ FLOPs per byte.
+      Finding $S$ multiplies $Q$ by $K$ turned on its side, a $(T\times d_h)$ matrix times a $(d_h\times T)$ one. $PV$ costs the same. We leave out softmax's few FLOPs. When $T$ is much bigger than $d_h$, the tables dominate the bytes:
+
+      $$
+      \begin{aligned}
+      \text{FLOPs}&=2T^2d_h+2T^2d_h=4T^2d_h &&\text{add both matrix products}\\
+      \text{bytes}&\approx4T^2b &&\text{keep the dominant table traffic}\\
+      I&\approx\frac{4T^2d_h}{4T^2b}=\frac{d_h}{b} &&\text{divide work by traffic}\\
+      &=128/2=64\text{ FLOPs per byte} &&\text{use our head width and format}
+      \end{aligned}
+      $$
 
       Be careful not to expect longer prompts to be compute-bound. The FLOPs and the bytes both grow like $T^2$, so their ratio levels off near $64$, far below the H100's ratio of about $300$.
     worked: |
@@ -101,6 +115,11 @@ knowledge_points:
       - fa-std-transfer
   - id: fa-fused-kernel
     title: "Do all of attention in one kernel"
+
+    tldr: |
+      - Doing all of attention in one GPU program keeps the big score tables on the chip.
+      - The chip's fast memory is small, so the program works through the data in small blocks.
+      - This cuts the bytes moved a lot while doing the same arithmetic.
     explain: |
       ### One kernel for the whole calculation
 
@@ -108,13 +127,33 @@ knowledge_points:
 
       $$4Td_h \text{ numbers}.$$
 
-      Dividing standard attention's $4Td_h+4T^2$ by this gives $1+T/d_h$, so the saving grows with the prompt. The FLOPs stay $4T^2d_h$, so a kernel moving only this much has an arithmetic intensity of $T/b$. At 16-bit that's $T/2$, which passes the H100's $300$ once the prompt is longer than $600$ tokens.
+      Compare that minimum with standard attention. The FLOPs stay $4T^2d_h$, so fewer bytes also raise intensity:
+
+      $$
+      \begin{aligned}
+      \text{traffic ratio}&=\frac{4Td_h+4T^2}{4Td_h}=1+T/d_h &&\text{divide standard traffic by the minimum}\\
+      I&=\frac{4T^2d_h}{4Td_hb}=T/b &&\text{divide unchanged work by minimum bytes}\\
+      I&=T/2 &&\text{use two bytes per number}\\
+      T&>600 &&\text{solve }T/2>300\text{ for the prompt length}
+      \end{aligned}
+      $$
+
+      The saving grows with the prompt.
 
       ### Working in blocks
 
       But on-chip memory is small. An H100 SXM has 132 compute units, called streaming multiprocessors or SMs. Each has $233{,}472$ bytes of its own on-chip shared memory, and each group of threads a kernel runs there can use at most $232{,}448$ bytes of it. Our head's $K$ alone is $256{,}000$ bytes, so it doesn't fit.
 
-      So the kernel works in blocks of, say, 128 rows. It gives each block of queries to an SM, which loads that block once. Then the SM brings in $K$ and $V$ one block at a time, computes the scores between its queries and that key block, uses the scores to update a running output, then throws the scores away. The next step shows how that update works. After the last key block, it writes its rows of $O$. One block of 128 rows of $Q$ is $128\times128\times2=32{,}768$ bytes. The key and value blocks, the running output and the $128\times128$ table of scores for the current blocks are each about that size, so roughly $5\times32{,}768\approx164{,}000$ bytes in all, which fits. With $T=1{,}000$ there are 8 query blocks, the last with only 104 rows, and the picture draws four. Other SMs work on the other blocks and heads at once.
+      So the kernel works in blocks of, say, 128 rows. It gives each block of queries to an SM, which loads that block once. Then the SM brings in $K$ and $V$ one block at a time, computes the scores between its queries and that key block, uses the scores to update a running output, then throws the scores away. The next step shows how that update works. After the last key block, it writes its rows of $O$. The key and value blocks, the running output and the $128\times128$ table of scores for the current blocks are each about the size of a query block:
+
+      $$
+      \begin{aligned}
+      \text{query block bytes}&=128\times128\times2=32{,}768 &&\text{count rows, columns and bytes per number}\\
+      \text{total bytes}&\approx5\times32{,}768\approx164{,}000 &&\text{allow space for five blocks}
+      \end{aligned}
+      $$
+
+      This fits. With $T=1{,}000$ there are 8 query blocks, the last with only 104 rows, and the picture draws four. Other SMs work on the other blocks and heads at once.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 330" aria-label="Left, HBM holds Q, K, V and O for one head, each split into four blocks of rows. Right, the on-chip memory of one SM holds query block 1, loaded once, key block 2 and value block 2, brought in one block at a time, the scores for this pair of blocks, and the running output, which is written once to block 1 of O">
@@ -177,6 +216,11 @@ knowledge_points:
       - fa-fused-transfer
   - id: fa-online-softmax
     title: "Compute softmax one block of keys at a time"
+
+    tldr: |
+      - Softmax divides by a total over every key, which isn't known until the last block.
+      - So we keep two running totals, one for the weights and one for the weighted values.
+      - Dividing one total by the other at the end gives exactly the same output as doing all the keys at once.
     explain: |
       ### The total that comes last
 
@@ -214,7 +258,17 @@ knowledge_points:
       </svg>
       ```
 
-      Be careful not to give each block its own softmax and then average the block outputs. Block 1 alone gives $2$ and block 2 alone gives $3$, and their average, $2.5$, is wrong, because the second block's larger exponentials should give it more say.
+      Be careful not to give each block its own softmax and then average the block outputs:
+
+      $$
+      \begin{aligned}
+      \text{block one output}&=(1+3)/2=2 &&\text{normalise the first block alone}\\
+      \text{block two output}&=(2e+4e)/(2e)=3 &&\text{normalise the second block alone}\\
+      \text{average}&=(2+3)/2=2.5 &&\text{give both blocks equal weight}
+      \end{aligned}
+      $$
+
+      That average is wrong, because the second block's larger exponentials should give it more say.
     worked: |
       Let's run online softmax on the four keys, with scores $0$, $0$, $1$ and $1$ and values $1$, $3$, $2$ and $4$, in blocks of two. We'll keep $e$ in the totals and round only when we show a number.
 
@@ -245,16 +299,40 @@ knowledge_points:
       - fa-online-transfer
   - id: fa-running-max
     title: "Stop the exponentials from getting too big"
+
+    tldr: |
+      - Large scores can make the exponentials in softmax too big to store.
+      - Subtracting the largest score from every score keeps them at most one and leaves the weights unchanged.
+      - When a later block brings a larger score, we shrink both running totals to match, so the output stays the same.
     explain: |
       ### Big scores break the exponential
 
       Online softmax adds up $e^{s_j}$, and exponentials grow very fast. A number too big for its format turns into infinity, which is called **overflow**. In FP16, a common 16-bit format, the largest number is $65{,}504$. $e^{11}\approx59{,}874$ fits, but $e^{12}\approx162{,}755$ doesn't, so a score of $12$ would ruin the output.
 
-      If we subtract the same number $c$ from every score, each exponential is multiplied by $e^{-c}$, because $e^{s_j-c}=e^{s_j}e^{-c}$. That factor appears on the top and the bottom of every weight, so it cancels. So in practice softmax first subtracts the largest score $m$ from every score, making every exponential at most $e^0=1$.
+      Subtracting the same number $c$ from every score leaves each weight unchanged. Here $k$ runs over all keys:
+
+      $$
+      \begin{aligned}
+      e^{s_j-c}&=e^{s_j}e^{-c} &&\text{factor the shifted exponential}\\
+      \frac{e^{s_j-c}}{\sum_k e^{s_k-c}}&=\frac{e^{s_j}e^{-c}}{e^{-c}\sum_k e^{s_k}} &&\text{factor the denominator too}\\
+      &=\frac{e^{s_j}}{\sum_k e^{s_k}} &&\text{cancel the common factor}
+      \end{aligned}
+      $$
+
+      In practice softmax first subtracts the largest score $m$ from every score, making every exponential at most $e^0=1$.
 
       ### A running largest score
 
-      But a kernel working in blocks only knows the largest score after the last block. So it keeps $m$, the largest score so far, and subtracts it from each score, adding $e^{s_j-m}$ to $\ell$ and $e^{s_j-m}v_j$ to $u$. When a new block raises the largest score to $m_{\text{new}}$, each old term $e^{s_j-m}$ should now be $e^{s_j-m_{\text{new}}}$, which is $e^{m-m_{\text{new}}}$ times as big. So the kernel multiplies both totals by $e^{m-m_{\text{new}}}$ before adding the new block's terms:
+      But a kernel working in blocks only knows the largest score after the last block. So it keeps $m$, the largest score so far, and subtracts it from each score, adding $e^{s_j-m}$ to $\ell$ and $e^{s_j-m}v_j$ to $u$. When a new block raises the largest score to $m_{\text{new}}$, rewrite each old exponential relative to it:
+
+      $$
+      \begin{aligned}
+      e^{s_j-m_{\text{new}}}&=e^{(s_j-m)+(m-m_{\text{new}})} &&\text{insert the old largest score}\\
+      &=e^{s_j-m}e^{m-m_{\text{new}}} &&\text{factor out the rescaling amount}
+      \end{aligned}
+      $$
+
+      So the kernel multiplies both totals by $e^{m-m_{\text{new}}}$ before adding the new block's terms:
 
       $$\ell_{\text{new}}=e^{m-m_{\text{new}}}\,\ell+\sum_{j\in\text{block}}e^{s_j-m_{\text{new}}},$$
 

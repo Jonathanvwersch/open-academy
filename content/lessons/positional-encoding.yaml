@@ -14,6 +14,10 @@ where_this_fits: |
 knowledge_points:
   - id: pe-reordering
     title: Follow a reordered token's output
+    tldr: |
+      - Ordinary attention applies the same rules at every position.
+      - Moving a token keeps its comparisons and its mixture of information the same.
+      - Its output moves with it, so attention alone cannot tell which word came first.
     explain: |
       ### Two words in two orders
 
@@ -64,6 +68,10 @@ knowledge_points:
       - pe-order-position-rule
   - id: pe-add-position
     title: Add a vector for each position
+    tldr: |
+      - Give each position a vector and add it to the token's embedding.
+      - These position vectors can be learned or calculated from repeating waves.
+      - Moving a token can now change its input to attention, giving attention information about order.
     explain: |
       ### Give each slot its own numbers
 
@@ -104,7 +112,14 @@ knowledge_points:
       p_t=(\cos\theta_t,\sin\theta_t).
       $$
 
-      Choose angle $\theta_t$ to be zero at slot 1, increasing a quarter turn per slot. Slots 1–4 give $(1,0)$, $(0,1)$, $(-1,0)$ and $(0,-1)$. Slot 5 returns to $(1,0)$, so this pair alone confuses slots 1 and 5. With four entries, a second sine/cosine pair can take eight slots per turn. At slot 5 it reaches halfway around, distinguishing slots 1 and 5.
+      Choose $\theta_t$ to start at zero and increase a quarter turn per slot. Follow the wave to see when it repeats:
+
+      1. **Advance around the circle.** Slots 1–4 give the four compass directions.
+         $$p_1=(1,0),\quad p_2=(0,1),\quad p_3=(-1,0),\quad p_4=(0,-1)$$
+      2. **Complete a turn.** Slot 5 repeats slot 1, confusing them.
+         $$p_5=(1,0)=p_1$$
+      3. **Add a slower pair.** With four entries, let the second pair take eight slots per turn. At slot 5 it reaches half a turn, distinguishing the slots.
+         $$p_1=(1,0,1,0),\qquad p_5=(1,0,-1,0)$$
 
       ### Limitations
 
@@ -133,6 +148,10 @@ knowledge_points:
       - pe-add-collision
   - id: pe-rotate-position
     title: Rotate queries and keys by position
+    tldr: |
+      - Position can also change the queries and keys used for comparisons.
+      - Rotate each pair of their entries by an angle chosen from its position.
+      - Their comparison then depends on the gap between positions as well as the tokens themselves.
     explain: |
       ### Rotate vectors before comparing them
 

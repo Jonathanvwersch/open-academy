@@ -764,7 +764,7 @@ test('a passed knowledge point opens the next step and shows an XP toast', async
   await expect(page.getByRole('button', { name: 'Another question', exact: true })).toBeEnabled();
   await expect(page.getByRole('button', { name: 'Submit answer', exact: true })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Ask the tutor', exact: true })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Back', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Back', exact: true })).toHaveCount(0);
   await expect(page.getByText(toastTitle, { exact: true })).toBeHidden();
   await page.screenshot({
     path: `${quizRetryScreenshotDir}/ordinary-practice-answer-desktop.png`,
@@ -777,7 +777,15 @@ test('a passed knowledge point opens the next step and shows an XP toast', async
     fullPage: true,
   });
   await page.setViewportSize({ width: 1280, height: 900 });
-  await page.getByRole('button', { name: 'Back', exact: true }).click();
+  const practiceRun = await currentRun(page);
+  const currentStepIndex = practiceRun.points.findIndex(
+    (point: { id: string }) => point.id === practiceRun.currentPointId,
+  );
+  const currentStepButtonName = `Step ${currentStepIndex + 1} of ${practiceRun.points.length}, current`;
+  await page.getByRole('button', { name: currentStepButtonName, exact: true }).click();
+  await expect(
+    page.getByRole('heading', { name: practiceRun.currentPoint.title, exact: true }),
+  ).toBeVisible();
 });
 
 test('leaving after a step resumes on the next knowledge point', async ({ page }) => {
@@ -804,7 +812,7 @@ test('leaving after a step resumes on the next knowledge point', async ({ page }
 test('passes every knowledge point and restores the exact problem and result after reloads', async ({
   page,
 }) => {
-  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.setViewportSize({ width: 1280, height: 900 });
   const sessionId = await createSession(page);
   const firstStepTitle = await page.evaluate(async () => {
     const response = await fetch('/api/lessons/supervised-learning');
@@ -885,7 +893,7 @@ test('passes every knowledge point and restores the exact problem and result aft
           (point: { id: string }) => point.id === run.currentPointId,
         );
         expect(currentStepIndex).toBe(1);
-        const backButtonName = 'Back';
+        const currentStepButtonName = `Step ${currentStepIndex + 1} of ${run.points.length}, current`;
 
         await expect(problemId).toBeTruthy();
         await page.getByRole('button', { name: firstStepButtonName }).click();
@@ -893,6 +901,7 @@ test('passes every knowledge point and restores the exact problem and result aft
           page.getByRole('heading', { name: firstStepTitle, exact: true }),
         ).toBeVisible();
         await expect(page.getByTestId('lesson-problem')).toHaveCount(0);
+        await expect(page.getByRole('button', { name: 'Back', exact: true })).toHaveCount(0);
         await expect(page.getByRole('button', { name: firstStepButtonName })).toHaveAttribute(
           'aria-current',
           'step',
@@ -907,7 +916,8 @@ test('passes every knowledge point and restores the exact problem and result aft
         await page.setViewportSize({ width: 1440, height: 900 });
         await page.getByRole('button', { name: firstStepButtonName }).hover();
         await page.screenshot({ path: `${stepReviewScreenshotDir}/desktop-pills-hover.png` });
-        await page.getByRole('button', { name: backButtonName }).first().click();
+        await expect(page.getByRole('button', { name: 'Back', exact: true })).toHaveCount(0);
+        await page.getByRole('button', { name: currentStepButtonName, exact: true }).click();
         await expect(
           page.getByRole('heading', { name: run.currentPoint.title, exact: true }),
         ).toBeVisible();
@@ -915,7 +925,7 @@ test('passes every knowledge point and restores the exact problem and result aft
           'data-problem-id',
           problemId ?? '',
         );
-        await page.screenshot({ path: `${stepReviewScreenshotDir}/desktop-back.png` });
+        await page.screenshot({ path: `${stepReviewScreenshotDir}/desktop-current-step-pill.png` });
       }
     }
   }
@@ -928,8 +938,12 @@ test('passes every knowledge point and restores the exact problem and result aft
   await page.getByRole('button', { name: firstStepButtonName }).click();
   await expect(page.getByRole('heading', { name: firstStepTitle, exact: true })).toBeVisible();
   await expect(page.getByTestId('lesson-problem')).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Back', exact: true }).first()).toBeVisible();
-  await page.getByRole('button', { name: 'Back', exact: true }).first().click();
+  await expect(page.getByRole('button', { name: 'Back', exact: true })).toHaveCount(0);
+  await expect(page.getByTestId('lesson-quiz-chip')).toHaveAttribute(
+    'aria-label',
+    'Lesson quiz, current',
+  );
+  await page.getByTestId('lesson-quiz-chip').click();
   await expect(page.getByTestId('lesson-steps-complete')).toBeVisible();
   await page.getByRole('button', { name: 'Continue' }).click();
   await expect(page.getByLabel('Your answer')).toBeVisible();
@@ -2303,7 +2317,13 @@ test('lesson quiz results are hidden until submit, resume after reload, and allo
   practiceRun = await waitForPracticeRun();
   await answerPracticeQuestion(practiceRun.pendingPracticeProblem, false, 'Another question');
   await expect(warmupProgress).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Back', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Back', exact: true })).toHaveCount(0);
+  await expect(page.getByTestId('lesson-quiz-chip')).toHaveAttribute(
+    'aria-label',
+    'Lesson quiz, current',
+  );
+  await page.getByTestId('lesson-quiz-chip').click();
+  await expect(page.getByTestId('lesson-quiz-results')).toBeVisible();
   await page.reload();
   const completedReviewResults = page.getByTestId('lesson-quiz-results');
   await expect(

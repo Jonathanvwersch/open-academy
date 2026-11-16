@@ -148,6 +148,7 @@ describe('academy CLI', () => {
       const result = run(['check', pack]);
       expect(result.status).toBe(0);
       expect(result.stdout).toContain('1 topics, 0 lessons, 0 questions, 1 courses');
+      expect(result.stdout).toContain('0 warnings');
       expect(runWithInitCwd(['check', 'my-pack'], parent).status).toBe(0);
       expect(runWithInitCwd(['check'], parent, { CONTENT_DIR: 'my-pack' }).status).toBe(0);
       const fromPack = runFromPack(['check'], pack);
@@ -191,6 +192,11 @@ describe('academy CLI', () => {
           readFileSync(join(root, source), 'utf8'),
         );
       }
+      const referenceLesson = parse(readFileSync(join(pack, templateFiles[3]), 'utf8')) as {
+        knowledge_points: Array<{ tldr?: string }>;
+      };
+      expect(referenceLesson.knowledge_points.length).toBeGreaterThan(0);
+      expect(referenceLesson.knowledge_points.every(({ tldr }) => Boolean(tldr))).toBe(true);
       expect(run(['init', pack, '--title', 'Replacement']).status).toBe(1);
     } finally {
       rmSync(parent, { recursive: true, force: true });
@@ -915,6 +921,15 @@ describe('academy CLI', () => {
       expect(created.stdout.trim()).toBe(
         'Write it with .agents/skills/write-lesson/SKILL.md, then run academy check.',
       );
+      const lessonFile = join(pack, 'lessons', `${topicId}.yaml`);
+      const lessonSource = readFileSync(lessonFile, 'utf8');
+      const lesson = parse(lessonSource) as {
+        knowledge_points: Array<{ tldr?: string }>;
+      };
+      expect(lesson.knowledge_points[0]?.tldr).toContain(
+        '- TODO: Write a short summary of this step.',
+      );
+      expect(lessonSource).toMatch(/tldr: \|\n\s+- TODO: Write a short summary of this step\./);
       const exercises = parse(readFileSync(exerciseFile, 'utf8')) as {
         exercises: Array<{ id: string; role: string; prompt: string }>;
       };
@@ -930,6 +945,7 @@ describe('academy CLI', () => {
       const checked = runWithInitCwd(['check', pack], parent);
       expect(checked.status).toBe(1);
       expect(checked.stderr).toContain('TODO field at .objective');
+      expect(checked.stderr).toContain('TODO field at .knowledge_points[0].tldr');
       expect(checked.stderr).toContain('TODO field at .exercises[1].prompt');
       expect(
         checked.stderr

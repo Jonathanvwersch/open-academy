@@ -14,6 +14,11 @@ where_this_fits: |
 knowledge_points:
   - id: infm-one-request
     title: "Measure the wait for one reply"
+
+    tldr: |
+      - A reply takes time to start and then arrives one token at a time.
+      - The gaps between tokens tell us how quickly the reply appears.
+      - The total wait is the first wait plus all the gaps that follow.
     explain: |
       ### Following one request
 
@@ -99,6 +104,11 @@ knowledge_points:
       - infm-autocomplete
   - id: infm-percentiles
     title: "Describe the waits of many users"
+
+    tldr: |
+      - Users wait different lengths of time, and a few very slow waits can pull the average up.
+      - Sorting the waits from fastest to slowest lets us read off a typical wait and a slow one.
+      - A percentile such as p90 is the wait that 90 out of every 100 users stayed at or under.
     explain: |
       ### Many requests, many different waits
 
@@ -168,6 +178,11 @@ knowledge_points:
       - infm-robot-p99
   - id: infm-batching
     title: "Serve many users at the same time"
+
+    tldr: |
+      - Batching runs several users' replies together, so the model's weights are read from memory once for all of them.
+      - That makes more tokens per second in total, but each run can take longer, so each user waits longer between tokens.
+      - Teams pick the batch size with the most tokens in total that still keeps every user's reply fast enough.
     explain: |
       ### Throughput
 
@@ -179,7 +194,16 @@ knowledge_points:
 
       Why doesn't a run with $B$ sequences take $B$ times as long? The model's parameters, called weights, live in the GPU's main memory. They're too big for the chip's on-chip storage, so each run reads all 8 billion of them again. Then it does maths with them for each sequence.
 
-      At 2 bytes (16 bits) per weight that's about 16 GB, where 1 GB is $10^9$ bytes. The H100's main memory delivers about 3.35 TB, or 3,350 GB, per second, where 1 TB is $10^{12}$ bytes, so one read takes about $16/3350\approx0.0048$ s, or 4.8 ms. The maths grows with $B$, but the read is the same for any batch. For our assistant, the read is still most of each run even with 64 sequences.
+      Each weight uses 2 bytes (16 bits). The H100's main memory delivers about 3.35 TB, or 3,350 GB, per second. With 1 GB equal to $10^9$ bytes and 1 TB equal to $10^{12}$ bytes, estimate one read's time:
+
+      $$
+      \begin{aligned}
+      \text{weight memory}&=8\times10^9\times2\ \text{bytes}=16\ \text{GB} &&\text{count bytes for all weights}\\
+      \text{read time}&=\frac{16\ \text{GB}}{3350\ \text{GB/s}}\approx0.0048\ \text{s}\approx4.8\ \text{ms} &&\text{divide size by speed}
+      \end{aligned}
+      $$
+
+      The maths grows with $B$, but the read is the same for any batch. For our assistant, the read is still most of each run even with 64 sequences.
 
       ### Throughput and each user's wait
 
@@ -220,15 +244,40 @@ knowledge_points:
 
       Teams pick the batch with the most throughput that still meets their targets for each user, and the smaller one if two tie.
     worked: |
-      Let's choose a batch size for the made-up server in the table. The team wants every user to see at least 40 tokens/s, which means an ITL of 25 ms or less. Among the batch sizes that manage that, it wants the one with the most throughput.
+      Let's choose a batch size for the made-up server in the table. The team wants every user to see at least 40 tokens/s. Among the batch sizes that manage that, it wants the one with the most throughput.
 
-      1. **Check each user's tokens per second.** A user gets one token per run, so their speed is one divided by the time per run in seconds. The slowest runs, at $B=64$, give $1/0.04=25$ tokens/s. That's below 40, so we drop $B=64$. The others give 100, 80 and 50 tokens/s, so they stay.
+      1. **Find the largest allowed gap.** Invert the required rate to get the time available per token.
+         $$\begin{aligned}
+         \text{maximum ITL}&=1/40=0.025\ \text{s} &&\text{invert the required rate}\\
+         &=25\ \text{ms} &&\text{convert to milliseconds}
+         \end{aligned}$$
 
-      2. **Find the throughput of the ones left.** Each run makes $B$ tokens, so throughput is $B$ divided by the time per run. The biggest batch left gives $32/0.02=1600$ tokens/s, against $8/0.0125=640$ at $B=8$ and 100 at $B=1$.
+      2. **Check each user's tokens per second.** A user gets one token per run, so invert each run time in seconds.
+         $$\begin{aligned}
+         B=1:&\quad1/0.01=100\ \text{tokens/s} &&\text{keep this batch}\\
+         B=8:&\quad1/0.0125=80\ \text{tokens/s} &&\text{keep this batch}\\
+         B=32:&\quad1/0.02=50\ \text{tokens/s} &&\text{keep this batch}\\
+         B=64:&\quad1/0.04=25\ \text{tokens/s} &&\text{drop this batch, below forty}
+         \end{aligned}$$
 
-      3. **Pick the highest throughput.** $B=32$ gives 1,600 tokens/s, sixteen times the throughput of $B=1$.
+      3. **Find the throughput of the ones left.** Each run makes $B$ tokens, so divide $B$ by the run time.
+         $$\begin{aligned}
+         B=1:&\quad1/0.01=100\ \text{tokens/s} &&\text{count all output tokens}\\
+         B=8:&\quad8/0.0125=640\ \text{tokens/s} &&\text{count all output tokens}\\
+         B=32:&\quad32/0.02=1600\ \text{tokens/s} &&\text{highest eligible throughput}
+         \end{aligned}$$
 
-      Each user pays for this in waiting time. To keep things simple, suppose the TTFT is 0.3 s at both sizes. A 101-token reply then takes $0.3+100\times0.02=2.3$ s at $B=32$, against $0.3+100\times0.01=1.3$ s at $B=1$.
+      4. **Compare with serving one user.** Choose $B=32$ and divide its throughput by that of $B=1$.
+         $$1600/100=16\qquad\text{times the throughput}.$$
+
+      Each user pays for this in waiting time. Suppose the TTFT is 0.3 s at both sizes. Compare the total waits for a 101-token reply:
+      $$
+      \begin{aligned}
+      \text{gaps}&=101-1=100 &&\text{count gaps after the first token}\\
+      B=32:&\quad0.3+100\times0.02=2.3\ \text{s} &&\text{add the later gaps}\\
+      B=1:&\quad0.3+100\times0.01=1.3\ \text{s} &&\text{use the shorter gaps}
+      \end{aligned}
+      $$
     problems:
       - infm-batch-basics
       - infm-batch-self-explain

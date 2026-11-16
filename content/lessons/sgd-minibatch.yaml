@@ -14,12 +14,25 @@ where_this_fits: |
 knowledge_points:
   - id: sgm-average-slopes
     title: "Average a few examples' slopes"
+    tldr: |
+      - A small group of examples can supply the slopes for one update.
+      - Calculate their slopes at the same parameter values, then average them.
+      - Move against that average to update without checking the whole dataset.
     explain: |
       ### Choosing the examples for one update
 
       Imagine a robot rolling between nearby shelves. Each trip record tells us how long it actually took. Our deliberately simple model predicts one adjustable time $w$ for every trip. Four trips took $1,3,5,7$ seconds; these known answers are the **targets**. Start at $w=3$ seconds.
 
-      As in gradient descent, squared error $(w-y)^2$ has slope $2(w-y)$ for target $y$. With one parameter, this slope is the **gradient**. Substituting $w=3$ and each target gives slopes $4,0,-4,-8$. Target $3$ matches our prediction, giving slope zero.
+      Squared error $(w-y)^2$ has slope $2(w-y)$ for target $y$. With one parameter, this slope is the **gradient**. At $w=3$:
+
+      $$
+      \begin{aligned}
+      g_1&=2(3-1)=4 &&\text{target one}\\
+      g_2&=2(3-3)=0 &&\text{target three matches}\\
+      g_3&=2(3-5)=-4 &&\text{target five}\\
+      g_4&=2(3-7)=-8 &&\text{target seven}
+      \end{aligned}
+      $$
 
       For this demonstration, choose targets $1,3$ and learning rate $\eta=0.1$. Calculate both slopes using the same prediction $w=3$, then average them before changing it. The picture shows the result; we'll work through the update below.
 
@@ -46,7 +59,16 @@ knowledge_points:
 
       $$w_{\text{new}}=w-\eta g_{\text{batch}}.$$
 
-      For a different model with two parameters, suppose two examples give gradients $(4,-2)$ and $(0,6)$. Average the first entries, $4$ and $0$, then the second entries, $-2$ and $6$. This gives $(2,2)$, one average slope per parameter.
+      For two parameters, average gradients $(4,-2)$ and $(0,6)$ entry by entry:
+
+      $$
+      \begin{aligned}
+      (4+0)/2&=2 &&\text{first parameter's average}\\
+      (-2+6)/2&=2 &&\text{second parameter's average}
+      \end{aligned}
+      $$
+
+      The average is $(2,2)$, one slope per parameter.
 
       ### Three sizes of batch
 
@@ -79,6 +101,10 @@ knowledge_points:
       - sgm-two-parameters
   - id: sgm-count-passes
     title: "Repeat updates across the whole dataset"
+    tldr: |
+      - Each batch updates the parameters before the next batch is used.
+      - One pass through every example is called an epoch, and it usually holds several updates.
+      - Shuffle before the next epoch, and average a shorter final batch using its actual size.
     explain: |
       ### Moving through all four examples
 
@@ -103,13 +129,23 @@ knowledge_points:
 
       ### Count the parameter changes
 
-      An **update** is one change to the parameters after a batch, not a complete pass through the data. Count updates to plan how many parameter changes training will run. Three epochs with our two batches mean six updates, not three. Batch size one would instead give four updates per epoch.
+      An **update** is one parameter change after a batch. Three epochs with two batches each give $3\times2=6$ updates. Batch size one gives four updates per epoch.
 
       For a dataset of $N$ examples divided into full batches of size $m$, the count is:
 
       $$\text{updates per epoch}=N/m.$$
 
-      Here $N$ is the total number of examples, and $m$ is our chosen batch size. If they don't divide evenly, keep a shorter final batch and round the update count up. For ten examples and size four, $10/4=2.5$ rounds up to three updates, with batch sizes four, four and two. The last batch has two examples, so divide its slope sum by two.
+      Here $N$ counts examples and $m$ is the batch size. Keep a shorter final batch when they don't divide evenly. For ten examples and size four:
+
+      $$
+      \begin{aligned}
+      10/4&=2.5 &&\text{divide examples by batch size}\\
+      \text{updates}&=3 &&\text{round up for the final batch}\\
+      10-4-4&=2 &&\text{examples left after two full batches}
+      \end{aligned}
+      $$
+
+      The batch sizes are four, four and two. Divide the last batch's slope sum by two.
 
       Be careful not to reuse an earlier batch's slopes. Each new batch needs slopes calculated at the current prediction.
 
@@ -140,6 +176,11 @@ knowledge_points:
       - sgm-shuffle-application
   - id: sgm-choose-size
     title: "Choose how many examples to use"
+    tldr: |
+      - A small batch's average slope can point a different way from the whole dataset's slope.
+      - Larger random batches usually give steadier directions, but they need more memory.
+      - Even a correct update from a small batch can raise the loss on the whole dataset.
+      - So compare batch sizes by how fast the whole dataset's loss falls over time.
     explain: |
       ### When two batches disagree
 
@@ -163,7 +204,7 @@ knowledge_points:
       </g></svg>
       ```
 
-      A batch gradient **estimates** the full-data gradient using fewer examples. **Gradient noise** is the batch gradient minus the full-data gradient, both at the same parameter setting. It comes from the examples we choose, not arithmetic mistakes.
+      A batch gradient **estimates** the full-data gradient using fewer examples. **Gradient noise** is their difference at the same parameter setting. It comes from choosing examples.
 
       ### Less work, less reliable directions
 
@@ -175,7 +216,7 @@ knowledge_points:
 
       Here the one-example slopes range from $-6$ to $6$, while pair averages range from $-4$ to $4$. Averaging can cancel opposing slopes. Larger random batches usually give steadier estimates, though our exact pair shows that small batches can match too. Larger batches usually need more computer memory for examples and calculations.
 
-      Smaller batches do less work per update. But computers may calculate many slopes at once, so larger batches need not take proportionally longer. Neither size always trains faster. Compare loss reduction over the same elapsed time, not update count. If two choices both reduce loss by $1$, taking $2$ seconds beats taking $5$ seconds.
+      Smaller batches do less work per update. Computers may calculate many slopes at once, so larger batches need not take proportionally longer. Neither size always trains faster. Compare loss reduction over the same elapsed time. If both reduce loss by $1$, taking $2$ seconds beats taking $5$ seconds.
 
       ### Limitations
 
@@ -189,10 +230,19 @@ knowledge_points:
       2. **Use only the chosen batch's slopes.** Targets $1,3$ give slopes $6,2$, so their average is $4$.
          $$w_{\text{new}}=4-0.1\times\frac{6+2}{2}=3.6.$$
 
-      3. **Check all four examples again.** We evaluate the new prediction on the whole dataset, not just the chosen pair.
+      3. **Check all four examples again.** Evaluate the new prediction on the whole dataset.
          $$L_{\text{after}}=\frac{(3.6-1)^2+(3.6-3)^2+(3.6-5)^2+(3.6-7)^2}{4}=5.16.$$
 
-      The full-data loss rose from $5$ to $5.16$. Yet the chosen pair's average loss fell from $(9+1)/2=5$ to $(6.76+0.36)/2=3.56$. The update helped that pair while moving away from the best prediction for all four examples.
+      Compare the chosen pair separately:
+
+      $$
+      \begin{aligned}
+      L_{\text{pair,before}}&=(9+1)/2=5 &&\text{average its original squared errors}\\
+      L_{\text{pair,after}}&=(6.76+0.36)/2=3.56 &&\text{average its updated squared errors}
+      \end{aligned}
+      $$
+
+      The pair's loss fell while full-data loss rose from $5$ to $5.16$. The update moved away from the best prediction for all four examples.
     problems:
       - sgm-noise-basics
       - sgm-noise-why
@@ -205,6 +255,6 @@ summary: |
   - A batch supplies one update: calculate its examples' gradients at the same parameter setting, average them, then subtract the learning rate times that average, $w_{\text{new}}=w-\eta g_{\text{batch}}$.
   - Full-batch gradient descent uses every example, one-example SGD uses one, and minibatch gradient descent uses a smaller group than the whole dataset.
   - An epoch is one complete pass through the data, usually containing several updates; shuffle before the next pass, and average any shorter final batch using its actual size.
-  - Smaller batches need fewer examples per update but usually give noisier directions, so even a correct update can raise the full-data loss; compare batch sizes by progress over time, not just by update count.
+  - Smaller batches need fewer examples per update but usually give noisier directions, so even a correct update can raise the full-data loss; compare batch sizes by progress over time.
 
   **Next:** The Momentum and Adam lesson shows how using information from earlier batch updates can make training less erratic.

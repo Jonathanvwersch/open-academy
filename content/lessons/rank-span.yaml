@@ -14,12 +14,24 @@ where_this_fits: |
 knowledge_points:
   - id: rsp-span
     title: "Build vectors from other vectors"
+    tldr: |
+      - Scaling vectors and adding them lets us build new vectors.
+      - All the vectors we can reach this way form their span.
+      - A target is in the span exactly when some choice of amounts reaches it.
     explain: |
-      ### Scaling and adding two arrows
+      ### Scaling and adding two vectors
 
       In the vectors lesson, we scaled a vector by multiplying every component by a number, and we added two vectors by adding matching components. Putting those two moves together lets us build new vectors out of old ones.
 
-      Take $u=(2,1)$, the blue arrow, and $v=(1,2)$, the green arrow. One copy of $u$ followed by two copies of $v$ lands at the tip of the orange arrow, $(4,5)$. By choosing other amounts of each, including negative and fractional ones, we can land on any point of the plane, because $u$ and $v$ point along different lines. The grey dashed line shows every multiple of $u$ on its own, so one arrow alone only reaches the points on its own line.
+      Take $u=(2,1)$, the blue arrow, and $v=(1,2)$, the green arrow. Combine one copy of $u$ with two copies of $v$:
+      $$
+      \begin{aligned}
+      2v&=(2,4) &&\text{double each component}\\
+      u+2v&=(2,1)+(2,4) &&\text{add the first vector}\\
+      &=(4,5) &&\text{add matching components}
+      \end{aligned}
+      $$
+      The orange arrow reaches this point. By choosing other amounts of each, including negative and fractional ones, we can land on any point of the plane, because $u$ and $v$ point along different lines. The grey dashed line shows every multiple of $u$ on its own, so one vector alone only reaches the points on its own line.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 420" aria-label="A grid with the origin at the bottom left. The blue arrow u = (2, 1) goes from the origin to (2, 1). Two green arrows, each v = (1, 2), continue from (2, 1) to (3, 3) and then to (4, 5). The orange arrow goes straight from the origin to (4, 5), the combination 1u + 2v. A grey dashed line through the origin and (2, 1) marks every multiple of u">
@@ -81,8 +93,14 @@ knowledge_points:
       2. **Match the first two components.** The first component is just $c_1$ and the second is just $c_2$, so they fix both amounts.
          $$c_1=2,\qquad c_2=3$$
 
-      3. **Check the third component.** It must equal $c_1+c_2=2+3=5$, and it does, so $b$ is in the span.
-         $$b=2p+3q$$
+      3. **Check the third component.** Use the two amounts to rebuild the vector and compare it with $b$.
+         $$
+         \begin{aligned}
+         2p+3q&=(2,3,2+3) &&\text{put the amounts into the combination}\\
+         &=(2,3,5) &&\text{add the third components}\\
+         &=b &&\text{all three components match}
+         \end{aligned}
+         $$
 
       4. **Try $(2,3,4)$.** The first two components still force $c_1=2$ and $c_2=3$, but now the third doesn't match.
          $$c_1+c_2=5\neq4$$
@@ -98,6 +116,10 @@ knowledge_points:
       - rspp-led-mix
   - id: rsp-independence-rank
     title: "Test independence and find rank"
+    tldr: |
+      - Some vectors can be built from the others, so they add no new direction.
+      - Independent vectors each add a direction the others cannot supply.
+      - A matrix's rank is the largest number of independent columns we can choose.
     explain: |
       ### Vectors that add nothing new
 
@@ -107,7 +129,9 @@ knowledge_points:
 
       $$A=\begin{bmatrix}1&1&2\\1&2&3\\2&1&3\end{bmatrix}.$$
 
-      No column is a multiple of another, yet the third, $(2,3,3)$, is the sum of the first two, $(1,1,2)$ and $(1,2,1)$. So be careful. Checking the vectors in pairs isn't enough.
+      No column is a multiple of another, yet adding the first two gives the third:
+      $$(1,1,2)+(1,2,1)=(2,3,3).$$
+      So be careful. Checking the vectors in pairs isn't enough.
 
       ### Testing by elimination
 
@@ -125,8 +149,13 @@ knowledge_points:
     worked: |
       Let's find the rank of $A=\begin{bmatrix}1&1&2\\1&2&3\\2&1&3\end{bmatrix}$ by elimination, step by step.
 
-      1. **Make column 1 zero below row 1.** Subtract row 1 from row 2, and subtract twice row 1 from row 3.
-         $$\begin{bmatrix}1&1&2\\0&1&1\\0&-1&-1\end{bmatrix}$$
+      1. **Make column 1 zero below row 1.** Change one row at a time, keeping row 1 fixed.
+         $$
+         \begin{aligned}
+         A&\longrightarrow\begin{bmatrix}1&1&2\\0&1&1\\2&1&3\end{bmatrix} &&\text{row 2 minus row 1}\\
+         &\longrightarrow\begin{bmatrix}1&1&2\\0&1&1\\0&-1&-1\end{bmatrix} &&\text{row 3 minus twice row 1}
+         \end{aligned}
+         $$
 
       2. **Make column 2 zero below row 2.** Adding row 2 to row 3 removes the $-1$.
          $$\begin{bmatrix}1&1&2\\0&1&1\\0&0&0\end{bmatrix}$$
@@ -160,6 +189,10 @@ knowledge_points:
       - rspp-duplicate-feature
   - id: rsp-solutions
     title: "Tell how many solutions a system has"
+    tldr: |
+      - A matrix times a vector combines the matrix's columns.
+      - An equation has a solution only if those columns can build the target.
+      - If they can, independent columns give one solution and dependent columns give infinitely many.
     explain: |
       ### A matrix times a vector combines its columns
 
@@ -203,7 +236,16 @@ knowledge_points:
       </svg>
       ```
 
-      - The orange $b=(3,6)$ is on the line, and many amounts reach it, such as $x=(3,0)$ or $x=(1,1)$. Column 2 is twice column 1, so we can trade one copy of column 2 for two of column 1.
+      - The orange $b=(3,6)$ is on the line. Two choices reach it:
+        $$
+        \begin{aligned}
+        B\begin{bmatrix}3\\0\end{bmatrix}&=3\begin{bmatrix}1\\2\end{bmatrix} &&\text{use three copies of column 1}\\
+        &=\begin{bmatrix}3\\6\end{bmatrix} &&\text{scale the column}\\
+        B\begin{bmatrix}1\\1\end{bmatrix}&=\begin{bmatrix}1\\2\end{bmatrix}+\begin{bmatrix}2\\4\end{bmatrix} &&\text{use one copy of each column}\\
+        &=\begin{bmatrix}3\\6\end{bmatrix} &&\text{add the columns}
+        \end{aligned}
+        $$
+        Column 2 is twice column 1, so we can trade one copy of column 2 for two of column 1.
       - The red $b=(3,1)$ is off the line, so nothing reaches it.
       - Now take $C=\begin{bmatrix}2&1\\1&2\end{bmatrix}$, whose columns are $u$ and $v$ from step 1. They span the plane, so every $b$ is reached. They're independent, so nothing can be traded and exactly one $x$ reaches it.
 
@@ -215,21 +257,59 @@ knowledge_points:
 
       ### Which square matrices have inverses
 
-      A square $n\times n$ matrix with rank $n$ is called **full rank**. Its columns reach every vector with $n$ entries, so every $b$ has exactly one solution. So we can always undo $A$, and it has an inverse. With a smaller rank, some $b$ can't be reached and there's no inverse. For a $2\times2$ matrix, rank below 2 means the columns lie on one line, which is exactly when the determinant is zero. For $B$, it's $1\times4-2\times2=0$.
+      A square $n\times n$ matrix with rank $n$ is called **full rank**. Its columns reach every vector with $n$ entries, so every $b$ has exactly one solution. So we can always undo $A$, and it has an inverse. With a smaller rank, some $b$ can't be reached and there's no inverse. For a $2\times2$ matrix, rank below 2 means the columns lie on one line, which is exactly when the determinant is zero. For $B$:
+      $$
+      \begin{aligned}
+      \det(B)&=1\times4-2\times2 &&\text{use the diagonal rule}\\
+      &=4-4 &&\text{multiply the entries}\\
+      &=0 &&\text{subtract the products}
+      \end{aligned}
+      $$
     worked: |
       Let's solve $Ax=b$ for the matrix $A=\begin{bmatrix}1&1&2\\1&2&3\\2&1&3\end{bmatrix}$, which has rank 2, first with $b=(3,4,5)$ and then with $b=(3,4,6)$. We'll call the entries of $x$ by the names $x_1$, $x_2$ and $x_3$.
 
-      1. **Apply the same row operations to $b$.** Each row is an equation, so every operation on a row of $A$ must also be done to the matching entry of $b$. We subtract row 1 from row 2 and twice row 1 from row 3, then add the new row 2 to row 3. That turns $b=(3,4,5)$ into $(3,1,-1)$ and then $(3,1,0)$. Written as equations, the rows now say
-         $$\begin{aligned}x_1+x_2+2x_3&=3\\x_2+x_3&=1\\0&=0\end{aligned}$$
+      1. **Apply the same row operations to $b$.** Each row is an equation, so every operation on a row of $A$ must also be done to the matching entry of $b$.
+         $$
+         \begin{aligned}
+         \begin{bmatrix}3\\4\\5\end{bmatrix}&\longrightarrow\begin{bmatrix}3\\1\\5\end{bmatrix} &&\text{row 2 minus row 1}\\
+         &\longrightarrow\begin{bmatrix}3\\1\\-1\end{bmatrix} &&\text{row 3 minus twice row 1}\\
+         &\longrightarrow\begin{bmatrix}3\\1\\0\end{bmatrix} &&\text{row 3 plus the new row 2}
+         \end{aligned}
+         $$
 
-      2. **Read the last row.** It says $0=0$, so there's no contradiction and $b$ is in the column space. The rank, 2, is less than the 3 unknowns, so there are infinitely many solutions.
+      2. **Write the resulting equations.** The matrix from the rank step and the new right-hand side give:
+         $$\begin{aligned}x_1+x_2+2x_3&=3 &&\text{first row}\\x_2+x_3&=1 &&\text{second row}\\0&=0 &&\text{third row}\end{aligned}$$
+
+      3. **Read the last row.** It says $0=0$, so there's no contradiction and $b$ is in the column space. The rank, 2, is less than the 3 unknowns, so there are infinitely many solutions.
          $$\operatorname{rank}(A)=2<3$$
 
-      3. **Find two of them.** Column 3 has no pivot, so we can choose $x_3$ freely. Then $x_2=1-x_3$ and $x_1=3-x_2-2x_3$. Taking $x_3=0$ and $x_3=1$ gives two solutions.
-         $$x=(2,1,0)\quad\text{or}\quad x=(1,0,1)$$
+      4. **Find the other entries from $x_3$.** Column 3 has no pivot, so we can choose $x_3$ freely, then solve the other rows.
+         $$
+         \begin{aligned}
+         x_2&=1-x_3 &&\text{rearrange the second row}\\
+         x_1&=3-x_2-2x_3 &&\text{rearrange the first row}\\
+         &=3-(1-x_3)-2x_3 &&\text{put the expression for }x_2\text{ back}\\
+         &=2-x_3 &&\text{collect terms}
+         \end{aligned}
+         $$
 
-      4. **Change $b$ to $(3,4,6)$.** The same row operations turn it into $(3,1,0)$ and then $(3,1,1)$, so the last row contradicts itself.
-         $$0=1$$
+      5. **Choose two values of $x_3$.** Putting each choice into those expressions gives two solutions.
+         $$
+         \begin{aligned}
+         x&=(2,1,0) &&\text{choose }x_3=0\\
+         x&=(1,0,1) &&\text{choose }x_3=1
+         \end{aligned}
+         $$
+
+      6. **Change $b$ to $(3,4,6)$.** Apply the same operations to the new right-hand side.
+         $$
+         \begin{aligned}
+         \begin{bmatrix}3\\4\\6\end{bmatrix}&\longrightarrow\begin{bmatrix}3\\1\\6\end{bmatrix} &&\text{row 2 minus row 1}\\
+         &\longrightarrow\begin{bmatrix}3\\1\\0\end{bmatrix} &&\text{row 3 minus twice row 1}\\
+         &\longrightarrow\begin{bmatrix}3\\1\\1\end{bmatrix} &&\text{row 3 plus the new row 2}\\
+         0&=1 &&\text{the last equation is false}
+         \end{aligned}
+         $$
 
       So with $b=(3,4,5)$ there are infinitely many solutions, and with $b=(3,4,6)$ there are none, because $(3,4,6)$ is not in the column space.
     problems:
@@ -243,6 +323,10 @@ knowledge_points:
       - rspp-robot-arm
   - id: rsp-low-rank
     title: "Store a big matrix as two small ones"
+    tldr: |
+      - Multiplying one column by one row makes a matrix whose columns lie along one line.
+      - More generally, a product can only reach vectors built from the first matrix's columns.
+      - When few columns are needed, keeping the two smaller matrices can save many numbers.
     explain: |
       ### A column times a row
 
@@ -250,11 +334,23 @@ knowledge_points:
 
       $$uv^\top=\begin{bmatrix}2&1&4\\4&2&8\\6&3&12\end{bmatrix}.$$
 
-      Every column is a multiple of $u$, with the entries of $v$ as the amounts: column 1 is $2u$, column 2 is $1u$ and column 3 is $4u$. So when $u$ and $v$ are both nonzero, $uv^\top$ has rank 1. Its 9 entries come from just 6 numbers.
+      Every column is a multiple of $u$, with the entries of $v$ as the amounts:
+      $$
+      \begin{aligned}
+      \text{column 1}&=2u &&\text{use the first entry of }v\\
+      \text{column 2}&=1u &&\text{use the second entry of }v\\
+      \text{column 3}&=4u &&\text{use the third entry of }v
+      \end{aligned}
+      $$
+      So when $u$ and $v$ are both nonzero, $uv^\top$ has rank 1. Its 9 entries come from just 6 numbers.
 
       ### A tall matrix times a wide one
 
-      The same idea works when the left factor has more than one column. Take a tall, narrow $m\times k$ matrix $F$ and a short, wide $k\times n$ matrix $G$, where $k$ is much smaller than $m$ and $n$. Each column of $FG$ is $F$ times one column of $G$, because each entry of that column is a row of $F$ dotted with that column of $G$. In step 3 we saw that a matrix times a vector is a linear combination of the matrix's columns, and $F$ has only $k$ of them. So every column of $FG$ lies in the span of $k$ vectors, and such a span can't hold more than $k$ independent vectors. That means
+      Take a tall, narrow $m\times k$ matrix $F$ and a short, wide $k\times n$ matrix $G$, where $k$ is much smaller than $m$ and $n$. Follow one column of the product:
+
+      1. Multiplying $F$ by one column of $G$ makes the matching column of $FG$.
+      2. As in step 3, that multiplication combines the $k$ columns of $F$, so the result lies in their span.
+      3. Every column of $FG$ lies in that span, which holds at most $k$ independent vectors. Therefore:
 
       $$\operatorname{rank}(FG)\le k.$$
 
@@ -262,7 +358,17 @@ knowledge_points:
 
       ### Saving numbers
 
-      Storing the $m\times n$ product directly takes $mn$ numbers. Storing the two factors takes $mk+kn$ numbers. When $m=n=1000$ and $k=10$, that's $1{,}000{,}000$ numbers against $20{,}000$, fifty times fewer.
+      Storing the $m\times n$ product directly takes $mn$ numbers. The factors take $mk+kn$. For $m=n=1000$ and $k=10$:
+      $$
+      \begin{aligned}
+      mn&=1000\times1000 &&\text{count the product's entries}\\
+      &=1{,}000{,}000 &&\text{multiply the dimensions}\\
+      mk+kn&=1000\times10+10\times1000 &&\text{count the two factors' entries}\\
+      &=20{,}000 &&\text{add their sizes}\\
+      1{,}000{,}000/20{,}000&=50 &&\text{compare storage}
+      \end{aligned}
+      $$
+      The factors use fifty times fewer numbers.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 310" aria-label="A tall blue 1000 by 10 matrix, holding 10,000 numbers, times a wide green 10 by 1000 matrix, also holding 10,000 numbers, equals a grey 1000 by 1000 matrix holding 1,000,000 numbers, whose rank is at most 10">
@@ -291,11 +397,26 @@ knowledge_points:
       1. **Multiply.** Each entry of $FG$ is a row of $F$ dotted with a column of $G$.
          $$FG=\begin{bmatrix}1&2&0\\0&1&1\\1&3&1\end{bmatrix}$$
 
-      2. **Build each column of $FG$ from $F$'s columns.** Call $F$'s columns $f_1=(1,0,1)$ and $f_2=(0,1,1)$. The amounts are the entries of each column of $G$, so columns 1 and 3 of $FG$ are just $f_1$ and $f_2$, and the middle column is
-         $$(2,1,3)=2f_1+1f_2$$
+      2. **Build each column of $FG$ from $F$'s columns.** Call $F$'s columns $f_1=(1,0,1)$ and $f_2=(0,1,1)$. Use each column of $G$ as the amounts:
+         $$
+         \begin{aligned}
+         \text{column 1}&=f_1 &&\text{the amounts are }1,0\\
+         \text{column 2}&=2f_1+f_2 &&\text{the amounts are }2,1\\
+         &=(2,0,2)+(0,1,1) &&\text{scale the two vectors}\\
+         &=(2,1,3) &&\text{add matching components}\\
+         \text{column 3}&=f_2 &&\text{the amounts are }0,1
+         \end{aligned}
+         $$
 
-      3. **Eliminate to find the rank.** Subtract row 1 from row 3, then row 2 from the new row 3. That leaves two pivots, so $\operatorname{rank}(FG)=2$, right at the ceiling $k=2$.
-         $$\begin{bmatrix}1&2&0\\0&1&1\\0&0&0\end{bmatrix}$$
+      3. **Eliminate to find the rank.** Subtract row 1 from row 3, then subtract row 2 from the new row 3.
+         $$
+         \begin{aligned}
+         FG&\longrightarrow\begin{bmatrix}1&2&0\\0&1&1\\0&1&1\end{bmatrix} &&\text{row 3 minus row 1}\\
+         &\longrightarrow\begin{bmatrix}1&2&0\\0&1&1\\0&0&0\end{bmatrix} &&\text{row 3 minus row 2}\\
+         \operatorname{rank}(FG)&=2 &&\text{count the two pivots}
+         \end{aligned}
+         $$
+         This reaches the ceiling $k=2$.
 
       4. **Count the numbers stored.** The product has $3\times3$ entries, while the two factors have $3\times2$ and $2\times3$.
          $$9\ \text{against}\ 6+6=12$$

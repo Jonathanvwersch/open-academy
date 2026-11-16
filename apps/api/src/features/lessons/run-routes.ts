@@ -326,7 +326,13 @@ export function registerLessonRunRoutes(
       })),
       currentPointId: derived.currentPointId,
       currentPoint: point
-        ? { id: point.id, title: point.title, explain: point.explain, worked: point.worked }
+        ? {
+            id: point.id,
+            title: point.title,
+            tldr: point.tldr,
+            explain: point.explain,
+            worked: point.worked,
+          }
         : undefined,
       pending: pendingRow,
       pendingProblem:

@@ -7,7 +7,8 @@ export type LessonBlockKind =
   | 'worked'
   | 'check'
   | 'faded'
-  | 'summary';
+  | 'summary'
+  | 'tldr';
 
 import type { AnswerOptions, ClientExercise, ExercisePayload } from '@academy/contracts/exercises';
 
@@ -19,6 +20,7 @@ export interface LessonPayload {
   knowledge_points?: Array<{
     id: string;
     title: string;
+    tldr?: string;
     explain: string;
     worked: string;
     problems: string[];
@@ -52,7 +54,7 @@ export interface LessonRunPayload {
       xpEarned: number;
     }>;
     currentPointId: string | null;
-    currentPoint?: { id: string; title: string; explain: string; worked: string };
+    currentPoint?: { id: string; title: string; tldr?: string; explain: string; worked: string };
     pending?: {
       id: string;
       knowledgePointId: string;

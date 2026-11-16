@@ -18,6 +18,11 @@ where_this_fits: |
 knowledge_points:
   - id: eig-stretch-directions
     title: "Find directions a matrix only stretches"
+
+    tldr: |
+      - A matrix turns each vector into a new vector, which usually points a different way.
+      - Some directions don't turn, and the matrix only stretches them.
+      - Those directions are the eigenvectors, and how much each one stretches is its eigenvalue.
     explain: |
       ### What a matrix does to arrows
 
@@ -86,34 +91,111 @@ knowledge_points:
       - eigp-check-pair
   - id: eig-find-eigenvalues
     title: "Find how much each direction stretches"
+
+    tldr: |
+      - Guessing directions only works for easy matrices, so we solve for them instead.
+      - Asking for a vector that is only stretched gives one equation for the stretch amount.
+      - Solving it gives the eigenvalues, and putting each one back in gives its direction.
     explain: |
       ### From guessing to solving
 
       We found special directions by trying arrows. Now we'll solve for the stretch factors, then their directions.
 
-      Write $A=\begin{bmatrix}a&b\\c&d\end{bmatrix}$ and $v=(x,y)$. Each row of $Av=\lambda v$ gives an equation. Moving $\lambda x$ and $\lambda y$ to the left gives
-      $$(a-\lambda)x+by=0,\qquad cx+(d-\lambda)y=0.$$
+      Write $A=\begin{bmatrix}a&b\\c&d\end{bmatrix}$ and $v=(x,y)$. Move $\lambda x$ and $\lambda y$ to the left in $Av=\lambda v$:
+      $$
+      \begin{aligned}
+      (a-\lambda)x+by&=0 &&\text{first row}\\
+      cx+(d-\lambda)y&=0 &&\text{second row}
+      \end{aligned}
+      $$
 
       ### The equation for the eigenvalues
 
-      Multiply the first equation by $(d-\lambda)$ and the second by $b$, then subtract to remove $y$. Multiplying the first by $c$ and the second by $(a-\lambda)$ instead removes $x$. Write the common factor remaining after cancellation as $q$:
-      $$q=(a-\lambda)(d-\lambda)-bc,\qquad qx=0,\qquad qy=0.$$
-      Since $x$ and $y$ can't both be zero, $q$ must be zero. We'll use without proof that $q=0$ also guarantees a nonzero solution of both row equations. Expanding it gives the eigenvalue equation:
-      $$\lambda^2-(a+d)\lambda+(ad-bc)=0.$$
+      Multiply the first row by $(d-\lambda)$ and the second by $b$, then subtract to remove $y$:
+      $$
+      \begin{aligned}
+      (d-\lambda)((a-\lambda)x+by)-b(cx+(d-\lambda)y)&=0 &&\text{subtract}\\
+      ((a-\lambda)(d-\lambda)-bc)x&=0 &&\text{collect }x
+      \end{aligned}
+      $$
+      Multiplying the first row by $c$ and subtracting $(a-\lambda)$ times the second removes $x$:
+      $$
+      \begin{aligned}
+      c((a-\lambda)x+by)-(a-\lambda)(cx+(d-\lambda)y)&=0 &&\text{subtract}\\
+      (bc-(a-\lambda)(d-\lambda))y&=0 &&\text{collect }y
+      \end{aligned}
+      $$
+      Let $q=(a-\lambda)(d-\lambda)-bc$. The two results give $qx=0$ and $-qy=0$, so:
+      $$
+      \begin{aligned}
+      qx&=0 &&\text{from removing }y\\
+      -qy&=0 &&\text{from removing }x\\
+      qy&=0 &&\text{multiply by }-1
+      \end{aligned}
+      $$
+      Since $x$ and $y$ can't both be zero, $q$ must be zero. We'll use without proof that $q=0$ also guarantees a nonzero solution of both row equations. Expanding $q$ gives:
+      $$
+      \begin{aligned}
+      q&=(a-\lambda)(d-\lambda)-bc &&\text{definition}\\
+      &=ad-(a+d)\lambda+\lambda^2-bc &&\text{multiply out}\\
+      &=\lambda^2-(a+d)\lambda+(ad-bc) &&\text{group terms}
+      \end{aligned}
+      $$
 
-      Call its solutions $\lambda_1$ and $\lambda_2$. The quadratic can be written as $(\lambda-\lambda_1)(\lambda-\lambda_2)$, which is zero at either solution. Expanding that same expression gives
-      $$\lambda^2-(\lambda_1+\lambda_2)\lambda+\lambda_1\lambda_2=0.$$
-      The numbers multiplying each power of $\lambda$ must match between these equations, so the eigenvalues add to $a+d$ and multiply to $ad-bc$. Try two numbers with that sum and product. Otherwise, the quadratic formula gives them directly; $\pm$ means calculate once with $+$ and once with $-$:
+      Call its solutions $\lambda_1$ and $\lambda_2$. Factoring and expanding gives:
+      $$
+      \begin{aligned}
+      (\lambda-\lambda_1)(\lambda-\lambda_2)&=0 &&\text{the two roots}\\
+      \lambda^2-(\lambda_1+\lambda_2)\lambda+\lambda_1\lambda_2&=0 &&\text{multiply out}
+      \end{aligned}
+      $$
+      Matching coefficients shows their sum and product:
+      $$
+      \begin{aligned}
+      \lambda_1+\lambda_2&=a+d &&\text{sum}\\
+      \lambda_1\lambda_2&=ad-bc &&\text{product}
+      \end{aligned}
+      $$
+      Try two numbers with that sum and product. Otherwise, the quadratic formula gives them directly; $\pm$ means calculate once with $+$ and once with $-$:
       $$\lambda=\frac{(a+d)\pm\sqrt{(a+d)^2-4(ad-bc)}}{2}.$$
       A negative number under the square root means no real eigenvalues, which here we call no eigenvalues.
 
       ### Three matrices side by side
 
-      - For $\begin{bmatrix}2&1\\1&2\end{bmatrix}$, sum $4$ and product $3$ give $3$ and $1$.
-      - For $\begin{bmatrix}3&0\\0&-1\end{bmatrix}$, sum $2$ and product $-3$ give $3$ and $-1$.
-      - The matrix $\begin{bmatrix}0&-1\\1&0\end{bmatrix}$ sends $(1,0)$ to $(0,1)$ and $(0,1)$ to $(-1,0)$, a quarter turn. Its sum is $0$, product $1$, and $0^2-4\times1<0$, so it has no eigenvalues.
+      - For $\begin{bmatrix}2&1\\1&2\end{bmatrix}$:
+        $$
+        \begin{aligned}
+        a+d&=2+2=4 &&\text{sum}\\
+        ad-bc&=2\times2-1\times1=3 &&\text{product}\\
+        \{\lambda_1,\lambda_2\}&=\{3,1\} &&\text{sum }4\text{, product }3
+        \end{aligned}
+        $$
+      - For $\begin{bmatrix}3&0\\0&-1\end{bmatrix}$:
+        $$
+        \begin{aligned}
+        a+d&=3+(-1)=2 &&\text{sum}\\
+        ad-bc&=3\times(-1)-0=-3 &&\text{product}\\
+        \{\lambda_1,\lambda_2\}&=\{3,-1\} &&\text{sum }2\text{, product }-3
+        \end{aligned}
+        $$
+      - The matrix $\begin{bmatrix}0&-1\\1&0\end{bmatrix}$ sends $(1,0)$ to $(0,1)$ and $(0,1)$ to $(-1,0)$, a quarter turn. Its eigenvalues would have:
+        $$
+        \begin{aligned}
+        a+d&=0 &&\text{sum}\\
+        ad-bc&=1 &&\text{product}\\
+        (a+d)^2-4(ad-bc)&=0^2-4\times1=-4<0 &&\text{discriminant}
+        \end{aligned}
+        $$
+        A negative discriminant means it has no real eigenvalues.
 
-      Be careful: diagonal entries give eigenvalues only when $b$ or $c$ is zero, because then $q=(a-\lambda)(d-\lambda)$. Check both row equations for each direction. For the diagonal example at $\lambda=3$, the first becomes $0x+0y=0$, true for every input. The second gives $-4y=0$, so use it.
+      Be careful: diagonal entries give eigenvalues only when $b$ or $c$ is zero, because then $q=(a-\lambda)(d-\lambda)$. Check both row equations for each direction. For the diagonal example at $\lambda=3$, the rows become:
+      $$
+      \begin{aligned}
+      0x+0y&=0 &&\text{first row}\\
+      -4y&=0 &&\text{second row}
+      \end{aligned}
+      $$
+      The first is true for every input, so use the second.
     worked: |
       Let's find the eigenvalues and eigenvectors of $A=\begin{bmatrix}2&1\\1&2\end{bmatrix}$ from the equation, and check that we get the directions we found by trying arrows.
 
@@ -141,12 +223,19 @@ knowledge_points:
       - eigp-population-growth
   - id: eig-svd-three-moves
     title: "Split any matrix into turn, stretch, turn"
+
+    tldr: |
+      - Some matrices turn every direction, so they have no eigenvectors.
+      - But every matrix can be done in three moves: turn, stretch along the axes, turn again.
+      - That's the SVD, and its stretch amounts are called singular values.
     explain: |
       ### A matrix with no stretch-only direction
 
       Some matrices have no real eigenvectors. Take
       $$B=\begin{bmatrix}4&-3\\6&8\end{bmatrix}.$$
-      Its eigenvalue equation has a negative number under the square root, $12^2-4\times50=-56$, so no real arrow is only stretched by $B$. A different description, the **singular value decomposition** or SVD, works for every matrix, even nonsquare ones. It splits a matrix into a turn, a stretch along the axes and another turn. We'll work through the two-dimensional case.
+      Its eigenvalue equation has a negative number under the square root:
+      $$12^2-4\times50=-56.$$
+      So no real arrow is only stretched by $B$. A different description, the **singular value decomposition** or SVD, works for every matrix, even nonsquare ones. It splits a matrix into a turn, a stretch along the axes and another turn. We'll work through the two-dimensional case.
 
       ### Turn, stretch, turn
 
@@ -189,10 +278,26 @@ knowledge_points:
 
       In symbols, the SVD writes a matrix as three moves. A turn may include a mirror flip, a reflection across a line:
       $$A=USV^\top$$
-      Read right to left. $V$ has the perpendicular length-$1$ input directions as columns. $V^\top$ dots the input with them. Each direction dots with itself to give $1$ and with the other to give $0$, so $v_1$ becomes $(1,0)$ and $v_2$ becomes $(0,1)$. The diagonal entries of $S$ are the **singular values**, the stretches $s_1\ge s_2\ge0$. $U$ has the perpendicular length-$1$ output directions as columns, so it turns each axis onto its output direction. Thus $Av_i=s_iu_i$.
+      $V$ has the perpendicular length-$1$ input directions as columns, so $V^\top$ dots the input with them. The diagonal entries of $S$ are the **singular values**, the stretches $s_1\ge s_2\ge0$. $U$ has the perpendicular length-$1$ output directions as columns. Here $e_i$ is the $i$th unit vector along an axis. For each input direction $v_i$, the three moves are:
+      $$
+      \begin{aligned}
+      V^\top v_i&=e_i &&\text{turn onto axis }i\\
+      Se_i&=s_i e_i &&\text{stretch by }s_i\\
+      U(s_i e_i)&=s_i u_i &&\text{turn to }u_i
+      \end{aligned}
+      $$
+      Thus $Av_i=s_i u_i$.
 
-      For our $2\times2$ example, choose length-$1$ eigenvectors of $B^\top B$ as input directions. We'll use without proof that perpendicular choices always exist. Squared length is a self-dot product, and transposing a product reverses its order, so $(Bv_i)^\top=v_i^\top B^\top$. Thus their eigenvalues measure squared stretches:
-      $$\text{length}(Bv_i)^2=v_i^\top B^\top Bv_i=v_i^\top(s_i^2v_i)=s_i^2.$$
+      For our $2\times2$ example, choose length-$1$ eigenvectors of $B^\top B$ as input directions. We'll use without proof that perpendicular choices always exist. Let $s_i^2$ be the eigenvalue for $v_i$. The squared output length is a self-dot product:
+      $$
+      \begin{aligned}
+      \|Bv_i\|^2&=(Bv_i)^\top(Bv_i) &&\text{self-dot product}\\
+      &=v_i^\top B^\top Bv_i &&\text{transpose the product}\\
+      &=v_i^\top(s_i^2v_i) &&\text{eigenvector equation}\\
+      &=s_i^2 &&\text{since }\|v_i\|=1
+      \end{aligned}
+      $$
+      So the eigenvalues of $B^\top B$ are squared stretches. The singular values are their square roots.
       For a positive $s_i$, divide $Bv_i$ by $s_i$ to find $u_i$. A zero stretch gives zero output whichever direction we choose, so choose $u_i$ perpendicular to the other output direction. If both stretches are zero, use the coordinate axes for $U$.
 
       Be careful not to treat singular values as eigenvalues. $B$ has no real eigenvalues, yet its singular values are $10$ and $5$. Singular values are lengths, so they're never negative.
@@ -241,17 +346,54 @@ knowledge_points:
       - eigp-robot-arm
   - id: eig-low-rank
     title: "Approximate a matrix with fewer numbers"
+
+    tldr: |
+      - The SVD lets us write a matrix as a sum of pieces, one per stretch.
+      - Big stretches matter most, so we keep the biggest pieces and drop the rest.
+      - The copy needs far fewer numbers, and its error is at most the biggest stretch we dropped.
     explain: |
       ### A matrix as a sum of pieces
 
       If one stretch is much bigger than the other, most of what the matrix does happens along that direction. Can we keep just the big stretch and drop the rest?
 
-      We split the matrix into one piece per singular value. A column $u_1$ times a row $v_1^\top$ is a $2\times2$ matrix. Read $s_1u_1v_1^\top$ right to left. Dot the input with $v_1$, then multiply the arrow $s_1u_1$ by that number. This sends $v_1$ to $s_1u_1$ and the perpendicular $v_2$ to zero. The second piece handles $v_2$. Adding the pieces handles every input:
+      We split the matrix into one piece per singular value. A column $u_1$ times a row $v_1^\top$ is a $2\times2$ matrix. For an input $x$, the first piece acts in two moves:
+      $$
+      \begin{aligned}
+      s_1u_1v_1^\top x&=s_1u_1(v_1^\top x) &&\text{dot the input with }v_1\\
+      &=(v_1^\top x)(s_1u_1) &&\text{scale }s_1u_1\text{ by that number}
+      \end{aligned}
+      $$
+      It sends the two perpendicular unit directions to:
+      $$
+      \begin{aligned}
+      s_1u_1v_1^\top v_1&=s_1u_1 &&v_1^\top v_1=1\\
+      s_1u_1v_1^\top v_2&=0 &&v_1^\top v_2=0
+      \end{aligned}
+      $$
+      The second piece handles $v_2$, so together the pieces handle every input:
       $$A=s_1u_1v_1^\top+s_2u_2v_2^\top.$$
 
       ### Low-rank approximation
 
-      The **rank** is the number of nonzero singular values. Keeping the biggest $k$ nonzero pieces gives a **low-rank approximation** $A_k$. Its maximum output error over length-$1$ inputs is the first singular value dropped. Write an input as $c_1v_1+c_2v_2$, where $c_i$ is its dot product with $v_i$, its coordinate in that direction. Place these arrows tip to tail. They form a right triangle; the input is its hypotenuse. For a length-$1$ input, Pythagoras gives $c_1^2+c_2^2=1$, so $|c_2|\le1$. Dropping the second piece removes $c_2s_2u_2$, at most $s_2$ long. We'll use without proof that no rank-$k$ matrix has a smaller worst-case error.
+      The **rank** is the number of nonzero singular values. Keeping the biggest $k$ nonzero pieces gives a **low-rank approximation** $A_k$. Its maximum output error over length-$1$ inputs is the first singular value dropped. For the rank-1 copy $A_1=s_1u_1v_1^\top$, write a length-$1$ input as $x=c_1v_1+c_2v_2$. The coordinates and their lengths are:
+      $$
+      \begin{aligned}
+      c_1&=v_1^\top x &&\text{coordinate along }v_1\\
+      c_2&=v_2^\top x &&\text{coordinate along }v_2\\
+      1=\|x\|^2&=c_1^2+c_2^2 &&\text{Pythagoras}\\
+      |c_2|&\le1 &&\text{each side is at most the hypotenuse}
+      \end{aligned}
+      $$
+      Dropping the second piece leaves this error:
+      $$
+      \begin{aligned}
+      (A-A_1)x&=s_2u_2v_2^\top x &&\text{omitted second piece}\\
+      &=s_2c_2u_2 &&\text{use }c_2=v_2^\top x\\
+      \|(A-A_1)x\|&=s_2|c_2| &&\text{unit output direction }u_2\\
+      &\le s_2 &&\text{since }|c_2|\le1
+      \end{aligned}
+      $$
+      We'll use without proof that no rank-$k$ matrix has a smaller worst-case error.
 
       For $B$, the first piece is the rank-1 copy $B_1=10\,u_1v_1^\top$. The picture compares both matrices on the same length-1 inputs: $B$ makes the grey ellipse, while $B_1$ makes the green line. For $v_2$, their outputs are $(-5,0)$ and $(0,0)$, separated by the red gap of length $5=s_2$. Hold the directions and first stretch fixed, and change the second stretch:
 
@@ -281,7 +423,17 @@ knowledge_points:
 
       ### Why fewer numbers
 
-      For a matrix with $m$ rows and $n$ columns, store the $k$ column/row factors instead of multiplying them out. Absorb each singular value into its column: $k(m+n)$ numbers instead of $mn$. A $1000\times1000$ matrix's rank-8 copy needs $16{,}000$ numbers instead of a million. LoRA, introduced next, uses factors like these to learn changes to a language model's weight matrices.
+      Absorb each singular value into its column. A rank-$k$ copy stores $k$ columns with $m$
+      entries and $k$ rows with $n$ entries:
+      $$
+      \begin{aligned}
+      \text{entries}&=km+kn &&\text{count both factors}\\
+      &=k(m+n) &&\text{factor out }k
+      \end{aligned}
+      $$
+      A $1000\times1000$ matrix's rank-8 copy uses:
+      $$8(1000+1000)=16{,}000.$$
+      That's fewer than a million entries. LoRA, introduced next, uses factors like these to learn changes to a language model's weight matrices.
     worked: |
       Let's build the rank-1 copy of $B=\begin{bmatrix}4&-3\\6&8\end{bmatrix}$ from its first stretch $s_1=10$ and directions $u_1=(0,1)$ and $v_1=(0.6,0.8)$. We'll compare its outputs with $B$'s.
 

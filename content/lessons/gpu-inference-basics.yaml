@@ -18,6 +18,11 @@ where_this_fits: |
 knowledge_points:
   - id: gib-model-memory
     title: "Work out how much memory a model needs"
+
+    tldr: |
+      - Each weight is a number, and storing it takes a fixed number of bytes set by its format.
+      - Multiplying the number of weights by the bytes per weight gives the memory the weights need.
+      - The GPU also needs room beyond the weights, so a model that only just fits can serve few conversations.
     explain: |
       ### Bytes per number
 
@@ -68,7 +73,12 @@ knowledge_points:
       ```
 
       - All three sizes of the 8B model are under 80 GB, so it fits at each.
-      - A 70-billion-parameter model needs 140 GB at BF16, which doesn't fit on one H100. At INT8 it needs 70 GB, which fits with only 10 GB left.
+      - For the 70-billion-parameter model, compare its weights with the H100's capacity:
+        $$\begin{aligned}
+        \text{BF16 memory}&=70\times10^9\times2\text{ bytes}=140\text{ GB} &&\text{too large for one H100}\\
+        \text{INT8 memory}&=70\times10^9\times1\text{ byte}=70\text{ GB} &&\text{fits on one H100}\\
+        \text{space left}&=80-70=10\text{ GB} &&\text{subtract INT8 weights from capacity}
+        \end{aligned}$$
 
       ### Room for more than the weights
 
@@ -116,6 +126,11 @@ knowledge_points:
       - gibp-robot-memory
   - id: gib-memory-hierarchy
     title: "See where the GPU keeps its data"
+
+    tldr: |
+      - A GPU has a large, slower main memory and a little fast memory on the chip itself.
+      - The weights are far too big for the fast memory, so they live in main memory.
+      - Reading from main memory takes time, so a program runs fastest when it reads each number once and reuses it.
     explain: |
       ### The parts of a GPU
 
@@ -186,6 +201,11 @@ knowledge_points:
       - gibp-laptop-read
   - id: gib-decode-bound
     title: "Find the top speed of decoding"
+
+    tldr: |
+      - Making each new token means reading every weight from memory again.
+      - For one conversation, that reading takes far longer than the arithmetic.
+      - Several conversations can share each read, so total tokens per second grows until the arithmetic catches up.
     explain: |
       ### Decoding reads every weight
 
@@ -195,7 +215,17 @@ knowledge_points:
 
       ### Reading time and maths time
 
-      For Llama 3 8B at BF16, reading the 16 GB of weights takes about 4.78 ms. The maths is $2\times8\times10^9=1.6\times10^{10}$ FLOPs, which takes $0.016$ ms at 1,000 TFLOP/s. The GPU reads the next weights while doing maths on earlier ones, so a pass takes as long as the reading. With $1.6\times10^{10}$ bytes read, $I$ is 1 FLOP per byte, far below 300.
+      For Llama 3 8B at BF16, reading the 16 GB of weights takes about 4.78 ms. Compare the arithmetic time and intensity:
+
+      $$
+      \begin{aligned}
+      \text{FLOPs}&=2\times8\times10^9=1.6\times10^{10} &&\text{count two operations per parameter}\\
+      \text{maths time}&=\frac{1.6\times10^{10}}{1000\times10^{12}}\text{ s}=0.016\text{ ms} &&\text{divide by peak compute rate}\\
+      I&=\frac{1.6\times10^{10}}{1.6\times10^{10}}=1\text{ FLOP per byte} &&\text{divide work by weight bytes}
+      \end{aligned}
+      $$
+
+      The GPU reads the next weights while doing maths on earlier ones, so a pass takes as long as the reading. Its intensity is far below 300.
 
       One token every 4.78 ms is about 209 tokens/s. So the top decode speed for one conversation is
 
@@ -205,7 +235,17 @@ knowledge_points:
 
       ### Sharing one read across a batch
 
-      With a batch of $B$ conversations, we stack their token vectors into a $(B\times k)$ matrix and multiply it by each weight matrix. Each weight is read once and used $B$ times. The reading stays at 4.78 ms while the maths grows to $B\times0.016$ ms, so $I$ grows from 1 to $B$ FLOPs per byte. Until $B$ nears the ops:byte ratio of 300, the step takes about the same time and total tokens/s grows $B$ times. Past that, the maths is slower, the step time grows with $B$, and tokens/s levels off.
+      With a batch of $B$ conversations, we stack their token vectors into a $(B\times k)$ matrix and multiply it by each weight matrix. Each weight is read once and used $B$ times. The reading stays at 4.78 ms. Sharing it changes the work and intensity:
+
+      $$
+      \begin{aligned}
+      \text{batch FLOPs}&=B\times1.6\times10^{10} &&\text{repeat the maths for each conversation}\\
+      \text{maths time}&=B\times0.016\text{ ms} &&\text{scale the single-token time}\\
+      I&=\frac{B\times1.6\times10^{10}}{1.6\times10^{10}}=B\text{ FLOPs per byte} &&\text{share one weight read}
+      \end{aligned}
+      $$
+
+      Until $B$ nears the ops:byte ratio of 300, the step takes about the same time and total tokens/s grows $B$ times. Past that, the maths is slower, the step time grows with $B$, and tokens/s levels off.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" aria-label="Bars drawn to scale for one decode step of Llama 3 8B at BF16 on an H100. For batch sizes 1, 100 and 300, the blue bar for reading the weights is always 4.78 ms long. The orange bar for the maths is 0.016 ms at batch 1, almost invisible, 1.6 ms at batch 100 and 4.8 ms at batch 300, where it just passes the reading">

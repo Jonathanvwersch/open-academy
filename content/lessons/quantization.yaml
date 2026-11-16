@@ -14,6 +14,11 @@ where_this_fits: |
 knowledge_points:
   - id: qz-memory-speed
     title: "Count the memory and time that fewer bits save"
+
+    tldr: |
+      - Fewer bits per weight mean fewer bytes to store and read.
+      - Reading fewer bytes makes decoding faster when memory movement sets the pace.
+      - Smaller weights leave room for more requests as well as speeding up each reply.
     explain: |
       ### Our running example
 
@@ -21,7 +26,17 @@ knowledge_points:
 
       ### Memory at each precision
 
-      At 16 bits, which is 2 bytes per number ($b=2$), Llama 3 8B needs $8\times10^9\times2=16$ GB. The bars show the same model at four precisions, starting from 32-bit floating point (FP32, 4 bytes). Each halving of the bits halves the memory, so 8-bit integers (INT8, 1 byte) need 8 GB and 4-bit integers (INT4, half a byte) need 4 GB. Beside each bar is the time to read those weights once, which we use next.
+      At 16 bits, each number takes 2 bytes ($b=2$). INT8 and INT4 are 8-bit and 4-bit integer formats. Each halving of the bits halves the memory:
+
+      $$
+      \begin{aligned}
+      \text{16-bit memory}&=8\times10^9\times2\text{ bytes}=16\text{ GB} &&\text{count two bytes per weight}\\
+      \text{INT8 memory}&=16/2=8\text{ GB} &&\text{halve to one byte per weight}\\
+      \text{INT4 memory}&=8/2=4\text{ GB} &&\text{halve to half a byte per weight}
+      \end{aligned}
+      $$
+
+      The bars show the same model at four precisions, starting from 32-bit floating point (FP32, 4 bytes). Beside each bar is the time to read those weights once, which we use next.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" aria-label="Bars of Llama 3 8B weight memory at four precisions, drawn to scale against the H100's 80 GB: 32 GB at FP32, 16 GB at 16 bits, 8 GB at INT8 and 4 GB at INT4. Beside each bar is the shortest time to read all the weights once at 3.35 TB/s: about 9.6, 4.8, 2.4 and 1.2 milliseconds">
@@ -44,7 +59,16 @@ knowledge_points:
 
       $$\text{time per token}\approx\frac{\text{bytes of weights}}{\text{memory bandwidth}}.$$
 
-      At 16 bits that's $16\times10^9/(3.35\times10^{12})\approx4.8$ ms, so at most about 209 tokens per second. Halving the bytes halves this time, so INT8 weights allow about twice as many tokens per second. The smaller model also leaves more of the 80 GB free for the other numbers each request stores while it generates, so the GPU can serve more requests at once.
+      At 16 bits, estimate the read time and invert it to find the rate:
+
+      $$
+      \begin{aligned}
+      \text{read time}&=\frac{16\times10^9}{3.35\times10^{12}}\text{ s}\approx4.8\text{ ms} &&\text{divide weight bytes by bandwidth}\\
+      \text{tokens per second}&\le\frac{3.35\times10^{12}}{16\times10^9}\approx209 &&\text{invert the unrounded time}
+      \end{aligned}
+      $$
+
+      Halving the bytes halves this time, so INT8 weights allow about twice as many tokens per second. The smaller model also leaves more of the 80 GB free for the other numbers each request stores while it generates, so the GPU can serve more requests at once.
 
       Prefill, when the model reads the prompt, doesn't get this speed-up. It does many multiplications for each weight it reads, so its time is set by how fast the GPU does maths. Smaller weights alone don't make that faster. We'll see what does in the third step.
     worked: |
@@ -73,6 +97,11 @@ knowledge_points:
       - qzp-upper-bound
   - id: qz-int8-scale
     title: "Turn numbers into 8-bit integers"
+
+    tldr: |
+      - To store a weight as a small whole number, we pick a scale, the gap between neighbouring stored values.
+      - Dividing each weight by the scale and rounding gives its integer, and multiplying back recovers it to within half a gap.
+      - One very large weight widens every gap, so models often use a separate scale for each small group of weights.
     explain: |
       ### The idea
 
@@ -116,7 +145,15 @@ knowledge_points:
 
       ### How big is the error?
 
-      Rounding moves $x/s$ by at most $1/2$. Multiplying back by $s$, each dequantised value is within $s/2$ of the original.
+      Rounding limits the error in integer units. Multiplying back by $s$ scales that error:
+
+      $$
+      \begin{aligned}
+      |q-x/s|&\le1/2 &&\text{round to the nearest integer}\\
+      |\hat x-x|&=s|q-x/s| &&\text{multiply back by the scale}\\
+      &\le s/2 &&\text{apply the rounding bound}
+      \end{aligned}
+      $$
 
       This is also the weakness. One very large number, called an outlier, makes $\max|x|$ big, which makes $s$ big, so every other number in the group gets coarse steps. Small ones can round to 0. Real models have such outliers. A common fix is a separate scale for each row or small group. One 16-bit scale per group of 128 one-byte weights, a common size, adds $2/128\approx1.6\%$ to the memory.
     worked: |
@@ -154,7 +191,18 @@ knowledge_points:
       0.004
       ```
 
-      If the row also held an outlier of $12.7$, the scale would be $0.1$ and $0.333$ would come back as $0.3$, an error of $0.033$. One large number made the step ten times bigger, and with it the largest possible error for every other weight. The error on $0.333$ grew about ten times, from $0.003$ to $0.033$.
+      If the row also held an outlier of $12.7$, follow what happens to $0.333$:
+
+      $$
+      \begin{aligned}
+      s&=12.7/127=0.1 &&\text{set the scale from the outlier}\\
+      q&=\text{round}(0.333/0.1)=3 &&\text{divide and round the small weight}\\
+      \hat x&=3\times0.1=0.3 &&\text{dequantise the integer}\\
+      |x-\hat x|&=|0.333-0.3|=0.033 &&\text{measure its error}
+      \end{aligned}
+      $$
+
+      One large number made the step ten times bigger, and with it the largest possible error for every other weight. The error on $0.333$ grew about ten times, from $0.003$ to $0.033$.
 
       INT4 works the same way. It holds $-8$ to $7$, and symmetric INT4 uses $-7$ to $7$, so $s=\max|x|/7$. That step is about $127/7\approx18$ times larger than INT8's for the same group, and so is the largest error. This is why INT4 almost always uses a separate scale for each small group, such as 128 weights.
     problems:
@@ -167,6 +215,11 @@ knowledge_points:
       - qzp-code-bug
   - id: qz-formats
     title: "Choose what to quantise and how"
+
+    tldr: |
+      - Storing only the weights in a smaller format cuts the bytes read, so decoding gets faster.
+      - The maths still runs at 16 bits, so reading the prompt gets no faster.
+      - Making both the weights and the numbers passed between layers 8-bit doubles the maths speed, so reading the prompt speeds up too.
     explain: |
       ### Two kinds of format
 
@@ -286,6 +339,11 @@ knowledge_points:
       - qzp-weight-only-mistake
   - id: qz-quality
     title: "Check whether the quantised model got worse"
+
+    tldr: |
+      - Rounding the model's numbers can quietly make its answers worse.
+      - So we test both versions on text they never trained on and on the tasks users care about.
+      - We keep the smaller model only if its scores drop by an amount the product can accept.
     explain: |
       ### Why we have to measure
 
@@ -301,7 +359,16 @@ knowledge_points:
 
       $$\text{perplexity}=e^{\text{loss}}.$$
 
-      You can read it as the number of tokens the model is choosing between. A model that gave every true token probability $1/8$ would have loss $\ln8$ and perplexity $8$, as if it picked evenly among 8 tokens. Lower is better for both.
+      You can read it as the number of tokens the model is choosing between. For a model that gave every true token probability $1/8$:
+
+      $$
+      \begin{aligned}
+      \text{loss}&=-\ln(1/8)=\ln8 &&\text{score the true token's probability}\\
+      \text{perplexity}&=e^{\ln8}=8 &&\text{exponentiate the loss}
+      \end{aligned}
+      $$
+
+      It's as if it picked evenly among 8 tokens. Lower is better for both.
 
       ### Tests on real tasks
 

@@ -16,6 +16,11 @@ where_this_fits: |
 knowledge_points:
   - id: sm-softmax
     title: Turn scores into probabilities
+
+    tldr: |
+      - The model gives each possible answer, or class, its own score.
+      - Softmax makes each score positive, then divides by the total.
+      - The results are probabilities that add up to 1, and the highest score gets the biggest share.
     explain: |
       ### One score for each class
 
@@ -25,7 +30,12 @@ knowledge_points:
 
       ### Make them positive, then divide by the total
 
-      Softmax fixes this in two moves. First it raises $e\approx2.72$ to the power of each score, which makes every number positive and keeps the biggest score biggest. Squaring would also make numbers positive, but it would wrongly rank a score of $-3$ above a score of 2. Then it divides each result by their total, so the results add up to 1.
+      Softmax fixes this in two moves:
+
+      1. **Make the numbers positive.** Raise $e\approx2.72$ to the power of each score. Every result is positive, and the biggest score still gives the biggest result.
+      2. **Share out the total.** Divide each result by their total, so the results add up to 1.
+
+      Squaring would also make numbers positive, but it would wrongly rank a score of $-3$ above a score of 2.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 320" aria-label="Softmax in two moves for a cup, a ball and a box. Left, the blue scores are 2, 1 and 0. Middle, raising e to the power of each score gives 7.39, 2.72 and 1, which add up to 11.11. Right, dividing each by 11.11 gives the green probabilities 0.67, 0.24 and 0.09, which add up to 1">
@@ -80,11 +90,24 @@ knowledge_points:
 
       ### Only the differences between scores matter
 
-      - Adding 1 to every score, giving 3, 2 and 1, keeps the probabilities at $0.67$, $0.24$ and $0.09$. Each $e^{z_k}$ and the total all get multiplied by $e$, which cancels.
+      - Adding 1 to every score, giving 3, 2 and 1, keeps the probabilities at $0.67$, $0.24$ and $0.09$. For cup:
+        $$\begin{aligned}
+        \frac{e^3}{e^3+e^2+e^1}&=\frac{e\,e^2}{e(e^2+e^1+1)} &&\text{factor out the shared }e\\
+        &=\frac{e^2}{e^2+e^1+1} &&\text{cancel the shared factor}
+        \end{aligned}$$
+        The same factor cancels for ball and box.
       - Doubling the differences, giving 4, 2 and 0, makes the model more sure of cup, at about $0.87$, $0.12$ and $0.02$ after rounding.
       - With three equal scores, each class gets $1/3$.
 
-      Be careful not to read a score of 2 as "twice as likely" as a score of 1. Each extra point of difference between two scores multiplies the ratio of their probabilities by $e$. With two classes and scores $z$ and 0 (only differences matter), softmax gives $e^z/(e^z+1)$. Dividing top and bottom by $e^z$ gives the sigmoid, $1/(1+e^{-z})$, so logistic regression is the two-class case.
+      Be careful not to read a score of 2 as "twice as likely" as a score of 1. Each extra point of difference between two scores multiplies the ratio of their probabilities by $e$. With two classes and scores $z$ and 0 (only differences matter):
+      $$
+      \begin{aligned}
+      p_1&=\frac{e^z}{e^z+1} &&\text{apply softmax}\\
+      &=\frac{e^z/e^z}{e^z/e^z+1/e^z} &&\text{divide top and bottom by }e^z\\
+      &=\frac{1}{1+e^{-z}} &&\text{simplify to the sigmoid}
+      \end{aligned}
+      $$
+      So logistic regression is the two-class case.
     worked: |
       Let's work out the softmax probabilities for the scores 2, 1 and 0, for cup, ball and box.
 
@@ -110,6 +133,11 @@ knowledge_points:
       ]
   - id: sm-cross-entropy
     title: Measure how wrong the probabilities are
+
+    tldr: |
+      - The loss looks at the probability the model gave to the true class.
+      - Cross-entropy takes minus the natural log of that probability.
+      - So a probability near 1 costs almost nothing, and a confident wrong answer costs the most.
     explain: |
       ### The loss looks at the true class
 
@@ -164,8 +192,14 @@ knowledge_points:
       2. **Take minus the natural log.** The log of a probability below 1 is negative, so the minus sign makes the loss positive.
          $$L=-\ln0.245\approx1.41$$
 
-      3. **See why the losses are 1 apart.** The ball's probability is $e^1/11.11$. We use two log rules: minus the log of a fraction is the log of the fraction flipped over, and the log of a division is the difference of the logs. And since $\ln$ undoes raising $e$ to a power, $\ln e^1=1$. A calculator gives $\ln11.11\approx2.41$.
-         $$L=\ln\frac{11.11}{e^1}=\ln11.11-1\approx2.41-1=1.41$$
+      3. **See why the losses are 1 apart.** The ball's probability is $e^1/11.11$. Two log rules let us separate the shared total from the class's score.
+         $$\begin{aligned}
+         L&=-\ln\frac{e^1}{11.11} &&\text{use the true class probability}\\
+         &=\ln\frac{11.11}{e^1} &&\text{flip the fraction to remove the minus}\\
+         &=\ln11.11-\ln e^1 &&\text{split the log of a division}\\
+         &=\ln11.11-1 &&\text{natural log undoes the exponential}\\
+         &\approx2.41-1=1.41 &&\text{evaluate the shared total}
+         \end{aligned}$$
 
       Every class shares the same $\ln11.11$, so a score 1 lower always means a loss 1 higher. The ball's loss of $1.41$ is much bigger than a cup's $0.41$, because the model gave the ball only about a quarter of its probability.
     problems:
@@ -180,6 +214,11 @@ knowledge_points:
       ]
   - id: sm-gradient
     title: Adjust the scores to lower the loss
+
+    tldr: |
+      - We write the label as 1 for the true class and 0 for every other class.
+      - The slope of the loss for each class's score is its probability minus that label.
+      - Gradient descent moves each score against its slope, so the true class's score goes up and the others go down.
     explain: |
       ### Which way should each score move?
 
@@ -218,7 +257,11 @@ knowledge_points:
          $$z_{\text{cup}}=2-0.67=1.33,\qquad z_{\text{ball}}=1+0.76=1.76,\qquad z_{\text{box}}=0-0.09=-0.09$$
 
       3. **Recompute the ball's probability.** We raise $e$ to each new score and divide by the new total.
-         $$p_{\text{ball}}=\frac{e^{1.76}}{e^{1.33}+e^{1.76}+e^{-0.09}}\approx\frac{5.81}{3.78+5.81+0.91}\approx0.553$$
+         $$\begin{aligned}
+         (e^{1.33},e^{1.76},e^{-0.09})&\approx(3.78,5.81,0.91) &&\text{raise }e\text{ to the new scores}\\
+         3.78+5.81+0.91&=10.50 &&\text{add the positive results}\\
+         p_{\text{ball}}&\approx\frac{5.81}{10.50}\approx0.553 &&\text{divide by the total}
+         \end{aligned}$$
 
       4. **Find the new loss.** Minus the natural log of the new probability.
          $$L=-\ln0.553\approx0.59$$

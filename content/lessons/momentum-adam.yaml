@@ -14,6 +14,10 @@ where_this_fits: |
 knowledge_points:
   - id: mad-remember-slopes
     title: "Remember recent slopes"
+    tldr: |
+      - One batch can ask us to reverse the previous batch's move.
+      - Momentum keeps a fading average of recent slopes to soften sudden reversals.
+      - Updates follow that average, so they also take longer to turn when the right direction really changes.
     explain: |
       ### Letting several batches influence a move
 
@@ -51,7 +55,16 @@ knowledge_points:
 
       ### Responding to a changed direction
 
-      With $\beta_1=0$, we use only the current gradient. Larger values remember further back, which can smooth batch noise but respond slowly when the useful direction changes. If the stored average were $4$ when a gradient changed to $-4$, keeping three quarters would give a new average of $2$, still asking us to lower $w$. Be careful not to assume that a zero gradient stops the move. The remembered average may still be nonzero.
+      With $\beta_1=0$, we use only the current gradient. Larger values remember further back, smoothing batch noise but responding slowly to direction changes. Suppose the stored average is $4$ and the new gradient is $-4$:
+
+      $$
+      \begin{aligned}
+      m_{\text{new}}&=0.75(4)+0.25(-4) &&\text{weight old and new slopes}\\
+      &=3-1=2 &&\text{combine contributions}
+      \end{aligned}
+      $$
+
+      It still asks us to lower $w$. Be careful not to assume a zero gradient stops the move. The remembered average may still be nonzero.
     worked: |
       Let's update the trip-time prediction from $w_0=3$ with gradients $4,-4$, $\beta_1=0.75$ and $\eta=0.2$.
 
@@ -77,12 +90,35 @@ knowledge_points:
       - mad-memory-robot
   - id: mad-scale-moves
     title: "Adjust how far each parameter moves"
+    tldr: |
+      - Different parameters can have very different slope sizes.
+      - Keep a separate average of squared slopes for each parameter to estimate its usual size.
+      - Dividing the remembered direction by that size adjusts each parameter's move separately.
     explain: |
       ### Remembering gradient sizes too
 
-      Our simple robot model has one parameter. A richer version could predict one time for short trips and another for long trips, giving two adjustable parameters. Batches containing both kinds of trip give loss slopes for both predictions. With slopes $4$ and $2$, learning rate $0.1$ makes moves of size $0.4$ and $0.2$. If the first prediction is already near its best value, we might reduce the rate to avoid overshooting, shrinking the second move too.
+      A richer robot model could predict separate times for short and long trips, giving two parameters. A batch with both kinds gives slopes for both predictions. With slopes $4$ and $2$ and learning rate $0.1$:
 
-      We'll remember sizes too, so we can divide each parameter's move by its own size estimate. First look just at the short-trip parameter in a fresh run, with gradient $4$. As with momentum, let's keep three quarters of the old average and include one quarter of the new value. Squaring $4$ gives $16$. We start at zero, so one quarter of $16$ gives an average of $4$. Its square root is $2$, as the arrows show.
+      $$
+      \begin{aligned}
+      0.1\times4&=0.4 &&\text{first parameter's move size}\\
+      0.1\times2&=0.2 &&\text{second parameter's move size}
+      \end{aligned}
+      $$
+
+      Reducing the rate to avoid overshooting the first parameter's best value shrinks the second move too.
+
+      Estimate each parameter's gradient size separately. For the short-trip parameter, start a fresh run at zero with gradient $4$. Keep three quarters of the old average and one quarter of the new squared gradient:
+
+      $$
+      \begin{aligned}
+      g^2&=4^2=16 &&\text{square the gradient}\\
+      v&=0.75(0)+0.25(16)=4 &&\text{average the squared size}\\
+      \sqrt v&=\sqrt4=2 &&\text{return to gradient size}
+      \end{aligned}
+      $$
+
+      The arrows show these operations.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 245" aria-label="For the first gradient 4, square to get 16, average one quarter of it with three quarters of the starting zero to get v equals 4, then take the square root to get size 2. Each arrow means perform the next operation.">
@@ -135,10 +171,23 @@ knowledge_points:
       - mad-scale-new-model
   - id: mad-correct-start
     title: "Fix averages that start at zero"
+    tldr: |
+      - Averages that start at zero come out too small for the first few updates.
+      - Part of each average's weight is still sitting on that starting zero.
+      - Dividing by the weight the real gradients have fixes both averages.
     explain: |
       ### How zero affects the first averages
 
-      Our averages start at zero, which initially makes them smaller than the gradients they describe. Imagine every batch gives the same gradient, $4$. With $\beta_1=0.75$, the first average is only $1$, and the second is $1.75$. The gradient hasn't shrunk, so this small average comes from how we started it.
+      Our averages start at zero, making them initially smaller than the gradients they describe. If every batch gives gradient $4$ and $\beta_1=0.75$:
+
+      $$
+      \begin{aligned}
+      m_1&=0.75(0)+0.25(4)=1 &&\text{first average}\\
+      m_2&=0.75(1)+0.25(4)=1.75 &&\text{second average}
+      \end{aligned}
+      $$
+
+      The gradient hasn't shrunk; the average is small because it started at zero.
 
       The blue bars show the constant gradient. Orange shows the stored average, and green shows the average after removing the starting zero's influence.
 
@@ -161,9 +210,17 @@ knowledge_points:
 
       In the first average, we multiply the gradient by $1/4$ and the starting zero by $3/4$. These multipliers are their **weights**, and together they add to $1$. On the next update, the starting zero's multiplier becomes $(3/4)^2=9/16$. The weights still add to $1$, but the zero contributes nothing to the result:
 
-      $$\begin{aligned}m_2&=\frac34\left(\frac14g_1\right)+\frac14g_2\\&=\frac3{16}g_1+\frac4{16}g_2.\end{aligned}$$
+      $$
+      \begin{aligned}
+      m_2&=\frac34\left(\frac14g_1\right)+\frac14g_2 &&\text{substitute the first average}\\
+      &=\frac3{16}g_1+\frac4{16}g_2 &&\text{expand the weights}\\
+      \frac3{16}+\frac4{16}&=\frac7{16} &&\text{total weight on gradients}\\
+      \frac{m_2}{7/16}&=\frac37g_1+\frac47g_2 &&\text{divide by that weight}\\
+      \frac37+\frac47&=1 &&\text{corrected weights sum to one}
+      \end{aligned}
+      $$
 
-      The two gradient weights add to $7/16$, not $1$. Dividing by $7/16$ turns them into $3/7$ and $4/7$, which do add to $1$. We now have a weighted average of just the real gradients, with no weight left on the starting zero.
+      We now average just the real gradients, with no weight left on the starting zero.
 
       **Bias correction** divides each stored average by the total weight assigned to actual gradients. We'll put a hat over a value to show that we've corrected it:
 
@@ -188,8 +245,16 @@ knowledge_points:
       3. **Correct both averages.** Divide each stored value by that weight, since $\beta_1$ and $\beta_2$ are both $0.75$ here.
          $$\begin{aligned}\hat m_2&=\frac{1.75}{7/16}=4\\\hat v_2&=\frac7{7/16}=16.\end{aligned}$$
 
-      4. **Compare the scaled directions.** On the first update, dividing the raw $m_1=1$ and $v_1=4$ by $1/4$ gives corrected values $4$ and $16$. The scaled direction changes from the first line to the second:
-         $$\begin{aligned}\frac1{\sqrt4}&=0.5\\\frac4{\sqrt{16}}&=1.\end{aligned}$$
+      4. **Compare the scaled directions.** Correct the first update's raw averages $m_1=1$ and $v_1=4$, then compare the divisions:
+
+         $$
+         \begin{aligned}
+         \hat m_1&=1/(1/4)=4 &&\text{correct the signed average}\\
+         \hat v_1&=4/(1/4)=16 &&\text{correct the squared average}\\
+         \frac1{\sqrt4}&=0.5 &&\text{raw scaled direction}\\
+         \frac4{\sqrt{16}}&=1 &&\text{corrected scaled direction}
+         \end{aligned}
+         $$
 
       The corrected values recover the constant gradient and its square. Without correction, the starting zero would halve the first scaled direction in this example.
     problems:
@@ -201,6 +266,10 @@ knowledge_points:
       - mad-correction-changing
   - id: mad-combine-update
     title: "Combine the pieces into Adam"
+    tldr: |
+      - Adam combines remembered slopes, separate size estimates and correction for a zero start.
+      - It moves using the corrected averages, but stores the uncorrected ones for the next batch.
+      - A learning rate that is too large can still make the loss go up.
     explain: |
       ### Calculating one parameter's update
 
@@ -241,7 +310,21 @@ knowledge_points:
 
       ### A learning rate still matters
 
-      Be careful not to assume adaptive scaling guarantees that loss falls. Suppose our simple trip-time model sees a target of $1$ second, giving squared loss $(w-1)^2$. At $w=3$, the slope is $2(3-1)=4$. The worked example below gives corrected averages $4$ and $16$. With $\epsilon=1$ for easy arithmetic, the scaled direction is $4/5$. Learning rate $0.2$ moves by $0.16$ to $2.84$. Rate $10$ moves by $8$ to $-5$, raising loss from $4$ to $36$. If moves are too large, try a smaller learning rate and check the loss again.
+      Be careful not to assume adaptive scaling guarantees lower loss. For target $1$, loss is $(w-1)^2$. At $w=3$, the slope is $2(3-1)=4$. Using corrected averages $4$ and $16$ and $\epsilon=1$ gives:
+
+      $$
+      \begin{aligned}
+      \frac{\hat m}{\sqrt{\hat v}+\epsilon}&=\frac4{\sqrt{16}+1}=\frac45 &&\text{scaled direction}\\
+      0.2\times\frac45&=0.16 &&\text{move with learning rate }0.2\\
+      w_{\text{new}}&=3-0.16=2.84 &&\text{subtract the small move}\\
+      10\times\frac45&=8 &&\text{move with learning rate }10\\
+      w_{\text{new}}&=3-8=-5 &&\text{subtract the large move}\\
+      L_{\text{before}}&=(3-1)^2=4 &&\text{original loss}\\
+      L_{\text{after}}&=(-5-1)^2=36 &&\text{loss after the large move}
+      \end{aligned}
+      $$
+
+      If moves are too large, reduce the learning rate and check loss again.
     worked: |
       Let's perform the first complete Adam update from $w_0=3$ with gradient $g_1=4$, $\beta_1=\beta_2=0.75$ and $\eta=0.2$. Use $\epsilon=1$, deliberately much larger than normal to keep the denominator an exact integer.
 
@@ -257,7 +340,16 @@ knowledge_points:
       4. **Move the parameter.** Subtract the learning rate times the corrected direction divided by that denominator.
          $$w_1=3-0.2\times\frac45=2.84.$$
 
-      To continue the weighted history, store $m_1=1$ and $v_1=4$. For example, a next gradient of zero would give raw $m_2=0.75$ from the stored $1$. Reusing the corrected $4$ would incorrectly give $3$ instead. We would next recompute the gradient at $w_1=2.84$ and use $t=2$ for the next update.
+      Store raw $m_1=1$ and $v_1=4$ to continue the history. Compare using the raw or corrected signed average if the next gradient were zero:
+
+      $$
+      \begin{aligned}
+      m_2&=0.75(1)+0.25(0)=0.75 &&\text{correct use of stored raw average}\\
+      0.75(4)+0.25(0)&=3 &&\text{incorrect reuse of corrected average}
+      \end{aligned}
+      $$
+
+      We would recompute the gradient at $w_1=2.84$ and use $t=2$ for the next update.
     problems:
       - mad-adam-basics
       - mad-adam-why

@@ -13,6 +13,11 @@ where_this_fits: |
 knowledge_points:
   - id: gen-unseen-houses
     title: Judge predictions on new houses
+    tldr: |
+      - We score the chosen model once on test houses it has never seen.
+      - That score speaks for future houses only if sales are unrelated and the market stays the same.
+      - These two assumptions together are called i.i.d.
+      - Even then, the score is only an estimate of future error, and more test houses make it steadier.
     explain: |
       ### Where test houses come from
 
@@ -64,6 +69,11 @@ knowledge_points:
       [gen-basics, gen-average-reason, gen-average-template, gen-identical, gen-robot-evidence]
   - id: gen-changed-source
     title: Notice when new houses differ
+    tldr: |
+      - A test score describes the kinds of houses the model was tested on.
+      - In a new place, house sizes can differ, or the same sizes can sell for different prices.
+      - This change is called distribution shift, and it can make the old score wrong.
+      - So we test the model on houses from the new place before relying on it.
     explain: |
       ### A new city can change the task
 
@@ -104,9 +114,11 @@ knowledge_points:
       Suppose our model predicts city A's prices exactly at these two sizes. Its predictions are 100 and 200 thousand dollars. In B the actual prices are 200 and 300.
 
       1. **Keep the predictions fixed.** Using the model in city B does not train it again, so it still predicts the same price at each size.
-      2. **Find the new errors.** At each size the real B price is higher than the prediction.
-         $$200-100=100,\qquad 300-200=100$$
-      3. **Average the B errors.** Both houses contribute the same distance.
+      2. **Find the first error.** The first real B price is higher than the prediction.
+         $$200-100=100$$
+      3. **Find the second error.** The second house has the same price increase.
+         $$300-200=100$$
+      4. **Average the B errors.** Both houses contribute the same distance.
          $$(100+100)/2=100$$
 
       Zero error on these A houses became 100 thousand dollars on these B houses. Familiar sizes can have different prices. To estimate typical error in B, we would need many sales covering the kinds of houses people there will ask us to price.
@@ -114,6 +126,11 @@ knowledge_points:
       [gen-shift-basics, gen-fixed-reason, gen-shift-template, gen-large-houses, gen-lighting]
   - id: gen-related-records
     title: Keep related examples together
+    tldr: |
+      - If one sale appears twice, one copy can land in training and the other in testing.
+      - The model then just recognises the house, so the score looks better than it should.
+      - Keeping all records of a house in the same group fixes this.
+      - For predicting future sales, we also train on earlier sales and test on later ones.
     explain: |
       ### One sale can appear twice
 

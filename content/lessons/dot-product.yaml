@@ -1,7 +1,7 @@
 concept: dot-product
 version: 5
 objective: |
-  **Goal:** compute the dot product of two vectors, see what it tells us about two arrows, and use cosine similarity to compare their directions whatever their lengths.
+  **Goal:** compute the dot product of two vectors, see what it tells us about their directions, and use cosine similarity to compare their directions whatever their lengths.
 recap:
   - concept: vectors
     text: "A vector is an ordered list of numbers called components, drawn as an arrow. By Pythagoras' rule, a vector $x$ has length $\\|x\\|$, the square root of the sum of its squared components, so $\\|(3,4)\\|=5$."
@@ -10,10 +10,14 @@ where_this_fits: |
 
   The dot product is a way of multiplying two vectors that gives a single number. You multiply the matching components and add the results up.
 
-  It's useful because so much of machine learning is adding up weighted inputs. A model that predicts a house's price multiplies each measurement by its own weight and adds the results, and that total is a dot product. The same number also tells us how closely two arrows point the same way, which is how a robot can check that it's heading towards its goal. In the vectors lesson, we added, scaled and measured vectors, but none of those turns two vectors into one number. That's what this lesson builds.
+  It's useful because so much of machine learning is adding up weighted inputs. A model that predicts a house's price multiplies each measurement by its own weight and adds the results, and that total is a dot product. The same number also tells us how closely two vectors point the same way, which is how a robot can check that it's heading towards its goal. In the vectors lesson, we added, scaled and measured vectors, but none of those turns two vectors into one number. That's what this lesson builds.
 knowledge_points:
   - id: dot-weighted-total
     title: "Multiply matching numbers and add"
+    tldr: |
+      - Two vectors can hold matching lists, such as answer counts and points per answer.
+      - Multiply each matching pair and add the products.
+      - This total is the dot product, which can turn measurements into a prediction.
     explain: |
       ### Scoring a quiz
 
@@ -74,7 +78,18 @@ knowledge_points:
 
       The two vectors must list their components in the same order, or we'd multiply a count by the wrong points.
 
-      Be careful not to add up each list first and then multiply the totals. The counts add up to 10 and the points to 2, and $10\times2=20$, not 16. That's because $(6+2+2)\times(3+0-1)$ multiplies every count by every points value, not just its own.
+      Be careful not to add up each list first and then multiply the totals. Here's what that mistaken calculation does:
+      $$
+      \begin{aligned}
+      \text{total count}&=6+2+2 &&\text{gather the counts}\\
+      &=10 &&\text{add them}\\
+      \text{total points value}&=3+0-1 &&\text{gather the points values}\\
+      &=2 &&\text{add them}\\
+      \text{product of totals}&=10\times2 &&\text{multiply the totals}\\
+      &=20 &&\text{work out the product}
+      \end{aligned}
+      $$
+      This pairs every count with every points value. The dot product pairs each count with its own points value and gives 16.
 
       ### Weights
 
@@ -82,7 +97,13 @@ knowledge_points:
 
       This is how a model turns a house into a price. Say a house has an area of 120 square metres, 3 bedrooms and an age of 20 years. The model counts area in tens of square metres, so $x=(12,3,20)$. The model's weights are $w=(25,10,-1)$, in thousands of pounds, so it adds £25,000 for every ten square metres and £10,000 for every bedroom, and takes away £1,000 for every year of age. It predicts
 
-      $$w\cdot x=25\times12+10\times3+(-1)\times20=310,$$
+      $$
+      \begin{aligned}
+      w\cdot x&=25\times12+10\times3+(-1)\times20 &&\text{pair measurements with weights}\\
+      &=300+30-20 &&\text{multiply each pair}\\
+      &=310 &&\text{add the contributions}
+      \end{aligned}
+      $$
 
       which is £310,000.
     worked: |
@@ -111,13 +132,24 @@ knowledge_points:
       - dotp-quiz-backwards
       - dotp-order
   - id: dot-arrow-alignment
-    title: "What the dot product means for arrows"
+    title: "How the dot product measures direction"
+    tldr: |
+      - A vector's shadow shows how far it points along another vector's line.
+      - Count it as negative when it points backwards.
+      - Multiplying this signed distance by the other vector's length gives the dot product.
+      - The result is positive below a right angle, zero at one and negative beyond it.
     explain: |
-      ### An arrow that points right
+      ### A vector that points right
 
-      In the vectors lesson, we also drew vectors as arrows, so what does the dot product of two arrows tell us? Let's start with $b=(1,0)$, which has length 1 and points right. For any arrow $a=(a_1,a_2)$,
+      In the vectors lesson, we also drew vectors as arrows, so what does the dot product tell us about their directions? Let's start with $b=(1,0)$, which has length 1 and points right. For any vector $a=(a_1,a_2)$,
 
-      $$a\cdot b=a_1\times1+a_2\times0=a_1.$$
+      $$
+      \begin{aligned}
+      a\cdot b&=a_1\times1+a_2\times0 &&\text{pair matching components}\\
+      &=a_1+0 &&\text{multiply each pair}\\
+      &=a_1 &&\text{add the contributions}
+      \end{aligned}
+      $$
 
       So with this $b$, the dot product is just how far $a$ goes to the right, and the upward part doesn't count. The picture shows three cases, which score 3, 0 and $-3$.
 
@@ -150,13 +182,13 @@ knowledge_points:
       </svg>
       ```
 
-      ### The shadow of one arrow on another
+      ### The shadow of one vector on another
 
-      The orange bar under each arrow is the **projection** of $a$ onto $b$. Think of it as the shadow $a$ casts on $b$'s line, the line through $b$ extended in both directions, when light falls at right angles to that line. To find it, we draw a line, called the drop, from $a$'s tip that meets $b$'s line at a right angle, and measure from the origin to where it lands. The projection is negative when the shadow points the opposite way to $b$, and for $(0,4)$ it shrinks to a dot. For any two arrows,
+      The orange bar under each arrow is the **projection** of $a$ onto $b$. Think of it as the shadow $a$ casts on $b$'s line, the line through $b$ extended in both directions, when light falls at right angles to that line. To find it, we draw a line, called the drop, from $a$'s tip that meets $b$'s line at a right angle, and measure from the origin to where it lands. The projection is negative when the shadow points the opposite way to $b$, and for $(0,4)$ it shrinks to a dot. For nonzero $b$,
 
       $$a\cdot b=(\text{projection of }a\text{ onto }b)\times\|b\|.$$
 
-      Why times $b$'s length? If we stretch $b$ by some number, every product $a_ib_i$ gets multiplied by that number, and so does the dot product. The shadow doesn't move, because $b$'s line is the same.
+      Why times $b$'s length? If we stretch $b$ by a positive number, every product $a_ib_i$ gets multiplied by that number, and so does the dot product. The shadow doesn't move, because $b$'s line is the same.
 
       The picture below shows a tilted pair, which the worked example checks.
 
@@ -183,13 +215,20 @@ knowledge_points:
 
       ### What the sign tells us
 
-      The **angle** between two arrows is how far we'd turn one to line it up with the other. It's $0^\circ$ when they point the same way and $180^\circ$ when they point opposite ways. While the angle is less than a right angle, the shadow points along $b$. At a right angle it shrinks to nothing, and beyond that it points backwards, like the shadow of $(-3,4)$ in the first picture.
+      The **angle** between two vectors is how far we'd turn one to line it up with the other. It's $0^\circ$ when they point the same way and $180^\circ$ when they point opposite ways. While the angle is less than a right angle, the shadow points along $b$. At a right angle it shrinks to nothing, and beyond that it points backwards, like the shadow of $(-3,4)$ in the first picture.
 
-      So the dot product is positive below a right angle, zero when the arrows are **perpendicular**, meaning at a right angle, and negative beyond it.
+      So the dot product is positive below a right angle, zero when the vectors are **perpendicular**, meaning at a right angle, and negative beyond it.
 
-      Be careful not to read a bigger dot product as arrows that agree more. $(3,4)\cdot(1,0)=3$ is bigger than $(1,0)\cdot(1,0)=1$, even though $(3,4)$ points mostly up. That's because length counts too, which the next step deals with.
+      Be careful not to read a bigger dot product as vectors that agree more. Compare:
+      $$
+      \begin{aligned}
+      (3,4)\cdot(1,0)&=3 &&\text{the first vector points mostly up}\\
+      (1,0)\cdot(1,0)&=1 &&\text{both vectors point right}
+      \end{aligned}
+      $$
+      The less aligned pair scores higher because length counts too. The next step removes that effect.
     worked: |
-      Let's check the rule on the tilted arrows $a=(7,1)$ and $b=(6,8)$. Here we can't read the shadow off an axis. So we'll use the rule to predict where the shadow ends, then check that a line from there to $a$'s tip really meets $b$ at a right angle.
+      Let's check the rule on the tilted vectors $a=(7,1)$ and $b=(6,8)$. Here we can't read the shadow off an axis. So we'll use the rule to predict where the shadow ends, then check that a line from there to $a$'s tip really meets $b$ at a right angle.
 
       1. **Multiply matching components and add.** This is the dot product from the first step.
          $$a\cdot b=7\times6+1\times8=50$$
@@ -203,8 +242,19 @@ knowledge_points:
       4. **Find where the shadow should end.** A projection of 5 is half of $b$'s length, so the shadow should end halfway along $b$.
          $$\tfrac{1}{2}\times(6,8)=(3,4)$$
 
-      5. **Check that the drop meets $b$ at a right angle.** The drop is the move from $(3,4)$ to $a$'s tip, $(7,1)-(3,4)=(4,-3)$. Together with $(3,4)$ and $a$ itself, it makes a triangle. Pythagoras' rule also works backwards, so if the squares of the lengths of $(3,4)$ and the drop add up to the square of $a$'s length, the corner at $(3,4)$ is a right angle.
-         $$\|(3,4)\|^2+\|(4,-3)\|^2=25+25=50=\|(7,1)\|^2$$
+      5. **Find the drop.** Subtract the shadow's endpoint from $a$'s tip to get the move between them.
+         $$(7,1)-(3,4)=(4,-3)$$
+
+      6. **Check that the drop meets $b$ at a right angle.** The drop, the shadow and $a$ make a triangle. Pythagoras' rule works backwards, so matching the squared lengths proves the corner at $(3,4)$ is a right angle.
+         $$
+         \begin{aligned}
+         \|(3,4)\|^2+\|(4,-3)\|^2&=(3^2+4^2)+(4^2+(-3)^2) &&\text{square the components}\\
+         &=25+25 &&\text{add within each vector}\\
+         &=50 &&\text{add the two squared lengths}\\
+         \|(7,1)\|^2&=7^2+1^2 &&\text{square the long side's components}\\
+         &=50 &&\text{the squared lengths match}
+         \end{aligned}
+         $$
 
       So the right-angle drop from $a$'s tip lands at $(3,4)$, exactly where the rule said the shadow ends.
     problems:
@@ -219,10 +269,14 @@ knowledge_points:
       - dotp-corridor
   - id: dot-direction-only
     title: "Compare directions, ignoring length"
+    tldr: |
+      - A dot product depends on vector lengths as well as their directions.
+      - Dividing by both lengths removes that effect.
+      - The result is cosine similarity, a score for how closely the directions agree.
     explain: |
       ### Dot products grow with length
 
-      The dot product mixes up how closely two arrows' directions agree with how long they are. How can we score direction alone?
+      The dot product mixes up how closely two vectors' directions agree with how long they are. How can we score direction alone?
 
       The picture shows the same two directions twice, with the right-hand arrows twice as long. The angle between the arrows, written $\theta$ ("theta"), is the same in both, but the dot product grows from 12 to 48. Dividing each dot product by the two lengths multiplied together gives 0.6 in both panels.
 
@@ -258,11 +312,21 @@ knowledge_points:
 
       $$\text{cosine similarity}=\frac{a\cdot b}{\|a\|\,\|b\|}.$$
 
-      ### Shrinking arrows to length 1
+      ### Shrinking vectors to length 1
 
-      An arrow of length 1 is called a **unit vector**. We shrink a non-zero arrow to one, without turning it, by dividing each component by its length. In the left panel, $(3,4)$ becomes $(0.6,0.8)$, which divides every product $a_ib_i$ by 5, and $(4,0)$ becomes $(1,0)$, which divides every product by 4. So the dot product falls from 12 to 0.6, just as dividing by both lengths does.
+      A vector of length 1 is called a **unit vector**. We shrink a non-zero vector to one, without turning it, by dividing each component by its length. In the left panel, the lengths are 5 and 4. Keep the fractions visible to see why both lengths divide the dot product:
+      $$
+      \begin{aligned}
+      (3,4)/5&=(0.6,0.8) &&\text{make the first length }1\\
+      (4,0)/4&=(1,0) &&\text{make the second length }1\\
+      (0.6,0.8)\cdot(1,0)&=\frac35\times\frac44+\frac45\times\frac04 &&\text{use each component's original fraction}\\
+      &=\frac{3\times4+4\times0}{5\times4} &&\text{put both products over the same denominator}\\
+      &=\frac{12}{5\times4} &&\text{work out the numerator}\\
+      &=0.6 &&\text{divide by both lengths}
+      \end{aligned}
+      $$
 
-      For two unit vectors, the dot product is the shadow of one on the other times a length of 1, so it's just the shadow. Two unit vectors at the same angle always look the same, just turned, so the shadow depends only on the angle. It's called the **cosine** of $\theta$, written $\cos\theta$, and it's 1 when the arrows point the same way, 0 at a right angle and $-1$ when they point opposite ways. So
+      For two unit vectors, the dot product is the shadow of one on the other times a length of 1, so it's just the shadow. Two unit vectors at the same angle always look the same, just turned, so the shadow depends only on the angle. It's called the **cosine** of $\theta$, written $\cos\theta$, and it's 1 when the vectors point the same way, 0 at a right angle and $-1$ when they point opposite ways. So
 
       $$\frac{a\cdot b}{\|a\|\,\|b\|}=\cos\theta,$$
 
@@ -270,7 +334,7 @@ knowledge_points:
 
       $$a\cdot b=\|a\|\,\|b\|\cos\theta.$$
 
-      A robot can use this to check its heading. If the arrow of its movement and the arrow from where it is to its goal score near 1, it's heading towards the goal.
+      A robot can use this to check its heading. If its movement vector and the vector from its position to its goal score near 1, it's heading towards the goal.
 
       ### Limitations
 
@@ -295,7 +359,7 @@ knowledge_points:
       5. **Double $a$ to $(6,8)$ and repeat.** If the score really ignores length, it shouldn't change.
          $$\frac{6\times4+8\times3}{10\times5}=\frac{48}{50}=0.96$$
 
-      A score of 0.96 is close to 1, so the arrows point nearly the same way. Doubling $a$ doubled the dot product, but it doubled $a$'s length too, so the score stayed the same.
+      A score of 0.96 is close to 1, so the vectors point nearly the same way. Doubling $a$ doubled the dot product, but it doubled $a$'s length too, so the score stayed the same.
     problems:
       - dot-direction-only-basics
       - dotp-scaling
@@ -308,7 +372,7 @@ knowledge_points:
 final: dot-explain
 summary: |
   - The dot product multiplies the matching components of two vectors and adds up the products, $a\cdot b=\sum_{i=1}^{n}a_ib_i$. When one vector holds weights, it's a weighted sum, which is how a model combines its inputs.
-  - For arrows, $a\cdot b$ is the projection of $a$ onto $b$ times $b$'s length. It's positive when the angle between them is less than a right angle, zero when they're perpendicular, and negative when the angle is more.
+  - For vectors, $a\cdot b$ is the projection of $a$ onto $b$ times $b$'s length. It's positive when the angle between them is less than a right angle, zero when they're perpendicular, and negative when the angle is more.
   - Cosine similarity, $\frac{a\cdot b}{\|a\|\,\|b\|}=\cos\theta$, compares the directions of two non-zero vectors whatever their lengths, from 1 for the same way to $-1$ for opposite ways.
 
   **Next:** The matrices lesson does many dot products at once, for example predicting prices for a whole list of houses.

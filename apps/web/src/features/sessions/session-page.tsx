@@ -889,6 +889,7 @@ export function SessionPage() {
             Back to Explain it
           </Button>
           <div data-testid="lesson-step-content" className="space-y-4">
+            {recapPoint.tldr ? <LessonBlock kind="tldr" md={recapPoint.tldr} /> : null}
             <LessonMarkdown>{recapPoint.explain}</LessonMarkdown>
             <LessonBlock kind="worked" md={recapPoint.worked} />
           </div>

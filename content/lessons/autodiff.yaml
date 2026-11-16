@@ -14,12 +14,24 @@ where_this_fits: |
 knowledge_points:
   - id: ad-recording
     title: "Record each step of a calculation"
+    tldr: |
+      - Software can record each operation while a calculation runs.
+      - It saves the values that the operation's slope rule will need later.
+      - This record lets it find loss slopes without asking us to write the backward steps.
     explain: |
       ### One calculation, three small operations
 
       In the backpropagation lesson, we worked out slopes from a picture of the calculation that we drew ourselves. Software can't see our pictures, so it has to build its own while the calculation runs.
 
-      We have one adjustable weight $w=2$, a fixed input $x=3$ and a fixed target $y=4$. The calculation multiplies the weight by the input to get a prediction $z=wx$, subtracts the target to get the error $e=z-y$, and squares the error to get the loss $L=e^2$.
+      We have one adjustable weight $w=2$, a fixed input $x=3$ and a fixed target $y=4$. The calculation has three operations:
+
+      $$
+      \begin{aligned}
+      z&=wx &&\text{multiply to predict}\\
+      e&=z-y &&\text{subtract the target}\\
+      L&=e^2 &&\text{square the error}
+      \end{aligned}
+      $$
 
       ### What gets written down
 
@@ -60,18 +72,40 @@ knowledge_points:
       ]
   - id: ad-reverse
     title: "Work out slopes from the end backwards"
+    tldr: |
+      - The backward pass starts at the loss and visits recorded operations in reverse order.
+      - It multiplies local slopes along each path and adds contributions where paths meet.
+      - PyTorch stores the resulting weight slopes and leaves the weights unchanged.
     explain: |
       ### Walking the record backward
 
       Once the forward calculation has finished, the record holds everything we need to find $dL/dw$, the slope of the loss with respect to the weight. So how does the software use it?
 
-      It does what we did by hand in the backpropagation lesson, visiting the recorded operations from last to first. It starts at the loss, whose slope with respect to itself is $1$. At each operation, it multiplies the slope so far by that operation's local slope. In the diagram, the blue arrows run from right to left, and the blue number under each value is the loss slope with respect to that value. The square has local slope $2e=4$, the subtraction has $1$ and the multiply has $x=3$, so the weight ends up with $1\times4\times1\times3=12$.
+      It visits operations from last to first, as we did by hand. In the diagram, blue arrows run right to left; each blue number is the loss slope for that value. Multiply by each operation's local slope:
+
+      $$
+      \begin{aligned}
+      \frac{dL}{dL}&=1 &&\text{start at the loss}\\
+      \frac{dL}{de}&=1\times(2\times2)=4 &&\text{square's local slope is }2e\\
+      \frac{dL}{dz}&=4\times1=4 &&\text{subtraction passes it through}\\
+      \frac{dL}{dw}&=4\times3=12 &&\text{multiply by saved input }x
+      \end{aligned}
+      $$
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 215" aria-label="The same record walked backward. The slope of L with respect to itself is 1. Times 4 for the square gives 4 at e, times 1 for the subtraction gives 4 at z, and times 3 for the multiply gives 12 at w"><defs><marker id="ad2f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker><marker id="ad2b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#3b82f6"/></marker></defs><g font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717"><path d="M116.0 70.0 L190.0 70.0" stroke="#737373" stroke-width="1.5" marker-end="url(#ad2f)"/><text x="153" y="40" fill="#737373" text-anchor="middle">× 3</text><path d="M282.0 70.0 L356.0 70.0" stroke="#737373" stroke-width="1.5" marker-end="url(#ad2f)"/><text x="319" y="40" fill="#737373" text-anchor="middle">− 4</text><path d="M448.0 70.0 L522.0 70.0" stroke="#737373" stroke-width="1.5" marker-end="url(#ad2f)"/><text x="485" y="40" fill="#737373" text-anchor="middle">square</text><rect x="28" y="50" width="84" height="40" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="70" y="75" text-anchor="middle">w = 2</text><rect x="194" y="50" width="84" height="40" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="236" y="75" text-anchor="middle">z = 6</text><rect x="360" y="50" width="84" height="40" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="402" y="75" text-anchor="middle">e = 2</text><rect x="526" y="50" width="84" height="40" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="568" y="75" text-anchor="middle">L = 4</text><path d="M204 135 L102 135" stroke="#3b82f6" stroke-width="2.5" marker-end="url(#ad2b)"/><text x="153" y="159" fill="#3b82f6" text-anchor="middle">× 3</text><path d="M370 135 L268 135" stroke="#3b82f6" stroke-width="2.5" marker-end="url(#ad2b)"/><text x="319" y="159" fill="#3b82f6" text-anchor="middle">× 1</text><path d="M536 135 L434 135" stroke="#3b82f6" stroke-width="2.5" marker-end="url(#ad2b)"/><text x="485" y="159" fill="#3b82f6" text-anchor="middle">× 4</text><text x="70" y="140" fill="#3b82f6" text-anchor="middle">12</text><text x="236" y="140" fill="#3b82f6" text-anchor="middle">4</text><text x="402" y="140" fill="#3b82f6" text-anchor="middle">4</text><text x="568" y="140" fill="#3b82f6" text-anchor="middle">1</text><text x="20" y="200" fill="#3b82f6" text-anchor="start">backward: slope of L, from right to left, times each local slope</text></g></svg>
       ```
 
-      If one value feeds two operations, it gets a slope back from each, and the two are added. For $L=w\cdot w$, each use of $w$ sends back the other factor, $w$, so the slope is $w+w=2w$, just as the power rule says.
+      If one value feeds two operations, its contributions add. For $L=w\cdot w$:
+
+      $$
+      \begin{aligned}
+      \frac{dL}{dw}&=w+w &&\text{each use returns the other factor}\\
+      &=2w &&\text{add both contributions}
+      \end{aligned}
+      $$
+
+      This agrees with the power rule.
 
       ### What loss.backward() does
 
@@ -95,7 +129,7 @@ knowledge_points:
       4. **Go back through the multiply.** The local slope of $wx$ with respect to $w$ is the saved input $x=3$.
          $$\frac{dL}{dw}=4\times3=12$$
 
-      Here are the same numbers in PyTorch. The line `torch.tensor(2.0, requires_grad=True)` makes a tensor holding $2$ and asks for its slope. In Python, `**` means "to the power of". At the end, `.item()` turns a one-number tensor into an ordinary Python number. We calculate `loss` again before the second backward call, because PyTorch throws the record away after each backward pass to save memory. The slope survives, because `.grad` belongs to the weight, not to the record.
+      Here are the same numbers in PyTorch. The line `torch.tensor(2.0, requires_grad=True)` makes a tensor holding $2$ and asks for its slope. In Python, `**` means "to the power of". At the end, `.item()` turns a one-number tensor into an ordinary Python number. We calculate `loss` again before the second backward call, because PyTorch throws the record away after each backward pass to save memory. The slope survives in the weight's `.grad` slot.
 
       ```python
       import torch
@@ -123,16 +157,29 @@ knowledge_points:
       ]
   - id: ad-modes
     title: "Forward or backward: which is faster"
+    tldr: |
+      - The chain rule can carry slopes forward from the inputs or backward from the output.
+      - Going forward needs one pass per input, and going backward needs one pass per output.
+      - Training has millions of weights and one loss, so going backward needs far fewer passes.
     explain: |
       ### Two directions for one chain rule
 
-      The chain rule just multiplies local slopes along a path, and we could start from either end. Why go backward?
+      The chain rule multiplies local slopes along a path. We could start from either end. Why go backward?
 
       Take the two-input calculation $s=uv$ at $u=2$ and $v=3$, so $s=6$. We want both of its slopes: $\partial s/\partial u$, the slope of $s$ when only $u$ changes, and $\partial s/\partial v$, the slope when only $v$ changes.
 
       ### Going forward, one input at a time
 
-      **Forward-mode automatic differentiation** picks one input and carries each value's slope with respect to that input forward, alongside the value. To follow $u$, we give $u$ slope $1$ and $v$ slope $0$, since $v$ stays fixed. The multiply combines these with the product rule from the derivatives lesson, $(uv)'=u'v+uv'$, so $s$ comes out with slope $1\times3+2\times0=3$.
+      **Forward-mode automatic differentiation** picks one input and carries each value's slope for that input forward alongside its value. To follow $u$, hold $v$ fixed and use the product rule:
+
+      $$
+      \begin{aligned}
+      \frac{\partial u}{\partial u}&=1 &&\text{follow }u\\
+      \frac{\partial v}{\partial u}&=0 &&\text{hold }v\text{ fixed}\\
+      \frac{\partial s}{\partial u}&=\frac{\partial u}{\partial u}v+u\frac{\partial v}{\partial u} &&\text{product rule}\\
+      &=1\times3+2\times0=3 &&\text{insert values and slopes}
+      \end{aligned}
+      $$
 
       That one pass gives only $\partial s/\partial u$. To get $\partial s/\partial v$, we need a second pass that follows $v$ instead. The left of the diagram shows these two green passes, and the right shows reverse mode sending the slope of $s$ back to both inputs in one backward pass.
 
@@ -152,7 +199,7 @@ knowledge_points:
 
       Training, with many weights and one loss, is the middle row, so `loss.backward()` goes backward. The last row fits a robot arm with one joint, whose angle sets the hand's three position coordinates. To see how the hand moves as the joint turns, we need three slopes, and one forward pass gives them all.
 
-      Be careful not to think the directions give different slopes. Both apply the same chain rule at the same values, so the slopes are identical. What differs is the work, the passes each takes and the memory reverse mode uses for its record.
+      Be careful not to think the directions give different slopes. Both apply the same chain rule at the same values. They differ in pass counts and the memory reverse mode uses for its record.
     worked: |
       Let's find both slopes of $s=uv$ at $u=2$ and $v=3$, first with two forward passes and then with one backward pass.
 

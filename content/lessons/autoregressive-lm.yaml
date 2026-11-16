@@ -19,6 +19,10 @@ where_this_fits: |
 knowledge_points:
   - id: alm-next-token
     title: "Predict the next word"
+    tldr: |
+      - The vector at each position contains information about the tokens so far.
+      - An output layer turns it into scores, and softmax gives a probability for each possible next token.
+      - Multiplying successive next-token probabilities gives the chance of a longer continuation.
     explain: |
       ### One prediction at each position
 
@@ -98,6 +102,10 @@ knowledge_points:
       - alm-next-robot
   - id: alm-teacher-forcing
     title: "Turn one sentence into many training examples"
+    tldr: |
+      - Each token after the first is a target for the tokens before it.
+      - Training feeds in the real earlier tokens and scores the probability given to each true next token.
+      - The causal mask lets one run make all these predictions without seeing their answers.
     explain: |
       ### Every word after the first is a target
 
@@ -162,7 +170,15 @@ knowledge_points:
       3. **Average them.** The sentence's loss is the mean over its three positions.
          $$L=\frac{0.693+0.905+0.693}{3}\approx0.76$$
 
-      Adding the three losses gives $2.291$. Because adding logs is the same as taking the log of a product, $\ln a+\ln b=\ln(ab)$, this is $-\ln(0.5\times0.4046\times0.5)=-\ln0.1012$, minus the log of the chance of "cat sat on" coming after "the". A smaller $-\ln$ means a bigger probability, so lowering this loss makes the model give the real text a higher chance.
+      Adding logs is the same as taking the log of a product, $\ln a+\ln b=\ln(ab)$. Use that rule to connect the total loss to the chance of "cat sat on" after "the":
+      $$
+      \begin{aligned}
+      0.693+0.905+0.693&=2.291 &&\text{add the rounded losses}\\
+      -\ln0.5-\ln0.4046-\ln0.5&=-\ln(0.5\times0.4046\times0.5) &&\text{combine the logs}\\
+      &\approx-\ln0.1012 &&\text{multiply the probabilities}
+      \end{aligned}
+      $$
+      A smaller $-\ln$ means a bigger probability, so lowering this loss makes the model give the real text a higher chance.
 
       Here is the same split in Python, for the whole six-word sentence, so it gives five examples. The tokens are stored as a Python list of words. `tokens[:-1]` is the list without its last item and `tokens[1:]` is the list without its first. Python counts positions from $0$, so the code's `t` is one less than the maths' $t$. The loop runs `t` through $0,1,2,3,4$, and `inputs[:t + 1]` keeps the first $t+1$ words, the prefix for that target. `" ".join(...)` puts spaces between the words.
 
@@ -191,6 +207,10 @@ knowledge_points:
       - alm-tf-batch
   - id: alm-sampling
     title: "Write new text one word at a time"
+    tldr: |
+      - To write, predict a next token, choose one and add it to the text.
+      - We can always choose the most likely token or draw randomly using the probabilities.
+      - Repeating this writes a continuation, with every choice becoming part of the next input.
     explain: |
       ### Writing one token at a time
 

@@ -15,6 +15,10 @@ where_this_fits: |
 knowledge_points:
   - id: cm-hide-future
     title: "Hide the words that come later"
+    tldr: |
+      - Predicting the next token should use only the tokens already known.
+      - During training, later tokens are present and could give away the answer.
+      - A causal mask lets each position read itself and earlier positions, keeping later tokens hidden.
     explain: |
       ### Guessing the next word
 
@@ -114,6 +118,10 @@ knowledge_points:
       - cm-hide-which-task
   - id: cm-mask-scores
     title: "Give later words zero weight"
+    tldr: |
+      - A blocked token needs exactly zero attention weight.
+      - Setting its score to zero still gives it a share after softmax.
+      - Adding minus infinity before softmax removes that share and leaves the allowed weights adding up to one.
     explain: |
       ### Why we can't just set the score to 0
 
@@ -125,7 +133,15 @@ knowledge_points:
 
       ### Adding the mask to the scores
 
-      Let's look at position 2, "cat", in "the cat sat on". Suppose its scores for the, cat, sat and on are $0$, $1$, $2$ and $0$. Without a mask, "sat" gets $e^2/(e^0+e^1+e^2+e^0)\approx7.39/12.11\approx0.61$ of the weight, and "sat" is the very word "cat" must guess.
+      Look at position 2, "cat", in "the cat sat on". Its scores for the, cat, sat and on are $0$, $1$, $2$ and $0$. Without a mask, compute the share for "sat":
+      $$
+      \begin{aligned}
+      e^0+e^1+e^2+e^0&\approx12.11 &&\text{add exponentials of all scores}\\
+      a_{23}&=\frac{e^2}{e^0+e^1+e^2+e^0} &&\text{divide sat's exponential by the total}\\
+      &\approx\frac{7.39}{12.11}\approx0.61 &&\text{evaluate the share}
+      \end{aligned}
+      $$
+      Most weight goes to the very word "cat" must guess.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 470 330" aria-label="Attention weights of position 2, cat, in the cat sat on, with scores 0, 1, 2 and 0. Left, without the mask, the weights are 0.08, 0.22, 0.61 and 0.08, so most of the weight lands on sat, the word cat must predict. Right, with the mask, the weights are 0.27, 0.73, 0 and 0">
@@ -202,6 +218,10 @@ knowledge_points:
       - cm-zero-after-softmax
   - id: cm-mask-code
     title: "Build the mask in code"
+    tldr: |
+      - Build one grid that blocks every position above the diagonal.
+      - Add it to the score grid before applying softmax to each row.
+      - Using this mask in every attention layer keeps later words from affecting earlier predictions throughout the model.
     explain: |
       ### All the rows at once
 

@@ -610,6 +610,7 @@ async function newLesson(topicId: string, directory: string) {
       {
         id: `${topicId}-core-idea`,
         title: 'TODO: Name this knowledge point.',
+        tldr: '- TODO: Write a short summary of this step.\n',
         explain: 'TODO: Explain the idea.',
         worked: 'TODO: Write a worked example.',
         problems: [...problemIds, selfExplanationId],

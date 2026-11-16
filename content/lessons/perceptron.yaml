@@ -4,7 +4,7 @@ objective: |
   **Goal:** compute a perceptron's yes-or-no output from its weights, bias and inputs, find the straight line that separates its yes answers from its no answers, and explain why one perceptron can't compute XOR.
 recap:
   - concept: dot-product
-    text: "The dot product multiplies the matching entries of two vectors and adds the products, so $(2,-1)\\cdot(3,1)=6-1=5$. Two non-zero arrows whose dot product is $0$ are perpendicular, at right angles."
+    text: "The dot product multiplies the matching entries of two vectors and adds the products, so $(2,-1)\\cdot(3,1)=6-1=5$. Two non-zero vectors whose dot product is $0$ are perpendicular, at right angles."
   - concept: linear-regression
     text: "Linear regression predicts a number by multiplying each feature by its weight, adding the results and adding one bias, $\\hat y=w\\cdot x+b$. A weight says how much the prediction changes when its feature rises by one."
 where_this_fits: |
@@ -16,12 +16,16 @@ where_this_fits: |
 knowledge_points:
   - id: perc-score-and-step
     title: "Turn a score into yes or no"
+    tldr: |
+      - Multiply each input by its weight, then add the results and a bias to get a score.
+      - A perceptron turns that score into a yes or a no.
+      - Positive scores give yes, and all other scores give no.
     explain: |
       ### From a score to a decision
 
       In the linear regression lesson, a weighted sum plus a bias predicted a number. Now let's use the same kind of sum to decide something instead: should we visit a house?
 
-      Each house has two inputs. $x_1$ is its size in hundreds of square metres, and $x_2$ is its distance from the station in kilometres. We want big houses near the station, so size gets the weight $2$, which makes 100 m² count twice as much as 1 km, and distance gets the weight $-1$, so extra kilometres count against a visit. Then we add a bias of $-1$ to set the bar a house must clear. That gives each house a **score**,
+      Each house has two inputs: size $x_1$ in hundreds of square metres and distance $x_2$ from the station in kilometres. Size gets weight $2$ and distance gets weight $-1$, favouring big houses near the station. A bias of $-1$ sets the bar for a visit. This gives the **score**,
 
       $$z=2x_1-x_2-1.$$
 
@@ -58,7 +62,7 @@ knowledge_points:
 
       ### The perceptron in symbols
 
-      An artificial **neuron** works out a weighted sum of its inputs plus a bias, and then applies an **activation**, which turns the score into the output. A **perceptron** is a neuron whose activation is the step. If the inputs are in a vector $x$, the weights are in a vector $w$ in the same order and the bias is $b$, the score is a dot product plus the bias,
+      An artificial **neuron** computes a weighted sum plus a bias, then applies an **activation** to turn the score into an output. A **perceptron** uses the step activation. With input vector $x$, matching weight vector $w$ and bias $b$, its score is
 
       $$z=w\cdot x+b.$$
 
@@ -101,6 +105,10 @@ knowledge_points:
       - percp-robot-gripper
   - id: perc-straight-boundary
     title: "Find the line between yes and no"
+    tldr: |
+      - We can draw each house as a point on a map, using its two inputs.
+      - Points with a zero score form a straight line separating yes from no.
+      - The weights turn this line, and the bias slides it.
     explain: |
       ### Every house on one map
 
@@ -147,13 +155,28 @@ knowledge_points:
 
       ### Which side says yes
 
-      The blue arrow is the weight vector $w=(2,-1)$, and it points into the yes side. Compare a house with one that is $d_1$ bigger and $d_2$ further away. The bias cancels, so their scores differ by $2d_1-d_2$, which is $w\cdot d$ for the arrow $d=(d_1,d_2)$.
-
-      The arrow along the line from $(0.5,0)$ to $(2,3)$ is $d=(1.5,3)$, and $w\cdot d=3-3=0$. So by the dot product lesson, $w$ is perpendicular to the line. If instead $d$ is $w$ itself, the score rises by $w\cdot w=5$, so moving along $w$ leads into the yes side.
+      The blue arrow shows the weight vector $w=(2,-1)$. Compare inputs $x$ and $x+d$, where $d=(d_1,d_2)$ is the change in size and distance. Their score difference is
+      $$
+      \begin{aligned}
+      z(x+d)-z(x)&=2(x_1+d_1)-(x_2+d_2)-1-(2x_1-x_2-1) &&\text{subtract scores}\\
+      &=2d_1-d_2 &&\text{cancel shared terms}\\
+      &=w\cdot d &&\text{recognise the dot product}
+      \end{aligned}
+      $$
+      Along the line, the vector from $(0.5,0)$ to $(2,3)$ is $d=(1.5,3)$:
+      $$
+      \begin{aligned}
+      w\cdot d&=2(1.5)-3=0 &&\text{no score change along the line}\\
+      w\cdot w&=2^2+(-1)^2=5 &&\text{score rises along the weights}
+      \end{aligned}
+      $$
+      The zero dot product makes $w$ perpendicular to the line; moving along $w$ leads into the yes side.
 
       ### Turning and sliding the line
 
-      - With the bias $-3$ instead of $-1$, every score drops by $2$. The line now meets the size axis where $2x_1=3$, at $x_1=1.5$ instead of $0.5$, so it has slid right without turning.
+      - With bias $-3$, every score drops by $2$. On the size axis, solve for the new crossing:
+        $$\begin{aligned}2x_1-3&=0 &&\text{set distance and score to zero}\\2x_1&=3 &&\text{add three}\\x_1&=1.5 &&\text{divide by two}\end{aligned}$$
+        The crossing was $0.5$, so the line has slid right without turning.
       - With the weights $(1,-1)$, the line becomes $x_2=x_1-1$. It climbs 1 km per 100 m² instead of 2, so it has turned, and it now meets the size axis at $1$.
     worked: |
       Let's find our perceptron's boundary on the map, and then check which side is the no side.
@@ -186,10 +209,14 @@ knowledge_points:
       - percp-no-curve
   - id: perc-and-or-xor
     title: "Find what one perceptron can't do"
+    tldr: |
+      - A perceptron can separate yes inputs from no inputs with one straight line.
+      - XOR says yes when exactly one of the two inputs is yes, and those two cases sit on opposite corners.
+      - One line cannot separate those corners, so XOR needs several connected neurons.
     explain: |
       ### Houses described by yes or no
 
-      Let's describe each house by two yes-or-no facts instead of size and distance. $x_1$ is $1$ if the house has a garden, $x_2$ is $1$ if it's near the station, and each is $0$ otherwise. Then there are only four kinds of house, $(0,0)$, $(1,0)$, $(0,1)$ and $(1,1)$, and on the map they sit at the corners of a square.
+      Describe houses by two yes-or-no facts. $x_1$ is $1$ for a garden, and $x_2$ is $1$ for being near the station; otherwise each is $0$. The four possibilities, $(0,0)$, $(1,0)$, $(0,1)$ and $(1,1)$, sit at a square's corners.
 
       Here are four rules for which houses get a yes:
 
@@ -252,7 +279,14 @@ knowledge_points:
 
       A perceptron says yes on one side of a straight line, so it can follow a rule only if one line puts the yes corners on one side and the no corners on the other. A rule like that is called **linearly separable**.
 
-      AND and OR are both linearly separable. For AND, we give each input the weight $1$, so the weighted sum counts the yeses and is $0$, $1$ or $2$. Any cut-off between $1$ and $2$ works, so we pick $1.5$. That line is $x_1+x_2-1.5=0$, so the bias is $-1.5$. For OR, the line $x_1+x_2=0.5$ sits between $0$ and $1$, so the bias is $-0.5$.
+      AND and OR are both linearly separable. Give both inputs weight $1$ to count the yeses:
+
+      1. **Count yes inputs.** The sum $x_1+x_2$ is $0$, $1$ or $2$.
+      2. **Choose AND's cut-off.** Any value between $1$ and $2$ works; choose $1.5$.
+      3. **Form AND's score.** Subtract the cut-off: $z=x_1+x_2-1.5$, giving bias $-1.5$.
+      4. **Form OR's score.** Choose cut-off $0.5$, between $0$ and $1$: $z=x_1+x_2-0.5$, giving bias $-0.5$.
+
+      Setting either score to zero gives its boundary line.
 
       ### Limitations
 

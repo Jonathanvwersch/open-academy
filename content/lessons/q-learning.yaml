@@ -14,6 +14,10 @@ where_this_fits: |
 knowledge_points:
   - id: ql-q-table
     title: "Score every move in every cell"
+    tldr: |
+      - Q-learning keeps a table with one number for each move in each state.
+      - Each number is the move's reward plus the most return the robot can collect after it.
+      - In each state, the robot picks the move with the biggest number.
     explain: |
       ### A robot in a corridor
 
@@ -80,7 +84,13 @@ knowledge_points:
       4. **Try left in cell 1.** Moving left bumps into the wall, gives $-1$ and leaves the robot in cell 1. Its best move there is right, worth $6.2$ from step 3, because bumping the wall again only wastes a step.
          $$Q^*(1,\text{left})=-1+0.9\times6.2=4.58.$$
 
-      In cell 1, right is worth $6.2$ and left only $4.58$, so the greedy choice there is right, as the picture shows. The left values in cells 2 and 3 come the same way, $Q^*(2,\text{left})=-1+0.9\times6.2=4.58$ and $Q^*(3,\text{left})=-1+0.9\times8=6.2$.
+      In cell 1, right is worth $6.2$ and left only $4.58$, so the greedy choice there is right, as the picture shows. Apply the same rule to the remaining left moves:
+      $$
+      \begin{aligned}
+      Q^*(2,\text{left})&=-1+0.9\times6.2=4.58 &&\text{land in cell one}\\
+      Q^*(3,\text{left})&=-1+0.9\times8=6.2 &&\text{land in cell two}
+      \end{aligned}
+      $$
     problems:
       - ql-q-table-basics
       - qlp-wall-self-explain
@@ -91,6 +101,11 @@ knowledge_points:
       - qlp-aisle-choice
   - id: ql-update-rule
     title: "Update one value after each move"
+    tldr: |
+      - After each move, the robot sees the reward and the state it lands in.
+      - The reward plus the discounted best table value in the new state gives a target.
+      - The robot moves that move's value part of the way toward the target, because one move can mislead.
+      - Over many moves, the goal's reward spreads back along the corridor.
     explain: |
       ### Learning from one move
 
@@ -114,7 +129,7 @@ knowledge_points:
 
       $$Q(s,a)\leftarrow Q(s,a)+\eta\,\delta.$$
 
-      The arrow means "replace with". The Greek letter $\eta$ (eta) is the **learning rate**, a number between $0$ and $1$ that sets how far each update goes. Reinforcement learning books often write it $\alpha$. With $\eta=0.5$, each update closes half the gap.
+      The symbol $\leftarrow$ means "replace with". The Greek letter $\eta$ (eta) is the **learning rate**, a number between $0$ and $1$ that sets how far each update goes. Reinforcement learning books often write it $\alpha$. With $\eta=0.5$, each update closes half the gap.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 200" aria-label="A number line from 0 to 10. The old value Q(3, right) is 0, shown as a grey dot at 0. The TD target is 10, a green dot at 10. With learning rate 0.5, an orange arrow moves the value halfway, to an orange dot at 5, the new value">
@@ -159,8 +174,13 @@ knowledge_points:
       3. **Build cell 2's target in episode 2.** The robot moves right from cell 2 again and lands in cell 3, where the larger of $Q(3,\text{left})=0$ and $Q(3,\text{right})=5$ is $5$.
          $$\text{target}=-1+0.9\times5=3.5.$$
 
-      4. **Update $Q(2,\text{right})$.** The TD error is $3.5-(-0.5)=4$, and we move half of it.
-         $$Q(2,\text{right})\leftarrow-0.5+0.5\times4=1.5.$$
+      4. **Update $Q(2,\text{right})$.** Find the TD error and move half of it.
+         $$
+         \begin{aligned}
+         \delta&=3.5-(-0.5)=4 &&\text{target minus old value}\\
+         Q(2,\text{right})&\leftarrow-0.5+0.5\times4=1.5 &&\text{move half the gap}
+         \end{aligned}
+         $$
 
       Cell 3's value is still below its best value of $10$, and cell 2's is below $8$, but the goal's reward has already started to reach cell 2.
     problems:
@@ -173,12 +193,17 @@ knowledge_points:
       - qlp-delivery-path
   - id: ql-explore
     title: "Try other moves now and then"
+    tldr: |
+      - Always picking the move that looks best can get stuck on a bad early guess.
+      - So now and then the robot picks a move at random, which lets it find better ones.
+      - The target still uses the best value in the next state, so the table learns the best values while the robot explores.
     explain: |
       ### Always picking the best can get stuck
 
       While the robot learns, it has to choose its moves somehow. The obvious choice is greedy, the move with the biggest value so far. But early on, that value can be wrong.
 
-      To see this, let's add a charger to the corridor, just left of cell 1, in place of the left wall. Everything to the right of cell 1 stays the same. Moving left from cell 1 now docks the robot, gives $+1$ and ends the episode. Say the table is all $0$, and on its first move the robot happens to go left. With $\eta=0.5$, $Q(1,\text{left})$ becomes $0+0.5\times(1-0)=0.5$.
+      To see this, let's add a charger to the corridor, just left of cell 1, in place of the left wall. Everything to the right of cell 1 stays the same. Moving left from cell 1 now docks the robot, gives $+1$ and ends the episode. Say the table is all $0$, and its first move is left. With $\eta=0.5$, update its value:
+      $$Q(1,\text{left})\leftarrow0+0.5\times(1-0)=0.5.$$
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 240" aria-label="The corridor with a charger to the left of cell 1. From cell 1, an orange arrow points left to the charger, labelled Q(1, left) = 0.5 after one try. A grey arrow points right to cell 2, labelled Q(1, right) = 0, never tried. Cell 4 is the goal, worth plus 10, never found by a greedy robot">
@@ -223,7 +248,14 @@ knowledge_points:
 
       Be careful not to put the value of the next move the robot actually makes into the target. A related method called SARSA does that. It learns the values of the epsilon-greedy policy it follows, which can be lower than the best values when future random moves cost reward.
     worked: |
-      Let's go back to the corridor without the charger and continue the example from Step 2. Episode 2 there also moved $Q(1,\text{right})$ halfway from $-0.5$ toward a target of $-1$, to $-0.75$, and $Q(3,\text{right})$ halfway from $5$ toward $10$, to $7.5$. So the table holds $Q(1,\text{right})=-0.75$, $Q(2,\text{right})=1.5$ and $Q(3,\text{right})=7.5$, and every left value is still $0$. From episode 3 on, the robot moves epsilon-greedily with $\varepsilon=0.1$, and still $\eta=0.5$ and $\gamma=0.9$.
+      Let's return to the corridor without the charger and continue the example from Step 2. Episode 2 also updated two other entries. Each closes half the gap to its target:
+      $$
+      \begin{aligned}
+      Q(1,\text{right})&\leftarrow-0.5+0.5(-1-(-0.5))=-0.75 &&\text{the target is }-1\\
+      Q(3,\text{right})&\leftarrow5+0.5(10-5)=7.5 &&\text{the target is }10
+      \end{aligned}
+      $$
+      So the table holds $Q(1,\text{right})=-0.75$, $Q(2,\text{right})=1.5$ and $Q(3,\text{right})=7.5$, and every left value is still $0$. From episode 3 on, the robot moves epsilon-greedily with $\varepsilon=0.1$, and still $\eta=0.5$ and $\gamma=0.9$.
 
       1. **Find the chance of the greedy move.** In cell 1, left has the bigger value, $0$ against $-0.75$, because so far right has only cost rewards of $-1$. The robot picks left greedily with probability $0.9$, and its random pick, made with probability $0.1$, lands on left half the time.
          $$P(\text{left})=0.9+0.1\times\tfrac12=0.95.$$
@@ -234,8 +266,13 @@ knowledge_points:
       3. **Build a target while exploring.** Say the random pick sends the robot right. It earns $-1$ and lands in cell 2, where $Q(2,\text{left})=0$ and $Q(2,\text{right})=1.5$. The target uses the larger value, $1.5$, even though the move just made was random.
          $$\text{target}=-1+0.9\times1.5=0.35.$$
 
-      4. **Update $Q(1,\text{right})$.** It was $-0.75$, so the TD error is $0.35-(-0.75)=1.1$, and we move half of it.
-         $$Q(1,\text{right})\leftarrow-0.75+0.5\times1.1=-0.2.$$
+      4. **Update $Q(1,\text{right})$.** It was $-0.75$. Find the error, then move half of it.
+         $$
+         \begin{aligned}
+         \delta&=0.35-(-0.75)=1.1 &&\text{target minus old value}\\
+         Q(1,\text{right})&\leftarrow-0.75+0.5\times1.1=-0.2 &&\text{move half the gap}
+         \end{aligned}
+         $$
 
       The random move let the robot try right in cell 1. The target uses the best value in cell 2, whichever move the robot makes there next.
     problems:
@@ -248,6 +285,10 @@ knowledge_points:
       - qlp-vacuum-deploy
   - id: ql-full-run
     title: "Run Q-learning on the corridor"
+    tldr: |
+      - Q-learning repeats three things: pick a move, see what happens, and update that move's value.
+      - Over many episodes, the goal's reward spreads back until the table holds the best values.
+      - A table only works when there are few enough states for every move to be tried many times.
     explain: |
       ### The whole algorithm
 
@@ -277,8 +318,14 @@ knowledge_points:
 
       1. **Choose in cell 2.** Right, $1.5$, beats left, $0$, so the greedy move is right. Say the robot makes it.
 
-      2. **Move from cell 2 to cell 3.** The target uses cell 3's current guess, $7.5$, so it is $-1+0.9\times7.5=5.75$, and the TD error is $5.75-1.5=4.25$.
-         $$Q(2,\text{right})\leftarrow1.5+0.5\times4.25=3.625.$$
+      2. **Move from cell 2 to cell 3.** Use cell 3's current guess, $7.5$, to build the target, then move halfway toward it.
+         $$
+         \begin{aligned}
+         \text{target}&=-1+0.9\times7.5=5.75 &&\text{reward plus discounted next value}\\
+         \delta&=5.75-1.5=4.25 &&\text{subtract the old value}\\
+         Q(2,\text{right})&\leftarrow1.5+0.5\times4.25=3.625 &&\text{move half the gap}
+         \end{aligned}
+         $$
 
       3. **Move from cell 3 to the goal.** Right is greedy again. The episode ends, so the target is just the reward, $10$.
          $$Q(3,\text{right})\leftarrow7.5+0.5\times(10-7.5)=8.75.$$

@@ -17,6 +17,10 @@ final: act-explain-layers
 knowledge_points:
   - id: act-stacking-stays-straight
     title: "Why stacked layers stay straight"
+    tldr: |
+      - A layer multiplies its inputs by weights, adds them up and adds a bias.
+      - Stacking two such layers still gives one weighted sum of the original inputs, which is a straight line.
+      - Putting a function that bends between the layers lets the network make shapes a straight line can't.
     explain: |
       ### Feeding one score into another
 
@@ -26,7 +30,15 @@ knowledge_points:
 
       ### A straight line stays straight
 
-      In the picture, the grey line shows $y$ against $x$. It's the straight line $y=6x-1$, because putting $2x+1$ in place of $u$ and multiplying out gives $3(2x+1)-4=6x-1$.
+      The grey line plots $y$ against $x$. Substitute the first rule into the second:
+
+      $$
+      \begin{aligned}
+      y&=3(2x+1)-4 &&\text{replace }u\\
+      &=6x+3-4 &&\text{expand the bracket}\\
+      &=6x-1 &&\text{combine constants}
+      \end{aligned}
+      $$
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 400" aria-label="Output y against input x for two stacked rules. Without anything between them the stack is the straight line y = 6x − 1, rising 6 per step at x = −1, 0, 1 (values −7, −1, 5). With max(0, u) between them the line is flat at −4 until x = −0.5, then rises: values −4, −1, 5.">
@@ -59,15 +71,36 @@ knowledge_points:
 
       This always happens. A **linear layer** is a layer whose neurons each compute a weighted sum of their inputs plus a bias. For one input, two of them stacked give
 
-      $$a(cx+d)+e=(ac)x+(ad+e)$$
+      $$
+      \begin{aligned}
+      a(cx+d)+e&=acx+ad+e &&\text{multiply out the bracket}\\
+      &=(ac)x+(ad+e) &&\text{group slope and intercept}
+      \end{aligned}
+      $$
 
-      which is again one slope, $ac$, times $x$, plus one intercept, $ad+e$. More inputs multiply out in the same way, for example $3(2x_1+x_2+1)-4=6x_1+3x_2-1$. So any stack of linear layers is the same as a single linear layer.
+      which is one slope, $ac$, times $x$, plus one intercept, $ad+e$. With more inputs:
+      $$
+      \begin{aligned}
+      3(2x_1+x_2+1)-4&=6x_1+3x_2+3-4 &&\text{multiply each term by three}\\
+      &=6x_1+3x_2-1 &&\text{combine constants}
+      \end{aligned}
+      $$
+      Any stack of linear layers is the same as a single linear layer.
 
       Be careful not to think that more layers always make a more powerful model. With nothing between them, ten linear layers still give each output one weighted sum of the inputs plus a bias.
 
       ### Putting a bend between the layers
 
-      Now let's put $\max(0,u)$, the larger of $0$ and $u$, between the two layers. It keeps a positive $u$ and turns a negative $u$ into $0$. That's the green dashed line in the picture. Up to $x=-0.5$, $u=2x+1$ is negative, so $y=3\cdot0-4$ stays flat at $-4$, and after that the green line follows the grey one. That corner is a bend that no straight line can make.
+      Now put $\max(0,u)$, the larger of $0$ and $u$, between the layers. It keeps positive $u$ and turns negative $u$ into $0$. The green dashed line bends where $u$ reaches zero:
+      $$
+      \begin{aligned}
+      2x+1&=0 &&\text{find the crossing}\\
+      2x&=-1 &&\text{subtract one}\\
+      x&=-0.5 &&\text{divide by two}\\
+      y&=3\cdot0-4=-4 &&\text{output below the crossing}
+      \end{aligned}
+      $$
+      Above the crossing, the green line follows the grey one. No straight line can make this corner.
 
       So to make extra layers count, a network applies a function whose graph isn't a straight line to each score before passing it on. Such a function is called nonlinear, and it's the network's **activation function**.
     worked: |
@@ -79,8 +112,8 @@ knowledge_points:
          $$y=6x+3-4$$
       3. **Collect the numbers.** This leaves one slope and one intercept.
          $$y=6x-1$$
-      4. **Check one input.** At $x=1$ the two layers give $u=3$ and then $y=5$, the same as the single rule.
-         $$u=2(1)+1=3,\qquad y=3(3)-4=5=6(1)-1$$
+      4. **Check one input.** Compare the two layers with the single rule at $x=1$.
+         $$\begin{aligned}u&=2(1)+1=3 &&\text{first layer}\\y&=3(3)-4=5 &&\text{second layer}\\6(1)-1&=5 &&\text{single rule agrees}\end{aligned}$$
       5. **Compare equal steps in $x$.** A straight line rises by the same amount for each equal step in $x$, so a table shows whether the result bends.
 
       | $x$ | $u=2x+1$ | $y$, nothing between | $y$, $\max(0,u)$ between |
@@ -103,6 +136,11 @@ knowledge_points:
       - actp-robot-linear
   - id: act-relu-sigmoid-tanh
     title: "Three common activation functions"
+    tldr: |
+      - The step is flat almost everywhere, so training can't tell which way to move a weight.
+      - So we use functions that bend and still have a slope training can follow.
+      - ReLU keeps positive scores and turns negative scores into zero.
+      - Sigmoid squeezes any score to between zero and one, and tanh squeezes it to between minus one and one.
     explain: |
       ### Why not use the step?
 
@@ -184,6 +222,10 @@ knowledge_points:
       - actp-why-sigmoid-output
   - id: act-slopes
     title: "How steep each activation is"
+    tldr: |
+      - An activation's slope tells how much its output changes after a small change in score.
+      - Sigmoid and tanh become almost flat for large positive or negative scores.
+      - ReLU keeps a useful slope for positive scores, but a neuron with only negative scores stops learning.
     explain: |
       ### How much does the output move?
 

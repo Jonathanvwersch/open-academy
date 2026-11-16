@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildContentIndex } from '../../src/content/index.js';
-import type { Concept, Course } from '../../src/content/schemas.js';
+import type { Concept, Course, Lesson } from '../../src/content/schemas.js';
 import type { ContentSourceData } from '../../src/content/types.js';
 import { contentWarnings } from '../../src/content/warnings.js';
 
@@ -36,6 +36,7 @@ function contentData(
   concepts: Concept[],
   courses: Course[],
   courseOrder = courses.map(({ id }) => id),
+  lessons: ContentSourceData['lessons'] = [],
 ): ContentSourceData {
   const subjects = [...new Set(courses.map(({ subject }) => subject ?? 'default'))].map((id) => ({
     id,
@@ -55,11 +56,30 @@ function contentData(
     },
     courses: courses.map((value) => ({ value, file: `courses/${value.id}.yaml` })),
     concepts: concepts.map((value) => ({ value, domain: 'main', file: 'concepts/main.yaml' })),
-    lessons: [],
+    lessons,
     exercises: [],
     projects: [],
     papers: [],
   };
+}
+
+function pointLesson(tldr?: string): ContentSourceData['lessons'][number] {
+  const point = {
+    id: 'one-step',
+    title: 'One step',
+    ...(tldr === undefined ? {} : { tldr }),
+    explain: 'An explanation.',
+    worked: 'A worked example.',
+    problems: [],
+  };
+  const value: Lesson = {
+    concept: 'one',
+    version: 1,
+    blocks: [{ kind: 'objective', md: 'Learn the topic.' }],
+    fast_path: [],
+    knowledge_points: [point],
+  };
+  return { value, file: 'lessons/one.yaml' };
 }
 
 function warningsFor(data: ContentSourceData) {
@@ -67,6 +87,45 @@ function warningsFor(data: ContentSourceData) {
 }
 
 describe('contentWarnings', () => {
+  it('warns when a step tldr exceeds 60 words', () => {
+    const warnings = warningsFor(
+      contentData([topic('one')], [course('course', 'Course', [['one']])], undefined, [
+        pointLesson(Array.from({ length: 61 }, () => 'word').join(' ')),
+      ]),
+    );
+
+    expect(warnings).toContainEqual({
+      file: 'lessons/one.yaml',
+      id: 'one-step',
+      message: 'step tldr has 61 words; maximum is 60',
+    });
+  });
+
+  it('does not count bullet markers as words', () => {
+    const bullet = Array.from({ length: 20 }, () => 'word').join(' ');
+    const warnings = warningsFor(
+      contentData([topic('one')], [course('course', 'Course', [['one']])], undefined, [
+        pointLesson(`- ${bullet}\n- ${bullet}\n- ${bullet}\n`),
+      ]),
+    );
+
+    expect(warnings.some(({ message }) => message.includes('tldr'))).toBe(false);
+  });
+
+  it('warns when a step has no tldr', () => {
+    const warnings = warningsFor(
+      contentData([topic('one')], [course('course', 'Course', [['one']])], undefined, [
+        pointLesson(),
+      ]),
+    );
+
+    expect(warnings).toContainEqual({
+      file: 'lessons/one.yaml',
+      id: 'one-step',
+      message: 'step has no tldr',
+    });
+  });
+
   it('warns once about topics with no prerequisites after the opening of a course', () => {
     const warnings = warningsFor(
       contentData(

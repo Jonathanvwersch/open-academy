@@ -14,6 +14,10 @@ where_this_fits: |
 knowledge_points:
   - id: wi-depth-chain
     title: "Follow a number through many layers"
+    tldr: |
+      - Each layer multiplies the number it receives by a weight.
+      - Repeating this can make the outputs grow huge or shrink towards zero.
+      - Slopes do the same on the way back, making training unstable or very slow.
     explain: |
       ### A chain of layers
 
@@ -66,9 +70,14 @@ knowledge_points:
 
       ### Growing or shrinking with depth
 
-      The numbers a layer outputs are often called its **activations**. Here the output of layer $k$, which we write $h_k$, is $w$ times the output before it, so after $d$ layers the input has been multiplied by $w$ once per layer:
-
-      $$h_d=w^d\,x$$
+      The numbers a layer outputs are often called its **activations**. Write $h_k$ for layer $k$'s output. Repeated multiplication gives:
+      $$
+      \begin{aligned}
+      h_1&=wx &&\text{multiply the input}\\
+      h_2&=w(wx)=w^2x &&\text{multiply once more}\\
+      h_d&=w^d x &&\text{repeat for }d\text{ layers}
+      \end{aligned}
+      $$
 
       When the weight's size, ignoring its sign, is above $1$, the activations grow very fast with depth, which we call **exploding activations**. When it's below $1$, they shrink towards $0$, which we call **vanishing activations**. Only a weight whose size is close to $1$ keeps them a sensible size.
 
@@ -76,18 +85,40 @@ knowledge_points:
 
       In the backpropagation lesson, we passed the loss's slope backwards and multiplied it by each operation's local derivative. Each layer here computes $h_k=w\,h_{k-1}$, so its local derivative for its input is $w$. The slope is therefore multiplied by $w$ at every layer it passes back through. With a weight of $0.5$, the slopes that reach the first layers are tiny, so those weights hardly change in training, which is called **vanishing gradients**. With a weight of $2$ they're huge, so each update throws those weights far off, which is called **exploding gradients**.
 
-      Even a weight only a little above $1$ grows large in a deep network. With a weight of $1.1$, fifty layers multiply the input by about $117$.
+      Even a weight only a little above $1$ makes the numbers grow large in a deep network. With a weight of $1.1$, fifty layers multiply the input by:
+
+      $$1.1^{50}\approx117.$$
     worked: |
       Let's follow a chain of four layers, each with weight $w=0.5$, from the input $x=1$, and say the loss's slope for the last output is $1$.
 
-      1. **Run the forward pass.** Each layer halves the number it receives.
-         $$h_1=0.5,\quad h_2=0.25,\quad h_3=0.125,\quad h_4=0.0625$$
-      2. **Pass the slope back through the layers.** Each layer's local derivative for its input is $w=0.5$, so the slope halves at every layer.
-         $$\frac{\partial L}{\partial h_4}=1,\quad \frac{\partial L}{\partial h_3}=0.5,\quad \frac{\partial L}{\partial h_2}=0.25,\quad \frac{\partial L}{\partial h_1}=0.125$$
-      3. **Find the first weight's slope.** Let's call the first layer's weight $w_1$, so $h_1=w_1x$. To turn the slope for $h_1$ into a slope for $w_1$, we multiply by the local derivative of $h_1$ for $w_1$, which is $x=1$.
+      1. **Run layer 1.** Halve the input.
+         $$h_1=0.5\times1=0.5$$
+      2. **Run layer 2.** Halve its input again.
+         $$h_2=0.5\times0.5=0.25$$
+      3. **Run layer 3.** Repeat the multiplication.
+         $$h_3=0.5\times0.25=0.125$$
+      4. **Run layer 4.** This gives the final output.
+         $$h_4=0.5\times0.125=0.0625$$
+      5. **Start with the output slope.** This was given as $1$.
+         $$\frac{\partial L}{\partial h_4}=1$$
+      6. **Pass back through layer 4.** Multiply by its local derivative, $0.5$.
+         $$\frac{\partial L}{\partial h_3}=1\times0.5=0.5$$
+      7. **Pass back through layer 3.** The slope halves again.
+         $$\frac{\partial L}{\partial h_2}=0.5\times0.5=0.25$$
+      8. **Pass back through layer 2.** This reaches the first layer's output.
+         $$\frac{\partial L}{\partial h_1}=0.25\times0.5=0.125$$
+      9. **Find the first weight's slope.** Let's call the first layer's weight $w_1$, so $h_1=w_1x$. To turn the slope for $h_1$ into a slope for $w_1$, we multiply by the local derivative of $h_1$ for $w_1$, which is $x=1$.
          $$\frac{\partial L}{\partial w_1}=0.125\times1=0.125$$
 
-      After only four layers, the first weight gets $0.5^3$, an eighth of the slope that arrived at the output, because the slope halves once for each of the three layers after the first. With ten layers it would halve nine times, to $0.5^9$, about $0.002$. With a weight of $2$ it would double nine times instead, to $2^9=512$.
+      The slope passes through every layer after the first. Starting with output slope $1$, compare three chains:
+      $$
+      \begin{aligned}
+      \text{four layers, }w=0.5&:\ 0.5^{4-1}=0.125 &&\text{halve three times}\\
+      \text{ten layers, }w=0.5&:\ 0.5^{10-1}\approx0.002 &&\text{halve nine times}\\
+      \text{ten layers, }w=2&:\ 2^{10-1}=512 &&\text{double nine times}
+      \end{aligned}
+      $$
+      Four layers already leave an eighth of the arriving slope. More layers magnify the change.
     problems:
       - wi-depth-chain-basics
       - wip-chain-self-explain
@@ -99,6 +130,11 @@ knowledge_points:
       - wip-chain-robot
   - id: wi-init-scale
     title: "Pick the size of starting weights"
+    tldr: |
+      - A neuron adds up its inputs, each times a random starting weight.
+      - The more inputs it adds, the bigger that total tends to be.
+      - So we use smaller starting weights for more inputs, keeping outputs about as large as inputs.
+      - Layers with ReLU need slightly larger weights, because ReLU turns about half the outputs into zero.
     explain: |
       ### Many inputs at once
 
@@ -115,17 +151,27 @@ knowledge_points:
       | $-1,\ +1$ | $0$ | $0$ |
       | $-1,\ -1$ | $-2$ | $4$ |
 
-      The squares average to $2$, one for each input. To see why, write out the squared score.
-
-      $$(w_1+w_2)^2=w_1^2+w_2^2+2w_1w_2$$
-
-      Each square is $1$, and the cross term $2w_1w_2$ is positive as often as it's negative, so it averages to $0$.
+      The squares average to $2$, one for each input:
+      $$
+      \begin{aligned}
+      (w_1+w_2)^2&=w_1^2+w_2^2+2w_1w_2 &&\text{expand the square}\\
+      \text{average square}&=1+1+0 &&\text{cross term cancels on average}\\
+      &=2 &&\text{add the two input contributions}
+      \end{aligned}
+      $$
+      The cross term is positive as often as it's negative.
 
       ### The rule for the starting size
 
-      The same happens with $n$ inputs of typical size $1$ and random weights of typical size $a$. Each term $w_ix_i$ of the score has average square $a^2\times1$, and each cross term is as likely positive as negative, so the average square of the score is $n\,a^2$. Keeping it at $1$ needs $a^2=1/n$. This rule for the starting size is called **LeCun initialization**:
-
-      $$a=\frac{1}{\sqrt n}$$
+      With $n$ inputs of typical size $1$, choose independent random weights so each value is as likely as its negative. Write $a$ for their typical size. Each term $w_ix_i$ has average square $a^2$, and the cross terms cancel on average. To keep the score's typical size at $1$:
+      $$
+      \begin{aligned}
+      n a^2&=1 &&\text{add }n\text{ contributions}\\
+      a^2&=1/n &&\text{divide by }n\\
+      a&=1/\sqrt n &&\text{take the positive square root}
+      \end{aligned}
+      $$
+      This is **LeCun initialization**.
 
       Here's what three sizes do for $n=100$ inputs:
 
@@ -133,16 +179,26 @@ knowledge_points:
       - $a=0.1$ gives typical size $1$, so the size is kept.
       - $a=0.01$ gives typical size $0.1$, so the activations vanish over several layers.
 
-      A random score is as likely negative as positive, so a ReLU turns about half of them into $0$, halving the average square. So for ReLU layers we use $a=\sqrt{2/n}$, called **He initialization**.
+      These scores are equally likely positive or negative. ReLU sets the negative half to $0$, halving their average square. To compensate:
+      $$
+      \begin{aligned}
+      \tfrac12 n a^2&=1 &&\text{halve the average square}\\
+      a^2&=2/n &&\text{solve for the weight square}\\
+      a&=\sqrt{2/n} &&\text{take the positive square root}
+      \end{aligned}
+      $$
+      This is **He initialization**.
 
     worked: |
       Let's choose the starting size for a ReLU layer whose neurons each have $n=50$ inputs of typical size $1$, and check that it keeps the size at $1$.
 
       1. **Apply the He rule.** ReLU halves the average square, so we use $2/n$ instead of $1/n$.
          $$a=\sqrt{\tfrac{2}{50}}=\sqrt{0.04}=0.2$$
-      2. **Find the average square of a score.** Each of the $50$ terms $w_ix_i$ has average square $a^2\times1=0.04$, and the cross terms average to $0$.
+      2. **Find each term's average square.** The input's typical size is $1$.
+         $$a^2\times1=0.2^2=0.04$$
+      3. **Find the average square of a score.** Add the $50$ contributions; the cross terms average to $0$.
          $$n\,a^2=50\times0.04=2$$
-      3. **Apply ReLU.** Turning the negative half of the scores into $0$ halves the average square.
+      4. **Apply ReLU.** Turning the negative half of the scores into $0$ halves the average square.
          $$2\times\tfrac12=1$$
 
       The outputs have an average square of $1$, so their typical size is $\sqrt1=1$, the same as the inputs, and the next layer starts from the same size.
@@ -157,6 +213,11 @@ knowledge_points:
       - wip-init-robot
   - id: wi-layer-norm
     title: "Rescale one example's layer outputs"
+    tldr: |
+      - As training changes the weights, a layer's outputs can grow, shrink or drift together.
+      - Layer normalization fixes this for each example by subtracting the outputs' average and dividing by their spread.
+      - The outputs then sit around zero with a typical size of one.
+      - A learned stretch and shift let the network choose another size or centre.
     explain: |
       ### Why a good start isn't enough
 
@@ -164,7 +225,16 @@ knowledge_points:
 
       ### Rescaling four outputs
 
-      Let's take one example, such as one set of sensor readings fed to a robot's network, and say a layer with four neurons gives the outputs $1$, $7$, $9$ and $15$. Their mean is $8$, so we first subtract $8$, which leaves $-7$, $-1$, $1$ and $7$. The typical size of these differences from the mean is called the **standard deviation**, and here it's $\sqrt{(49+1+1+49)/4}=5$, so we divide by $5$. That gives $-1.4$, $-0.2$, $0.2$ and $1.4$, the green dots in the picture, which are centred on $0$ with typical size $1$.
+      Feed one example, such as a robot's sensor readings, into a layer whose four neurons output $1$, $7$, $9$ and $15$. The **standard deviation** is the typical size of their differences from the mean. We use it to rescale them:
+      $$
+      \begin{aligned}
+      \mu&=(1+7+9+15)/4=8 &&\text{find the mean}\\
+      \text{differences}&=(-7,-1,1,7) &&\text{subtract it from each output}\\
+      s&=\sqrt{(49+1+1+49)/4}=5 &&\text{find the standard deviation}\\
+      \text{rescaled outputs}&=(-1.4,-0.2,0.2,1.4) &&\text{divide each difference by }5
+      \end{aligned}
+      $$
+      These are the green dots, centred on $0$ with typical size $1$.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" aria-label="Top number line from 0 to 16 with the four layer outputs of one example 1, 7, 9 and 15, and their mean 8 marked. Their differences from the mean are minus 7, minus 1, 1 and 7, with a standard deviation of 5. Bottom number line from minus 2 to 2 with the normalized outputs minus 1.4, minus 0.2, 0.2 and 1.4 in green, centred on 0">
@@ -207,9 +277,25 @@ knowledge_points:
 
       Now let's see what happens when the outputs drift, changing size or all moving up, keeping the gain at $1$ and the shift at $0$.
 
-      - $1, 7, 9, 15$ give $-1.4, -0.2, 0.2, 1.4$.
-      - $10, 70, 90, 150$, ten times bigger, have mean $80$ and standard deviation $50$, and give the same four numbers.
-      - $101, 107, 109, 115$, all moved up by $100$, give the same four numbers again.
+      The original outputs $1,7,9,15$ give $-1.4,-0.2,0.2,1.4$. Multiplying the outputs by ten gives $10,70,90,150$:
+      $$
+      \begin{aligned}
+      \text{mean}&=10\times8=80 &&\text{scale the old mean}\\
+      \text{standard deviation}&=10\times5=50 &&\text{scale the old spread}\\
+      \text{differences}&=(-70,-10,10,70) &&\text{subtract }80\\
+      \text{normalized}&=(-1.4,-0.2,0.2,1.4) &&\text{divide by }50
+      \end{aligned}
+      $$
+      Adding $100$ instead gives $101,107,109,115$:
+      $$
+      \begin{aligned}
+      \text{mean}&=8+100=108 &&\text{shift the old mean}\\
+      \text{differences}&=(-7,-1,1,7) &&\text{subtract }108\\
+      \text{standard deviation}&=5 &&\text{the differences are unchanged}\\
+      \text{normalized}&=(-1.4,-0.2,0.2,1.4) &&\text{divide by }5
+      \end{aligned}
+      $$
+      Both changes leave the normalized outputs unchanged.
 
       If all the outputs are equal, then $s=0$ and we'd divide by zero. So in practice we add a tiny number to $s^2$ before the square root, dividing by $\sqrt{s^2+0.00001}$ instead.
     worked: |
@@ -236,6 +322,10 @@ knowledge_points:
       - wip-ln-robot
   - id: wi-batch-norm
     title: "Rescale across a batch instead"
+    tldr: |
+      - Batch normalization does the same rescaling for each neuron, across a batch of examples.
+      - So each example's result depends on which other examples share its batch, and small batches make it jumpy.
+      - After training it must fall back on saved averages, so layer normalization suits networks that run on one input at a time.
     explain: |
       ### Rows and columns of a batch
 
@@ -286,7 +376,16 @@ knowledge_points:
 
       Because BatchNorm averages over the batch, each example's output depends on which other examples are in the batch with it.
 
-      - With small batches, the mean and standard deviation jump around from batch to batch. With only two examples, the mean sits halfway between the two values, so both differ from it by the same amount, which is their standard deviation. Dividing by it turns any two different values into $-1$ and $1$.
+      - With small batches, the mean and standard deviation jump around. For one neuron's outputs $a<b$ across a two-example batch, all information beyond their order disappears:
+
+        1. **Find the mean.** It sits halfway between them.
+           $$\mu=(a+b)/2.$$
+        2. **Subtract the mean.** The differences have equal size.
+           $$(a-\mu,b-\mu)=(-(b-a)/2,(b-a)/2).$$
+        3. **Find the standard deviation.** Both squared differences are equal.
+           $$s=(b-a)/2.$$
+        4. **Divide by it.** Both outputs lose their original sizes.
+           $$((a-\mu)/s,(b-\mu)/s)=(-1,1).$$
       - A trained network often runs on one example, with no batch to average over. So during training, BatchNorm keeps a running average of each neuron's mean and of its squared standard deviation across batches. Afterwards it uses those saved values, and the network behaves a little differently than it did in training.
 
       LayerNorm needs only the example itself, so it works the same in training and afterwards, with any batch size. That suits a network that often runs on one input at a time, such as a robot's controller reading its sensors.

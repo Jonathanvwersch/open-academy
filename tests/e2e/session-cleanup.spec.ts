@@ -272,6 +272,7 @@ test('knowledge-point lesson review shows explanations, final check and summary 
 }) => {
   await page.goto('/lessons/supervised-learning');
   await expect(page.getByRole('heading', { name: 'Supervised learning' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'In short', exact: true })).toHaveCount(0);
   await expect(page.getByText('Worked example').first()).toBeVisible();
   await expect(page.getByTestId('lesson-problem')).toHaveCount(0);
   await expect(page.getByText(/Pick any real problem you care about/)).toBeVisible();

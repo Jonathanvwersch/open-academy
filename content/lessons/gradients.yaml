@@ -6,7 +6,7 @@ recap:
   - concept: partial-derivatives
     text: A partial derivative measures the slope when one input changes and the others stay fixed. For $f(x,y)$, $\partial f/\partial x$ is the slope along the $x$ direction.
   - concept: vectors
-    text: A vector keeps its components in order. Its length is the square root of the sum of squared components. Dividing a nonzero vector by its length gives a unit vector, an arrow of length $1$.
+    text: A vector keeps its components in order. Its length is the square root of the sum of squared components. Dividing a nonzero vector by its length gives a unit vector, a vector of length $1$.
   - concept: dot-product
     text: The dot product multiplies matching components and adds them. It also equals the product of the vectors' lengths and the cosine of their angle, so it measures how much they point the same way.
 where_this_fits: |-
@@ -18,6 +18,10 @@ where_this_fits: |-
 knowledge_points:
   - id: grad-vector-of-partials
     title: Collect one slope per input
+    tldr: |
+      - Each input has its own slope when the others stay fixed.
+      - Keeping those slopes in input order makes a vector called the gradient.
+      - The gradient describes how the output responds to changes in each input at that point.
     explain: |-
       ### Two slopes at one spot
 
@@ -25,9 +29,9 @@ knowledge_points:
 
       Both squared terms are nonnegative, so the lowest height is zero at $(0,0)$. Moving away from there raises at least one squared term, making a bowl. A **contour map** shows this ground from above, with each ring joining points at the same height. The rings are stretched circles because the squared terms grow at different rates. Moving between points on one ring keeps the height the same.
 
-      At $P=(1.5,1)$, the height is $4.25$. Differentiating gives an $x$ slope of $2x$, which is $3$ here, and a $y$ slope of $4y$, which is $4$ here. We'll work through both below.
+      At $P=(1.5,1)$, the height is $4.25$. We'll find each slope and substitute $P$ in the worked example below. The results are $3$ along $x$ and $4$ along $y$.
 
-      In the vectors lesson, an arrow pictured an ordered list of numbers. We can picture a list of slopes in the same way. The grey arrow $(3,0)$ records the $x$ slope and $(0,4)$ records the $y$ slope. Adding them gives the blue arrow $(3,4)$. These arrows picture the slope list, rather than physical walks on the ground.
+      In the vectors lesson, we pictured a vector as an arrow. We can picture a vector of slopes the same way. Here the grey arrow $(3,0)$ records the $x$ slope and $(0,4)$ records the $y$ slope. Adding them gives the blue arrow $(3,4)$. Their lengths represent the slope values.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 350" aria-label="The ring joins points where x squared plus 2y squared equals 4.25, including P at (1.5,1). The grey arrows represent the slopes 3 along x and 4 along y. Adding these arrows gives the blue gradient (3,4). Their lengths show the slope numbers rather than distances to walk."><defs><marker id="gr1b" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#3b82f6"/></marker><marker id="gr1m" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker></defs><g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717"><path d="M60 255 H590 M220 330 V25" stroke="#737373"/><ellipse cx="220" cy="255" rx="134" ry="94.75" fill="#171717" fill-opacity="0" stroke="#d4d4d4"/><path d="M317.5 190 L395.5 190" stroke="#737373" stroke-width="2.5" marker-end="url(#gr1m)"/><path d="M317.5 190 L317.5 86" stroke="#737373" stroke-width="2.5" marker-end="url(#gr1m)"/><path d="M317.5 190 L395.5 86" stroke="#3b82f6" stroke-width="2.5" marker-end="url(#gr1b)"/><circle cx="317.5" cy="190" r="4" fill="#171717"/><text x="325" y="215" fill="#737373">P = (1.5,1)</text><text x="405" y="195" fill="#737373">x slope: 3</text><text x="245" y="115" fill="#737373">y slope: 4</text><text x="405" y="75" fill="#3b82f6">gradient (3,4)</text><text x="85" y="290" fill="#737373">ring: height 4.25</text><text x="65" y="315" fill="#737373">arrow lengths represent slopes</text><text x="595" y="260">x</text><text x="225" y="22">y</text></g></svg>
@@ -50,10 +54,10 @@ knowledge_points:
       Let's find the gradient of our bowl $f(x,y)=x^2+2y^2$ at $P=(1.5,1)$.
 
       1. **Find the x slope.** Hold $y$ fixed, so its term is constant and disappears when differentiating.
-         $$\frac{\partial f}{\partial x}=2x=2(1.5)=3.$$
+         $$\begin{aligned}\frac{\partial f}{\partial x}&=2x &&\text{differentiate in }x\\\frac{\partial f}{\partial x}(P)&=2(1.5)=3 &&\text{substitute }P\end{aligned}$$
 
       2. **Find the y slope.** Hold $x$ fixed and differentiate the squared $y$ term.
-         $$\frac{\partial f}{\partial y}=4y=4(1)=4.$$
+         $$\begin{aligned}\frac{\partial f}{\partial y}&=4y &&\text{differentiate in }y\\\frac{\partial f}{\partial y}(P)&=4(1)=4 &&\text{substitute }P\end{aligned}$$
 
       3. **Keep the slopes in order.** The inputs are listed as $x$, then $y$, so their slopes go in that order too.
          $$\nabla f(P)=(3,4).$$
@@ -70,6 +74,10 @@ knowledge_points:
       - gradp-robot-gradient
   - id: grad-points-uphill
     title: Find the slope in a chosen direction
+    tldr: |
+      - A chosen direction can change several inputs together.
+      - The dot product of the gradient with a direction of length one adds up each input's effect.
+      - That gives the slope in that direction, which estimates the output change for a small move.
     explain: |-
       ### Walk along x first
 
@@ -83,13 +91,16 @@ knowledge_points:
 
       ### How each input changes the height
 
-      The **directional derivative** is the slope at a point in a chosen unit direction. Write $D_{\mathbf u}f(P)$, read “the slope of f at P in direction u”. For $\mathbf u=(u_x,u_y)$, walking distance $h$ changes $x$ by $hu_x$ and $y$ by $hu_y$. Each partial derivative estimates the height change from its input as slope times input change. So the two contributions are about $3hu_x$ and $4hu_y$. Adding gives an estimated total change of $h(3u_x+4u_y)$. Dividing by distance $h$ leaves the slope $3u_x+4u_y$, which is a dot product:
+      The **directional derivative** is the slope at a point in a chosen unit direction. Write $D_{\mathbf u}f(P)$, read “the slope of f at P in direction u”. Write $\Delta$ for a change and $\approx$ for "approximately". For $\mathbf u=(u_x,u_y)$, a distance $h$ in the input plane gives:
+      $$\begin{aligned}\Delta x&=hu_x &&\text{change in }x\\\Delta y&=hu_y &&\text{change in }y\\\Delta f&=3hu_x+4hu_y+h^2(u_x^2+2u_y^2) &&\text{expand the bowl's height change}\\&\approx3hu_x+4hu_y &&\text{drop the squared-nudge terms}\\\frac{\Delta f}{h}&\approx3u_x+4u_y &&\text{divide by distance}\end{aligned}$$
+      As $h$ shrinks, this gives the dot product:
 
       $$D_{\mathbf u}f(P)=\nabla f(P)\cdot\mathbf u.$$
 
       Use a unit direction so the result measures change per unit distance.
 
-      Dividing $(3,4)$ by its length $5$ gives the same-direction unit vector $(0.6,0.8)$. To find a perpendicular direction, swap those entries and flip one sign, giving $(0.8,-0.6)$. Its dot product with $(3,4)$ is $3(0.8)+4(-0.6)=0$, confirming it is perpendicular.
+      Compare a direction along the gradient with one perpendicular to it:
+      $$\begin{aligned}(3,4)/5&=(0.6,0.8) &&\text{divide by length for a unit vector}\\\mathbf v&=(0.8,-0.6) &&\text{swap entries and flip one sign}\\(3,4)\cdot\mathbf v&=3(0.8)+4(-0.6)=0 &&\text{check perpendicularity}\end{aligned}$$
 
       | Unit direction | Slope |
       | --- | --- |
@@ -99,19 +110,19 @@ knowledge_points:
 
       ### Estimate a small change
 
-      Let $\Delta f$ mean new height minus old height. The sign $\approx$ means “is approximately”. Distance times slope estimates the change:
+      Here $\Delta f$ is new height minus old height. Distance times slope estimates that change:
 
       $$\Delta f\approx hD_{\mathbf u}f(P).$$
 
       Call the vector of input changes $\delta$. Multiplying direction by distance gives $\delta=h\mathbf u$. Because a dot product multiplies and adds components, we can multiply either the result or the direction by $h$:
 
       $$\begin{aligned}
-      hD_{\mathbf u}f(P)&=h(\nabla f(P)\cdot\mathbf u)\\
-      &=\nabla f(P)\cdot(h\mathbf u)\\
-      &=\nabla f(P)\cdot\delta.
+      hD_{\mathbf u}f(P)&=h(\nabla f(P)\cdot\mathbf u) &&\text{use the directional slope}\\
+      &=\nabla f(P)\cdot(h\mathbf u) &&\text{scale the direction instead}\\
+      &=\nabla f(P)\cdot\delta &&\text{substitute the change vector}
       \end{aligned}$$
 
-      Each expression above is distance times slope, so it estimates the height change, not the slope alone.
+      Each expression is distance times slope, so it estimates the height change.
 
       Be careful not to read zero slope as constant height throughout a straight walk. The ground can bend as we move, so these estimates describe only small moves from $P$.
     worked: |-
@@ -129,7 +140,7 @@ knowledge_points:
       4. **Estimate the new height.** The endpoint $P+\delta$ means adding the changes to the starting coordinates. Add the estimated rise to height $4.25$.
          $$f(P+\delta)\approx4.25+0.1(5)=4.75.$$
 
-      We predict a rise of $0.5$, not an exact height, because the slopes can change during the walk.
+      We predict a rise of $0.5$. The height estimate is approximate because the slopes can change during the walk.
     problems:
       - grad-points-uphill-basics
       - gradp-approx
@@ -141,6 +152,10 @@ knowledge_points:
       - gradp-robot-direction
   - id: grad-steepest-descent
     title: Choose the steepest way downhill
+    tldr: |
+      - We compare directions using moves of equal length.
+      - The slope is largest along the gradient and smallest in the opposite direction.
+      - So the opposite of the gradient is the steepest way down from here, though it may not point straight at the bottom.
     explain: |-
       ### Compare walks of equal length
 
@@ -158,7 +173,7 @@ knowledge_points:
 
       The **steepest-descent direction** is the direction of fastest decrease per unit distance at a point. Let $\theta$ be the angle between the gradient and unit direction $\mathbf u$. The angle form of the dot product multiplies their lengths and the cosine of that angle. Because $\mathbf u$ has length one, the slope is:
 
-      $$D_{\mathbf u}f(P)=\|\nabla f(P)\|\cos\theta.$$
+      $$\begin{aligned}D_{\mathbf u}f(P)&=\|\nabla f(P)\|\|\mathbf u\|\cos\theta &&\text{use the angle form}\\&=\|\nabla f(P)\|\cos\theta &&\text{the direction has length one}\end{aligned}$$
 
       Here $\|\nabla f(P)\|$ means the gradient's length. The cosine cannot exceed $1$, so no slope can exceed that length. The largest slope occurs along the gradient, where the cosine is $1$. At our point:
 
@@ -172,9 +187,11 @@ knowledge_points:
 
       ### Downhill is not always toward the bottom
 
-      The negative gradient is $(-3,-4)$. Dividing by $5$ gives our downhill unit vector $(-0.6,-0.8)$, which points the same way. But the vector from $P$ to the bottom is $(-1.5,-1)$, along the red arrow, so those directions differ.
+      Compare the downhill unit vector with the vector to the bottom:
+      $$\begin{aligned}-\nabla f(P)&=(-3,-4) &&\text{reverse the gradient}\\-\nabla f(P)/5&=(-0.6,-0.8) &&\text{divide by its length}\\(0,0)-P&=(-1.5,-1) &&\text{subtract to find the red direction}\end{aligned}$$
+      Those directions differ.
 
-      The steepest direction describes the slopes at our starting point, not the whole route. After a small downhill step, we can calculate the slopes again and choose a new direction.
+      The steepest direction describes the slopes at our starting point. After a small downhill step, we can calculate the slopes again and choose a new direction.
     worked: |-
       Let's find the steepest downhill unit direction at $P$, where the gradient is $(3,4)$, and compare the three directions in the picture.
 
@@ -188,9 +205,9 @@ knowledge_points:
          $$\mathbf u=-\frac{\nabla f(P)}{\|\nabla f(P)\|}=(-0.6,-0.8).$$
 
       4. **Compare the slopes.** The cosine is $1$ along the gradient, $-1$ opposite and $0$ perpendicular.
-         $$5\cos0^\circ=5,\qquad5\cos180^\circ=-5,\qquad5\cos90^\circ=0.$$
+         $$\begin{aligned}5\cos0^\circ&=5 &&\text{along the gradient}\\5\cos180^\circ&=-5 &&\text{opposite the gradient}\\5\cos90^\circ&=0 &&\text{perpendicular to it}\end{aligned}$$
 
-      These slopes describe small moves from $P$, compared per unit distance. The negative gradient gives the fastest decrease nearby, not a promise of reaching the bottom in one move.
+      These slopes describe small moves from $P$, compared per unit distance. The negative gradient gives the fastest decrease nearby; reaching the bottom can take many moves.
     problems:
       - grad-steepest-descent-basics
       - gradp-steepest-self-explain
@@ -206,6 +223,6 @@ summary: |-
   - At a point $P$, the gradient $\nabla f(P)$ collects one partial derivative per input, in input order.
   - The slope in a unit direction $\mathbf u$ is $\nabla f(P)\cdot\mathbf u$. For a small input change $\delta$ from $P$, the output change is approximately $\nabla f(P)\cdot\delta$.
   - The gradient points steepest uphill, and its negative points steepest downhill. The steepest slope has magnitude equal to the gradient's length.
-  - These directions describe the slopes at $P$, not a route straight to the minimum.
+  - These directions describe the slopes at $P$, so the route to the minimum can change direction along the way.
 
   **Next:** Gradient descent uses the same downhill steps to train a model. We treat the model's loss as the height and its parameters as the inputs to adjust.

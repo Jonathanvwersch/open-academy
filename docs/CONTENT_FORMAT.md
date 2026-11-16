@@ -96,6 +96,9 @@ recap:
 knowledge_points:
   - id: sl-inputs-targets
     title: Inputs, targets and the model
+    tldr: | # optional, shown before explain: 2-4 short bullets, at most 60 words
+      - A model turns what you know into a guess.
+      - The target is the answer it learns to guess.
     explain: "A short explanation."
     worked: "A worked example with the steps shown."
     problems: [slp-predict, slp-input-target, slp-parameters]

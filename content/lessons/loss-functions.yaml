@@ -16,6 +16,11 @@ where_this_fits: |
 knowledge_points:
   - id: loss-measure-misses
     title: "Turn many errors into one score"
+
+    tldr: |
+      - If we average errors as they are, misses that are too high and too low cancel out.
+      - To stop that, we either drop each error's sign or square it.
+      - Averaging the sizes gives the mean absolute error, and averaging the squares gives the mean squared error.
     explain: |
       ### Errors that cancel
 
@@ -108,6 +113,11 @@ knowledge_points:
       - lossp-mae-backwards
   - id: loss-large-errors
     title: "See how each loss treats a big miss"
+
+    tldr: |
+      - Doubling a miss doubles its absolute error and quadruples its squared error.
+      - The squared-error slope also grows with the miss, while the absolute-error slope keeps the same size.
+      - Squared error therefore gives the biggest misses more influence during training.
     explain: |
       ### One error, two costs
 
@@ -189,6 +199,11 @@ knowledge_points:
       - lossp-sensor
   - id: loss-constant-choice
     title: "Best single number to predict"
+
+    tldr: |
+      - The simplest model predicts the same number every time, and a real model has to beat it.
+      - Under squared error, the best number is the mean, the sum of the values divided by their count.
+      - Under absolute error, the best number is the median, the middle value after sorting.
     explain: |
       ### The simplest possible model
 
@@ -273,10 +288,18 @@ knowledge_points:
       Let's find the best constant $c$ for the values $1$, $2$ and $6$ under each loss.
 
       1. **Find the slope of the total squared error.** Each value adds its own slope, $2(c-y)$, and we collect the terms.
-         $$2(c-1)+2(c-2)+2(c-6)=6c-18$$
+         $$\begin{aligned}
+         2(c-1)+2(c-2)+2(c-6)&=2c-2+2c-4+2c-12 &&\text{expand each term}\\
+         &=6c-18 &&\text{collect matching terms}
+         \end{aligned}$$
 
       2. **Set the slope to zero.** The total is a bowl, and at its bottom the curve is flat, so the slope there is zero.
-         $$6c-18=0\quad\Rightarrow\quad c=3=\frac{1+2+6}{3}$$
+         $$\begin{aligned}
+         6c-18&=0 &&\text{set the slope to zero}\\
+         6c&=18 &&\text{add eighteen}\\
+         c&=3 &&\text{divide by six}\\
+         \frac{1+2+6}{3}&=3 &&\text{check against the mean}
+         \end{aligned}$$
 
       3. **Find the slope of the total absolute error on each side of $2$.** A value below $c$ means the prediction is above that target, which adds $+1$, and a value above $c$ adds $-1$.
          $$1<c<2:\ (+1)+(-1)+(-1)=-1$$

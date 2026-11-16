@@ -19,6 +19,8 @@ export function LessonSteps({
   explain?: 'upcoming' | 'current' | 'done';
   readOnly?: boolean;
 }) {
+  const quizPassed = state.status === 'completed' || state.quiz.bestPassed;
+  const canReturnToQuiz = viewingPastStep && !readOnly && (state.status === 'quiz' || quizPassed);
   return (
     <ol
       aria-label="Lesson steps"
@@ -62,7 +64,9 @@ export function LessonSteps({
                     passed ? 'passed' : current ? 'current' : 'locked'
                   }`}
                   aria-current={ariaCurrent}
-                  onClick={() => viewStep(item.id)}
+                  onClick={() =>
+                    item.id === state.currentPointId ? returnToCurrentStep() : viewStep(item.id)
+                  }
                 >
                   {label}
                 </button>
@@ -96,7 +100,23 @@ export function LessonSteps({
         </li>
       ) : null}
       <li>
-        {explain === 'current' ? (
+        {canReturnToQuiz ? (
+          <Badge
+            asChild
+            variant="outline"
+            data-testid="lesson-quiz-chip"
+            aria-label={`Lesson quiz, ${quizPassed ? 'passed' : 'current'}`}
+            className={
+              quizPassed
+                ? 'cursor-pointer border-green-300 bg-green-50 text-green-900 hover:brightness-95'
+                : 'cursor-pointer border-primary bg-muted text-foreground hover:brightness-95'
+            }
+          >
+            <button type="button" onClick={returnToCurrentStep}>
+              {quizPassed ? '✓ Quiz' : 'Quiz'}
+            </button>
+          </Badge>
+        ) : explain === 'current' ? (
           <Badge
             variant="outline"
             data-testid="lesson-quiz-chip"
@@ -105,7 +125,16 @@ export function LessonSteps({
           >
             Quiz
           </Badge>
-        ) : state.status === 'completed' || state.quiz.bestPassed ? (
+        ) : state.status === 'quiz' ? (
+          <Badge
+            variant="outline"
+            data-testid="lesson-quiz-chip"
+            aria-label="Lesson quiz, current"
+            className="border-primary bg-muted text-foreground"
+          >
+            Quiz
+          </Badge>
+        ) : quizPassed ? (
           <Badge
             variant="outline"
             data-testid="lesson-quiz-chip"
@@ -114,29 +143,6 @@ export function LessonSteps({
           >
             ✓ Quiz
           </Badge>
-        ) : state.status === 'quiz' ? (
-          viewingPastStep && !readOnly ? (
-            <Badge
-              asChild
-              variant="outline"
-              data-testid="lesson-quiz-chip"
-              aria-label="Lesson quiz, current"
-              className="cursor-pointer border-primary bg-muted text-foreground hover:brightness-95"
-            >
-              <button type="button" onClick={returnToCurrentStep}>
-                Quiz
-              </button>
-            </Badge>
-          ) : (
-            <Badge
-              variant="outline"
-              data-testid="lesson-quiz-chip"
-              aria-label="Lesson quiz, current"
-              className="border-primary bg-muted text-foreground"
-            >
-              Quiz
-            </Badge>
-          )
         ) : (
           <Badge
             variant="outline"
