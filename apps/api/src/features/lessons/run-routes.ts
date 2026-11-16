@@ -35,6 +35,7 @@ import {
   xpForPassedPoint,
 } from '../../learning/lesson-runner.js';
 import { calculateCredit } from '../../learning/mastery.js';
+import { creditHardPrerequisites } from '../../learning/mastery-service.js';
 import { resolveLessonCourse } from './course-context.js';
 
 type LessonContext = Context<ApiEnv>;
@@ -1269,6 +1270,9 @@ export function registerLessonRunRoutes(
         finalItems.set(updatedItem.id, updatedItem);
       }
       const submittedItems = items.map((item) => finalItems.get(item.id) ?? item);
+      const allItemsGood = submittedItems.every(
+        (item) => item.correct !== null && item.correct >= 1,
+      );
       const result = scoreLessonQuiz(submittedItems.map((item) => item.correct ?? 0));
       await tx
         .update(lessonQuizAttempts)
@@ -1362,6 +1366,15 @@ export function registerLessonRunRoutes(
                 createdAt: now,
               });
             }
+          }
+          if (allItemsGood) {
+            await creditHardPrerequisites(tx, {
+              userId,
+              conceptId,
+              index: resolved.index,
+              now,
+              timeZone: context.get('timeZone'),
+            });
           }
         }
       } else if (!run.quizPassedAt) {

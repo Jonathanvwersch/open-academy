@@ -80,7 +80,7 @@ async function enrollDefaultCourse() {
   });
 }
 
-async function createReviewActivity(conceptId: string, exerciseId: string) {
+async function createReviewActivity(conceptId: string, exerciseIds: string | string[]) {
   const [session] = await db
     .insert(studySessions)
     .values({
@@ -99,7 +99,7 @@ async function createReviewActivity(conceptId: string, exerciseId: string) {
       idx: 0,
       kind: 'review',
       conceptId,
-      exerciseIds: [exerciseId],
+      exerciseIds: typeof exerciseIds === 'string' ? [exerciseIds] : exerciseIds,
       plannedMinutes: 5,
       status: 'in_progress',
     })
@@ -655,6 +655,134 @@ test('a review activity schedules its card once after all three answers', async 
   expect(logs).toHaveLength(1);
   expect(logs[0]?.rating).toBe(String(Rating.Good));
   expect(logs[0]?.attemptId).toBe(finalAttemptId);
+});
+
+test('a Good review activity credits hard prerequisites but not soft prerequisites', async () => {
+  await resetLearner();
+  const exercises = (content.exercisesByConcept.get('linear-models') ?? [])
+    .filter(
+      (exercise) =>
+        exercise.dimension === 'math' && exercise.type === 'numeric' && !isTemplate(exercise),
+    )
+    .slice(0, 3);
+  expect(exercises).toHaveLength(3);
+  const dueAt = new Date('2025-12-31T12:00:00.000Z');
+  const fsrsForDue = () => ({
+    ...newReviewCard(new Date(now)),
+    due: dueAt,
+    reps: 6,
+    lapses: 2,
+  });
+  const hardCards = await Promise.all(
+    ['math', 'conceptual'].map((dimension) =>
+      createReviewCard('vectors', dimension, dueAt, fsrsForDue()),
+    ),
+  );
+  const softCard = await createReviewCard('supervised-learning', 'math', dueAt, fsrsForDue());
+  const currentCard = await createReviewCard('linear-models', 'math', dueAt, fsrsForDue());
+  const activity = await createReviewActivity(
+    'linear-models',
+    exercises.map((exercise) => exercise.id),
+  );
+
+  for (const exercise of exercises) {
+    const response = await app.request('/api/attempts', {
+      method: 'POST',
+      headers: headersAt(now),
+      body: JSON.stringify({
+        exerciseId: exercise.id,
+        activityId: activity.id,
+        answer: correctAnswer(exercise.id, null),
+        mode: 'review',
+      }),
+    });
+    expect(response.status).toBe(200);
+  }
+
+  const [currentLog] = await db
+    .select()
+    .from(reviewLogs)
+    .where(eq(reviewLogs.cardId, currentCard.id));
+  expect(currentLog?.rating).toBe(String(Rating.Good));
+  for (const prerequisiteCard of hardCards) {
+    const [updated] = await db
+      .select()
+      .from(reviewCards)
+      .where(eq(reviewCards.id, prerequisiteCard.id));
+    if (!updated) throw new Error('Expected a credited hard-prerequisite card');
+    expect(updated.dueAt.getTime()).toBeGreaterThan(dueAt.getTime());
+    expect(new Date((updated.fsrs as { due: string }).due)).toEqual(updated.dueAt);
+    expect(updated.lastReviewAt).toEqual(prerequisiteCard.lastReviewAt);
+    expect(updated.reps).toBe(prerequisiteCard.reps);
+    expect(updated.lapses).toBe(prerequisiteCard.lapses);
+    expect(
+      await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, prerequisiteCard.id)),
+    ).toHaveLength(0);
+  }
+  const [unchangedSoftCard] = await db
+    .select()
+    .from(reviewCards)
+    .where(eq(reviewCards.id, softCard.id));
+  if (!unchangedSoftCard) throw new Error('Expected the soft-prerequisite card');
+  expect(unchangedSoftCard.dueAt).toEqual(softCard.dueAt);
+  expect(unchangedSoftCard.lastReviewAt).toEqual(softCard.lastReviewAt);
+  expect(unchangedSoftCard.reps).toBe(softCard.reps);
+  expect(unchangedSoftCard.lapses).toBe(softCard.lapses);
+  expect(await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, softCard.id))).toHaveLength(
+    0,
+  );
+});
+
+test('a Hard review activity does not credit hard prerequisites', async () => {
+  await resetLearner();
+  const exercises = (content.exercisesByConcept.get('linear-models') ?? [])
+    .filter(
+      (exercise) =>
+        exercise.dimension === 'math' && exercise.type === 'numeric' && !isTemplate(exercise),
+    )
+    .slice(0, 3);
+  expect(exercises).toHaveLength(3);
+  const dueAt = new Date('2025-12-31T12:00:00.000Z');
+  const fsrs = { ...newReviewCard(new Date(now)), due: dueAt, reps: 6, lapses: 2 };
+  const prerequisiteCard = await createReviewCard('vectors', 'math', dueAt, fsrs);
+  const currentCard = await createReviewCard('linear-models', 'math', dueAt, fsrs);
+  const activity = await createReviewActivity(
+    'linear-models',
+    exercises.map((exercise) => exercise.id),
+  );
+
+  for (const [index, exercise] of exercises.entries()) {
+    const answer = index === 2 ? 'not-a-number' : correctAnswer(exercise.id, null);
+    const response = await app.request('/api/attempts', {
+      method: 'POST',
+      headers: headersAt(now),
+      body: JSON.stringify({
+        exerciseId: exercise.id,
+        activityId: activity.id,
+        answer,
+        mode: 'review',
+      }),
+    });
+    expect(response.status).toBe(200);
+  }
+
+  const [currentLog] = await db
+    .select()
+    .from(reviewLogs)
+    .where(eq(reviewLogs.cardId, currentCard.id));
+  expect(currentLog?.rating).toBe(String(Rating.Hard));
+  const [unchanged] = await db
+    .select()
+    .from(reviewCards)
+    .where(eq(reviewCards.id, prerequisiteCard.id));
+  if (!unchanged) throw new Error('Expected the hard-prerequisite card');
+  expect(unchanged.dueAt).toEqual(prerequisiteCard.dueAt);
+  expect(unchanged.lastReviewAt).toEqual(prerequisiteCard.lastReviewAt);
+  expect(unchanged.reps).toBe(prerequisiteCard.reps);
+  expect(unchanged.lapses).toBe(prerequisiteCard.lapses);
+  expect(
+    await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, prerequisiteCard.id)),
+  ).toHaveLength(0);
 });
 
 test('two consecutive Again review activities pull the weakest hard-prerequisite card due now', async () => {

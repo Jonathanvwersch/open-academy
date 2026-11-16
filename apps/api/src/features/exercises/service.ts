@@ -21,7 +21,7 @@ import { mapReviewRating, reviewActivityRating, scheduleReview } from '../../lea
 import { gradeExercise } from '../../learning/grading/index.js';
 import { rubricFeedbackWithScoredFlags } from '../../learning/grading/rubric-score.js';
 import { calculateCredit } from '../../learning/mastery.js';
-import { applyMastery } from '../../learning/mastery-service.js';
+import { applyMastery, creditHardPrerequisites } from '../../learning/mastery-service.js';
 import { bringWeakestPrerequisiteCardDueNow } from '../../learning/prerequisite-review.js';
 import { attemptAllowsRetry } from '../../learning/retry.js';
 import type { MasteryRecord } from '../../learning/types.js';
@@ -568,6 +568,15 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
               fsrsLog: scheduled.log,
               createdAt: now,
             });
+            if (rating === Rating.Good) {
+              await creditHardPrerequisites(db, {
+                userId: request.userId,
+                conceptId: card.conceptId,
+                index,
+                now,
+                timeZone: request.timeZone,
+              });
+            }
             if (rating === Rating.Again && previousLog?.rating === String(Rating.Again)) {
               const hardPrerequisiteIds =
                 index.conceptsById

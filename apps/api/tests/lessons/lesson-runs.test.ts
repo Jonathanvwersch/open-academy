@@ -24,6 +24,7 @@ import {
   xpEvents,
 } from '../../src/db/schema.js';
 import { FakeProvider } from '../../src/features/tutor/provider.js';
+import { newReviewCard } from '../../src/learning/fsrs.js';
 import { scoreLessonQuiz } from '../../src/learning/lesson-quiz.js';
 
 const db = createDb(env.TEST_DATABASE_URL);
@@ -53,8 +54,8 @@ afterAll(async () => {
   await db.$client.end();
 });
 
-async function startRun(activityId?: string) {
-  return app.request(`/api/lessons/${conceptId}/run`, {
+async function startRun(activityId?: string, runConceptId = conceptId) {
+  return app.request(`/api/lessons/${runConceptId}/run`, {
     method: 'POST',
     headers,
     body: JSON.stringify(activityId ? { activityId } : {}),
@@ -164,44 +165,50 @@ async function answerProblem(
   answer: unknown,
   activityId?: string,
   requestHeaders = headers,
+  runConceptId = conceptId,
 ) {
-  return app.request(`/api/lessons/${conceptId}/run/answer`, {
+  return app.request(`/api/lessons/${runConceptId}/run/answer`, {
     method: 'POST',
     headers: requestHeaders,
     body: JSON.stringify({ problemId, answer, ...(activityId ? { activityId } : {}) }),
   });
 }
 
-async function startQuiz(activityId?: string) {
-  return app.request(`/api/lessons/${conceptId}/quiz/start`, {
+async function startQuiz(activityId?: string, runConceptId = conceptId) {
+  return app.request(`/api/lessons/${runConceptId}/quiz/start`, {
     method: 'POST',
     headers,
     body: JSON.stringify(activityId ? { activityId } : {}),
   });
 }
 
-async function answerQuizItem(itemId: string, answer: unknown, activityId?: string) {
-  return app.request(`/api/lessons/${conceptId}/quiz/answer`, {
+async function answerQuizItem(
+  itemId: string,
+  answer: unknown,
+  activityId?: string,
+  runConceptId = conceptId,
+) {
+  return app.request(`/api/lessons/${runConceptId}/quiz/answer`, {
     method: 'POST',
     headers,
     body: JSON.stringify({ itemId, answer, ...(activityId ? { activityId } : {}) }),
   });
 }
 
-async function submitQuiz(activityId?: string) {
-  return app.request(`/api/lessons/${conceptId}/quiz/submit`, {
+async function submitQuiz(activityId?: string, runConceptId = conceptId) {
+  return app.request(`/api/lessons/${runConceptId}/quiz/submit`, {
     method: 'POST',
     headers,
     body: JSON.stringify(activityId ? { activityId } : {}),
   });
 }
 
-async function finishLessonSteps(activityId?: string) {
-  let run = (await (await startRun(activityId)).json()).run;
+async function finishLessonSteps(activityId?: string, runConceptId = conceptId) {
+  let run = (await (await startRun(activityId, runConceptId)).json()).run;
   let steps = 0;
   while (run.status === 'in_progress' && steps < 100) {
     if (!run.pending) {
-      run = (await (await startRun(activityId)).json()).run;
+      run = (await (await startRun(activityId, runConceptId)).json()).run;
       continue;
     }
     const pending = run.pending;
@@ -209,6 +216,8 @@ async function finishLessonSteps(activityId?: string) {
       pending.id,
       correctAnswer(pending.exerciseId, pending.seed),
       activityId,
+      headers,
+      runConceptId,
     );
     expect(response.status).toBe(200);
     run = (await response.json()).state;
@@ -237,6 +246,55 @@ async function answerQuizAttempt(
     expect(response.status).toBe(200);
   }
   return items;
+}
+
+async function createDuePrerequisiteCard(prerequisiteConceptId: string) {
+  const dueAt = new Date('2025-12-31T12:00:00.000Z');
+  const fsrs = {
+    ...newReviewCard(new Date(headers['X-Now'])),
+    due: dueAt,
+    reps: 5,
+    lapses: 2,
+  };
+  const [card] = await db
+    .insert(reviewCards)
+    .values({
+      userId,
+      conceptId: prerequisiteConceptId,
+      dimension: 'math',
+      fsrs,
+      dueAt,
+      lastReviewAt: null,
+      reps: fsrs.reps,
+      lapses: fsrs.lapses,
+    })
+    .returning();
+  if (!card) throw new Error(`Could not create the ${prerequisiteConceptId} review card`);
+  return card;
+}
+
+async function submitQuizForConcept(runConceptId: string, wrongItemIndex = -1) {
+  const run = await finishLessonSteps(undefined, runConceptId);
+  expect(run.status).toBe('quiz');
+  const started = await startQuiz(undefined, runConceptId);
+  expect(started.status).toBe(200);
+  const startedRun = (await started.json()).run;
+  const items = await db
+    .select()
+    .from(lessonQuizItems)
+    .where(eq(lessonQuizItems.quizAttemptId, startedRun.quiz.current.attemptId))
+    .orderBy(lessonQuizItems.position);
+  for (const [index, item] of items.entries()) {
+    const answer =
+      index === wrongItemIndex
+        ? wrongAnswer(item.exerciseId, item.seed)
+        : correctAnswer(item.exerciseId, item.seed);
+    const response = await answerQuizItem(item.id, answer, undefined, runConceptId);
+    expect(response.status).toBe(200);
+  }
+  const submitted = await submitQuiz(undefined, runConceptId);
+  expect(submitted.status).toBe(200);
+  return { result: await submitted.json(), items };
 }
 
 async function activityFixture() {
@@ -1106,6 +1164,88 @@ test('passing and retaking a quiz awards quiz XP only once and enables review', 
       .from(xpEvents)
       .where(and(eq(xpEvents.userId, userId), eq(xpEvents.kind, 'quiz'))),
   ).toHaveLength(1);
+});
+
+test('an all-correct quiz credits hard prerequisites and leaves soft prerequisites alone', async () => {
+  const hardCards = await Promise.all(
+    ['linear-regression', 'gradient-descent'].map(createDuePrerequisiteCard),
+  );
+  const softCard = await createDuePrerequisiteCard('probability-basics');
+  const { result, items } = await submitQuizForConcept('logistic-regression');
+
+  expect(items.length).toBeGreaterThan(0);
+  expect(result.run.quiz.last.passed).toBe(true);
+  for (const prerequisiteCard of hardCards) {
+    const [updated] = await db
+      .select()
+      .from(reviewCards)
+      .where(eq(reviewCards.id, prerequisiteCard.id));
+    if (!updated) throw new Error('Expected a credited hard-prerequisite card');
+    expect(updated.dueAt.getTime()).toBeGreaterThan(prerequisiteCard.dueAt.getTime());
+    expect(new Date((updated.fsrs as { due: string }).due)).toEqual(updated.dueAt);
+    expect(updated.lastReviewAt).toEqual(prerequisiteCard.lastReviewAt);
+    expect(updated.reps).toBe(prerequisiteCard.reps);
+    expect(updated.lapses).toBe(prerequisiteCard.lapses);
+    expect(
+      await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, prerequisiteCard.id)),
+    ).toHaveLength(0);
+  }
+  const [unchangedSoftCard] = await db
+    .select()
+    .from(reviewCards)
+    .where(eq(reviewCards.id, softCard.id));
+  if (!unchangedSoftCard) throw new Error('Expected the soft-prerequisite card');
+  expect(unchangedSoftCard.dueAt).toEqual(softCard.dueAt);
+  expect(unchangedSoftCard.lastReviewAt).toEqual(softCard.lastReviewAt);
+  expect(unchangedSoftCard.reps).toBe(softCard.reps);
+  expect(unchangedSoftCard.lapses).toBe(softCard.lapses);
+  expect(await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, softCard.id))).toHaveLength(
+    0,
+  );
+});
+
+test('a passed quiz with a Hard dimension does not credit hard prerequisites', async () => {
+  const hardCards = await Promise.all(
+    ['linear-regression', 'gradient-descent'].map(createDuePrerequisiteCard),
+  );
+  const { result, items } = await submitQuizForConcept('logistic-regression', 0);
+
+  expect(items.length).toBeGreaterThan(1);
+  expect(result.run.quiz.last.passed).toBe(true);
+  const firstItem = items[0];
+  if (!firstItem) throw new Error('Expected a quiz item');
+  const hardDimension = content.exercisesById.get(firstItem.exerciseId)?.dimension;
+  if (!hardDimension) throw new Error('Expected the wrong answer to have a dimension');
+  const [dimensionCard] = await db
+    .select()
+    .from(reviewCards)
+    .where(
+      and(
+        eq(reviewCards.userId, userId),
+        eq(reviewCards.conceptId, 'logistic-regression'),
+        eq(reviewCards.dimension, hardDimension),
+      ),
+    );
+  if (!dimensionCard) throw new Error('Expected a card for the Hard quiz dimension');
+  const [dimensionLog] = await db
+    .select()
+    .from(reviewLogs)
+    .where(eq(reviewLogs.cardId, dimensionCard.id));
+  expect(dimensionLog?.rating).toBe(String(Rating.Hard));
+  for (const prerequisiteCard of hardCards) {
+    const [unchanged] = await db
+      .select()
+      .from(reviewCards)
+      .where(eq(reviewCards.id, prerequisiteCard.id));
+    if (!unchanged) throw new Error('Expected the hard-prerequisite card');
+    expect(unchanged.dueAt).toEqual(prerequisiteCard.dueAt);
+    expect(unchanged.lastReviewAt).toEqual(prerequisiteCard.lastReviewAt);
+    expect(unchanged.reps).toBe(prerequisiteCard.reps);
+    expect(unchanged.lapses).toBe(prerequisiteCard.lapses);
+    expect(
+      await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, prerequisiteCard.id)),
+    ).toHaveLength(0);
+  }
 });
 
 test('quiz submission completes its attached learn activity after pass or fail', async () => {
