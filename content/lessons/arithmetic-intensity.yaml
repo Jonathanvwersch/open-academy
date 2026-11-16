@@ -17,6 +17,11 @@ where_this_fits: |
 knowledge_points:
   - id: ai-count-work-bytes
     title: Count calculations and bytes
+
+    tldr: |
+      - A matrix product reads its inputs, does arithmetic and writes its output.
+      - We count both the arithmetic and all the bytes moved.
+      - Arithmetic intensity is the amount of arithmetic done per byte moved.
     explain: |
       ### Follow the numbers through a product
 
@@ -80,6 +85,11 @@ knowledge_points:
       - aip-image-product
   - id: ai-speed-limits
     title: Compare memory and calculation speeds
+
+    tldr: |
+      - The GPU has limits on both calculation speed and data movement.
+      - More arithmetic per byte helps until calculation speed becomes the tighter limit.
+      - The lower of these limits sets the fastest possible rate.
     explain: |
       ### Two limits on speed
 
@@ -142,6 +152,11 @@ knowledge_points:
       - aip-robot-roof
   - id: ai-weight-reuse
     title: Reuse weights for more tokens
+
+    tldr: |
+      - Several token rows can use the same weights after reading them once.
+      - Sharing that read means more arithmetic for each byte moved.
+      - With enough rows, calculation can become the limit instead of memory movement.
     explain: |
       ### Use each weight read for several rows
 
@@ -164,9 +179,16 @@ knowledge_points:
 
       ### Count the shared read
 
-      Input and output have shape $m\times d$. Setting $k=n=d$ gives $F=2md^2$ FLOPs, counting 2 per multiply-add. Reading each input once and writing the output once gives $D=2(md+d^2+md)$ bytes, counting 2 per number. Divide numerator and denominator by $2d$ to simplify:
+      Input and output have shape $m\times d$. Set $k=n=d$ in our work and traffic formulas, then divide to find intensity:
 
-      $$I=\frac{F}{D}=\frac{2md^2}{2(md+d^2+md)}=\frac{md}{d+2m}.$$
+      $$
+      \begin{aligned}
+      F&=2md^2 &&\text{count two FLOPs per multiply-add}\\
+      D&=2(md+d^2+md) &&\text{read inputs and write outputs at two bytes each}\\
+      I&=\frac{2md^2}{2(md+d^2+md)} &&\text{divide work by traffic}\\
+      &=\frac{md}{d+2m} &&\text{divide top and bottom by }2d
+      \end{aligned}
+      $$
 
       Weights contribute $d^2$ numbers; input and output contribute $2md$. If $d$ is much larger than $2m$, weights dominate. Dropping $2m$ then gives $I\approx md/d=m$ FLOPs per byte. We'll use the exact formula for comparisons.
 

@@ -18,6 +18,11 @@ where_this_fits: |
 knowledge_points:
   - id: pd-request-phases
     title: Process the prompt, then generate
+
+    tldr: |
+      - The prompt is already known, so the model can process its tokens together.
+      - That first pass supplies the choice for the first output token.
+      - Later tokens depend on earlier choices, so they are generated one at a time.
     explain: |
       ### Reading the known prompt
 
@@ -64,8 +69,11 @@ knowledge_points:
       1. **Find the first arrival.** The first token follows prefill and its choice.
          $$\mathrm{TTFT}=115+5=120\text{ ms}.$$
 
-      2. **Find the total request time.** End-to-end latency is the time from sending a request until its last token arrives. Here it includes the first wait and the two later gaps.
-         $$120+2\times20=160\text{ ms}.$$
+      2. **Find the total request time.** End-to-end latency is the time from sending a request until its last token arrives. Count the later gaps, then add them to the first wait.
+         $$\begin{aligned}
+         \text{later gaps}&=3-1=2 &&\text{the first token is already supplied}\\
+         \text{total time}&=120+2\times20=160\text{ ms} &&\text{add both gaps to the first wait}
+         \end{aligned}$$
 
       3. **Find the streaming rate.** Convert the 20 ms gap to 0.02 seconds before taking its reciprocal.
          $$\text{tokens/s}=1/0.02=50.$$
@@ -81,10 +89,25 @@ knowledge_points:
       - pd-phases-new-setting
   - id: pd-temperature
     title: Make token choices more or less random
+
+    tldr: |
+      - Drawing a token according to its probability lets the wording vary.
+      - Temperature is a setting that changes how concentrated those probabilities are.
+      - Lower temperature favours leading choices, while higher temperature spreads the chances.
     explain: |
       ### Choosing from the scores
 
-      Prefill and each later decode pass supply scores for choosing a token. **Sampling**, drawing a token according to its probability, lets the assistant vary its wording across requests. Let's use a toy vocabulary, Yes and No, with scores $\ln4$ and $0$. These give clean softmax weights: the natural logarithm $\ln4$ is the number whose exponential is $4$. Scores before softmax are called **logits**. Softmax exponentiates them to $4$ and $1$, then divides by their total, giving probabilities $0.8$ and $0.2$.
+      Prefill and each later decode pass supply scores for choosing a token. **Sampling**, drawing a token according to its probability, lets the assistant vary its wording across requests. Let's use a toy vocabulary, Yes and No, with scores $\ln4$ and $0$. The natural logarithm $\ln4$ is the number whose exponential is $4$. Scores before softmax are called **logits**. To turn them into probabilities, softmax computes weights, adds them, then divides:
+
+      $$
+      \begin{aligned}
+      w_{\mathrm{Yes}}&=e^{\ln4}=4 &&\text{exponentiate Yes's score}\\
+      w_{\mathrm{No}}&=e^0=1 &&\text{exponentiate No's score}\\
+      \text{total}&=4+1=5 &&\text{add the weights}\\
+      p_{\mathrm{Yes}}&=4/5=0.8 &&\text{divide Yes's weight by the total}\\
+      p_{\mathrm{No}}&=1/5=0.2 &&\text{divide No's weight by the total}
+      \end{aligned}
+      $$
 
       **Temperature** is a positive number that divides the logits before softmax. A lower temperature concentrates probability on higher scores; a higher one spreads it more evenly. For example, No is drawn more often at higher temperatures. The blue bars show Yes's probability, rounded to two decimals.
 
@@ -127,10 +150,19 @@ knowledge_points:
       Let's adjust Yes and No's logits, $\ln4$ and $0$, using $\tau=2$, then draw with $u=0.70$.
 
       1. **Scale and exponentiate.** Divide both scores by 2, then raise $e$ to each result.
-         $$e^{\ln4/2}=2,\qquad e^{0/2}=1.$$
+         $$\begin{aligned}
+         z'_{\mathrm{Yes}}&=\ln4/2=\ln2 &&\text{divide Yes's score by temperature}\\
+         z'_{\mathrm{No}}&=0/2=0 &&\text{divide No's score by temperature}\\
+         w_{\mathrm{Yes}}&=e^{\ln2}=2 &&\text{exponentiate the adjusted score}\\
+         w_{\mathrm{No}}&=e^0=1 &&\text{exponentiate the adjusted score}
+         \end{aligned}$$
 
       2. **Normalise the weights.** Divide each weight by their total to make probabilities.
-         $$p_{\mathrm{Yes}}=2/3,\qquad p_{\mathrm{No}}=1/3.$$
+         $$\begin{aligned}
+         \text{total}&=2+1=3 &&\text{add the weights}\\
+         p_{\mathrm{Yes}}&=2/3 &&\text{divide Yes's weight by the total}\\
+         p_{\mathrm{No}}&=1/3 &&\text{divide No's weight by the total}
+         \end{aligned}$$
 
       3. **Locate the draw.** Yes covers $0\le u<2/3$. Our draw lies in No's remaining interval.
          $$2/3\le0.70<1\quad\Rightarrow\quad\text{No}.$$
@@ -139,7 +171,21 @@ knowledge_points:
 
       Here is the same calculation in Python. Start with at least one token and one finite logit per token. Use a positive temperature and a draw $0\le u<1$. `math.exp` computes a power of $e$. The expression in square brackets computes one weight for each logit.
 
-      Computers cannot store arbitrarily large exponentials. Subtracting the largest logit before exponentiating avoids this problem. At $\tau=2$, this changes our weights from $(2,1)$ to $(1,0.5)$. Both pairs normalise to $(2/3,1/3)$ because their relative weights are unchanged.
+      Computers cannot store arbitrarily large exponentials. Subtracting the largest logit before exponentiating avoids this problem. At $\tau=2$, subtract $\ln4$ from each logit:
+
+      $$
+      \begin{aligned}
+      z'_{\mathrm{Yes}}&=(\ln4-\ln4)/2=0 &&\text{subtract and scale Yes's score}\\
+      z'_{\mathrm{No}}&=(0-\ln4)/2=-\ln2 &&\text{subtract and scale No's score}\\
+      w_{\mathrm{Yes}}&=e^0=1 &&\text{exponentiate Yes's adjusted score}\\
+      w_{\mathrm{No}}&=e^{-\ln2}=0.5 &&\text{exponentiate No's adjusted score}\\
+      \text{total}&=1+0.5=1.5 &&\text{add the new weights}\\
+      p_{\mathrm{Yes}}&=1/1.5=2/3 &&\text{normalise Yes's weight}\\
+      p_{\mathrm{No}}&=0.5/1.5=1/3 &&\text{normalise No's weight}
+      \end{aligned}
+      $$
+
+      These are the same probabilities as before because the relative weights are unchanged.
 
       `zip` pairs tokens with weights so the loop can accumulate their probabilities. Computer rounding can leave the final total just below 1. If no interval catches `u`, we return the last token with positive weight. Very small weights can round to zero, so we skip those in the fallback. For a fresh draw, import Python's `random` module and pass `random.random()` as `u`.
 
@@ -177,6 +223,11 @@ knowledge_points:
       - pd-temp-new-setting
   - id: pd-top-k
     title: Keep a fixed count of likely tokens
+
+    tldr: |
+      - We can remove unlikely tokens before drawing the next one.
+      - Top k sampling keeps a chosen number of the most likely tokens.
+      - Divide their probabilities by the total kept, then draw from those remaining choices.
     explain: |
       ### Removing unlikely choices
 
@@ -219,7 +270,10 @@ knowledge_points:
          $$0.4+0.3=0.7.$$
 
       2. **Renormalise.** Divide both surviving probabilities by that total.
-         $$\begin{aligned}p'_{\mathrm{Yes}}&=0.4/0.7=4/7,\\p'_{\mathrm{Maybe}}&=3/7.\end{aligned}$$
+         $$\begin{aligned}
+         p'_{\mathrm{Yes}}&=0.4/0.7=4/7 &&\text{normalise Yes's probability}\\
+         p'_{\mathrm{Maybe}}&=0.3/0.7=3/7 &&\text{normalise Maybe's probability}
+         \end{aligned}$$
 
       3. **Draw a token.** Yes ends at four sevenths, about $0.57$, so $u=0.60$ falls in Maybe's interval.
          $$4/7\le0.60<1\quad\Rightarrow\quad\text{Maybe}.$$
@@ -263,6 +317,11 @@ knowledge_points:
       - pd-topk-new-setting
   - id: pd-top-p
     title: Choose how much probability to keep
+
+    tldr: |
+      - A fixed number of choices can discard too much or keep unlikely tokens.
+      - Top p sampling keeps leading choices until their probabilities reach a chosen total.
+      - Keep the whole choice that reaches the threshold, then divide by the total kept and draw.
     explain: |
       ### Letting the number kept change
 
@@ -270,7 +329,17 @@ knowledge_points:
 
       To find the set, sort tokens from most to least probable. Add their probabilities until the running total first reaches or exceeds $p$, then stop. Keep all tokens added so far, including the one that crosses the threshold.
 
-      For the toy choices Yes, Maybe, No and full stop, use probabilities $0.4$, $0.3$, $0.2$, $0.1$ again. Yes takes four tenths of the bar's width, Maybe three tenths, and so on. With $p=0.8$, the first two reach only $0.7$, so we must keep No as well, reaching $0.9$. The orange line marks the threshold inside No's segment.
+      For the toy choices Yes, Maybe, No and full stop, use probabilities $0.4$, $0.3$, $0.2$, $0.1$ again. Yes takes four tenths of the bar's width, Maybe three tenths, and so on. With $p=0.8$, accumulate whole tokens until we cross the threshold:
+
+      $$
+      \begin{aligned}
+      0.4&<0.8 &&\text{keep Yes and continue}\\
+      0.4+0.3&=0.7<0.8 &&\text{add Maybe and continue}\\
+      0.7+0.2&=0.9\ge0.8 &&\text{add No and stop}
+      \end{aligned}
+      $$
+
+      The orange line marks the threshold inside No's segment.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 180" aria-label="Sorted probabilities Yes 0.4, Maybe 0.3, No 0.2, full stop 0.1 form a bar from 0 to 1. The top-p threshold 0.8 lies inside No's segment, so the first three whole tokens are retained, reaching cumulative probability 0.9.">
@@ -299,10 +368,18 @@ knowledge_points:
       Let's apply $p=0.8$ to Yes, Maybe, No and full stop with probabilities $0.4$, $0.3$, $0.2$, $0.1$, then draw with $u=0.85$.
 
       1. **Find the cutoff.** The third token is needed to reach the threshold.
-         $$\begin{aligned}0.4&<0.8,\\0.4+0.3&=0.7<0.8,\\0.7+0.2&=0.9\ge0.8.\end{aligned}$$
+         $$\begin{aligned}
+         0.4&<0.8 &&\text{keep Yes and continue}\\
+         0.4+0.3&=0.7<0.8 &&\text{add Maybe and continue}\\
+         0.7+0.2&=0.9\ge0.8 &&\text{add No and stop}
+         \end{aligned}$$
 
       2. **Renormalise the three survivors.** Divide each original probability by their actual total, $0.9$.
-         $$\begin{aligned}p'_{\mathrm{Yes}}&=4/9,\\p'_{\mathrm{Maybe}}&=3/9,\\p'_{\mathrm{No}}&=2/9.\end{aligned}$$
+         $$\begin{aligned}
+         p'_{\mathrm{Yes}}&=0.4/0.9=4/9 &&\text{normalise Yes's probability}\\
+         p'_{\mathrm{Maybe}}&=0.3/0.9=3/9 &&\text{normalise Maybe's probability}\\
+         p'_{\mathrm{No}}&=0.2/0.9=2/9 &&\text{normalise No's probability}
+         \end{aligned}$$
 
       3. **Locate the draw.** Yes and Maybe together end at seven ninths, about $0.78$, so $u=0.85$ chooses No.
          $$7/9\le0.85<1\quad\Rightarrow\quad\text{No}.$$

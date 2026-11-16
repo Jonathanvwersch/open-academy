@@ -16,6 +16,11 @@ where_this_fits: |
 knowledge_points:
   - id: sd-draft-check
     title: Draft tokens, then check them together
+
+    tldr: |
+      - A small model can guess several tokens before the larger model runs.
+      - The larger model checks them together and keeps guesses until the first mismatch.
+      - Each check produces accepted guesses plus a correction or an extra token.
     explain: |
       ### Waiting for the next token
 
@@ -57,8 +62,12 @@ knowledge_points:
       1. **Check how much maths the pass needs.** Each weight contributes a multiply and an add, giving 2 FLOPs per token, and takes 2 bytes at 16-bit precision. For $n$ positions, we therefore do $2n/2=n$ FLOPs per byte of weights. We also read stored values for earlier tokens, but short text has few such values compared with billions of weights. With five positions the weight-only intensity is 5 FLOPs per byte. Llama 3 8B has about $8\times10^9$ parameters. The H100's dense 16-bit rate is about 990 TFLOP/s, meaning $990\times10^{12}$ operations per second, which we round to 1,000 TFLOP/s. We multiply seconds by 1000 to express the result in milliseconds.
          $$\text{maths time}=\frac{2\times8\times10^9\times5}{1000\times10^{12}}\times1000=0.08\text{ ms}$$
 
-      2. **Compare maths with reading weights.** The H100's memory bandwidth is 3.35 TB/s, so reading 16 GB takes about 4.8 ms. Here GB means $10^9$ bytes and TB means $10^{12}$ bytes. Dividing the rounded maths rate by bandwidth gives the GPU's **ops:byte ratio**, about $1000/3.35\approx300$ FLOPs per byte. This is the threshold because below it reading bytes takes longer than doing the maths. Our intensity of 5 is far below it. The draft is also memory-bound at batch size one, so we estimate target pass time $t$ and draft pass time $t_d$ from their weight reads. We call $c$ the draft's time as a fraction of the target's, which the next lesson step uses. Because the draft reads one tenth as many bytes, $c=1.6/16=0.1$.
-         $$t=\frac{16\times10^9}{3.35\times10^{12}}\times1000\approx4.7761\text{ ms},\qquad t_d=0.1t\approx0.4776\text{ ms}.$$
+      2. **Compare maths with reading weights.** The H100's memory bandwidth is 3.35 TB/s, so reading 16 GB takes about 4.8 ms. Here GB means $10^9$ bytes and TB means $10^{12}$ bytes. Dividing the rounded maths rate by bandwidth gives the GPU's **ops:byte ratio**, about $1000/3.35\approx300$ FLOPs per byte. This is the threshold because below it reading bytes takes longer than doing the maths. Our intensity of 5 is far below it. The draft is also memory-bound at batch size one, so we estimate target pass time $t$ and draft pass time $t_d$ from their weight reads. We call $c$ the draft's time as a fraction of the target's, which the next lesson step uses:
+         $$\begin{aligned}
+         t&=\frac{16\times10^9}{3.35\times10^{12}}\times1000\approx4.7761\text{ ms} &&\text{time the target's weight read}\\
+         c&=1.6/16=0.1 &&\text{compare draft and target weight bytes}\\
+         t_d&=0.1t\approx0.4776\text{ ms} &&\text{scale the target time}
+         \end{aligned}$$
 
       3. **Find how many tokens survive.** The draft proposes "Paris", ".", "It", "is". Because the target agrees twice and then chooses "The", we keep two guesses and add that correction.
          $$\text{output}=\text{Paris . The}.$$
@@ -83,6 +92,11 @@ knowledge_points:
       ]
   - id: sd-expected-speed
     title: Work out the expected speed-up
+
+    tldr: |
+      - Later guesses help only when all earlier guesses pass.
+      - Longer drafts cost more even when those later guesses fail.
+      - The best draft length balances the tokens gained against the time spent guessing.
     explain: |
       ### How many guesses survive?
 
@@ -98,9 +112,15 @@ knowledge_points:
 
       Guess $j$ contributes one token if guesses 1 through $j$ all pass, and zero otherwise. Its average contribution is therefore $\alpha^j$. Averages add, so adding these contributions and the guaranteed token gives
 
-      $$E=1+\alpha+\cdots+\alpha^k=\frac{1-\alpha^{k+1}}{1-\alpha}.$$
+      $$
+      \begin{aligned}
+      E&=1+\alpha+\cdots+\alpha^k &&\text{add the guaranteed token and surviving guesses}\\
+      (1-\alpha)E&=1-\alpha^{k+1} &&\text{subtract the series multiplied by }\alpha\\
+      E&=\frac{1-\alpha^{k+1}}{1-\alpha} &&\text{divide by }1-\alpha\text{ when }\alpha\ne1
+      \end{aligned}
+      $$
 
-      Multiplying by $1-\alpha$ cancels the middle terms, giving $(1-\alpha)E=1-\alpha^{k+1}$. The fraction computes $E$ for any $k$ without adding terms. At $\alpha=1$, it divides by zero, but the sum gives $k+1$. This estimate follows the speculative decoding paper by Leviathan et al. (2023).
+      The fraction computes $E$ for any $k$ without adding terms. At $\alpha=1$, it divides by zero, but the sum gives $k+1$. This estimate follows the speculative decoding paper by Leviathan et al. (2023).
 
       Our draft's pass takes $c=0.1$ of a target pass. In target-pass units, drafting costs $kc$ and checking costs 1. Ordinary decoding takes $E$ passes on average for those tokens, so **speed-up** is
 
@@ -149,6 +169,11 @@ knowledge_points:
       ]
   - id: sd-exact-sampling
     title: Match the target's probabilities when sampling
+
+    tldr: |
+      - Random token choices need a check that preserves the target model's probabilities.
+      - Accept proposals according to how their draft and target probabilities compare.
+      - Replacing rejected guesses from the missing probability gives the target's exact distribution.
     explain: |
       ### Drawing tokens at random
 
@@ -197,8 +222,12 @@ knowledge_points:
       1. **Find the chance of accepting each token.** We divide its target probability by its draft probability and cap at one, because a probability cannot exceed one.
          $$(\min(1,0.6/0.3),\min(1,0.3/0.5),\min(1,0.1/0.2))=(1,0.6,0.5).$$
 
-      2. **Find each token's chance of being drafted and accepted.** A token must first be drafted and then accepted, so we multiply those chances. The results sum to 0.7, leaving rejection probability 0.3.
-         $$(0.3\times1,0.5\times0.6,0.2\times0.5)=(0.3,0.3,0.1).$$
+      2. **Find each token's chance of being drafted and accepted.** A token must first be drafted and then accepted, so we multiply those chances. Sum the results to find acceptance, then subtract from one to find rejection.
+         $$\begin{aligned}
+         (0.3\times1,0.5\times0.6,0.2\times0.5)&=(0.3,0.3,0.1) &&\text{multiply proposal and acceptance chances}\\
+         \alpha&=0.3+0.3+0.1=0.7 &&\text{add accepted probabilities}\\
+         1-\alpha&=1-0.7=0.3 &&\text{find the rejection probability}
+         \end{aligned}$$
 
       3. **Choose a replacement when a guess fails.** We take positive target-minus-draft differences because they show where accepted drafts fell short. Only A has any leftover, so normalising makes A certain on rejection.
          $$(\max(0,0.6-0.3),\max(0,0.3-0.5),\max(0,0.1-0.2))=(0.3,0,0).$$
@@ -222,6 +251,11 @@ knowledge_points:
       ]
   - id: sd-guess-sources
     title: Other ways to make the guesses
+
+    tldr: |
+      - A separate draft model costs memory and time.
+      - Extra prediction heads or matching earlier text can supply guesses instead.
+      - Checking those guesses with the same correction rule preserves the target's probabilities.
     explain: |
       ### Paying for a separate draft
 

@@ -18,6 +18,11 @@ where_this_fits: |
 knowledge_points:
   - id: lsv-batching
     title: "Make many replies at once"
+
+    tldr: |
+      - Several replies can share the same model weight read.
+      - Replacing finished replies immediately keeps more of those shared steps useful.
+      - Continuous batching serves more tokens overall by filling slots as they become free.
     explain: |
       ### One decode step serves the whole batch
 
@@ -136,6 +141,11 @@ knowledge_points:
       - lsv-batching-speech
   - id: lsv-paging
     title: "Store the KV cache in small blocks"
+
+    tldr: |
+      - Reserving room for the longest possible reply leaves memory unused.
+      - Giving each request small cache blocks as it grows avoids most of that waste.
+      - More requests fit even though each token's stored keys and values stay the same size.
     explain: |
       ### Memory limits the batch
 
@@ -280,6 +290,11 @@ knowledge_points:
       - lsv-paging-other-model
   - id: lsv-parallel
     title: "Spread the work over several GPUs"
+
+    tldr: |
+      - Full copies of a model on separate GPUs can serve more users.
+      - Splitting its weights across GPUs lets each GPU read less per step.
+      - Choose copies for more throughput or split the model for capacity and shorter token gaps.
     explain: |
       ### When one GPU isn't enough
 
@@ -363,7 +378,18 @@ knowledge_points:
       3. **Time tensor parallelism over two GPUs.** Each GPU now reads half the weights, 8 GB, every step, plus the time for the swaps.
          $$\frac{8\text{ GB}}{3.35\text{ TB/s}}\approx2.4\text{ ms}.$$
 
-      So replicas are the way to serve more users, and tensor parallelism is the way to give each user a shorter ITL, about 2.4 ms plus the swap time. Tensor parallelism also leaves each GPU 72 GB for KV caches instead of 64 GB, because each one holds only 8 GB of weights. In attention, each GPU works on its own share of the heads, so it keeps only those heads' keys and values. Each request's cache is split between the two GPUs, and together they have 144 GB for KV caches, against 128 GB for two replicas.
+      So replicas are the way to serve more users, and tensor parallelism is the way to give each user a shorter ITL, about 2.4 ms plus the swap time. Compare the memory left for KV caches:
+
+      $$
+      \begin{aligned}
+      \text{split model, per GPU}&=80-8=72\text{ GB} &&\text{subtract half the weights}\\
+      \text{replica, per GPU}&=80-16=64\text{ GB} &&\text{subtract the full weights}\\
+      \text{split model, total}&=2\times72=144\text{ GB} &&\text{add both GPUs' cache space}\\
+      \text{replicas, total}&=2\times64=128\text{ GB} &&\text{add both replicas' cache space}
+      \end{aligned}
+      $$
+
+      In attention, each GPU works on its own share of the heads, so it keeps only those heads' keys and values. Each request's cache is split between the two GPUs.
     problems:
       - lsv-parallel-basics
       - lsv-parallel-self-explain
@@ -374,12 +400,27 @@ knowledge_points:
       - lsv-parallel-big-model
   - id: lsv-prefill
     title: "Stop long prompts from stalling replies"
+
+    tldr: |
+      - Processing a long prompt can delay tokens for users already reading replies.
+      - Splitting the prompt into smaller pieces spreads that delay across steps.
+      - Separate prompt processing GPUs avoid those stalls but must copy the finished cache.
     explain: |
       ### A long prompt joins the batch
 
       In the prefill and decode lesson, we saw that prefill handles the whole prompt at once and is limited by maths speed, while decode is limited by reading memory. A step's time is set by whichever takes longer, reading the weights or doing the maths. With continuous batching, a new request's prefill can join the same step as everyone else's decoding. What happens to those other users?
 
-      Leaving out the attention scores, prefill costs about 2 FLOPs per parameter per prompt token, because each parameter is used in one multiply and one add. A 2,000-token prompt to Llama 3 8B costs about $2\times8\times10^9\times2{,}000=3.2\times10^{13}$ FLOPs. The H100 does about 990 TFLOP/s, which we round to 1,000 TFLOP/s, so that takes about 32 ms. This is far longer than the 5 ms weight read, so the step that carries this prompt takes about 32 ms, and every user mid-reply waits 32 ms for their next token instead of 5 ms.
+      Leaving out the attention scores, prefill costs about 2 FLOPs per parameter per prompt token, because each parameter is used in one multiply and one add. The H100 does about 990 TFLOP/s, which we round to 1,000 TFLOP/s. For a 2,000-token prompt to Llama 3 8B:
+
+      $$
+      \begin{aligned}
+      \text{prompt FLOPs}&=2\times8\times10^9\times2000=3.2\times10^{13} &&\text{count work for every prompt token}\\
+      \text{maths time}&=\frac{3.2\times10^{13}}{1000\times10^{12}}\text{ s}=32\text{ ms} &&\text{divide by compute rate}\\
+      \text{step time}&\approx\max(32,5)=32\text{ ms} &&\text{take the slower of maths and reading}
+      \end{aligned}
+      $$
+
+      Every user mid-reply waits 32 ms for their next token instead of 5 ms.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 216" aria-label="Two rows of decode steps drawn to scale, one box per step. Top row, whole prompt: steps of 5, 5, 32, 5 and 5 ms, where the orange 32 ms step carries a whole 2,000-token prompt. Bottom row, 500-token chunks: steps of 5 and 5 ms, then four orange steps of 8 ms each carrying one chunk, then 5 ms. Blue boxes are decode-only steps">
@@ -443,8 +484,16 @@ knowledge_points:
       2. **Find the largest chunk whose maths fits in 10 ms.** Each prompt token costs $1.6\times10^{10}$ FLOPs, so in 10 ms the GPU can process
          $$\frac{10^{15}\times0.010}{1.6\times10^{10}}=625\text{ tokens}.$$
 
-      3. **Leave room for the decoding users.** Each decoding token also costs about $1.6\times10^{10}$ FLOPs, so the 32 decoding tokens add $32\times1.6\times10^{10}$ FLOPs, about 0.5 ms of maths, so a 625-token chunk would go over 10 ms. Chunks of 500 tokens take about 8 ms each, and the prompt needs
-         $$\frac{2{,}000}{500}=4\text{ chunks}.$$
+      3. **Leave room for the decoding users.** Each decoding token also costs about $1.6\times10^{10}$ FLOPs. Include their work before choosing a chunk size:
+         $$\begin{aligned}
+         \text{decode FLOPs}&=32\times1.6\times10^{10} &&\text{count the current users' tokens}\\
+         \text{decode maths time}&=\frac{32\times1.6\times10^{10}}{10^{15}}\text{ s}\approx0.5\text{ ms} &&\text{divide by compute rate}\\
+         \text{chunk maths time}&=\frac{500\times1.6\times10^{10}}{10^{15}}\text{ s}=8\text{ ms} &&\text{choose a smaller chunk of five hundred tokens}\\
+         \text{combined time}&\approx8+0.5=8.5\text{ ms} &&\text{add decoding and prompt work}\\
+         \text{chunks}&=2000/500=4 &&\text{divide the full prompt into pieces}
+         \end{aligned}$$
+
+      A 625-token chunk would go over 10 ms once decoding is included.
 
       Each of these steps takes about 8.5 ms, which keeps the 10 ms promise. If long prompts arrived so often that most steps carried a chunk, separate prefill GPUs would be the next thing to try.
     problems:
