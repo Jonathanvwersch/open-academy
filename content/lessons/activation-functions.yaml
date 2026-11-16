@@ -30,7 +30,15 @@ knowledge_points:
 
       ### A straight line stays straight
 
-      In the picture, the grey line shows $y$ against $x$. It's the straight line $y=6x-1$, as the worked example calculates below.
+      The grey line plots $y$ against $x$. Substitute the first rule into the second:
+
+      $$
+      \begin{aligned}
+      y&=3(2x+1)-4 &&\text{replace }u\\
+      &=6x+3-4 &&\text{expand the bracket}\\
+      &=6x-1 &&\text{combine constants}
+      \end{aligned}
+      $$
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 400" aria-label="Output y against input x for two stacked rules. Without anything between them the stack is the straight line y = 6x − 1, rising 6 per step at x = −1, 0, 1 (values −7, −1, 5). With max(0, u) between them the line is flat at −4 until x = −0.5, then rises: values −4, −1, 5.">
