@@ -16,6 +16,11 @@ where_this_fits: |
 knowledge_points:
   - id: it-surprise
     title: Measure how surprising an outcome is
+    tldr: |
+      - Rare outcomes surprise us more than likely ones when they happen.
+      - We measure surprise in bits, where a fair coin's result is one bit.
+      - Each halving of an outcome's chance adds one more bit.
+      - When independent outcomes happen together, their surprises add up.
     explain: |
       ### Rare outcomes tell us more
 
@@ -55,15 +60,17 @@ knowledge_points:
 
       If we report two coin results together instead of one at a time, their total surprise should not change.
 
-      Independent tosses both landing heads have probability $1/2\times1/2=1/4$. Their 2 bits equal the sum of the two 1-bit scores. Logarithms turn products into sums because multiplying numbers combines their doublings. Using $1/r$ alone would multiply scores instead of adding them, and would give a certain outcome 1 rather than 0.
+      After the first heads, independence leaves the second heads chance at one half. So for two heads:
+      $$\begin{aligned}P(\text{two heads})&=\tfrac12\times\tfrac12=\tfrac14 &&\text{multiply independent chances}\\\text{surprise}&=\log_2 4=2 &&\text{score the combined outcome}\\1+1&=2 &&\text{check the separate bit scores}\end{aligned}$$
+      Logarithms turn products into sums because multiplying combines doublings. Using $1/r$ alone would multiply scores and give a certain outcome 1 rather than 0.
     worked: |
       Let's find sun's and rain's surprises.
 
       1. **Find the reciprocals.** We divide 1 by each probability.
-         $$1/(1/2)=2,\qquad 1/(1/4)=4$$
+         $$\begin{aligned}1/(1/2)&=2 &&\text{sun's reciprocal}\\1/(1/4)&=4 &&\text{rain's reciprocal}\end{aligned}$$
 
       2. **Count the doublings.** One doubling reaches 2, while two reach 4.
-         $$\text{sun: }\log_2 2=1,\qquad\text{rain: }\log_2 4=2$$
+         $$\begin{aligned}\log_2 2&=1 &&\text{sun's surprise in bits}\\\log_2 4&=2 &&\text{rain's surprise in bits}\end{aligned}$$
 
       Cloud has the same probability and surprise as rain. Both give more surprise than sun.
     problems:
@@ -77,6 +84,10 @@ knowledge_points:
       ]
   - id: it-entropy
     title: Find the average surprise
+    tldr: |
+      - Each possible outcome has a surprise score.
+      - Averaging those scores using their actual probabilities gives entropy.
+      - Entropy is greatest when all the possible outcomes are equally likely.
     explain: |
       ### From one day to many
 
@@ -119,9 +130,8 @@ knowledge_points:
       </g></svg>
       ```
 
-      Now make red light on half the trials, blue on a quarter, and green and yellow on an eighth each. Their surprises are 1, 2, 3 and 3 bits, giving
-
-      $$\frac12\times1+\frac14\times2+\frac18\times3+\frac18\times3=1.75\text{ bits}.$$
+      Now make red light on half the trials, blue on a quarter, and green and yellow on an eighth each. First score the outcomes, then average:
+      $$\begin{aligned}\log_2 2&=1 &&\text{red's surprise}\\\log_2 4&=2 &&\text{blue's surprise}\\\log_2 8&=3 &&\text{green's and yellow's surprise}\\H&=\tfrac12(1)+\tfrac14(2)+\tfrac18(3)+\tfrac18(3) &&\text{weight by actual probabilities}\\&=1.75 &&\text{add, in bits}\end{aligned}$$
 
       This lies below the equal-probability result. Equal probabilities give the largest entropy for any fixed number of outcomes, though we won't prove that here. Zero is the minimum because surprises cannot be negative.
     worked: |
@@ -133,7 +143,8 @@ knowledge_points:
       2. **Weight and add.** To average across days, each surprise must count in proportion to how often it occurs.
          $$H(p)=\frac12\times1+\frac14\times2+\frac14\times2=1.5\text{ bits}$$
 
-      Be careful not to average the three surprises equally. That would give $(1+2+2)/3=5/3\approx1.667$ bits, incorrectly treating rainy and sunny days as equally common.
+      Be careful not to average the three surprises equally. That incorrectly treats rainy and sunny days as equally common:
+      $$\begin{aligned}(1+2+2)/3&=5/3 &&\text{incorrect equal weighting}\\&\approx1.667 &&\text{incorrect average in bits}\end{aligned}$$
     problems:
       [
         it-entropy-basics,
@@ -145,6 +156,10 @@ knowledge_points:
       ]
   - id: it-cross-entropy
     title: Score the app's forecasts
+    tldr: |
+      - A forecast receives a larger penalty when it gives less probability to what actually happens.
+      - Averaging those penalties over how often each outcome really happens gives cross-entropy.
+      - So a forecast that is confidently wrong scores worse than one that is only slightly wrong.
     explain: |
       ### Score one day's forecast
 
@@ -179,10 +194,10 @@ knowledge_points:
       Let's average this app's losses over 100 days.
 
       1. **Score each possible observed day.** The forecast gives sun and cloud $1/4$ each and rain $1/2$, giving these losses.
-         $$\text{sun: }\log_2 4=2,\quad\text{cloud: }\log_2 4=2,\quad\text{rain: }\log_2 2=1$$
+         $$\begin{aligned}\log_2 4&=2 &&\text{sunny day's loss}\\\log_2 4&=2 &&\text{cloudy day's loss}\\\log_2 2&=1 &&\text{rainy day's loss}\end{aligned}$$
 
       2. **Average across days.** Imagine 100 days with 50 sunny, 25 cloudy and 25 rainy days. Weight each daily loss by its fraction of those days.
-         $$H(p,q)=\frac{50\times2+25\times2+25\times1}{100}=1.75\text{ bits}$$
+         $$\begin{aligned}50\times2+25\times2+25\times1&=175 &&\text{total loss over the days}\\H(p,q)&=175/100=1.75 &&\text{average loss in bits}\end{aligned}$$
 
       This average classification loss is cross-entropy. Its 1.75 bits exceed the 1.5-bit entropy baseline.
     problems:
@@ -197,6 +212,10 @@ knowledge_points:
       ]
   - id: it-kl
     title: Measure the cost of wrong forecasts
+    tldr: |
+      - Even a perfect forecast leaves some surprise, and that average is the entropy.
+      - Subtracting it from cross-entropy gives KL divergence, the extra surprise from mismatched forecasts.
+      - Lowering cross-entropy lowers that extra cost, which reaches zero when forecasts match actual probabilities.
     explain: |
       ### Compare with the baseline
 
@@ -208,7 +227,9 @@ knowledge_points:
 
       When $q=p$, the two averages match, so KL is zero. Cross-entropy cannot go lower, and only a match reaches that minimum. We won't prove this general result here, but it means KL cannot be negative.
 
-      For one illustration, take a fair coin with actual heads/tails probabilities $(1/2,1/2)$ and forecast $(1/4,3/4)$. Heads gives $\log_2 4=2$ bits. For tails, a calculator gives $\log_2(4/3)\approx0.415$. Their average is $(2+0.415)/2\approx1.208$ bits, above the 1-bit entropy.
+      Take a fair coin with actual heads/tails probabilities $(1/2,1/2)$ and forecast $(1/4,3/4)$. Score each outcome and average using their equal actual chances:
+      $$\begin{aligned}\log_2 4&=2 &&\text{heads loss in bits}\\\log_2(4/3)&\approx0.415 &&\text{tails loss in bits}\\H(p,q)&\approx(2+0.415)/2 &&\text{average using equal chances}\\&\approx1.208 &&\text{round the result in bits}\end{aligned}$$
+      This exceeds the 1-bit entropy.
 
       ### Swap actual and forecast probabilities
 
@@ -238,13 +259,15 @@ knowledge_points:
 
       Now let's calculate both orders in the coin table.
 
-      4. **Use the always-heads coin as actual.** Only heads occurs, giving $H(a)=0$, so
-         $$\mathrm{KL}(a\Vert b)=H(a,b)-H(a)=1\times\log_2 2-0=1\text{ bit}.$$
+      4. **Use the always-heads coin as actual.** Only heads occurs, so score that one outcome before subtracting entropy.
+         $$\begin{aligned}H(a,b)&=1\times\log_2 2=1 &&\text{forecast loss in bits}\\H(a)&=0 &&\text{a certain outcome has no surprise}\\\mathrm{KL}(a\Vert b)&=1-0=1 &&\text{subtract entropy}\end{aligned}$$
 
       5. **Use the fair coin as actual.** Now tails occurs half the time but is forecast probability zero.
          $$H(b,a)=\frac12\log_2 1+\frac12\log_2(1/0).$$
 
-      At zero the tails term is infinite. Think of forecasts getting arbitrarily close to zero, giving ever larger surprises. Subtracting $H(b)=1$ still leaves infinite KL. Positive forecasts avoid this problem.
+      At zero the tails term is infinite. Think of forecasts getting arbitrarily close to zero, giving ever larger surprises:
+      $$\begin{aligned}H(b,a)&=\infty &&\text{tails has infinite loss}\\\mathrm{KL}(b\Vert a)&=\infty-1=\infty &&\text{subtract the fair coin's entropy}\end{aligned}$$
+      Positive forecasts avoid this problem.
     problems: [it-kl-basics, it-kl-why, it-kl-fixed, it-kl-template, it-kl-direction, it-kl-robot]
 final: it-explain-classification
 summary: |

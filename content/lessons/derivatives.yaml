@@ -12,10 +12,20 @@ final: der-explain
 knowledge_points:
   - id: der-speed-at-instant
     title: "Find the slope at one point"
+    tldr: |
+      - Comparing two positions tells us the average speed between them.
+      - Shortening the time between them brings that average closer to the speed right now.
+      - The derivative gives that instant's speed, which is the slope at one point on the graph.
     explain: |
       ### Average speed over one second
 
-      A car starts from rest, and its distance after $t$ seconds is $d(t)=t^2$ metres. Between $t=3$ and $t=4$ it goes from $9$ metres to $16$, so its average speed is $7$ m/s.
+      A car starts from rest, and its distance after $t$ seconds is $d(t)=t^2$ metres. To find its average speed between $t=3$ and $t=4$, divide the distance travelled by the time taken:
+      $$
+      \begin{aligned}
+      d(4)-d(3)&=16-9=7 &&\text{metres travelled}\\
+      \frac{7}{4-3}&=7 &&\text{average speed in m/s}
+      \end{aligned}
+      $$
 
       On the graph, that's the slope of the orange line joining the two points, its rise of $7$ metres over its run of $1$ second. But the car keeps speeding up, so $7$ isn't what its speedometer shows at exactly $t=3$.
 
@@ -49,14 +59,16 @@ knowledge_points:
       What about shorter stretches from $t=3$?
 
       - Over $1$ second, it's $7$ m/s.
-      - Over $0.1$ seconds, it goes from $9$ to $3.1^2=9.61$ metres, so it's $6.1$ m/s.
-      - Over $0.01$ seconds, it goes to $3.01^2=9.0601$ metres, so it's $6.01$ m/s.
+      - Over $0.1$ seconds, calculate the new distance, then the speed:
+        $$\begin{aligned}d(3.1)&=3.1^2=9.61 &&\text{new distance}\\(9.61-9)/0.1&=6.1 &&\text{average speed}\end{aligned}$$
+      - Over $0.01$ seconds, repeat with a smaller step:
+        $$\begin{aligned}d(3.01)&=3.01^2=9.0601 &&\text{new distance}\\(9.0601-9)/0.01&=6.01 &&\text{average speed}\end{aligned}$$
 
       The averages close in on $6$. Drawn over shorter stretches, the orange line would turn until it just touches the curve at $t=3$. This touching line, drawn in blue, is the **tangent**, and its slope, $6$, is the speed at that instant.
 
       ### The definition
 
-      The **derivative** of a function $f$ at an input $a$, written $f'(a)$ and read "f prime of a", is the slope of its graph at that input. Over a small step $h$ the output goes from $f(a)$ to $f(a+h)$, and we see where the average slope heads as $h$ shrinks to $0$:
+      The **derivative** of $f$ at input $a$, written $f'(a)$ and read "f prime of a", is its slope there. Over a step $h$, the output changes from $f(a)$ to $f(a+h)$. We watch the average slope as $h$ shrinks:
 
       $$f'(a)=\lim_{h\to0}\frac{f(a+h)-f(a)}{h}$$
 
@@ -66,20 +78,22 @@ knowledge_points:
 
       ### Estimating with the slope
 
-      The derivative also says how far the output moves for a small nudge, which is about $f'(a)$ times the nudge. From $t=3$, a $0.1$-second nudge should move the car about $6\times0.1=0.6$ metres, and it really moves $9.61-9=0.61$.
+      For a small nudge, the output moves about $f'(a)$ times the nudge. From $t=3$, compare that estimate with the actual change:
+      $$\begin{aligned}6\times0.1&=0.6 &&\text{estimated metres travelled}\\9.61-9&=0.61 &&\text{actual metres travelled}\end{aligned}$$
 
-      This only works for small nudges, because the curve bends away from its tangent. A $2$-second nudge from $t=3$ predicts $9+6\times2=21$ metres at $t=5$, but the true distance is $25$.
+      The curve bends away from its tangent, so larger nudges give worse estimates. For a $2$-second nudge:
+      $$\begin{aligned}9+6\times2&=21 &&\text{estimated distance at }t=5\\d(5)&=25 &&\text{true distance}\end{aligned}$$
     worked: |
       Let's work out the car's speed at exactly $t=3$, when its distance is $d(t)=t^2$.
 
-      1. **Write the average for any step $h$.** Letting $h$ stand for the step shows every average at once. We expand $(3+h)^2=9+6h+h^2$, cancel the $9$s, and divide by $h$, which we can do because $h$ isn't $0$.
-         $$\frac{(3+h)^2-9}{h}=\frac{6h+h^2}{h}=6+h$$
+      1. **Write the average for any step $h$.** Letting $h$ stand for the step shows every average at once. We can divide by $h$ because it isn't $0$.
+         $$\begin{aligned}\frac{(3+h)^2-9}{h}&=\frac{9+6h+h^2-9}{h} &&\text{expand the square}\\&=\frac{6h+h^2}{h} &&\text{cancel the constants}\\&=6+h &&\text{divide each term by }h\end{aligned}$$
 
       2. **Let the step shrink to $0$.** As $h$ gets smaller, $6+h$ gets closer to $6$.
          $$d'(3)=\lim_{h\to0}(6+h)=6$$
 
-      3. **Repeat at any time $a$.** The same algebra works at every time, not just $t=3$.
-         $$\frac{(a+h)^2-a^2}{h}=\frac{2ah+h^2}{h}=2a+h,\quad\text{so}\quad d'(a)=2a$$
+      3. **Repeat at any time $a$.** The same algebra gives a formula for every time.
+         $$\begin{aligned}\frac{(a+h)^2-a^2}{h}&=\frac{a^2+2ah+h^2-a^2}{h} &&\text{expand the square}\\&=\frac{2ah+h^2}{h} &&\text{cancel the constants}\\&=2a+h &&\text{divide by }h\\d'(a)&=2a &&\text{let }h\text{ shrink to zero}\end{aligned}$$
 
       So the car is doing $6$ m/s at $t=3$. In general its speed is $d'(t)=2t$.
     problems:
@@ -95,6 +109,10 @@ knowledge_points:
       - derp-big-nudge
   - id: der-power-rule
     title: "Find slopes of powers and sums"
+    tldr: |
+      - To find the slope of a power of x, bring the power down in front and lower the power by one.
+      - A number multiplying a term stays, while a number added on its own contributes no slope.
+      - These rules let us find a sum's slope one term at a time.
     explain: |
       ### A pattern in the slopes
 
@@ -128,7 +146,8 @@ knowledge_points:
 
       $$(x^n)'=nx^{n-1}$$
 
-      It works for negative and fractional powers too. For example, $x^{-1}$ means $1/x$, and $(x^{-1})'=-x^{-2}=-1/x^2$.
+      It works for negative and fractional powers too. For example, $x^{-1}$ means $1/x$:
+      $$\begin{aligned}(x^{-1})'&=-x^{-2} &&\text{apply the power rule}\\&=-1/x^2 &&\text{rewrite the negative power}\end{aligned}$$
 
       ### Numbers in front, sums and constants
 
@@ -156,7 +175,7 @@ knowledge_points:
       Let's find the slope of $f(x)=3x^2-4x+5$ at $x=2$.
 
       1. **Differentiate each term.** We take the three terms one at a time, using the power rule and the constant-multiple rule.
-         $$(3x^2)'=3\cdot2x=6x,\qquad(-4x)'=-4,\qquad(5)'=0$$
+         $$\begin{aligned}(3x^2)'&=3\cdot2x &&\text{apply the power rule}\\&=6x &&\text{multiply the constants}\\(-4x)'&=-4 &&\text{differentiate the linear term}\\(5)'&=0 &&\text{differentiate the constant}\end{aligned}$$
 
       2. **Add the terms back up.** The sum rule adds them.
          $$f'(x)=6x-4$$
@@ -177,6 +196,10 @@ knowledge_points:
       - derp-flat-slope
   - id: der-exp-log
     title: "Find slopes of exponentials and logarithms"
+    tldr: |
+      - An exponential puts the input in the power of a fixed number.
+      - One special exponential has a slope equal to its height.
+      - Its reverse is the natural logarithm, whose slope is one divided by its input.
     explain: |
       ### When the input is the power
 
@@ -213,9 +236,8 @@ knowledge_points:
       </svg>
       ```
 
-      That's no coincidence. The number $e$ is chosen so that the slope of $e^x$ at $x=0$ is exactly $1$. Because adding powers multiplies, $e^{x+h}=e^x\cdot e^h$. So the curve near any $x$ is the piece near $0$ stretched upwards by $e^x$, and its slope there is $e^x\times1$:
-
-      $$(e^x)'=e^x$$
+      The number $e$ is chosen so the slope at $0$ is $1$. Split $e^{x+h}$ into a product, then take the fixed factor $e^x$ outside the average-slope fraction:
+      $$\begin{aligned}e^{x+h}&=e^x e^h &&\text{split the power}\\\frac{e^{x+h}-e^x}{h}&=e^x\frac{e^h-1}{h} &&\text{factor out }e^x\\(e^x)'&=e^x\times1=e^x &&\text{let }h\text{ shrink to zero}\end{aligned}$$
 
       So $e^x$ is its own slope, and the higher it gets, the faster it climbs.
 
@@ -223,18 +245,17 @@ knowledge_points:
 
       A **logarithm** goes the other way, and asks which power gives a number. For example, $\log_2 8$, the power of $2$ that gives $8$, is $3$ because $2^3=8$. The **natural logarithm** $\ln x$ asks which power of $e$ gives $x$, so $\ln 1=0$ because $e^0=1$. It only exists for positive $x$, because no power of $e$ is zero or negative.
 
-      On the right of the picture, the slope of $\ln x$ is $1$ at $x=1$, $\tfrac12$ at $x=2$ and $\tfrac14$ at $x=4$. Because $\ln x$ undoes $e^x$, its graph is the $e^x$ graph with the axes swapped. Swapping the axes swaps rise and run, so each slope flips to one over itself. For example, $e^x$ has height and slope $2.72$ at $x=1$, so $\ln x$ has slope $1/2.72$ at $x=2.72$. The same happens at every point, so $\ln x$ has slope $1/x$ at every input $x$:
-
-      $$(\ln x)'=\frac1x$$
+      On the right, $\ln x$ has slope $1$ at $x=1$, $\tfrac12$ at $x=2$ and $\tfrac14$ at $x=4$. Its graph swaps the exponential's axes, so rise and run swap too. For example, the exponential's height and slope are about $2.72$ at input $1$, giving the logarithm slope about $1/2.72$ at input $2.72$. At a general exponential input $a$:
+      $$\begin{aligned}x&=e^a &&\text{height becomes logarithm input}\\(\ln x)'&=1/e^a &&\text{swap rise and run}\\&=1/x &&\text{use that input's name}\end{aligned}$$
 
       The rules for numbers in front, sums and constants still apply here. For example, $(5e^x)'=5e^x$.
 
-      Be careful not to use the power rule on $e^x$, which would give $xe^{x-1}$. In $e^x$ the power is the input, not a fixed number.
+      Be careful not to use the power rule on $e^x$, which would give $xe^{x-1}$. The input sits in the power here, so we use the exponential rule.
     worked: |
       Let's find the slope of $f(x)=x^2+6\ln x$ at $x=2$.
 
       1. **Differentiate each term.** We use the power rule on $x^2$ and the $\ln x$ rule on $6\ln x$.
-         $$(x^2)'=2x,\qquad(6\ln x)'=6\cdot\frac1x=\frac6x$$
+         $$\begin{aligned}(x^2)'&=2x &&\text{apply the power rule}\\(6\ln x)'&=6\cdot\frac1x &&\text{keep the constant multiplier}\\&=\frac6x &&\text{combine into one fraction}\end{aligned}$$
 
       2. **Add the terms back up.** The sum rule adds them.
          $$f'(x)=2x+\frac6x$$
@@ -255,6 +276,10 @@ knowledge_points:
       - derp-log-flat
   - id: der-product-quotient
     title: "Find slopes of products and fractions"
+    tldr: |
+      - When two changing quantities are multiplied, either one's change affects the result.
+      - The product rule adds those two effects to find the slope.
+      - Rearranging that rule gives a similar rule for the slope of a fraction.
     explain: |
       ### Two changing parts
 
@@ -283,7 +308,9 @@ knowledge_points:
       </svg>
       ```
 
-      In the first step we saw that a small nudge $h$ to the input changes the output by about the slope times $h$. So $\Delta u\approx u'h$ and $\Delta v\approx v'h$. The slope of the area is its change divided by the nudge, so we divide the gained area by $h$. The two strips give $u'v$ and $uv'$, while the corner gives about $u'v'h$, which disappears as $h$ shrinks.
+      A small input nudge $h$ changes each side by about its slope times $h$. Divide the added area by $h$ to find the average slope:
+      $$\begin{aligned}\Delta u&\approx u'h &&\text{width change}\\\Delta v&\approx v'h &&\text{height change}\\\frac{\Delta(uv)}h&=\frac{\Delta u\,v+u\,\Delta v+\Delta u\,\Delta v}h &&\text{add strips and corner}\\&\approx u'v+uv'+u'v'h &&\text{substitute the changes}\end{aligned}$$
+      The corner's contribution disappears as $h$ shrinks.
 
       ### The product and quotient rules
 
@@ -295,11 +322,13 @@ knowledge_points:
 
       $$\left(\frac uv\right)'=\frac{u'v-uv'}{v^2}$$
 
-      It comes from the product rule. If $q=u/v$ then $u=qv$, so $u'=q'v+qv'$, and solving for $q'$ with $q=u/v$ gives the fraction above. It only makes sense where $v$ isn't $0$. Watch out for the minus sign, and make sure $u'v$ comes first. For example, with $u=x$ and $v=x+1$, both slopes are $1$, so
+      To derive it where $v\ne0$, name the fraction $q=u/v$:
+      $$\begin{aligned}u&=qv &&\text{multiply by }v\\u'&=q'v+qv' &&\text{use the product rule}\\u'-qv'&=q'v &&\text{subtract }qv'\\q'&=\frac{u'-qv'}v &&\text{divide by }v\\&=\frac{u'-(u/v)v'}v &&\text{substitute }q=u/v\\&=\frac{(u'v-uv')/v}v &&\text{combine the numerator's fractions}\\&=\frac{u'v-uv'}{v^2} &&\text{divide by }v\end{aligned}$$
+      Watch the minus sign. With $u=x$ and $v=x+1$, both slopes are $1$:
+      $$\begin{aligned}\left(\frac{x}{x+1}\right)'&=\frac{1\cdot(x+1)-x\cdot1}{(x+1)^2} &&\text{substitute the parts}\\&=\frac{1}{(x+1)^2} &&\text{cancel }x\text{ in the numerator}\end{aligned}$$
 
-      $$\left(\frac{x}{x+1}\right)'=\frac{1\cdot(x+1)-x\cdot1}{(x+1)^2}=\frac{1}{(x+1)^2}$$
-
-      Be careful not to multiply the two slopes. For $x\cdot x=x^2$ that gives $1\cdot1=1$, but the true slope is $2x$, which the product rule gets right, $1\cdot x+x\cdot1=2x$.
+      Be careful not to multiply the slopes. For $x\cdot x=x^2$, that would give $1$. The product rule gives the correct $2x$:
+      $$\begin{aligned}(x\cdot x)'&=1\cdot x+x\cdot1 &&\text{count both changing factors}\\&=2x &&\text{add their contributions}\end{aligned}$$
     worked: |
       Let's find the slope of $f(x)=(x^2+1)(3x-2)$ at $x=1$, then check it by multiplying out the brackets.
 
@@ -310,10 +339,10 @@ knowledge_points:
          $$u=2,\quad u'=2,\qquad v=1,\quad v'=3$$
 
       3. **Apply the product rule.** Each part's slope is multiplied by the other part's value.
-         $$f'(1)=u'v+uv'=2\times1+2\times3=2+6=8$$
+         $$\begin{aligned}f'(1)&=u'v+uv' &&\text{product rule}\\&=2\times1+2\times3 &&\text{substitute the values}\\&=2+6=8 &&\text{multiply and add}\end{aligned}$$
 
       4. **Check by multiplying out.** Expanding gives a polynomial, which the power rule handles directly.
-         $$f(x)=3x^3-2x^2+3x-2,\quad f'(x)=9x^2-4x+3,\quad f'(1)=8$$
+         $$\begin{aligned}f(x)&=3x^3-2x^2+3x-2 &&\text{expand the brackets}\\f'(x)&=9x^2-4x+3 &&\text{differentiate each term}\\f'(1)&=9-4+3=8 &&\text{substitute }x=1\end{aligned}$$
 
       Both ways give $8$, while multiplying the two slopes would give $u'v'=6$.
     problems:

@@ -14,16 +14,24 @@ where_this_fits: |
 knowledge_points:
   - id: pd-hold-fixed
     title: "Change one input at a time"
+    tldr: |
+      - A function with several inputs can rise differently in each direction.
+      - Holding the other inputs fixed leaves one direction to measure.
+      - That direction's slope is called a partial derivative, and each input has its own.
     explain: |
       ### A function with two inputs
 
       In the derivatives lesson, every function had one input. Now let's take a function with two inputs, $f(x,y)=x^2+2y^2$. Think of $(x,y)$ as a point on a map and $f(x,y)$ as the height of the ground above it.
 
-      We'll stand at $P=(1.5,1)$, where the height is $1.5^2+2\times1^2=4.25$. The ground may rise at different rates in the $x$ and $y$ directions, so we have to say which way we're walking.
+      We'll stand at $P=(1.5,1)$. Substituting its coordinates gives the height:
+      $$f(1.5,1)=1.5^2+2\times1^2=4.25.$$
+      The ground may rise at different rates along $x$ and $y$, so we have to say which way we're walking.
 
       ### Walking with only x changing
 
-      Let's walk along the orange line on the left, where $y$ stays at $1$ and only $x$ changes. Along that line the height is $f(x,1)=x^2+2$, a function of $x$ alone, drawn on the right with $P$ at height $4.25$. By the power rule the slope is $2x$, so at $x=1.5$ it's $3$, the slope of the blue line touching the curve at $P$.
+      Let's walk along the orange line on the left, where $y$ stays at $1$. This leaves a function of $x$ alone, drawn on the right:
+      $$\begin{aligned}f(x,1)&=x^2+2 &&\text{freeze }y=1\\\text{slope along }x&=2x &&\text{use the power rule}\\\text{slope at }P&=2\times1.5=3 &&\text{put in }x=1.5\end{aligned}$$
+      The blue line touches the curve at $P$ with this slope.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 340" aria-label="Left: a map of the inputs x and y, with the point P at (1.5, 1) and an orange line through it along which y stays 1 and only x moves. Right: the height along that orange line, the curve x squared plus 2, with P at height 4.25 and a blue line touching the curve at P with slope 3">
@@ -76,7 +84,9 @@ knowledge_points:
 
       ### Slopes at different points
 
-      Freezing $y$ at any value $c$ gives $x^2+2c^2$, whose slope is always $2x$. Freezing $x$ instead, the slope along $y$ is $4y$, as we'll check in the worked example. So the slopes change from point to point:
+      The same reasoning works with $y$ frozen at any value $c$:
+      $$\begin{aligned}f(x,c)&=x^2+2c^2 &&\text{hold }y=c\\\frac{\partial f}{\partial x}&=2x &&\text{differentiate with }c\text{ fixed}\end{aligned}$$
+      Freezing $x$ instead gives slope $4y$ along $y$, as we'll check below. The slopes change from point to point:
 
       - At $(1.5,1)$, the slope is $3$ along $x$ and $4$ along $y$.
       - At $(0,1)$, the slope along $x$ is $0$, so a small step in $x$ is level, but along $y$ it's still $4$.
@@ -96,7 +106,7 @@ knowledge_points:
          $$\frac{\partial f}{\partial y}(P)=4\times1=4$$
 
       4. **Check with a small step.** If we move $y$ alone from $1$ to $1.01$, the height should rise by about $4\times0.01=0.04$, so dividing the rise by $0.01$ should give about $4$.
-         $$\frac{f(1.5,\,1.01)-f(1.5,\,1)}{0.01}=\frac{4.2902-4.25}{0.01}=4.02$$
+         $$\begin{aligned}f(1.5,1.01)&=2.25+2(1.01)^2=4.2902 &&\text{find the new height}\\\frac{f(1.5,1.01)-f(1.5,1)}{0.01}&=\frac{4.2902-4.25}{0.01} &&\text{substitute both heights}\\&=4.02 &&\text{divide the rise by the step}\end{aligned}$$
 
       The check gives $4.02$, close to $4$, and the extra $0.02$ comes from the step not being zero. So from $P$ the ground rises at $3$ along $x$ but at $4$ along $y$.
     problems:
@@ -111,14 +121,22 @@ knowledge_points:
       - pdp-flat-weight
   - id: pd-compute
     title: "Work out a partial derivative"
+    tldr: |
+      - To find one input's slope, treat every other input as a fixed number.
+      - A fixed input that multiplies the changing one stays in the answer as a number.
+      - A term without the changing input has no slope, so it drops out.
+      - The usual derivative rules then give a slope formula we can use at any point.
     explain: |
       ### Inputs that are multiplied together
 
       In $x^2+2y^2$, each term contained only one input, so freezing the other was easy. But what about $f(x,y)=x^2y+5y$, where $x$ and $y$ are multiplied together in $x^2y$? Can we still find one formula for $\frac{\partial f}{\partial x}$ that works at every point, so we needn't redo the work each time?
 
-      Let's start with the simplest product, the area of a rectangle, $A(x,y)=xy$, with width $x=3$ and height $y=2$. On the left, we widen it by a small amount $h$ while the height stays at $2$. The orange strip we add has area $2h$, so the area grows at $2$ per unit of width, and that $2$ is the height. So $\frac{\partial A}{\partial x}=y$.
+      Let's start with a rectangle's area, $A(x,y)=xy$, with width $x=3$ and height $y=2$. On the left, we widen it by a small amount $h$ while keeping height $2$. Write $\Delta A$ for the added orange area:
+      $$\begin{aligned}\Delta A&=2h &&\text{height times added width}\\\frac{\Delta A}{h}&=2 &&\text{area change per unit width}\\\frac{\partial A}{\partial x}&=y &&\text{the rate is the fixed height}\end{aligned}$$
 
-      On the right, we raise the height by $h$ and keep the width at $3$. Now the strip has area $3h$, so $\frac{\partial A}{\partial y}=x$. Either way, the input we froze becomes the multiplier.
+      On the right, raise the height by $h$ and keep width $3$:
+      $$\begin{aligned}\Delta A&=3h &&\text{width times added height}\\\frac{\Delta A}{h}&=3 &&\text{area change per unit height}\\\frac{\partial A}{\partial y}&=x &&\text{the rate is the fixed width}\end{aligned}$$
+      Either way, the input we froze becomes the multiplier.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 290" aria-label="Two copies of a rectangle 3 wide and 2 tall, with area 6. Left: an orange strip of width h added to the right side has area 2h. Right: an orange strip of height h added to the top has area 3h">
@@ -147,10 +165,8 @@ knowledge_points:
 
       A frozen input behaves exactly like a fixed number, so the derivative rules work unchanged. To find $\frac{\partial f}{\partial x}$, we treat every input except $x$ as a constant and differentiate term by term:
 
-      - A constant factor stays as a factor, so $x^2y$ gives $2xy$, just as $5x^2$ gives $10x$.
-      - A term with no $x$ in it is a constant, so its slope is $0$, and $5y$ gives $0$.
-
-      So $\frac{\partial f}{\partial x}=2xy$. This result is itself a function of both inputs, which we call a **partial-derivative formula**, and putting in any point gives the slope there.
+      $$\begin{aligned}\frac{\partial}{\partial x}(x^2y)&=y\cdot2x=2xy &&\text{keep the constant factor }y\\\frac{\partial}{\partial x}(5y)&=0 &&\text{a constant term has zero slope}\\\frac{\partial f}{\partial x}&=2xy+0=2xy &&\text{add the term slopes}\end{aligned}$$
+      Keeping $y$ works like keeping $5$ in $(5x^2)'=10x$. The result is a function of both inputs, called a **partial-derivative formula**. Substituting any point gives its slope.
 
       ### How common terms behave
 
@@ -163,7 +179,7 @@ knowledge_points:
       | $5y$ | $0$ | $5$ |
       | $e^y$ | $0$ | $e^y$ |
 
-      Be careful not to drop an input just because it's held fixed. Only terms with no $x$ at all disappear. When $y$ multiplies $x$, it stays as a factor, so the partial of $xy$ in $x$ is $y$, not $1$ or $0$, just like the height of the strip in the picture.
+      Be careful not to drop an input just because it's held fixed. Only terms with no $x$ at all disappear. When $y$ multiplies $x$, it stays as a factor, so the partial of $xy$ in $x$ is $y$, just like the height of the strip in the picture.
     worked: |
       Let's find both partial-derivative formulas of $f(x,y)=x^2y+5y$, and then the two slopes at the point $(3,2)$.
 
@@ -174,10 +190,10 @@ knowledge_points:
          $$\frac{\partial f}{\partial y}=x^2\cdot1+5=x^2+5$$
 
       3. **Put in the point $(3,2)$.** Each formula gives its slope at that point.
-         $$\frac{\partial f}{\partial x}(3,2)=2\times3\times2=12,\qquad\frac{\partial f}{\partial y}(3,2)=3^2+5=14$$
+         $$\begin{aligned}\frac{\partial f}{\partial x}(3,2)&=2\times3\times2=12 &&\text{substitute into the }x\text{ slope}\\\frac{\partial f}{\partial y}(3,2)&=3^2+5=14 &&\text{substitute into the }y\text{ slope}\end{aligned}$$
 
-      4. **Check the $x$ slope with a small step.** We move $x$ alone from $3$ to $3.01$, where $f(3.01,2)=28.1202$, and divide the rise by $0.01$.
-         $$\frac{f(3.01,\,2)-f(3,\,2)}{0.01}=\frac{28.1202-28}{0.01}=12.02$$
+      4. **Check the $x$ slope with a small step.** Move $x$ alone from $3$ to $3.01$, then divide the rise by $0.01$.
+         $$\begin{aligned}f(3.01,2)&=3.01^2\times2+10=28.1202 &&\text{find the new output}\\\frac{f(3.01,2)-f(3,2)}{0.01}&=\frac{28.1202-28}{0.01} &&\text{substitute both outputs}\\&=12.02 &&\text{divide the rise by the step}\end{aligned}$$
 
       The check gives $12.02$, close to $12$. So at $(3,2)$ this function rises at $12$ along $x$ and at $14$ along $y$.
     problems:
@@ -191,14 +207,19 @@ knowledge_points:
       - pdp-product
   - id: pd-many-inputs
     title: "Find the slopes of a model's error"
+    tldr: |
+      - A prediction model has adjustable numbers, and training changes them to reduce its error.
+      - The recorded data stay fixed while we measure each adjustable number's effect.
+      - The partial derivatives say how fast the error changes as we raise each number, so we know which way to move it.
     explain: |
       ### A model with two adjustable numbers
 
-      Partial derivatives matter in machine learning because a model's error depends on several numbers at once. A **model** is a formula that makes predictions, and **training** means adjusting its numbers until the predictions get closer to the true answers. Let's build the smallest one.
+      A **model** is a formula that makes predictions. **Training** adjusts its numbers to bring predictions closer to the answers. Let's use partial derivatives to measure each number's effect.
 
       Our model predicts a house's price from its area $x$. It multiplies the area by a **weight** $w$, which says how much the price rises per unit of area, and adds a **bias** $b$, a fixed amount on top. So it predicts $wx+b$, and since training adjusts $w$ and $b$, we call them the model's **parameters**.
 
-      Our house has area $x=2$, in hundreds of square metres, and sold for $y=7$, in hundreds of thousands of pounds. With $w=1$ and $b=1$, the model predicts $1\times2+1=3$. The **error** is prediction minus price, $e=3-7=-4$, the red gap on the left. Squaring it gives the **squared error**, $L=e^2=16$, so every miss counts as positive. A score like this is called a **loss**, and training tries to make it small.
+      Our house has area $x=2$, in hundreds of square metres, and price $y=7$, in hundreds of thousands of pounds. The **error** is prediction minus price; write $e$ for this error. Squaring it makes every miss positive, giving a **loss**, the score training tries to reduce. With $w=b=1$:
+      $$\begin{aligned}wx+b&=1\times2+1=3 &&\text{predict the price}\\e&=3-7=-4 &&\text{find the error, the red gap}\\L&=e^2=16 &&\text{square the error}\end{aligned}$$
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 340" aria-label="Left: area against price. The grey line is the model prediction w x plus b with w equal to 1 and b equal to 1, which predicts 3 at area 2. The house is the black dot at area 2 and price 7, and a red dashed segment from 3 up to 7 shows the error of minus 4. Right: the loss as w changes while b stays 1, a curve that is 16 at w equal to 1, where a blue line touches it with slope minus 16, and falls to 0 at w equal to 3">
@@ -260,13 +281,13 @@ knowledge_points:
 
       It contains four quantities, but training can only change $w$ and $b$, because the house's area and price are recorded facts. So $x$ and $y$ are constants, and only $w$ and $b$ get partials.
 
-      Since $L$ is $e$ times $e$, the product rule handles it. With $b$ frozen, it gives $e$ times the rate of $e$, plus the rate of $e$ times $e$, which add up to
+      Since $L=e\cdot e$, the product rule gives its slope with $b$ frozen:
+      $$\begin{aligned}\frac{\partial L}{\partial w}&=\frac{\partial e}{\partial w}e+e\frac{\partial e}{\partial w} &&\text{differentiate both factors}\\&=2e\frac{\partial e}{\partial w} &&\text{combine equal terms}\\&=2ex &&\text{error changes at rate }x\end{aligned}$$
+      The error changes by one per unit of bias, so the loss's bias derivative is $2e\times1$.
 
-      $$\frac{\partial L}{\partial w}=2e\cdot\frac{\partial e}{\partial w}.$$
-
-      If $w$ rises by $1$, the prediction $wx+b$ rises by $x$, and so does the error. So the weight's slope is $2e$ times $x$. The bias adds to the error one for one, so its slope is $2e$ times $1$.
-
-      The right-hand picture plots the loss against $w$, with $b$ kept at $1$. At $w=1$, $2e$ times $x$ is $2\times(-4)\times2=-16$. It's negative, so raising $w$ a little lowers the loss, and the curve reaches $0$ at $w=3$, where the prediction is exactly $7$.
+      The right-hand picture plots the loss against $w$, with $b=1$. At $w=1$:
+      $$\begin{aligned}2e&=2(-4)=-8 &&\text{double the error}\\2ex&=-8(2)=-16 &&\text{multiply by the area}\end{aligned}$$
+      It's negative, so raising $w$ a little lowers the loss. The curve reaches $0$ at $w=3$, where the prediction is exactly $7$.
     worked: |
       Let's find both slopes of the loss for our house, with area $x=2$ and price $y=7$, at $w=1$ and $b=1$.
 
@@ -274,13 +295,13 @@ knowledge_points:
          $$e=1\times2+1-7=-4$$
 
       2. **Find how fast the error moves with each parameter.** With $b$ frozen, $w$ changes the error at the rate $x=2$, the area it multiplies. With $w$ frozen, $b$ changes it one for one.
-         $$\frac{\partial e}{\partial w}=2,\qquad\frac{\partial e}{\partial b}=1$$
+         $$\begin{aligned}\frac{\partial e}{\partial w}&=2 &&\text{weight multiplies the area}\\\frac{\partial e}{\partial b}&=1 &&\text{bias adds directly}\end{aligned}$$
 
       3. **Multiply each rate by $2e$.** The product rule on $e\cdot e$ puts a factor of $2e=-8$ in front of each rate.
-         $$\frac{\partial L}{\partial w}=-8\times2=-16,\qquad\frac{\partial L}{\partial b}=-8\times1=-8$$
+         $$\begin{aligned}\frac{\partial L}{\partial w}&=-8\times2=-16 &&\text{scale the weight's error rate}\\\frac{\partial L}{\partial b}&=-8\times1=-8 &&\text{scale the bias's error rate}\end{aligned}$$
 
       4. **Check the weight's slope with a small step.** Raising $w$ alone from $1$ to $1.01$ raises the prediction by $0.02$, so the error becomes $-3.98$.
-         $$\frac{(-3.98)^2-(-4)^2}{0.01}=\frac{15.8404-16}{0.01}=-15.96$$
+         $$\begin{aligned}(-3.98)^2&=15.8404 &&\text{square the new error}\\\frac{(-3.98)^2-(-4)^2}{0.01}&=\frac{15.8404-16}{0.01} &&\text{substitute the losses}\\&=-15.96 &&\text{divide the loss change by the step}\end{aligned}$$
 
       The check gives $-15.96$, close to $-16$. Both slopes are negative because the model predicts too low, so raising either parameter a little lowers the loss. The weight's slope is twice the bias's because a change in $w$ is multiplied by the area, $2$.
     problems:
