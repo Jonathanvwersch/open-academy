@@ -170,7 +170,7 @@ test('Reviews page shows due and upcoming topics at desktop and mobile widths', 
 
 test('mixed reviews show their topics on Home and beside each session question', async ({
   page,
-}) => {
+}, testInfo) => {
   await db
     .update(users)
     .set({ prefs: { scheduleMinutes: 180 } })
@@ -196,7 +196,7 @@ test('mixed reviews show their topics on Home and beside each session question',
     await expect(page.getByRole('heading', { name: 'Mixed review' })).toBeVisible();
     await expect(page.getByText(/(?:Vectors, Linear models|Linear models, Vectors)/)).toBeVisible();
     await page.screenshot({
-      path: `/home/ubuntu/briefs/mixed-shots/home-${viewport.name}.png`,
+      path: testInfo.outputPath(`home-${viewport.name}.png`),
       fullPage: true,
     });
   }
@@ -206,12 +206,12 @@ test('mixed reviews show their topics on Home and beside each session question',
   await expect(page.getByRole('heading', { name: 'Mixed review' })).toBeVisible();
   await expect(page.getByText(/^From:/)).toBeVisible();
   await page.screenshot({
-    path: '/home/ubuntu/briefs/mixed-shots/session-desktop.png',
+    path: testInfo.outputPath('session-desktop.png'),
     fullPage: true,
   });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.screenshot({
-    path: '/home/ubuntu/briefs/mixed-shots/session-mobile.png',
+    path: testInfo.outputPath('session-mobile.png'),
     fullPage: true,
   });
 });
