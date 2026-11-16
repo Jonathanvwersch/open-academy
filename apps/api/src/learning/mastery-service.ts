@@ -52,7 +52,7 @@ export async function creditHardPrerequisites(
     await db
       .update(reviewCards)
       .set({ fsrs: credit.fsrs, dueAt: credit.dueAt })
-      .where(eq(reviewCards.id, credit.id));
+      .where(and(eq(reviewCards.id, credit.id), eq(reviewCards.dueAt, card.dueAt)));
   }
 }
 
