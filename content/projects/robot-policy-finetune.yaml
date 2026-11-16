@@ -1,7 +1,0 @@
-id: robot-policy-finetune
-title: "Fine-tune a pretrained robot policy"
-status: stub
-est_hours: 6
-objective: "Fine-tune a small pretrained robot policy on demonstrations from a simulated task and compare its success rate, with confidence intervals, against your behavioral cloning policy trained from scratch."
-background: ""
-prereqs: [vla-models, robot-foundation-models, policy-evaluation]

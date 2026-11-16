@@ -2,7 +2,6 @@ schedule: { mon: 60, tue: 60, wed: 60, thu: 60, fri: 60, sat: 300, sun: 60 }
 subjects:
   - { id: mathematics, title: Mathematics }
   - { id: ai, title: AI }
-  - { id: robotics, title: Robotics }
 domains:
   - {
       id: math,
@@ -32,12 +31,7 @@ domains:
   - {
       id: vision,
       title: Computer vision,
-      description: "Images, convolutions, vision encoders and vision-language models.",
-    }
-  - {
-      id: robotics,
-      title: Robotics foundations,
-      description: "Frames, transforms, kinematics, control and perception.",
+      description: "Images, pixels and convolutional networks.",
     }
   - {
       id: rl,
@@ -50,16 +44,6 @@ domains:
       description: "Supervised fine-tuning, preference learning, RLHF, DPO and reinforcement learning with verifiable rewards.",
     }
   - {
-      id: imitation,
-      title: Imitation learning,
-      description: "Demonstrations, behavioral cloning, distribution shift and evaluation.",
-    }
-  - {
-      id: robot-learning,
-      title: Modern robot learning,
-      description: "Action chunking, diffusion policies, VLAs and robot data.",
-    }
-  - {
       id: research,
       title: Research and methodology,
       description: "Experimental design, statistics and reading papers.",
@@ -70,13 +54,11 @@ courses:
   - transformers-llms
   - llm-inference
   - reinforcement-learning
-  - robotics
-  - robot-learning
   - maths-for-ml
 default_course: ml-foundations
 subject:
-  title: machine learning, AI and robotics
-  tutor_context: The learner may be new to the subject but can program. Explain ideas from first principles and connect them to how real machine learning, AI and robotics systems are built.
+  title: machine learning and AI
+  tutor_context: The learner may be new to the subject but can program. Explain ideas from first principles and connect them to how real machine learning and AI systems are built.
 goals:
   - {
       id: g-training,
@@ -107,38 +89,8 @@ goals:
     }
   - {
       id: g-paradigms,
-      text: "Understand supervised, imitation and reinforcement learning",
-      concepts: [supervised-learning, behavioral-cloning, mdp, bc-vs-rl],
-    }
-  - {
-      id: g-robotics-core,
-      text: "Explain coordinate frames, kinematics, dynamics, control, observations and actions",
-      concepts:
-        [
-          coordinate-frames,
-          forward-kinematics,
-          inverse-kinematics,
-          dynamics-basics,
-          pid-control,
-          robot-state-observation-action,
-        ],
-    }
-  - {
-      id: g-vla,
-      text: "Understand modern vision-language-action models",
-      concepts: [vision-language-models, vla-models, robot-foundation-models],
-    }
-  - {
-      id: g-robot-policies,
-      text: "Understand behavioral cloning, action chunking, diffusion policies and demonstrations",
-      concepts:
-        [
-          demonstrations,
-          behavioral-cloning,
-          action-chunking,
-          diffusion-policies,
-          distribution-shift,
-        ],
+      text: "Understand supervised and reinforcement learning",
+      concepts: [supervised-learning, mdp],
     }
   - {
       id: g-build-eval,
@@ -149,15 +101,10 @@ goals:
   - {
       id: g-sim-policy,
       text: "Train a basic simulated robot policy",
-      concepts: [simulation-for-rl, ppo, behavioral-cloning, policy-evaluation],
+      concepts: [simulation-for-rl, ppo],
     }
   - {
       id: g-papers,
       text: "Read a modern paper, identify its contributions and limitations",
-      concepts: [critical-evaluation, experimental-design],
-    }
-  - {
-      id: g-conversations,
-      text: "Hold technically informed conversations with ML and robotics researchers",
-      concepts: [embodiment-gap, data-pipelines-robotics, failure-analysis, system-design-ml],
+      concepts: [experimental-design],
     }
