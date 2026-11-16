@@ -33,6 +33,7 @@ concepts:
       goal_weight: 3,
       dimensions: [conceptual, math],
       prereqs: [{ id: policies-returns }],
+      confused_with: [q-learning],
       objectives: [{ text: "Apply one Bellman backup", dimension: math }],
       status: authored,
     }

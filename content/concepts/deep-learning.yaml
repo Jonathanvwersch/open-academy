@@ -68,6 +68,7 @@ concepts:
         { id: loss-functions },
         { id: partial-derivatives },
       ]
+    confused_with: [autodiff]
     objectives:
       - {
           text: "Explain why gradients are needed and why backward reuses forward values",
@@ -108,6 +109,7 @@ concepts:
     goal_weight: 3
     dimensions: [conceptual, math]
     prereqs: [{ id: gradient-descent }]
+    confused_with: [momentum-adam]
     objectives:
       - { text: "Explain the tradeoffs of batch size", dimension: conceptual }
     status: authored

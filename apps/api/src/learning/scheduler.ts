@@ -110,6 +110,7 @@ export interface SchedulerState {
   lessonRuns?: Array<{
     conceptId: string;
     status: 'in_progress' | 'needs_retry' | 'quiz' | 'completed';
+    startedAt?: string | Date;
   }>;
 }
 
@@ -394,6 +395,7 @@ function packWeekday(
   let usedMinutes = 0;
   let newConceptCount = 0;
   const selectedConcepts = new Set<string>();
+  const selectedLearnConcepts = new Set<string>();
   const canAdd = (candidate: Candidate) => {
     const reviewAlongsideLesson =
       candidate.activity.kind === 'review' &&
@@ -417,8 +419,32 @@ function packWeekday(
     selected.push(candidate);
     usedMinutes += candidate.adjustedMinutes;
     if (candidate.activity.conceptId) selectedConcepts.add(candidate.activity.conceptId);
+    if (candidate.activity.kind === 'learn' && candidate.activity.conceptId) {
+      selectedLearnConcepts.add(candidate.activity.conceptId);
+    }
     return true;
   };
+  const timezone = state.timezone ?? 'UTC';
+  const localToday = localDateKey(now, timezone);
+  const lessonConceptsStartedToday = new Set(
+    (state.lessonRuns ?? []).flatMap((run) => {
+      if (!run.startedAt) return [];
+      const startedAt = typeof run.startedAt === 'string' ? new Date(run.startedAt) : run.startedAt;
+      return localDateKey(startedAt, timezone) === localToday ? [run.conceptId] : [];
+    }),
+  );
+  const interferesWithLearn = (candidate: Candidate) => {
+    const conceptId = candidate.activity.conceptId;
+    if (candidate.activity.kind !== 'learn' || !conceptId) return false;
+    for (const confusableId of content.confusablesById.get(conceptId) ?? []) {
+      if (selectedLearnConcepts.has(confusableId) || lessonConceptsStartedToday.has(confusableId)) {
+        return true;
+      }
+    }
+    return false;
+  };
+  const canSelectLearn = (candidate: Candidate) =>
+    canAdd(candidate) && !interferesWithLearn(candidate);
   const unfinishedLessonConcepts = new Set(
     (state.lessonRuns ?? [])
       .filter(
@@ -481,6 +507,8 @@ function packWeekday(
     candidatesByCourse.set(candidate.courseId, group);
   }
   for (const group of candidatesByCourse.values()) group.sort(compareLearnCandidates);
+  const eligibleCandidatesForCourse = (course: SchedulerCourseContext) =>
+    (candidatesByCourse.get(course.course.id) ?? []).filter(canSelectLearn);
   const coursesBySubject = groupSchedulerCoursesBySubject(courseContexts, content);
   const subjectOrder = new Map(
     (content.curriculum?.subjects ?? []).map((subject, position) => [subject.id, position]),
@@ -490,15 +518,13 @@ function packWeekday(
   while (newConceptCount < SCHEDULER_CONFIG.weekday.maxNewConcepts) {
     const frontCourseBySubject = new Map<string, SchedulerCourseContext>();
     for (const [subjectId, courses] of coursesBySubject) {
-      const frontCourse = courses.find(
-        (course) => (candidatesByCourse.get(course.course.id)?.length ?? 0) > 0,
-      );
+      const frontCourse = courses.find((course) => eligibleCandidatesForCourse(course).length > 0);
       if (frontCourse) frontCourseBySubject.set(subjectId, frontCourse);
     }
     const nextSubject = [...frontCourseBySubject.keys()]
       .filter((subjectId) => {
         const course = frontCourseBySubject.get(subjectId);
-        return course && candidatesByCourse.get(course.course.id)?.some(canAdd);
+        return course && eligibleCandidatesForCourse(course).length > 0;
       })
       .sort(
         (left, right) =>
@@ -512,7 +538,27 @@ function packWeekday(
     const nextCourse = frontCourseBySubject.get(nextSubject);
     if (!nextCourse) break;
     const nextCandidates = candidatesByCourse.get(nextCourse.course.id) ?? [];
-    const candidate = nextCandidates.find(canAdd);
+    const eligibleCandidates = eligibleCandidatesForCourse(nextCourse);
+    const selectedUnits = new Set(
+      selected.flatMap((selectedCandidate) => {
+        const conceptId = selectedCandidate.activity.conceptId;
+        if (
+          selectedCandidate.activity.kind !== 'learn' ||
+          selectedCandidate.courseId !== nextCourse.course.id ||
+          !conceptId
+        ) {
+          return [];
+        }
+        const unit = nextCourse.unitPositions.get(conceptId);
+        return unit === undefined ? [] : [unit];
+      }),
+    );
+    const candidate =
+      eligibleCandidates.find((entry) => {
+        const conceptId = entry.activity.conceptId;
+        const unit = conceptId ? nextCourse.unitPositions.get(conceptId) : undefined;
+        return unit !== undefined && !selectedUnits.has(unit);
+      }) ?? eligibleCandidates[0];
     if (!candidate || !add(candidate)) break;
     newConceptCount += 1;
     selectedLearnMinutesBySubject.set(

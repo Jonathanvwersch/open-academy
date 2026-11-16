@@ -48,12 +48,15 @@ concepts:
     goal_weight: 3                # 0-3 scheduling weight
     dimensions: [conceptual, math, implementation, transfer]   # which apply
     prereqs: [{ id: gradients }, { id: matrices, strength: soft }]   # strength default hard
+    confused_with: [classification-softmax]  # optional; list each confusable pair on one side
     related: [other-id]           # optional
     objectives: [{ text: "...", dimension: math }]
     projects: [linreg-numpy]      # optional
     sources: [{ title: "...", url: "https://..." }]   # optional links
     status: authored | stub       # stub = graph node with placement probes only; no lesson or practice
 ```
+
+`confused_with` is optional. List an easily confused topic on one side only; the content index treats the relation as symmetric. Each ID must refer to another concept and cannot be the concept itself. The scheduler does not plan either topic as new learning on the same local day.
 
 `academy check` warns about prerequisite-free topics deep in a course, fully sequential courses with six or more topics,
 and first-unit prerequisites that only appear in later courses in the same subject.

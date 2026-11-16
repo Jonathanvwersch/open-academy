@@ -171,6 +171,50 @@ function schedulerContentWithTopics(
   };
 }
 
+function schedulerContentWithUnits(
+  courseId: string,
+  topicsByUnit: string[][],
+  index: ContentIndex = content,
+): ContentIndex {
+  const courses = index.courses.map((course) =>
+    course.id === courseId
+      ? {
+          ...course,
+          units: course.units.map((unit, unitIndex) => ({
+            ...unit,
+            concepts: topicsByUnit[unitIndex] ?? [],
+          })),
+        }
+      : course,
+  );
+  return {
+    ...index,
+    courses,
+    coursesById: new Map(courses.map((course) => [course.id, course])),
+  };
+}
+
+function schedulerContentWithConfusables(
+  index: ContentIndex,
+  pairs: Array<[string, string]>,
+): ContentIndex {
+  const confusablesById = new Map(
+    [...index.confusablesById].map(
+      ([conceptId, confusableIds]) => [conceptId, new Set(confusableIds)] as const,
+    ),
+  );
+  for (const [left, right] of pairs) {
+    const leftConfusables = confusablesById.get(left);
+    const rightConfusables = confusablesById.get(right);
+    if (!leftConfusables || !rightConfusables) {
+      throw new Error(`Missing confusable fixture concepts: ${left}, ${right}`);
+    }
+    leftConfusables.add(right);
+    rightConfusables.add(left);
+  }
+  return { ...index, confusablesById };
+}
+
 function schedulerContentWithSubjects(
   index: ContentIndex,
   subjects: Array<{ id: string; title: string }>,
@@ -511,6 +555,129 @@ test('learn duration uses the concept estimate', () => {
   expect(learn?.plannedMinutes).toBe(concept.est_minutes);
 });
 
+test('weekday planning never learns two unlocked confusable topics on the same day', () => {
+  const topicsContent = schedulerContentWithTopics({
+    'fixture-course': ['vectors', 'supervised-learning'],
+  });
+  const confusableContent = schedulerContentWithConfusables(topicsContent, [
+    ['vectors', 'supervised-learning'],
+  ]);
+  const state = studyState(['fixture-course'], confusableContent);
+
+  const plan = planSession(state, confusableContent, now, 120);
+  const learnedConcepts = plan.activities
+    .filter((activity) => activity.kind === 'learn')
+    .map((activity) => activity.conceptId);
+
+  expect(learnedConcepts).toHaveLength(1);
+  expect(learnedConcepts[0]).toBe('vectors');
+});
+
+test('an interfering subject yields to the next subject with an eligible topic', () => {
+  const topicsContent = schedulerContentWithTopics({
+    'fixture-course': ['vectors', 'supervised-learning'],
+    'fixture-switching-course': ['switching-topic'],
+  });
+  const subjectContent = schedulerContentWithSubjects(
+    topicsContent,
+    [
+      { id: 'math', title: 'Mathematics' },
+      { id: 'ml', title: 'Machine learning' },
+    ],
+    {
+      'fixture-course': 'math',
+      'fixture-switching-course': 'ml',
+    },
+    ['fixture-course', 'fixture-switching-course'],
+  );
+  const confusableContent = schedulerContentWithConfusables(subjectContent, [
+    ['vectors', 'supervised-learning'],
+  ]);
+  const state = studyState(['fixture-course', 'fixture-switching-course'], confusableContent);
+
+  const plan = planSession(state, confusableContent, now, 120);
+  const learnedConcepts = plan.activities
+    .filter((activity) => activity.kind === 'learn')
+    .map((activity) => activity.conceptId);
+
+  expect(learnedConcepts).toContain('vectors');
+  expect(learnedConcepts).not.toContain('supervised-learning');
+  expect(learnedConcepts).toContain('switching-topic');
+});
+
+test('weekday planning skips a confusable topic when its partner started a lesson earlier today', () => {
+  const topicsContent = schedulerContentWithTopics({
+    'fixture-course': ['vectors', 'supervised-learning'],
+  });
+  const confusableContent = schedulerContentWithConfusables(topicsContent, [
+    ['vectors', 'supervised-learning'],
+  ]);
+  const state = studyState(['fixture-course'], confusableContent);
+  state.timezone = 'America/Los_Angeles';
+  state.lessonRuns = [
+    {
+      conceptId: 'vectors',
+      status: 'completed',
+      startedAt: '2026-01-13T23:00:00.000Z',
+    },
+  ];
+  state.mastery.push(
+    ...required(confusableContent.conceptsById.get('vectors'), 'vectors concept').dimensions.map(
+      (dimension) => ({
+        ...initialMastery('vectors', dimension),
+        state: 'independent' as const,
+      }),
+    ),
+  );
+
+  const plan = planSession(state, confusableContent, new Date('2026-01-14T07:30:00.000Z'), 120);
+
+  expect(
+    plan.activities
+      .filter((activity) => activity.kind === 'learn')
+      .map((activity) => activity.conceptId),
+  ).toEqual([]);
+});
+
+test('weekday planning prefers a different unit when another unlocked topic is available', () => {
+  const index = schedulerContentWithUnits('fixture-course', [
+    ['vectors', 'supervised-learning'],
+    ['loss-functions'],
+  ]);
+  const state = studyState(['fixture-course'], index);
+
+  const plan = planSession(state, index, now, 120);
+  const course = required(index.coursesById.get('fixture-course'), 'fixture course');
+  const unitByConcept = new Map(
+    course.units.flatMap((unit, unitIndex) =>
+      unit.concepts.map((conceptId) => [conceptId, unitIndex + 1] as const),
+    ),
+  );
+  const learnedUnits = plan.activities
+    .filter((activity) => activity.kind === 'learn')
+    .flatMap((activity) => {
+      const unit = activity.conceptId ? unitByConcept.get(activity.conceptId) : undefined;
+      return unit === undefined ? [] : [unit];
+    });
+
+  expect(learnedUnits).toHaveLength(2);
+  expect(new Set(learnedUnits)).toEqual(new Set([1, 2]));
+});
+
+test('weekday planning still selects two topics when they are the only topics in one unit', () => {
+  const index = schedulerContentWithTopics({
+    'fixture-switching-course': ['linear-models', 'switching-topic'],
+  });
+  const state = studyState(['fixture-switching-course'], index);
+
+  const plan = planSession(state, index, now, 120);
+  const learnedConcepts = plan.activities
+    .filter((activity) => activity.kind === 'learn')
+    .map((activity) => activity.conceptId);
+
+  expect(new Set(learnedConcepts)).toEqual(new Set(['linear-models', 'switching-topic']));
+});
+
 test('new lessons follow outline order even when a later candidate has a higher score', async () => {
   const fullContent = await loadContent();
   const ids = new Set(['vectors', 'derivatives', 'probability-basics', 'supervised-learning']);
@@ -541,8 +708,10 @@ test('new lessons follow outline order even when a later candidate has a higher 
   const rankedCourse = {
     ...defaultCourse,
     units: [
-      { ...firstUnit, concepts: firstUnit.concepts.filter((id) => ids.has(id)) },
-      { title: 'Later unit', concepts: ['probability-basics'] },
+      {
+        ...firstUnit,
+        concepts: [...firstUnit.concepts.filter((id) => ids.has(id)), 'probability-basics'],
+      },
     ],
   };
   const courses = fullContent.courses.map((course) =>

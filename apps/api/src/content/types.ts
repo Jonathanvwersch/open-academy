@@ -69,6 +69,7 @@ export interface ContentIndex {
   coursesById: Map<string, IndexedCourse>;
   concepts: IndexedConcept[];
   conceptsById: Map<string, IndexedConcept>;
+  confusablesById: Map<string, Set<string>>;
   edges: ContentEdge[];
   exercises: IndexedExercise[];
   exercisesById: Map<string, IndexedExercise>;

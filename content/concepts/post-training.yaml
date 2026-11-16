@@ -70,6 +70,7 @@ concepts:
       goal_weight: 3,
       dimensions: [conceptual, math],
       prereqs: [{ id: reward-models }, { id: ppo }, { id: information-theory }],
+      confused_with: [dpo],
       objectives:
         [
           {
