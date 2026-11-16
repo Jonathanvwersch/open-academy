@@ -112,14 +112,18 @@ describe('contentWarnings', () => {
     expect(warnings.some(({ message }) => message.includes('tldr'))).toBe(false);
   });
 
-  it('does not warn when a step has no tldr', () => {
+  it('warns when a step has no tldr', () => {
     const warnings = warningsFor(
       contentData([topic('one')], [course('course', 'Course', [['one']])], undefined, [
         pointLesson(),
       ]),
     );
 
-    expect(warnings.some(({ message }) => message.includes('tldr'))).toBe(false);
+    expect(warnings).toContainEqual({
+      file: 'lessons/one.yaml',
+      id: 'one-step',
+      message: 'step has no tldr',
+    });
   });
 
   it('warns once about topics with no prerequisites after the opening of a course', () => {

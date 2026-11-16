@@ -146,7 +146,14 @@ export function contentWarnings(data: ContentSourceData, content: ContentIndex):
 
   for (const { value: lesson, file } of data.lessons) {
     for (const point of lesson.knowledge_points ?? []) {
-      if (!point.tldr) continue;
+      if (!point.tldr) {
+        warnings.push({
+          file,
+          id: point.id,
+          message: 'step has no tldr',
+        });
+        continue;
+      }
       const wordCount = point.tldr
         .replace(/^\s*[-*]\s+/gm, '')
         .trim()
