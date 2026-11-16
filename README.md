@@ -4,7 +4,7 @@ Open Academy is a self-hosted learning app where you use AI to create courses on
 
 The way you learn is modelled on [Math Academy](https://www.mathacademy.com). Lessons are short and each one ends in a quiz. Spaced reviews bring topics back before you forget them, and a placement check lets you skip what you already know. The app keeps track of which topics you've passed and how well you still remember them, and uses that to plan each day.
 
-This repo comes with example courses in maths and AI, so you can try it straight away. The real point is making your own.
+This repo comes with example courses in maths and AI, so you can try it straight away.
 
 There's a demo at [open-academy-demo.vercel.app](https://open-academy-demo.vercel.app). You don't need an account: each browser gets its own learner, and its progress is deleted after 24 hours. The tutor is turned off in the demo.
 
