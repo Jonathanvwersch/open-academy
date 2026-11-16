@@ -15,6 +15,10 @@ where_this_fits: |
 knowledge_points:
   - id: xpl-greedy-trap
     title: "Why only taking the best-looking action fails"
+    tldr: |
+      - An agent learns about an action by trying it and recording its rewards.
+      - One unlucky result can make a good action look poor.
+      - A greedy agent never tries that action again, so the mistake is never fixed.
     explain: |
       ### A slot machine with two arms
 
@@ -77,10 +81,15 @@ knowledge_points:
       - xpl-trap-robot-grip
   - id: xpl-epsilon-greedy
     title: "Pick a random action some of the time"
+    tldr: |
+      - Epsilon-greedy usually takes the best-looking action, but now and then picks one at random.
+      - The random pick can also land on the best-looking action, which adds a little to its chance.
+      - Every action keeps being tried, so a good action that started out unlucky gets found.
+      - Agents often explore a lot at first and less as their estimates improve.
     explain: |
       ### Explore at random, now and then
 
-      The greedy agent got stuck because it never pulled arm B again. The simplest fix is to make it pull a random arm every now and then. Before each choice, the agent makes a random draw. With probability $\varepsilon$ (the Greek letter epsilon) it explores, by picking one of the actions at random, each equally likely. Otherwise, with probability $1-\varepsilon$, it exploits and takes the action with the best estimate. This rule is called **epsilon-greedy**, and $\varepsilon$ is the **exploration rate**, a number between $0$ and $1$ that we choose. The random pick sometimes lands on the best-looking action anyway. It still counts as exploring, because the agent ignored its estimates.
+      The greedy agent got stuck because it never pulled arm B again. We can make it pull a random arm occasionally. With probability $\varepsilon$ (the Greek letter epsilon) it explores, picking randomly with each action equally likely. Otherwise, with probability $1-\varepsilon$, it exploits and takes the action with the best estimate. This rule is called **epsilon-greedy**, and $\varepsilon$ is the **exploration rate**, a number between $0$ and $1$ that we choose. The random pick sometimes lands on the best-looking action anyway. It still counts as exploring, because the agent ignored its estimates.
 
       ### The chance of each action
 
@@ -114,7 +123,13 @@ knowledge_points:
 
       Be careful here. It's tempting to give the best-looking action a probability of just $1-\varepsilon$. But the random pick can land on it too, which adds $\varepsilon/k$ and gives arm A $0.95$.
 
-      With several states, the agent keeps an estimate for each action in each state. Picture a robot in a corridor of 4 cells, numbered 1 to 4 from left to right, that can move left or right. Moving into a wall leaves it where it is. If, in cell 1, moving right has the better estimate and $\varepsilon=0.2$, then $\pi(\text{right}\mid\text{cell }1)=1-0.2+0.2/2=0.9$ and $\pi(\text{left}\mid\text{cell }1)=0.2/2=0.1$.
+      With several states, keep an estimate for each action in each state. Picture a robot in a corridor of 4 cells, numbered 1 to 4 from left to right, that can move left or right. A wall move leaves it in place. If right has the better estimate in cell 1 and $\varepsilon=0.2$, split the random branch, then add the greedy branch:
+      $$
+      \begin{aligned}
+      \pi(\text{left}\mid\text{cell }1)&=0.2/2=0.1 &&\text{half the random picks}\\
+      \pi(\text{right}\mid\text{cell }1)&=1-0.2+0.1=0.9 &&\text{also include greedy picks}
+      \end{aligned}
+      $$
 
       ### Choosing epsilon
 
@@ -147,6 +162,10 @@ knowledge_points:
       - xpl-eps-headlines
   - id: xpl-entropy-bonus
     title: "Keep a policy's choices spread out"
+    tldr: |
+      - Some agents learn their action probabilities directly, and they can pile all the probability on one action too early.
+      - Entropy is a number that measures how spread out the probabilities are.
+      - Adding a bonus for entropy to the score keeps the probabilities spread out, so the agent keeps trying other actions.
     explain: |
       ### Agents that learn their probabilities
 
@@ -191,7 +210,15 @@ knowledge_points:
          $$\text{X: }0.99+0.5\times0.06=1.02$$
          $$\text{Y: }0.9+0.5\times0.33=1.065$$
 
-      Without the bonus, policy X scores higher, so training would push towards always pulling arm A. With the bonus, policy Y scores higher, because it gives up $0.99-0.9=0.09$ of return but gains $0.5\times(0.33-0.06)=0.135$ of bonus. So the agent keeps pulling arm B one time in ten, which gives it the chance to find out that B pays $4$ half the time. Training would keep adjusting the probabilities after this, but the bonus has stopped it from settling on pulling A almost every time.
+      Without the bonus, policy X scores higher, so training would push towards always pulling arm A. Compare what policy Y gives up and gains:
+      $$
+      \begin{aligned}
+      \text{return lost}&=0.99-0.9=0.09 &&\text{compare expected returns}\\
+      \text{entropy gained}&=0.33-0.06=0.27 &&\text{compare entropies}\\
+      \text{bonus gained}&=0.5\times0.27=0.135 &&\text{apply the bonus weight}
+      \end{aligned}
+      $$
+      With the bonus, policy Y scores higher. So the agent keeps pulling arm B one time in ten, which gives it the chance to find out that B pays $4$ half the time. Training would keep adjusting the probabilities after this, but the bonus has stopped it from settling on pulling A almost every time.
     problems:
       - xpl-ent-basics
       - xpl-ent-self-explain

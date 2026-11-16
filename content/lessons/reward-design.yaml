@@ -14,6 +14,10 @@ where_this_fits: |
 knowledge_points:
   - id: rd-sparse
     title: "Reward only at the goal"
+    tldr: |
+      - A sparse reward pays only at the goal, so it is easy to write and clear about what we want.
+      - Until the agent stumbles on the goal, every move looks the same, and in a long task that can take a very long time.
+      - Once it has found the goal, discounting makes the shortest path worth the most.
     explain: |
       ### A robot in a corridor
 
@@ -46,7 +50,14 @@ knowledge_points:
 
       A reward like this is **sparse**: it is zero almost everywhere and nonzero only at a few rare moments, such as reaching the goal. It's easy to write, and it says exactly what we want.
 
-      The trouble is finding that first reward. Until the robot reaches cell 4, every reward it has seen is $0$, so left and right look equally good. Suppose it moves at random, left or right with equal chance. To reach cell 4 in its first 3 moves, it must go right 3 times in a row, a chance of $(1/2)^3=1/8$. A longer corridor is worse. With 11 cells, reaching the end in its first 10 moves takes 10 rights in a row, a chance of $1/1024$.
+      The trouble is finding that first reward. Until the robot reaches cell 4, every reward it has seen is $0$, so left and right look equally good. Suppose left and right are equally likely. Reaching the end in the fewest moves requires all rights. Multiply their chances:
+      $$
+      \begin{aligned}
+      \text{four cells}&:(1/2)^3=1/8 &&\text{three rights in a row}\\
+      \text{eleven cells}&:(1/2)^{10}=1/1024 &&\text{ten rights in a row}
+      \end{aligned}
+      $$
+      A longer corridor makes early success much rarer.
 
       Real tasks are like the long corridor. A robot arm rewarded only when it lifts a cup almost never lifts it by moving at random.
 
@@ -75,6 +86,10 @@ knowledge_points:
       - rdp-sparse-chess
   - id: rd-shaping
     title: "Add rewards that guide the way"
+    tldr: |
+      - Reward shaping adds rewards along the way, so the agent can tell which moves make progress.
+      - Give each state a progress score, and reward each move by how much it raises that score.
+      - Along any path these bonuses add up to the last score minus the first, so the best path stays the best.
     explain: |
       ### Rewards along the way
 
@@ -117,7 +132,22 @@ knowledge_points:
 
       ### Why the best path stays the same
 
-      Now add up the bonuses along any path from cell 1 to cell 4. Each cell's score is added when the robot moves into it and taken away again when it moves out. So everything in the middle cancels, and the total is always the last score minus the first, $\Psi(4)-\Psi(1)=3$. Every complete path gets the same extra $3$, so the path that was best before is still best. But now a move right short of the goal nets $-1+1=0$, and a move left from cell 2 or 3 nets $-1-1=-2$, so the robot can tell the better way before reaching the goal.
+      Each cell's score is added on entry and taken away on leaving. On the direct path:
+      $$
+      \begin{aligned}
+      \text{total bonus}&=[\Psi(2)-\Psi(1)]+[\Psi(3)-\Psi(2)]+[\Psi(4)-\Psi(3)] &&\text{add the move bonuses}\\
+      &=\Psi(4)-\Psi(1) &&\text{cancel middle scores}\\
+      &=4-1=3 &&\text{use the endpoint scores}
+      \end{aligned}
+      $$
+      Any path from cell 1 to cell 4 has the same cancellation and gains $3$, so the best path stays best. Before reaching the goal, compare moves from cell 2 or 3:
+      $$
+      \begin{aligned}
+      \text{right reward}&=-1+1=0 &&\text{step cost plus progress bonus}\\
+      \text{left reward}&=-1-1=-2 &&\text{step cost plus backward penalty}
+      \end{aligned}
+      $$
+      The robot can now tell which way helps.
 
       This is **potential-based shaping**. Ng, Harada and Russell proved in 1999 that bonuses of this form never change the best behaviour, that is, the best action in each state. With a discount below 1, the bonus is written $\gamma\Psi(s')-\Psi(s)$, and the guarantee still holds as long as the state where the episode ends has potential $0$.
     worked: |
@@ -148,12 +178,24 @@ knowledge_points:
       - rdp-shaping-arm
   - id: rd-hacking
     title: "When the robot finds a loophole"
+    tldr: |
+      - An agent finds the easiest way to earn reward, even if that skips the task.
+      - If a bonus can be collected again and again, looping forever can earn more than reaching the goal.
+      - This is called reward hacking, so check rewards for loopholes before training and watch what the agent does after.
     explain: |
       ### A bonus with a loophole
 
       Shaping goes wrong when bonuses can be piled up without real progress. The corridor keeps the step-cost reward, $+10$ for reaching cell 4 and $-1$ for every other move, with $\gamma=1$. This time the designer adds $+3$ for every move right and nothing for a move left.
 
-      Now look at the robot going back and forth between cells 2 and 3. A move right earns $-1+3=+2$, and the move back left earns $-1$. So each round trip adds $+1$ to the return, and the robot can repeat it as often as it likes.
+      Now look at the robot going back and forth between cells 2 and 3. Add the rewards for one round trip:
+      $$
+      \begin{aligned}
+      \text{right reward}&=-1+3=2 &&\text{collect the bonus}\\
+      \text{left reward}&=-1 &&\text{return without a bonus}\\
+      \text{round trip}&=2-1=1 &&\text{add both rewards}
+      \end{aligned}
+      $$
+      The robot can repeat this gain as often as it likes.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 260" aria-label="The four-cell corridor with the goal, cell 4, giving +10. A blue arrow from cell 2 to cell 3 shows a move right earning minus 1 plus 3, which is +2. A red arrow from cell 3 back to cell 2 shows a move left earning minus 1. Each round trip adds +1 to the return">
@@ -196,8 +238,14 @@ knowledge_points:
     worked: |
       Let's check whether looping beats finishing under the $+3$ bonus. Each move gives $-1$, the move into cell 4 gives $+10$, each move right also earns $+3$, and $\gamma=1$.
 
-      1. **Find the return of the direct path.** The first two moves right each earn $-1+3=2$. The third reaches cell 4, so it earns $10+3=13$.
-         $$2+2+13=17.$$
+      1. **Find the return of the direct path.** Add the right-move bonus to each reward, including arrival at the goal.
+         $$
+         \begin{aligned}
+         \text{first two rewards}&=-1+3=2 &&\text{ordinary step plus bonus}\\
+         \text{last reward}&=10+3=13 &&\text{goal reward plus bonus}\\
+         \text{total}&=2+2+13=17 &&\text{add all three rewards}
+         \end{aligned}
+         $$
 
       2. **Find what one round trip adds.** From cell 2, the robot moves right to cell 3 and back left to cell 2, which leaves it where it started.
          $$(-1+3)+(-1)=1.$$
@@ -205,7 +253,14 @@ knowledge_points:
       3. **Add the round trips to the direct path.** If the robot makes $n$ round trips once it reaches cell 2, it can still finish the same way, so its return grows by $1$ for each one.
          $$G_0=17+n.$$
 
-      So there's no best number of loops. Any number is beaten by one more. A robot that maximises its return keeps looping and never finishes. With the potential-based bonus instead, the same round trip earns $(-1+1)+(-1-1)=-2$, so looping always costs.
+      So there's no best number of loops. Any number is beaten by one more. A robot that maximises its return keeps looping and never finishes. Compare the potential-based bonus:
+      $$
+      \begin{aligned}
+      \text{round trip}&=(-1+1)+(-1-1) &&\text{add the two shaped rewards}\\
+      &=0-2=-2 &&\text{add the two moves}
+      \end{aligned}
+      $$
+      With this bonus, looping always costs.
     problems:
       - rd-hacking-basics
       - rdp-hacking-self-explain
