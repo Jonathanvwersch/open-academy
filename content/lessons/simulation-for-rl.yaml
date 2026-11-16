@@ -14,6 +14,10 @@ where_this_fits: |
 knowledge_points:
   - id: sim-reset-step
     title: "Start the task and take one step"
+    tldr: |
+      - A simulation environment is a program that responds to the agent's actions.
+      - Reset starts an episode, and step returns the result of one action.
+      - After an episode ends, reset must start the next one.
     explain: |
       ### The corridor as a program
 
@@ -58,7 +62,15 @@ knowledge_points:
 
       Suppose the floor is slippery: a move works with probability $0.8$, otherwise the robot stays put. Step draws a random number from 0 to 1 and moves only if it is below $0.8$. A move away from a wall now has two possible next states, so identical actions can give different episodes. A computer's random numbers follow a fixed rule that starts from a **seed**. The same seed gives the same numbers and repeats a run, which helps find bugs.
 
-      Each fresh random draw is independent, so the chance of a sequence of outcomes is the product of their chances. If several different sequences lead to the same result, add their chances. For example, if a move works with probability $p$, one slip and one successful move in either order has probability $(1-p)p+p(1-p)=2p(1-p)$.
+      Fresh random draws are independent, so multiply chances along a sequence. Add chances for different sequences with the same result. If a move works with probability $p$, one slip and one success can happen in two orders:
+      $$
+      \begin{aligned}
+      P(\text{slip, success})&=(1-p)p &&\text{multiply the first order's chances}\\
+      P(\text{success, slip})&=p(1-p) &&\text{multiply the reverse order's chances}\\
+      P(\text{one of each})&=(1-p)p+p(1-p) &&\text{add both orders}\\
+      &=2p(1-p) &&\text{combine equal terms}
+      \end{aligned}
+      $$
 
       Do not call step again after an episode ends. Its answers mean nothing, and many environments warn or raise an error. The next call must be reset.
     worked: |
@@ -94,6 +106,10 @@ knowledge_points:
       - sim-game-step
   - id: sim-interaction-loop
     title: "Write the loop that runs an episode"
+    tldr: |
+      - Running an episode means repeatedly choosing an action and recording its result.
+      - The loop stops when the task ends or a time limit cuts it short.
+      - Keeping these endings separate tells learning methods whether more reward could have followed.
     explain: |
       ### The loop
 
@@ -206,6 +222,10 @@ knowledge_points:
       - sim-drone-hover
   - id: sim-vector-envs
     title: "Run many copies of the simulator at once"
+    tldr: |
+      - Running many simulator copies together collects more experience per second.
+      - Each copy takes its own action and reports its own result.
+      - Finished copies restart separately, so the others can keep running.
     explain: |
       ### Why one copy is slow
 
@@ -296,6 +316,10 @@ knowledge_points:
       - sim-walker-fall
   - id: sim-to-real
     title: "Move from the simulator to a real robot"
+    tldr: |
+      - A simulator can make an action look safer than it is on a real robot.
+      - Training across varied conditions helps the policy cope with uncertain settings.
+      - Testing realistic variations and measuring the robot help close the gap to the real world.
     explain: |
       ### No simulator is exact
 
@@ -349,7 +373,13 @@ knowledge_points:
          $$-1-1+10=8$$
 
       4. **Jumping under each randomised setting.** With domain randomisation, each reset draws the jump's chance of working from $0.5$, $0.75$ and $1$, each equally likely, and the agent isn't told which was drawn, so it can't jump only when the jump is safe. A jump that works earns 9 and a fall earns $-10$.
-         $$\begin{aligned}0.5\times9+0.5\times(-10)&=-0.5\\0.75\times9+0.25\times(-10)&=4.25\\1\times9&=9\end{aligned}$$
+         $$
+         \begin{aligned}
+         0.5\times9+0.5\times(-10)&=-0.5 &&\text{success chance one half}\\
+         0.75\times9+0.25\times(-10)&=4.25 &&\text{success chance three quarters}\\
+         1\times9&=9 &&\text{certain success}
+         \end{aligned}
+         $$
 
       5. **Average over the settings.** Two chances are at work. The reset picks a floor, then on that floor the jump works or fails. Each row above already covers the second chance, so we only need to average over the floors. Each comes up a third of the time, so jumping's expected total is the average of the three.
          $$\frac{-0.5+4.25+9}{3}=4.25$$
