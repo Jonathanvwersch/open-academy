@@ -17,9 +17,10 @@ knowledge_points:
   - id: ae-encode-decode
     title: "Shrink an image, then rebuild it"
     tldr: |
-      - Lay an image's pixel values into one list for a layer to read.
-      - An encoder turns that list into a shorter vector, and a decoder rebuilds the image from it.
-      - Repeated patterns let the shorter vector hold enough information for a good copy.
+      - We flatten an image by laying its rows end to end into one vector.
+      - An encoder squeezes that vector into a much shorter one, called the latent vector.
+      - A decoder rebuilds the image from it, and the pair is called an autoencoder.
+      - When images share a pattern, such as stripes, the short vector can be enough to rebuild them.
     explain: |
       ### A tiny image as one vector
 
@@ -104,9 +105,9 @@ knowledge_points:
   - id: ae-reconstruction
     title: "Measure how good the copy is"
     tldr: |
-      - An autoencoder learns by comparing each rebuilt image with its own input.
-      - Squaring the pixel differences makes every copying mistake count towards the error.
-      - A narrow middle forces the network to keep useful patterns while reducing that error.
+      - An autoencoder needs no labels, because the right answer for each image is the image itself.
+      - We score a copy by squaring each pixel's miss and adding them up, so misses can't cancel out.
+      - Training makes that error small, and a narrow middle stops the network just passing pixels through, so it has to find patterns.
     explain: |
       ### The input is its own answer
 
@@ -205,9 +206,9 @@ knowledge_points:
   - id: ae-sizes
     title: "Compare the image with its latent vector"
     tldr: |
-      - Compare the input length with the shorter vector's length to measure how much each image shrinks.
-      - The network also stores weights and biases that perform the shrinking and rebuilding.
-      - Those learned values are shared across images, while each image gets its own short vector.
+      - The compression factor says how many input numbers there are for each latent number.
+      - The network itself stores many weights and biases, often far more numbers than one image has.
+      - But those are stored once and shared by every image, while each image shrinks to its own short latent vector.
     explain: |
       ### From our tiny image to a real one
 
@@ -297,9 +298,9 @@ knowledge_points:
   - id: ae-latent-space
     title: "Find images that look alike"
     tldr: |
-      - Each image's short vector is a point in a space with one direction per number.
-      - In this network, nearby points rebuild into similar images.
-      - The numbers can have different meanings, and details lost during copying may also be lost here.
+      - Each latent vector is a point, with one axis per latent number.
+      - Images that look alike get points close together, so the distance between points compares images.
+      - The latent numbers have no fixed meaning, and small details the copy doesn't need can be missing.
     explain: |
       ### Every image becomes a point
 

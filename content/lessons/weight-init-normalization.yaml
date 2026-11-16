@@ -131,9 +131,10 @@ knowledge_points:
   - id: wi-init-scale
     title: "Pick the size of starting weights"
     tldr: |
-      - A neuron adds many weighted inputs, so their combined size depends on how many there are.
-      - Giving it more inputs calls for smaller random starting weights.
-      - Choosing the size this way keeps the outputs about as large as the inputs.
+      - A neuron adds up its inputs, each times a random starting weight.
+      - The more inputs it adds, the bigger that total tends to be.
+      - So we use smaller starting weights for more inputs, keeping outputs about as large as inputs.
+      - Layers with ReLU need slightly larger weights, because ReLU turns about half the outputs into zero.
     explain: |
       ### Many inputs at once
 
@@ -213,9 +214,10 @@ knowledge_points:
   - id: wi-layer-norm
     title: "Rescale one example's layer outputs"
     tldr: |
-      - Training can change the size and centre of a layer's outputs.
-      - Layer normalization subtracts their average and rescales their spread for each example.
-      - The network then learns how much to multiply and shift these values when another size or centre helps.
+      - As training changes the weights, a layer's outputs can grow, shrink or drift together.
+      - Layer normalization fixes this for each example by subtracting the outputs' average and dividing by their spread.
+      - The outputs then sit around zero with a typical size of one.
+      - A learned stretch and shift let the network choose another size or centre.
     explain: |
       ### Why a good start isn't enough
 
@@ -321,9 +323,9 @@ knowledge_points:
   - id: wi-batch-norm
     title: "Rescale across a batch instead"
     tldr: |
-      - Batch normalization rescales each neuron's outputs across a group of examples.
-      - Its result for one example depends on the other examples in that group.
-      - Layer normalization works on each example alone, so it also suits single inputs.
+      - Batch normalization does the same rescaling for each neuron, across a batch of examples.
+      - So each example's result depends on which other examples share its batch, and small batches make it jumpy.
+      - After training it must fall back on saved averages, so layer normalization suits networks that run on one input at a time.
     explain: |
       ### Rows and columns of a batch
 

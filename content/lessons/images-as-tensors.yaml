@@ -15,9 +15,9 @@ knowledge_points:
   - id: iat-pixels-grid
     title: Turn a picture into numbers
     tldr: |
-      - A grayscale image is a grid of numbers that say how bright each pixel is.
-      - The grid counts rows first and columns second, giving height before width.
-      - Reading its shape and counting from zero lets us locate any pixel.
+      - A grayscale image is a grid of numbers, one per pixel, from 0 for black to 255 for white.
+      - NumPy gives the grid's size as rows then columns, so height comes before width.
+      - Photo sizes are usually written width first, so mixing the two up scrambles the picture.
     explain: |
       ### Brightness in a grid
 
@@ -115,15 +115,16 @@ knowledge_points:
   - id: iat-channels-layout
     title: Stack the colour channels
     tldr: |
-      - A colour pixel has separate red, green and blue values, called channels.
-      - Tools arrange these channels either beside each pixel or in separate grids.
-      - Moving the axes changes between these layouts while keeping each value with its pixel.
+      - A colour pixel has three numbers, for red, green and blue, and each is called a channel.
+      - Some tools keep each pixel's three numbers together, while PyTorch models want one separate grid per channel.
+      - A transpose reorders the axes to switch layouts and keeps every number with its pixel.
+      - A reshape can give the right shape with the pixels scrambled.
     explain: |
       ### Three numbers per pixel
 
       Our grayscale image had one brightness for each pixel. An RGB colour image has three, saying how much red, green and blue light the pixel has, and each of these is called a **channel**.
 
-      There are two common ways to arrange those numbers. On the left, each pixel of a tiny $2\times2$ image keeps its three numbers together. On the right, the same twelve numbers form three separate grids, or planes, one per channel. No number changes; only the order does.
+      There are two common ways to arrange those numbers. On the left, each pixel of a tiny $2\times2$ image keeps its three numbers together. On the right, the same twelve numbers form three separate grids, or planes, one per channel. Only the order of the numbers changes.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 195" role="img" aria-label="The same 2 by 2 RGB image in HWC and CHW: RGB triples 10,20,30; 40,50,60; 70,80,90; 100,110,120 become red, green and blue planes." font-family="ui-sans-serif, system-ui, sans-serif" font-size="14">
@@ -182,7 +183,7 @@ knowledge_points:
       2. **Put height second.** Axis 0 becomes second.
       3. **Put width last.** Axis 1 becomes third.
 
-      This gives the command `np.transpose(img, (2, 0, 1))`.
+      `np.transpose` lists the old axes in their new order: `np.transpose(img, (2, 0, 1))`.
 
       Be careful not to use `img.reshape(3, H, W)` instead. **Reshape** reads the numbers in NumPy's default row-by-row index order and cuts them into pieces of the new shape, so the shape can be right while the pixels are wrong. A transpose moves the axes and keeps each number with its own pixel.
     worked: |
@@ -226,9 +227,9 @@ knowledge_points:
   - id: iat-normalization
     title: Rescale pixels for a model
     tldr: |
-      - Models often expect small pixel values, so first check the scale of the loaded image.
-      - Some also expect each colour channel centred and rescaled using its own averages and spread.
-      - Match the model's preparation and line up those values with the correct channels.
+      - Pixel values from 0 to 255 are too big for most models, so we first divide them by 255.
+      - Many models also centre each colour channel on zero, using that channel's own average and typical spread.
+      - Each channel's average has to line up with the right channel, which takes care when the channels come first.
     explain: |
       ### From whole numbers to small numbers
 

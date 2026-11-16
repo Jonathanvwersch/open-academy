@@ -14,9 +14,10 @@ knowledge_points:
   - id: gen-unseen-houses
     title: Judge predictions on new houses
     tldr: |
-      - Test houses help us judge predictions on houses the model has never seen.
-      - They should give no clues about each other and come from the same market as future houses.
-      - Their average error then gives evidence about future error, with more houses making it steadier.
+      - We score the chosen model once on test houses it has never seen.
+      - That score speaks for future houses only if sales are unrelated and the market stays the same.
+      - These two assumptions together are called i.i.d.
+      - Even then, the score is only an estimate of future error, and more test houses make it steadier.
     explain: |
       ### Where test houses come from
 
@@ -69,9 +70,10 @@ knowledge_points:
   - id: gen-changed-source
     title: Notice when new houses differ
     tldr: |
-      - A model's test score describes the kinds of houses it was tested on.
-      - New places can have different house sizes or different prices for the same sizes.
-      - Check predictions on houses from the new setting before relying on the old score.
+      - A test score describes the kinds of houses the model was tested on.
+      - In a new place, house sizes can differ, or the same sizes can sell for different prices.
+      - This change is called distribution shift, and it can make the old score wrong.
+      - So we test the model on houses from the new place before relying on it.
     explain: |
       ### A new city can change the task
 
@@ -125,9 +127,10 @@ knowledge_points:
   - id: gen-related-records
     title: Keep related examples together
     tldr: |
-      - Copies of the same sale can make a test score look better than future predictions will be.
-      - Keeping related records together removes that shortcut from the check.
-      - For future predictions, also train on earlier records and check later ones.
+      - If one sale appears twice, one copy can land in training and the other in testing.
+      - The model then just recognises the house, so the score looks better than it should.
+      - Keeping all records of a house in the same group fixes this.
+      - For predicting future sales, we also train on earlier sales and test on later ones.
     explain: |
       ### One sale can appear twice
 

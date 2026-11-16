@@ -14,9 +14,10 @@ knowledge_points:
   - id: ovf-flexibility
     title: "Straight lines, smooth curves and wiggly curves"
     tldr: |
-      - A model needs enough flexibility to follow useful patterns in the training houses.
-      - Too much flexibility can make it copy details that fail on new houses.
-      - Comparing errors on separate validation houses helps us choose a useful fit.
+      - A model's flexibility is how far its curve can bend to follow the data.
+      - Too little flexibility misses the real pattern, which is called underfitting.
+      - Too much makes the curve copy every training price, which fails on new houses and is called overfitting.
+      - We spot this by measuring the average error on validation houses the model never trained on.
     explain: |
       ### Three shapes for predicting prices
 
@@ -128,9 +129,10 @@ knowledge_points:
   - id: ovf-error-gap
     title: "Compare training and validation errors"
     tldr: |
-      - Training error shows how well a model fits the houses it learned from.
-      - Much higher validation error suggests it copied details that do not carry over.
-      - We want both errors low, because a small gap alone can hide poor predictions.
+      - High training error means the model misses the pattern, which is underfitting.
+      - Low training error with much higher validation error means it copied details, which is overfitting.
+      - The gap is how much higher the validation error is than the training error.
+      - A good fit needs both errors low, because two high errors can still have a small gap.
     explain: |
       ### Compare mistakes on training and validation houses
 
@@ -211,9 +213,9 @@ knowledge_points:
   - id: ovf-learning-curves
     title: "Choose when to stop training"
     tldr: |
-      - Training can keep improving predictions on training houses while hurting new predictions.
-      - Watching validation error during training shows when this starts happening.
-      - Keep the saved model with the lowest validation error and then check the test houses.
+      - A learning curve shows the training and validation errors after each pass through the training data.
+      - If training error keeps falling while validation error starts rising, the model has begun to overfit.
+      - So we keep the saved copy with the lowest validation error, and only then score it on the test houses.
     explain: |
       ### Watch predictions change during training
 

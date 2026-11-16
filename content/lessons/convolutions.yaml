@@ -18,9 +18,9 @@ knowledge_points:
   - id: conv-slide
     title: Slide a small grid of weights
     tldr: |
-      - A small grid of weights can respond to a pattern such as an edge.
-      - Sliding that same grid across an image checks for the pattern in different places.
-      - The results form a map showing where the grid responds strongly.
+      - A filter is a small grid of weights that responds to a pattern, such as an edge.
+      - We slide it across the image, multiplying it with each small square of pixels and adding up.
+      - The results form a smaller grid, called a feature map, showing where the pattern appears.
     explain: |
       ### Find a dark-to-bright edge
 
@@ -147,9 +147,10 @@ knowledge_points:
   - id: conv-size
     title: Work out the output size
     tldr: |
-      - Each place where a patch fits gives one cell in the output map.
-      - Adding a border allows more places, while taking larger steps skips some.
-      - Count only the patch starts that fit to find the output height and width.
+      - The output has one cell for each place the filter fits inside the image.
+      - Padding adds a border of zeros, so the filter fits in more places and the output shrinks less.
+      - Stride is how far the filter jumps between places, so a bigger stride gives a smaller output.
+      - Counting the places that fit gives the output's height and width.
     explain: |
       ### Add zeros around the image
 
@@ -291,9 +292,9 @@ knowledge_points:
   - id: conv-channels
     title: Use filters on a colour image
     tldr: |
-      - A filter combines weighted pixels from every colour channel into one score.
+      - On a colour image, a filter has weights for every colour channel and adds them all into one score.
       - Sliding it gives one output map, and using more filters gives more maps.
-      - Reusing each filter's weights across positions keeps the number of learned values small.
+      - Each filter reuses the same weights at every position, so it needs far fewer weights than a fully connected layer.
     explain: |
       ### Read all the colour channels
 
@@ -431,7 +432,7 @@ knowledge_points:
     tldr: |
       - Stacking layers lets each output depend on a larger region of the original image.
       - Max pooling shrinks a map by keeping the largest value in each small patch.
-      - This reduces work and combines nearby responses, while losing their exact positions.
+      - This cuts the work for later layers and widens what each cell sees, but loses exactly where the pattern was.
     explain: |
       ### Stack one layer after another
 

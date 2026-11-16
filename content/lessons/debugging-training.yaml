@@ -22,9 +22,10 @@ knowledge_points:
   - id: dbt-loss-curves
     title: Read what the loss curve shows
     tldr: |
-      - A loss curve shows whether a model's errors fall as training continues.
-      - The learning rate can make progress steady, slow or unstable.
-      - Use the curve as a clue, since a flat or rising loss can have several causes.
+      - A loss curve plots the loss after each training update.
+      - Each update shrinks the distance to the best prediction by a factor set by the learning rate.
+      - A small rate is slow, a good one is fast, and too large a rate makes the loss grow.
+      - A flat curve may just mean the model has reached its best.
     explain: |-
       ### Compare runs on the same trips
 
@@ -115,9 +116,10 @@ knowledge_points:
   - id: dbt-tiny-batch
     title: Train on two examples first
     tldr: |
-      - Pick a few examples whose answers the model can fit exactly.
-      - Train on them repeatedly and check whether loss gets close to zero.
-      - Failure points to updates, slopes or settings that need checking before a full run.
+      - Before a full run, train on two examples that the model can fit exactly.
+      - Correct code should drive their loss close to zero.
+      - If the loss stops well above zero, something in the updates, slopes or learning rate is wrong.
+      - Passing only shows the model can fit, so a wrong slope can still slip through.
     explain: |-
       ### Make a test with a known answer
 
@@ -193,9 +195,9 @@ knowledge_points:
   - id: dbt-grad-check
     title: Check a slope by nudging a weight
     tldr: |
-      - A wrong slope can still make loss fall, so falling loss alone cannot verify the code.
-      - Nudge one weight up and down to measure how the loss changes.
-      - Comparing that measured slope with the code's slope can reveal missing factors.
+      - A wrong slope can still make the loss fall, so a falling loss can't prove the slope code is right.
+      - To test a slope, nudge one weight up and down a little and measure how much the loss changes.
+      - If that measured slope and the code's slope differ by much, the slope code has a bug.
     explain: |-
       ### A falling loss can hide a mistake
 
@@ -281,9 +283,10 @@ knowledge_points:
   - id: dbt-symptoms
     title: Match a symptom to its cause
     tldr: |
-      - Similar loss curves can come from different training problems.
-      - Reducing the learning rate can help distinguish oversized steps from a wrong update sign.
-      - Change one thing and check again before choosing the fix.
+      - Run the cheap checks first: read the curve, fit a tiny batch and check the slopes.
+      - Each symptom, such as the loss blowing up or staying flat, points to likely causes.
+      - A rising loss can mean too big a learning rate or a flipped sign, so lower the rate and look again.
+      - Change one thing at a time.
     explain: |-
       ### Start with checks that cost little
 
