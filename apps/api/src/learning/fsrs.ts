@@ -18,24 +18,56 @@ export function newReviewCard(now: Date): Card {
   return createEmptyCard(now);
 }
 
+export function isSlowCorrectAnswer(input: {
+  correct: number;
+  durationMs?: number | null;
+  targetSeconds?: number;
+}): boolean {
+  return (
+    input.correct >= 1 &&
+    input.durationMs !== undefined &&
+    input.durationMs !== null &&
+    input.targetSeconds !== undefined &&
+    input.durationMs > input.targetSeconds * 1000
+  );
+}
+
 export function mapReviewRating(input: {
   correct: number;
   hintsUsed: number;
   attemptNo: number;
+  durationMs?: number | null;
+  targetSeconds?: number;
 }): Rating {
   if (input.correct <= 0) {
     return Rating.Again;
   }
-  if (input.hintsUsed > 0 || input.attemptNo > 1 || input.correct < 1) {
+  if (
+    input.hintsUsed > 0 ||
+    input.attemptNo > 1 ||
+    input.correct < 1 ||
+    isSlowCorrectAnswer(input)
+  ) {
     return Rating.Hard;
   }
   return Rating.Good;
 }
 
-export function reviewActivityRating(items: Array<{ correct: number; hintsUsed: number }>): Rating {
+export function reviewActivityRating(
+  items: Array<{
+    correct: number;
+    hintsUsed: number;
+    durationMs?: number | null;
+    targetSeconds?: number;
+  }>,
+): Rating {
   if (items.length === 0) return Rating.Again;
   const correctCount = items.filter((item) => item.correct >= 1).length;
-  if (correctCount === items.length && items.every((item) => item.hintsUsed === 0)) {
+  if (
+    correctCount === items.length &&
+    items.every((item) => item.hintsUsed === 0) &&
+    items.every((item) => !isSlowCorrectAnswer(item))
+  ) {
     return Rating.Good;
   }
   return correctCount / items.length >= 2 / 3 ? Rating.Hard : Rating.Again;

@@ -16,6 +16,7 @@ exercises:
     type: mc
     role: basics
     difficulty: 1
+    target_seconds: 30
     est_minutes: 1
     prompt: "The in-between value $u$ changes $3$ times as fast as $x$, and $y$ changes $2$ times as fast as $u$. How fast does $y$ change compared with $x$?"
     options:
@@ -41,6 +42,7 @@ exercises:
     type: mc
     role: basics
     difficulty: 1
+    target_seconds: 30
     est_minutes: 1
     prompt: "How do you differentiate $f(g(x))$, a formula $g$ inside a formula $f$?"
     options:
@@ -66,6 +68,7 @@ exercises:
     type: mc
     role: basics
     difficulty: 1
+    target_seconds: 30
     est_minutes: 1
     prompt: "The output $f$ depends on $u$ and $v$, and both $u$ and $v$ depend on $x$. How do you find $df/dx$?"
     options:
@@ -229,6 +232,7 @@ exercises:
     type: numeric
     role: practice
     difficulty: 1
+    target_seconds: 30
     est_minutes: 1
     prompt: "The in-between value $u$ changes at $\\frac{du}{dx}=4$ and the output changes at $\\frac{dy}{du}=5$. Find $\\frac{dy}{dx}$."
     answer: 20
@@ -426,6 +430,7 @@ exercises:
     type: numeric
     role: practice
     difficulty: 1
+    target_seconds: 30
     est_minutes: 1
     prompt: 'The output $f$ depends on $u$ and $v$, which both depend on $x$. You know $\frac{\partial f}{\partial u}=3$, $\frac{du}{dx}=2$, $\frac{\partial f}{\partial v}=5$ and $\frac{dv}{dx}=4$. Find $\frac{df}{dx}$.'
     answer: 26

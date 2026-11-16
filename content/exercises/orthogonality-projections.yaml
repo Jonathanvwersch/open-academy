@@ -5,6 +5,7 @@ exercises:
     type: mc
     role: basics
     difficulty: 1
+    target_seconds: 30
     est_minutes: 1
     prompt: What is the projection of a vector $x$ onto the line through a vector $u$?
     options:
@@ -62,6 +63,7 @@ exercises:
     type: numeric
     role: practice
     difficulty: 1
+    target_seconds: 30
     est_minutes: 1
     prompt: For which number $s$ are the vectors $({{=a}},2)$ and $(4,s)$ orthogonal?
     params:
@@ -221,6 +223,7 @@ exercises:
     type: mc
     role: basics
     difficulty: 1
+    target_seconds: 30
     est_minutes: 1
     prompt: What is an orthogonal matrix?
     options:
@@ -278,6 +281,7 @@ exercises:
     type: mc
     role: practice
     difficulty: 1
+    target_seconds: 30
     est_minutes: 2
     prompt: Which pair of vectors is orthonormal?
     options:
@@ -427,6 +431,7 @@ exercises:
     type: mc
     role: basics
     difficulty: 1
+    target_seconds: 30
     est_minutes: 1
     prompt: What does a least-squares fit choose?
     options:
@@ -484,6 +489,7 @@ exercises:
     type: mc
     role: practice
     difficulty: 1
+    target_seconds: 30
     est_minutes: 2
     prompt: A least-squares fit has error vector $e=b-A\hat x$. Which statement is true?
     options:
@@ -652,6 +658,7 @@ exercises:
     type: mc
     role: basics
     difficulty: 1
+    target_seconds: 30
     est_minutes: 1
     prompt: What is the first result returned by `np.linalg.lstsq(A, b, rcond=None)`?
     options:
@@ -709,6 +716,7 @@ exercises:
     type: mc
     role: practice
     difficulty: 1
+    target_seconds: 30
     est_minutes: 2
     prompt: "`A` is a NumPy array with 5 rows and 2 columns, and `b` has 5 entries. What happens when you run `np.linalg.solve(A, b)`?"
     options:

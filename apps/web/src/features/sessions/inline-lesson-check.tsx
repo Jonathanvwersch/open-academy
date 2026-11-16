@@ -24,14 +24,14 @@ export function InlineLessonCheck({
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const { data: exercise } = useSuspenseQuery(exerciseQueryOptions(exerciseId));
-  const submit = async (answer: unknown) => {
+  const submit = async (answer: unknown, durationMs: number) => {
     setSubmitting(true);
     setSubmitError('');
     try {
       const response = await apiFetch('/api/attempts', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ exerciseId, activityId, answer, mode: 'practice' }),
+        body: JSON.stringify({ exerciseId, activityId, answer, mode: 'practice', durationMs }),
       });
       const data = (await response.json().catch(() => ({}))) as AttemptResponse;
       if (response.status === 409) {
@@ -80,6 +80,8 @@ export function InlineLessonCheck({
                 autoFocus={false}
                 exercise={exercise}
                 onSubmit={submit}
+                timerResetKey={Number(result?.attemptNo ?? 0)}
+                restartTimerOnInteraction={result?.retryAllowed === true}
                 loading={submitting}
               />
             ) : null}

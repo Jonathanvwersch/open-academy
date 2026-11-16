@@ -30,10 +30,12 @@ export function FinalRetryNote() {
 export function FeedbackPanel({
   result,
   xp,
+  slowTargetSeconds,
   hideAnswerLines = false,
 }: {
   result: Record<string, unknown>;
   xp?: number;
+  slowTargetSeconds?: number;
   hideAnswerLines?: boolean;
 }) {
   const baseTitle =
@@ -102,6 +104,11 @@ export function FeedbackPanel({
         <AlertDescription className="mt-1 text-base leading-7 text-inherit">
           <Markdown>{feedback}</Markdown>
         </AlertDescription>
+      ) : null}
+      {correct && slowTargetSeconds !== undefined ? (
+        <p className="mt-2 text-sm leading-5">
+          Try to get this one in under {slowTargetSeconds} seconds next time.
+        </p>
       ) : null}
       {rubric.some((item) => item.judgement) ? (
         <ul aria-label="Rubric" className="mt-3 space-y-2">

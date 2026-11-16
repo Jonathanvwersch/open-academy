@@ -5,6 +5,7 @@ exercises:
     type: mc
     role: basics
     difficulty: 1
+    target_seconds: 30
     est_minutes: 1
     prompt: What does the determinant of a $2\times2$ matrix describe?
     options:
@@ -171,6 +172,7 @@ exercises:
     type: mc
     role: basics
     difficulty: 1
+    target_seconds: 30
     est_minutes: 1
     prompt: For $A=\begin{bmatrix}a&b\\c&d\end{bmatrix}$, which calculation gives its determinant?
     options:
@@ -322,6 +324,7 @@ exercises:
     type: mc
     role: basics
     difficulty: 1
+    target_seconds: 30
     est_minutes: 1
     prompt: What does a zero determinant mean for a $2\times2$ matrix's map?
     options:

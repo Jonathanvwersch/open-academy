@@ -1,0 +1,1 @@
+ALTER TABLE "lesson_quiz_items" ADD COLUMN "duration_ms" integer;

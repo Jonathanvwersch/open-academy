@@ -92,15 +92,46 @@ async function createReviewSession() {
   return session.id;
 }
 
+async function createSlowCorrectSession() {
+  const [session] = await db
+    .insert(studySessions)
+    .values({
+      userId,
+      kind: 'weekday',
+      plannedMinutes: 30,
+      status: 'active',
+      startedAt: sessionStart,
+    })
+    .returning({ id: studySessions.id });
+  if (!session) throw new Error('Could not create slow-answer review session');
+  await db.insert(sessionActivities).values({
+    sessionId: session.id,
+    idx: 0,
+    kind: 'review',
+    conceptId: 'vectors',
+    exerciseIds: ['vectors-magnitude'],
+    plannedMinutes: 30,
+    status: 'in_progress',
+  });
+  return session.id;
+}
+
 async function answerCorrectly(page: Page, answer: string) {
   const answerInput = page.getByLabel('Your answer');
   await expect(answerInput).toBeEditable();
   await answerInput.fill(answer);
+  const attemptRequestPromise = page.waitForRequest(
+    (request) => request.url().endsWith('/api/attempts') && request.method() === 'POST',
+  );
   const responsePromise = page.waitForResponse(
     (response) =>
       response.url().endsWith('/api/attempts') && response.request().method() === 'POST',
   );
   await page.getByRole('button', { name: 'Submit answer' }).click();
+  const attemptRequest = await attemptRequestPromise;
+  const requestBody = JSON.parse(attemptRequest.postData() ?? '{}') as { durationMs?: unknown };
+  expect(typeof requestBody.durationMs).toBe('number');
+  expect(requestBody.durationMs).toBeGreaterThanOrEqual(0);
   expect((await responsePromise).status()).toBe(200);
   await expect(page.getByText('Correct', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Continue', exact: true })).toBeVisible();
@@ -130,6 +161,22 @@ test('review questions advance immediately while session GETs are delayed', asyn
     'data-state',
     'correct',
   );
+});
+
+test('slow correct review answers show the target-time feedback', async ({ page }, testInfo) => {
+  const sessionId = await createSlowCorrectSession();
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.clock.install();
+  await page.goto(`/session/${sessionId}`);
+  await expect(page.getByTestId('exercise-prompt')).toContainText('Find the magnitude');
+  await page.clock.fastForward('00:31');
+  await answerCorrectly(page, '5');
+  await expect(
+    page.getByText('Try to get this one in under 30 seconds next time.', {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath('slow-correct-feedback.png') });
 });
 
 test('an aged exercise query does not refetch when continuing', async ({ page }) => {

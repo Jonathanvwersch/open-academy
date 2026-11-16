@@ -5,6 +5,7 @@ exercises:
     type: mc
     role: basics
     difficulty: 1
+    target_seconds: 30
     est_minutes: 1
     prompt: "What does the dot product of two vectors do?"
     options:
@@ -38,6 +39,7 @@ exercises:
     type: mc
     role: basics
     difficulty: 1
+    target_seconds: 30
     est_minutes: 1
     prompt: "What does the sign of a dot product tell you about two arrows?"
     options:
@@ -71,6 +73,7 @@ exercises:
     type: mc
     role: basics
     difficulty: 1
+    target_seconds: 30
     est_minutes: 1
     prompt: "What is cosine similarity?"
     options:
@@ -142,6 +145,7 @@ exercises:
     type: mc
     role: practice
     difficulty: 1
+    target_seconds: 30
     est_minutes: 2
     prompt: "A simplified house-price model uses weights $(0.5,2)$ for area in tens of square metres and bedroom count, in thousand pounds per feature unit. A house gains one bedroom while its area stays fixed. How does the predicted price change?"
     solution: "The extra bedroom adds $2\\times1=2$ thousand pounds to the total. The area contribution does not change."
@@ -215,6 +219,7 @@ exercises:
     type: mc
     role: practice
     difficulty: 1
+    target_seconds: 30
     est_minutes: 2
     prompt: "A simplified house-price model uses weights $(2,-1)$ for area in tens of square metres and age in years, in thousand pounds per feature unit. If age increases by one year while area stays fixed, what happens to the prediction?"
     solution: "The extra year adds $(-1)\\times1=-1$ thousand pounds to the total. The prediction falls by 1 thousand pounds."
@@ -304,6 +309,7 @@ exercises:
     type: mc
     role: practice
     difficulty: 1
+    target_seconds: 30
     est_minutes: 2
     prompt: "Arrow $b=(1,0)$ points right. Arrow $a$ points up and to the left. What sign is $a\\cdot b$?"
     solution: "With $b=(1,0)$, $a\\cdot b$ is $a$'s first component: how far $a$ goes to the right. Going left makes that negative, so the dot product is negative."
@@ -346,6 +352,7 @@ exercises:
     type: mc
     role: practice
     difficulty: 1
+    target_seconds: 30
     est_minutes: 2
     prompt: "Two non-zero arrows have dot product zero. What does this tell you about their directions?"
     solution: "Both lengths are non-zero, so the distance one arrow goes along the other must be zero. That happens only at a right angle: the arrows are perpendicular, also called orthogonal."
@@ -373,6 +380,7 @@ exercises:
     type: numeric
     role: practice
     difficulty: 1
+    target_seconds: 30
     est_minutes: 2
     prompt: "Two arrows are $a=(3,4)$ and $b=(2,0)$. The projection of $a$ onto $b$, the distance $a$ goes in $b$'s direction, is 3. What is $a\\cdot b$?"
     solution: "Multiply the projection by $b$'s length: $3\\times2=6$. Direct multiplication agrees: $3\\times2+4\\times0=6$."
@@ -579,6 +587,7 @@ exercises:
     type: mc
     role: practice
     difficulty: 1
+    target_seconds: 30
     est_minutes: 2
     prompt: "Two robot movements are $(1,1)$ and $(10,10)$ metres east and north. Their cosine similarity is one. What does that establish?"
     solution: "Both movements point in the same direction because each covers equal distances east and north. Their lengths are different."
@@ -606,6 +615,7 @@ exercises:
     type: numeric
     role: check
     difficulty: 1
+    target_seconds: 30
     est_minutes: 1
     prompt: "Calculate the dot product of vectors $(1,2,3)$ and $(4,-5,6)$."
     answer: 12
@@ -617,6 +627,7 @@ exercises:
     type: numeric
     role: check
     difficulty: 1
+    target_seconds: 30
     est_minutes: 2
     prompt: "Two arrows are $a=(3,4)$ and $b=(4,3)$. Calculate their cosine similarity to two decimal places."
     answer: 0.96
@@ -651,6 +662,7 @@ exercises:
     type: mc
     role: review
     difficulty: 1
+    target_seconds: 30
     est_minutes: 1
     prompt: "Two non-zero vectors have dot product $0$. What can you conclude about their arrows, drawn from the same starting point?"
     options:
@@ -686,6 +698,7 @@ exercises:
     type: numeric
     role: review
     difficulty: 1
+    target_seconds: 30
     est_minutes: 2
     prompt: "A simplified house-price model uses weights $w=(2,-1,0.5)$ for area in tens of square metres, age in years, and bedroom count. Each weight is in thousand pounds per feature unit. A house has $x=(3,4,2)$ in that order. What is $w\\cdot x$, in thousand pounds?"
     answer: 3

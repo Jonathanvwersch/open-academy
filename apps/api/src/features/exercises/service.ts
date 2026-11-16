@@ -539,10 +539,18 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
             .limit(1);
           if (!existingLog) {
             const rating = reviewActivityRating(
-              exerciseAttempts.map((items) => ({
-                correct: items.at(-1)?.correct ?? 0,
-                hintsUsed: items.reduce((total, attempt) => total + attempt.hintsUsed, 0),
-              })),
+              exerciseAttempts.map((items) => {
+                const lastAttempt = items.at(-1);
+                const reviewedExercise = lastAttempt
+                  ? index.exercisesById.get(lastAttempt.exerciseId)
+                  : undefined;
+                return {
+                  correct: lastAttempt?.correct ?? 0,
+                  hintsUsed: items.reduce((total, attempt) => total + attempt.hintsUsed, 0),
+                  durationMs: lastAttempt?.durationMs,
+                  targetSeconds: reviewedExercise?.target_seconds,
+                };
+              }),
             );
             const [previousLog] =
               rating === Rating.Again
@@ -625,7 +633,13 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
           }
         }
       } else {
-        const rating = mapReviewRating({ correct: result.correct, hintsUsed, attemptNo });
+        const rating = mapReviewRating({
+          correct: result.correct,
+          hintsUsed,
+          attemptNo,
+          durationMs: body.data.durationMs,
+          targetSeconds: exercise.target_seconds,
+        });
         const scheduled = scheduleReview(
           card.fsrs as never,
           now,

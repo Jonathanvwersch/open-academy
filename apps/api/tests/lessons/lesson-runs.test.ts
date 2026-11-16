@@ -187,11 +187,17 @@ async function answerQuizItem(
   answer: unknown,
   activityId?: string,
   runConceptId = conceptId,
+  durationMs?: number,
 ) {
   return app.request(`/api/lessons/${runConceptId}/quiz/answer`, {
     method: 'POST',
     headers,
-    body: JSON.stringify({ itemId, answer, ...(activityId ? { activityId } : {}) }),
+    body: JSON.stringify({
+      itemId,
+      answer,
+      ...(activityId ? { activityId } : {}),
+      ...(durationMs === undefined ? {} : { durationMs }),
+    }),
   });
 }
 
@@ -1245,6 +1251,153 @@ test('a passed quiz with a Hard dimension does not credit hard prerequisites', a
     expect(
       await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, prerequisiteCard.id)),
     ).toHaveLength(0);
+  }
+});
+
+test('a slow correct lesson quiz answer rates its dimension Hard and stores its duration', async () => {
+  await finishLessonSteps();
+  const started = (await (await startQuiz()).json()).run;
+  const quizRows = await db
+    .select()
+    .from(lessonQuizItems)
+    .where(eq(lessonQuizItems.quizAttemptId, started.quiz.current.attemptId))
+    .orderBy(lessonQuizItems.position);
+  const targetItem = quizRows[0];
+  if (!targetItem) throw new Error('Expected a lesson quiz item');
+  const originalExercise = content.exercisesById.get(targetItem.exerciseId);
+  if (!originalExercise) throw new Error(`Missing exercise ${targetItem.exerciseId}`);
+  content.exercisesById.set(targetItem.exerciseId, {
+    ...originalExercise,
+    target_seconds: 30,
+  });
+
+  try {
+    for (const item of quizRows) {
+      const response = await answerQuizItem(
+        item.id,
+        correctAnswer(item.exerciseId, item.seed),
+        undefined,
+        conceptId,
+        item.id === targetItem.id ? 30_001 : 1_000,
+      );
+      expect(response.status).toBe(200);
+    }
+
+    const submitted = await submitQuiz();
+    expect(submitted.status).toBe(200);
+
+    const [storedTargetItem] = await db
+      .select()
+      .from(lessonQuizItems)
+      .where(eq(lessonQuizItems.id, targetItem.id));
+    expect(storedTargetItem?.durationMs).toBe(30_001);
+    if (!storedTargetItem?.attemptId) throw new Error('Expected an attempt for the slow answer');
+
+    const [attempt] = await db
+      .select()
+      .from(attempts)
+      .where(eq(attempts.id, storedTargetItem.attemptId));
+    expect(attempt?.durationMs).toBe(30_001);
+
+    const [card] = await db
+      .select()
+      .from(reviewCards)
+      .where(
+        and(
+          eq(reviewCards.userId, userId),
+          eq(reviewCards.conceptId, conceptId),
+          eq(reviewCards.dimension, originalExercise.dimension),
+        ),
+      );
+    if (!card) throw new Error('Expected a review card for the slow-answer dimension');
+    const [log] = await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, card.id));
+    expect(log?.rating).toBe(String(Rating.Hard));
+  } finally {
+    content.exercisesById.set(targetItem.exerciseId, originalExercise);
+  }
+});
+
+test('an all-correct quiz with a slow target answer does not credit hard prerequisites', async () => {
+  const hardCards = await Promise.all(
+    ['linear-regression', 'gradient-descent'].map(createDuePrerequisiteCard),
+  );
+  const run = await finishLessonSteps(undefined, 'logistic-regression');
+  expect(run.status).toBe('quiz');
+  const started = await startQuiz(undefined, 'logistic-regression');
+  expect(started.status).toBe(200);
+  const startedRun = (await started.json()).run;
+  const quizRows = await db
+    .select()
+    .from(lessonQuizItems)
+    .where(eq(lessonQuizItems.quizAttemptId, startedRun.quiz.current.attemptId))
+    .orderBy(lessonQuizItems.position);
+  const targetItem = quizRows[0];
+  if (!targetItem) throw new Error('Expected a lesson quiz item');
+  const originalExercise = content.exercisesById.get(targetItem.exerciseId);
+  if (!originalExercise) throw new Error(`Missing exercise ${targetItem.exerciseId}`);
+  content.exercisesById.set(targetItem.exerciseId, {
+    ...originalExercise,
+    target_seconds: 30,
+  });
+
+  try {
+    for (const item of quizRows) {
+      const response = await answerQuizItem(
+        item.id,
+        correctAnswer(item.exerciseId, item.seed),
+        undefined,
+        'logistic-regression',
+        item.id === targetItem.id ? 30_001 : 1_000,
+      );
+      expect(response.status).toBe(200);
+    }
+
+    const submitted = await submitQuiz(undefined, 'logistic-regression');
+    expect(submitted.status).toBe(200);
+    const result = await submitted.json();
+    expect(result.run.quiz.last.passed).toBe(true);
+
+    const submittedItems = await db
+      .select()
+      .from(lessonQuizItems)
+      .where(eq(lessonQuizItems.quizAttemptId, startedRun.quiz.current.attemptId))
+      .orderBy(lessonQuizItems.position);
+    expect(submittedItems.every((item) => item.correct !== null && item.correct >= 1)).toBe(true);
+    expect(submittedItems.find((item) => item.id === targetItem.id)?.durationMs).toBe(30_001);
+
+    const [dimensionCard] = await db
+      .select()
+      .from(reviewCards)
+      .where(
+        and(
+          eq(reviewCards.userId, userId),
+          eq(reviewCards.conceptId, 'logistic-regression'),
+          eq(reviewCards.dimension, originalExercise.dimension),
+        ),
+      );
+    if (!dimensionCard) throw new Error('Expected a review card for the slow-answer dimension');
+    const [dimensionLog] = await db
+      .select()
+      .from(reviewLogs)
+      .where(eq(reviewLogs.cardId, dimensionCard.id));
+    expect(dimensionLog?.rating).toBe(String(Rating.Hard));
+
+    for (const prerequisiteCard of hardCards) {
+      const [unchanged] = await db
+        .select()
+        .from(reviewCards)
+        .where(eq(reviewCards.id, prerequisiteCard.id));
+      if (!unchanged) throw new Error('Expected the hard-prerequisite card');
+      expect(unchanged.dueAt).toEqual(prerequisiteCard.dueAt);
+      expect(unchanged.lastReviewAt).toEqual(prerequisiteCard.lastReviewAt);
+      expect(unchanged.reps).toBe(prerequisiteCard.reps);
+      expect(unchanged.lapses).toBe(prerequisiteCard.lapses);
+      expect(
+        await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, prerequisiteCard.id)),
+      ).toHaveLength(0);
+    }
+  } finally {
+    content.exercisesById.set(targetItem.exerciseId, originalExercise);
   }
 });
 

@@ -323,6 +323,7 @@ const CommonExerciseSchema = z.object({
   role: ExerciseRoleSchema,
   lesson_only: z.boolean().default(false),
   difficulty: z.number().int().min(1).max(5),
+  target_seconds: z.number().int().min(5).max(600).optional(),
   est_minutes: z.number().positive(),
   prompt: z.string().min(1),
   hints: z.array(z.string().min(1)).max(4).default([]),
