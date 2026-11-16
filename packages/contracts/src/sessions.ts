@@ -23,8 +23,9 @@ export interface TodayPayload {
   plan: {
     activities: Array<{
       kind: string;
-      conceptId?: string;
-      conceptTitle?: string;
+      conceptId?: string | null;
+      conceptTitle?: string | null;
+      reviewTopics?: Array<{ conceptId: string; title: string }>;
       plannedMinutes: number;
       reason: { summary: string };
     }>;
@@ -37,6 +38,7 @@ export interface SessionActivity {
   kind: string;
   conceptId?: string | null;
   conceptTitle?: string | null;
+  reviewTopics?: Array<{ conceptId: string; title: string }>;
   projectId?: string;
   exerciseIds: string[];
   plannedMinutes: number;

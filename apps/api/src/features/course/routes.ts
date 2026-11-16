@@ -435,6 +435,17 @@ export function registerLearnCourseRoutes(
     const tasks = activities.map((activity, taskIndex) => {
       const conceptId = activity.conceptId;
       const concept = conceptId ? index.conceptsById.get(conceptId) : undefined;
+      const reviewTopics =
+        activity.kind === 'review'
+          ? Array.from(
+              new Set(
+                activity.exerciseIds.flatMap((exerciseId) => {
+                  const id = index.exercisesById.get(exerciseId)?.concept;
+                  return id ? [id] : [];
+                }),
+              ),
+            ).map((id) => ({ conceptId: id, title: index.conceptsById.get(id)?.title ?? id }))
+          : [];
       const lesson = conceptId ? index.lessonsByConcept.get(conceptId) : undefined;
       const run = conceptId ? runsByConcept.get(conceptId) : undefined;
       const lessonState =
@@ -457,7 +468,14 @@ export function registerLearnCourseRoutes(
         activityKind: activity.kind,
         label: activityLabel(activity.kind),
         ...(conceptId ? { conceptId } : {}),
-        title: concept?.title ?? project?.title ?? titleForKind(activity.kind),
+        title:
+          reviewTopics.length > 1
+            ? 'Mixed review'
+            : (reviewTopics[0]?.title ??
+              concept?.title ??
+              project?.title ??
+              titleForKind(activity.kind)),
+        ...(reviewTopics.length ? { reviewTopics } : {}),
         xp: estimateTaskXp(activity, lessonState),
         prerequisites,
       };

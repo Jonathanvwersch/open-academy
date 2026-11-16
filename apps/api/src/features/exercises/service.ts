@@ -508,17 +508,24 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
       .limit(1);
     if (card) {
       if (activity?.kind === 'review' && body.data.activityId && activity.exerciseIds.length > 0) {
+        const topicExerciseIds = activity.exerciseIds.filter((exerciseId) => {
+          const indexedExercise = index.exercisesById.get(exerciseId);
+          return (
+            indexedExercise?.concept === card.conceptId &&
+            indexedExercise.dimension === card.dimension
+          );
+        });
         const activityAttempts = await db
           .select()
           .from(attempts)
           .where(
             and(
               eq(attempts.activityId, body.data.activityId),
-              inArray(attempts.exerciseId, activity.exerciseIds),
+              inArray(attempts.exerciseId, topicExerciseIds),
             ),
           )
           .orderBy(asc(attempts.createdAt), asc(attempts.attemptNo));
-        const exerciseAttempts = activity.exerciseIds.map((exerciseId) =>
+        const exerciseAttempts = topicExerciseIds.map((exerciseId) =>
           activityAttempts.filter((attempt) => attempt.exerciseId === exerciseId),
         );
         if (exerciseAttempts.every((items) => items.length > 0)) {
@@ -526,7 +533,9 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
             .select({ id: reviewLogs.id })
             .from(reviewLogs)
             .innerJoin(attempts, eq(reviewLogs.attemptId, attempts.id))
-            .where(eq(attempts.activityId, body.data.activityId))
+            .where(
+              and(eq(attempts.activityId, body.data.activityId), eq(reviewLogs.cardId, card.id)),
+            )
             .limit(1);
           if (!existingLog) {
             const rating = reviewActivityRating(

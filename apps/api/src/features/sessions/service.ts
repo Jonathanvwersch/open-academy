@@ -1,5 +1,6 @@
 import { and, desc, eq, gte, inArray, lte } from 'drizzle-orm';
 import { z } from 'zod';
+import type { ContentIndex } from '../../content/types.js';
 import type { Database } from '../../db/client.js';
 import { LearnerRepository } from '../../db/repository.js';
 import {
@@ -38,6 +39,24 @@ import { masteryRank } from '../../learning/types.js';
 import { localDateKey, sessionKindForDate, xpGoalFor } from '../../learning/xp.js';
 import { type FeatureRequest, type FeatureServices, serviceResult } from '../../service-context.js';
 import { replanSessionActivities } from '../course/service.js';
+
+function reviewTopicsFor(exerciseIds: readonly string[], index: ContentIndex) {
+  const seen = new Set<string>();
+  return exerciseIds.flatMap((exerciseId) => {
+    const conceptId = index.exercisesById.get(exerciseId)?.concept;
+    if (!conceptId || seen.has(conceptId)) return [];
+    seen.add(conceptId);
+    return [{ conceptId, title: index.conceptsById.get(conceptId)?.title ?? conceptId }];
+  });
+}
+
+function withReviewTopics<T extends { kind: string; exerciseIds: string[] }>(
+  activity: T,
+  index: ContentIndex,
+) {
+  if (activity.kind !== 'review') return activity;
+  return { ...activity, reviewTopics: reviewTopicsFor(activity.exerciseIds, index) };
+}
 
 export async function getToday(deps: FeatureServices, request: FeatureRequest) {
   const { content, tutorProvider } = deps;
@@ -136,19 +155,30 @@ export async function getToday(deps: FeatureServices, request: FeatureRequest) {
     courseTitle: course?.title ?? '',
     unitTitle: unitFocus?.title ?? `Unit ${unit}`,
     unit,
-    dueReviews: plan.activities.filter((activity) => activity.kind === 'review').length,
+    dueReviews: new Set(
+      plan.activities.flatMap((activity) =>
+        activity.kind === 'review'
+          ? reviewTopicsFor(activity.exerciseIds, index).map((topic) => topic.conceptId)
+          : [],
+      ),
+    ).size,
     budgetMinutes: budget,
     sessionKind,
     activeSessionId,
     tutorEnabled: tutorProvider !== null,
     plan: {
       ...plan,
-      activities: plan.activities.map((activity) => ({
-        ...activity,
-        conceptTitle: activity.conceptId
-          ? index.conceptsById.get(activity.conceptId)?.title
-          : undefined,
-      })),
+      activities: plan.activities.map((activity) =>
+        withReviewTopics(
+          {
+            ...activity,
+            conceptTitle: activity.conceptId
+              ? index.conceptsById.get(activity.conceptId)?.title
+              : undefined,
+          },
+          index,
+        ),
+      ),
     },
   });
 }
@@ -308,7 +338,13 @@ export async function postSessions(deps: FeatureServices, request: FeatureReques
         .returning();
     }),
   );
-  return serviceResult({ ...session, activities: createdActivities.flat() }, 201);
+  return serviceResult(
+    {
+      ...session,
+      activities: createdActivities.flat().map((activity) => withReviewTopics(activity, index)),
+    },
+    201,
+  );
 }
 
 export async function getSessionsActive(deps: FeatureServices, request: FeatureRequest) {
@@ -323,12 +359,17 @@ export async function getSessionsActive(deps: FeatureServices, request: FeatureR
     fullSession && activities.length
       ? {
           ...fullSession,
-          activities: activities.map((activity) => ({
-            ...activity,
-            conceptTitle: activity.conceptId
-              ? index.conceptsById.get(activity.conceptId)?.title
-              : undefined,
-          })),
+          activities: activities.map((activity) =>
+            withReviewTopics(
+              {
+                ...activity,
+                conceptTitle: activity.conceptId
+                  ? index.conceptsById.get(activity.conceptId)?.title
+                  : undefined,
+              },
+              index,
+            ),
+          ),
           serverNow: now,
         }
       : null,
@@ -385,10 +426,15 @@ export async function getSessionsById(deps: FeatureServices, request: FeatureReq
         ...session,
         xp,
         activities: activities.map((activity) => ({
-          ...activity,
-          conceptTitle: activity.conceptId
-            ? index.conceptsById.get(activity.conceptId)?.title
-            : undefined,
+          ...withReviewTopics(
+            {
+              ...activity,
+              conceptTitle: activity.conceptId
+                ? index.conceptsById.get(activity.conceptId)?.title
+                : undefined,
+            },
+            index,
+          ),
           lessonAvailable: activity.conceptId
             ? index.lessonsByConcept.has(activity.conceptId)
             : false,
@@ -577,7 +623,9 @@ async function updateActivityProgress(deps: FeatureServices, request: FeatureReq
         .where(eq(sessionActivities.id, nextActivity.id));
     }
   }
-  return serviceResult(updated);
+  return serviceResult(
+    updated?.kind === 'review' ? withReviewTopics(updated, await content()) : updated,
+  );
 }
 
 export async function postSessionsByIdReplan(deps: FeatureServices, request: FeatureRequest) {
@@ -652,7 +700,11 @@ async function replanSession(deps: FeatureServices, request: FeatureRequest) {
           .returning();
       }),
   );
-  return serviceResult({ activities: [...preserved, ...created.flat()] });
+  return serviceResult({
+    activities: [...preserved, ...created.flat()].map((activity) =>
+      withReviewTopics(activity, index),
+    ),
+  });
 }
 
 export async function postSessionsByIdEnd(deps: FeatureServices, request: FeatureRequest) {

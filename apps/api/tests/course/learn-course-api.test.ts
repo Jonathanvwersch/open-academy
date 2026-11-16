@@ -120,6 +120,14 @@ async function post(path: string, body: unknown) {
 test('restarting a topic clears only its progress while preserving history', async () => {
   const conceptX = 'vectors';
   const conceptY = 'supervised-learning';
+  const mixedReviewExerciseIds = [
+    content.exercisesByConcept.get(conceptX)?.[0]?.id,
+    content.exercisesByConcept.get('derivatives')?.[0]?.id,
+  ];
+  const [conceptXExerciseId, conceptBExerciseId] = mixedReviewExerciseIds;
+  if (!conceptXExerciseId || !conceptBExerciseId) {
+    throw new Error('Could not find exercises for the mixed review fixture');
+  }
   const [session] = await db
     .insert(studySessions)
     .values({ userId, plannedMinutes: 60, status: 'active' })
@@ -160,12 +168,26 @@ test('restarting a topic clears only its progress while preserving history', asy
         plannedMinutes: 10,
         status: 'planned',
       },
+      {
+        sessionId: session.id,
+        idx: 4,
+        kind: 'review',
+        conceptId: null,
+        exerciseIds: [conceptXExerciseId, conceptBExerciseId],
+        plannedMinutes: 10,
+        status: 'in_progress',
+      },
     ])
     .returning();
   const xActivity = activityRows.find(
     (activity) => activity.conceptId === conceptX && activity.status === 'in_progress',
   );
   if (!xActivity) throw new Error('Could not find restart test activity');
+  const mixedReviewActivity = activityRows.find((activity) => activity.kind === 'review');
+  const unrelatedActivity = activityRows.find((activity) => activity.conceptId === conceptY);
+  if (!mixedReviewActivity || !unrelatedActivity) {
+    throw new Error('Could not find mixed review and unrelated activities');
+  }
 
   const [attempt] = await db
     .insert(attempts)
@@ -322,8 +344,18 @@ test('restarting a topic clears only its progress while preserving history', asy
   expect(
     await db.select().from(remediationFlags).where(eq(remediationFlags.userId, userId)),
   ).toMatchObject([{ conceptId: conceptY, targetPrereqId: null }]);
+  const remainingActivities = await db
+    .select()
+    .from(sessionActivities)
+    .where(eq(sessionActivities.sessionId, session.id));
   expect(
-    (await db.select().from(sessionActivities).where(eq(sessionActivities.sessionId, session.id)))
+    remainingActivities.find((activity) => activity.id === mixedReviewActivity.id)?.status,
+  ).toBe('skipped');
+  expect(remainingActivities.find((activity) => activity.id === unrelatedActivity.id)?.status).toBe(
+    'planned',
+  );
+  expect(
+    remainingActivities
       .sort((left, right) => left.idx - right.idx)
       .map((activity) => [activity.idx, activity.status]),
   ).toEqual([
@@ -331,6 +363,7 @@ test('restarting a topic clears only its progress while preserving history', asy
     [1, 'skipped'],
     [2, 'completed'],
     [3, 'planned'],
+    [4, 'skipped'],
   ]);
   const courseResponse = await get('/courses/ml-foundations');
   const course = (await courseResponse.json()) as {

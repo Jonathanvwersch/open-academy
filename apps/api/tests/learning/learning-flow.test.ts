@@ -80,7 +80,7 @@ async function enrollDefaultCourse() {
   });
 }
 
-async function createReviewActivity(conceptId: string, exerciseIds: string | string[]) {
+async function createReviewActivity(conceptId: string | null, exerciseIds: string | string[]) {
   const [session] = await db
     .insert(studySessions)
     .values({
@@ -99,7 +99,7 @@ async function createReviewActivity(conceptId: string, exerciseIds: string | str
       idx: 0,
       kind: 'review',
       conceptId,
-      exerciseIds: typeof exerciseIds === 'string' ? [exerciseIds] : exerciseIds,
+      exerciseIds: Array.isArray(exerciseIds) ? exerciseIds : [exerciseIds],
       plannedMinutes: 5,
       status: 'in_progress',
     })
@@ -1677,6 +1677,78 @@ test('lesson-runner schedules one due review per concept, then reschedules it', 
       },
     ),
   ).toBe(false);
+});
+
+test('mixed review rates and logs each topic after its own questions are answered', async () => {
+  await resetLearner();
+  const topicExercises = (conceptId: string) =>
+    (content.exercisesByConcept.get(conceptId) ?? [])
+      .filter((exercise) => exercise.dimension === 'math' && !isTemplate(exercise))
+      .slice(0, 2);
+  const topicAExercises = topicExercises('vectors');
+  const topicBExercises = topicExercises('linear-models');
+  expect(topicAExercises).toHaveLength(2);
+  expect(topicBExercises).toHaveLength(2);
+  const originalDueAt = new Date('2025-12-31T00:00:00.000Z');
+  for (const conceptId of ['vectors', 'linear-models']) {
+    await db.insert(reviewCards).values({
+      userId,
+      conceptId,
+      dimension: 'math',
+      fsrs: newReviewCard(new Date(now)),
+      dueAt: originalDueAt,
+      reps: 1,
+      lapses: 0,
+    });
+  }
+  const activity = await createReviewActivity(null, [
+    ...topicAExercises.map((exercise) => exercise.id),
+    ...topicBExercises.map((exercise) => exercise.id),
+  ]);
+  const cards = await db.select().from(reviewCards).where(eq(reviewCards.userId, userId));
+  const cardA = cards.find((card) => card.conceptId === 'vectors');
+  const cardB = cards.find((card) => card.conceptId === 'linear-models');
+  if (!cardA || !cardB) throw new Error('Mixed review cards were not created');
+
+  for (const exercise of topicAExercises) {
+    const response = await app.request('/api/attempts', {
+      method: 'POST',
+      headers: headersAt(now),
+      body: JSON.stringify({
+        exerciseId: exercise.id,
+        activityId: activity.id,
+        answer: correctAnswer(exercise.id, null),
+        mode: 'review',
+      }),
+    });
+    expect(response.status).toBe(200);
+  }
+  const [ratedA, waitingB] = await Promise.all([
+    db.select().from(reviewCards).where(eq(reviewCards.id, cardA.id)),
+    db.select().from(reviewCards).where(eq(reviewCards.id, cardB.id)),
+  ]);
+  expect(ratedA[0]?.dueAt.getTime()).toBeGreaterThan(originalDueAt.getTime());
+  expect(waitingB[0]?.dueAt.getTime()).toBe(originalDueAt.getTime());
+  expect(await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, cardA.id))).toHaveLength(1);
+  expect(await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, cardB.id))).toHaveLength(0);
+
+  for (const exercise of topicBExercises) {
+    const response = await app.request('/api/attempts', {
+      method: 'POST',
+      headers: headersAt(now),
+      body: JSON.stringify({
+        exerciseId: exercise.id,
+        activityId: activity.id,
+        answer: correctAnswer(exercise.id, null),
+        mode: 'review',
+      }),
+    });
+    expect(response.status).toBe(200);
+  }
+  const [ratedB] = await db.select().from(reviewCards).where(eq(reviewCards.id, cardB.id));
+  expect(ratedB?.dueAt.getTime()).toBeGreaterThan(originalDueAt.getTime());
+  expect(await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, cardA.id))).toHaveLength(1);
+  expect(await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, cardB.id))).toHaveLength(1);
 });
 
 test('stale sessions are hidden for today, abandoned by new sessions, and keep lesson progress', async () => {

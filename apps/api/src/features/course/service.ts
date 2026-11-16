@@ -109,7 +109,12 @@ export async function restartTopic(input: {
       );
 
     const dependentActivities = await tx
-      .select({ id: sessionActivities.id, conceptId: sessionActivities.conceptId })
+      .select({
+        id: sessionActivities.id,
+        conceptId: sessionActivities.conceptId,
+        kind: sessionActivities.kind,
+        exerciseIds: sessionActivities.exerciseIds,
+      })
       .from(sessionActivities)
       .where(
         and(
@@ -140,6 +145,15 @@ export async function restartTopic(input: {
     );
     const activitiesToSkip = dependentActivities
       .filter((activity) => {
+        if (
+          activity.kind === 'review' &&
+          activity.exerciseIds.some(
+            (exerciseId) =>
+              input.content.exercisesById.get(exerciseId)?.concept === input.conceptId,
+          )
+        ) {
+          return true;
+        }
         if (!activity.conceptId) return false;
         const concept = input.content.conceptsById.get(activity.conceptId);
         return (
