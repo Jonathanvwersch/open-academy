@@ -37,6 +37,16 @@ function runWithInitCwd(args: string[], initCwd: string, environment: NodeJS.Pro
   });
 }
 
+function runFromPack(args: string[], pack: string) {
+  const environment: NodeJS.ProcessEnv = { ...process.env, CONTENT_DIR: '.' };
+  delete environment.INIT_CWD;
+  return spawnSync('pnpm', ['--dir', root, 'academy', ...args], {
+    cwd: pack,
+    env: environment,
+    encoding: 'utf8',
+  });
+}
+
 describe('academy CLI', () => {
   it('keeps added source files private in an existing pack without ignore rules', () => {
     const parent = temporaryDirectory();
@@ -63,8 +73,19 @@ describe('academy CLI', () => {
   });
 
   it('prints root and per-command help', () => {
-    expect(run([]).status).toBe(0);
-    expect(run(['--help']).status).toBe(0);
+    const noArguments = run([]);
+    const rootHelp = run(['--help']);
+    expect(noArguments.status).toBe(0);
+    expect(rootHelp.status).toBe(0);
+    expect(noArguments.stdout).toBe(rootHelp.stdout);
+    const helpLines = rootHelp.stdout.trim().split('\n');
+    expect(helpLines[0]).toBe('Usage:');
+    expect(helpLines.slice(1)).toHaveLength(8);
+    expect(helpLines.slice(1).every((line) => line.startsWith('  '))).toBe(true);
+    expect(rootHelp.stdout).toContain('--pack');
+    expect(rootHelp.stdout).toContain('--requires');
+    expect(rootHelp.stdout).toContain('--course <id> --unit <n>');
+    expect(rootHelp.stdout).toContain('sources add');
     expect(run(['new', 'topic', '--help']).stdout).toContain('academy new topic');
     expect(run(['sources', 'add', '--help']).stdout).toContain('academy sources add');
   });
@@ -129,6 +150,9 @@ describe('academy CLI', () => {
       expect(result.stdout).toContain('1 topics, 0 lessons, 0 questions, 1 courses');
       expect(runWithInitCwd(['check', 'my-pack'], parent).status).toBe(0);
       expect(runWithInitCwd(['check'], parent, { CONTENT_DIR: 'my-pack' }).status).toBe(0);
+      const fromPack = runFromPack(['check'], pack);
+      expect(fromPack.status, fromPack.stderr).toBe(0);
+      expect(fromPack.stdout).toContain('1 topics, 0 lessons, 0 questions, 1 courses');
       expect(run(['check'], root, { ...process.env, CONTENT_DIR: pack }).status).toBe(0);
       const defaultPackEnvironment = { ...process.env };
       delete defaultPackEnvironment.CONTENT_DIR;
@@ -143,19 +167,26 @@ describe('academy CLI', () => {
         '.agents/skills/write-lesson/reference/lesson-standard.md',
         '.agents/skills/write-questions/SKILL.md',
       ];
-      expect(readFileSync(join(pack, 'AGENTS.md'), 'utf8')).toBe(
-        readFileSync(join(root, 'packages/cli/template/AGENTS.md'), 'utf8'),
-      );
+      const agents = readFileSync(join(pack, 'AGENTS.md'), 'utf8');
+      expect(agents).toContain(`CONTENT_DIR=. pnpm --dir "${root}" academy check`);
+      expect(agents).not.toContain('{{ACADEMY}}');
+      const readme = readFileSync(join(pack, 'README.md'), 'utf8');
+      expect(readme).toContain(`CONTENT_DIR=. pnpm --dir "${root}" academy check`);
       for (const file of templateFiles) expect(existsSync(join(pack, file))).toBe(true);
-      const templateCopies = [
-        ['.agents/skills/write-lesson/SKILL.md', '.agents/skills/write-lesson/SKILL.md'],
+      const transformedFiles = [
+        '.agents/skills/write-lesson/SKILL.md',
+        '.agents/skills/write-questions/SKILL.md',
+        '.agents/skills/write-lesson/reference/CONTENT_FORMAT.md',
+        '.agents/skills/write-lesson/reference/lesson-standard.md',
+      ];
+      for (const file of transformedFiles) {
+        expect(readFileSync(join(pack, file), 'utf8')).not.toMatch(/content\/|docs\/|pnpm |apps\//);
+      }
+      const yamlTemplateCopies = [
         ['content/lessons/gradient-descent.yaml', templateFiles[3]],
         ['content/exercises/gradient-descent.yaml', templateFiles[4]],
-        ['docs/CONTENT_FORMAT.md', templateFiles[5]],
-        ['docs/design/lesson-standard.md', templateFiles[6]],
-        ['.agents/skills/write-questions/SKILL.md', '.agents/skills/write-questions/SKILL.md'],
       ] as const;
-      for (const [source, target] of templateCopies) {
+      for (const [source, target] of yamlTemplateCopies) {
         expect(readFileSync(join(pack, target), 'utf8')).toBe(
           readFileSync(join(root, source), 'utf8'),
         );
@@ -175,6 +206,7 @@ describe('academy CLI', () => {
         ['second-topic', 'Second topic'],
         ['third-topic', 'Third topic'],
         ['fourth-topic', 'Fourth topic'],
+        ['fifth-topic', 'Fifth topic'],
       ]) {
         expect(run(['new', 'topic', id, '--title', title, '--pack', pack]).status).toBe(0);
       }
@@ -182,7 +214,7 @@ describe('academy CLI', () => {
       const result = run(['check', pack]);
       expect(result.status).toBe(0);
       expect(result.stdout).toContain(
-        'warning: concepts/main.yaml [fourth-topic] has no prerequisites but sits in unit 1 of Applied Science basics; is a link missing?',
+        'warning: concepts/main.yaml [fifth-topic] has no prerequisites but sits in unit 1 of Applied Science basics; is a link missing?',
       );
       expect(result.stdout).toContain('1 warning');
     } finally {
@@ -303,6 +335,16 @@ describe('academy CLI', () => {
         ]).status,
       ).toBe(0);
       expect(readFileSync(conceptFile, 'utf8')).toContain('# Keep this note');
+      const course = parse(
+        readFileSync(join(pack, 'courses/applied-science-basics.yaml'), 'utf8'),
+      ) as { units: Array<{ concepts: string[] }> };
+      expect(course.units[0]?.concepts).toEqual(['applied-science-first-topic', 'second-topic']);
+      const concepts = parse(readFileSync(conceptFile, 'utf8')) as {
+        concepts: Array<{ id: string; prereqs: Array<{ id: string }> }>;
+      };
+      expect(concepts.concepts.find(({ id }) => id === 'second-topic')?.prereqs).toContainEqual({
+        id: 'applied-science-first-topic',
+      });
       expect(
         run(['new', 'course', 'advanced-path', '--title', 'Advanced path', '--pack', pack]).status,
       ).toBe(0);
@@ -330,10 +372,148 @@ describe('academy CLI', () => {
       ]);
       expect(created.status).toBe(0);
       expect(created.stdout).toContain('Added second-topic to Applied Science basics, unit 1.');
+      expect(created.stdout).toContain('Removed the starter topic applied-science-first-topic.');
       const course = parse(
         readFileSync(join(pack, 'courses/applied-science-basics.yaml'), 'utf8'),
       ) as { units: Array<{ concepts: string[] }> };
-      expect(course.units[0]?.concepts).toContain('second-topic');
+      expect(course.units[0]?.concepts).toEqual(['second-topic']);
+      const concepts = parse(readFileSync(join(pack, 'concepts/main.yaml'), 'utf8')) as {
+        concepts: Array<{ id: string }>;
+      };
+      expect(concepts.concepts.map(({ id }) => id)).toEqual(['second-topic']);
+      const checked = run(['check', pack]);
+      expect(checked.status).toBe(0);
+      expect(checked.stdout).toContain('1 topics, 0 lessons, 0 questions, 1 courses');
+    } finally {
+      rmSync(parent, { recursive: true, force: true });
+    }
+  });
+
+  it('removes the starter topic with explicit course and unit options', () => {
+    const parent = temporaryDirectory();
+    try {
+      const pack = join(parent, 'pack');
+      expect(run(['init', pack, '--title', 'Applied Science']).status).toBe(0);
+      const created = run([
+        'new',
+        'topic',
+        'second-topic',
+        '--title',
+        'Second topic',
+        '--course',
+        'applied-science-basics',
+        '--unit',
+        '1',
+        '--pack',
+        pack,
+      ]);
+      expect(created.status, created.stderr).toBe(0);
+      expect(created.stdout.trim()).toBe('Removed the starter topic applied-science-first-topic.');
+      const course = parse(
+        readFileSync(join(pack, 'courses/applied-science-basics.yaml'), 'utf8'),
+      ) as { units: Array<{ concepts: string[] }> };
+      expect(course.units[0]?.concepts).toEqual(['second-topic']);
+      const concepts = parse(readFileSync(join(pack, 'concepts/main.yaml'), 'utf8')) as {
+        concepts: Array<{ id: string }>;
+      };
+      expect(concepts.concepts.map(({ id }) => id)).toEqual(['second-topic']);
+      const checked = run(['check', pack]);
+      expect(checked.status).toBe(0);
+      expect(checked.stdout).toContain('1 topics, 0 lessons, 0 questions, 1 courses');
+    } finally {
+      rmSync(parent, { recursive: true, force: true });
+    }
+  });
+
+  it('keeps a starter topic after its lesson is created', () => {
+    const parent = temporaryDirectory();
+    try {
+      const pack = join(parent, 'pack');
+      expect(run(['init', pack, '--title', 'Applied Science']).status).toBe(0);
+      const starterId = 'applied-science-first-topic';
+      expect(run(['new', 'lesson', starterId, '--pack', pack]).status).toBe(0);
+      const created = run([
+        'new',
+        'topic',
+        'second-topic',
+        '--title',
+        'Second topic',
+        '--course',
+        'applied-science-basics',
+        '--unit',
+        '1',
+        '--pack',
+        pack,
+      ]);
+      expect(created.status, created.stderr).toBe(0);
+      expect(created.stdout).not.toContain(`Removed the starter topic ${starterId}.`);
+      expect(existsSync(join(pack, 'lessons', `${starterId}.yaml`))).toBe(true);
+      expect(existsSync(join(pack, 'exercises', `${starterId}.yaml`))).toBe(true);
+      const course = parse(
+        readFileSync(join(pack, 'courses/applied-science-basics.yaml'), 'utf8'),
+      ) as { units: Array<{ concepts: string[] }> };
+      expect(course.units[0]?.concepts).toEqual([starterId, 'second-topic']);
+      const concepts = parse(readFileSync(join(pack, 'concepts/main.yaml'), 'utf8')) as {
+        concepts: Array<{ id: string }>;
+      };
+      expect(concepts.concepts.map(({ id }) => id)).toContain(starterId);
+    } finally {
+      rmSync(parent, { recursive: true, force: true });
+    }
+  });
+
+  it('keeps a starter topic referenced by another course unit', () => {
+    const parent = temporaryDirectory();
+    try {
+      const pack = join(parent, 'pack');
+      expect(run(['init', pack, '--title', 'Applied Science']).status).toBe(0);
+      const starterId = 'applied-science-first-topic';
+      const courseFile = join(pack, 'courses/applied-science-basics.yaml');
+      const originalCourse = parse(readFileSync(courseFile, 'utf8')) as {
+        id: string;
+        title: string;
+        description: string;
+        subject: string;
+      };
+      writeFileSync(
+        join(pack, 'courses/other-course.yaml'),
+        stringify({
+          ...originalCourse,
+          id: 'other-course',
+          title: 'Other course',
+          units: [{ title: 'Basics', concepts: [starterId] }],
+        }),
+      );
+      const curriculumFile = join(pack, 'curriculum.yaml');
+      const curriculum = parse(readFileSync(curriculumFile, 'utf8')) as {
+        courses: string[];
+      };
+      curriculum.courses.push('other-course');
+      writeFileSync(curriculumFile, stringify(curriculum));
+
+      const created = run([
+        'new',
+        'topic',
+        'second-topic',
+        '--title',
+        'Second topic',
+        '--course',
+        'applied-science-basics',
+        '--unit',
+        '1',
+        '--pack',
+        pack,
+      ]);
+      expect(created.status, created.stderr).toBe(0);
+      expect(created.stdout).not.toContain(`Removed the starter topic ${starterId}.`);
+      const otherCourse = parse(readFileSync(join(pack, 'courses/other-course.yaml'), 'utf8')) as {
+        units: Array<{ concepts: string[] }>;
+      };
+      expect(otherCourse.units[0]?.concepts).toContain(starterId);
+      const concepts = parse(readFileSync(join(pack, 'concepts/main.yaml'), 'utf8')) as {
+        concepts: Array<{ id: string }>;
+      };
+      expect(concepts.concepts.map(({ id }) => id)).toContain(starterId);
       expect(run(['check', pack]).status).toBe(0);
     } finally {
       rmSync(parent, { recursive: true, force: true });

@@ -44,7 +44,39 @@ const helpText: Record<string, string> = {
 };
 
 function showHelp(command = 'root') {
+  if (command === 'root') {
+    const commands = Object.entries(helpText)
+      .filter(([name]) => name !== 'root')
+      .map(([, usage]) => `  ${usage}`)
+      .join('\n');
+    console.log(`Usage:\n${commands}`);
+    return;
+  }
   console.log(helpText[command] ?? helpText.root);
+}
+
+export function packSkillText(text: string): string {
+  return text
+    .replaceAll(
+      'Run `pnpm content:check` and the content tests (`pnpm exec vitest run apps/api/tests/content/*.test.ts` or the full `pnpm test`)',
+      'Run `academy check`',
+    )
+    .replaceAll(
+      'Run `pnpm content:check`, `pnpm exec vitest run apps/api/tests/content/` and `pnpm check`',
+      'Run `academy check`',
+    )
+    .replaceAll(
+      'Every lesson in `content/lessons/` has been rewritten with this skill. `content/lessons/gradient-descent.yaml` is the reference lesson.',
+      '`.agents/skills/write-lesson/reference/lesson.yaml` is the reference lesson.',
+    )
+    .replaceAll('pnpm content:check', 'academy check')
+    .replaceAll('pnpm dev', 'academy dev')
+    .replaceAll(
+      'docs/design/lesson-standard.md',
+      '.agents/skills/write-lesson/reference/lesson-standard.md',
+    )
+    .replaceAll('docs/CONTENT_FORMAT.md', '.agents/skills/write-lesson/reference/CONTENT_FORMAT.md')
+    .replaceAll('content/', '');
 }
 
 function parseOptions(args: string[]) {
@@ -142,6 +174,42 @@ function conceptFileForTopic(directory: string, topicId: string, domain: string)
   fail(`Could not find topic "${topicId}" in concepts/*.yaml.`);
 }
 
+function unusedStarterTopics(
+  content: Awaited<ReturnType<typeof loadContent>>,
+  directory: string,
+  courseId: string,
+  unitIndex: number,
+  newPrerequisites: string[],
+): string[] {
+  const unit = content.coursesById.get(courseId)?.units[unitIndex];
+  if (!unit) return [];
+  return unit.concepts.filter((topicId) => {
+    if (!topicId.endsWith('-first-topic')) return false;
+    const concept = content.conceptsById.get(topicId);
+    if (concept?.status !== 'stub') return false;
+    if (
+      existsSync(join(directory, 'lessons', `${topicId}.yaml`)) ||
+      existsSync(join(directory, 'exercises', `${topicId}.yaml`))
+    ) {
+      return false;
+    }
+    if (
+      newPrerequisites.includes(topicId) ||
+      content.concepts.some((item) =>
+        item.prereqs.some((prerequisite) => prerequisite.id === topicId),
+      )
+    ) {
+      return false;
+    }
+    return ![...content.coursesById.values()].some((course) =>
+      course.units.some(
+        (otherUnit, index) =>
+          otherUnit.concepts.includes(topicId) && !(course.id === courseId && index === unitIndex),
+      ),
+    );
+  });
+}
+
 function conceptFileForDomain(directory: string, domain: string): string {
   const conceptDirectory = join(directory, 'concepts');
   const indexedFile = join(conceptDirectory, `${domain}.yaml`);
@@ -230,28 +298,39 @@ async function init(directory: string, title: string) {
   if (!title.trim()) fail('Pass a non-empty --title.');
   if (fileIsNonempty(directory)) fail(`Refusing to initialize non-empty directory: ${directory}`);
   mkdirSync(directory, { recursive: true });
-  cpSync(join(templateRoot, 'AGENTS.md'), join(directory, 'AGENTS.md'));
+  const agents = readFileSync(join(templateRoot, 'AGENTS.md'), 'utf8').replaceAll(
+    '{{ACADEMY}}',
+    repoRoot,
+  );
+  writeFileSync(join(directory, 'AGENTS.md'), agents);
   cpSync(join(templateRoot, '.agents'), join(directory, '.agents'), { recursive: true });
   const writeLessonDirectory = join(directory, '.agents/skills/write-lesson');
   const referenceDirectory = join(writeLessonDirectory, 'reference');
   mkdirSync(referenceDirectory, { recursive: true });
-  copyFileSync(
-    join(repoRoot, '.agents/skills/write-lesson/SKILL.md'),
+  writeFileSync(
     join(writeLessonDirectory, 'SKILL.md'),
+    packSkillText(readFileSync(join(repoRoot, '.agents/skills/write-lesson/SKILL.md'), 'utf8')),
   );
   const writeQuestionsDirectory = join(directory, '.agents/skills/write-questions');
   mkdirSync(writeQuestionsDirectory, { recursive: true });
-  copyFileSync(
-    join(repoRoot, '.agents/skills/write-questions/SKILL.md'),
+  writeFileSync(
     join(writeQuestionsDirectory, 'SKILL.md'),
+    packSkillText(readFileSync(join(repoRoot, '.agents/skills/write-questions/SKILL.md'), 'utf8')),
   );
   for (const [source, target] of [
     ['content/lessons/gradient-descent.yaml', 'lesson.yaml'],
     ['content/exercises/gradient-descent.yaml', 'exercises.yaml'],
+  ]) {
+    copyFileSync(join(repoRoot, source), join(referenceDirectory, target));
+  }
+  for (const [source, target] of [
     ['docs/CONTENT_FORMAT.md', 'CONTENT_FORMAT.md'],
     ['docs/design/lesson-standard.md', 'lesson-standard.md'],
   ]) {
-    copyFileSync(join(repoRoot, source), join(referenceDirectory, target));
+    writeFileSync(
+      join(referenceDirectory, target),
+      packSkillText(readFileSync(join(repoRoot, source), 'utf8')),
+    );
   }
   const courseId = `${slug(title)}-basics`;
   const topicId = `${slug(title)}-first-topic`;
@@ -296,7 +375,7 @@ async function init(directory: string, title: string) {
   writeFileSync(join(directory, 'sources', '.gitignore'), '*\n!index.yaml\n!.gitignore\n');
   writeFileSync(
     join(directory, 'README.md'),
-    `This folder is a course pack for ${title}.\nRun \`academy dev\` to launch Open Academy with this pack.\nRun \`academy check\` to validate the pack.\nUse a separate database per pack, or give every topic an ID that's unique across your packs.\n`,
+    `This folder is a course pack for ${title}.\nRun \`academy dev\` to launch Open Academy with this pack.\nRun \`academy check\` to validate the pack.\nRunning the CLI: \`academy\` means \`CONTENT_DIR=. pnpm --dir "${repoRoot}" academy\`; run it from this folder, for example \`CONTENT_DIR=. pnpm --dir "${repoRoot}" academy check\`.\nUse a separate database per pack, or give every topic an ID that's unique across your packs.\n`,
   );
   if ((await check(directory)) !== 0) fail('Generated course pack did not pass academy check.');
 }
@@ -369,16 +448,45 @@ async function newTopic(
   }
   if (courseId && unit) {
     const courseFile = courseFileForId(directory, courseId);
+    const unitIndex = Number(unit) - 1;
+    const startersToRemove = unusedStarterTopics(
+      content,
+      directory,
+      courseId,
+      unitIndex,
+      prerequisites,
+    );
     const source = editYaml(courseFile, (document) => {
       const units = document.get('units', true);
       if (!isSeq(units)) fail(`Expected units sequence in ${courseFile}.`);
-      const unitNode = units.items[Number(unit) - 1];
+      const unitNode = units.items[unitIndex];
       if (!isMap(unitNode)) fail(`Expected unit mapping in ${courseFile}.`);
       const concepts = unitNode.get('concepts', true);
       if (!isSeq(concepts)) fail(`Expected concepts sequence in unit ${unit}.`);
       concepts.add(id);
+      for (const starterId of startersToRemove) {
+        for (let index = concepts.items.length - 1; index >= 0; index -= 1) {
+          if (concepts.get(index) === starterId) concepts.delete(index);
+        }
+      }
     });
     writeFileSync(courseFile, source);
+    for (const starterId of startersToRemove) {
+      const starter = content.conceptsById.get(starterId);
+      if (!starter) fail(`Could not find starter topic "${starterId}".`);
+      const starterFile = conceptFileForTopic(directory, starterId, starter.domain);
+      const conceptSource = editYaml(starterFile, (document) => {
+        const concepts = document.get('concepts', true);
+        if (!isSeq(concepts)) fail(`Expected concepts sequence in ${starterFile}.`);
+        const index = concepts.items.findIndex(
+          (node) => isMap(node) && node.get('id') === starterId,
+        );
+        if (index < 0) fail(`Could not find starter topic "${starterId}" in ${starterFile}.`);
+        concepts.delete(index);
+      });
+      writeFileSync(starterFile, conceptSource);
+      console.log(`Removed the starter topic ${starterId}.`);
+    }
   }
   if (defaultCourse) console.log(`Added ${id} to ${defaultCourse.title}, unit ${unit}.`);
 }

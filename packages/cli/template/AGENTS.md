@@ -16,6 +16,7 @@ Rules:
 - Write and check every question with `.agents/skills/write-questions/SKILL.md`.
 - When the pack has sources, write from them with `.agents/skills/write-from-sources/SKILL.md` and cite them.
 - Run `academy check` after every change and fix every issue it reports before you stop.
+- Running the CLI: `academy` means `CONTENT_DIR=. pnpm --dir "{{ACADEMY}}" academy`; run it from this folder, for example `CONTENT_DIR=. pnpm --dir "{{ACADEMY}}" academy check`.
 - Use the CLI to create files (`academy new topic`, `academy new lesson`, `academy new course`, `academy sources add`) so IDs and file layout stay consistent.
 
-The write-lesson skill was written for the demo pack inside the Open Academy repo. When it says `content/...`, read that as this folder (`content/concepts/` is `concepts/`, `content/notation.yaml` is `notation.yaml`). Its reference lesson is copied beside it: `.agents/skills/write-lesson/reference/lesson.yaml` and `reference/exercises.yaml`. For `docs/CONTENT_FORMAT.md` and `docs/design/lesson-standard.md`, see the copies in `.agents/skills/write-lesson/reference/`. These references also apply to the write-questions skill: its `../write-lesson/SKILL.md` and `docs/CONTENT_FORMAT.md` references mean `.agents/skills/write-lesson/SKILL.md` and `.agents/skills/write-lesson/reference/CONTENT_FORMAT.md` in a pack. Instead of `pnpm content:check` and the content tests, run `academy check`.
+The reference lesson, its questions, and the format docs are in `.agents/skills/write-lesson/reference/`.
