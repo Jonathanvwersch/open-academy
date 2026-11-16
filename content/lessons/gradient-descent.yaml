@@ -18,6 +18,12 @@ where_this_fits: |
 knowledge_points:
   - id: gd-downhill-update
     title: "Take one step downhill"
+
+    tldr: |
+      - The gradient points the way the loss rises fastest, so the opposite way goes downhill fastest.
+      - Gradient descent takes a small step that way.
+      - A small positive number called the learning rate sets the size of each step.
+      - Repeating the step from wherever we land keeps lowering the loss.
     explain: |
       ### Walking downhill
 
@@ -29,7 +35,17 @@ knowledge_points:
 
       Let's try one step on a simple landscape, the bowl-shaped function $f(x,y)=x^2+2y^2$, whose lowest point is $(0,0)$. For now, $x$ and $y$ are just its two inputs, the two directions we can move in. The picture shows it from above as a contour map. Each ring joins points at the same height, and the outer rings are higher.
 
-      We start at $P=(1.5,1)$, where the height is $4.25$. The bowl's slopes are $2x$ and $4y$, so the gradient there is $(3,4)$. The whole gradient would jump right past the bottom, so we use a tenth of it, $(0.3,0.4)$. Subtracting it, along the orange arrow, takes us down to $(1.2,0.6)$, where the height is $2.16$. Adding it instead, along the blue arrow, takes us up to $(1.8,1.4)$, where the height is $7.16$.
+      We start at $P=(1.5,1)$, where the height is $4.25$. The bowl's slopes are $2x$ and $4y$. The whole gradient would jump right past the bottom, so we use a tenth of it:
+      $$
+      \begin{aligned}
+      \nabla f(P)&=(2\times1.5,\ 4\times1)=(3,4) &&\text{find the slopes}\\
+      0.1\,\nabla f(P)&=(0.3,0.4) &&\text{scale the gradient}\\
+      P-0.1\,\nabla f(P)&=(1.2,0.6) &&\text{subtract along the orange arrow}\\
+      f(1.2,0.6)&=1.2^2+2\times0.6^2=2.16 &&\text{check the lower height}\\
+      P+0.1\,\nabla f(P)&=(1.8,1.4) &&\text{add along the blue arrow}\\
+      f(1.8,1.4)&=1.8^2+2\times1.4^2=7.16 &&\text{check the higher height}
+      \end{aligned}
+      $$
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 430" aria-label="Contour map of the bowl x squared plus 2y squared seen from above, with rings at heights 2.16, 4.25 and 7.16 around the lowest point (0, 0). From P at (1.5, 1), height 4.25, the orange arrow subtracts a tenth of the gradient (3, 4) and lands at (1.2, 0.6), height 2.16. The blue arrow adds it instead and lands at (1.8, 1.4), height 7.16">
@@ -95,6 +111,12 @@ knowledge_points:
       - gdp-robot-step
   - id: gd-step-size
     title: "Choose how big each step is"
+
+    tldr: |
+      - A small learning rate makes slow progress.
+      - A learning rate that is too large jumps past the bottom and can make the loss grow.
+      - Steeper curves need smaller rates to stay safe.
+      - In practice we watch the loss after each step and pick a rate that keeps it falling.
     explain: |
       ### Why the step size matters
 
@@ -104,7 +126,12 @@ knowledge_points:
 
       Along the line $y=0$, the bowl is just $x^2$, so let's take $f(w)=w^2$ as a stand-in loss. We call its input $w$ because it plays the part of a weight. Its slope is $2w$, so one step gives
 
-      $$w_{\text{new}}=w-\eta\times2w=(1-2\eta)\,w.$$
+      $$
+      \begin{aligned}
+      w_{\text{new}}&=w-\eta\times2w &&\text{subtract the scaled slope}\\
+      &=(1-2\eta)\,w &&\text{factor out }w
+      \end{aligned}
+      $$
 
       So every step multiplies $w$ by $1-2\eta$. Each panel starts at $w=5$ and takes two steps.
 
@@ -160,11 +187,27 @@ knowledge_points:
 
       ### The largest safe step size
 
-      Each step multiplies $w$ by $1-2\eta$, so the distance from the bottom shrinks only if that multiplier lies between $-1$ and $1$. With $\eta$ positive, the multiplier is below $1$, and it stays above $-1$ while $2\eta<2$:
+      Each step multiplies $w$ by $1-2\eta$, so the distance from the bottom shrinks only if that multiplier lies between $-1$ and $1$. With $\eta$ positive, the multiplier is below $1$. For the other bound:
+      $$
+      \begin{aligned}
+      1-2\eta&>-1 &&\text{keep the multiplier above minus one}\\
+      2&>2\eta &&\text{add }1+2\eta\text{ to both sides}\\
+      \eta&<1 &&\text{divide by two}
+      \end{aligned}
+      $$
+      Together, these give $0<\eta<1$.
 
-      $$0<\eta<1.$$
-
-      The limit depends on how steep the curve is. Along the other direction of our bowl, $2y^2$, the slope is $4y$, so each step multiplies $y$ by $1-4\eta$. That stays above $-1$ only while $4\eta<2$, so the limit drops to $\eta<0.5$, and that's the limit for the whole bowl.
+      The limit depends on how steep the curve is. Along the other direction of our bowl, $2y^2$, the slope is $4y$:
+      $$
+      \begin{aligned}
+      y_{\text{new}}&=y-\eta\times4y &&\text{subtract the scaled slope}\\
+      &=(1-4\eta)y &&\text{factor out }y\\
+      1-4\eta&>-1 &&\text{bound the multiplier}\\
+      2&>4\eta &&\text{add }1+4\eta\text{ to both sides}\\
+      \eta&<0.5 &&\text{divide by four}
+      \end{aligned}
+      $$
+      That's the limit for the whole bowl.
 
       ### Reading the loss curve
 
@@ -198,6 +241,12 @@ knowledge_points:
       - gdp-drone-rate
   - id: gd-price-gradients
     title: "Work out which way to move each weight"
+
+    tldr: |
+      - A weight changes the loss only through the prediction it helps make.
+      - With squared error, a weight's slope is twice the error times that weight's input.
+      - The bias's slope is just twice the error.
+      - The error's sign says whether each one should move up or down.
     explain: |
       ### Where the slopes come from
 
@@ -207,7 +256,15 @@ knowledge_points:
 
       Take the smallest model, with one input $x$, one weight $w$ and a bias $b$, which predicts $\hat y=wx+b$. We start with $w=1$ and $b=1$, the grey line in the picture.
 
-      Our one training example is the black dot, $x=2$ with true output $y=7$. The model predicts $\hat y=1\times2+1=3$, which is $4$ too low, shown by the red gap. The **error** is $e=\hat y-y=3-7=-4$, and the loss is the squared error, $L=e^2=16$.
+      Our one training example is the black dot, $x=2$ with true output $y=7$. The **error** $e$ is the prediction minus the true output, and the loss $L$ is its square:
+      $$
+      \begin{aligned}
+      \hat y&=1\times2+1=3 &&\text{predict}\\
+      e&=\hat y-y=3-7=-4 &&\text{subtract the target}\\
+      L&=e^2=(-4)^2=16 &&\text{square the error}
+      \end{aligned}
+      $$
+      The prediction is $4$ too low, shown by the red gap.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 340" aria-label="Input x against output. The grey line is the starting model, prediction equals x plus 1, which predicts 3 at x equals 2. The training example is the black dot at (2, 7). A red dashed segment from 3 up to 7 shows the error of minus 4. The orange line is the model after one gradient-descent step, prediction equals 1.8x plus 1.4, which predicts 5 at x equals 2">
@@ -240,7 +297,17 @@ knowledge_points:
 
       ### The slope of each weight
 
-      If we nudge $w$ up by $0.01$, the prediction $wx+b$ rises by $x$ times that, $0.02$. In the loss-functions lesson, we saw that the squared error's slope with respect to the prediction is $2e$, here $-8$. So the loss changes by about $-8\times0.02=-0.16$, which is $-16$ times the nudge. Since $2e$ is $-8$ and $x$ is $2$, that $-16$ is $2e$ times $x$. Nudging $b$ moves the prediction by the same amount as the nudge, so the bias's slope is just $2e$. For a model with several inputs, where $x_j$ is the $j$-th input and $w_j$ its weight, and $\partial L/\partial w_j$ means the slope of $L$ for $w_j$,
+      If we nudge $w$ up by $0.01$, the prediction rises by $x$ times that. In the loss-functions lesson, we saw that the squared error's slope with respect to the prediction is $2e$, so we can estimate the loss change:
+      $$
+      \begin{aligned}
+      \text{prediction change}&=2\times0.01=0.02 &&\text{input times weight nudge}\\
+      2e&=2\times(-4)=-8 &&\text{loss slope for the prediction}\\
+      \text{loss change}&\approx-8\times0.02=-0.16 &&\text{slope times prediction change}\\
+      \text{weight slope}&\approx-0.16/0.01=-16 &&\text{divide by the weight nudge}\\
+      2ex&=2\times(-4)\times2=-16 &&\text{identify the exact slope}
+      \end{aligned}
+      $$
+      Nudging $b$ moves the prediction by the same amount as the nudge, so the bias's slope is just $2e$. For a model with several inputs, where $x_j$ is the $j$-th input and $w_j$ its weight, and $\partial L/\partial w_j$ means the slope of $L$ for $w_j$,
 
       $$\frac{\partial L}{\partial w_j}=2e\,x_j,\qquad\frac{\partial L}{\partial b}=2e.$$
 
@@ -288,6 +355,12 @@ knowledge_points:
       - gdp-backwards-error
   - id: gd-training-loop
     title: "Repeat until the loss stops falling"
+
+    tldr: |
+      - Training repeats four moves: predict, measure the loss, find the slopes and update.
+      - The slopes change as the weights move, so we work them out again on every pass.
+      - We stop once the loss barely falls.
+      - Where we stop may be the bottom of a nearby dip, with a deeper one somewhere else.
     explain: |
       ### Repeating the step
 
@@ -324,7 +397,15 @@ knowledge_points:
 
       ### Work out the slopes again every pass
 
-      The slopes belong to the point where we're standing, and that point moves. After the first step the error halves from $-4$ to $-2$, so the slopes halve too, from $(-16,-8)$ to $(-8,-4)$. That's why the steps get smaller near the bottom on their own. If we kept reusing the first slopes, every step would stay full size, adding $2$ to the prediction each time, $3$, $5$, $7$, $9$, $11$, so it would sail straight past $7$ and keep going.
+      The slopes belong to the point where we're standing, and that point moves. After the first step:
+      $$
+      \begin{aligned}
+      e&=5-7=-2 &&\text{find the new error}\\
+      2ex&=2\times(-2)\times2=-8 &&\text{recalculate the weight slope}\\
+      2e&=2\times(-2)=-4 &&\text{recalculate the bias slope}
+      \end{aligned}
+      $$
+      The error and slopes have halved, so the steps get smaller near the bottom on their own. Reusing the first slopes would keep adding $2$ to the prediction: $3$, $5$, $7$, $9$, $11$. It would sail straight past $7$ and keep going.
 
       ### When to stop
 
@@ -371,7 +452,15 @@ knowledge_points:
       4. **Update.** Each parameter moves against its own slope.
          $$w=1.8-0.05\times(-8)=2.2,\qquad b=1.4-0.05\times(-4)=1.6.$$
 
-      The slopes were half the size of the first pass's, so this step was half as big. The next prediction is $2.2\times2+1.6=6$, so the error is $-1$ and the loss falls from $4$ to $1$.
+      The slopes were half the size of the first pass's, so this step was half as big. Check what it does to the loss:
+      $$
+      \begin{aligned}
+      \hat y&=2.2\times2+1.6=6 &&\text{predict after the update}\\
+      e&=6-7=-1 &&\text{subtract the target}\\
+      L&=(-1)^2=1 &&\text{square the error}
+      \end{aligned}
+      $$
+      The loss falls from $4$ to $1$.
 
       Here is the same loop in Python, running four passes. In Python, `**` means "to the power of", `range(1, 5)` counts the passes from $1$ to $4$, and `w, b = ..., ...` updates both from their old values at the same time. The `for` line repeats the indented lines once per pass, `lr` stands for the learning rate $\eta$, `dw` and `db` hold the two slopes, and `round(loss, 4)` rounds the loss to four decimal places.
 

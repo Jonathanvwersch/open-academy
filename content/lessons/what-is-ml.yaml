@@ -11,6 +11,11 @@ where_this_fits: |
 knowledge_points:
   - id: ml-what-it-is
     title: "Learn a rule from examples"
+
+    tldr: |
+      - Machine learning means a computer finds a rule from examples whose answers we know.
+      - The rule has adjustable numbers called weights, and learning means choosing them so the rule fits the examples.
+      - The chosen rule can then give answers for new examples it has never seen.
     explain: |
       ### Three sales and three possible rules
 
@@ -102,6 +107,11 @@ knowledge_points:
       - ml-fit-weight
   - id: ml-house-model
     title: "What a computer needs to learn"
+
+    tldr: |
+      - We write each house as numbers and combine them with weights to predict a price.
+      - A score called a loss measures how far the predictions miss the sale prices.
+      - Training repeatedly changes the weights to make that loss smaller.
     explain: |
       ### A house as a list of numbers
 
@@ -115,7 +125,15 @@ knowledge_points:
 
       $$\text{prediction}=w_1x_1+w_2x_2+w_3x_3.$$
 
-      With weights $(25,10,-1)$, each ten square metres adds £25k, each bedroom adds £10k and each year of age takes off £1k, so this house is predicted at £310k. It actually sold for £330k.
+      With weights $(25,10,-1)$, each ten square metres adds £25k, each bedroom adds £10k and each year of age takes off £1k. Combine those contributions to price the house:
+      $$
+      \begin{aligned}
+      \text{prediction}&=25\times12+10\times3-1\times20 &&\text{apply the weights}\\
+      &=300+30-20 &&\text{multiply each pair}\\
+      &=310 &&\text{add the contributions}
+      \end{aligned}
+      $$
+      It actually sold for £330k.
 
       ### Scoring the weights and improving them
 
@@ -204,6 +222,11 @@ knowledge_points:
       - ml-why-new-houses
   - id: ml-to-robots
     title: "Teach a robot the same way"
+
+    tldr: |
+      - A robot uses a model to turn what it senses into its next movement.
+      - It can learn by copying a person's recorded movements, or by trial and error with a score called a reward.
+      - Either way, the model predicts, gets scored and changes its weights, just like the house model.
     explain: |
       ### From house prices to a robot arm
 

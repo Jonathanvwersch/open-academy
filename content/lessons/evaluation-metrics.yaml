@@ -13,6 +13,11 @@ where_this_fits: |
 knowledge_points:
   - id: evm-count
     title: Count right and wrong answers
+
+    tldr: |
+      - A confusion matrix is a table that counts the camera's right answers, false alarms and missed faults.
+      - Accuracy is the share of all parts the camera gets right.
+      - When faults are rare, a camera can score high accuracy while missing every fault.
     explain: |
       ### Four outcomes for a factory camera
 
@@ -72,6 +77,11 @@ knowledge_points:
       ]
   - id: evm-catch
     title: Measure caught faults and false alarms
+
+    tldr: |
+      - Precision is the share of flagged parts that are actually faulty.
+      - Recall is the share of faulty parts the camera flags.
+      - Which one matters more depends on which mistake costs more, a missed fault or a false alarm.
     explain: |
       ### Of the flagged parts, how many were faulty?
 
@@ -134,6 +144,12 @@ knowledge_points:
       ]
   - id: evm-numbers
     title: Score predicted prices
+
+    tldr: |
+      - When we predict a price, we measure how far each prediction misses.
+      - Mean absolute error averages the sizes of the misses.
+      - Mean squared error averages the squared misses, so one big miss counts much more.
+      - Its square root puts the score back in thousands of pounds.
     explain: |
       ### From faulty parts to house prices
 
@@ -163,7 +179,16 @@ knowledge_points:
 
       $$\text{MAE}=\frac{\text{sum of absolute errors}}{\text{number of examples}}.$$
 
-      **Mean squared error (MSE)** averages squared errors. Squaring a number multiplies it by itself, so 10 squared is 100 and −10 squared is also 100. A's squared errors total 400. B's one 40-unit miss squares to 1600, so B's total is 1600. Squaring gives the large miss more influence.
+      **Mean squared error (MSE)** averages squared errors. Squaring a number multiplies it by itself. Let's build each model's total:
+      $$
+      \begin{aligned}
+      10^2=(-10)^2&=100 &&\text{square each of A's misses}\\
+      \text{A's total}&=100+100+100+100=400 &&\text{add A's squares}\\
+      40^2&=1600 &&\text{square B's only nonzero miss}\\
+      \text{B's total}&=0+0+0+1600=1600 &&\text{add B's squares}
+      \end{aligned}
+      $$
+      Squaring gives the large miss more influence.
 
       $$\text{MSE}=\frac{\text{sum of squared errors}}{\text{number of examples}}.$$
 
