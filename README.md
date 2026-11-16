@@ -2,7 +2,7 @@
 
 Open Academy is a self-hosted learning app where you use AI to create courses on whatever you want to learn. You ask an AI coding agent such as Claude Code or Codex for a course, and it plans the topics and writes the lessons and questions. It can start from scratch or from your own notes and textbooks.
 
-The app is heavily modelled on [Math Academy](https://www.mathacademy.com), but it isn't limited to maths. You can use the same approach for any subject. Lessons are short and each one ends in a quiz. Spaced reviews bring topics back before you forget them, and a placement check lets you skip what you already know. The app keeps track of which topics you've passed and how well you still remember them, and uses that to plan each day. Math Academy's [pedagogy page](https://www.mathacademy.com/pedagogy) explains the learning science behind this, and it's a good description of what Open Academy is going for.
+It's heavily based on [Math Academy](https://www.mathacademy.com), but it works for any subject. You learn a topic in a short lesson, then answer a few questions on it. After that, the app brings it back for review every so often so you don't forget it. Math Academy's [pedagogy page](https://www.mathacademy.com/pedagogy) explains the ideas behind this.
 
 This repo comes with example courses in maths and AI, so you can try it straight away.
 
