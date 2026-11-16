@@ -21,7 +21,7 @@ knowledge_points:
 
     tldr: |
       - A matrix moves each arrow to a new arrow, and usually turns it.
-      - Some directions don't turn. The matrix only stretches them.
+      - Some directions don't turn, and the matrix only stretches them.
       - Those directions are the eigenvectors, and how much each one stretches is its eigenvalue.
     explain: |
       ### What a matrix does to arrows
@@ -227,7 +227,7 @@ knowledge_points:
     tldr: |
       - Some matrices turn every direction, so they have no eigenvectors.
       - But every matrix can be done in three moves: turn, stretch along the axes, turn again.
-      - That's the SVD. The stretch amounts are called singular values.
+      - That's the SVD, and its stretch amounts are called singular values.
     explain: |
       ### A matrix with no stretch-only direction
 

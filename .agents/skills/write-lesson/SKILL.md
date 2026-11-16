@@ -49,7 +49,7 @@ Each step has a `tldr`, shown at the top of the step before the `explain`, so th
 tldr: |
   - Some matrices turn every direction, so they have no eigenvectors.
   - But every matrix can be done in three moves: turn, stretch along the axes, turn again.
-  - That's the SVD. The stretch amounts are called singular values.
+  - That's the SVD, and its stretch amounts are called singular values.
 ```
 
 Within a step, follow this order. Leave out a part that the idea doesn't need.
