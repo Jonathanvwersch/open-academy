@@ -20,7 +20,7 @@ knowledge_points:
     title: "Find directions a matrix only stretches"
 
     tldr: |
-      - A matrix moves each arrow to a new arrow, and usually turns it.
+      - A matrix turns each vector into a new vector, which usually points a different way.
       - Some directions don't turn, and the matrix only stretches them.
       - Those directions are the eigenvectors, and how much each one stretches is its eigenvalue.
     explain: |
@@ -94,7 +94,7 @@ knowledge_points:
 
     tldr: |
       - Guessing directions only works for easy matrices, so we solve for them instead.
-      - Asking for an arrow that is only stretched gives one equation for the stretch amount.
+      - Asking for a vector that is only stretched gives one equation for the stretch amount.
       - Solving it gives the eigenvalues, and putting each one back in gives its direction.
     explain: |
       ### From guessing to solving
