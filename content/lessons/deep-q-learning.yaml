@@ -18,6 +18,10 @@ where_this_fits: |
 knowledge_points:
   - id: dqn-q-network
     title: "Replace the table with a network"
+    tldr: |
+      - A Q-network reads a state and predicts a value for each action.
+      - We train the chosen action's prediction toward a target built from the move's result.
+      - Changing the network's weights also changes its predictions for other states.
     explain: |
       ### The corridor task
 
@@ -75,13 +79,31 @@ knowledge_points:
       3. **Measure the loss.** The prediction is $0.7$ above the target.
          $$L=(6-5.3)^2=0.49.$$
 
-      4. **Find the slopes.** As the prediction changes, the loss changes at a rate of twice the error, $2\times0.7=1.4$. The right output is $1\times s+4$, so nudging its weight moves the output by $s=2$ times the nudge, and nudging its bias moves it by the nudge itself. By the chain rule, we multiply the two rates. The left output's weight and bias don't affect $Q(2,\text{right})$, so their slopes are $0$ and they stay the same.
-         $$\frac{\partial L}{\partial w}=1.4\times2=2.8,\qquad\frac{\partial L}{\partial b}=1.4.$$
+      4. **Find the slopes.** The loss changes at twice the prediction error. The right output is $1\times s+4$, so nudging its weight moves the output by $s=2$ times the nudge, and nudging its bias moves it by the nudge itself. Multiply these rates by the chain rule. The left output's weight and bias don't affect $Q(2,\text{right})$, so their slopes are $0$ and they stay the same.
+         $$
+         \begin{aligned}
+         \frac{\partial L}{\partial Q}&=2\times0.7=1.4 &&\text{twice the prediction error}\\
+         \frac{\partial L}{\partial w}&=1.4\times2=2.8 &&\text{multiply by the input}\\
+         \frac{\partial L}{\partial b}&=1.4\times1=1.4 &&\text{bias changes output equally}
+         \end{aligned}
+         $$
 
       5. **Update.** Each parameter moves against its slope.
-         $$w=1-0.1\times2.8=0.72,\qquad b=4-0.1\times1.4=3.86.$$
+         $$
+         \begin{aligned}
+         w&=1-0.1\times2.8=0.72 &&\text{update the weight}\\
+         b&=4-0.1\times1.4=3.86 &&\text{update the bias}
+         \end{aligned}
+         $$
 
-      The new prediction is $Q(2,\text{right})=0.72\times2+3.86=5.3$, exactly the target. That's a coincidence of these numbers, since a step usually just gets closer. But the step also changed the right output in cell 3, from $7$ to $0.72\times3+3.86=6.02$, even though we never trained on cell 3.
+      Use the updated weights to compare the two cells:
+      $$
+      \begin{aligned}
+      Q(2,\text{right})&=0.72\times2+3.86=5.3 &&\text{predict in the trained cell}\\
+      Q(3,\text{right})&=0.72\times3+3.86=6.02 &&\text{predict in the other cell}
+      \end{aligned}
+      $$
+      The new prediction in cell 2 exactly matches the target. That's a coincidence of these numbers, since a step usually just gets closer. The right output in cell 3 changed from $7$ to $6.02$, even though we never trained on cell 3.
     problems:
       - dqn-q-network-basics
       - dqnq-target-self-explain
@@ -93,6 +115,10 @@ knowledge_points:
       - dqnq-all-actions
   - id: dqn-replay
     title: "Train on a store of past moves"
+    tldr: |
+      - Consecutive moves often look alike, so training only on recent moves can erase earlier learning.
+      - A replay buffer stores past moves and lets us train on random groups of them.
+      - This mixes experience from different times and reuses each move for learning.
     explain: |
       ### Two problems with learning as we go
 
@@ -161,7 +187,14 @@ knowledge_points:
          $$y_5=10.$$
 
       5. **Average the squared errors.** The minibatch loss is the mean over its two transitions.
-         $$L=\frac{(4-3.5)^2+(7-10)^2}{2}=\frac{0.25+9}{2}=4.625.$$
+         $$
+         \begin{aligned}
+         L&=\frac{(4-3.5)^2+(7-10)^2}{2} &&\text{average the squared errors}\\
+         &=\frac{0.25+9}{2} &&\text{square each error}\\
+         &=\frac{9.25}{2} &&\text{add}\\
+         &=4.625 &&\text{divide by the batch size}
+         \end{aligned}
+         $$
 
       Almost all of the loss comes from transition 5, because the network still undervalues the move that reaches the goal.
     problems:
@@ -175,12 +208,27 @@ knowledge_points:
       - dqnr-robot-camera
   - id: dqn-target-network
     title: "Use a frozen network copy for targets"
+    tldr: |
+      - Training a Q-network can change the target it is trying to reach.
+      - A frozen copy of the network holds those targets steady during training.
+      - We refresh the copy occasionally so its targets catch up with learning.
     explain: |
       ### The target moves when we train
 
       Replay deals with similar moves in a row, but one problem is left. In supervised learning the label never changes. In deep Q-learning, the TD target is computed by the same network we are training, so a step that changes the prediction can also change the target.
 
-      Let's watch it happen. Our robot is in a corridor of 4 cells with reward $-1$ per step and $\gamma=0.9$, and our Q-network gives $Q(s,\text{left})=s+2$ and $Q(s,\text{right})=s+4$ for cell $s$. The robot moves right from cell 2 to cell 3. The prediction is $Q(2,\text{right})=6$, and the target is $-1+0.9\times7=5.3$. One gradient step brings the prediction down to $5.3$. But the same weights produce $Q(3,\text{right})$, so the step lowers it too, and the target slides down to about $4.42$. The gap grows from $0.7$ to $0.88$, as the first two rows of the picture show. The third row shows the fix we'll meet next.
+      Our robot is in a corridor of 4 cells with reward $-1$ per step and $\gamma=0.9$. The Q-network gives $Q(s,\text{left})=s+2$ and $Q(s,\text{right})=s+4$. The robot moves right from cell 2 to cell 3:
+      $$
+      \begin{aligned}
+      Q(2,\text{right})&=6 &&\text{prediction before training}\\
+      y&=-1+0.9\times7=5.3 &&\text{target before training}\\
+      Q(2,\text{right})&=5.3 &&\text{prediction after one gradient step}\\
+      y&\approx4.42 &&\text{shared weights lower the target too}\\
+      6-5.3&=0.7 &&\text{gap before training}\\
+      5.3-4.42&\approx0.88 &&\text{gap after training}
+      \end{aligned}
+      $$
+      The first two picture rows show the growing gap; the third shows the fix we'll meet next. The worked example gives the weight updates.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 330" aria-label="Three rows on a number line from 4 to 6.5. Before the step, the blue prediction is at 6 and the orange target is at 5.3, a gap of 0.7. After the step, with the target from the network being trained, the prediction is at 5.3 and the target has slid to 4.42, a gap of 0.88. After the step, with the target from a frozen copy, the prediction and target are both at 5.3, a gap of 0">
@@ -230,11 +278,26 @@ knowledge_points:
     worked: |
       Let's do the arithmetic behind the picture. Before the step, the Q-network and its frozen copy are the same: $Q(s,\text{left})=s+2$ and $Q(s,\text{right})=s+4$. The robot moves right from cell 2 to cell 3 and gets reward $-1$. We use $\gamma=0.9$ and a learning rate of $\eta=0.1$.
 
-      1. **Take the step.** The prediction $6$ is $0.7$ above the target $5.3$, so the loss changes at a rate of $2\times0.7=1.4$ as the prediction changes. The right output's weight moves against its slope, $1.4\times2$, to $1-0.1\times2.8=0.72$, and its bias moves against its slope, $1.4$, to $4-0.1\times1.4=3.86$.
-         $$Q(2,\text{right})=0.72\times2+3.86=5.3.$$
+      1. **Take the step.** Find the loss slope, multiply by each parameter's effect on the output, then move against those slopes.
+         $$
+         \begin{aligned}
+         \frac{\partial L}{\partial Q}&=2(6-5.3)=1.4 &&\text{twice the prediction error}\\
+         \frac{\partial L}{\partial w}&=1.4\times2=2.8 &&\text{multiply by the input}\\
+         \frac{\partial L}{\partial b}&=1.4 &&\text{bias changes output equally}\\
+         w&=1-0.1\times2.8=0.72 &&\text{update the weight}\\
+         b&=4-0.1\times1.4=3.86 &&\text{update the bias}\\
+         Q(2,\text{right})&=0.72\times2+3.86=5.3 &&\text{recompute the prediction}
+         \end{aligned}
+         $$
 
       2. **Target from the network being trained.** The trained network's right output in cell 3 has dropped to $6.02$. That's still larger than its left output, $5$, so the max uses $6.02$.
-         $$y=-1+0.9\times(0.72\times3+3.86)=-1+0.9\times6.02=4.418.$$
+         $$
+         \begin{aligned}
+         Q(3,\text{right})&=0.72\times3+3.86=6.02 &&\text{predict the next value}\\
+         y&=-1+0.9\times6.02 &&\text{use the larger next output}\\
+         &=4.418 &&\text{evaluate the target}
+         \end{aligned}
+         $$
 
       3. **Target from the frozen copy.** The copy still gives $Q(3,\text{right})=3+4=7$.
          $$y=-1+0.9\times7=5.3.$$
@@ -254,6 +317,10 @@ knowledge_points:
       - dqnt-drone-values
   - id: dqn-training-loop
     title: "Put the whole training loop together"
+    tldr: |
+      - DQN chooses actions, stores moves and trains on random groups of stored moves.
+      - A frozen network supplies the targets, and the learning network supplies the predictions.
+      - Repeating this loop learns action values for tasks with too many states for a table.
     explain: |
       ### The DQN loop
 
@@ -301,7 +368,11 @@ knowledge_points:
 
       ### Targets for a whole minibatch
 
-      In code we compute every target in a minibatch at once. We run the target network on all the next states, which gives a table with one row per transition and one column per action. We take the largest output in each row, and multiply that by $1-\text{done}$, where done is $1$ if the episode ended and $0$ if not.
+      In code we compute every target in a minibatch at once. The target network gives a table with one row per next state and one column per action. For each row, done is $1$ if the episode ended and $0$ otherwise:
+      1. Take the largest output for that row's next state.
+      2. Multiply by $1-\text{done}$ to remove future rewards after an ending.
+      3. Discount the result.
+      4. Add the reward.
 
       $$y=r+\gamma\,(1-\text{done})\max_{a'}Q(s',a';\theta^-).$$
 
@@ -310,16 +381,36 @@ knowledge_points:
     worked: |
       Let's compute the targets and the loss for a minibatch of three transitions in our corridor of 4 cells, where reaching cell 4 ends the episode with reward $10$ and every other step gives $-1$, with $\gamma=0.9$. The target network still has the old weights, $Q(s,\text{left})=s+2$ and $Q(s,\text{right})=s+4$. Suppose training has since changed the Q-network to $Q(s,\text{left})=s+2$ and $Q(s,\text{right})=s+3$. These values are picked to keep the arithmetic simple, and they aren't the ones from step 3. The first transition is a move right from cell 1 to cell 2. The second is a move left from cell 2 to cell 1. The third is a move right from cell 3 to cell 4, which ends the episode.
 
-      1. **Run the target network on the next states.** For cells 2, 1 and 4 it gives the rows $(4,6)$, $(3,5)$ and $(6,8)$, so the largest outputs are $6$, $5$ and $8$. The numbers for cell 4 mean nothing, since the episode ended there, and the next step throws them away.
+      1. **Run the target network on the next states.** Take the largest output in each row. The numbers for cell 4 mean nothing, since the episode ended there, and the next step throws them away.
+         $$
+         \begin{aligned}
+         \max(4,6)&=6 &&\text{next state is cell two}\\
+         \max(3,5)&=5 &&\text{next state is cell one}\\
+         \max(6,8)&=8 &&\text{next state is cell four}
+         \end{aligned}
+         $$
 
       2. **Build the targets.** Done is $0$ for the first two and $1$ for the third, so the third transition's $8$ is multiplied by $0$ and drops out.
-         $$y_1=-1+0.9\times6=4.4,\quad y_2=-1+0.9\times5=3.5,\quad y_3=10.$$
+         $$
+         \begin{aligned}
+         y_1&=-1+0.9\times6=4.4 &&\text{discount cell two's maximum}\\
+         y_2&=-1+0.9\times5=3.5 &&\text{discount cell one's maximum}\\
+         y_3&=10 &&\text{keep only the terminal reward}
+         \end{aligned}
+         $$
 
       3. **Pick the Q-network's predictions.** Each uses the action the robot took.
          $$Q(1,\text{right})=4,\quad Q(2,\text{left})=4,\quad Q(3,\text{right})=6.$$
 
       4. **Average the squared errors.**
-         $$L=\frac{(4-4.4)^2+(4-3.5)^2+(6-10)^2}{3}=\frac{16.41}{3}=5.47.$$
+         $$
+         \begin{aligned}
+         L&=\frac{(4-4.4)^2+(4-3.5)^2+(6-10)^2}{3} &&\text{average the squared errors}\\
+         &=\frac{0.16+0.25+16}{3} &&\text{square each error}\\
+         &=\frac{16.41}{3} &&\text{add}\\
+         &=5.47 &&\text{divide by the batch size}
+         \end{aligned}
+         $$
 
       If we'd taken the first target from the Q-network instead, its cell 2 outputs $(4,5)$ would give $y_1=3.5$, so the two networks really do give different labels.
 
