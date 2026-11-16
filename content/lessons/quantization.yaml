@@ -99,9 +99,9 @@ knowledge_points:
     title: "Turn numbers into 8-bit integers"
 
     tldr: |
-      - A shared scale tells us the gap between the values we can store.
-      - Divide by that scale and round to get an integer, then multiply back when using it.
-      - Large values widen the gaps, so smaller groups can help preserve small weights.
+      - To store a weight as a small whole number, we pick a scale, the gap between neighbouring stored values.
+      - Dividing each weight by the scale and rounding gives its integer, and multiplying back recovers it to within half a gap.
+      - One very large weight widens every gap, so models often use a separate scale for each small group of weights.
     explain: |
       ### The idea
 
@@ -217,9 +217,9 @@ knowledge_points:
     title: "Choose what to quantise and how"
 
     tldr: |
-      - Smaller weights reduce the data read during decoding.
-      - Keeping calculations at the same precision leaves their arithmetic speed unchanged.
-      - Using smaller formats for both weights and layer inputs can speed up arithmetic too.
+      - Storing only the weights in a smaller format cuts the bytes read, so decoding gets faster.
+      - The maths still runs at 16 bits, so reading the prompt gets no faster.
+      - Making both the weights and the numbers passed between layers 8-bit doubles the maths speed, so reading the prompt speeds up too.
     explain: |
       ### Two kinds of format
 
@@ -341,9 +341,9 @@ knowledge_points:
     title: "Check whether the quantised model got worse"
 
     tldr: |
-      - Rounding model numbers can change the answers it gives.
-      - Compare both models on unseen text and on the tasks users care about.
-      - Keep the smaller model only if the quality change is acceptable.
+      - Rounding the model's numbers can quietly make its answers worse.
+      - So we test both versions on text they never trained on and on the tasks users care about.
+      - We keep the smaller model only if its scores drop by an amount the product can accept.
     explain: |
       ### Why we have to measure
 

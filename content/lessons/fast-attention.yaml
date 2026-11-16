@@ -20,9 +20,9 @@ knowledge_points:
     title: "Count the bytes attention moves"
 
     tldr: |
-      - Separate attention programs pass large tables through the GPU's main memory.
-      - Longer prompts increase both the arithmetic and the table traffic.
-      - Their ratio levels off, so memory movement keeps limiting speed.
+      - Standard attention runs as three separate GPU programs that pass big tables of scores through main memory.
+      - A longer prompt makes both the arithmetic and those tables grow at the same rate.
+      - So the arithmetic per byte stays low, and moving data sets the speed.
     explain: |
       ### Attention as three kernels
 
@@ -117,9 +117,9 @@ knowledge_points:
     title: "Do all of attention in one kernel"
 
     tldr: |
-      - Combining attention into one program avoids passing its large tables through main memory.
-      - Small blocks let the program work within the chip's limited fast memory.
-      - This reduces data movement while keeping the same arithmetic.
+      - Doing all of attention in one GPU program keeps the big score tables on the chip.
+      - The chip's fast memory is small, so the program works through the data in small blocks.
+      - This cuts the bytes moved a lot while doing the same arithmetic.
     explain: |
       ### One kernel for the whole calculation
 
@@ -218,9 +218,9 @@ knowledge_points:
     title: "Compute softmax one block of keys at a time"
 
     tldr: |
-      - Softmax needs a total that includes every key.
-      - Each block adds to running totals for the weights and weighted values.
-      - Dividing those totals at the end gives the same output as processing all keys together.
+      - Softmax divides by a total over every key, which isn't known until the last block.
+      - So we keep two running totals, one for the weights and one for the weighted values.
+      - Dividing one total by the other at the end gives exactly the same output as doing all the keys at once.
     explain: |
       ### The total that comes last
 
@@ -302,8 +302,8 @@ knowledge_points:
 
     tldr: |
       - Large scores can make the exponentials in softmax too big to store.
-      - Subtracting the largest score keeps them small without changing the probabilities.
-      - When a later block has a larger score, rescale both running totals to keep the output unchanged.
+      - Subtracting the largest score from every score keeps them at most one and leaves the weights unchanged.
+      - When a later block brings a larger score, we shrink both running totals to match, so the output stays the same.
     explain: |
       ### Big scores break the exponential
 

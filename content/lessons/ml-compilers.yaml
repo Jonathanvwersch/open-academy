@@ -20,9 +20,9 @@ knowledge_points:
     title: "Turn the model into a graph"
 
     tldr: |
-      - Running operations as Python reaches them hides later opportunities to combine work.
-      - A compiler records a graph that shows how the operations fit together.
-      - Breaking them into simple pieces lets the compiler generate and merge GPU programs.
+      - Normal PyTorch runs each operation the moment Python reaches it, so it can't see what comes next.
+      - A compiler first records the whole calculation as a graph of operations and how they connect.
+      - It breaks them into simple pieces, so it can merge them and write fast GPU programs.
     explain: |
       ### Running one operation at a time
 
@@ -101,9 +101,9 @@ knowledge_points:
     title: "Merge a chain of small operations"
 
     tldr: |
-      - Separate kernels write intermediate results to main memory and read them back.
-      - Combining compatible operations keeps those results on the chip.
-      - Moving fewer bytes makes a memory limited chain faster without changing its arithmetic.
+      - Each separate GPU program writes its results to main memory, and the next one reads them back.
+      - Merging a chain of simple operations into one program keeps those results on the chip.
+      - The arithmetic is the same, but far fewer bytes move, so a memory-limited chain runs faster.
     explain: |
       ### Three kernels on one big tensor
 
@@ -213,9 +213,9 @@ knowledge_points:
     title: "Search for a cheaper equal calculation"
 
     tldr: |
-      - Different calculations can give the same answer at different costs.
-      - Keeping equivalent versions avoids losing a route to a cheaper calculation.
-      - The compiler searches those versions and chooses the cheapest under its numerical rules.
+      - The same answer can often be computed in cheaper or costlier ways.
+      - Always taking the cheapest swap right away can throw out a version that leads somewhere cheaper.
+      - An e-graph is a structure that keeps every equal version, so the compiler can pick the cheapest at the end.
     explain: |
       ### Rewriting a graph
 
@@ -295,7 +295,7 @@ knowledge_points:
          a\times1:\quad2,&\qquad a:\quad0 &&\text{compare the remaining operation costs}
          \end{aligned}$$
 
-      The e-graph merges the top group, which holds the $a\times(2\div2)$ node, with the group for $a$. Merging joins the two boxes into one box holding the nodes of both, and every arrow that pointed at either now points at the joined box. So the $\times$ node now points back at its own box, which just records that $a\times1$ is in the same group as $a$.
+         The e-graph merges the top group, which holds the $a\times(2\div2)$ node, with the group for $a$. Merging joins the two boxes into one box holding the nodes of both, and every arrow that pointed at either now points at the joined box. So the $\times$ node now points back at its own box, which just records that $a\times1$ is in the same group as $a$.
 
       5. **Extract the cheapest.** Nothing new appears after this, so saturation stops. Extraction picks the cheapest of the versions we've costed in the top group.
          $$\min(6,\ 5,\ 6,\ 2,\ 0)=0.$$
@@ -316,9 +316,9 @@ knowledge_points:
     title: "Tune each kernel for one GPU"
 
     tldr: |
-      - The same kernel can divide its work into blocks of different sizes.
-      - Their speeds depend on the GPU and the shape of the data.
-      - Timing candidates on that GPU finds a good choice for that shape.
+      - One GPU program can split its work into blocks of many different sizes.
+      - Which size is fastest depends on the GPU and on the shape of the data.
+      - So the compiler times several choices on the real GPU and keeps the fastest for that shape.
     explain: |
       ### Many ways to run one kernel
 

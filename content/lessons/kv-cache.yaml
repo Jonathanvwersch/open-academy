@@ -22,9 +22,9 @@ knowledge_points:
     title: Reuse earlier keys and values
 
     tldr: |
-      - Adding a token leaves earlier tokens and their attention keys and values unchanged.
-      - A cache stores those keys and values so later tokens can reuse them.
-      - Each decode call processes one new input token and adds its keys and values to the cache.
+      - Each token only looks back at earlier tokens, so a new token can't change their keys and values.
+      - So the model can store those keys and values, called the KV cache, instead of recomputing them.
+      - Each new step then processes only the newest token and adds its key and value to the cache.
     explain: |
       ### Reuse three stored tokens
 
@@ -116,9 +116,9 @@ knowledge_points:
     title: Share keys and values between heads
 
     tldr: |
-      - Each query head needs keys and values to read from.
-      - Several query heads can share the same stored keys and values.
-      - Sharing reduces cache memory while letting each query choose its own attention weights.
+      - Each query head reads keys and values that the model stores for every token.
+      - Several query heads can share one stored set of keys and values.
+      - Sharing shrinks the cache, and each query head still makes its own attention weights.
     explain: |
       ### Share one key-value set
 
@@ -183,9 +183,9 @@ knowledge_points:
     title: Work out the cache's memory
 
     tldr: |
-      - Each processed token adds keys and values in every layer.
-      - Longer histories and more conversations both increase the number stored.
-      - Count all those stored numbers to check whether the cache fits beside the weights.
+      - Every processed token stores a key and a value in every layer.
+      - Longer conversations and more conversations both mean more stored numbers.
+      - Adding them up shows that a long or busy workload can fill the GPU memory left after the weights.
     explain: |
       ### Build the size from one token
 
@@ -247,9 +247,9 @@ knowledge_points:
     title: Reuse the start of a prompt
 
     tldr: |
-      - Requests sometimes begin with exactly the same tokens.
-      - Their saved keys and values can be shared when the model and positions also match.
-      - Reusing that beginning saves prompt processing while new tokens still need work.
+      - Many requests start with the same tokens, such as shared instructions.
+      - If the tokens, their positions and the model all match, the stored keys and values for that start can be reused.
+      - Then only the tokens after that shared start need processing.
     explain: |
       ### Two requests start the same way
 

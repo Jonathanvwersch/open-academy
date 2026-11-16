@@ -20,9 +20,9 @@ knowledge_points:
     title: "Make many replies at once"
 
     tldr: |
-      - Several replies can share the same model weight read.
-      - Replacing finished replies immediately keeps more of those shared steps useful.
-      - Continuous batching serves more tokens overall by filling slots as they become free.
+      - One decode step reads the weights once and makes a token for every reply in the batch.
+      - When finished replies leave empty slots, those steps waste part of that read.
+      - Continuous batching fills each free slot with a new request right away, so the server makes more tokens per second.
     explain: |
       ### One decode step serves the whole batch
 
@@ -143,9 +143,9 @@ knowledge_points:
     title: "Store the KV cache in small blocks"
 
     tldr: |
-      - Reserving room for the longest possible reply leaves memory unused.
-      - Giving each request small cache blocks as it grows avoids most of that waste.
-      - More requests fit even though each token's stored keys and values stay the same size.
+      - Reserving cache memory for each request's longest possible reply leaves most of it unused.
+      - Paging hands out the cache in small blocks as each reply grows.
+      - Less memory is wasted, so more requests fit on the GPU at once.
     explain: |
       ### Memory limits the batch
 
@@ -292,9 +292,9 @@ knowledge_points:
     title: "Spread the work over several GPUs"
 
     tldr: |
-      - Full copies of a model on separate GPUs can serve more users.
-      - Splitting its weights across GPUs lets each GPU read less per step.
-      - Choose copies for more throughput or split the model for capacity and shorter token gaps.
+      - Copies of the whole model on several GPUs let the server handle more users.
+      - Splitting the model's weights across GPUs means each one reads less per step, so tokens come faster.
+      - Copies suit more users, and splitting suits shorter gaps between tokens and models too big for one GPU.
     explain: |
       ### When one GPU isn't enough
 
@@ -402,9 +402,9 @@ knowledge_points:
     title: "Stop long prompts from stalling replies"
 
     tldr: |
-      - Processing a long prompt can delay tokens for users already reading replies.
-      - Splitting the prompt into smaller pieces spreads that delay across steps.
-      - Separate prompt processing GPUs avoid those stalls but must copy the finished cache.
+      - A long new prompt can make one step much slower, so everyone already mid-reply waits.
+      - Splitting the prompt into chunks spreads that work over several shorter steps.
+      - Another option is separate GPUs just for prompts, which then copy the finished cache to the decoding GPUs.
     explain: |
       ### A long prompt joins the batch
 
@@ -493,7 +493,7 @@ knowledge_points:
          \text{chunks}&=2000/500=4 &&\text{divide the full prompt into pieces}
          \end{aligned}$$
 
-      A 625-token chunk would go over 10 ms once decoding is included.
+         A 625-token chunk would go over 10 ms once decoding is included.
 
       Each of these steps takes about 8.5 ms, which keeps the 10 ms promise. If long prompts arrived so often that most steps carried a chunk, separate prefill GPUs would be the next thing to try.
     problems:

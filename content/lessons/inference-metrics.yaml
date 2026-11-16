@@ -106,9 +106,9 @@ knowledge_points:
     title: "Describe the waits of many users"
 
     tldr: |
-      - Different users can wait very different lengths of time.
-      - Sorting their waits lets us describe both typical and slow replies.
-      - A percentile is the wait that a given share of users stayed under.
+      - Users wait different lengths of time, and a few very slow waits can pull the average up.
+      - Sorting the waits from fastest to slowest lets us read off a typical wait and a slow one.
+      - A percentile such as p90 is the wait that 90 out of every 100 users stayed at or under.
     explain: |
       ### Many requests, many different waits
 
@@ -180,9 +180,9 @@ knowledge_points:
     title: "Serve many users at the same time"
 
     tldr: |
-      - Running several requests together lets them share the work of reading model weights.
-      - This can produce more tokens overall while making each user wait longer between tokens.
-      - Choose the group size that produces the most tokens while keeping each reply fast enough.
+      - Batching runs several users' replies together, so the model's weights are read from memory once for all of them.
+      - That makes more tokens per second in total, but each run can take longer, so each user waits longer between tokens.
+      - Teams pick the batch size with the most tokens in total that still keeps every user's reply fast enough.
     explain: |
       ### Throughput
 
@@ -194,12 +194,12 @@ knowledge_points:
 
       Why doesn't a run with $B$ sequences take $B$ times as long? The model's parameters, called weights, live in the GPU's main memory. They're too big for the chip's on-chip storage, so each run reads all 8 billion of them again. Then it does maths with them for each sequence.
 
-      Each weight uses 2 bytes (16 bits). The H100's main memory delivers about 3.35 TB per second. With 1 GB equal to $10^9$ bytes and 1 TB equal to $10^{12}$ bytes, estimate one read's time:
+      Each weight uses 2 bytes (16 bits). The H100's main memory delivers about 3.35 TB, or 3,350 GB, per second. With 1 GB equal to $10^9$ bytes and 1 TB equal to $10^{12}$ bytes, estimate one read's time:
 
       $$
       \begin{aligned}
       \text{weight memory}&=8\times10^9\times2\ \text{bytes}=16\ \text{GB} &&\text{count bytes for all weights}\\
-      \text{read time}&=16/3350\approx0.0048\ \text{s}\approx4.8\ \text{ms} &&\text{divide size by speed}
+      \text{read time}&=\frac{16\ \text{GB}}{3350\ \text{GB/s}}\approx0.0048\ \text{s}\approx4.8\ \text{ms} &&\text{divide size by speed}
       \end{aligned}
       $$
 

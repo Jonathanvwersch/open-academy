@@ -20,9 +20,9 @@ knowledge_points:
     title: Process the prompt, then generate
 
     tldr: |
-      - The prompt is already known, so the model can process its tokens together.
-      - That first pass supplies the choice for the first output token.
-      - Later tokens depend on earlier choices, so they are generated one at a time.
+      - The whole prompt is known up front, so the model reads all its tokens in one pass, called prefill.
+      - That pass gives the first token of the reply, so it adds to the wait before the reply starts.
+      - Each later token needs the one before it, so decode makes them one at a time and sets the gaps between tokens.
     explain: |
       ### Reading the known prompt
 
@@ -71,7 +71,7 @@ knowledge_points:
 
       2. **Find the total request time.** End-to-end latency is the time from sending a request until its last token arrives. Count the later gaps, then add them to the first wait.
          $$\begin{aligned}
-         \text{later gaps}&=3-1=2 &&\text{the first token is already supplied}\\
+         \text{later gaps}&=3-1=2 &&\text{count the gaps after the first token}\\
          \text{total time}&=120+2\times20=160\text{ ms} &&\text{add both gaps to the first wait}
          \end{aligned}$$
 
@@ -91,9 +91,9 @@ knowledge_points:
     title: Make token choices more or less random
 
     tldr: |
-      - Drawing a token according to its probability lets the wording vary.
-      - Temperature is a setting that changes how concentrated those probabilities are.
-      - Lower temperature favours leading choices, while higher temperature spreads the chances.
+      - The model gives every possible next token a probability, and picking at random by those probabilities lets the wording vary.
+      - Temperature is a setting that divides the model's scores before they become probabilities.
+      - A low temperature makes the top choice even more likely, and a high one evens the chances out.
     explain: |
       ### Choosing from the scores
 
@@ -225,9 +225,9 @@ knowledge_points:
     title: Keep a fixed count of likely tokens
 
     tldr: |
-      - We can remove unlikely tokens before drawing the next one.
-      - Top k sampling keeps a chosen number of the most likely tokens.
-      - Divide their probabilities by the total kept, then draw from those remaining choices.
+      - Even after temperature, the model can still pick a very unlikely token.
+      - Top-k keeps only the k most likely tokens and throws the rest away.
+      - The kept probabilities are scaled up so they add up to one again, and we pick from those.
     explain: |
       ### Removing unlikely choices
 
@@ -319,9 +319,9 @@ knowledge_points:
     title: Choose how much probability to keep
 
     tldr: |
-      - A fixed number of choices can discard too much or keep unlikely tokens.
-      - Top p sampling keeps leading choices until their probabilities reach a chosen total.
-      - Keep the whole choice that reaches the threshold, then divide by the total kept and draw.
+      - Keeping a fixed number of tokens can keep too many unlikely ones or throw away good ones.
+      - Top-p instead keeps the most likely tokens until their probabilities add up to a chosen total.
+      - The token that crosses that total is kept too, then the kept probabilities are scaled to add up to one and we pick from them.
     explain: |
       ### Letting the number kept change
 

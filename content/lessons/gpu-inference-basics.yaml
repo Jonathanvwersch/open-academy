@@ -20,9 +20,9 @@ knowledge_points:
     title: "Work out how much memory a model needs"
 
     tldr: |
-      - Each model weight takes space, depending on how its number is stored.
-      - Multiplying the number of weights by that space gives their total memory.
-      - The GPU needs room for those weights and for the conversations it serves.
+      - Each weight is a number, and storing it takes a fixed number of bytes set by its format.
+      - Multiplying the number of weights by the bytes per weight gives the memory the weights need.
+      - The GPU also needs room beyond the weights, so a model that only just fits can serve few conversations.
     explain: |
       ### Bytes per number
 
@@ -128,9 +128,9 @@ knowledge_points:
     title: "See where the GPU keeps its data"
 
     tldr: |
-      - The GPU has a large main memory and smaller, faster memory on its chip.
-      - Model weights are too large to stay in that fast memory.
-      - Reusing data after reading it from main memory saves time.
+      - A GPU has a large, slower main memory and a little fast memory on the chip itself.
+      - The weights are far too big for the fast memory, so they live in main memory.
+      - Reading from main memory takes time, so a program runs fastest when it reads each number once and reuses it.
     explain: |
       ### The parts of a GPU
 
@@ -203,9 +203,9 @@ knowledge_points:
     title: "Find the top speed of decoding"
 
     tldr: |
-      - Generating each token reads the model weights again.
-      - Reading them takes much longer than the arithmetic for one conversation.
-      - Several conversations can share a read, raising total output until arithmetic catches up.
+      - Making each new token means reading every weight from memory again.
+      - For one conversation, that reading takes far longer than the arithmetic.
+      - Several conversations can share each read, so total tokens per second grows until the arithmetic catches up.
     explain: |
       ### Decoding reads every weight
 

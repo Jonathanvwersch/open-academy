@@ -19,9 +19,9 @@ knowledge_points:
     title: Count calculations and bytes
 
     tldr: |
-      - A matrix product reads its inputs, does arithmetic and writes its output.
-      - We count both the arithmetic and all the bytes moved.
-      - Arithmetic intensity is the amount of arithmetic done per byte moved.
+      - A matrix product reads its inputs from memory, does arithmetic and writes its output back.
+      - We count the arithmetic operations and the bytes moved in and out.
+      - Arithmetic intensity is the number of operations done for each byte moved.
     explain: |
       ### Follow the numbers through a product
 
@@ -87,9 +87,9 @@ knowledge_points:
     title: Compare memory and calculation speeds
 
     tldr: |
-      - The GPU has limits on both calculation speed and data movement.
-      - More arithmetic per byte helps until calculation speed becomes the tighter limit.
-      - The lower of these limits sets the fastest possible rate.
+      - A GPU can only do arithmetic so fast, and it can only move bytes so fast.
+      - An operation that does little arithmetic per byte is held back by moving bytes.
+      - One that does a lot per byte is held back by arithmetic, so the slower of the two limits sets its top speed.
     explain: |
       ### Two limits on speed
 
@@ -154,9 +154,9 @@ knowledge_points:
     title: Reuse weights for more tokens
 
     tldr: |
-      - Several token rows can use the same weights after reading them once.
-      - Sharing that read means more arithmetic for each byte moved.
-      - With enough rows, calculation can become the limit instead of memory movement.
+      - Many token rows can use the same weights, which only need reading from memory once.
+      - So each byte read now feeds more arithmetic.
+      - With enough rows, as in a long prompt, arithmetic speed becomes the limit instead of memory.
     explain: |
       ### Use each weight read for several rows
 
