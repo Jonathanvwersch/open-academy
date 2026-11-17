@@ -14,5 +14,11 @@ export interface TutorThreadSummary {
 
 export interface TutorThreadDetail {
   thread: TutorThreadSummary;
-  messages: Array<{ id: string; role: string; content: string; createdAt: string }>;
+  messages: Array<{
+    id: string;
+    clientId: string | null;
+    role: string;
+    content: string;
+    createdAt: string;
+  }>;
 }

@@ -19,6 +19,7 @@ import {
 } from 'react';
 import type { StickToBottomContext } from 'use-stick-to-bottom';
 import { apiFetch } from '../../api/authenticated-fetch.js';
+import { getJson } from '../../api/query-client.js';
 import { AcademyMascot } from '../../components/academy-mascot.js';
 import { ThinkingIndicator } from '../../components/thinking-indicator.js';
 import { TortoiseMark } from '../../components/tortoise-mark.js';
@@ -75,6 +76,26 @@ export interface TutorRequestContext {
 
 type TutorMessage = TutorThreadDetail['messages'][number];
 
+function mergeConfirmedTutorMessages(
+  detail: TutorThreadDetail,
+  confirmed: Iterable<TutorMessage>,
+): TutorThreadDetail {
+  const messages = [...detail.messages];
+  for (const message of confirmed) {
+    if (
+      !messages.some(
+        (existing) =>
+          existing.id === message.id ||
+          (message.clientId !== null && existing.clientId === message.clientId),
+      )
+    ) {
+      messages.push(message);
+    }
+  }
+  messages.sort((first, second) => Date.parse(first.createdAt) - Date.parse(second.createdAt));
+  return { ...detail, messages };
+}
+
 interface TutorContextValue {
   setContext: (context: TutorRequestContext) => void;
   clearContext: () => void;
@@ -130,10 +151,10 @@ interface TutorSendVariables {
   threadId: string;
   createThread: boolean;
   context: TutorRequestContext;
-  optimisticId: string;
+  clientMessageId: string;
+  earlier: Array<{ clientMessageId: string; question: string }>;
   signal: AbortSignal;
   sendId: number;
-  baseMessageCount: number;
 }
 
 interface TutorSendResponse {
@@ -148,16 +169,15 @@ interface TutorSendResponse {
   superseded?: boolean;
 }
 
-interface PendingTutorMessage {
-  id: string;
+interface LocalTutorMessage {
+  clientId: string;
   threadId: string;
-  baseMessageCount: number;
-  createThread: boolean;
   context: TutorRequestContext;
-  role: 'user';
   content: string;
-  createdAt: string;
+  createThread: boolean;
+  status: 'sending' | 'failed';
   reason?: string;
+  sendId: number;
 }
 
 function localDayOrdinal(date: Date): number {
@@ -231,10 +251,12 @@ export function TutorContextProvider({
   const [focusComposerOnOpen, setFocusComposerOnOpen] = useState(false);
   const [draft, setDraft] = useState('');
   const [error, setError] = useState('');
-  const [pendingSend, setPendingSend] = useState<PendingTutorMessage | null>(null);
-  const [failedSend, setFailedSend] = useState<PendingTutorMessage | null>(null);
+  const [localMessages, setLocalMessages] = useState<LocalTutorMessage[]>([]);
   const activeRequestController = useRef<AbortController | null>(null);
-  const latestSendId = useRef(0);
+  const requestControllersByThread = useRef(new Map<string, AbortController>());
+  const nextSendId = useRef(0);
+  const latestSendByThread = useRef(new Map<string, number>());
+  const [latestInFlightByThread, setLatestInFlightByThread] = useState<Record<string, number>>({});
   const newThreadId = useRef('');
   const [sidebarWidth, setSidebarWidth] = useState(initialSidebarWidth);
   const [viewportWidth, setViewportWidth] = useState(() => window.innerWidth);
@@ -250,12 +272,24 @@ export function TutorContextProvider({
   const enabled = context.enabled || tutorFlag.data?.tutorEnabled === true;
   const visibleOpen = open && routeAllowed && context.allowed;
   const loadingTutor = !context.enabled && tutorFlag.isPending && context.allowed;
+  const confirmedMessagesByThread = useRef(new Map<string, Map<string, TutorMessage>>());
   const threads = useQuery({
     ...tutorThreadsQueryOptions(),
     enabled: open && enabled && context.allowed && routeAllowed,
   });
+  const detailOptions = tutorThreadQueryOptions(selectedId);
   const detail = useQuery({
-    ...tutorThreadQueryOptions(selectedId),
+    ...detailOptions,
+    staleTime: 0,
+    queryFn: async (queryContext) => {
+      const fetchDetail = detailOptions.queryFn;
+      if (!fetchDetail) throw new Error('Tutor detail query is unavailable');
+      const fresh = await fetchDetail(queryContext);
+      const confirmedMessages = confirmedMessagesByThread.current.get(selectedId);
+      return confirmedMessages?.size
+        ? mergeConfirmedTutorMessages(fresh, confirmedMessages.values())
+        : fresh;
+    },
     enabled:
       open && view === 'conversation' && !!selectedId && enabled && context.allowed && routeAllowed,
   });
@@ -322,19 +356,23 @@ export function TutorContextProvider({
     if (
       !newChatSelected ||
       !threadId ||
-      (pendingSend && pendingSend.threadId !== threadId) ||
+      localMessages.some(
+        (message) => message.status === 'sending' && message.threadId !== threadId,
+      ) ||
       !threads.data?.some((thread) => thread.id === threadId)
     ) {
       return;
     }
     setSelectedId(threadId);
-  }, [newChatSelected, pendingSend, threads.data]);
+  }, [localMessages, newChatSelected, threads.data]);
   const mutation = useMutation({
     mutationFn: async ({
       question,
       threadId,
       createThread,
       context: requestContext,
+      clientMessageId,
+      earlier,
       signal,
     }: TutorSendVariables) => {
       const target = createThread
@@ -346,6 +384,8 @@ export function TutorContextProvider({
         signal,
         body: JSON.stringify({
           question,
+          clientMessageId,
+          earlier,
           ...(createThread ? { threadId } : {}),
           conceptId: requestContext.conceptId ?? undefined,
           activityId: requestContext.activityId ?? undefined,
@@ -367,25 +407,6 @@ export function TutorContextProvider({
       }
       return payload;
     },
-    onMutate: ({
-      question,
-      threadId,
-      baseMessageCount,
-      createThread,
-      context: requestContext,
-      optimisticId,
-    }) => {
-      setPendingSend({
-        id: optimisticId,
-        threadId,
-        baseMessageCount,
-        createThread,
-        context: requestContext,
-        role: 'user',
-        content: question,
-        createdAt: new Date().toISOString(),
-      });
-    },
     onSuccess: (payload, variables) => {
       if (activeRequestController.current?.signal === variables.signal) {
         activeRequestController.current = null;
@@ -396,12 +417,12 @@ export function TutorContextProvider({
             queryKey: ['tutor', 'thread', payload.thread.id],
           });
         }
-        setPendingSend((current) => (current?.id === variables.optimisticId ? null : current));
-        void queryClient.invalidateQueries({ queryKey: ['tutor', 'threads'] });
         return;
       }
       if (payload.thread) {
-        if (variables.createThread) {
+        const shouldSelectCreatedThread =
+          variables.createThread && newThreadId.current === payload.thread.id;
+        if (shouldSelectCreatedThread) {
           const greetingThreadId = payload.thread.id;
           setGreeting((current) =>
             current && current.threadId === null
@@ -424,9 +445,22 @@ export function TutorContextProvider({
           (conceptId === variables.context.conceptId
             ? (variables.context.conceptTitle ?? null)
             : null);
+        const confirmedMessages =
+          confirmedMessagesByThread.current.get(payload.thread.id) ??
+          new Map<string, TutorMessage>();
+        for (const message of payload.messages ?? []) {
+          confirmedMessages.set(message.clientId ?? message.id, message);
+        }
+        confirmedMessagesByThread.current.set(payload.thread.id, confirmedMessages);
         const addedMessages = (payload.messages ?? []).filter(
-          (message) => !previousDetail?.messages.some((existing) => existing.id === message.id),
+          (message) =>
+            !previousDetail?.messages.some(
+              (existing) =>
+                existing.id === message.id ||
+                (message.clientId !== null && existing.clientId === message.clientId),
+            ),
         );
+        const mergedMessages = [...(previousDetail?.messages ?? []), ...addedMessages];
         queryClient.setQueryData<TutorThreadDetail>(detailKey, {
           thread: {
             id: payload.thread.id,
@@ -440,65 +474,86 @@ export function TutorContextProvider({
             lastMessagePreview:
               previousSummary?.lastMessagePreview ?? variables.question.slice(0, 140),
           },
-          messages: [...(previousDetail?.messages ?? []), ...addedMessages],
+          messages: mergedMessages,
         });
-        setNewChatSelected(false);
-        setSelectedId(payload.thread.id);
-        setView('conversation');
-        if (newThreadId.current === payload.thread.id) newThreadId.current = '';
+        const confirmedClientIds = new Set(
+          mergedMessages.flatMap((message) => (message.clientId ? [message.clientId] : [])),
+        );
+        setLocalMessages((current) => {
+          const remaining = current.filter(
+            (message) =>
+              message.threadId !== payload.thread?.id || !confirmedClientIds.has(message.clientId),
+          );
+          return remaining.length === current.length ? current : remaining;
+        });
+        if (shouldSelectCreatedThread) {
+          setNewChatSelected(false);
+          setSelectedId(payload.thread.id);
+          setView('conversation');
+          newThreadId.current = '';
+        }
       }
-      setPendingSend((current) => (current?.id === variables.optimisticId ? null : current));
       void queryClient.invalidateQueries({ queryKey: ['tutor', 'threads'] });
-      void queryClient.invalidateQueries({ queryKey: ['tutor', 'thread'] });
     },
-    onError: async (cause, variables) => {
+    onSettled: async (_payload, cause, variables) => {
       if (activeRequestController.current?.signal === variables.signal) {
         activeRequestController.current = null;
       }
-      setPendingSend((current) => (current?.id === variables.optimisticId ? null : current));
-      if (variables.signal.aborted) {
-        void queryClient.invalidateQueries({ queryKey: ['tutor', 'threads'] });
-        void queryClient.invalidateQueries({
-          queryKey: ['tutor', 'thread', variables.threadId],
-        });
-        return;
+      if (requestControllersByThread.current.get(variables.threadId)?.signal === variables.signal) {
+        requestControllersByThread.current.delete(variables.threadId);
       }
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['tutor', 'threads'] }),
-        queryClient.invalidateQueries({
-          queryKey: ['tutor', 'thread', variables.threadId],
-        }),
-      ]);
-      if (variables.signal.aborted || variables.sendId !== latestSendId.current) return;
-      const refetchedMessages =
-        queryClient.getQueryData<TutorThreadDetail>(['tutor', 'thread', variables.threadId])
-          ?.messages ?? [];
-      const questionWasSaved = refetchedMessages.some(
-        (message, index) =>
-          index >= variables.baseMessageCount &&
-          message.role === 'user' &&
-          message.content === variables.question,
+      if (latestSendByThread.current.get(variables.threadId) !== variables.sendId) return;
+      setLatestInFlightByThread((current) => {
+        if (current[variables.threadId] !== variables.sendId) return current;
+        const next = { ...current };
+        delete next[variables.threadId];
+        return next;
+      });
+      await queryClient.invalidateQueries({ queryKey: ['tutor', 'threads'] });
+      let refetchedMessages: TutorMessage[] = [];
+      try {
+        const refreshed = await queryClient.fetchQuery({
+          ...tutorThreadQueryOptions(variables.threadId),
+          staleTime: 0,
+          queryFn: async () => {
+            const fresh = await getJson<TutorThreadDetail>(
+              `/api/tutor/threads/${encodeURIComponent(variables.threadId)}`,
+              'Tutor conversation unavailable',
+            );
+            const confirmedMessages = confirmedMessagesByThread.current.get(variables.threadId);
+            return confirmedMessages?.size
+              ? mergeConfirmedTutorMessages(fresh, confirmedMessages.values())
+              : fresh;
+          },
+        });
+        refetchedMessages = refreshed.messages;
+      } catch {}
+      if (latestSendByThread.current.get(variables.threadId) !== variables.sendId) return;
+      const confirmedClientIds = new Set(
+        refetchedMessages.flatMap((message) => (message.clientId ? [message.clientId] : [])),
       );
-      if (questionWasSaved) return;
       const failureReason =
         cause && typeof cause === 'object' && 'reason' in cause
           ? (cause as { reason?: unknown }).reason
           : undefined;
-      setFailedSend({
-        id: variables.optimisticId,
-        threadId: variables.threadId,
-        baseMessageCount: variables.baseMessageCount,
-        createThread: variables.createThread,
-        context: variables.context,
-        role: 'user',
-        content: variables.question,
-        createdAt: new Date().toISOString(),
-        reason:
-          typeof failureReason === 'string' && failureReason !== 'Tutor unavailable'
-            ? failureReason
-            : undefined,
+      const reason =
+        typeof failureReason === 'string' && failureReason !== 'Tutor unavailable'
+          ? failureReason
+          : undefined;
+      setLocalMessages((current) => {
+        let changed = false;
+        const next = current.flatMap((message) => {
+          if (message.threadId !== variables.threadId) return [message];
+          if (confirmedClientIds.has(message.clientId)) {
+            changed = true;
+            return [];
+          }
+          if (message.status !== 'sending') return [message];
+          changed = true;
+          return [{ ...message, status: 'failed' as const, reason }];
+        });
+        return changed ? next : current;
       });
-      setError('');
     },
   });
   const clearContext = useCallback(() => {
@@ -564,24 +619,36 @@ export function TutorContextProvider({
     [clearContext, open, openConversation, openTutor, startChat],
   );
   const messages = detail.data?.messages ?? [];
+  useEffect(() => {
+    const confirmedClientIds = new Set(
+      messages.flatMap((message) => (message.clientId ? [message.clientId] : [])),
+    );
+    if (!selectedId || confirmedClientIds.size === 0) return;
+    setLocalMessages((current) => {
+      const remaining = current.filter(
+        (message) =>
+          message.threadId !== selectedId ||
+          message.status !== 'failed' ||
+          !confirmedClientIds.has(message.clientId),
+      );
+      return remaining.length === current.length ? current : remaining;
+    });
+  }, [messages, selectedId]);
   const selectedThread =
     threads.data?.find((thread) => thread.id === selectedId) ?? detail.data?.thread;
   const showGreeting =
     (newChatSelected && greeting?.threadId === null) ||
     (greeting !== null && greeting.threadId !== null && greeting.threadId === selectedId);
   const visibleThreadId = selectedId || (newChatSelected ? newThreadId.current : '');
-  const visiblePendingSend = pendingSend?.threadId === visibleThreadId ? pendingSend : null;
-  const visibleFailedSend = failedSend?.threadId === visibleThreadId ? failedSend : null;
-  const pendingMessageIsServerBacked =
-    visiblePendingSend !== null &&
-    messages.length > visiblePendingSend.baseMessageCount &&
-    messages.some(
-      (message, index) =>
-        index >= visiblePendingSend.baseMessageCount &&
-        message.role === 'user' &&
-        message.content === visiblePendingSend.content,
-    );
-  const isSending = visiblePendingSend !== null;
+  const serverClientIds = new Set(
+    messages.flatMap((message) => (message.clientId ? [message.clientId] : [])),
+  );
+  const visibleLocalMessages = localMessages
+    .filter(
+      (message) => message.threadId === visibleThreadId && !serverClientIds.has(message.clientId),
+    )
+    .sort((first, second) => first.sendId - second.sendId);
+  const isSending = visibleThreadId !== '' && latestInFlightByThread[visibleThreadId] !== undefined;
   const threadGroups = groupThreads(threads.data ?? []);
   const noChats = !threads.isPending && !threads.isError && threadGroups.length === 0;
   const selectionPreview = context.selection
@@ -611,30 +678,66 @@ export function TutorContextProvider({
     threadId: string,
     createThread: boolean,
     requestContext: TutorRequestContext,
+    retryClientId?: string,
   ) => {
     const cachedDetail = queryClient.getQueryData<TutorThreadDetail>(['tutor', 'thread', threadId]);
-    const baseMessageCount =
-      cachedDetail?.messages.length ??
-      threads.data?.find((thread) => thread.id === threadId)?.messageCount ??
-      0;
+    const knownClientIds = new Set(
+      cachedDetail?.messages.flatMap((message) => (message.clientId ? [message.clientId] : [])) ??
+        [],
+    );
+    const clientMessageId = retryClientId ?? crypto.randomUUID();
+    const earlier = localMessages
+      .filter(
+        (message) =>
+          message.threadId === threadId &&
+          message.clientId !== clientMessageId &&
+          message.status === 'sending' &&
+          !knownClientIds.has(message.clientId),
+      )
+      .sort((first, second) => first.sendId - second.sendId)
+      .slice(0, 5)
+      .map(({ clientId, content }) => ({ clientMessageId: clientId, question: content }));
     if (createThread) newThreadId.current = threadId;
     activeRequestController.current?.abort();
     const controller = new AbortController();
     activeRequestController.current = controller;
-    const optimisticId = crypto.randomUUID();
-    const sendId = latestSendId.current + 1;
-    latestSendId.current = sendId;
+    requestControllersByThread.current.set(threadId, controller);
+    const sendId = nextSendId.current + 1;
+    nextSendId.current = sendId;
+    latestSendByThread.current.set(threadId, sendId);
+    setLatestInFlightByThread((current) => ({ ...current, [threadId]: sendId }));
+    setLocalMessages((current) => {
+      const existing = current.some((message) => message.clientId === clientMessageId);
+      if (!existing) {
+        return [
+          ...current,
+          {
+            clientId: clientMessageId,
+            threadId,
+            content: question,
+            context: requestContext,
+            createThread,
+            status: 'sending',
+            sendId,
+          },
+        ];
+      }
+      return current.map((message) =>
+        message.clientId === clientMessageId
+          ? { ...message, status: 'sending', reason: undefined, sendId }
+          : message,
+      );
+    });
     setError('');
-    setFailedSend(null);
     mutation.mutate({
       question,
       threadId,
       createThread,
       context: requestContext,
-      optimisticId,
+      clientMessageId,
+      earlier,
       signal: controller.signal,
       sendId,
-      baseMessageCount,
     });
     conversationContextRef.current?.scrollToBottom();
     if (requestContext.selection) clearSelection();
@@ -642,15 +745,9 @@ export function TutorContextProvider({
   const send = () => {
     const question = draft.trim();
     if (!question) {
-      if (visiblePendingSend) {
-        activeRequestController.current?.abort();
-        activeRequestController.current = null;
-        setPendingSend((current) => (current?.id === visiblePendingSend.id ? null : current));
-        void queryClient.invalidateQueries({ queryKey: ['tutor', 'threads'] });
-        void queryClient.invalidateQueries({
-          queryKey: ['tutor', 'thread', visiblePendingSend.threadId],
-        });
-      }
+      const controller = requestControllersByThread.current.get(visibleThreadId);
+      controller?.abort();
+      if (activeRequestController.current === controller) activeRequestController.current = null;
       return;
     }
     if (draftTooLong) {
@@ -662,21 +759,22 @@ export function TutorContextProvider({
     setDraft('');
     submitQuestion(question, threadId, createThread, context);
   };
-  const retryFailedSend = () => {
-    if (!visibleFailedSend) return;
+  const retryFailedSend = (failedMessage: LocalTutorMessage) => {
     submitQuestion(
-      visibleFailedSend.content,
-      visibleFailedSend.threadId,
-      visibleFailedSend.createThread,
-      visibleFailedSend.context,
+      failedMessage.content,
+      failedMessage.threadId,
+      failedMessage.createThread,
+      failedMessage.context,
+      failedMessage.clientId,
     );
   };
-  const editFailedSend = () => {
-    if (!visibleFailedSend) return;
+  const editFailedSend = (failedMessage: LocalTutorMessage) => {
     setDraft((current) =>
-      current.trim() ? `${visibleFailedSend.content}\n${current}` : visibleFailedSend.content,
+      current.trim() ? `${failedMessage.content}\n${current}` : failedMessage.content,
     );
-    setFailedSend((current) => (current?.id === visibleFailedSend.id ? null : current));
+    setLocalMessages((current) =>
+      current.filter((message) => message.clientId !== failedMessage.clientId),
+    );
     setError('');
   };
   const handleResizePointerDown = (event: React.PointerEvent<HTMLHRElement>) => {
@@ -930,7 +1028,7 @@ export function TutorContextProvider({
                         {newChatSelected &&
                         !showGreeting &&
                         messages.length === 0 &&
-                        !visiblePendingSend ? (
+                        visibleLocalMessages.length === 0 ? (
                           threads.isPending ? null : threads.isError ? (
                             <Alert variant="destructive">
                               <AlertDescription>
@@ -953,7 +1051,8 @@ export function TutorContextProvider({
                         {!newChatSelected &&
                         selectedId &&
                         detail.isPending &&
-                        messages.length === 0 ? (
+                        messages.length === 0 &&
+                        visibleLocalMessages.length === 0 ? (
                           <div
                             role="status"
                             aria-label="Loading conversation"
@@ -999,7 +1098,7 @@ export function TutorContextProvider({
                         ) : null}
                         {messages.map((message) => (
                           <Message
-                            key={message.id}
+                            key={message.clientId ?? message.id}
                             data-testid={
                               message.role === 'user'
                                 ? 'tutor-user-message'
@@ -1023,67 +1122,59 @@ export function TutorContextProvider({
                             </MessageContent>
                           </Message>
                         ))}
-                        {visibleFailedSend ? (
-                          <Message data-testid="tutor-failed-message" from="user">
+                        {visibleLocalMessages.map((message) => (
+                          <Message
+                            key={message.clientId}
+                            data-testid={
+                              message.status === 'failed'
+                                ? 'tutor-failed-message'
+                                : 'tutor-user-message'
+                            }
+                            from="user"
+                          >
                             <p className="w-full text-right text-xs font-medium text-muted-foreground">
                               You
                             </p>
                             <MessageContent>
-                              <TutorMarkdown>{visibleFailedSend.content}</TutorMarkdown>
+                              <TutorMarkdown>{message.content}</TutorMarkdown>
                             </MessageContent>
-                            <div className="flex items-center justify-end gap-2 text-xs text-muted-foreground">
-                              <span>
-                                Didn't send.
-                                {visibleFailedSend.reason ? ` ${visibleFailedSend.reason}` : ''}
-                              </span>
-                              <Button
-                                type="button"
-                                variant="link"
-                                size="sm"
-                                className="h-auto px-0 py-0 text-xs"
-                                onClick={retryFailedSend}
-                              >
-                                Retry
-                              </Button>
-                              <Button
-                                type="button"
-                                variant="link"
-                                size="sm"
-                                className="h-auto px-0 py-0 text-xs"
-                                onClick={editFailedSend}
-                              >
-                                Edit
-                              </Button>
-                            </div>
+                            {message.status === 'failed' ? (
+                              <div className="flex items-center justify-end gap-2 text-xs text-muted-foreground">
+                                <span>
+                                  Didn't send.
+                                  {message.reason ? ` ${message.reason}` : ''}
+                                </span>
+                                <Button
+                                  type="button"
+                                  variant="link"
+                                  size="sm"
+                                  className="h-auto px-0 py-0 text-xs"
+                                  onClick={() => retryFailedSend(message)}
+                                >
+                                  Retry
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="link"
+                                  size="sm"
+                                  className="h-auto px-0 py-0 text-xs"
+                                  onClick={() => editFailedSend(message)}
+                                >
+                                  Edit
+                                </Button>
+                              </div>
+                            ) : null}
                           </Message>
-                        ) : null}
-                        {visiblePendingSend ? (
-                          <>
-                            {!pendingMessageIsServerBacked ? (
-                              <Message
-                                data-testid="tutor-user-message"
-                                from="user"
-                                key={visiblePendingSend.id}
-                              >
-                                <p className="w-full text-right text-xs font-medium text-muted-foreground">
-                                  You
-                                </p>
-                                <MessageContent>
-                                  <TutorMarkdown>{visiblePendingSend.content}</TutorMarkdown>
-                                </MessageContent>
-                              </Message>
-                            ) : null}
-                            {mutation.isPending ? (
-                              <Message data-testid="tutor-thinking-bubble" from="assistant">
-                                <p className="w-full text-xs font-medium text-muted-foreground">
-                                  Tutor
-                                </p>
-                                <MessageContent className="w-full">
-                                  <ThinkingIndicator />
-                                </MessageContent>
-                              </Message>
-                            ) : null}
-                          </>
+                        ))}
+                        {isSending ? (
+                          <Message data-testid="tutor-thinking-bubble" from="assistant">
+                            <p className="w-full text-xs font-medium text-muted-foreground">
+                              Tutor
+                            </p>
+                            <MessageContent className="w-full">
+                              <ThinkingIndicator />
+                            </MessageContent>
+                          </Message>
                         ) : null}
                       </ConversationContent>
                       <ConversationScrollButton
