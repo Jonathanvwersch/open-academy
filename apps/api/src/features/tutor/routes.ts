@@ -582,39 +582,41 @@ export function registerTutorThreadRoutes(
               .where(eq(tutorMessages.threadId, request.thread.id))
               .orderBy(desc(tutorMessages.seq))
               .limit(1);
-            await tx
-              .delete(tutorMessages)
-              .where(
-                and(
-                  eq(tutorMessages.id, request.learnerMessage.id),
-                  eq(tutorMessages.threadId, request.thread.id),
-                  eq(tutorMessages.userId, c.get('userId')),
-                ),
-              );
-            if (signal.aborted) throw abortedDuringRollback;
-            const [remainingMessage] = await tx
-              .select({ id: tutorMessages.id })
-              .from(tutorMessages)
-              .where(eq(tutorMessages.threadId, request.thread.id))
-              .limit(1);
-            if (request.createdThread && !remainingMessage) {
+            if (latestMessage?.seq === request.learnerMessage.seq) {
               await tx
-                .delete(tutorThreads)
+                .delete(tutorMessages)
                 .where(
                   and(
-                    eq(tutorThreads.id, request.thread.id),
-                    eq(tutorThreads.userId, c.get('userId')),
+                    eq(tutorMessages.id, request.learnerMessage.id),
+                    eq(tutorMessages.threadId, request.thread.id),
+                    eq(tutorMessages.userId, c.get('userId')),
                   ),
                 );
-            } else if (
-              !request.createdThread &&
-              latestMessage?.seq === request.learnerMessage.seq &&
-              request.previousUpdatedAt
-            ) {
-              await tx
-                .update(tutorThreads)
-                .set({ updatedAt: request.previousUpdatedAt })
-                .where(eq(tutorThreads.id, request.thread.id));
+              if (signal.aborted) throw abortedDuringRollback;
+              const [remainingMessage] = await tx
+                .select({ id: tutorMessages.id })
+                .from(tutorMessages)
+                .where(eq(tutorMessages.threadId, request.thread.id))
+                .limit(1);
+              if (request.createdThread && !remainingMessage) {
+                await tx
+                  .delete(tutorThreads)
+                  .where(
+                    and(
+                      eq(tutorThreads.id, request.thread.id),
+                      eq(tutorThreads.userId, c.get('userId')),
+                    ),
+                  );
+              } else if (
+                !request.createdThread &&
+                latestMessage?.seq === request.learnerMessage.seq &&
+                request.previousUpdatedAt
+              ) {
+                await tx
+                  .update(tutorThreads)
+                  .set({ updatedAt: request.previousUpdatedAt })
+                  .where(eq(tutorThreads.id, request.thread.id));
+              }
             }
           }
           if (signal.aborted) throw abortedDuringRollback;

@@ -1206,6 +1206,56 @@ test('provider failure after earlier messages removes only the main learner mess
   ).toEqual([{ role: 'user', content: 'saved earlier question', clientId: earlierId }]);
 });
 
+test('provider failure keeps a learner message that a later reply builds on', async () => {
+  const firstClientMessageId = '00000000-0000-4000-8000-000000000122';
+  const laterClientMessageId = '00000000-0000-4000-8000-000000000123';
+  const firstProviderStarted = deferred<boolean>();
+  const releaseFirstProvider = deferred<void>();
+  respondWith = async (ctx) => {
+    if (ctx.question === 'first question') {
+      firstProviderStarted.resolve(true);
+      await releaseFirstProvider.promise;
+      throw new Error('provider offline');
+    }
+    return tutorReply('Reply to later question');
+  };
+
+  const firstRequest = send('first question', undefined, {
+    clientMessageId: firstClientMessageId,
+  });
+  await firstProviderStarted.promise;
+  const [thread] = await db.select({ id: tutorThreads.id }).from(tutorThreads);
+  if (!thread) throw new Error('Expected the first request to create a thread');
+
+  try {
+    const laterResponse = await send('later question', thread.id, {
+      clientMessageId: laterClientMessageId,
+      earlier: [{ clientMessageId: firstClientMessageId, question: 'first question' }],
+    });
+    expect(laterResponse.status).toBe(200);
+    expect(captured.find((ctx) => ctx.question === 'later question')?.history).toEqual([
+      { role: 'learner', content: 'first question' },
+    ]);
+
+    releaseFirstProvider.resolve();
+    expect((await firstRequest).status).toBe(503);
+    const detail = await (await app.request(`/api/tutor/threads/${thread.id}`, { headers })).json();
+    expect(
+      detail.messages.map((message: { role: string; content: string; clientId: string | null }) => [
+        message.role,
+        message.content,
+        message.clientId,
+      ]),
+    ).toEqual([
+      ['user', 'first question', firstClientMessageId],
+      ['user', 'later question', laterClientMessageId],
+      ['assistant', 'Reply to later question', null],
+    ]);
+  } finally {
+    releaseFirstProvider.resolve();
+  }
+});
+
 test('provider failure in an existing thread removes only the failed learner message', async () => {
   const created = await send('keep this message');
   expect(created.status).toBe(200);
