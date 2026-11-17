@@ -450,6 +450,9 @@ export function registerTutorThreadRoutes(
             userId: c.get('userId'),
             threadId: target.id,
             clientId: earlier.clientMessageId,
+            activityId: activityId ?? null,
+            exerciseId: exerciseId ?? null,
+            lessonProblemId: input.lessonProblemId ?? null,
             role: 'user',
             content: earlier.question,
             createdAt,
@@ -533,6 +536,27 @@ export function registerTutorThreadRoutes(
             ),
           )
           .limit(1);
+        if (
+          learnerMessage &&
+          (activityId !== undefined || exerciseId !== undefined || input.lessonProblemId)
+        ) {
+          const [adoptedMessage] = await tx
+            .update(tutorMessages)
+            .set({
+              activityId: sql`coalesce(${tutorMessages.activityId}, ${activityId ?? null})`,
+              exerciseId: sql`coalesce(${tutorMessages.exerciseId}, ${exerciseId ?? null})`,
+              lessonProblemId: sql`coalesce(${tutorMessages.lessonProblemId}, ${input.lessonProblemId ?? null})`,
+            })
+            .where(
+              and(
+                eq(tutorMessages.id, learnerMessage.id),
+                eq(tutorMessages.threadId, target.id),
+                eq(tutorMessages.userId, c.get('userId')),
+              ),
+            )
+            .returning(learnerMessageSelection);
+          if (adoptedMessage) learnerMessage = adoptedMessage;
+        }
       } else if (learnerMessage) {
         lastInsertedAt = learnerMessage.createdAt;
       }

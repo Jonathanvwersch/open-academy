@@ -329,6 +329,79 @@ test('saves earlier and main client messages in order and returns their client I
   ).toBe(true);
 });
 
+test('adopting an earlier question links it to the exercise for assistance tracking', async () => {
+  const earlierClientMessageId = '00000000-0000-4000-8000-000000000124';
+  const mainClientMessageId = '00000000-0000-4000-8000-000000000125';
+  const { activity } = await createExerciseActivity('slp-input-target');
+  const start = await app.request('/api/lessons/supervised-learning/run', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ activityId: activity.id }),
+  });
+  expect(start.status).toBe(200);
+  const run = (await start.json()).run;
+  const pending = run.pending;
+  if (!pending?.id) throw new Error('Expected a pending supervised-learning problem');
+
+  const firstResponse = await send('follow-up question', undefined, {
+    clientMessageId: mainClientMessageId,
+    earlier: [{ clientMessageId: earlierClientMessageId, question: 'earlier question' }],
+  });
+  expect(firstResponse.status).toBe(200);
+  const threadId = (await firstResponse.json()).thread.id as string;
+  const [earlierBeforeRetry] = await db
+    .select({
+      activityId: tutorMessages.activityId,
+      exerciseId: tutorMessages.exerciseId,
+      lessonProblemId: tutorMessages.lessonProblemId,
+    })
+    .from(tutorMessages)
+    .where(
+      and(eq(tutorMessages.threadId, threadId), eq(tutorMessages.clientId, earlierClientMessageId)),
+    );
+  expect(earlierBeforeRetry).toEqual({
+    activityId: null,
+    exerciseId: null,
+    lessonProblemId: null,
+  });
+
+  const retry = await send('earlier question', threadId, {
+    clientMessageId: earlierClientMessageId,
+    activityId: activity.id,
+    exerciseId: pending.exerciseId,
+    lessonProblemId: pending.id,
+  });
+  expect(retry.status).toBe(200);
+  expect(await retry.json()).toMatchObject({ superseded: true });
+  const [earlierAfterRetry] = await db
+    .select({
+      activityId: tutorMessages.activityId,
+      exerciseId: tutorMessages.exerciseId,
+      lessonProblemId: tutorMessages.lessonProblemId,
+    })
+    .from(tutorMessages)
+    .where(
+      and(eq(tutorMessages.threadId, threadId), eq(tutorMessages.clientId, earlierClientMessageId)),
+    );
+  expect(earlierAfterRetry).toEqual({
+    activityId: activity.id,
+    exerciseId: pending.exerciseId,
+    lessonProblemId: pending.id,
+  });
+
+  const answerResponse = await app.request('/api/lessons/supervised-learning/run/answer', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      problemId: pending.id,
+      activityId: activity.id,
+      answer: correctAnswer(pending.exerciseId, pending.seed),
+    }),
+  });
+  expect(answerResponse.status).toBe(200);
+  expect(await answerResponse.json()).toMatchObject({ assisted: true });
+});
+
 test('does not save a stale reply after a newer learner message and keeps unanswered history', async () => {
   const firstStarted = deferred<boolean>();
   const lateReply = deferred<TutorResult<TutorReply>>();
