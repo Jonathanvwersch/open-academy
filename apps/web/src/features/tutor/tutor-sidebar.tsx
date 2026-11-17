@@ -252,7 +252,6 @@ export function TutorContextProvider({
   const [draft, setDraft] = useState('');
   const [error, setError] = useState('');
   const [localMessages, setLocalMessages] = useState<LocalTutorMessage[]>([]);
-  const activeRequestController = useRef<AbortController | null>(null);
   const requestControllersByThread = useRef(new Map<string, AbortController>());
   const nextSendId = useRef(0);
   const latestSendByThread = useRef(new Map<string, number>());
@@ -408,9 +407,6 @@ export function TutorContextProvider({
       return payload;
     },
     onSuccess: (payload, variables) => {
-      if (activeRequestController.current?.signal === variables.signal) {
-        activeRequestController.current = null;
-      }
       if (payload.superseded) {
         if (payload.thread) {
           void queryClient.invalidateQueries({
@@ -496,9 +492,6 @@ export function TutorContextProvider({
       void queryClient.invalidateQueries({ queryKey: ['tutor', 'threads'] });
     },
     onSettled: async (_payload, cause, variables) => {
-      if (activeRequestController.current?.signal === variables.signal) {
-        activeRequestController.current = null;
-      }
       if (requestControllersByThread.current.get(variables.threadId)?.signal === variables.signal) {
         requestControllersByThread.current.delete(variables.threadId);
       }
@@ -698,9 +691,8 @@ export function TutorContextProvider({
       .slice(0, 5)
       .map(({ clientId, content }) => ({ clientMessageId: clientId, question: content }));
     if (createThread) newThreadId.current = threadId;
-    activeRequestController.current?.abort();
+    requestControllersByThread.current.get(threadId)?.abort();
     const controller = new AbortController();
-    activeRequestController.current = controller;
     requestControllersByThread.current.set(threadId, controller);
     const sendId = nextSendId.current + 1;
     nextSendId.current = sendId;
@@ -747,7 +739,6 @@ export function TutorContextProvider({
     if (!question) {
       const controller = requestControllersByThread.current.get(visibleThreadId);
       controller?.abort();
-      if (activeRequestController.current === controller) activeRequestController.current = null;
       return;
     }
     if (draftTooLong) {

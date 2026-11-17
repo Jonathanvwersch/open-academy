@@ -1692,6 +1692,179 @@ test('switching threads preserves a pending tutor message in its original thread
   );
 });
 
+test('sending in a new chat does not abort a pending reply in another thread', async ({ page }) => {
+  const firstId = '34444444-4444-4444-8444-444444444444';
+  const firstQuestion = 'Question from the first thread.';
+  const newChatQuestion = 'Question from the new chat.';
+  const firstMessages: MockedTutorMessage[] = [
+    {
+      id: 'existing-user-x',
+      clientId: null,
+      role: 'user',
+      content: 'Earlier question in the first thread.',
+      createdAt: '2026-01-01T12:00:00.001Z',
+    },
+    {
+      id: 'existing-reply-x',
+      clientId: null,
+      role: 'assistant',
+      content: 'Earlier reply in the first thread.',
+      createdAt: '2026-01-01T12:00:00.002Z',
+    },
+  ];
+  let newThreadId = '';
+  let newMessages: MockedTutorMessage[] = [];
+  const firstStarted = deferred();
+  const releaseFirst = deferred();
+  const firstResponseFinished = deferred();
+  const thread = (id: string, title: string, updatedAt: string) => ({
+    id,
+    conceptId: 'supervised-learning',
+    title,
+    updatedAt,
+  });
+  const detail = (id: string) => {
+    const isFirstThread = id === firstId;
+    const messages = isFirstThread ? firstMessages : newMessages;
+    return {
+      thread: {
+        ...thread(
+          id,
+          isFirstThread ? 'First thread' : 'New chat question',
+          messages.at(-1)?.createdAt ?? '2026-01-01T12:00:00.002Z',
+        ),
+        conceptTitle: 'Supervised learning',
+        messageCount: messages.length,
+        lastMessagePreview: messages.at(-1)?.content ?? '',
+      },
+      messages: [...messages],
+    };
+  };
+
+  await page.addInitScript((id) => {
+    localStorage.setItem('academy.tutor.thread', id);
+    localStorage.removeItem('academy.tutor.open');
+  }, firstId);
+  await page.route('**/api/tutor/status', (route) =>
+    route.fulfill({ json: { tutorEnabled: true } }),
+  );
+  await page.route('**/api/tutor/threads**', async (route) => {
+    const request = route.request();
+    const url = new URL(request.url());
+    if (request.method() === 'POST') {
+      const body = request.postDataJSON() as {
+        question: string;
+        clientMessageId: string;
+        threadId?: string;
+      };
+      if (url.pathname === `/api/tutor/threads/${firstId}/messages`) {
+        firstMessages.push({
+          id: 'pending-question-in-first-thread',
+          clientId: body.clientMessageId,
+          role: 'user',
+          content: body.question,
+          createdAt: '2026-01-01T12:00:00.003Z',
+        });
+        firstStarted.resolve();
+        await releaseFirst.promise;
+        firstMessages.push({
+          id: 'reply-in-first-thread',
+          clientId: null,
+          role: 'assistant',
+          content: 'Reply from the first thread.',
+          createdAt: '2026-01-01T12:00:00.004Z',
+        });
+        await route
+          .fulfill({ json: { thread: detail(firstId).thread, messages: [...firstMessages] } })
+          .catch(() => undefined);
+        firstResponseFinished.resolve();
+        return;
+      }
+      if (url.pathname === '/api/tutor/threads') {
+        if (!body.threadId) throw new Error('New chat request did not include a thread ID');
+        newThreadId = body.threadId;
+        newMessages = [
+          {
+            id: 'question-in-new-chat',
+            clientId: body.clientMessageId,
+            role: 'user',
+            content: body.question,
+            createdAt: '2026-01-01T12:01:00.001Z',
+          },
+          {
+            id: 'reply-in-new-chat',
+            clientId: null,
+            role: 'assistant',
+            content: 'Reply from the new chat.',
+            createdAt: '2026-01-01T12:01:00.002Z',
+          },
+        ];
+        await route.fulfill({
+          json: { thread: detail(newThreadId).thread, messages: [...newMessages] },
+        });
+        return;
+      }
+    }
+    if (url.pathname === '/api/tutor/threads') {
+      const threadDetails = [detail(firstId).thread];
+      if (newThreadId) threadDetails.push(detail(newThreadId).thread);
+      await route.fulfill({ json: threadDetails });
+      return;
+    }
+    const id = url.pathname.split('/').at(-1) ?? '';
+    if (id === firstId || id === newThreadId) {
+      await route.fulfill({ json: detail(id) });
+      return;
+    }
+    await route.continue();
+  });
+
+  try {
+    await page.goto(`/session/${sessionId}`);
+    await page.getByRole('button', { name: 'Open tutor' }).click();
+    const tutor = page.getByRole('complementary', { name: 'Tutor' });
+    let textarea = tutor.getByLabel('Ask the tutor');
+    await textarea.fill(firstQuestion);
+    await textarea.press('Enter');
+    await firstStarted.promise;
+    await expect(tutor.getByTestId('tutor-thinking-bubble')).toBeVisible();
+
+    await tutor.getByRole('button', { name: 'New chat', exact: true }).click();
+    textarea = tutor.getByLabel('Ask the tutor');
+    await textarea.fill(newChatQuestion);
+    await textarea.press('Enter');
+    await expect(
+      tutor.getByTestId('tutor-assistant-message').filter({ hasText: 'Reply from the new chat.' }),
+    ).toHaveCount(1);
+    expect(newThreadId).not.toBe('');
+
+    await tutor.getByRole('button', { name: 'Chats', exact: true }).click();
+    await tutor.getByTestId(`tutor-thread-${firstId}`).click();
+    await expect(
+      tutor.getByTestId('tutor-user-message').filter({ hasText: firstQuestion }),
+    ).toHaveCount(1);
+    await expect(tutor.getByTestId('tutor-thinking-bubble')).toBeVisible();
+    await expect(tutor.getByTestId('tutor-failed-message')).toHaveCount(0);
+
+    releaseFirst.resolve();
+    await firstResponseFinished.promise;
+    await expect(
+      tutor
+        .getByTestId('tutor-assistant-message')
+        .filter({ hasText: 'Reply from the first thread.' }),
+    ).toHaveCount(1);
+    await expect(tutor.getByTestId('tutor-failed-message')).toHaveCount(0);
+
+    await tutor.getByRole('button', { name: 'Chats', exact: true }).click();
+    await tutor.getByTestId(`tutor-thread-${newThreadId}`).click();
+    await expect(
+      tutor.getByTestId('tutor-assistant-message').filter({ hasText: 'Reply from the new chat.' }),
+    ).toHaveCount(1);
+  } finally {
+    releaseFirst.resolve();
+  }
+});
+
 test('a failed steered message is rolled back before retrying once', async ({ page }) => {
   const firstQuestion = 'Sorry, can you explain this to me step by step? What is this page about?';
   const steeredQuestion = 'please';
