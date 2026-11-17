@@ -289,6 +289,119 @@ test('create-on-first-send persists messages and list/detail preserve newest-fir
   });
 });
 
+test('saves earlier and main client messages in order and returns their client IDs', async () => {
+  const threadId = '00000000-0000-4000-8000-000000000111';
+  const earlierId = '00000000-0000-4000-8000-000000000112';
+  const mainId = '00000000-0000-4000-8000-000000000113';
+
+  const response = await send('second question', undefined, {
+    threadId,
+    clientMessageId: mainId,
+    earlier: [{ clientMessageId: earlierId, question: 'first question' }],
+  });
+  expect(response.status).toBe(200);
+  const payload = await response.json();
+  expect(payload.messages.map((message: { clientId: string | null }) => message.clientId)).toEqual([
+    earlierId,
+    mainId,
+    null,
+  ]);
+  expect(captured.at(-1)?.history).toEqual([{ role: 'learner', content: 'first question' }]);
+
+  const detail = await (await app.request(`/api/tutor/threads/${threadId}`, { headers })).json();
+  expect(
+    detail.messages.map((message: { content: string; clientId: string | null }) => [
+      message.content,
+      message.clientId,
+    ]),
+  ).toEqual([
+    ['first question', earlierId],
+    ['second question', mainId],
+    ['Tutor reply to: second question', null],
+  ]);
+  expect(
+    detail.messages
+      .map((message: { createdAt: string }) => Date.parse(message.createdAt))
+      .every((createdAt: number, index: number, values: number[]) => {
+        const previous = values[index - 1];
+        return index === 0 || (previous !== undefined && createdAt > previous);
+      }),
+  ).toBe(true);
+});
+
+test('adopting an earlier question links it to the exercise for assistance tracking', async () => {
+  const earlierClientMessageId = '00000000-0000-4000-8000-000000000124';
+  const mainClientMessageId = '00000000-0000-4000-8000-000000000125';
+  const { activity } = await createExerciseActivity('slp-input-target');
+  const start = await app.request('/api/lessons/supervised-learning/run', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ activityId: activity.id }),
+  });
+  expect(start.status).toBe(200);
+  const run = (await start.json()).run;
+  const pending = run.pending;
+  if (!pending?.id) throw new Error('Expected a pending supervised-learning problem');
+
+  const firstResponse = await send('follow-up question', undefined, {
+    clientMessageId: mainClientMessageId,
+    earlier: [{ clientMessageId: earlierClientMessageId, question: 'earlier question' }],
+  });
+  expect(firstResponse.status).toBe(200);
+  const threadId = (await firstResponse.json()).thread.id as string;
+  const [earlierBeforeRetry] = await db
+    .select({
+      activityId: tutorMessages.activityId,
+      exerciseId: tutorMessages.exerciseId,
+      lessonProblemId: tutorMessages.lessonProblemId,
+    })
+    .from(tutorMessages)
+    .where(
+      and(eq(tutorMessages.threadId, threadId), eq(tutorMessages.clientId, earlierClientMessageId)),
+    );
+  expect(earlierBeforeRetry).toEqual({
+    activityId: null,
+    exerciseId: null,
+    lessonProblemId: null,
+  });
+
+  const retry = await send('earlier question', threadId, {
+    clientMessageId: earlierClientMessageId,
+    activityId: activity.id,
+    exerciseId: pending.exerciseId,
+    lessonProblemId: pending.id,
+  });
+  expect(retry.status).toBe(200);
+  expect(await retry.json()).toMatchObject({ superseded: true });
+  const [earlierAfterRetry] = await db
+    .select({
+      activityId: tutorMessages.activityId,
+      exerciseId: tutorMessages.exerciseId,
+      lessonProblemId: tutorMessages.lessonProblemId,
+    })
+    .from(tutorMessages)
+    .where(
+      and(eq(tutorMessages.threadId, threadId), eq(tutorMessages.clientId, earlierClientMessageId)),
+    );
+  expect(earlierAfterRetry).toEqual({
+    activityId: activity.id,
+    exerciseId: pending.exerciseId,
+    lessonProblemId: pending.id,
+  });
+
+  const answerResponse = await app.request('/api/lessons/supervised-learning/run/answer', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      problemId: pending.id,
+      activityId: activity.id,
+      answer: correctAnswer(pending.exerciseId, pending.seed),
+    }),
+  });
+  expect(answerResponse.status).toBe(200);
+  expect(await answerResponse.json()).toMatchObject({ assisted: true });
+});
+
 test('does not save a stale reply after a newer learner message and keeps unanswered history', async () => {
   const firstStarted = deferred<boolean>();
   const lateReply = deferred<TutorResult<TutorReply>>();
@@ -325,16 +438,24 @@ test('does not save a stale reply after a newer learner message and keeps unansw
   ]);
 });
 
-test('does not save a learner message when the request is already aborted', async () => {
+test('saves a learner message when an already-aborted request reaches the server', async () => {
   const controller = new AbortController();
   controller.abort();
+  const clientMessageId = '00000000-0000-4000-8000-000000000114';
 
-  const response = await send('discard this stopped question', undefined, {}, controller.signal);
+  const response = await send(
+    'save this stopped question',
+    undefined,
+    { clientMessageId },
+    controller.signal,
+  );
 
   expect(response.status).toBe(200);
   expect(await response.json()).toMatchObject({ superseded: true });
-  expect(await db.select().from(tutorThreads)).toHaveLength(0);
-  expect(await db.select().from(tutorMessages)).toHaveLength(0);
+  expect(await db.select().from(tutorThreads)).toHaveLength(1);
+  expect(await db.select().from(tutorMessages)).toMatchObject([
+    { content: 'save this stopped question', clientId: clientMessageId },
+  ]);
   expect(captured).toHaveLength(0);
 });
 
@@ -370,6 +491,48 @@ test('keeps an aborted learner message and includes it in the next request histo
   expect((await send('show every line', thread.id)).status).toBe(200);
   expect(captured.at(-1)?.history).toEqual([
     { role: 'learner', content: 'show me the derivation' },
+  ]);
+});
+
+test('a late request for an earlier client message keeps one copy and does not replace the newer reply', async () => {
+  const threadId = '00000000-0000-4000-8000-000000000115';
+  const earlierId = '00000000-0000-4000-8000-000000000116';
+  const mainId = '00000000-0000-4000-8000-000000000117';
+  const mainStarted = deferred<boolean>();
+  const releaseMain = deferred<TutorResult<TutorReply>>();
+  respondWith = async (ctx) => {
+    if (ctx.question === 'second') {
+      mainStarted.resolve(true);
+      return releaseMain.promise;
+    }
+    return tutorReply('Late first reply');
+  };
+
+  const mainRequest = send('second', undefined, {
+    threadId,
+    clientMessageId: mainId,
+    earlier: [{ clientMessageId: earlierId, question: 'first' }],
+  });
+  await mainStarted.promise;
+  const lateRequest = await send('first', threadId, { clientMessageId: earlierId });
+  expect(await lateRequest.json()).toMatchObject({ superseded: true });
+  releaseMain.resolve(tutorReply('Second reply'));
+  expect((await mainRequest).status).toBe(200);
+
+  const detail = await (await app.request(`/api/tutor/threads/${threadId}`, { headers })).json();
+  expect(
+    detail.messages.map((message: { role: string; content: string; clientId: string | null }) => [
+      message.role,
+      message.content,
+      message.clientId,
+    ]),
+  ).toEqual([
+    ['user', 'first', earlierId],
+    ['user', 'second', mainId],
+    ['assistant', 'Second reply', null],
+  ]);
+  expect(captured.find((ctx) => ctx.question === 'second')?.history).toEqual([
+    { role: 'learner', content: 'first' },
   ]);
 });
 
@@ -1090,6 +1253,82 @@ test('provider failure removes a new learner message and thread; another user ca
   await db.delete(users).where(eq(users.id, secondUserId));
 });
 
+test('provider failure after earlier messages removes only the main learner message', async () => {
+  const threadId = '00000000-0000-4000-8000-000000000118';
+  const earlierId = '00000000-0000-4000-8000-000000000119';
+  const mainId = '00000000-0000-4000-8000-000000000120';
+  failing = true;
+
+  const response = await send('failed main question', undefined, {
+    threadId,
+    clientMessageId: mainId,
+    earlier: [{ clientMessageId: earlierId, question: 'saved earlier question' }],
+  });
+
+  expect(response.status).toBe(503);
+  expect(await db.select().from(tutorThreads)).toHaveLength(1);
+  expect(
+    await db
+      .select({
+        role: tutorMessages.role,
+        content: tutorMessages.content,
+        clientId: tutorMessages.clientId,
+      })
+      .from(tutorMessages)
+      .where(eq(tutorMessages.threadId, threadId)),
+  ).toEqual([{ role: 'user', content: 'saved earlier question', clientId: earlierId }]);
+});
+
+test('provider failure keeps a learner message that a later reply builds on', async () => {
+  const firstClientMessageId = '00000000-0000-4000-8000-000000000122';
+  const laterClientMessageId = '00000000-0000-4000-8000-000000000123';
+  const firstProviderStarted = deferred<boolean>();
+  const releaseFirstProvider = deferred<void>();
+  respondWith = async (ctx) => {
+    if (ctx.question === 'first question') {
+      firstProviderStarted.resolve(true);
+      await releaseFirstProvider.promise;
+      throw new Error('provider offline');
+    }
+    return tutorReply('Reply to later question');
+  };
+
+  const firstRequest = send('first question', undefined, {
+    clientMessageId: firstClientMessageId,
+  });
+  await firstProviderStarted.promise;
+  const [thread] = await db.select({ id: tutorThreads.id }).from(tutorThreads);
+  if (!thread) throw new Error('Expected the first request to create a thread');
+
+  try {
+    const laterResponse = await send('later question', thread.id, {
+      clientMessageId: laterClientMessageId,
+      earlier: [{ clientMessageId: firstClientMessageId, question: 'first question' }],
+    });
+    expect(laterResponse.status).toBe(200);
+    expect(captured.find((ctx) => ctx.question === 'later question')?.history).toEqual([
+      { role: 'learner', content: 'first question' },
+    ]);
+
+    releaseFirstProvider.resolve();
+    expect((await firstRequest).status).toBe(503);
+    const detail = await (await app.request(`/api/tutor/threads/${thread.id}`, { headers })).json();
+    expect(
+      detail.messages.map((message: { role: string; content: string; clientId: string | null }) => [
+        message.role,
+        message.content,
+        message.clientId,
+      ]),
+    ).toEqual([
+      ['user', 'first question', firstClientMessageId],
+      ['user', 'later question', laterClientMessageId],
+      ['assistant', 'Reply to later question', null],
+    ]);
+  } finally {
+    releaseFirstProvider.resolve();
+  }
+});
+
 test('provider failure in an existing thread removes only the failed learner message', async () => {
   const created = await send('keep this message');
   expect(created.status).toBe(200);
@@ -1119,6 +1358,53 @@ test('provider failure in an existing thread removes only the failed learner mes
     .from(tutorThreads)
     .where(eq(tutorThreads.id, threadId));
   expect(threadAfterFailure?.updatedAt).toEqual(originalThread?.updatedAt);
+});
+
+test('a failed retry with an existing client ID keeps one saved learner message', async () => {
+  const clientMessageId = '00000000-0000-4000-8000-000000000121';
+  const controller = new AbortController();
+  const providerStarted = deferred<boolean>();
+  respondWith = async (_ctx, _level, _content, signal) => {
+    providerStarted.resolve(true);
+    await new Promise<void>((resolve) => {
+      if (signal?.aborted) resolve();
+      else signal?.addEventListener('abort', () => resolve(), { once: true });
+    });
+    throw new DOMException('The operation was aborted.', 'AbortError');
+  };
+
+  const firstRequest = send(
+    'retry this question',
+    undefined,
+    { clientMessageId },
+    controller.signal,
+  );
+  await providerStarted.promise;
+  controller.abort();
+  const firstResponse = await firstRequest;
+  const threadId = (await firstResponse.json()).thread.id as string;
+  respondWith = undefined;
+
+  failing = true;
+  expect((await send('retry this question', threadId, { clientMessageId })).status).toBe(503);
+  expect(
+    await db
+      .select({ id: tutorMessages.id, clientId: tutorMessages.clientId })
+      .from(tutorMessages)
+      .where(eq(tutorMessages.threadId, threadId)),
+  ).toMatchObject([{ clientId: clientMessageId }]);
+
+  failing = false;
+  expect((await send('retry this question', threadId, { clientMessageId })).status).toBe(200);
+  const messages = await db
+    .select({ role: tutorMessages.role, clientId: tutorMessages.clientId })
+    .from(tutorMessages)
+    .where(eq(tutorMessages.threadId, threadId));
+  expect(messages).toHaveLength(2);
+  expect(messages).toEqual([
+    { role: 'user', clientId: clientMessageId },
+    { role: 'assistant', clientId: null },
+  ]);
 });
 
 test('placement exercises and review activities are forbidden', async () => {

@@ -1,6 +1,6 @@
 import { onScreenOptions } from '@academy/shared/shuffle';
 import { TUTOR_QUESTION_MAX_LENGTH, tutorQuestionTooLongMessage } from '@academy/shared/tutor';
-import { and, asc, desc, eq, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 import type { Context, Hono } from 'hono';
 import { z } from 'zod';
 import { serializedOptionOrder } from '../../content/serialize.js';
@@ -42,6 +42,16 @@ const optionalNullable = <T extends z.ZodTypeAny>(schema: T) =>
 
 export const tutorThreadBodySchema = z.object({
   question: z.string().trim().min(1).max(TUTOR_QUESTION_MAX_LENGTH),
+  clientMessageId: z.string().uuid().optional(),
+  earlier: z
+    .array(
+      z.object({
+        clientMessageId: z.string().uuid(),
+        question: z.string().trim().min(1).max(TUTOR_QUESTION_MAX_LENGTH),
+      }),
+    )
+    .max(5)
+    .optional(),
   threadId: optionalNullable(z.string().uuid()),
   conceptId: optionalNullable(z.string()),
   activityId: optionalNullable(z.string().uuid()),
@@ -145,6 +155,7 @@ export function registerTutorThreadRoutes(
     const messages = await db
       .select({
         id: tutorMessages.id,
+        clientId: tutorMessages.clientId,
         role: tutorMessages.role,
         content: tutorMessages.content,
         createdAt: tutorMessages.createdAt,
@@ -387,21 +398,12 @@ export function registerTutorThreadRoutes(
         .from(users)
         .where(eq(users.id, c.get('userId')))
         .for('update');
-      if (signal.aborted) {
-        return {
-          superseded: true as const,
-          ...(thread ? { thread } : {}),
-        };
-      }
       const [latestThread] = await tx
         .select({ updatedAt: tutorThreads.updatedAt })
         .from(tutorThreads)
         .where(eq(tutorThreads.userId, c.get('userId')))
         .orderBy(desc(tutorThreads.updatedAt))
         .limit(1);
-      const learnerMessageAt = new Date(
-        Math.max(deps.requestNow(c).getTime(), (latestThread?.updatedAt.getTime() ?? 0) + 1),
-      );
       let target = targetThreadId
         ? (
             await tx
@@ -416,7 +418,16 @@ export function registerTutorThreadRoutes(
         : thread;
       const createdThread = !target;
       const previousUpdatedAt = target?.updatedAt ?? null;
+      let lastMessageAt = Math.max(
+        target?.updatedAt.getTime() ?? 0,
+        latestThread?.updatedAt.getTime() ?? 0,
+      );
+      const nextMessageAt = () => {
+        lastMessageAt = Math.max(deps.requestNow(c).getTime(), lastMessageAt + 1);
+        return new Date(lastMessageAt);
+      };
       if (!target) {
+        const threadCreatedAt = nextMessageAt();
         const [created] = await tx
           .insert(tutorThreads)
           .values({
@@ -424,55 +435,159 @@ export function registerTutorThreadRoutes(
             userId: c.get('userId'),
             conceptId,
             title: formatThreadTitle(input.question),
-            updatedAt: learnerMessageAt,
+            updatedAt: threadCreatedAt,
           })
           .returning();
         if (!created) throw new Error('Tutor thread was not created');
         target = created;
+      }
+      let lastInsertedAt: Date | null = null;
+      for (const earlier of input.earlier ?? []) {
+        const createdAt = nextMessageAt();
+        const [insertedEarlier] = await tx
+          .insert(tutorMessages)
+          .values({
+            userId: c.get('userId'),
+            threadId: target.id,
+            clientId: earlier.clientMessageId,
+            activityId: activityId ?? null,
+            exerciseId: exerciseId ?? null,
+            lessonProblemId: input.lessonProblemId ?? null,
+            role: 'user',
+            content: earlier.question,
+            createdAt,
+          })
+          .onConflictDoNothing({
+            target: [tutorMessages.threadId, tutorMessages.clientId],
+          })
+          .returning({ createdAt: tutorMessages.createdAt });
+        if (insertedEarlier) lastInsertedAt = insertedEarlier.createdAt;
       }
       const historyRows = await tx
         .select()
         .from(tutorMessages)
         .where(eq(tutorMessages.threadId, target.id))
         .orderBy(desc(tutorMessages.seq))
-        .limit(12);
-      const [learnerMessage] = await tx
-        .insert(tutorMessages)
-        .values({
-          userId: c.get('userId'),
-          threadId: target.id,
-          activityId: activityId ?? null,
-          exerciseId: exerciseId ?? null,
-          lessonProblemId: input.lessonProblemId ?? null,
-          role: 'user',
-          content: input.question,
-          createdAt: learnerMessageAt,
-        })
-        .returning({
-          seq: tutorMessages.seq,
-          id: tutorMessages.id,
-          role: tutorMessages.role,
-          content: tutorMessages.content,
-          createdAt: tutorMessages.createdAt,
-        });
+        .limit(input.clientMessageId ? 13 : 12);
+      const earlierMessages = input.earlier?.length
+        ? await tx
+            .select({
+              id: tutorMessages.id,
+              clientId: tutorMessages.clientId,
+              role: tutorMessages.role,
+              content: tutorMessages.content,
+              createdAt: tutorMessages.createdAt,
+            })
+            .from(tutorMessages)
+            .where(
+              and(
+                eq(tutorMessages.threadId, target.id),
+                inArray(
+                  tutorMessages.clientId,
+                  input.earlier.map((message) => message.clientMessageId),
+                ),
+              ),
+            )
+            .orderBy(tutorMessages.seq)
+        : [];
+      const learnerMessageSelection = {
+        seq: tutorMessages.seq,
+        id: tutorMessages.id,
+        clientId: tutorMessages.clientId,
+        role: tutorMessages.role,
+        content: tutorMessages.content,
+        createdAt: tutorMessages.createdAt,
+      };
+      const mainMessageAt = nextMessageAt();
+      const mainMessageValues = {
+        userId: c.get('userId'),
+        threadId: target.id,
+        ...(input.clientMessageId ? { clientId: input.clientMessageId } : {}),
+        activityId: activityId ?? null,
+        exerciseId: exerciseId ?? null,
+        lessonProblemId: input.lessonProblemId ?? null,
+        role: 'user',
+        content: input.question,
+        createdAt: mainMessageAt,
+      };
+      const insertedMessages = input.clientMessageId
+        ? await tx
+            .insert(tutorMessages)
+            .values(mainMessageValues)
+            .onConflictDoNothing({
+              target: [tutorMessages.threadId, tutorMessages.clientId],
+            })
+            .returning(learnerMessageSelection)
+        : await tx
+            .insert(tutorMessages)
+            .values(mainMessageValues)
+            .returning(learnerMessageSelection);
+      let insertedMain = true;
+      let learnerMessage = insertedMessages[0];
+      if (!learnerMessage && input.clientMessageId) {
+        insertedMain = false;
+        [learnerMessage] = await tx
+          .select(learnerMessageSelection)
+          .from(tutorMessages)
+          .where(
+            and(
+              eq(tutorMessages.threadId, target.id),
+              eq(tutorMessages.clientId, input.clientMessageId),
+            ),
+          )
+          .limit(1);
+        if (
+          learnerMessage &&
+          (activityId !== undefined || exerciseId !== undefined || input.lessonProblemId)
+        ) {
+          const [adoptedMessage] = await tx
+            .update(tutorMessages)
+            .set({
+              activityId: sql`coalesce(${tutorMessages.activityId}, ${activityId ?? null})`,
+              exerciseId: sql`coalesce(${tutorMessages.exerciseId}, ${exerciseId ?? null})`,
+              lessonProblemId: sql`coalesce(${tutorMessages.lessonProblemId}, ${input.lessonProblemId ?? null})`,
+            })
+            .where(
+              and(
+                eq(tutorMessages.id, learnerMessage.id),
+                eq(tutorMessages.threadId, target.id),
+                eq(tutorMessages.userId, c.get('userId')),
+              ),
+            )
+            .returning(learnerMessageSelection);
+          if (adoptedMessage) learnerMessage = adoptedMessage;
+        }
+      } else if (learnerMessage) {
+        lastInsertedAt = learnerMessage.createdAt;
+      }
       if (!learnerMessage) throw new Error('Tutor learner message was not saved');
-      await tx
-        .update(tutorThreads)
-        .set({ updatedAt: learnerMessageAt })
-        .where(eq(tutorThreads.id, target.id));
+      const updatedAt = lastInsertedAt ?? target.updatedAt;
+      if (lastInsertedAt) {
+        await tx.update(tutorThreads).set({ updatedAt }).where(eq(tutorThreads.id, target.id));
+      }
       return {
-        thread: { ...target, updatedAt: learnerMessageAt },
+        thread: { ...target, updatedAt },
         learnerMessage,
         createdThread,
         previousUpdatedAt,
-        history: historyRows.reverse().map((message) => ({
-          role: message.role === 'assistant' ? ('tutor' as const) : ('learner' as const),
-          content: message.content,
-        })),
+        insertedMain,
+        earlierMessages,
+        history: historyRows
+          .reverse()
+          .filter((message) => message.id !== learnerMessage.id)
+          .map((message) => ({
+            role: message.role === 'assistant' ? ('tutor' as const) : ('learner' as const),
+            content: message.content,
+          })),
       };
     });
 
-    if ('superseded' in request) return c.json(request);
+    if (signal.aborted) {
+      return c.json({
+        superseded: true,
+        thread: request.thread,
+      });
+    }
 
     const rollbackFailedMessage = async () => {
       const abortedDuringRollback = new Error('Tutor request aborted during failure rollback');
@@ -484,45 +599,49 @@ export function registerTutorThreadRoutes(
             .where(eq(users.id, c.get('userId')))
             .for('update');
           if (signal.aborted) return false;
-          const [latestMessage] = await tx
-            .select({ seq: tutorMessages.seq })
-            .from(tutorMessages)
-            .where(eq(tutorMessages.threadId, request.thread.id))
-            .orderBy(desc(tutorMessages.seq))
-            .limit(1);
-          await tx
-            .delete(tutorMessages)
-            .where(
-              and(
-                eq(tutorMessages.id, request.learnerMessage.id),
-                eq(tutorMessages.threadId, request.thread.id),
-                eq(tutorMessages.userId, c.get('userId')),
-              ),
-            );
-          if (signal.aborted) throw abortedDuringRollback;
-          const [remainingMessage] = await tx
-            .select({ id: tutorMessages.id })
-            .from(tutorMessages)
-            .where(eq(tutorMessages.threadId, request.thread.id))
-            .limit(1);
-          if (request.createdThread && !remainingMessage) {
-            await tx
-              .delete(tutorThreads)
-              .where(
-                and(
-                  eq(tutorThreads.id, request.thread.id),
-                  eq(tutorThreads.userId, c.get('userId')),
-                ),
-              );
-          } else if (
-            !request.createdThread &&
-            latestMessage?.seq === request.learnerMessage.seq &&
-            request.previousUpdatedAt
-          ) {
-            await tx
-              .update(tutorThreads)
-              .set({ updatedAt: request.previousUpdatedAt })
-              .where(eq(tutorThreads.id, request.thread.id));
+          if (request.insertedMain) {
+            const [latestMessage] = await tx
+              .select({ seq: tutorMessages.seq })
+              .from(tutorMessages)
+              .where(eq(tutorMessages.threadId, request.thread.id))
+              .orderBy(desc(tutorMessages.seq))
+              .limit(1);
+            if (latestMessage?.seq === request.learnerMessage.seq) {
+              await tx
+                .delete(tutorMessages)
+                .where(
+                  and(
+                    eq(tutorMessages.id, request.learnerMessage.id),
+                    eq(tutorMessages.threadId, request.thread.id),
+                    eq(tutorMessages.userId, c.get('userId')),
+                  ),
+                );
+              if (signal.aborted) throw abortedDuringRollback;
+              const [remainingMessage] = await tx
+                .select({ id: tutorMessages.id })
+                .from(tutorMessages)
+                .where(eq(tutorMessages.threadId, request.thread.id))
+                .limit(1);
+              if (request.createdThread && !remainingMessage) {
+                await tx
+                  .delete(tutorThreads)
+                  .where(
+                    and(
+                      eq(tutorThreads.id, request.thread.id),
+                      eq(tutorThreads.userId, c.get('userId')),
+                    ),
+                  );
+              } else if (
+                !request.createdThread &&
+                latestMessage?.seq === request.learnerMessage.seq &&
+                request.previousUpdatedAt
+              ) {
+                await tx
+                  .update(tutorThreads)
+                  .set({ updatedAt: request.previousUpdatedAt })
+                  .where(eq(tutorThreads.id, request.thread.id));
+              }
+            }
           }
           if (signal.aborted) throw abortedDuringRollback;
           return true;
@@ -656,6 +775,7 @@ export function registerTutorThreadRoutes(
           })
           .returning({
             id: tutorMessages.id,
+            clientId: tutorMessages.clientId,
             role: tutorMessages.role,
             content: tutorMessages.content,
             createdAt: tutorMessages.createdAt,
@@ -669,14 +789,19 @@ export function registerTutorThreadRoutes(
         if (signal.aborted) throw new Error('Tutor request aborted before reply was saved');
         return {
           thread: { ...target, updatedAt: tutorMessageAt },
-          messages: [request.learnerMessage, assistantMessage].map(
-            ({ id, role, content, createdAt }) => ({
-              id,
-              role,
-              content,
-              createdAt,
-            }),
-          ),
+          messages: [
+            ...request.earlierMessages.filter(
+              (message) => message.clientId !== request.learnerMessage.clientId,
+            ),
+            request.learnerMessage,
+            assistantMessage,
+          ].map(({ id, clientId, role, content, createdAt }) => ({
+            id,
+            clientId,
+            role,
+            content,
+            createdAt,
+          })),
         };
       });
     let saved: Awaited<ReturnType<typeof saveReply>> | null;

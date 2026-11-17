@@ -113,6 +113,13 @@
       "when": 1794805624386,
       "tag": "0015_automaticity_quiz_duration",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1794887634880,
+      "tag": "0016_thick_betty_ross",
+      "breakpoints": true
     }
   ]
 }

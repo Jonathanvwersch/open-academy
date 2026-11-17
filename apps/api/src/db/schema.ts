@@ -501,21 +501,30 @@ export const tutorThreads = pgTable(
   (table) => [index('tutor_threads_user_updated_idx').on(table.userId, table.updatedAt)],
 );
 
-export const tutorMessages = pgTable('tutor_messages', {
-  seq: bigint('seq', { mode: 'number' }).generatedAlwaysAsIdentity(),
-  id: uuid('id').primaryKey().defaultRandom(),
-  userId: uuid('user_id')
-    .notNull()
-    .references(() => users.id, { onDelete: 'cascade' }),
-  activityId: uuid('activity_id').references(() => sessionActivities.id, { onDelete: 'set null' }),
-  threadId: uuid('thread_id').references(() => tutorThreads.id, { onDelete: 'cascade' }),
-  exerciseId: text('exercise_id'),
-  lessonProblemId: uuid('lesson_problem_id'),
-  role: text('role').notNull(),
-  content: text('content').notNull(),
-  llmCallId: uuid('llm_call_id'),
-  createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
-});
+export const tutorMessages = pgTable(
+  'tutor_messages',
+  {
+    seq: bigint('seq', { mode: 'number' }).generatedAlwaysAsIdentity(),
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    activityId: uuid('activity_id').references(() => sessionActivities.id, {
+      onDelete: 'set null',
+    }),
+    threadId: uuid('thread_id').references(() => tutorThreads.id, { onDelete: 'cascade' }),
+    clientId: uuid('client_id'),
+    exerciseId: text('exercise_id'),
+    lessonProblemId: uuid('lesson_problem_id'),
+    role: text('role').notNull(),
+    content: text('content').notNull(),
+    llmCallId: uuid('llm_call_id'),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex('tutor_messages_thread_client_unique').on(table.threadId, table.clientId),
+  ],
+);
 
 export const llmCalls = pgTable(
   'llm_calls',
