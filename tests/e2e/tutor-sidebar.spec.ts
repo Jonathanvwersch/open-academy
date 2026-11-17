@@ -30,7 +30,7 @@ const tutorSidebarScreenshotDir = 'test-results/screenshots/shots/tutor-sidebar'
 mkdirSync(tutorSidebarScreenshotDir, { recursive: true });
 const tutorSteerScreenshotDir = 'test-results/screenshots/shots/tutor-steer';
 mkdirSync(tutorSteerScreenshotDir, { recursive: true });
-const chatRaceScreenshotDir = '/home/ubuntu/briefs/chat/shots';
+const chatRaceScreenshotDir = 'test-results/screenshots/shots/tutor-chat-race';
 mkdirSync(chatRaceScreenshotDir, { recursive: true });
 let sessionId = '';
 
