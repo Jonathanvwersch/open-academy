@@ -906,7 +906,7 @@ exercises:
         criterion: "Explain that a nonlinear activation can give the network an input-to-output rule whose graph bends."
         weight: 1
         required: true
-    exemplar: "With only linear layers, each output reduces to one weighted sum of the original inputs plus a bias. An activation that bends between the layers allows a rule that a straight line cannot make."
+    exemplar: "With only linear layers, each output is one weighted sum of the original inputs plus a bias. A nonlinear activation between layers can make the output bend as an input changes."
   - id: act-recall-stack-contrast
     dimension: conceptual
     type: mc

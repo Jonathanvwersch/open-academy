@@ -778,7 +778,7 @@ exercises:
     knowledge_point: mad-scale-moves
     difficulty: 1
     est_minutes: 0.5
-    prompt: "Two parameters have the same positive remembered gradient, but the first has a larger squared-gradient average. Both size estimates are positive. What does dividing by their respective size estimates do?"
+    prompt: "Two parameters have the same positive signed average $m_t$. The first has a larger squared-gradient average $v_t$, and both $v_t$ values are positive. How do their scaled values compare?"
     options:
       - id: a
         text: "It gives the first parameter a smaller scaled value."

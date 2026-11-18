@@ -583,7 +583,7 @@ exercises:
         criterion: "Explain that it adds slope contributions where several paths meet at the same value."
         weight: 1
         required: true
-    exemplar: "Reverse mode starts at the loss and visits the recorded operations from last to first. It adds the contributions from all paths that reach the same value."
+    exemplar: "Reverse mode starts at an output, such as the loss, and visits the recorded operations from last to first. It adds the contributions from all paths that reach the same value."
   - id: ad-recall-reverse-contrast
     dimension: conceptual
     type: mc
@@ -624,17 +624,17 @@ exercises:
     knowledge_point: ad-modes
     difficulty: 1
     est_minutes: 1
-    prompt: "In one or two sentences, what determines how many slope passes forward mode needs, and what determines how many backward passes reverse mode needs?"
+    prompt: "In one or two sentences, which slopes does one forward-mode pass give, and which slopes does one backward pass of reverse mode give?"
     rubric:
       - id: forward
-        criterion: "State that forward mode needs one pass per input."
+        criterion: "State that one forward-mode pass gives the slopes of all outputs with respect to one chosen input."
         weight: 1
         required: true
       - id: reverse
-        criterion: "State that reverse mode uses one backward pass per output after one recording pass."
+        criterion: "State that one backward pass gives the slopes of one chosen output with respect to all inputs."
         weight: 1
         required: true
-    exemplar: "Forward mode follows one input per pass. Reverse mode makes one record, then has one backward pass per output."
+    exemplar: "One forward-mode pass gives the slopes of all outputs for one input. One backward pass gives the slopes of one output for all inputs."
   - id: ad-recall-modes-contrast
     dimension: conceptual
     type: mc
@@ -642,20 +642,20 @@ exercises:
     knowledge_point: ad-modes
     difficulty: 1
     est_minutes: 0.5
-    prompt: "A robot has one motor speed setting and four outputs that depend on it. You need the slope of each output with respect to the speed. Which choice takes the fewest passes?"
+    prompt: "A robot has one motor speed setting and four outputs that depend on it. You need the slope of each output with respect to the speed. How do the pass counts of the two modes compare?"
     options:
       - id: a
-        text: "Use forward mode once, starting from the speed."
+        text: "Forward mode takes fewer passes."
         correct: true
         feedback: "One input gives one forward pass, which returns slopes for all four outputs."
       - id: b
-        text: "Use reverse mode once, starting from one output."
+        text: "Reverse mode takes fewer passes."
         correct: false
-        feedback: "One reverse sweep gives slopes for just its chosen output. The other outputs each need their own sweep."
+        feedback: "Reverse mode needs a recording pass and four backward passes, one from each output."
       - id: c
-        text: "Use forward mode once for each output."
+        text: "Both modes take the same number of passes."
         correct: false
-        feedback: "Forward mode follows one input per pass. A pass from the motor speed already gives all four slopes."
+        feedback: "Forward mode counts inputs and reverse mode counts outputs after recording. Here there are fewer inputs than outputs."
     solution: "There is one input, so one forward pass gives the slopes of all four outputs."
   - id: ad-recall-modes-formula
     dimension: math

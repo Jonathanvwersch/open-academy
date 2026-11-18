@@ -804,7 +804,7 @@ exercises:
         criterion: "State that its shape gives the length of each dimension."
         weight: 1
         required: true
-    exemplar: "A tensor is an array of numbers. It can hold a single number, a list, a table or more dimensions, and its shape lists how long each dimension is."
+    exemplar: "A tensor is an array of numbers, from a single number to a list, a table or an array with more dimensions. Its shape gives the length of each dimension."
   - id: ptb-recall-tensor-contrast
     dimension: conceptual
     type: mc
@@ -812,21 +812,21 @@ exercises:
     knowledge_point: ptb-tensors
     difficulty: 1
     est_minutes: 0.5
-    prompt: "A PyTorch input tensor has shape `(5, 3)` and stores one example per row. What does the 3 count?"
+    prompt: "Two PyTorch input tensors each hold six numbers. The first has three examples with two inputs each. The second has six examples with one input each. What are their shapes if both are stored as tables?"
     options:
       - id: a
-        text: "The examples in this input tensor."
+        text: "`(2, 3)` and `(1, 6)`."
         correct: false
-        feedback: "Examples are rows. The first dimension, 5, counts them."
+        feedback: "These put examples in columns. Each example should occupy a row."
       - id: b
-        text: "The inputs recorded for each example."
+        text: "`(3, 2)` and `(6, 1)`."
         correct: true
-        feedback: "The second dimension counts the columns, one per input."
+        feedback: "The first dimension counts examples. The second counts inputs per example."
       - id: c
-        text: "The target values predicted for each example."
+        text: "`(3, 2)` and `(6,)`."
         correct: false
-        feedback: "This is the input tensor, so its columns count inputs. Targets live in their own tensor."
-    solution: "The 5 counts rows and the 3 counts columns. Each row is an example with three inputs."
+        feedback: "The shape `(6,)` describes a plain list. The second table needs six rows and one column."
+    solution: "The first table has three rows of two values. The second has six rows of one value."
   - id: ptb-recall-tensor-contrast2
     dimension: conceptual
     type: mc
@@ -866,7 +866,7 @@ exercises:
         criterion: "State that the module keeps the weight and bias as parameters that training can adjust."
         weight: 1
         required: true
-    exemplar: "`nn.Linear` uses its weights and bias to make a weighted sum plus a bias for each example row. The weight and bias belong to the module as trainable parameters."
+    exemplar: "For each example row, `nn.Linear` adds a bias to a weighted sum of the inputs. The module stores the weights and biases as trainable parameters."
   - id: ptb-recall-linear-contrast
     dimension: conceptual
     type: mc
@@ -907,7 +907,7 @@ exercises:
     knowledge_point: ptb-loss-optimizer
     difficulty: 1
     est_minutes: 1
-    prompt: "In one or two sentences, what does `loss.backward()` do to the model's gradients, and how does `optimizer.step()` use them?"
+    prompt: "In one or two sentences, what does `loss.backward()` do to the model's gradients, and how does an SGD optimiser use them when you call `optimizer.step()`?"
     rubric:
       - id: backward
         criterion: "State that backward finds the loss slope for each parameter and adds it to that parameter's stored gradient."
@@ -925,18 +925,18 @@ exercises:
     knowledge_point: ptb-loss-optimizer
     difficulty: 1
     est_minutes: 0.5
-    prompt: "The gradients have been cleared and you have called `nn.MSELoss()` on the predictions and targets to get `loss`. What is available at this point?"
+    prompt: "The gradients have been cleared. The model has made predictions, and an `nn.MSELoss` object has scored them against the targets. What has been calculated from that score so far?"
     options:
       - id: a
-        text: "The loss and fresh parameter slopes."
+        text: "The slopes, with no parameter update."
         correct: false
         feedback: "Computing the loss gives a loss value. Calling backward on it finds the slopes."
       - id: b
-        text: "The loss, with the parameters still at their old values."
+        text: "Neither the slopes nor a parameter update."
         correct: true
         feedback: "The loss function scores predictions. Backward and the parameter update are separate calls."
       - id: c
-        text: "The loss and newly updated parameters."
+        text: "Both the slopes and a parameter update."
         correct: false
         feedback: "The parameters move when the optimiser uses the slopes in `optimizer.step()`."
     solution: "The loss function gives a score for the predictions. The gradients and parameter update come in later calls."

@@ -965,7 +965,7 @@ exercises:
     knowledge_point: perc-straight-boundary
     difficulty: 2
     est_minutes: 0.5
-    prompt: "A perceptron's boundary has inputs $x_1,x_2$, matching weights $w_1,w_2$ and bias $b$. Write the boundary's $x_2$ in terms of $x_1,w_1,w_2,b$, with $w_2$ nonzero. Type the subscripts as x1, w1 and w2."
+    prompt: "A perceptron has inputs $x_1,x_2$, matching weights $w_1,w_2$ and bias $b$. On its decision boundary, what is $x_2$ in terms of $x_1,w_1,w_2,b$? Assume $w_2$ is nonzero. Type x1, w1 and w2 for the subscripts."
     answer: "-(w1*x1+b)/w2"
     variables: { x1: [-4, 4], w1: [-3, 3], w2: [0.5, 4], b: [-2, 2] }
     solution: "Set the score to zero, then isolate $x_2$ to get $x_2=-(w_1x_1+b)/w_2$."
@@ -1020,7 +1020,7 @@ exercises:
     knowledge_point: perc-and-or-xor
     difficulty: 1
     est_minutes: 0.5
-    prompt: "A three-perceptron network computes XOR by taking the AND of two tests on the original inputs. One test is OR. What is the other test? Give the rule name or describe when it says yes."
+    prompt: "Two perceptrons each read the same pair of binary inputs. One computes OR. A third perceptron takes the AND of their outputs to produce XOR. What rule does the second perceptron compute? Give its name or describe when it says yes."
     accept:
       [
         "NAND",
@@ -1031,13 +1031,17 @@ exercises:
         "not both are 1",
         "not both inputs are yes",
         "negated AND",
+        "the opposite of AND",
         "yes unless both inputs are 1",
         "yes unless both inputs are yes",
         "at least one input is 0",
         "at least one input is no",
         "at least one is 0",
+        "0 only when both inputs are 1",
+        "1 - AND",
+        "¬AND",
         "!(x1 && x2)",
         "¬(x₁ ∧ x₂)",
       ]
-    regex: '^\s*(?:(?:the\s+)?(?:n\s*[- ]?\s*and|(?:not|negated)\s*[- ]?\s*\(?\s*and\s*\)?)(?:\s+gate)?|(?:yes\s+unless\s+both|not\s+both)(?:\s+(?:inputs?\s+)?(?:are\s+)?(?:1|one|yes|true))?|at\s+least\s+one(?:\s+input)?\s+is\s+(?:0|zero|no|false)|(?:!|¬|not)\s*\(\s*x\s*[_]?\s*[1₁]\s*(?:&&|∧|and)\s*x\s*[_]?\s*[2₂]\s*\))\s*[.!]?\s*$'
+    regex: '^\s*(?:(?:the\s+)?(?:n\s*[- ]?\s*and|(?:not|negated)\s*[- ]?\s*\(?\s*and\s*\)?)(?:\s+gate)?|(?:!|¬)\s*and|(?:not\s+both|(?:yes|1|one|true|it\s+says\s+yes)\s+(?:unless|except\s+when)\s+both)\s+(?:inputs\s+)?(?:are|equal|say)\s+(?:1|one|yes|true)|(?:at\s+least\s+one|one\s+or\s+both)(?:\s+inputs?)?\s+(?:is|are)\s+(?:0|zero|no|false)|(?:!|¬|not)\s*\(\s*(?:x\s*_?\s*[1₁]\s*(?:&&|∧|and)\s*x\s*_?\s*[2₂]|x\s*_?\s*[2₂]\s*(?:&&|∧|and)\s*x\s*_?\s*[1₁])\s*\))\s*[.!]?\s*$'
     solution: "OR requires at least one yes. NAND rules out two yes inputs, so their AND says yes exactly when one input is yes."

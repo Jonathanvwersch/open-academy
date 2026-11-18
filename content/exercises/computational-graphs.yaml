@@ -634,17 +634,17 @@ exercises:
     knowledge_point: cg-chaining-paths
     difficulty: 1
     est_minutes: 1
-    prompt: "In one or two sentences, how do you combine local derivatives along a path, and how do you combine the results when several paths run from the same input to the output?"
+    prompt: "In one or two sentences, how do you find the contribution from one path in a computational graph, and why do you add the contributions if an input reaches the output along two paths?"
     rubric:
       - id: within
         criterion: "State that you multiply the local derivatives along each path."
         weight: 1
         required: true
       - id: across
-        criterion: "State that you add the path products to get the output's derivative with respect to that input."
+        criterion: "Explain that a change to the shared input affects the output through both paths, so both contributions count."
         weight: 1
         required: true
-    exemplar: "Multiply the local derivatives along each path. Add all those path products to get the derivative for the input."
+    exemplar: "Multiply the local derivatives along a path to get its contribution. Changing the input affects the output through both paths, so add both contributions."
   - id: cg-recall-paths-contrast
     dimension: conceptual
     type: mc

@@ -932,7 +932,7 @@ exercises:
         "sum(axis=0)",
         "sum along axis 0",
       ]
-    regex: '^\s*(?:(?:the\s+)?column[\s-]+sums?|(?:the\s+)?sum(?:s|ming)?\s+(?:(?:of|down|over|across)\s+)?(?:each|the|its)?\s*columns?|(?:sum|add)(?:s|ing)?\s+(?:over|across)\s+(?:(?:all|the|its)\s+)?(?:rows|examples)|add\s+down\s+each\s+column|sum\s+(?:along|over|on)\s+axis\s*0|(?:g\s*\.\s*)?sum\s*\(\s*(?:axis\s*=\s*)?0\s*\)|(?:np|numpy)\s*\.\s*sum\s*\(\s*g\s*,\s*(?:axis\s*=\s*)?0\s*\))\s*[.!]?\s*$'
+    regex: '^\s*(?:(?:the\s+)?column[\s-]+sums?|(?:the\s+)?sum(?:s|ming)?\s+(?:(?:of|down|within)\s+)?(?:each|every|individual)\s+column|(?:sum|add)(?:s|ing)?\s+(?:over|across|down)\s+(?:(?:all|the|its)\s+)?(?:rows|examples)|(?:sum|add)(?:s|ing)?\s+down\s+(?:(?:all|the|its)\s+)?columns?|add\s+(?:down\s+)?(?:each|every)\s+column|sum\s+(?:along|over|on)\s+axis\s*0|(?:g\s*\.\s*)?sum\s*\(\s*(?:axis\s*=\s*)?0\s*\)|(?:(?:np|numpy)\s*\.\s*)?sum\s*\(\s*g\s*,\s*(?:axis\s*=\s*)?0\s*\))\s*[.!]?\s*$'
     solution: "Sum down each column of $G$. Each bias changes every example's score in its own column by the same amount."
   - id: bp-recall-check-say
     dimension: conceptual
@@ -951,7 +951,7 @@ exercises:
         criterion: "State that you compare this slope estimate with the loss slope from backpropagation at that weight."
         weight: 1
         required: true
-    exemplar: "Hold the other parameters fixed and measure the loss equally far below and above the weight. Divide the loss increase from the lower to the higher weight by the distance between them and compare with backpropagation's slope."
+    exemplar: "Hold the other parameters fixed and measure the loss equally far below and above the weight. Subtract the lower-weight loss from the higher-weight loss, divide by the distance between the weights and compare with backpropagation's slope."
   - id: bp-recall-check-contrast
     dimension: conceptual
     type: mc

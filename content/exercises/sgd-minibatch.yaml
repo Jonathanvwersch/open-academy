@@ -546,7 +546,7 @@ exercises:
     knowledge_point: sgm-average-slopes
     difficulty: 1
     est_minutes: 0.5
-    prompt: "An epoch starts with a minibatch that changes a weight. You find a slope for example 1 in the next minibatch. Which weight value should you use for example 2 in that same batch?"
+    prompt: "The first minibatch changes a weight. In the next minibatch, you find the slope for its first example. Which weight value should you use to find the slope for its second example?"
     options:
       - id: a
         text: "The value after a move using the first example."
@@ -559,7 +559,7 @@ exercises:
       - id: c
         text: "The value from the start of the epoch."
         correct: false
-        feedback: "That can be stale once earlier batches have moved the weight. Use the value at the start of this batch."
+        feedback: "The first minibatch has already changed the weight. Use its updated value for both examples in the next batch."
     solution: "A minibatch makes one move after averaging its slopes. Every slope in the batch uses the weight at the start of that batch."
   - id: sgm-recall-batch-formula
     dimension: math
@@ -597,7 +597,7 @@ exercises:
     knowledge_point: sgm-count-passes
     difficulty: 1
     est_minutes: 0.5
-    prompt: "You just finished using every training example once. What starting point and example order should you use for the next epoch?"
+    prompt: "You just finished the first epoch of minibatch training. What starting point and example order should you use for the next epoch?"
     options:
       - id: a
         text: "Start from the initial parameters and shuffle the examples."
@@ -611,6 +611,10 @@ exercises:
         text: "Keep the current parameters and shuffle the examples."
         correct: true
         feedback: "Continue from the learned values and shuffle to change which examples are grouped and which batches go first."
+      - id: d
+        text: "Start from the initial parameters and reuse the same order."
+        correct: false
+        feedback: "Resetting loses the first epoch's updates. Reusing the order also keeps the same groups."
     solution: "Begin from the last batch's updated parameters and shuffle the examples before splitting them into new batches."
   - id: sgm-recall-epoch-formula
     dimension: math
@@ -648,21 +652,21 @@ exercises:
     knowledge_point: sgm-choose-size
     difficulty: 1
     est_minutes: 0.5
-    prompt: "At the current parameter value, a randomly chosen minibatch points downhill for its own loss. What does that tell you about the direction downhill for the full dataset?"
+    prompt: "At the same weight, a minibatch gives a gradient of $+3$ and the full dataset gives a gradient of $-2$. The learning rate is positive. If you use the full dataset for this update, what happens to the weight?"
     options:
       - id: a
-        text: "The directions agree once the batch slopes are averaged."
+        text: "The weight decreases."
         correct: false
-        feedback: "Averaging within one batch gives that batch's direction. The omitted examples can call for a different move."
+        feedback: "The positive minibatch gradient would decrease the weight. The full-data gradient here is negative."
       - id: b
-        text: "The directions can differ even when the batch slope is correct."
+        text: "The weight increases."
         correct: true
-        feedback: "A batch is only part of the data, so its slope can differ from the full-data slope."
+        feedback: "Subtracting the negative full-data gradient times a positive learning rate increases the weight."
       - id: c
-        text: "The directions agree when the learning rate is small enough."
+        text: "The weight stays the same."
         correct: false
-        feedback: "The learning rate controls the move size. A smaller rate cannot make two opposite slopes point the same way."
-    solution: "A correct minibatch slope can point against the full-data slope because it only uses the selected examples."
+        feedback: "The two gradients describe different sets of examples. Use the full-data gradient on its own; it is nonzero."
+    solution: "Use the full-data gradient of $-2$. It moves the weight up, while the minibatch gradient of $+3$ would move it down."
   - id: sgm-recall-noise-contrast2
     dimension: conceptual
     type: mc

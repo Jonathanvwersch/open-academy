@@ -944,10 +944,10 @@ exercises:
     knowledge_point: mlp-layer-of-neurons
     difficulty: 1
     est_minutes: 0.5
-    prompt: "For one input vector $x$, a layer has weight matrix $W$, bias vector $b$ and activation $\\phi$. Fill in what goes inside the activation in $h=\\phi(\\underline{\\quad\\quad})$. Type the expression in symbols."
+    prompt: "For one input vector $x$, a layer has weight matrix $W$, bias vector $b$ and activation $\\phi$. Fill in what goes inside the activation in $h=\\phi(\\underline{\\quad\\quad})$. Write it in terms of $W$, $x$ and $b$."
     accept:
       ["Wx+b", "W x + b", "W*x+b", "W @ x + b", "b+Wx", "b+W*x", "b + W @ x", "W·x+b", "b+W·x"]
-    regex: '^\s*(?=(?:[^()]*|\([^()]*\))\s*$)\(?\s*(?:W\s*(?:[*@·⋅×]\s*)?x\s*\+\s*b|b\s*\+\s*W\s*(?:[*@·⋅×]\s*)?x)\s*\)?\s*$'
+    regex: '^\s*(?:(?:(?:W\s*(?:(?:[*@·⋅×]|\\(?:cdot|times))\s*)?x|\(\s*W\s*(?:(?:[*@·⋅×]|\\(?:cdot|times))\s*)?x\s*\))\s*\+\s*b|b\s*\+\s*(?:W\s*(?:(?:[*@·⋅×]|\\(?:cdot|times))\s*)?x|\(\s*W\s*(?:(?:[*@·⋅×]|\\(?:cdot|times))\s*)?x\s*\)))|\(\s*(?:(?:W\s*(?:(?:[*@·⋅×]|\\(?:cdot|times))\s*)?x|\(\s*W\s*(?:(?:[*@·⋅×]|\\(?:cdot|times))\s*)?x\s*\))\s*\+\s*b|b\s*\+\s*(?:W\s*(?:(?:[*@·⋅×]|\\(?:cdot|times))\s*)?x|\(\s*W\s*(?:(?:[*@·⋅×]|\\(?:cdot|times))\s*)?x\s*\)))\s*\))\s*$'
     solution: "The activation acts on the score vector $Wx+b$, after the layer adds each neuron's bias."
   - id: mlp-recall-forward-say
     dimension: conceptual
@@ -974,21 +974,21 @@ exercises:
     knowledge_point: mlp-two-layers
     difficulty: 1
     est_minutes: 0.5
-    prompt: "A network uses ReLU in its hidden layer and leaves its final score unchanged. Which values receive ReLU during its forward pass?"
+    prompt: "An MLP predicts the change in a house price. Predictions can be negative or positive, with no fixed lower or upper limit. What should the output layer do with its score?"
     options:
       - id: a
-        text: "The original inputs before the first weighted sum."
+        text: "Apply ReLU to the score."
         correct: false
-        feedback: "The first layer uses the original input values to compute its scores. ReLU comes after that sum and bias."
+        feedback: "ReLU can be used in a hidden layer. At the output, it would turn negative predictions into zero."
       - id: b
-        text: "The final scores after the output bias."
+        text: "Apply sigmoid to the score."
         correct: false
-        feedback: "This network leaves the output score unchanged. Applying ReLU there would replace negative predictions with zero."
+        feedback: "A sigmoid is useful for a probability. Its outputs stay between zero and one."
       - id: c
-        text: "The hidden scores after the hidden biases."
+        text: "Use the score as it is."
         correct: true
-        feedback: "ReLU turns the first layer's scores into hidden values, which the output layer then reads."
-    solution: "Compute the hidden weighted sums and add their biases first. ReLU acts on those scores before the next weighted sum."
+        feedback: "Leaving the score unchanged preserves both its sign and its size."
+    solution: "Use the final score as the prediction. ReLU would remove negative values, and sigmoid would restrict the prediction to a fixed range."
   - id: mlp-recall-forward-formula
     dimension: math
     type: text
@@ -1014,7 +1014,7 @@ exercises:
         "ϕ(W1x+b1)",
         "φ(W1x+b1)",
       ]
-    regex: '^\s*(?:(?:the\s+)?(?:h|(?:vector\s+of\s+)?hidden\s+(?:values?|value\s+vector|activations?)|(?:hidden|first)[\s-]+layer(?:''s)?\s+outputs?|outputs?\s+of\s+the\s+(?:hidden|first)\s+layer)|(?:phi|[φϕ])\s*\(\s*w\s*_?\s*[1₁]\s*(?:[*@·⋅×]\s*)?x\s*\+\s*b\s*_?\s*[1₁]\s*\))\s*$'
+    regex: '^\s*(?:(?:the\s+)?(?:h|hidden\s+(?:values?|value\s+vector|activations?|outputs?)|(?:vector\s+of\s+)?hidden\s+(?:values?|activations?)|(?:hidden|first)[\s-]+layer(?:''s)?\s+(?:outputs?|activations?)|outputs?\s+of\s+(?:the\s+)?(?:hidden|first)\s+layer)|(?:\\?phi|\\varphi|[φϕ])\s*\(\s*(?:W\s*(?:_?\s*[1₁]|_\s*\{\s*1\s*\})\s*(?:(?:[*@·⋅×]|\\(?:cdot|times))\s*)?x\s*\+\s*b\s*(?:_?\s*[1₁]|_\s*\{\s*1\s*\})|b\s*(?:_?\s*[1₁]|_\s*\{\s*1\s*\})\s*\+\s*W\s*(?:_?\s*[1₁]|_\s*\{\s*1\s*\})\s*(?:(?:[*@·⋅×]|\\(?:cdot|times))\s*)?x)\s*\))\s*[.]?\s*$'
     solution: "The output layer reads $h$, the hidden layer's outputs, so $\\hat y=W_2h+b_2$."
   - id: mlp-recall-batch-say
     dimension: conceptual
@@ -1026,14 +1026,14 @@ exercises:
     prompt: "In one or two sentences, how do you arrange several examples for a batch forward pass, and what happens to the number of learned weights and biases when you add another example?"
     rubric:
       - id: rows
-        criterion: "State that the input batch has one row per example and that each example keeps its own output row."
+        criterion: "State that the input batch has one row per example."
         weight: 1
         required: true
       - id: shared
         criterion: "Explain that the new row uses the same weights and biases, so the parameter count stays the same."
         weight: 1
         required: true
-    exemplar: "A batch puts one example in each row and keeps one output row per example. An added row uses the same weights and biases, so it adds no learned parameters."
+    exemplar: "A batch puts one example in each row. An added row uses the same weights and biases, so it adds no learned parameters."
   - id: mlp-recall-batch-contrast
     dimension: conceptual
     type: mc
@@ -1041,7 +1041,7 @@ exercises:
     knowledge_point: mlp-shapes
     difficulty: 1
     est_minutes: 0.5
-    prompt: "A layer's weight matrix $W$ has one row per neuron. In a batch, which two things are paired in the dot product for one example's score at one neuron?"
+    prompt: "A batch of inputs is stored in $X$, and a layer's weights are stored in $W$. Which row or column from each matrix goes into the dot product for one example at one neuron?"
     options:
       - id: a
         text: "A column of $X$ and a row of $W$."
@@ -1085,5 +1085,5 @@ exercises:
         "transposed W",
         "the transposed weight matrix",
       ]
-    regex: '^\s*(?:w\s*(?:[\u1d40\u22a4''\u2032]|\.\s*t|\^\s*(?:[\u22a4t]|\\top|\{\s*(?:t|\\top|\\mathrm\s*\{\s*t\s*\})\s*\}|\\mathrm\s*\{\s*t\s*\}))|transpose\s*\(\s*w\s*\)|(?:the\s+)?transpose\s+of\s+(?:w|(?:the\s+)?(?:weight|weights)\s+matrix)|(?:the\s+)?transposed\s+(?:w|(?:weight|weights)\s+matrix)|w\s+transpos(?:e|ed))\s*$'
+    regex: '^\s*(?:w\s*(?:[\u1d40\u22a4''\u2032]|\.\s*t|\^\s*(?:[\u22a4t]|\\top|\\(?:mathrm|text)\s*\{\s*t\s*\}|\{\s*(?:[\u22a4t]|\\top|\\(?:mathrm|text)\s*\{\s*t\s*\})\s*\}))|(?:np\s*\.\s*)?transpose\s*\(\s*w\s*\)|w\s*\.\s*transpose\s*\(\s*\)|(?:the\s+)?transpose\s+of\s+(?:w|(?:the\s+)?weights?\s+matrix(?:\s+w)?)|(?:the\s+)?transposed\s+(?:w|weights?\s+matrix(?:\s+w)?)|w\s+transpos(?:e|ed))\s*$'
     solution: "Use $W^\\top$. This puts one neuron's weights in each column, so an example row can multiply the matching input weights."
