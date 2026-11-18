@@ -1484,6 +1484,140 @@ test('a due review selects up to three distinct exercises for its concept and di
   );
 });
 
+test('a review combines due dimensions for one concept and alternates their exercises', () => {
+  const state = emptyState();
+  state.cards = [
+    {
+      conceptId: 'vectors',
+      dimension: 'math',
+      dueAt: '2026-01-13T00:00:00.000Z',
+      retrievability: 0.7,
+    },
+    {
+      conceptId: 'vectors',
+      dimension: 'conceptual',
+      dueAt: '2026-01-12T00:00:00.000Z',
+      retrievability: 0.5,
+    },
+  ];
+
+  const plan = planSession(state, content, now, 180);
+  const vectorsReviews = plan.activities.filter(
+    (activity) =>
+      activity.kind === 'review' &&
+      activity.exerciseIds.some(
+        (exerciseId) => content.exercisesById.get(exerciseId)?.concept === 'vectors',
+      ),
+  );
+  expect(vectorsReviews).toHaveLength(1);
+  const review = vectorsReviews[0];
+  if (!review) throw new Error('Expected one vector review activity');
+  expect(review.exerciseIds.length).toBeGreaterThanOrEqual(2);
+  expect(review.exerciseIds.length).toBeLessThanOrEqual(4);
+  expect(new Set(review.exerciseIds).size).toBe(review.exerciseIds.length);
+
+  const dimensions = review.exerciseIds.map((exerciseId) => {
+    const exercise = content.exercisesById.get(exerciseId);
+    if (!exercise) throw new Error(`Missing exercise ${exerciseId}`);
+    return exercise.dimension;
+  });
+  expect(new Set(dimensions)).toEqual(new Set(['math', 'conceptual']));
+  for (let index = 1; index < dimensions.length; index += 1) {
+    expect(dimensions[index]).not.toBe(dimensions[index - 1]);
+  }
+  expect(review.reason.summary).toBe('Due since 12 Jan 2026 · ~50% recall.');
+});
+
+test('a concept with multiple due dimensions appears in only one review activity', () => {
+  const state = {
+    ...emptyState(),
+    lessonRuns: [{ conceptId: 'vectors', status: 'in_progress' as const }],
+    usedExerciseIds: ['vectors-fixture-final'],
+  };
+  state.cards = [
+    {
+      conceptId: 'vectors',
+      dimension: 'math',
+      dueAt: '2026-01-13T00:00:00.000Z',
+      retrievability: 0.7,
+    },
+    {
+      conceptId: 'derivatives',
+      dimension: 'math',
+      dueAt: '2026-01-13T00:00:00.000Z',
+      retrievability: 0.6,
+    },
+    {
+      conceptId: 'linear-models',
+      dimension: 'math',
+      dueAt: '2026-01-13T00:00:00.000Z',
+      retrievability: 0.6,
+    },
+    {
+      conceptId: 'vectors',
+      dimension: 'conceptual',
+      dueAt: '2026-01-13T00:00:00.000Z',
+      retrievability: 0.7,
+    },
+  ];
+
+  const plan = planSession(state, content, now, 240);
+  const conceptAppearances = new Map<string, number>();
+  const reviewActivities = plan.activities.filter((activity) => activity.kind === 'review');
+  for (const activity of reviewActivities) {
+    const concepts = new Set(
+      activity.exerciseIds.map((exerciseId) => {
+        const exercise = content.exercisesById.get(exerciseId);
+        if (!exercise) throw new Error(`Missing exercise ${exerciseId}`);
+        return exercise.concept;
+      }),
+    );
+    expect(concepts.size).toBeLessThanOrEqual(3);
+    for (const conceptId of concepts) {
+      conceptAppearances.set(conceptId, (conceptAppearances.get(conceptId) ?? 0) + 1);
+    }
+  }
+
+  for (const conceptId of ['vectors', 'derivatives', 'linear-models']) {
+    expect(conceptAppearances.get(conceptId)).toBe(1);
+  }
+});
+
+test('a review omits dimensions attempted earlier today', () => {
+  const state = emptyState();
+  state.cards = [
+    {
+      conceptId: 'vectors',
+      dimension: 'math',
+      dueAt: '2026-01-13T00:00:00.000Z',
+      retrievability: 0.7,
+    },
+    {
+      conceptId: 'vectors',
+      dimension: 'conceptual',
+      dueAt: '2026-01-13T00:00:00.000Z',
+      retrievability: 0.7,
+    },
+  ];
+  state.recentAttempts = [
+    {
+      conceptId: 'vectors',
+      dimension: 'math',
+      exerciseId: 'vectors-magnitude',
+      createdAt: now.toISOString(),
+      correct: 1,
+      itemRole: 'review',
+    },
+  ];
+
+  const plan = planSession(state, content, now, 180);
+  const review = plan.activities.find((activity) => activity.kind === 'review');
+  expect(review).toBeDefined();
+  for (const exerciseId of review?.exerciseIds ?? []) {
+    expect(content.exercisesById.get(exerciseId)?.dimension).toBe('conceptual');
+  }
+});
+
 test('a due review uses fewer than three exercises when fewer are available', () => {
   const onlyExercise = required(
     (content.exercisesByConcept.get('vectors') ?? []).find(

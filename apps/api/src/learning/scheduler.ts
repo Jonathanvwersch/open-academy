@@ -798,12 +798,13 @@ function generateCandidates(state: SchedulerState, content: ContentIndex, now: D
     }
   }
 
+  const dueCardsByConcept = new Map<string, (typeof state.cards)[number][]>();
+  const timezone = state.timezone ?? 'UTC';
+  const localToday = localDateKey(now, timezone);
   for (const card of state.cards) {
     if (Date.parse(card.dueAt) > now.getTime()) {
       continue;
     }
-    const timezone = state.timezone ?? 'UTC';
-    const localToday = localDateKey(now, timezone);
     const attemptedToday = state.recentAttempts.some(
       (attempt) =>
         attempt.conceptId === card.conceptId &&
@@ -821,47 +822,75 @@ function generateCandidates(state: SchedulerState, content: ContentIndex, now: D
     ) {
       continue;
     }
-    const record = masteryByKey.get(masteryKey(card.conceptId, card.dimension));
-    const isIndependent = record && masteryRank(record.state) >= masteryRank('independent');
-    const reviewRoles = isIndependent
-      ? ['transfer', 'review', 'core', 'practice', 'basics']
-      : ['review', 'core', 'practice', 'transfer', 'basics'];
+    const dueCards = dueCardsByConcept.get(card.conceptId) ?? [];
+    dueCards.push(card);
+    dueCardsByConcept.set(card.conceptId, dueCards);
+  }
+
+  for (const [conceptId, dueCards] of dueCardsByConcept) {
+    const concept = content.conceptsById.get(conceptId);
+    if (!concept) continue;
+    const perDimension = Math.max(1, Math.ceil(3 / dueCards.length));
     const usedExerciseIds = new Set(state.usedExerciseIds ?? []);
+    const selectedByDimension: {
+      card: (typeof state.cards)[number];
+      exercises: IndexedExercise[];
+    }[] = [];
+    for (const card of dueCards) {
+      const record = masteryByKey.get(masteryKey(card.conceptId, card.dimension));
+      const isIndependent = record && masteryRank(record.state) >= masteryRank('independent');
+      const reviewRoles = isIndependent
+        ? ['transfer', 'review', 'core', 'practice', 'basics']
+        : ['review', 'core', 'practice', 'transfer', 'basics'];
+      const exercises: IndexedExercise[] = [];
+      while (exercises.length < perDimension) {
+        const exercise = chooseExercise(
+          { ...state, usedExerciseIds: [...usedExerciseIds] },
+          content,
+          concept,
+          card.dimension,
+          reviewRoles,
+          now,
+          recentIds,
+        );
+        if (!exercise) break;
+        usedExerciseIds.add(exercise.id);
+        exercises.push(exercise);
+      }
+      if (exercises.length > 0) selectedByDimension.push({ card, exercises });
+    }
+    if (selectedByDimension.length === 0) continue;
+    const includedCards = selectedByDimension.map(({ card }) => card);
+    const maxQuestions = Math.max(...selectedByDimension.map(({ exercises }) => exercises.length));
     const exercises: IndexedExercise[] = [];
-    while (exercises.length < 3) {
-      const exercise = chooseExercise(
-        { ...state, usedExerciseIds: [...usedExerciseIds] },
-        content,
-        concept,
-        card.dimension,
-        reviewRoles,
-        now,
-        recentIds,
-      );
-      if (!exercise) break;
-      usedExerciseIds.add(exercise.id);
-      exercises.push(exercise);
+    for (let questionIndex = 0; questionIndex < maxQuestions; questionIndex += 1) {
+      for (const dimension of selectedByDimension) {
+        const exercise = dimension.exercises[questionIndex];
+        if (exercise) exercises.push(exercise);
+      }
     }
-    if (exercises.length === 0) {
-      continue;
-    }
-    const dueAt = Date.parse(card.dueAt);
-    const overdueDays = Math.min(10, Math.max(0, (now.getTime() - dueAt) / 86_400_000));
-    const recentFailure = state.recentAttempts.some(
-      (attempt) => attempt.conceptId === card.conceptId && attempt.correct === 0,
-    );
     const terms = noTerms();
-    terms.review =
-      (1 - (card.retrievability ?? 0.9)) * 3 +
-      (recentFailure ? 2 : 0) +
-      Math.min(2, overdueDays * 0.2);
+    terms.review = Math.max(
+      ...includedCards.map((card) => {
+        const dueAt = Date.parse(card.dueAt);
+        const overdueDays = Math.min(10, Math.max(0, (now.getTime() - dueAt) / 86_400_000));
+        const recentFailure = state.recentAttempts.some(
+          (attempt) => attempt.conceptId === card.conceptId && attempt.correct === 0,
+        );
+        return (
+          (1 - (card.retrievability ?? 0.9)) * 3 +
+          (recentFailure ? 2 : 0) +
+          Math.min(2, overdueDays * 0.2)
+        );
+      }),
+    );
     const plannedNewConceptNeedsPrerequisite = candidates.some((candidate) => {
       const plannedConceptId = candidate.activity.conceptId;
       if (candidate.activity.kind !== 'learn' || !plannedConceptId) return false;
       return content.conceptsById
         .get(plannedConceptId)
         ?.prereqs.some(
-          (prerequisite) => prerequisite.strength === 'hard' && prerequisite.id === card.conceptId,
+          (prerequisite) => prerequisite.strength === 'hard' && prerequisite.id === conceptId,
         );
     });
     if (plannedNewConceptNeedsPrerequisite) {
@@ -885,13 +914,17 @@ function generateCandidates(state: SchedulerState, content: ContentIndex, now: D
     );
     candidate.activity.reason.terms.review = terms.review;
     candidate.score = scoreTerms(candidate.activity.reason.terms, candidate.adjustedMinutes);
+    const earliestDueAt = Math.min(...includedCards.map((card) => Date.parse(card.dueAt)));
+    const lowestRetrievability = Math.min(
+      ...includedCards.map((card) => card.retrievability ?? 0.9),
+    );
     const dueDate = new Intl.DateTimeFormat('en-GB', {
       day: 'numeric',
       month: 'short',
       year: 'numeric',
       timeZone: state.timezone ?? 'UTC',
-    }).format(new Date(card.dueAt));
-    candidate.activity.reason.summary = `Due since ${dueDate} · ~${Math.round((card.retrievability ?? 0.9) * 100)}% recall.`;
+    }).format(new Date(earliestDueAt));
+    candidate.activity.reason.summary = `Due since ${dueDate} · ~${Math.round(lowestRetrievability * 100)}% recall.`;
     candidates.push(candidate);
   }
   return candidates;

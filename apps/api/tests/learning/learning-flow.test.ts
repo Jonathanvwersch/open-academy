@@ -1751,6 +1751,87 @@ test('mixed review rates and logs each topic after its own questions are answere
   expect(await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, cardB.id))).toHaveLength(1);
 });
 
+test('a multi-dimension review rates each card after its matching exercises are answered', async () => {
+  await resetLearner();
+  const dimensionExercises = (dimension: string) =>
+    (content.exercisesByConcept.get('vectors') ?? [])
+      .filter(
+        (exercise) =>
+          exercise.dimension === dimension &&
+          !exercise.lesson_only &&
+          !isTemplate(exercise) &&
+          (exercise.type === 'mc' || 'answer' in exercise || 'accept' in exercise),
+      )
+      .slice(0, 2);
+  const mathExercises = dimensionExercises('math');
+  const conceptualExercises = dimensionExercises('conceptual');
+  expect(mathExercises).toHaveLength(2);
+  expect(conceptualExercises).toHaveLength(2);
+  const exerciseIds = [...mathExercises, ...conceptualExercises].map(({ id }) => id);
+  const dimensions = exerciseIds.map(
+    (exerciseId) => content.exercisesById.get(exerciseId)?.dimension,
+  );
+  expect(new Set(dimensions)).toEqual(new Set(['math', 'conceptual']));
+
+  const originalDueAt = new Date('2025-12-31T00:00:00.000Z');
+  const mathCard = await createReviewCard('vectors', 'math', originalDueAt);
+  const conceptualCard = await createReviewCard('vectors', 'conceptual', originalDueAt);
+  const activity = await createReviewActivity('vectors', exerciseIds);
+
+  for (const exercise of mathExercises) {
+    const response = await app.request('/api/attempts', {
+      method: 'POST',
+      headers: headersAt(now),
+      body: JSON.stringify({
+        exerciseId: exercise.id,
+        activityId: activity.id,
+        answer: correctAnswer(exercise.id, null),
+        mode: 'review',
+      }),
+    });
+    expect(response.status).toBe(200);
+  }
+
+  const [ratedMath, waitingConceptual] = await Promise.all([
+    db.select().from(reviewCards).where(eq(reviewCards.id, mathCard.id)),
+    db.select().from(reviewCards).where(eq(reviewCards.id, conceptualCard.id)),
+  ]);
+  expect(ratedMath[0]?.dueAt.getTime()).toBeGreaterThan(originalDueAt.getTime());
+  expect(waitingConceptual[0]?.dueAt.getTime()).toBe(originalDueAt.getTime());
+  expect(await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, mathCard.id))).toHaveLength(
+    1,
+  );
+  expect(
+    await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, conceptualCard.id)),
+  ).toHaveLength(0);
+
+  for (const exercise of conceptualExercises) {
+    const response = await app.request('/api/attempts', {
+      method: 'POST',
+      headers: headersAt(now),
+      body: JSON.stringify({
+        exerciseId: exercise.id,
+        activityId: activity.id,
+        answer: correctAnswer(exercise.id, null),
+        mode: 'review',
+      }),
+    });
+    expect(response.status).toBe(200);
+  }
+
+  const [ratedConceptual] = await db
+    .select()
+    .from(reviewCards)
+    .where(eq(reviewCards.id, conceptualCard.id));
+  expect(ratedConceptual?.dueAt.getTime()).toBeGreaterThan(originalDueAt.getTime());
+  expect(await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, mathCard.id))).toHaveLength(
+    1,
+  );
+  expect(
+    await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, conceptualCard.id)),
+  ).toHaveLength(1);
+});
+
 test('stale sessions are hidden for today, abandoned by new sessions, and keep lesson progress', async () => {
   await resetLearner('America/Los_Angeles');
   await enrollDefaultCourse();
