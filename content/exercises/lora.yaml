@@ -798,3 +798,208 @@ exercises:
         weight: 1
         required: true
     exemplar: "LoRA keeps the pretrained matrix $W$ fixed. It trains the change $\\Delta W=BA$, where $B$ has shape $d\\times r$ and $A$ has shape $r\\times k$. Those factors contain $r(d+k)$ trainable numbers, far fewer than $dk$ when $r$ is small."
+
+  - id: "lorp-recall-frozen-say"
+    dimension: "conceptual"
+    type: "explain"
+    role: "recall"
+    knowledge_point: "lora-frozen-change"
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What does it mean to freeze $W$ in LoRA, and what does training update?"
+    rubric:
+      - id: "definition"
+        criterion: "Explain that freezing $W$ keeps its entries fixed during training."
+        weight: 1
+        required: true
+      - id: "meaning"
+        criterion: "Explain that training updates the separate change matrix $\\Delta W$."
+        weight: 1
+        required: true
+    exemplar: "Freezing $W$ keeps its entries fixed during training. Training updates a separate change $\\Delta W$, whose output is added to $Wx$."
+  - id: "lorp-recall-frozen-contrast"
+    dimension: "conceptual"
+    type: "mc"
+    role: "recall"
+    knowledge_point: "lora-frozen-change"
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "In a LoRA layer, the original matrix $W$ is frozen and training has learned a separate change $\\Delta W$. Which output uses both pieces without merging them?"
+    options:
+      - id: "a"
+        text: "Apply both matrices to the input and add their outputs."
+        correct: true
+        feedback: "The two products combine the original output and the trained change."
+      - id: "b"
+        text: "Apply $W$ to the input and add the input back."
+        correct: false
+        feedback: "Adding the input back is a residual connection. The LoRA change comes from applying $\\Delta W$ to the input."
+      - id: "c"
+        text: "Apply $W$ to the input and pass that result through $\\Delta W$."
+        correct: false
+        feedback: "The matrices act in parallel on the same input. Applying them in sequence can even fail if the dimensions differ."
+    solution: "The layer adds the frozen output $Wx$ and the change $\\Delta W x$."
+  - id: "lorp-recall-frozen-formula"
+    dimension: "math"
+    type: "text"
+    role: "recall"
+    knowledge_point: "lora-frozen-change"
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A LoRA layer has a frozen weight matrix $W$ and a trained change $\\Delta W$. Complete the output formula using a single matrix times the input: $h=\\underline{\\quad}\\,x$. Type the matrix using $W$ and $\\Delta W$."
+    accept: ["W+ΔW", "W+deltaW", "W+\\Delta W", "ΔW+W", "deltaW+W", "\\Delta W+W"]
+    regex: '^\s*(?:\(\s*(?=[^()]+\)\s*$)|(?=[^()]+$))(?:w\s*\+\s*(?:δ|\\?delta)\s*w|(?:δ|\\?delta)\s*w\s*\+\s*w)\s*\)?\s*$'
+    solution: "The matrix is $W+\\Delta W$. Applying it to $x$ adds the original output and the change."
+  - id: "lorp-recall-factors-say"
+    dimension: "conceptual"
+    type: "explain"
+    role: "recall"
+    knowledge_point: "lora-two-thin-matrices"
+    difficulty: 1
+    est_minutes: 1
+    prompt: "How does LoRA build $\\Delta W$ from $A$ and $B$, and what does the chosen rank $r$ limit?"
+    rubric:
+      - id: "definition"
+        criterion: "Explain that $\\Delta W$ is the product $BA$, with $r$ columns in $B$ and $r$ rows in $A$."
+        weight: 1
+        required: true
+      - id: "meaning"
+        criterion: "Explain that $BA$ has rank at most $r$."
+        weight: 1
+        required: true
+    exemplar: "LoRA builds $\\Delta W$ as $BA$, with $r$ columns in $B$ and $r$ rows in $A$. The product has rank at most $r$."
+  - id: "lorp-recall-factors-contrast"
+    dimension: "conceptual"
+    type: "mc"
+    role: "recall"
+    knowledge_point: "lora-two-thin-matrices"
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Which computation applies a LoRA change to $x$ without first building the full change matrix?"
+    options:
+      - id: "a"
+        text: "$A(Bx)$"
+        correct: false
+        feedback: "This reverses the two factors and generally has incompatible sizes."
+      - id: "b"
+        text: "$(BA)x$"
+        correct: false
+        feedback: "This gives the same output change, but first builds the full matrix $BA$."
+      - id: "c"
+        text: "$B(Ax)$"
+        correct: true
+        feedback: "Apply $A$ first to get $r$ numbers, then $B$ to reach the output width."
+    solution: "Apply $A$ first to get $r$ numbers, then $B$ to reach the output width."
+  - id: "lorp-recall-factors-formula"
+    dimension: "math"
+    type: "text"
+    role: "recall"
+    knowledge_point: "lora-two-thin-matrices"
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Complete the LoRA change formula: $\\Delta W=\\underline{\\quad}$. Type the product of the two factors."
+    accept: ["BA", "B A", "B*A", "B·A", "B×A", "B times A", "B\\cdot A", "B\\times A"]
+    regex: '^\s*(?:\(\s*(?=[^()]+\)\s*$)|(?=[^()]+$))b\s*(?:\*|·|⋅|×|times|\\cdot|\\times)?\s*a\s*\)?\s*$'
+    solution: "Multiply $B$ by $A$. The $r$ columns in $B$ match the $r$ rows in $A$."
+  - id: "lorp-recall-savings-say"
+    dimension: "conceptual"
+    type: "explain"
+    role: "recall"
+    knowledge_point: "lora-count-savings"
+    difficulty: 1
+    est_minutes: 1
+    prompt: "Why does training fewer LoRA parameters save training memory, and why do frozen weights still matter for memory?"
+    rubric:
+      - id: "definition"
+        criterion: "Explain that gradients and Adam's running averages are stored only for trained parameters."
+        weight: 1
+        required: true
+      - id: "meaning"
+        criterion: "Explain that frozen weights still occupy memory."
+        weight: 1
+        required: true
+    exemplar: "Gradients and Adam's running averages are needed only for A and B. The frozen weights still occupy memory, so memory savings are smaller than trainable-parameter savings."
+  - id: "lorp-recall-savings-contrast"
+    dimension: "conceptual"
+    type: "mc"
+    role: "recall"
+    knowledge_point: "lora-count-savings"
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Compared with full fine-tuning, what takes less memory when training only the LoRA factors?"
+    options:
+      - id: "a"
+        text: "The original pretrained weights."
+        correct: false
+        feedback: "The pretrained weights are frozen and still occupy memory."
+      - id: "b"
+        text: "Gradients and Adam's running averages."
+        correct: true
+        feedback: "These training quantities are kept for the trained numbers."
+      - id: "c"
+        text: "The tokens in a batch of the same size."
+        correct: false
+        feedback: "LoRA changes which weights train. The batch can contain the same tokens."
+    solution: "These training quantities are kept for the trained numbers."
+  - id: "lorp-recall-savings-formula"
+    dimension: "math"
+    type: "expression"
+    role: "recall"
+    knowledge_point: "lora-count-savings"
+    difficulty: 2
+    est_minutes: 0.5
+    prompt: "A weight matrix has $d$ rows and $k$ columns. Write the number of trainable parameters for a rank-$r$ LoRA change to this matrix."
+    answer: "r*(d+k)"
+    variables: { "d": [32, 256], "k": [32, 256], "r": [1, 8] }
+    solution: "$B$ has $dr$ entries and $A$ has $rk$, for $r(d+k)$ in total."
+  - id: "lorp-recall-merge-say"
+    dimension: "conceptual"
+    type: "explain"
+    role: "recall"
+    knowledge_point: "lora-merge"
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What does merging a trained LoRA adapter do, and what happens to prediction work after merging?"
+    rubric:
+      - id: "definition"
+        criterion: "Explain that merging adds the trained product $BA$ to $W$ to form $W'$."
+        weight: 1
+        required: true
+      - id: "meaning"
+        criterion: "Explain that the merged matrix has the same shape and prediction work as the original matrix."
+        weight: 1
+        required: true
+    exemplar: "Merging forms $W'=W+BA$. The merged matrix has the same shape as $W$, so predicting with it takes the same work as with the original matrix."
+  - id: "lorp-recall-merge-contrast"
+    dimension: "conceptual"
+    type: "mc"
+    role: "recall"
+    knowledge_point: "lora-merge"
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Which setup lets one frozen model serve several task-specific LoRA changes?"
+    options:
+      - id: "a"
+        text: "Keep one copy of $W$ and swap adapters between tasks."
+        correct: true
+        feedback: "Separate adapters keep each task's change available."
+      - id: "b"
+        text: "Keep one merged copy of $W$ for all tasks."
+        correct: false
+        feedback: "A merged matrix holds the change for that one task."
+      - id: "c"
+        text: "Keep a different merged copy of $W$ for each task."
+        correct: false
+        feedback: "Separate merged copies store a full weight matrix for each task. Keeping adapters separate lets tasks share one frozen $W$."
+    solution: "Separate adapters keep each task's change available."
+  - id: "lorp-recall-merge-formula"
+    dimension: "math"
+    type: "text"
+    role: "recall"
+    knowledge_point: "lora-merge"
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "In rank-one LoRA, $b_i$ is entry $i$ of column $B$. Fill in the slope of entry $i$ of the LoRA output change with respect to $b_i$: slope $=\\underline{\\quad}$. Type the product using row $A$ and input $x$."
+    accept: ["Ax", "A x", "A*x", "A·x", "A×x", "A times x", "A dot x", "A\\cdot x", "A\\times x"]
+    regex: '^\s*(?:\(\s*(?=[^()]+\)\s*$)|(?=[^()]+$))a\s*(?:\*|·|⋅|×|times|dot|\\cdot|\\times)?\s*x\s*\)?\s*$'
+    solution: "Output change $i$ is $b_i$ times the number $Ax$, so its slope with respect to $b_i$ is $Ax$."
