@@ -54,3 +54,19 @@ test('grades log2 of a reciprocal as equivalent to a natural-log ratio', () => {
     correct: 1,
   });
 });
+
+test('normalizes stored natural-log expressions before grading', () => {
+  const logarithmExercise: ExpressionExercise = {
+    ...exercise,
+    answer: '-(ln(p)+ln(q))/2',
+    variables: { p: [0.1, 0.9], q: [0.1, 0.9] },
+  };
+
+  expect(
+    gradeExpression(logarithmExercise, '-(log(p)+log(q))/2', { random: () => 0.5 }),
+  ).toMatchObject({ status: 'graded', correct: 1 });
+  expect(gradeExpression(logarithmExercise, '-ln(p*q)/2', { random: () => 0.5 })).toMatchObject({
+    status: 'graded',
+    correct: 1,
+  });
+});

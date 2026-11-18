@@ -83,15 +83,17 @@ export function gradeExpression(
     feedback: string;
   }> = [];
   const variables = Object.keys(exercise.variables);
-  const learnerExpression = normalizeLearnerExpression(answer, variables);
+  const normalizeExpression = (expression: string) =>
+    normalizeLearnerExpression(expression, variables);
+  const learnerExpression = normalizeExpression(answer);
   try {
-    expected = parseExpression(exercise.answer) as MathNode;
+    expected = parseExpression(normalizeExpression(exercise.answer)) as MathNode;
     learner = parseExpression(learnerExpression) as MathNode;
     if (!isScalarExpression(learner)) {
       return invalid('Use a scalar expression with arithmetic and supported math functions.');
     }
     commonWrong = (exercise.common_wrong ?? []).map((entry) => ({
-      node: parseExpression(normalizeLearnerExpression(entry.answer, variables)) as MathNode,
+      node: parseExpression(normalizeExpression(entry.answer)) as MathNode,
       category: entry.category,
       feedback: entry.feedback,
     }));

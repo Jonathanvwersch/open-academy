@@ -1744,6 +1744,25 @@ test('template validation reports unsatisfied constraints, unresolved text, cons
   );
 });
 
+test('expression answer keys must grade as correct against themselves', async () => {
+  const data = await notationFixture();
+  const exercise = data.exercises.find(({ value }) => value.type === 'expression');
+  if (exercise?.value.type !== 'expression') {
+    throw new Error('Missing expression fixture');
+  }
+  exercise.value.answer = 'k(m+n)';
+  exercise.value.variables = { m: [1, 2], n: [1, 2] };
+
+  expect(validateContent(data)).toContainEqual(
+    expect.objectContaining({
+      id: exercise.value.id,
+      message: expect.stringContaining(
+        'expression answer does not grade as correct against itself',
+      ),
+    }),
+  );
+});
+
 test('template validator rejects answers that are not accepted when displayed', async () => {
   const data = await notationFixture();
   const exercise = ExerciseSchema.parse({

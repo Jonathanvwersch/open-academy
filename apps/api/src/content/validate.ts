@@ -1,4 +1,5 @@
 import { parse as parseExpression } from 'mathjs';
+import { gradeExpression } from '../learning/grading/expression.js';
 import { gradeNumeric } from '../learning/grading/numeric.js';
 import { formatTemplateNumber, instantiateExercise, isTemplate } from './templates.js';
 import type { ContentIssue, ContentSourceData } from './types.js';
@@ -383,10 +384,16 @@ export function validateContent(data: ContentSourceData): ContentIssue[] {
       addIssue(issues, file, value.id, 'debug exercise must have at least one correct fix option');
     }
     if (value.type === 'expression') {
-      try {
-        parseExpression(value.answer);
-      } catch (error) {
-        addIssue(issues, file, value.id, `expression answer does not parse: ${messageOf(error)}`);
+      if (!isTemplate(value)) {
+        const grade = gradeExpression(value, value.answer, { random: () => 0.5 });
+        if (grade.status !== 'graded' || grade.correct !== 1) {
+          addIssue(
+            issues,
+            file,
+            value.id,
+            `expression answer does not grade as correct against itself: ${grade.feedback}`,
+          );
+        }
       }
       for (const commonWrong of value.common_wrong ?? []) {
         try {
