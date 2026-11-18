@@ -901,3 +901,254 @@ exercises:
         weight: 1
         required: true
     exemplar: "When one network supplies predictions and targets, an update can move both sides and the estimates can diverge. Random replay minibatches mix moves from different places and times, reducing runs of similar updates. A frozen target copy holds next-state values steady between periodic copies of the trained weights."
+  - id: dqn-recall-q-network-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: dqn-q-network
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, what is a Q-network, and how is it trained on one move?
+    rubric:
+      - id: outputs
+        criterion: Explain that a Q-network is a neural network that takes a state as input and outputs one Q-value for each action.
+        weight: 1
+        required: true
+      - id: loss
+        criterion: Explain that it takes a gradient step on the squared error between $Q(s,a)$ for the move made and the TD target $y$, treating $y$ as a fixed number.
+        weight: 1
+        required: true
+      - id: shared
+        criterion: Mention that one set of weights makes every value, so a step on one cell also changes the values of other cells.
+        weight: 1
+    exemplar: "A Q-network reads a state and outputs one Q-value per action. For one move, we take a gradient step on $\\big(Q(s,a)-y\\big)^2$, with the TD target $y$ held fixed as the label."
+  - id: dqn-recall-q-network-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: dqn-q-network
+    difficulty: 2
+    est_minutes: 0.5
+    prompt: A Q-network for a corridor robot takes one gradient step on a move made in cell 2. What happens to its outputs for cell 3, which wasn't trained on?
+    options:
+      - id: a
+        text: "They can change because both cells use the same weights"
+        correct: true
+        feedback: "The gradient step changes shared weights, so it can change outputs even for states it wasn't trained on."
+      - id: b
+        text: "They stay the same because only the trained move's entry changes"
+        correct: false
+        feedback: "A Q-table stores separate entries. A Q-network uses the same weights across states."
+      - id: c
+        text: "They are trained to match cell 2's TD target too"
+        correct: false
+        feedback: "The loss only pushes the prediction for the chosen move toward its target. Any change to cell 3 comes from shared weights."
+    solution: "The network shares weights across states, so a training step on cell 2 can also change the outputs for cell 3."
+  - id: dqn-recall-q-network-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: dqn-q-network
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A Q-network outputs $q$ for the move the robot made, and that move's TD target is $y$. Write the loss for one gradient step."
+    answer: "(q - y)^2"
+    variables: { q: [-5, 10], y: [-5, 10] }
+    common_wrong:
+      - answer: "q - y"
+        category: recall_failure
+        feedback: The loss is the squared error, so square the gap between the prediction and the target.
+    solution: "The loss is the squared error, $L=(q-y)^2$."
+  - id: dqn-recall-replay-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: dqn-replay
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what is experience replay, and how does it help compared with training on each move once as it happens?"
+    rubric:
+      - id: buffer
+        criterion: "Explain that experience replay stores transitions in a replay buffer and trains on random minibatches drawn from it."
+        weight: 1
+        required: true
+      - id: why
+        criterion: "Explain that random sampling mixes moves from different places and times and lets a stored move be used in more than one update."
+        weight: 1
+        required: true
+      - id: old
+        criterion: "Mention that old moves still work because the target uses the best next action, regardless of what action the agent actually took next."
+        weight: 1
+    exemplar: "Experience replay stores transitions in a buffer and trains on random minibatches from it. This mixes moves from different places and times, and gives the network a chance to learn from a move more than once."
+  - id: dqn-recall-replay-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: dqn-replay
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: Which values does one transition in a replay buffer hold?
+    options:
+      - id: a
+        text: "$(s,a,r,s',\\text{done})$"
+        correct: true
+        feedback: The state, action, reward, next state and a flag saying whether the episode ended.
+      - id: b
+        text: "$(s,a,r,s')$"
+        correct: false
+        feedback: Without the done flag, the target can't tell when to drop the next-state value.
+      - id: c
+        text: "$(s,a,y,s',\\text{done})$"
+        correct: false
+        feedback: The buffer stores the reward. The target $y$ is computed when the transition is drawn, from the current networks.
+      - id: d
+        text: "$(s,a,r,a',\\text{done})$"
+        correct: false
+        feedback: The target needs the next state $s'$. The next action the robot took isn't used.
+    solution: "A transition is $(s,a,r,s',\\text{done})$: state, action, reward, next state and the done flag."
+  - id: dqn-recall-replay-formula
+    dimension: math
+    type: text
+    role: recall
+    knowledge_point: dqn-replay
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A transition drawn from the replay buffer ended the episode. What does its TD target $y$ equal? Answer in symbols or words."
+    accept:
+      [
+        r,
+        y=r,
+        reward,
+        the reward,
+        immediate reward,
+        the reward from the final move,
+        the transition's reward,
+      ]
+    regex: "^\\s*(?:(?:y\\s*=\\s*)?(?:(?:just|only)\\s+)?(?:r|(?:the\\s+)?(?:(?:immediate|final|observed|terminal|step|one[- ]step)\\s+|transition['’]s\\s+)?reward(?:\\s+(?:only|(?:from|for|of)\\s+(?:this|the|that)\\s+(?:(?:last|final|terminal|current)\\s+)?(?:step|move|transition|action)))?))\\s*$"
+    solution: "There is no next state to act in, so $y=r$."
+  - id: dqn-recall-target-network-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: dqn-target-network
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, what is a target network, and why does deep Q-learning need one?
+    rubric:
+      - id: copy
+        criterion: Explain that a target network is a frozen copy of the Q-network used only to compute targets, with the trained weights copied into it every $C$ steps.
+        weight: 1
+        required: true
+      - id: moving
+        criterion: Explain that without it the network being trained computes its own targets, so a step can move the target too and the values can diverge, and the frozen copy holds the targets still.
+        weight: 1
+        required: true
+      - id: no-gradient
+        criterion: Mention that the target network gets no gradient steps and only changes when the weights are copied.
+        weight: 1
+    exemplar: "The target network is a frozen copy of the Q-network used to compute targets, refreshed every $C$ gradient steps. Without a frozen copy, an update can move its own target, which can make the values diverge."
+  - id: dqn-recall-target-network-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: dqn-target-network
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A DQN uses a target-network copy interval of $C=100$ gradient steps. What happens at the end of each interval?"
+    options:
+      - id: a
+        text: "The trained Q-network's weights replace the target network's weights"
+        correct: true
+        feedback: "Between copies the target weights are frozen. At the copy they catch up with the trained weights."
+      - id: b
+        text: "The target network's weights replace the trained Q-network's weights"
+        correct: false
+        feedback: "Copying in this direction would erase the changes made by training. The copy goes from the Q-network to the target network."
+      - id: c
+        text: "Both networks take a gradient step on the current minibatch"
+        correct: false
+        feedback: "Only the Q-network takes gradient steps. The target network changes when the weights are copied."
+    solution: "Every $C$ gradient steps we copy the trained weights $\\theta$ into the target network $\\theta^-$. The target weights stay fixed between copies."
+  - id: dqn-recall-target-network-formula
+    dimension: math
+    type: text
+    role: recall
+    knowledge_point: dqn-target-network
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "In the DQN target for a move that didn't end an episode, fill in which weights $Q$ is evaluated with: $y=r+\\gamma\\max_{a'}Q(s',a';\\underline{\\quad\\quad})$. Use symbols or words."
+    accept:
+      [
+        θ-,
+        θ⁻,
+        θ^-,
+        theta-,
+        theta^-,
+        theta minus,
+        '\theta^{-}',
+        target network weights,
+        weights of the frozen copy,
+      ]
+    regex: "^\\s*(?:(?:\\\\?(?:θ|theta)\\s*(?:\\^\\s*(?:\\{\\s*[-−]\\s*\\}|[-−])|[-−⁻]|\\s+minus)|(?:the\\s+)?(?:frozen\\s+)?(?:target[- ]network|frozen\\s+(?:network|copy))(?:['’]s)?\\s+(?:weights|parameters)|(?:the\\s+)?(?:weights|parameters)\\s+of\\s+(?:the\\s+)?(?:frozen\\s+)?(?:target[- ]network|frozen\\s+(?:network|copy))))\\s*$"
+    solution: "$y=r+\\gamma\\max_{a'}Q(s',a';\\theta^-)$: the next-state values come from the frozen copy."
+  - id: dqn-recall-training-loop-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: dqn-training-loop
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, how does DQN get the next-state value for one minibatch row, and when does the target leave that value out?"
+    rubric:
+      - id: network
+        criterion: "Explain that the target network gives a row of values for the next state's actions, and DQN takes the largest value in that row."
+        weight: 1
+        required: true
+      - id: terminal
+        criterion: "Explain that the next-state value is included with a discount when the episode continues, and is dropped when the move ended the episode."
+        weight: 1
+        required: true
+    exemplar: "DQN takes the largest action value in the target network's row for the next state. It adds that value with a discount to the reward if the episode continues, and uses the reward alone if the episode ended."
+  - id: dqn-recall-training-loop-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: dqn-training-loop
+    difficulty: 2
+    est_minutes: 0.5
+    prompt: "A robot arm can set a joint to any angle in a range. Which part of plain DQN would have trouble with that choice?"
+    options:
+      - id: a
+        text: "Finding the largest Q-network output over all candidate actions"
+        correct: true
+        feedback: "DQN outputs one value per action, so it needs a finite list to compare. Any angle in a range gives it infinitely many possible outputs."
+      - id: b
+        text: "Storing a state that contains the joint's current angle"
+        correct: false
+        feedback: "A transition stores the observed state. Real-valued joint angles can be part of that state."
+      - id: c
+        text: "Taking a gradient step when two actions have the same true value"
+        correct: false
+        feedback: "Training can use transitions from either action. A tie in the true values doesn't prevent a gradient step."
+    solution: "Plain DQN compares one output per action. An action like setting a joint to any angle cannot be listed that way."
+  - id: dqn-recall-training-loop-formula
+    dimension: math
+    type: text
+    role: recall
+    knowledge_point: dqn-training-loop
+    difficulty: 2
+    est_minutes: 0.5
+    prompt: "In a DQN minibatch row, `done` is 1 if the move ended the episode and 0 otherwise. Fill in the factor of `done` that turns the next-state term off at an ending and leaves it unchanged otherwise: $y=r+\\gamma\\,\\underline{\\quad\\quad}\\max_{a'}Q(s',a';\\theta^-)$."
+    accept:
+      [
+        (1-done),
+        1-done,
+        (1 − done),
+        '1-\text{done}',
+        1.0 - done,
+        1 minus done,
+        one minus done,
+        not done,
+      ]
+    regex: '^\s*(?:(?:1(?:\.0+)?\s*[-−]\s*(?:done|\\(?:text|mathrm)\{\s*done\s*\})|(?:one|1)\s+minus\s+done)|\(\s*(?:1(?:\.0+)?\s*[-−]\s*(?:done|\\(?:text|mathrm)\{\s*done\s*\})|(?:one|1)\s+minus\s+done)\s*\)|(?:the\s+)?complement\s+of\s+done|(?:!\s*|not\s+)done)\s*$'
+    solution: "$y=r+\\gamma\\,(1-\\text{done})\\max_{a'}Q(s',a';\\theta^-)$, so the future term drops out when done is $1$."

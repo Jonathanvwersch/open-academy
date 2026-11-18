@@ -705,3 +705,188 @@ exercises:
         required: false
     exemplar: "A reward only for getting the cup onto the shelf may be hard to discover through random moves, so early rewards give no sign of which moves help. Give each state a potential $\\Psi(s)$ measuring progress toward the shelf and pay $F=\\gamma\\Psi(s')-\\Psi(s)$ on each move, with potential $0$ where the episode ends. Under that condition, these potential-based bonuses preserve which behaviour is best while giving earlier feedback. A bonus for getting closer with nothing taken back when moving away could be collected repeatedly by moving the cup back and forth. Ask what the easiest way to earn reward is and watch what the trained arm actually does."
     solution: "Use potential-based shaping $F=\\gamma\\Psi(s')-\\Psi(s)$ with terminal potential $0$ to preserve the best behaviour. Check whether a progress bonus can be collected repeatedly without completing the placement."
+  - id: rd-recall-sparse-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: rd-sparse
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what is a sparse reward, and why is it hard for an agent to learn from at first?"
+    rubric:
+      - id: rare
+        criterion: "Explain that a sparse reward is usually zero and only gives a nonzero score at rare events, such as reaching the goal."
+        weight: 1
+        required: true
+      - id: first
+        criterion: "Explain that until the robot finds its first nonzero reward, the rewards it has seen give it no way to tell which moves help."
+        weight: 1
+        required: true
+      - id: length
+        criterion: "Mention that random moves are less likely to reach a distant goal in the fewest possible moves."
+        weight: 1
+    exemplar: "A sparse reward gives a nonzero score only at rare events, such as reaching the goal. Until an agent sees that first reward, its scores give no clue which moves help."
+  - id: rd-recall-sparse-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: rd-sparse
+    difficulty: 2
+    est_minutes: 0.5
+    prompt: "A corridor robot earns $0$ on every move before it reaches the goal. The designer adds a fixed step cost. What changes for the robot before it has ever seen the goal?"
+    options:
+      - id: a
+        text: "Its scores go down, and the scores still give no clue which way helps"
+        correct: true
+        feedback: "The penalty applies to both left and right, so trying either one gives the same score."
+      - id: b
+        text: "Its scores go down, and the scores now favour moving toward the goal"
+        correct: false
+        feedback: "A progress bonus can give feedback about direction. A fixed step cost charges the same amount in either direction."
+      - id: c
+        text: "Its scores stay at zero, and the scores still give no clue which way helps"
+        correct: false
+        feedback: "A step cost changes the reward on each move, even before the first time the robot reaches the goal."
+    solution: "The step cost lowers the reward on every move before the goal. Since it applies in both directions, it leaves the robot without a score that points toward the goal."
+  - id: rd-recall-sparse-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: rd-sparse
+    difficulty: 2
+    est_minutes: 0.5
+    prompt: "A corridor has $n$ cells numbered from left to right. A robot starts in cell 1, the goal is cell $n$, and walls keep it inside the corridor. On each move it independently picks left or right with equal chance. Write the probability it reaches the goal in the fewest possible moves."
+    answer: "(1/2)^(n-1)"
+    variables: { n: [2, 12] }
+    common_wrong:
+      - answer: "(1/2)^n"
+        category: math_error
+        feedback: "From cell 1 the goal is $n-1$ cells away, so it takes $n-1$ rights in a row."
+    solution: "The fewest moves is $n-1$ rights in a row, each with chance $1/2$, so the probability is $(1/2)^{n-1}$."
+  - id: rd-recall-shaping-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: rd-shaping
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, how does potential-based shaping reward one move with $\\gamma=1$, and why does it leave the best route between a fixed start and goal unchanged?"
+    rubric:
+      - id: bonus
+        criterion: "Explain that each state gets a potential $\\Psi(s)$, and a move from $s$ to $s'$ earns the extra reward $F=\\Psi(s')-\\Psi(s)$."
+        weight: 1
+        required: true
+      - id: cancel
+        criterion: Explain that along any path the middle scores cancel, so the bonuses add up to the last score minus the first and every path between the same start and end gains the same total.
+        weight: 1
+        required: true
+      - id: discount
+        criterion: "Mention that with a discount below 1 the bonus is $\\gamma\\Psi(s')-\\Psi(s)$, and the guarantee holds as long as the state where the episode ends has potential 0."
+        weight: 1
+    exemplar: "Each state gets a potential $\\Psi(s)$, and a move from $s$ to $s'$ earns the bonus $\\Psi(s')-\\Psi(s)$. Along a path the middle potentials cancel, so every path from the start to the goal gains the same total, $\\Psi(\\text{end})-\\Psi(\\text{start})$, and the best path stays best."
+  - id: rd-recall-shaping-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: rd-shaping
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "With $\\gamma=1$, two routes reach the same goal from the same start. One route takes a detour before it gets there. How do the total potential-based bonuses compare?"
+    options:
+      - id: a
+        text: "Both routes earn the same total bonus"
+        correct: true
+        feedback: "The middle potentials cancel along either route. Only the start and goal potentials determine the total."
+      - id: b
+        text: "The longer route earns a larger total bonus"
+        correct: false
+        feedback: "A bonus for every step would give the longer route more. A potential-based bonus takes back gains when the route loses progress."
+      - id: c
+        text: "The shorter route earns a larger total bonus"
+        correct: false
+        feedback: "A fixed step cost lowers the longer route's reward. The potential-based bonus itself is the same for both."
+    solution: "Both routes get the same total bonus, $\\Psi(\\text{goal})-\\Psi(\\text{start})$, because they start and end in the same states."
+  - id: rd-recall-shaping-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: rd-shaping
+    difficulty: 2
+    est_minutes: 0.5
+    prompt: "A move goes from a state with potential $u$ to a state with potential $w$, and the episode doesn't end. With discount factor $\\gamma$, write the potential-based bonus for the move. Type `gamma` for $\\gamma$."
+    answer: "gamma*w - u"
+    variables: { gamma: [0.5, 0.99], u: [0, 5], w: [0, 5] }
+    common_wrong:
+      - answer: "gamma*u - w"
+        category: misunderstood_definition
+        feedback: "The bonus is the discounted potential of the next state minus the potential of the state the move left, $\\gamma\\Psi(s')-\\Psi(s)$."
+    solution: "$F=\\gamma\\Psi(s')-\\Psi(s)=\\gamma w-u$. With $\\gamma=1$ it is $w-u$."
+  - id: rd-recall-hacking-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: rd-hacking
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, what is reward hacking, and what should you look for in a reward before training?
+    rubric:
+      - id: meaning
+        criterion: Explain that reward hacking is an agent earning a high reward in a way the designer didn't intend, by using a gap between the reward and the real goal.
+        weight: 1
+        required: true
+      - id: check
+        criterion: Name what to look for, such as rewards that can be collected again and again, bonuses that are never taken back, or rewards for a sign of success the agent could fake.
+        weight: 1
+        required: true
+      - id: watch
+        criterion: Mention watching what the agent does after training, since a reward that rose doesn't by itself show the task is done.
+        weight: 1
+    exemplar: "Reward hacking is an agent earning a high reward in a way the designer didn't intend, by using a gap between the reward and the real goal. Before training, look for rewards that can be collected again and again, bonuses never taken back, and signs of success the agent could fake."
+  - id: rd-recall-hacking-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: rd-hacking
+    difficulty: 2
+    est_minutes: 0.5
+    prompt: "A cleaning robot leaves dirt on the floor and gets a high score by hiding the dirt from its camera. Which flaw in the reward explains the high score?"
+    options:
+      - id: a
+        text: "It paid for a sign of success the robot could fake"
+        correct: true
+        feedback: "The image was meant to stand for a clean floor. The robot changed the image without cleaning the floor."
+      - id: b
+        text: "It paid for a move the robot could repeat to build up points"
+        correct: false
+        feedback: "A repeatable bonus pays again each time the same move is made. Here the high score follows from what the camera sees."
+      - id: c
+        text: "It paid for progress and kept the bonus when that progress was undone"
+        correct: false
+        feedback: "That loophole needs real progress followed by going backwards. This robot earned reward without removing the dirt."
+    solution: "The reward uses the camera image as a sign of a clean floor. The robot can fake that sign without doing the cleaning."
+  - id: rd-recall-hacking-contrast2
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: rd-hacking
+    difficulty: 2
+    est_minutes: 0.5
+    prompt: "A robot can earn a repeatable bonus by moving right and then back left. The designer switches to potential-based bonuses with $\\gamma=1$. How does that close the loophole?"
+    options:
+      - id: a
+        text: "Returning to the starting cell cancels the bonus over the loop"
+        correct: true
+        feedback: "The total bonus is the last cell's potential minus the first's. A loop ends where it started."
+      - id: b
+        text: "Each move around the loop loses the same amount of bonus"
+        correct: false
+        feedback: "A fixed step cost charges for each move. A potential-based bonus can be positive going out and negative on the way back."
+      - id: c
+        text: "The robot earns a bonus only on the final move into the goal"
+        correct: false
+        feedback: "A goal-only reward can be sparse. Potential-based shaping still gives bonuses for individual moves."
+      - id: d
+        text: "The first loop earns a bonus, then later loops stop earning it"
+        correct: false
+        feedback: "Potential-based bonuses depend on the states at each end of the move. Repeating the same loop cancels the same way each time."
+    solution: "Returning to the starting state leaves the total potential-based bonus at zero, so repeating the loop can't build up bonus reward."
