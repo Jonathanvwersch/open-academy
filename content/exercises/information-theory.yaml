@@ -622,3 +622,243 @@ exercises:
     solution:
       The entropy is $\frac14\times2+\frac12\times1+\frac14\times2=1.5$ bits. The cross-entropy is
       $\frac14\times1+\frac12\times2+\frac14\times2=1.75$ bits, so it is 0.25 bits larger.
+  - id: it-recall-surprise-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: it-surprise
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, what does the surprise of an outcome measure, and how is it calculated in bits?
+    rubric:
+      - id: meaning
+        criterion: Explain that surprise measures how unexpected an outcome is, so rarer outcomes give more surprise.
+        weight: 1
+        required: true
+      - id: formula
+        criterion: State that surprise in bits is the base-two logarithm of one over the outcome's probability.
+        weight: 1
+        required: true
+      - id: halving
+        criterion: Mention that each halving of the outcome's probability adds one bit.
+        weight: 1
+    exemplar: "Surprise measures how unexpected an outcome is, so rarer outcomes surprise us more. In bits it is $\\log_2(1/r)$, where $r$ is the outcome's probability."
+  - id: it-recall-surprise-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: it-surprise
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: Which of these scores one outcome that happened, without averaging over a distribution?
+    options:
+      - id: a
+        text: Surprise
+        correct: true
+        feedback: Surprise scores a single outcome from its probability $r$ as $\log_2(1/r)$ bits.
+      - id: b
+        text: Entropy
+        correct: false
+        feedback: Entropy averages the surprise of every outcome, weighted by the actual probabilities.
+      - id: c
+        text: Cross-entropy
+        correct: false
+        feedback: Cross-entropy averages forecast surprises over how often each outcome actually happens.
+      - id: d
+        text: KL divergence
+        correct: false
+        feedback: KL divergence compares two averages, cross-entropy and entropy.
+    solution: Surprise scores one outcome. Entropy, cross-entropy and KL divergence are all averages over a distribution.
+  - id: it-recall-surprise-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: it-surprise
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Write the surprise, in bits, of an outcome with probability $r$. Type `log2(...)` for the base-two logarithm."
+    answer: "log2(1/r)"
+    variables: { r: [0.05, 0.95] }
+    solution: "Surprise is $\\log_2(1/r)$ bits."
+  - id: it-recall-entropy-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: it-entropy
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, what is the entropy $H(p)$ of a distribution, and which probabilities does it use?
+    rubric:
+      - id: average
+        criterion: Explain that entropy is the average surprise of the distribution's outcomes.
+        weight: 1
+        required: true
+      - id: actual
+        criterion: Explain that each outcome's surprise is calculated from its actual probability and weighted by that same actual probability.
+        weight: 1
+        required: true
+      - id: equal
+        criterion: Mention that entropy is greatest when all the outcomes are equally likely.
+        weight: 1
+    exemplar: "Entropy is the average surprise of a distribution. Each outcome's surprise comes from its actual probability, and the average weights it by that same actual probability."
+  - id: it-recall-entropy-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: it-entropy
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Weather follows actual probabilities $p$, and an app forecasts $q$. Which quantity averages surprise calculated from $p$ itself, weighted by $p$?"
+    options:
+      - id: a
+        text: The cross-entropy $H(p,q)$
+        correct: false
+        feedback: Cross-entropy calculates surprise from the forecast $q$ and weights it by $p$.
+      - id: b
+        text: The entropy $H(p)$
+        correct: true
+        feedback: Entropy uses the actual probabilities both to calculate surprise and to weight it.
+      - id: c
+        text: The KL divergence $\mathrm{KL}(p\Vert q)$
+        correct: false
+        feedback: KL divergence is the extra surprise of the forecast, cross-entropy minus entropy.
+      - id: d
+        text: One day's classification loss
+        correct: false
+        feedback: One day's loss is the forecast surprise of the class that occurred, with no average.
+    solution: Entropy averages surprise calculated from $p$, using $p$ as the weights.
+  - id: it-recall-entropy-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: it-entropy
+    difficulty: 2
+    est_minutes: 0.5
+    prompt: "A coin lands heads with probability $p$ and tails with probability $1-p$. Write its entropy in bits. Type `log2(...)` for the base-two logarithm."
+    answer: "p*log2(1/p) + (1-p)*log2(1/(1-p))"
+    variables: { p: [0.05, 0.95] }
+    solution: "$H=p\\log_2\\frac{1}{p}+(1-p)\\log_2\\frac{1}{1-p}$: each outcome's surprise weighted by its actual probability."
+  - id: it-recall-cross-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: it-cross-entropy
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what is the cross-entropy $H(p,q)$? Say where the actual probabilities $p$ and the forecast probabilities $q$ are used."
+    rubric:
+      - id: forecast
+        criterion: Explain that each outcome's surprise is calculated from its forecast probability $q$.
+        weight: 1
+        required: true
+      - id: actual
+        criterion: Explain that those surprises are averaged using the actual probabilities $p$ as weights.
+        weight: 1
+        required: true
+      - id: loss
+        criterion: Mention that cross-entropy is the average classification loss.
+        weight: 1
+    exemplar: "Cross-entropy is the average surprise of a forecast. Each outcome's surprise comes from its forecast probability $q$, and the average weights it by how often the outcome actually happens, $p$."
+  - id: it-recall-cross-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: it-cross-entropy
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "In the cross-entropy $H(p,q)$, with actual probabilities $p$ and forecast probabilities $q$, which probabilities go inside the logarithms, and which weight the terms?"
+    options:
+      - id: a
+        text: "$q$ goes inside the logarithms, and $p$ weights the terms."
+        correct: true
+        feedback: Surprise comes from the forecast, and the average uses how often each outcome really happens.
+      - id: b
+        text: "$p$ goes inside the logarithms, and $q$ weights the terms."
+        correct: false
+        feedback: This swaps the roles. The forecast is what gets scored, so $q$ goes inside the logarithms.
+      - id: c
+        text: "$p$ goes inside the logarithms, and $p$ weights the terms."
+        correct: false
+        feedback: Using $p$ in both places gives the entropy $H(p)$, which ignores the forecast.
+      - id: d
+        text: "$q$ goes inside the logarithms, and $q$ weights the terms."
+        correct: false
+        feedback: Weighting by $q$ averages over the forecast's own odds instead of how often outcomes really happen.
+    solution: "$H(p,q)=p_1\\log_2\\frac{1}{q_1}+p_2\\log_2\\frac{1}{q_2}+\\dots$, so $q$ is inside the logarithms and $p$ gives the weights."
+  - id: it-recall-cross-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: it-cross-entropy
+    difficulty: 2
+    est_minutes: 0.5
+    prompt: "A coin lands heads with actual probability $p$. A forecast gives heads probability $q$. Write the cross-entropy $H(p,q)$ in bits. Type `log2(...)` for the base-two logarithm."
+    answer: "p*log2(1/q) + (1-p)*log2(1/(1-q))"
+    variables: { p: [0.05, 0.95], q: [0.05, 0.95] }
+    solution: "$H(p,q)=p\\log_2\\frac{1}{q}+(1-p)\\log_2\\frac{1}{1-q}$: forecast surprises weighted by actual probabilities."
+  - id: it-recall-kl-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: it-kl
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what does the KL divergence $\\mathrm{KL}(p\\Vert q)$ measure, and how is it calculated from entropy and cross-entropy?"
+    rubric:
+      - id: meaning
+        criterion: Explain that KL divergence is the extra average surprise from forecasting $q$ when outcomes follow $p$.
+        weight: 1
+        required: true
+      - id: difference
+        criterion: State that KL divergence is cross-entropy minus entropy, $H(p,q)-H(p)$.
+        weight: 1
+        required: true
+      - id: zero
+        criterion: Mention that KL divergence is zero when the forecast matches the actual probabilities.
+        weight: 1
+    exemplar: "KL divergence is the extra average surprise from forecasting $q$ when outcomes follow $p$. It is cross-entropy minus entropy, $H(p,q)-H(p)$."
+  - id: it-recall-kl-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: it-kl
+    difficulty: 2
+    est_minutes: 0.5
+    prompt: "A forecast exactly matches the actual probabilities, so $q=p$. Which of these must be zero?"
+    options:
+      - id: a
+        text: The entropy $H(p)$
+        correct: false
+        feedback: Entropy is the surprise that remains even with a perfect forecast. It is zero only if one outcome is certain.
+      - id: b
+        text: The cross-entropy $H(p,q)$
+        correct: false
+        feedback: With $q=p$, cross-entropy equals the entropy, which is usually above zero.
+      - id: c
+        text: The KL divergence $\mathrm{KL}(p\Vert q)$
+        correct: true
+        feedback: KL is the extra surprise beyond entropy, and a perfect forecast adds none.
+      - id: d
+        text: The surprise of the least likely outcome
+        correct: false
+        feedback: An unlikely outcome still surprises us when it happens, however good the forecast.
+    solution: "With $q=p$, $H(p,q)=H(p)$, so $\\mathrm{KL}(p\\Vert q)=H(p,q)-H(p)=0$."
+  - id: it-recall-kl-formula
+    dimension: math
+    type: text
+    role: recall
+    knowledge_point: it-kl
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Fill in the blank: $\\mathrm{KL}(p\\Vert q) = \\underline{\\quad\\quad} - H(p)$. Type the missing quantity, for example as `H(p,q)`."
+    accept:
+      [
+        "H(p,q)",
+        "H(p, q)",
+        "cross-entropy",
+        "cross entropy",
+        "the cross-entropy",
+        "the cross entropy",
+        "crossentropy",
+      ]
+    solution: "$\\mathrm{KL}(p\\Vert q)=H(p,q)-H(p)$: cross-entropy minus entropy."

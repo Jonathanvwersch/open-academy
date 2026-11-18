@@ -1,7 +1,7 @@
 ---
 
 name: write-questions
-description: "How to write and review Open Academy questions (content/exercises/*.yaml): the question types and the mix each lesson step needs, the giveaway test, wrong options built from real mistakes, templates, and checking every answer. Use whenever you write, rewrite or audit questions, on their own or as part of a lesson."
+description: "How to write and review Open Academy questions (content/exercises/*.yaml): the question types and the mix each lesson step needs, recall questions for reviews, the giveaway test, wrong options built from real mistakes, templates, and checking every answer. Use whenever you write, rewrite or audit questions, on their own or as part of a lesson."
 ---
 
 # Writing and reviewing questions
@@ -69,18 +69,30 @@ Every idea in a step gets at least two questions from different angles. Cover th
 - Write negative values in parentheses so substituted text never reads `+ -3`.
 - Check every parameter combination by script against the tolerance and the rounding the stem asks for.
 
-## 6. Writing
+## 6. Recall questions for reviews
+
+Problems show the learner can use an idea. Reviews should also make them recall what the idea is and how its formula reads, because definitions are what keep look-alike ideas apart (entropy, cross-entropy and KL). Recall questions use `role: recall` and `knowledge_point: <step id>`. They never appear in the lesson. Each review of a topic asks recall questions on two of its steps, rotating through the steps, and a step the learner got wrong comes back first.
+
+Write three recall questions for every lesson step, one in each style. A review rotates through them, so the learner has to recall the idea itself, whatever the wording.
+
+1. **Say it yourself** (`type: explain`, `dimension: conceptual`, `est_minutes: 1`). "In one or two sentences, what is cross-entropy $H(p,q)$? Say where $p$ and $q$ are used." Typing the definition from memory is the strongest form of recall. Give it 2 required criteria that together are the definition, in the lesson's own words, plus at most one optional extra. Every criterion must be stated plainly in that step (see the explain rules in §3).
+2. **Contrast** (`type: mc`, `dimension: conceptual`, `est_minutes: 0.5`). The wrong options are the neighbouring ideas the learner is most likely to confuse with this one: the other steps of the lesson and the prerequisites it builds on. "Which quantity is the average surprise when surprise is calculated from the actual probabilities?" with entropy, cross-entropy, KL and one-day loss as options. Each wrong option's feedback says which idea it is and how it differs.
+3. **Formula** (`dimension: math`, `est_minutes: 0.5`). If the step's formula fits on one line with scalar variables, ask the learner to type it (`type: expression`, with `variables` ranges inside the formula's domain). Use the smallest case that still shows the formula: a two-outcome distribution, a single example, two dimensions. Tell them the function names to use, such as `log2(...)` and `exp(...)`. If the formula uses sums, vectors or matrices, write a cloze (`type: text`) that blanks out the part learners get wrong, such as which distribution goes inside the logarithm or the order of a subtraction, and list every reasonable way to write the answer in `accept`. A step with no formula gets a second contrast question that asks about a different neighbouring idea.
+
+Recall questions follow the rest of this skill: they stand alone, pass the giveaway test and have one right answer. Don't copy a step's `basics` question. The basics question checks the idea straight after reading. A recall question asks for it weeks later, from a different angle.
+
+## 7. Writing
 
 Follow the lesson skill's writing rules: plain words, short sentences, notation from `content/notation.yaml`, and only ideas from the concept's prerequisites. No "X, not Y" contrast lines and no em dashes. `solution` says how to get the answer in one or two sentences, using the same numbers.
 
-## 7. Checking before you ship
+## 8. Checking before you ship
 
 1. Run the giveaway test (§1) on every question.
 2. Compute every numeric answer with a script (Python or Node), including every template combination.
 3. For each MC question, confirm exactly one option is correct and each wrong one has its own feedback.
-4. Check the step's mix: at least five questions, difficulties 1 to 3, and at least two angles per idea (§3).
+4. Check the step's mix: at least five questions, difficulties 1 to 3, and at least two angles per idea (§3), plus three recall questions (§6).
 5. Run `pnpm content:check`, `pnpm exec vitest run apps/api/tests/content/` and `pnpm check`.
 
 ## Reviewing existing questions
 
-To audit a set, read every question and apply §1 to §5. Rewrite only the ones that fail. Keep each exercise's `id`, `dimension`, `role`, `difficulty`, `lesson_only` and place in the lesson, because learner progress depends on them. Rewrite `prompt`, the answer, `options`, `feedback` and `solution` as needed, and change `type` if it makes a better question. If lesson text such as a `faded` block refers to the exercise, keep it consistent. Report each rewrite as `id`: the reason, then the old stem and the new stem.
+To audit a set, read every question and apply §1 to §6. Rewrite only the ones that fail. Keep each exercise's `id`, `dimension`, `role`, `difficulty`, `lesson_only` and place in the lesson, because learner progress depends on them. Rewrite `prompt`, the answer, `options`, `feedback` and `solution` as needed, and change `type` if it makes a better question. If lesson text such as a `faded` block refers to the exercise, keep it consistent. Report each rewrite as `id`: the reason, then the old stem and the new stem.
