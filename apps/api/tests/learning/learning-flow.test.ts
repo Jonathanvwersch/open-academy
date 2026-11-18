@@ -263,7 +263,7 @@ async function createReviewCard(
   return card;
 }
 
-async function createPrerequisiteReviewCards(weakDueAt: Date) {
+async function createPrerequisiteReviewCards(weakDueAt: Date, includeAlreadyDueConceptual = false) {
   const future = new Date('2026-02-01T12:00:00.000Z');
   const oldReview = new Date('2025-12-01T12:00:00.000Z');
   const recentReview = new Date('2025-12-31T12:00:00.000Z');
@@ -284,7 +284,21 @@ async function createPrerequisiteReviewCards(weakDueAt: Date) {
     future,
     reviewFsrs(recentReview, 10),
   );
-  return { current, weakest, stronger, future };
+  const alreadyDueConceptual = includeAlreadyDueConceptual
+    ? await createReviewCard(
+        'gradients',
+        'conceptual',
+        new Date('2026-01-01T00:00:00.000Z'),
+        reviewFsrs(recentReview, 10),
+      )
+    : undefined;
+  if (alreadyDueConceptual) {
+    await db
+      .update(reviewCards)
+      .set({ lastReviewAt: recentReview })
+      .where(eq(reviewCards.id, alreadyDueConceptual.id));
+  }
+  return { current, weakest, stronger, alreadyDueConceptual, future };
 }
 
 async function submitReviewActivityAgain(activityId: string) {
@@ -847,6 +861,59 @@ test('two consecutive Again review activities pull the weakest hard-prerequisite
       (exerciseId) => content.exercisesById.get(exerciseId)?.concept === weakest.conceptId,
     ),
   ).toBe(true);
+});
+
+test('double Again inserts one prerequisite review for all due dimensions and replanning does not duplicate it', async () => {
+  await resetLearner();
+  const { weakest, alreadyDueConceptual } = await createPrerequisiteReviewCards(
+    new Date('2026-02-01T12:00:00.000Z'),
+    true,
+  );
+  if (!alreadyDueConceptual) throw new Error('Expected a due conceptual prerequisite card');
+  expect(isDueToday(alreadyDueConceptual.dueAt, new Date(now), 'UTC')).toBe(true);
+  const firstActivity = await createReviewActivity('gradient-descent', 'gradient-descent-step');
+  const secondActivity = await createReviewActivity('gradient-descent', 'gradient-descent-step');
+
+  await submitReviewActivityAgain(firstActivity.id);
+  await submitReviewActivityAgain(secondActivity.id);
+
+  const activitiesAfterAgain = await db
+    .select()
+    .from(sessionActivities)
+    .where(eq(sessionActivities.sessionId, secondActivity.sessionId))
+    .orderBy(asc(sessionActivities.idx));
+  const isGradientsReview = (activity: (typeof activitiesAfterAgain)[number]) =>
+    activity.kind === 'review' &&
+    activity.exerciseIds.some(
+      (exerciseId) => content.exercisesById.get(exerciseId)?.concept === weakest.conceptId,
+    );
+  const prerequisiteActivities = activitiesAfterAgain.filter(isGradientsReview);
+  expect(prerequisiteActivities).toHaveLength(1);
+  const insertedActivity = prerequisiteActivities[0];
+  if (!insertedActivity) throw new Error('Expected a prerequisite review activity');
+  const dimensions = new Set(
+    insertedActivity.exerciseIds.flatMap((exerciseId) => {
+      const exercise = content.exercisesById.get(exerciseId);
+      return exercise?.concept === weakest.conceptId ? [exercise.dimension] : [];
+    }),
+  );
+  expect(dimensions.has('math')).toBe(true);
+  expect(dimensions.has('conceptual')).toBe(true);
+
+  const replanResponse = await app.request(`/api/sessions/${secondActivity.sessionId}/replan`, {
+    method: 'POST',
+    headers: headersAt(now),
+    body: JSON.stringify({ remainingBudgetMinutes: 600 }),
+  });
+  expect(replanResponse.status).toBe(200);
+  const activitiesAfterReplan = await db
+    .select()
+    .from(sessionActivities)
+    .where(eq(sessionActivities.sessionId, secondActivity.sessionId))
+    .orderBy(asc(sessionActivities.idx));
+  const prerequisiteActivitiesAfterReplan = activitiesAfterReplan.filter(isGradientsReview);
+  expect(prerequisiteActivitiesAfterReplan).toHaveLength(1);
+  expect(prerequisiteActivitiesAfterReplan[0]?.id).toBe(insertedActivity.id);
 });
 
 test('one Again review activity does not pull a prerequisite card due', async () => {

@@ -1233,43 +1233,26 @@ export function buildReviewActivityForConcept(
   content: ContentIndex,
   now: Date,
   conceptId: string,
-  dueCardOverride?: {
-    conceptId: string;
-    dimension: MasteryRecord['dimension'];
-    dueAt: Date;
-  },
+  dueCardsOverride?: SchedulerState['cards'],
 ): PlannedActivity | undefined {
-  const candidateState = dueCardOverride
-    ? {
-        ...state,
-        cards: state.cards.map((card) =>
-          card.conceptId === dueCardOverride.conceptId &&
-          card.dimension === dueCardOverride.dimension
-            ? { ...card, dueAt: dueCardOverride.dueAt.toISOString() }
-            : card,
-        ),
-      }
-    : state;
-  const courseContexts = schedulerCourseContexts(candidateState, content);
+  const dueCardState = dueCardsOverride ? { ...state, cards: dueCardsOverride } : state;
+  const courseContexts = schedulerCourseContexts(state, content);
   const focusSubjectId = effectiveFocusSubjectId(
-    { focusSubjectId: candidateState.focusSubjectId },
-    candidateState.studyCourseIds,
+    { focusSubjectId: state.focusSubjectId },
+    state.studyCourseIds,
     content,
   );
   const newConceptIds = new Set(courseContexts.flatMap((course) => [...course.newConceptIds]));
   const masteryByKey = new Map(
-    candidateState.mastery.map((record) => [
-      masteryKey(record.conceptId, record.dimension),
-      record,
-    ]),
+    state.mastery.map((record) => [masteryKey(record.conceptId, record.dimension), record]),
   );
   const recentIds = new Set(
-    candidateState.recentAttempts
+    state.recentAttempts
       .filter((attempt) => daysSince(attempt.createdAt, now) < SCHEDULER_CONFIG.repeatWindowDays)
       .map((attempt) => attempt.exerciseId),
   );
   const dueCards = collectDueReviewCards(
-    candidateState,
+    dueCardState,
     content,
     now,
     focusSubjectId,
@@ -1277,7 +1260,7 @@ export function buildReviewActivityForConcept(
   ).get(conceptId);
   if (!dueCards) return undefined;
   return buildReviewCandidateForConcept(
-    candidateState,
+    state,
     content,
     now,
     conceptId,

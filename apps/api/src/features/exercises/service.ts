@@ -17,7 +17,7 @@ import {
 } from '../../db/schema.js';
 import { updateActivityAndAdvance } from '../../learning/activity-completion.js';
 import { answerOptionsFor } from '../../learning/answer-options.js';
-import { reviewActivityRating, scheduleReview } from '../../learning/fsrs.js';
+import { isDueToday, reviewActivityRating, scheduleReview } from '../../learning/fsrs.js';
 import { gradeExercise } from '../../learning/grading/index.js';
 import { rubricFeedbackWithScoredFlags } from '../../learning/grading/rubric-score.js';
 import { calculateCredit } from '../../learning/mastery.js';
@@ -649,6 +649,23 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
                 );
                 if (weakest) {
                   const schedulerState = await repo.schedulerState(now, index);
+                  const stateWithWeakestDueNow = {
+                    ...schedulerState,
+                    cards: schedulerState.cards.map((card) =>
+                      card.conceptId === weakest.conceptId && card.dimension === weakest.dimension
+                        ? { ...card, dueAt: weakest.dueAt.toISOString() }
+                        : card,
+                    ),
+                  };
+                  const dueCardsForConcept = stateWithWeakestDueNow.cards.filter(
+                    (card) =>
+                      card.conceptId === weakest.conceptId &&
+                      isDueToday(
+                        card.dueAt,
+                        now,
+                        stateWithWeakestDueNow.timezone ?? request.timeZone,
+                      ),
+                  );
                   const usedExerciseIds = [
                     ...(schedulerState.usedExerciseIds ?? []),
                     ...(session?.activities.flatMap(
@@ -656,15 +673,11 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
                     ) ?? []),
                   ];
                   const reviewActivity = buildReviewActivityForConcept(
-                    { ...schedulerState, usedExerciseIds },
+                    { ...stateWithWeakestDueNow, usedExerciseIds },
                     index,
                     now,
                     weakest.conceptId,
-                    {
-                      conceptId: weakest.conceptId,
-                      dimension: weakest.dimension as MasteryRecord['dimension'],
-                      dueAt: weakest.dueAt,
-                    },
+                    dueCardsForConcept,
                   );
                   await db.transaction(async (tx) => {
                     await tx
