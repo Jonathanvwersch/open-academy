@@ -897,3 +897,193 @@ exercises:
           feedback: "A linear classifier learns a separate weight for each feature. Its limit is that the boundary those weights make is straight.",
         }
     solution: "The two classes form interleaved curved bands, so one straight line cannot separate them well. A hidden layer combines several ReLU regions and can form a more flexible boundary."
+  - id: mlp-recall-layer-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: mlp-layer-of-neurons
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, how does a layer use its separate weights and biases to make one score per neuron, and how does it turn those scores into outputs?"
+    rubric:
+      - id: scores
+        criterion: "Explain that all neurons read the same input vector and each takes a dot product with its own row of weights and adds its own bias."
+        weight: 1
+        required: true
+      - id: activation
+        criterion: "Explain that the activation acts on each resulting score separately."
+        weight: 1
+        required: true
+    exemplar: "Each neuron takes a dot product of the shared input vector with its own row of weights and adds its own bias. The layer applies the activation to each score separately."
+  - id: mlp-recall-layer-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: mlp-layer-of-neurons
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A layer computes $z=Wx+b$ for one input vector. You change just one entry of $b$. Which scores can change before the activation?"
+    options:
+      - id: a
+        text: "Every score in the layer."
+        correct: false
+        feedback: "Each score gets its own bias, so changing one bias leaves all the other scores alone."
+      - id: b
+        text: "Only the score in the matching position."
+        correct: true
+        feedback: "One bias belongs to one neuron and is added to that neuron's score."
+      - id: c
+        text: "Only the scores with positive dot products."
+        correct: false
+        feedback: "A bias is added whether the dot product is positive, zero or negative. Sign matters later for some activations."
+    solution: "The bias vector has one entry per neuron. Changing one entry shifts just that neuron's score."
+  - id: mlp-recall-layer-formula
+    dimension: math
+    type: text
+    role: recall
+    knowledge_point: mlp-layer-of-neurons
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "For one input vector $x$, a layer has weight matrix $W$, bias vector $b$ and activation $\\phi$. Fill in what goes inside the activation in $h=\\phi(\\underline{\\quad\\quad})$. Write it in terms of $W$, $x$ and $b$."
+    accept:
+      ["Wx+b", "W x + b", "W*x+b", "W @ x + b", "b+Wx", "b+W*x", "b + W @ x", "W·x+b", "b+W·x"]
+    regex: '^\s*(?:(?:(?:W\s*(?:(?:[*@·⋅×]|\\(?:cdot|times))\s*)?x|\(\s*W\s*(?:(?:[*@·⋅×]|\\(?:cdot|times))\s*)?x\s*\))\s*\+\s*b|b\s*\+\s*(?:W\s*(?:(?:[*@·⋅×]|\\(?:cdot|times))\s*)?x|\(\s*W\s*(?:(?:[*@·⋅×]|\\(?:cdot|times))\s*)?x\s*\)))|\(\s*(?:(?:W\s*(?:(?:[*@·⋅×]|\\(?:cdot|times))\s*)?x|\(\s*W\s*(?:(?:[*@·⋅×]|\\(?:cdot|times))\s*)?x\s*\))\s*\+\s*b|b\s*\+\s*(?:W\s*(?:(?:[*@·⋅×]|\\(?:cdot|times))\s*)?x|\(\s*W\s*(?:(?:[*@·⋅×]|\\(?:cdot|times))\s*)?x\s*\)))\s*\))\s*$'
+    solution: "The activation acts on the score vector $Wx+b$, after the layer adds each neuron's bias."
+  - id: mlp-recall-forward-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: mlp-two-layers
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what are the hidden values in a forward pass, and how does the next layer use them?"
+    rubric:
+      - id: meaning
+        criterion: "Explain that the hidden values are the outputs computed by a layer between the input and the final output."
+        weight: 1
+        required: true
+      - id: next
+        criterion: "Explain that the next layer takes those hidden values as its inputs."
+        weight: 1
+        required: true
+    exemplar: "Hidden values are outputs computed inside the network by a layer between the input and the prediction. The next layer reads those outputs as its inputs."
+  - id: mlp-recall-forward-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: mlp-two-layers
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "An MLP predicts the change in a house price. Predictions can be negative or positive, with no fixed lower or upper limit. What should the output layer do with its score?"
+    options:
+      - id: a
+        text: "Apply ReLU to the score."
+        correct: false
+        feedback: "ReLU can be used in a hidden layer. At the output, it would turn negative predictions into zero."
+      - id: b
+        text: "Apply sigmoid to the score."
+        correct: false
+        feedback: "A sigmoid is useful for a probability. Its outputs stay between zero and one."
+      - id: c
+        text: "Use the score as it is."
+        correct: true
+        feedback: "Leaving the score unchanged preserves both its sign and its size."
+    solution: "Use the final score as the prediction. ReLU would remove negative values, and sigmoid would restrict the prediction to a fixed range."
+  - id: mlp-recall-forward-formula
+    dimension: math
+    type: text
+    role: recall
+    knowledge_point: mlp-two-layers
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "The output layer of a two-layer MLP uses weights $W_2$, bias $b_2$ and no activation. Fill in the factor in $\\hat y=W_2\\,\\underline{\\quad}+b_2$. Give the symbol or the name of the quantity."
+    accept:
+      [
+        "h",
+        "hidden values",
+        "the hidden values",
+        "the vector of hidden values",
+        "hidden value vector",
+        "hidden layer output",
+        "hidden layer outputs",
+        "output of the hidden layer",
+        "outputs of the hidden layer",
+        "first layer output",
+        "first layer outputs",
+        "hidden activations",
+        "ϕ(W1x+b1)",
+        "φ(W1x+b1)",
+      ]
+    regex: '^\s*(?:(?:the\s+)?(?:h|hidden\s+(?:values?|value\s+vector|activations?|outputs?)|(?:vector\s+of\s+)?hidden\s+(?:values?|activations?)|(?:hidden|first)[\s-]+layer(?:''s)?\s+(?:outputs?|activations?)|outputs?\s+of\s+(?:the\s+)?(?:hidden|first)\s+layer)|(?:\\?phi|\\varphi|[φϕ])\s*\(\s*(?:W\s*(?:_?\s*[1₁]|_\s*\{\s*1\s*\})\s*(?:(?:[*@·⋅×]|\\(?:cdot|times))\s*)?x\s*\+\s*b\s*(?:_?\s*[1₁]|_\s*\{\s*1\s*\})|b\s*(?:_?\s*[1₁]|_\s*\{\s*1\s*\})\s*\+\s*W\s*(?:_?\s*[1₁]|_\s*\{\s*1\s*\})\s*(?:(?:[*@·⋅×]|\\(?:cdot|times))\s*)?x)\s*\))\s*[.]?\s*$'
+    solution: "The output layer reads $h$, the hidden layer's outputs, so $\\hat y=W_2h+b_2$."
+  - id: mlp-recall-batch-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: mlp-shapes
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, how do you arrange several examples for a batch forward pass, and what happens to the number of learned weights and biases when you add another example?"
+    rubric:
+      - id: rows
+        criterion: "State that the input batch has one row per example."
+        weight: 1
+        required: true
+      - id: shared
+        criterion: "Explain that the new row uses the same weights and biases, so the parameter count stays the same."
+        weight: 1
+        required: true
+    exemplar: "A batch puts one example in each row. An added row uses the same weights and biases, so it adds no learned parameters."
+  - id: mlp-recall-batch-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: mlp-shapes
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A batch of inputs is stored in $X$, and a layer's weights are stored in $W$. Which row or column from each matrix goes into the dot product for one example at one neuron?"
+    options:
+      - id: a
+        text: "A column of $X$ and a row of $W$."
+        correct: false
+        feedback: "A column of $X$ groups one feature across examples. One score needs all the features from one example."
+      - id: b
+        text: "A row of $X$ and a row of $W$."
+        correct: true
+        feedback: "A row of $X$ contains the example's features, and a row of $W$ contains that neuron's matching weights."
+      - id: c
+        text: "A row of $X$ and a column of $W$."
+        correct: false
+        feedback: "A column of the stored $W$ takes weights from different neurons. The transpose puts a single neuron's weights in one column for multiplication."
+    solution: "One example row is dotted with one neuron's weight row, which is a column of $W^\\top$ in the batch product."
+  - id: mlp-recall-batch-formula
+    dimension: math
+    type: text
+    role: recall
+    knowledge_point: mlp-shapes
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Examples are rows of the batch matrix $X$, and each neuron's weights are a row of $W$. Fill in the weight factor in the batch scores $X\\,\\underline{\\quad}+b$. Give it in symbols or words."
+    accept:
+      [
+        "W^T",
+        "W^t",
+        "Wᵀ",
+        "W⊤",
+        "W^⊤",
+        "W^\\top",
+        "W^\\mathrm{T}",
+        "W^{\\top}",
+        "W.T",
+        "W'",
+        "W′",
+        "transpose(W)",
+        "transpose of W",
+        "the transpose of W",
+        "W transpose",
+        "W transposed",
+        "transposed W",
+        "the transposed weight matrix",
+      ]
+    regex: '^\s*(?:w\s*(?:[\u1d40\u22a4''\u2032]|\.\s*t|\^\s*(?:[\u22a4t]|\\top|\\(?:mathrm|text)\s*\{\s*t\s*\}|\{\s*(?:[\u22a4t]|\\top|\\(?:mathrm|text)\s*\{\s*t\s*\})\s*\}))|(?:np\s*\.\s*)?transpose\s*\(\s*w\s*\)|w\s*\.\s*transpose\s*\(\s*\)|(?:the\s+)?transpose\s+of\s+(?:w|(?:the\s+)?weights?\s+matrix(?:\s+w)?)|(?:the\s+)?transposed\s+(?:w|weights?\s+matrix(?:\s+w)?)|w\s+transpos(?:e|ed))\s*$'
+    solution: "Use $W^\\top$. This puts one neuron's weights in each column, so an example row can multiply the matching input weights."
