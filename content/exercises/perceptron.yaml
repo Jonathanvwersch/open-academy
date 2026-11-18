@@ -863,3 +863,181 @@ exercises:
           feedback: "Any number can be an input. The problem is the pattern of yes cases.",
         }
     solution: "Turning for (0,1) and (1,0) but not (0,0) or (1,1) is XOR. Those yes cases are opposite corners of the square, so no straight boundary separates them."
+  - id: perc-recall-score-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: perc-score-and-step
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, how does a perceptron get its score, and how does it turn that score into an output?"
+    rubric:
+      - id: score
+        criterion: "Explain that the score is the sum of the matching input and weight products, plus one bias."
+        weight: 1
+        required: true
+      - id: step
+        criterion: "State that the step gives 1 for a positive score and 0 for a score of zero or less."
+        weight: 1
+        required: true
+    exemplar: "A perceptron multiplies each input by its matching weight, adds the products and adds the bias once. Its step gives 1 for a positive score and 0 otherwise."
+  - id: perc-recall-score-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: perc-score-and-step
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A perceptron's score rises from $0.2$ to $3$. What happens to its output?"
+    options:
+      - id: a
+        text: "It rises by the same amount as the score."
+        correct: false
+        feedback: "The weighted sum plus bias rises by that amount. The step then turns each positive score into 1."
+      - id: b
+        text: "It stays at 1."
+        correct: true
+        feedback: "Every positive score gives 1, regardless of its size."
+      - id: c
+        text: "It rises from 0 to 1."
+        correct: false
+        feedback: "That switch would require starting at zero or below. Both scores here are positive."
+      - id: d
+        text: "It stays at 0."
+        correct: false
+        feedback: "The step gives 0 for scores of zero or less. Both scores here are positive."
+    solution: "The step returns 1 at both scores because both are positive."
+  - id: perc-recall-score-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: perc-score-and-step
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A perceptron has inputs $x_1,x_2$, matching weights $w_1,w_2$ and bias $b$. Write its score $z$ before the step. Type the subscripts as x1, x2, w1 and w2."
+    answer: "w1*x1 + w2*x2 + b"
+    variables: { x1: [-3, 3], x2: [-3, 3], w1: [-3, 3], w2: [-3, 3], b: [-2, 2] }
+    solution: "Multiply each input by its weight, add the products and add the bias once. The score is $z=w_1x_1+w_2x_2+b$."
+  - id: perc-recall-boundary-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: perc-straight-boundary
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what is a perceptron's decision boundary, and how does changing only its bias affect it when the weight vector is nonzero?"
+    rubric:
+      - id: zero-score
+        criterion: "Explain that the boundary is the set of inputs whose score is exactly zero."
+        weight: 1
+        required: true
+      - id: bias
+        criterion: "Explain that changing the bias slides the boundary without turning it."
+        weight: 1
+        required: true
+    exemplar: "The decision boundary is the set of inputs whose score is zero. Changing only the bias slides the boundary and keeps its direction the same."
+  - id: perc-recall-boundary-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: perc-straight-boundary
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Start on a two-input perceptron's boundary with a nonzero weight vector $w$. Which move takes you into the yes side?"
+    options:
+      - id: a
+        text: "Take a small step opposite to $w$."
+        correct: false
+        feedback: "This decreases the score below zero and takes you to the no side."
+      - id: b
+        text: "Take a small step perpendicular to $w$."
+        correct: false
+        feedback: "A perpendicular move has zero dot product with $w$, so the score stays at zero."
+      - id: c
+        text: "Take a small step along $w$."
+        correct: true
+        feedback: "Moving along $w$ raises the score above zero."
+    solution: "The score increases when you move along $w$ because $w\\cdot w$ is positive."
+  - id: perc-recall-boundary-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: perc-straight-boundary
+    difficulty: 2
+    est_minutes: 0.5
+    prompt: "A perceptron's boundary has inputs $x_1,x_2$, matching weights $w_1,w_2$ and bias $b$. Write the boundary's $x_2$ in terms of $x_1,w_1,w_2,b$, with $w_2$ nonzero. Type the subscripts as x1, w1 and w2."
+    answer: "-(w1*x1+b)/w2"
+    variables: { x1: [-4, 4], w1: [-3, 3], w2: [0.5, 4], b: [-2, 2] }
+    solution: "Set the score to zero, then isolate $x_2$ to get $x_2=-(w_1x_1+b)/w_2$."
+  - id: perc-recall-xor-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: perc-and-or-xor
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, when does XOR say yes, and why can't one perceptron give that pattern?"
+    rubric:
+      - id: pattern
+        criterion: "State that XOR says yes when exactly one of the two inputs is 1."
+        weight: 1
+        required: true
+      - id: separation
+        criterion: "Explain that the yes points are opposite corners and no straight line separates both yes points from both no points."
+        weight: 1
+        required: true
+    exemplar: "XOR says yes when exactly one input is 1. Those yes points sit at opposite corners of the square, so the single straight line a perceptron uses cannot separate both yes points from both no points."
+  - id: perc-recall-xor-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: perc-and-or-xor
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Which two-input rule says yes for $(0,0)$, $(1,0)$ and $(0,1)$, and says no for $(1,1)$?"
+    options:
+      - id: a
+        text: "AND"
+        correct: false
+        feedback: "AND says yes only at (1,1), where both inputs are 1."
+      - id: b
+        text: "OR"
+        correct: false
+        feedback: "OR says no at (0,0) and yes at every other corner."
+      - id: c
+        text: "XOR"
+        correct: false
+        feedback: "XOR says no when the two inputs agree, including at (0,0)."
+      - id: d
+        text: "NAND"
+        correct: true
+        feedback: "NAND says no only when both inputs are 1."
+    solution: "Only (1,1) makes AND true. NAND reverses those answers."
+  - id: perc-recall-xor-formula
+    dimension: math
+    type: text
+    role: recall
+    knowledge_point: perc-and-or-xor
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A three-perceptron network computes XOR by taking the AND of two tests on the original inputs. One test is OR. What is the other test? Give the rule name or describe when it says yes."
+    accept:
+      [
+        "NAND",
+        "NOT AND",
+        "not both",
+        "not both inputs",
+        "not both inputs are 1",
+        "not both are 1",
+        "not both inputs are yes",
+        "negated AND",
+        "yes unless both inputs are 1",
+        "yes unless both inputs are yes",
+        "at least one input is 0",
+        "at least one input is no",
+        "at least one is 0",
+        "!(x1 && x2)",
+        "¬(x₁ ∧ x₂)",
+      ]
+    regex: '^\s*(?:(?:the\s+)?(?:n\s*[- ]?\s*and|(?:not|negated)\s*[- ]?\s*\(?\s*and\s*\)?)(?:\s+gate)?|(?:yes\s+unless\s+both|not\s+both)(?:\s+(?:inputs?\s+)?(?:are\s+)?(?:1|one|yes|true))?|at\s+least\s+one(?:\s+input)?\s+is\s+(?:0|zero|no|false)|(?:!|¬|not)\s*\(\s*x\s*[_]?\s*[1₁]\s*(?:&&|∧|and)\s*x\s*[_]?\s*[2₂]\s*\))\s*[.!]?\s*$'
+    solution: "OR requires at least one yes. NAND rules out two yes inputs, so their AND says yes exactly when one input is yes."

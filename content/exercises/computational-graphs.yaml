@@ -525,3 +525,156 @@ exercises:
         required: true
     exemplar: "The graph has one node per input and simple operation, with arrows showing which values each operation uses. A local derivative gives one operation's output slope for one input while holding its other inputs fixed. Multiply these derivatives along every path from the chosen input to the output, then add the path products."
     solution: "The graph has one node per input and simple operation, with arrows showing which values each operation uses. A local derivative gives one operation's output slope for one input while holding its other inputs fixed. Multiply these derivatives along every path from the chosen input to the output, then add the path products."
+  - id: cg-recall-graph-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: cg-drawing-graphs
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what are the nodes in a computational graph, and how do the connections tell you when to run an operation?"
+    rubric:
+      - id: nodes
+        criterion: "State that a graph has nodes for inputs and simple operations."
+        weight: 1
+        required: true
+      - id: order
+        criterion: "Explain that connections show which values an operation uses, so it runs after those values are ready."
+        weight: 1
+        required: true
+    exemplar: "The graph has nodes for the inputs and the simple operations. The connections show which values each operation needs, so you run it once those values are ready."
+  - id: cg-recall-graph-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: cg-drawing-graphs
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A graph computes $a=x+1$ and $b=x-1$, then multiplies them. Which change would give a different calculation?"
+    options:
+      - id: a
+        text: "Draw the node for $b$ above the node for $a$."
+        correct: false
+        feedback: "Moving a node on the page leaves the inputs to each operation the same."
+      - id: b
+        text: "Evaluate the node for $b$ before the node for $a$."
+        correct: false
+        feedback: "Each of these two operations needs only the original input, so either can run first."
+      - id: c
+        text: "Feed the result of $a$ into the subtraction for $b$."
+        correct: true
+        feedback: "The subtraction needs $x$. Giving it $a$ changes $b$ from $x-1$ to $a-1$."
+    solution: "Both addition and subtraction use $x$. Redirecting the subtraction to use $a$ changes the value it receives."
+  - id: cg-recall-graph-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: cg-drawing-graphs
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A prediction graph multiplies the weight $w$ by the input $x$ and scores the prediction by its squared error against target $t$. Write the graph's final score $L$ as one expression in $w,x,t$."
+    answer: "(w*x-t)^2"
+    variables: { w: [-3, 4], x: [-3, 4], t: [-5, 5] }
+    solution: "The prediction is $wx$. Subtract the target and square the error to get $L=(wx-t)^2$."
+  - id: cg-recall-local-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: cg-local-derivatives
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what does a local derivative measure, and why might you need a value from the forward pass to find it?"
+    rubric:
+      - id: meaning
+        criterion: "Explain that it measures how one operation's output changes with one of its inputs while the other inputs stay fixed."
+        weight: 1
+        required: true
+      - id: saved
+        criterion: "Explain that some local derivatives depend on the value an input had during the forward pass."
+        weight: 1
+        required: true
+    exemplar: "A local derivative measures how one operation's output changes as one input changes with the others fixed. Some derivatives depend on the input value, so we keep the values the forward pass used."
+  - id: cg-recall-local-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: cg-local-derivatives
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A graph first computes $p=wx$, then uses $p$ to compute a final score $L$. Which rate describes the multiplication's local response to changing $w$?"
+    options:
+      - id: a
+        text: "The slope of $L$ with respect to $w$."
+        correct: false
+        feedback: "That is the final score's response, which also includes the operations after multiplication."
+      - id: b
+        text: "The slope of $p$ with respect to $w$."
+        correct: true
+        feedback: "This uses the output of the multiplication and varies its chosen input $w$, holding $x$ fixed."
+      - id: c
+        text: "The slope of $p$ with respect to $x$."
+        correct: false
+        feedback: "That is the other local derivative of the multiplication. It varies $x$ and holds $w$ fixed."
+    solution: "For a local derivative of the multiplication, use its output $p$. For this one, vary its input $w$."
+  - id: cg-recall-local-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: cg-local-derivatives
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "The squaring operation in a graph takes error $e$ and gives $L=e^2$. Write its local derivative with respect to $e$."
+    answer: "2*e"
+    variables: { e: [-5, 5] }
+    solution: "Squaring has local derivative $\\partial L/\\partial e=2e$."
+  - id: cg-recall-paths-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: cg-chaining-paths
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, how do you combine local derivatives along a path, and how do you combine the results when several paths run from the same input to the output?"
+    rubric:
+      - id: within
+        criterion: "State that you multiply the local derivatives along each path."
+        weight: 1
+        required: true
+      - id: across
+        criterion: "State that you add the path products to get the output's derivative with respect to that input."
+        weight: 1
+        required: true
+    exemplar: "Multiply the local derivatives along each path. Add all those path products to get the derivative for the input."
+  - id: cg-recall-paths-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: cg-chaining-paths
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A graph computes $a=x-y$, $b=x+z$ and $g=ab$. Which inputs have just one path each to $g$?"
+    options:
+      - id: a
+        text: "$x$ and $y$"
+        correct: false
+        feedback: "$y$ goes only through $a$, but $x$ goes through both $a$ and $b$."
+      - id: b
+        text: "$y$ and $z$"
+        correct: true
+        feedback: "$y$ reaches $g$ through $a$ only, and $z$ reaches it through $b$ only."
+      - id: c
+        text: "$x$ and $z$"
+        correct: false
+        feedback: "$z$ goes only through $b$, but $x$ goes through both $a$ and $b$."
+    solution: "Only $x$ feeds both operations. Each of the other inputs feeds one operation, giving one path to $g$."
+  - id: cg-recall-paths-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: cg-chaining-paths
+    difficulty: 2
+    est_minutes: 0.5
+    prompt: "A graph computes $a=x+y$, $b=y+z$ and $g=ab$. Write the derivative of $g$ with respect to $y$ using $x,y,z$."
+    answer: "x+2*y+z"
+    variables: { x: [-3, 5], y: [-3, 5], z: [-3, 5] }
+    solution: "The path through $a$ contributes $b$, and the path through $b$ contributes $a$. Their sum is $(y+z)+(x+y)$."

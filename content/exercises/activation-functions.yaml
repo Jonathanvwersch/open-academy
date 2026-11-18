@@ -889,3 +889,164 @@ exercises:
         category: recall_failure
         feedback: "The slope changes along the curve: at $z=3$ it is only about $0.045$, so large nudges drift from the estimate."
     solution: "Change in output is about slope times change in score only for small changes, where the curve is nearly straight. Over $0.1$ the sigmoid bends very little, so $0.25\\times0.1=0.025$ is only about $0.00002$ away from the real change."
+  - id: act-recall-stack-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: act-stacking-stays-straight
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what does a stack of linear layers reduce to, and what can a nonlinear activation between them change?"
+    rubric:
+      - id: collapse
+        criterion: "Explain that stacked linear layers reduce to one weighted sum of the original inputs plus a bias for each output."
+        weight: 1
+        required: true
+      - id: bend
+        criterion: "Explain that a nonlinear activation can give the network an input-to-output rule whose graph bends."
+        weight: 1
+        required: true
+    exemplar: "With only linear layers, each output reduces to one weighted sum of the original inputs plus a bias. An activation that bends between the layers allows a rule that a straight line cannot make."
+  - id: act-recall-stack-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: act-stacking-stays-straight
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A one-input, one-output network needs its output to rise by different amounts for equal steps in the input. Which change can make this possible?"
+    options:
+      - id: a
+        text: "Add a bias to each linear layer."
+        correct: false
+        feedback: "Biases change the intercept of the resulting line. Its rise stays the same for every equal input step."
+      - id: b
+        text: "Put a nonlinear activation between two linear layers."
+        correct: true
+        feedback: "A nonlinear activation can bend the graph and change the rise from one input region to another."
+      - id: c
+        text: "Add an extra linear layer to the stack."
+        correct: false
+        feedback: "A stack of linear layers still reduces to one linear layer. The output has one slope."
+    solution: "A nonlinear activation can create a bend, so equal input steps can give unequal output changes."
+  - id: act-recall-stack-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: act-stacking-stays-straight
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Two linear layers with no activation between them compute $u=cx+d$ and $y=au+e$. Write the intercept of the resulting line when you plot $y$ against $x$."
+    answer: "a*d+e"
+    variables: { a: [-4, 4], c: [-4, 4], d: [-4, 4], e: [-3, 3] }
+    solution: "Substitution gives $y=(ac)x+(ad+e)$. The intercept is $ad+e$."
+  - id: act-recall-curves-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: act-relu-sigmoid-tanh
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what does ReLU do to positive scores and to scores of zero or less?"
+    rubric:
+      - id: positive
+        criterion: "State that ReLU passes positive scores through unchanged."
+        weight: 1
+        required: true
+      - id: zero
+        criterion: "State that ReLU gives zero for zero and negative scores."
+        weight: 1
+        required: true
+    exemplar: "ReLU keeps a positive score unchanged. It gives zero for a score of zero or less."
+  - id: act-recall-curves-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: act-relu-sigmoid-tanh
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Which activation is smooth, gives zero at a score of zero, and takes values of both signs?"
+    options:
+      - id: a
+        text: "ReLU"
+        correct: false
+        feedback: "ReLU gives zero at zero but has a corner there and never gives a negative output."
+      - id: b
+        text: "Sigmoid"
+        correct: false
+        feedback: "Sigmoid is smooth but gives 0.5 at zero and stays positive."
+      - id: c
+        text: "Tanh"
+        correct: true
+        feedback: "Tanh is smooth, crosses zero at zero and gives negative and positive outputs."
+      - id: d
+        text: "Step"
+        correct: false
+        feedback: "The step gives zero at zero, jumps there and has only outputs of 0 and 1."
+    solution: "Tanh crosses zero smoothly and its outputs stay between minus one and one."
+  - id: act-recall-curves-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: act-relu-sigmoid-tanh
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Write the sigmoid output $\\sigma(z)$ for a score $z$. Type exp(...) for the exponential."
+    answer: "1/(1+exp(-z))"
+    variables: { z: [-5, 5] }
+    solution: "The sigmoid is $\\sigma(z)=1/(1+e^{-z})$. The exponential uses the negative of the score."
+  - id: act-recall-slope-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: act-slopes
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what does an activation's slope tell you, and what happens to the sigmoid's slope when the score is far from zero?"
+    rubric:
+      - id: meaning
+        criterion: "Explain that the slope tells how fast an activation's output changes when its score changes."
+        weight: 1
+        required: true
+      - id: saturation
+        criterion: "Explain that far from zero the sigmoid is nearly flat, so its slope is close to zero."
+        weight: 1
+        required: true
+    exemplar: "The slope tells how quickly the activation output changes as the score changes. The sigmoid nearly levels off far from zero on either side, so its slope there is close to zero."
+  - id: act-recall-slope-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: act-slopes
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "The score of a neuron rises slightly from a large positive value. Which activation still passes that rise through at its full size?"
+    options:
+      - id: a
+        text: "Sigmoid"
+        correct: false
+        feedback: "Sigmoid is nearly flat at a large positive score, so its output rises only a little."
+      - id: b
+        text: "Tanh"
+        correct: false
+        feedback: "Tanh also levels off at large positive scores, so it passes through only a small part of the rise."
+      - id: c
+        text: "ReLU"
+        correct: true
+        feedback: "ReLU has slope 1 at every positive score, so the rise in its output matches the rise in the score."
+      - id: d
+        text: "Step"
+        correct: false
+        feedback: "The step stays at 1 throughout the positive side, so its output is unchanged."
+    solution: "For ReLU at a positive score, the output equals the score and the slope is 1."
+  - id: act-recall-slope-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: act-slopes
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "At score $z$, a sigmoid's output is $\\sigma(z)$. Write its slope using only that output as the variable. Type sigma for the output."
+    answer: "sigma*(1-sigma)"
+    variables: { sigma: [0.05, 0.95] }
+    solution: "The slope is $\\sigma(z)(1-\\sigma(z))$, the output times one minus that same output."

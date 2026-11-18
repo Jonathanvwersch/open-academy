@@ -702,3 +702,207 @@ exercises:
         required: false
     exemplar: "The memory $m_t$ averages recent signed gradients, and $v_t$ averages recent squared gradient sizes. Using the corrected values, update $w_t=w_{t-1}-\\eta\\hat m_t/(\\sqrt{\\hat v_t}+\\epsilon)$, where $\\eta$ is the learning rate. Positive $\\epsilon$ keeps the denominator above zero."
     solution: "The memory $m_t$ averages recent signed gradients, and $v_t$ averages recent squared gradient sizes. Using the corrected values, update $w_t=w_{t-1}-\\eta\\hat m_t/(\\sqrt{\\hat v_t}+\\epsilon)$, where $\\eta$ is the learning rate. Positive $\\epsilon$ keeps the denominator above zero."
+  - id: mad-recall-momentum-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: mad-remember-slopes
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what gradient does momentum move against, and what does a larger value of its memory setting do?"
+    rubric:
+      - id: direction
+        criterion: "Explain that momentum moves against a running weighted average of recent signed gradients."
+        weight: 1
+        required: true
+      - id: memory
+        criterion: "Explain that a larger memory setting keeps more of the old average, so older gradients fade more slowly."
+        weight: 1
+        required: true
+    exemplar: "Momentum moves against a weighted average of recent gradients. A larger memory setting keeps more of the previous average, so the earlier gradients have an effect for longer."
+  - id: mad-recall-momentum-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: mad-remember-slopes
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Momentum receives a batch gradient of zero, and its previous average is positive. Its memory setting $\\beta_1$ is between zero and one, excluding both ends. What happens to the parameter with a positive learning rate?"
+    options:
+      - id: a
+        text: "It stays where it is."
+        correct: false
+        feedback: "A zero current gradient would stop an update using only this batch. Momentum keeps some of the positive average."
+      - id: b
+        text: "It moves down."
+        correct: true
+        feedback: "The new average keeps part of the old positive value, so subtracting it moves the parameter down."
+      - id: c
+        text: "It moves up."
+        correct: false
+        feedback: "An upward move would need a negative average. A zero gradient leaves a fraction of the positive one."
+    solution: "The new average stays positive because it retains part of its previous value. The update subtracts the learning rate times that average."
+  - id: mad-recall-momentum-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: mad-remember-slopes
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Momentum has previous average $m_{t-1}$, current batch gradient $g_t$ and memory setting $\\beta_1$. Write the new average $m_t$. Type mprev, g and beta1 for those three inputs."
+    answer: "beta1*mprev+(1-beta1)*g"
+    variables: { mprev: [-6, 6], g: [-6, 6], beta1: [0, 0.99] }
+    solution: "Keep $\\beta_1$ of the old average and add $1-\\beta_1$ of the new signed gradient."
+  - id: mad-recall-scale-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: mad-scale-moves
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what does the squared-gradient average track for each parameter, and why do we take its square root when scaling a move?"
+    rubric:
+      - id: squares
+        criterion: "Explain that it is a running average of that parameter's squared gradients, so opposite signs do not cancel."
+        weight: 1
+        required: true
+      - id: root
+        criterion: "Explain that its square root is on the scale of gradient size, so it can divide the signed average."
+        weight: 1
+        required: true
+    exemplar: "Each parameter keeps an average of its recent squared gradients to track their size without cancelling opposite signs. The square root brings the average back to the size of a gradient before it is used as the divisor."
+  - id: mad-recall-scale-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: mad-scale-moves
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Two parameters have the same positive remembered gradient, but the first has a larger squared-gradient average. Both size estimates are positive. What does dividing by their respective size estimates do?"
+    options:
+      - id: a
+        text: "It gives the first parameter a smaller scaled value."
+        correct: true
+        feedback: "The first parameter divides the same signed average by a larger square root."
+      - id: b
+        text: "It gives the first parameter a larger scaled value."
+        correct: false
+        feedback: "The size estimate is a divisor. Increasing it shrinks the scaled value for the same signed average."
+      - id: c
+        text: "It gives the parameters equal scaled values."
+        correct: false
+        feedback: "A shared learning rate can still give different moves, since the size estimates are separate."
+    solution: "The two numerators are the same. A larger square root in the denominator makes the first scaled value smaller."
+  - id: mad-recall-scale-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: mad-scale-moves
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "The old squared-gradient average is $v_{t-1}$, the current gradient is $g_t$ and the memory setting is $\\beta_2$. Write the new squared-gradient average $v_t$. Type vprev, g and beta2 for the inputs."
+    answer: "beta2*vprev+(1-beta2)*g^2"
+    variables: { vprev: [0, 16], g: [-6, 6], beta2: [0, 0.99] }
+    solution: "Keep $\\beta_2$ of the old average. Add $1-\\beta_2$ of the current gradient squared."
+  - id: mad-recall-correction-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: mad-correct-start
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, why can Adam's stored averages start too close to zero, and what does bias correction divide them by?"
+    rubric:
+      - id: zero
+        criterion: "Explain that some of each early average's weight still goes to its starting zero."
+        weight: 1
+        required: true
+      - id: divide
+        criterion: "State that bias correction divides each average by the total weight on actual gradients or their squares."
+        weight: 1
+        required: true
+    exemplar: "Some of the weight in each early average still goes to its starting zero, which pulls it toward zero. Divide each stored average by the weight that went to the real gradients or their squares."
+  - id: mad-recall-correction-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: mad-correct-start
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Adam uses a signed memory setting strictly between zero and one, and the batch gradients have changed from one step to the next. After correcting the signed average for its zero start, what does it describe?"
+    options:
+      - id: a
+        text: "The latest batch's gradient alone."
+        correct: false
+        feedback: "The correction removes the weight on the starting zero. It keeps the earlier batches' contributions."
+      - id: b
+        text: "The gradient of the full training dataset."
+        correct: false
+        feedback: "The correction uses gradients already in the running average. It does not measure the examples left out of the batches."
+      - id: c
+        text: "A weighted average of the gradients from the batches so far."
+        correct: true
+        feedback: "The correction leaves only the weights on real gradients and scales those weights to sum to one."
+    solution: "Bias correction removes the starting zero's share. The weighted gradient history still contributes."
+  - id: mad-recall-correction-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: mad-correct-start
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Adam started its signed average at zero. At update $t$, its raw average is $m_t$ and its memory setting is $\\beta_1$. Write the bias-corrected signed average $\\hat m_t$. Type m for $m_t$ and beta1 for $\\beta_1$."
+    answer: "m/(1-beta1^t)"
+    variables: { m: [-5, 5], beta1: [0, 0.99], t: [1, 12] }
+    solution: "After $t$ updates the starting zero has weight $\\beta_1^t$. Divide the raw average by the remaining weight, $1-\\beta_1^t$."
+  - id: mad-recall-adam-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: mad-combine-update
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, which averages does Adam use to move a parameter now, and which averages does it keep for the next batch?"
+    rubric:
+      - id: use
+        criterion: "State that Adam uses both bias-corrected averages for the current move."
+        weight: 1
+        required: true
+      - id: keep
+        criterion: "State that it keeps both raw averages to update with the next batch gradient."
+        weight: 1
+        required: true
+    exemplar: "Adam uses the corrected signed and squared averages to calculate the move. It keeps the two raw averages as the starting point for the next batch's averaging calculation."
+  - id: mad-recall-adam-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: mad-combine-update
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "In Adam, what keeps the divisor in the final move positive even when the corrected squared-gradient average is zero?"
+    options:
+      - id: a
+        text: "The learning rate $\\eta$."
+        correct: false
+        feedback: "The learning rate scales the move outside the division. It cannot change the divisor."
+      - id: b
+        text: "The added constant $\\epsilon$."
+        correct: true
+        feedback: "Epsilon is positive and is added to the square root of the corrected squared-gradient average."
+      - id: c
+        text: "The signed average $\\hat m_t$."
+        correct: false
+        feedback: "The corrected signed average is the numerator and can have either sign."
+    solution: "The divisor is $\\sqrt{\\hat v_t}+\\epsilon$, which stays positive because $\\epsilon$ is positive."
+  - id: mad-recall-adam-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: mad-combine-update
+    difficulty: 2
+    est_minutes: 0.5
+    prompt: "In Adam, the old parameter is $w_{t-1}$, and the corrected averages are $\\hat m_t$ and $\\hat v_t$. Write the new parameter $w_t$ using w for the old parameter, m and v for the corrected averages, eta for the learning rate and eps for $\\epsilon$. Type sqrt(...) for square roots."
+    answer: "w-eta*m/(sqrt(v)+eps)"
+    variables: { w: [-4, 5], m: [-6, 6], v: [0, 16], eta: [0.001, 0.5], eps: [0.000001, 0.1] }
+    solution: "Divide the corrected signed average by $\\sqrt{\\hat v_t}+\\epsilon$, scale by $\\eta$ and subtract from the old parameter."

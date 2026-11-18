@@ -504,3 +504,167 @@ exercises:
         weight: 1
         required: true
     exemplar: "The forward run records the executed operations, their connections and the values needed by derivative rules. Backward starts at the loss, multiplies local derivatives along each path and adds contributions where paths meet. The call computes slopes and leaves the weights unchanged."
+  - id: ad-recall-record-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: ad-recording
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what does PyTorch record as a tracked calculation runs, and why does it save some of the numbers from that run?"
+    rubric:
+      - id: graph
+        criterion: "Explain that PyTorch records the operations that ran and which values went into and came out of them."
+        weight: 1
+        required: true
+      - id: save
+        criterion: "Explain that it keeps the numbers the operations' local slope rules will need later."
+        weight: 1
+        required: true
+    exemplar: "PyTorch records each operation that ran and the values it connects. It keeps the numbers that each operation needs to work out its local slope later."
+  - id: ad-recall-record-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: ad-recording
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A tracked PyTorch calculation uses an `if` to choose between two different operations. Which operations from those two choices are in the record for one run?"
+    options:
+      - id: a
+        text: "Both choices, with their own saved values."
+        correct: false
+        feedback: "PyTorch builds its record while Python runs. The unused choice never produces values to save."
+      - id: b
+        text: "Only the choice that actually ran."
+        correct: true
+        feedback: "The record describes the calculation that produced this run's result."
+      - id: c
+        text: "Only the choice that would run if the input changed."
+        correct: false
+        feedback: "The record describes the current run. A later run with different inputs can make a different record."
+    solution: "PyTorch records the operations it executes, so a choice that was skipped stays out of that run's graph."
+  - id: ad-recall-record-contrast2
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: ad-recording
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "PyTorch multiplies a tracked weight $w$ by a fixed number $x$ that needs no slope of its own. Which number from this multiply is needed to find its local slope for $w$?"
+    options:
+      - id: a
+        text: "The weight $w$."
+        correct: false
+        feedback: "The weight would give the local slope for $x$. We want the slope for $w$."
+      - id: b
+        text: "The product $wx$."
+        correct: false
+        feedback: "The product is the forward output. The rate at which it changes with $w$ is the fixed multiplier."
+      - id: c
+        text: "The fixed number $x$."
+        correct: true
+        feedback: "The local slope for $w$ is $x$, so its value matters even when we need no slope for $x$ itself."
+    solution: "The rate for $w$ in $wx$ is $x$, so PyTorch needs the fixed number to work out that rate."
+  - id: ad-recall-reverse-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: ad-reverse
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, where does reverse-mode automatic differentiation start and which way does it go, and what does it do where several paths reach the same value?"
+    rubric:
+      - id: order
+        criterion: "Explain that it starts at the output, such as the loss, and visits recorded operations in reverse order."
+        weight: 1
+        required: true
+      - id: add
+        criterion: "Explain that it adds slope contributions where several paths meet at the same value."
+        weight: 1
+        required: true
+    exemplar: "Reverse mode starts at the loss and visits the recorded operations from last to first. It adds the contributions from all paths that reach the same value."
+  - id: ad-recall-reverse-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: ad-reverse
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "In PyTorch, `w.grad` already holds a slope. You recompute the loss and call `loss.backward()` again without clearing it. What happens to `w.grad`?"
+    options:
+      - id: a
+        text: "It is replaced by the new slope."
+        correct: false
+        feedback: "To keep only the fresh slope, first clear the slot. Backward adds to what is there."
+      - id: b
+        text: "It is cleared after the new slope is used."
+        correct: false
+        feedback: "Backward leaves the accumulated slope available. Clearing the slot is a separate action."
+      - id: c
+        text: "It becomes the old slope plus the new slope."
+        correct: true
+        feedback: "The new slope is added to the old value, so a negative slope can lower the total."
+    solution: "Each call adds the newly calculated slope to the value already in `.grad`."
+  - id: ad-recall-reverse-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: ad-reverse
+    difficulty: 2
+    est_minutes: 0.5
+    prompt: "A tracked weight $w$ gives prediction $wx$ for fixed input $x$. The loss is $L=(wx-y)^2$ with fixed target $y$. Write the slope returned for $w$ by the backward pass, assuming its gradient slot starts empty."
+    answer: "2*(w*x-y)*x"
+    variables: { w: [-3, 4], x: [-3, 4], y: [-4, 5] }
+    solution: "The square passes back $2(wx-y)$ and subtraction passes it through unchanged. The final step multiplies it by $x$."
+  - id: ad-recall-modes-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: ad-modes
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what determines how many slope passes forward mode needs, and what determines how many backward passes reverse mode needs?"
+    rubric:
+      - id: forward
+        criterion: "State that forward mode needs one pass per input."
+        weight: 1
+        required: true
+      - id: reverse
+        criterion: "State that reverse mode uses one backward pass per output after one recording pass."
+        weight: 1
+        required: true
+    exemplar: "Forward mode follows one input per pass. Reverse mode makes one record, then has one backward pass per output."
+  - id: ad-recall-modes-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: ad-modes
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A robot has one motor speed setting and four outputs that depend on it. You need the slope of each output with respect to the speed. Which choice takes the fewest passes?"
+    options:
+      - id: a
+        text: "Use forward mode once, starting from the speed."
+        correct: true
+        feedback: "One input gives one forward pass, which returns slopes for all four outputs."
+      - id: b
+        text: "Use reverse mode once, starting from one output."
+        correct: false
+        feedback: "One reverse sweep gives slopes for just its chosen output. The other outputs each need their own sweep."
+      - id: c
+        text: "Use forward mode once for each output."
+        correct: false
+        feedback: "Forward mode follows one input per pass. A pass from the motor speed already gives all four slopes."
+    solution: "There is one input, so one forward pass gives the slopes of all four outputs."
+  - id: ad-recall-modes-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: ad-modes
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A calculation has $o$ outputs. Write the total number of passes reverse mode uses to find all output slopes, including the recording pass."
+    answer: "1+o"
+    variables: { o: [1, 12] }
+    solution: "One recording pass serves all the outputs. Add $o$ backward passes, one per output."

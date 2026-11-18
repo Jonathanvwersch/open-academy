@@ -787,3 +787,229 @@ exercises:
         correct: false
         feedback: "Training mode keeps dropout active, but `torch.no_grad()` still pauses calculation recording."
     solution: "Leaving out `model.eval()` keeps dropout active during the loss calculation. `torch.no_grad()` still stops recording the calculations needed to find slopes."
+  - id: ptb-recall-tensor-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: ptb-tensors
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what is a PyTorch tensor, and what does its shape tell you?"
+    rubric:
+      - id: meaning
+        criterion: "State that a tensor is an array of numbers that can have any number of dimensions."
+        weight: 1
+        required: true
+      - id: shape
+        criterion: "State that its shape gives the length of each dimension."
+        weight: 1
+        required: true
+    exemplar: "A tensor is an array of numbers. It can hold a single number, a list, a table or more dimensions, and its shape lists how long each dimension is."
+  - id: ptb-recall-tensor-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: ptb-tensors
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A PyTorch input tensor has shape `(5, 3)` and stores one example per row. What does the 3 count?"
+    options:
+      - id: a
+        text: "The examples in this input tensor."
+        correct: false
+        feedback: "Examples are rows. The first dimension, 5, counts them."
+      - id: b
+        text: "The inputs recorded for each example."
+        correct: true
+        feedback: "The second dimension counts the columns, one per input."
+      - id: c
+        text: "The target values predicted for each example."
+        correct: false
+        feedback: "This is the input tensor, so its columns count inputs. Targets live in their own tensor."
+    solution: "The 5 counts rows and the 3 counts columns. Each row is an example with three inputs."
+  - id: ptb-recall-tensor-contrast2
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: ptb-tensors
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "You want to know whether the PyTorch tensor x stores its entries as `torch.float32`. Which would tell you?"
+    options:
+      - id: a
+        text: "`x.dtype`"
+        correct: true
+        feedback: "The data type tells you what kind of number each entry holds."
+      - id: b
+        text: "`x.shape`"
+        correct: false
+        feedback: "Shape gives the length of each dimension. Tensors of different data types can have the same shape."
+      - id: c
+        text: "`x.tolist()`"
+        correct: false
+        feedback: "This gives the values as plain Python lists. Use the tensor's data type to check how PyTorch stores its entries."
+    solution: "Read `x.dtype` to see the kind of number stored in the tensor."
+  - id: ptb-recall-linear-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: ptb-linear
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what calculation does a PyTorch `nn.Linear` module do for each row, and what trainable numbers does it keep?"
+    rubric:
+      - id: row
+        criterion: "Explain that it computes a weighted sum of the inputs plus a bias for each output, using the same rule for every row."
+        weight: 1
+        required: true
+      - id: params
+        criterion: "State that the module keeps the weight and bias as parameters that training can adjust."
+        weight: 1
+        required: true
+    exemplar: "`nn.Linear` uses its weights and bias to make a weighted sum plus a bias for each example row. The weight and bias belong to the module as trainable parameters."
+  - id: ptb-recall-linear-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: ptb-linear
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A PyTorch `nn.Linear(4, 2)` module receives seven rows of four inputs. Which part of the setup determines the number of rows in its output?"
+    options:
+      - id: a
+        text: "The first constructor size, 4."
+        correct: false
+        feedback: "This gives the input count per example, so it determines how many columns the input needs."
+      - id: b
+        text: "The second constructor size, 2."
+        correct: false
+        feedback: "This gives the output count per example, so it determines how many output columns there are."
+      - id: c
+        text: "The row count of the input, 7."
+        correct: true
+        feedback: "Each input row gets an output row, with the same weights and bias used on every row."
+    solution: "The output has seven rows and two columns. The module gives two outputs for each example."
+  - id: ptb-recall-linear-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: ptb-linear
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A PyTorch linear module has one input and one output, a weight $w$ and a bias $b$. Write the prediction $\\hat y$ for the input value $x$."
+    answer: "w*x+b"
+    variables: { w: [-3, 3], x: [-4, 4], b: [-3, 3] }
+    solution: "The module multiplies the input by the weight and adds the bias, so $\\hat y=wx+b$."
+  - id: ptb-recall-update-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: ptb-loss-optimizer
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what does `loss.backward()` do to the model's gradients, and how does `optimizer.step()` use them?"
+    rubric:
+      - id: backward
+        criterion: "State that backward finds the loss slope for each parameter and adds it to that parameter's stored gradient."
+        weight: 1
+        required: true
+      - id: update
+        criterion: "State that the optimiser uses the stored slopes to move the parameters against those slopes."
+        weight: 1
+        required: true
+    exemplar: "`loss.backward()` finds each parameter's loss slope and adds it to its stored gradient. For gradient descent, `optimizer.step()` uses the stored slopes to move the parameters in the opposite direction."
+  - id: ptb-recall-update-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: ptb-loss-optimizer
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "The gradients have been cleared and you have called `nn.MSELoss()` on the predictions and targets to get `loss`. What is available at this point?"
+    options:
+      - id: a
+        text: "The loss and fresh parameter slopes."
+        correct: false
+        feedback: "Computing the loss gives a loss value. Calling backward on it finds the slopes."
+      - id: b
+        text: "The loss, with the parameters still at their old values."
+        correct: true
+        feedback: "The loss function scores predictions. Backward and the parameter update are separate calls."
+      - id: c
+        text: "The loss and newly updated parameters."
+        correct: false
+        feedback: "The parameters move when the optimiser uses the slopes in `optimizer.step()`."
+    solution: "The loss function gives a score for the predictions. The gradients and parameter update come in later calls."
+  - id: ptb-recall-update-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: ptb-loss-optimizer
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "You pass predictions and targets for two examples to `nn.MSELoss()`. The two errors, each prediction minus its target, are $e_1$ and $e_2$. Write the loss. Type e1 and e2 for the errors."
+    answer: "(e1^2+e2^2)/2"
+    variables: { e1: [-4, 4], e2: [-4, 4] }
+    solution: "Square both errors and average the squares to get $(e_1^2+e_2^2)/2$."
+  - id: ptb-recall-loop-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: ptb-training-loop
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, why does a PyTorch training loop make new predictions each time, and why does it clear old gradients before computing the new ones?"
+    rubric:
+      - id: fresh
+        criterion: "Explain that the last update changed the parameters, so new predictions and slopes depend on the new parameter values."
+        weight: 1
+        required: true
+      - id: clear
+        criterion: "Explain that backward adds to stored gradients, so clearing keeps the earlier slopes out of the new update."
+        weight: 1
+        required: true
+    exemplar: "Each update changes the parameters, so the loop predicts with the new values and finds fresh slopes. Backward adds to stored gradients, so the loop clears them first to keep old slopes out of the new update."
+  - id: ptb-recall-loop-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: ptb-training-loop
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A PyTorch loop computes `loss`, calls `loss.backward()` and then runs `optimizer.step()`. Its next line prints that same `loss`. Which predictions did the printed loss score?"
+    options:
+      - id: a
+        text: "The predictions made before this update."
+        correct: true
+        feedback: "The loss was computed using the weights and bias before `optimizer.step()` changed them."
+      - id: b
+        text: "The predictions from the newly updated model."
+        correct: false
+        feedback: "The update changes the parameters. To score the new predictions, run the model and compute the loss again."
+      - id: c
+        text: "Predictions from both sides of the update."
+        correct: false
+        feedback: "This loss call used one set of predictions. The stored value contains no results from after the update."
+    solution: "The printed value scores the forward pass before the update. Computing a loss with the new parameters requires a fresh forward pass."
+  - id: ptb-recall-loop-contrast2
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: ptb-training-loop
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A PyTorch model has dropout and starts in training mode with gradient recording enabled. You call only `model.eval()` before measuring its loss. What happens during that measurement?"
+    options:
+      - id: a
+        text: "Dropout stays on and recording stops."
+        correct: false
+        feedback: "Stopping recording is the job of `torch.no_grad()`. Evaluation mode turns dropout off."
+      - id: b
+        text: "Dropout turns off and recording stops."
+        correct: false
+        feedback: "Evaluation mode turns dropout off. Use `torch.no_grad()` as well to stop recording."
+      - id: c
+        text: "Dropout turns off and recording stays on."
+        correct: true
+        feedback: "Evaluation mode changes the model's settings. It leaves gradient recording enabled."
+    solution: "`model.eval()` disables dropout during evaluation. A `torch.no_grad()` block separately stops gradient recording."
