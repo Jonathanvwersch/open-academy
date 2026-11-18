@@ -338,13 +338,18 @@ async function checkI5(_now: Date): Promise<string[]> {
   return failures;
 }
 
-async function checkI6({ now, today }: AuditContext): Promise<string[]> {
+async function checkI6({ now, today, active }: AuditContext): Promise<string[]> {
   const openReviews = await db
     .select()
     .from(sessionActivities)
     .innerJoin(studySessions, eq(sessionActivities.sessionId, studySessions.id))
     .where(and(eq(studySessions.userId, userId), eq(sessionActivities.kind, 'review')));
-  const planned = todayActivities(today)
+  const planned = [
+    ...todayActivities(today),
+    ...(active?.activities ?? []).filter((activity: Record<string, any>) =>
+      ['planned', 'in_progress'].includes(activity.status),
+    ),
+  ]
     .filter((activity: Record<string, any>) => activity.kind === 'review')
     .flatMap((activity: Record<string, any>) => activityTopics(activity));
   const allAttempts = await db.select().from(attempts).where(eq(attempts.userId, userId));
@@ -808,7 +813,7 @@ it.fails('I7 review scheduling invariant', () => assertInvariant('I7'));
 it.fails('I8 review scheduling invariant', () => assertInvariant('I8'));
 it('I9 review scheduling invariant', () => assertInvariant('I9'));
 
-it('S2 preserves a partial review in the next plan', async () => {
+it('S2 keeps a partial review available while it remains active', async () => {
   const now = atLocalNoon(startDate);
   await seedLearner(now);
   await seedCards(now);
@@ -826,11 +831,18 @@ it('S2 preserves a partial review in the next plan', async () => {
     answer: answerFor(firstExercise),
     mode: 'review',
   });
+  await step('POST', `/sessions/${session.id}/replan`, now, {});
+  const { data: active } = await step('GET', '/sessions/active', now);
+  expect(
+    (active.activities ?? []).some(
+      (item: Record<string, any>) => item.id === activity.id && item.status === 'in_progress',
+    ),
+  ).toBe(true);
   const found = [...(violations.get('I6') ?? [])];
   expect(
     found,
-    'I6 should report partial ungraded review answers hidden from the next plan',
-  ).not.toHaveLength(0);
+    'An in-progress review remains available even when Home plans a fresh review set',
+  ).toEqual([]);
 });
 
 it('S1 keeps mixed review topics out of a replan', async () => {
