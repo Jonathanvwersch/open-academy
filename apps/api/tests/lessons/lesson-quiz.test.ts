@@ -159,6 +159,25 @@ test('lesson-only problems are not included in the lesson quiz', () => {
   expect(items.map((item) => item.exerciseId)).toEqual([quizEligible.id]);
 });
 
+test('recall exercises are not included in lesson quizzes', () => {
+  const recall = ExerciseSchema.parse({
+    ...exercise('quiz-recall', 2),
+    role: 'recall',
+    knowledge_point: 'p1',
+  });
+  const quizEligible = exercise('quiz-eligible', 2);
+  const lesson = { knowledge_points: [point('p1', [recall.id, quizEligible.id])] };
+  const items = select(
+    lesson,
+    new Map([
+      [recall.id, recall],
+      [quizEligible.id, quizEligible],
+    ]),
+  );
+
+  expect(items.map((item) => item.exerciseId)).toEqual([quizEligible.id]);
+});
+
 test('information-theory quiz excludes its worked-example self-explanations', async () => {
   const content = await loadContent('content');
   const lesson = content.lessonsByConcept.get('information-theory');

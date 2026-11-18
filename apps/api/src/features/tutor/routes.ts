@@ -268,6 +268,8 @@ export function registerTutorThreadRoutes(
         contentVersion: template.contentVersion,
       };
     }
+    if (exercise?.role === 'recall')
+      return c.json({ error: 'Review recall exercises are not available to the tutor.' }, 403);
     if (exercise?.role === 'diagnostic')
       return c.json({ error: 'Placement check exercises do not allow tutor answers.' }, 403);
     if (activityId) {

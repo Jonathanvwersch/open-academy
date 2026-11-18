@@ -204,6 +204,14 @@ test('concept exercises are restricted to diagnostic, check and core roles', () 
   if (!baseMc) throw new Error('Missing MC fixture exercise');
   const candidates = [
     { ...baseMc, id: 'wrong-role', concept: 'a', role: 'transfer', difficulty: 2 },
+    {
+      ...baseMc,
+      id: 'role-recall',
+      concept: 'a',
+      role: 'recall',
+      knowledge_point: 'a-kp',
+      difficulty: 3,
+    },
     { ...baseMc, id: 'role-diagnostic', concept: 'a', role: 'diagnostic', difficulty: 3 },
     { ...baseMc, id: 'role-check', concept: 'a', role: 'check', difficulty: 2 },
   ] as IndexedExercise[];
