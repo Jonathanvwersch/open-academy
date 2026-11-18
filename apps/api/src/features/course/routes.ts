@@ -40,7 +40,11 @@ import {
   prerequisiteMet,
 } from '../../learning/prerequisites.js';
 import { reviewTopicsForActivity } from '../../learning/review-topics.js';
-import type { PlannedActivity, SessionPreferences } from '../../learning/scheduler.js';
+import type {
+  PlannedActivity,
+  SchedulerState,
+  SessionPreferences,
+} from '../../learning/scheduler.js';
 import {
   currentLearnerUnit,
   effectiveFocusSubjectId,
@@ -678,7 +682,22 @@ export function registerLearnCourseRoutes(
     const finishProjectionCourses = focusSubjectId
       ? buildProjectionCourses(index, focusedCourseIds, topicState, completionDates, focusSubjectId)
       : projectionCourses;
-    const projectionSchedulerState = await loadSchedulerState();
+    const projectionSchedulerState: Pick<
+      SchedulerState,
+      | 'activeCourseId'
+      | 'studyCourseIds'
+      | 'focusSubjectId'
+      | 'mastery'
+      | 'lessonRuns'
+      | 'recentLearnMinutesByConcept'
+    > = schedulerState ?? {
+      activeCourseId,
+      studyCourseIds,
+      focusSubjectId: focusSubjectId ?? undefined,
+      mastery,
+      lessonRuns: runRows,
+      recentLearnMinutesByConcept,
+    };
     const recentLearnMinutesBySubject = schedulerRecentLearnMinutesBySubject(
       projectionSchedulerState,
       index,
