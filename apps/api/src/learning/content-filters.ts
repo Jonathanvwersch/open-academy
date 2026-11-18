@@ -33,6 +33,13 @@ export function filterSchedulerStateForContent(
       const exercise = content.exercisesById.get(attempt.exerciseId);
       return content.conceptsById.has(attempt.conceptId) && exercise?.concept === attempt.conceptId;
     }),
+    ...(state.recallAttempts
+      ? {
+          recallAttempts: state.recallAttempts.filter(
+            (attempt) => content.exercisesById.get(attempt.exerciseId)?.role === 'recall',
+          ),
+        }
+      : {}),
     remediationFlags: state.remediationFlags.filter(
       (flag) =>
         content.conceptsById.has(flag.conceptId) &&
