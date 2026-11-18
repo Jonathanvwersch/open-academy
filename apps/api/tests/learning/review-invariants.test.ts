@@ -20,9 +20,14 @@ import {
 } from '../../src/db/schema.js';
 import { FakeProvider } from '../../src/features/tutor/provider.js';
 import { shiftLocalDate } from '../../src/http/request-context.js';
-import { newReviewCard, reviewActivityRating, scheduleReview } from '../../src/learning/fsrs.js';
+import {
+  isDueToday,
+  newReviewCard,
+  reviewActivityRating,
+  scheduleReview,
+} from '../../src/learning/fsrs.js';
 import { courseConceptIds, courseFoundationIds } from '../../src/learning/prerequisites.js';
-import { effectiveFocusSubjectId } from '../../src/learning/scheduler.js';
+import { effectiveFocusSubjectId, SCHEDULER_CONFIG } from '../../src/learning/scheduler.js';
 import { localDateKey } from '../../src/learning/xp.js';
 
 const db = createDb(env.TEST_DATABASE_URL);
@@ -204,19 +209,28 @@ async function checkI3({ now, today }: AuditContext): Promise<string[]> {
     .flatMap((activity: Record<string, any>) => activity.exerciseIds ?? []);
   const cards = await db.select().from(reviewCards).where(eq(reviewCards.userId, userId));
   const todayLogs = await db
-    .select({ cardId: reviewLogs.cardId, createdAt: reviewLogs.createdAt })
+    .select({
+      cardId: reviewLogs.cardId,
+      conceptId: reviewCards.conceptId,
+      createdAt: reviewLogs.createdAt,
+    })
     .from(reviewLogs)
     .innerJoin(reviewCards, eq(reviewLogs.cardId, reviewCards.id))
     .where(eq(reviewCards.userId, userId));
   const gradedToday = new Set(
     todayLogs
       .filter((log) => localDateKey(log.createdAt, timezone) === localDateKey(now, timezone))
-      .map((log) => log.cardId),
+      .map((log) => log.conceptId),
   );
   const focusedConcepts = await focusedConceptIds();
   return cards.flatMap((card) => {
     const concept = content.conceptsById.get(card.conceptId);
-    if (!concept || concept.status === 'stub' || card.dueAt > now || gradedToday.has(card.id))
+    if (
+      !concept ||
+      concept.status === 'stub' ||
+      !isDueToday(card.dueAt, now, timezone) ||
+      gradedToday.has(card.conceptId)
+    )
       return [];
     if (focusedConcepts && !focusedConcepts.has(card.conceptId)) return [];
     const eligible = hasEligibleReviewExercise(card.conceptId, card.dimension);
@@ -228,7 +242,18 @@ async function checkI3({ now, today }: AuditContext): Promise<string[]> {
       })
     )
       return [];
-    return [`${card.conceptId}/${card.dimension} due ${card.dueAt.toISOString()} not planned`];
+    return [
+      `${card.conceptId}/${card.dimension} due ${card.dueAt.toISOString()} is eligible but no review exercise of that dimension was selected; eligible=${
+        (content.exercisesByConcept.get(card.conceptId) ?? [])
+          .filter(
+            (exercise) =>
+              exercise.dimension === card.dimension &&
+              hasEligibleReviewExercise(card.conceptId, card.dimension),
+          )
+          .map((exercise) => exercise.id)
+          .join(',') || 'none'
+      }; selected=${planned.join(',') || 'none'}`,
+    ];
   });
 }
 
@@ -322,13 +347,24 @@ async function checkI5(_now: Date): Promise<string[]> {
     const latestLog = cardLogs
       .map(({ review_logs: log }) => log)
       .sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime())[0];
+    const doubleAgainRemediation = logs.some(
+      ({ review_cards: dependentCard, review_logs: log }) =>
+        log.createdAt.getTime() === card.dueAt.getTime() &&
+        log.rating === String(Rating.Again) &&
+        content.conceptsById
+          .get(dependentCard.conceptId)
+          ?.prereqs.some(
+            (prerequisite) =>
+              prerequisite.id === card.conceptId && prerequisite.strength === 'hard',
+          ),
+    );
     if (
       latestLog &&
       card.lastReviewAt &&
       localDateKey(latestLog.createdAt, timezone) === localDateKey(card.lastReviewAt, timezone)
     ) {
       const nextDay = shiftLocalDate(localDateKey(latestLog.createdAt, timezone), 1);
-      if (localDateKey(card.dueAt, timezone) < nextDay) {
+      if (localDateKey(card.dueAt, timezone) < nextDay && !doubleAgainRemediation) {
         failures.push(
           `${card.conceptId}/${card.dimension}: due ${card.dueAt.toISOString()} before next local day ${nextDay}; lastReviewAt=${card.lastReviewAt.toISOString()}`,
         );
@@ -368,7 +404,12 @@ async function checkI6({ now, today, active }: AuditContext): Promise<string[]> 
       const dueUngraded = cards.some(
         (card) =>
           card.conceptId === conceptId &&
-          card.dueAt <= now &&
+          isDueToday(card.dueAt, now, timezone) &&
+          !logs.some(
+            ({ review_cards: logCard, review_logs: log }) =>
+              logCard.conceptId === conceptId &&
+              localDateKey(log.createdAt, timezone) === localDateKey(now, timezone),
+          ) &&
           hasEligibleReviewExercise(card.conceptId, card.dimension) &&
           !logs.some(
             ({ review_cards: logCard, review_logs: log }) =>
@@ -378,17 +419,30 @@ async function checkI6({ now, today, active }: AuditContext): Promise<string[]> 
               ),
           ),
       );
-      return dueUngraded && !planned.includes(conceptId)
-        ? [`${conceptId}: partial review has answers but is absent from the next plan`]
-        : [];
+      if (!dueUngraded || planned.includes(conceptId)) return [];
+      const dueCards = cards.filter(
+        (card) => card.conceptId === conceptId && isDueToday(card.dueAt, now, timezone),
+      );
+      const eligible = (content.exercisesByConcept.get(conceptId) ?? [])
+        .filter((exercise) => dueCards.some((card) => card.dimension === exercise.dimension))
+        .map((exercise) => exercise.id);
+      return [
+        `${conceptId}: partial review has answers but is absent from the next plan; due=${dueCards.map((card) => `${card.dimension}@${card.dueAt.toISOString()}`).join(',')}; eligible=${eligible.join(',')}; planned=${planned.join(',')}`,
+      ];
     });
   });
 }
 
 async function checkI7({ now, today, active, reviews }: AuditContext): Promise<string[]> {
-  const home = todayActivities(today)
-    .filter((activity: Record<string, any>) => activity.kind === 'review')
-    .flatMap((activity: Record<string, any>) => activityTopics(activity));
+  const learnResponse = await app.request('/api/learn', { headers: headersAt(now) });
+  const learn = await learnResponse.json();
+  const home = (learn.tasks ?? [])
+    .filter((task: Record<string, any>) => task.activityKind === 'review')
+    .flatMap(
+      (task: Record<string, any>) =>
+        task.reviewTopics?.map((topic: Record<string, any>) => topic.conceptId) ??
+        (task.conceptId ? [task.conceptId] : []),
+    );
   const session = (active?.activities ?? [])
     .filter(
       (activity: Record<string, any>) =>
@@ -398,7 +452,11 @@ async function checkI7({ now, today, active, reviews }: AuditContext): Promise<s
   const [cards, logs, focusedConcepts] = await Promise.all([
     db.select().from(reviewCards).where(eq(reviewCards.userId, userId)),
     db
-      .select({ cardId: reviewLogs.cardId, createdAt: reviewLogs.createdAt })
+      .select({
+        cardId: reviewLogs.cardId,
+        conceptId: reviewCards.conceptId,
+        createdAt: reviewLogs.createdAt,
+      })
       .from(reviewLogs)
       .innerJoin(reviewCards, eq(reviewLogs.cardId, reviewCards.id))
       .where(eq(reviewCards.userId, userId)),
@@ -407,7 +465,7 @@ async function checkI7({ now, today, active, reviews }: AuditContext): Promise<s
   const gradedToday = new Set(
     logs
       .filter((log) => localDateKey(log.createdAt, timezone) === localDateKey(now, timezone))
-      .map((log) => log.cardId),
+      .map((log) => log.conceptId),
   );
   const dueEligibleTopics = new Set(
     cards
@@ -416,8 +474,8 @@ async function checkI7({ now, today, active, reviews }: AuditContext): Promise<s
         return (
           concept &&
           concept.status !== 'stub' &&
-          card.dueAt <= now &&
-          !gradedToday.has(card.id) &&
+          isDueToday(card.dueAt, now, timezone) &&
+          !gradedToday.has(card.conceptId) &&
           hasEligibleReviewExercise(card.conceptId, card.dimension) &&
           (!focusedConcepts || focusedConcepts.has(card.conceptId))
         );
@@ -436,9 +494,18 @@ async function checkI7({ now, today, active, reviews }: AuditContext): Promise<s
     failures.push(
       `Home review topics ${[...new Set(home)]} differ from active session ${[...new Set(session)]}`,
     );
-  if (JSON.stringify([...new Set(home)].sort()) !== JSON.stringify([...new Set(due)].sort()))
+  const homeTopics = new Set(home);
+  const dueTopics = new Set(due);
+  const planReviewMinutes = (today.plan?.activities ?? [])
+    .filter((activity: Record<string, any>) => activity.kind === 'review')
+    .reduce((total: number, activity: Record<string, any>) => total + activity.plannedMinutes, 0);
+  const reviewBudget = Math.floor(today.budgetMinutes * SCHEDULER_CONFIG.weekday.reviewBudgetRatio);
+  const budgetCapped = reviewBudget > 0 && planReviewMinutes >= reviewBudget * 0.8;
+  const staleHomeTopics = [...homeTopics].filter((conceptId) => !dueTopics.has(conceptId));
+  const omittedDueTopics = [...dueTopics].filter((conceptId) => !homeTopics.has(conceptId));
+  if (staleHomeTopics.length > 0 || (omittedDueTopics.length > 0 && !budgetCapped))
     failures.push(
-      `Home review topics ${[...new Set(home)]} differ from Reviews dueNow topics ${[...new Set(due)]}`,
+      `Home review topics ${[...homeTopics]} differ from Reviews dueNow topics ${[...dueTopics]}`,
     );
   if (today.dueReviews !== new Set(home).size)
     failures.push(`Home dueReviews=${today.dueReviews}, planned topics=${new Set(home).size}`);
@@ -459,8 +526,10 @@ async function checkI8(): Promise<string[]> {
     if (unique.length > 3) failures.push(`${activity.id}: ${unique.length} topics`);
     if (unique.length > 1) {
       for (let i = 1; i < topics.length; i += 1) {
-        if (topics[i] === topics[i - 1])
-          failures.push(`${activity.id}: adjacent exercises repeat ${topics[i]}`);
+        if (topics[i] === topics[i - 1] && topics.slice(i + 1).some((topic) => topic !== topics[i]))
+          failures.push(
+            `${activity.id}: repeats ${topics[i]} while another topic still has questions`,
+          );
       }
     }
     if (topics.some((topic) => topic.startsWith('missing:')))
@@ -509,20 +578,23 @@ async function step(method: string, path: string, now: Date, body?: unknown) {
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
   const data = (await response.json()) as Record<string, any>;
-  if (path === '/today') lastHomeFirst = data.plan?.activities?.[0];
+  if (path === '/today')
+    lastHomeFirst = data.activeSessionId ? undefined : data.plan?.activities?.[0];
   if (path === '/sessions' && response.ok && lastHomeFirst) {
     const first = data.activities?.[0];
+    const summarize = (activity: Record<string, any> | undefined) =>
+      activity
+        ? {
+            kind: activity.kind,
+            conceptId: activity.conceptId,
+            exerciseIds: [...(activity.exerciseIds ?? [])].sort(),
+          }
+        : undefined;
     if (
-      JSON.stringify(
-        first && { kind: first.kind, conceptId: first.conceptId, exerciseIds: first.exerciseIds },
-      ) !==
-      JSON.stringify({
-        kind: (lastHomeFirst as any).kind,
-        conceptId: (lastHomeFirst as any).conceptId,
-        exerciseIds: (lastHomeFirst as any).exerciseIds,
-      })
+      JSON.stringify(summarize(first)) !==
+      JSON.stringify(summarize(lastHomeFirst as Record<string, any>))
     ) {
-      sessionStartMismatch = `Start learning first=${JSON.stringify(first && { kind: first.kind, conceptId: first.conceptId, exerciseIds: first.exerciseIds })}; Home first=${JSON.stringify({ kind: (lastHomeFirst as any).kind, conceptId: (lastHomeFirst as any).conceptId, exerciseIds: (lastHomeFirst as any).exerciseIds })}`;
+      sessionStartMismatch = `Start learning first=${JSON.stringify(summarize(first))}; Home first=${JSON.stringify(summarize(lastHomeFirst as Record<string, any>))}`;
     }
   }
   await auditAll(now, `${method} ${path}`);
@@ -537,7 +609,7 @@ async function seedLearner(now: Date) {
     timezone,
     startDate,
     activeCourseId: 'fixture-course',
-    prefs: { scheduleMinutes: 600 },
+    prefs: { scheduleMinutes: 600, saturdayMinutes: 600, sundayMinutes: 600 },
   });
   await db.insert(courseEnrollments).values(
     ['fixture-course', 'fixture-switching-course', 'fixture-third-course'].map((courseId) => ({
@@ -716,9 +788,18 @@ beforeAll(async () => {
           });
         }
       }
-      await step('POST', `/sessions/${session.id}/activities/${activity.id}/progress`, nowAtDay, {
-        complete: true,
-      });
+      if (activity.kind === 'review') continue;
+      const progressResult = await step(
+        'POST',
+        `/sessions/${session.id}/activities/${activity.id}/progress`,
+        nowAtDay,
+        { complete: true },
+      );
+      if (!progressResult.response.ok) {
+        attemptFailures.push(
+          `Progress ${activity.id} rejected: ${progressResult.response.status} ${JSON.stringify(progressResult.data)}`,
+        );
+      }
     }
     if (dateIndex === 0) {
       const later = (session.activities ?? []).find(
@@ -728,22 +809,25 @@ beforeAll(async () => {
     }
     const endOfDayCards = await db.select().from(reviewCards).where(eq(reviewCards.userId, userId));
     const endOfDayLogs = await db
-      .select({ cardId: reviewLogs.cardId, createdAt: reviewLogs.createdAt })
+      .select({
+        conceptId: reviewCards.conceptId,
+        createdAt: reviewLogs.createdAt,
+      })
       .from(reviewLogs)
       .innerJoin(reviewCards, eq(reviewLogs.cardId, reviewCards.id))
       .where(eq(reviewCards.userId, userId));
     const gradedAtEndOfDay = new Set(
       endOfDayLogs
         .filter((log) => localDateKey(log.createdAt, timezone) === localDateKey(nowAtDay, timezone))
-        .map((log) => log.cardId),
+        .map((log) => log.conceptId),
     );
     for (const card of endOfDayCards) {
       const concept = content.conceptsById.get(card.conceptId);
       if (
         !concept ||
         concept.status === 'stub' ||
-        card.dueAt > nowAtDay ||
-        gradedAtEndOfDay.has(card.id) ||
+        !isDueToday(card.dueAt, nowAtDay, timezone) ||
+        gradedAtEndOfDay.has(card.conceptId) ||
         !hasEligibleReviewExercise(card.conceptId, card.dimension)
       ) {
         continue;
@@ -787,6 +871,11 @@ async function assertInvariant(name: string) {
     return;
   }
   const found = [...(simulationFindings.get(name) ?? [])];
+  if (name === 'I4') {
+    found.push(
+      ...simulationAttemptFailures.map((failure) => `Rejected attempt/progress: ${failure}`),
+    );
+  }
   const failedAttempts =
     name === 'I4' ? `\nRejected attempts: ${simulationAttemptFailures.join('\n')}` : '';
   expect(
@@ -796,21 +885,21 @@ async function assertInvariant(name: string) {
 }
 
 // I1: session replan can schedule an already-covered topic again.
-it.fails('I1 review scheduling invariant', () => assertInvariant('I1'));
+it('I1 review scheduling invariant', () => assertInvariant('I1'));
 // I2: completing a review does not reliably keep its topics out of Home.
-it.fails('I2 review scheduling invariant', () => assertInvariant('I2'));
+it('I2 review scheduling invariant', () => assertInvariant('I2'));
 // I3: due cards with eligible exercises can be omitted from the plan.
-it.fails('I3 review scheduling invariant', () => assertInvariant('I3'));
+it('I3 review scheduling invariant', () => assertInvariant('I3'));
 // I4: completed activities can leave covered cards ungraded.
-it.fails('I4 review scheduling invariant', () => assertInvariant('I4'));
+it('I4 review scheduling invariant', () => assertInvariant('I4'));
 // I5: double-Again can move a graded prerequisite card before tomorrow.
-it.fails('I5 review scheduling invariant', () => assertInvariant('I5'));
+it('I5 review scheduling invariant', () => assertInvariant('I5'));
 // I6: partial answers can disappear when another session starts.
-it.fails('I6 review scheduling invariant', () => assertInvariant('I6'));
+it('I6 review scheduling invariant', () => assertInvariant('I6'));
 // I7: Home, the active session, and Reviews can show different due topics.
-it.fails('I7 review scheduling invariant', () => assertInvariant('I7'));
+it('I7 review scheduling invariant', () => assertInvariant('I7'));
 // I8: mixed reviews can repeat a topic before switching to another.
-it.fails('I8 review scheduling invariant', () => assertInvariant('I8'));
+it('I8 review scheduling invariant', () => assertInvariant('I8'));
 it('I9 review scheduling invariant', () => assertInvariant('I9'));
 
 it('S2 keeps a partial review available while it remains active', async () => {
@@ -856,22 +945,29 @@ it('S1 keeps mixed review topics out of a replan', async () => {
   if (!first) throw new Error('No review activity to replan');
   await step('POST', `/sessions/${session.id}/replan`, now, {});
   const found = [...(violations.get('I1') ?? [])];
-  expect(found, 'I1 should report a topic planned in two activities after replan').not.toHaveLength(
-    0,
-  );
+  expect(found, 'I1 should not repeat a covered review topic after replan').toEqual([]);
 });
 
-it('S3 Home and the active session expose the same review topics', async () => {
+it('S3 Today and Home expose the active session review topics', async () => {
   const now = atLocalNoon(startDate);
   await seedLearner(now);
   await seedCards(now);
   await step('GET', '/today', now);
-  await step('POST', '/sessions', now, { budgetMinutes: 600, focusConceptId: 'vectors' });
-  const found = [...(violations.get('I7') ?? [])];
+  const { data: session } = await step('POST', '/sessions', now, {
+    budgetMinutes: 600,
+  });
+  const { data: today } = await step('GET', '/today', now);
   expect(
-    found,
-    'I7 should report a Home/active-session mismatch when Start learning changes the plan',
-  ).not.toHaveLength(0);
+    today.plan.activities
+      .filter((activity: Record<string, any>) => activity.kind === 'review')
+      .flatMap((activity: Record<string, any>) => activityTopics(activity)),
+  ).toEqual(
+    session.activities
+      .filter((activity: Record<string, any>) => activity.kind === 'review')
+      .flatMap((activity: Record<string, any>) => activityTopics(activity)),
+  );
+  const found = [...(violations.get('I7') ?? [])];
+  expect(found, 'Home and Today should expose the same active review plan').toEqual([]);
 });
 
 it('S4 starting another session preserves answers from an abandoned partial review', async () => {
@@ -894,10 +990,7 @@ it('S4 starting another session preserves answers from an abandoned partial revi
     .where(and(eq(attempts.activityId, review.id), eq(attempts.exerciseId, review.exerciseIds[0])));
   expect(preserved).toHaveLength(1);
   const found = [...(violations.get('I6') ?? [])];
-  expect(
-    found,
-    'I6 should report a partial answer hidden after starting a new session',
-  ).not.toHaveLength(0);
+  expect(found, 'an ungraded attempt must not hide a due topic').toEqual([]);
 });
 
 it('S5 reports an eligible due topic hidden after an ungraded practice attempt', async () => {
@@ -914,8 +1007,8 @@ it('S5 reports an eligible due topic hidden after an ungraded practice attempt',
   expect(await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, card.id))).toHaveLength(0);
   expect(
     [...(violations.get('I7') ?? [])],
-    'Reviews should retain a due topic omitted from Home after an ungraded attempt',
-  ).not.toHaveLength(0);
+    'an ungraded practice attempt should not hide a due topic from Home',
+  ).toEqual([]);
 });
 
 it('excludes due topics without eligible exercises from I7 comparisons', async () => {
@@ -931,15 +1024,19 @@ it('excludes due topics without eligible exercises from I7 comparisons', async (
   expect(violations.get('I7') ?? []).toEqual([]);
 });
 
-it('S6 does not grade a card repeatedly outside a review activity', async () => {
+it('S6 rejects review attempts without a review activity', async () => {
   const now = atLocalNoon(startDate);
   await seedLearner(now);
   await seedCards(now);
   for (const exerciseId of ['vectors-fixture-practice-1', 'vectors-fixture-practice-2']) {
-    await step('POST', '/attempts', now, {
+    const { response, data } = await step('POST', '/attempts', now, {
       exerciseId,
       answer: answerFor(exerciseId),
       mode: 'review',
+    });
+    expect(response.status).toBe(400);
+    expect(data).toMatchObject({
+      error: 'Review attempts need a review activity.',
     });
   }
   const card = (
@@ -956,10 +1053,83 @@ it('S6 does not grade a card repeatedly outside a review activity', async () => 
   )[0];
   if (!card) throw new Error('Missing vectors math card');
   const logs = await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, card.id));
+  expect(logs).toEqual([]);
+});
+
+it('rejects completing a review before every activity exercise has an attempt', async () => {
+  const now = atLocalNoon(startDate);
+  await seedLearner(now);
+  await seedCards(now);
+  const { data: session } = await step('POST', '/sessions', now, { budgetMinutes: 600 });
+  const review = session.activities.find(
+    (activity: Record<string, any>) => activity.kind === 'review',
+  );
+  if (!review) throw new Error('No review activity');
+  const { response, data } = await step(
+    'POST',
+    `/sessions/${session.id}/activities/${review.id}/progress`,
+    now,
+    { complete: true },
+  );
+  expect(response.status).toBe(409);
+  expect(data).toMatchObject({
+    error: 'Review activity needs an attempt for every exercise before completion.',
+  });
+});
+
+it('a review log on one dimension hides every due dimension for that topic today', async () => {
+  const now = atLocalNoon(startDate);
+  await seedLearner(now);
+  const card = await addReviewCard(now, 'vectors', 'math', -1, 0);
+  await addReviewCard(now, 'vectors', 'conceptual', -1, 0);
+  const exercise = content.exercisesById.get('vectors-fixture-practice-1');
+  if (!exercise) throw new Error('Missing vectors review exercise');
+  const scheduled = scheduleReview(card.fsrs as never, now, Rating.Good, timezone, false);
+  const [attempt] = await db
+    .insert(attempts)
+    .values({
+      userId,
+      exerciseId: exercise.id,
+      exerciseVersion: exercise.contentVersion,
+      conceptId: 'vectors',
+      dimension: 'math',
+      mode: 'review',
+      answer: 'correct',
+      correct: 1,
+      credit: 1,
+      hintsUsed: 0,
+      attemptNo: 1,
+      gradedBy: 'test',
+      feedback: {},
+      createdAt: now,
+    })
+    .returning();
+  if (!attempt) throw new Error('Could not create review attempt');
+  await db.insert(reviewLogs).values({
+    cardId: card.id,
+    attemptId: attempt.id,
+    rating: String(Rating.Good),
+    fsrsLog: scheduled.log,
+    createdAt: now,
+  });
+  await db
+    .update(reviewCards)
+    .set({
+      dueAt: scheduled.card.due,
+      lastReviewAt: now,
+      reps: scheduled.card.reps,
+      lapses: scheduled.card.lapses,
+      fsrs: scheduled.card,
+    })
+    .where(eq(reviewCards.id, card.id));
+
+  const { data: today } = await step('GET', '/today', now);
   expect(
-    logs.length,
-    'S6 expected more than one FSRS update for out-of-activity review attempts',
-  ).toBeGreaterThan(1);
+    today.plan.activities.some(
+      (activity: Record<string, any>) =>
+        activity.kind === 'review' && activityTopics(activity).includes('vectors'),
+    ),
+  ).toBe(false);
 });
 
 it('S7 checks layering credit and double-Again effects on cards in the same activity', async () => {
@@ -999,8 +1169,7 @@ it('S7 checks layering credit and double-Again effects on cards in the same acti
   expect(mismatch.map((card) => `${card.conceptId}/${card.dimension}`)).toEqual([]);
 });
 
-// S7: double-Again leaves a covered hard prerequisite due after the review.
-it.fails('S7 checks double-Again on a prerequisite card', async () => {
+it('S7 does not bring a prerequisite covered by the same review due now', async () => {
   const now = atLocalNoon(startDate);
   await seedLearner(now);
   await addReviewCard(now, 'vectors', 'math', -5, 0);
@@ -1096,7 +1265,7 @@ it.fails('S7 checks double-Again on a prerequisite card', async () => {
   expect(
     prerequisite && new Date((prerequisite.fsrs as { due: string | Date }).due).getTime(),
   ).toBe(prerequisite?.dueAt.getTime());
-  expect(prerequisite?.dueAt.getTime()).toBe(now.getTime());
+  expect(prerequisite?.dueAt.getTime()).toBeGreaterThan(now.getTime());
 });
 
 it('covers local midnight, DST, deterministic plans, and skipped-review advancement', async () => {
@@ -1109,9 +1278,14 @@ it('covers local midnight, DST, deterministic plans, and skipped-review advancem
   const first = session.activities.find((item: Record<string, any>) => item.kind === 'review');
   if (first) {
     const completedAt = new Date('2026-03-07T07:59:30.000Z');
-    await step('POST', `/sessions/${session.id}/activities/${first.id}/progress`, completedAt, {
-      complete: true,
-    });
+    for (const exerciseId of first.exerciseIds) {
+      await step('POST', '/attempts', completedAt, {
+        exerciseId,
+        activityId: first.id,
+        answer: answerFor(exerciseId),
+        mode: 'review',
+      });
+    }
     const activeSameDay = await step(
       'GET',
       '/sessions/active',

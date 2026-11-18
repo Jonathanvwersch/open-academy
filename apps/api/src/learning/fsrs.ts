@@ -149,3 +149,7 @@ export function startOfNextCalendarDay(now: Date, timezone: string): Date {
   }
   return new Date(candidate);
 }
+
+export function isDueToday(dueAt: Date | string, now: Date, timezone: string): boolean {
+  return new Date(dueAt).getTime() < startOfNextCalendarDay(now, timezone).getTime();
+}

@@ -1,7 +1,15 @@
 import { Rating, State } from 'ts-fsrs';
 import { describe, expect, it } from 'vitest';
-import { mapReviewRating, newReviewCard, reviewActivityRating } from '../../src/learning/fsrs.js';
-import { bringWeakestPrerequisiteCardDueNow } from '../../src/learning/prerequisite-review.js';
+import {
+  isDueToday,
+  mapReviewRating,
+  newReviewCard,
+  reviewActivityRating,
+} from '../../src/learning/fsrs.js';
+import {
+  bringWeakestPrerequisiteCardDueNow,
+  canBringPrerequisiteDueNow,
+} from '../../src/learning/prerequisite-review.js';
 
 describe('reviewActivityRating', () => {
   it.each([
@@ -81,6 +89,38 @@ describe('reviewActivityRating', () => {
   });
 });
 
+describe('isDueToday', () => {
+  it('uses the next Los Angeles local midnight as an exclusive boundary', () => {
+    const now = new Date('2026-03-07T20:00:00.000Z');
+    expect(isDueToday('2026-03-08T07:59:59.999Z', now, 'America/Los_Angeles')).toBe(true);
+    expect(isDueToday('2026-03-08T08:00:00.000Z', now, 'America/Los_Angeles')).toBe(false);
+  });
+
+  it('handles spring and fall daylight-saving transitions', () => {
+    const beforeSpringMidnight = new Date('2026-03-08T07:30:00.000Z');
+    expect(
+      isDueToday('2026-03-08T07:59:59.999Z', beforeSpringMidnight, 'America/Los_Angeles'),
+    ).toBe(true);
+    expect(
+      isDueToday('2026-03-08T08:00:00.000Z', beforeSpringMidnight, 'America/Los_Angeles'),
+    ).toBe(false);
+
+    const afterSpringMidnight = new Date('2026-03-08T10:30:00.000Z');
+    expect(isDueToday('2026-03-09T06:59:59.999Z', afterSpringMidnight, 'America/Los_Angeles')).toBe(
+      true,
+    );
+    expect(isDueToday('2026-03-09T07:00:00.000Z', afterSpringMidnight, 'America/Los_Angeles')).toBe(
+      false,
+    );
+
+    const afterFallBack = new Date('2026-11-01T09:30:00.000Z');
+    expect(isDueToday('2026-11-02T07:59:59.999Z', afterFallBack, 'America/Los_Angeles')).toBe(true);
+    expect(isDueToday('2026-11-02T08:00:00.000Z', afterFallBack, 'America/Los_Angeles')).toBe(
+      false,
+    );
+  });
+});
+
 describe('bringWeakestPrerequisiteCardDueNow', () => {
   const now = new Date('2026-01-15T12:00:00.000Z');
   const future = new Date('2026-01-22T12:00:00.000Z');
@@ -117,5 +157,38 @@ describe('bringWeakestPrerequisiteCardDueNow', () => {
     expect(bringWeakestPrerequisiteCardDueNow([stronger, weakest], now, false)).toBeUndefined();
     expect(weakest.dueAt).toEqual(dueAt);
     expect(weakest.fsrs.due).toEqual(dueAt);
+  });
+});
+
+describe('canBringPrerequisiteDueNow', () => {
+  const now = new Date('2026-01-15T12:00:00.000Z');
+  it('does not resurface a card graded today or covered by the same activity', () => {
+    expect(
+      canBringPrerequisiteDueNow({
+        lastReviewAt: new Date('2026-01-15T08:00:00.000Z'),
+        now,
+        timeZone: 'America/Los_Angeles',
+        coveredByActivity: false,
+      }),
+    ).toBe(false);
+    expect(
+      canBringPrerequisiteDueNow({
+        lastReviewAt: null,
+        now,
+        timeZone: 'America/Los_Angeles',
+        coveredByActivity: true,
+      }),
+    ).toBe(false);
+  });
+
+  it('allows an ungraded prerequisite that is not in the current review', () => {
+    expect(
+      canBringPrerequisiteDueNow({
+        lastReviewAt: null,
+        now,
+        timeZone: 'America/Los_Angeles',
+        coveredByActivity: false,
+      }),
+    ).toBe(true);
   });
 });

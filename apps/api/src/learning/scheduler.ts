@@ -7,6 +7,7 @@ import type {
   IndexedCourse,
   IndexedExercise,
 } from '../content/types.js';
+import { isDueToday } from './fsrs.js';
 import {
   activeCourseFor,
   compareOutlinePosition,
@@ -26,6 +27,7 @@ export { sessionBudget } from './session-budget.js';
 
 export type ActivityKind =
   | 'review'
+  | 'diagnostic'
   | 'learn'
   | 'practice'
   | 'remediate'
@@ -71,7 +73,7 @@ export interface PlannedActivity {
   exerciseIds: string[];
   plannedMinutes: number;
   reason: ActivityReason;
-  status?: 'planned' | 'in_progress' | 'completed';
+  status?: 'planned' | 'in_progress' | 'completed' | 'skipped';
 }
 
 export interface SchedulerState {
@@ -87,6 +89,7 @@ export interface SchedulerState {
     dueAt: string;
     retrievability?: number;
   }>;
+  reviewedTodayConceptIds: string[];
   recentAttempts: Array<{
     conceptId: string;
     exerciseId: string;
@@ -332,8 +335,16 @@ export function planSession(
   budgetMinutes: number,
   _kind: SessionKind = 'weekday',
   excludedLearnConceptIds: ReadonlySet<string> = new Set(),
+  excludedReviewConceptIds: ReadonlySet<string> = new Set(),
 ): SessionPlan {
-  return packWeekday(state, content, now, Math.max(0, budgetMinutes), excludedLearnConceptIds);
+  return packWeekday(
+    state,
+    content,
+    now,
+    Math.max(0, budgetMinutes),
+    excludedLearnConceptIds,
+    excludedReviewConceptIds,
+  );
 }
 
 export function replan(
@@ -350,6 +361,20 @@ export function replan(
       (!activity.conceptId || content.conceptsById.get(activity.conceptId)?.status !== 'stub'),
   );
   const completed = existingActivities.filter((activity) => activity.status === 'completed');
+  const coveredReviewConceptIds = new Set(
+    existingActivities
+      .filter(
+        (activity) =>
+          activity.kind === 'review' &&
+          ['in_progress', 'completed', 'skipped'].includes(activity.status ?? ''),
+      )
+      .flatMap((activity) =>
+        activity.exerciseIds.flatMap((exerciseId) => {
+          const conceptId = content.exercisesById.get(exerciseId)?.concept;
+          return conceptId ? [conceptId] : [];
+        }),
+      ),
+  );
   const protectedExerciseIds = [
     ...(state.usedExerciseIds ?? []),
     ...inProgress.flatMap((activity) => activity.exerciseIds),
@@ -372,6 +397,7 @@ export function replan(
     remainingBudgetMinutes,
     kind,
     excludedLearnConceptIds,
+    coveredReviewConceptIds,
   );
   return {
     activities: [...inProgress, ...plan.activities],
@@ -385,17 +411,24 @@ function packWeekday(
   now: Date,
   budget: number,
   excludedLearnConceptIds: ReadonlySet<string> = new Set(),
+  excludedReviewConceptIds: ReadonlySet<string> = new Set(),
 ): SessionPlan {
   const candidates = generateCandidates(state, content, now).filter(
     (candidate) =>
-      candidate.activity.kind !== 'learn' ||
-      !excludedLearnConceptIds.has(candidate.activity.conceptId ?? ''),
+      (candidate.activity.kind !== 'learn' ||
+        !excludedLearnConceptIds.has(candidate.activity.conceptId ?? '')) &&
+      (candidate.activity.kind !== 'review' ||
+        !excludedReviewConceptIds.has(candidate.activity.conceptId ?? '')),
   );
   const selected: Candidate[] = [];
   let usedMinutes = 0;
   let newConceptCount = 0;
   const selectedConcepts = new Set<string>();
   const selectedLearnConcepts = new Set<string>();
+  const plannedActivityCount = (items: Candidate[]) => {
+    const reviews = items.filter((candidate) => candidate.activity.kind === 'review');
+    return items.length - reviews.length + mixReviewActivities(reviews, content).length;
+  };
   const canAdd = (candidate: Candidate) => {
     const reviewAlongsideLesson =
       candidate.activity.kind === 'review' &&
@@ -406,7 +439,7 @@ function packWeekday(
           selectedCandidate.activity.conceptId === candidate.activity.conceptId,
       );
     return (
-      selected.length < SCHEDULER_CONFIG.weekday.maxActivities &&
+      plannedActivityCount([...selected, candidate]) <= SCHEDULER_CONFIG.weekday.maxActivities &&
       usedMinutes + candidate.adjustedMinutes <= budget &&
       !usesSelectedExercise(candidate, selected) &&
       (!candidate.activity.conceptId ||
@@ -651,7 +684,12 @@ export function mixReviewActivities(selected: Candidate[], content: ContentIndex
       activity: {
         kind: 'review',
         conceptId: null,
-        exerciseIds: interleaveReviewExercises(reviews),
+        exerciseIds: interleaveReviewExercises(
+          reviews.map(({ activity }) => ({
+            topicId: activity.conceptId ?? '',
+            exerciseIds: activity.exerciseIds,
+          })),
+        ),
         plannedMinutes: reviews.reduce(
           (minutes, review) => minutes + review.activity.plannedMinutes,
           0,
@@ -685,14 +723,41 @@ export function mixReviewActivities(selected: Candidate[], content: ContentIndex
   return result;
 }
 
-function interleaveReviewExercises(reviews: Candidate[]): string[] {
+export function interleaveReviewExercises(
+  reviews: Array<{ topicId: string; exerciseIds: string[] }>,
+): string[] {
   const exerciseIds: string[] = [];
-  const maxQuestions = Math.max(...reviews.map((review) => review.activity.exerciseIds.length));
-  for (let questionIndex = 0; questionIndex < maxQuestions; questionIndex += 1) {
-    for (const review of reviews) {
-      const exerciseId = review.activity.exerciseIds[questionIndex];
-      if (exerciseId) exerciseIds.push(exerciseId);
-    }
+  const remaining = reviews.map((review) => ({
+    ...review,
+    nextIndex: 0,
+  }));
+  let previousTopicId: string | undefined;
+  while (remaining.some((review) => review.nextIndex < review.exerciseIds.length)) {
+    const available = remaining
+      .filter(
+        (review) =>
+          review.nextIndex < review.exerciseIds.length && review.topicId !== previousTopicId,
+      )
+      .sort(
+        (left, right) =>
+          right.exerciseIds.length - right.nextIndex - (left.exerciseIds.length - left.nextIndex) ||
+          reviews.findIndex((review) => review.topicId === left.topicId) -
+            reviews.findIndex((review) => review.topicId === right.topicId),
+      );
+    const selected =
+      available[0] ??
+      remaining
+        .filter((review) => review.nextIndex < review.exerciseIds.length)
+        .sort(
+          (left, right) =>
+            reviews.findIndex((review) => review.topicId === left.topicId) -
+            reviews.findIndex((review) => review.topicId === right.topicId),
+        )[0];
+    if (!selected) break;
+    const exerciseId = selected.exerciseIds[selected.nextIndex];
+    if (exerciseId) exerciseIds.push(exerciseId);
+    selected.nextIndex += 1;
+    previousTopicId = selected.topicId;
   }
   return exerciseIds;
 }
@@ -800,20 +865,9 @@ function generateCandidates(state: SchedulerState, content: ContentIndex, now: D
 
   const dueCardsByConcept = new Map<string, (typeof state.cards)[number][]>();
   const timezone = state.timezone ?? 'UTC';
-  const localToday = localDateKey(now, timezone);
+  const reviewedToday = new Set(state.reviewedTodayConceptIds);
   for (const card of state.cards) {
-    if (Date.parse(card.dueAt) > now.getTime()) {
-      continue;
-    }
-    const attemptedToday = state.recentAttempts.some(
-      (attempt) =>
-        attempt.conceptId === card.conceptId &&
-        attempt.dimension === card.dimension &&
-        localDateKey(new Date(attempt.createdAt), timezone) === localToday,
-    );
-    if (attemptedToday) {
-      continue;
-    }
+    if (!isDueToday(card.dueAt, now, timezone) || reviewedToday.has(card.conceptId)) continue;
     const concept = content.conceptsById.get(card.conceptId);
     if (
       !concept ||

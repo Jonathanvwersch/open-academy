@@ -17,12 +17,15 @@ import {
 } from '../../db/schema.js';
 import { updateActivityAndAdvance } from '../../learning/activity-completion.js';
 import { answerOptionsFor } from '../../learning/answer-options.js';
-import { mapReviewRating, reviewActivityRating, scheduleReview } from '../../learning/fsrs.js';
+import { reviewActivityRating, scheduleReview } from '../../learning/fsrs.js';
 import { gradeExercise } from '../../learning/grading/index.js';
 import { rubricFeedbackWithScoredFlags } from '../../learning/grading/rubric-score.js';
 import { calculateCredit } from '../../learning/mastery.js';
 import { applyMastery, creditHardPrerequisites } from '../../learning/mastery-service.js';
-import { bringWeakestPrerequisiteCardDueNow } from '../../learning/prerequisite-review.js';
+import {
+  bringWeakestPrerequisiteCardDueNow,
+  canBringPrerequisiteDueNow,
+} from '../../learning/prerequisite-review.js';
 import { attemptAllowsRetry } from '../../learning/retry.js';
 import type { MasteryRecord } from '../../learning/types.js';
 import { type FeatureRequest, type FeatureServices, serviceResult } from '../../service-context.js';
@@ -280,6 +283,9 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
   const activity = session?.activities.find((item) => item.id === body.data.activityId);
   if (body.data.activityId && !activity) {
     return serviceResult({ error: 'Activity not found' }, 404);
+  }
+  if (body.data.mode === 'review' && !body.data.activityId) {
+    return serviceResult({ error: 'Review attempts need a review activity.' }, 400);
   }
   const inlineLessonExercise =
     activity?.kind === 'learn' &&
@@ -604,7 +610,9 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
                 const prerequisiteCards = await db
                   .select({
                     id: reviewCards.id,
+                    conceptId: reviewCards.conceptId,
                     dueAt: reviewCards.dueAt,
+                    lastReviewAt: reviewCards.lastReviewAt,
                     fsrs: reviewCards.fsrs,
                   })
                   .from(reviewCards)
@@ -614,11 +622,26 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
                       inArray(reviewCards.conceptId, hardPrerequisiteIds),
                     ),
                   );
+                const coveredConceptIds = new Set(
+                  (activity?.exerciseIds ?? []).flatMap((exerciseId) => {
+                    const conceptId = index.exercisesById.get(exerciseId)?.concept;
+                    return conceptId ? [conceptId] : [];
+                  }),
+                );
                 const weakest = bringWeakestPrerequisiteCardDueNow(
-                  prerequisiteCards.map((prerequisiteCard) => ({
-                    ...prerequisiteCard,
-                    fsrs: prerequisiteCard.fsrs as Card,
-                  })),
+                  prerequisiteCards
+                    .filter((prerequisiteCard) =>
+                      canBringPrerequisiteDueNow({
+                        lastReviewAt: prerequisiteCard.lastReviewAt,
+                        now,
+                        timeZone: request.timeZone,
+                        coveredByActivity: coveredConceptIds.has(prerequisiteCard.conceptId),
+                      }),
+                    )
+                    .map((prerequisiteCard) => ({
+                      ...prerequisiteCard,
+                      fsrs: prerequisiteCard.fsrs as Card,
+                    })),
                   now,
                   process.env.NODE_ENV !== 'test',
                 );
@@ -632,38 +655,6 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
             }
           }
         }
-      } else {
-        const rating = mapReviewRating({
-          correct: result.correct,
-          hintsUsed,
-          attemptNo,
-          durationMs: body.data.durationMs,
-          targetSeconds: exercise.target_seconds,
-        });
-        const scheduled = scheduleReview(
-          card.fsrs as never,
-          now,
-          rating,
-          request.timeZone,
-          process.env.NODE_ENV !== 'test',
-        );
-        await db
-          .update(reviewCards)
-          .set({
-            fsrs: scheduled.card,
-            dueAt: scheduled.card.due,
-            lastReviewAt: now,
-            reps: scheduled.card.reps,
-            lapses: scheduled.card.lapses,
-          })
-          .where(eq(reviewCards.id, card.id));
-        await db.insert(reviewLogs).values({
-          cardId: card.id,
-          attemptId,
-          rating: String(rating),
-          fsrsLog: scheduled.log,
-          createdAt: now,
-        });
       }
     }
   }

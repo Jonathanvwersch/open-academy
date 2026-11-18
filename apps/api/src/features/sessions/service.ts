@@ -68,7 +68,6 @@ export async function getToday(deps: FeatureServices, request: FeatureRequest) {
   const subjectTitle = index.curriculum?.subject?.title;
   const sessionKind = sessionKindForDate(localDateKey(now, request.timeZone));
   const budget = sessionBudget(sessionKind, prefs, localDateKey(now, request.timeZone));
-  const plan = planSession(state, index, now, budget, sessionKind);
   const [active, enrollments, placementRuns] = await Promise.all([
     repo.activeSession(now),
     repo.courseEnrollments(),
@@ -88,6 +87,31 @@ export async function getToday(deps: FeatureServices, request: FeatureRequest) {
         sessionActivityIsInContent(index, activity),
     );
   const activeSessionId = hasCurrentActivity ? (active?.id ?? null) : null;
+  const activeActivities =
+    activeSessionId && activeSession
+      ? activeSession.activities.filter(
+          (activity) =>
+            (activity.status === 'planned' || activity.status === 'in_progress') &&
+            sessionActivityIsInContent(index, activity),
+        )
+      : [];
+  const plan =
+    activeSessionId && activeSession
+      ? {
+          activities: activeActivities.map(
+            (activity): PlannedActivity => ({
+              kind: activity.kind,
+              conceptId: activity.conceptId,
+              projectId: activity.projectId ?? undefined,
+              exerciseIds: activity.exerciseIds,
+              plannedMinutes: activity.plannedMinutes,
+              reason: activity.reason as PlannedActivity['reason'],
+              status: activity.status as PlannedActivity['status'],
+            }),
+          ),
+          reasons: activeActivities.map((activity) => activity.reason as PlannedActivity['reason']),
+        }
+      : planSession(state, index, now, budget, sessionKind);
   const startState = buildCourseStartState({
     content: index,
     activeCourseId: currentCourseId,
@@ -519,6 +543,28 @@ async function updateActivityProgress(deps: FeatureServices, request: FeatureReq
   const completed = body.data.complete === true;
   const { complete: _complete, ...progress } = body.data;
   const now = request.now();
+  if (completed && activity.kind === 'review') {
+    const attemptedExerciseIds = new Set(
+      (
+        await db
+          .select({ exerciseId: attempts.exerciseId })
+          .from(attempts)
+          .where(and(eq(attempts.userId, request.userId), eq(attempts.activityId, activity.id)))
+      ).map((attempt) => attempt.exerciseId),
+    );
+    const missingExerciseIds = activity.exerciseIds.filter(
+      (exerciseId) => !attemptedExerciseIds.has(exerciseId),
+    );
+    if (activity.exerciseIds.length === 0 || missingExerciseIds.length > 0) {
+      return serviceResult(
+        {
+          error: 'Review activity needs an attempt for every exercise before completion.',
+          missingExerciseIds,
+        },
+        409,
+      );
+    }
+  }
   if (
     session?.status === 'active' &&
     activity.kind === 'learn' &&

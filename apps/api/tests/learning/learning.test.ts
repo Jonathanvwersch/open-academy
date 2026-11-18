@@ -26,6 +26,7 @@ import {
 import type { Candidate, PlannedActivity, SchedulerState } from '../../src/learning/scheduler.js';
 import {
   currentLearnerUnit,
+  interleaveReviewExercises,
   mixReviewActivities,
   planSession,
   replan,
@@ -89,6 +90,7 @@ function emptyState(): SchedulerState {
     recentLearnMinutesByConcept: {},
     mastery: [],
     cards: [],
+    reviewedTodayConceptIds: [],
     recentAttempts: [],
     remediationFlags: [],
     projectProgress: [],
@@ -1162,7 +1164,7 @@ test('four due topics spread into two mixed reviews of two topics each', () => {
   ]);
 });
 
-test('a due review is skipped on the attempt day and planned the next local day', () => {
+test('a due review remains planned on the day of an ungraded attempt', () => {
   const state = emptyState();
   state.timezone = 'UTC';
   state.cards = [
@@ -1189,7 +1191,7 @@ test('a due review is skipped on the attempt day and planned the next local day'
     sameDayPlan.activities.some(
       (activity) => activity.kind === 'review' && activity.conceptId === 'vectors',
     ),
-  ).toBe(false);
+  ).toBe(true);
 
   const nextDayPlan = planSession(state, content, new Date('2026-01-14T00:30:00.000Z'), 60);
   expect(
@@ -1484,6 +1486,99 @@ test('a due review selects up to three distinct exercises for its concept and di
   );
 });
 
+test('a practice attempt today does not hide a due review', () => {
+  const state = emptyState();
+  state.cards = [
+    {
+      conceptId: 'vectors',
+      dimension: 'math',
+      dueAt: '2026-01-13T00:00:00.000Z',
+      retrievability: 0.7,
+    },
+  ];
+  state.recentAttempts = [
+    {
+      conceptId: 'vectors',
+      exerciseId: 'vectors-fixture-practice-1',
+      dimension: 'math',
+      correct: 1,
+      itemRole: 'core',
+      createdAt: now.toISOString(),
+    },
+  ];
+
+  const plan = planSession(state, content, now, 60);
+  expect(
+    plan.activities.some(
+      (activity) =>
+        activity.kind === 'review' &&
+        activity.exerciseIds.some(
+          (exerciseId) => content.exercisesById.get(exerciseId)?.concept === 'vectors',
+        ),
+    ),
+  ).toBe(true);
+});
+
+test('a review log today hides every due dimension for that topic', () => {
+  const state = emptyState();
+  state.cards = [
+    {
+      conceptId: 'vectors',
+      dimension: 'math',
+      dueAt: '2026-01-13T00:00:00.000Z',
+      retrievability: 0.7,
+    },
+    {
+      conceptId: 'vectors',
+      dimension: 'conceptual',
+      dueAt: '2026-01-13T00:00:00.000Z',
+      retrievability: 0.7,
+    },
+  ];
+  state.reviewedTodayConceptIds = ['vectors'];
+
+  const plan = planSession(state, content, now, 60);
+  expect(
+    plan.activities.some(
+      (activity) =>
+        activity.kind === 'review' &&
+        activity.exerciseIds.some(
+          (exerciseId) => content.exercisesById.get(exerciseId)?.concept === 'vectors',
+        ),
+    ),
+  ).toBe(false);
+});
+
+test('a large review budget fits due topics after review candidates are mixed', () => {
+  const dueConcepts = [
+    'vectors',
+    'derivatives',
+    'gradients',
+    'linear-algebra',
+    'switching-topic',
+    'linear-models',
+  ];
+  const state = emptyState();
+  state.cards = dueConcepts.map((conceptId) => ({
+    conceptId,
+    dimension: 'math',
+    dueAt: '2026-01-13T00:00:00.000Z',
+  }));
+
+  const plan = planSession(state, content, now, 6000);
+  const plannedConcepts = new Set(
+    plan.activities
+      .filter((activity) => activity.kind === 'review')
+      .flatMap((activity) =>
+        activity.exerciseIds.flatMap((exerciseId) => {
+          const conceptId = content.exercisesById.get(exerciseId)?.concept;
+          return conceptId ? [conceptId] : [];
+        }),
+      ),
+  );
+  expect(dueConcepts.filter((conceptId) => !plannedConcepts.has(conceptId))).toEqual([]);
+});
+
 test('a review combines due dimensions for one concept and alternates their exercises', () => {
   const state = emptyState();
   state.cards = [
@@ -1526,6 +1621,59 @@ test('a review combines due dimensions for one concept and alternates their exer
     expect(dimensions[index]).not.toBe(dimensions[index - 1]);
   }
   expect(review.reason.summary).toBe('Due since 12 Jan 2026 · ~50% recall.');
+});
+
+test('mixed review questions greedily alternate topic queues', () => {
+  const reviews = [
+    { topicId: 'a', exerciseIds: ['a1', 'a2', 'a3', 'a4'] },
+    { topicId: 'b', exerciseIds: ['b1', 'b2'] },
+    { topicId: 'c', exerciseIds: ['c1'] },
+  ];
+  const topics = new Map(
+    reviews.flatMap(({ topicId, exerciseIds }) => exerciseIds.map((id) => [id, topicId])),
+  );
+  const ordered = interleaveReviewExercises(reviews);
+  expect(ordered.map((id) => topics.get(id))).toEqual(['a', 'b', 'a', 'b', 'a', 'c', 'a']);
+  expect(
+    ordered.every(
+      (id, index) => index === 0 || topics.get(id) !== topics.get(ordered[index - 1] ?? ''),
+    ),
+  ).toBe(true);
+  expect(
+    interleaveReviewExercises([
+      { topicId: 'a', exerciseIds: ['a1'] },
+      { topicId: 'b', exerciseIds: ['b1'] },
+    ]),
+  ).toEqual(['a1', 'b1']);
+});
+
+test('replanning does not repeat a completed mixed-review topic', () => {
+  const state = emptyState();
+  state.cards = [
+    { conceptId: 'vectors', dimension: 'math', dueAt: '2026-01-13T00:00:00.000Z' },
+    { conceptId: 'derivatives', dimension: 'math', dueAt: '2026-01-13T00:00:00.000Z' },
+  ];
+  const mixed: PlannedActivity = {
+    kind: 'review',
+    conceptId: null,
+    exerciseIds: ['vectors-fixture-practice-1', 'derivatives-fixture-practice-1'],
+    plannedMinutes: 10,
+    status: 'completed',
+    reason: {
+      terms: { goal: 0, week_fit: 0, project: 0, unlock: 0, gap: 0, review: 0, cost: 0 },
+      summary: '',
+    },
+  };
+  const plan = replan(state, content, now, 60, [mixed]);
+  expect(
+    plan.activities.some(
+      (activity) =>
+        activity.kind === 'review' &&
+        activity.exerciseIds.some(
+          (exerciseId) => content.exercisesById.get(exerciseId)?.concept === 'vectors',
+        ),
+    ),
+  ).toBe(false);
 });
 
 test('a concept with multiple due dimensions appears in only one review activity', () => {
@@ -1583,15 +1731,9 @@ test('a concept with multiple due dimensions appears in only one review activity
   }
 });
 
-test('a review omits dimensions attempted earlier today', () => {
+test('a non-due dimension attempt does not hide another due dimension', () => {
   const state = emptyState();
   state.cards = [
-    {
-      conceptId: 'vectors',
-      dimension: 'math',
-      dueAt: '2026-01-13T00:00:00.000Z',
-      retrievability: 0.7,
-    },
     {
       conceptId: 'vectors',
       dimension: 'conceptual',

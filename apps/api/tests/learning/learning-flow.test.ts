@@ -25,7 +25,12 @@ import {
 } from '../../src/db/schema.js';
 import { FakeProvider } from '../../src/features/tutor/provider.js';
 import { answerOptionsFor } from '../../src/learning/answer-options.js';
-import { newReviewCard, scheduleInitialReview, scheduleReview } from '../../src/learning/fsrs.js';
+import {
+  isDueToday,
+  newReviewCard,
+  scheduleInitialReview,
+  scheduleReview,
+} from '../../src/learning/fsrs.js';
 import { calculateCredit } from '../../src/learning/mastery.js';
 
 const db = createDb(env.TEST_DATABASE_URL);
@@ -917,7 +922,7 @@ test('/api/reviews returns the local upcoming schedule and skips stub topics', a
   const response = await app.request('/api/reviews', { headers: headersAt(now) });
   expect(response.status).toBe(200);
   const body = await response.json();
-  expect(body.dueNow).toBe(1);
+  expect(body.dueNow).toBe(2);
   expect(body.upcoming).toHaveLength(7);
   expect(body.upcoming.map((day: { date: string }) => day.date)).toEqual([
     '2026-01-02',
@@ -940,7 +945,7 @@ test('/api/reviews returns the local upcoming schedule and skips stub topics', a
     due: true,
     dueInDays: 0,
   });
-  expect(body.topics[1]).toMatchObject({ due: false, dueInDays: 0 });
+  expect(body.topics[1]).toMatchObject({ due: true, dueInDays: 0 });
   expect(body.topics[2]).toMatchObject({ due: false, dueInDays: 2 });
   expect(body.topics[0]).not.toHaveProperty('recall');
   expect(body.topics[0]).not.toHaveProperty('reps');
@@ -1620,42 +1625,55 @@ test('lesson-runner schedules one due review per concept, then reschedules it', 
     headers: headersAt(reviewNow.toISOString()),
   });
   expect(todayResponse.status).toBe(200);
-  const today = await todayResponse.json();
-  const dueCards = cards.filter((card) => card.dueAt <= reviewNow);
-  const reviewActivities = today.plan.activities.filter(
+  const sessionResponse = await app.request('/api/sessions', {
+    method: 'POST',
+    headers: headersAt(reviewNow.toISOString()),
+    body: JSON.stringify({ budgetMinutes: 600 }),
+  });
+  expect(sessionResponse.status).toBe(201);
+  const session = await sessionResponse.json();
+  const dueCards = cards.filter((card) => isDueToday(card.dueAt, reviewNow, 'America/Los_Angeles'));
+  const reviewActivities = session.activities.filter(
     (activity: { kind: string }) => activity.kind === 'review',
   );
-  const plannedCardKeys = reviewActivities.map(
-    (activity: { conceptId: string; exerciseIds: string[] }) => {
-      const exercise = content.exercisesById.get(activity.exerciseIds[0] ?? '');
-      return `${activity.conceptId}/${exercise?.dimension}`;
-    },
+  const plannedCardKeys = reviewActivities.flatMap((activity: { exerciseIds: string[] }) =>
+    activity.exerciseIds.flatMap((exerciseId) => {
+      const exercise = content.exercisesById.get(exerciseId);
+      return exercise ? [`${exercise.concept}/${exercise.dimension}`] : [];
+    }),
   );
   expect(reviewActivities).toHaveLength(1);
   expect(
     dueCards.some((card) => plannedCardKeys.includes(`${card.conceptId}/${card.dimension}`)),
   ).toBe(true);
 
-  const reviewActivity = reviewActivities[0];
-  if (!reviewActivity) throw new Error('No due review activity was planned');
-  const exerciseId = reviewActivity.exerciseIds[0] as string;
-  const exercise = content.exercisesById.get(exerciseId);
-  if (!exercise) throw new Error(`Missing review exercise ${exerciseId}`);
-  const card = dueCards.find(
-    (item) => item.conceptId === exercise.concept && item.dimension === exercise.dimension,
+  const card = dueCards.find((item) =>
+    plannedCardKeys.includes(`${item.conceptId}/${item.dimension}`),
   );
   if (!card) throw new Error('Planned review did not match a due card');
-  const answerResponse = await app.request('/api/attempts', {
-    method: 'POST',
-    headers: headersAt(reviewNow.toISOString()),
-    body: JSON.stringify({
-      exerciseId,
-      answer: correctAnswer(exerciseId, null),
-      mode: 'review',
+  const reviewActivity = reviewActivities.find((activity: { exerciseIds: string[] }) =>
+    activity.exerciseIds.some((exerciseId) => {
+      const exercise = content.exercisesById.get(exerciseId);
+      return exercise?.concept === card.conceptId && exercise.dimension === card.dimension;
     }),
-  });
-  expect(answerResponse.status).toBe(200);
-  expect((await answerResponse.json()).correct).toBeGreaterThan(0);
+  );
+  if (!reviewActivity) throw new Error('No due review activity was planned');
+  for (const exerciseId of reviewActivity.exerciseIds) {
+    const exercise = content.exercisesById.get(exerciseId);
+    if (exercise?.concept !== card.conceptId || exercise.dimension !== card.dimension) continue;
+    const answerResponse = await app.request('/api/attempts', {
+      method: 'POST',
+      headers: headersAt(reviewNow.toISOString()),
+      body: JSON.stringify({
+        exerciseId,
+        activityId: reviewActivity.id,
+        answer: correctAnswer(exerciseId, null),
+        mode: 'review',
+      }),
+    });
+    expect(answerResponse.status).toBe(200);
+    expect((await answerResponse.json()).correct).toBeGreaterThan(0);
+  }
 
   const [rescheduled] = await db.select().from(reviewCards).where(eq(reviewCards.id, card.id));
   expect(rescheduled?.dueAt.getTime()).toBeGreaterThanOrEqual(reviewNow.getTime() + 86_400_000);

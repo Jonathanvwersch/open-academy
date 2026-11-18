@@ -30,6 +30,7 @@ import {
   type ProjectionCourse,
   projectCourseFinishes,
 } from '../../learning/finish-projection.js';
+import { isDueToday } from '../../learning/fsrs.js';
 import { deriveLessonState } from '../../learning/lesson-runner.js';
 import {
   activeCourseFor,
@@ -680,6 +681,7 @@ export function registerLearnCourseRoutes(
       studyCourseIds,
       focusSubjectId: focusSubjectId ?? undefined,
       mastery,
+      reviewedTodayConceptIds: [],
       lessonRuns: lessonRunState,
       recentLearnMinutesByConcept,
     };
@@ -787,8 +789,8 @@ export function registerLearnCourseRoutes(
     const dueReviewsOutsideFocus = focusSubjectId
       ? new Set(
           (schedulerState
-            ? schedulerState.cards.filter((card) => Date.parse(card.dueAt) <= now.getTime())
-            : await repo.dueCards(now)
+            ? schedulerState.cards.filter((card) => isDueToday(card.dueAt, now, timeZone))
+            : await repo.dueCards(now, timeZone)
           )
             .map((card) => card.conceptId)
             .filter((conceptId) => !focusedConceptIds.has(conceptId)),
