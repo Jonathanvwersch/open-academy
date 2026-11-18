@@ -132,6 +132,7 @@ export interface Candidate {
 
 export type ReviewSelectionResult =
   | 'selected'
+  | 'selected:overdue'
   | 'not_candidate:reviewedToday'
   | 'not_candidate:stub'
   | 'not_candidate:focusFilter'
@@ -533,6 +534,12 @@ function replanInputs(
   };
 }
 
+function shiftLocalDateKey(localDate: string, days: number) {
+  const date = new Date(`${localDate}T00:00:00.000Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
 function packWeekday(
   state: SchedulerState,
   content: ContentIndex,
@@ -678,18 +685,70 @@ function packWeekday(
     if (newConceptCount >= SCHEDULER_CONFIG.weekday.maxNewConcepts) break;
     if (add(candidate)) newConceptCount += 1;
   }
-  const reviewCandidates = candidates
+  const reviewCandidateDetails = candidates
     .map((candidate, index) => ({ candidate, index }))
     .filter(({ candidate }) => candidate.activity.kind === 'review')
+    .map((entry) => {
+      const dimensions = new Set(
+        entry.candidate.activity.exerciseIds.flatMap((exerciseId) => {
+          const dimension = content.exercisesById.get(exerciseId)?.dimension;
+          return dimension ? [dimension] : [];
+        }),
+      );
+      const includedCards = state.cards.filter(
+        (card) =>
+          card.conceptId === entry.candidate.activity.conceptId &&
+          dimensions.has(card.dimension) &&
+          isDueToday(card.dueAt, now, timezone),
+      );
+      const earliestDueAt =
+        includedCards.length > 0
+          ? Math.min(...includedCards.map((card) => Date.parse(card.dueAt)))
+          : undefined;
+      const currentRetrievability =
+        includedCards.length > 0
+          ? Math.min(...includedCards.map((card) => card.retrievability ?? 0.9))
+          : undefined;
+      return {
+        ...entry,
+        earliestDueAt,
+        currentRetrievability,
+        overdue:
+          earliestDueAt !== undefined &&
+          localDateKey(new Date(earliestDueAt), timezone) <= shiftLocalDateKey(localToday, -2),
+      };
+    });
+  const byUrgency = (
+    left: (typeof reviewCandidateDetails)[number],
+    right: (typeof reviewCandidateDetails)[number],
+  ) =>
+    right.candidate.activity.reason.terms.review - left.candidate.activity.reason.terms.review ||
+    right.candidate.score - left.candidate.score ||
+    left.index - right.index;
+  const overdueCandidates = reviewCandidateDetails
+    .filter((entry) => entry.overdue)
     .sort(
       (left, right) =>
-        right.candidate.activity.reason.terms.review -
-          left.candidate.activity.reason.terms.review ||
-        right.candidate.score - left.candidate.score ||
+        (left.earliestDueAt ?? Infinity) - (right.earliestDueAt ?? Infinity) ||
+        (left.currentRetrievability ?? Infinity) - (right.currentRetrievability ?? Infinity) ||
         left.index - right.index,
-    )
-    .map(({ candidate }) => candidate);
-  for (const candidate of reviewCandidates) {
+    );
+  const overdueCandidateIndexes = new Set(overdueCandidates.map(({ index }) => index));
+  for (const { candidate } of overdueCandidates) {
+    const conceptId = candidate.activity.conceptId;
+    if (!conceptId) continue;
+    const rejectionReason = addRejectionReason(candidate);
+    if (rejectionReason) {
+      recordReviewResult(conceptId, `rejected:${rejectionReason}`, candidate);
+      continue;
+    }
+    add(candidate);
+    reviewMinutes += candidate.adjustedMinutes;
+    recordReviewResult(conceptId, 'selected:overdue', candidate);
+  }
+  const reviewCandidatesByUrgency = [...reviewCandidateDetails].sort(byUrgency);
+  for (const { candidate, index } of reviewCandidatesByUrgency) {
+    if (overdueCandidateIndexes.has(index)) continue;
     const conceptId = candidate.activity.conceptId;
     if (!conceptId) continue;
     if (reviewMinutes + candidate.adjustedMinutes > reviewCap) {
@@ -706,7 +765,9 @@ function packWeekday(
     recordReviewResult(conceptId, 'selected', candidate);
   }
   if (!selected.some((candidate) => candidate.activity.kind === 'review')) {
-    const fallbackReview = reviewCandidates.find(canAdd);
+    const fallbackReview = reviewCandidatesByUrgency.find(({ candidate }) =>
+      canAdd(candidate),
+    )?.candidate;
     if (fallbackReview) {
       add(fallbackReview);
       reviewMinutes += fallbackReview.adjustedMinutes;

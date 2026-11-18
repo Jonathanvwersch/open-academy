@@ -263,12 +263,30 @@ function reviewMinuteCapIsActuallyBinding(
   const candidateMinutes = minutesFor(conceptId);
   if (candidateMinutes === undefined) return false;
   const selectedMinutes = selection.results
-    .filter((result) => result.result === 'selected')
+    .filter((result) => result.result === 'selected' || result.result === 'selected:overdue')
     .reduce((sum, result) => sum + (minutesFor(result.conceptId) ?? 0), 0);
   return (
     selectedMinutes + candidateMinutes >
     Math.floor(selection.budget * SCHEDULER_CONFIG.weekday.reviewBudgetRatio)
   );
+}
+
+function isReviewTopicOverdueByCardDueAt(
+  conceptId: string,
+  cards: Array<Pick<typeof reviewCards.$inferSelect, 'conceptId' | 'dimension' | 'dueAt'>>,
+  now: Date,
+) {
+  const earliestDueAt = cards
+    .filter(
+      (card) =>
+        card.conceptId === conceptId &&
+        isDueToday(card.dueAt, now, timezone) &&
+        hasEligibleReviewExercise(card.conceptId, card.dimension),
+    )
+    .map((card) => card.dueAt)
+    .sort((left, right) => left.getTime() - right.getTime())[0];
+  if (!earliestDueAt) return false;
+  return localDateKey(earliestDueAt, timezone) <= shiftLocalDate(localDateKey(now, timezone), -2);
 }
 
 vitestIt('only accepts reviewedToday when the concept has a review log on the local day', () => {
@@ -287,6 +305,23 @@ vitestIt('only accepts reviewedToday when the concept has a review log on the lo
       { conceptId: 'previous-day-topic', createdAt: new Date('2026-11-18T07:59:00.000Z') },
     ]),
   ).toBe(false);
+});
+
+vitestIt('checks overdue review eligibility independently from card due dates', () => {
+  const cards = [
+    {
+      conceptId: 'vectors',
+      dimension: 'math' as const,
+      dueAt: new Date('2026-01-13T07:30:00.000Z'),
+    },
+  ];
+
+  expect(
+    isReviewTopicOverdueByCardDueAt('vectors', cards, new Date('2026-01-14T07:59:00.000Z')),
+  ).toBe(false);
+  expect(
+    isReviewTopicOverdueByCardDueAt('vectors', cards, new Date('2026-01-14T08:30:00.000Z')),
+  ).toBe(true);
 });
 
 function isLegacyFinding(detail: string, preRunIds: ReadonlySet<string>) {
@@ -447,6 +482,7 @@ async function checkI3({ now, today, active, selection }: AuditContext): Promise
     if (
       plannerResult === 'rejected:reviewMinuteCap' &&
       selection &&
+      !isReviewTopicOverdueByCardDueAt(card.conceptId, cards, now) &&
       reviewMinuteCapIsActuallyBinding(selection, card.conceptId, now)
     ) {
       recordBudgetDeferred('I3', card, now);
@@ -673,6 +709,7 @@ async function checkI6({ now, today, active, selection }: AuditContext): Promise
       if (
         plannerResult === 'rejected:reviewMinuteCap' &&
         selection &&
+        !isReviewTopicOverdueByCardDueAt(conceptId, cards, now) &&
         reviewMinuteCapIsActuallyBinding(selection, conceptId, now)
       ) {
         for (const card of dueCards) recordBudgetDeferred('I6', card, now);
@@ -1491,9 +1528,9 @@ function updateBudgetDeferralStreaks(day: string, reviewedToday: Set<string>) {
     budgetDeferralStreaks.set(conceptId, interval);
     const longest = longestBudgetDeferrals.get(conceptId);
     if (!longest || days > longest.days) longestBudgetDeferrals.set(conceptId, interval);
-    if (days > 3) {
+    if (days > 2) {
       throw new Error(
-        `Budget deferral starvation: ${conceptId} remained BUDGET-DEFERRED for ${days} consecutive local days (${since} through ${day}).`,
+        `Budget deferral starvation: ${conceptId} remained BUDGET-DEFERRED for ${days} consecutive local days (more than 2; ${since} through ${day}).`,
       );
     }
   }
@@ -1565,11 +1602,15 @@ async function explainSelectionAt08(
   });
   const priorityFindings = resumeSnapshot?.priorityFindings ?? computedPriorityFindings;
   const notSelected = results
-    .filter((result) => result.result !== 'selected' || !selectedInPlan.has(result.conceptId))
+    .filter(
+      (result) =>
+        !['selected', 'selected:overdue'].includes(result.result) ||
+        !selectedInPlan.has(result.conceptId),
+    )
     .map((result) => ({
       conceptId: result.conceptId,
       reason:
-        result.result === 'selected'
+        result.result === 'selected' || result.result === 'selected:overdue'
           ? 'selected by a fresh pack but absent from the current session plan'
           : result.result,
       selectedExerciseIds: result.exerciseIds,

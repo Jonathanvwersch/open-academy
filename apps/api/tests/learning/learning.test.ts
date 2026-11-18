@@ -27,6 +27,7 @@ import { reviewTopicsForActivity } from '../../src/learning/review-topics.js';
 import type { Candidate, PlannedActivity, SchedulerState } from '../../src/learning/scheduler.js';
 import {
   currentLearnerUnit,
+  explainReviewSelection,
   interleaveReviewExercises,
   mixReviewActivities,
   planSession,
@@ -2771,7 +2772,148 @@ test('review urgency selects an overdue off-path topic when the cap fits one rev
   );
 });
 
-test('memory-priority ordering prevents review starvation under a 1.67x cap load', () => {
+test('two-day-overdue reviews bypass a full cap before new lessons are planned', () => {
+  const fixture = reviewQueueFixture(3, 0, 4);
+  const oldest = required(fixture.topicIds[0], 'oldest review topic');
+  const overdue = required(fixture.topicIds[1], 'two-day-overdue review topic');
+  const fixtureCourse = required(fixture.index.coursesById.get('fixture-course'), 'fixture course');
+  const courses = fixture.index.courses.map((course) =>
+    course.id === 'fixture-course'
+      ? {
+          ...course,
+          units: course.units.map((unit, index) =>
+            index === 0 ? { ...unit, concepts: ['vectors'] } : unit,
+          ),
+        }
+      : course,
+  );
+  const index: ContentIndex = {
+    ...fixture.index,
+    courses,
+    coursesById: new Map(courses.map((course) => [course.id, course])),
+  };
+  const state = emptyState();
+  state.activeCourseId = fixtureCourse.id;
+  state.studyCourseIds = [fixtureCourse.id];
+  state.mastery = fixture.topicIds.map((conceptId) => ({
+    ...initialMastery(conceptId, 'math'),
+    state: 'independent' as const,
+  }));
+  state.cards = [
+    {
+      conceptId: oldest,
+      dimension: 'math',
+      dueAt: new Date(now.getTime() - 3 * 86_400_000).toISOString(),
+      retrievability: 0.9,
+    },
+    {
+      conceptId: overdue,
+      dimension: 'math',
+      dueAt: new Date(now.getTime() - 2 * 86_400_000).toISOString(),
+      retrievability: 0.6,
+    },
+  ];
+
+  const baseline = planSession({ ...state, cards: state.cards.slice(0, 1) }, index, now, 42);
+  const plan = planSession(state, index, now, 42);
+  const explanations = explainReviewSelection(state, index, now, 42);
+  const learnMinutes = (activities: PlannedActivity[]) =>
+    activities
+      .filter((activity) => activity.kind === 'learn')
+      .reduce((sum, activity) => sum + activity.plannedMinutes, 0);
+
+  expect(plannedReviewTopics(plan, index)).toEqual(expect.arrayContaining([oldest, overdue]));
+  expect(explanations.find((result) => result.conceptId === oldest)).toMatchObject({
+    result: 'selected:overdue',
+    reviewMinutes: 12,
+  });
+  expect(explanations.find((result) => result.conceptId === overdue)).toMatchObject({
+    result: 'selected:overdue',
+    reviewMinutes: 24,
+  });
+  expect(learnMinutes(baseline.activities)).toBe(20);
+  expect(learnMinutes(plan.activities)).toBe(0);
+});
+
+test('a review due one local day ago can still be deferred by the cap', () => {
+  const fixture = reviewQueueFixture(2, 0, 6);
+  const deferred = required(fixture.topicIds[0], 'one-day-old topic');
+  const current = required(fixture.topicIds[1], 'current due topic');
+  const state = emptyState();
+  state.mastery = fixture.topicIds.map((conceptId) => ({
+    ...initialMastery(conceptId, 'math'),
+    state: 'independent' as const,
+  }));
+  state.cards = [
+    {
+      conceptId: deferred,
+      dimension: 'math',
+      dueAt: new Date(now.getTime() - 86_400_000).toISOString(),
+      retrievability: 0.9,
+    },
+    {
+      conceptId: current,
+      dimension: 'math',
+      dueAt: now.toISOString(),
+      retrievability: 0.1,
+    },
+  ];
+
+  const explanations = explainReviewSelection(state, fixture.index, now, 60);
+
+  expect(explanations.find((result) => result.conceptId === deferred)?.result).toBe(
+    'rejected:reviewMinuteCap',
+  );
+  expect(explanations.find((result) => result.conceptId === current)?.result).toBe('selected');
+});
+
+test('the overdue threshold uses Los Angeles local dates across midnight', () => {
+  const fixture = reviewQueueFixture(2, 0, 6);
+  const deferred = required(fixture.topicIds[0], 'boundary review topic');
+  const current = required(fixture.topicIds[1], 'current review topic');
+  const state = emptyState();
+  state.timezone = 'America/Los_Angeles';
+  state.mastery = fixture.topicIds.map((conceptId) => ({
+    ...initialMastery(conceptId, 'math'),
+    state: 'independent' as const,
+  }));
+  state.cards = [
+    {
+      conceptId: deferred,
+      dimension: 'math',
+      dueAt: '2026-01-13T07:30:00.000Z',
+      retrievability: 0.9,
+    },
+    {
+      conceptId: current,
+      dimension: 'math',
+      dueAt: '2026-01-14T07:59:00.000Z',
+      retrievability: 0.1,
+    },
+  ];
+
+  const beforeThreshold = explainReviewSelection(
+    state,
+    fixture.index,
+    new Date('2026-01-14T07:59:00.000Z'),
+    60,
+  );
+  const atThreshold = explainReviewSelection(
+    state,
+    fixture.index,
+    new Date('2026-01-14T08:30:00.000Z'),
+    60,
+  );
+
+  expect(beforeThreshold.find((result) => result.conceptId === deferred)?.result).toBe(
+    'rejected:reviewMinuteCap',
+  );
+  expect(atThreshold.find((result) => result.conceptId === deferred)?.result).toBe(
+    'selected:overdue',
+  );
+});
+
+test('two-day overdue guarantees prevent longer deferrals under a 1.67x cap load', () => {
   const fixture = reviewQueueFixture(32, 30, 2);
   const firstOffPath = required(fixture.offPathTopicIds[0], 'first off-path topic');
   const secondOffPath = required(fixture.offPathTopicIds[1], 'second off-path topic');
@@ -2831,7 +2973,7 @@ test('memory-priority ordering prevents review starvation under a 1.67x cap load
     }
   }
 
-  expect(longestDeferral).toBeLessThanOrEqual(3);
+  expect(longestDeferral).toBeLessThanOrEqual(2);
 });
 
 test('planner schedules one due review when the budget is 10 minutes', () => {
