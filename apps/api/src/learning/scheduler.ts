@@ -1331,6 +1331,11 @@ export function buildReviewActivityForConcept(
   )?.activity;
 }
 
+export function adjustedMinutesForLearnerPace(baseMinutes: number, actualEstimateRatio?: number) {
+  const ratio = Math.min(2, Math.max(0.5, actualEstimateRatio ?? 1));
+  return Math.max(1, Math.ceil(baseMinutes * ratio));
+}
+
 function makeCandidate(
   state: SchedulerState,
   content: ContentIndex,
@@ -1343,14 +1348,13 @@ function makeCandidate(
   gap = 0,
   summary?: string,
 ): Candidate {
-  const ratio = Math.min(2, Math.max(0.5, state.actualEstimateRatio ?? 1));
   const baseMinutes =
     kind === 'learn'
       ? concept.est_minutes
       : exercises.length > 0
         ? exercises.reduce((sum, exercise) => sum + exercise.est_minutes, 0)
         : concept.est_minutes;
-  const adjustedMinutes = Math.max(1, Math.ceil(baseMinutes * ratio));
+  const adjustedMinutes = adjustedMinutesForLearnerPace(baseMinutes, state.actualEstimateRatio);
   const terms = noTerms();
   terms.goal = concept.goal_weight;
   const unitPosition = courseContext.unitPositions.get(concept.id);

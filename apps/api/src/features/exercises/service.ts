@@ -28,6 +28,7 @@ import {
 } from '../../learning/prerequisite-review.js';
 import { attemptAllowsRetry } from '../../learning/retry.js';
 import {
+  adjustedMinutesForLearnerPace,
   buildReviewActivityForConcept,
   interleaveReviewExercises,
 } from '../../learning/scheduler.js';
@@ -789,12 +790,16 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
                                 groupReviewExercisesByConcept(addedExerciseIds, index),
                               ),
                             ];
+                      const addedBaseMinutes = addedExerciseIds.reduce(
+                        (total, exerciseId) =>
+                          total + (index.exercisesById.get(exerciseId)?.est_minutes ?? 0),
+                        0,
+                      );
                       const plannedMinutes =
                         coveredActivity.plannedMinutes +
-                        addedExerciseIds.reduce(
-                          (total, exerciseId) =>
-                            total + (index.exercisesById.get(exerciseId)?.est_minutes ?? 0),
-                          0,
+                        adjustedMinutesForLearnerPace(
+                          addedBaseMinutes,
+                          schedulerState.actualEstimateRatio,
                         );
                       await tx
                         .update(sessionActivities)

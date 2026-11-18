@@ -1,12 +1,13 @@
 import { and, asc, eq } from 'drizzle-orm';
 import { Rating } from 'ts-fsrs';
-import { afterAll, beforeAll, expect, test } from 'vitest';
+import { afterAll, beforeAll, expect, test, vi } from 'vitest';
 import { createApp } from '../../src/app.js';
 import { env } from '../../src/config.js';
 import { loadContent } from '../../src/content/load.js';
 import { instantiateExercise, isTemplate } from '../../src/content/templates.js';
 import type { ContentIndex } from '../../src/content/types.js';
 import { createDb } from '../../src/db/client.js';
+import { LearnerRepository } from '../../src/db/repository.js';
 import {
   attempts,
   courseEnrollments,
@@ -1077,10 +1078,23 @@ test('double Again extends a planned mixed review with a newly due prerequisite 
   const originalExerciseIds = [...plannedActivity.exerciseIds];
   const originalPlannedMinutes = plannedActivity.plannedMinutes;
 
-  const triggerResult = await submitIncorrectReviewExercise(
-    'derivatives-fixture-1-basics',
-    triggerActivity.id,
-  );
+  const paceRatio = 1.3;
+  const originalSchedulerState = LearnerRepository.prototype.schedulerState;
+  const schedulerStateSpy = vi
+    .spyOn(LearnerRepository.prototype, 'schedulerState')
+    .mockImplementation(async function (this: LearnerRepository, now, contentIndex, loaded) {
+      const state = await originalSchedulerState.call(this, now, contentIndex, loaded);
+      return { ...state, actualEstimateRatio: paceRatio };
+    });
+  let triggerResult: { activityCompleted?: boolean } | undefined;
+  try {
+    triggerResult = await submitIncorrectReviewExercise(
+      'derivatives-fixture-1-basics',
+      triggerActivity.id,
+    );
+  } finally {
+    schedulerStateSpy.mockRestore();
+  }
   expect(triggerResult.activityCompleted).toBe(true);
 
   const [updatedPlannedActivity] = await db
@@ -1104,13 +1118,14 @@ test('double Again extends a planned mixed review with a newly due prerequisite 
       return exercise?.concept === 'vectors' && exercise.dimension === 'conceptual';
     }),
   ).toBe(true);
-  expect(updatedPlannedActivity.plannedMinutes).toBe(
-    originalPlannedMinutes +
-      additions.reduce(
-        (total, exerciseId) => total + (content.exercisesById.get(exerciseId)?.est_minutes ?? 0),
-        0,
-      ),
+  const addedBaseMinutes = additions.reduce(
+    (total, exerciseId) => total + (content.exercisesById.get(exerciseId)?.est_minutes ?? 0),
+    0,
   );
+  expect(addedBaseMinutes).toBeGreaterThan(0);
+  const expectedAddedMinutes = Math.ceil(addedBaseMinutes * paceRatio);
+  expect(expectedAddedMinutes).toBeGreaterThan(addedBaseMinutes);
+  expect(updatedPlannedActivity.plannedMinutes).toBe(originalPlannedMinutes + expectedAddedMinutes);
   const activitiesWithVectors = await db
     .select()
     .from(sessionActivities)
