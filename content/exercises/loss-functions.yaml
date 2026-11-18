@@ -883,17 +883,18 @@ exercises:
     knowledge_point: loss-measure-misses
     difficulty: 1
     est_minutes: 0.5
-    prompt: "Complete the description of the MSE formula: subtract each target from its prediction, ___ each error, then average. Type the missing operation."
+    prompt: 'Example $i$ has prediction $\hat y_i$ and true value $y_i$. Fill in the term that the mean absolute error adds up: $\text{MAE}=\frac{1}{n}\sum_{i=1}^{n}\underline{\quad\quad}$.'
     accept:
-      - square
-      - square it
-      - square each error
-      - squaring
-      - raise to the second power
-      - raise each error to the second power
-      - raise to the power of two
-    regex: ^\s*(?:square(?:\s+(?:it|each\s+error))?|squaring|raise(?:\s+each\s+error)?\s+to\s+(?:the\s+)?(?:second\s+power|power\s+of\s+(?:two|2)))\s*$
-    solution: MSE squares each error before averaging.
+      - "|ŷ_i - y_i|"
+      - "|ŷ_i-y_i|"
+      - '|\hat y_i - y_i|'
+      - '|\hat{y}_i - y_i|'
+      - "|yhat_i - y_i|"
+      - "|y_i - ŷ_i|"
+      - '|y_i - \hat y_i|'
+      - abs(yhat_i - y_i)
+    regex: '^\s*\$?\s*(?:\\left\s*)?(?:\||\\lvert|\\vert|abs\s*\()\s*(?:(?:\\hat\s*\{?\s*y\s*\}?|\\widehat\s*\{\s*y\s*\}|ŷ|ŷ|y_?hat)\s*_?\s*\{?\s*i\s*\}?\s*[-−–]\s*y\s*_?\s*\{?\s*i\s*\}?|y\s*_?\s*\{?\s*i\s*\}?\s*[-−–]\s*(?:\\hat\s*\{?\s*y\s*\}?|\\widehat\s*\{\s*y\s*\}|ŷ|ŷ|y_?hat)\s*_?\s*\{?\s*i\s*\}?)\s*(?:\\right\s*)?(?:\||\\rvert|\\vert|\))\s*\$?\s*$'
+    solution: 'MAE adds up each error''s size, $|\hat y_i-y_i|$, then divides by $n$. Squaring the error instead would give the MSE.'
   - id: lossp-recall-large-say
     dimension: conceptual
     type: explain
@@ -965,7 +966,7 @@ exercises:
         criterion: Explain that the median minimises MAE for a constant prediction.
         weight: 1
         required: true
-    exemplar: The mean of the targets gives the best constant prediction under MSE. A median gives the best constant prediction under MAE.
+    exemplar: The mean of the targets gives the best constant prediction under MSE. The median gives the best constant prediction under MAE.
   - id: lossp-recall-constant-contrast
     dimension: conceptual
     type: mc
@@ -973,21 +974,21 @@ exercises:
     knowledge_point: loss-constant-choice
     difficulty: 1
     est_minutes: 0.5
-    prompt: A model must predict the same number for four distinct sorted targets. Which choices give the smallest MAE?
+    prompt: A model must predict the same number for four different targets. Which numbers give the smallest MAE?
     options:
       - id: a
         text: Any number between the two middle targets
         correct: true
-        feedback: With an even number of targets, the whole interval between the middle two minimises MAE.
+        feedback: With an even number of targets, anything between the two middle ones is equally good under MAE.
       - id: b
         text: Only the mean of all four targets
         correct: false
-        feedback: The mean minimises MSE.
+        feedback: The mean is the best constant under MSE. Under MAE it can lose to the middle values.
       - id: c
-        text: Only one of the two outer targets
+        text: Only the midpoint of the two middle targets
         correct: false
-        feedback: Outer targets leave most targets on one side, so moving inward lowers the absolute loss.
-    solution: For an even number of targets, every value between the two middle ones gives the smallest MAE.
+        feedback: The midpoint is one of the best choices, and every other number between the two middle targets gives the same MAE.
+    solution: For an even number of targets, every number between the two middle ones gives the smallest MAE.
   - id: lossp-recall-constant-formula
     dimension: math
     type: expression

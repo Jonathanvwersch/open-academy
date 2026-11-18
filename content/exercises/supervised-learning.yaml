@@ -1018,7 +1018,7 @@ exercises:
       - id: c
         text: Signed error
         correct: false
-        feedback: Signed error is prediction minus target; doubling a miss doubles its magnitude.
+        feedback: Signed error is prediction minus target. Doubling a miss doubles its size.
     solution: Squared error grows with the square of the miss, so doubling a miss quadruples the score.
   - id: slp-recall-error-formula
     dimension: math
@@ -1078,19 +1078,19 @@ exercises:
     knowledge_point: sl-training-loss
     difficulty: 1
     est_minutes: 0.5
-    prompt: 'Fill in the denominator that makes this the average loss over $n$ examples: $\frac{1}{\underline{\quad}}\sum_{i=1}^{n}L(f_\theta(x_i),y_i)$. Give the missing quantity in symbols or words.'
+    prompt: 'Training picks the best setting $\theta^\star$ of the parameters. Fill in the blank: $\theta^\star=\underline{\quad\quad}\ \frac{1}{n}\sum_{i=1}^{n}L\big(f_\theta(x_i),y_i\big)$.'
     accept:
-      [
-        "n",
-        "number of examples",
-        "the number of examples",
-        "example count",
-        "dataset size",
-        "number of training examples",
-        "the number of training examples",
-      ]
-    regex: '^\s*(?:\$\s*n\s*\$|n|(?:the\s+)?(?:total\s+)?number\s+of\s+(?:training\s+)?examples|(?:training\s+)?example\s+count|(?:training\s+)?dataset\s+size)\s*$'
-    solution: "Divide by $n$, the number of examples, to turn the total loss into an average."
+      - argmin
+      - arg min
+      - argmin_theta
+      - arg min_theta
+      - argmin_θ
+      - arg min_θ
+      - \arg\min
+      - \arg\min_\theta
+      - \arg\min_{\theta}
+    regex: ^\s*\$?\s*\\?arg\s*\\?min\s*(?:_\s*\{?\s*(?:\\theta|θ|theta)\s*\}?)?\s*\$?\s*$
+    solution: '$\arg\min_\theta$ gives the $\theta$ that makes the average loss smallest. Plain $\min_\theta$ would give the smallest loss itself.'
   - id: slp-recall-new-data-say
     dimension: conceptual
     type: explain

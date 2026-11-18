@@ -882,7 +882,7 @@ exercises:
       - id: a
         text: The feature vector
         correct: false
-        feedback: The feature vector holds one example's measurements.
+        feedback: The feature vector holds one example's measurements, which differ from house to house.
       - id: b
         text: The bias
         correct: true
@@ -890,7 +890,11 @@ exercises:
       - id: c
         text: The dot product
         correct: false
-        feedback: The dot product combines the feature contributions, which depend on the example.
+        feedback: The dot product adds up the feature pieces, which depend on the example.
+      - id: d
+        text: A weight
+        correct: false
+        feedback: A weight multiplies one feature, so the amount it adds changes with that feature's value.
     solution: The bias adds one fixed amount to each prediction.
   - id: lrp-recall-contributions-formula
     dimension: math
@@ -1000,21 +1004,21 @@ exercises:
     knowledge_point: lr-batch-predictions
     difficulty: 1
     est_minutes: 0.5
-    prompt: A matrix already includes a final column of ones, with the bias stored as the last weight. Which NumPy expression gives the predictions?
+    prompt: A feature matrix `X` already has a final column of ones, and the bias is stored as the last entry of the weights `w`. Which NumPy expression gives the predictions?
     options:
       - id: a
-        text: X @ w
+        text: "`X @ w`"
         correct: true
-        feedback: The final column contributes the bias through the matrix product.
+        feedback: The column of ones times the last weight adds the bias to every row inside the matrix product.
       - id: b
-        text: X @ w + b
+        text: "`X @ w + b`"
         correct: false
-        feedback: The final column already contributes the bias, so this adds it twice.
+        feedback: The column of ones already adds the bias, so this adds it twice.
       - id: c
-        text: X * w
+        text: "`X * w`"
         correct: false
-        feedback: Entrywise multiplication leaves separate feature pieces in each row.
-    solution: The column of ones carries the bias as part of the matrix product.
+        feedback: "`*` multiplies matching entries without adding them, so each row is left as separate pieces."
+    solution: The column of ones carries the bias, so `X @ w` alone gives one prediction per row.
   - id: lrp-recall-batch-formula
     dimension: math
     type: text
@@ -1029,4 +1033,4 @@ exercises:
       - matrix product
       - matmul
     regex: ^\s*(?:@|matrix\s+(?:multiplication|product)|matmul)\s*$
-    solution: The `@` operator takes one dot product per row; adding `b` adds the bias to every prediction.
+    solution: The `@` operator takes one dot product per row, and adding `b` adds the bias to every prediction.

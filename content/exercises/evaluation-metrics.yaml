@@ -566,7 +566,7 @@ exercises:
     knowledge_point: evm-count
     difficulty: 1
     est_minutes: 0.5
-    prompt: Write accuracy using the four confusion-matrix counts $TP$, $TN$, $FP$ and $FN$. Type `tp`, `tn`, `fp` and `fn` for those counts.
+    prompt: Write accuracy using the four confusion-matrix counts $\text{TP}$, $\text{TN}$, $\text{FP}$ and $\text{FN}$. Type `tp`, `tn`, `fp` and `fn` for those counts.
     answer: (tp+tn)/(tp+tn+fp+fn)
     variables:
       tp:
@@ -581,7 +581,7 @@ exercises:
       fn:
         - 1
         - 30
-    solution: "Accuracy divides the correct counts by all counts: $(TP+TN)/(TP+TN+FP+FN)$."
+    solution: "Accuracy divides the correct counts by all counts: $(\text{TP}+\text{TN})/(\text{TP}+\text{TN}+\text{FP}+\text{FN})$."
   - id: evm-recall-catch-say
     dimension: conceptual
     type: explain
@@ -599,7 +599,7 @@ exercises:
         criterion: Explain that recall is the fraction of actually faulty parts that the camera flags.
         weight: 1
         required: true
-    exemplar: Precision is the genuine-fault share of the flagged parts. Recall is the caught share of all actually faulty parts.
+    exemplar: Precision is the fraction of flagged parts that are actually faulty. Recall is the fraction of actually faulty parts the camera flags.
   - id: evm-recall-catch-contrast
     dimension: conceptual
     type: mc
@@ -612,16 +612,16 @@ exercises:
       - id: a
         text: Precision is 1.
         correct: false
-        feedback: Having no false alarms leaves no flags to use as the denominator.
+        feedback: Having no false alarms can look perfect, but with no flags there is nothing to divide by.
       - id: b
         text: Precision is 0.
         correct: false
-        feedback: Recall is zero because every fault was missed. Precision has a zero denominator.
+        feedback: It is recall that is 0, because every fault was missed. Precision has zero flags on the bottom.
       - id: c
-        text: Precision is undefined.
+        text: Precision can't be computed.
         correct: true
-        feedback: There are no flags, so precision would divide zero by zero and cannot be computed.
-    solution: Precision divides genuine flags by all flags. With no flags, it cannot be computed.
+        feedback: There are no flags, so precision would be $0/0$.
+    solution: Precision divides caught faults by all flags. With no flags, it is $0/0$ and can't be computed.
   - id: evm-recall-catch-formula
     dimension: math
     type: expression
@@ -629,7 +629,7 @@ exercises:
     knowledge_point: evm-catch
     difficulty: 1
     est_minutes: 0.5
-    prompt: Write precision using confusion-matrix counts $TP$, $FP$ and $FN$. Type `tp`, `fp` and `fn` for those counts.
+    prompt: Write precision using confusion-matrix counts $\text{TP}$, $\text{FP}$ and $\text{FN}$. Type `tp`, `fp` and `fn` for those counts.
     answer: tp/(tp+fp)
     variables:
       tp:
@@ -641,7 +641,7 @@ exercises:
       fn:
         - 1
         - 30
-    solution: Precision is $TP/(TP+FP)$, the genuine-fault share of all flags.
+    solution: Precision is $\text{TP}/(\text{TP}+\text{FP})$, the share of all flags that are actually faulty.
   - id: evm-recall-numbers-say
     dimension: conceptual
     type: explain
@@ -689,10 +689,11 @@ exercises:
     knowledge_point: evm-numbers
     difficulty: 1
     est_minutes: 0.5
-    prompt: Write root mean squared error when the mean squared error is $m$. Type `sqrt(...)` for the square root.
-    answer: sqrt(m)
+    prompt: A price model has signed errors $e_1$, $e_2$, $e_3$ and $e_4$ on four held-out houses. Write its root mean squared error. Type `e1` for $e_1$, and so on, and `sqrt(...)` for a square root.
+    answer: sqrt((e1^2+e2^2+e3^2+e4^2)/4)
     variables:
-      m:
-        - 1
-        - 400
-    solution: RMSE is $\sqrt{m}$ when MSE is $m$.
+      e1: [-40, 40]
+      e2: [-40, 40]
+      e3: [-40, 40]
+      e4: [-40, 40]
+    solution: 'Square each error, average the squares to get the MSE, then take the square root: $\text{RMSE}=\sqrt{(e_1^2+e_2^2+e_3^2+e_4^2)/4}$.'

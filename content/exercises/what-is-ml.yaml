@@ -600,10 +600,12 @@ exercises:
     knowledge_point: ml-what-it-is
     difficulty: 1
     est_minutes: 0.5
-    prompt: "A house model uses weight $w$, the price per square metre in thousands of pounds, and area $a$ in square metres. Write its predicted price in thousands of pounds."
+    prompt: The simplest house model prices a house from its area alone, using one weight $w$. Write its predicted price, in thousands of pounds, for a house of area $a$ square metres.
     answer: w*a
-    variables: { w: [1, 5], a: [40, 150] }
-    solution: The model multiplies the price per square metre by the area, giving $w a$.
+    variables:
+      w: [1, 5]
+      a: [40, 150]
+    solution: The rule is price $=w\times$ area, so the prediction is $wa$, with $w$ the price per square metre in thousands of pounds.
   - id: ml-recall-house-say
     dimension: conceptual
     type: explain
@@ -643,28 +645,24 @@ exercises:
         text: The weighted sum
         correct: true
         feedback: The weighted sum adds each measurement times its weight to produce the price.
-    solution: The weighted sum produces a prediction; the loss scores it, and derivatives guide changes to weights.
+    solution: The weighted sum produces a prediction. The loss scores it, and derivatives guide changes to the weights.
   - id: ml-recall-house-formula
     dimension: math
-    type: text
+    type: expression
     role: recall
     knowledge_point: ml-house-model
     difficulty: 1
     est_minutes: 0.5
-    prompt: 'Fill in the missing term in the house model: $\text{prediction}=w_1x_1+\underline{\quad\quad}+w_3x_3$. Give the product for the second measurement in symbols or words.'
-    accept:
-      [
-        "w_2x_2",
-        "w2*x2",
-        "w_2*x_2",
-        "w2 x2",
-        "x_2w_2",
-        "x2*w2",
-        "second weight times second measurement",
-        "second measurement times second weight",
-      ]
-    regex: '^\s*(?:\$\s*)?(?:w_?\{?2\}?\s*(?:\*|×|·|\\times|\\cdot)?\s*x_?\{?2\}?|x_?\{?2\}?\s*(?:\*|×|·|\\times|\\cdot)?\s*w_?\{?2\}?)\s*(?:\$)?\s*$'
-    solution: "The missing term is $w_2x_2$, the second measurement multiplied by its weight."
+    prompt: A house model describes each house by three measurements $x_1,x_2,x_3$, and gives each measurement its own weight, $w_1,w_2,w_3$. Write the model's prediction. Type `x1` for $x_1$ and `w1` for $w_1$, and so on.
+    answer: w1*x1+w2*x2+w3*x3
+    variables:
+      w1: [-3, 3]
+      w2: [-3, 3]
+      w3: [-3, 3]
+      x1: [1, 20]
+      x2: [1, 5]
+      x3: [0, 40]
+    solution: The prediction is the weighted sum $w_1x_1+w_2x_2+w_3x_3$, each measurement times its weight, added up.
   - id: ml-recall-robots-say
     dimension: conceptual
     type: explain
@@ -690,21 +688,21 @@ exercises:
     knowledge_point: ml-to-robots
     difficulty: 1
     est_minutes: 0.5
-    prompt: A robot learns to pick up a cup by copying recordings of a person steering it. Which kind of learning is this?
+    prompt: A robot learns to pick up a cup from 200 recordings of a person steering it with a joystick. Which kind of learning is this?
     options:
       - id: a
         text: Imitation learning
         correct: true
-        feedback: Imitation learning uses a person's recorded demonstrations as answers to copy.
+        feedback: Imitation learning treats a person's recorded demonstrations as the answers, then uses the supervised cycle.
       - id: b
         text: Reinforcement learning
         correct: false
-        feedback: Reinforcement learning uses trial and error with rewards for attempts.
+        feedback: Reinforcement learning has no recorded answers. It learns by trial and error from a reward for each attempt.
       - id: c
         text: Writing a rule by hand
         correct: false
-        feedback: A hand-written rule is supplied by a person; here the robot fits a model to demonstrations.
-    solution: Copying recorded demonstrations is imitation learning, which uses the supervised cycle.
+        feedback: A hand-written rule comes from a person and is never fitted to the recordings.
+    solution: The recorded movements are the answers the robot copies, which is imitation learning.
   - id: ml-recall-robots-contrast2
     dimension: conceptual
     type: mc
@@ -717,13 +715,13 @@ exercises:
       - id: a
         text: A recorded movement to copy
         correct: false
-        feedback: Recorded movements supply targets for imitation learning.
+        feedback: Recorded movements are the answers in imitation learning, which copies a person's demonstrations.
       - id: b
         text: A reward score for the attempt
         correct: true
-        feedback: Reinforcement learning uses rewards and tries to make them as large as possible.
+        feedback: Reinforcement learning scores each attempt with a reward and learns to make it as large as possible.
       - id: c
         text: A weight inside its model
         correct: false
-        feedback: Weights are numbers training changes; the reward scores the attempt.
+        feedback: Weights are the numbers training changes. They give no score for an attempt.
     solution: Reinforcement learning scores attempts with rewards and learns to increase them.

@@ -1142,7 +1142,7 @@ exercises:
       - id: c
         text: The learning rate is too small to move the weight.
         correct: false
-        feedback: Progress is judged from how quickly the loss falls.
+        feedback: A rate that is too small makes the weight creep towards the bottom from one side without crossing it.
     solution: Changing sides can accompany a falling loss. A growing loss is the warning sign.
   - id: gdp-recall-rate-formula
     dimension: math
@@ -1197,9 +1197,9 @@ exercises:
         correct: false
         feedback: The example has one target and one shared prediction error.
       - id: c
-        text: Each weight's slope is equal to the whole loss.
+        text: The weight with the bigger slope caused more of the error.
         correct: false
-        feedback: A slope measures how the loss responds to a parameter change.
+        feedback: The error belongs to the whole prediction. Both slopes contain the same error $e$, and only the inputs differ.
     solution: Each weight's slope contains the same error and its own input factor.
   - id: gdp-recall-gradients-formula
     dimension: math
@@ -1258,14 +1258,25 @@ exercises:
         correct: true
         feedback: Gradient descent uses the local slopes and can stop in a dip with a deeper one elsewhere.
     solution: Zero slopes can mark a nearby dip. Trying different starting points can find a lower one.
-  - id: gdp-recall-loop-formula
-    dimension: math
-    type: expression
+  - id: gdp-recall-loop-contrast2
+    dimension: conceptual
+    type: mc
     role: recall
     knowledge_point: gd-training-loop
     difficulty: 1
     est_minutes: 0.5
-    prompt: 'A training loop uses the linear model $\hat y=wx+b$ and squared-error loss on one example with input $x$ and target $y$. After an update, its current parameters are $w$ and $b$. Write the loss it measures at the start of the next pass.'
-    answer: (w*x+b-y)^2
-    variables: { w: [1, 3], b: [0, 2], x: [1, 4], y: [3, 9] }
-    solution: "The next pass predicts with the current parameters, then squares its new error: $L=(wx+b-y)^2$."
+    prompt: A training loop's loss has fallen by a small amount on every pass since the start, and it is still high. What does this most likely show?
+    options:
+      - id: a
+        text: The learning rate is too small.
+        correct: true
+        feedback: Tiny steps make the loss creep down slowly, so a larger rate would make faster progress.
+      - id: b
+        text: Training has finished.
+        correct: false
+        feedback: We stop once a pass barely lowers a loss that has already fallen. A loss that is still high has further to go.
+      - id: c
+        text: The learning rate is too large.
+        correct: false
+        feedback: A rate that is too large overshoots further each step, so the loss goes up.
+    solution: A loss that creeps down slowly from the start and is still high is the sign of a learning rate that is too small.

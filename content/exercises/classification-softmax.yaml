@@ -615,13 +615,13 @@ exercises:
     knowledge_point: sm-cross-entropy
     difficulty: 1
     est_minutes: 0.5
-    prompt: Write multiclass cross-entropy for one example when $p$ is the probability assigned to its true class. Type `ln(...)` for the natural logarithm.
-    answer: -ln(p)
+    prompt: A classifier gives three classes the scores $z_1$, $z_2$ and $z_3$, and the object really is class 1. Write its multiclass cross-entropy loss. Type `z1`, `z2`, `z3` for the scores, `exp(...)` for the exponential function and `ln(...)` for the natural logarithm.
+    answer: -log(exp(z1)/(exp(z1)+exp(z2)+exp(z3)))
     variables:
-      p:
-        - 0.05
-        - 0.95
-    solution: The loss is $L=-\ln p$.
+      z1: [-3, 3]
+      z2: [-3, 3]
+      z3: [-3, 3]
+    solution: 'Softmax gives class 1 the probability $p_1=e^{z_1}/(e^{z_1}+e^{z_2}+e^{z_3})$, and the loss is $L=-\ln p_1$, which also equals $\ln(e^{z_1}+e^{z_2}+e^{z_3})-z_1$.'
   - id: sm-recall-gradient-say
     dimension: conceptual
     type: explain
@@ -639,7 +639,7 @@ exercises:
         criterion: Explain that each score slope is its class probability minus its label.
         weight: 1
         required: true
-    exemplar: A one-hot label has 1 for the true class and 0 for every other class. Each score slope is that class’s probability minus its label.
+    exemplar: A one-hot label has 1 for the true class and 0 for every other class. Each score slope is that class's probability minus its label.
   - id: sm-recall-gradient-contrast
     dimension: conceptual
     type: mc
@@ -647,21 +647,21 @@ exercises:
     knowledge_point: sm-gradient
     difficulty: 1
     est_minutes: 0.5
-    prompt: For softmax with cross-entropy and finite scores, how do the score slopes guide a gradient descent step?
+    prompt: A softmax classifier with cross-entropy loss takes one gradient descent step on a labelled example. What happens to the class scores?
     options:
       - id: a
-        text: Raise the true score and lower the others.
+        text: The true class's score goes up and every other score goes down.
         correct: true
-        feedback: The true class has a negative slope, and every other class has a positive slope.
+        feedback: The true class has slope $p-1$, which is negative, and every other class has slope $p_k$, which is positive.
       - id: b
-        text: Raise every score by the same amount.
+        text: The true class's score goes up and the other scores stay the same.
         correct: false
-        feedback: A shared increase leaves the probabilities unchanged.
+        feedback: Every other class has a positive slope $p_k$, so each one is pushed down in proportion to the probability it took.
       - id: c
-        text: Lower the true score and raise the others.
+        text: The true class's score goes down and every other score goes up.
         correct: false
-        feedback: Gradient descent subtracts the slope. The true class has a negative slope.
-    solution: Subtracting the score slopes raises the true class score and lowers the others.
+        feedback: This follows the slopes uphill. Gradient descent subtracts the slopes, so the true class's negative slope raises its score.
+    solution: Each slope is $p_k-y_k$, negative for the true class and positive for the others, so subtracting them raises the true class's score and lowers the rest.
   - id: sm-recall-gradient-formula
     dimension: math
     type: expression
