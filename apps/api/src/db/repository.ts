@@ -205,6 +205,9 @@ export class LearnerRepository {
     loaded: Pick<Partial<SchedulerState>, 'mastery' | 'lessonRuns' | 'projectProgress'> = {},
   ): Promise<SchedulerState> {
     const user = await this.user();
+    const recallExerciseIds = (content.exercisesByRole.get('recall') ?? []).map(
+      (exercise) => exercise.id,
+    );
     const [
       masteryRows,
       cards,
@@ -216,6 +219,7 @@ export class LearnerRepository {
       studyCourseIds,
       recentLearnActivities,
       todayReviewLogs,
+      recallAttemptRows,
     ] = await Promise.all([
       loaded.mastery ?? this.masteryRecords(),
       this.db.select().from(reviewCards).where(eq(reviewCards.userId, this.userId)),
@@ -273,6 +277,31 @@ export class LearnerRepository {
             lt(reviewLogs.createdAt, startOfNextCalendarDay(now, user?.timezone ?? 'UTC')),
           ),
         ),
+      recallExerciseIds.length > 0
+        ? this.db
+            .selectDistinctOn([attempts.exerciseId], {
+              exerciseId: attempts.exerciseId,
+              correct: attempts.correct,
+              createdAt: attempts.createdAt,
+            })
+            .from(attempts)
+            .where(
+              and(
+                eq(attempts.userId, this.userId),
+                sql`${attempts.exerciseId} = any(array[${sql.join(
+                  recallExerciseIds.map((exerciseId) => sql`${exerciseId}`),
+                  sql`, `,
+                )}]::text[])`,
+              ),
+            )
+            .orderBy(asc(attempts.exerciseId), desc(attempts.createdAt))
+        : Promise.resolve(
+            [] as Array<{
+              exerciseId: string;
+              correct: number;
+              createdAt: Date;
+            }>,
+          ),
     ]);
     const recentLearnMinutesByConcept: Record<string, number> = {};
     for (const activity of recentLearnActivities) {
@@ -315,6 +344,11 @@ export class LearnerRepository {
         dimension: attempt.dimension as Dimension,
         correct: attempt.correct,
         itemRole: 'core',
+        createdAt: attempt.createdAt.toISOString(),
+      })),
+      recallAttempts: recallAttemptRows.map((attempt) => ({
+        exerciseId: attempt.exerciseId,
+        correct: attempt.correct,
         createdAt: attempt.createdAt.toISOString(),
       })),
       remediationFlags: flags.map((flag) => ({

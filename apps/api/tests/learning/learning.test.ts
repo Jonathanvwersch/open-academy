@@ -26,6 +26,7 @@ import {
 import { reviewTopicsForActivity } from '../../src/learning/review-topics.js';
 import type { Candidate, PlannedActivity, SchedulerState } from '../../src/learning/scheduler.js';
 import {
+  buildReviewActivityForConcept,
   currentLearnerUnit,
   explainReviewSelection,
   interleaveReviewExercises,
@@ -84,6 +85,63 @@ beforeAll(async () => {
   content = await loadContent('tests/fixtures/content');
   courseContent = await loadContent('content');
 });
+
+function contentWithRecall(
+  conceptId: string,
+  pointIds = ['recall-kp-1', 'recall-kp-2', 'recall-kp-3'],
+  dimensions: Array<'conceptual' | 'math'> = ['conceptual'],
+) {
+  const conceptExercises = content.exercisesByConcept.get(conceptId) ?? [];
+  const recallExercises = pointIds.flatMap((pointId) =>
+    dimensions.map((dimension) => {
+      const source = required(
+        conceptExercises.find(
+          (exercise) =>
+            exercise.dimension === dimension && !exercise.lesson_only && !isTemplate(exercise),
+        ),
+        `${conceptId} ${dimension} recall source`,
+      );
+      return {
+        ...source,
+        id: `${conceptId}-${pointId}-${dimension}-recall`,
+        role: 'recall' as const,
+        knowledge_point: pointId,
+      };
+    }),
+  );
+  const lesson = required(content.lessonsByConcept.get(conceptId), `${conceptId} lesson`);
+  const knowledge_points = pointIds.map((id) => ({
+    id,
+    title: id,
+    explain: 'Fixture explanation.',
+    worked: 'Fixture worked example.',
+    problems: [],
+  }));
+  const exercisesByConcept = new Map(content.exercisesByConcept).set(conceptId, [
+    ...conceptExercises,
+    ...recallExercises,
+  ]);
+  const exercisesById = new Map(content.exercisesById);
+  for (const exercise of recallExercises) exercisesById.set(exercise.id, exercise);
+  const exercisesByRole = new Map(content.exercisesByRole).set('recall', [
+    ...(content.exercisesByRole.get('recall') ?? []),
+    ...recallExercises,
+  ]);
+  return {
+    index: {
+      ...content,
+      exercises: [...content.exercises, ...recallExercises],
+      exercisesByConcept,
+      exercisesById,
+      exercisesByRole,
+      lessonsByConcept: new Map(content.lessonsByConcept).set(conceptId, {
+        ...lesson,
+        knowledge_points,
+      }),
+    },
+    recallExercises,
+  };
+}
 
 test('in-progress review topics omit topics whose exercises have attempts', () => {
   const vectorsExercise = required(
@@ -1877,6 +1935,179 @@ test('a non-due dimension attempt does not hide another due dimension', () => {
   for (const exerciseId of review?.exerciseIds ?? []) {
     expect(content.exercisesById.get(exerciseId)?.dimension).toBe('conceptual');
   }
+});
+
+test('review recall rotates across lesson knowledge points before its problems', () => {
+  const { index, recallExercises } = contentWithRecall('vectors');
+  const state = emptyState();
+  state.cards = [
+    {
+      conceptId: 'vectors',
+      dimension: 'conceptual',
+      dueAt: '2026-01-13T00:00:00.000Z',
+      retrievability: 0.7,
+    },
+  ];
+
+  const review = required(
+    buildReviewActivityForConcept(state, index, now, 'vectors'),
+    'vectors recall review',
+  );
+  const expectedRecall = ['recall-kp-1', 'recall-kp-2'].map(
+    (pointId) =>
+      required(
+        recallExercises.find((exercise) => exercise.knowledge_point === pointId),
+        `${pointId} recall`,
+      ).id,
+  );
+  expect(review.exerciseIds.slice(0, 2)).toEqual(expectedRecall);
+  expect(new Set(expectedRecall).size).toBe(2);
+  expect(review.exerciseIds.slice(2)).toHaveLength(2);
+  expect(
+    review.exerciseIds
+      .slice(2)
+      .every((exerciseId) => !recallExercises.some((exercise) => exercise.id === exerciseId)),
+  ).toBe(true);
+});
+
+test('review recall rotation prefers the next unseen knowledge point', () => {
+  const { index, recallExercises } = contentWithRecall('vectors');
+  const state = emptyState();
+  state.cards = [
+    {
+      conceptId: 'vectors',
+      dimension: 'conceptual',
+      dueAt: '2026-01-13T00:00:00.000Z',
+      retrievability: 0.7,
+    },
+  ];
+  state.recallAttempts = recallExercises
+    .filter((exercise) => ['recall-kp-1', 'recall-kp-2'].includes(exercise.knowledge_point))
+    .map((exercise) => ({
+      exerciseId: exercise.id,
+      correct: 1,
+      createdAt: '2026-01-12T12:00:00.000Z',
+    }));
+
+  const review = required(
+    buildReviewActivityForConcept(state, index, now, 'vectors'),
+    'vectors recall review',
+  );
+  expect(
+    review.exerciseIds
+      .filter((exerciseId) => recallExercises.some((exercise) => exercise.id === exerciseId))
+      .map(
+        (exerciseId) =>
+          recallExercises.find((exercise) => exercise.id === exerciseId)?.knowledge_point,
+      ),
+  ).toEqual(['recall-kp-3', 'recall-kp-1']);
+});
+
+test('review recall prioritizes a knowledge point recalled incorrectly yesterday', () => {
+  const { index, recallExercises } = contentWithRecall('vectors', undefined, [
+    'conceptual',
+    'math',
+  ]);
+  const state = emptyState();
+  state.cards = [
+    {
+      conceptId: 'vectors',
+      dimension: 'conceptual',
+      dueAt: '2026-01-13T00:00:00.000Z',
+      retrievability: 0.7,
+    },
+  ];
+  const wrongRecall = required(
+    recallExercises.find(
+      (exercise) => exercise.knowledge_point === 'recall-kp-2' && exercise.dimension === 'math',
+    ),
+    'KP2 recall',
+  );
+  state.recallAttempts = [
+    {
+      exerciseId: wrongRecall.id,
+      correct: 0,
+      createdAt: '2026-01-13T12:00:00.000Z',
+    },
+  ];
+
+  const review = required(
+    buildReviewActivityForConcept(state, index, now, 'vectors'),
+    'vectors recall review',
+  );
+  expect(
+    review.exerciseIds
+      .filter((exerciseId) => recallExercises.some((exercise) => exercise.id === exerciseId))
+      .map(
+        (exerciseId) =>
+          recallExercises.find((exercise) => exercise.id === exerciseId)?.knowledge_point,
+      ),
+  ).toEqual(['recall-kp-2', 'recall-kp-1']);
+});
+
+test('review recall only selects exercises in due dimensions', () => {
+  const { index, recallExercises } = contentWithRecall('vectors', undefined, [
+    'conceptual',
+    'math',
+  ]);
+  const state = emptyState();
+  state.cards = [
+    {
+      conceptId: 'vectors',
+      dimension: 'math',
+      dueAt: '2026-01-13T00:00:00.000Z',
+      retrievability: 0.7,
+    },
+  ];
+
+  const review = required(
+    buildReviewActivityForConcept(state, index, now, 'vectors'),
+    'vectors math recall review',
+  );
+  const recallIds = new Set(recallExercises.map((exercise) => exercise.id));
+  const selectedRecall = review.exerciseIds.filter((exerciseId) => recallIds.has(exerciseId));
+  expect(selectedRecall).toHaveLength(2);
+  expect(
+    selectedRecall.every((exerciseId) => index.exercisesById.get(exerciseId)?.dimension === 'math'),
+  ).toBe(true);
+});
+
+test('concepts without recall content retain three-problem reviews', () => {
+  const state = emptyState();
+  state.cards = [
+    {
+      conceptId: 'vectors',
+      dimension: 'conceptual',
+      dueAt: '2026-01-13T00:00:00.000Z',
+      retrievability: 0.7,
+    },
+  ];
+
+  const review = required(
+    buildReviewActivityForConcept(state, content, now, 'vectors'),
+    'vectors review',
+  );
+  expect(review.exerciseIds).toHaveLength(3);
+  expect(
+    review.exerciseIds.some(
+      (exerciseId) => content.exercisesById.get(exerciseId)?.role === 'recall',
+    ),
+  ).toBe(false);
+});
+
+test('learn activities never contain recall exercises', () => {
+  const { index, recallExercises } = contentWithRecall('vectors');
+  const state = emptyState();
+  state.inProgressConceptId = 'vectors';
+  state.lessonRuns = [{ conceptId: 'vectors', status: 'in_progress' }];
+  const plan = planSession(state, index, now, 60);
+  const learnActivities = plan.activities.filter((activity) => activity.kind === 'learn');
+  const recallIds = new Set(recallExercises.map((exercise) => exercise.id));
+
+  expect(learnActivities.length).toBeGreaterThan(0);
+  expect(
+    learnActivities.flatMap((activity) => activity.exerciseIds).some((id) => recallIds.has(id)),
+  ).toBe(false);
 });
 
 test('a due review uses fewer than three exercises when fewer are available', () => {

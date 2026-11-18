@@ -18,7 +18,14 @@ const SVG_COLOR_PROPERTIES = new Set([
   'solid-color',
   'background-color',
 ]);
-const REVIEWABLE_EXERCISE_ROLES = new Set(['review', 'core', 'practice', 'transfer', 'basics']);
+const REVIEWABLE_EXERCISE_ROLES = new Set([
+  'review',
+  'recall',
+  'core',
+  'practice',
+  'transfer',
+  'basics',
+]);
 const LESSON_CONTEXT_PROMPT =
   /worked example|\bthe worked\b|\bin steps? \d|\bsteps? \d\b|\bthis step\b|\bin the picture\b|\bin the table\b|\bthe lesson'?s?\b|\bin the lesson\b|taught in the lesson|the car example|\bthe [\w-]+ (?:example|picture|argument|calculation)\b|\bthe example's\b/i;
 const MATH_PROSE_KEYS = new Set([
@@ -803,6 +810,9 @@ function validateCourses(
 function validateKnowledgePointContent(data: ContentSourceData, issues: ContentIssue[]) {
   const exercises = new Map(data.exercises.map((entry) => [entry.value.id, entry]));
   const concepts = new Map(data.concepts.map(({ value }) => [value.id, value]));
+  const lessonsByConcept = new Map(
+    data.lessons.map(({ value, file }) => [value.concept, { value, file }]),
+  );
   const authoredLessons = new Set(data.lessons.map(({ value }) => value.concept));
   const knowledgePointIds = new Set<string>();
   const references = new Map<string, number>();
@@ -1037,6 +1047,40 @@ function validateKnowledgePointContent(data: ContentSourceData, issues: ContentI
           );
         }
       }
+    }
+  }
+
+  for (const { value: exercise, concept, file } of data.exercises) {
+    if (exercise.role !== 'recall') continue;
+    const lesson = lessonsByConcept.get(concept)?.value;
+    if (
+      !exercise.knowledge_point ||
+      !lesson?.knowledge_points?.some((point) => point.id === exercise.knowledge_point)
+    ) {
+      addIssue(
+        issues,
+        file,
+        exercise.id,
+        `knowledge_point "${exercise.knowledge_point ?? ''}" must reference a knowledge point in its concept's lesson`,
+      );
+    }
+    if (exercise.lesson_only) {
+      addIssue(issues, file, exercise.id, 'recall exercise must not be lesson_only');
+    }
+    if (isTemplate(exercise)) {
+      addIssue(issues, file, exercise.id, 'recall exercise must not be a template');
+    }
+    if (
+      data.lessons.some((entry) =>
+        entry.value.knowledge_points?.some((point) => point.problems.includes(exercise.id)),
+      )
+    ) {
+      addIssue(
+        issues,
+        file,
+        exercise.id,
+        'recall exercise must not be referenced by knowledge-point problems',
+      );
     }
   }
 

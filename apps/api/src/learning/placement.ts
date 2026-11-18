@@ -87,7 +87,10 @@ export function placementProbeExercise(
       );
   const eligible = candidates.filter(
     (exercise) =>
-      !exercise.lesson_only && !isTemplate(exercise) && allowedExerciseTypes.has(exercise.type),
+      exercise.role !== 'recall' &&
+      !exercise.lesson_only &&
+      !isTemplate(exercise) &&
+      allowedExerciseTypes.has(exercise.type),
   );
 
   for (const difficulty of preferredDifficulties) {

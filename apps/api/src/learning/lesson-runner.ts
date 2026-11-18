@@ -72,12 +72,14 @@ function orderedRows<Row extends LessonProblemRow>(rows: readonly Row[]): Row[] 
 export function deriveLessonState<Row extends LessonProblemRow>(
   lesson: { knowledge_points?: readonly KnowledgePoint[] },
   problems: readonly Row[],
-  _exercises: ReadonlyMap<string, Pick<Exercise, 'role'>>,
+  exercises: ReadonlyMap<string, Pick<Exercise, 'role'>>,
   quizPassedAt?: Date | null,
 ): DerivedLessonState<Row> {
   const knowledgePoints = lesson.knowledge_points ?? [];
   const currentIds = new Set(knowledgePoints.map((point) => point.id));
-  const progressionProblems = problems.filter((problem) => !problem.practiceOnly);
+  const progressionProblems = problems.filter(
+    (problem) => !problem.practiceOnly && exercises.get(problem.exerciseId)?.role !== 'recall',
+  );
   const currentProblems = progressionProblems.filter((problem) =>
     currentIds.has(problem.knowledgePointId),
   );
@@ -176,7 +178,12 @@ export function selectNextProblem(
 
   const templates = point.problems.flatMap((id) => {
     const exercise = exercises.get(id);
-    if (exercise?.role !== 'basics' && exercise?.type === 'numeric' && 'answer_expr' in exercise) {
+    if (
+      exercise?.role !== 'basics' &&
+      exercise?.role !== 'recall' &&
+      exercise?.type === 'numeric' &&
+      'answer_expr' in exercise
+    ) {
       return [
         {
           id,
@@ -190,11 +197,16 @@ export function selectNextProblem(
   const candidates = point.problems.flatMap((id) => {
     if (served.has(id)) return [];
     const exercise = exercises.get(id);
-    return exercise && exercise.role !== 'basics' ? [{ id, exercise }] : [];
+    return exercise && exercise.role !== 'basics' && exercise.role !== 'recall'
+      ? [{ id, exercise }]
+      : [];
   });
 
   const countedAnswers = roundProblems
-    .filter((problem) => exercises.get(problem.exerciseId)?.role !== 'basics')
+    .filter((problem) => {
+      const role = exercises.get(problem.exerciseId)?.role;
+      return role !== 'basics' && role !== 'recall';
+    })
     .filter((problem) => problem.correct !== null)
     .sort((left, right) => right.position - left.position);
   const last = countedAnswers[0];
@@ -232,7 +244,10 @@ export function selectNextProblem(
       (left.servedAt?.getTime() ?? left.position) - (right.servedAt?.getTime() ?? right.position) ||
       left.position - right.position;
     const reusable = roundProblems
-      .filter((problem) => exercises.get(problem.exerciseId)?.role !== 'basics')
+      .filter((problem) => {
+        const role = exercises.get(problem.exerciseId)?.role;
+        return role !== 'basics' && role !== 'recall';
+      })
       .sort(sortByServedTime)[0];
     const fallback =
       reusable ??

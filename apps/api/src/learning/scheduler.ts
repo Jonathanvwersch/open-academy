@@ -98,6 +98,11 @@ export interface SchedulerState {
     itemRole: string;
     createdAt: string;
   }>;
+  recallAttempts?: Array<{
+    exerciseId: string;
+    correct: number;
+    createdAt: string;
+  }>;
   remediationFlags: Array<{
     conceptId: string;
     targetPrereqId?: string;
@@ -1161,8 +1166,72 @@ function buildReviewCandidateForConcept(
 ): Candidate | undefined {
   const concept = content.conceptsById.get(conceptId);
   if (!concept) return undefined;
-  const perDimension = Math.max(1, Math.ceil(3 / dueCards.length));
   const usedExerciseIds = new Set(state.usedExerciseIds ?? []);
+  const dueDimensions = new Set(dueCards.map((card) => card.dimension));
+  const conceptExercises = content.exercisesByConcept.get(concept.id) ?? [];
+  const recallPool = conceptExercises.filter(
+    (exercise) =>
+      exercise.role === 'recall' &&
+      exercise.knowledge_point !== undefined &&
+      dueDimensions.has(exercise.dimension) &&
+      !usedExerciseIds.has(exercise.id) &&
+      !exercise.lesson_only &&
+      !isTemplate(exercise),
+  );
+  const recallAttemptsByExerciseId = new Map<
+    string,
+    NonNullable<SchedulerState['recallAttempts']>[number]
+  >((state.recallAttempts ?? []).map((attempt) => [attempt.exerciseId, attempt]));
+  const orderedRecallPoints = (content.lessonsByConcept.get(conceptId)?.knowledge_points ?? [])
+    .map((point, pointIndex) => {
+      const poolItems = recallPool.filter((exercise) => exercise.knowledge_point === point.id);
+      if (poolItems.length === 0) return undefined;
+      let last: NonNullable<SchedulerState['recallAttempts']>[number] | undefined;
+      for (const exercise of conceptExercises) {
+        if (exercise.role !== 'recall' || exercise.knowledge_point !== point.id) continue;
+        const attempt = recallAttemptsByExerciseId.get(exercise.id);
+        if (attempt && (!last || Date.parse(attempt.createdAt) > Date.parse(last.createdAt))) {
+          last = attempt;
+        }
+      }
+      return { pointIndex, poolItems, last };
+    })
+    .filter((point): point is NonNullable<typeof point> => point !== undefined)
+    .sort((left, right) => {
+      const group = (point: typeof left) => (!point.last ? 1 : point.last.correct < 1 ? 0 : 2);
+      const leftGroup = group(left);
+      const rightGroup = group(right);
+      const attemptTimeOrder =
+        left.last && right.last
+          ? Date.parse(left.last.createdAt) - Date.parse(right.last.createdAt)
+          : 0;
+      return (
+        leftGroup - rightGroup ||
+        (leftGroup === 1 ? 0 : attemptTimeOrder) ||
+        left.pointIndex - right.pointIndex
+      );
+    });
+  const selectedRecallExercises = orderedRecallPoints.slice(0, 2).flatMap(({ poolItems }) => {
+    let selected: IndexedExercise | undefined;
+    for (const exercise of poolItems) {
+      const attempt = recallAttemptsByExerciseId.get(exercise.id);
+      const selectedAttempt = selected ? recallAttemptsByExerciseId.get(selected.id) : undefined;
+      if (
+        !selected ||
+        (!attempt && selectedAttempt) ||
+        (attempt &&
+          selectedAttempt &&
+          Date.parse(attempt.createdAt) < Date.parse(selectedAttempt.createdAt))
+      ) {
+        selected = exercise;
+      }
+    }
+    if (!selected) return [];
+    usedExerciseIds.add(selected.id);
+    return [selected];
+  });
+  const problemTarget = selectedRecallExercises.length > 0 ? 2 : 3;
+  const perDimension = Math.max(1, Math.ceil(problemTarget / dueCards.length));
   const selectedByDimension: {
     card: SchedulerState['cards'][number];
     exercises: IndexedExercise[];
@@ -1190,19 +1259,24 @@ function buildReviewCandidateForConcept(
     }
     if (exercises.length > 0) selectedByDimension.push({ card, exercises });
   }
-  if (selectedByDimension.length === 0) {
+  if (selectedByDimension.length === 0 && selectedRecallExercises.length === 0) {
     reviewSelectionTrace?.results.set(conceptId, 'not_candidate:noEligibleExercise');
     return undefined;
   }
-  const includedCards = selectedByDimension.map(({ card }) => card);
-  const maxQuestions = Math.max(...selectedByDimension.map(({ exercises }) => exercises.length));
-  const exercises: IndexedExercise[] = [];
+  const selectedDimensions = new Set([
+    ...selectedByDimension.map(({ card }) => card.dimension),
+    ...selectedRecallExercises.map((exercise) => exercise.dimension),
+  ]);
+  const includedCards = dueCards.filter((card) => selectedDimensions.has(card.dimension));
+  const maxQuestions = Math.max(0, ...selectedByDimension.map(({ exercises }) => exercises.length));
+  const problemExercises: IndexedExercise[] = [];
   for (let questionIndex = 0; questionIndex < maxQuestions; questionIndex += 1) {
     for (const dimension of selectedByDimension) {
       const exercise = dimension.exercises[questionIndex];
-      if (exercise) exercises.push(exercise);
+      if (exercise) problemExercises.push(exercise);
     }
   }
+  const exercises = [...selectedRecallExercises, ...problemExercises];
   const terms = noTerms();
   terms.review = Math.max(
     ...includedCards.map((card) => {

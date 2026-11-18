@@ -12,7 +12,15 @@ export interface MasteryAttemptEvidence {
   hintsUsed: number;
   attemptNo: number;
   mode: LearningMode;
-  itemRole: 'core' | 'transfer' | 'review' | 'diagnostic' | 'check' | 'practice' | 'basics';
+  itemRole:
+    | 'core'
+    | 'transfer'
+    | 'review'
+    | 'recall'
+    | 'diagnostic'
+    | 'check'
+    | 'practice'
+    | 'basics';
   gradedBy: GradedBy;
   independent: boolean;
   createdAt: string;

@@ -76,7 +76,14 @@ export function selectQuizItems(input: {
   for (const point of points) {
     const candidates: Candidate[] = point.problems.flatMap((exerciseId): Candidate[] => {
       const exercise = input.exercises.get(exerciseId);
-      if (!exercise || exercise.type === 'explain' || exercise.lesson_only) return [];
+      if (
+        !exercise ||
+        exercise.role === 'recall' ||
+        exercise.type === 'explain' ||
+        exercise.lesson_only
+      ) {
+        return [];
+      }
       if (!isTemplate(exercise)) {
         const wasInPreviousAttempt = previousAttempt.has(`${exerciseId}:fixed`);
         const served = runServed.has(exerciseId);

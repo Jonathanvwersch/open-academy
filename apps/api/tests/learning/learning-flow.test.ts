@@ -86,6 +86,60 @@ async function enrollDefaultCourse() {
   });
 }
 
+function contentWithRecallExercises() {
+  const lesson = content.lessonsByConcept.get('vectors');
+  const knowledgePoint = lesson?.knowledge_points?.[0]?.id;
+  if (!knowledgePoint) throw new Error('Missing vectors knowledge-point fixture');
+  const source = content.exercisesByConcept
+    .get('vectors')
+    ?.find((exercise) => exercise.type === 'mc' && !exercise.lesson_only && !isTemplate(exercise));
+  if (!source) throw new Error('Missing vectors MC recall fixture');
+  const recallExercises = [
+    {
+      ...source,
+      id: 'vectors-recall-conceptual-fixture',
+      dimension: 'conceptual' as const,
+      role: 'recall' as const,
+      knowledge_point: knowledgePoint,
+    },
+    {
+      ...source,
+      id: 'vectors-recall-math-fixture',
+      dimension: 'math' as const,
+      role: 'recall' as const,
+      knowledge_point: knowledgePoint,
+    },
+  ];
+  const exercisesByConcept = new Map(content.exercisesByConcept).set('vectors', [
+    ...(content.exercisesByConcept.get('vectors') ?? []),
+    ...recallExercises,
+  ]);
+  const exercisesById = new Map(content.exercisesById);
+  const exercisesByDimension = new Map(content.exercisesByDimension);
+  for (const exercise of recallExercises) {
+    exercisesById.set(exercise.id, exercise);
+    exercisesByDimension.set(exercise.dimension, [
+      ...(exercisesByDimension.get(exercise.dimension) ?? []),
+      exercise,
+    ]);
+  }
+  const exercisesByRole = new Map(content.exercisesByRole).set('recall', [
+    ...(content.exercisesByRole.get('recall') ?? []),
+    ...recallExercises,
+  ]);
+  return {
+    index: {
+      ...content,
+      exercises: [...content.exercises, ...recallExercises],
+      exercisesByConcept,
+      exercisesByDimension,
+      exercisesById,
+      exercisesByRole,
+    },
+    recallExercises,
+  };
+}
+
 async function createReviewActivity(conceptId: string | null, exerciseIds: string | string[]) {
   const [session] = await db
     .insert(studySessions)
@@ -850,6 +904,152 @@ test('a Good review activity credits hard prerequisites but not soft prerequisit
   expect(await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, softCard.id))).toHaveLength(
     0,
   );
+});
+
+test('a wrong recall plus two correct problems rates its due card Hard without logging a non-due card', async () => {
+  await resetLearner();
+  const { index, recallExercises } = contentWithRecallExercises();
+  const recallApp = createApp({ db, content: index, tutorProvider: new FakeProvider() });
+  const recall = recallExercises.find((exercise) => exercise.dimension === 'math');
+  if (recall?.type !== 'mc') throw new Error('Expected a math MC recall exercise');
+  const problems = vectorMathExerciseIds()
+    .slice(0, 2)
+    .map((exerciseId) => content.exercisesById.get(exerciseId))
+    .filter((exercise) => exercise !== undefined);
+  expect(problems).toHaveLength(2);
+
+  const dueAt = new Date('2025-12-31T12:00:00.000Z');
+  const dueCard = await createReviewCard('vectors', 'math', dueAt, {
+    ...newReviewCard(new Date(now)),
+    due: dueAt,
+  });
+  const futureAt = new Date('2026-02-01T12:00:00.000Z');
+  const nonDueCard = await createReviewCard('vectors', 'conceptual', futureAt, {
+    ...newReviewCard(new Date(now)),
+    due: futureAt,
+  });
+  const activity = await createReviewActivity('vectors', [
+    recall.id,
+    ...problems.map((exercise) => exercise.id),
+  ]);
+  const incorrectOptions = recall.options
+    .filter((option) => !option.correct)
+    .map((option) => option.id);
+  const incorrectAnswer = recall.multi ? incorrectOptions : incorrectOptions[0];
+  if (
+    incorrectAnswer === undefined ||
+    (Array.isArray(incorrectAnswer) && !incorrectAnswer.length)
+  ) {
+    throw new Error('Missing incorrect recall answer');
+  }
+  const wrongResponse = await recallApp.request('/api/attempts', {
+    method: 'POST',
+    headers: headersAt(now),
+    body: JSON.stringify({
+      exerciseId: recall.id,
+      activityId: activity.id,
+      answer: incorrectAnswer,
+      mode: 'review',
+    }),
+  });
+  expect(wrongResponse.status).toBe(200);
+  expect(await wrongResponse.json()).toMatchObject({ correct: 0, activityCompleted: false });
+  expect(await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, dueCard.id))).toHaveLength(
+    0,
+  );
+
+  let completion: { activityCompleted?: boolean } | undefined;
+  for (const exercise of problems) {
+    const response = await recallApp.request('/api/attempts', {
+      method: 'POST',
+      headers: headersAt(now),
+      body: JSON.stringify({
+        exerciseId: exercise.id,
+        activityId: activity.id,
+        answer: correctAnswer(exercise.id, null),
+        mode: 'review',
+      }),
+    });
+    expect(response.status).toBe(200);
+    completion = await response.json();
+  }
+  expect(completion?.activityCompleted).toBe(true);
+
+  const [dueLog] = await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, dueCard.id));
+  expect(dueLog?.rating).toBe(String(Rating.Hard));
+  expect(
+    await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, nonDueCard.id)),
+  ).toHaveLength(0);
+
+  const state = await new LearnerRepository(db, userId).schedulerState(new Date(now), index);
+  expect(state.recallAttempts).toContainEqual(
+    expect.objectContaining({ exerciseId: recall.id, correct: 0 }),
+  );
+});
+
+test('a wrong recall and a wrong problem rate its due card Again without logging a non-due card', async () => {
+  await resetLearner();
+  const { index, recallExercises } = contentWithRecallExercises();
+  const recallApp = createApp({ db, content: index, tutorProvider: new FakeProvider() });
+  const recall = recallExercises.find((exercise) => exercise.dimension === 'math');
+  if (recall?.type !== 'mc') throw new Error('Expected a math MC recall exercise');
+  const problemId = vectorMathExerciseIds()[0];
+  const problem = problemId ? content.exercisesById.get(problemId) : undefined;
+  if (problem?.type !== 'numeric') throw new Error('Expected a math numeric problem');
+
+  const dueAt = new Date('2025-12-31T12:00:00.000Z');
+  const dueCard = await createReviewCard('vectors', 'math', dueAt, {
+    ...newReviewCard(new Date(now)),
+    due: dueAt,
+  });
+  const futureAt = new Date('2026-02-01T12:00:00.000Z');
+  const nonDueCard = await createReviewCard('vectors', 'conceptual', futureAt, {
+    ...newReviewCard(new Date(now)),
+    due: futureAt,
+  });
+  const activity = await createReviewActivity('vectors', [recall.id, problem.id]);
+  const incorrectOptions = recall.options
+    .filter((option) => !option.correct)
+    .map((option) => option.id);
+  const incorrectAnswer = recall.multi ? incorrectOptions : incorrectOptions[0];
+  if (
+    incorrectAnswer === undefined ||
+    (Array.isArray(incorrectAnswer) && !incorrectAnswer.length)
+  ) {
+    throw new Error('Missing incorrect recall answer');
+  }
+
+  const wrongRecallResponse = await recallApp.request('/api/attempts', {
+    method: 'POST',
+    headers: headersAt(now),
+    body: JSON.stringify({
+      exerciseId: recall.id,
+      activityId: activity.id,
+      answer: incorrectAnswer,
+      mode: 'review',
+    }),
+  });
+  expect(wrongRecallResponse.status).toBe(200);
+  expect(await wrongRecallResponse.json()).toMatchObject({ correct: 0, activityCompleted: false });
+
+  const wrongProblemResponse = await recallApp.request('/api/attempts', {
+    method: 'POST',
+    headers: headersAt(now),
+    body: JSON.stringify({
+      exerciseId: problem.id,
+      activityId: activity.id,
+      answer: 'not-a-number',
+      mode: 'review',
+    }),
+  });
+  expect(wrongProblemResponse.status).toBe(200);
+  expect(await wrongProblemResponse.json()).toMatchObject({ correct: 0, activityCompleted: true });
+
+  const [dueLog] = await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, dueCard.id));
+  expect(dueLog?.rating).toBe(String(Rating.Again));
+  expect(
+    await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, nonDueCard.id)),
+  ).toHaveLength(0);
 });
 
 test('a Hard review activity does not credit hard prerequisites', async () => {

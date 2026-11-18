@@ -13,6 +13,7 @@ type CommonWrongExpression = NonNullable<ExpressionExercise['common_wrong']>[num
 const expressionFunctions = [
   'exp',
   'log',
+  'log2',
   'ln',
   'sqrt',
   'sin',
