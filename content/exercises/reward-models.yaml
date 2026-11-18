@@ -672,10 +672,10 @@ exercises:
     knowledge_point: "rm-comparisons"
     difficulty: 2
     est_minutes: 0.5
-    prompt: "A person ranks k responses to one prompt with no ties. Write the number of distinct response pairs, counting each pair once."
+    prompt: "A person ranks $k$ responses to one prompt with no ties. Write how many preference pairs this ranking gives."
     answer: "k*(k-1)/2"
     variables: { "k": [3, 9] }
-    solution: "There are k(k-1) ordered choices; divide by two to count each pair once."
+    solution: "There are $k(k-1)$ ordered choices. Divide by two to count each pair once."
   - id: "rmp-recall-probability-say"
     dimension: "conceptual"
     type: "explain"
@@ -704,18 +704,18 @@ exercises:
     prompt: "Which change leaves the predicted preference between A and B unchanged?"
     options:
       - id: "a"
-        text: "Increase only A's reward."
+        text: "Add a positive number to A's reward only."
         correct: false
         feedback: "Raising A alone increases the probability of preferring A."
       - id: "b"
-        text: "Increase only B's reward."
+        text: "Add a positive number to B's reward only."
         correct: false
         feedback: "Raising B alone decreases the probability of preferring A."
       - id: "c"
-        text: "Add the same constant to both rewards."
+        text: "Add the same positive number to both rewards."
         correct: true
-        feedback: "The difference stays fixed."
-    solution: "The difference stays fixed."
+        feedback: "The common increase leaves the difference and the resulting probability unchanged."
+    solution: "The two increases cancel in $r_A-r_B$, so the sigmoid sees the same input."
   - id: "rmp-recall-probability-formula"
     dimension: "math"
     type: "expression"
@@ -723,10 +723,10 @@ exercises:
     knowledge_point: "rm-bradley-terry"
     difficulty: 2
     est_minutes: 0.5
-    prompt: "A and B answer the same prompt with rewards rA and rB. Write the Bradley–Terry probability that A is preferred. Use exp(...)."
+    prompt: "A and B answer the same prompt with rewards $r_A$ and $r_B$. Write the Bradley–Terry probability that A is preferred. Type `rA`, `rB` and `exp(...)`."
     answer: "1/(1+exp(-(rA-rB)))"
     variables: { "rA": [-3, 3], "rB": [-3, 3] }
-    solution: "Apply the sigmoid to rA-rB."
+    solution: "Apply the sigmoid to the difference $r_A-r_B$."
   - id: "rmp-recall-loss-say"
     dimension: "conceptual"
     type: "explain"
@@ -752,20 +752,20 @@ exercises:
     knowledge_point: "rm-preference-loss"
     difficulty: 1
     est_minutes: 0.5
-    prompt: "Which quantity is minimized when training a reward model on one chosen–rejected pair?"
+    prompt: "A person picks one of two answers to the same prompt. Which quantity is the training loss for that pair?"
     options:
       - id: "a"
-        text: "The sum of both responses' reward scores."
+        text: "Minus the log probability of the rejected response winning."
         correct: false
-        feedback: "The preference model uses a reward difference; a shared reward shift has no effect."
+        feedback: "That loss would reward predicting the opposite of what the person chose."
       - id: "b"
         text: "Minus the log probability of the chosen response winning."
         correct: true
         feedback: "The negative log loss falls as the chosen response becomes more likely to win."
       - id: "c"
-        text: "The probability of the chosen response winning."
+        text: "Minus the log of the chosen response's raw reward."
         correct: false
-        feedback: "Training encourages this probability to rise."
+        feedback: "A raw reward is a score. The loss uses the probability from comparing both rewards."
     solution: "The negative log loss falls as the chosen response becomes more likely to win."
   - id: "rmp-recall-loss-formula"
     dimension: "math"
@@ -774,7 +774,7 @@ exercises:
     knowledge_point: "rm-preference-loss"
     difficulty: 2
     est_minutes: 0.5
-    prompt: "The chosen response has reward rw and the rejected response has reward rl. Write the Bradley–Terry loss for this pair. Use log(...) for the natural logarithm and exp(...)."
+    prompt: "The chosen response has reward $r_w$ and the rejected response has reward $r_l$. Write the Bradley–Terry loss for this pair. Type `rw`, `rl`, `exp(...)` and `log(...)` for the natural logarithm."
     answer: "-log(1/(1+exp(-(rw-rl))))"
     variables: { "rw": [-3, 3], "rl": [-3, 3] }
-    solution: "Take minus the natural logarithm of the sigmoid of rw-rl."
+    solution: "Apply the sigmoid to $r_w-r_l$, then take minus the natural logarithm of that probability."

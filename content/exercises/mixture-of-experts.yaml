@@ -396,21 +396,21 @@ exercises:
     knowledge_point: "moe-choose"
     difficulty: 1
     est_minutes: 0.5
-    prompt: "Which part of an MoE layer decides which MLPs process a token?"
+    prompt: "A router has picked its experts for one token. Which way of weighting their outputs preserves the relative probabilities and makes the weights add to one?"
     options:
       - id: "a"
-        text: "The router"
+        text: "Divide each selected probability by the sum for the selected experts."
         correct: true
-        feedback: "The router scores experts and selects the highest-scoring ones."
+        feedback: "Dividing by the selected total makes the weights add to one."
       - id: "b"
-        text: "An expert"
+        text: "Use each selected probability straight from the softmax."
         correct: false
-        feedback: "An expert processes the tokens assigned to it."
+        feedback: "Softmax probabilities add to one across all experts. The selected ones can add to less than one."
       - id: "c"
-        text: "The residual connection"
+        text: "Give every selected expert the same weight."
         correct: false
-        feedback: "A residual connection adds a sublayer's result to its input."
-    solution: "The router scores experts and selects the highest-scoring ones."
+        feedback: "Equal weights add to one if each is one divided by the number selected, but they lose the router's relative weights."
+    solution: "Divide the selected probabilities by their sum to keep their proportions and make the weights add to one."
   - id: "moe-recall-route-formula"
     dimension: "math"
     type: "expression"
@@ -418,10 +418,10 @@ exercises:
     knowledge_point: "moe-choose"
     difficulty: 1
     est_minutes: 0.5
-    prompt: "Top-2 routing selects experts 1 and 2 with router probabilities p1 and p2. Write the rescaled routing weight g1 for expert 1."
+    prompt: "Top-2 routing selects experts 1 and 2 with router probabilities $p_1$ and $p_2$. Write the rescaled routing weight $g_1$ for expert 1. Type `p1` and `p2`."
     answer: "p1/(p1+p2)"
     variables: { "p1": [0.05, 0.45], "p2": [0.05, 0.45] }
-    solution: "Divide p1 by the selected probabilities' sum, p1+p2, so the two routing weights add to one."
+    solution: "Divide $p_1$ by $p_1+p_2$ so the two routing weights add to one."
   - id: "moe-recall-count-say"
     dimension: "conceptual"
     type: "explain"
@@ -447,21 +447,21 @@ exercises:
     knowledge_point: "moe-count"
     difficulty: 1
     est_minutes: 0.5
-    prompt: "With expert size fixed, which change increases expert storage while leaving the selected expert count per token unchanged?"
+    prompt: "Which change increases the number of expert parameters stored while leaving the number of expert parameters used per token unchanged?"
     options:
       - id: "a"
-        text: "Increase k while keeping n fixed."
+        text: "Select more experts per token, keeping the expert pool fixed."
         correct: false
         feedback: "Larger k makes each token run more experts."
       - id: "b"
-        text: "Increase each expert's hidden width."
+        text: "Make each expert wider, keeping the selected count fixed."
         correct: false
         feedback: "Wider experts increase both stored and active expert parameters."
       - id: "c"
-        text: "Increase n while keeping k fixed."
+        text: "Add same-sized experts and keep the selected count fixed."
         correct: true
-        feedback: "More experts need storage while each token still selects k."
-    solution: "More experts need storage while each token still selects k."
+        feedback: "Each token still runs the same number of expert parameters. The larger router does add scoring work."
+    solution: "Adding same-sized experts increases storage. Each token still uses the same number of expert parameters when the selected count stays fixed."
   - id: "moe-recall-count-formula"
     dimension: "math"
     type: "expression"
@@ -469,10 +469,10 @@ exercises:
     knowledge_point: "moe-count"
     difficulty: 2
     est_minutes: 0.5
-    prompt: "A layer has n equal experts with C parameters each, input width d, a bias-free router and top-k routing. Write the active parameter count per token."
+    prompt: "A layer has $n$ experts with $C$ parameters each, input width $d$, a bias-free router and top-$k$ routing. Write the active parameter count per token."
     answer: "k*C+n*d"
     variables: { "n": [4, 16], "C": [20, 100], "d": [2, 8], "k": [1, 3] }
-    solution: "Count k experts and all nd router weights."
+    solution: "Count $kC$ parameters in the selected experts and $nd$ weights in the router."
   - id: "moe-recall-balance-say"
     dimension: "conceptual"
     type: "explain"
@@ -498,21 +498,21 @@ exercises:
     knowledge_point: "moe-balance"
     difficulty: 1
     est_minutes: 0.5
-    prompt: "What does the auxiliary penalty in MoE training address?"
+    prompt: "Which two batch measurements go into the load-balancing penalty for each expert?"
     options:
       - id: "a"
-        text: "The number of parameters stored in experts"
+        text: "Its parameter count and fraction of assigned tokens."
         correct: false
-        feedback: "Stored parameter counts depend on the layer's size; the penalty uses assignment fractions and router probabilities."
+        feedback: "The parameter count measures how many weights and biases an expert has. The penalty needs its average router probability."
       - id: "b"
-        text: "Uneven use of the available experts"
+        text: "Its fraction of assigned tokens and average router probability."
         correct: true
-        feedback: "The extra penalty encourages more even expert use."
+        feedback: "The loss uses the actual assignment fraction and the mean probability before selection."
       - id: "c"
-        text: "Errors in predicted next-token probabilities"
+        text: "Its average router probability and the next-token loss."
         correct: false
-        feedback: "Next-token cross-entropy measures prediction loss."
-    solution: "The extra penalty encourages more even expert use."
+        feedback: "Next-token loss measures prediction quality separately. The penalty needs the expert's assignment fraction."
+    solution: "Multiply each expert's fraction of assigned tokens by its mean router probability before selection."
   - id: "moe-recall-balance-formula"
     dimension: "math"
     type: "expression"
@@ -520,7 +520,7 @@ exercises:
     knowledge_point: "moe-balance"
     difficulty: 2
     est_minutes: 0.5
-    prompt: "For two top-1 experts, f is the fraction of tokens assigned to expert 1 and P is its average router probability before selection. Write the auxiliary load-balancing loss."
-    answer: "2*(f*P+(1-f)*(1-P))"
-    variables: { "f": [0.05, 0.95], "P": [0.05, 0.95] }
+    prompt: "A router selects one of two experts per token. Expert 1 gets fraction $f_1$ of the batch and its mean router probability before selection is $P_1$. Write the auxiliary load-balancing loss. Type `f1` and `P1`."
+    answer: "2*(f1*P1+(1-f1)*(1-P1))"
+    variables: { f1: [0.2, 0.8], P1: [0.41, 0.59] }
     solution: "For two experts, multiply the sum of the two fraction-probability products by 2."

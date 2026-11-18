@@ -970,21 +970,21 @@ exercises:
     knowledge_point: "pt-training-data"
     difficulty: 1
     est_minutes: 0.5
-    prompt: "Which preparation stage removes repeated copies of text?"
+    prompt: "A pretraining dataset keeps hundreds of copies of a well-written passage. What problem can this cause?"
     options:
       - id: "a"
-        text: "Deduplication"
+        text: "The model can learn to repeat the passage word for word."
         correct: true
-        feedback: "Deduplication removes repeated copies."
+        feedback: "Deduplication removes extra copies so the model sees the same passage fewer times."
       - id: "b"
-        text: "Filtering"
+        text: "The model can lose track of where each document ends."
         correct: false
-        feedback: "Filtering removes poor text such as spam and gibberish."
+        feedback: "End-of-text tokens still mark document boundaries, even for repeated text."
       - id: "c"
-        text: "Tokenization"
+        text: "The model can stop learning from windows that contain copies."
         correct: false
-        feedback: "Tokenization turns text into tokens."
-    solution: "Deduplication removes repeated copies."
+        feedback: "Windows with copies still give next-token targets. They repeat targets the model has already seen."
+    solution: "Repeated exposure can lead the model to memorise the passage and costs extra training time."
   - id: "pt-recall-data-formula"
     dimension: "math"
     type: "expression"
@@ -992,10 +992,10 @@ exercises:
     knowledge_point: "pt-training-data"
     difficulty: 2
     est_minutes: 0.5
-    prompt: "A pretraining window contains T tokens and is trained on its own. How many next-token predictions does it supply? Write an expression."
+    prompt: "A pretraining window contains $T$ tokens and is trained on its own. How many next-token predictions does it supply? Write an expression."
     answer: "T-1"
     variables: { "T": [4, 2048] }
-    solution: "The first token has no preceding token; each of the remaining T-1 tokens supplies a prediction."
+    solution: "The first token has no preceding token. Each of the other $T-1$ tokens is a prediction target."
   - id: "pt-recall-compute-say"
     dimension: "conceptual"
     type: "explain"
@@ -1003,7 +1003,7 @@ exercises:
     knowledge_point: "pt-training-compute"
     difficulty: 1
     est_minutes: 1
-    prompt: "What does training compute measure, and which two run sizes determine it in the approximation C ≈ 6PD?"
+    prompt: "What does training compute measure, and which two run sizes determine it in the approximation $C\\approx6PD$?"
     rubric:
       - id: "definition"
         criterion: "Explain that training compute is the total number of floating-point operations in a run."
@@ -1013,7 +1013,7 @@ exercises:
         criterion: "Explain that P counts model parameters and D counts training tokens."
         weight: 1
         required: true
-    exemplar: "Training compute counts the run's floating-point operations. P is the parameter count and D is the number of training tokens."
+    exemplar: "Training compute counts the run's floating-point operations. $P$ is the parameter count and $D$ is the number of training tokens."
   - id: "pt-recall-compute-contrast"
     dimension: "conceptual"
     type: "mc"
@@ -1021,21 +1021,21 @@ exercises:
     knowledge_point: "pt-training-compute"
     difficulty: 1
     est_minutes: 0.5
-    prompt: "Which quantity counts the additions and multiplications used by a training run?"
+    prompt: "A team doubles its model's parameter count. Which change keeps the estimated training compute about the same?"
     options:
       - id: "a"
-        text: "Model parameter count"
+        text: "Use twice as many training tokens."
         correct: false
-        feedback: "Parameter count measures the model's learned numbers."
+        feedback: "Doubling both counts would use about four times the compute."
       - id: "b"
-        text: "Training token count"
+        text: "Use the same number of training tokens."
         correct: false
-        feedback: "Token count measures how much tokenized text is used."
+        feedback: "At the same token count, the larger model needs about twice the compute."
       - id: "c"
-        text: "Training compute"
+        text: "Use half as many training tokens."
         correct: true
-        feedback: "Compute measures floating-point operations."
-    solution: "Compute measures floating-point operations."
+        feedback: "Doubling the parameter count and halving the token count preserves their product."
+    solution: "The estimate depends on the product of the two counts. Halving the token count offsets the larger model."
   - id: "pt-recall-compute-formula"
     dimension: "math"
     type: "expression"
@@ -1043,7 +1043,7 @@ exercises:
     knowledge_point: "pt-training-compute"
     difficulty: 2
     est_minutes: 0.5
-    prompt: "Write the approximate training compute in FLOPs for P parameters and D training tokens."
+    prompt: "Write the approximate training compute in FLOPs for $P$ parameters and $D$ training tokens."
     answer: "6*P*D"
     variables: { "P": [1000, 1000000], "D": [10000, 10000000] }
     solution: "Each parameter costs about six FLOPs per training token."
@@ -1072,21 +1072,21 @@ exercises:
     knowledge_point: "pt-scaling-laws"
     difficulty: 1
     est_minutes: 0.5
-    prompt: "Which claim is the kind of prediction a scaling law provides?"
+    prompt: "A lab has fitted a curve for loss as compute rises. What separate question does the rule of about 20 training tokens per parameter help answer?"
     options:
       - id: "a"
-        text: "The next token for a given prompt."
+        text: "How much loss falls after a tenfold rise in compute."
         correct: false
-        feedback: "Next-token probabilities come from running the language model."
+        feedback: "The loss-versus-compute curve predicts the drop. The token rule helps choose the model and data sizes."
       - id: "b"
-        text: "Expected loss at a larger compute budget."
+        text: "How to split a fixed compute budget between model size and data."
         correct: true
-        feedback: "Scaling laws predict loss from training resources."
+        feedback: "The ratio gives a way to choose the model size and token count at a fixed budget."
       - id: "c"
-        text: "The exact skills at a chosen loss."
+        text: "Which skills a model will gain at a given loss."
         correct: false
-        feedback: "The lesson says forecasting specific skills from loss is much harder."
-    solution: "Scaling laws predict loss from training resources."
+        feedback: "A model's loss makes specific skills hard to forecast. The token rule helps plan the run."
+    solution: "At a fixed budget, the token-to-parameter ratio helps choose model size and the amount of training data."
   - id: "pt-recall-scaling-formula"
     dimension: "math"
     type: "expression"
@@ -1094,10 +1094,10 @@ exercises:
     knowledge_point: "pt-scaling-laws"
     difficulty: 2
     est_minutes: 0.5
-    prompt: "A scaling pattern multiplies loss by 0.9 for each tenfold compute increase. Starting at loss L0, write the loss after k such increases."
+    prompt: "A compute scaling law gives $90\\%$ of the previous loss at each tenfold increase in compute. If the starting loss is $L_0$, write the loss after $k$ tenfold increases. Type `L0` for the starting loss."
     answer: "L0*0.9^k"
     variables: { "L0": [1, 8], "k": [1, 6] }
-    solution: "Multiply L0 by 0.9 once per tenfold increase."
+    solution: "$L=L_0\\times0.9^k$: multiply the starting loss by $0.9$ once per tenfold increase."
   - id: "pt-recall-pipeline-say"
     dimension: "conceptual"
     type: "explain"
@@ -1145,7 +1145,7 @@ exercises:
     knowledge_point: "pt-training-pipeline"
     difficulty: 2
     est_minutes: 0.5
-    prompt: "Two stages train the same model. Pretraining uses Dpre tokens and fine-tuning uses Dfine tokens. Using the compute approximation for each, write pretraining compute divided by fine-tuning compute."
+    prompt: "Pretraining and fine-tuning train the same model. They use $D_{\\text{pre}}$ and $D_{\\text{fine}}$ tokens, respectively. Write the ratio of estimated pretraining compute to estimated fine-tuning compute. Type `Dpre` and `Dfine`."
     answer: "Dpre/Dfine"
     variables: { "Dpre": [100000, 1000000], "Dfine": [1000, 10000] }
-    solution: "The common factor 6P cancels, leaving the token-count ratio."
+    solution: "Each stage uses about $6P$ FLOPs per token. The common factor cancels when you divide the two estimates."

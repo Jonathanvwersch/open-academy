@@ -506,18 +506,18 @@ exercises:
     prompt: "Which practice preserves an independent final check after choosing model changes?"
     options:
       - id: "a"
-        text: "Save a second test group until model selection is finished."
+        text: "Choose changes on one group and report on a reserved group."
         correct: true
-        feedback: "A saved second group avoids adapting model choices to the final test."
+        feedback: "A reserved group gives a separate check of the model once choices are fixed."
       - id: "b"
-        text: "Choose changes using the same group used for the final report."
+        text: "Choose changes on both groups and report on the harder group."
         correct: false
-        feedback: "Choices can adapt the model to that group."
+        feedback: "The model choices can adapt to either group if both inform those choices."
       - id: "c"
-        text: "Train on close copies of the final evaluation questions."
+        text: "Train on one group and report on reworded copies of it."
         correct: false
         feedback: "Close copies in training contaminate the evaluation."
-    solution: "A saved second group avoids adapting model choices to the final test."
+    solution: "Reserve one group for the final report. Predictions on that group do not inform model changes."
   - id: "lev-recall-clean-formula"
     dimension: "math"
     type: "expression"
@@ -525,7 +525,7 @@ exercises:
     knowledge_point: "lev-clean-benchmarks"
     difficulty: 2
     est_minutes: 0.5
-    prompt: "A benchmark scores Q questions right or wrong and the model answers C correctly. Write its accuracy as a fraction."
+    prompt: "A benchmark scores $Q$ questions right or wrong and the model answers $C$ correctly. Write its accuracy as a fraction."
     answer: "C/Q"
     variables: { "C": [1, 10], "Q": [12, 50] }
     solution: "Accuracy is correct answers divided by all questions scored."
@@ -557,15 +557,15 @@ exercises:
     prompt: "What does a tie-adjusted win rate describe?"
     options:
       - id: "a"
-        text: "The fraction of answers that are factually correct."
+        text: "How often a model gives an answer that is judged correct."
         correct: false
         feedback: "Accuracy counts correct answers; pairwise judging can favour one of two wrong answers."
       - id: "b"
-        text: "The probability assigned to the next token."
+        text: "How much probability a model gives to the actual next token."
         correct: false
         feedback: "Next-token probability is a model prediction."
       - id: "c"
-        text: "Comparison performance against a particular opponent."
+        text: "How often a model beats an opponent, with half credit for ties."
         correct: true
         feedback: "The rate depends on the opponent, prompts and judging rule."
     solution: "The rate depends on the opponent, prompts and judging rule."
@@ -576,9 +576,9 @@ exercises:
     knowledge_point: "lev-pairwise-scores"
     difficulty: 2
     est_minutes: 0.5
-    prompt: "A model wins W of P final prompt decisions and draws D. Write its tie-adjusted win rate as a fraction, keeping ties in the denominator."
-    answer: "(W+0.5*D)/P"
-    variables: { "W": [1, 10], "D": [1, 5], "P": [20, 40] }
+    prompt: "Model A wins $W_A$ times and draws $D$ times across $P$ prompts with final decisions. Write A's tie-adjusted win rate as a fraction. Type `WA` for $W_A$."
+    answer: "(WA+0.5*D)/P"
+    variables: { WA: [1, 10], D: [1, 5], P: [20, 40] }
     solution: "Give one point per win and half per draw, then divide by all decisions."
   - id: "lev-recall-judge-say"
     dimension: "conceptual"
@@ -597,7 +597,7 @@ exercises:
         criterion: "Explain that the same answers are compared in both display orders to check whether position changes the choice."
         weight: 1
         required: true
-    exemplar: "Position bias means displayed place influences the rating. Comparing the same answers in both orders checks whether the choice changes with position."
+    exemplar: "Position bias means the side an answer appears on can influence the rating. Showing the same answers in both orders checks whether the choice changes when they swap sides."
   - id: "lev-recall-judge-contrast"
     dimension: "conceptual"
     type: "mc"
@@ -608,17 +608,17 @@ exercises:
     prompt: "Both display orders favour the same model. What additional check can catch a preference for longer answers?"
     options:
       - id: "a"
-        text: "Show the first verdict in the second request."
+        text: "Check that both verdicts were mapped to the right model labels."
         correct: false
-        feedback: "An earlier verdict can influence the second judgment."
+        feedback: "Mapping checks which model each left or right vote belongs to. It does not test the judge’s reason for the vote."
       - id: "b"
         text: "Have a human review a sample of agreed pairs."
         correct: true
         feedback: "Length preferences can survive swapping, so human sample checks still matter."
       - id: "c"
-        text: "Treat all agreed pairs as proven correct."
+        text: "Run the same swapped-order comparisons again."
         correct: false
-        feedback: "Agreement across orders checks position effects and can leave other biases."
+        feedback: "Repeated swaps can still leave a preference for longer answers unchanged."
     solution: "Length preferences can survive swapping, so human sample checks still matter."
   - id: "lev-recall-judge-contrast2"
     dimension: "conceptual"
@@ -627,18 +627,18 @@ exercises:
     knowledge_point: "lev-judge-bias"
     difficulty: 1
     est_minutes: 0.5
-    prompt: "The two display orders select different models. Under the stated judging procedure, what happens next?"
+    prompt: "How can you keep a model’s reputation from influencing an LLM judge that compares two answers?"
     options:
       - id: "a"
-        text: "A human applies the rubric to reach one final decision."
+        text: "Show the answers without the models’ names."
         correct: true
-        feedback: "Disagreements go to the chosen human reviewer and remain unresolved until reviewed."
+        feedback: "Hiding the names keeps the judge from using them as a mark of quality."
       - id: "b"
-        text: "The first display order supplies the final decision."
+        text: "Show the answers in both orders."
         correct: false
-        feedback: "The procedure keeps both votes and sends disagreement to review."
+        feedback: "Swapping checks whether the displayed position changes the judge’s choice."
       - id: "c"
-        text: "The two votes automatically count as a final tie."
+        text: "Show the answers with the same scoring rubric."
         correct: false
-        feedback: "A disagreement is unresolved; a final tie needs a decision under the rubric."
-    solution: "Disagreements go to the chosen human reviewer and remain unresolved until reviewed."
+        feedback: "A fixed rubric keeps the criteria the same across pairs. Visible names could still influence the choice."
+    solution: "Hide the models’ names so the judge sees the answers without knowing which model produced each one."

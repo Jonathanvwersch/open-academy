@@ -354,7 +354,7 @@ exercises:
     knowledge_point: "sft-example-responses"
     difficulty: 1
     est_minutes: 1
-    prompt: "What does supervised fine-tuning start from, and what do its prompt–response demonstrations teach?"
+    prompt: "What does supervised fine-tuning start from, and what do its demonstrations teach the model to predict?"
     rubric:
       - id: "definition"
         criterion: "Explain that SFT starts from already learned model weights."
@@ -364,7 +364,7 @@ exercises:
         criterion: "Explain that training increases the probability of the demonstrated responses to their prompts."
         weight: 1
         required: true
-    exemplar: "SFT starts from already learned weights. It trains on prompt–response demonstrations to increase the probability of those example answers."
+    exemplar: "SFT starts from already learned weights. It uses example requests and answers to teach the model to predict those answers for those requests."
   - id: "sft-recall-examples-contrast"
     dimension: "conceptual"
     type: "mc"
@@ -372,18 +372,18 @@ exercises:
     knowledge_point: "sft-example-responses"
     difficulty: 1
     est_minutes: 0.5
-    prompt: "Which action actually trains an assistant on demonstrations?"
+    prompt: "A team prepares example conversations for supervised fine-tuning. Which action changes what the model has learned?"
     options:
       - id: "a"
-        text: "Update weights using demonstrated response targets."
+        text: "Update the weights using the example answers."
         correct: true
         feedback: "Training adjusts weights to increase the probability of the targets."
       - id: "b"
-        text: "Add role markers to the same text."
+        text: "Add role markers to the example conversations."
         correct: false
         feedback: "Role markers format the conversation."
       - id: "c"
-        text: "Save a copy of the current weights."
+        text: "Save the current weights to a checkpoint."
         correct: false
         feedback: "Saving weights creates a checkpoint."
     solution: "Training adjusts weights to increase the probability of the targets."
@@ -397,13 +397,13 @@ exercises:
     prompt: "What is the purpose of a chat template's role markers?"
     options:
       - id: "a"
-        text: "Choose which weights stay fixed in training."
+        text: "Mark tokens whose prediction losses training should count."
         correct: false
-        feedback: "Freezing determines which weights stay fixed."
+        feedback: "A loss mask selects which prediction losses count. A role marker identifies a message's speaker."
       - id: "b"
-        text: "Measure performance on unseen prompts."
+        text: "Mark predictions where the model made an error."
         correct: false
-        feedback: "Evaluation measures performance on unseen prompts."
+        feedback: "The loss measures how well the model predicts the target token. Role markers are part of the input."
       - id: "c"
         text: "Show who is speaking in the token sequence."
         correct: true
@@ -434,20 +434,20 @@ exercises:
     knowledge_point: "sft-response-loss"
     difficulty: 1
     est_minutes: 0.5
-    prompt: "Which prediction is included by response-only masking?"
+    prompt: "The model has just read the last prompt token and predicts the first answer token. How does response-only masking handle this prediction?"
     options:
       - id: "a"
-        text: "The first sequence token, which has no preceding position."
+        text: "It skips the loss because the input ends with a prompt token."
         correct: false
-        feedback: "The first token has no prediction loss in this setup."
+        feedback: "The mask is based on the target token. The first answer token is a response target."
       - id: "b"
-        text: "The prediction of the first response token."
+        text: "It counts the loss because the target is an answer token."
         correct: true
         feedback: "The predicted token belongs to the response, so this loss counts."
       - id: "c"
-        text: "The prediction of a prompt token from earlier prompt tokens."
+        text: "It skips the loss because the input contains no answer tokens yet."
         correct: false
-        feedback: "The predicted token belongs to the prompt, so its loss is excluded."
+        feedback: "The prompt alone gives the context for predicting the first answer token. That prediction loss counts."
     solution: "The predicted token belongs to the response, so this loss counts."
   - id: "sft-recall-mask-formula"
     dimension: "math"
@@ -456,7 +456,17 @@ exercises:
     knowledge_point: "sft-response-loss"
     difficulty: 1
     est_minutes: 0.5
-    prompt: "In response-only loss, $L=\\frac{\\sum m_{t+1}\\ell_{t+1}}{\\sum m_{t+1}}$. Fill in the mask value: $m_{t+1}=\\underline{\\quad}$ when the predicted token $x_{t+1}$ belongs to the prompt."
-    accept: ["0", "zero"]
-    regex: "^\\s*(?:0|zero)\\s*$"
-    solution: "The mask is zero for a prompt target, so its prediction loss is excluded from the mean."
+    prompt: "Supervised fine-tuning uses a mask of zeros and ones to compute a response-only mean. The numerator is the sum of the weighted prediction losses. What count goes in the denominator? Answer in words."
+    accept:
+      - response tokens
+      - answer tokens
+      - response targets
+      - answer targets
+      - response predictions
+      - answer predictions
+      - kept losses
+      - mask entries set to one
+      - sum of the mask values
+      - sum of the mask entries
+    regex: '^\s*(?:(?:the\s+)?(?:number|count)\s+of\s+)?(?:(?:assistant[ -]+)?(?:answer|response)[ -]+(?:token[ -]+)?(?:tokens?|targets?|predictions?)|(?:kept|selected|unmasked)[ -]+(?:prediction[ -]+)?(?:tokens?|targets?|losses|predictions?)|mask[ -]+(?:entries|values)(?:[ -]+(?:set[ -]+to|equal[ -]+to|of))?[ -]+(?:1|one)|ones[ -]+in[ -]+the[ -]+mask)\s*[.]?\s*$'
+    solution: "Divide by the number of response targets. Their mask entries are one, so adding the mask entries gives that count."
