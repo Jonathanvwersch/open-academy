@@ -715,21 +715,21 @@ exercises:
     knowledge_point: alm-teacher-forcing
     difficulty: 1
     est_minutes: 0.5
-    prompt: "Which procedure supplies the real earlier tokens at every training position?"
+    prompt: "During training, the output at position $t$ is scored against which token?"
     options:
       - id: a
-        text: "Greedy decoding"
+        text: "$x_t$"
         correct: false
-        feedback: "Greedy decoding selects the most probable token and uses that choice to continue generation."
+        feedback: "Position $t$ already has $x_t$ as input, so scoring against it would only teach copying."
       - id: b
-        text: "Teacher forcing"
+        text: "$x_{t+1}$"
         correct: true
-        feedback: "Teacher forcing feeds the true prefix even after a position the model would have predicted incorrectly."
+        feedback: "The targets are the sentence shifted left by one, so position $t$ predicts the token after it."
       - id: c
-        text: "Sampling"
+        text: "$x_{t-1}$"
         correct: false
-        feedback: "Sampling draws a token from predicted probabilities and appends that choice during generation."
-    solution: "Teacher forcing keeps every training prefix equal to the real text."
+        feedback: "Position $t$ can already see the earlier token $x_{t-1}$. Its target is the token after $x_t$."
+    solution: "Each position predicts the next token, so the output at position $t$ is scored against $x_{t+1}$."
   - id: alm-recall-teacher-formula
     dimension: math
     type: expression
@@ -738,7 +738,7 @@ exercises:
     difficulty: 2
     est_minutes: 0.5
     prompt: "A three-token training sentence supplies two next-token targets. Their true-token probabilities are $p$ and $q$. Write the sentence's mean cross-entropy loss. Type `ln(...)` for the natural logarithm."
-    answer: "-(ln(p)+ln(q))/2"
+    answer: "-(log(p)+log(q))/2"
     variables: { "p": [0.05, 0.95], "q": [0.05, 0.95] }
     solution: "Average the two losses: $L=(-\\ln p-\\ln q)/2$."
   - id: alm-recall-sampling-say

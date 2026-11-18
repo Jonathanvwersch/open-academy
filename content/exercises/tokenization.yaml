@@ -753,7 +753,7 @@ exercises:
       - id: b
         text: All character occurrences in the input text
         correct: false
-        feedback: Character occurrences give text length only when every character is a token.
+        feedback: Counting every character occurrence gives the text length $T$ of a character tokenizer. $N$ counts the different tokens in the vocabulary.
       - id: c
         text: All entries in the fixed token list
         correct: true
@@ -835,21 +835,21 @@ exercises:
     knowledge_point: tok-bpe-encode
     difficulty: 1
     est_minutes: 0.5
-    prompt: A trained BPE tokenizer receives a new paragraph. How does it choose which pairs to join?
+    prompt: A trained BPE tokenizer meets the word "cats" in one document and again in a second document. How does it split "cats" the second time?
     options:
       - id: a
-        text: It ranks pairs by their counts in this paragraph.
-        correct: false
-        feedback: Counting pairs to choose new merges belongs to training. The trained tokenizer keeps its learned list.
-      - id: b
-        text: It follows the merge list recorded during training.
+        text: Into the same tokens as the first time
         correct: true
-        feedback: Encoding replays the learned merges in their recorded order.
-      - id: c
-        text: It adds each unfamiliar word as a vocabulary entry.
+        feedback: Splitting replays the fixed merge list in order, so a word is always split the same way.
+      - id: b
+        text: By the pairs most common in the second document
         correct: false
-        feedback: Adding whole words would change the fixed vocabulary. Unfamiliar words use existing smaller pieces.
-    solution: Encoding starts from characters and replays the learned merge list in order.
+        feedback: Counting pairs to choose merges happens only once, during training. New text replays the learned merges.
+      - id: c
+        text: As one token, added to the vocabulary the first time
+        correct: false
+        feedback: The vocabulary stays fixed after training. A new word is built from pieces the tokenizer already has.
+    solution: Encoding starts from characters and replays the learned merges in order, so "cats" gets the same tokens every time.
   - id: tok-recall-encode-contrast2
     dimension: conceptual
     type: mc

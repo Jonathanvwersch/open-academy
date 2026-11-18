@@ -474,7 +474,7 @@ exercises:
       - id: b
         text: "The output sequence stays in its old order."
         correct: false
-        feedback: "This describes an unchanged output sequence. Equivariance moves corresponding outputs with their inputs."
+        feedback: "Each output moves with its token, so after a swap the outputs come out in the new order."
       - id: c
         text: "Each token gets its new slot's position vector."
         correct: false
@@ -550,8 +550,8 @@ exercises:
     difficulty: 1
     est_minutes: 0.5
     prompt: "With token embedding $e_t$ and position vector $p_t$, fill in the missing operation: $z_t=e_t\\;\\underline{\\quad}\\;p_t$."
-    accept: ["+", "plus", "add", "addition", "vector addition", "$+$"]
-    regex: "^\\s*(?:\\$?\\s*\\+\\s*\\$?|plus|add|addition|vector\\s+addition)\\s*$"
+    accept: ["+", "plus", "add", "addition", "vector addition", "sum", "$+$", "{+}"]
+    regex: "^\\s*(?:\\$?\\s*\\{?\\s*\\+\\s*\\}?\\s*\\$?|plus|add|addition|vector\\s+addition|sum)\\s*$"
     solution: "The combined input is $z_t=e_t+p_t$."
   - id: pe-recall-rotary-say
     dimension: conceptual
@@ -600,7 +600,7 @@ exercises:
     knowledge_point: pe-rotate-position
     difficulty: 1
     est_minutes: 0.5
-    prompt: "A rotary attention score is $s_{tj}=(\\tilde q_t\\cdot\\tilde k_j)/\\underline{\\quad}$. With query/key width $d_k$, fill in the divisor in symbols or words."
+    prompt: "Fill in the divisor of a rotary attention score: $s_{tj}=(\\tilde q_t\\cdot\\tilde k_j)/\\underline{\\quad}$. Give it in symbols or words."
     accept:
       [
         "sqrt(d_k)",

@@ -797,15 +797,15 @@ exercises:
     solution: "The residual connection adds the original input to the sublayer result."
   - id: tb-recall-residual-formula
     dimension: math
-    type: text
+    type: expression
     role: recall
     knowledge_point: tb-residual
-    difficulty: 1
+    difficulty: 2
     est_minutes: 0.5
-    prompt: "Fill in the missing term in a residual connection: $y=\\underline{\\quad}+f(x)$."
-    accept: ["x", "$x$", "input", "the input", "original input", "the original input"]
-    regex: "^\\s*(?:\\$?\\s*x\\s*\\$?|(?:the\\s+)?(?:original\\s+)?input)\\s*$"
-    solution: "The shortcut carries $x$, so $y=x+f(x)$."
+    prompt: "A layer computes $y=z+f(z)$ for one number $z$, and the sublayer $f$ has local slope $a$. Write the layer's local slope $dy/dz$."
+    answer: "1+a"
+    variables: { "a": [-0.5, 0.5] }
+    solution: "The shortcut adds slope $1$ and the sublayer adds slope $a$, so $dy/dz=1+a$."
   - id: tb-recall-sublayers-say
     dimension: conceptual
     type: explain
@@ -853,20 +853,10 @@ exercises:
     knowledge_point: tb-two-sublayers
     difficulty: 1
     est_minutes: 0.5
-    prompt: "Ignoring normalization, attention has already produced the residual result $u_t$. Fill in the missing sublayer: $y_t=u_t+\\underline{\\quad}(u_t)$."
-    accept:
-      [
-        "MLP",
-        "the MLP",
-        "multi-layer perceptron",
-        "multilayer perceptron",
-        "$MLP$",
-        "\\text{MLP}",
-        "\\mathrm{MLP}",
-        "\\operatorname{MLP}",
-      ]
-    regex: "^\\s*\\$?\\s*(?:mlp|\\\\(?:text|mathrm|operatorname)\\s*\\{\\s*mlp\\s*\\}|(?:the\\s+)?mlp|multi[- ]?layer\\s+perceptron)\\s*\\$?\\s*$"
-    solution: "The second sublayer gives $y_t=u_t+\\text{MLP}(u_t)$."
+    prompt: "In a block without normalization, $u_t$ is position $t$'s vector after attention and its shortcut. Fill in the MLP's input: $y_t=u_t+\\text{MLP}(\\underline{\\quad})$."
+    accept: ["u_t", "u_{t}", "ut", "uₜ", "$u_t$"]
+    regex: "^\\s*\\$?\\s*u\\s*(?:_\\s*\\{?\\s*t\\s*\\}?|t|ₜ)\\s*\\$?\\s*$"
+    solution: "The MLP reads only this token's vector, so $y_t=u_t+\\text{MLP}(u_t)$."
   - id: tb-recall-prenorm-say
     dimension: conceptual
     type: explain

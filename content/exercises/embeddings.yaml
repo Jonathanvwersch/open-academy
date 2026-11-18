@@ -696,7 +696,7 @@ exercises:
       - id: c
         text: $T\times N$
         correct: false
-        feedback: This shape gives each position one entry per vocabulary token. The embedding width is $d$.
+        feedback: This is the shape of the stacked one-hot matrix $U$, with one entry per vocabulary token. Each embedding has $d$ numbers.
     solution: Stacking one embedding per sentence position gives a $T\times d$ grid.
   - id: emb-recall-lookup-formula
     dimension: math
@@ -820,9 +820,9 @@ exercises:
         correct: true
         feedback: Cosine similarity divides the dot product by both lengths.
       - id: c
-        text: Their vector lengths
+        text: The dot product of their one-hot vectors
         correct: false
-        feedback: Vector lengths measure size. Vectors of equal length can point in different directions.
+        feedback: Two different one-hot vectors always have dot product 0, so this treats every pair of tokens as equally different.
     solution: Cosine similarity divides the dot product by both vector lengths, leaving a comparison of directions.
   - id: emb-recall-similar-formula
     dimension: math

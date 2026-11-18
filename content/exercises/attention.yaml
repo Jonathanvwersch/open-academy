@@ -532,21 +532,21 @@ exercises:
     knowledge_point: attn-score-matches
     difficulty: 1
     est_minutes: 0.5
-    prompt: "Which calculation has a divisor that always stays fixed when a query is doubled while its width stays the same?"
+    prompt: "Every component of a query is doubled, and the keys stay the same. Which quantity doubles too?"
     options:
       - id: a
-        text: "Scaled dot-product scoring"
+        text: "The scaled dot-product score"
         correct: true
-        feedback: "The divisor depends on key width, so doubling the query doubles the score."
+        feedback: "The divisor $\\sqrt{d_k}$ depends only on the key width, so doubling the query doubles the score."
       - id: b
-        text: "Cosine similarity"
+        text: "The cosine similarity"
         correct: false
-        feedback: "Cosine similarity divides by vector lengths. Doubling a vector also doubles its length."
+        feedback: "Cosine similarity divides by both lengths. Doubling the query doubles its length too, so the cosine stays the same."
       - id: c
-        text: "Softmax weighting"
+        text: "The attention weight"
         correct: false
-        feedback: "Softmax divides a score's exponential by the sum of all score exponentials. That total changes with the scores."
-    solution: "Scaled scores divide by the square root of key width, which stays fixed here."
+        feedback: "Softmax turns the scores into shares that add up to 1, so a weight can never double past 1. Doubling the scores changes the shares by a different amount."
+    solution: "The score is $q\\cdot k/\\sqrt{d_k}$. Doubling $q$ doubles the dot product, and the divisor depends only on width."
   - id: attn-recall-score-formula
     dimension: math
     type: expression
@@ -572,10 +572,10 @@ exercises:
         weight: 1
         required: true
       - id: r2
-        criterion: "Explain that softmax divides that source's score exponential by the total score exponentials across sources."
+        criterion: "Explain that softmax raises $e$ to each score and divides that source's result by the total for all sources."
         weight: 1
         required: true
-    exemplar: "An attention weight is one source's share for a particular query. Softmax exponentiates every score and divides each exponential by their total across sources."
+    exemplar: "An attention weight is one source's share for a particular query. Softmax raises $e$ to every score and divides each result by their total for all sources."
   - id: attn-recall-weights-contrast
     dimension: conceptual
     type: mc
@@ -596,7 +596,7 @@ exercises:
       - id: c
         text: "A value component"
         correct: false
-        feedback: "A value component carries information to mix. Values have no positive-share constraint."
+        feedback: "A value component carries information to mix, and it can be any number, including a negative one."
     solution: "Attention weights are the positive shares produced by softmax for one query."
   - id: attn-recall-weights-formula
     dimension: math
@@ -634,21 +634,21 @@ exercises:
     knowledge_point: attn-mix-values
     difficulty: 1
     est_minutes: 0.5
-    prompt: "Which vectors supply the information added together to form an attention output?"
+    prompt: "In attention, which two kinds of vector must have the same width as each other?"
     options:
       - id: a
-        text: "Source keys"
-        correct: false
-        feedback: "Keys supply the vectors compared with a query to score sources."
-      - id: b
-        text: "Token queries"
-        correct: false
-        feedback: "Queries describe the information sought and are compared with keys."
-      - id: c
-        text: "Source values"
+        text: "A query and a key"
         correct: true
-        feedback: "The output adds source values after multiplying each by its attention weight."
-    solution: "Keys and queries determine scores; values supply the information mixed into the output."
+        feedback: "A query is dotted with each key, and a dot product needs matching components."
+      - id: b
+        text: "A query and a value"
+        correct: false
+        feedback: "Values are only added to other values, so their width can differ from the query's."
+      - id: c
+        text: "A key and a value"
+        correct: false
+        feedback: "Keys are dotted with queries and values are added to values, so a value's width can differ from a key's."
+    solution: "A query is dotted with every key, so they need the same width. Values are added only to other values, so their width can differ."
   - id: attn-recall-mix-formula
     dimension: math
     type: expression
@@ -656,7 +656,7 @@ exercises:
     knowledge_point: attn-mix-values
     difficulty: 2
     est_minutes: 0.5
-    prompt: "Two sources have attention weights $w$ and $1-w$. Their value components in one column are $x$ and $y$. Write that column's output component."
+    prompt: "A query gives two sources attention weights $w$ and $1-w$. The first entries of their values are $x$ and $y$. Write the first entry of the output."
     answer: "w*x+(1-w)*y"
     variables: { "w": [0.05, 0.95], "x": [-5, 5], "y": [-5, 5] }
-    solution: "Weight each value component and add: $wx+(1-w)y$."
+    solution: "Multiply each value entry by its weight and add, giving $wx+(1-w)y$."

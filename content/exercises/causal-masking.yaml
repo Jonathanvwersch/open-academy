@@ -788,7 +788,7 @@ exercises:
       - id: c
         text: "Add minus infinity to blocked scores before softmax."
         correct: true
-        feedback: "Blocked exponentials vanish from both the numerator and denominator, leaving a normalized distribution over allowed sources."
+        feedback: "Each blocked term becomes $e^{-\\infty}=0$, so it drops out of the top and the bottom of softmax, and the allowed weights still add up to 1."
     solution: "Mask scores before softmax so blocked sources contribute zero to its total."
   - id: cm-recall-scores-formula
     dimension: math
@@ -861,5 +861,5 @@ exercises:
     est_minutes: 0.5
     prompt: "The score grid is $S$ and the additive causal mask is $M$. Fill in the grid sent to row-wise softmax: $A=\\operatorname{softmax}_{\\mathrm{rows}}(\\underline{\\quad})$."
     accept: ["S+M", "S + M", "M+S", "M + S", "$S+M$", "scores plus mask", "scores + mask"]
-    regex: "^\\s*\\$?\\s*(?:s\\s*\\+\\s*m|m\\s*\\+\\s*s)\\s*\\$?\\s*$"
+    regex: "^\\s*\\$?\\s*\\{?\\s*(?:s\\s*\\+\\s*m|m\\s*\\+\\s*s)\\s*\\}?\\s*\\$?\\s*$"
     solution: "Add the grids first: $A=\\operatorname{softmax}_{\\mathrm{rows}}(S+M)$."

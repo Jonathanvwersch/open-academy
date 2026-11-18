@@ -631,11 +631,11 @@ exercises:
       - id: b
         text: "Only its own $d_k$ embedding entries"
         correct: false
-        feedback: "The narrower width describes the query produced. Every column of its matrix uses all input entries."
+        feedback: "$d_k$ is the width of the query it makes. Each column of the $d\\times d_k$ query matrix uses all $d$ entries of the embedding."
       - id: c
         text: "All entries of a source key"
         correct: false
-        feedback: "Source keys enter the scoring comparison. The query matrix first transforms the token's embedding."
+        feedback: "Keys come from the key matrix and are compared with the query later. The query matrix reads only the token's own embedding."
     solution: "Each head transforms the whole width-$d$ embedding into a width-$d_k$ query."
   - id: mha-recall-heads-formula
     dimension: math
