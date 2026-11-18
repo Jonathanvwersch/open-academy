@@ -587,3 +587,192 @@ exercises:
         required: true
     exemplar: "Always choosing right in cells $1$ to $3$ is deterministic. Choosing right with probability $0.8$ and left with probability $0.2$ in each of those cells is stochastic. The starting return is $(-1)+0.9(-1)+0.81(10)=6.2$."
     solution: "Always choosing right in cells $1$ to $3$ is deterministic. Choosing right with probability $0.8$ and left with probability $0.2$ in each of those cells is stochastic. The starting return is $(-1)+0.9(-1)+0.81(10)=6.2$."
+  - id: pr-recall-choose-actions-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: pr-choose-actions
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what is a policy, and what does a stochastic policy $\\pi(a\\mid s)$ give?"
+    rubric:
+      - id: rule
+        criterion: Explain that a policy specifies how to choose an action in each state.
+        weight: 1
+        required: true
+      - id: stochastic
+        criterion: Explain that a stochastic policy gives each action a probability of being chosen in a state, and these probabilities add to 1.
+        weight: 1
+        required: true
+      - id: deterministic
+        criterion: Mention that a deterministic policy always chooses the same action in the same state, written $\pi(s)$.
+        weight: 1
+    exemplar: "A policy is a rule for choosing an action in each state. A stochastic policy $\\pi(a\\mid s)$ gives the probability of choosing action $a$ in state $s$, and in each state these probabilities add to 1."
+  - id: pr-recall-choose-actions-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: pr-choose-actions
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A corridor robot has the policy value $\\pi(\\text{right}\\mid2)=0.8$. What does the $0.8$ give?"
+    options:
+      - id: a
+        text: The probability of choosing right in cell 2
+        correct: true
+        feedback: A stochastic policy gives the chance of choosing each action in a state.
+      - id: b
+        text: The probability that a right move from cell 2 succeeds
+        correct: false
+        feedback: The chance that a move lands in a given cell is a transition probability $p(s'\mid s,a)$. The policy only gives the chance of choosing the action.
+      - id: c
+        text: The reward for moving right from cell 2
+        correct: false
+        feedback: The reward rule scores a step. A policy says nothing about the score.
+      - id: d
+        text: The fraction of trips from cell 2 that reach the goal
+        correct: false
+        feedback: Reaching the goal depends on many later choices. The policy value is about one choice in cell 2.
+    solution: "$\\pi(\\text{right}\\mid2)=0.8$ means the policy chooses right in cell 2 with probability $0.8$."
+  - id: pr-recall-choose-actions-formula
+    dimension: math
+    type: text
+    role: recall
+    knowledge_point: pr-choose-actions
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A stochastic policy is written with the symbol $\\pi$. Write the notation for the probability that it chooses action $a$ in state $s$. Type `pi` for $\\pi$."
+    accept: ["pi(a|s)", "π(a|s)", "π(a∣s)", "pi(a∣s)", "\\pi(a\\mid s)", "pi(a given s)"]
+    regex: '^\s*\\?(π|pi)\s*\(\s*a\s*(\||∣|\\mid|given)\s*s\s*\)\s*$'
+    solution: "$\\pi(a\\mid s)$ is the probability of choosing action $a$ in state $s$. The action comes first and the state after the bar."
+  - id: pr-recall-add-rewards-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: pr-add-rewards
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what is the discounted return $G_t$, and which rewards does it include?"
+    rubric:
+      - id: weighted
+        criterion: Explain that the return adds the rewards still to come, with weight 1 for the next reward and one more factor of $\gamma$ for each later reward.
+        weight: 1
+        required: true
+      - id: start
+        criterion: Explain that $G_t$ starts with $r_{t+1}$, so rewards up to $r_t$ have already arrived and are left out.
+        weight: 1
+        required: true
+      - id: end
+        criterion: Mention that at the episode's end time $T$ no rewards remain, so $G_T=0$.
+        weight: 1
+    exemplar: "The discounted return $G_t$ adds the rewards still to come, giving the next reward weight 1 and each later reward one more factor of $\\gamma$. It starts at $r_{t+1}$, so rewards that have already arrived are left out."
+  - id: pr-recall-add-rewards-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: pr-add-rewards
+    difficulty: 2
+    est_minutes: 0.5
+    prompt: "Which reward is the first term of the return $G_t$, and what weight does it get?"
+    options:
+      - id: a
+        text: "$r_{t+1}$, with weight 1"
+        correct: true
+        feedback: The return starts with the reward from the action at time $t$, which counts in full.
+      - id: b
+        text: "$r_t$, with weight 1"
+        correct: false
+        feedback: Reward $r_t$ has already arrived by time $t$, so the return leaves it out.
+      - id: c
+        text: "$r_{t+1}$, with weight $\\gamma$"
+        correct: false
+        feedback: The next reward is never discounted. The weight $\gamma$ goes on the reward after it.
+      - id: d
+        text: "$r_1$, with weight $\\gamma^t$"
+        correct: false
+        feedback: That counts from the start of the episode. $G_t$ scores only the rewards still to come after time $t$.
+    solution: "$G_t=r_{t+1}+\\gamma r_{t+2}+\\gamma^2r_{t+3}+\\dots$, so the first term is $r_{t+1}$ with weight 1."
+  - id: pr-recall-add-rewards-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: pr-add-rewards
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "An episode has three rewards still to come: $x$, then $y$, then $z$. Write the discounted return with discount factor $\\gamma$. Type `gamma` for $\\gamma$."
+    answer: "x + gamma*y + gamma^2*z"
+    variables: { x: [-5, 5], y: [-5, 5], z: [-10, 10], gamma: [0.1, 0.95] }
+    solution: "The weights are $1,\\gamma,\\gamma^2$, so the return is $x+\\gamma y+\\gamma^2z$."
+  - id: pr-recall-weight-delay-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: pr-weight-delay
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what does raising the discount factor $\\gamma$ do to distant rewards, and why can it lower a return?"
+    rubric:
+      - id: weight
+        criterion: Explain that a larger $\gamma$ gives distant rewards more weight.
+        weight: 1
+        required: true
+      - id: penalty
+        criterion: Explain that delayed penalties also get more weight, so raising $\gamma$ can lower the return when later rewards are negative.
+        weight: 1
+        required: true
+      - id: ends
+        criterion: Mention that $\gamma=0$ counts only the next reward and $\gamma=1$ counts every remaining reward fully.
+        weight: 1
+    exemplar: "Raising $\\gamma$ gives distant rewards more weight. That includes delayed penalties, so when a later reward is negative, a larger $\\gamma$ makes it hurt more and the return goes down."
+  - id: pr-recall-weight-delay-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: pr-weight-delay
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "With discount factor $\\gamma=1$, what is the return of a finite episode?"
+    options:
+      - id: a
+        text: The ordinary sum of the remaining rewards
+        correct: true
+        feedback: With $\gamma=1$ every weight is 1, so each remaining reward counts fully.
+      - id: b
+        text: The next reward alone
+        correct: false
+        feedback: Only the next reward counts when $\gamma=0$, because every later weight is then 0.
+      - id: c
+        text: The remaining rewards, each counting less than the one before
+        correct: false
+        feedback: Shrinking weights come from $0<\gamma<1$. At $\gamma=1$ the weights stay at 1.
+      - id: d
+        text: The average of the remaining rewards
+        correct: false
+        feedback: The return adds the weighted rewards. It never divides by how many there are.
+    solution: "With $\\gamma=1$ the weights are $1,1,1,\\dots$, so a finite episode's return is the plain sum of its remaining rewards."
+  - id: pr-recall-weight-delay-contrast2
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: pr-weight-delay
+    difficulty: 2
+    est_minutes: 0.5
+    prompt: "A robot follows a policy that picks left or right with probability $0.5$ each. One trip from the start has return $6.2$. What else is needed to judge the policy from the start?"
+    options:
+      - id: a
+        text: The other trips the policy can produce and how often each occurs
+        correct: true
+        feedback: A random policy can produce many trips, so judging it needs every possible return and its chance.
+      - id: b
+        text: Nothing, because $6.2$ is the policy's score from the start
+        correct: false
+        feedback: One trip's return scores that trip only. Another trip under the same policy can return $4.58$.
+      - id: c
+        text: The return of the same trip with $\gamma=1$
+        correct: false
+        feedback: Changing $\gamma$ rescores the same trip. It says nothing about the trips the policy didn't take.
+      - id: d
+        text: The reward of the trip's first step
+        correct: false
+        feedback: The first reward is already part of the $6.2$. It says nothing about other trips.
+    solution: One return scores one episode. Judging a random policy needs the possible episodes and how often each happens.

@@ -872,3 +872,243 @@ exercises:
         weight: 1
         required: true
     exemplar: "For positive advantage, the objective increases with the ratio up to $1+c$, then goes flat. For negative advantage, it increases as the ratio falls to $1-c$, then goes flat. Taking the minimum keeps the plain term when it is lower, so a change in the wrong direction can still be corrected."
+  - id: ppo-recall-advantage-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: ppo-advantage
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, what does an action's advantage measure, and how does PPO estimate it after one step with a critic?
+    rubric:
+      - id: meaning
+        criterion: "Explain that the advantage says how much more return we expect from taking the action than from acting as usual, $A(s,a)=Q(s,a)-V(s)$."
+        weight: 1
+        required: true
+      - id: estimate
+        criterion: "Explain that the one-step estimate is the reward plus the discounted critic value of where the move landed, minus the critic value of where it started, $\\hat A_t=r_{t+1}+\\gamma V(s_{t+1})-V(s_t)$."
+        weight: 1
+        required: true
+      - id: sign
+        criterion: Mention that an action can have a positive advantage with a negative reward, because it leads somewhere better.
+        weight: 1
+    exemplar: "The advantage is how much better an action does than acting as usual, $Q(s,a)-V(s)$. After one step PPO estimates it with the critic as $r_{t+1}+\\gamma V(s_{t+1})-V(s_t)$."
+  - id: ppo-recall-advantage-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: ppo-advantage
+    difficulty: 2
+    est_minutes: 0.5
+    prompt: "A corridor robot moves right from cell 2, earns $-1$, and gets the advantage estimate $\\hat A=0.1$. What does the positive advantage say?"
+    options:
+      - id: a
+        text: The move did a little better than the critic expected from cell 2
+        correct: true
+        feedback: The advantage compares the reward plus the next state's value with the critic's estimate for cell 2.
+      - id: b
+        text: The move earned a positive reward
+        correct: false
+        feedback: The move earned $-1$. A move can have a positive advantage with a negative reward when it leads somewhere better.
+      - id: c
+        text: The move became more likely under the new policy
+        correct: false
+        feedback: How much more likely an action became is the probability ratio. The advantage scores how well the move did.
+      - id: d
+        text: The episode's return from cell 2 was positive
+        correct: false
+        feedback: The return $G_t$ adds real rewards. The one-step advantage uses one reward and the critic's estimates.
+    solution: "$\\hat A=-1+0.9\\times9-7=0.1$ is above zero, so moving right did slightly better than usual from cell 2."
+  - id: ppo-recall-advantage-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: ppo-advantage
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A move earns reward $r$. The critic's estimate is $u$ for the state the move started in and $w$ for the state it landed in. With discount factor $\\gamma$, write the one-step advantage estimate. Type `gamma` for $\\gamma$."
+    answer: "r + gamma*w - u"
+    variables: { r: [-5, 10], gamma: [0.1, 0.99], u: [-10, 10], w: [-10, 10] }
+    common_wrong:
+      - answer: "r + gamma*u - w"
+        category: misunderstood_definition
+        feedback: The discounted value belongs to the state the move landed in, and the starting state's value is subtracted.
+    solution: "$\\hat A_t=r_{t+1}+\\gamma V(s_{t+1})-V(s_t)=r+\\gamma w-u$."
+  - id: ppo-recall-gae-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: ppo-gae
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what does generalized advantage estimation (GAE) add up, and what do $\\lambda=0$ and $\\lambda=1$ give?"
+    rubric:
+      - id: sum
+        criterion: "Explain that GAE adds up the one-step errors from step $t$ on, shrinking each later one by an extra factor $\\gamma\\lambda$."
+        weight: 1
+        required: true
+      - id: ends
+        criterion: "State that $\\lambda=0$ leaves only the one-step estimate $\\delta_t$, and $\\lambda=1$ gives $G_t-V(s_t)$."
+        weight: 1
+        required: true
+      - id: trade
+        criterion: Mention that values of $\lambda$ in between give a little bias and a little variance.
+        weight: 1
+    exemplar: "GAE adds the one-step errors $\\delta_t,\\delta_{t+1},\\dots$, each later one shrunk by another factor of $\\gamma\\lambda$. With $\\lambda=0$ it is just $\\delta_t$, and with $\\lambda=1$ it becomes $G_t-V(s_t)$."
+  - id: ppo-recall-gae-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: ppo-gae
+    difficulty: 2
+    est_minutes: 0.5
+    prompt: Which advantage estimate has no bias but jumps around the most from episode to episode?
+    options:
+      - id: a
+        text: "$G_t-V(s_t)$, which is GAE with $\\lambda=1$"
+        correct: true
+        feedback: It uses the real return, so it has no bias, but every later move adds noise.
+      - id: b
+        text: "The one-step estimate $\\delta_t$, which is GAE with $\\lambda=0$"
+        correct: false
+        feedback: The one-step estimate trusts the critic for everything after the first step, so it has bias but little variance.
+      - id: c
+        text: "GAE with $\\lambda=0.5$"
+        correct: false
+        feedback: A middle value of $\lambda$ gives a little bias and a little variance.
+      - id: d
+        text: "The reward $r_{t+1}$ alone"
+        correct: false
+        feedback: One reward ignores everything the move leads to, so it is not an advantage estimate.
+    solution: "$G_t-V(s_t)$ has no bias, because the real return is what the critic predicts, but it has the most variance."
+  - id: ppo-recall-gae-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: ppo-gae
+    difficulty: 2
+    est_minutes: 0.5
+    prompt: "GAE is computed backwards through an episode. At time $t$ the one-step error is $d$, and the GAE estimate at time $t+1$ is $n$. Write the GAE estimate at time $t$. Type `gamma` for $\\gamma$ and `lam` for $\\lambda$."
+    answer: "d + gamma*lam*n"
+    variables: { d: [-5, 5], n: [-5, 5], gamma: [0.1, 0.99], lam: [0.05, 1] }
+    solution: "$\\hat A_t=\\delta_t+\\gamma\\lambda\\hat A_{t+1}=d+\\gamma\\lambda n$."
+  - id: ppo-recall-ratio-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: ppo-ratio
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what is the probability ratio $\\rho_t(\\theta)$, and why can climbing the surrogate objective $\\rho_t\\hat A_t$ many times wreck the policy?"
+    rubric:
+      - id: ratio
+        criterion: Explain that the ratio is the recorded action's probability under the new policy divided by its probability under the old policy that collected the batch.
+        weight: 1
+        required: true
+      - id: unlimited
+        criterion: Explain that for a positive advantage the term keeps growing as the ratio grows, so every pass pushes further and the policy can end up far from the old one, where the batch no longer shows how it behaves.
+        weight: 1
+        required: true
+      - id: one
+        criterion: Mention that a ratio of 1 means no change, above 1 more likely and below 1 less likely.
+        weight: 1
+    exemplar: "$\\rho_t(\\theta)$ is the action's new probability divided by its probability under the old policy. Nothing caps $\\rho_t\\hat A_t$, so repeated passes keep pushing the policy away from the one that collected the batch, until the batch no longer describes it."
+  - id: ppo-recall-ratio-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: ppo-ratio
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "After a few gradient steps, a recorded action has probability ratio $\\rho_t=0.8$. What does that mean?"
+    options:
+      - id: a
+        text: The action is now less likely than under the old policy, at 0.8 times its old probability
+        correct: true
+        feedback: The ratio is the new probability divided by the old one, so below 1 means less likely.
+      - id: b
+        text: The action now has probability 0.8
+        correct: false
+        feedback: The ratio compares two probabilities. A ratio of 0.8 could be 0.4 against an old 0.5.
+      - id: c
+        text: The action is now more likely than under the old policy
+        correct: false
+        feedback: More likely would give a ratio above 1.
+      - id: d
+        text: The action's advantage is 0.8 times what the critic expected
+        correct: false
+        feedback: The advantage is scored by the critic. The ratio only compares new and old probabilities.
+    solution: "$\\rho_t=\\pi_\\theta/\\pi_{\\theta_\\text{old}}=0.8$, so the action is now 0.8 times as likely as before."
+  - id: ppo-recall-ratio-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: ppo-ratio
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "The policy that collected a batch chose a recorded action with probability $o$. The current policy gives it probability $n$. Write the probability ratio."
+    answer: "n/o"
+    variables: { n: [0.05, 0.95], o: [0.05, 0.95] }
+    common_wrong:
+      - answer: "o/n"
+        category: misunderstood_definition
+        feedback: The ratio puts the new probability on top and the old one below.
+    solution: "$\\rho_t=\\pi_\\theta(a_t\\mid s_t)/\\pi_{\\theta_\\text{old}}(a_t\\mid s_t)=n/o$."
+  - id: ppo-recall-clip-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: ppo-clip
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, what does PPO's clipped objective do to each sample, and why does that make several passes over one batch safe?
+    rubric:
+      - id: min
+        criterion: "Explain that for each sample it takes the smaller of the plain term $\\rho_t\\hat A_t$ and the clipped term $\\text{clip}(\\rho_t,1-c,1+c)\\,\\hat A_t$, so the objective goes flat once the ratio moves past $1\\pm c$ in the direction the advantage wants."
+        weight: 1
+        required: true
+      - id: safe
+        criterion: Explain that pushing an action's probability further then earns nothing, so noisy estimates can't drag the policy far in one batch, which makes several passes safe.
+        weight: 1
+        required: true
+      - id: soft
+        criterion: Mention that the limit is soft, because all samples share the same parameters and one step can change probabilities in other states.
+        weight: 1
+    exemplar: "For each sample the clipped objective keeps the smaller of $\\rho_t\\hat A_t$ and $\\text{clip}(\\rho_t,1-c,1+c)\\hat A_t$, so it goes flat once the ratio passes $1\\pm c$ the way the advantage pushes. Moving further earns nothing, so a noisy batch can't drag the policy far, even over several passes."
+  - id: ppo-recall-clip-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: ppo-clip
+    difficulty: 3
+    est_minutes: 0.5
+    prompt: "With clip range $c=0.2$, a sample has a positive advantage, but its action has become less likely, with ratio $\\rho=0.6$. What does the clipped objective do with this sample?"
+    options:
+      - id: a
+        text: It keeps the plain term $\rho\hat A$, whose slope still pushes the probability back up
+        correct: true
+        feedback: The plain term is the smaller one here, so the minimum keeps it and it still pulls the good action back up.
+      - id: b
+        text: It uses the clipped term, so the sample stops pushing
+        correct: false
+        feedback: The minimum keeps whichever term is lower. Here that is the plain term, $0.6\hat A$ against $0.8\hat A$.
+      - id: c
+        text: It drops the sample, because the ratio is outside $0.8$ to $1.2$
+        correct: false
+        feedback: Clipping never drops samples. It only removes the gain from moving further the way the advantage wants.
+      - id: d
+        text: It pushes the probability further down
+        correct: false
+        feedback: A positive advantage always pushes the action's probability up while the plain term is in charge.
+    solution: "$\\min(0.6\\hat A,\\,0.8\\hat A)=0.6\\hat A$ for $\\hat A>0$, so the plain term stays and pushes the probability back up."
+  - id: ppo-recall-clip-formula
+    dimension: math
+    type: text
+    role: recall
+    knowledge_point: ppo-clip
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Fill in the blank in PPO's clipped objective: $L^\\text{CLIP}(\\theta)=\\text{average of }\\underline{\\quad\\quad}\\big(\\rho_t\\hat A_t,\\ \\text{clip}(\\rho_t,1-c,1+c)\\,\\hat A_t\\big)$. Type the missing operation."
+    accept: ["min", "minimum", "the min", "the minimum", "smaller", "the smaller", "\\min"]
+    regex: '^\s*(the\s+)?(\\?min(imum)?|smaller(\s+one)?)\s*$'
+    solution: "$L^\\text{CLIP}$ averages $\\min\\big(\\rho_t\\hat A_t,\\ \\text{clip}(\\rho_t,1-c,1+c)\\hat A_t\\big)$, keeping the smaller term."

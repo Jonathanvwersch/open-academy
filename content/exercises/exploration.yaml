@@ -552,3 +552,196 @@ exercises:
         weight: 1
         required: true
     exemplar: "An agent only finds out what an action pays by taking it. If it always takes the action with the best estimate, an action that paid badly once by bad luck may never be tried again, leaving the agent stuck on a worse action. Epsilon-greedy picks a random action with probability $\\varepsilon$, so alternatives keep getting tried and their estimates can recover. A policy that learns action probabilities directly can concentrate on one action too early. Adding $\\beta$ times entropy to expected return rewards more spread-out probabilities and helps the policy keep trying alternatives. Training moves toward a more concentrated policy only when the extra expected return outweighs the lost bonus."
+  - id: xpl-recall-greedy-trap-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: xpl-greedy-trap
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, what does a greedy agent do, and why can one unlucky reward trap it on a worse action?
+    rubric:
+      - id: greedy
+        criterion: Explain that a greedy agent always takes the action with the best estimate.
+        weight: 1
+        required: true
+      - id: stuck
+        criterion: Explain that one unlucky result can make a good action's estimate low, and because the agent never tries that action again, its estimate never changes.
+        weight: 1
+        required: true
+      - id: explore
+        criterion: Mention that exploring usually pays less now but improves an estimate, so later choices can be better.
+        weight: 1
+    exemplar: "A greedy agent always takes the action with the best estimate. If a good action pays badly the first time, its estimate looks poor, the agent never tries it again, and so the estimate is never corrected."
+  - id: xpl-recall-greedy-trap-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: xpl-greedy-trap
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: Which term names taking an action to learn more about it, usually one that doesn't look best?
+    options:
+      - id: a
+        text: Exploration
+        correct: true
+        feedback: Exploring usually pays less now, but it improves an estimate so later choices can be better.
+      - id: b
+        text: Exploitation
+        correct: false
+        feedback: Exploiting takes the action with the best estimate, to collect the most reward the agent can expect now.
+      - id: c
+        text: Acting greedily
+        correct: false
+        feedback: A greedy agent always exploits, so it never takes an action just to learn about it.
+      - id: d
+        text: An entropy bonus
+        correct: false
+        feedback: An entropy bonus is a term added to a learned policy's objective. It is one way to keep a policy exploring.
+    solution: Taking an action to learn more about it is exploration.
+  - id: xpl-recall-greedy-trap-contrast2
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: xpl-greedy-trap
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: An agent pulls the arms of a slot machine without knowing how they pay. Which number does it keep for each arm as its estimate?
+    options:
+      - id: a
+        text: The average of the rewards that arm has paid so far
+        correct: true
+        feedback: The estimate is built only from the pulls the agent has made, so it changes only when the arm is pulled.
+      - id: b
+        text: The arm's true average reward per pull
+        correct: false
+        feedback: The true average is what the arm pays in the long run. The agent doesn't know it and can only estimate it.
+      - id: c
+        text: The reward from that arm's most recent pull
+        correct: false
+        feedback: The estimate averages every pull of the arm so far, so one pull is only part of it.
+      - id: d
+        text: The largest reward that arm has paid
+        correct: false
+        feedback: The estimate is the average of the arm's rewards. Its largest reward would make an arm look better than it is.
+    solution: An arm's estimate is the average of the rewards it has paid so far.
+  - id: xpl-recall-epsilon-greedy-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: xpl-epsilon-greedy
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, how does epsilon-greedy choose an action, and why does the best-looking action get a probability above $1-\\varepsilon$?"
+    rubric:
+      - id: rule
+        criterion: Explain that with probability $\varepsilon$ the agent picks an action at random with each action equally likely, and otherwise it takes the action with the best estimate.
+        weight: 1
+        required: true
+      - id: extra
+        criterion: Explain that the random pick can also land on the best-looking action, which adds $\varepsilon/k$ to its probability.
+        weight: 1
+        required: true
+      - id: schedule
+        criterion: Mention that agents often start with a large $\varepsilon$ and lower it as their estimates improve.
+        weight: 1
+    exemplar: "With probability $\\varepsilon$ epsilon-greedy picks an action at random, each equally likely, and otherwise it takes the best-looking action. The random pick can land on the best-looking action too, so its probability is $1-\\varepsilon+\\varepsilon/k$."
+  - id: xpl-recall-epsilon-greedy-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: xpl-epsilon-greedy
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "How does an epsilon-greedy agent behave with exploration rate $\\varepsilon=0$?"
+    options:
+      - id: a
+        text: It always takes the action with the best estimate and can get stuck
+        correct: true
+        feedback: With $\varepsilon=0$ there are no random picks, so the agent is greedy.
+      - id: b
+        text: It acts completely at random and never uses what it has learned
+        correct: false
+        feedback: That is $\varepsilon=1$, where every action is a random pick.
+      - id: c
+        text: It usually takes the best-looking action and sometimes picks at random
+        correct: false
+        feedback: That describes $\varepsilon$ between 0 and 1, such as $0.1$.
+      - id: d
+        text: It keeps its action probabilities spread out with a bonus
+        correct: false
+        feedback: That is an entropy bonus, which works on a policy that learns its probabilities directly.
+    solution: "With $\\varepsilon=0$ epsilon-greedy never explores, so it is the greedy agent."
+  - id: xpl-recall-epsilon-greedy-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: xpl-epsilon-greedy
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "An epsilon-greedy agent has $k$ actions and exploration rate $\\varepsilon$. Write the probability that it picks one particular action that isn't the best-looking one. Type `eps` for $\\varepsilon$."
+    answer: "eps/k"
+    variables: { eps: [0.01, 0.9], k: [2, 10] }
+    common_wrong:
+      - answer: "eps"
+        category: misunderstood_definition
+        feedback: "The random pick happens with probability $\\varepsilon$, but it is split evenly over all $k$ actions."
+    solution: "Another action is chosen only by the random pick, which splits $\\varepsilon$ evenly over $k$ actions, so its probability is $\\varepsilon/k$."
+  - id: xpl-recall-entropy-bonus-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: xpl-entropy-bonus
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, what does the entropy of a policy measure, and what does an entropy bonus do?
+    rubric:
+      - id: entropy
+        criterion: Explain that entropy measures how spread out the policy's action probabilities are, largest when every action is equally likely and 0 when one action has probability 1.
+        weight: 1
+        required: true
+      - id: bonus
+        criterion: Explain that an entropy bonus adds the entropy times a weight $\beta$ to the objective, which keeps the probabilities spread out so the agent keeps trying other actions.
+        weight: 1
+        required: true
+      - id: beta
+        criterion: Mention that a larger $\beta$ keeps the policy more spread out.
+        weight: 1
+    exemplar: "A policy's entropy measures how spread out its action probabilities are, largest when all actions are equally likely and 0 when one action is certain. An entropy bonus adds $\\beta$ times the entropy to the objective, so training keeps the probabilities spread and the agent keeps trying other actions."
+  - id: xpl-recall-entropy-bonus-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: xpl-entropy-bonus
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: Which policy over two actions has the largest entropy?
+    options:
+      - id: a
+        text: Probabilities $0.5$ and $0.5$
+        correct: true
+        feedback: Entropy is largest when every action is equally likely, about $0.69$ for two actions.
+      - id: b
+        text: Probabilities $0.9$ and $0.1$
+        correct: false
+        feedback: This policy leans toward one action, so its probabilities are less spread out.
+      - id: c
+        text: Probabilities $0.99$ and $0.01$
+        correct: false
+        feedback: This policy almost always picks one action, so its entropy is close to 0.
+      - id: d
+        text: Probabilities $1$ and $0$
+        correct: false
+        feedback: When one action has probability 1, the entropy is 0.
+    solution: Entropy is largest when the actions are equally likely, so the policy with $0.5$ and $0.5$ has the largest entropy.
+  - id: xpl-recall-entropy-bonus-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: xpl-entropy-bonus
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A policy has expected return $R$ and entropy $H$. Write the objective with an entropy bonus of weight $\\beta$. Type `beta` for $\\beta$."
+    answer: "R + beta*H"
+    variables: { R: [-5, 10], H: [0, 0.69], beta: [0.01, 1] }
+    solution: "The objective is the expected return plus $\\beta$ times the entropy, $R+\\beta H$."
