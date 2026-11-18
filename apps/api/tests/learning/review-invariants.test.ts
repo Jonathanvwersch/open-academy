@@ -80,6 +80,7 @@ const activityCreationCalls = new Map<string, ApiCall>();
 const runCreatedActivityTopics = new Map<string, Set<string>>();
 const runCreatedAttemptIds = new Set<string>();
 const runCreatedReviewLogIds = new Set<string>();
+const preRunEntityIds = new Set<string>();
 const legacyAuditFindings = new Map<string, Set<string>>();
 const latestAuditStatuses = new Map<string, 'HOLDS' | 'LEGACY' | 'VIOLATED'>();
 let currentPlanActivityIds = new Set<string>();
@@ -88,6 +89,7 @@ const dueAtHistory = new Map<string, DueAtEvent[]>();
 let currentApiCall: ApiCall | undefined;
 let simulationStepCount = 0;
 let simulationAttemptFailures: string[] = [];
+let auditRunStartedAt = new Date();
 
 const checkerNames = ['I1', 'I2', 'I3', 'I4', 'I5', 'I6', 'I7', 'I8', 'I9'];
 vi.setConfig({ hookTimeout: 300_000, testTimeout: realDataAuditMode ? 900_000 : 60_000 });
@@ -146,6 +148,13 @@ function localDayDifference(from: string, to: string) {
     count += 1;
   }
   return count;
+}
+
+function isLegacyFinding(detail: string, preRunIds: ReadonlySet<string>) {
+  const identifiers = detail.match(
+    /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi,
+  );
+  return Boolean(identifiers?.length && identifiers.every((id) => preRunIds.has(id)));
 }
 
 function invariantViolation(name: string, detail: string) {
@@ -717,10 +726,6 @@ function assertNoAuditViolations(label: string, findings: Map<string, string[]>)
       continue;
     }
     const legacy = details.filter((detail) => {
-      if (runCreatedIds.some((id) => detail.includes(id))) return false;
-      if ([...runCreatedAttemptIds, ...runCreatedReviewLogIds].some((id) => detail.includes(id))) {
-        return false;
-      }
       const conceptId = detail.split(':')[0];
       if (
         (result.checker === 'I2' || result.checker === 'I7') &&
@@ -729,7 +734,7 @@ function assertNoAuditViolations(label: string, findings: Map<string, string[]>)
       ) {
         return false;
       }
-      return true;
+      return isLegacyFinding(detail, preRunEntityIds);
     });
     const newFindings = details.filter((detail) => !legacy.includes(detail));
     if (legacy.length > 0) {
@@ -1662,26 +1667,68 @@ beforeAll(async () => {
     reviewAnswerStats.seededWrong = 0;
     reviewAnswerStats.actuallyWrong = 0;
     const priorRunStartValue = process.env.REVIEW_AUDIT_RUN_STARTED_AT;
-    if (priorRunStartValue) {
-      const priorRunStart = new Date(priorRunStartValue);
-      if (Number.isNaN(priorRunStart.getTime())) {
-        throw new Error('REVIEW_AUDIT_RUN_STARTED_AT must be an ISO timestamp.');
+    auditRunStartedAt = priorRunStartValue ? new Date(priorRunStartValue) : new Date();
+    if (Number.isNaN(auditRunStartedAt.getTime())) {
+      throw new Error('REVIEW_AUDIT_RUN_STARTED_AT must be an ISO timestamp.');
+    }
+    preRunEntityIds.clear();
+    const oldSessions = await db
+      .select({ id: studySessions.id, startedAt: studySessions.startedAt })
+      .from(studySessions)
+      .where(eq(studySessions.userId, userId));
+    for (const session of oldSessions) {
+      if (session.startedAt && session.startedAt < auditRunStartedAt) {
+        preRunEntityIds.add(session.id);
       }
-      const priorAttempts = await db
-        .select({ id: attempts.id, createdAt: attempts.createdAt })
-        .from(attempts)
-        .where(eq(attempts.userId, userId));
-      for (const attempt of priorAttempts) {
-        if (attempt.createdAt >= priorRunStart) runCreatedAttemptIds.add(attempt.id);
+    }
+    const activitiesWithSession = await db
+      .select({
+        activityId: sessionActivities.id,
+        sessionId: sessionActivities.sessionId,
+        sessionStartedAt: studySessions.startedAt,
+        exerciseIds: sessionActivities.exerciseIds,
+      })
+      .from(sessionActivities)
+      .innerJoin(studySessions, eq(sessionActivities.sessionId, studySessions.id))
+      .where(eq(studySessions.userId, userId));
+    for (const activity of activitiesWithSession) {
+      if (activity.sessionStartedAt && activity.sessionStartedAt < auditRunStartedAt) {
+        preRunEntityIds.add(activity.activityId);
+      } else if (activity.sessionStartedAt) {
+        const call = {
+          method: 'POST',
+          path: `/sessions/${activity.sessionId}`,
+          now: activity.sessionStartedAt,
+        };
+        activityCreationCalls.set(activity.activityId, call);
+        runCreatedActivityTopics.set(activity.activityId, new Set(topicIds(activity.exerciseIds)));
       }
-      const priorLogs = await db
-        .select({ id: reviewLogs.id, createdAt: reviewLogs.createdAt })
-        .from(reviewLogs)
-        .innerJoin(reviewCards, eq(reviewLogs.cardId, reviewCards.id))
-        .where(eq(reviewCards.userId, userId));
-      for (const log of priorLogs) {
-        if (log.createdAt >= priorRunStart) runCreatedReviewLogIds.add(log.id);
-      }
+    }
+    const priorAttempts = await db
+      .select({ id: attempts.id, createdAt: attempts.createdAt })
+      .from(attempts)
+      .where(eq(attempts.userId, userId));
+    for (const attempt of priorAttempts) {
+      if (attempt.createdAt < auditRunStartedAt) preRunEntityIds.add(attempt.id);
+      else runCreatedAttemptIds.add(attempt.id);
+    }
+    const priorLogs = await db
+      .select({ id: reviewLogs.id, createdAt: reviewLogs.createdAt })
+      .from(reviewLogs)
+      .innerJoin(reviewCards, eq(reviewLogs.cardId, reviewCards.id))
+      .where(eq(reviewCards.userId, userId));
+    for (const log of priorLogs) {
+      if (log.createdAt < auditRunStartedAt) preRunEntityIds.add(log.id);
+      else runCreatedReviewLogIds.add(log.id);
+    }
+    for (const card of cards) preRunEntityIds.add(card.id);
+    const learnerRecord = await db
+      .select({ id: users.id, createdAt: users.createdAt })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+    if (learnerRecord[0] && learnerRecord[0].createdAt < auditRunStartedAt) {
+      preRunEntityIds.add(learnerRecord[0].id);
     }
     dueAtHistory.clear();
     return;
@@ -1880,6 +1927,15 @@ it('I1 assertion includes simulated findings', async () => {
     if (previousFindings) simulationFindings.set('I1', previousFindings);
     else simulationFindings.delete('I1');
   }
+});
+
+vitestIt('classifies findings as legacy only when every identifier predates the run', () => {
+  const preRunId = '25c6f1c4-c6f2-470f-9eae-65ef24f51c9b';
+  const runCreatedId = '5d3e6aa1-0e46-435b-9cfc-186841e3afdd';
+  const preRunIds = new Set([preRunId]);
+  expect(isLegacyFinding(`old activity ${preRunId}`, preRunIds)).toBe(true);
+  expect(isLegacyFinding('identifier-free I9 finding', preRunIds)).toBe(false);
+  expect(isLegacyFinding(`old ${preRunId} and new ${runCreatedId}`, preRunIds)).toBe(false);
 });
 
 // I1: session replan can schedule an already-covered topic again.
