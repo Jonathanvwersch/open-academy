@@ -1097,8 +1097,9 @@ test('double Again extends a planned mixed review with a newly due prerequisite 
   const additions = updatedPlannedActivity.exerciseIds.filter(
     (exerciseId) => !originalExerciseIds.includes(exerciseId),
   );
+  expect(additions.length).toBeGreaterThan(0);
   expect(
-    additions.some((exerciseId) => {
+    additions.every((exerciseId) => {
       const exercise = content.exercisesById.get(exerciseId);
       return exercise?.concept === 'vectors' && exercise.dimension === 'conceptual';
     }),
@@ -1173,8 +1174,9 @@ test('double Again appends prerequisite exercises to an in-progress mixed review
     originalExerciseIds,
   );
   const additions = extendedActivity.exerciseIds.slice(originalExerciseIds.length);
+  expect(additions.length).toBeGreaterThan(0);
   expect(
-    additions.some((exerciseId) => {
+    additions.every((exerciseId) => {
       const exercise = content.exercisesById.get(exerciseId);
       return exercise?.concept === 'vectors' && exercise.dimension === 'conceptual';
     }),

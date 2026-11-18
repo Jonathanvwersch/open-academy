@@ -750,14 +750,29 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
                     );
                     if (coveredActivity) {
                       const existingExerciseIds = new Set(coveredActivity.exerciseIds);
+                      const coveredDimensions = new Set(
+                        coveredActivity.exerciseIds.flatMap((exerciseId) => {
+                          const exercise = index.exercisesById.get(exerciseId);
+                          return exercise?.concept && exercise.dimension
+                            ? [`${exercise.concept}/${exercise.dimension}`]
+                            : [];
+                        }),
+                      );
                       const usedElsewhere = new Set(
                         sessionReviewActivities
                           .filter((sessionActivity) => sessionActivity.id !== coveredActivity.id)
                           .flatMap((sessionActivity) => sessionActivity.exerciseIds),
                       );
                       const addedExerciseIds = [...new Set(reviewActivity.exerciseIds)].filter(
-                        (exerciseId) =>
-                          !existingExerciseIds.has(exerciseId) && !usedElsewhere.has(exerciseId),
+                        (exerciseId) => {
+                          const exercise = index.exercisesById.get(exerciseId);
+                          return Boolean(
+                            exercise &&
+                              !existingExerciseIds.has(exerciseId) &&
+                              !usedElsewhere.has(exerciseId) &&
+                              !coveredDimensions.has(`${exercise.concept}/${exercise.dimension}`),
+                          );
+                        },
                       );
                       if (addedExerciseIds.length === 0) return;
                       const exerciseIds =
