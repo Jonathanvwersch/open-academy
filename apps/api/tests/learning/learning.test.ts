@@ -2913,6 +2913,45 @@ test('the overdue threshold uses Los Angeles local dates across midnight', () =>
   );
 });
 
+test('an old wrong attempt no longer outranks an equally due topic after a later correct review', () => {
+  const fixture = reviewQueueFixture(2, 0, 6);
+  const noOldFailure = required(fixture.topicIds[0], 'topic without an old failure');
+  const recoveredTopic = required(fixture.topicIds[1], 'recovered review topic');
+  const state = emptyState();
+  state.mastery = fixture.topicIds.map((conceptId) => ({
+    ...initialMastery(conceptId, 'math'),
+    state: 'independent' as const,
+  }));
+  state.cards = [noOldFailure, recoveredTopic].map((conceptId) => ({
+    conceptId,
+    dimension: 'math' as const,
+    dueAt: now.toISOString(),
+    retrievability: 0.7,
+  }));
+  state.recentAttempts = [
+    {
+      conceptId: recoveredTopic,
+      exerciseId: 'old-wrong-exercise',
+      dimension: 'math',
+      correct: 0,
+      itemRole: 'review',
+      createdAt: '2025-12-10T12:00:00.000Z',
+    },
+    {
+      conceptId: recoveredTopic,
+      exerciseId: 'later-correct-exercise',
+      dimension: 'math',
+      correct: 1,
+      itemRole: 'review',
+      createdAt: '2025-12-20T12:00:00.000Z',
+    },
+  ];
+
+  const plan = planSession(state, fixture.index, now, 60);
+
+  expect(plannedReviewTopics(plan, fixture.index)).toEqual([noOldFailure]);
+});
+
 test('two-day overdue guarantees prevent longer deferrals under a 1.67x cap load', () => {
   const fixture = reviewQueueFixture(32, 30, 2);
   const firstOffPath = required(fixture.offPathTopicIds[0], 'first off-path topic');

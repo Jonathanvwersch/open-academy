@@ -1208,14 +1208,7 @@ function buildReviewCandidateForConcept(
     ...includedCards.map((card) => {
       const dueAt = Date.parse(card.dueAt);
       const overdueDays = Math.min(10, Math.max(0, (now.getTime() - dueAt) / 86_400_000));
-      const recentFailure = state.recentAttempts.some(
-        (attempt) => attempt.conceptId === card.conceptId && attempt.correct === 0,
-      );
-      return (
-        (1 - (card.retrievability ?? 0.9)) * 3 +
-        (recentFailure ? 2 : 0) +
-        Math.min(2, overdueDays * 0.2)
-      );
+      return (1 - (card.retrievability ?? 0.9)) * 3 + Math.min(2, overdueDays * 0.2);
     }),
   );
   const plannedNewConceptNeedsPrerequisite = candidates.some((candidate) => {
