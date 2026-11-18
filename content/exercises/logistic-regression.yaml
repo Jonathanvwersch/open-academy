@@ -538,3 +538,207 @@ exercises:
         weight: 1
         required: true
     exemplar: "The model forms the weighted score $z=wx+b$. Applying sigmoid gives $p=\\sigma(z)$, the estimated chance of a sale within a month. Training scores the observed outcome with $-\\ln p$ for a sale and $-\\ln(1-p)$ for no sale."
+  - id: "lr-recall-score-say"
+    dimension: "conceptual"
+    type: "explain"
+    role: "recall"
+    knowledge_point: "lr-classification"
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what do the labels in binary classification represent, and how is the model's score formed?"
+    rubric:
+      - id: "first"
+        criterion: "Explain that labels 0 and 1 name the two possible answers."
+        weight: 1
+        required: true
+      - id: "second"
+        criterion: "Explain that the score is the weighted input plus the bias."
+        weight: 1
+        required: true
+    exemplar: "The labels 0 and 1 name the two possible answers. The model forms a score by multiplying its input by a weight and adding the bias."
+  - id: "lr-recall-score-contrast"
+    dimension: "conceptual"
+    type: "mc"
+    role: "recall"
+    knowledge_point: "lr-classification"
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Which quantity can take values below zero or above one in a binary classifier?"
+    options:
+      - id: "a"
+        text: "The observed label"
+        correct: false
+        feedback: "The observed label is one of the two values, 0 or 1."
+      - id: "b"
+        text: "The probability of label 1"
+        correct: false
+        feedback: "A probability lies between 0 and 1."
+      - id: "c"
+        text: "The weighted score"
+        correct: true
+        feedback: "The weighted score can be any number before conversion to a probability."
+    solution: "The weighted score can be any number."
+  - id: "lr-recall-score-formula"
+    dimension: "math"
+    type: "expression"
+    role: "recall"
+    knowledge_point: "lr-classification"
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Write the score $z$ for one input $x$, weight $w$ and bias $b$."
+    answer: "w*x+b"
+    variables: { "x": [1, 8], "w": [0.5, 2], "b": [-5, -1] }
+    solution: "The score is $z=wx+b$."
+  - id: "lr-recall-sigmoid-say"
+    dimension: "conceptual"
+    type: "explain"
+    role: "recall"
+    knowledge_point: "lr-sigmoid"
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what does the sigmoid do to a score, and what does its output mean in logistic regression?"
+    rubric:
+      - id: "first"
+        criterion: "Explain that the sigmoid maps any score to a number strictly between zero and one."
+        weight: 1
+        required: true
+      - id: "second"
+        criterion: "Explain that the output is the model's probability that the label is 1."
+        weight: 1
+        required: true
+    exemplar: "The sigmoid maps any score to a number strictly between 0 and 1. Logistic regression reads that number as the probability of label 1."
+  - id: "lr-recall-sigmoid-contrast"
+    dimension: "conceptual"
+    type: "mc"
+    role: "recall"
+    knowledge_point: "lr-sigmoid"
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A logistic model predicts label 1 after comparing its probability with a threshold. What does that decision tell you?"
+    options:
+      - id: "a"
+        text: "The observed label must be 1."
+        correct: false
+        feedback: "A prediction can be wrong because the outcome is still uncertain."
+      - id: "b"
+        text: "The probability reached the threshold."
+        correct: true
+        feedback: "The decision follows the threshold comparison and still carries uncertainty."
+      - id: "c"
+        text: "The sigmoid output must equal 1."
+        correct: false
+        feedback: "The sigmoid output is strictly between zero and one."
+    solution: "A decision follows the threshold comparison. The probability still allows for either outcome."
+  - id: "lr-recall-sigmoid-formula"
+    dimension: "math"
+    type: "expression"
+    role: "recall"
+    knowledge_point: "lr-sigmoid"
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Write the sigmoid probability for score $z$. Type `exp(...)` for the exponential function."
+    answer: "1/(1+exp(-z))"
+    variables: { "z": [-5, 5] }
+    solution: "The sigmoid is $\\sigma(z)=1/(1+e^{-z})$."
+  - id: "lr-recall-bce-say"
+    dimension: "conceptual"
+    type: "explain"
+    role: "recall"
+    knowledge_point: "lr-binary-cross-entropy"
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, how does binary cross-entropy score the observed label, and when does the loss become large?"
+    rubric:
+      - id: "first"
+        criterion: "Explain that binary cross-entropy takes minus the natural logarithm of the probability given to the observed label."
+        weight: 1
+        required: true
+      - id: "second"
+        criterion: "Explain that the loss becomes large when that probability is near zero."
+        weight: 1
+        required: true
+    exemplar: "Binary cross-entropy takes minus the natural log of the probability assigned to the observed label. It becomes large when the model gave that label a probability near zero."
+  - id: "lr-recall-bce-contrast"
+    dimension: "conceptual"
+    type: "mc"
+    role: "recall"
+    knowledge_point: "lr-binary-cross-entropy"
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "The observed label is 0, and $p$ is the model's probability of label 1. Which probability does binary cross-entropy put inside its logarithm?"
+    options:
+      - id: "a"
+        text: "$p$"
+        correct: false
+        feedback: "The value $p$ is the probability of label 1."
+      - id: "b"
+        text: "$1-p$"
+        correct: true
+        feedback: "The observed label is 0, whose probability is $1-p$."
+      - id: "c"
+        text: "$y$"
+        correct: false
+        feedback: "The logarithm uses the model's probability assigned to the observed outcome."
+    solution: "For label 0, the loss is minus the natural log of $1-p$."
+  - id: "lr-recall-bce-formula"
+    dimension: "math"
+    type: "expression"
+    role: "recall"
+    knowledge_point: "lr-binary-cross-entropy"
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Write binary cross-entropy for predicted probability $p$ of label 1 and observed label $y$, which is 0 or 1. Type `ln(...)` for the natural logarithm."
+    answer: "-(y*ln(p)+(1-y)*ln(1-p))"
+    variables: { "p": [0.05, 0.95], "y": [0, 1] }
+    solution: "The loss is $-[y\\ln p+(1-y)\\ln(1-p)]$."
+  - id: "lr-recall-gradient-say"
+    dimension: "conceptual"
+    type: "explain"
+    role: "recall"
+    knowledge_point: "lr-gradient"
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what are the weight and bias loss slopes for one logistic-regression example with binary cross-entropy? Use probability $p$, observed label $y$ and input $x$."
+    rubric:
+      - id: "first"
+        criterion: "State that the weight slope is the probability minus the label, multiplied by the input."
+        weight: 1
+        required: true
+      - id: "second"
+        criterion: "State that the bias slope is the probability minus the label."
+        weight: 1
+        required: true
+    exemplar: "The weight slope is $(p-y)x$. The bias slope is $p-y$."
+  - id: "lr-recall-gradient-contrast"
+    dimension: "conceptual"
+    type: "mc"
+    role: "recall"
+    knowledge_point: "lr-gradient"
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "For one logistic-regression example with binary cross-entropy, $x=0$ and $0<p<1$. What happens in a gradient descent update?"
+    options:
+      - id: "a"
+        text: "Both weight and bias stay fixed."
+        correct: false
+        feedback: "The weight slope is zero, and the bias slope is $p-y$, which is nonzero for either binary label."
+      - id: "b"
+        text: "The bias stays fixed and the weight moves."
+        correct: false
+        feedback: "Multiplying by the zero input makes the weight slope zero."
+      - id: "c"
+        text: "The weight stays fixed and the bias moves."
+        correct: true
+        feedback: "The input factor makes the weight slope zero. The bias slope remains $p-y$."
+    solution: "A zero input makes the weight slope zero. The bias can still change."
+  - id: "lr-recall-gradient-formula"
+    dimension: "math"
+    type: "expression"
+    role: "recall"
+    knowledge_point: "lr-gradient"
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "For one logistic-regression example with binary cross-entropy, write the updated weight from current weight $w$, probability $p$, observed label $y$, input $x$ and learning rate $\\eta$. Type `eta` for the learning rate."
+    answer: "w-eta*(p-y)*x"
+    variables: { "w": [-2, 2], "p": [0.05, 0.95], "y": [0, 1], "x": [1, 5], "eta": [0.01, 0.2] }
+    solution: "Subtract the scaled weight slope: $w_{\\text{new}}=w-\\eta(p-y)x$."

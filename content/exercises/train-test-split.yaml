@@ -1187,3 +1187,251 @@ exercises:
         category: misapplied_technique
         feedback: "Every set uses the value computed from training, so test houses are filled with 100 too."
     solution: "Averaging all known sizes gives 115 only because the test size 160 is included, which lets a test house change the training data. Computing the average from training sizes gives 100, used for every set."
+  - id: "ttsp-recall-held-out-say"
+    dimension: "conceptual"
+    type: "explain"
+    role: "recall"
+    knowledge_point: "tts-why-hold-out"
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what is test error, and what does it estimate?"
+    rubric:
+      - id: "first"
+        criterion: "Explain that test error is the average loss on examples the model was never trained on."
+        weight: 1
+        required: true
+      - id: "second"
+        criterion: "Explain that it estimates error on new examples of the same kind."
+        weight: 1
+        required: true
+    exemplar: "Test error is the model's average loss on examples kept out of training. It estimates error on new examples of the same kind."
+  - id: "ttsp-recall-held-out-contrast"
+    dimension: "conceptual"
+    type: "mc"
+    role: "recall"
+    knowledge_point: "tts-why-hold-out"
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A model has zero error on its training sales. Which measurement checks how it handles houses beyond those sales?"
+    options:
+      - id: "a"
+        text: "Its loss on the same training sales"
+        correct: false
+        feedback: "Training error measures fit to the examples used to learn the model."
+      - id: "b"
+        text: "Its loss on sales kept out of training"
+        correct: true
+        feedback: "Held-out sales give examples the model has never learned from."
+      - id: "c"
+        text: "Its loss on copies of training sales"
+        correct: false
+        feedback: "Copies contain the same examples the model learned from."
+    solution: "Error on held-out sales estimates error on new houses of the same kind."
+  - id: "ttsp-recall-held-out-contrast2"
+    dimension: "conceptual"
+    type: "mc"
+    role: "recall"
+    knowledge_point: "tts-why-hold-out"
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A model is tested on house sales from one town. Which future data does that test error speak for?"
+    options:
+      - id: "a"
+        text: "Sales in every town, whatever the prices"
+        correct: false
+        feedback: "Prices may behave differently in another town."
+      - id: "b"
+        text: "Only the exact sales already in training"
+        correct: false
+        feedback: "The test score estimates performance on new examples of the same kind."
+      - id: "c"
+        text: "New sales like those in the tested town"
+        correct: true
+        feedback: "A test set represents new examples like its own sales."
+    solution: "A test score estimates error on examples of the same kind as the test data."
+  - id: "ttsp-recall-splits-say"
+    dimension: "conceptual"
+    type: "explain"
+    role: "recall"
+    knowledge_point: "tts-three-splits"
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what jobs do the validation and test sets have when comparing models?"
+    rubric:
+      - id: "first"
+        criterion: "Explain that validation examples are used to compare trained models and choose one."
+        weight: 1
+        required: true
+      - id: "second"
+        criterion: "Explain that the test set scores the chosen model once after every choice has been made."
+        weight: 1
+        required: true
+    exemplar: "Validation examples help choose between trained models. The test set gives the chosen model one final score after all choices are finished."
+  - id: "ttsp-recall-splits-contrast"
+    dimension: "conceptual"
+    type: "mc"
+    role: "recall"
+    knowledge_point: "tts-three-splits"
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "When should a model receive its final test score?"
+    options:
+      - id: "a"
+        text: "After each training pass"
+        correct: false
+        feedback: "Repeated scoring during training lets the test set influence decisions."
+      - id: "b"
+        text: "After all model choices"
+        correct: true
+        feedback: "The test score is kept separate from every model choice."
+      - id: "c"
+        text: "After each input change"
+        correct: false
+        feedback: "Input choices are made before the final test score."
+    solution: "Score the chosen model once on the test set after all choices are made."
+  - id: "ttsp-recall-splits-contrast2"
+    dimension: "conceptual"
+    type: "mc"
+    role: "recall"
+    knowledge_point: "tts-three-splits"
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Why can the winning model's validation error be a little too low as a final estimate?"
+    options:
+      - id: "a"
+        text: "That set helped select the winner."
+        correct: true
+        feedback: "Among several scores, the lowest is more likely to have benefited from luck."
+      - id: "b"
+        text: "That set supplied the weight updates."
+        correct: false
+        feedback: "Weights are fitted on the training set."
+      - id: "c"
+        text: "That set was reserved for final scoring."
+        correct: false
+        feedback: "The test set is reserved for final scoring after choices."
+    solution: "A comparison winner can have benefited from luck on the examples used to choose it."
+  - id: "ttsp-recall-hyperparameters-say"
+    dimension: "conceptual"
+    type: "explain"
+    role: "recall"
+    knowledge_point: "tts-hyperparameters"
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what is a hyperparameter, and how do we choose its value?"
+    rubric:
+      - id: "first"
+        criterion: "Explain that a hyperparameter is fixed before training and remains unchanged during training."
+        weight: 1
+        required: true
+      - id: "second"
+        criterion: "Explain that we train a model per setting and choose the setting with the lowest validation error."
+        weight: 1
+        required: true
+    exemplar: "A hyperparameter is a setting fixed before training that training leaves unchanged. We train one model per setting and keep the one with the lowest validation error."
+  - id: "ttsp-recall-hyperparameters-contrast"
+    dimension: "conceptual"
+    type: "mc"
+    role: "recall"
+    knowledge_point: "tts-hyperparameters"
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Which quantity does gradient descent learn from the training examples?"
+    options:
+      - id: "a"
+        text: "The learning rate"
+        correct: false
+        feedback: "The learning rate is a hyperparameter fixed before a training run."
+      - id: "b"
+        text: "The choice of input features"
+        correct: false
+        feedback: "The inputs are a hyperparameter choice made before a training run."
+      - id: "c"
+        text: "The weight on an input"
+        correct: true
+        feedback: "Weights are parameters adjusted during training."
+    solution: "Gradient descent learns weights and bias. Hyperparameters are fixed for the training run."
+  - id: "ttsp-recall-hyperparameters-contrast2"
+    dimension: "conceptual"
+    type: "mc"
+    role: "recall"
+    knowledge_point: "tts-hyperparameters"
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "You are choosing which house measurements to give a model. Which procedure should guide that choice?"
+    options:
+      - id: "a"
+        text: "Train each choice and compare validation errors."
+        correct: true
+        feedback: "Validation compares input choices on houses excluded from fitting the weights."
+      - id: "b"
+        text: "Train each choice and compare training errors."
+        correct: false
+        feedback: "Extra inputs can fit quirks of the training houses and lower training error."
+      - id: "c"
+        text: "Train each choice and compare final test errors."
+        correct: false
+        feedback: "Test scores are saved until every input choice is finished."
+    solution: "Train a model for each input choice and keep the setting with the lowest validation error."
+  - id: "ttsp-recall-leakage-say"
+    dimension: "conceptual"
+    type: "explain"
+    role: "recall"
+    knowledge_point: "tts-leakage"
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what is data leakage, and how does it usually affect held-out error?"
+    rubric:
+      - id: "first"
+        criterion: "Explain that leakage lets held-out examples shape the model beyond their job."
+        weight: 1
+        required: true
+      - id: "second"
+        criterion: "Explain that leakage usually makes held-out errors look too good."
+        weight: 1
+        required: true
+    exemplar: "Data leakage lets held-out examples shape the model beyond their assigned job. It usually makes held-out error look better than it should."
+  - id: "ttsp-recall-leakage-contrast"
+    dimension: "conceptual"
+    type: "mc"
+    role: "recall"
+    knowledge_point: "tts-leakage"
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Some house sizes are missing. Which data should determine the average used to fill gaps in every set?"
+    options:
+      - id: "a"
+        text: "All training, validation and test sizes"
+        correct: false
+        feedback: "An average over every set lets held-out houses change the training data."
+      - id: "b"
+        text: "The known sizes in the training set"
+        correct: true
+        feedback: "Compute the average from training and use that same value in every set."
+      - id: "c"
+        text: "Each set's known sizes separately"
+        correct: false
+        feedback: "The processing value comes from training and is reused for validation and test."
+    solution: "Work out the fill value from training sizes only, then apply it to every set."
+  - id: "ttsp-recall-leakage-contrast2"
+    dimension: "conceptual"
+    type: "mc"
+    role: "recall"
+    knowledge_point: "tts-leakage"
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Two records describe sales of the same house at different times. How should they be split for evaluation?"
+    options:
+      - id: "a"
+        text: "Put one in training and one in test."
+        correct: false
+        feedback: "The records share house details, so this can expose a test house during training."
+      - id: "b"
+        text: "Split them independently at random."
+        correct: false
+        feedback: "Independent splitting can put related records on both sides of the split."
+      - id: "c"
+        text: "Keep both records together in one set."
+        correct: true
+        feedback: "Related records share details and usually have similar prices, so they stay together."
+    solution: "Keep related records in one set to protect the held-out estimate."
