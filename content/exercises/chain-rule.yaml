@@ -500,3 +500,159 @@ exercises:
         'Fan route: $\frac{\partial T}{\partial s}\cdot\frac{ds}{dq}=-0.4\times20$.',
       ]
     solution: '$\frac{dT}{dq}=3\times2+(-0.4)\times20=6-8=-2$. Opening the throttle cools the motor slightly, because the fan route outweighs the power route.'
+  - id: lab-recall-rates-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: cr-rates-multiply
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, how do rates combine along a chain of calculations, and why do they combine this way?"
+    rubric:
+      - id: point1
+        criterion: "State that the rates along the chain multiply."
+        weight: 1
+        required: true
+      - id: point2
+        criterion: "Explain that each step scales the change passed to it by the previous step."
+        weight: 1
+        required: true
+    exemplar: "Multiply the rates along the chain. Each step scales the change it receives from the previous step."
+  - id: lab-recall-rates-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: cr-rates-multiply
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 0.5
+    prompt: "For a chain $x$ to $u$ to $y$, which operation combines $du/dx$ and $dy/du$ to give $dy/dx$?"
+    options:
+      - id: a
+        text: "Add the two rates"
+        correct: false
+        feedback: "Adding combines separate route contributions; these steps lie on one route."
+      - id: b
+        text: "Divide the second rate by the first"
+        correct: false
+        feedback: "Division reverses the effect of the first scaling."
+      - id: c
+        text: "Multiply the two rates"
+        correct: true
+        feedback: "Successive scaling multiplies the rates."
+    solution: "Successive scaling multiplies the rates."
+  - id: lab-recall-rates-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: cr-rates-multiply
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "In a chain $x$ to $u$ to $y$, let $a=du/dx$ and $b=dy/du$ at the inputs being considered. Write $dy/dx$ in terms of $a$ and $b$."
+    answer: "a*b"
+    variables: { "a": [1.5, 5], "b": [-4, -0.5] }
+    solution: "The chain rule multiplies the two rates, giving $ab$."
+  - id: lab-recall-nested-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: cr-nested-formulas
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, for a composite function $f(g(x))$, where is the outer derivative evaluated, and how is it combined with the inner derivative?"
+    rubric:
+      - id: point1
+        criterion: "State that the outer derivative is evaluated at the inner value $g(x)$."
+        weight: 1
+        required: true
+      - id: point2
+        criterion: "State that this outer rate is multiplied by $g'(x)$."
+        weight: 1
+        required: true
+    exemplar: "Evaluate the outer derivative at $g(x)$. Multiply that rate by the inner derivative $g'(x)$."
+  - id: lab-recall-nested-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: cr-nested-formulas
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 0.5
+    prompt: "When differentiating $f(g(x))$, which value goes into the outer derivative $f'$?"
+    options:
+      - id: a
+        text: "The inner derivative $g'(x)$"
+        correct: false
+        feedback: "The inner derivative is a rate that multiplies the outer rate."
+      - id: b
+        text: "The inner output $g(x)$"
+        correct: true
+        feedback: "The outer function receives the inner function's output."
+      - id: c
+        text: "The original input $x$"
+        correct: false
+        feedback: "Using $x$ skips the inner calculation."
+    solution: "The outer function receives the inner function's output."
+  - id: lab-recall-nested-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: cr-nested-formulas
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Write the derivative of $(3x+1)^2$ with respect to $x$."
+    answer: "6*(3*x+1)"
+    variables: { "x": [-2, 3] }
+    solution: "The outer rate is $2(3x+1)$ and the inner rate is $3$, giving $6(3x+1)$."
+  - id: lab-recall-routes-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: cr-two-routes
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, when $x$ affects $f$ through both $u$ and $v$, how do you find each route's contribution and combine the contributions?"
+    rubric:
+      - id: point1
+        criterion: "Explain that the rates along each route multiply."
+        weight: 1
+        required: true
+      - id: point2
+        criterion: "Explain that the contributions from all routes are added."
+        weight: 1
+        required: true
+    exemplar: "Multiply the rates along each route to find its contribution. Add the route contributions to get the full derivative."
+  - id: lab-recall-routes-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: cr-two-routes
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 0.5
+    prompt: "If $x$ affects $f$ through two separate in-between values, how are the two route contributions combined?"
+    options:
+      - id: a
+        text: "Add their signed contributions"
+        correct: true
+        feedback: "Each route adds its own effect to the total output change."
+      - id: b
+        text: "Multiply their signed contributions"
+        correct: false
+        feedback: "Rates multiply along a single route; separate routes contribute a sum."
+      - id: c
+        text: "Keep the contribution with greater magnitude"
+        correct: false
+        feedback: "Both routes affect the output, including a smaller contribution with opposite sign."
+    solution: "Each route adds its own effect to the total output change."
+  - id: lab-recall-routes-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: cr-two-routes
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Suppose $f$ depends on $u$ and $v$, which both depend on $x$. At one point, $a=\\partial f/\\partial u$, $b=du/dx$, $c=\\partial f/\\partial v$ and $d=dv/dx$. Write $df/dx$."
+    answer: "a*b+c*d"
+    variables: { "a": [1, 4], "b": [1, 3], "c": [-4, -1], "d": [1, 3] }
+    solution: "Multiply along each route and add: $ab+cd$."

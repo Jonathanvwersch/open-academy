@@ -572,3 +572,211 @@ exercises:
         required: true
     exemplar: "The mean sets the curve's centre. Standard deviation is the square root of variance and sets its width. The area under the curve between two readings gives the probability of that interval."
     solution: "The mean sets the curve's centre. Standard deviation is the square root of variance and sets its width. The area under the curve between two readings gives the probability of that interval."
+  - id: gauss-recall-spread-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: gauss-centre-spread
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what do the mean and standard deviation tell us about a Gaussian, and how is standard deviation related to variance?"
+    rubric:
+      - id: point1
+        criterion: "Explain that the mean gives the centre and standard deviation gives the spread."
+        weight: 1
+        required: true
+      - id: point2
+        criterion: "State that standard deviation is the square root of variance."
+        weight: 1
+        required: true
+    exemplar: "The mean locates the Gaussian's centre and standard deviation describes its spread. Standard deviation is the square root of variance."
+  - id: gauss-recall-spread-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: gauss-centre-spread
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 0.5
+    prompt: "Which change moves a Gaussian's centre while leaving its spread the same?"
+    options:
+      - id: a
+        text: "Change standard deviation and keep the mean fixed"
+        correct: false
+        feedback: "Changing standard deviation changes width around the same centre."
+      - id: b
+        text: "Change variance and keep the mean fixed"
+        correct: false
+        feedback: "Variance controls spread through its square root."
+      - id: c
+        text: "Change the mean and keep standard deviation fixed"
+        correct: true
+        feedback: "The mean sets the centre, while fixed standard deviation preserves spread."
+    solution: "The mean sets the centre, while fixed standard deviation preserves spread."
+  - id: gauss-recall-spread-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: gauss-centre-spread
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A Gaussian has variance $v$. Write its standard deviation. Type `sqrt(...)` for a square root."
+    answer: "sqrt(v)"
+    variables: { "v": [0.25, 25] }
+    solution: "Standard deviation is the square root of variance: $\\sqrt v$."
+  - id: gauss-recall-area-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: gauss-bell-area
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, how does a Gaussian density give an interval's probability, and what is the total area under its curve?"
+    rubric:
+      - id: point1
+        criterion: "Explain that the area under the curve over an interval gives its probability."
+        weight: 1
+        required: true
+      - id: point2
+        criterion: "State that the total area under the curve is one."
+        weight: 1
+        required: true
+    exemplar: "An interval's probability is the area under the density over that interval. The whole curve has area one."
+  - id: gauss-recall-area-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: gauss-bell-area
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 0.5
+    prompt: "Which quantity gives the chance that an unrounded Gaussian reading falls in a specified interval?"
+    options:
+      - id: a
+        text: "The distance from the midpoint to the mean"
+        correct: false
+        feedback: "Distance from the mean measures position relative to the centre."
+      - id: b
+        text: "The area under the density over that interval"
+        correct: true
+        feedback: "Area over the interval gives its chance."
+      - id: c
+        text: "The density height at the interval's midpoint"
+        correct: false
+        feedback: "Height measures density; interval width also matters."
+    solution: "Area over the interval gives its chance."
+  - id: gauss-recall-area-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: gauss-bell-area
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A small interval has width $w$ and roughly constant density $h$. Write an approximation to its probability."
+    answer: "h*w"
+    variables: { "h": [0.05, 0.5], "w": [0.01, 0.1] }
+    solution: "Approximate the area by height times width: $hw$."
+  - id: gauss-recall-density-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: gauss-density-formula
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, how do we standardise a reading, and what does the resulting $z$ measure?"
+    rubric:
+      - id: point1
+        criterion: "State that we subtract the mean and divide by standard deviation."
+        weight: 1
+        required: true
+      - id: point2
+        criterion: "Explain that $z$ is the signed distance from the mean in standard deviations, without units."
+        weight: 1
+        required: true
+    exemplar: "Subtract the mean from the reading and divide by standard deviation. The resulting $z$ is the signed distance in standard deviations, without units."
+  - id: gauss-recall-density-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: gauss-density-formula
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 0.5
+    prompt: "If a Gaussian's standard deviation doubles while its mean stays fixed, how do its width and peak change?"
+    options:
+      - id: a
+        text: "It becomes twice as wide and half as high"
+        correct: true
+        feedback: "The front factor lowers the peak as width increases, preserving area one."
+      - id: b
+        text: "It becomes twice as wide and twice as high"
+        correct: false
+        feedback: "Increasing both width and peak would increase total area."
+      - id: c
+        text: "It becomes half as wide and twice as high"
+        correct: false
+        feedback: "This describes halving standard deviation."
+    solution: "The front factor lowers the peak as width increases, preserving area one."
+  - id: gauss-recall-density-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: gauss-density-formula
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Write the Gaussian density at reading $x$ for mean $m$ and positive standard deviation $s$. Use `exp(...)`, `sqrt(...)` and `pi`."
+    answer: "exp(-(x-m)^2/(2*s^2))/(s*sqrt(2*pi))"
+    variables: { "x": [-3, 3], "m": [-2, 2], "s": [0.5, 3] }
+    solution: "The density is $\\frac{1}{s\\sqrt{2\\pi}}\\exp(-(x-m)^2/(2s^2))$."
+  - id: gauss-recall-effects-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: gauss-small-effects
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, why can adding many small random effects give a roughly Gaussian total, and what independence condition matters?"
+    rubric:
+      - id: point1
+        criterion: "Explain that middle totals can be reached more ways than extreme totals, making a bell-like shape."
+        weight: 1
+        required: true
+      - id: point2
+        criterion: "Explain that the small effects contributing within a reading need to be independent."
+        weight: 1
+        required: true
+    exemplar: "Middle totals can be reached through more combinations than extremes, so adding many small effects can make a bell-like shape. The effects contributing within a reading need to be independent."
+  - id: gauss-recall-effects-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: gauss-small-effects
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 0.5
+    prompt: "Which observation most directly challenges a Gaussian sensor model with small standard deviation?"
+    options:
+      - id: a
+        text: "Many readings close to the mean"
+        correct: false
+        feedback: "Concentration near the mean fits a Gaussian."
+      - id: b
+        text: "Readings on both sides of the mean"
+        correct: false
+        feedback: "A symmetric bell allows readings on either side of its mean."
+      - id: c
+        text: "Frequent readings many standard deviations from the mean"
+        correct: true
+        feedback: "A Gaussian with small standard deviation assigns extremely little chance to readings far from its centre."
+    solution: "A Gaussian with small standard deviation assigns extremely little chance to readings far from its centre."
+  - id: gauss-recall-effects-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: gauss-small-effects
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Two independent random contributions have variances $a$ and $b$. Write the variance of their sum."
+    answer: "a+b"
+    variables: { "a": [0.5, 5], "b": [0.5, 5] }
+    solution: "For independent contributions, variances add: $a+b$."
