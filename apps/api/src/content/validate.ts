@@ -38,7 +38,14 @@ const MATH_PROSE_KEYS = new Set([
   'solution',
 ]);
 const PLAIN_TEXT_MATH = /[A-Za-z]_[A-Za-z0-9({]|[A-Za-z][\u2080-\u2089]|[∇θ‖]/u;
-const STRING_VALUE_METADATA_KEYS = new Set(['id', 'type', 'role', 'dimension', 'category']);
+const STRING_VALUE_METADATA_KEYS = new Set([
+  'id',
+  'type',
+  'role',
+  'dimension',
+  'category',
+  'knowledge_point',
+]);
 const AVOIDED_PROSE_EXCLUDED_KEYS = new Set([
   'accept',
   'answer',

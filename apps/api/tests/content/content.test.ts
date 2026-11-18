@@ -1048,6 +1048,26 @@ test('avoid patterns ignore code spans, fenced code, code fields, and IDs', asyn
   );
 });
 
+test('avoid patterns ignore recall knowledge-point metadata and still inspect prompts', async () => {
+  const data = await notationFixture();
+  addAvoidPattern(data);
+  const lesson = data.lessons.find((entry) => entry.value.concept === 'derivatives')?.value;
+  const point = lesson?.knowledge_points?.[0];
+  if (!point) throw new Error('Missing derivatives knowledge-point fixture');
+  point.id = 'lr-point';
+  const recall = recallExerciseFixture(data);
+  data.exercises.push(recall);
+
+  expect(validateContent(data).filter((issue) => issue.id === recall.value.id)).toEqual([]);
+
+  recall.value.prompt = 'Train with lr = 0.1.';
+  expect(validateContent(data)).toContainEqual({
+    file: recall.file,
+    id: recall.value.id,
+    message: '"lr": write "learning rate" or $\\eta$',
+  });
+});
+
 test('avoid patterns inspect lesson and project prose', async () => {
   const data = await notationFixture();
   addAvoidPattern(data);
