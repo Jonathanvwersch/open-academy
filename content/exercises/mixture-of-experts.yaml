@@ -413,21 +413,15 @@ exercises:
     solution: "The router scores experts and selects the highest-scoring ones."
   - id: "moe-recall-route-formula"
     dimension: "math"
-    type: "text"
+    type: "expression"
     role: "recall"
     knowledge_point: "moe-choose"
     difficulty: 1
     est_minutes: 0.5
-    prompt: "Complete the routing weight rule for a selected expert: $g_i=p_i/\\underline{\\quad}$. Which probabilities are added in the denominator? Answer in words."
-    accept:
-      [
-        "the selected experts' probabilities",
-        "selected expert probabilities",
-        "sum of selected probabilities",
-        "the sum of the selected experts' probabilities",
-      ]
-    regex: "^\\s*(?:the\\s+)?(?:sum\\s+of\\s+)?(?:the\\s+)?selected\\s+experts?'?\\s+probabilities\\s*$"
-    solution: "Divide by the sum of probabilities of the selected experts."
+    prompt: "Top-2 routing selects experts 1 and 2 with router probabilities p1 and p2. Write the rescaled routing weight g1 for expert 1."
+    answer: "p1/(p1+p2)"
+    variables: { "p1": [0.05, 0.45], "p2": [0.05, 0.45] }
+    solution: "Divide p1 by the selected probabilities' sum, p1+p2, so the two routing weights add to one."
   - id: "moe-recall-count-say"
     dimension: "conceptual"
     type: "explain"

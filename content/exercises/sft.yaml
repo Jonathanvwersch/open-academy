@@ -456,17 +456,7 @@ exercises:
     knowledge_point: "sft-response-loss"
     difficulty: 1
     est_minutes: 0.5
-    prompt: "In response-only loss, the numerator sums the selected prediction losses. What does the denominator count? Answer in words."
-    accept:
-      [
-        "selected targets",
-        "response targets",
-        "selected response targets",
-        "the selected targets",
-        "the number of selected targets",
-        "the number of response targets",
-        "selected prediction losses",
-        "the number of selected prediction losses",
-      ]
-    regex: "^\\s*(?:the\\s+)?(?:number\\s+of\\s+)?(?:selected\\s+)?(?:response\\s+targets|selected\\s+targets|selected\\s+prediction\\s+losses)\\s*$"
-    solution: "Divide by the number of selected targets to average their losses."
+    prompt: "In response-only loss, $L=\\frac{\\sum m_{t+1}\\ell_{t+1}}{\\sum m_{t+1}}$. Fill in the mask value: $m_{t+1}=\\underline{\\quad}$ when the predicted token $x_{t+1}$ belongs to the prompt."
+    accept: ["0", "zero"]
+    regex: "^\\s*(?:0|zero)\\s*$"
+    solution: "The mask is zero for a prompt target, so its prediction loss is excluded from the mean."

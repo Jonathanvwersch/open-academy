@@ -806,7 +806,7 @@ exercises:
     knowledge_point: "lora-frozen-change"
     difficulty: 1
     est_minutes: 1
-    prompt: "What does freezing W mean, and what does training update in the separate-change description?"
+    prompt: "What does it mean to freeze W in LoRA, and which separate change does training update?"
     rubric:
       - id: "definition"
         criterion: "Explain that freezing W leaves it out of training so its entries stay fixed."
@@ -835,9 +835,9 @@ exercises:
         correct: false
         feedback: "Updating W is full fine-tuning of that matrix."
       - id: "c"
-        text: "Set the input vector to zero."
+        text: "Merge a trained BA into W."
         correct: false
-        feedback: "A zero input removes the input signal and supplies no trained change."
+        feedback: "Merging adds the trained change into W itself, producing a new weight matrix."
     solution: "A separate trained change can alter the output while W stays fixed."
   - id: "lorp-recall-frozen-formula"
     dimension: "math"
@@ -988,9 +988,9 @@ exercises:
         correct: false
         feedback: "A merged matrix holds the change for that one task."
       - id: "c"
-        text: "Initialize both factors to zero and train."
+        text: "Merge each adapter into its own copy of W."
         correct: false
-        feedback: "Both factors at zero give zero gradients and prevent learning."
+        feedback: "Separate merged copies store a full weight matrix for each task. Keeping adapters separate lets tasks share one frozen W."
     solution: "Separate adapters keep each task's change available."
   - id: "lorp-recall-merge-formula"
     dimension: "math"
