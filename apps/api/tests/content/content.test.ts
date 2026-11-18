@@ -27,6 +27,38 @@ function firstPaper(data: ContentSourceData) {
   return paper;
 }
 
+function recallExerciseFixture(
+  data: ContentSourceData,
+  options: {
+    concept?: string;
+    id?: string;
+    knowledgePoint?: string;
+    lessonOnly?: boolean;
+    template?: boolean;
+  } = {},
+) {
+  const concept = options.concept ?? 'derivatives';
+  const lesson = data.lessons.find((entry) => entry.value.concept === concept)?.value;
+  const point = lesson?.knowledge_points?.[0];
+  if (!point) throw new Error(`Missing ${concept} knowledge-point fixture`);
+  const source = data.exercises.find(
+    (entry) =>
+      entry.concept === concept &&
+      (options.template
+        ? entry.value.type === 'numeric' && 'answer_expr' in entry.value
+        : entry.value.type === 'explain'),
+  );
+  if (!source) throw new Error(`Missing ${options.template ? 'template' : 'explain'} fixture`);
+  const value = ExerciseSchema.parse({
+    ...source.value,
+    id: options.id ?? `recall-${concept}`,
+    role: 'recall',
+    knowledge_point: options.knowledgePoint ?? point.id,
+    lesson_only: options.lessonOnly ?? false,
+  });
+  return { value, concept, file: `exercises/${concept}.yaml` };
+}
+
 test('loads the fixture graph and builds lookup indexes', async () => {
   const content = await loadContent('tests/fixtures/content');
 
@@ -1370,6 +1402,84 @@ test('a valid knowledge-point lesson with a parameterised practice problem passe
   ];
   addFinalExercise(data, 'vectors');
   expect(validateContent(data).filter((issue) => issue.id.startsWith('kp-'))).toEqual([]);
+});
+
+test('recall exercise schema requires knowledge_point only for recall roles', async () => {
+  const data = await notationFixture();
+  const recall = recallExerciseFixture(data);
+
+  expect(recall.value.type).toBe('explain');
+  expect(ExerciseSchema.safeParse({ ...recall.value, knowledge_point: undefined }).success).toBe(
+    false,
+  );
+  expect(ExerciseSchema.safeParse({ ...recall.value, role: 'core' }).success).toBe(false);
+});
+
+test('valid explain recall exercise references a knowledge point in its concept lesson', async () => {
+  const data = await notationFixture();
+  const recall = recallExerciseFixture(data);
+  data.exercises.push(recall);
+
+  expect(validateContent(data).filter((issue) => issue.id === recall.value.id)).toEqual([]);
+});
+
+test('recall exercise knowledge_point must belong to the concept lesson', async () => {
+  const data = await notationFixture();
+  const otherLesson = data.lessons.find((entry) => entry.value.concept === 'vectors')?.value;
+  const otherPoint = otherLesson?.knowledge_points?.[0];
+  if (!otherPoint) throw new Error('Missing vectors knowledge-point fixture');
+  const recall = recallExerciseFixture(data, { knowledgePoint: otherPoint.id });
+  data.exercises.push(recall);
+
+  expect(validateContent(data)).toContainEqual(
+    expect.objectContaining({
+      id: recall.value.id,
+      message: expect.stringContaining("must reference a knowledge point in its concept's lesson"),
+    }),
+  );
+});
+
+test('recall exercises cannot be referenced by knowledge-point problems', async () => {
+  const data = await notationFixture();
+  const recall = recallExerciseFixture(data);
+  const lesson = data.lessons.find((entry) => entry.value.concept === recall.concept)?.value;
+  const point = lesson?.knowledge_points?.[0];
+  if (!point) throw new Error('Missing recall knowledge-point fixture');
+  data.exercises.push(recall);
+  point.problems.push(recall.value.id);
+
+  expect(validateContent(data)).toContainEqual(
+    expect.objectContaining({
+      id: recall.value.id,
+      message: 'recall exercise must not be referenced by knowledge-point problems',
+    }),
+  );
+});
+
+test('recall exercises cannot be lesson_only', async () => {
+  const data = await notationFixture();
+  const recall = recallExerciseFixture(data, { lessonOnly: true });
+  data.exercises.push(recall);
+
+  expect(validateContent(data)).toContainEqual(
+    expect.objectContaining({
+      id: recall.value.id,
+      message: 'recall exercise must not be lesson_only',
+    }),
+  );
+});
+
+test('recall exercises cannot be templates', async () => {
+  const data = await notationFixture();
+  const recall = recallExerciseFixture(data, { concept: 'vectors', template: true });
+  data.exercises.push(recall);
+
+  expect(validateContent(data)).toContainEqual(
+    expect.objectContaining({
+      id: recall.value.id,
+      message: 'recall exercise must not be a template',
+    }),
+  );
 });
 
 test('knowledge-point problem references reject explain exercises', async () => {

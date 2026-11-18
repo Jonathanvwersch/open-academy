@@ -8,6 +8,7 @@ export const ExerciseRoleSchema = z.enum([
   'core',
   'transfer',
   'review',
+  'recall',
   'diagnostic',
   'check',
   'practice',
@@ -333,6 +334,7 @@ const CommonExerciseSchema = z.object({
   id: IdSchema,
   dimension: DimensionSchema,
   role: ExerciseRoleSchema,
+  knowledge_point: IdSchema.optional(),
   lesson_only: z.boolean().default(false),
   difficulty: z.number().int().min(1).max(5),
   target_seconds: z.number().int().min(5).max(600).optional(),
@@ -499,17 +501,33 @@ const ExplainExerciseSchema = CommonExerciseSchema.extend({
   exemplar: z.string().min(1),
 }).strict();
 
-export const ExerciseSchema = z.union([
-  MultipleChoiceExerciseSchema,
-  NumericExerciseSchema,
-  ExpressionExerciseSchema,
-  TextExerciseSchema,
-  CodeReadNumericExerciseSchema,
-  CodeReadTextExerciseSchema,
-  CodeCompleteExerciseSchema,
-  DebugExerciseSchema,
-  ExplainExerciseSchema,
-]);
+export const ExerciseSchema = z
+  .union([
+    MultipleChoiceExerciseSchema,
+    NumericExerciseSchema,
+    ExpressionExerciseSchema,
+    TextExerciseSchema,
+    CodeReadNumericExerciseSchema,
+    CodeReadTextExerciseSchema,
+    CodeCompleteExerciseSchema,
+    DebugExerciseSchema,
+    ExplainExerciseSchema,
+  ])
+  .superRefine((exercise, context) => {
+    if (exercise.role === 'recall' && !exercise.knowledge_point) {
+      context.addIssue({
+        code: 'custom',
+        path: ['knowledge_point'],
+        message: 'Recall exercises must specify a knowledge point.',
+      });
+    } else if (exercise.role !== 'recall' && exercise.knowledge_point !== undefined) {
+      context.addIssue({
+        code: 'custom',
+        path: ['knowledge_point'],
+        message: 'Only recall exercises may specify a knowledge point.',
+      });
+    }
+  });
 
 export const ExerciseFileSchema = z
   .object({
