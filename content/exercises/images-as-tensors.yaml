@@ -519,3 +519,156 @@ exercises:
       - (2, 0, 1)
       - (2, 0, 1,)
     solution: Transpose moves the last axis first, giving (3, 8, 11) while keeping each number with its own pixel.
+  - id: iat-recall-grid-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: iat-pixels-grid
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what does each entry of a grayscale image array represent, and what do its first and second axes count?"
+    rubric:
+      - id: point0
+        criterion: "Explain that each entry is the brightness of one pixel."
+        weight: 1
+        required: true
+      - id: point1
+        criterion: "Explain that the first axis counts rows and gives height; the second counts columns and gives width."
+        weight: 1
+        required: true
+    exemplar: "Each entry is the brightness of one pixel. The first axis counts rows and gives height; the second counts columns and gives width."
+  - id: iat-recall-grid-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: iat-pixels-grid
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A grayscale image array has shape $(H,W)$. What do the two sizes count?"
+    options:
+      - id: a
+        text: "Width first, then height."
+        correct: false
+        feedback: "Photo dimensions often put width first; the array lists rows first."
+      - id: b
+        text: "Height first, then width."
+        correct: true
+        feedback: "The array's rows give height and its columns give width."
+      - id: c
+        text: "Height first, then channels."
+        correct: false
+        feedback: "A grayscale image grid has height and width axes; RGB adds a channel axis."
+    solution: "The array's rows give height and its columns give width."
+  - id: iat-recall-grid-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: iat-pixels-grid
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A grayscale image has height $H$ and width $W$. Write its number of pixels."
+    answer: "H*W"
+    variables: { "H": [2, 1000], "W": [2, 1000] }
+    solution: "There are $H$ rows of $W$ pixels, giving $HW$ pixels."
+  - id: iat-recall-layout-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: iat-channels-layout
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what do HWC and CHW mean, and what does a transpose preserve when changing between them?"
+    rubric:
+      - id: point0
+        criterion: "Explain that HWC orders axes as height, width, channels; CHW orders them as channels, height, width."
+        weight: 1
+        required: true
+      - id: point1
+        criterion: "Explain that a transpose moves axes while keeping each value with its own pixel."
+        weight: 1
+        required: true
+    exemplar: "HWC orders axes as height, width, channels; CHW orders them as channels, height, width. A transpose moves axes while keeping each value with its own pixel."
+  - id: iat-recall-layout-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: iat-channels-layout
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Which operation changes an RGB array from HWC to CHW while keeping the colours at the right pixels?"
+    options:
+      - id: a
+        text: "Reverse all axes with the array's .T property."
+        correct: false
+        feedback: "For three axes, .T gives CWH and swaps height and width."
+      - id: b
+        text: "Cut the values into the target shape with reshape."
+        correct: false
+        feedback: "Reshape can give the desired shape while mixing values from different pixels and channels."
+      - id: c
+        text: "Move the channel axis first with a transpose."
+        correct: true
+        feedback: "An explicit axis transpose moves channels first and preserves each pixel's channel values."
+    solution: "An explicit axis transpose moves channels first and preserves each pixel's channel values."
+  - id: iat-recall-layout-formula
+    dimension: math
+    type: text
+    role: recall
+    knowledge_point: iat-channels-layout
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Fill in the missing axis order to convert an HWC image to CHW: `np.transpose(img, ____)`. Type the three axis numbers in order."
+    accept: ["(2, 0, 1)", "(2,0,1)", "[2, 0, 1]", "[2,0,1]", "2, 0, 1", "2,0,1"]
+    regex: "^\\s*(?:\\(\\s*2\\s*,\\s*0\\s*,\\s*1\\s*,?\\s*\\)|\\[\\s*2\\s*,\\s*0\\s*,\\s*1\\s*,?\\s*\\]|2\\s*,\\s*0\\s*,\\s*1)\\s*$"
+    solution: "The old channel axis is 2, followed by height axis 0 and width axis 1."
+  - id: iat-recall-normalize-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: iat-normalization
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, how do you rescale uint8 pixel values, and how do you then standardise each channel?"
+    rubric:
+      - id: point0
+        criterion: "Explain that rescaling divides each uint8 value by 255 to put it between zero and one."
+        weight: 1
+        required: true
+      - id: point1
+        criterion: "Explain that per-channel standardisation subtracts that channel's mean and divides by its positive standard deviation."
+        weight: 1
+        required: true
+    exemplar: "Rescaling divides each uint8 value by 255 to put it between zero and one. Per-channel standardisation subtracts that channel's mean and divides by its positive standard deviation."
+  - id: iat-recall-normalize-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: iat-normalization
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Which operation is per-channel standardisation of a rescaled image?"
+    options:
+      - id: a
+        text: "Subtract each channel's mean and divide by its spread."
+        correct: true
+        feedback: "Per-channel standardisation uses the mean and standard deviation of the matching channel."
+      - id: b
+        text: "Divide every original uint8 pixel value by 255."
+        correct: false
+        feedback: "Division by 255 rescales uint8 values to the interval from zero to one."
+      - id: c
+        text: "Move the channel axis ahead of height and width."
+        correct: false
+        feedback: "Moving the channel axis changes layout while preserving pixel values."
+    solution: "Per-channel standardisation uses the mean and standard deviation of the matching channel."
+  - id: iat-recall-normalize-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: iat-normalization
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A rescaled pixel value is $x$. Its channel's mean is $m$ and standard deviation is $s>0$. Write its standardised value."
+    answer: "(x-m)/s"
+    variables: { "x": [0, 1], "m": [0.1, 0.9], "s": [0.05, 0.5] }
+    solution: "Subtract the channel mean and divide by its standard deviation: $(x-m)/s$."

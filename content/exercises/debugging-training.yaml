@@ -917,3 +917,207 @@ exercises:
     solution:
       The tests narrow down different explanations rather than naming a cause from a plateau alone.
       A known tiny-batch answer tests fitting, while numerical nudges test the slope itself.
+  - id: dbt-recall-curves-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: dbt-loss-curves
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what does a loss curve record, and why can a flat curve be a healthy result?"
+    rubric:
+      - id: point0
+        criterion: "Explain that a loss curve records loss during training."
+        weight: 1
+        required: true
+      - id: point1
+        criterion: "Explain that a flat curve can mean the model has reached its lowest possible loss."
+        weight: 1
+        required: true
+    exemplar: "A loss curve records loss during training. A flat curve can mean the model has reached its lowest possible loss."
+  - id: dbt-recall-curves-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: dbt-loss-curves
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A run uses all training examples for each update, and its loss grows while its prediction swings across the best value. Which cause fits this pattern?"
+    options:
+      - id: a
+        text: "The learning rate is too small."
+        correct: false
+        feedback: "A small rate shrinks the gap slowly and makes loss fall slowly."
+      - id: b
+        text: "The learning rate is too large."
+        correct: true
+        feedback: "A rate that makes the gap multiplier's size exceed one causes growing swings and rising loss."
+      - id: c
+        text: "The code leaves the prediction unchanged."
+        correct: false
+        feedback: "An unchanged prediction produces a flat loss curve."
+    solution: "A rate that makes the gap multiplier's size exceed one causes growing swings and rising loss."
+  - id: dbt-recall-curves-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: dbt-loss-curves
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A model predicts one time $w$ for trips lasting $1,3,5,7$ seconds and minimizes their mean squared error. Write the gap from $4$ after one gradient-descent update with learning rate $r$ (the rate $\\eta$)."
+    answer: "(1-2*r)*(w-4)"
+    variables: { "w": [-2, 10], "r": [0.01, 1.4] }
+    solution: "The update multiplies the old gap by $1-2r$, giving $(1-2r)(w-4)$."
+  - id: dbt-recall-tiny-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: dbt-tiny-batch
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what does overfitting a single batch test, and what should happen to its loss when an exact fit is possible?"
+    rubric:
+      - id: point0
+        criterion: "Explain that repeatedly training on one small batch tests whether the code can fit those examples."
+        weight: 1
+        required: true
+      - id: point1
+        criterion: "Explain that with a flexible enough model, correct updates and a suitable learning rate should drive the loss close to zero."
+        weight: 1
+        required: true
+    exemplar: "Repeatedly training on one small batch tests whether the code can fit those examples. With a flexible enough model, correct updates and a suitable learning rate should drive the loss close to zero."
+  - id: dbt-recall-tiny-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: dbt-tiny-batch
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A model fits two training examples almost exactly. What does this tiny-batch test establish?"
+    options:
+      - id: a
+        text: "The updates can fit these particular examples."
+        correct: true
+        feedback: "Tiny-batch success shows the model can fit those examples."
+      - id: b
+        text: "Every computed slope has the correct size."
+        correct: false
+        feedback: "A wrong slope can still make loss fall and pass a tiny-batch test."
+      - id: c
+        text: "Predictions will work well on unseen examples."
+        correct: false
+        feedback: "Fitting a few training examples does not test generalisation."
+    solution: "Tiny-batch success shows the model can fit those examples."
+  - id: dbt-recall-tiny-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: dbt-tiny-batch
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A trip has distance $x$. A linear model has weight $w$ in seconds per metre and bias $b$ in seconds. Write its predicted trip time."
+    answer: "w*x+b"
+    variables: { "w": [0.5, 5], "x": [0.5, 10], "b": [-2, 3] }
+    solution: "The linear prediction is $\\hat y=wx+b$."
+  - id: dbt-recall-grad-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: dbt-grad-check
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, how does a gradient check estimate a slope, and what does it compare that estimate with?"
+    rubric:
+      - id: point0
+        criterion: "Explain that it nudges one parameter up and down a little while keeping everything else fixed and measures the loss change over the separation."
+        weight: 1
+        required: true
+      - id: point1
+        criterion: "Explain that it compares that numerical slope with the slope computed by the code."
+        weight: 1
+        required: true
+    exemplar: "It nudges one parameter up and down a little while keeping everything else fixed and measures the loss change over the separation. It compares that numerical slope with the slope computed by the code."
+  - id: dbt-recall-grad-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: dbt-grad-check
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Which test directly checks whether a computed slope agrees with the loss function?"
+    options:
+      - id: a
+        text: "Repeat updates until one tiny batch has nearly zero loss."
+        correct: false
+        feedback: "A tiny-batch fit can succeed with a slope of the wrong size."
+      - id: b
+        text: "Compare the training and validation loss curves."
+        correct: false
+        feedback: "Comparing training and validation loss helps identify overfitting."
+      - id: c
+        text: "Compare the code slope with a two-nudge numerical slope."
+        correct: true
+        feedback: "A gradient check measures how loss changes around one parameter and compares it with the code slope."
+    solution: "A gradient check measures how loss changes around one parameter and compares it with the code slope."
+  - id: dbt-recall-grad-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: dbt-grad-check
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A code slope is $a$ and a numerical slope is $n$. Write their relative difference, using the larger slope magnitude as the scale. Type `abs(...)` and `max(...)`. Both slopes are positive here."
+    answer: "abs(a-n)/max(abs(a),abs(n))"
+    variables: { "a": [0.1, 20], "n": [0.2, 15] }
+    solution: "Divide the disagreement by the larger magnitude: $|a-n|/\\max(|a|,|n|)$."
+  - id: dbt-recall-symptoms-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: dbt-symptoms
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what should you try first when training loss blows up, and what should you inspect if it still rises at the smaller rate?"
+    rubric:
+      - id: rate
+        criterion: "Explain that the learning rate may be too large, so lower it and test again."
+        weight: 1
+        required: true
+      - id: sign
+        criterion: "Explain that a still-rising loss at a smaller rate is a reason to inspect whether the update adds the slope instead of subtracting it."
+        weight: 1
+        required: true
+    exemplar: "Lower the learning rate and test again because the steps may be too large. If loss still rises, inspect whether the update adds the slope instead of subtracting it."
+  - id: dbt-recall-symptoms-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: dbt-symptoms
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Which symptom suggests trying a larger learning rate?"
+    options:
+      - id: a
+        text: "Training loss falls by only a sliver each update."
+        correct: true
+        feedback: "A very slow fall can mean the learning rate is too small; raise it and test again."
+      - id: b
+        text: "Training loss falls while validation loss clearly rises."
+        correct: false
+        feedback: "This suggests overfitting; keep the saved parameters with the lowest validation loss."
+      - id: c
+        text: "Training loss grows rapidly with each update."
+        correct: false
+        feedback: "A growing loss suggests lowering the rate first, then checking for a flipped update sign if it keeps rising."
+    solution: "A loss that falls by only a sliver may indicate a learning rate that is too small."
+  - id: dbt-recall-symptoms-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: dbt-symptoms
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A constant prediction $w$ is trained on trip times $1,3,5,7$ using mean squared error. Buggy code adds learning rate $r$ times the loss slope to $w$. Write the gap from $4$ after this update."
+    answer: "(1+2*r)*(w-4)"
+    variables: { w: [-2, 10], r: [0.01, 1.4] }
+    solution: "The flipped sign gives $w+r\\,2(w-4)-4=(1+2r)(w-4)$."

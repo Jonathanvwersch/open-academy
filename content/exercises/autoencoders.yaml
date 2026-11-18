@@ -716,3 +716,207 @@ exercises:
         required: true
     exemplar: The encoder turns each frame into a latent vector of $256$ numbers, and the decoder rebuilds the frame from that vector. Training compares the rebuilt frame with the frame itself, squaring and adding the pixel differences, and nudges the weights to make that error small, so the frames are their own targets and need no labels. A frame flattens to $64\times64\times3=12{,}288$ numbers, so the compression factor is $12{,}288/256=48$. A latent vector as long as the input could copy each pixel straight through without needing to find patterns; squeezing through $256$ numbers forces it to keep the patterns that matter for rebuilding the frame.
     solution: An autoencoder learns a summary because rebuilding the frame through a narrow latent vector forces it to capture the frame's main patterns.
+  - id: ae-recall-encode-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: ae-encode-decode
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what do the encoder and decoder in an autoencoder do?"
+    rubric:
+      - id: point0
+        criterion: "Explain that the encoder turns an input of many numbers into a shorter latent vector."
+        weight: 1
+        required: true
+      - id: point1
+        criterion: "Explain that the decoder turns the latent vector back into a reconstruction with the input's number of values."
+        weight: 1
+        required: true
+    exemplar: "The encoder turns an input of many numbers into a shorter latent vector. The decoder turns the latent vector back into a reconstruction with the input's number of values."
+  - id: ae-recall-encode-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: ae-encode-decode
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Which object is the short representation of one image inside an autoencoder?"
+    options:
+      - id: a
+        text: "The encoder's matrix of shared weights."
+        correct: false
+        feedback: "The weight matrix belongs to the network and is shared by images."
+      - id: b
+        text: "The decoder's full reconstructed image."
+        correct: false
+        feedback: "The reconstruction is the decoder output and has the full input size."
+      - id: c
+        text: "The encoder's output latent vector."
+        correct: true
+        feedback: "The latent vector is the short encoder output passed to the decoder."
+    solution: "The latent vector is the short encoder output passed to the decoder."
+  - id: ae-recall-encode-formula
+    dimension: math
+    type: text
+    role: recall
+    knowledge_point: ae-encode-decode
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A one-layer decoder has weight matrix $W_d$ and bias $b_d$. Fill in the missing input: $\\hat x=W_d\\,\\underline{\\quad}+b_d$. Type its symbol or name."
+    accept: ["z", "latent vector", "the latent vector", "encoded vector", "the encoded vector"]
+    regex: "^\\s*(?:\\$?\\s*z\\s*\\$?|(?:the\\s+)?(?:latent|encoded)\\s+vector|\\\\(?:mathbf|boldsymbol)\\s*\\{\\s*z\\s*\\})\\s*$"
+    solution: "The decoder reads the latent vector $z$, giving $\\hat x=W_dz+b_d$."
+  - id: ae-recall-error-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: ae-reconstruction
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what is reconstruction error, and where does an autoencoder get the target for each training image?"
+    rubric:
+      - id: point0
+        criterion: "Explain that reconstruction error sums the squared differences between reconstructed and input pixel values."
+        weight: 1
+        required: true
+      - id: point1
+        criterion: "Explain that the input image itself is the target, so separate labels are unnecessary."
+        weight: 1
+        required: true
+    exemplar: "Reconstruction error sums the squared differences between reconstructed and input pixel values. The input image itself is the target, so separate labels are unnecessary."
+  - id: ae-recall-error-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: ae-reconstruction
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "What stops a basic autoencoder from simply passing every input pixel straight through?"
+    options:
+      - id: a
+        text: "A latent vector with fewer numbers than the input."
+        correct: true
+        feedback: "The narrow middle forces the network to find patterns that let it rebuild the image."
+      - id: b
+        text: "An unlabelled training set with many different images."
+        correct: false
+        feedback: "Unlabelled data supplies inputs and targets, but it does not prevent copying."
+      - id: c
+        text: "A reconstruction with as many numbers as the input."
+        correct: false
+        feedback: "The reconstruction needs the original size; the narrow latent vector provides the restriction."
+    solution: "The narrow middle forces the network to find patterns that let it rebuild the image."
+  - id: ae-recall-error-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: ae-reconstruction
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "An input has two pixel values $x,y$, reconstructed as $a,b$, respectively. Write the summed squared reconstruction error."
+    answer: "(a-x)^2+(b-y)^2"
+    variables: { "x": [0, 1], "y": [0, 1], "a": [0, 1], "b": [0, 1] }
+    solution: "Square each reconstructed-minus-input difference and add them: $(a-x)^2+(b-y)^2$."
+  - id: ae-recall-sizes-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: ae-sizes
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what does an autoencoder's compression factor measure, and how are its network parameters stored across images?"
+    rubric:
+      - id: point0
+        criterion: "Explain that the compression factor is input size divided by latent size, the number of input values per latent value."
+        weight: 1
+        required: true
+      - id: point1
+        criterion: "Explain that the weights and biases are stored once and shared by all images."
+        weight: 1
+        required: true
+    exemplar: "The compression factor is input size divided by latent size, the number of input values per latent value. The weights and biases are stored once and shared by all images."
+  - id: ae-recall-sizes-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: ae-sizes
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Which numbers are stored separately for each encoded image?"
+    options:
+      - id: a
+        text: "A fresh set of all encoder weights and biases."
+        correct: false
+        feedback: "Encoder parameters are stored once and shared by all images."
+      - id: b
+        text: "A fresh set of all decoder weights and biases."
+        correct: false
+        feedback: "Decoder parameters are also stored once and shared by all images."
+      - id: c
+        text: "The image's own short latent vector."
+        correct: true
+        feedback: "Each image has its own latent vector; network parameters are shared."
+    solution: "Each image has its own latent vector; network parameters are shared."
+  - id: ae-recall-sizes-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: ae-sizes
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "An image contains $n$ input values and its latent vector contains $k$ values. Write the compression factor."
+    answer: "n/k"
+    variables: { "n": [500, 2000], "k": [2, 128] }
+    solution: "The compression factor is the number of input values per latent value, $n/k$."
+  - id: ae-recall-latent-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: ae-latent-space
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what is latent space, and how does distance in it help compare images?"
+    rubric:
+      - id: point0
+        criterion: "Explain that latent space treats each latent vector as a point with one axis per latent number."
+        weight: 1
+        required: true
+      - id: point1
+        criterion: "Explain that images that look alike get nearby points, so the distance between latent vectors compares images."
+        weight: 1
+        required: true
+    exemplar: "Latent space treats each latent vector as a point with one axis per latent number. Images that look alike get nearby points, so the distance between latent vectors compares images."
+  - id: ae-recall-latent-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: ae-latent-space
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Which statement describes the meaning of latent coordinates in a trained autoencoder?"
+    options:
+      - id: a
+        text: "Each coordinate always names a fixed visible property."
+        correct: false
+        feedback: "The same images can be encoded using row brightnesses or their sums and differences, so meanings are not fixed."
+      - id: b
+        text: "Different coordinate meanings can support good reconstructions."
+        correct: true
+        feedback: "Training rewards good copies and can find many different latent representations."
+      - id: c
+        text: "Every small visible detail must have its own coordinate."
+        correct: false
+        feedback: "A small detail can contribute little reconstruction error and be lost from the latent vector."
+    solution: "Training rewards good copies and can find many different latent representations."
+  - id: ae-recall-latent-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: ae-latent-space
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Two latent vectors are $(a,b)$ and $(c,d)$. Write their straight-line distance. Type `sqrt(...)` for a square root."
+    answer: "sqrt((a-c)^2+(b-d)^2)"
+    variables: { "a": [-2, 2], "b": [-2, 2], "c": [-2, 2], "d": [-2, 2] }
+    solution: "Square matching-coordinate differences, add and take the square root: $\\sqrt{(a-c)^2+(b-d)^2}$."

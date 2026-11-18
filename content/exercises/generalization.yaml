@@ -402,3 +402,178 @@ exercises:
         weight: 1
         required: true
     exemplar: "Copied training sales give no independent evidence about unseen houses. City B can have a different mix of houses or different prices at the same sizes, so city A's score is insufficient. I would reserve separate city B sales covering the kinds of houses the model will price."
+  - id: gen-recall-unseen-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: gen-unseen-houses
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what do independent and identically distributed mean for house sales?"
+    rubric:
+      - id: point0
+        criterion: "Explain that independent means knowing one sale gives no information about another."
+        weight: 1
+        required: true
+      - id: point1
+        criterion: "Explain that identically distributed means all examples, including future sales, come from the same unchanged distribution."
+        weight: 1
+        required: true
+    exemplar: "Independent means knowing one sale gives no information about another. Identically distributed means all examples, including future sales, come from the same unchanged distribution."
+  - id: gen-recall-unseen-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: gen-unseen-houses
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Which condition concerns independence of sale records?"
+    options:
+      - id: a
+        text: "One record gives no information about another."
+        correct: true
+        feedback: "Independence means one example gives no information about another."
+      - id: b
+        text: "Each record comes from the same city market."
+        correct: false
+        feedback: "A shared unchanged source concerns being identically distributed."
+      - id: c
+        text: "The test set contains many different house sizes."
+        correct: false
+        feedback: "A range of sizes describes the examples present; it does not establish independence."
+    solution: "Independence means one example gives no information about another."
+  - id: gen-recall-unseen-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: gen-unseen-houses
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Three untouched test houses have absolute prediction errors $a$, $b$ and $c$. Write their mean absolute error."
+    answer: "(a+b+c)/3"
+    variables: { "a": [1, 50], "b": [1, 50], "c": [1, 50] }
+    solution: "Add the distances and divide by the number of houses: $(a+b+c)/3$."
+  - id: gen-recall-shift-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: gen-changed-source
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what is distribution shift, and how should you check predictions in the new setting?"
+    rubric:
+      - id: point0
+        criterion: "Explain that distribution shift means the examples we want to predict come from a different distribution than the examples we tested on."
+        weight: 1
+        required: true
+      - id: point1
+        criterion: "Explain that we collect examples with their real targets from the new setting and evaluate the model there."
+        weight: 1
+        required: true
+    exemplar: "Distribution shift means the examples we want to predict come from a different distribution than the examples we tested on. We collect examples with their real targets from the new setting and evaluate the model there."
+  - id: gen-recall-shift-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: gen-changed-source
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Which change is distribution shift for a house-price model tested in one city?"
+    options:
+      - id: a
+        text: "New independent sales arrive from the same unchanged market."
+        correct: false
+        feedback: "New independent sales from the unchanged source keep the old test score relevant."
+      - id: b
+        text: "Two agencies supply duplicate records of the same sale."
+        correct: false
+        feedback: "Duplicate records violate independence and can cause leakage across a split."
+      - id: c
+        text: "Familiar house sizes sell for higher prices in a new city."
+        correct: true
+        feedback: "A changed relationship between familiar inputs and prices is distribution shift."
+    solution: "A changed relationship between familiar inputs and prices is distribution shift."
+  - id: gen-recall-shift-contrast2
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: gen-changed-source
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "An old test score is low, but the model will now price houses from a different market. What does the old score establish?"
+    options:
+      - id: a
+        text: "It establishes low error on the new market's houses."
+        correct: false
+        feedback: "The new market can change the input mix or its relationship to prices."
+      - id: b
+        text: "It describes the tested market; the new one needs evaluation."
+        correct: true
+        feedback: "The old score alone is insufficient; measuring in the new setting shows whether predictions remain useful."
+      - id: c
+        text: "It establishes high error on the new market's houses."
+        correct: false
+        feedback: "A different distribution does not prove failure; predictions might still be useful."
+    solution: "The old score alone is insufficient; measuring in the new setting shows whether predictions remain useful."
+  - id: gen-recall-records-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: gen-related-records
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what is data leakage, and how does a group split prevent the duplicate-house shortcut when evaluating new-house predictions?"
+    rubric:
+      - id: point0
+        criterion: "Explain that data leakage occurs when information that should be unavailable for a prediction influences training or model selection."
+        weight: 1
+        required: true
+      - id: point1
+        criterion: "Explain that a group split keeps all records of one house in the same group so a copy of an evaluated house stays out of training."
+        weight: 1
+        required: true
+    exemplar: "Data leakage occurs when information that should be unavailable for a prediction influences training or model selection. A group split keeps all records of one house in the same group so a copy of an evaluated house stays out of training."
+  - id: gen-recall-records-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: gen-related-records
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Which split directly prevents copies of the same house sale from appearing in both training and validation?"
+    options:
+      - id: a
+        text: "Assign each row independently to a random group."
+        correct: false
+        feedback: "Independent row assignment can put two copies on opposite sides."
+      - id: b
+        text: "Assign earlier rows to training and later rows to validation."
+        correct: false
+        feedback: "A time split rehearses forecasting; duplicate records still need grouping by house."
+      - id: c
+        text: "Assign each house to a group and keep its rows together."
+        correct: true
+        feedback: "A group split keeps related records together and removes the duplicate-house shortcut."
+    solution: "A group split keeps related records together and removes the duplicate-house shortcut."
+  - id: gen-recall-records-contrast2
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: gen-related-records
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Which split rehearses predicting future sales?"
+    options:
+      - id: a
+        text: "Train on earlier sales and check later sales."
+        correct: true
+        feedback: "A time split uses earlier records for training and later records for checking."
+      - id: b
+        text: "Train on later sales and check earlier sales."
+        correct: false
+        feedback: "Training on later records lets future information help predict the past."
+      - id: c
+        text: "Train on one copy and check another copy of each sale."
+        correct: false
+        feedback: "Copies across the split allow recognition of prices already seen in training."
+    solution: "A time split uses earlier records for training and later records for checking."

@@ -701,3 +701,167 @@ exercises:
         required: true
     exemplar: "The straight line likely underfits because even its training error of $50$ is too high to be useful. The wiggly curve likely overfits because training error is $0$ while validation error is $93$. I would test a simpler model for the wiggly curve."
     solution: "The straight line likely underfits because even its training error of $50$ is too high to be useful. The wiggly curve likely overfits because training error is $0$ while validation error is $93$. I would test a simpler model for the wiggly curve."
+  - id: ovf-recall-flexibility-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: ovf-flexibility
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what are underfitting and overfitting?"
+    rubric:
+      - id: point0
+        criterion: "Explain that underfitting means missing useful patterns even in training data."
+        weight: 1
+        required: true
+      - id: point1
+        criterion: "Explain that overfitting means following training details that do not carry over to new examples."
+        weight: 1
+        required: true
+    exemplar: "Underfitting means missing useful patterns even in training data. Overfitting means following training details that do not carry over to new examples."
+  - id: ovf-recall-flexibility-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: ovf-flexibility
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Which description identifies overfitting?"
+    options:
+      - id: a
+        text: "The model misses a useful bend even in training data."
+        correct: false
+        feedback: "Missing useful training patterns is underfitting."
+      - id: b
+        text: "The model follows training scatter that fails to carry over."
+        correct: true
+        feedback: "Overfitting follows training details that fail on new examples."
+      - id: c
+        text: "The model follows a pattern that predicts new examples well."
+        correct: false
+        feedback: "A pattern that carries over indicates a useful fit."
+    solution: "Overfitting follows training details that fail on new examples."
+  - id: ovf-recall-flexibility-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: ovf-flexibility
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "For two houses, predictions are $a$ and $b$ and true prices are $y$ and $z$, respectively. Write the mean absolute error. Type `abs(...)` for absolute value."
+    answer: "(abs(a-y)+abs(b-z))/2"
+    variables: { "a": [0, 100], "b": [0, 100], "y": [0, 100], "z": [0, 100] }
+    solution: "Average the distances: $(|a-y|+|b-z|)/2$."
+  - id: ovf-recall-gap-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: ovf-error-gap
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what is the error gap, and why can a small gap still go with a poor fit?"
+    rubric:
+      - id: point0
+        criterion: "Explain that the error gap is validation error minus training error."
+        weight: 1
+        required: true
+      - id: point1
+        criterion: "Explain that two high errors can be close together while both fail to meet the users' target."
+        weight: 1
+        required: true
+    exemplar: "The error gap is validation error minus training error. Two high errors can be close together while both fail to meet the users' target."
+  - id: ovf-recall-gap-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: ovf-error-gap
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Which description captures high variance?"
+    options:
+      - id: a
+        text: "Predictions change a lot when the training sample changes."
+        correct: true
+        feedback: "High variance means the fitted model changes a lot with a different selection of training houses."
+      - id: b
+        text: "The model systematically misses bends in its training data."
+        correct: false
+        feedback: "Systematic mistakes from an inflexible shape describe high bias."
+      - id: c
+        text: "Both errors stay low and meet the users' target."
+        correct: false
+        feedback: "Meeting the target on both sets suggests a useful fit; this does not define variance."
+    solution: "High variance means the fitted model changes a lot with a different selection of training houses."
+  - id: ovf-recall-gap-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: ovf-error-gap
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Training error is $t$ and validation error is $v$, measured the same way in the same units. Write the error gap."
+    answer: "v-t"
+    variables: { "t": [0, 50], "v": [0, 100] }
+    solution: "The gap is validation error minus training error: $v-t$."
+  - id: ovf-recall-curves-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: ovf-learning-curves
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what does a learning curve show, and how does early stopping choose a saved model?"
+    rubric:
+      - id: point0
+        criterion: "Explain that a learning curve shows how training and validation errors change across epochs."
+        weight: 1
+        required: true
+      - id: point1
+        criterion: "Explain that early stopping keeps the saved copy with the lowest validation error."
+        weight: 1
+        required: true
+    exemplar: "A learning curve shows how training and validation errors change across epochs. Early stopping keeps the saved copy with the lowest validation error."
+  - id: ovf-recall-curves-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: ovf-learning-curves
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Which trend suggests that training has begun to overfit?"
+    options:
+      - id: a
+        text: "Both errors are high and still falling each epoch."
+        correct: false
+        feedback: "Both errors still falling can mean extra training will help."
+      - id: b
+        text: "Both errors settle well above the required target."
+        correct: false
+        feedback: "Persistently high training and validation errors suggest underfitting."
+      - id: c
+        text: "Training error falls while validation error clearly rises."
+        correct: true
+        feedback: "The fit to training data improves while held-out predictions worsen."
+    solution: "The fit to training data improves while held-out predictions worsen."
+  - id: ovf-recall-curves-contrast2
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: ovf-learning-curves
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Which data should choose the saved checkpoint before a final test score is reported?"
+    options:
+      - id: a
+        text: "Training data, using its lowest error."
+        correct: false
+        feedback: "Training error can keep falling after overfitting begins."
+      - id: b
+        text: "Validation data, using its lowest error."
+        correct: true
+        feedback: "Validation error chooses the saved copy; test data stays aside for a final check."
+      - id: c
+        text: "Test data, using its lowest error."
+        correct: false
+        feedback: "Choosing with test error uses up the independent final check."
+    solution: "Validation error chooses the saved copy; test data stays aside for a final check."

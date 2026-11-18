@@ -935,3 +935,207 @@ exercises:
         weight: 1
         required: true
     exemplar: "Repeated multiplication makes activations shrink when factors have size below $1$ and grow when their size is above $1$. More randomly weighted inputs require smaller starting weights to keep typical score size steady. LayerNorm subtracts one example's layer-output mean and divides by its standard deviation. It then applies a learned gain and shift so training can choose another size and centre."
+  - id: wi-recall-depth-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: wi-depth-chain
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, why can activations and gradients vanish in a deep chain whose layers all multiply by $0.5$?"
+    rubric:
+      - id: point0
+        criterion: "Explain that each layer multiplies its input by $0.5$, so repeated layers shrink activations towards zero."
+        weight: 1
+        required: true
+      - id: point1
+        criterion: "Explain that backpropagation multiplies slopes by $0.5$ at each layer too, making early gradients tiny."
+        weight: 1
+        required: true
+    exemplar: "Each layer multiplies its input by $0.5$, so repeated layers shrink activations towards zero. Backpropagation multiplies slopes by $0.5$ at each layer too, making early gradients tiny."
+  - id: wi-recall-depth-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: wi-depth-chain
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Which process explains vanishing gradients in a chain with small weights?"
+    options:
+      - id: a
+        text: "Repeated multiplication shrinks slopes during backpropagation."
+        correct: true
+        feedback: "Each local derivative multiplies the slope, so repeated small factors make gradients tiny."
+      - id: b
+        text: "Repeated multiplication grows slopes during backpropagation."
+        correct: false
+        feedback: "Growing slopes are exploding gradients; small weights shrink the slopes instead."
+      - id: c
+        text: "Repeated multiplication shrinks outputs during the forward pass."
+        correct: false
+        feedback: "Shrinking forward outputs are vanishing activations; gradients are the slopes passed backwards."
+    solution: "Each local derivative multiplies the slope, so repeated small factors make gradients tiny."
+  - id: wi-recall-depth-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: wi-depth-chain
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A chain has $d$ layers with weight $w$ in each, no bias and no activation function. For input $x$, write the final output."
+    answer: "w^d*x"
+    variables: { "w": [0.2, 2], "d": [2, 8], "x": [0.5, 3] }
+    solution: "Repeated multiplication gives $h_d=w^d x$."
+  - id: wi-recall-init-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: wi-init-scale
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, why do more inputs call for smaller starting weights, and why does ReLU call for a larger size than a layer without ReLU?"
+    rubric:
+      - id: point0
+        criterion: "Explain that adding more randomly weighted inputs tends to increase the score's typical size, so smaller weights keep its size steady."
+        weight: 1
+        required: true
+      - id: point1
+        criterion: "Explain that ReLU zeros the negative half of scores, so larger weights compensate for the lost average square."
+        weight: 1
+        required: true
+    exemplar: "Adding more randomly weighted inputs tends to increase the score's typical size, so smaller weights keep its size steady. ReLU zeros the negative half of scores, so larger weights compensate for the lost average square."
+  - id: wi-recall-init-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: wi-init-scale
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "What does He initialization compensate for?"
+    options:
+      - id: a
+        text: "A loss slope getting smaller near a minimum."
+        correct: false
+        feedback: "Optimization can reduce loss slopes; He initialization accounts for ReLU's effect on outputs."
+      - id: b
+        text: "ReLU removing half the scores' average square."
+        correct: true
+        feedback: "ReLU zeros the negative half, so He initialization increases the starting size."
+      - id: c
+        text: "A layer's output mean drifting during training."
+        correct: false
+        feedback: "Normalization addresses output drift during training; initialization chooses starting weights."
+    solution: "ReLU zeros the negative half, so He initialization increases the starting size."
+  - id: wi-recall-init-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: wi-init-scale
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A neuron has $n$ inputs of typical size one and uses ReLU. Write the typical size of its starting weights under He initialization. Type `sqrt(...)` for a square root."
+    answer: "sqrt(2/n)"
+    variables: { "n": [2, 512] }
+    solution: "He initialization uses $a=\\sqrt{2/n}$."
+  - id: wi-recall-layer-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: wi-layer-norm
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what does LayerNorm do before its learned gain and shift, and which outputs supply its statistics?"
+    rubric:
+      - id: point0
+        criterion: "Explain that LayerNorm subtracts the mean and divides by the standard deviation."
+        weight: 1
+        required: true
+      - id: point1
+        criterion: "Explain that these statistics come from one example's outputs across a layer."
+        weight: 1
+        required: true
+    exemplar: "LayerNorm subtracts the mean and divides by the standard deviation. These statistics come from one example's outputs across a layer."
+  - id: wi-recall-layer-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: wi-layer-norm
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Which outputs supply LayerNorm's mean and standard deviation?"
+    options:
+      - id: a
+        text: "One neuron's outputs across the current batch."
+        correct: false
+        feedback: "BatchNorm uses one neuron's outputs across examples."
+      - id: b
+        text: "One neuron's saved statistics from past batches."
+        correct: false
+        feedback: "BatchNorm uses saved batch statistics after training."
+      - id: c
+        text: "One example's outputs across the current layer."
+        correct: true
+        feedback: "LayerNorm computes statistics across a layer for one example."
+    solution: "LayerNorm computes statistics across a layer for one example."
+  - id: wi-recall-layer-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: wi-layer-norm
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "An output is $h$. The layer's outputs for this example have mean $m$ and standard deviation $s>0$. Write its LayerNorm value before learned gain and shift."
+    answer: "(h-m)/s"
+    variables: { "h": [-10, 10], "m": [-5, 5], "s": [0.1, 5] }
+    solution: "Subtract the mean and divide by the standard deviation: $(h-m)/s$."
+  - id: wi-recall-batch-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: wi-batch-norm
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, which outputs does BatchNorm normalize together during training, and what statistics does it use after training?"
+    rubric:
+      - id: point0
+        criterion: "Explain that BatchNorm normalizes each neuron's outputs across the examples in a batch."
+        weight: 1
+        required: true
+      - id: point1
+        criterion: "Explain that after training it uses saved running averages of the mean and squared standard deviation."
+        weight: 1
+        required: true
+    exemplar: "BatchNorm normalizes each neuron's outputs across the examples in a batch. After training it uses saved running averages of the mean and squared standard deviation."
+  - id: wi-recall-batch-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: wi-batch-norm
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Which statistics does BatchNorm use to rescale a neuron's output during training?"
+    options:
+      - id: a
+        text: "That neuron's mean and standard deviation over the current batch."
+        correct: true
+        feedback: "BatchNorm computes statistics across the examples sharing the batch."
+      - id: b
+        text: "That example's mean and standard deviation over the current layer."
+        correct: false
+        feedback: "LayerNorm uses one example's statistics across neurons in a layer."
+      - id: c
+        text: "That neuron's saved mean and spread from earlier training batches."
+        correct: false
+        feedback: "Saved statistics are used after training; training uses the current batch."
+    solution: "BatchNorm computes statistics across the examples sharing the batch."
+  - id: wi-recall-batch-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: wi-batch-norm
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A neuron's output is $h$. Across a training batch its mean is $m$ and standard deviation is $s>0$. Write its BatchNorm output after learned gain $g$ and shift $b$."
+    answer: "g*(h-m)/s+b"
+    variables: { "h": [-10, 10], "m": [-5, 5], "s": [0.1, 5], "g": [0.5, 2], "b": [-2, 2] }
+    solution: "Rescale, multiply by gain and add shift: $g(h-m)/s+b$."
