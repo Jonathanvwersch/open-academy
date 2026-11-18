@@ -3,6 +3,7 @@ import { Rating } from 'ts-fsrs';
 import { afterAll, beforeAll, expect, it, vi } from 'vitest';
 import { createApp } from '../../src/app.js';
 import { env } from '../../src/config.js';
+import { subjectForCourse } from '../../src/content/index.js';
 import { loadContent } from '../../src/content/load.js';
 import { instantiateExercise, isTemplate } from '../../src/content/templates.js';
 import type { ContentIndex } from '../../src/content/types.js';
@@ -20,6 +21,8 @@ import {
 import { FakeProvider } from '../../src/features/tutor/provider.js';
 import { shiftLocalDate } from '../../src/http/request-context.js';
 import { newReviewCard, reviewActivityRating, scheduleReview } from '../../src/learning/fsrs.js';
+import { courseConceptIds, courseFoundationIds } from '../../src/learning/prerequisites.js';
+import { effectiveFocusSubjectId } from '../../src/learning/scheduler.js';
 import { localDateKey } from '../../src/learning/xp.js';
 
 const db = createDb(env.TEST_DATABASE_URL);
@@ -170,6 +173,31 @@ function hasEligibleReviewExercise(conceptId: string, dimension: string) {
   );
 }
 
+async function focusedConceptIds() {
+  const [[learner], enrollments] = await Promise.all([
+    db.select({ prefs: users.prefs }).from(users).where(eq(users.id, userId)).limit(1),
+    db
+      .select({ courseId: courseEnrollments.courseId })
+      .from(courseEnrollments)
+      .where(and(eq(courseEnrollments.userId, userId), eq(courseEnrollments.status, 'active'))),
+  ]);
+  const activeCourseIds = enrollments.map((enrollment) => enrollment.courseId);
+  const focusSubjectId = effectiveFocusSubjectId(
+    learner?.prefs as { focusSubjectId?: unknown } | undefined,
+    activeCourseIds,
+    content,
+  );
+  if (!focusSubjectId) return null;
+  return new Set(
+    activeCourseIds
+      .filter((courseId) => subjectForCourse(content, courseId).id === focusSubjectId)
+      .flatMap((courseId) => [
+        ...courseConceptIds(content.coursesById.get(courseId)),
+        ...courseFoundationIds(content, courseId),
+      ]),
+  );
+}
+
 async function checkI3({ now, today }: AuditContext): Promise<string[]> {
   const planned = todayActivities(today)
     .filter((activity: Record<string, any>) => activity.kind === 'review')
@@ -185,10 +213,12 @@ async function checkI3({ now, today }: AuditContext): Promise<string[]> {
       .filter((log) => localDateKey(log.createdAt, timezone) === localDateKey(now, timezone))
       .map((log) => log.cardId),
   );
+  const focusedConcepts = await focusedConceptIds();
   return cards.flatMap((card) => {
     const concept = content.conceptsById.get(card.conceptId);
     if (!concept || concept.status === 'stub' || card.dueAt > now || gradedToday.has(card.id))
       return [];
+    if (focusedConcepts && !focusedConcepts.has(card.conceptId)) return [];
     const eligible = hasEligibleReviewExercise(card.conceptId, card.dimension);
     if (
       !eligible ||
@@ -324,14 +354,17 @@ async function checkI6({ now, today }: AuditContext): Promise<string[]> {
     .innerJoin(reviewCards, eq(reviewLogs.cardId, reviewCards.id))
     .where(eq(reviewCards.userId, userId));
   const cards = await db.select().from(reviewCards).where(eq(reviewCards.userId, userId));
+  const focusedConcepts = await focusedConceptIds();
   return openReviews.flatMap(({ session_activities: activity }) => {
     const answered = allAttempts.some((attempt) => attempt.activityId === activity.id);
     if (!answered) return [];
     return activityTopics(activity).flatMap((conceptId) => {
+      if (focusedConcepts && !focusedConcepts.has(conceptId)) return [];
       const dueUngraded = cards.some(
         (card) =>
           card.conceptId === conceptId &&
           card.dueAt <= now &&
+          hasEligibleReviewExercise(card.conceptId, card.dimension) &&
           !logs.some(
             ({ review_cards: logCard, review_logs: log }) =>
               logCard.id === card.id &&
@@ -347,7 +380,7 @@ async function checkI6({ now, today }: AuditContext): Promise<string[]> {
   });
 }
 
-async function checkI7({ today, active, reviews }: AuditContext): Promise<string[]> {
+async function checkI7({ now, today, active, reviews }: AuditContext): Promise<string[]> {
   const home = todayActivities(today)
     .filter((activity: Record<string, any>) => activity.kind === 'review')
     .flatMap((activity: Record<string, any>) => activityTopics(activity));
@@ -357,8 +390,38 @@ async function checkI7({ today, active, reviews }: AuditContext): Promise<string
         activity.kind === 'review' && ['planned', 'in_progress'].includes(activity.status),
     )
     .flatMap((activity: Record<string, any>) => activityTopics(activity));
+  const [cards, logs, focusedConcepts] = await Promise.all([
+    db.select().from(reviewCards).where(eq(reviewCards.userId, userId)),
+    db
+      .select({ cardId: reviewLogs.cardId, createdAt: reviewLogs.createdAt })
+      .from(reviewLogs)
+      .innerJoin(reviewCards, eq(reviewLogs.cardId, reviewCards.id))
+      .where(eq(reviewCards.userId, userId)),
+    focusedConceptIds(),
+  ]);
+  const gradedToday = new Set(
+    logs
+      .filter((log) => localDateKey(log.createdAt, timezone) === localDateKey(now, timezone))
+      .map((log) => log.cardId),
+  );
+  const dueEligibleTopics = new Set(
+    cards
+      .filter((card) => {
+        const concept = content.conceptsById.get(card.conceptId);
+        return (
+          concept &&
+          concept.status !== 'stub' &&
+          card.dueAt <= now &&
+          !gradedToday.has(card.id) &&
+          hasEligibleReviewExercise(card.conceptId, card.dimension) &&
+          (!focusedConcepts || focusedConcepts.has(card.conceptId))
+        );
+      })
+      .map((card) => card.conceptId),
+  );
   const due = (reviews.topics ?? [])
     .filter((topic: Record<string, any>) => topic.due)
+    .filter((topic: Record<string, any>) => dueEligibleTopics.has(topic.conceptId))
     .map((topic: Record<string, any>) => topic.conceptId);
   const failures: string[] = [];
   if (
@@ -825,7 +888,25 @@ it('S4 starting another session preserves answers from an abandoned partial revi
   ).not.toHaveLength(0);
 });
 
-it('S5 Reports due topics that have no eligible exercise', async () => {
+it('S5 reports an eligible due topic hidden after an ungraded practice attempt', async () => {
+  const now = atLocalNoon(startDate);
+  await seedLearner(now);
+  const card = await addReviewCard(now, 'vectors', 'math', -1, 0);
+  const exerciseId = 'vectors-fixture-practice-1';
+  const { response } = await step('POST', '/attempts', now, {
+    exerciseId,
+    answer: answerFor(exerciseId),
+    mode: 'practice',
+  });
+  expect(response.ok).toBe(true);
+  expect(await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, card.id))).toHaveLength(0);
+  expect(
+    [...(violations.get('I7') ?? [])],
+    'Reviews should retain a due topic omitted from Home after an ungraded attempt',
+  ).not.toHaveLength(0);
+});
+
+it('excludes due topics without eligible exercises from I7 comparisons', async () => {
   const now = atLocalNoon(startDate);
   await seedLearner(now);
   const dueAt = new Date(now.getTime() - 86_400_000);
@@ -835,10 +916,7 @@ it('S5 Reports due topics that have no eligible exercise', async () => {
     .values({ userId, conceptId: 'vectors', dimension: 'transfer', dueAt, fsrs });
   await step('GET', '/today', now);
   await step('GET', '/reviews', now);
-  expect(
-    [...(violations.get('I7') ?? [])],
-    'Reviews and Home should expose the planner eligibility mismatch',
-  ).not.toHaveLength(0);
+  expect(violations.get('I7') ?? []).toEqual([]);
 });
 
 it('S6 does not grade a card repeatedly outside a review activity', async () => {
