@@ -522,7 +522,7 @@ exercises:
         criterion: Explain that a negative determinant reverses orientation and a positive one preserves it.
         weight: 1
         required: true
-    exemplar: The magnitude tells how much every region’s area is multiplied by. A negative sign reverses orientation, while a positive sign preserves it.
+    exemplar: The magnitude tells how much every region’s area is multiplied by. A positive sign keeps the orientation, and a negative sign reverses it.
   - id: det-recall-area-contrast
     dimension: conceptual
     type: mc
@@ -536,11 +536,11 @@ exercises:
       - id: a
         text: Its area stays the same and its orientation is preserved.
         correct: false
-        feedback: That describes determinant +1. The negative sign records reversed orientation.
+        feedback: That describes determinant $1$. The negative sign records reversed orientation.
       - id: b
         text: Its area becomes zero and its shape collapses to a line.
         correct: false
-        feedback: A collapse has determinant zero. A determinant of -1 has magnitude 1.
+        feedback: A collapse has determinant zero. A determinant of $-1$ has magnitude 1, so area stays the same.
       - id: c
         text: Its area stays the same and its orientation is reversed.
         correct: true
@@ -594,11 +594,11 @@ exercises:
       - id: a
         text: It keeps its magnitude and reverses its sign.
         correct: true
-        feedback: Swapping columns reverses edge order and changes ad-bc into bc-ad.
+        feedback: Swapping columns reverses the edge order and changes $ad-bc$ into $bc-ad$.
       - id: b
         text: It keeps its magnitude and keeps its sign.
         correct: false
-        feedback: The same parallelogram has the same area, but its ordered edges reverse orientation.
+        feedback: The parallelogram and its area stay the same. Its edges now come in the opposite order, so the sign flips.
       - id: c
         text: It becomes zero because the area collapses.
         correct: false

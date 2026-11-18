@@ -747,9 +747,9 @@ exercises:
     prompt: Vectors $a$ and $b$ list metres east first and metres north second. What does the second component of $a+b$ record?
     options:
       - id: a
-        text: The northward change from point $b$ to point $a$.
+        text: The difference between the northward parts of the two moves.
         correct: false
-        feedback: That is the second component of $a-b$, found by subtracting the north coordinates.
+        feedback: That is the second component of $a-b$, which subtracts matching components.
       - id: b
         text: The total northward movement of the two moves.
         correct: true
@@ -766,9 +766,17 @@ exercises:
     knowledge_point: vec-points-moves
     difficulty: 1
     est_minutes: 0.5
-    prompt: 'Fill in the blank for two-component vectors: $a+b=(\underline{\quad\quad},\;a_2+b_2)$. Type the missing expression.'
-    accept: ["a_1+b_1", "a1+b1", "b_1+a_1", "b1+a1", "a₁+b₁", "b₁+a₁"]
-    regex: '^\s*\(?\s*(?:a_?\{?1\}?\s*\+\s*b_?\{?1\}?|b_?\{?1\}?\s*\+\s*a_?\{?1\}?)\s*\)?\s*$'
+    prompt: "For two-component vectors $a$ and $b$, write $a+b$ as a pair of components. Use $a_1$ and $a_2$ for the components of $a$, and $b_1$ and $b_2$ for the components of $b$."
+    accept:
+      [
+        "(a_1+b_1, a_2+b_2)",
+        "(a_1+b_1,a_2+b_2)",
+        "(a1+b1, a2+b2)",
+        "(a1+b1,a2+b2)",
+        "(a₁+b₁, a₂+b₂)",
+        "(a₁+b₁,a₂+b₂)",
+      ]
+    regex: '^\s*\(?\s*(?:a(?:_?\{?1\}?|₁)\s*\+\s*b(?:_?\{?1\}?|₁)|b(?:_?\{?1\}?|₁)\s*\+\s*a(?:_?\{?1\}?|₁))\s*,\s*(?:a(?:_?\{?2\}?|₂)\s*\+\s*b(?:_?\{?2\}?|₂)|b(?:_?\{?2\}?|₂)\s*\+\s*a(?:_?\{?2\}?|₂))\s*\)?\s*$'
     solution: 'Add matching components: $a+b=(a_1+b_1,\;a_2+b_2)$.'
   - id: vec-recall-change-move-say
     dimension: conceptual
@@ -801,7 +809,7 @@ exercises:
       - id: a
         text: The sum $a+b$
         correct: false
-        feedback: The sum combines two moves measured from the origin.
+        feedback: The sum $a+b$ makes move $a$ and then move $b$. Starting from point $b$, it would end at $a+2b$.
       - id: b
         text: The reverse $-b$
         correct: false
@@ -818,24 +826,19 @@ exercises:
     knowledge_point: vec-change-move
     difficulty: 1
     est_minutes: 0.5
-    prompt: 'Fill in the blank for a scalar $c$ and a two-component vector $x$: $cx=(cx_1,\;\underline{\quad\quad})$. Type the missing expression.'
+    prompt: "For a scalar $c$ and a two-component vector $x$ with components $x_1$ and $x_2$, write $cx$ as a pair of components."
     accept:
       [
-        "cx_2",
-        "cx2",
-        "c*x_2",
-        "c*x2",
-        "x_2*c",
-        "x2*c",
-        "x_2c",
-        "x2c",
-        "cx₂",
-        "c x₂",
-        "x₂c",
-        "c times x_2",
-        "c times x2",
+        "(cx_1, cx_2)",
+        "(cx_1,cx_2)",
+        "(cx1, cx2)",
+        "(cx1,cx2)",
+        "(c*x_1, c*x_2)",
+        "(c*x1, c*x2)",
+        "(cx₁, cx₂)",
+        "(cx₁,cx₂)",
       ]
-    regex: '^\s*\(?\s*(?:c\s*(?:\*|×|·|\\cdot|\\times)?\s*x_?\{?2\}?|x_?\{?2\}?\s*(?:\*|×|·|\\cdot|\\times)?\s*c)\s*\)?\s*$'
+    regex: '^\s*\(?\s*(?:c\s*(?:\*|×|·|\\cdot|\\times)?\s*x(?:_?\{?1\}?|₁)|x(?:_?\{?1\}?|₁)\s*(?:\*|×|·|\\cdot|\\times)?\s*c)\s*,\s*(?:c\s*(?:\*|×|·|\\cdot|\\times)?\s*x(?:_?\{?2\}?|₂)|x(?:_?\{?2\}?|₂)\s*(?:\*|×|·|\\cdot|\\times)?\s*c)\s*\)?\s*$'
     solution: 'Scaling multiplies every component by $c$, so $cx=(cx_1,\;cx_2)$.'
   - id: vec-recall-length-distance-say
     dimension: conceptual
@@ -876,7 +879,7 @@ exercises:
       - id: c
         text: The vector sum $p+q$
         correct: false
-        feedback: This combines two position vectors into a vector with matching components added.
+        feedback: The sum $p+q$ adds the two points' coordinates and gives a vector. A distance is a single number.
     solution: 'Euclidean distance is $\|q-p\|_2$, the length of the move from $p$ to $q$.'
   - id: vec-recall-length-distance-formula
     dimension: math
@@ -885,7 +888,7 @@ exercises:
     knowledge_point: vec-length-distance
     difficulty: 1
     est_minutes: 0.5
-    prompt: "Write the L2 norm of a two-component vector $x=(x_1,x_2)$. Use `a` for $x_1$, `b` for $x_2$ and `sqrt(...)` for the square root."
-    answer: "sqrt(a^2+b^2)"
-    variables: { a: [-5, 5], b: [-5, 5] }
+    prompt: "Write the L2 norm of a two-component vector $x=(x_1,x_2)$. Type the components as `x_1` and `x_2`, and use `sqrt(...)` for the square root."
+    answer: "sqrt(x_1^2+x_2^2)"
+    variables: { x_1: [-5, 5], x_2: [-5, 5] }
     solution: 'Square each component, add the squares and take the square root: $\|x\|_2=\sqrt{x_1^2+x_2^2}$.'

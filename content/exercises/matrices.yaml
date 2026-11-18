@@ -747,7 +747,7 @@ exercises:
     difficulty: 1
     target_seconds: 30
     est_minutes: 0.5
-    prompt: A matrix has one row per house and one column per measurement. A matching weight vector gives $Xw$. What does entry 2 of this output mean?
+    prompt: A matrix $X$ has one row per house and one column per measurement, and $w$ holds one weight per measurement. What does entry 2 of $Xw$ mean?
     options:
       - id: a
         text: The prediction for the second house.
@@ -792,14 +792,14 @@ exercises:
     prompt: In one or two sentences, how is entry $(i,j)$ of $AB$ calculated, and which sizes must match for the product to exist?
     rubric:
       - id: meaning
-        criterion: Explain that entry (i,j) is row i of A dotted with column j of B.
+        criterion: Explain that entry $(i,j)$ is row $i$ of $A$ dotted with column $j$ of $B$.
         weight: 1
         required: true
       - id: rule
-        criterion: Explain that the number of columns in A must equal the number of rows in B.
+        criterion: Explain that the number of columns in $A$ must equal the number of rows in $B$.
         weight: 1
         required: true
-    exemplar: Dot row i of A with column j of B to get entry (i,j). The number of columns in A must match the number of rows in B.
+    exemplar: Dot row $i$ of $A$ with column $j$ of $B$ to get entry $(i,j)$. The number of columns in $A$ must match the number of rows in $B$.
   - id: mat-recall-matrix-products-contrast
     dimension: conceptual
     type: mc
@@ -813,11 +813,11 @@ exercises:
       - id: a
         text: The second prediction for the first house.
         correct: false
-        feedback: That is entry (1,2), using row 1 of X and column 2 of W.
+        feedback: That is entry $(1,2)$, from row 1 of $X$ and column 2 of $W$.
       - id: b
         text: The first measurement of the second house.
         correct: false
-        feedback: That is entry (2,1) of X before multiplying by the weights.
+        feedback: That is entry $(2,1)$ of $X$, a measurement before any weights are used.
       - id: c
         text: The first prediction for the second house.
         correct: true
@@ -853,7 +853,7 @@ exercises:
     prompt: In one or two sentences, what does the bias do in `X @ W + b`, and what does transposing a matrix do?
     rubric:
       - id: meaning
-        criterion: Explain that broadcasting reuses the bias row for every example row.
+        criterion: Explain that the bias adds a fixed amount to each prediction, with its one row reused for every house.
         weight: 1
         required: true
       - id: rule
@@ -869,7 +869,7 @@ exercises:
     difficulty: 1
     target_seconds: 30
     est_minutes: 0.5
-    prompt: A NumPy matrix `W_rows` has one row per prediction and one column per measurement. `X` has one row per house and one column per measurement. Which expression gives one prediction column per row of `W_rows`?
+    prompt: A NumPy array `X` has one row per house and one column per measurement. `W_rows` has one row of weights per prediction and one column per measurement. Which expression gives every prediction for every house?
     options:
       - id: a
         text: "`X @ W_rows.T`"
@@ -878,7 +878,7 @@ exercises:
       - id: b
         text: "`X.T @ W_rows`"
         correct: false
-        feedback: Transposing X puts houses in columns and leaves the prediction weights in rows.
+        feedback: Transposing `X` gives one row per measurement, so its columns no longer line up with the rows of `W_rows`.
       - id: c
         text: "`X * W_rows.T`"
         correct: false

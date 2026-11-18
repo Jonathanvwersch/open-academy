@@ -818,11 +818,11 @@ exercises:
       - id: a
         text: It keeps its direction and doubles in length.
         correct: false
-        feedback: That describes eigenvalue +2. The negative sign reverses direction.
+        feedback: That describes eigenvalue $2$. The negative sign reverses direction.
       - id: b
         text: It reverses direction and keeps its length.
         correct: false
-        feedback: That describes eigenvalue -1. A factor of -2 also doubles length.
+        feedback: That describes eigenvalue $-1$. A factor of $-2$ also doubles the length.
       - id: c
         text: It reverses direction and doubles in length.
         correct: true
@@ -859,14 +859,14 @@ exercises:
     prompt: In one or two sentences, how do the eigenvalues of a two-by-two matrix relate to its entries, and how do you find a direction for each one?
     rubric:
       - id: meaning
-        criterion: Explain that the eigenvalues add to a+d and multiply to ad-bc.
+        criterion: Explain that the two eigenvalues add to $a+d$ and multiply to $ad-bc$.
         weight: 1
         required: true
       - id: rule
         criterion: Explain that each eigenvalue is substituted into both row equations to find a nonzero eigenvector.
         weight: 1
         required: true
-    exemplar: The two eigenvalues add to a+d and multiply to ad-bc. For each one, substitute it into both row equations and find a nonzero vector satisfying them.
+    exemplar: The two eigenvalues add to $a+d$ and multiply to $ad-bc$. For each one, put it into both row equations and find a nonzero vector that satisfies them.
   - id: eig-recall-find-eigenvalues-contrast
     dimension: conceptual
     type: mc
@@ -880,11 +880,11 @@ exercises:
       - id: a
         text: Use the other row to constrain the direction.
         correct: true
-        feedback: A row saying 0=0 places no restriction, so the other row must still be checked.
+        feedback: A row saying $0=0$ is true for every vector, so the other row decides the direction.
       - id: b
         text: Conclude that there is no eigenvector.
         correct: false
-        feedback: The equation 0=0 is true. It gives no restriction on its own.
+        feedback: The equation $0=0$ is true for every vector, so it rules nothing out.
       - id: c
         text: Accept every vector as an eigenvector.
         correct: false
@@ -897,7 +897,7 @@ exercises:
     knowledge_point: eig-find-eigenvalues
     difficulty: 1
     est_minutes: 0.5
-    prompt: For $A=\begin{bmatrix}a&b\\c&d\end{bmatrix}$, write the quadratic expression that equals zero at its eigenvalues, with coefficient 1 on $\lambda^2$. Type `l` for $\lambda$.
+    prompt: For $A=\begin{bmatrix}a&b\\c&d\end{bmatrix}$, write the quadratic expression that equals zero at its eigenvalues, with coefficient 1 on $\lambda^2$. Type `l` for $\lambda$ and `*` for multiplication.
     answer: l^2-(a+d)*l+a*d-b*c
     variables:
       a:
@@ -989,14 +989,14 @@ exercises:
     prompt: In one or two sentences, which SVD pieces make a rank-$k$ approximation, and what is its largest output error on unit-length inputs?
     rubric:
       - id: meaning
-        criterion: Explain that the approximation keeps the k largest nonzero singular-value pieces.
+        criterion: Explain that the approximation keeps the pieces for the $k$ largest nonzero singular values.
         weight: 1
         required: true
       - id: rule
         criterion: Explain that the worst output error for unit-length inputs is the first singular value dropped.
         weight: 1
         required: true
-    exemplar: Keep the pieces for the k largest nonzero singular values. The largest output error on length-1 inputs equals the first singular value dropped.
+    exemplar: Keep the pieces for the $k$ largest nonzero singular values. The largest output error on length-1 inputs equals the first singular value dropped.
   - id: eig-recall-low-rank-contrast
     dimension: conceptual
     type: mc
@@ -1027,7 +1027,7 @@ exercises:
     knowledge_point: eig-low-rank
     difficulty: 1
     est_minutes: 0.5
-    prompt: A rank-$k$ copy of an $m\times n$ matrix stores $k$ columns and $k$ rows. Write the number of stored entries in $m,n,k$.
+    prompt: A rank-$k$ copy of an $m\times n$ matrix stores $k$ columns and $k$ rows. Write the number of stored entries in terms of $m$, $n$ and $k$, using `*` for multiplication.
     answer: k*(m+n)
     variables:
       m:

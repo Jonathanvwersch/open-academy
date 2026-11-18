@@ -871,7 +871,7 @@ exercises:
         text: The projection of $a$ onto $b$
         correct: true
         feedback: The line and direction of $b$ stay the same, so the shadow of $a$ stays in place.
-    solution: The projection stays the same while the length of $b$ and the dot product both double.
+    solution: Doubling $b$ doubles its length and the dot product. The projection of $a$ stays the same.
   - id: dot-recall-alignment-formula
     dimension: math
     type: expression

@@ -804,19 +804,19 @@ exercises:
     knowledge_point: rsp-span
     difficulty: 1
     est_minutes: 0.5
-    prompt: "Fill in the blank for a linear combination of $u$ and $v$: $c_1u+\\underline{\\quad\\quad}$. Use the second coefficient $c_2$."
+    prompt: "Write a general linear combination of two vectors $u$ and $v$, using $c_1$ and $c_2$ for the numbers."
     accept:
-      - c_2v
-      - c2v
-      - c_2*v
-      - c2*v
-      - v*c_2
-      - vc_2
-      - c₂v
-      - c_2 times v
-      - v c₂
-      - c₂ * v
-    regex: ^\s*(?:c_?\{?2\}?\s*(?:\*|×|·|\\times|\\cdot|times)?\s*v|v\s*(?:\*|×|·|\\times|\\cdot)?\s*c_?\{?2\}?)\s*$
+      [
+        "c_1u+c_2v",
+        "c_1u + c_2v",
+        "c1u+c2v",
+        "c1u + c2v",
+        "c_1*u+c_2*v",
+        "c1*u+c2*v",
+        "c₁u+c₂v",
+        "c₁u + c₂v",
+      ]
+    regex: '^\s*(?:(?:c(?:_?\{?1\}?|₁)\s*(?:\*|×|·|\\cdot|\\times)?\s*u|u\s*(?:\*|×|·|\\cdot|\\times)?\s*c(?:_?\{?1\}?|₁))\s*\+\s*(?:c(?:_?\{?2\}?|₂)\s*(?:\*|×|·|\\cdot|\\times)?\s*v|v\s*(?:\*|×|·|\\cdot|\\times)?\s*c(?:_?\{?2\}?|₂))|(?:c(?:_?\{?2\}?|₂)\s*(?:\*|×|·|\\cdot|\\times)?\s*v|v\s*(?:\*|×|·|\\cdot|\\times)?\s*c(?:_?\{?2\}?|₂))\s*\+\s*(?:c(?:_?\{?1\}?|₁)\s*(?:\*|×|·|\\cdot|\\times)?\s*u|u\s*(?:\*|×|·|\\cdot|\\times)?\s*c(?:_?\{?1\}?|₁)))\s*$'
     solution: A linear combination is $c_1u+c_2v$, with any numbers as coefficients.
   - id: rsp-recall-independence-rank-say
     dimension: conceptual
@@ -828,7 +828,7 @@ exercises:
     prompt: In one or two sentences, when are vectors linearly independent, and what is a matrix’s rank?
     rubric:
       - id: meaning
-        criterion: Explain that none of the vectors can be a linear combination of the others.
+        criterion: Explain that vectors are independent when none of them is a linear combination of the others.
         weight: 1
         required: true
       - id: rule
@@ -849,15 +849,15 @@ exercises:
       - id: a
         text: They are independent because no pair are multiples.
         correct: false
-        feedback: The test for a pair is insufficient for three vectors. One column is a combination of the others.
+        feedback: Checking pairs is not enough for three vectors. Here the third vector is a combination of the first two.
       - id: b
         text: They span all of three-dimensional space.
         correct: false
-        feedback: The third column adds no new direction beyond the span of the first two.
+        feedback: The third vector adds no new direction, so the three span only the plane of the first two.
       - id: c
-        text: "They are dependent: one combines the others."
+        text: They are dependent because one is built from the others.
         correct: true
-        feedback: A column built from the others makes the set dependent.
+        feedback: A vector that is a linear combination of the others makes the set dependent.
     solution: A linear combination of two columns can make a third even when no pair are multiples.
   - id: rsp-recall-independence-rank-contrast2
     dimension: conceptual
@@ -870,18 +870,18 @@ exercises:
     prompt: What does the number of pivots after elimination count?
     options:
       - id: a
-        text: The independent columns in a largest such set.
+        text: The largest number of independent columns of the matrix.
         correct: true
-        feedback: The pivot count is rank, the largest number of independent columns.
+        feedback: That number is the rank. Each pivot column is independent of the columns before it.
       - id: b
-        text: The original columns, including dependent ones.
+        text: The number of columns in the original matrix.
         correct: false
-        feedback: A dependent column can lack a pivot, so the original column count can exceed rank.
+        feedback: A column without a pivot is a combination of earlier columns, so the column count can be larger than the rank.
       - id: c
-        text: The original rows, including all-zero rows.
+        text: The number of rows in the original matrix.
         correct: false
-        feedback: An all-zero row has no pivot, so counting every row can overstate rank.
-    solution: Each pivot marks a new independent column; their count is the rank.
+        feedback: A row of zeros after elimination has no pivot, so the row count can be larger than the rank.
+    solution: Each pivot marks a column that is independent of the columns before it, so the number of pivots is the rank.
   - id: rsp-recall-solutions-say
     dimension: conceptual
     type: explain
@@ -892,14 +892,14 @@ exercises:
     prompt: In one or two sentences, when does $Ax=b$ have a solution, and what gives exactly one solution when $A$ has $n$ columns?
     rubric:
       - id: meaning
-        criterion: Explain that b must be in the column space of A for a solution to exist.
+        criterion: Explain that $b$ must be in the column space of $A$ for a solution to exist.
         weight: 1
         required: true
       - id: rule
-        criterion: Explain that a reachable b has exactly one solution when rank(A) equals n.
+        criterion: Explain that such a $b$ has exactly one solution when $\operatorname{rank}(A)=n$, because the columns are independent.
         weight: 1
         required: true
-    exemplar: A solution exists when b lies in the span of A’s columns. For such a b, rank n means the columns are independent and the solution is unique.
+    exemplar: "A solution exists when $b$ is in the column space of $A$, the span of its columns. For such a $b$, rank $n$ means the columns are independent, so exactly one solution reaches it."
   - id: rsp-recall-solutions-contrast
     dimension: conceptual
     type: mc
@@ -913,16 +913,16 @@ exercises:
       - id: a
         text: There are no solutions for this output.
         correct: false
-        feedback: Reachability gives a solution. Dependence lets us trade amounts of columns.
+        feedback: Since $b$ is in the column space, some amounts of the columns reach it.
       - id: b
         text: There is exactly one solution for this output.
         correct: false
-        feedback: Reachability guarantees existence. Dependent columns allow different amounts to give the same output.
+        feedback: Dependent columns let us trade amounts of one column for another, so more than one choice reaches $b$.
       - id: c
         text: There are infinitely many solutions.
         correct: true
-        feedback: With a reachable b and dependent columns, amounts can be traded without changing b.
-    solution: A reachable output and dependent columns give infinitely many solutions.
+        feedback: Some amounts reach $b$, and dependent columns let us trade amounts without changing the result.
+    solution: When $b$ is in the column space and the columns are dependent, there are infinitely many solutions.
   - id: rsp-recall-solutions-formula
     dimension: math
     type: text
@@ -930,19 +930,19 @@ exercises:
     knowledge_point: rsp-solutions
     difficulty: 1
     est_minutes: 0.5
-    prompt: "A matrix has two columns $a_1,a_2$. Fill in the blank: $Ax=x_1a_1+\\underline{\\quad\\quad}$."
+    prompt: "A matrix $A$ has two columns, $a_1$ and $a_2$, and $x=(x_1,x_2)$. Write $Ax$ in terms of the columns of $A$."
     accept:
-      - x_2a_2
-      - x2a2
-      - x_2*a_2
-      - x2*a2
-      - a_2x_2
-      - a_2*x_2
-      - x₂a₂
-      - a₂x₂
-      - x₂*a₂
-      - a₂*x₂
-    regex: ^\s*(?:x_?\{?2\}?\s*(?:\*|×|·|\\times|\\cdot)?\s*a_?\{?2\}?|a_?\{?2\}?\s*(?:\*|×|·|\\times|\\cdot)?\s*x_?\{?2\}?)\s*$
+      [
+        "x_1a_1+x_2a_2",
+        "x_1a_1 + x_2a_2",
+        "x1a1+x2a2",
+        "x1a1 + x2a2",
+        "x_1*a_1+x_2*a_2",
+        "x1*a1+x2*a2",
+        "x₁a₁+x₂a₂",
+        "x₁a₁ + x₂a₂",
+      ]
+    regex: '^\s*(?:(?:x(?:_?\{?1\}?|₁)\s*(?:\*|×|·|\\cdot|\\times)?\s*a(?:_?\{?1\}?|₁)|a(?:_?\{?1\}?|₁)\s*(?:\*|×|·|\\cdot|\\times)?\s*x(?:_?\{?1\}?|₁))\s*\+\s*(?:x(?:_?\{?2\}?|₂)\s*(?:\*|×|·|\\cdot|\\times)?\s*a(?:_?\{?2\}?|₂)|a(?:_?\{?2\}?|₂)\s*(?:\*|×|·|\\cdot|\\times)?\s*x(?:_?\{?2\}?|₂))|(?:x(?:_?\{?2\}?|₂)\s*(?:\*|×|·|\\cdot|\\times)?\s*a(?:_?\{?2\}?|₂)|a(?:_?\{?2\}?|₂)\s*(?:\*|×|·|\\cdot|\\times)?\s*x(?:_?\{?2\}?|₂))\s*\+\s*(?:x(?:_?\{?1\}?|₁)\s*(?:\*|×|·|\\cdot|\\times)?\s*a(?:_?\{?1\}?|₁)|a(?:_?\{?1\}?|₁)\s*(?:\*|×|·|\\cdot|\\times)?\s*x(?:_?\{?1\}?|₁)))\s*$'
     solution: "Each input entry scales its matching column: $Ax=x_1a_1+x_2a_2$."
   - id: rsp-recall-low-rank-say
     dimension: conceptual
@@ -954,14 +954,14 @@ exercises:
     prompt: In one or two sentences, why is the rank of an $m\times k$ matrix times a $k\times n$ matrix at most $k$, and why store the factors?
     rubric:
       - id: meaning
-        criterion: Explain that every product column lies in the span of the first factor’s k columns.
+        criterion: Explain that every column of the product lies in the span of the first factor's $k$ columns.
         weight: 1
         required: true
       - id: rule
-        criterion: Explain that the factors store mk+kn numbers, which saves space when k is much smaller than m and n.
+        criterion: Explain that the factors store $mk+kn$ numbers, far fewer than $mn$ when $k$ is much smaller than $m$ and $n$.
         weight: 1
         required: true
-    exemplar: Every product column is a combination of the first factor’s k columns, so at most k can be independent. Storing mk+kn factor entries saves space compared with mn when k is small.
+    exemplar: "Every column of the product is a combination of the first factor's $k$ columns, so at most $k$ can be independent. The factors store $mk+kn$ numbers, far fewer than $mn$ when $k$ is small."
   - id: rsp-recall-low-rank-contrast
     dimension: conceptual
     type: mc
@@ -975,16 +975,16 @@ exercises:
       - id: a
         text: It equals $k$ for every choice of entries.
         correct: false
-        feedback: The rank can be smaller when the columns of F are dependent.
+        feedback: The bound is only a ceiling. The rank can be smaller, for example when the columns of $F$ are dependent.
       - id: b
         text: It is at most $k$, and may be smaller.
         correct: true
-        feedback: Every output column lies in the span of F’s k columns.
+        feedback: Every column of $FG$ lies in the span of the $k$ columns of $F$.
       - id: c
         text: It equals $mn$, the number of output entries.
         correct: false
         feedback: The entry count measures storage. Rank counts independent columns.
-    solution: The shared size k bounds the rank, but dependent factors can lower it.
+    solution: The shared size $k$ caps the rank, and dependent columns in $F$ can make it smaller.
   - id: rsp-recall-low-rank-formula
     dimension: math
     type: expression
@@ -992,7 +992,7 @@ exercises:
     knowledge_point: rsp-low-rank
     difficulty: 1
     est_minutes: 0.5
-    prompt: How many numbers store two factors of shapes $m\times k$ and $k\times n$? Write a formula in $m,n,k$.
+    prompt: How many numbers store two factors of shapes $m\times k$ and $k\times n$? Write a formula in $m$, $n$ and $k$, using `*` for multiplication.
     answer: m*k+k*n
     variables:
       m:
