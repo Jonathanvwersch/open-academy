@@ -726,21 +726,21 @@ exercises:
     knowledge_point: ovf-flexibility
     difficulty: 1
     est_minutes: 0.5
-    prompt: "Which description identifies overfitting?"
+    prompt: "A very flexible curve fits every training house exactly and predicts prices poorly on a separate set of houses. What is the most likely explanation?"
     options:
       - id: a
-        text: "The model misses a useful bend even in training data."
+        text: "The curve was too stiff to follow the main price trend."
         correct: false
-        feedback: "Missing useful training patterns is underfitting."
+        feedback: "Underfitting leaves useful patterns unexplained even on training houses. This curve fits every training house."
       - id: b
-        text: "The model follows training scatter that fails to carry over."
+        text: "The curve followed price quirks specific to the training houses."
         correct: true
-        feedback: "Overfitting follows training details that fail on new examples."
+        feedback: "An overfit curve can match every training price and still miss new ones."
       - id: c
-        text: "The model follows a pattern that predicts new examples well."
+        text: "The curve found a price trend that carries over to new houses."
         correct: false
-        feedback: "A pattern that carries over indicates a useful fit."
-    solution: "Overfitting follows training details that fail on new examples."
+        feedback: "A trend that carries over should improve predictions on the separate houses."
+    solution: "A very flexible model can follow quirks in the training prices, making its predictions worse on new houses."
   - id: ovf-recall-flexibility-formula
     dimension: math
     type: expression
@@ -788,9 +788,9 @@ exercises:
         correct: false
         feedback: "Systematic mistakes from an inflexible shape describe high bias."
       - id: c
-        text: "Both errors stay low and meet the users' target."
+        text: "Both errors stay low and meet the users’ target."
         correct: false
-        feedback: "Meeting the target on both sets suggests a useful fit; this does not define variance."
+        feedback: "Low errors on both sets suggest a useful fit. To check variance, refit on a different sample and see how much predictions change."
     solution: "High variance means the fitted model changes a lot with a different selection of training houses."
   - id: ovf-recall-gap-formula
     dimension: math
@@ -828,21 +828,21 @@ exercises:
     knowledge_point: ovf-learning-curves
     difficulty: 1
     est_minutes: 0.5
-    prompt: "Which trend suggests that training has begun to overfit?"
+    prompt: "A straight-line price model’s training and validation errors have both levelled off well above the target. Which change best addresses that pattern?"
     options:
       - id: a
-        text: "Both errors are high and still falling each epoch."
+        text: "Keep training the same model for more epochs."
         correct: false
-        feedback: "Both errors still falling can mean extra training will help."
+        feedback: "More epochs can help when both errors are still falling. Here they have levelled off."
       - id: b
-        text: "Both errors settle well above the required target."
+        text: "Use an earlier saved copy of the same model."
         correct: false
-        feedback: "Persistently high training and validation errors suggest underfitting."
+        feedback: "An earlier copy can help when validation error rises again. Here both errors have levelled off above the target."
       - id: c
-        text: "Training error falls while validation error clearly rises."
+        text: "Try a more flexible model that can bend."
         correct: true
-        feedback: "The fit to training data improves while held-out predictions worsen."
-    solution: "The fit to training data improves while held-out predictions worsen."
+        feedback: "High training and validation errors that have levelled off suggest underfitting. A more flexible model may capture the missing pattern."
+    solution: "Try a more flexible model when both errors have stopped improving and the current model still misses the target."
   - id: ovf-recall-curves-contrast2
     dimension: conceptual
     type: mc
@@ -850,7 +850,7 @@ exercises:
     knowledge_point: ovf-learning-curves
     difficulty: 1
     est_minutes: 0.5
-    prompt: "Which data should choose the saved checkpoint before a final test score is reported?"
+    prompt: "You saved a copy after each epoch and will report one final test score. Which data should you use to choose the copy?"
     options:
       - id: a
         text: "Training data, using its lowest error."
@@ -859,9 +859,9 @@ exercises:
       - id: b
         text: "Validation data, using its lowest error."
         correct: true
-        feedback: "Validation error chooses the saved copy; test data stays aside for a final check."
+        feedback: "Use validation error to choose the saved copy. Keep test data aside for the final check."
       - id: c
         text: "Test data, using its lowest error."
         correct: false
-        feedback: "Choosing with test error uses up the independent final check."
-    solution: "Validation error chooses the saved copy; test data stays aside for a final check."
+        feedback: "Once test data helps choose the copy, it can no longer give an independent final check."
+    solution: "Keep the copy with the lowest validation error, then score that copy on the test data."

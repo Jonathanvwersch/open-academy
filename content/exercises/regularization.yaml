@@ -836,21 +836,21 @@ exercises:
     knowledge_point: rg-penalty
     difficulty: 1
     est_minutes: 0.5
-    prompt: "Which cost is the L2 penalty?"
+    prompt: "A model predicts $w$ for a training example with a positive target and uses squared error. The best weight matches the target exactly before regularization. How does a positive L2 penalty change the best weight?"
     options:
       - id: a
-        text: "A charge for the sum of absolute weight sizes."
-        correct: false
-        feedback: "Absolute weight sizes give the L1 penalty."
-      - id: b
-        text: "A charge for the sum of squared weights."
+        text: "It moves partway towards zero."
         correct: true
-        feedback: "L2 adds the penalty strength times the sum of squared weights to the data loss."
-      - id: c
-        text: "An average of prediction errors on held-out examples."
+        feedback: "At the new minimum, the penalty slope balances the data slope. The best weight is smaller and still positive."
+      - id: b
+        text: "It stays at the original value."
         correct: false
-        feedback: "Held-out error checks predictions; the L2 penalty charges the weights themselves."
-    solution: "L2 adds the penalty strength times the sum of squared weights to the data loss."
+        feedback: "At the original value the data slope is zero. The penalty adds a slope that pulls the weight towards zero."
+      - id: c
+        text: "It moves all the way to zero."
+        correct: false
+        feedback: "An L1 penalty can hold a weight at zero. The L2 penalty’s pull weakens as the weight approaches zero."
+    solution: "The weight moves towards zero until shrinking it further would add more data loss than it saves in penalty."
   - id: rg-recall-penalty-formula
     dimension: math
     type: expression
@@ -858,10 +858,10 @@ exercises:
     knowledge_point: rg-penalty
     difficulty: 1
     est_minutes: 0.5
-    prompt: "A model has one weight $w$, data loss $L$ and L2 penalty strength $a$. Write the total loss. Here $a$ stands for $\\lambda$."
-    answer: "L+a*w^2"
-    variables: { "L": [0, 10], "a": [0, 3], "w": [-5, 5] }
-    solution: "The total is data loss plus the squared-weight penalty: $L+aw^2$."
+    prompt: "A model has one weight $w$, data loss $L_{\\mathrm{data}}$ and L2 penalty strength $\\lambda$. Write the total loss. Type `L_data` and `lambda`."
+    answer: "L_data+lambda*w^2"
+    variables: { "L_data": [0, 10], "lambda": [0, 3], "w": [-5, 5] }
+    solution: "Add the squared-weight penalty to the data loss to get $L_{\\mathrm{data}}+\\lambda w^2$."
   - id: rg-recall-decay-say
     dimension: conceptual
     type: explain
@@ -909,10 +909,10 @@ exercises:
     knowledge_point: rg-weight-decay
     difficulty: 1
     est_minutes: 0.5
-    prompt: "A weight is $w$ and its data slope is $g$. Write one gradient-descent update with L2 penalty strength $a$ and learning rate $r$. Here $a$ stands for $\\lambda$ and $r$ for $\\eta$."
-    answer: "(1-2*r*a)*w-r*g"
-    variables: { "w": [-5, 5], "g": [-3, 3], "a": [0.1, 1], "r": [0.01, 0.2] }
-    solution: "Combine the data step and penalty slope: $w-r(g+2aw)$."
+    prompt: "A weight is $w$ and its data slope is $g$. Write the new weight $w_{\\mathrm{new}}$ after one gradient-descent update with L2 penalty strength $\\lambda$ and learning rate $\\eta$. Type `lambda` and `eta`."
+    answer: "(1-2*eta*lambda)*w-eta*g"
+    variables: { "w": [-5, 5], "g": [-3, 3], "lambda": [0.1, 1], "eta": [0.01, 0.2] }
+    solution: "The penalty adds slope $2\\lambda w$, so the new weight is $w-\\eta(g+2\\lambda w)$."
   - id: rg-recall-strength-say
     dimension: conceptual
     type: explain
@@ -938,21 +938,21 @@ exercises:
     knowledge_point: rg-strength
     difficulty: 1
     est_minutes: 0.5
-    prompt: "How is the penalty strength $\\lambda$ chosen?"
+    prompt: "You compare house-price models trained with several values of $\\lambda$. What pattern suggests that a model’s penalty is too strong?"
     options:
       - id: a
-        text: "Training learns it as it learns each weight."
+        text: "It has low training error and high validation error."
         correct: false
-        feedback: "The penalty strength is a hyperparameter chosen outside the weight updates."
+        feedback: "This suggests overfitting. A weak penalty can still let the model copy training quirks."
       - id: b
-        text: "We compare validation errors across separate training runs."
+        text: "It has high error on both training and validation houses."
         correct: true
-        feedback: "Train for several strengths and select the one with the lowest validation error."
+        feedback: "A large penalty can drive the weights so close to zero that the model underfits."
       - id: c
-        text: "We compare final test errors across separate training runs."
+        text: "It has low error on both training and validation houses."
         correct: false
-        feedback: "Test examples stay aside for one final score after the choices are fixed."
-    solution: "Train for several strengths and select the one with the lowest validation error."
+        feedback: "Low errors on both sets suggest the model follows a pattern that works on new houses."
+    solution: "Too much regularization pushes weights close to zero, so the model struggles to fit even the training pattern."
   - id: rg-recall-strength-formula
     dimension: math
     type: expression
@@ -1011,7 +1011,7 @@ exercises:
     knowledge_point: rg-l1
     difficulty: 1
     est_minutes: 0.5
-    prompt: "A model has one weight $w$, data loss $L$ and L1 penalty strength $a$. Write the total loss. Here $a$ stands for $\\lambda$. Type `abs(...)` for absolute value."
-    answer: "L+a*abs(w)"
-    variables: { "L": [0, 10], "a": [0, 3], "w": [-5, 5] }
-    solution: "The total is data loss plus the absolute-weight penalty: $L+a|w|$."
+    prompt: "A model has one weight $w$, data loss $L_{\\mathrm{data}}$ and L1 penalty strength $\\lambda$. Write the total loss. Type `L_data`, `lambda` and `abs(...)`."
+    answer: "L_data+lambda*abs(w)"
+    variables: { "L_data": [0, 10], "lambda": [0, 3], "w": [-5, 5] }
+    solution: "Add the absolute-weight penalty to the data loss to get $L_{\\mathrm{data}}+\\lambda|w|$."

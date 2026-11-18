@@ -430,17 +430,17 @@ exercises:
     prompt: "Which condition concerns independence of sale records?"
     options:
       - id: a
-        text: "One record gives no information about another."
+        text: "Knowing one sale tells you nothing about another."
         correct: true
         feedback: "Independence means one example gives no information about another."
       - id: b
-        text: "Each record comes from the same city market."
+        text: "Each sale comes from the same unchanged city market."
         correct: false
-        feedback: "A shared unchanged source concerns being identically distributed."
+        feedback: "A shared unchanged market describes being identically distributed. Sales can share a market and still be related."
       - id: c
-        text: "The test set contains many different house sizes."
+        text: "The test set contains many houses of different sizes."
         correct: false
-        feedback: "A range of sizes describes the examples present; it does not establish independence."
+        feedback: "A range of house sizes shows what the set covers. Check how the records are related to assess independence."
     solution: "Independence means one example gives no information about another."
   - id: gen-recall-unseen-formula
     dimension: math
@@ -449,10 +449,10 @@ exercises:
     knowledge_point: gen-unseen-houses
     difficulty: 1
     est_minutes: 0.5
-    prompt: "Three untouched test houses have absolute prediction errors $a$, $b$ and $c$. Write their mean absolute error."
-    answer: "(a+b+c)/3"
-    variables: { "a": [1, 50], "b": [1, 50], "c": [1, 50] }
-    solution: "Add the distances and divide by the number of houses: $(a+b+c)/3$."
+    prompt: "For two untouched test houses, the predictions are $\\hat y_1$ and $\\hat y_2$ and the matching sale prices are $y_1$ and $y_2$. Write their mean absolute error. Type `yhat_1`, `yhat_2`, `y_1`, `y_2` and `abs(...)`."
+    answer: "(abs(yhat_1-y_1)+abs(yhat_2-y_2))/2"
+    variables: { "yhat_1": [50, 500], "yhat_2": [50, 500], "y_1": [50, 500], "y_2": [50, 500] }
+    solution: "Take the distance between each prediction and its sale price, then average the two distances to get $(|\\hat y_1-y_1|+|\\hat y_2-y_2|)/2$."
   - id: gen-recall-shift-say
     dimension: conceptual
     type: explain
@@ -485,14 +485,14 @@ exercises:
         correct: false
         feedback: "New independent sales from the unchanged source keep the old test score relevant."
       - id: b
-        text: "Two agencies supply duplicate records of the same sale."
+        text: "A second agency sends an exact copy of every sale record."
         correct: false
-        feedback: "Duplicate records violate independence and can cause leakage across a split."
+        feedback: "Copying every record keeps the mix the same. The copies are related and can leak across a split."
       - id: c
         text: "Familiar house sizes sell for higher prices in a new city."
         correct: true
-        feedback: "A changed relationship between familiar inputs and prices is distribution shift."
-    solution: "A changed relationship between familiar inputs and prices is distribution shift."
+        feedback: "The relationship between house size and price has changed, which is distribution shift."
+    solution: "Familiar house sizes can have different prices in a new market. That change is distribution shift."
   - id: gen-recall-shift-contrast2
     dimension: conceptual
     type: mc
@@ -500,21 +500,21 @@ exercises:
     knowledge_point: gen-changed-source
     difficulty: 1
     est_minutes: 0.5
-    prompt: "An old test score is low, but the model will now price houses from a different market. What does the old score establish?"
+    prompt: "A house-price model has low test error in its original city. You want to use the same model in a new city. Which check measures average prediction error for the new city?"
     options:
       - id: a
-        text: "It establishes low error on the new market's houses."
+        text: "Score the model again on held-out sales from the original city."
         correct: false
-        feedback: "The new market can change the input mix or its relationship to prices."
+        feedback: "A fresh set from the original market only estimates error for that market."
       - id: b
-        text: "It describes the tested market; the new one needs evaluation."
+        text: "Score the model on new-city sales with recorded prices."
         correct: true
-        feedback: "The old score alone is insufficient; measuring in the new setting shows whether predictions remain useful."
+        feedback: "Recorded prices from the new city let you measure the model’s errors on the sales it will now predict."
       - id: c
-        text: "It establishes high error on the new market's houses."
+        text: "Compare the distribution of house sizes in the two cities."
         correct: false
-        feedback: "A different distribution does not prove failure; predictions might still be useful."
-    solution: "The old score alone is insufficient; measuring in the new setting shows whether predictions remain useful."
+        feedback: "Similar house sizes can sell at different prices. Comparing sizes by themselves gives no prediction errors."
+    solution: "Compare predictions with recorded sale prices from the new city to estimate the average error there."
   - id: gen-recall-records-say
     dimension: conceptual
     type: explain
@@ -540,21 +540,21 @@ exercises:
     knowledge_point: gen-related-records
     difficulty: 1
     est_minutes: 0.5
-    prompt: "Which split directly prevents copies of the same house sale from appearing in both training and validation?"
+    prompt: "A price model’s validation error rises after you replace a random row split with a split that keeps each house together. Which problem with the row split could explain the rise?"
     options:
       - id: a
-        text: "Assign each row independently to a random group."
+        text: "The split had a similar mix of house sizes on both sides."
         correct: false
-        feedback: "Independent row assignment can put two copies on opposite sides."
+        feedback: "Similar house sizes make the two groups easier to compare. A large jump after grouping can point to copies across the old split."
       - id: b
-        text: "Assign earlier rows to training and later rows to validation."
+        text: "The split had more sales in training than in validation."
         correct: false
-        feedback: "A time split rehearses forecasting; duplicate records still need grouping by house."
+        feedback: "Different set sizes can affect how steady the scores are. They do not give the model access to validation prices."
       - id: c
-        text: "Assign each house to a group and keep its rows together."
+        text: "The split put copies of the same sale on opposite sides."
         correct: true
-        feedback: "A group split keeps related records together and removes the duplicate-house shortcut."
-    solution: "A group split keeps related records together and removes the duplicate-house shortcut."
+        feedback: "Copies in training can reveal validation prices. Keeping each house together removes that shortcut."
+    solution: "Grouping keeps copies of validation houses out of training, so the model can no longer get those prices by recognizing houses it already saw."
   - id: gen-recall-records-contrast2
     dimension: conceptual
     type: mc
@@ -562,18 +562,18 @@ exercises:
     knowledge_point: gen-related-records
     difficulty: 1
     est_minutes: 0.5
-    prompt: "Which split rehearses predicting future sales?"
+    prompt: "A price model will be trained once at the end of 2023 to score sales in 2024. You already removed duplicate records. Which validation split best mirrors this setup?"
     options:
       - id: a
-        text: "Train on earlier sales and check later sales."
+        text: "Train on 2023 sales and check on 2024 sales."
         correct: true
-        feedback: "A time split uses earlier records for training and later records for checking."
+        feedback: "A time split gives the model only sales it could have seen before making predictions."
       - id: b
-        text: "Train on later sales and check earlier sales."
+        text: "Randomly assign sales from both years to training and validation."
         correct: false
-        feedback: "Training on later records lets future information help predict the past."
+        feedback: "A random split can let 2024 prices influence predictions of 2023 sales."
       - id: c
-        text: "Train on one copy and check another copy of each sale."
+        text: "Assign neighbourhoods to training or validation, using both years."
         correct: false
-        feedback: "Copies across the split allow recognition of prices already seen in training."
-    solution: "A time split uses earlier records for training and later records for checking."
+        feedback: "Grouping by neighbourhood separates places. The training groups could still contain later sales."
+    solution: "Train on the earlier year and check the later year, as the model will do when it makes predictions."

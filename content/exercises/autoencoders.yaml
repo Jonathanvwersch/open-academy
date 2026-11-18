@@ -741,21 +741,21 @@ exercises:
     knowledge_point: ae-encode-decode
     difficulty: 1
     est_minutes: 0.5
-    prompt: "Which object is the short representation of one image inside an autoencoder?"
+    prompt: "An autoencoder has processed a new image through its encoder. Which values go into the decoder to rebuild the image?"
     options:
       - id: a
-        text: "The encoder's matrix of shared weights."
+        text: "The values in the encoder’s weight matrix."
         correct: false
-        feedback: "The weight matrix belongs to the network and is shared by images."
+        feedback: "The encoder shares its weights across images. It uses them to produce a different vector for each image."
       - id: b
-        text: "The decoder's full reconstructed image."
+        text: "The values in the flattened input image."
         correct: false
-        feedback: "The reconstruction is the decoder output and has the full input size."
+        feedback: "The encoder reads the original image and produces the values the decoder needs."
       - id: c
-        text: "The encoder's output latent vector."
+        text: "The values in the encoder’s latent vector."
         correct: true
-        feedback: "The latent vector is the short encoder output passed to the decoder."
-    solution: "The latent vector is the short encoder output passed to the decoder."
+        feedback: "The decoder uses the latent vector to produce a reconstruction with the original input size."
+    solution: "The decoder reads the latent vector from the encoder and outputs the reconstructed pixel values."
   - id: ae-recall-encode-formula
     dimension: math
     type: text
@@ -764,8 +764,17 @@ exercises:
     difficulty: 1
     est_minutes: 0.5
     prompt: "A one-layer decoder has weight matrix $W_d$ and bias $b_d$. Fill in the missing input: $\\hat x=W_d\\,\\underline{\\quad}+b_d$. Type its symbol or name."
-    accept: ["z", "latent vector", "the latent vector", "encoded vector", "the encoded vector"]
-    regex: "^\\s*(?:\\$?\\s*z\\s*\\$?|(?:the\\s+)?(?:latent|encoded)\\s+vector|\\\\(?:mathbf|boldsymbol)\\s*\\{\\s*z\\s*\\})\\s*$"
+    accept:
+      [
+        "z",
+        "latent vector",
+        "the latent vector",
+        "latent representation",
+        "encoded vector",
+        "encoder output",
+        "output of the encoder",
+      ]
+    regex: "^\\s*(?:(?=\\$[\\s\\S]*\\$\\s*$)|(?=\\x60[\\s\\S]*\\x60\\s*$)|(?=\\\\\\([\\s\\S]*\\\\\\)\\s*$)|(?!\\$|\\x60|\\\\\\()(?![\\s\\S]*(?:\\$|\\x60|\\\\\\))\\s*$))(?:\\$|\\x60|\\\\\\()?\\s*(?:z|\\(\\s*z\\s*\\)|\\\\(?:mathbf|boldsymbol|vec)\\s*(?:\\{\\s*z\\s*\\}|z)|(?:(?:the|an?)\\s+)?(?:latent\\s+(?:vector|representation|code|values)|encoded\\s+(?:vector|representation|image)|encoder(?:[’\\x27]s)?\\s+output(?:\\s+vector)?|output(?:\\s+vector)?\\s+of\\s+the\\s+encoder))\\s*(?:\\$|\\x60|\\\\\\))?\\s*$"
     solution: "The decoder reads the latent vector $z$, giving $\\hat x=W_dz+b_d$."
   - id: ae-recall-error-say
     dimension: conceptual
@@ -801,11 +810,11 @@ exercises:
       - id: b
         text: "An unlabelled training set with many different images."
         correct: false
-        feedback: "Unlabelled data supplies inputs and targets, but it does not prevent copying."
+        feedback: "Unlabelled images can serve as their own training targets. Even with unlabelled data, a wide middle can pass every pixel through."
       - id: c
         text: "A reconstruction with as many numbers as the input."
         correct: false
-        feedback: "The reconstruction needs the original size; the narrow latent vector provides the restriction."
+        feedback: "The output needs the original size to rebuild the image. The restriction is in the middle of the network."
     solution: "The narrow middle forces the network to find patterns that let it rebuild the image."
   - id: ae-recall-error-formula
     dimension: math
@@ -814,10 +823,10 @@ exercises:
     knowledge_point: ae-reconstruction
     difficulty: 1
     est_minutes: 0.5
-    prompt: "An input has two pixel values $x,y$, reconstructed as $a,b$, respectively. Write the summed squared reconstruction error."
-    answer: "(a-x)^2+(b-y)^2"
-    variables: { "x": [0, 1], "y": [0, 1], "a": [0, 1], "b": [0, 1] }
-    solution: "Square each reconstructed-minus-input difference and add them: $(a-x)^2+(b-y)^2$."
+    prompt: "An image has two pixel values $x_1$ and $x_2$. Its reconstruction has values $\\hat x_1$ and $\\hat x_2$ in the same positions. Write the reconstruction error $E$ for this image. Type `x_1`, `x_2`, `xhat_1` and `xhat_2`."
+    answer: "(xhat_1-x_1)^2+(xhat_2-x_2)^2"
+    variables: { "x_1": [0, 1], "x_2": [0, 1], "xhat_1": [0, 1], "xhat_2": [0, 1] }
+    solution: "Square each pixel’s difference and add the results to get $(\\hat x_1-x_1)^2+(\\hat x_2-x_2)^2$."
   - id: ae-recall-sizes-say
     dimension: conceptual
     type: explain
@@ -846,18 +855,18 @@ exercises:
     prompt: "Which numbers are stored separately for each encoded image?"
     options:
       - id: a
-        text: "A fresh set of all encoder weights and biases."
+        text: "The network’s encoder and decoder parameters."
         correct: false
-        feedback: "Encoder parameters are stored once and shared by all images."
+        feedback: "Both sets of parameters are stored once and shared by all images."
       - id: b
-        text: "A fresh set of all decoder weights and biases."
+        text: "The original brightness value at every pixel."
         correct: false
-        feedback: "Decoder parameters are also stored once and shared by all images."
+        feedback: "Those values are the full input. The compressed description uses fewer values to summarize it."
       - id: c
-        text: "The image's own short latent vector."
+        text: "The short latent vector for that image."
         correct: true
-        feedback: "Each image has its own latent vector; network parameters are shared."
-    solution: "Each image has its own latent vector; network parameters are shared."
+        feedback: "The encoder produces one latent vector for each image. The same network can use it to rebuild that image."
+    solution: "The trained network is shared across images. Each encoded image has its own latent vector."
   - id: ae-recall-sizes-formula
     dimension: math
     type: expression
@@ -876,17 +885,17 @@ exercises:
     knowledge_point: ae-latent-space
     difficulty: 1
     est_minutes: 1
-    prompt: "In one or two sentences, what is latent space, and how does distance in it help compare images?"
+    prompt: "In one or two sentences, what is a point in latent space, and how can distance between points help compare images in an autoencoder trained on stripes?"
     rubric:
       - id: point0
-        criterion: "Explain that latent space treats each latent vector as a point with one axis per latent number."
+        criterion: "Explain that a point is one image’s latent vector, with one axis for each latent number."
         weight: 1
         required: true
       - id: point1
-        criterion: "Explain that images that look alike get nearby points, so the distance between latent vectors compares images."
+        criterion: "Explain that in the stripe example, images with similar row brightnesses have nearby points, so distance gives a quick comparison."
         weight: 1
         required: true
-    exemplar: "Latent space treats each latent vector as a point with one axis per latent number. Images that look alike get nearby points, so the distance between latent vectors compares images."
+    exemplar: "A point in latent space is one image’s latent vector, with one axis for each latent number. In the stripe autoencoder, images with similar row brightnesses have points close together, so their distance helps compare them."
   - id: ae-recall-latent-contrast
     dimension: conceptual
     type: mc
@@ -894,21 +903,21 @@ exercises:
     knowledge_point: ae-latent-space
     difficulty: 1
     est_minutes: 0.5
-    prompt: "Which statement describes the meaning of latent coordinates in a trained autoencoder?"
+    prompt: "Two autoencoders trained on stripes both rebuild the images well. What can you conclude about the meanings of their latent coordinates?"
     options:
       - id: a
-        text: "Each coordinate always names a fixed visible property."
+        text: "Both encoders store the brightness of each row directly."
         correct: false
-        feedback: "The same images can be encoded using row brightnesses or their sums and differences, so meanings are not fixed."
+        feedback: "Row brightness is one possible representation. The sums and differences of row brightnesses can also be used to rebuild the stripes."
       - id: b
-        text: "Different coordinate meanings can support good reconstructions."
+        text: "The encoders can use different combinations of row brightnesses."
         correct: true
-        feedback: "Training rewards good copies and can find many different latent representations."
+        feedback: "Training rewards good copies, so it can find different ways of representing the same images."
       - id: c
-        text: "Every small visible detail must have its own coordinate."
+        text: "Both encoders use the same coordinate values for any given image."
         correct: false
-        feedback: "A small detail can contribute little reconstruction error and be lost from the latent vector."
-    solution: "Training rewards good copies and can find many different latent representations."
+        feedback: "Each decoder learns to read its own encoder’s values. The two vectors can differ for the same image."
+    solution: "Coordinates can mean different things in two models, even if both models reconstruct the stripes well."
   - id: ae-recall-latent-formula
     dimension: math
     type: expression

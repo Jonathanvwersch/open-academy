@@ -964,10 +964,10 @@ exercises:
     knowledge_point: dbt-loss-curves
     difficulty: 1
     est_minutes: 0.5
-    prompt: "A model predicts one time $w$ for trips lasting $1,3,5,7$ seconds and minimizes their mean squared error. Write the gap from $4$ after one gradient-descent update with learning rate $r$ (the rate $\\eta$)."
-    answer: "(1-2*r)*(w-4)"
-    variables: { "w": [-2, 10], "r": [0.01, 1.4] }
-    solution: "The update multiplies the old gap by $1-2r$, giving $(1-2r)(w-4)$."
+    prompt: "A model predicts a single time $w$ for trips of $1,3,5,7$ seconds and minimizes their mean squared error. Write the signed gap $w_{\\mathrm{new}}-4$ after one gradient-descent update at learning rate $\\eta$. Type `eta`."
+    answer: "(1-2*eta)*(w-4)"
+    variables: { "w": [-2, 10], "eta": [0.01, 1.4] }
+    solution: "The update subtracts $\\eta$ times the slope $2(w-4)$, so the new gap is $(1-2\\eta)(w-4)$."
   - id: dbt-recall-tiny-say
     dimension: conceptual
     type: explain
@@ -975,17 +975,17 @@ exercises:
     knowledge_point: dbt-tiny-batch
     difficulty: 1
     est_minutes: 1
-    prompt: "In one or two sentences, what does overfitting a single batch test, and what should happen to its loss when an exact fit is possible?"
+    prompt: "In one or two sentences, how do you run a tiny-batch test, and what should happen to its loss when an exact fit is possible?"
     rubric:
       - id: point0
-        criterion: "Explain that repeatedly training on one small batch tests whether the code can fit those examples."
+        criterion: "Explain that you train repeatedly on the same small batch to see if the model can fit those examples."
         weight: 1
         required: true
       - id: point1
-        criterion: "Explain that with a flexible enough model, correct updates and a suitable learning rate should drive the loss close to zero."
+        criterion: "Explain that correct updates and a suitable learning rate should drive the loss close to zero when the model has enough parameters to fit the examples exactly."
         weight: 1
         required: true
-    exemplar: "Repeatedly training on one small batch tests whether the code can fit those examples. With a flexible enough model, correct updates and a suitable learning rate should drive the loss close to zero."
+    exemplar: "Train repeatedly on the same small batch to check if the model can fit those examples. If an exact fit is possible, correct updates and a suitable learning rate should bring the loss close to zero."
   - id: dbt-recall-tiny-contrast
     dimension: conceptual
     type: mc
@@ -993,21 +993,21 @@ exercises:
     knowledge_point: dbt-tiny-batch
     difficulty: 1
     est_minutes: 0.5
-    prompt: "A model fits two training examples almost exactly. What does this tiny-batch test establish?"
+    prompt: "A linear model’s training loss stalls above zero on two trips. You already know that a line can fit both trips exactly. Which check would help isolate the problem?"
     options:
       - id: a
-        text: "The updates can fit these particular examples."
+        text: "Compare the weight and bias before and after each update."
         correct: true
-        feedback: "Tiny-batch success shows the model can fit those examples."
+        feedback: "Check that updates reach both parameters. A frozen bias can prevent the model from reaching the line that fits."
       - id: b
-        text: "Every computed slope has the correct size."
+        text: "Compare the trained model’s errors on a larger set of unseen trips."
         correct: false
-        feedback: "A wrong slope can still make loss fall and pass a tiny-batch test."
+        feedback: "Unseen trips test generalization. The immediate problem is fitting these two training trips."
       - id: c
-        text: "Predictions will work well on unseen examples."
+        text: "Compare the average loss on different pairs of trips."
         correct: false
-        feedback: "Fitting a few training examples does not test generalisation."
-    solution: "Tiny-batch success shows the model can fit those examples."
+        feedback: "Changing the examples can change the best fit. Keep the test batch fixed so you know what the run should reach."
+    solution: "Check whether both the weight and the bias change during the run. The known fit gives you a clear target for the training code."
   - id: dbt-recall-tiny-formula
     dimension: math
     type: expression
@@ -1015,10 +1015,10 @@ exercises:
     knowledge_point: dbt-tiny-batch
     difficulty: 1
     est_minutes: 0.5
-    prompt: "A trip has distance $x$. A linear model has weight $w$ in seconds per metre and bias $b$ in seconds. Write its predicted trip time."
-    answer: "w*x+b"
-    variables: { "w": [0.5, 5], "x": [0.5, 10], "b": [-2, 3] }
-    solution: "The linear prediction is $\\hat y=wx+b$."
+    prompt: "Two trips in a training batch have signed prediction errors $e_1$ and $e_2$. Write the batch’s mean squared error $L$. Type `e_1` and `e_2`."
+    answer: "(e_1^2+e_2^2)/2"
+    variables: { "e_1": [-5, 5], "e_2": [-5, 5] }
+    solution: "Square each trip’s error and average the two results to get $(e_1^2+e_2^2)/2$."
   - id: dbt-recall-grad-say
     dimension: conceptual
     type: explain
@@ -1044,21 +1044,21 @@ exercises:
     knowledge_point: dbt-grad-check
     difficulty: 1
     est_minutes: 0.5
-    prompt: "Which test directly checks whether a computed slope agrees with the loss function?"
+    prompt: "A model fits a tiny training batch, but its gradient check gives very different slopes for one weight. What should you investigate first?"
     options:
       - id: a
-        text: "Repeat updates until one tiny batch has nearly zero loss."
+        text: "Whether the model needs more weights to fit the batch."
         correct: false
-        feedback: "A tiny-batch fit can succeed with a slope of the wrong size."
+        feedback: "A more flexible model can help fit hard examples. This model already fits the batch and the slope discrepancy remains."
       - id: b
-        text: "Compare the training and validation loss curves."
+        text: "Whether the model needs fewer epochs to avoid overfitting."
         correct: false
-        feedback: "Comparing training and validation loss helps identify overfitting."
+        feedback: "Early stopping uses a validation curve. It cannot explain a difference between two estimates of the same slope."
       - id: c
-        text: "Compare the code slope with a two-nudge numerical slope."
+        text: "Whether the slope code missed a factor for that weight."
         correct: true
-        feedback: "A gradient check measures how loss changes around one parameter and compares it with the code slope."
-    solution: "A gradient check measures how loss changes around one parameter and compares it with the code slope."
+        feedback: "A missing factor can change the size of the slope while leaving the update downhill."
+    solution: "A slope of the wrong size can still lower the loss. Use the disagreement to check the code for the weight’s slope."
   - id: dbt-recall-grad-formula
     dimension: math
     type: expression
@@ -1066,10 +1066,10 @@ exercises:
     knowledge_point: dbt-grad-check
     difficulty: 1
     est_minutes: 0.5
-    prompt: "A code slope is $a$ and a numerical slope is $n$. Write their relative difference, using the larger slope magnitude as the scale. Type `abs(...)` and `max(...)`. Both slopes are positive here."
+    prompt: "A gradient check gives a code slope $a$ and a numerical slope $n$, with at least one nonzero slope. Write their relative difference. Type `abs(...)` and `max(...)` for absolute value and maximum."
     answer: "abs(a-n)/max(abs(a),abs(n))"
-    variables: { "a": [0.1, 20], "n": [0.2, 15] }
-    solution: "Divide the disagreement by the larger magnitude: $|a-n|/\\max(|a|,|n|)$."
+    variables: { "a": [-20, 20], "n": [-15, -0.2] }
+    solution: "Divide the size of the difference by the larger slope magnitude to get $|a-n|/\\max(|a|,|n|)$."
   - id: dbt-recall-symptoms-say
     dimension: conceptual
     type: explain
@@ -1098,18 +1098,18 @@ exercises:
     prompt: "Which symptom suggests trying a larger learning rate?"
     options:
       - id: a
-        text: "Training loss falls by only a sliver each update."
+        text: "Training loss barely falls on each update."
         correct: true
-        feedback: "A very slow fall can mean the learning rate is too small; raise it and test again."
+        feedback: "The learning rate may be too small. Raise it and test again."
       - id: b
         text: "Training loss falls while validation loss clearly rises."
         correct: false
-        feedback: "This suggests overfitting; keep the saved parameters with the lowest validation loss."
+        feedback: "This suggests overfitting. Keep the saved parameters with the lowest validation loss."
       - id: c
         text: "Training loss grows rapidly with each update."
         correct: false
-        feedback: "A growing loss suggests lowering the rate first, then checking for a flipped update sign if it keeps rising."
-    solution: "A loss that falls by only a sliver may indicate a learning rate that is too small."
+        feedback: "Try a smaller learning rate. If the loss still rises, check the update sign."
+    solution: "A loss that falls very slowly may indicate a learning rate that is too small."
   - id: dbt-recall-symptoms-formula
     dimension: math
     type: expression
@@ -1117,7 +1117,7 @@ exercises:
     knowledge_point: dbt-symptoms
     difficulty: 1
     est_minutes: 0.5
-    prompt: "A constant prediction $w$ is trained on trip times $1,3,5,7$ using mean squared error. Buggy code adds learning rate $r$ times the loss slope to $w$. Write the gap from $4$ after this update."
-    answer: "(1+2*r)*(w-4)"
-    variables: { w: [-2, 10], r: [0.01, 1.4] }
-    solution: "The flipped sign gives $w+r\\,2(w-4)-4=(1+2r)(w-4)$."
+    prompt: "A constant prediction $w$ is trained on trip times $1,3,5,7$ using mean squared error. The update adds learning rate $\\eta$ times the loss slope to $w$. Write the signed gap $w_{\\mathrm{new}}-4$ after this update. Type `eta`."
+    answer: "(1+2*eta)*(w-4)"
+    variables: { "w": [-2, 10], "eta": [0.01, 1.4] }
+    solution: "The slope is $2(w-4)$. Adding the slope step gives $w+2\\eta(w-4)-4=(1+2\\eta)(w-4)$."

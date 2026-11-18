@@ -660,10 +660,10 @@ exercises:
         weight: 1
         required: true
       - id: point1
-        criterion: "Explain that at each position it multiplies patch pixels by matching weights, sums the products and adds a bias; those scores form the feature map."
+        criterion: "Explain that at each patch it multiplies pixels by matching weights, adds the products and a bias, then places that score in the feature map."
         weight: 1
         required: true
-    exemplar: "A filter is a small grid of weights reused across image patches. At each position it multiplies patch pixels by matching weights, sums the products and adds a bias; those scores form the feature map."
+    exemplar: "A filter is a small grid of weights reused across image patches. At each patch it multiplies pixels by matching weights, adds the products and a bias, then places that score in the feature map."
   - id: conv-recall-slide-contrast
     dimension: conceptual
     type: mc
@@ -678,13 +678,13 @@ exercises:
         correct: false
         feedback: "Keeping the largest value describes max pooling."
       - id: b
-        text: "The weighted sum of that patch's pixels plus a bias."
+        text: "The weighted sum of that patch’s pixels plus a bias."
         correct: true
-        feedback: "A convolution applies the shared filter to a patch and adds its bias to produce one score."
+        feedback: "The convolution applies the shared filter to that patch and adds its bias."
       - id: c
-        text: "The list of weights learned for that patch alone."
+        text: "The weighted sum of all image pixels plus a bias."
         correct: false
-        feedback: "The weights are shared across patches; a map cell is a score computed from pixels."
+        feedback: "A fully connected neuron can use the whole image for one score. A convolution computes a score for each local patch."
     solution: "A convolution applies the shared filter to a patch and adds its bias to produce one score."
   - id: conv-recall-slide-formula
     dimension: math
@@ -694,8 +694,18 @@ exercises:
     difficulty: 1
     est_minutes: 0.5
     prompt: "A grayscale convolution uses filter weights $w_{u,v}$ and pixels $x$. Fill in the missing term in its score formula: $y_{i,j}=\\sum_{u=0}^{k-1}\\sum_{v=0}^{k-1}w_{u,v}x_{i+u,j+v}+\\underline{\\quad}$. Type a symbol or words."
-    accept: ["b", "bias", "the bias", "shared bias", "the shared bias"]
-    regex: "^\\s*(?:\\$?\\s*b\\s*\\$?|(?:the\\s+)?(?:shared\\s+)?bias)\\s*$"
+    accept:
+      [
+        "b",
+        "bias",
+        "the bias",
+        "shared bias",
+        "bias term",
+        "filter bias",
+        "learned bias",
+        "the shared bias",
+      ]
+    regex: "^\\s*(?:(?=\\$[\\s\\S]*\\$\\s*$)|(?=\\x60[\\s\\S]*\\x60\\s*$)|(?=\\\\\\([\\s\\S]*\\\\\\)\\s*$)|(?!\\$|\\x60|\\\\\\()(?![\\s\\S]*(?:\\$|\\x60|\\\\\\))\\s*$))(?:\\$|\\x60|\\\\\\()?\\s*(?:b|\\(\\s*b\\s*\\)|(?:(?:the|a)\\s+)?(?:(?:shared|learned|learnt|filter|convolution(?:al)?)\\s+)*bias(?:\\s+(?:term|parameter|b))?)\\s*(?:\\$|\\x60|\\\\\\))?\\s*$"
     solution: "Each output score adds the shared bias $b$ once after summing the weighted pixels."
   - id: conv-recall-size-say
     dimension: conceptual
@@ -722,21 +732,21 @@ exercises:
     knowledge_point: conv-size
     difficulty: 1
     est_minutes: 0.5
-    prompt: "Which setting moves neighbouring convolution patches farther apart?"
+    prompt: "An unpadded convolution misses some patterns near the image borders. Which change lets the filter cover those borders in more positions?"
     options:
       - id: a
-        text: "Increase the zero padding around the image."
-        correct: false
-        feedback: "Padding adds border positions where patches can fit."
+        text: "Add zero padding around the image."
+        correct: true
+        feedback: "Padding gives the filter more places to fit beside the original edge."
       - id: b
         text: "Increase the number of filters in the layer."
         correct: false
-        feedback: "More filters add output channels while leaving patch positions unchanged."
+        feedback: "More filters add output channels. The positions available to each filter stay the same."
       - id: c
         text: "Increase the stride between patch starts."
-        correct: true
-        feedback: "Stride sets the distance between neighbouring starts; a larger stride gives a coarser map."
-    solution: "Stride sets the distance between neighbouring starts; a larger stride gives a coarser map."
+        correct: false
+        feedback: "A larger stride skips more starts, so the filter fits in fewer positions."
+    solution: "Zero padding lets a patch extend beyond the original edge, which adds places that include the border pixels."
   - id: conv-recall-size-formula
     dimension: math
     type: text
@@ -744,24 +754,19 @@ exercises:
     knowledge_point: conv-size
     difficulty: 1
     est_minutes: 0.5
-    prompt: "For image height $H$, filter side $k$, padding $p$ and stride $s$, the output height is the result of applying ____ to $(H+2p-k)/s$, then adding $1$. Name the rounding operation."
+    prompt: "For image height $H$, square filter side $k$, padding $p$ and stride $s$, which rounding operation do you apply to $(H+2p-k)/s$ before adding $1$?"
     accept:
       [
         "floor",
-        "the floor",
-        "floor function",
         "the floor function",
         "round down",
-        "rounding down",
-        "round down to an integer",
-        "round down to the nearest integer",
         "rounding down to the nearest integer",
-        "take the floor",
-        "round towards negative infinity",
+        "round down to a whole number",
         "round toward negative infinity",
+        "greatest integer less than or equal to the value",
       ]
-    regex: "^\\s*(?:(?:take\\s+)?(?:the\\s+)?floor(?:\\s+function)?|round(?:ing)?\\s+down(?:\\s+to\\s+(?:an|the\\s+nearest)\\s+integer)?|round\\s+towards?\\s+negative\\s+infinity)\\s*$"
-    solution: "Round down before adding one: $H_{\\text{out}}=\\lfloor(H+2p-k)/s\\rfloor+1$."
+    regex: "^\\s*(?:(?=\\$[\\s\\S]*\\$\\s*$)|(?=\\x60[\\s\\S]*\\x60\\s*$)|(?=\\\\\\([\\s\\S]*\\\\\\)\\s*$)|(?!\\$|\\x60|\\\\\\()(?![\\s\\S]*(?:\\$|\\x60|\\\\\\))\\s*$))(?:\\$|\\x60|\\\\\\()?\\s*(?:(?:(?:take|apply|use)\\s+)?(?:the\\s+)?floor(?:\\s+(?:function|operation))?|floor(?:ing)?\\s+(?:the\\s+)?(?:result|value|quotient)|round(?:ing)?\\s+down(?:\\s+to\\s+(?:an?|the(?:\\s+(?:nearest|next|lower))?)\\s+(?:whole\\s+number|integer))?|round(?:ing)?\\s+towards?\\s+(?:negative\\s+infinity|[-−]∞)|(?:the\\s+)?(?:greatest|largest)\\s+integer\\s+(?:less\\s+than\\s+or\\s+equal\\s+to|at\\s+most|no\\s+greater\\s+than)\\s+(?:the\\s+(?:value|number|result)|it|x)|(?:(?:math|np|numpy)\\.)?floor\\s*\\(\\s*(?:x|\\.{3}|…)?\\s*\\)|(?:⌊\\s*(?:x|\\.{3}|…)?\\s*⌋|\\\\lfloor\\s*(?:x|\\.{3}|…)?\\s*\\\\rfloor))\\s*(?:\\$|\\x60|\\\\\\))?\\s*$"
+    solution: "Take the floor, which rounds down, then count the starting position at zero by adding $1$. The height is $\\lfloor(H+2p-k)/s\\rfloor+1$."
   - id: conv-recall-channels-say
     dimension: conceptual
     type: explain
@@ -787,21 +792,21 @@ exercises:
     knowledge_point: conv-channels
     difficulty: 1
     est_minutes: 0.5
-    prompt: "A convolution reads RGB images and uses eight filters. What determines its output channel count?"
+    prompt: "You double the number of filters in a convolution and keep the input, filter size, stride and padding fixed. Which dimension of the output doubles?"
     options:
       - id: a
-        text: "The eight filters, each producing one map."
+        text: "The number of output channels."
         correct: true
-        feedback: "Each filter produces one output channel, so eight filters give eight maps."
+        feedback: "Each filter produces one output channel. Doubling the filters doubles the number of channels."
       - id: b
-        text: "The three input channels, each copied to one map."
+        text: "The height of each output map."
         correct: false
-        feedback: "A filter combines all input channels into one score at each position."
+        feedback: "Map height counts allowed patch starts down the image. More filters reuse those same starts."
       - id: c
-        text: "The image height, with one map per output row."
+        text: "The width of each output map."
         correct: false
-        feedback: "Output rows count spatial positions within each map; filters determine the number of maps."
-    solution: "Each filter produces one output channel, so eight filters give eight maps."
+        feedback: "Map width counts allowed patch starts across the image. More filters reuse those same starts."
+    solution: "Each extra filter adds a map with the same height and width, so doubling the filters doubles the output channels."
   - id: conv-recall-channels-formula
     dimension: math
     type: expression
@@ -809,10 +814,10 @@ exercises:
     knowledge_point: conv-channels
     difficulty: 1
     est_minutes: 0.5
-    prompt: "A convolution has $c$ input channels, $f$ filters and square filter side $k$. Each filter has one bias. Write the layer's parameter count."
-    answer: "f*(c*k^2+1)"
-    variables: { "c": [1, 8], "f": [2, 32], "k": [2, 7] }
-    solution: "Each filter has $ck^2$ weights and one bias, giving $f(ck^2+1)$ parameters."
+    prompt: "A convolution has $C_{\\mathrm{in}}$ input channels and $C_{\\mathrm{out}}$ filters of square side $k$. Each filter has one bias. Write the layer’s parameter count. Type `C_in` and `C_out`."
+    answer: "C_out*(C_in*k^2+1)"
+    variables: { "C_in": [1, 8], "C_out": [2, 32], "k": [2, 7] }
+    solution: "Count $C_{\\mathrm{in}}k^2$ weights and one bias for each filter to get $C_{\\mathrm{out}}(C_{\\mathrm{in}}k^2+1)$."
   - id: conv-recall-pool-say
     dimension: conceptual
     type: explain
@@ -838,21 +843,21 @@ exercises:
     knowledge_point: conv-pool
     difficulty: 1
     est_minutes: 0.5
-    prompt: "Which operation shrinks a feature map without learned weights or biases?"
+    prompt: "After you swap two values inside one patch, how does the pooled value for that patch change under max pooling?"
     options:
       - id: a
-        text: "A strided convolution taking weighted patch sums."
+        text: "It changes whenever the patch values are in a different order."
         correct: false
-        feedback: "A strided convolution can shrink a map, but its filter weights and biases are learned parameters."
+        feedback: "A weighted filter can respond differently when values move. Max pooling only reads the largest value."
       - id: b
-        text: "A max-pooling layer keeping the largest patch value."
-        correct: true
-        feedback: "Max pooling keeps one largest value per patch with no weights or biases."
-      - id: c
-        text: "A ReLU replacing each negative score with zero."
+        text: "It changes only if the largest value ends up in a different cell."
         correct: false
-        feedback: "ReLU changes values without changing the number of map cells."
-    solution: "Max pooling keeps one largest value per patch with no weights or biases."
+        feedback: "The largest value’s position can change, but pooling keeps only its value."
+      - id: c
+        text: "It stays the same for any swap inside the patch."
+        correct: true
+        feedback: "A swap leaves the set of values in the patch unchanged, so its maximum stays the same."
+    solution: "Max pooling keeps the largest value in the patch. Swapping its position with another value leaves that maximum unchanged."
   - id: conv-recall-pool-formula
     dimension: math
     type: expression
@@ -860,7 +865,7 @@ exercises:
     knowledge_point: conv-pool
     difficulty: 1
     est_minutes: 0.5
-    prompt: "Stack $L$ square convolutions of filter side $k$, all with stride one and no pooling. Write the side length of an interior output cell's receptive field in the original image."
+    prompt: "Stack $L$ convolutional layers, each with a square filter of side $k$, stride one and no padding or pooling. Write the side length of an output cell’s receptive field in the original image."
     answer: "1+L*(k-1)"
     variables: { "L": [1, 8], "k": [2, 7] }
-    solution: "Start with one pixel and add $k-1$ per layer: $1+L(k-1)$."
+    solution: "Start with a single pixel. Each layer adds $k-1$ to the side length, giving $1+L(k-1)$."
