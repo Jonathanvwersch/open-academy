@@ -721,3 +721,183 @@ exercises:
     hints:
       - Which order of `X` and `W` makes the inner dimensions match?
     solution: '`Y = X @ W + b`: $(n\times d)(d \times k) = n \times k$, and `b` broadcasts across the `n` rows.'
+  - id: mat-recall-rows-shapes-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: mat-rows-shapes
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, how do you multiply a matrix by a vector, and what decides how many entries the answer has?
+    rubric:
+      - id: meaning
+        criterion: Explain that each row of the matrix is dotted with the input vector.
+        weight: 1
+        required: true
+      - id: rule
+        criterion: Explain that the answer has one entry per row, in the same order.
+        weight: 1
+        required: true
+    exemplar: Take the dot product of each row with the input vector. Stack those answers in row order, giving one entry for every row.
+  - id: mat-recall-rows-shapes-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: mat-rows-shapes
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 0.5
+    prompt: A matrix has one row per house and one column per measurement. A matching weight vector gives $Xw$. What does entry 2 of this output mean?
+    options:
+      - id: a
+        text: The prediction for the second house.
+        correct: true
+        feedback: Each row gives one dot product, so output entry 2 belongs to row 2.
+      - id: b
+        text: The weight for the second measurement.
+        correct: false
+        feedback: That weight is entry 2 of $w$, an input to every row’s calculation.
+      - id: c
+        text: The second measurement of the first house.
+        correct: false
+        feedback: That measurement is in row 1, column 2 of $X$.
+    solution: Each output entry is the prediction from the matching row of houses.
+  - id: mat-recall-rows-shapes-formula
+    dimension: math
+    type: text
+    role: recall
+    knowledge_point: mat-rows-shapes
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Fill in the blank: entry $i$ of $Ax$ is the dot product of $x$ with ______. Answer in words."
+    accept:
+      - row i of A
+      - the ith row of A
+      - the i-th row of A
+      - the i th row of A
+      - A row i
+      - row i
+      - the row i of A
+      - the ith row
+      - the i-th row
+    regex: ^\s*(?:(?:the\s+)?(?:\$?i\$?\s*-?\s*th\s+row|row\s+\$?i\$?)(?:\s+(?:of|in)\s+(?:matrix\s+)?\$?a\$?)?|\$?a\$?(?:[’\x27]s)?\s+row\s+\$?i\$?)\s*$
+    solution: Entry $i$ comes from row $i$ of $A$ dotted with $x$.
+  - id: mat-recall-matrix-products-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: mat-matrix-products
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, how is entry $(i,j)$ of $AB$ calculated, and which sizes must match for the product to exist?
+    rubric:
+      - id: meaning
+        criterion: Explain that entry (i,j) is row i of A dotted with column j of B.
+        weight: 1
+        required: true
+      - id: rule
+        criterion: Explain that the number of columns in A must equal the number of rows in B.
+        weight: 1
+        required: true
+    exemplar: Dot row i of A with column j of B to get entry (i,j). The number of columns in A must match the number of rows in B.
+  - id: mat-recall-matrix-products-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: mat-matrix-products
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 0.5
+    prompt: In $XW$, rows of $X$ are houses and columns of $W$ are sets of prediction weights. What is entry $(2,1)$ of $XW$?
+    options:
+      - id: a
+        text: The second prediction for the first house.
+        correct: false
+        feedback: That is entry (1,2), using row 1 of X and column 2 of W.
+      - id: b
+        text: The first measurement of the second house.
+        correct: false
+        feedback: That is entry (2,1) of X before multiplying by the weights.
+      - id: c
+        text: The first prediction for the second house.
+        correct: true
+        feedback: Row 2 chooses the house and column 1 chooses the prediction weights.
+    solution: The result keeps houses in rows and prediction types in columns.
+  - id: mat-recall-matrix-products-formula
+    dimension: math
+    type: text
+    role: recall
+    knowledge_point: mat-matrix-products
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Fill in the output shape: $(m\\times n)(n\\times p)\\to\\underline{\\quad\\quad}$."
+    accept:
+      - m × p
+      - m x p
+      - m*p
+      - m by p
+      - m times p
+      - m\times p
+      - (m,p)
+      - m,p
+      - m·p
+    regex: ^\s*\(?\s*m\s*(?:×|x|\*|·|,|by|times|\\times|\\cdot)\s*p\s*\)?\s*$
+    solution: The outer sizes give the output shape $m\times p$.
+  - id: mat-recall-batches-transpose-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: mat-batches-transpose
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, what does the bias do in `X @ W + b`, and what does transposing a matrix do?
+    rubric:
+      - id: meaning
+        criterion: Explain that broadcasting reuses the bias row for every example row.
+        weight: 1
+        required: true
+      - id: rule
+        criterion: Explain that transposing swaps rows and columns.
+        weight: 1
+        required: true
+    exemplar: The bias row is added to every row of predictions, giving each prediction column its own fixed addition. Transposing swaps a matrix’s rows and columns.
+  - id: mat-recall-batches-transpose-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: mat-batches-transpose
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 0.5
+    prompt: A NumPy matrix `W_rows` has one row per prediction and one column per measurement. `X` has one row per house and one column per measurement. Which expression gives one prediction column per row of `W_rows`?
+    options:
+      - id: a
+        text: "`X @ W_rows.T`"
+        correct: true
+        feedback: Transposing puts each prediction’s weights in a column for the row-by-column product.
+      - id: b
+        text: "`X.T @ W_rows`"
+        correct: false
+        feedback: Transposing X puts houses in columns and leaves the prediction weights in rows.
+      - id: c
+        text: "`X * W_rows.T`"
+        correct: false
+        feedback: The star multiplies matching entries and does not add them into dot products.
+    solution: Transpose the weight rows into columns, then multiply with `@`.
+  - id: mat-recall-batches-transpose-formula
+    dimension: math
+    type: text
+    role: recall
+    knowledge_point: mat-batches-transpose
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Fill in the blank: `Y = ____ + b` predicts for every row of `X`, with prediction weights in the columns of `W`. Type the missing NumPy expression."
+    accept:
+      - X @ W
+      - np.dot(X,W)
+      - np.matmul(X,W)
+      - X.dot(W)
+      - numpy.dot(X,W)
+      - numpy.matmul(X,W)
+    regex: ^\s*\(?\s*(?:x\s*@\s*w|(?:np|numpy)\s*\.\s*(?:dot|matmul)\s*\(\s*x\s*,\s*w\s*\)|x\s*\.\s*dot\s*\(\s*w\s*\))\s*\)?\s*$
+    solution: "`X @ W` takes every row-by-column dot product, then `b` is added to every output row."

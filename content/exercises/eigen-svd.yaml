@@ -787,3 +787,256 @@ exercises:
         criterion: Explain that keeping the $k$ biggest singular-value pieces gives the closest rank-$k$ copy.
         weight: 1
         required: true
+  - id: eig-recall-stretch-directions-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: eig-stretch-directions
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, what is an eigenvector of a square matrix, and what does its eigenvalue mean?
+    rubric:
+      - id: meaning
+        criterion: Explain that an eigenvector is a nonzero vector that the matrix only stretches along its line.
+        weight: 1
+        required: true
+      - id: rule
+        criterion: Explain that the eigenvalue is the scalar stretch factor, with a negative value reversing direction.
+        weight: 1
+        required: true
+    exemplar: An eigenvector is a nonzero vector that stays along its line under the matrix. Its eigenvalue is the multiplying factor; a negative value reverses the direction.
+  - id: eig-recall-stretch-directions-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: eig-stretch-directions
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 0.5
+    prompt: For a matrix $A$, a nonzero vector $v$ has eigenvalue $-2$. What happens to $v$?
+    options:
+      - id: a
+        text: It keeps its direction and doubles in length.
+        correct: false
+        feedback: That describes eigenvalue +2. The negative sign reverses direction.
+      - id: b
+        text: It reverses direction and keeps its length.
+        correct: false
+        feedback: That describes eigenvalue -1. A factor of -2 also doubles length.
+      - id: c
+        text: It reverses direction and doubles in length.
+        correct: true
+        feedback: The magnitude 2 doubles length and the minus sign reverses direction.
+    solution: A negative eigenvalue reverses direction, and its magnitude gives the length factor.
+  - id: eig-recall-stretch-directions-formula
+    dimension: math
+    type: text
+    role: recall
+    knowledge_point: eig-stretch-directions
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Fill in the blank for a nonzero eigenvector $v$ with eigenvalue $\\lambda$: $Av=\\underline{\\quad\\quad}$."
+    accept:
+      - lambda*v
+      - lambda v
+      - λv
+      - λ*v
+      - \lambda v
+      - v lambda
+      - v*lambda
+      - vλ
+      - lambda times v
+      - λ times v
+    regex: ^\s*(?:(?:\\?lambda|λ)\s*(?:\*|×|·|\\times|\\cdot)?\s*v|v\s*(?:\*|×|·|\\times|\\cdot)?\s*(?:\\?lambda|λ))\s*$
+    solution: The eigenvector equation is $Av=\lambda v$.
+  - id: eig-recall-find-eigenvalues-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: eig-find-eigenvalues
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, how do the eigenvalues of a two-by-two matrix relate to its entries, and how do you find a direction for each one?
+    rubric:
+      - id: meaning
+        criterion: Explain that the eigenvalues add to a+d and multiply to ad-bc.
+        weight: 1
+        required: true
+      - id: rule
+        criterion: Explain that each eigenvalue is substituted into both row equations to find a nonzero eigenvector.
+        weight: 1
+        required: true
+    exemplar: The two eigenvalues add to a+d and multiply to ad-bc. For each one, substitute it into both row equations and find a nonzero vector satisfying them.
+  - id: eig-recall-find-eigenvalues-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: eig-find-eigenvalues
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 0.5
+    prompt: After substituting an eigenvalue into the row equations, the first row becomes $0=0$. What should you do?
+    options:
+      - id: a
+        text: Use the other row to constrain the direction.
+        correct: true
+        feedback: A row saying 0=0 places no restriction, so the other row must still be checked.
+      - id: b
+        text: Conclude that there is no eigenvector.
+        correct: false
+        feedback: The equation 0=0 is true. It gives no restriction on its own.
+      - id: c
+        text: Accept every vector as an eigenvector.
+        correct: false
+        feedback: The other row can still restrict the direction, and an eigenvector must be nonzero.
+    solution: Check both rows; a row reducing to $0=0$ gives no information about the direction.
+  - id: eig-recall-find-eigenvalues-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: eig-find-eigenvalues
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: For $A=\begin{bmatrix}a&b\\c&d\end{bmatrix}$, write the quadratic expression that equals zero at its eigenvalues, with coefficient 1 on $\lambda^2$. Type `l` for $\lambda$.
+    answer: l^2-(a+d)*l+a*d-b*c
+    variables:
+      a:
+        - -5
+        - 5
+      b:
+        - -5
+        - 5
+      c:
+        - -5
+        - 5
+      d:
+        - -5
+        - 5
+      l:
+        - -5
+        - 5
+    solution: The equation is $\lambda^2-(a+d)\lambda+(ad-bc)=0$.
+  - id: eig-recall-svd-three-moves-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: eig-svd-three-moves
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, which three moves make up an SVD, and what do the singular values measure?
+    rubric:
+      - id: meaning
+        criterion: Explain that the SVD turns the input onto axes, stretches along them and turns to the output directions.
+        weight: 1
+        required: true
+      - id: rule
+        criterion: Explain that the singular values are nonnegative stretch lengths.
+        weight: 1
+        required: true
+    exemplar: The SVD turns input directions onto axes, stretches along those axes and turns to output directions; either turn may include a mirror flip. The singular values are the nonnegative stretches.
+  - id: eig-recall-svd-three-moves-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: eig-svd-three-moves
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 0.5
+    prompt: A real matrix has no real eigenvalues. What can you conclude about its SVD?
+    options:
+      - id: a
+        text: It has no SVD because eigenvectors are missing.
+        correct: false
+        feedback: The SVD works for every matrix, including ones without real eigenvectors.
+      - id: b
+        text: It still has an SVD with nonnegative stretches.
+        correct: true
+        feedback: Singular values describe input-to-output stretches and are nonnegative lengths.
+      - id: c
+        text: It has an SVD with only negative stretches.
+        correct: false
+        feedback: Eigenvalue signs and singular values describe different things. Singular values are never negative.
+    solution: An SVD exists even when real eigenvectors of the original matrix do not.
+  - id: eig-recall-svd-three-moves-formula
+    dimension: math
+    type: text
+    role: recall
+    knowledge_point: eig-svd-three-moves
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Fill in the missing rightmost factor in the SVD: $A=US\\,\\underline{\\quad\\quad}$."
+    accept:
+      - V^T
+      - V^\top
+      - V^{\top}
+      - V^top
+      - V.T
+      - transpose(V)
+      - the transpose of V
+      - transpose of V
+      - Vᵀ
+      - V transpose
+      - transposed V
+    regex: ^\s*(?:v\s*\^\s*\{?\s*\\?(?:t|top)\s*\}?|v\s*\.\s*t|transpose\s*\(\s*v\s*\)|(?:the\s+)?transpose\s+of\s+v)\s*$
+    solution: The SVD is $A=USV^\top$. The rightmost factor turns input directions onto the axes.
+  - id: eig-recall-low-rank-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: eig-low-rank
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, which SVD pieces make a rank-$k$ approximation, and what is its largest output error on unit-length inputs?
+    rubric:
+      - id: meaning
+        criterion: Explain that the approximation keeps the k largest nonzero singular-value pieces.
+        weight: 1
+        required: true
+      - id: rule
+        criterion: Explain that the worst output error for unit-length inputs is the first singular value dropped.
+        weight: 1
+        required: true
+    exemplar: Keep the pieces for the k largest nonzero singular values. The largest output error on length-1 inputs equals the first singular value dropped.
+  - id: eig-recall-low-rank-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: eig-low-rank
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 0.5
+    prompt: A rank-1 SVD copy keeps the largest singular-value piece of a rank-2 matrix. Which quantity gives its worst output error over unit-length inputs?
+    options:
+      - id: a
+        text: The singular value of the piece it kept.
+        correct: false
+        feedback: The kept piece is reproduced exactly. Error comes from the omitted piece.
+      - id: b
+        text: The sum of both original singular values.
+        correct: false
+        feedback: The kept stretch adds no approximation error. The worst error is the first omitted stretch.
+      - id: c
+        text: The singular value of the dropped piece.
+        correct: true
+        feedback: An input along the dropped direction reaches this error, and no unit input has a larger one.
+    solution: The first dropped singular value is the worst-case error for unit-length inputs.
+  - id: eig-recall-low-rank-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: eig-low-rank
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: A rank-$k$ copy of an $m\times n$ matrix stores $k$ columns and $k$ rows. Write the number of stored entries in $m,n,k$.
+    answer: k*(m+n)
+    variables:
+      m:
+        - 20
+        - 100
+      n:
+        - 20
+        - 100
+      k:
+        - 1
+        - 5
+    solution: The columns store $km$ entries and the rows store $kn$, giving $k(m+n)$.

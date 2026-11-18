@@ -895,3 +895,267 @@ exercises:
         weight: 1
         required: false
     exemplar: "Every $Ax$ lies in the column space of $A$, so the best we can do is the point $A\\hat x$ in it closest to $b$. Like a projection onto a line, the closest point leaves an error $b-A\\hat x$ orthogonal to every column. $A^\\top(b-A\\hat x)$ dots every column with the error, so it is zero, and rearranging gives the normal equations $A^\\top A\\hat x=A^\\top b$. The solution $\\hat x$ makes the sum of squared errors as small as possible."
+  - id: orth-recall-line-projection-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: orth-line-projection
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, what point is the projection of $x$ onto the line through a nonzero $u$, and what direction does the leftover take?
+    rubric:
+      - id: meaning
+        criterion: Explain that the projection is the vector on the line closest to x.
+        weight: 1
+        required: true
+      - id: rule
+        criterion: Explain that the leftover x minus the projection is orthogonal to u.
+        weight: 1
+        required: true
+    exemplar: The projection is the point on the line closest to x. The leftover from that point to x is orthogonal to the line through u.
+  - id: orth-recall-line-projection-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: orth-line-projection
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 0.5
+    prompt: A nonzero projection is written $p=ku$ with $\|u\|=2$. What does the scalar $k$ record?
+    options:
+      - id: a
+        text: The number of copies of $u$ that make $p$.
+        correct: true
+        feedback: Multiplying u by k builds the projection vector.
+      - id: b
+        text: The length of the leftover vector $x-p$.
+        correct: false
+        feedback: That length measures distance to the line. It is different from the amount of u used.
+      - id: c
+        text: The signed shadow length along $u$’s line.
+        correct: false
+        feedback: The earlier dot-product lesson used a signed length. Here k counts copies of u, whose length may differ from 1.
+    solution: The coefficient k scales u to the projection; the shadow’s signed length is k times the length of u.
+  - id: orth-recall-line-projection-formula
+    dimension: math
+    type: text
+    role: recall
+    knowledge_point: orth-line-projection
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Fill in the denominator for nonzero $u$: $p=\\dfrac{u^\\top x}{\\underline{\\quad\\quad}}u$."
+    accept:
+      - u^T u
+      - u^T*u
+      - u^\top u
+      - u^{\top}u
+      - u^top u
+      - u.T @ u
+      - dot(u,u)
+      - u dot u
+      - "||u||^2"
+      - norm(u)^2
+      - the squared length of u
+      - squared length of u
+      - u’s length squared
+      - u's length squared
+      - uᵀu
+      - uᵀ u
+      - u @ u
+      - u·u
+      - u*u
+      - \|u\|^2
+      - u dot itself
+      - the dot product of u with itself
+    regex: ^\s*(?:u\s*\^\s*\{?\s*\\?(?:t|top)\s*\}?\s*(?:\*|\\cdot)?\s*u|u\s*\.\s*t\s*@\s*u|(?:dot\s*\(\s*u\s*,\s*u\s*\)|u\s+dot\s+u)|\|\|\s*u\s*\|\|\s*\^\s*\{?2\}?|norm\s*\(\s*u\s*\)\s*\^\s*2|(?:the\s+)?squared\s+length\s+of\s+u|u[’\x27]s\s+length\s+squared)\s*$
+    solution: Divide by $u^\top u=\|u\|^2$, the squared length of u.
+  - id: orth-recall-orthogonal-matrices-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: orth-orthogonal-matrices
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, what makes a square matrix orthogonal, and how do you get its inverse?
+    rubric:
+      - id: meaning
+        criterion: Explain that its columns are mutually orthogonal and each has length 1.
+        weight: 1
+        required: true
+      - id: rule
+        criterion: Explain that its inverse is its transpose.
+        weight: 1
+        required: true
+    exemplar: An orthogonal matrix has unit-length columns with every pair at right angles. Its transpose is its inverse.
+  - id: orth-recall-orthogonal-matrices-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: orth-orthogonal-matrices
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 0.5
+    prompt: A square matrix has perpendicular columns, each of length 5. Which statement holds?
+    options:
+      - id: a
+        text: Its transpose is its inverse without scaling.
+        correct: false
+        feedback: That requires orthonormal columns. These columns have length 5.
+      - id: b
+        text: Its transpose times itself equals $25I$.
+        correct: true
+        feedback: Matching columns have self-dot product 25, while different columns have dot product zero.
+      - id: c
+        text: Its transpose times itself equals $5I$.
+        correct: false
+        feedback: The diagonal entries are squared lengths, so each is 25.
+    solution: The column self-dot products give $5^2=25$, so the product with the transpose is $25I$.
+  - id: orth-recall-orthogonal-matrices-formula
+    dimension: math
+    type: text
+    role: recall
+    knowledge_point: orth-orthogonal-matrices
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Fill in the blank for an orthogonal matrix $Q$: $Q^{-1}=\\underline{\\quad\\quad}$."
+    accept:
+      - Q^T
+      - Q^\top
+      - Q^{\top}
+      - Q^top
+      - Q.T
+      - the transpose of Q
+      - transpose of Q
+      - transpose(Q)
+      - Qᵀ
+      - Q transpose
+      - transposed Q
+    regex: ^\s*(?:q\s*\^\s*\{?\s*\\?(?:t|top)\s*\}?|q\s*\.\s*t|(?:the\s+)?transpose\s+of\s+q|transpose\s*\(\s*q\s*\))\s*$
+    solution: Orthonormal columns give $Q^\top Q=I$, so $Q^{-1}=Q^\top$.
+  - id: orth-recall-least-squares-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: orth-least-squares
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, what does least squares make smallest, and how does the fitted output relate to the column space?
+    rubric:
+      - id: meaning
+        criterion: Explain that least squares minimises the sum of squared errors.
+        weight: 1
+        required: true
+      - id: rule
+        criterion: Explain that the fitted output is the point in the column space closest to b.
+        weight: 1
+        required: true
+    exemplar: Least squares makes the sum of squared errors as small as possible. Its fitted output is the point in A’s column space closest to the measurement vector b.
+  - id: orth-recall-least-squares-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: orth-least-squares
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 0.5
+    prompt: For a least-squares line $y=c+mt$, what errors are squared?
+    options:
+      - id: a
+        text: The shortest distances from points to the line.
+        correct: false
+        feedback: This fit measures changes in y at fixed t. The perpendicular condition is in the space of output vectors.
+      - id: b
+        text: The horizontal gaps between points and the line.
+        correct: false
+        feedback: Horizontal gaps change t. The fitted equations compare y values at each recorded t.
+      - id: c
+        text: The vertical gaps at the recorded times.
+        correct: true
+        feedback: Each error is a measured y minus the line’s y at the same t.
+    solution: Least squares for this line squares the vertical gaps in y at each measured t.
+  - id: orth-recall-least-squares-formula
+    dimension: math
+    type: text
+    role: recall
+    knowledge_point: orth-least-squares
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Fill in the right-hand side of the normal equations: $A^\\top A\\hat x=\\underline{\\quad\\quad}$."
+    accept:
+      - A^T b
+      - A^T*b
+      - A^\top b
+      - A^{\top}b
+      - A^top b
+      - A.T @ b
+      - transpose(A)b
+      - transpose(A)*b
+      - Aᵀb
+      - Aᵀ b
+      - A transpose times b
+    regex: ^\s*(?:a\s*\^\s*\{?\s*\\?(?:t|top)\s*\}?\s*(?:\*|\\cdot)?\s*b|a\s*\.\s*t\s*@\s*b|transpose\s*\(\s*a\s*\)\s*\*?\s*b)\s*$
+    solution: The error is orthogonal to each column, giving $A^\top A\hat x=A^\top b$.
+  - id: orth-recall-numpy-fits-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: orth-numpy-fits
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, what does `np.linalg.lstsq` find, and what does a reported rank below the number of columns tell you?
+    rubric:
+      - id: meaning
+        criterion: Explain that lstsq finds a least-squares solution.
+        weight: 1
+        required: true
+      - id: rule
+        criterion: Explain that rank below the number of columns means other answers fit just as well.
+        weight: 1
+        required: true
+    exemplar: lstsq finds a least-squares solution. A rank below the number of columns means there are other coefficient vectors with the same best fit.
+  - id: orth-recall-numpy-fits-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: orth-numpy-fits
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 0.5
+    prompt: You want a least-squares fit with a $100\times2$ matrix $A$. Which NumPy call fits this task?
+    options:
+      - id: a
+        text: "Compute `np.linalg.solve(A, b)` directly."
+        correct: false
+        feedback: solve requires a square matrix with an inverse. This matrix is rectangular.
+      - id: b
+        text: "Call `np.linalg.lstsq(A, b, rcond=None)`."
+        correct: true
+        feedback: lstsq finds coefficients giving the smallest sum of squared errors for this rectangular system.
+      - id: c
+        text: "Compute `np.linalg.inv(A) @ b` directly."
+        correct: false
+        feedback: A rectangular matrix has no ordinary matrix inverse. Use the least-squares solver.
+    solution: Use `np.linalg.lstsq` for this rectangular least-squares system.
+  - id: orth-recall-numpy-fits-contrast2
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: orth-numpy-fits
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 0.5
+    prompt: A line fit with `np.linalg.lstsq` returns fitted coefficients and an empty second array. What should you conclude?
+    options:
+      - id: a
+        text: Every measurement lies exactly on the fitted line.
+        correct: false
+        feedback: An empty array does not mean zero error. It occurs when the matrix has no more rows than columns, or its columns are dependent.
+      - id: b
+        text: The sum of squared errors needs a separate calculation.
+        correct: true
+        feedback: Compute the errors with `b - A @ x_hat`, square them, and add them. The second result did not report their squared sum.
+      - id: c
+        text: No line gives a smallest sum of squared errors.
+        correct: false
+        feedback: lstsq returned a least-squares answer. Dependent columns can give several equally good answers and an empty second array.
+    solution: An empty second array leaves the sum of squared errors unreported. Compute it from the fitted values and measurements.

@@ -634,3 +634,242 @@ exercises:
       directly on this $b$, avoiding the whole inverse, so it uses less arithmetic and usually
       introduces less rounding error.
     solution: Connect undoing $A$ with finding its input. Elimination and solve find that input directly.
+  - id: inv-recall-identity-inverse-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: inv-identity-inverse
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, what does an inverse do to an output, and how do you check it by multiplication?
+    rubric:
+      - id: meaning
+        criterion: Explain that an inverse sends every output back to its original input.
+        weight: 1
+        required: true
+      - id: rule
+        criterion: State that multiplying the matrix and its inverse in either order gives the identity.
+        weight: 1
+        required: true
+    exemplar: An inverse recovers the original input from every output. Multiplying it with the original matrix in either order gives the identity matrix.
+  - id: inv-recall-identity-inverse-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: inv-identity-inverse
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 0.5
+    prompt: For invertible matrices $A$ and $B$, which matrix is $(AB)^{-1}$?
+    options:
+      - id: a
+        text: $B^{-1}A^{-1}$
+        correct: true
+        feedback: The product AB applies B first and A second. Its inverse undoes A first, so the rightmost factor is A inverse.
+      - id: b
+        text: $A^{-1}B^{-1}$
+        correct: false
+        feedback: This is the inverse of BA. Inverting AB reverses the order of its factors.
+      - id: c
+        text: $B^\top A^\top$
+        correct: false
+        feedback: This is the transpose of AB. Transposes swap rows and columns and do not generally undo matrices.
+    solution: The inverse reverses the factors, giving $(AB)^{-1}=B^{-1}A^{-1}$. The rightmost factor acts first.
+  - id: inv-recall-identity-inverse-formula
+    dimension: math
+    type: text
+    role: recall
+    knowledge_point: inv-identity-inverse
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Fill in the missing factor for $A=\\begin{bmatrix}a&b\\\\c&d\\end{bmatrix}$ with nonzero determinant: $A^{-1}=\\dfrac{1}{\\underline{\\quad\\quad}}\\begin{bmatrix}d&-b\\\\-c&a\\end{bmatrix}$."
+    accept:
+      - ad-bc
+      - a*d-b*c
+      - da-cb
+      - d*a-c*b
+      - det(A)
+      - det A
+      - the determinant of A
+      - determinant of A
+      - "|A|"
+      - a d - b c
+      - a×d-b×c
+      - a\cdot d-b\cdot c
+    regex: ^\s*(?:\(?\s*(?:a\s*\*?\s*d|d\s*\*?\s*a)\s*[-−]\s*(?:b\s*\*?\s*c|c\s*\*?\s*b)\s*\)?|(?:\\?det|determinant)\s*\(?\s*a\s*\)?|\|\s*a\s*\|)\s*$
+    solution: Divide by the determinant $ad-bc$ after swapping the diagonal entries and changing the other signs.
+  - id: inv-recall-elimination-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: inv-elimination
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, how does elimination remove an unknown, and why does that keep the solution unchanged?
+    rubric:
+      - id: meaning
+        criterion: Explain that elimination subtracts a multiple of one equation from another.
+        weight: 1
+        required: true
+      - id: rule
+        criterion: Explain that subtracting equal amounts from both sides keeps the solution unchanged.
+        weight: 1
+        required: true
+    exemplar: Subtract a suitable multiple of one equation from another to cancel an unknown. Equal amounts are subtracted from both sides, so the same solution still satisfies the equations.
+  - id: inv-recall-elimination-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: inv-elimination
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 0.5
+    prompt: While solving two equations, elimination gives $0=-2$. What does this tell you?
+    options:
+      - id: a
+        text: The unknowns must both be zero.
+        correct: false
+        feedback: Setting the unknowns to zero cannot make 0 equal -2. The equations contradict each other.
+      - id: b
+        text: There is no shared solution.
+        correct: true
+        feedback: The false equation means no input can satisfy both original equations.
+      - id: c
+        text: The original matrix has an inverse.
+        correct: false
+        feedback: An inverse would give a solution for every right-hand side. A contradiction rules that out.
+    solution: A false equality after elimination shows that no values satisfy both equations.
+  - id: inv-recall-elimination-formula
+    dimension: math
+    type: text
+    role: recall
+    knowledge_point: inv-elimination
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Fill in the blank for an invertible matrix: if $Ax=b$, then $x=\\underline{\\quad\\quad}\\,b$."
+    accept:
+      - A^-1
+      - A^{-1}
+      - A inverse
+      - the inverse of A
+      - inverse of A
+      - inv(A)
+      - A⁻¹
+      - A^(-1)
+    regex: ^\s*(?:a\s*\^\s*\{?\s*[-−]1\s*\}?|a\s+inverse|(?:the\s+)?inverse\s+of\s+a|inv\s*\(\s*a\s*\))\s*$
+    solution: Multiplying both sides by $A^{-1}$ gives $x=A^{-1}b$.
+  - id: inv-recall-transpose-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: inv-transpose
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, what does transposing do to a matrix, and when is a matrix symmetric?
+    rubric:
+      - id: meaning
+        criterion: Explain that transposing turns each row into the matching column.
+        weight: 1
+        required: true
+      - id: rule
+        criterion: Explain that a square matrix is symmetric when it equals its transpose.
+        weight: 1
+        required: true
+    exemplar: Transposing turns row 1 into column 1, row 2 into column 2, and so on. A square matrix is symmetric when transposing leaves it unchanged.
+  - id: inv-recall-transpose-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: inv-transpose
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 0.5
+    prompt: Which property must hold for a symmetric matrix?
+    options:
+      - id: a
+        text: Every entry on the main diagonal equals $1$.
+        correct: false
+        feedback: The identity has 1s on the diagonal. A symmetric matrix can have other diagonal entries.
+      - id: b
+        text: Multiplying it by its inverse always gives $I$.
+        correct: false
+        feedback: Every invertible matrix has that property. Symmetry asks whether transposing leaves the matrix unchanged.
+      - id: c
+        text: Its entries match across the main diagonal.
+        correct: true
+        feedback: Matching entries across the diagonal mean A equals its transpose.
+    solution: A symmetric matrix equals its transpose, so mirror entries across the main diagonal agree.
+  - id: inv-recall-transpose-formula
+    dimension: math
+    type: text
+    role: recall
+    knowledge_point: inv-transpose
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Fill in the blank: $(AB)^\\top=\\underline{\\quad\\quad}$."
+    accept:
+      - B^T A^T
+      - B^T*A^T
+      - B^top A^top
+      - B^\top A^\top
+      - B^{\top}A^{\top}
+      - B.T @ A.T
+      - transpose(B) transpose(A)
+      - BᵀAᵀ
+      - Bᵀ Aᵀ
+      - transpose(B) @ transpose(A)
+    regex: ^\s*(?:b\s*\^\s*\{?\s*\\?(?:t|top)\s*\}?\s*(?:\*|\\cdot)?\s*a\s*\^\s*\{?\s*\\?(?:t|top)\s*\}?|b\s*\.\s*t\s*@\s*a\s*\.\s*t|transpose\s*\(\s*b\s*\)\s*\*?\s*transpose\s*\(\s*a\s*\))\s*$
+    solution: "Transposing a product reverses the order: $(AB)^\\top=B^\\top A^\\top$."
+  - id: inv-recall-numpy-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: inv-numpy
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, why use `np.linalg.solve(A, b)` to solve a system, and how should you check the resulting output?
+    rubric:
+      - id: meaning
+        criterion: Explain that solve runs elimination directly and avoids calculating the whole inverse.
+        weight: 1
+        required: true
+      - id: rule
+        criterion: Explain that np.allclose(A @ x, b) allows tiny rounding differences when checking the answer.
+        weight: 1
+        required: true
+    exemplar: Use solve to eliminate directly, avoiding the extra arithmetic of the whole inverse. Check with np.allclose(A @ x, b), which allows tiny rounding differences.
+  - id: inv-recall-numpy-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: inv-numpy
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 0.5
+    prompt: A computed solution reproduces $b$ apart from a tiny last-digit rounding difference. Which check fits this situation?
+    options:
+      - id: a
+        text: "`np.allclose(A @ x, b)`"
+        correct: true
+        feedback: allclose allows tiny differences caused by finite computer precision.
+      - id: b
+        text: "`A @ x == b`"
+        correct: false
+        feedback: Exact equality can reject a good answer over a tiny rounding difference.
+      - id: c
+        text: "`np.allclose(A @ b, x)`"
+        correct: false
+        feedback: This reverses the roles of input and output. The system requires A @ x to reproduce b.
+    solution: Use `np.allclose(A @ x, b)` to check the original equations while allowing tiny rounding differences.
+  - id: inv-recall-numpy-formula
+    dimension: math
+    type: text
+    role: recall
+    knowledge_point: inv-numpy
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Fill in the blank to solve $Ax=b$ directly in NumPy: `x = np.linalg.____(A, b)`."
+    accept:
+      - solve
+    regex: ^\s*solve\s*$
+    solution: "`np.linalg.solve(A, b)` uses the matrix first and the right-hand side second."

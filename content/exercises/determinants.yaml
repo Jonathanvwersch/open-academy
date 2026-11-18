@@ -505,3 +505,189 @@ exercises:
         }
     exemplar: The determinant is $(-2)\times3-1\times0=-6$. Every region's area grows by a factor of 6, while the negative sign means its orientation reverses. If the determinant were zero, the plane would collapse to a line or point and different inputs would share an output, so there would be no unique input for an inverse to recover.
     solution: A determinant combines an area scale with orientation. Its magnitude is 6 here and its sign records a flip; zero would instead mean information was lost.
+  - id: det-recall-area-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: det-area-orientation
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, what do the magnitude and the sign of a two-dimensional determinant tell you?
+    rubric:
+      - id: meaning
+        criterion: Explain that the determinant’s magnitude is the factor multiplying every region’s area.
+        weight: 1
+        required: true
+      - id: rule
+        criterion: Explain that a negative determinant reverses orientation and a positive one preserves it.
+        weight: 1
+        required: true
+    exemplar: The magnitude tells how much every region’s area is multiplied by. A negative sign reverses orientation, while a positive sign preserves it.
+  - id: det-recall-area-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: det-area-orientation
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 0.5
+    prompt: A map has determinant $-1$. What happens to a region?
+    options:
+      - id: a
+        text: Its area stays the same and its orientation is preserved.
+        correct: false
+        feedback: That describes determinant +1. The negative sign records reversed orientation.
+      - id: b
+        text: Its area becomes zero and its shape collapses to a line.
+        correct: false
+        feedback: A collapse has determinant zero. A determinant of -1 has magnitude 1.
+      - id: c
+        text: Its area stays the same and its orientation is reversed.
+        correct: true
+        feedback: Magnitude 1 preserves area, and the negative sign reverses orientation.
+    solution: The magnitude gives area scale 1, and the negative sign records a flip.
+  - id: det-recall-area-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: det-area-orientation
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: A region has area $S$. A two-dimensional linear transformation has determinant $d$. Write the output area. Use `abs(...)` for magnitude.
+    answer: S*abs(d)
+    variables:
+      S:
+        - 0.5
+        - 8
+      d:
+        - -5
+        - 5
+    solution: Every area is multiplied by the determinant’s magnitude, giving $S|d|$.
+  - id: det-recall-two-by-two-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: det-two-by-two
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, how do you calculate the determinant of a two-by-two matrix, and which matrices does this shortcut cover?
+    rubric:
+      - id: meaning
+        criterion: Explain that the determinant is top-left times bottom-right minus top-right times bottom-left.
+        weight: 1
+        required: true
+      - id: rule
+        criterion: Explain that this shortcut works for every two-by-two matrix, including negative entries.
+        weight: 1
+        required: true
+    exemplar: Multiply the top-left and bottom-right entries, then subtract the product of the other diagonal. This works for every two-by-two matrix, including matrices with negative entries.
+  - id: det-recall-two-by-two-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: det-two-by-two
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 0.5
+    prompt: A two-by-two matrix with nonzero determinant has its columns swapped. How does its determinant change?
+    options:
+      - id: a
+        text: It keeps its magnitude and reverses its sign.
+        correct: true
+        feedback: Swapping columns reverses edge order and changes ad-bc into bc-ad.
+      - id: b
+        text: It keeps its magnitude and keeps its sign.
+        correct: false
+        feedback: The same parallelogram has the same area, but its ordered edges reverse orientation.
+      - id: c
+        text: It becomes zero because the area collapses.
+        correct: false
+        feedback: A collapse means the columns lie on the same line. Swapping columns preserves their directions.
+    solution: Swapping columns changes $ad-bc$ to $bc-ad$, the negative of the original determinant.
+  - id: det-recall-two-by-two-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: det-two-by-two
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: Write the determinant of $A=\begin{bmatrix}a&b\\c&d\end{bmatrix}$.
+    answer: a*d-b*c
+    variables:
+      a:
+        - -5
+        - 5
+      b:
+        - -5
+        - 5
+      c:
+        - -5
+        - 5
+      d:
+        - -5
+        - 5
+    solution: "$\\det(A)=ad-bc$: subtract the second diagonal product from the first."
+  - id: det-recall-zero-collapse-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: det-zero-collapse
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, what does a zero determinant do to a two-dimensional picture, and why does that prevent an inverse?
+    rubric:
+      - id: meaning
+        criterion: Explain that the picture collapses to a line or a point.
+        weight: 1
+        required: true
+      - id: rule
+        criterion: Explain that different inputs share an output, so the original input cannot be recovered uniquely.
+        weight: 1
+        required: true
+    exemplar: A zero determinant collapses a two-dimensional picture to a line or a point. Different inputs then share an output, so an inverse cannot identify which input to return.
+  - id: det-recall-zero-collapse-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: det-zero-collapse
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 0.5
+    prompt: Which observation shows that a square matrix has lost information?
+    options:
+      - id: a
+        text: It doubles the area of every region in the picture.
+        correct: false
+        feedback: An area scale of 2 has nonzero determinant. Stretching can be undone without losing information.
+      - id: b
+        text: It sends two different inputs to the very same output.
+        correct: true
+        feedback: Once inputs merge, the output cannot tell us which original input to return.
+      - id: c
+        text: It sends a square to a shape with reversed orientation.
+        correct: false
+        feedback: A mirror flip with nonzero determinant can be undone.
+    solution: Different inputs sharing an output prevent unique recovery.
+  - id: det-recall-zero-collapse-contrast2
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: det-zero-collapse
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 0.5
+    prompt: Which condition describes exactly when a two-by-two matrix has an inverse?
+    options:
+      - id: a
+        text: Every matrix entry is nonzero.
+        correct: false
+        feedback: 'All entries of $\begin{bmatrix}1&2\\2&4\end{bmatrix}$ are nonzero, yet its determinant is $4-4=0$.'
+      - id: b
+        text: Its determinant is not zero.
+        correct: true
+        feedback: Every nonzero determinant allows an inverse, whether positive or negative.
+      - id: c
+        text: Its determinant is positive.
+        correct: false
+        feedback: Negative determinants reverse orientation and still allow inverses, so positive leaves out invertible matrices.
+    solution: A positive or negative nonzero determinant guarantees an inverse.

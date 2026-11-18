@@ -718,3 +718,174 @@ exercises:
         required: false
     exemplar: "The coordinates $(120,3,15)$ record one house's area, bedroom count and age in a fixed order. Distance squares coordinate differences, adds them and takes the square root. An area difference of $50$ adds $2500$ to the sum, while a bedroom difference of $2$ adds $4$, so area can overwhelm the comparison. Dividing measurements by typical sizes keeps one measurement from swamping the others."
     solution: "Each coordinate records a feature of one house. The units and numerical ranges affect how strongly each feature contributes to distance."
+  - id: vec-recall-points-moves-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: vec-points-moves
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, what do a vector's components mean, and how do you combine two moves by vector addition?
+    rubric:
+      - id: components
+        criterion: Explain that components are the numbers in an ordered list, with each position giving its meaning.
+        weight: 1
+        required: true
+      - id: addition
+        criterion: Explain that combining two moves adds matching components.
+        weight: 1
+        required: true
+    exemplar: "A vector's components are numbers in a fixed order, where each position has its own meaning. To combine two moves, add their matching components, such as east to east and north to north."
+  - id: vec-recall-points-moves-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: vec-points-moves
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 0.5
+    prompt: Vectors $a$ and $b$ list metres east first and metres north second. What does the second component of $a+b$ record?
+    options:
+      - id: a
+        text: The northward change from point $b$ to point $a$.
+        correct: false
+        feedback: That is the second component of $a-b$, found by subtracting the north coordinates.
+      - id: b
+        text: The total northward movement of the two moves.
+        correct: true
+        feedback: The second components both measure northward movement, so vector addition adds them.
+      - id: c
+        text: The total eastward movement of the two moves.
+        correct: false
+        feedback: Eastward movement occupies the first component in this ordering.
+    solution: Vector addition combines the two moves by adding matching components.
+  - id: vec-recall-points-moves-formula
+    dimension: math
+    type: text
+    role: recall
+    knowledge_point: vec-points-moves
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: 'Fill in the blank for two-component vectors: $a+b=(\underline{\quad\quad},\;a_2+b_2)$. Type the missing expression.'
+    accept: ["a_1+b_1", "a1+b1", "b_1+a_1", "b1+a1", "a₁+b₁", "b₁+a₁"]
+    regex: '^\s*\(?\s*(?:a_?\{?1\}?\s*\+\s*b_?\{?1\}?|b_?\{?1\}?\s*\+\s*a_?\{?1\}?)\s*\)?\s*$'
+    solution: 'Add matching components: $a+b=(a_1+b_1,\;a_2+b_2)$.'
+  - id: vec-recall-change-move-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: vec-change-move
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, how does scaling a vector by a number change its components, and what does a negative number do to its direction?
+    rubric:
+      - id: components
+        criterion: Explain that scaling multiplies every component by the same number.
+        weight: 1
+        required: true
+      - id: direction
+        criterion: Explain that a negative number reverses the vector's direction along its line.
+        weight: 1
+        required: true
+    exemplar: Scaling multiplies every component by the same number. A negative number keeps the vector on its line and reverses its direction.
+  - id: vec-recall-change-move-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: vec-change-move
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 0.5
+    prompt: A robot is at point $b$ and needs to reach point $a$. Which vector gives the move it needs?
+    options:
+      - id: a
+        text: The sum $a+b$
+        correct: false
+        feedback: The sum combines two moves measured from the origin.
+      - id: b
+        text: The reverse $-b$
+        correct: false
+        feedback: The reverse of $b$ takes the robot from $b$ back to the origin.
+      - id: c
+        text: The difference $a-b$
+        correct: true
+        feedback: Subtracting the starting point from the destination gives the required move.
+    solution: "$a-b$ gives the move from $b$ to $a$: reverse $b$, then add $a$."
+  - id: vec-recall-change-move-formula
+    dimension: math
+    type: text
+    role: recall
+    knowledge_point: vec-change-move
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: 'Fill in the blank for a scalar $c$ and a two-component vector $x$: $cx=(cx_1,\;\underline{\quad\quad})$. Type the missing expression.'
+    accept:
+      [
+        "cx_2",
+        "cx2",
+        "c*x_2",
+        "c*x2",
+        "x_2*c",
+        "x2*c",
+        "x_2c",
+        "x2c",
+        "cx₂",
+        "c x₂",
+        "x₂c",
+        "c times x_2",
+        "c times x2",
+      ]
+    regex: '^\s*\(?\s*(?:c\s*(?:\*|×|·|\\cdot|\\times)?\s*x_?\{?2\}?|x_?\{?2\}?\s*(?:\*|×|·|\\cdot|\\times)?\s*c)\s*\)?\s*$'
+    solution: 'Scaling multiplies every component by $c$, so $cx=(cx_1,\;cx_2)$.'
+  - id: vec-recall-length-distance-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: vec-length-distance
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, how do you calculate a vector's L2 norm, and how do you use it to find the Euclidean distance between two points?
+    rubric:
+      - id: norm
+        criterion: Explain that the L2 norm squares each component, adds the squares and takes the square root.
+        weight: 1
+        required: true
+      - id: distance
+        criterion: Explain that the distance between two points is the length of their difference vector.
+        weight: 1
+        required: true
+    exemplar: The L2 norm is the square root of the sum of the squared components. For the distance between two points, subtract their coordinates and find the L2 norm of that move.
+  - id: vec-recall-length-distance-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: vec-length-distance
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 0.5
+    prompt: Points $p$ and $q$ mark two houses on a map. Which quantity measures their straight-line separation?
+    options:
+      - id: a
+        text: The length $\|q\|_2$
+        correct: false
+        feedback: This measures the distance from the origin to $q$.
+      - id: b
+        text: The length $\|q-p\|_2$
+        correct: true
+        feedback: The vector $q-p$ joins the points, and its length is their distance.
+      - id: c
+        text: The vector sum $p+q$
+        correct: false
+        feedback: This combines two position vectors into a vector with matching components added.
+    solution: 'Euclidean distance is $\|q-p\|_2$, the length of the move from $p$ to $q$.'
+  - id: vec-recall-length-distance-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: vec-length-distance
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Write the L2 norm of a two-component vector $x=(x_1,x_2)$. Use `a` for $x_1$, `b` for $x_2$ and `sqrt(...)` for the square root."
+    answer: "sqrt(a^2+b^2)"
+    variables: { a: [-5, 5], b: [-5, 5] }
+    solution: 'Square each component, add the squares and take the square root: $\|x\|_2=\sqrt{x_1^2+x_2^2}$.'

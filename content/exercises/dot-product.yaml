@@ -767,3 +767,186 @@ exercises:
           required: true,
         }
     exemplar: "For fixed lengths, the dot product is largest when the movement arrows point in the same direction. It is zero for perpendicular arrows and negative when their angle exceeds a right angle. Lengthening one arrow without turning raises a positive score even though the headings are no closer. Cosine similarity divides by both non-zero lengths to compare direction alone."
+  - id: dot-recall-weighted-total-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: dot-weighted-total
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, how does a dot product combine two vectors, and why must their components use the same order?
+    rubric:
+      - id: meaning
+        criterion: Explain that a dot product multiplies matching components and adds the products into one number.
+        weight: 1
+        required: true
+      - id: rule
+        criterion: Explain that the order pairs each amount with its own weight.
+        weight: 1
+        required: true
+    exemplar: A dot product multiplies matching components and adds the products. Both lists need the same order so each amount is multiplied by its own weight.
+  - id: dot-recall-weighted-total-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: dot-weighted-total
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 0.5
+    prompt: A house vector lists area, bedrooms and age. Its matching weights are positive, positive and negative. What does the age contribution do?
+    options:
+      - id: a
+        text: It increases the total as the house gets older.
+        correct: false
+        feedback: That is the effect of a positive weight on an increasing measurement.
+      - id: b
+        text: It decreases the total as the house gets older.
+        correct: true
+        feedback: The age is multiplied by a negative weight, so more years take more away.
+      - id: c
+        text: It leaves the total unchanged as the house gets older.
+        correct: false
+        feedback: A zero weight would ignore age. A negative weight takes away.
+    solution: A negative weight makes an increasing age contribute a larger amount to subtract.
+  - id: dot-recall-weighted-total-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: dot-weighted-total
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: Write the dot product of $a=(a_1,a_2)$ and $b=(b_1,b_2)$. Type the component names with underscores, such as `a_1`.
+    answer: a_1*b_1+a_2*b_2
+    variables:
+      a_1:
+        - -5
+        - 5
+      a_2:
+        - -5
+        - 5
+      b_1:
+        - -5
+        - 5
+      b_2:
+        - -5
+        - 5
+    solution: "$a\\cdot b=a_1b_1+a_2b_2$: multiply matching components and add."
+  - id: dot-recall-alignment-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: dot-arrow-alignment
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, how does a projection give the dot product, and when is the dot product negative?
+    rubric:
+      - id: meaning
+        criterion: Explain that the dot product is the signed projection of the first vector onto the second times the second vector’s length.
+        weight: 1
+        required: true
+      - id: rule
+        criterion: Explain that the dot product is negative when the angle is beyond a right angle.
+        weight: 1
+        required: true
+    exemplar: The dot product is the signed projection of the first vector onto the second, multiplied by the second vector’s length. It is negative when the angle between the vectors is beyond a right angle.
+  - id: dot-recall-alignment-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: dot-arrow-alignment
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 0.5
+    prompt: A nonzero vector $b$ is doubled without turning it. A fixed vector $a$ has a positive projection onto $b$. Which quantity stays the same?
+    options:
+      - id: a
+        text: The dot product of $a$ with $b$
+        correct: false
+        feedback: Doubling every component of $b$ doubles the dot product.
+      - id: b
+        text: The straight-line length of vector $b$
+        correct: false
+        feedback: Scaling $b$ by 2 doubles its length.
+      - id: c
+        text: The projection of $a$ onto $b$
+        correct: true
+        feedback: The line and direction of $b$ stay the same, so the shadow of $a$ stays in place.
+    solution: The projection stays the same while the length of $b$ and the dot product both double.
+  - id: dot-recall-alignment-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: dot-arrow-alignment
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: The signed projection of $a$ onto a nonzero vector $b$ is $s$, and $b$ has length $L$. Write $a\cdot b$.
+    answer: s*L
+    variables:
+      s:
+        - -5
+        - 5
+      L:
+        - 0.5
+        - 5
+    solution: "Multiply the signed projection by the second vector’s length: $a\\cdot b=sL$."
+  - id: dot-recall-direction-only-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: dot-direction-only
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, what does cosine similarity compare, and how does it remove the effect of vector lengths?
+    rubric:
+      - id: meaning
+        criterion: Explain that cosine similarity compares the directions of two nonzero vectors.
+        weight: 1
+        required: true
+      - id: rule
+        criterion: Explain that it divides their dot product by the product of their lengths.
+        weight: 1
+        required: true
+    exemplar: Cosine similarity compares the directions of two nonzero vectors. Dividing their dot product by both lengths removes the effect of length.
+  - id: dot-recall-direction-only-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: dot-direction-only
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 0.5
+    prompt: Two nonzero movement vectors have cosine similarity 1. What can you conclude?
+    options:
+      - id: a
+        text: They cover the same distance.
+        correct: false
+        feedback: Cosine similarity ignores length, so the distances can differ.
+      - id: b
+        text: They point the same way.
+        correct: true
+        feedback: A score of 1 means the directions agree.
+      - id: c
+        text: They meet at a right angle.
+        correct: false
+        feedback: Perpendicular vectors have cosine similarity 0.
+    solution: Cosine similarity 1 means the vectors point the same way, with any positive lengths.
+  - id: dot-recall-direction-only-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: dot-direction-only
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: Two nonzero vectors have dot product $d$ and lengths $u$ and $v$. Write their cosine similarity.
+    answer: d/(u*v)
+    variables:
+      d:
+        - -0.5
+        - 0.5
+      u:
+        - 1
+        - 5
+      v:
+        - 1
+        - 5
+    solution: "Cosine similarity divides the dot product by both lengths: $d/(uv)$."
