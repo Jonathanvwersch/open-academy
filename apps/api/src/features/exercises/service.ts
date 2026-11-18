@@ -27,6 +27,7 @@ import {
   canBringPrerequisiteDueNow,
 } from '../../learning/prerequisite-review.js';
 import { attemptAllowsRetry } from '../../learning/retry.js';
+import { buildReviewActivityForConcept } from '../../learning/scheduler.js';
 import type { MasteryRecord } from '../../learning/types.js';
 import { type FeatureRequest, type FeatureServices, serviceResult } from '../../service-context.js';
 import {
@@ -611,6 +612,7 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
                   .select({
                     id: reviewCards.id,
                     conceptId: reviewCards.conceptId,
+                    dimension: reviewCards.dimension,
                     dueAt: reviewCards.dueAt,
                     lastReviewAt: reviewCards.lastReviewAt,
                     fsrs: reviewCards.fsrs,
@@ -646,10 +648,76 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
                   process.env.NODE_ENV !== 'test',
                 );
                 if (weakest) {
-                  await db
-                    .update(reviewCards)
-                    .set({ dueAt: weakest.dueAt, fsrs: weakest.fsrs })
-                    .where(eq(reviewCards.id, weakest.id));
+                  const schedulerState = await repo.schedulerState(now, index);
+                  const usedExerciseIds = [
+                    ...(schedulerState.usedExerciseIds ?? []),
+                    ...(session?.activities.flatMap(
+                      (sessionActivity) => sessionActivity.exerciseIds,
+                    ) ?? []),
+                  ];
+                  const reviewActivity = buildReviewActivityForConcept(
+                    { ...schedulerState, usedExerciseIds },
+                    index,
+                    now,
+                    weakest.conceptId,
+                    {
+                      conceptId: weakest.conceptId,
+                      dimension: weakest.dimension as MasteryRecord['dimension'],
+                      dueAt: weakest.dueAt,
+                    },
+                  );
+                  await db.transaction(async (tx) => {
+                    await tx
+                      .update(reviewCards)
+                      .set({ dueAt: weakest.dueAt, fsrs: weakest.fsrs })
+                      .where(eq(reviewCards.id, weakest.id));
+                    if (!reviewActivity || !activityRow || activity?.kind !== 'review') return;
+                    const sessionReviewActivities = await tx
+                      .select({
+                        kind: sessionActivities.kind,
+                        status: sessionActivities.status,
+                        exerciseIds: sessionActivities.exerciseIds,
+                      })
+                      .from(sessionActivities)
+                      .where(eq(sessionActivities.sessionId, activityRow.sessionId));
+                    const alreadyCovered = sessionReviewActivities.some(
+                      (sessionActivity) =>
+                        sessionActivity.kind === 'review' &&
+                        ['planned', 'in_progress'].includes(sessionActivity.status) &&
+                        sessionActivity.exerciseIds.some(
+                          (exerciseId) =>
+                            index.exercisesById.get(exerciseId)?.concept === weakest.conceptId,
+                        ),
+                    );
+                    if (alreadyCovered) return;
+                    const laterPlanned = await tx
+                      .select({ id: sessionActivities.id, idx: sessionActivities.idx })
+                      .from(sessionActivities)
+                      .where(
+                        and(
+                          eq(sessionActivities.sessionId, activityRow.sessionId),
+                          eq(sessionActivities.status, 'planned'),
+                          gt(sessionActivities.idx, activityRow.idx),
+                        ),
+                      )
+                      .orderBy(desc(sessionActivities.idx));
+                    for (const laterActivity of laterPlanned) {
+                      await tx
+                        .update(sessionActivities)
+                        .set({ idx: laterActivity.idx + 1 })
+                        .where(eq(sessionActivities.id, laterActivity.id));
+                    }
+                    await tx.insert(sessionActivities).values({
+                      sessionId: activityRow.sessionId,
+                      idx: activityRow.idx + 1,
+                      kind: 'review',
+                      conceptId: weakest.conceptId,
+                      exerciseIds: reviewActivity.exerciseIds,
+                      plannedMinutes: reviewActivity.plannedMinutes,
+                      status: 'planned',
+                      reason: reviewActivity.reason,
+                    });
+                  });
                 }
               }
             }
@@ -708,11 +776,13 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
       !lessonFinalNeedsQuiz &&
       (learningGoalMet || exerciseIds.every((id) => completedExerciseIds.includes(id)));
     activityCompleted = completed;
+    const sessionForAdvance =
+      completed && session ? ((await repo.session(session.id)) ?? session) : session;
     await updateActivityAndAdvance(db, {
       activityId: activity.id,
       completed,
       now,
-      session,
+      session: sessionForAdvance,
       exerciseIds,
       progress: { ...progress, completedExerciseIds, outcomes },
       userId: request.userId,

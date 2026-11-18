@@ -8,7 +8,6 @@ import { loadContent } from '../../src/content/load.js';
 import { instantiateExercise, isTemplate } from '../../src/content/templates.js';
 import type { ContentIndex } from '../../src/content/types.js';
 import { createDb } from '../../src/db/client.js';
-import { LearnerRepository } from '../../src/db/repository.js';
 import {
   attempts,
   courseEnrollments,
@@ -21,7 +20,6 @@ import {
 } from '../../src/db/schema.js';
 import { FakeProvider } from '../../src/features/tutor/provider.js';
 import { shiftLocalDate } from '../../src/http/request-context.js';
-import { filterSchedulerStateForContent } from '../../src/learning/content-filters.js';
 import {
   isDueToday,
   newReviewCard,
@@ -29,10 +27,11 @@ import {
   scheduleReview,
 } from '../../src/learning/fsrs.js';
 import { courseConceptIds, courseFoundationIds } from '../../src/learning/prerequisites.js';
+import * as schedulerModule from '../../src/learning/scheduler.js';
 import {
   effectiveFocusSubjectId,
   explainReviewSelection,
-  SCHEDULER_CONFIG,
+  explainReviewSelectionForReplan,
 } from '../../src/learning/scheduler.js';
 import { localDateKey } from '../../src/learning/xp.js';
 
@@ -47,10 +46,35 @@ const violations = new Map<string, Set<string>>();
 const simulationFindings = new Map<string, string[]>();
 const auditTrail: string[] = [];
 const attemptFailures: string[] = [];
+type ApiCall = { method: string; path: string; now: Date };
+type SchedulerCall =
+  | {
+      kind: 'plan';
+      args: Parameters<typeof schedulerModule.planSession>;
+      request: ApiCall;
+    }
+  | {
+      kind: 'replan';
+      args: Parameters<typeof schedulerModule.replan>;
+      request: ApiCall;
+    };
+type PlanningEvidence = {
+  request: ApiCall;
+  sessionId: string;
+  createdActivityIds: string[];
+  budget: number;
+  coveredReviewConceptIds: string[];
+  usedExerciseIds: string[];
+  results: ReturnType<typeof explainReviewSelection>;
+};
+const schedulerCalls: SchedulerCall[] = [];
+const activityPlanningEvidence = new Map<string, PlanningEvidence>();
+const activityCreationCalls = new Map<string, ApiCall>();
+type DueAtEvent = { at: Date; dueAt: Date; cause: string };
+const dueAtHistory = new Map<string, DueAtEvent[]>();
+let currentApiCall: ApiCall | undefined;
 let simulationStepCount = 0;
 let simulationAttemptFailures: string[] = [];
-let lastHomeFirst: unknown;
-let sessionStartMismatch: string | undefined;
 
 const checkerNames = ['I1', 'I2', 'I3', 'I4', 'I5', 'I6', 'I7', 'I8', 'I9'];
 vi.setConfig({ hookTimeout: 300_000, testTimeout: 60_000 });
@@ -94,12 +118,6 @@ function todayActivities(payload: Record<string, any>) {
   return payload.plan?.activities ?? payload.activities ?? [];
 }
 
-async function reviewSelectionForAudit(now: Date, budget: number) {
-  const repo = new LearnerRepository(db, userId);
-  const state = filterSchedulerStateForContent(content, await repo.schedulerState(now, content));
-  return explainReviewSelection(state, content, now, budget);
-}
-
 function atLocalNoon(day: string) {
   return new Date(`${day}T20:00:00.000Z`);
 }
@@ -118,7 +136,7 @@ function invariantViolation(name: string, detail: string) {
   const entries = violations.get(name) ?? new Set<string>();
   if (!entries.has(detail)) {
     entries.add(detail);
-    if (name === 'I3' || name === 'I6') console.info(`${name} review selection: ${detail}`);
+    if (name === 'I3' || name === 'I6') console.error(`${name} review selection: ${detail}`);
   }
   violations.set(name, entries);
 }
@@ -218,7 +236,7 @@ async function focusedConceptIds() {
   );
 }
 
-async function checkI3({ now, today }: AuditContext): Promise<string[]> {
+async function checkI3({ now, today, active }: AuditContext): Promise<string[]> {
   const planned = todayActivities(today)
     .filter((activity: Record<string, any>) => activity.kind === 'review')
     .flatMap((activity: Record<string, any>) => activity.exerciseIds ?? []);
@@ -227,6 +245,8 @@ async function checkI3({ now, today }: AuditContext): Promise<string[]> {
     .select({
       cardId: reviewLogs.cardId,
       conceptId: reviewCards.conceptId,
+      rating: reviewLogs.rating,
+      attemptId: reviewLogs.attemptId,
       createdAt: reviewLogs.createdAt,
     })
     .from(reviewLogs)
@@ -271,10 +291,33 @@ async function checkI3({ now, today }: AuditContext): Promise<string[]> {
     ];
   });
   if (failures.length === 0) return failures;
-  const selection = await reviewSelectionForAudit(now, today.budgetMinutes);
   return failures.map((failure) => {
     const conceptId = failure.split('/')[0];
-    return `${failure}; scheduler selection=${JSON.stringify(selection.find((entry) => entry.conceptId === conceptId))}`;
+    const history = cards
+      .filter((card) => card.conceptId === conceptId)
+      .map((card) => ({
+        dimension: card.dimension,
+        dueAt: card.dueAt.toISOString(),
+        dueAtEventsToday: (dueAtHistory.get(card.id) ?? [])
+          .filter((event) => localDateKey(event.at, timezone) === localDateKey(now, timezone))
+          .map((event) => ({
+            at: event.at.toISOString(),
+            dueAt: event.dueAt.toISOString(),
+            cause: event.cause,
+          })),
+        reviewLogsToday: todayLogs
+          .filter(
+            (log) =>
+              log.cardId === card.id &&
+              localDateKey(log.createdAt, timezone) === localDateKey(now, timezone),
+          )
+          .map((log) => ({
+            rating: log.rating,
+            attemptId: log.attemptId,
+            createdAt: log.createdAt.toISOString(),
+          })),
+      }));
+    return `${failure}; card dueAt history today=${JSON.stringify(history)}; session/planner=${JSON.stringify(plannerEvidenceForSession(active, conceptId))}`;
   });
 }
 
@@ -453,136 +496,121 @@ async function checkI6({ now, today, active }: AuditContext): Promise<string[]> 
     });
   });
   if (failures.length === 0) return failures;
-  const selection = await reviewSelectionForAudit(now, today.budgetMinutes);
   return failures.map((failure) => {
     const conceptId = failure.split(':')[0];
-    return `${failure}; scheduler selection=${JSON.stringify(selection.find((entry) => entry.conceptId === conceptId))}`;
+    const history = cards
+      .filter((card) => card.conceptId === conceptId)
+      .map((card) => ({
+        dimension: card.dimension,
+        dueAt: card.dueAt.toISOString(),
+        dueAtEventsToday: (dueAtHistory.get(card.id) ?? [])
+          .filter((event) => localDateKey(event.at, timezone) === localDateKey(now, timezone))
+          .map((event) => ({
+            at: event.at.toISOString(),
+            dueAt: event.dueAt.toISOString(),
+            cause: event.cause,
+          })),
+        reviewLogsToday: logs
+          .filter(
+            ({ review_cards: logCard, review_logs: log }) =>
+              logCard.conceptId === conceptId &&
+              localDateKey(log.createdAt, timezone) === localDateKey(now, timezone),
+          )
+          .map(({ review_cards: logCard, review_logs: log }) => ({
+            dimension: logCard.dimension,
+            rating: log.rating,
+            attemptId: log.attemptId,
+            createdAt: log.createdAt.toISOString(),
+          })),
+      }));
+    return `${failure}; card dueAt history today=${JSON.stringify(history)}; session/planner=${JSON.stringify(plannerEvidenceForSession(active, conceptId))}`;
   });
 }
 
 async function checkI7({ now, today, active, reviews }: AuditContext): Promise<string[]> {
   const learnResponse = await app.request('/api/learn', { headers: headersAt(now) });
-  const learn = await learnResponse.json();
+  const learn = (await learnResponse.json()) as {
+    tasks?: {
+      activityKind?: string;
+      conceptId?: string;
+      reviewTopics?: { conceptId: string }[];
+    }[];
+  };
   const home = (learn.tasks ?? [])
-    .filter((task: Record<string, any>) => task.activityKind === 'review')
+    .filter((task) => task.activityKind === 'review')
     .flatMap(
-      (task: Record<string, any>) =>
-        task.reviewTopics?.map((topic: Record<string, any>) => topic.conceptId) ??
+      (task) =>
+        task.reviewTopics?.map((topic) => topic.conceptId) ??
         (task.conceptId ? [task.conceptId] : []),
     );
-  const session = (active?.activities ?? [])
-    .filter(
-      (activity: Record<string, any>) =>
-        activity.kind === 'review' && ['planned', 'in_progress'].includes(activity.status),
-    )
-    .flatMap(
-      (activity: Record<string, any>) =>
-        activity.reviewTopics?.map((topic: Record<string, any>) => topic.conceptId) ??
-        activityTopics(activity),
-    );
-  const [cards, logs, focusedConcepts] = await Promise.all([
+  const [cards, logs] = await Promise.all([
     db.select().from(reviewCards).where(eq(reviewCards.userId, userId)),
     db
       .select({
         cardId: reviewLogs.cardId,
-        conceptId: reviewCards.conceptId,
+        rating: reviewLogs.rating,
+        attemptId: reviewLogs.attemptId,
         createdAt: reviewLogs.createdAt,
       })
       .from(reviewLogs)
       .innerJoin(reviewCards, eq(reviewLogs.cardId, reviewCards.id))
       .where(eq(reviewCards.userId, userId)),
-    focusedConceptIds(),
   ]);
-  const gradedToday = new Set(
-    logs
-      .filter((log) => localDateKey(log.createdAt, timezone) === localDateKey(now, timezone))
-      .map((log) => log.conceptId),
+  const dueTodayTopics = new Set(
+    cards.filter((card) => isDueToday(card.dueAt, now, timezone)).map((card) => card.conceptId),
   );
-  const gradedTodayCardIds = new Set(
-    logs
-      .filter((log) => localDateKey(log.createdAt, timezone) === localDateKey(now, timezone))
-      .map((log) => log.cardId),
+  const reviewsDueTopics = new Set<string>(
+    (reviews.topics ?? [])
+      .filter((topic: Record<string, any>) => topic.due)
+      .map((topic: Record<string, any>) => topic.conceptId as string),
   );
-  const dueEligibleTopics = new Set(
-    cards
-      .filter((card) => {
-        const concept = content.conceptsById.get(card.conceptId);
-        return (
-          concept &&
-          concept.status !== 'stub' &&
-          isDueToday(card.dueAt, now, timezone) &&
-          !gradedToday.has(card.conceptId) &&
-          hasEligibleReviewExercise(card.conceptId, card.dimension) &&
-          (!focusedConcepts || focusedConcepts.has(card.conceptId))
-        );
-      })
-      .map((card) => card.conceptId),
-  );
-  const due = (reviews.topics ?? [])
-    .filter((topic: Record<string, any>) => topic.due)
-    .filter((topic: Record<string, any>) => dueEligibleTopics.has(topic.conceptId))
-    .map((topic: Record<string, any>) => topic.conceptId);
-  const failures: string[] = [];
-  if (
-    active &&
-    JSON.stringify([...new Set(home)].sort()) !== JSON.stringify([...new Set(session)].sort())
-  )
-    failures.push(
-      `Home review topics ${[...new Set(home)]} differ from active session ${[...new Set(session)]}`,
-    );
   const homeTopics = new Set<string>(home);
-  const dueTopics = new Set<string>(due);
-  const sessionTopics = new Set<string>(session);
-  const activeReviewStatuses = new Map<string, Set<string>>();
-  for (const activity of active?.activities ?? []) {
-    if (activity.kind !== 'review') continue;
-    for (const conceptId of activityTopics(activity)) {
-      const statuses = activeReviewStatuses.get(conceptId) ?? new Set<string>();
-      statuses.add(activity.status);
-      activeReviewStatuses.set(conceptId, statuses);
-    }
-  }
-  const planReviewMinutes = (today.plan?.activities ?? [])
-    .filter((activity: Record<string, any>) => activity.kind === 'review')
-    .reduce((total: number, activity: Record<string, any>) => total + activity.plannedMinutes, 0);
-  const reviewBudget = Math.floor(today.budgetMinutes * SCHEDULER_CONFIG.weekday.reviewBudgetRatio);
-  const budgetCapped = reviewBudget > 0 && planReviewMinutes >= reviewBudget * 0.8;
-  const staleHomeTopics = [...homeTopics].filter((conceptId) => !dueTopics.has(conceptId));
-  const omittedDueTopics = [...dueTopics].filter((conceptId) => !homeTopics.has(conceptId));
-  if (staleHomeTopics.length > 0 || (omittedDueTopics.length > 0 && !budgetCapped))
+  const activeReviewTopics = new Set(
+    (active?.activities ?? [])
+      .filter(
+        (activity: Record<string, any>) =>
+          activity.kind === 'review' && ['planned', 'in_progress'].includes(activity.status),
+      )
+      .flatMap((activity: Record<string, any>) => activityTopics(activity)),
+  );
+  const budgetNoteShown = today.dueReviews < reviews.dueNow;
+  const failures: string[] = [];
+  const cardHistory = (conceptId: string) =>
+    cards
+      .filter((card) => card.conceptId === conceptId)
+      .map((card) => ({
+        dimension: card.dimension,
+        dueAt: card.dueAt.toISOString(),
+        fsrsDue: (card.fsrs as { due?: string | Date }).due,
+        lastReviewAt: card.lastReviewAt?.toISOString() ?? null,
+        dueAtEventsToday: (dueAtHistory.get(card.id) ?? [])
+          .filter((event) => localDateKey(event.at, timezone) === localDateKey(now, timezone))
+          .map((event) => ({
+            at: event.at.toISOString(),
+            dueAt: event.dueAt.toISOString(),
+            cause: event.cause,
+          })),
+        logs: logs
+          .filter((log) => log.cardId === card.id)
+          .map((log) => ({
+            rating: log.rating,
+            attemptId: log.attemptId,
+            createdAt: log.createdAt.toISOString(),
+          })),
+      }));
+  for (const conceptId of homeTopics) {
+    if (dueTodayTopics.has(conceptId) || activeReviewTopics.has(conceptId)) continue;
     failures.push(
-      `Home review topics ${[...homeTopics]} differ from Reviews dueNow topics ${[...dueTopics]}`,
+      `I7(a) Home topic ${conceptId} is neither due today nor in an active review; card history=${JSON.stringify(cardHistory(conceptId))}`,
     );
-  if (today.dueReviews !== new Set(home).size)
-    failures.push(`Home dueReviews=${today.dueReviews}, planned topics=${new Set(home).size}`);
-  if (sessionStartMismatch) failures.push(sessionStartMismatch);
-  const surfaces = [
-    { name: 'Home', topics: homeTopics },
-    ...(active ? [{ name: 'active session', topics: sessionTopics }] : []),
-    { name: 'Reviews due', topics: dueTopics },
-  ];
-  const allTopics = new Set<string>(surfaces.flatMap((surface) => [...surface.topics]));
-  const mismatchedTopics = [...allTopics].filter((conceptId) => {
-    const memberships = surfaces.map((surface) => surface.topics.has(conceptId));
-    return memberships.some((present) => present !== memberships[0]);
-  });
-  if (failures.length && mismatchedTopics.length) {
-    const classification = mismatchedTopics
-      .map((conceptId) => {
-        const presentOn = surfaces
-          .filter((surface) => surface.topics.has(conceptId))
-          .map((surface) => surface.name);
-        const cardStates = cards
-          .filter((card) => card.conceptId === conceptId)
-          .map(
-            (card) =>
-              `${card.dimension}:${isDueToday(card.dueAt, now, timezone) ? 'due' : 'not_due'}:${gradedTodayCardIds.has(card.id) ? 'gradedToday' : 'notGradedToday'}`,
-          );
-        const activityStatus = [...(activeReviewStatuses.get(conceptId) ?? [])].join(',') || 'none';
-        return `${conceptId}[surfaces=${presentOn.join(',') || 'none'}; cards=${cardStates.join(',') || 'none'}; activityStatus=${activityStatus}]`;
-      })
-      .join('; ');
-    failures[0] = `${failures[0]}; mismatch classification: ${classification}`;
+  }
+  if (!budgetNoteShown) {
+    for (const conceptId of reviewsDueTopics) {
+      if (homeTopics.has(conceptId)) continue;
+      failures.push(
+        `I7(b) Reviews due topic ${conceptId} is not on Home and the budget note is not shown; card history=${JSON.stringify(cardHistory(conceptId))}`,
+      );
+    }
   }
   return failures;
 }
@@ -645,30 +673,201 @@ async function auditAll(now: Date, label: string) {
   }
 }
 
+function explainPlannerCall(call: SchedulerCall) {
+  if (call.kind === 'plan') {
+    const [state, planContent, now, budget, _kind, _excludedLearn, excludedReview] = call.args;
+    const coveredReviewConceptIds = [...(excludedReview ?? new Set<string>())];
+    return {
+      budget,
+      coveredReviewConceptIds,
+      usedExerciseIds: [...(state.usedExerciseIds ?? [])],
+      results: explainReviewSelection(
+        state,
+        planContent,
+        now,
+        budget,
+        new Set(coveredReviewConceptIds),
+      ),
+    };
+  }
+  const [state, planContent, now, budget, existingActivities] = call.args;
+  return explainReviewSelectionForReplan(state, planContent, now, budget, existingActivities);
+}
+
+async function cardSnapshot() {
+  const [cards, logs] = await Promise.all([
+    db.select().from(reviewCards).where(eq(reviewCards.userId, userId)),
+    db
+      .select({
+        id: reviewLogs.id,
+        cardId: reviewLogs.cardId,
+        conceptId: reviewCards.conceptId,
+        dimension: reviewCards.dimension,
+        rating: reviewLogs.rating,
+        attemptId: reviewLogs.attemptId,
+        createdAt: reviewLogs.createdAt,
+        exerciseId: attempts.exerciseId,
+      })
+      .from(reviewLogs)
+      .innerJoin(reviewCards, eq(reviewLogs.cardId, reviewCards.id))
+      .leftJoin(attempts, eq(reviewLogs.attemptId, attempts.id))
+      .where(eq(reviewCards.userId, userId)),
+  ]);
+  return { cards, logs };
+}
+
+async function recordDueAtChanges(before: Awaited<ReturnType<typeof cardSnapshot>>, now: Date) {
+  const after = await cardSnapshot();
+  const newLogIds = new Set(before.logs.map((log) => log.id));
+  const newLogs = after.logs.filter((log) => !newLogIds.has(log.id));
+  for (const card of after.cards) {
+    const previous = before.cards.find((item) => item.id === card.id);
+    if (!previous || previous.dueAt.getTime() === card.dueAt.getTime()) continue;
+    const directLog = newLogs.find((log) => log.cardId === card.id);
+    let cause = directLog
+      ? `FSRS from review_log ${directLog.id}, rating=${directLog.rating}, attempt=${directLog.attemptId} during POST /attempts`
+      : 'no matching review_log during POST /attempts';
+    if (!directLog) {
+      const prerequisiteLog = newLogs.find((log) =>
+        content.conceptsById
+          .get(log.conceptId)
+          ?.prereqs.some(
+            (prerequisite) =>
+              prerequisite.strength === 'hard' && prerequisite.id === card.conceptId,
+          ),
+      );
+      if (prerequisiteLog?.rating === String(Rating.Good)) {
+        cause = `layering credit from review_log ${prerequisiteLog.id}, concept=${prerequisiteLog.conceptId}/${prerequisiteLog.dimension}, rating=${prerequisiteLog.rating}, attempt=${prerequisiteLog.attemptId} during POST /attempts`;
+      } else if (prerequisiteLog?.rating === String(Rating.Again)) {
+        const previousAgain = before.logs.some(
+          (log) => log.cardId === prerequisiteLog.cardId && log.rating === String(Rating.Again),
+        );
+        if (previousAgain)
+          cause = `double-Again from review_log ${prerequisiteLog.id}, concept=${prerequisiteLog.conceptId}/${prerequisiteLog.dimension}, rating=${prerequisiteLog.rating}, attempt=${prerequisiteLog.attemptId} during POST /attempts`;
+      }
+    }
+    const events = dueAtHistory.get(card.id) ?? [];
+    events.push({ at: now, dueAt: card.dueAt, cause });
+    dueAtHistory.set(card.id, events);
+  }
+}
+
+function plannerEvidenceForSession(active: Record<string, any> | null, conceptId: string) {
+  const activities: Record<string, any>[] = active?.activities ?? [];
+  const evidence = [
+    ...new Set<PlanningEvidence>(
+      activities
+        .map((activity) => activityPlanningEvidence.get(activity.id))
+        .filter((item): item is PlanningEvidence => !!item),
+    ),
+  ];
+  return {
+    id: active?.id ?? null,
+    activities: activities.map((activity: Record<string, any>) => {
+      const origin = activityPlanningEvidence.get(activity.id);
+      const creationCall = activityCreationCalls.get(activity.id);
+      return {
+        id: activity.id,
+        kind: activity.kind,
+        status: activity.status,
+        topics: activityTopics(activity),
+        createdBy: creationCall
+          ? `${creationCall.method} ${creationCall.path} at ${creationCall.now.toISOString()}`
+          : origin
+            ? `${origin.request.method} ${origin.request.path} at ${origin.request.now.toISOString()}`
+            : 'origin not captured',
+      };
+    }),
+    plannerInputs: evidence.map((item) => ({
+      call: `${item.request.method} ${item.request.path}`,
+      simulatedAt: item.request.now.toISOString(),
+      budgetOrRemainingBudget: item.budget,
+      coveredReviewConceptIds: item.coveredReviewConceptIds,
+      usedExerciseIds: item.usedExerciseIds,
+      selection: item.results.find((result) => result.conceptId === conceptId) ?? {
+        result: 'concept was not due/eligible at planning time',
+      },
+    })),
+  };
+}
+
 async function step(method: string, path: string, now: Date, body?: unknown) {
-  const response = await app.request(`/api${path}`, {
-    method,
-    headers: headersAt(now),
-    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-  });
+  const routeSessionId = path.match(/^\/sessions\/([^/]+)/)?.[1];
+  const attemptActivityId =
+    method === 'POST' &&
+    path === '/attempts' &&
+    typeof body === 'object' &&
+    body !== null &&
+    'activityId' in body &&
+    typeof body.activityId === 'string'
+      ? body.activityId
+      : undefined;
+  const [attemptActivity] = attemptActivityId
+    ? await db
+        .select({ sessionId: sessionActivities.sessionId })
+        .from(sessionActivities)
+        .where(eq(sessionActivities.id, attemptActivityId))
+        .limit(1)
+    : [];
+  const sessionIdBefore =
+    routeSessionId === 'active'
+      ? (
+          await db
+            .select({ id: studySessions.id })
+            .from(studySessions)
+            .where(and(eq(studySessions.userId, userId), eq(studySessions.status, 'active')))
+            .limit(1)
+        )[0]?.id
+      : (routeSessionId ?? attemptActivity?.sessionId);
+  const previousRows = sessionIdBefore
+    ? await db
+        .select({ id: sessionActivities.id })
+        .from(sessionActivities)
+        .where(eq(sessionActivities.sessionId, sessionIdBefore))
+    : [];
+  const previousIds = new Set(previousRows.map((row) => row.id));
+  const callStart = schedulerCalls.length;
+  const cardsBeforeAttempt =
+    method === 'POST' && path === '/attempts' ? await cardSnapshot() : undefined;
+  const requestCall = { method, path, now };
+  currentApiCall = requestCall;
+  let response: Response;
+  try {
+    response = await app.request(`/api${path}`, {
+      method,
+      headers: headersAt(now),
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+    });
+  } finally {
+    currentApiCall = undefined;
+  }
   const data = (await response.json()) as Record<string, any>;
-  if (path === '/today')
-    lastHomeFirst = data.activeSessionId ? undefined : data.plan?.activities?.[0];
-  if (path === '/sessions' && response.ok && lastHomeFirst) {
-    const first = data.activities?.[0];
-    const summarize = (activity: Record<string, any> | undefined) =>
-      activity
-        ? {
-            kind: activity.kind,
-            conceptId: activity.conceptId,
-            exerciseIds: [...(activity.exerciseIds ?? [])].sort(),
-          }
-        : undefined;
-    if (
-      JSON.stringify(summarize(first)) !==
-      JSON.stringify(summarize(lastHomeFirst as Record<string, any>))
-    ) {
-      sessionStartMismatch = `Start learning first=${JSON.stringify(summarize(first))}; Home first=${JSON.stringify(summarize(lastHomeFirst as Record<string, any>))}`;
+  if (cardsBeforeAttempt) await recordDueAtChanges(cardsBeforeAttempt, now);
+  let sessionId = path === '/sessions' ? data.id : sessionIdBefore;
+  if (!sessionId && schedulerCalls.length > callStart) {
+    const activeSession = await db
+      .select({ id: studySessions.id })
+      .from(studySessions)
+      .where(and(eq(studySessions.userId, userId), eq(studySessions.status, 'active')))
+      .limit(1);
+    sessionId = activeSession[0]?.id;
+  }
+  if (sessionId) {
+    const rows = await db
+      .select()
+      .from(sessionActivities)
+      .where(eq(sessionActivities.sessionId, sessionId));
+    const createdRows = rows.filter((row) => !previousIds.has(row.id));
+    for (const row of createdRows) activityCreationCalls.set(row.id, requestCall);
+    for (const call of schedulerCalls.slice(callStart)) {
+      const explained = explainPlannerCall(call);
+      const evidence: PlanningEvidence = {
+        request: call.request,
+        sessionId,
+        createdActivityIds: createdRows.map((row) => row.id),
+        ...explained,
+      };
+      for (const row of createdRows) activityPlanningEvidence.set(row.id, evidence);
     }
   }
   await auditAll(now, `${method} ${path}`);
@@ -708,8 +907,10 @@ async function seedLearner(now: Date) {
   violations.clear();
   auditTrail.length = 0;
   attemptFailures.length = 0;
-  lastHomeFirst = undefined;
-  sessionStartMismatch = undefined;
+  schedulerCalls.length = 0;
+  activityPlanningEvidence.clear();
+  activityCreationCalls.clear();
+  dueAtHistory.clear();
 }
 
 async function seedCards(now: Date) {
@@ -763,6 +964,7 @@ async function addReviewCard(
     .returning();
   if (!card) throw new Error(`Could not seed ${conceptId}/${dimension}`);
   seededReps.set(card.id, card.reps);
+  dueAtHistory.set(card.id, [{ at: now, dueAt, cause: 'seeded' }]);
   return card;
 }
 
@@ -784,6 +986,17 @@ let simulationDone = false;
 beforeAll(async () => {
   content = await loadContent('tests/fixtures/content');
   app = createApp({ db, content, tutorProvider: new FakeProvider() });
+  const planSession = schedulerModule.planSession;
+  const replan = schedulerModule.replan;
+  vi.spyOn(schedulerModule, 'planSession').mockImplementation((...args) => {
+    if (currentApiCall) schedulerCalls.push({ kind: 'plan', args, request: { ...currentApiCall } });
+    return planSession(...args);
+  });
+  vi.spyOn(schedulerModule, 'replan').mockImplementation((...args) => {
+    if (currentApiCall)
+      schedulerCalls.push({ kind: 'replan', args, request: { ...currentApiCall } });
+    return replan(...args);
+  });
   const now = atLocalNoon(startDate);
   await seedLearner(now);
   await seedCards(now);
@@ -963,14 +1176,14 @@ it('I1 review scheduling invariant', () => assertInvariant('I1'));
 // I2: completing a review does not reliably keep its topics out of Home.
 it('I2 review scheduling invariant', () => assertInvariant('I2'));
 // I3: due cards with eligible exercises can be omitted from the plan.
-it.fails('I3 review scheduling invariant', () => assertInvariant('I3'));
+it('I3 review scheduling invariant', () => assertInvariant('I3'));
 // I4: completed activities can leave covered cards ungraded.
 it('I4 review scheduling invariant', () => assertInvariant('I4'));
 // I5: double-Again can move a graded prerequisite card before tomorrow.
 it('I5 review scheduling invariant', () => assertInvariant('I5'));
 // I6: partial answers can disappear when another session starts.
-it.fails('I6 review scheduling invariant', () => assertInvariant('I6'));
-// I7: Home, the active session, and Reviews can show different due topics.
+it('I6 review scheduling invariant', () => assertInvariant('I6'));
+// I7: Home topics must be due or active, and Reviews due topics need Home or the budget note.
 it('I7 review scheduling invariant', () => assertInvariant('I7'));
 // I8: mixed reviews can repeat a topic before switching to another.
 it('I8 review scheduling invariant', () => assertInvariant('I8'));

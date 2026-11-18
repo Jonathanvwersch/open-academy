@@ -56,12 +56,12 @@ export interface PrerequisiteReviewCard {
   fsrs: Card;
 }
 
-export function bringWeakestPrerequisiteCardDueNow(
-  cards: readonly PrerequisiteReviewCard[],
+export function bringWeakestPrerequisiteCardDueNow<T extends PrerequisiteReviewCard>(
+  cards: readonly T[],
   now: Date,
   enableFuzz = true,
-): PrerequisiteReviewCard | undefined {
-  let weakest: PrerequisiteReviewCard | undefined;
+): T | undefined {
+  let weakest: T | undefined;
   let weakestRetrievability = Number.POSITIVE_INFINITY;
   for (const card of cards) {
     const cardRetrievability = retrievability(card.fsrs, now, enableFuzz);

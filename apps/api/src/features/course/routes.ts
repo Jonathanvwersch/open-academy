@@ -7,7 +7,6 @@ import type { ContentIndex } from '../../content/types.js';
 import type { Database } from '../../db/client.js';
 import type { LearnerRepository } from '../../db/repository.js';
 import {
-  attempts,
   diagnosticRuns,
   lessonProblems,
   lessonRuns,
@@ -430,24 +429,9 @@ export function registerLearnCourseRoutes(
     const inProgressReviewActivityIds = activeActivities
       .filter((activity) => activity.kind === 'review' && activity.status === 'in_progress')
       .map((activity) => activity.id);
-    const reviewAttempts = inProgressReviewActivityIds.length
-      ? await deps.db
-          .select({ activityId: attempts.activityId, exerciseId: attempts.exerciseId })
-          .from(attempts)
-          .where(
-            and(
-              eq(attempts.userId, userId),
-              inArray(attempts.activityId, inProgressReviewActivityIds),
-            ),
-          )
-      : [];
-    const attemptedExerciseIdsByActivity = new Map<string, Set<string>>();
-    for (const attempt of reviewAttempts) {
-      if (!attempt.activityId) continue;
-      const exerciseIds = attemptedExerciseIdsByActivity.get(attempt.activityId) ?? new Set();
-      exerciseIds.add(attempt.exerciseId);
-      attemptedExerciseIdsByActivity.set(attempt.activityId, exerciseIds);
-    }
+    const attemptedExerciseIdsByActivity = await repo.attemptedExerciseIdsByActivity(
+      inProgressReviewActivityIds,
+    );
     const activeSessionId =
       activeSession && (activeSession.activities.length === 0 || activeActivities.length > 0)
         ? (active?.id ?? null)

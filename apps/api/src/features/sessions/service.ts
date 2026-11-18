@@ -28,7 +28,10 @@ import {
   prerequisiteMet,
 } from '../../learning/prerequisites.js';
 import { attemptAllowsRetry } from '../../learning/retry.js';
-import { reviewTopicsForActivity } from '../../learning/review-topics.js';
+import {
+  attemptedExerciseIdsByActivity,
+  reviewTopicsForActivity,
+} from '../../learning/review-topics.js';
 import type { PlannedActivity, SessionPreferences } from '../../learning/scheduler.js';
 import {
   currentLearnerUnit,
@@ -93,24 +96,9 @@ export async function getToday(deps: FeatureServices, request: FeatureRequest) {
   const inProgressReviewActivityIds = activeActivities
     .filter((activity) => activity.kind === 'review' && activity.status === 'in_progress')
     .map((activity) => activity.id);
-  const reviewAttempts = inProgressReviewActivityIds.length
-    ? await deps.db
-        .select({ activityId: attempts.activityId, exerciseId: attempts.exerciseId })
-        .from(attempts)
-        .where(
-          and(
-            eq(attempts.userId, request.userId),
-            inArray(attempts.activityId, inProgressReviewActivityIds),
-          ),
-        )
-    : [];
-  const attemptedExerciseIdsByActivity = new Map<string, Set<string>>();
-  for (const attempt of reviewAttempts) {
-    if (!attempt.activityId) continue;
-    const exerciseIds = attemptedExerciseIdsByActivity.get(attempt.activityId) ?? new Set();
-    exerciseIds.add(attempt.exerciseId);
-    attemptedExerciseIdsByActivity.set(attempt.activityId, exerciseIds);
-  }
+  const attemptedByActivity = await repo.attemptedExerciseIdsByActivity(
+    inProgressReviewActivityIds,
+  );
   const plan =
     activeSessionId && activeSession
       ? {
@@ -203,7 +191,7 @@ export async function getToday(deps: FeatureServices, request: FeatureRequest) {
           ? reviewTopicsForActivity(
               activity,
               index,
-              activeActivity ? attemptedExerciseIdsByActivity.get(activeActivity.id) : undefined,
+              activeActivity ? attemptedByActivity.get(activeActivity.id) : undefined,
             ).map((topic) => topic.conceptId)
           : [];
       }),
@@ -225,7 +213,7 @@ export async function getToday(deps: FeatureServices, request: FeatureRequest) {
               : undefined,
           },
           index,
-          activeActivity ? attemptedExerciseIdsByActivity.get(activeActivity.id) : undefined,
+          activeActivity ? attemptedByActivity.get(activeActivity.id) : undefined,
         );
       }),
     },
@@ -397,7 +385,7 @@ export async function postSessions(deps: FeatureServices, request: FeatureReques
 }
 
 export async function getSessionsActive(deps: FeatureServices, request: FeatureRequest) {
-  const { content, db } = deps;
+  const { content } = deps;
   const now = request.now();
   const session = await request.repo.activeSession(now);
   const index = await content();
@@ -407,24 +395,8 @@ export async function getSessionsActive(deps: FeatureServices, request: FeatureR
   const inProgressReviewIds = activities
     .filter((activity) => activity.kind === 'review' && activity.status === 'in_progress')
     .map((activity) => activity.id);
-  const reviewAttempts = inProgressReviewIds.length
-    ? await db
-        .select({ activityId: attempts.activityId, exerciseId: attempts.exerciseId })
-        .from(attempts)
-        .where(
-          and(
-            eq(attempts.userId, request.userId),
-            inArray(attempts.activityId, inProgressReviewIds),
-          ),
-        )
-    : [];
-  const attemptedByActivity = new Map<string, Set<string>>();
-  for (const attempt of reviewAttempts) {
-    if (!attempt.activityId) continue;
-    const exerciseIds = attemptedByActivity.get(attempt.activityId) ?? new Set();
-    exerciseIds.add(attempt.exerciseId);
-    attemptedByActivity.set(attempt.activityId, exerciseIds);
-  }
+  const attemptedByActivity =
+    await request.repo.attemptedExerciseIdsByActivity(inProgressReviewIds);
   return serviceResult(
     fullSession && activities.length
       ? {
@@ -462,13 +434,7 @@ export async function getSessionsById(deps: FeatureServices, request: FeatureReq
         .where(and(eq(attempts.userId, request.userId), inArray(attempts.activityId, activityIds)))
         .orderBy(desc(attempts.createdAt), desc(attempts.attemptNo))
     : [];
-  const attemptedByActivity = new Map<string, Set<string>>();
-  for (const attempt of activityAttempts) {
-    if (!attempt.activityId) continue;
-    const exerciseIds = attemptedByActivity.get(attempt.activityId) ?? new Set();
-    exerciseIds.add(attempt.exerciseId);
-    attemptedByActivity.set(attempt.activityId, exerciseIds);
-  }
+  const attemptedByActivity = attemptedExerciseIdsByActivity(activityAttempts);
   const xp = session
     ? await (async () => {
         const now = request.now();
@@ -595,18 +561,15 @@ async function updateActivityProgress(deps: FeatureServices, request: FeatureReq
   if (!activity) {
     return serviceResult({ error: 'Activity not found' }, 404);
   }
+  const attemptedByActivity =
+    activity.kind === 'review'
+      ? await request.repo.attemptedExerciseIdsByActivity([activity.id])
+      : new Map<string, Set<string>>();
   const completed = body.data.complete === true;
   const { complete: _complete, ...progress } = body.data;
   const now = request.now();
   if (completed && activity.kind === 'review') {
-    const attemptedExerciseIds = new Set(
-      (
-        await db
-          .select({ exerciseId: attempts.exerciseId })
-          .from(attempts)
-          .where(and(eq(attempts.userId, request.userId), eq(attempts.activityId, activity.id)))
-      ).map((attempt) => attempt.exerciseId),
-    );
+    const attemptedExerciseIds = attemptedByActivity.get(activity.id) ?? new Set<string>();
     const missingExerciseIds = activity.exerciseIds.filter(
       (exerciseId) => !attemptedExerciseIds.has(exerciseId),
     );
@@ -725,20 +688,8 @@ async function updateActivityProgress(deps: FeatureServices, request: FeatureReq
     }
   }
   if (updated?.kind === 'review') {
-    const [index, activityAttempts] = await Promise.all([
-      content(),
-      db
-        .select({ exerciseId: attempts.exerciseId })
-        .from(attempts)
-        .where(and(eq(attempts.userId, request.userId), eq(attempts.activityId, updated.id))),
-    ]);
-    return serviceResult(
-      withReviewTopics(
-        updated,
-        index,
-        new Set(activityAttempts.map((attempt) => attempt.exerciseId)),
-      ),
-    );
+    const index = await content();
+    return serviceResult(withReviewTopics(updated, index, attemptedByActivity.get(updated.id)));
   }
   return serviceResult(updated);
 }
@@ -818,24 +769,8 @@ async function replanSession(deps: FeatureServices, request: FeatureRequest) {
   const inProgressReviewIds = preserved
     .filter((activity) => activity.kind === 'review' && activity.status === 'in_progress')
     .map((activity) => activity.id);
-  const reviewAttempts = inProgressReviewIds.length
-    ? await db
-        .select({ activityId: attempts.activityId, exerciseId: attempts.exerciseId })
-        .from(attempts)
-        .where(
-          and(
-            eq(attempts.userId, request.userId),
-            inArray(attempts.activityId, inProgressReviewIds),
-          ),
-        )
-    : [];
-  const attemptedByActivity = new Map<string, Set<string>>();
-  for (const attempt of reviewAttempts) {
-    if (!attempt.activityId) continue;
-    const exerciseIds = attemptedByActivity.get(attempt.activityId) ?? new Set();
-    exerciseIds.add(attempt.exerciseId);
-    attemptedByActivity.set(attempt.activityId, exerciseIds);
-  }
+  const attemptedByActivity =
+    await request.repo.attemptedExerciseIdsByActivity(inProgressReviewIds);
   return serviceResult({
     activities: [...preserved, ...created.flat()].map((activity) =>
       withReviewTopics(activity, index, attemptedByActivity.get(activity.id)),

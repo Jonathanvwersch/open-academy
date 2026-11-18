@@ -1,10 +1,11 @@
-import { and, asc, desc, eq, gte, lt, lte, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, lt, lte, sql } from 'drizzle-orm';
 import type { Card } from 'ts-fsrs';
 import { z } from 'zod';
 import type { Dimension } from '../content/schemas.js';
 import type { ContentIndex } from '../content/types.js';
 import { courseHasEvidence } from '../learning/course-start.js';
 import { retrievability, startOfNextCalendarDay } from '../learning/fsrs.js';
+import { attemptedExerciseIdsByActivity as groupAttemptedExerciseIdsByActivity } from '../learning/review-topics.js';
 import { effectiveFocusSubjectId, type SchedulerState } from '../learning/scheduler.js';
 import type { MasteryRecord, MasteryState } from '../learning/types.js';
 import { initialMastery } from '../learning/types.js';
@@ -366,6 +367,15 @@ export class LearnerRepository {
       .from(attempts)
       .where(and(eq(attempts.activityId, activityId), eq(attempts.exerciseId, exerciseId)))
       .orderBy(asc(attempts.attemptNo));
+  }
+
+  async attemptedExerciseIdsByActivity(activityIds: readonly string[]) {
+    if (activityIds.length === 0) return new Map<string, Set<string>>();
+    const rows = await this.db
+      .select({ activityId: attempts.activityId, exerciseId: attempts.exerciseId })
+      .from(attempts)
+      .where(and(eq(attempts.userId, this.userId), inArray(attempts.activityId, activityIds)));
+    return groupAttemptedExerciseIdsByActivity(rows);
   }
 
   async activeSession(now: Date) {

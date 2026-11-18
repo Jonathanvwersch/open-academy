@@ -5,6 +5,19 @@ export interface ReviewTopic {
   title: string;
 }
 
+export function attemptedExerciseIdsByActivity(
+  attempts: readonly { activityId: string | null; exerciseId: string }[],
+): Map<string, Set<string>> {
+  const attemptedByActivity = new Map<string, Set<string>>();
+  for (const attempt of attempts) {
+    if (!attempt.activityId) continue;
+    const exerciseIds = attemptedByActivity.get(attempt.activityId) ?? new Set();
+    exerciseIds.add(attempt.exerciseId);
+    attemptedByActivity.set(attempt.activityId, exerciseIds);
+  }
+  return attemptedByActivity;
+}
+
 export function reviewTopicsForActivity(
   activity: { exerciseIds: readonly string[]; status?: string },
   content: ContentIndex,

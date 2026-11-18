@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm';
+import { and, asc, eq } from 'drizzle-orm';
 import { Rating } from 'ts-fsrs';
 import { afterAll, beforeAll, expect, test } from 'vitest';
 import { createApp } from '../../src/app.js';
@@ -797,6 +797,20 @@ test('two consecutive Again review activities pull the weakest hard-prerequisite
   );
   const firstActivity = await createReviewActivity('gradient-descent', 'gradient-descent-step');
   const secondActivity = await createReviewActivity('gradient-descent', 'gradient-descent-step');
+  const [laterPlannedActivity] = await db
+    .insert(sessionActivities)
+    .values({
+      sessionId: secondActivity.sessionId,
+      idx: secondActivity.idx + 1,
+      kind: 'review',
+      conceptId: 'linear-models',
+      exerciseIds: ['linear-models-slope'],
+      plannedMinutes: 5,
+      status: 'planned',
+      reason: secondActivity.reason,
+    })
+    .returning();
+  if (!laterPlannedActivity) throw new Error('Expected a later planned activity');
 
   await submitReviewActivityAgain(firstActivity.id);
   await submitReviewActivityAgain(secondActivity.id);
@@ -811,6 +825,28 @@ test('two consecutive Again review activities pull the weakest hard-prerequisite
   expect(new Date((rescheduled.fsrs as { due: string }).due).toISOString()).toBe(now);
   expect(unchanged.dueAt).toEqual(future);
   expect(new Date((unchanged.fsrs as { due: string }).due)).toEqual(future);
+  const activitiesAfterAgain = await db
+    .select()
+    .from(sessionActivities)
+    .where(eq(sessionActivities.sessionId, secondActivity.sessionId))
+    .orderBy(asc(sessionActivities.idx));
+  expect(activitiesAfterAgain.map((item) => item.idx)).toEqual([
+    secondActivity.idx,
+    secondActivity.idx + 1,
+    secondActivity.idx + 2,
+  ]);
+  const prerequisiteActivity = activitiesAfterAgain[1];
+  if (!prerequisiteActivity) throw new Error('Expected an inserted prerequisite review');
+  const shiftedActivity = activitiesAfterAgain[2];
+  expect(prerequisiteActivity.kind).toBe('review');
+  expect(prerequisiteActivity.status).toBe('in_progress');
+  expect(shiftedActivity?.id).toBe(laterPlannedActivity.id);
+  expect(shiftedActivity?.status).toBe('planned');
+  expect(
+    prerequisiteActivity.exerciseIds.some(
+      (exerciseId) => content.exercisesById.get(exerciseId)?.concept === weakest.conceptId,
+    ),
+  ).toBe(true);
 });
 
 test('one Again review activity does not pull a prerequisite card due', async () => {

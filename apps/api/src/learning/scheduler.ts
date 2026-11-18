@@ -448,6 +448,49 @@ export function replan(
   existingActivities: PlannedActivity[],
   kind: SessionKind = 'weekday',
 ): SessionPlan {
+  const inputs = replanInputs(state, content, existingActivities);
+  const plan = planSession(
+    inputs.state,
+    content,
+    now,
+    remainingBudgetMinutes,
+    kind,
+    inputs.excludedLearnConceptIds,
+    inputs.coveredReviewConceptIds,
+  );
+  return {
+    activities: [...inputs.inProgress, ...plan.activities],
+    reasons: [...inputs.inProgress.map((activity) => activity.reason), ...plan.reasons],
+  };
+}
+
+export function explainReviewSelectionForReplan(
+  state: SchedulerState,
+  content: ContentIndex,
+  now: Date,
+  remainingBudgetMinutes: number,
+  existingActivities: PlannedActivity[],
+) {
+  const inputs = replanInputs(state, content, existingActivities);
+  return {
+    budget: remainingBudgetMinutes,
+    coveredReviewConceptIds: [...inputs.coveredReviewConceptIds],
+    usedExerciseIds: [...(inputs.state.usedExerciseIds ?? [])],
+    results: explainReviewSelection(
+      inputs.state,
+      content,
+      now,
+      remainingBudgetMinutes,
+      inputs.coveredReviewConceptIds,
+    ),
+  };
+}
+
+function replanInputs(
+  state: SchedulerState,
+  content: ContentIndex,
+  existingActivities: PlannedActivity[],
+) {
   const inProgress = existingActivities.filter(
     (activity) =>
       activity.status === 'in_progress' &&
@@ -468,12 +511,11 @@ export function replan(
         }),
       ),
   );
-  const protectedExerciseIds = [
+  const usedExerciseIds = [
     ...(state.usedExerciseIds ?? []),
     ...inProgress.flatMap((activity) => activity.exerciseIds),
     ...completed.flatMap((activity) => activity.exerciseIds),
   ];
-  const nextState = { ...state, usedExerciseIds: protectedExerciseIds };
   const excludedLearnConceptIds = new Set(
     existingActivities.flatMap((activity) =>
       activity.kind === 'learn' &&
@@ -483,18 +525,11 @@ export function replan(
         : [],
     ),
   );
-  const plan = planSession(
-    nextState,
-    content,
-    now,
-    remainingBudgetMinutes,
-    kind,
+  return {
+    state: { ...state, usedExerciseIds },
+    inProgress,
     excludedLearnConceptIds,
     coveredReviewConceptIds,
-  );
-  return {
-    activities: [...inProgress, ...plan.activities],
-    reasons: [...inProgress.map((activity) => activity.reason), ...plan.reasons],
   };
 }
 
@@ -1019,7 +1054,156 @@ function generateCandidates(
     }
   }
 
-  const dueCardsByConcept = new Map<string, (typeof state.cards)[number][]>();
+  const dueCardsByConcept = collectDueReviewCards(
+    state,
+    content,
+    now,
+    focusSubjectId,
+    newConceptIds,
+    reviewSelectionTrace,
+  );
+
+  for (const [conceptId, dueCards] of dueCardsByConcept) {
+    const candidate = buildReviewCandidateForConcept(
+      state,
+      content,
+      now,
+      conceptId,
+      dueCards,
+      courseContexts,
+      masteryByKey,
+      recentIds,
+      candidates,
+      reviewSelectionTrace,
+    );
+    if (candidate) candidates.push(candidate);
+  }
+  return candidates;
+}
+
+function buildReviewCandidateForConcept(
+  state: SchedulerState,
+  content: ContentIndex,
+  now: Date,
+  conceptId: string,
+  dueCards: SchedulerState['cards'],
+  courseContexts: SchedulerCourseContext[],
+  masteryByKey: Map<string, MasteryRecord>,
+  recentIds: Set<string>,
+  candidates: Candidate[],
+  reviewSelectionTrace?: ReviewSelectionTrace,
+): Candidate | undefined {
+  const concept = content.conceptsById.get(conceptId);
+  if (!concept) return undefined;
+  const perDimension = Math.max(1, Math.ceil(3 / dueCards.length));
+  const usedExerciseIds = new Set(state.usedExerciseIds ?? []);
+  const selectedByDimension: {
+    card: SchedulerState['cards'][number];
+    exercises: IndexedExercise[];
+  }[] = [];
+  for (const card of dueCards) {
+    const record = masteryByKey.get(masteryKey(card.conceptId, card.dimension));
+    const isIndependent = record && masteryRank(record.state) >= masteryRank('independent');
+    const reviewRoles = isIndependent
+      ? ['transfer', 'review', 'core', 'practice', 'basics']
+      : ['review', 'core', 'practice', 'transfer', 'basics'];
+    const exercises: IndexedExercise[] = [];
+    while (exercises.length < perDimension) {
+      const exercise = chooseExercise(
+        { ...state, usedExerciseIds: [...usedExerciseIds] },
+        content,
+        concept,
+        card.dimension,
+        reviewRoles,
+        now,
+        recentIds,
+      );
+      if (!exercise) break;
+      usedExerciseIds.add(exercise.id);
+      exercises.push(exercise);
+    }
+    if (exercises.length > 0) selectedByDimension.push({ card, exercises });
+  }
+  if (selectedByDimension.length === 0) {
+    reviewSelectionTrace?.results.set(conceptId, 'not_candidate:noEligibleExercise');
+    return undefined;
+  }
+  const includedCards = selectedByDimension.map(({ card }) => card);
+  const maxQuestions = Math.max(...selectedByDimension.map(({ exercises }) => exercises.length));
+  const exercises: IndexedExercise[] = [];
+  for (let questionIndex = 0; questionIndex < maxQuestions; questionIndex += 1) {
+    for (const dimension of selectedByDimension) {
+      const exercise = dimension.exercises[questionIndex];
+      if (exercise) exercises.push(exercise);
+    }
+  }
+  const terms = noTerms();
+  terms.review = Math.max(
+    ...includedCards.map((card) => {
+      const dueAt = Date.parse(card.dueAt);
+      const overdueDays = Math.min(10, Math.max(0, (now.getTime() - dueAt) / 86_400_000));
+      const recentFailure = state.recentAttempts.some(
+        (attempt) => attempt.conceptId === card.conceptId && attempt.correct === 0,
+      );
+      return (
+        (1 - (card.retrievability ?? 0.9)) * 3 +
+        (recentFailure ? 2 : 0) +
+        Math.min(2, overdueDays * 0.2)
+      );
+    }),
+  );
+  const plannedNewConceptNeedsPrerequisite = candidates.some((candidate) => {
+    const plannedConceptId = candidate.activity.conceptId;
+    if (candidate.activity.kind !== 'learn' || !plannedConceptId) return false;
+    return content.conceptsById
+      .get(plannedConceptId)
+      ?.prereqs.some(
+        (prerequisite) => prerequisite.strength === 'hard' && prerequisite.id === conceptId,
+      );
+  });
+  if (plannedNewConceptNeedsPrerequisite) terms.review += 2;
+  const reviewCourseContext =
+    courseContexts.find((course) => course.newConceptIds.has(concept.id)) ??
+    fallbackCourseContext(state, content);
+  if (!reviewCourseContext) {
+    reviewSelectionTrace?.results.set(conceptId, 'rejected:other');
+    return undefined;
+  }
+  const reviewProjectId =
+    reviewCourseContext.course.units[reviewCourseContext.currentUnit - 1]?.project;
+  const reviewProject = reviewProjectId ? content.projectsById.get(reviewProjectId) : undefined;
+  const candidate = makeCandidate(
+    state,
+    content,
+    concept,
+    'review',
+    exercises,
+    reviewCourseContext,
+    reviewProject,
+  );
+  candidate.activity.reason.terms.review = terms.review;
+  candidate.score = scoreTerms(candidate.activity.reason.terms, candidate.adjustedMinutes);
+  const earliestDueAt = Math.min(...includedCards.map((card) => Date.parse(card.dueAt)));
+  const lowestRetrievability = Math.min(...includedCards.map((card) => card.retrievability ?? 0.9));
+  const dueDate = new Intl.DateTimeFormat('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    timeZone: state.timezone ?? 'UTC',
+  }).format(new Date(earliestDueAt));
+  candidate.activity.reason.summary = `Due since ${dueDate} · ~${Math.round(lowestRetrievability * 100)}% recall.`;
+  return candidate;
+}
+
+function collectDueReviewCards(
+  state: SchedulerState,
+  content: ContentIndex,
+  now: Date,
+  focusSubjectId: string | null | undefined,
+  newConceptIds: Set<string>,
+  reviewSelectionTrace?: ReviewSelectionTrace,
+) {
+  const dueCardsByConcept = new Map<string, SchedulerState['cards']>();
   const timezone = state.timezone ?? 'UTC';
   const reviewedToday = new Set(state.reviewedTodayConceptIds);
   for (const card of state.cards) {
@@ -1041,114 +1225,68 @@ function generateCandidates(
     dueCards.push(card);
     dueCardsByConcept.set(card.conceptId, dueCards);
   }
+  return dueCardsByConcept;
+}
 
-  for (const [conceptId, dueCards] of dueCardsByConcept) {
-    const concept = content.conceptsById.get(conceptId);
-    if (!concept) continue;
-    const perDimension = Math.max(1, Math.ceil(3 / dueCards.length));
-    const usedExerciseIds = new Set(state.usedExerciseIds ?? []);
-    const selectedByDimension: {
-      card: (typeof state.cards)[number];
-      exercises: IndexedExercise[];
-    }[] = [];
-    for (const card of dueCards) {
-      const record = masteryByKey.get(masteryKey(card.conceptId, card.dimension));
-      const isIndependent = record && masteryRank(record.state) >= masteryRank('independent');
-      const reviewRoles = isIndependent
-        ? ['transfer', 'review', 'core', 'practice', 'basics']
-        : ['review', 'core', 'practice', 'transfer', 'basics'];
-      const exercises: IndexedExercise[] = [];
-      while (exercises.length < perDimension) {
-        const exercise = chooseExercise(
-          { ...state, usedExerciseIds: [...usedExerciseIds] },
-          content,
-          concept,
-          card.dimension,
-          reviewRoles,
-          now,
-          recentIds,
-        );
-        if (!exercise) break;
-        usedExerciseIds.add(exercise.id);
-        exercises.push(exercise);
+export function buildReviewActivityForConcept(
+  state: SchedulerState,
+  content: ContentIndex,
+  now: Date,
+  conceptId: string,
+  dueCardOverride?: {
+    conceptId: string;
+    dimension: MasteryRecord['dimension'];
+    dueAt: Date;
+  },
+): PlannedActivity | undefined {
+  const candidateState = dueCardOverride
+    ? {
+        ...state,
+        cards: state.cards.map((card) =>
+          card.conceptId === dueCardOverride.conceptId &&
+          card.dimension === dueCardOverride.dimension
+            ? { ...card, dueAt: dueCardOverride.dueAt.toISOString() }
+            : card,
+        ),
       }
-      if (exercises.length > 0) selectedByDimension.push({ card, exercises });
-    }
-    if (selectedByDimension.length === 0) {
-      reviewSelectionTrace?.results.set(conceptId, 'not_candidate:noEligibleExercise');
-      continue;
-    }
-    const includedCards = selectedByDimension.map(({ card }) => card);
-    const maxQuestions = Math.max(...selectedByDimension.map(({ exercises }) => exercises.length));
-    const exercises: IndexedExercise[] = [];
-    for (let questionIndex = 0; questionIndex < maxQuestions; questionIndex += 1) {
-      for (const dimension of selectedByDimension) {
-        const exercise = dimension.exercises[questionIndex];
-        if (exercise) exercises.push(exercise);
-      }
-    }
-    const terms = noTerms();
-    terms.review = Math.max(
-      ...includedCards.map((card) => {
-        const dueAt = Date.parse(card.dueAt);
-        const overdueDays = Math.min(10, Math.max(0, (now.getTime() - dueAt) / 86_400_000));
-        const recentFailure = state.recentAttempts.some(
-          (attempt) => attempt.conceptId === card.conceptId && attempt.correct === 0,
-        );
-        return (
-          (1 - (card.retrievability ?? 0.9)) * 3 +
-          (recentFailure ? 2 : 0) +
-          Math.min(2, overdueDays * 0.2)
-        );
-      }),
-    );
-    const plannedNewConceptNeedsPrerequisite = candidates.some((candidate) => {
-      const plannedConceptId = candidate.activity.conceptId;
-      if (candidate.activity.kind !== 'learn' || !plannedConceptId) return false;
-      return content.conceptsById
-        .get(plannedConceptId)
-        ?.prereqs.some(
-          (prerequisite) => prerequisite.strength === 'hard' && prerequisite.id === conceptId,
-        );
-    });
-    if (plannedNewConceptNeedsPrerequisite) {
-      terms.review += 2;
-    }
-    const reviewCourseContext =
-      courseContexts.find((course) => course.newConceptIds.has(concept.id)) ??
-      fallbackCourseContext(state, content);
-    if (!reviewCourseContext) {
-      reviewSelectionTrace?.results.set(conceptId, 'rejected:other');
-      continue;
-    }
-    const reviewProjectId =
-      reviewCourseContext.course.units[reviewCourseContext.currentUnit - 1]?.project;
-    const reviewProject = reviewProjectId ? content.projectsById.get(reviewProjectId) : undefined;
-    const candidate = makeCandidate(
-      state,
-      content,
-      concept,
-      'review',
-      exercises,
-      reviewCourseContext,
-      reviewProject,
-    );
-    candidate.activity.reason.terms.review = terms.review;
-    candidate.score = scoreTerms(candidate.activity.reason.terms, candidate.adjustedMinutes);
-    const earliestDueAt = Math.min(...includedCards.map((card) => Date.parse(card.dueAt)));
-    const lowestRetrievability = Math.min(
-      ...includedCards.map((card) => card.retrievability ?? 0.9),
-    );
-    const dueDate = new Intl.DateTimeFormat('en-GB', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-      timeZone: state.timezone ?? 'UTC',
-    }).format(new Date(earliestDueAt));
-    candidate.activity.reason.summary = `Due since ${dueDate} · ~${Math.round(lowestRetrievability * 100)}% recall.`;
-    candidates.push(candidate);
-  }
-  return candidates;
+    : state;
+  const courseContexts = schedulerCourseContexts(candidateState, content);
+  const focusSubjectId = effectiveFocusSubjectId(
+    { focusSubjectId: candidateState.focusSubjectId },
+    candidateState.studyCourseIds,
+    content,
+  );
+  const newConceptIds = new Set(courseContexts.flatMap((course) => [...course.newConceptIds]));
+  const masteryByKey = new Map(
+    candidateState.mastery.map((record) => [
+      masteryKey(record.conceptId, record.dimension),
+      record,
+    ]),
+  );
+  const recentIds = new Set(
+    candidateState.recentAttempts
+      .filter((attempt) => daysSince(attempt.createdAt, now) < SCHEDULER_CONFIG.repeatWindowDays)
+      .map((attempt) => attempt.exerciseId),
+  );
+  const dueCards = collectDueReviewCards(
+    candidateState,
+    content,
+    now,
+    focusSubjectId,
+    newConceptIds,
+  ).get(conceptId);
+  if (!dueCards) return undefined;
+  return buildReviewCandidateForConcept(
+    candidateState,
+    content,
+    now,
+    conceptId,
+    dueCards,
+    courseContexts,
+    masteryByKey,
+    recentIds,
+    [],
+  )?.activity;
 }
 
 function makeCandidate(
