@@ -756,3 +756,252 @@ exercises:
         required: false
     exemplar: Row elimination clears entries below pivots. Counting those pivots gives the rank, which is the number of independent columns. When $b$ is in the column space, rank equal to the number of unknowns gives exactly one solution; smaller rank leaves infinitely many solutions.
     solution: Row elimination reveals the pivots, and their count equals the rank and the number of independent columns. For $b$ in the column space, a pivot for every unknown gives one solution, while fewer pivots than unknowns give infinitely many solutions.
+  - id: rsp-recall-span-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: rsp-span
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, what is a linear combination of vectors, and what is their span?
+    rubric:
+      - id: meaning
+        criterion: Explain that a linear combination multiplies each vector by a number and adds the results.
+        weight: 1
+        required: true
+      - id: rule
+        criterion: Explain that the span contains all linear combinations of the vectors.
+        weight: 1
+        required: true
+    exemplar: A linear combination scales each vector by a number and adds the results. The span is every vector that can be made this way.
+  - id: rsp-recall-span-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: rsp-span
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 0.5
+    prompt: Two nonzero vectors in three-dimensional space lie on different lines through the origin. What do they span?
+    options:
+      - id: a
+        text: All of three-dimensional space.
+        correct: false
+        feedback: Two such vectors span a plane. Three vectors outside one plane are needed to span all of space.
+      - id: b
+        text: A plane through the origin.
+        correct: true
+        feedback: Their multiples and sums fill a plane in three-dimensional space.
+      - id: c
+        text: One line through the origin.
+        correct: false
+        feedback: A line is the span when the two vectors are multiples of each other.
+    solution: Two vectors on different lines span a plane, including in three-dimensional space.
+  - id: rsp-recall-span-formula
+    dimension: math
+    type: text
+    role: recall
+    knowledge_point: rsp-span
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Write a general linear combination of two vectors $u$ and $v$, using $c_1$ and $c_2$ for the numbers."
+    accept:
+      [
+        "c_1u+c_2v",
+        "c_1u + c_2v",
+        "c1u+c2v",
+        "c1u + c2v",
+        "c_1*u+c_2*v",
+        "c1*u+c2*v",
+        "c₁u+c₂v",
+        "c₁u + c₂v",
+      ]
+    regex: '^\s*(?:(?:c(?:_?\{?1\}?|₁)\s*(?:\*|×|·|\\cdot|\\times)?\s*u|u\s*(?:\*|×|·|\\cdot|\\times)?\s*c(?:_?\{?1\}?|₁))\s*\+\s*(?:c(?:_?\{?2\}?|₂)\s*(?:\*|×|·|\\cdot|\\times)?\s*v|v\s*(?:\*|×|·|\\cdot|\\times)?\s*c(?:_?\{?2\}?|₂))|(?:c(?:_?\{?2\}?|₂)\s*(?:\*|×|·|\\cdot|\\times)?\s*v|v\s*(?:\*|×|·|\\cdot|\\times)?\s*c(?:_?\{?2\}?|₂))\s*\+\s*(?:c(?:_?\{?1\}?|₁)\s*(?:\*|×|·|\\cdot|\\times)?\s*u|u\s*(?:\*|×|·|\\cdot|\\times)?\s*c(?:_?\{?1\}?|₁)))\s*$'
+    solution: A linear combination is $c_1u+c_2v$, with any numbers as coefficients.
+  - id: rsp-recall-independence-rank-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: rsp-independence-rank
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, when are vectors linearly independent, and what is a matrix’s rank?
+    rubric:
+      - id: meaning
+        criterion: Explain that vectors are independent when none of them is a linear combination of the others.
+        weight: 1
+        required: true
+      - id: rule
+        criterion: Explain that rank is the largest number of independent columns, equal to the number of pivots after elimination.
+        weight: 1
+        required: true
+    exemplar: Vectors are independent when none is a linear combination of the others. A matrix’s rank is its largest number of independent columns, counted by the pivots after elimination.
+  - id: rsp-recall-independence-rank-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: rsp-independence-rank
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 0.5
+    prompt: Three nonzero vectors in three-dimensional space have no pair that are multiples. The third equals the first plus the second. What follows?
+    options:
+      - id: a
+        text: They are independent because no pair are multiples.
+        correct: false
+        feedback: Checking pairs is not enough for three vectors. Here the third vector is a combination of the first two.
+      - id: b
+        text: They span all of three-dimensional space.
+        correct: false
+        feedback: The third vector adds no new direction, so the three span only the plane of the first two.
+      - id: c
+        text: They are dependent because one is built from the others.
+        correct: true
+        feedback: A vector that is a linear combination of the others makes the set dependent.
+    solution: A linear combination of two columns can make a third even when no pair are multiples.
+  - id: rsp-recall-independence-rank-contrast2
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: rsp-independence-rank
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 0.5
+    prompt: What does the number of pivots after elimination count?
+    options:
+      - id: a
+        text: The largest number of independent columns of the matrix.
+        correct: true
+        feedback: That number is the rank. Each pivot column is independent of the columns before it.
+      - id: b
+        text: The number of columns in the original matrix.
+        correct: false
+        feedback: A column without a pivot is a combination of earlier columns, so the column count can be larger than the rank.
+      - id: c
+        text: The number of rows in the original matrix.
+        correct: false
+        feedback: A row of zeros after elimination has no pivot, so the row count can be larger than the rank.
+    solution: Each pivot marks a column that is independent of the columns before it, so the number of pivots is the rank.
+  - id: rsp-recall-solutions-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: rsp-solutions
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, when does $Ax=b$ have a solution, and what gives exactly one solution when $A$ has $n$ columns?
+    rubric:
+      - id: meaning
+        criterion: Explain that $b$ must be in the column space of $A$ for a solution to exist.
+        weight: 1
+        required: true
+      - id: rule
+        criterion: Explain that such a $b$ has exactly one solution when $\operatorname{rank}(A)=n$, because the columns are independent.
+        weight: 1
+        required: true
+    exemplar: "A solution exists when $b$ is in the column space of $A$, the span of its columns. For such a $b$, rank $n$ means the columns are independent, so exactly one solution reaches it."
+  - id: rsp-recall-solutions-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: rsp-solutions
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 0.5
+    prompt: A matrix has dependent columns and $b$ is in its column space. How many solutions does $Ax=b$ have?
+    options:
+      - id: a
+        text: There are no solutions for this output.
+        correct: false
+        feedback: Since $b$ is in the column space, some amounts of the columns reach it.
+      - id: b
+        text: There is exactly one solution for this output.
+        correct: false
+        feedback: Dependent columns let us trade amounts of one column for another, so more than one choice reaches $b$.
+      - id: c
+        text: There are infinitely many solutions.
+        correct: true
+        feedback: Some amounts reach $b$, and dependent columns let us trade amounts without changing the result.
+    solution: When $b$ is in the column space and the columns are dependent, there are infinitely many solutions.
+  - id: rsp-recall-solutions-formula
+    dimension: math
+    type: text
+    role: recall
+    knowledge_point: rsp-solutions
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A matrix $A$ has two columns, $a_1$ and $a_2$, and $x=(x_1,x_2)$. Write $Ax$ in terms of the columns of $A$."
+    accept:
+      [
+        "x_1a_1+x_2a_2",
+        "x_1a_1 + x_2a_2",
+        "x1a1+x2a2",
+        "x1a1 + x2a2",
+        "x_1*a_1+x_2*a_2",
+        "x1*a1+x2*a2",
+        "x₁a₁+x₂a₂",
+        "x₁a₁ + x₂a₂",
+      ]
+    regex: '^\s*(?:(?:x(?:_?\{?1\}?|₁)\s*(?:\*|×|·|\\cdot|\\times)?\s*a(?:_?\{?1\}?|₁)|a(?:_?\{?1\}?|₁)\s*(?:\*|×|·|\\cdot|\\times)?\s*x(?:_?\{?1\}?|₁))\s*\+\s*(?:x(?:_?\{?2\}?|₂)\s*(?:\*|×|·|\\cdot|\\times)?\s*a(?:_?\{?2\}?|₂)|a(?:_?\{?2\}?|₂)\s*(?:\*|×|·|\\cdot|\\times)?\s*x(?:_?\{?2\}?|₂))|(?:x(?:_?\{?2\}?|₂)\s*(?:\*|×|·|\\cdot|\\times)?\s*a(?:_?\{?2\}?|₂)|a(?:_?\{?2\}?|₂)\s*(?:\*|×|·|\\cdot|\\times)?\s*x(?:_?\{?2\}?|₂))\s*\+\s*(?:x(?:_?\{?1\}?|₁)\s*(?:\*|×|·|\\cdot|\\times)?\s*a(?:_?\{?1\}?|₁)|a(?:_?\{?1\}?|₁)\s*(?:\*|×|·|\\cdot|\\times)?\s*x(?:_?\{?1\}?|₁)))\s*$'
+    solution: "Each input entry scales its matching column: $Ax=x_1a_1+x_2a_2$."
+  - id: rsp-recall-low-rank-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: rsp-low-rank
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, why is the rank of an $m\times k$ matrix times a $k\times n$ matrix at most $k$, and why store the factors?
+    rubric:
+      - id: meaning
+        criterion: Explain that every column of the product lies in the span of the first factor's $k$ columns.
+        weight: 1
+        required: true
+      - id: rule
+        criterion: Explain that the factors store $mk+kn$ numbers, far fewer than $mn$ when $k$ is much smaller than $m$ and $n$.
+        weight: 1
+        required: true
+    exemplar: "Every column of the product is a combination of the first factor's $k$ columns, so at most $k$ can be independent. The factors store $mk+kn$ numbers, far fewer than $mn$ when $k$ is small."
+  - id: rsp-recall-low-rank-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: rsp-low-rank
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 0.5
+    prompt: Matrices $F$ and $G$ have shapes $m\times k$ and $k\times n$. What can you say about the rank of $FG$?
+    options:
+      - id: a
+        text: It equals $k$ for every choice of entries.
+        correct: false
+        feedback: The bound is only a ceiling. The rank can be smaller, for example when the columns of $F$ are dependent.
+      - id: b
+        text: It is at most $k$, and may be smaller.
+        correct: true
+        feedback: Every column of $FG$ lies in the span of the $k$ columns of $F$.
+      - id: c
+        text: It equals $mn$, the number of output entries.
+        correct: false
+        feedback: The entry count measures storage. Rank counts independent columns.
+    solution: The shared size $k$ caps the rank, and dependent columns in $F$ can make it smaller.
+  - id: rsp-recall-low-rank-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: rsp-low-rank
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: How many numbers store two factors of shapes $m\times k$ and $k\times n$? Write a formula in $m$, $n$ and $k$, using `*` for multiplication.
+    answer: m*k+k*n
+    variables:
+      m:
+        - 20
+        - 100
+      n:
+        - 20
+        - 100
+      k:
+        - 1
+        - 5
+    solution: The two factors store $mk+kn=k(m+n)$ numbers.
