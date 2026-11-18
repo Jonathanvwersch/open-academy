@@ -679,8 +679,16 @@ function packWeekday(
     if (add(candidate)) newConceptCount += 1;
   }
   const reviewCandidates = candidates
-    .filter((candidate) => candidate.activity.kind === 'review')
-    .sort((left, right) => right.score - left.score);
+    .map((candidate, index) => ({ candidate, index }))
+    .filter(({ candidate }) => candidate.activity.kind === 'review')
+    .sort(
+      (left, right) =>
+        right.candidate.activity.reason.terms.review -
+          left.candidate.activity.reason.terms.review ||
+        right.candidate.score - left.candidate.score ||
+        left.index - right.index,
+    )
+    .map(({ candidate }) => candidate);
   for (const candidate of reviewCandidates) {
     const conceptId = candidate.activity.conceptId;
     if (!conceptId) continue;

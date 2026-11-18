@@ -165,6 +165,94 @@ function studyState(courseIds: string[], index: ContentIndex = courseContent): S
   };
 }
 
+function reviewQueueFixture(
+  topicCount: number,
+  inUnitTopicCount: number,
+  minutesPerExercise: number,
+) {
+  const conceptTemplate = required(content.conceptsById.get('vectors'), 'vectors concept');
+  const exerciseTemplate = required(
+    content.exercisesByConcept
+      .get('vectors')
+      ?.find((exercise) => exercise.dimension === 'math' && !exercise.lesson_only),
+    'vectors math exercise',
+  );
+  const topicIds = Array.from(
+    { length: topicCount },
+    (_, index) => `review-queue-${String(index).padStart(2, '0')}`,
+  );
+  const concepts = topicIds.map((id, index) => ({
+    ...conceptTemplate,
+    id,
+    title: id,
+    goal_weight: index < inUnitTopicCount ? 100 : 0,
+    dimensions: ['math'] as typeof conceptTemplate.dimensions,
+    prereqs: [],
+  }));
+  const exercises = topicIds.flatMap((conceptId) =>
+    Array.from({ length: 3 }, (_, index) => ({
+      ...exerciseTemplate,
+      id: `${conceptId}-review-${index + 1}`,
+      concept: conceptId,
+      dimension: 'math' as const,
+      role: 'review' as const,
+      est_minutes: minutesPerExercise,
+      lesson_only: false,
+    })),
+  );
+  const course = required(content.coursesById.get('fixture-course'), 'fixture course');
+  const courses = content.courses.map((candidate) =>
+    candidate.id === course.id
+      ? {
+          ...candidate,
+          units: candidate.units.map((unit, index) => ({
+            ...unit,
+            concepts: index === 0 ? topicIds.slice(0, inUnitTopicCount) : [],
+          })),
+        }
+      : candidate,
+  );
+  const conceptsById = new Map(content.conceptsById);
+  for (const concept of concepts) conceptsById.set(concept.id, concept);
+  const exercisesById = new Map(content.exercisesById);
+  const exercisesByConcept = new Map(content.exercisesByConcept);
+  for (const conceptId of topicIds) {
+    const conceptExercises = exercises.filter((exercise) => exercise.concept === conceptId);
+    exercisesByConcept.set(conceptId, conceptExercises);
+    for (const exercise of conceptExercises) exercisesById.set(exercise.id, exercise);
+  }
+  return {
+    index: {
+      ...content,
+      courses,
+      coursesById: new Map(courses.map((candidate) => [candidate.id, candidate])),
+      concepts: [...content.concepts, ...concepts],
+      conceptsById,
+      exercises: [...content.exercises, ...exercises],
+      exercisesById,
+      exercisesByConcept,
+    } satisfies ContentIndex,
+    topicIds,
+    inUnitTopicIds: topicIds.slice(0, inUnitTopicCount),
+    offPathTopicIds: topicIds.slice(inUnitTopicCount),
+  };
+}
+
+function plannedReviewTopics(plan: ReturnType<typeof planSession>, index: ContentIndex) {
+  return [
+    ...new Set(
+      plan.activities
+        .filter((activity) => activity.kind === 'review')
+        .flatMap((activity) =>
+          activity.exerciseIds.flatMap((exerciseId) => {
+            const conceptId = index.exercisesById.get(exerciseId)?.concept;
+            return conceptId ? [conceptId] : [];
+          }),
+        ),
+    ),
+  ];
+}
+
 function studyCourseOwner(
   conceptId: string,
   courseIds: string[],
@@ -2623,6 +2711,127 @@ test('due reviews use at most 30% of a normal budget', () => {
     .reduce((sum, activity) => sum + activity.plannedMinutes, 0);
 
   expect(reviewMinutes).toBeLessThanOrEqual(Math.floor(budget * 0.3));
+});
+
+test('review urgency selects an overdue off-path topic when the cap fits one review', () => {
+  const fixture = reviewQueueFixture(2, 1, 6);
+  const inUnit = required(fixture.topicIds[0], 'in-unit review topic');
+  const offPath = required(fixture.topicIds[1], 'off-path review topic');
+  const state = emptyState();
+  state.activeCourseId = 'fixture-course';
+  state.studyCourseIds = ['fixture-course'];
+  state.mastery = fixture.topicIds.map((conceptId) => ({
+    ...initialMastery(conceptId, 'math'),
+    state: 'independent' as const,
+  }));
+  state.cards = [
+    { conceptId: inUnit, dimension: 'math', dueAt: now.toISOString(), retrievability: 0.9 },
+    {
+      conceptId: offPath,
+      dimension: 'math',
+      dueAt: new Date(now.getTime() - 4 * 86_400_000).toISOString(),
+      retrievability: 0.6,
+    },
+  ];
+
+  const plan = planSession(state, fixture.index, now, 60);
+  const selectedTopics = plannedReviewTopics(plan, fixture.index);
+  const plannedMinutes = plan.activities
+    .filter((activity) => activity.kind === 'review')
+    .reduce((sum, activity) => sum + activity.plannedMinutes, 0);
+  const inUnitCard = required(state.cards[0], 'in-unit review card');
+  const offPathCard = required(state.cards[1], 'off-path review card');
+  const inUnitReview = planSession(
+    { ...state, cards: [inUnitCard] },
+    fixture.index,
+    now,
+    60,
+  ).activities.find((activity) => activity.kind === 'review');
+  const offPathReview = planSession(
+    { ...state, cards: [offPathCard] },
+    fixture.index,
+    now,
+    60,
+  ).activities.find((activity) => activity.kind === 'review');
+  const score = (activity: PlannedActivity | undefined) => {
+    if (!activity) throw new Error('Expected a review activity');
+    const weighted = Object.entries(activity.reason.terms).reduce(
+      (total, [term, value]) =>
+        total + value * SCHEDULER_CONFIG.weights[term as keyof typeof SCHEDULER_CONFIG.weights],
+      0,
+    );
+    return weighted / Math.sqrt(activity.plannedMinutes);
+  };
+
+  expect(selectedTopics).toEqual([offPath]);
+  expect(plannedMinutes).toBe(18);
+  expect(score(inUnitReview)).toBeGreaterThan(score(offPathReview));
+  expect(offPathReview?.reason.terms.review).toBeGreaterThan(
+    inUnitReview?.reason.terms.review ?? 0,
+  );
+});
+
+test('memory-priority ordering prevents review starvation under a 1.67x cap load', () => {
+  const fixture = reviewQueueFixture(32, 30, 2);
+  const firstOffPath = required(fixture.offPathTopicIds[0], 'first off-path topic');
+  const secondOffPath = required(fixture.offPathTopicIds[1], 'second off-path topic');
+  const state = emptyState();
+  state.activeCourseId = 'fixture-course';
+  state.studyCourseIds = ['fixture-course'];
+  state.mastery = fixture.topicIds.map((conceptId) => ({
+    ...initialMastery(conceptId, 'math'),
+    state: 'independent' as const,
+  }));
+  state.cards = [
+    ...fixture.inUnitTopicIds.slice(0, 3).map((conceptId) => ({
+      conceptId,
+      dimension: 'math' as const,
+      dueAt: now.toISOString(),
+      retrievability: 0.9,
+    })),
+    ...[firstOffPath, secondOffPath].map((conceptId) => ({
+      conceptId,
+      dimension: 'math' as const,
+      dueAt: now.toISOString(),
+      retrievability: 0.6,
+    })),
+  ];
+
+  let nextTopic = 3;
+  const deferralStreaks = new Map<string, number>();
+  let longestDeferral = 0;
+  for (let day = 0; day < 10; day += 1) {
+    const at = new Date(now.getTime() + day * 86_400_000);
+    const dueCards = [...state.cards];
+    expect(dueCards).toHaveLength(5);
+    expect((dueCards.length * 6) / Math.floor(60 * 0.3)).toBeCloseTo(1.67, 1);
+    const plan = planSession(state, fixture.index, at, 60);
+    const selected = new Set(plannedReviewTopics(plan, fixture.index));
+    expect(selected.size).toBe(3);
+    for (const card of dueCards) {
+      if (selected.has(card.conceptId)) {
+        deferralStreaks.delete(card.conceptId);
+      } else {
+        const streak = (deferralStreaks.get(card.conceptId) ?? 0) + 1;
+        deferralStreaks.set(card.conceptId, streak);
+        longestDeferral = Math.max(longestDeferral, streak);
+      }
+    }
+    state.cards = dueCards.filter((card) => !selected.has(card.conceptId));
+    if (day < 9) {
+      state.cards.push(
+        ...fixture.inUnitTopicIds.slice(nextTopic, nextTopic + 3).map((conceptId) => ({
+          conceptId,
+          dimension: 'math' as const,
+          dueAt: new Date(at.getTime() + 86_400_000).toISOString(),
+          retrievability: 0.9,
+        })),
+      );
+      nextTopic += 3;
+    }
+  }
+
+  expect(longestDeferral).toBeLessThanOrEqual(3);
 });
 
 test('planner schedules one due review when the budget is 10 minutes', () => {
