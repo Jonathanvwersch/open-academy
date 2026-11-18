@@ -69,7 +69,10 @@ export function normalizeLearnerExpression(input: string, variables: string[]): 
   );
 
   return normalizedIdentifiers
-    .replace(/(^|[^A-Za-z0-9_.])((?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?)(?=[A-Za-z_(])/g, '$1$2*')
+    .replace(
+      /(^|[^A-Za-z0-9_.])((?:\d+(?:\.\d+)?|\.\d+)(?:[eE][+-]?\d+)?)(?![\d.]|[eE][+-]?\d)(?=[A-Za-z_(])/g,
+      '$1$2*',
+    )
     .replace(/\)(?=[A-Za-z_(\d])/g, ')*');
 }
 

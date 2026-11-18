@@ -74,6 +74,50 @@ test('normalizes adjacent factors as implicit multiplication', () => {
   });
 });
 
+test('inserts implicit multiplication after complete scientific-notation numbers', () => {
+  const smallNumberExercise: ExpressionExercise = {
+    ...exercise,
+    answer: '0.001*x',
+    variables: { x: [0.1, 2] },
+  };
+  expect(gradeExpression(smallNumberExercise, '1e-3*x')).toMatchObject({
+    status: 'graded',
+    correct: 1,
+  });
+
+  const largeNumberExercise: ExpressionExercise = {
+    ...exercise,
+    answer: '2500*x',
+    variables: { x: [0.1, 2] },
+  };
+  expect(gradeExpression(largeNumberExercise, '2.5e3*x')).toMatchObject({
+    status: 'graded',
+    correct: 1,
+  });
+
+  const exponentExercise: ExpressionExercise = {
+    ...exercise,
+    answer: '100*x',
+    variables: { x: [0.1, 2] },
+  };
+  expect(gradeExpression(exponentExercise, '1E+2x')).toMatchObject({
+    status: 'graded',
+    correct: 1,
+  });
+});
+
+test('multiplies Euler’s constant after a number', () => {
+  const eulerExercise: ExpressionExercise = {
+    ...exercise,
+    answer: '2*e',
+    variables: {},
+  };
+  expect(gradeExpression(eulerExercise, '2e')).toMatchObject({
+    status: 'graded',
+    correct: 1,
+  });
+});
+
 test('preserves function calls and variables that resemble function prefixes', () => {
   const logarithmExercise: ExpressionExercise = {
     ...exercise,
