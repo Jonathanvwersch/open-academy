@@ -1,12 +1,13 @@
-import { and, eq } from 'drizzle-orm';
+import { and, asc, eq } from 'drizzle-orm';
 import { Rating } from 'ts-fsrs';
-import { afterAll, beforeAll, expect, test } from 'vitest';
+import { afterAll, beforeAll, expect, test, vi } from 'vitest';
 import { createApp } from '../../src/app.js';
 import { env } from '../../src/config.js';
 import { loadContent } from '../../src/content/load.js';
 import { instantiateExercise, isTemplate } from '../../src/content/templates.js';
 import type { ContentIndex } from '../../src/content/types.js';
 import { createDb } from '../../src/db/client.js';
+import { LearnerRepository } from '../../src/db/repository.js';
 import {
   attempts,
   courseEnrollments,
@@ -25,7 +26,12 @@ import {
 } from '../../src/db/schema.js';
 import { FakeProvider } from '../../src/features/tutor/provider.js';
 import { answerOptionsFor } from '../../src/learning/answer-options.js';
-import { newReviewCard, scheduleInitialReview, scheduleReview } from '../../src/learning/fsrs.js';
+import {
+  isDueToday,
+  newReviewCard,
+  scheduleInitialReview,
+  scheduleReview,
+} from '../../src/learning/fsrs.js';
 import { calculateCredit } from '../../src/learning/mastery.js';
 
 const db = createDb(env.TEST_DATABASE_URL);
@@ -108,6 +114,30 @@ async function createReviewActivity(conceptId: string | null, exerciseIds: strin
   return activity;
 }
 
+async function createReviewActivityInSession(
+  sessionId: string,
+  idx: number,
+  conceptId: string | null,
+  exerciseIds: string[],
+  status: 'planned' | 'in_progress' | 'completed',
+  plannedMinutes = 5,
+) {
+  const [activity] = await db
+    .insert(sessionActivities)
+    .values({
+      sessionId,
+      idx,
+      kind: 'review',
+      conceptId,
+      exerciseIds,
+      plannedMinutes,
+      status,
+    })
+    .returning();
+  if (!activity) throw new Error('Could not create a review activity in the session');
+  return activity;
+}
+
 async function answerReviewIncorrectly(exerciseId: string, activityId: string) {
   return app.request('/api/attempts', {
     method: 'POST',
@@ -119,6 +149,39 @@ async function answerReviewIncorrectly(exerciseId: string, activityId: string) {
       mode: 'review',
     }),
   });
+}
+
+async function submitReviewExercise(exerciseId: string, activityId: string, answer: unknown) {
+  const response = await app.request('/api/attempts', {
+    method: 'POST',
+    headers: headersAt(now),
+    body: JSON.stringify({
+      exerciseId,
+      activityId,
+      answer,
+      mode: 'review',
+    }),
+  });
+  expect(response.status).toBe(200);
+  return response.json() as Promise<{ activityCompleted?: boolean; correct?: number }>;
+}
+
+async function submitIncorrectReviewExercise(exerciseId: string, activityId: string) {
+  const exercise = content.exercisesById.get(exerciseId);
+  if (exercise?.type !== 'mc') {
+    throw new Error(
+      `Expected a multiple-choice exercise for deterministic wrong answer: ${exerciseId}`,
+    );
+  }
+  const answer = exercise.multi
+    ? exercise.options.filter((option) => !option.correct).map((option) => option.id)
+    : exercise.options.find((option) => !option.correct)?.id;
+  if (answer === undefined || (Array.isArray(answer) && answer.length === 0)) {
+    throw new Error(`No incorrect answer is available for ${exerciseId}`);
+  }
+  const result = await submitReviewExercise(exerciseId, activityId, answer);
+  expect(result.correct).toBe(0);
+  return result;
 }
 
 async function createSessionWithPreviousFinalAttempt(attempt: {
@@ -258,7 +321,7 @@ async function createReviewCard(
   return card;
 }
 
-async function createPrerequisiteReviewCards(weakDueAt: Date) {
+async function createPrerequisiteReviewCards(weakDueAt: Date, includeAlreadyDueConceptual = false) {
   const future = new Date('2026-02-01T12:00:00.000Z');
   const oldReview = new Date('2025-12-01T12:00:00.000Z');
   const recentReview = new Date('2025-12-31T12:00:00.000Z');
@@ -279,7 +342,49 @@ async function createPrerequisiteReviewCards(weakDueAt: Date) {
     future,
     reviewFsrs(recentReview, 10),
   );
-  return { current, weakest, stronger, future };
+  const alreadyDueConceptual = includeAlreadyDueConceptual
+    ? await createReviewCard(
+        'gradients',
+        'conceptual',
+        new Date('2026-01-01T00:00:00.000Z'),
+        reviewFsrs(recentReview, 10),
+      )
+    : undefined;
+  if (alreadyDueConceptual) {
+    await db
+      .update(reviewCards)
+      .set({ lastReviewAt: recentReview })
+      .where(eq(reviewCards.id, alreadyDueConceptual.id));
+  }
+  return { current, weakest, stronger, alreadyDueConceptual, future };
+}
+
+async function createDoubleAgainVectorCards() {
+  const oldReview = new Date('2025-12-01T12:00:00.000Z');
+  const future = new Date('2026-02-01T12:00:00.000Z');
+  const reviewFsrs = (stability: number, dueAt: Date) => ({
+    ...scheduleReview(newReviewCard(oldReview), oldReview, Rating.Good, 'UTC', false).card,
+    stability,
+    due: dueAt,
+  });
+  const dependent = await createReviewCard(
+    'derivatives',
+    'conceptual',
+    new Date('2025-12-31T00:00:00.000Z'),
+  );
+  const math = await createReviewCard(
+    'vectors',
+    'math',
+    new Date('2026-01-01T00:00:00.000Z'),
+    reviewFsrs(10, new Date('2026-01-01T00:00:00.000Z')),
+  );
+  const conceptual = await createReviewCard('vectors', 'conceptual', future, reviewFsrs(1, future));
+  await db.update(reviewCards).set({ lastReviewAt: oldReview }).where(eq(reviewCards.id, math.id));
+  await db
+    .update(reviewCards)
+    .set({ lastReviewAt: oldReview })
+    .where(eq(reviewCards.id, conceptual.id));
+  return { dependent, math, conceptual, future };
 }
 
 async function submitReviewActivityAgain(activityId: string) {
@@ -302,7 +407,21 @@ function correctAnswer(exerciseId: string, seed: number | null): unknown {
   }
   if ('answer' in exercise) return exercise.answer;
   if ('accept' in exercise) return exercise.accept[0];
+  if (exercise.type === 'explain') {
+    return {
+      text: exercise.exemplar,
+      metCriteria: exercise.rubric.map(({ id }) => id),
+    };
+  }
   throw new Error(`No test answer for ${exercise.id}`);
+}
+
+function vectorMathExerciseIds() {
+  return (content.exercisesByConcept.get('vectors') ?? [])
+    .filter(
+      (exercise) => exercise.dimension === 'math' && !isTemplate(exercise) && !exercise.lesson_only,
+    )
+    .map((exercise) => exercise.id);
 }
 
 async function startLessonRun(conceptId: string, activityId: string, now: string) {
@@ -792,6 +911,20 @@ test('two consecutive Again review activities pull the weakest hard-prerequisite
   );
   const firstActivity = await createReviewActivity('gradient-descent', 'gradient-descent-step');
   const secondActivity = await createReviewActivity('gradient-descent', 'gradient-descent-step');
+  const [laterPlannedActivity] = await db
+    .insert(sessionActivities)
+    .values({
+      sessionId: secondActivity.sessionId,
+      idx: secondActivity.idx + 1,
+      kind: 'review',
+      conceptId: 'linear-models',
+      exerciseIds: ['linear-models-slope'],
+      plannedMinutes: 5,
+      status: 'planned',
+      reason: secondActivity.reason,
+    })
+    .returning();
+  if (!laterPlannedActivity) throw new Error('Expected a later planned activity');
 
   await submitReviewActivityAgain(firstActivity.id);
   await submitReviewActivityAgain(secondActivity.id);
@@ -806,6 +939,346 @@ test('two consecutive Again review activities pull the weakest hard-prerequisite
   expect(new Date((rescheduled.fsrs as { due: string }).due).toISOString()).toBe(now);
   expect(unchanged.dueAt).toEqual(future);
   expect(new Date((unchanged.fsrs as { due: string }).due)).toEqual(future);
+  const activitiesAfterAgain = await db
+    .select()
+    .from(sessionActivities)
+    .where(eq(sessionActivities.sessionId, secondActivity.sessionId))
+    .orderBy(asc(sessionActivities.idx));
+  expect(activitiesAfterAgain.map((item) => item.idx)).toEqual([
+    secondActivity.idx,
+    secondActivity.idx + 1,
+    secondActivity.idx + 2,
+  ]);
+  const prerequisiteActivity = activitiesAfterAgain[1];
+  if (!prerequisiteActivity) throw new Error('Expected an inserted prerequisite review');
+  const shiftedActivity = activitiesAfterAgain[2];
+  expect(prerequisiteActivity.kind).toBe('review');
+  expect(prerequisiteActivity.status).toBe('in_progress');
+  expect(shiftedActivity?.id).toBe(laterPlannedActivity.id);
+  expect(shiftedActivity?.status).toBe('planned');
+  expect(
+    prerequisiteActivity.exerciseIds.some(
+      (exerciseId) => content.exercisesById.get(exerciseId)?.concept === weakest.conceptId,
+    ),
+  ).toBe(true);
+});
+
+test('double Again inserts before a skipped session activity', async () => {
+  await resetLearner();
+  await createPrerequisiteReviewCards(new Date('2026-02-01T12:00:00.000Z'));
+  const firstActivity = await createReviewActivity('gradient-descent', 'gradient-descent-step');
+  const secondActivity = await createReviewActivity('gradient-descent', 'gradient-descent-step');
+  const [skippedActivity] = await db
+    .insert(sessionActivities)
+    .values({
+      sessionId: secondActivity.sessionId,
+      idx: secondActivity.idx + 1,
+      kind: 'review',
+      conceptId: 'linear-models',
+      exerciseIds: ['linear-models-slope'],
+      plannedMinutes: 5,
+      status: 'skipped',
+      reason: secondActivity.reason,
+    })
+    .returning();
+  if (!skippedActivity) throw new Error('Expected a skipped activity');
+
+  await submitReviewActivityAgain(firstActivity.id);
+  await submitReviewActivityAgain(secondActivity.id);
+
+  const activities = await db
+    .select()
+    .from(sessionActivities)
+    .where(eq(sessionActivities.sessionId, secondActivity.sessionId))
+    .orderBy(asc(sessionActivities.idx));
+  expect(activities.map((item) => item.idx)).toEqual([
+    secondActivity.idx,
+    secondActivity.idx + 1,
+    secondActivity.idx + 2,
+  ]);
+  expect(activities[0]?.id).toBe(secondActivity.id);
+  expect(activities[1]?.status).toBe('in_progress');
+  expect(activities[2]?.id).toBe(skippedActivity.id);
+  expect(activities[2]?.status).toBe('skipped');
+});
+
+test('double Again inserts one prerequisite review for all due dimensions and replanning does not duplicate it', async () => {
+  await resetLearner();
+  const { weakest, alreadyDueConceptual } = await createPrerequisiteReviewCards(
+    new Date('2026-02-01T12:00:00.000Z'),
+    true,
+  );
+  if (!alreadyDueConceptual) throw new Error('Expected a due conceptual prerequisite card');
+  expect(isDueToday(alreadyDueConceptual.dueAt, new Date(now), 'UTC')).toBe(true);
+  const firstActivity = await createReviewActivity('gradient-descent', 'gradient-descent-step');
+  const secondActivity = await createReviewActivity('gradient-descent', 'gradient-descent-step');
+
+  await submitReviewActivityAgain(firstActivity.id);
+  await submitReviewActivityAgain(secondActivity.id);
+
+  const activitiesAfterAgain = await db
+    .select()
+    .from(sessionActivities)
+    .where(eq(sessionActivities.sessionId, secondActivity.sessionId))
+    .orderBy(asc(sessionActivities.idx));
+  const isGradientsReview = (activity: (typeof activitiesAfterAgain)[number]) =>
+    activity.kind === 'review' &&
+    activity.exerciseIds.some(
+      (exerciseId) => content.exercisesById.get(exerciseId)?.concept === weakest.conceptId,
+    );
+  const prerequisiteActivities = activitiesAfterAgain.filter(isGradientsReview);
+  expect(prerequisiteActivities).toHaveLength(1);
+  const insertedActivity = prerequisiteActivities[0];
+  if (!insertedActivity) throw new Error('Expected a prerequisite review activity');
+  const dimensions = new Set(
+    insertedActivity.exerciseIds.flatMap((exerciseId) => {
+      const exercise = content.exercisesById.get(exerciseId);
+      return exercise?.concept === weakest.conceptId ? [exercise.dimension] : [];
+    }),
+  );
+  expect(dimensions.has('math')).toBe(true);
+  expect(dimensions.has('conceptual')).toBe(true);
+
+  const replanResponse = await app.request(`/api/sessions/${secondActivity.sessionId}/replan`, {
+    method: 'POST',
+    headers: headersAt(now),
+    body: JSON.stringify({ remainingBudgetMinutes: 600 }),
+  });
+  expect(replanResponse.status).toBe(200);
+  const activitiesAfterReplan = await db
+    .select()
+    .from(sessionActivities)
+    .where(eq(sessionActivities.sessionId, secondActivity.sessionId))
+    .orderBy(asc(sessionActivities.idx));
+  const prerequisiteActivitiesAfterReplan = activitiesAfterReplan.filter(isGradientsReview);
+  expect(prerequisiteActivitiesAfterReplan).toHaveLength(1);
+  expect(prerequisiteActivitiesAfterReplan[0]?.id).toBe(insertedActivity.id);
+});
+
+test('double Again extends a planned mixed review with a newly due prerequisite dimension', async () => {
+  await resetLearner();
+  const { math, conceptual } = await createDoubleAgainVectorCards();
+  const [vectorMathId] = vectorMathExerciseIds();
+  if (!vectorMathId) throw new Error('Expected a vector math exercise');
+  const firstAgainActivity = await createReviewActivity(
+    'derivatives',
+    'derivatives-fixture-1-basics',
+  );
+  await submitIncorrectReviewExercise('derivatives-fixture-1-basics', firstAgainActivity.id);
+
+  const triggerActivity = await createReviewActivity('derivatives', 'derivatives-fixture-1-basics');
+  const plannedActivity = await createReviewActivityInSession(
+    triggerActivity.sessionId,
+    triggerActivity.idx + 1,
+    null,
+    [vectorMathId, 'loss-functions-mse', 'switching-topic-fixture-review'],
+    'planned',
+    15,
+  );
+  const originalExerciseIds = [...plannedActivity.exerciseIds];
+  const originalPlannedMinutes = plannedActivity.plannedMinutes;
+
+  const paceRatio = 1.3;
+  const originalSchedulerState = LearnerRepository.prototype.schedulerState;
+  const schedulerStateSpy = vi
+    .spyOn(LearnerRepository.prototype, 'schedulerState')
+    .mockImplementation(async function (this: LearnerRepository, now, contentIndex, loaded) {
+      const state = await originalSchedulerState.call(this, now, contentIndex, loaded);
+      return { ...state, actualEstimateRatio: paceRatio };
+    });
+  let triggerResult: { activityCompleted?: boolean } | undefined;
+  try {
+    triggerResult = await submitIncorrectReviewExercise(
+      'derivatives-fixture-1-basics',
+      triggerActivity.id,
+    );
+  } finally {
+    schedulerStateSpy.mockRestore();
+  }
+  expect(triggerResult.activityCompleted).toBe(true);
+
+  const [updatedPlannedActivity] = await db
+    .select()
+    .from(sessionActivities)
+    .where(eq(sessionActivities.id, plannedActivity.id));
+  if (!updatedPlannedActivity) throw new Error('Expected the mixed review activity to be extended');
+  const [dueConceptual] = await db
+    .select()
+    .from(reviewCards)
+    .where(eq(reviewCards.id, conceptual.id));
+  if (!dueConceptual) throw new Error('Expected the conceptual vector review card');
+  expect(dueConceptual.dueAt.getTime()).toBe(new Date(now).getTime());
+  const additions = updatedPlannedActivity.exerciseIds.filter(
+    (exerciseId) => !originalExerciseIds.includes(exerciseId),
+  );
+  expect(additions.length).toBeGreaterThan(0);
+  expect(
+    additions.every((exerciseId) => {
+      const exercise = content.exercisesById.get(exerciseId);
+      return exercise?.concept === 'vectors' && exercise.dimension === 'conceptual';
+    }),
+  ).toBe(true);
+  const addedBaseMinutes = additions.reduce(
+    (total, exerciseId) => total + (content.exercisesById.get(exerciseId)?.est_minutes ?? 0),
+    0,
+  );
+  expect(addedBaseMinutes).toBeGreaterThan(0);
+  const expectedAddedMinutes = Math.ceil(addedBaseMinutes * paceRatio);
+  expect(expectedAddedMinutes).toBeGreaterThan(addedBaseMinutes);
+  expect(updatedPlannedActivity.plannedMinutes).toBe(originalPlannedMinutes + expectedAddedMinutes);
+  const activitiesWithVectors = await db
+    .select()
+    .from(sessionActivities)
+    .where(eq(sessionActivities.sessionId, triggerActivity.sessionId));
+  expect(
+    activitiesWithVectors.filter(
+      (item) =>
+        item.kind === 'review' &&
+        item.exerciseIds.some(
+          (exerciseId) => content.exercisesById.get(exerciseId)?.concept === 'vectors',
+        ),
+    ),
+  ).toHaveLength(1);
+
+  let completion: { activityCompleted?: boolean } | undefined;
+  for (const exerciseId of updatedPlannedActivity.exerciseIds) {
+    completion = await submitReviewExercise(
+      exerciseId,
+      updatedPlannedActivity.id,
+      correctAnswer(exerciseId, null),
+    );
+  }
+  expect(completion?.activityCompleted).toBe(true);
+  expect(await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, math.id))).toHaveLength(1);
+  expect(
+    await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, conceptual.id)),
+  ).toHaveLength(1);
+});
+
+test('double Again appends prerequisite exercises to an in-progress mixed review without completing it early', async () => {
+  await resetLearner();
+  const { math, conceptual } = await createDoubleAgainVectorCards();
+  const [firstMathId, secondMathId] = vectorMathExerciseIds();
+  if (!firstMathId || !secondMathId) throw new Error('Expected two vector math exercises');
+  const firstAgainActivity = await createReviewActivity(
+    'derivatives',
+    'derivatives-fixture-1-basics',
+  );
+  await submitIncorrectReviewExercise('derivatives-fixture-1-basics', firstAgainActivity.id);
+
+  const originalExerciseIds = [firstMathId, 'derivatives-fixture-1-basics', secondMathId];
+  const activeActivity = await createReviewActivity(null, originalExerciseIds);
+  const firstMathResult = await submitReviewExercise(
+    firstMathId,
+    activeActivity.id,
+    correctAnswer(firstMathId, null),
+  );
+  expect(firstMathResult.activityCompleted).toBe(false);
+
+  const triggerResult = await submitIncorrectReviewExercise(
+    'derivatives-fixture-1-basics',
+    activeActivity.id,
+  );
+  expect(triggerResult.activityCompleted).toBe(false);
+  const [extendedActivity] = await db
+    .select()
+    .from(sessionActivities)
+    .where(eq(sessionActivities.id, activeActivity.id));
+  if (!extendedActivity) throw new Error('Expected the in-progress activity to be extended');
+  expect(extendedActivity.exerciseIds.slice(0, originalExerciseIds.length)).toEqual(
+    originalExerciseIds,
+  );
+  const additions = extendedActivity.exerciseIds.slice(originalExerciseIds.length);
+  expect(additions.length).toBeGreaterThan(0);
+  expect(
+    additions.every((exerciseId) => {
+      const exercise = content.exercisesById.get(exerciseId);
+      return exercise?.concept === 'vectors' && exercise.dimension === 'conceptual';
+    }),
+  ).toBe(true);
+  expect(extendedActivity.plannedMinutes).toBe(
+    activeActivity.plannedMinutes +
+      additions.reduce(
+        (total, exerciseId) => total + (content.exercisesById.get(exerciseId)?.est_minutes ?? 0),
+        0,
+      ),
+  );
+  const [dueConceptual] = await db
+    .select()
+    .from(reviewCards)
+    .where(eq(reviewCards.id, conceptual.id));
+  if (!dueConceptual) throw new Error('Expected the conceptual vector review card');
+  expect(dueConceptual.dueAt.getTime()).toBe(new Date(now).getTime());
+
+  let completion: { activityCompleted?: boolean } | undefined;
+  for (const exerciseId of originalExerciseIds) {
+    if (exerciseId === firstMathId || exerciseId === 'derivatives-fixture-1-basics') continue;
+    completion = await submitReviewExercise(
+      exerciseId,
+      activeActivity.id,
+      correctAnswer(exerciseId, null),
+    );
+  }
+  expect(completion?.activityCompleted).toBe(false);
+  for (const exerciseId of additions) {
+    completion = await submitReviewExercise(
+      exerciseId,
+      activeActivity.id,
+      correctAnswer(exerciseId, null),
+    );
+  }
+  expect(completion?.activityCompleted).toBe(true);
+  expect(await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, math.id))).toHaveLength(1);
+  expect(
+    await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, conceptual.id)),
+  ).toHaveLength(1);
+});
+
+test('double Again does not extend or add a prerequisite review already completed today', async () => {
+  await resetLearner();
+  const { conceptual, future } = await createDoubleAgainVectorCards();
+  const firstAgainActivity = await createReviewActivity(
+    'derivatives',
+    'derivatives-fixture-1-basics',
+  );
+  await submitIncorrectReviewExercise('derivatives-fixture-1-basics', firstAgainActivity.id);
+
+  const vectorActivity = await createReviewActivity('vectors', 'vectors-magnitude');
+  const triggerActivity = await createReviewActivityInSession(
+    vectorActivity.sessionId,
+    vectorActivity.idx + 1,
+    'derivatives',
+    ['derivatives-fixture-1-basics'],
+    'planned',
+  );
+  const vectorResult = await submitReviewExercise(
+    'vectors-magnitude',
+    vectorActivity.id,
+    correctAnswer('vectors-magnitude', null),
+  );
+  expect(vectorResult.activityCompleted).toBe(true);
+
+  await submitIncorrectReviewExercise('derivatives-fixture-1-basics', triggerActivity.id);
+
+  const [unchangedConceptual] = await db
+    .select()
+    .from(reviewCards)
+    .where(eq(reviewCards.id, conceptual.id));
+  if (!unchangedConceptual) throw new Error('Expected the conceptual vector review card');
+  expect(unchangedConceptual.dueAt.getTime()).toBe(future.getTime());
+  const activities = await db
+    .select()
+    .from(sessionActivities)
+    .where(eq(sessionActivities.sessionId, vectorActivity.sessionId));
+  expect(
+    activities.filter(
+      (item) =>
+        item.kind === 'review' &&
+        item.exerciseIds.some(
+          (exerciseId) => content.exercisesById.get(exerciseId)?.concept === 'vectors',
+        ),
+    ),
+  ).toHaveLength(1);
 });
 
 test('one Again review activity does not pull a prerequisite card due', async () => {
@@ -917,7 +1390,7 @@ test('/api/reviews returns the local upcoming schedule and skips stub topics', a
   const response = await app.request('/api/reviews', { headers: headersAt(now) });
   expect(response.status).toBe(200);
   const body = await response.json();
-  expect(body.dueNow).toBe(1);
+  expect(body.dueNow).toBe(2);
   expect(body.upcoming).toHaveLength(7);
   expect(body.upcoming.map((day: { date: string }) => day.date)).toEqual([
     '2026-01-02',
@@ -940,7 +1413,7 @@ test('/api/reviews returns the local upcoming schedule and skips stub topics', a
     due: true,
     dueInDays: 0,
   });
-  expect(body.topics[1]).toMatchObject({ due: false, dueInDays: 0 });
+  expect(body.topics[1]).toMatchObject({ due: true, dueInDays: 0 });
   expect(body.topics[2]).toMatchObject({ due: false, dueInDays: 2 });
   expect(body.topics[0]).not.toHaveProperty('recall');
   expect(body.topics[0]).not.toHaveProperty('reps');
@@ -1620,42 +2093,55 @@ test('lesson-runner schedules one due review per concept, then reschedules it', 
     headers: headersAt(reviewNow.toISOString()),
   });
   expect(todayResponse.status).toBe(200);
-  const today = await todayResponse.json();
-  const dueCards = cards.filter((card) => card.dueAt <= reviewNow);
-  const reviewActivities = today.plan.activities.filter(
+  const sessionResponse = await app.request('/api/sessions', {
+    method: 'POST',
+    headers: headersAt(reviewNow.toISOString()),
+    body: JSON.stringify({ budgetMinutes: 600 }),
+  });
+  expect(sessionResponse.status).toBe(201);
+  const session = await sessionResponse.json();
+  const dueCards = cards.filter((card) => isDueToday(card.dueAt, reviewNow, 'America/Los_Angeles'));
+  const reviewActivities = session.activities.filter(
     (activity: { kind: string }) => activity.kind === 'review',
   );
-  const plannedCardKeys = reviewActivities.map(
-    (activity: { conceptId: string; exerciseIds: string[] }) => {
-      const exercise = content.exercisesById.get(activity.exerciseIds[0] ?? '');
-      return `${activity.conceptId}/${exercise?.dimension}`;
-    },
+  const plannedCardKeys = reviewActivities.flatMap((activity: { exerciseIds: string[] }) =>
+    activity.exerciseIds.flatMap((exerciseId) => {
+      const exercise = content.exercisesById.get(exerciseId);
+      return exercise ? [`${exercise.concept}/${exercise.dimension}`] : [];
+    }),
   );
   expect(reviewActivities).toHaveLength(1);
   expect(
     dueCards.some((card) => plannedCardKeys.includes(`${card.conceptId}/${card.dimension}`)),
   ).toBe(true);
 
-  const reviewActivity = reviewActivities[0];
-  if (!reviewActivity) throw new Error('No due review activity was planned');
-  const exerciseId = reviewActivity.exerciseIds[0] as string;
-  const exercise = content.exercisesById.get(exerciseId);
-  if (!exercise) throw new Error(`Missing review exercise ${exerciseId}`);
-  const card = dueCards.find(
-    (item) => item.conceptId === exercise.concept && item.dimension === exercise.dimension,
+  const card = dueCards.find((item) =>
+    plannedCardKeys.includes(`${item.conceptId}/${item.dimension}`),
   );
   if (!card) throw new Error('Planned review did not match a due card');
-  const answerResponse = await app.request('/api/attempts', {
-    method: 'POST',
-    headers: headersAt(reviewNow.toISOString()),
-    body: JSON.stringify({
-      exerciseId,
-      answer: correctAnswer(exerciseId, null),
-      mode: 'review',
+  const reviewActivity = reviewActivities.find((activity: { exerciseIds: string[] }) =>
+    activity.exerciseIds.some((exerciseId) => {
+      const exercise = content.exercisesById.get(exerciseId);
+      return exercise?.concept === card.conceptId && exercise.dimension === card.dimension;
     }),
-  });
-  expect(answerResponse.status).toBe(200);
-  expect((await answerResponse.json()).correct).toBeGreaterThan(0);
+  );
+  if (!reviewActivity) throw new Error('No due review activity was planned');
+  for (const exerciseId of reviewActivity.exerciseIds) {
+    const exercise = content.exercisesById.get(exerciseId);
+    if (exercise?.concept !== card.conceptId || exercise.dimension !== card.dimension) continue;
+    const answerResponse = await app.request('/api/attempts', {
+      method: 'POST',
+      headers: headersAt(reviewNow.toISOString()),
+      body: JSON.stringify({
+        exerciseId,
+        activityId: reviewActivity.id,
+        answer: correctAnswer(exerciseId, null),
+        mode: 'review',
+      }),
+    });
+    expect(answerResponse.status).toBe(200);
+    expect((await answerResponse.json()).correct).toBeGreaterThan(0);
+  }
 
   const [rescheduled] = await db.select().from(reviewCards).where(eq(reviewCards.id, card.id));
   expect(rescheduled?.dueAt.getTime()).toBeGreaterThanOrEqual(reviewNow.getTime() + 86_400_000);
@@ -1749,6 +2235,87 @@ test('mixed review rates and logs each topic after its own questions are answere
   expect(ratedB?.dueAt.getTime()).toBeGreaterThan(originalDueAt.getTime());
   expect(await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, cardA.id))).toHaveLength(1);
   expect(await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, cardB.id))).toHaveLength(1);
+});
+
+test('a multi-dimension review rates each card after its matching exercises are answered', async () => {
+  await resetLearner();
+  const dimensionExercises = (dimension: string) =>
+    (content.exercisesByConcept.get('vectors') ?? [])
+      .filter(
+        (exercise) =>
+          exercise.dimension === dimension &&
+          !exercise.lesson_only &&
+          !isTemplate(exercise) &&
+          (exercise.type === 'mc' || 'answer' in exercise || 'accept' in exercise),
+      )
+      .slice(0, 2);
+  const mathExercises = dimensionExercises('math');
+  const conceptualExercises = dimensionExercises('conceptual');
+  expect(mathExercises).toHaveLength(2);
+  expect(conceptualExercises).toHaveLength(2);
+  const exerciseIds = [...mathExercises, ...conceptualExercises].map(({ id }) => id);
+  const dimensions = exerciseIds.map(
+    (exerciseId) => content.exercisesById.get(exerciseId)?.dimension,
+  );
+  expect(new Set(dimensions)).toEqual(new Set(['math', 'conceptual']));
+
+  const originalDueAt = new Date('2025-12-31T00:00:00.000Z');
+  const mathCard = await createReviewCard('vectors', 'math', originalDueAt);
+  const conceptualCard = await createReviewCard('vectors', 'conceptual', originalDueAt);
+  const activity = await createReviewActivity('vectors', exerciseIds);
+
+  for (const exercise of mathExercises) {
+    const response = await app.request('/api/attempts', {
+      method: 'POST',
+      headers: headersAt(now),
+      body: JSON.stringify({
+        exerciseId: exercise.id,
+        activityId: activity.id,
+        answer: correctAnswer(exercise.id, null),
+        mode: 'review',
+      }),
+    });
+    expect(response.status).toBe(200);
+  }
+
+  const [ratedMath, waitingConceptual] = await Promise.all([
+    db.select().from(reviewCards).where(eq(reviewCards.id, mathCard.id)),
+    db.select().from(reviewCards).where(eq(reviewCards.id, conceptualCard.id)),
+  ]);
+  expect(ratedMath[0]?.dueAt.getTime()).toBeGreaterThan(originalDueAt.getTime());
+  expect(waitingConceptual[0]?.dueAt.getTime()).toBe(originalDueAt.getTime());
+  expect(await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, mathCard.id))).toHaveLength(
+    1,
+  );
+  expect(
+    await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, conceptualCard.id)),
+  ).toHaveLength(0);
+
+  for (const exercise of conceptualExercises) {
+    const response = await app.request('/api/attempts', {
+      method: 'POST',
+      headers: headersAt(now),
+      body: JSON.stringify({
+        exerciseId: exercise.id,
+        activityId: activity.id,
+        answer: correctAnswer(exercise.id, null),
+        mode: 'review',
+      }),
+    });
+    expect(response.status).toBe(200);
+  }
+
+  const [ratedConceptual] = await db
+    .select()
+    .from(reviewCards)
+    .where(eq(reviewCards.id, conceptualCard.id));
+  expect(ratedConceptual?.dueAt.getTime()).toBeGreaterThan(originalDueAt.getTime());
+  expect(await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, mathCard.id))).toHaveLength(
+    1,
+  );
+  expect(
+    await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, conceptualCard.id)),
+  ).toHaveLength(1);
 });
 
 test('stale sessions are hidden for today, abandoned by new sessions, and keep lesson progress', async () => {

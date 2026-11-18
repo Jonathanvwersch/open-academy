@@ -23,9 +23,12 @@ import {
   outlinePosition,
   prerequisiteMet,
 } from '../../src/learning/prerequisites.js';
+import { reviewTopicsForActivity } from '../../src/learning/review-topics.js';
 import type { Candidate, PlannedActivity, SchedulerState } from '../../src/learning/scheduler.js';
 import {
   currentLearnerUnit,
+  explainReviewSelection,
+  interleaveReviewExercises,
   mixReviewActivities,
   planSession,
   replan,
@@ -82,6 +85,35 @@ beforeAll(async () => {
   courseContent = await loadContent('content');
 });
 
+test('in-progress review topics omit topics whose exercises have attempts', () => {
+  const vectorsExercise = required(
+    content.exercisesByConcept.get('vectors')?.[0],
+    'vectors exercise',
+  );
+  const derivativesExercise = required(
+    content.exercisesByConcept.get('derivatives')?.[0],
+    'derivatives exercise',
+  );
+  const activity = {
+    kind: 'review',
+    status: 'in_progress',
+    exerciseIds: [vectorsExercise.id, derivativesExercise.id],
+  };
+
+  expect(
+    reviewTopicsForActivity(activity, content, new Set([vectorsExercise.id])).map(
+      (topic) => topic.conceptId,
+    ),
+  ).toEqual(['derivatives']);
+  expect(
+    reviewTopicsForActivity(
+      { ...activity, status: 'planned' },
+      content,
+      new Set(activity.exerciseIds),
+    ).map((topic) => topic.conceptId),
+  ).toEqual(['vectors', 'derivatives']);
+});
+
 function emptyState(): SchedulerState {
   return {
     activeCourseId: null,
@@ -89,6 +121,7 @@ function emptyState(): SchedulerState {
     recentLearnMinutesByConcept: {},
     mastery: [],
     cards: [],
+    reviewedTodayConceptIds: [],
     recentAttempts: [],
     remediationFlags: [],
     projectProgress: [],
@@ -131,6 +164,94 @@ function studyState(courseIds: string[], index: ContentIndex = courseContent): S
     studyCourseIds: courseIds,
     mastery: mastery.filter((record) => !courseConceptIds.has(record.conceptId)),
   };
+}
+
+function reviewQueueFixture(
+  topicCount: number,
+  inUnitTopicCount: number,
+  minutesPerExercise: number,
+) {
+  const conceptTemplate = required(content.conceptsById.get('vectors'), 'vectors concept');
+  const exerciseTemplate = required(
+    content.exercisesByConcept
+      .get('vectors')
+      ?.find((exercise) => exercise.dimension === 'math' && !exercise.lesson_only),
+    'vectors math exercise',
+  );
+  const topicIds = Array.from(
+    { length: topicCount },
+    (_, index) => `review-queue-${String(index).padStart(2, '0')}`,
+  );
+  const concepts = topicIds.map((id, index) => ({
+    ...conceptTemplate,
+    id,
+    title: id,
+    goal_weight: index < inUnitTopicCount ? 100 : 0,
+    dimensions: ['math'] as typeof conceptTemplate.dimensions,
+    prereqs: [],
+  }));
+  const exercises = topicIds.flatMap((conceptId) =>
+    Array.from({ length: 3 }, (_, index) => ({
+      ...exerciseTemplate,
+      id: `${conceptId}-review-${index + 1}`,
+      concept: conceptId,
+      dimension: 'math' as const,
+      role: 'review' as const,
+      est_minutes: minutesPerExercise,
+      lesson_only: false,
+    })),
+  );
+  const course = required(content.coursesById.get('fixture-course'), 'fixture course');
+  const courses = content.courses.map((candidate) =>
+    candidate.id === course.id
+      ? {
+          ...candidate,
+          units: candidate.units.map((unit, index) => ({
+            ...unit,
+            concepts: index === 0 ? topicIds.slice(0, inUnitTopicCount) : [],
+          })),
+        }
+      : candidate,
+  );
+  const conceptsById = new Map(content.conceptsById);
+  for (const concept of concepts) conceptsById.set(concept.id, concept);
+  const exercisesById = new Map(content.exercisesById);
+  const exercisesByConcept = new Map(content.exercisesByConcept);
+  for (const conceptId of topicIds) {
+    const conceptExercises = exercises.filter((exercise) => exercise.concept === conceptId);
+    exercisesByConcept.set(conceptId, conceptExercises);
+    for (const exercise of conceptExercises) exercisesById.set(exercise.id, exercise);
+  }
+  return {
+    index: {
+      ...content,
+      courses,
+      coursesById: new Map(courses.map((candidate) => [candidate.id, candidate])),
+      concepts: [...content.concepts, ...concepts],
+      conceptsById,
+      exercises: [...content.exercises, ...exercises],
+      exercisesById,
+      exercisesByConcept,
+    } satisfies ContentIndex,
+    topicIds,
+    inUnitTopicIds: topicIds.slice(0, inUnitTopicCount),
+    offPathTopicIds: topicIds.slice(inUnitTopicCount),
+  };
+}
+
+function plannedReviewTopics(plan: ReturnType<typeof planSession>, index: ContentIndex) {
+  return [
+    ...new Set(
+      plan.activities
+        .filter((activity) => activity.kind === 'review')
+        .flatMap((activity) =>
+          activity.exerciseIds.flatMap((exerciseId) => {
+            const conceptId = index.exercisesById.get(exerciseId)?.concept;
+            return conceptId ? [conceptId] : [];
+          }),
+        ),
+    ),
+  ];
 }
 
 function studyCourseOwner(
@@ -1162,7 +1283,7 @@ test('four due topics spread into two mixed reviews of two topics each', () => {
   ]);
 });
 
-test('a due review is skipped on the attempt day and planned the next local day', () => {
+test('a due review remains planned on the day of an ungraded attempt', () => {
   const state = emptyState();
   state.timezone = 'UTC';
   state.cards = [
@@ -1189,7 +1310,7 @@ test('a due review is skipped on the attempt day and planned the next local day'
     sameDayPlan.activities.some(
       (activity) => activity.kind === 'review' && activity.conceptId === 'vectors',
     ),
-  ).toBe(false);
+  ).toBe(true);
 
   const nextDayPlan = planSession(state, content, new Date('2026-01-14T00:30:00.000Z'), 60);
   expect(
@@ -1484,6 +1605,280 @@ test('a due review selects up to three distinct exercises for its concept and di
   );
 });
 
+test('a practice attempt today does not hide a due review', () => {
+  const state = emptyState();
+  state.cards = [
+    {
+      conceptId: 'vectors',
+      dimension: 'math',
+      dueAt: '2026-01-13T00:00:00.000Z',
+      retrievability: 0.7,
+    },
+  ];
+  state.recentAttempts = [
+    {
+      conceptId: 'vectors',
+      exerciseId: 'vectors-fixture-practice-1',
+      dimension: 'math',
+      correct: 1,
+      itemRole: 'core',
+      createdAt: now.toISOString(),
+    },
+  ];
+
+  const plan = planSession(state, content, now, 60);
+  expect(
+    plan.activities.some(
+      (activity) =>
+        activity.kind === 'review' &&
+        activity.exerciseIds.some(
+          (exerciseId) => content.exercisesById.get(exerciseId)?.concept === 'vectors',
+        ),
+    ),
+  ).toBe(true);
+});
+
+test('a review log today hides every due dimension for that topic', () => {
+  const state = emptyState();
+  state.cards = [
+    {
+      conceptId: 'vectors',
+      dimension: 'math',
+      dueAt: '2026-01-13T00:00:00.000Z',
+      retrievability: 0.7,
+    },
+    {
+      conceptId: 'vectors',
+      dimension: 'conceptual',
+      dueAt: '2026-01-13T00:00:00.000Z',
+      retrievability: 0.7,
+    },
+  ];
+  state.reviewedTodayConceptIds = ['vectors'];
+
+  const plan = planSession(state, content, now, 60);
+  expect(
+    plan.activities.some(
+      (activity) =>
+        activity.kind === 'review' &&
+        activity.exerciseIds.some(
+          (exerciseId) => content.exercisesById.get(exerciseId)?.concept === 'vectors',
+        ),
+    ),
+  ).toBe(false);
+});
+
+test('a large review budget fits due topics after review candidates are mixed', () => {
+  const dueConcepts = [
+    'vectors',
+    'derivatives',
+    'gradients',
+    'linear-algebra',
+    'switching-topic',
+    'linear-models',
+  ];
+  const state = emptyState();
+  state.cards = dueConcepts.map((conceptId) => ({
+    conceptId,
+    dimension: 'math',
+    dueAt: '2026-01-13T00:00:00.000Z',
+  }));
+
+  const plan = planSession(state, content, now, 6000);
+  const plannedConcepts = new Set(
+    plan.activities
+      .filter((activity) => activity.kind === 'review')
+      .flatMap((activity) =>
+        activity.exerciseIds.flatMap((exerciseId) => {
+          const conceptId = content.exercisesById.get(exerciseId)?.concept;
+          return conceptId ? [conceptId] : [];
+        }),
+      ),
+  );
+  expect(dueConcepts.filter((conceptId) => !plannedConcepts.has(conceptId))).toEqual([]);
+});
+
+test('a review combines due dimensions for one concept and alternates their exercises', () => {
+  const state = emptyState();
+  state.cards = [
+    {
+      conceptId: 'vectors',
+      dimension: 'math',
+      dueAt: '2026-01-13T00:00:00.000Z',
+      retrievability: 0.7,
+    },
+    {
+      conceptId: 'vectors',
+      dimension: 'conceptual',
+      dueAt: '2026-01-12T00:00:00.000Z',
+      retrievability: 0.5,
+    },
+  ];
+
+  const plan = planSession(state, content, now, 180);
+  const vectorsReviews = plan.activities.filter(
+    (activity) =>
+      activity.kind === 'review' &&
+      activity.exerciseIds.some(
+        (exerciseId) => content.exercisesById.get(exerciseId)?.concept === 'vectors',
+      ),
+  );
+  expect(vectorsReviews).toHaveLength(1);
+  const review = vectorsReviews[0];
+  if (!review) throw new Error('Expected one vector review activity');
+  expect(review.exerciseIds.length).toBeGreaterThanOrEqual(2);
+  expect(review.exerciseIds.length).toBeLessThanOrEqual(4);
+  expect(new Set(review.exerciseIds).size).toBe(review.exerciseIds.length);
+
+  const dimensions = review.exerciseIds.map((exerciseId) => {
+    const exercise = content.exercisesById.get(exerciseId);
+    if (!exercise) throw new Error(`Missing exercise ${exerciseId}`);
+    return exercise.dimension;
+  });
+  expect(new Set(dimensions)).toEqual(new Set(['math', 'conceptual']));
+  for (let index = 1; index < dimensions.length; index += 1) {
+    expect(dimensions[index]).not.toBe(dimensions[index - 1]);
+  }
+  expect(review.reason.summary).toBe('Due since 12 Jan 2026 · ~50% recall.');
+});
+
+test('mixed review questions greedily alternate topic queues', () => {
+  const reviews = [
+    { topicId: 'a', exerciseIds: ['a1', 'a2', 'a3', 'a4'] },
+    { topicId: 'b', exerciseIds: ['b1', 'b2'] },
+    { topicId: 'c', exerciseIds: ['c1'] },
+  ];
+  const topics = new Map(
+    reviews.flatMap(({ topicId, exerciseIds }) => exerciseIds.map((id) => [id, topicId])),
+  );
+  const ordered = interleaveReviewExercises(reviews);
+  expect(ordered.map((id) => topics.get(id))).toEqual(['a', 'b', 'a', 'b', 'a', 'c', 'a']);
+  expect(
+    ordered.every(
+      (id, index) => index === 0 || topics.get(id) !== topics.get(ordered[index - 1] ?? ''),
+    ),
+  ).toBe(true);
+  expect(
+    interleaveReviewExercises([
+      { topicId: 'a', exerciseIds: ['a1'] },
+      { topicId: 'b', exerciseIds: ['b1'] },
+    ]),
+  ).toEqual(['a1', 'b1']);
+});
+
+test('replanning does not repeat a completed mixed-review topic', () => {
+  const state = emptyState();
+  state.cards = [
+    { conceptId: 'vectors', dimension: 'math', dueAt: '2026-01-13T00:00:00.000Z' },
+    { conceptId: 'derivatives', dimension: 'math', dueAt: '2026-01-13T00:00:00.000Z' },
+  ];
+  const mixed: PlannedActivity = {
+    kind: 'review',
+    conceptId: null,
+    exerciseIds: ['vectors-fixture-practice-1', 'derivatives-fixture-practice-1'],
+    plannedMinutes: 10,
+    status: 'completed',
+    reason: {
+      terms: { goal: 0, week_fit: 0, project: 0, unlock: 0, gap: 0, review: 0, cost: 0 },
+      summary: '',
+    },
+  };
+  const plan = replan(state, content, now, 60, [mixed]);
+  expect(
+    plan.activities.some(
+      (activity) =>
+        activity.kind === 'review' &&
+        activity.exerciseIds.some(
+          (exerciseId) => content.exercisesById.get(exerciseId)?.concept === 'vectors',
+        ),
+    ),
+  ).toBe(false);
+});
+
+test('a concept with multiple due dimensions appears in only one review activity', () => {
+  const state = {
+    ...emptyState(),
+    lessonRuns: [{ conceptId: 'vectors', status: 'in_progress' as const }],
+    usedExerciseIds: ['vectors-fixture-final'],
+  };
+  state.cards = [
+    {
+      conceptId: 'vectors',
+      dimension: 'math',
+      dueAt: '2026-01-13T00:00:00.000Z',
+      retrievability: 0.7,
+    },
+    {
+      conceptId: 'derivatives',
+      dimension: 'math',
+      dueAt: '2026-01-13T00:00:00.000Z',
+      retrievability: 0.6,
+    },
+    {
+      conceptId: 'linear-models',
+      dimension: 'math',
+      dueAt: '2026-01-13T00:00:00.000Z',
+      retrievability: 0.6,
+    },
+    {
+      conceptId: 'vectors',
+      dimension: 'conceptual',
+      dueAt: '2026-01-13T00:00:00.000Z',
+      retrievability: 0.7,
+    },
+  ];
+
+  const plan = planSession(state, content, now, 240);
+  const conceptAppearances = new Map<string, number>();
+  const reviewActivities = plan.activities.filter((activity) => activity.kind === 'review');
+  for (const activity of reviewActivities) {
+    const concepts = new Set(
+      activity.exerciseIds.map((exerciseId) => {
+        const exercise = content.exercisesById.get(exerciseId);
+        if (!exercise) throw new Error(`Missing exercise ${exerciseId}`);
+        return exercise.concept;
+      }),
+    );
+    expect(concepts.size).toBeLessThanOrEqual(3);
+    for (const conceptId of concepts) {
+      conceptAppearances.set(conceptId, (conceptAppearances.get(conceptId) ?? 0) + 1);
+    }
+  }
+
+  for (const conceptId of ['vectors', 'derivatives', 'linear-models']) {
+    expect(conceptAppearances.get(conceptId)).toBe(1);
+  }
+});
+
+test('a non-due dimension attempt does not hide another due dimension', () => {
+  const state = emptyState();
+  state.cards = [
+    {
+      conceptId: 'vectors',
+      dimension: 'conceptual',
+      dueAt: '2026-01-13T00:00:00.000Z',
+      retrievability: 0.7,
+    },
+  ];
+  state.recentAttempts = [
+    {
+      conceptId: 'vectors',
+      dimension: 'math',
+      exerciseId: 'vectors-magnitude',
+      createdAt: now.toISOString(),
+      correct: 1,
+      itemRole: 'review',
+    },
+  ];
+
+  const plan = planSession(state, content, now, 180);
+  const review = plan.activities.find((activity) => activity.kind === 'review');
+  expect(review).toBeDefined();
+  for (const exerciseId of review?.exerciseIds ?? []) {
+    expect(content.exercisesById.get(exerciseId)?.dimension).toBe('conceptual');
+  }
+});
+
 test('a due review uses fewer than three exercises when fewer are available', () => {
   const onlyExercise = required(
     (content.exercisesByConcept.get('vectors') ?? []).find(
@@ -1519,6 +1914,102 @@ test('Time budget is respected', () => {
   expect(
     plan.activities.reduce((sum, activity) => sum + activity.plannedMinutes, 0),
   ).toBeLessThanOrEqual(17);
+});
+
+test('resumed lessons and due reviews stay within the activity limit', () => {
+  const eligibleReviewExercise = (conceptId: string, excludedId?: string) =>
+    (courseContent.exercisesByConcept.get(conceptId) ?? []).find(
+      (exercise) =>
+        exercise.id !== excludedId &&
+        !isTemplate(exercise) &&
+        !exercise.lesson_only &&
+        ['review', 'core', 'practice', 'transfer', 'basics'].includes(exercise.role),
+    );
+  const course = courseContent.courses.find((candidate) => {
+    const lessonConcepts = new Set(
+      candidate.units
+        .flatMap((unit) => unit.concepts)
+        .filter((conceptId) => {
+          const lesson = courseContent.lessonsByConcept.get(conceptId);
+          return (
+            (lesson?.knowledge_points?.length ?? 0) > 0 &&
+            eligibleReviewExercise(conceptId, lesson?.final) !== undefined
+          );
+        }),
+    );
+    return lessonConcepts.size >= 2;
+  });
+  if (!course) throw new Error('Expected a course with two lesson concepts');
+  const resumedConceptIds = [...new Set(course.units.flatMap((unit) => unit.concepts))]
+    .filter((conceptId) => {
+      const lesson = courseContent.lessonsByConcept.get(conceptId);
+      return (
+        (lesson?.knowledge_points?.length ?? 0) > 0 &&
+        eligibleReviewExercise(conceptId, lesson?.final) !== undefined
+      );
+    })
+    .slice(0, 2);
+  expect(resumedConceptIds).toHaveLength(2);
+  const dueConceptIds = [
+    ...new Set([
+      ...resumedConceptIds,
+      ...courseContent.concepts
+        .filter(
+          (concept) =>
+            concept.status !== 'stub' && eligibleReviewExercise(concept.id) !== undefined,
+        )
+        .map((concept) => concept.id),
+    ]),
+  ].slice(0, 12);
+  const state = studyState([course.id], courseContent);
+  const masteryByKey = new Map(
+    state.mastery.map((record) => [masteryKey(record.conceptId, record.dimension), record]),
+  );
+  for (const conceptId of dueConceptIds) {
+    const concept = required(courseContent.conceptsById.get(conceptId), conceptId);
+    for (const dimension of concept.dimensions) {
+      masteryByKey.set(masteryKey(conceptId, dimension), {
+        ...initialMastery(conceptId, dimension),
+        state: 'retained',
+      });
+    }
+  }
+  state.mastery = [...masteryByKey.values()];
+  state.lessonRuns = resumedConceptIds.map((conceptId) => ({
+    conceptId,
+    status: 'in_progress' as const,
+  }));
+  state.usedExerciseIds = resumedConceptIds.flatMap((conceptId) => {
+    const finalId = courseContent.lessonsByConcept.get(conceptId)?.final;
+    return finalId ? [finalId] : [];
+  });
+  state.cards = dueConceptIds.flatMap((conceptId) => {
+    const exercise = eligibleReviewExercise(conceptId);
+    return exercise
+      ? [
+          {
+            conceptId,
+            dimension: exercise.dimension,
+            dueAt: '2026-01-13T00:00:00.000Z',
+            retrievability: 0.6,
+          },
+        ]
+      : [];
+  });
+
+  const plan = planSession(state, courseContent, now, 600);
+
+  expect(
+    plan.activities
+      .filter((activity) => activity.kind === 'learn')
+      .map((activity) => activity.conceptId),
+  ).toEqual(expect.arrayContaining(resumedConceptIds));
+  expect(
+    plan.activities.length,
+    JSON.stringify(
+      plan.activities.map((activity) => `${activity.kind}:${activity.conceptId ?? ''}`),
+    ),
+  ).toBeLessThanOrEqual(SCHEDULER_CONFIG.weekday.maxActivities);
 });
 
 test('Interrupted session resumes its in-progress activity during replanning', () => {
@@ -2221,6 +2712,307 @@ test('due reviews use at most 30% of a normal budget', () => {
     .reduce((sum, activity) => sum + activity.plannedMinutes, 0);
 
   expect(reviewMinutes).toBeLessThanOrEqual(Math.floor(budget * 0.3));
+});
+
+test('review urgency selects an overdue off-path topic when the cap fits one review', () => {
+  const fixture = reviewQueueFixture(2, 1, 6);
+  const inUnit = required(fixture.topicIds[0], 'in-unit review topic');
+  const offPath = required(fixture.topicIds[1], 'off-path review topic');
+  const state = emptyState();
+  state.activeCourseId = 'fixture-course';
+  state.studyCourseIds = ['fixture-course'];
+  state.mastery = fixture.topicIds.map((conceptId) => ({
+    ...initialMastery(conceptId, 'math'),
+    state: 'independent' as const,
+  }));
+  state.cards = [
+    { conceptId: inUnit, dimension: 'math', dueAt: now.toISOString(), retrievability: 0.9 },
+    {
+      conceptId: offPath,
+      dimension: 'math',
+      dueAt: new Date(now.getTime() - 4 * 86_400_000).toISOString(),
+      retrievability: 0.6,
+    },
+  ];
+
+  const plan = planSession(state, fixture.index, now, 60);
+  const selectedTopics = plannedReviewTopics(plan, fixture.index);
+  const plannedMinutes = plan.activities
+    .filter((activity) => activity.kind === 'review')
+    .reduce((sum, activity) => sum + activity.plannedMinutes, 0);
+  const inUnitCard = required(state.cards[0], 'in-unit review card');
+  const offPathCard = required(state.cards[1], 'off-path review card');
+  const inUnitReview = planSession(
+    { ...state, cards: [inUnitCard] },
+    fixture.index,
+    now,
+    60,
+  ).activities.find((activity) => activity.kind === 'review');
+  const offPathReview = planSession(
+    { ...state, cards: [offPathCard] },
+    fixture.index,
+    now,
+    60,
+  ).activities.find((activity) => activity.kind === 'review');
+  const score = (activity: PlannedActivity | undefined) => {
+    if (!activity) throw new Error('Expected a review activity');
+    const weighted = Object.entries(activity.reason.terms).reduce(
+      (total, [term, value]) =>
+        total + value * SCHEDULER_CONFIG.weights[term as keyof typeof SCHEDULER_CONFIG.weights],
+      0,
+    );
+    return weighted / Math.sqrt(activity.plannedMinutes);
+  };
+
+  expect(selectedTopics).toEqual([offPath]);
+  expect(plannedMinutes).toBe(18);
+  expect(score(inUnitReview)).toBeGreaterThan(score(offPathReview));
+  expect(offPathReview?.reason.terms.review).toBeGreaterThan(
+    inUnitReview?.reason.terms.review ?? 0,
+  );
+});
+
+test('two-day-overdue reviews bypass a full cap before new lessons are planned', () => {
+  const fixture = reviewQueueFixture(3, 0, 4);
+  const oldest = required(fixture.topicIds[0], 'oldest review topic');
+  const overdue = required(fixture.topicIds[1], 'two-day-overdue review topic');
+  const fixtureCourse = required(fixture.index.coursesById.get('fixture-course'), 'fixture course');
+  const courses = fixture.index.courses.map((course) =>
+    course.id === 'fixture-course'
+      ? {
+          ...course,
+          units: course.units.map((unit, index) =>
+            index === 0 ? { ...unit, concepts: ['vectors'] } : unit,
+          ),
+        }
+      : course,
+  );
+  const index: ContentIndex = {
+    ...fixture.index,
+    courses,
+    coursesById: new Map(courses.map((course) => [course.id, course])),
+  };
+  const state = emptyState();
+  state.activeCourseId = fixtureCourse.id;
+  state.studyCourseIds = [fixtureCourse.id];
+  state.mastery = fixture.topicIds.map((conceptId) => ({
+    ...initialMastery(conceptId, 'math'),
+    state: 'independent' as const,
+  }));
+  state.cards = [
+    {
+      conceptId: oldest,
+      dimension: 'math',
+      dueAt: new Date(now.getTime() - 3 * 86_400_000).toISOString(),
+      retrievability: 0.9,
+    },
+    {
+      conceptId: overdue,
+      dimension: 'math',
+      dueAt: new Date(now.getTime() - 2 * 86_400_000).toISOString(),
+      retrievability: 0.6,
+    },
+  ];
+
+  const baseline = planSession({ ...state, cards: state.cards.slice(0, 1) }, index, now, 42);
+  const plan = planSession(state, index, now, 42);
+  const explanations = explainReviewSelection(state, index, now, 42);
+  const learnMinutes = (activities: PlannedActivity[]) =>
+    activities
+      .filter((activity) => activity.kind === 'learn')
+      .reduce((sum, activity) => sum + activity.plannedMinutes, 0);
+
+  expect(plannedReviewTopics(plan, index)).toEqual(expect.arrayContaining([oldest, overdue]));
+  expect(explanations.find((result) => result.conceptId === oldest)).toMatchObject({
+    result: 'selected:overdue',
+    reviewMinutes: 12,
+  });
+  expect(explanations.find((result) => result.conceptId === overdue)).toMatchObject({
+    result: 'selected:overdue',
+    reviewMinutes: 24,
+  });
+  expect(learnMinutes(baseline.activities)).toBe(20);
+  expect(learnMinutes(plan.activities)).toBe(0);
+});
+
+test('a review due one local day ago can still be deferred by the cap', () => {
+  const fixture = reviewQueueFixture(2, 0, 6);
+  const deferred = required(fixture.topicIds[0], 'one-day-old topic');
+  const current = required(fixture.topicIds[1], 'current due topic');
+  const state = emptyState();
+  state.mastery = fixture.topicIds.map((conceptId) => ({
+    ...initialMastery(conceptId, 'math'),
+    state: 'independent' as const,
+  }));
+  state.cards = [
+    {
+      conceptId: deferred,
+      dimension: 'math',
+      dueAt: new Date(now.getTime() - 86_400_000).toISOString(),
+      retrievability: 0.9,
+    },
+    {
+      conceptId: current,
+      dimension: 'math',
+      dueAt: now.toISOString(),
+      retrievability: 0.1,
+    },
+  ];
+
+  const explanations = explainReviewSelection(state, fixture.index, now, 60);
+
+  expect(explanations.find((result) => result.conceptId === deferred)?.result).toBe(
+    'rejected:reviewMinuteCap',
+  );
+  expect(explanations.find((result) => result.conceptId === current)?.result).toBe('selected');
+});
+
+test('the overdue threshold uses Los Angeles local dates across midnight', () => {
+  const fixture = reviewQueueFixture(2, 0, 6);
+  const deferred = required(fixture.topicIds[0], 'boundary review topic');
+  const current = required(fixture.topicIds[1], 'current review topic');
+  const state = emptyState();
+  state.timezone = 'America/Los_Angeles';
+  state.mastery = fixture.topicIds.map((conceptId) => ({
+    ...initialMastery(conceptId, 'math'),
+    state: 'independent' as const,
+  }));
+  state.cards = [
+    {
+      conceptId: deferred,
+      dimension: 'math',
+      dueAt: '2026-01-13T07:30:00.000Z',
+      retrievability: 0.9,
+    },
+    {
+      conceptId: current,
+      dimension: 'math',
+      dueAt: '2026-01-14T07:59:00.000Z',
+      retrievability: 0.1,
+    },
+  ];
+
+  const beforeThreshold = explainReviewSelection(
+    state,
+    fixture.index,
+    new Date('2026-01-14T07:59:00.000Z'),
+    60,
+  );
+  const atThreshold = explainReviewSelection(
+    state,
+    fixture.index,
+    new Date('2026-01-14T08:30:00.000Z'),
+    60,
+  );
+
+  expect(beforeThreshold.find((result) => result.conceptId === deferred)?.result).toBe(
+    'rejected:reviewMinuteCap',
+  );
+  expect(atThreshold.find((result) => result.conceptId === deferred)?.result).toBe(
+    'selected:overdue',
+  );
+});
+
+test('an old wrong attempt no longer outranks an equally due topic after a later correct review', () => {
+  const fixture = reviewQueueFixture(2, 0, 6);
+  const noOldFailure = required(fixture.topicIds[0], 'topic without an old failure');
+  const recoveredTopic = required(fixture.topicIds[1], 'recovered review topic');
+  const state = emptyState();
+  state.mastery = fixture.topicIds.map((conceptId) => ({
+    ...initialMastery(conceptId, 'math'),
+    state: 'independent' as const,
+  }));
+  state.cards = [noOldFailure, recoveredTopic].map((conceptId) => ({
+    conceptId,
+    dimension: 'math' as const,
+    dueAt: now.toISOString(),
+    retrievability: 0.7,
+  }));
+  state.recentAttempts = [
+    {
+      conceptId: recoveredTopic,
+      exerciseId: 'old-wrong-exercise',
+      dimension: 'math',
+      correct: 0,
+      itemRole: 'review',
+      createdAt: '2025-12-10T12:00:00.000Z',
+    },
+    {
+      conceptId: recoveredTopic,
+      exerciseId: 'later-correct-exercise',
+      dimension: 'math',
+      correct: 1,
+      itemRole: 'review',
+      createdAt: '2025-12-20T12:00:00.000Z',
+    },
+  ];
+
+  const plan = planSession(state, fixture.index, now, 60);
+
+  expect(plannedReviewTopics(plan, fixture.index)).toEqual([noOldFailure]);
+});
+
+test('two-day overdue guarantees prevent longer deferrals under a 1.67x cap load', () => {
+  const fixture = reviewQueueFixture(32, 30, 2);
+  const firstOffPath = required(fixture.offPathTopicIds[0], 'first off-path topic');
+  const secondOffPath = required(fixture.offPathTopicIds[1], 'second off-path topic');
+  const state = emptyState();
+  state.activeCourseId = 'fixture-course';
+  state.studyCourseIds = ['fixture-course'];
+  state.mastery = fixture.topicIds.map((conceptId) => ({
+    ...initialMastery(conceptId, 'math'),
+    state: 'independent' as const,
+  }));
+  state.cards = [
+    ...fixture.inUnitTopicIds.slice(0, 3).map((conceptId) => ({
+      conceptId,
+      dimension: 'math' as const,
+      dueAt: now.toISOString(),
+      retrievability: 0.9,
+    })),
+    ...[firstOffPath, secondOffPath].map((conceptId) => ({
+      conceptId,
+      dimension: 'math' as const,
+      dueAt: now.toISOString(),
+      retrievability: 0.6,
+    })),
+  ];
+
+  let nextTopic = 3;
+  const deferralStreaks = new Map<string, number>();
+  let longestDeferral = 0;
+  for (let day = 0; day < 10; day += 1) {
+    const at = new Date(now.getTime() + day * 86_400_000);
+    const dueCards = [...state.cards];
+    expect(dueCards).toHaveLength(5);
+    expect((dueCards.length * 6) / Math.floor(60 * 0.3)).toBeCloseTo(1.67, 1);
+    const plan = planSession(state, fixture.index, at, 60);
+    const selected = new Set(plannedReviewTopics(plan, fixture.index));
+    expect(selected.size).toBe(3);
+    for (const card of dueCards) {
+      if (selected.has(card.conceptId)) {
+        deferralStreaks.delete(card.conceptId);
+      } else {
+        const streak = (deferralStreaks.get(card.conceptId) ?? 0) + 1;
+        deferralStreaks.set(card.conceptId, streak);
+        longestDeferral = Math.max(longestDeferral, streak);
+      }
+    }
+    state.cards = dueCards.filter((card) => !selected.has(card.conceptId));
+    if (day < 9) {
+      state.cards.push(
+        ...fixture.inUnitTopicIds.slice(nextTopic, nextTopic + 3).map((conceptId) => ({
+          conceptId,
+          dimension: 'math' as const,
+          dueAt: new Date(at.getTime() + 86_400_000).toISOString(),
+          retrievability: 0.9,
+        })),
+      );
+      nextTopic += 3;
+    }
+  }
+
+  expect(longestDeferral).toBeLessThanOrEqual(2);
 });
 
 test('planner schedules one due review when the budget is 10 minutes', () => {

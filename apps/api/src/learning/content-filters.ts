@@ -26,6 +26,9 @@ export function filterSchedulerStateForContent(
     ),
     mastery: filterMasteryRecordsForContent(content, state.mastery),
     cards: state.cards.filter((card) => content.conceptsById.has(card.conceptId)),
+    reviewedTodayConceptIds: state.reviewedTodayConceptIds.filter((conceptId) =>
+      content.conceptsById.has(conceptId),
+    ),
     recentAttempts: state.recentAttempts.filter((attempt) => {
       const exercise = content.exercisesById.get(attempt.exerciseId);
       return content.conceptsById.has(attempt.conceptId) && exercise?.concept === attempt.conceptId;

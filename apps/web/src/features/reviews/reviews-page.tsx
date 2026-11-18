@@ -74,6 +74,11 @@ export function ReviewsPage() {
         <CardContent className="space-y-4">
           {dueTopics.length > 0 ? (
             <>
+              {today.dueReviews < data.dueNow ? (
+                <p className="text-sm text-muted-foreground">
+                  Today's plan covers {today.dueReviews} of these. The rest stay due.
+                </p>
+              ) : null}
               <TopicGroups groups={dueDateGroups} />
               {today.activeSessionId ? (
                 <Button asChild>

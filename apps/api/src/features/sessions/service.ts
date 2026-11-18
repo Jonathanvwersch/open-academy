@@ -28,6 +28,10 @@ import {
   prerequisiteMet,
 } from '../../learning/prerequisites.js';
 import { attemptAllowsRetry } from '../../learning/retry.js';
+import {
+  attemptedExerciseIdsByActivity,
+  reviewTopicsForActivity,
+} from '../../learning/review-topics.js';
 import type { PlannedActivity, SessionPreferences } from '../../learning/scheduler.js';
 import {
   currentLearnerUnit,
@@ -40,22 +44,16 @@ import { localDateKey, sessionKindForDate, xpGoalFor } from '../../learning/xp.j
 import { type FeatureRequest, type FeatureServices, serviceResult } from '../../service-context.js';
 import { replanSessionActivities } from '../course/service.js';
 
-function reviewTopicsFor(exerciseIds: readonly string[], index: ContentIndex) {
-  const seen = new Set<string>();
-  return exerciseIds.flatMap((exerciseId) => {
-    const conceptId = index.exercisesById.get(exerciseId)?.concept;
-    if (!conceptId || seen.has(conceptId)) return [];
-    seen.add(conceptId);
-    return [{ conceptId, title: index.conceptsById.get(conceptId)?.title ?? conceptId }];
-  });
-}
-
-function withReviewTopics<T extends { kind: string; exerciseIds: string[] }>(
+function withReviewTopics<T extends { kind: string; exerciseIds: string[]; status?: string }>(
   activity: T,
   index: ContentIndex,
+  attemptedExerciseIds?: ReadonlySet<string>,
 ) {
   if (activity.kind !== 'review') return activity;
-  return { ...activity, reviewTopics: reviewTopicsFor(activity.exerciseIds, index) };
+  return {
+    ...activity,
+    reviewTopics: reviewTopicsForActivity(activity, index, attemptedExerciseIds),
+  };
 }
 
 export async function getToday(deps: FeatureServices, request: FeatureRequest) {
@@ -68,7 +66,6 @@ export async function getToday(deps: FeatureServices, request: FeatureRequest) {
   const subjectTitle = index.curriculum?.subject?.title;
   const sessionKind = sessionKindForDate(localDateKey(now, request.timeZone));
   const budget = sessionBudget(sessionKind, prefs, localDateKey(now, request.timeZone));
-  const plan = planSession(state, index, now, budget, sessionKind);
   const [active, enrollments, placementRuns] = await Promise.all([
     repo.activeSession(now),
     repo.courseEnrollments(),
@@ -88,6 +85,37 @@ export async function getToday(deps: FeatureServices, request: FeatureRequest) {
         sessionActivityIsInContent(index, activity),
     );
   const activeSessionId = hasCurrentActivity ? (active?.id ?? null) : null;
+  const activeActivities =
+    activeSessionId && activeSession
+      ? activeSession.activities.filter(
+          (activity) =>
+            (activity.status === 'planned' || activity.status === 'in_progress') &&
+            sessionActivityIsInContent(index, activity),
+        )
+      : [];
+  const inProgressReviewActivityIds = activeActivities
+    .filter((activity) => activity.kind === 'review' && activity.status === 'in_progress')
+    .map((activity) => activity.id);
+  const attemptedByActivity = await repo.attemptedExerciseIdsByActivity(
+    inProgressReviewActivityIds,
+  );
+  const plan =
+    activeSessionId && activeSession
+      ? {
+          activities: activeActivities.map(
+            (activity): PlannedActivity => ({
+              kind: activity.kind,
+              conceptId: activity.conceptId,
+              projectId: activity.projectId ?? undefined,
+              exerciseIds: activity.exerciseIds,
+              plannedMinutes: activity.plannedMinutes,
+              reason: activity.reason as PlannedActivity['reason'],
+              status: activity.status as PlannedActivity['status'],
+            }),
+          ),
+          reasons: activeActivities.map((activity) => activity.reason as PlannedActivity['reason']),
+        }
+      : planSession(state, index, now, budget, sessionKind);
   const startState = buildCourseStartState({
     content: index,
     activeCourseId: currentCourseId,
@@ -156,11 +184,17 @@ export async function getToday(deps: FeatureServices, request: FeatureRequest) {
     unitTitle: unitFocus?.title ?? `Unit ${unit}`,
     unit,
     dueReviews: new Set(
-      plan.activities.flatMap((activity) =>
-        activity.kind === 'review'
-          ? reviewTopicsFor(activity.exerciseIds, index).map((topic) => topic.conceptId)
-          : [],
-      ),
+      plan.activities.flatMap((activity, activityIndex) => {
+        const activeActivity =
+          activeSessionId && activeSession ? activeActivities[activityIndex] : undefined;
+        return activity.kind === 'review'
+          ? reviewTopicsForActivity(
+              activity,
+              index,
+              activeActivity ? attemptedByActivity.get(activeActivity.id) : undefined,
+            ).map((topic) => topic.conceptId)
+          : [];
+      }),
     ).size,
     budgetMinutes: budget,
     sessionKind,
@@ -168,8 +202,10 @@ export async function getToday(deps: FeatureServices, request: FeatureRequest) {
     tutorEnabled: tutorProvider !== null,
     plan: {
       ...plan,
-      activities: plan.activities.map((activity) =>
-        withReviewTopics(
+      activities: plan.activities.map((activity, activityIndex) => {
+        const activeActivity =
+          activeSessionId && activeSession ? activeActivities[activityIndex] : undefined;
+        return withReviewTopics(
           {
             ...activity,
             conceptTitle: activity.conceptId
@@ -177,8 +213,9 @@ export async function getToday(deps: FeatureServices, request: FeatureRequest) {
               : undefined,
           },
           index,
-        ),
-      ),
+          activeActivity ? attemptedByActivity.get(activeActivity.id) : undefined,
+        );
+      }),
     },
   });
 }
@@ -355,6 +392,11 @@ export async function getSessionsActive(deps: FeatureServices, request: FeatureR
   const fullSession = session ? await request.repo.session(session.id, session) : null;
   const activities =
     fullSession?.activities.filter((activity) => sessionActivityIsInContent(index, activity)) ?? [];
+  const inProgressReviewIds = activities
+    .filter((activity) => activity.kind === 'review' && activity.status === 'in_progress')
+    .map((activity) => activity.id);
+  const attemptedByActivity =
+    await request.repo.attemptedExerciseIdsByActivity(inProgressReviewIds);
   return serviceResult(
     fullSession && activities.length
       ? {
@@ -368,6 +410,7 @@ export async function getSessionsActive(deps: FeatureServices, request: FeatureR
                   : undefined,
               },
               index,
+              attemptedByActivity.get(activity.id),
             ),
           ),
           serverNow: now,
@@ -391,6 +434,7 @@ export async function getSessionsById(deps: FeatureServices, request: FeatureReq
         .where(and(eq(attempts.userId, request.userId), inArray(attempts.activityId, activityIds)))
         .orderBy(desc(attempts.createdAt), desc(attempts.attemptNo))
     : [];
+  const attemptedByActivity = attemptedExerciseIdsByActivity(activityAttempts);
   const xp = session
     ? await (async () => {
         const now = request.now();
@@ -434,6 +478,7 @@ export async function getSessionsById(deps: FeatureServices, request: FeatureReq
                 : undefined,
             },
             index,
+            attemptedByActivity.get(activity.id),
           ),
           lessonAvailable: activity.conceptId
             ? index.lessonsByConcept.has(activity.conceptId)
@@ -516,9 +561,28 @@ async function updateActivityProgress(deps: FeatureServices, request: FeatureReq
   if (!activity) {
     return serviceResult({ error: 'Activity not found' }, 404);
   }
+  const attemptedByActivity =
+    activity.kind === 'review'
+      ? await request.repo.attemptedExerciseIdsByActivity([activity.id])
+      : new Map<string, Set<string>>();
   const completed = body.data.complete === true;
   const { complete: _complete, ...progress } = body.data;
   const now = request.now();
+  if (completed && activity.kind === 'review') {
+    const attemptedExerciseIds = attemptedByActivity.get(activity.id) ?? new Set<string>();
+    const missingExerciseIds = activity.exerciseIds.filter(
+      (exerciseId) => !attemptedExerciseIds.has(exerciseId),
+    );
+    if (activity.exerciseIds.length === 0 || missingExerciseIds.length > 0) {
+      return serviceResult(
+        {
+          error: 'Review activity needs an attempt for every exercise before completion.',
+          missingExerciseIds,
+        },
+        409,
+      );
+    }
+  }
   if (
     session?.status === 'active' &&
     activity.kind === 'learn' &&
@@ -623,9 +687,11 @@ async function updateActivityProgress(deps: FeatureServices, request: FeatureReq
         .where(eq(sessionActivities.id, nextActivity.id));
     }
   }
-  return serviceResult(
-    updated?.kind === 'review' ? withReviewTopics(updated, await content()) : updated,
-  );
+  if (updated?.kind === 'review') {
+    const index = await content();
+    return serviceResult(withReviewTopics(updated, index, attemptedByActivity.get(updated.id)));
+  }
+  return serviceResult(updated);
 }
 
 export async function postSessionsByIdReplan(deps: FeatureServices, request: FeatureRequest) {
@@ -700,9 +766,14 @@ async function replanSession(deps: FeatureServices, request: FeatureRequest) {
           .returning();
       }),
   );
+  const inProgressReviewIds = preserved
+    .filter((activity) => activity.kind === 'review' && activity.status === 'in_progress')
+    .map((activity) => activity.id);
+  const attemptedByActivity =
+    await request.repo.attemptedExerciseIdsByActivity(inProgressReviewIds);
   return serviceResult({
     activities: [...preserved, ...created.flat()].map((activity) =>
-      withReviewTopics(activity, index),
+      withReviewTopics(activity, index, attemptedByActivity.get(activity.id)),
     ),
   });
 }

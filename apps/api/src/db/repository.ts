@@ -1,10 +1,11 @@
-import { and, asc, desc, eq, gte, lte, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, lt, lte, sql } from 'drizzle-orm';
 import type { Card } from 'ts-fsrs';
 import { z } from 'zod';
 import type { Dimension } from '../content/schemas.js';
 import type { ContentIndex } from '../content/types.js';
 import { courseHasEvidence } from '../learning/course-start.js';
-import { retrievability } from '../learning/fsrs.js';
+import { retrievability, startOfNextCalendarDay } from '../learning/fsrs.js';
+import { attemptedExerciseIdsByActivity as groupAttemptedExerciseIdsByActivity } from '../learning/review-topics.js';
 import { effectiveFocusSubjectId, type SchedulerState } from '../learning/scheduler.js';
 import type { MasteryRecord, MasteryState } from '../learning/types.js';
 import { initialMastery } from '../learning/types.js';
@@ -214,6 +215,7 @@ export class LearnerRepository {
       paperRows,
       studyCourseIds,
       recentLearnActivities,
+      todayReviewLogs,
     ] = await Promise.all([
       loaded.mastery ?? this.masteryRecords(),
       this.db.select().from(reviewCards).where(eq(reviewCards.userId, this.userId)),
@@ -260,6 +262,17 @@ export class LearnerRepository {
           ),
         )
         .groupBy(sessionActivities.conceptId),
+      this.db
+        .select({ conceptId: reviewCards.conceptId, createdAt: reviewLogs.createdAt })
+        .from(reviewLogs)
+        .innerJoin(reviewCards, eq(reviewLogs.cardId, reviewCards.id))
+        .where(
+          and(
+            eq(reviewCards.userId, this.userId),
+            gte(reviewLogs.createdAt, new Date(now.getTime() - 36 * 60 * 60 * 1000)),
+            lt(reviewLogs.createdAt, startOfNextCalendarDay(now, user?.timezone ?? 'UTC')),
+          ),
+        ),
     ]);
     const recentLearnMinutesByConcept: Record<string, number> = {};
     for (const activity of recentLearnActivities) {
@@ -285,6 +298,17 @@ export class LearnerRepository {
         dueAt: card.dueAt.toISOString(),
         retrievability: retrievability(card.fsrs as Card, now, process.env.NODE_ENV !== 'test'),
       })),
+      reviewedTodayConceptIds: [
+        ...new Set(
+          todayReviewLogs
+            .filter(
+              (log) =>
+                localDateKey(log.createdAt, user?.timezone ?? 'UTC') ===
+                localDateKey(now, user?.timezone ?? 'UTC'),
+            )
+            .map((log) => log.conceptId),
+        ),
+      ],
       recentAttempts: recentAttempts.map((attempt) => ({
         conceptId: attempt.conceptId,
         exerciseId: attempt.exerciseId,
@@ -345,6 +369,15 @@ export class LearnerRepository {
       .orderBy(asc(attempts.attemptNo));
   }
 
+  async attemptedExerciseIdsByActivity(activityIds: readonly string[]) {
+    if (activityIds.length === 0) return new Map<string, Set<string>>();
+    const rows = await this.db
+      .select({ activityId: attempts.activityId, exerciseId: attempts.exerciseId })
+      .from(attempts)
+      .where(and(eq(attempts.userId, this.userId), inArray(attempts.activityId, activityIds)));
+    return groupAttemptedExerciseIdsByActivity(rows);
+  }
+
   async activeSession(now: Date) {
     const user = await this.user();
     const timezone = user?.timezone ?? 'UTC';
@@ -382,11 +415,16 @@ export class LearnerRepository {
     return { ...session, activities };
   }
 
-  async dueCards(now: Date) {
+  async dueCards(now: Date, timezone: string) {
     return this.db
       .select()
       .from(reviewCards)
-      .where(and(eq(reviewCards.userId, this.userId), lte(reviewCards.dueAt, now)))
+      .where(
+        and(
+          eq(reviewCards.userId, this.userId),
+          lt(reviewCards.dueAt, startOfNextCalendarDay(now, timezone)),
+        ),
+      )
       .orderBy(asc(reviewCards.dueAt));
   }
 

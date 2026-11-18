@@ -30,6 +30,7 @@ import {
   type ProjectionCourse,
   projectCourseFinishes,
 } from '../../learning/finish-projection.js';
+import { isDueToday } from '../../learning/fsrs.js';
 import { deriveLessonState } from '../../learning/lesson-runner.js';
 import {
   activeCourseFor,
@@ -38,7 +39,12 @@ import {
   masteryKey,
   prerequisiteMet,
 } from '../../learning/prerequisites.js';
-import type { PlannedActivity, SessionPreferences } from '../../learning/scheduler.js';
+import { reviewTopicsForActivity } from '../../learning/review-topics.js';
+import type {
+  PlannedActivity,
+  SchedulerState,
+  SessionPreferences,
+} from '../../learning/scheduler.js';
 import {
   currentLearnerUnit,
   effectiveFocusSubjectId,
@@ -424,6 +430,12 @@ export function registerLearnCourseRoutes(
           (activity.status === 'planned' || activity.status === 'in_progress') &&
           sessionActivityIsInContent(index, activity),
       ) ?? [];
+    const inProgressReviewActivityIds = activeActivities
+      .filter((activity) => activity.kind === 'review' && activity.status === 'in_progress')
+      .map((activity) => activity.id);
+    const attemptedExerciseIdsByActivity = await repo.attemptedExerciseIdsByActivity(
+      inProgressReviewActivityIds,
+    );
     const activeSessionId =
       activeSession && (activeSession.activities.length === 0 || activeActivities.length > 0)
         ? (active?.id ?? null)
@@ -435,16 +447,11 @@ export function registerLearnCourseRoutes(
     const tasks = activities.map((activity, taskIndex) => {
       const conceptId = activity.conceptId;
       const concept = conceptId ? index.conceptsById.get(conceptId) : undefined;
+      const attemptedExerciseIds =
+        'id' in activity ? attemptedExerciseIdsByActivity.get(activity.id) : undefined;
       const reviewTopics =
         activity.kind === 'review'
-          ? Array.from(
-              new Set(
-                activity.exerciseIds.flatMap((exerciseId) => {
-                  const id = index.exercisesById.get(exerciseId)?.concept;
-                  return id ? [id] : [];
-                }),
-              ),
-            ).map((id) => ({ conceptId: id, title: index.conceptsById.get(id)?.title ?? id }))
+          ? reviewTopicsForActivity(activity, index, attemptedExerciseIds)
           : [];
       const lesson = conceptId ? index.lessonsByConcept.get(conceptId) : undefined;
       const run = conceptId ? runsByConcept.get(conceptId) : undefined;
@@ -675,12 +682,20 @@ export function registerLearnCourseRoutes(
     const finishProjectionCourses = focusSubjectId
       ? buildProjectionCourses(index, focusedCourseIds, topicState, completionDates, focusSubjectId)
       : projectionCourses;
-    const projectionSchedulerState = schedulerState ?? {
+    const projectionSchedulerState: Pick<
+      SchedulerState,
+      | 'activeCourseId'
+      | 'studyCourseIds'
+      | 'focusSubjectId'
+      | 'mastery'
+      | 'lessonRuns'
+      | 'recentLearnMinutesByConcept'
+    > = schedulerState ?? {
       activeCourseId,
       studyCourseIds,
       focusSubjectId: focusSubjectId ?? undefined,
       mastery,
-      lessonRuns: lessonRunState,
+      lessonRuns: runRows,
       recentLearnMinutesByConcept,
     };
     const recentLearnMinutesBySubject = schedulerRecentLearnMinutesBySubject(
@@ -787,10 +802,14 @@ export function registerLearnCourseRoutes(
     const dueReviewsOutsideFocus = focusSubjectId
       ? new Set(
           (schedulerState
-            ? schedulerState.cards.filter((card) => Date.parse(card.dueAt) <= now.getTime())
-            : await repo.dueCards(now)
+            ? schedulerState.cards.filter((card) => isDueToday(card.dueAt, now, timeZone))
+            : await repo.dueCards(now, timeZone)
           )
             .map((card) => card.conceptId)
+            .filter((conceptId) => {
+              const concept = index.conceptsById.get(conceptId);
+              return concept !== undefined && concept.status !== 'stub';
+            })
             .filter((conceptId) => !focusedConceptIds.has(conceptId)),
         ).size
       : 0;

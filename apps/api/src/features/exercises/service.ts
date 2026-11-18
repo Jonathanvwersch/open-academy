@@ -7,7 +7,7 @@ import { Rating } from 'ts-fsrs';
 import { z } from 'zod';
 import { serializedOptionOrder, serializeExercise } from '../../content/serialize.js';
 import { isTemplate } from '../../content/templates.js';
-import type { IndexedExercise } from '../../content/types.js';
+import type { ContentIndex, IndexedExercise } from '../../content/types.js';
 import {
   attempts,
   reviewCards,
@@ -17,13 +17,21 @@ import {
 } from '../../db/schema.js';
 import { updateActivityAndAdvance } from '../../learning/activity-completion.js';
 import { answerOptionsFor } from '../../learning/answer-options.js';
-import { mapReviewRating, reviewActivityRating, scheduleReview } from '../../learning/fsrs.js';
+import { isDueToday, reviewActivityRating, scheduleReview } from '../../learning/fsrs.js';
 import { gradeExercise } from '../../learning/grading/index.js';
 import { rubricFeedbackWithScoredFlags } from '../../learning/grading/rubric-score.js';
 import { calculateCredit } from '../../learning/mastery.js';
 import { applyMastery, creditHardPrerequisites } from '../../learning/mastery-service.js';
-import { bringWeakestPrerequisiteCardDueNow } from '../../learning/prerequisite-review.js';
+import {
+  bringWeakestPrerequisiteCardDueNow,
+  canBringPrerequisiteDueNow,
+} from '../../learning/prerequisite-review.js';
 import { attemptAllowsRetry } from '../../learning/retry.js';
+import {
+  adjustedMinutesForLearnerPace,
+  buildReviewActivityForConcept,
+  interleaveReviewExercises,
+} from '../../learning/scheduler.js';
 import type { MasteryRecord } from '../../learning/types.js';
 import { type FeatureRequest, type FeatureServices, serviceResult } from '../../service-context.js';
 import {
@@ -50,6 +58,18 @@ type TutorGradeResult = {
   }>;
   exemplar: string;
 };
+
+function groupReviewExercisesByConcept(exerciseIds: string[], index: ContentIndex) {
+  const groups = new Map<string, string[]>();
+  for (const exerciseId of exerciseIds) {
+    const topicId = index.exercisesById.get(exerciseId)?.concept ?? exerciseId;
+    const topicExerciseIds = groups.get(topicId) ?? [];
+    topicExerciseIds.push(exerciseId);
+    groups.set(topicId, topicExerciseIds);
+  }
+  return [...groups].map(([topicId, exerciseIds]) => ({ topicId, exerciseIds }));
+}
+
 export async function getExercisesById(deps: FeatureServices, request: FeatureRequest) {
   const { content } = deps;
   const exercise = (await content()).exercisesById.get(request.params.id);
@@ -277,9 +297,12 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
         .limit(1)
     : [];
   const session = activityRow ? await repo.session(activityRow.sessionId) : undefined;
-  const activity = session?.activities.find((item) => item.id === body.data.activityId);
+  let activity = session?.activities.find((item) => item.id === body.data.activityId);
   if (body.data.activityId && !activity) {
     return serviceResult({ error: 'Activity not found' }, 404);
+  }
+  if (body.data.mode === 'review' && !body.data.activityId) {
+    return serviceResult({ error: 'Review attempts need a review activity.' }, 400);
   }
   const inlineLessonExercise =
     activity?.kind === 'learn' &&
@@ -604,7 +627,10 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
                 const prerequisiteCards = await db
                   .select({
                     id: reviewCards.id,
+                    conceptId: reviewCards.conceptId,
+                    dimension: reviewCards.dimension,
                     dueAt: reviewCards.dueAt,
+                    lastReviewAt: reviewCards.lastReviewAt,
                     fsrs: reviewCards.fsrs,
                   })
                   .from(reviewCards)
@@ -614,56 +640,217 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
                       inArray(reviewCards.conceptId, hardPrerequisiteIds),
                     ),
                   );
+                const coveredDimensionKeys = new Set(
+                  (activity?.exerciseIds ?? []).flatMap((exerciseId) => {
+                    const exercise = index.exercisesById.get(exerciseId);
+                    return exercise ? [`${exercise.concept}/${exercise.dimension}`] : [];
+                  }),
+                );
+                const completedReviewConceptIds = new Set(
+                  (session?.activities ?? [])
+                    .filter(
+                      (sessionActivity) =>
+                        sessionActivity.kind === 'review' && sessionActivity.status === 'completed',
+                    )
+                    .flatMap((sessionActivity) =>
+                      sessionActivity.exerciseIds.flatMap((exerciseId) => {
+                        const conceptId = index.exercisesById.get(exerciseId)?.concept;
+                        return conceptId ? [conceptId] : [];
+                      }),
+                    ),
+                );
                 const weakest = bringWeakestPrerequisiteCardDueNow(
-                  prerequisiteCards.map((prerequisiteCard) => ({
-                    ...prerequisiteCard,
-                    fsrs: prerequisiteCard.fsrs as Card,
-                  })),
+                  prerequisiteCards
+                    .filter((prerequisiteCard) =>
+                      canBringPrerequisiteDueNow({
+                        lastReviewAt: prerequisiteCard.lastReviewAt,
+                        now,
+                        timeZone: request.timeZone,
+                        coveredByActivity:
+                          completedReviewConceptIds.has(prerequisiteCard.conceptId) ||
+                          coveredDimensionKeys.has(
+                            `${prerequisiteCard.conceptId}/${prerequisiteCard.dimension}`,
+                          ),
+                      }),
+                    )
+                    .map((prerequisiteCard) => ({
+                      ...prerequisiteCard,
+                      fsrs: prerequisiteCard.fsrs as Card,
+                    })),
                   now,
                   process.env.NODE_ENV !== 'test',
                 );
                 if (weakest) {
-                  await db
-                    .update(reviewCards)
-                    .set({ dueAt: weakest.dueAt, fsrs: weakest.fsrs })
-                    .where(eq(reviewCards.id, weakest.id));
+                  const schedulerState = await repo.schedulerState(now, index);
+                  const stateWithWeakestDueNow = {
+                    ...schedulerState,
+                    cards: schedulerState.cards.map((card) =>
+                      card.conceptId === weakest.conceptId && card.dimension === weakest.dimension
+                        ? { ...card, dueAt: weakest.dueAt.toISOString() }
+                        : card,
+                    ),
+                  };
+                  const dueCardsForConcept = stateWithWeakestDueNow.cards.filter(
+                    (card) =>
+                      card.conceptId === weakest.conceptId &&
+                      isDueToday(
+                        card.dueAt,
+                        now,
+                        stateWithWeakestDueNow.timezone ?? request.timeZone,
+                      ),
+                  );
+                  const usedExerciseIds = [
+                    ...(schedulerState.usedExerciseIds ?? []),
+                    ...(session?.activities.flatMap(
+                      (sessionActivity) => sessionActivity.exerciseIds,
+                    ) ?? []),
+                  ];
+                  const reviewActivity = buildReviewActivityForConcept(
+                    { ...stateWithWeakestDueNow, usedExerciseIds },
+                    index,
+                    now,
+                    weakest.conceptId,
+                    dueCardsForConcept,
+                  );
+                  const extension = await db.transaction(async (tx) => {
+                    await tx
+                      .update(reviewCards)
+                      .set({ dueAt: weakest.dueAt, fsrs: weakest.fsrs })
+                      .where(eq(reviewCards.id, weakest.id));
+                    if (!reviewActivity || !activityRow || activity?.kind !== 'review') return;
+                    const sessionReviewActivities = await tx
+                      .select({
+                        id: sessionActivities.id,
+                        idx: sessionActivities.idx,
+                        kind: sessionActivities.kind,
+                        status: sessionActivities.status,
+                        exerciseIds: sessionActivities.exerciseIds,
+                        plannedMinutes: sessionActivities.plannedMinutes,
+                      })
+                      .from(sessionActivities)
+                      .where(eq(sessionActivities.sessionId, activityRow.sessionId))
+                      .orderBy(asc(sessionActivities.idx));
+                    const coversPrerequisite = (
+                      sessionActivity: (typeof sessionReviewActivities)[number],
+                    ) =>
+                      sessionActivity.kind === 'review' &&
+                      sessionActivity.exerciseIds.some(
+                        (exerciseId) =>
+                          index.exercisesById.get(exerciseId)?.concept === weakest.conceptId,
+                      );
+                    const completedActivity = sessionReviewActivities.find(
+                      (sessionActivity) =>
+                        sessionActivity.status === 'completed' &&
+                        coversPrerequisite(sessionActivity),
+                    );
+                    if (completedActivity) return;
+                    const coveredActivity = sessionReviewActivities.find(
+                      (sessionActivity) =>
+                        ['planned', 'in_progress'].includes(sessionActivity.status) &&
+                        coversPrerequisite(sessionActivity),
+                    );
+                    if (coveredActivity) {
+                      const existingExerciseIds = new Set(coveredActivity.exerciseIds);
+                      const coveredDimensions = new Set(
+                        coveredActivity.exerciseIds.flatMap((exerciseId) => {
+                          const exercise = index.exercisesById.get(exerciseId);
+                          return exercise?.concept && exercise.dimension
+                            ? [`${exercise.concept}/${exercise.dimension}`]
+                            : [];
+                        }),
+                      );
+                      const usedElsewhere = new Set(
+                        sessionReviewActivities
+                          .filter((sessionActivity) => sessionActivity.id !== coveredActivity.id)
+                          .flatMap((sessionActivity) => sessionActivity.exerciseIds),
+                      );
+                      const addedExerciseIds = [...new Set(reviewActivity.exerciseIds)].filter(
+                        (exerciseId) => {
+                          const exercise = index.exercisesById.get(exerciseId);
+                          return Boolean(
+                            exercise &&
+                              !existingExerciseIds.has(exerciseId) &&
+                              !usedElsewhere.has(exerciseId) &&
+                              !coveredDimensions.has(`${exercise.concept}/${exercise.dimension}`),
+                          );
+                        },
+                      );
+                      if (addedExerciseIds.length === 0) return;
+                      const exerciseIds =
+                        coveredActivity.status === 'planned'
+                          ? interleaveReviewExercises(
+                              groupReviewExercisesByConcept(
+                                [...coveredActivity.exerciseIds, ...addedExerciseIds],
+                                index,
+                              ),
+                            )
+                          : [
+                              ...coveredActivity.exerciseIds,
+                              ...interleaveReviewExercises(
+                                groupReviewExercisesByConcept(addedExerciseIds, index),
+                              ),
+                            ];
+                      const addedBaseMinutes = addedExerciseIds.reduce(
+                        (total, exerciseId) =>
+                          total + (index.exercisesById.get(exerciseId)?.est_minutes ?? 0),
+                        0,
+                      );
+                      const plannedMinutes =
+                        coveredActivity.plannedMinutes +
+                        adjustedMinutesForLearnerPace(
+                          addedBaseMinutes,
+                          schedulerState.actualEstimateRatio,
+                        );
+                      await tx
+                        .update(sessionActivities)
+                        .set({ exerciseIds, plannedMinutes })
+                        .where(eq(sessionActivities.id, coveredActivity.id));
+                      return {
+                        activityId: coveredActivity.id,
+                        exerciseIds,
+                        plannedMinutes,
+                      };
+                    }
+                    const laterActivities = await tx
+                      .select({ id: sessionActivities.id, idx: sessionActivities.idx })
+                      .from(sessionActivities)
+                      .where(
+                        and(
+                          eq(sessionActivities.sessionId, activityRow.sessionId),
+                          gt(sessionActivities.idx, activityRow.idx),
+                        ),
+                      )
+                      .orderBy(desc(sessionActivities.idx));
+                    for (const laterActivity of laterActivities) {
+                      await tx
+                        .update(sessionActivities)
+                        .set({ idx: laterActivity.idx + 1 })
+                        .where(eq(sessionActivities.id, laterActivity.id));
+                    }
+                    await tx.insert(sessionActivities).values({
+                      sessionId: activityRow.sessionId,
+                      idx: activityRow.idx + 1,
+                      kind: 'review',
+                      conceptId: weakest.conceptId,
+                      exerciseIds: reviewActivity.exerciseIds,
+                      plannedMinutes: reviewActivity.plannedMinutes,
+                      status: 'planned',
+                      reason: reviewActivity.reason,
+                    });
+                    return undefined;
+                  });
+                  if (extension && activity?.id === extension.activityId) {
+                    activity = {
+                      ...activity,
+                      exerciseIds: extension.exerciseIds,
+                      plannedMinutes: extension.plannedMinutes,
+                    };
+                  }
                 }
               }
             }
           }
         }
-      } else {
-        const rating = mapReviewRating({
-          correct: result.correct,
-          hintsUsed,
-          attemptNo,
-          durationMs: body.data.durationMs,
-          targetSeconds: exercise.target_seconds,
-        });
-        const scheduled = scheduleReview(
-          card.fsrs as never,
-          now,
-          rating,
-          request.timeZone,
-          process.env.NODE_ENV !== 'test',
-        );
-        await db
-          .update(reviewCards)
-          .set({
-            fsrs: scheduled.card,
-            dueAt: scheduled.card.due,
-            lastReviewAt: now,
-            reps: scheduled.card.reps,
-            lapses: scheduled.card.lapses,
-          })
-          .where(eq(reviewCards.id, card.id));
-        await db.insert(reviewLogs).values({
-          cardId: card.id,
-          attemptId,
-          rating: String(rating),
-          fsrsLog: scheduled.log,
-          createdAt: now,
-        });
       }
     }
   }
@@ -717,11 +904,13 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
       !lessonFinalNeedsQuiz &&
       (learningGoalMet || exerciseIds.every((id) => completedExerciseIds.includes(id)));
     activityCompleted = completed;
+    const sessionForAdvance =
+      completed && session ? ((await repo.session(session.id)) ?? session) : session;
     await updateActivityAndAdvance(db, {
       activityId: activity.id,
       completed,
       now,
-      session,
+      session: sessionForAdvance,
       exerciseIds,
       progress: { ...progress, completedExerciseIds, outcomes },
       userId: request.userId,

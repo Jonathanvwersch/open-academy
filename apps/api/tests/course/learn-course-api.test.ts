@@ -1622,6 +1622,50 @@ test('focus persists and replans only planned activities', async () => {
   expect((await (await get('/learn')).json()).focusSubjectId).toBeNull();
 });
 
+test('outside-focus due review count ignores unknown concepts', async () => {
+  const mathsCourse = content.coursesById.get('maths-for-ml');
+  const aiCourse = content.coursesById.get('ml-foundations');
+  if (!mathsCourse || !aiCourse) throw new Error('Missing subject focus test courses');
+  await db.insert(courseEnrollments).values(
+    [mathsCourse.id, aiCourse.id].map((courseId) => ({
+      userId,
+      courseId,
+      status: 'active' as const,
+      startMethod: 'beginning' as const,
+    })),
+  );
+  await db
+    .update(users)
+    .set({
+      activeCourseId: aiCourse.id,
+      studySetInitializedAt: new Date('2026-01-01T00:00:00.000Z'),
+      prefs: { scheduleMinutes: 60, focusSubjectId: 'ai' },
+    })
+    .where(eq(users.id, userId));
+  const dueAt = new Date('2026-01-06T00:00:00.000Z');
+  await db.insert(reviewCards).values({
+    userId,
+    conceptId: 'unknown-review-concept',
+    dimension: 'math',
+    fsrs: newReviewCard(dueAt),
+    dueAt,
+  });
+  await db.insert(studySessions).values({
+    userId,
+    kind: 'weekday',
+    plannedMinutes: 60,
+    status: 'active',
+    startedAt: new Date('2026-01-07T11:00:00.000Z'),
+  });
+
+  const learn = await (await get('/learn')).json();
+  const reviews = await (await get('/reviews')).json();
+
+  expect(learn.focusSubjectId).toBe('ai');
+  expect(learn.dueReviewsOutsideFocus).toBe(0);
+  expect(reviews.dueNow).toBe(0);
+});
+
 test('a stored focus is ignored when only one subject is active', async () => {
   const mathsCourse = content.coursesById.get('maths-for-ml');
   const aiCourse = content.coursesById.get('ml-foundations');

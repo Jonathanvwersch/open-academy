@@ -1,6 +1,7 @@
 import type { Card } from 'ts-fsrs';
 import { Rating } from 'ts-fsrs';
 import { retrievability, scheduleReview, startOfNextCalendarDay } from './fsrs.js';
+import { localDateKey } from './xp.js';
 
 const millisecondsPerDay = 86_400_000;
 
@@ -55,12 +56,12 @@ export interface PrerequisiteReviewCard {
   fsrs: Card;
 }
 
-export function bringWeakestPrerequisiteCardDueNow(
-  cards: readonly PrerequisiteReviewCard[],
+export function bringWeakestPrerequisiteCardDueNow<T extends PrerequisiteReviewCard>(
+  cards: readonly T[],
   now: Date,
   enableFuzz = true,
-): PrerequisiteReviewCard | undefined {
-  let weakest: PrerequisiteReviewCard | undefined;
+): T | undefined {
+  let weakest: T | undefined;
   let weakestRetrievability = Number.POSITIVE_INFINITY;
   for (const card of cards) {
     const cardRetrievability = retrievability(card.fsrs, now, enableFuzz);
@@ -75,4 +76,17 @@ export function bringWeakestPrerequisiteCardDueNow(
     dueAt: now,
     fsrs: { ...weakest.fsrs, due: now },
   };
+}
+
+export function canBringPrerequisiteDueNow(input: {
+  lastReviewAt: Date | null;
+  now: Date;
+  timeZone: string;
+  coveredByActivity: boolean;
+}): boolean {
+  return (
+    !input.coveredByActivity &&
+    (!input.lastReviewAt ||
+      localDateKey(input.lastReviewAt, input.timeZone) !== localDateKey(input.now, input.timeZone))
+  );
 }

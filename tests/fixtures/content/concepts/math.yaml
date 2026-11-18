@@ -22,7 +22,7 @@ concepts:
     est_minutes: 25
     goal_weight: 3
     dimensions: [conceptual, math, transfer]
-    prereqs: [{ id: vectors }]
+    prereqs: [{ id: vectors, strength: hard }]
     related: [gradients]
     objectives:
       - { text: Differentiate a power function, dimension: math }
