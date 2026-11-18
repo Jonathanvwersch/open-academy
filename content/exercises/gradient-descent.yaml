@@ -1044,3 +1044,228 @@ exercises:
         required: true
     exemplar: "The weight slope is the average of $2ex$ across training examples. The bias slope is the average of $2e$. Multiply each slope by the learning rate $\\eta$ and subtract it from the corresponding parameter."
     solution: "The weight slope is the average of $2ex$ across training examples. The bias slope is the average of $2e$. Multiply each slope by the learning rate $\\eta$ and subtract it from the corresponding parameter."
+  - id: gdp-recall-downhill-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: gd-downhill-update
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, how does gradient descent move the parameters, and what does the learning rate control?
+    rubric:
+      - id: first
+        criterion: Explain that gradient descent repeatedly moves parameters against the gradient.
+        weight: 1
+        required: true
+      - id: second
+        criterion: Explain that the positive learning rate sets the size of each step.
+        weight: 1
+        required: true
+    exemplar: Gradient descent repeatedly moves the parameters against the gradient. The learning rate is a positive number that scales the step.
+  - id: gdp-recall-downhill-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: gd-downhill-update
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: A parameter has a negative loss slope at its current value. What does a gradient descent step with a positive learning rate do?
+    options:
+      - id: a
+        text: It lowers the parameter.
+        correct: false
+        feedback: Lowering a parameter with a negative slope moves locally uphill.
+      - id: b
+        text: It leaves the parameter fixed.
+        correct: false
+        feedback: A zero slope gives no change in that parameter.
+      - id: c
+        text: It raises the parameter.
+        correct: true
+        feedback: Subtracting a negative slope times a positive learning rate raises the parameter.
+    solution: A negative slope means raising the parameter locally lowers the loss.
+  - id: gdp-recall-downhill-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: gd-downhill-update
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: Write the updated value of one parameter $p$ when its current loss slope is $g$ and the learning rate is $\eta$. Type `eta` for the learning rate.
+    answer: p-eta*g
+    variables:
+      p:
+        - -5
+        - 5
+      eta:
+        - 0.01
+        - 0.2
+      g:
+        - -8
+        - 8
+    solution: "Subtract the learning rate times the slope: $p_{\\text{new}}=p-\\eta g$."
+  - id: gdp-recall-rate-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: gd-step-size
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, what happens when a learning rate is too small, and what can happen when it is too large?
+    rubric:
+      - id: first
+        criterion: Explain that a learning rate that is too small makes the loss fall slowly.
+        weight: 1
+        required: true
+      - id: second
+        criterion: Explain that a learning rate that is too large can overshoot and make the loss grow.
+        weight: 1
+        required: true
+    exemplar: A very small learning rate makes slow progress. A rate that is too large can overshoot the bottom and make the loss grow.
+  - id: gdp-recall-rate-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: gd-step-size
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "During gradient descent on $f(w)=w^2$, the weight changes sign on each step while the loss falls each time. What does this show?"
+    options:
+      - id: a
+        text: Training is diverging on these steps.
+        correct: false
+        feedback: Divergence means overshoots land further away and the loss grows.
+      - id: b
+        text: The steps are overshooting while improving the loss.
+        correct: true
+        feedback: A step can cross the bottom and still land at a lower loss.
+      - id: c
+        text: The learning rate is too small to move the weight.
+        correct: false
+        feedback: Progress is judged from how quickly the loss falls.
+    solution: Changing sides can accompany a falling loss. A growing loss is the warning sign.
+  - id: gdp-recall-rate-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: gd-step-size
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: For the loss $f(w)=w^2$, write the weight after one gradient descent step from $w$ with learning rate $\eta$. Type `eta` for the learning rate.
+    answer: (1-2*eta)*w
+    variables:
+      w:
+        - -8
+        - 8
+      eta:
+        - 0.05
+        - 0.95
+    solution: The slope is $2w$, so the new weight is $w-2\eta w=(1-2\eta)w$.
+  - id: gdp-recall-gradients-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: gd-price-gradients
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, what are the weight and bias slopes for one example of $\hat y=wx+b$ with squared-error loss and error $e=\hat y-y$?
+    rubric:
+      - id: first
+        criterion: State that the weight slope is twice the error times the input.
+        weight: 1
+        required: true
+      - id: second
+        criterion: State that the bias slope is twice the error.
+        weight: 1
+        required: true
+    exemplar: The weight slope is $2ex$, using that weight's input $x$. The bias slope is $2e$.
+  - id: gdp-recall-gradients-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: gd-price-gradients
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: For one example, two weights share the same prediction error. Why can their loss slopes have different sizes?
+    options:
+      - id: a
+        text: Each weight's slope includes its own input value.
+        correct: true
+        feedback: The slope for weight $w_j$ is $2ex_j$, so its input scales the shared error.
+      - id: b
+        text: Each weight has a different target for that example.
+        correct: false
+        feedback: The example has one target and one shared prediction error.
+      - id: c
+        text: Each weight's slope is equal to the whole loss.
+        correct: false
+        feedback: A slope measures how the loss responds to a parameter change.
+    solution: Each weight's slope contains the same error and its own input factor.
+  - id: gdp-recall-gradients-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: gd-price-gradients
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: For one example of $\hat y=wx+b$ with squared-error loss, write the loss slope for weight $w$ using error $e=\hat y-y$ and input $x$.
+    answer: 2*e*x
+    variables:
+      e:
+        - -6
+        - 6
+      x:
+        - 1
+        - 5
+    solution: The weight slope is $\partial L/\partial w=2ex$.
+  - id: gdp-recall-loop-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: gd-training-loop
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, what four moves does a training loop repeat, and why are the slopes recalculated each pass?
+    rubric:
+      - id: first
+        criterion: Name the four moves as predict, measure the loss, find the slopes and update.
+        weight: 1
+        required: true
+      - id: second
+        criterion: Explain that slopes are recalculated because the parameters move to a new point.
+        weight: 1
+        required: true
+    exemplar: The loop repeats prediction, loss measurement, slope calculation and parameter updates. The slopes belong to the current point, so they must be worked out again after the parameters move.
+  - id: gdp-recall-loop-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: gd-training-loop
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: A loss with several dips stops falling and all parameter slopes are zero. What can you conclude?
+    options:
+      - id: a
+        text: Training has reached the lowest point anywhere.
+        correct: false
+        feedback: A loss with several dips can have a deeper dip elsewhere.
+      - id: b
+        text: Training must still be using its initial slopes.
+        correct: false
+        feedback: Even freshly recalculated slopes can become zero at a nearby dip.
+      - id: c
+        text: Training may have reached a nearby dip.
+        correct: true
+        feedback: Gradient descent uses the local slopes and can stop in a dip with a deeper one elsewhere.
+    solution: Zero slopes can mark a nearby dip. Trying different starting points can find a lower one.
+  - id: gdp-recall-loop-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: gd-training-loop
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: 'A training loop uses the linear model $\hat y=wx+b$ and squared-error loss on one example with input $x$ and target $y$. After an update, its current parameters are $w$ and $b$. Write the loss it measures at the start of the next pass.'
+    answer: (w*x+b-y)^2
+    variables: { w: [1, 3], b: [0, 2], x: [1, 4], y: [3, 9] }
+    solution: "The next pass predicts with the current parameters, then squares its new error: $L=(wx+b-y)^2$."

@@ -852,3 +852,181 @@ exercises:
         category: misunderstood_definition
         feedback: The bias is added once per row, one house at a time, not once per feature column.
     solution: Row 1 on its own is $3\times100+10\times2+50=370$. Doing all three rows together must give the same prices as doing them one by one, so every entry of $Xw$ gets $+50$.
+  - id: lrp-recall-contributions-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: lr-add-contributions
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, how does linear regression combine features into a prediction, and where does the bias enter?
+    rubric:
+      - id: first
+        criterion: Explain that each feature is multiplied by its own weight and the products are added.
+        weight: 1
+        required: true
+      - id: second
+        criterion: Explain that the bias is added once to the whole prediction.
+        weight: 1
+        required: true
+    exemplar: Linear regression adds each feature times its weight. It then adds the bias once to that total.
+  - id: lrp-recall-contributions-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: lr-add-contributions
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: Which part of a linear regression model shifts every prediction by the same amount?
+    options:
+      - id: a
+        text: The feature vector
+        correct: false
+        feedback: The feature vector holds one example's measurements.
+      - id: b
+        text: The bias
+        correct: true
+        feedback: The bias adds the same fixed amount to every prediction.
+      - id: c
+        text: The dot product
+        correct: false
+        feedback: The dot product combines the feature contributions, which depend on the example.
+    solution: The bias adds one fixed amount to each prediction.
+  - id: lrp-recall-contributions-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: lr-add-contributions
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: Write a linear regression prediction with two features $x_1,x_2$, weights $w_1,w_2$ and bias $b$. Type `x1`, `x2`, `w1` and `w2` for the indexed symbols.
+    answer: w1*x1+w2*x2+b
+    variables:
+      x1:
+        - 1
+        - 10
+      x2:
+        - 1
+        - 10
+      w1:
+        - -3
+        - 3
+      w2:
+        - -3
+        - 3
+      b:
+        - 1
+        - 5
+    solution: The prediction is $w_1x_1+w_2x_2+b$.
+  - id: lrp-recall-weights-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: lr-interpret-weights
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, what does a feature's weight mean, and what does the bias mean?
+    rubric:
+      - id: first
+        criterion: Explain that a weight gives the prediction change for a one-unit rise in its feature with all other features fixed.
+        weight: 1
+        required: true
+      - id: second
+        criterion: Explain that the bias is the prediction when every feature is zero.
+        weight: 1
+        required: true
+    exemplar: A weight gives the change in prediction for one extra unit of its feature while the others stay fixed. The bias is the prediction when all features are zero.
+  - id: lrp-recall-weights-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: lr-interpret-weights
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: A model's area weight changes when area is recorded in hundreds of square metres. What explains this?
+    options:
+      - id: a
+        text: The feature has become more important.
+        correct: false
+        feedback: Importance is judged by how realistic feature changes move predictions.
+      - id: b
+        text: The bias has absorbed the area contribution.
+        correct: false
+        feedback: The area contribution is still the area times its weight.
+      - id: c
+        text: The weight depends on the feature's units.
+        correct: true
+        feedback: Rescaling a measurement requires rescaling its weight to preserve the contribution.
+    solution: A weight's size depends on units, so its size alone cannot show importance.
+  - id: lrp-recall-weights-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: lr-interpret-weights
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: One feature rises by $k$ units in a linear regression model. Its weight is $w$, and all other features stay fixed. Write the change in prediction.
+    answer: w*k
+    variables:
+      w:
+        - -5
+        - 5
+      k:
+        - 2
+        - 8
+    solution: The prediction changes by the feature's weight times its change, $wk$.
+  - id: lrp-recall-batch-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: lr-batch-predictions
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, how are examples arranged for a batch prediction, and what does the output contain?
+    rubric:
+      - id: first
+        criterion: Explain that each example occupies one row of the feature matrix with features in the same order as the weights.
+        weight: 1
+        required: true
+      - id: second
+        criterion: Explain that the output has one prediction per row.
+        weight: 1
+        required: true
+    exemplar: Each example forms one row of the feature matrix, with columns ordered to match the weights. A batch prediction returns one prediction for each row.
+  - id: lrp-recall-batch-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: lr-batch-predictions
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: A matrix already includes a final column of ones, with the bias stored as the last weight. Which NumPy expression gives the predictions?
+    options:
+      - id: a
+        text: X @ w
+        correct: true
+        feedback: The final column contributes the bias through the matrix product.
+      - id: b
+        text: X @ w + b
+        correct: false
+        feedback: The final column already contributes the bias, so this adds it twice.
+      - id: c
+        text: X * w
+        correct: false
+        feedback: Entrywise multiplication leaves separate feature pieces in each row.
+    solution: The column of ones carries the bias as part of the matrix product.
+  - id: lrp-recall-batch-formula
+    dimension: math
+    type: text
+    role: recall
+    knowledge_point: lr-batch-predictions
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Complete the NumPy expression for batch predictions with feature matrix `X`, weight vector `w` and separate bias `b`: `X ___ w + b`. Type the missing operator."
+    accept:
+      - "@"
+      - matrix multiplication
+      - matrix product
+      - matmul
+    regex: ^\s*(?:@|matrix\s+(?:multiplication|product)|matmul)\s*$
+    solution: The `@` operator takes one dot product per row; adding `b` adds the bias to every prediction.

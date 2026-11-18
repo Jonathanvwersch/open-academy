@@ -836,3 +836,175 @@ exercises:
         required: true
     exemplar: "MSE averages squared prediction errors. MAE averages absolute prediction errors. I would choose MSE when large misses deserve a much bigger penalty, or MAE when typical absolute distance matters more."
     solution: "MSE averages squared prediction errors. MAE averages absolute prediction errors. I would choose MSE when large misses deserve a much bigger penalty, or MAE when typical absolute distance matters more."
+  - id: lossp-recall-measure-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: loss-measure-misses
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, how are MAE and MSE calculated from prediction errors?
+    rubric:
+      - id: first
+        criterion: Explain that MAE averages the absolute values of prediction errors.
+        weight: 1
+        required: true
+      - id: second
+        criterion: Explain that MSE averages the squared prediction errors.
+        weight: 1
+        required: true
+    exemplar: MAE averages each error's absolute value. MSE averages each error squared.
+  - id: lossp-recall-measure-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: loss-measure-misses
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: House prices are measured in thousands of pounds. Which score also has units of thousands of pounds and counts misses on both sides positively?
+    options:
+      - id: a
+        text: Mean squared error
+        correct: false
+        feedback: Squaring errors gives MSE squared units.
+      - id: b
+        text: Mean absolute error
+        correct: true
+        feedback: Absolute values keep the target's units and count both high and low misses positively.
+      - id: c
+        text: Mean signed error
+        correct: false
+        feedback: Signed errors retain their signs, so high and low misses can cancel.
+    solution: MAE averages error sizes and keeps the target's units.
+  - id: lossp-recall-measure-formula
+    dimension: math
+    type: text
+    role: recall
+    knowledge_point: loss-measure-misses
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Complete the description of the MSE formula: subtract each target from its prediction, ___ each error, then average. Type the missing operation."
+    accept:
+      - square
+      - square it
+      - square each error
+      - squaring
+      - raise to the second power
+      - raise each error to the second power
+      - raise to the power of two
+    regex: ^\s*(?:square(?:\s+(?:it|each\s+error))?|squaring|raise(?:\s+each\s+error)?\s+to\s+(?:the\s+)?(?:second\s+power|power\s+of\s+(?:two|2)))\s*$
+    solution: MSE squares each error before averaging.
+  - id: lossp-recall-large-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: loss-large-errors
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, how does doubling a miss change its squared and absolute costs?
+    rubric:
+      - id: first
+        criterion: Explain that doubling a miss quadruples its squared-error cost.
+        weight: 1
+        required: true
+      - id: second
+        criterion: Explain that doubling a miss doubles its absolute-error cost.
+        weight: 1
+        required: true
+    exemplar: Doubling a miss makes its squared-error cost four times as large. Its absolute-error cost becomes twice as large.
+  - id: lossp-recall-large-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: loss-large-errors
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: Which description fits the absolute-error slope as the prediction moves?
+    options:
+      - id: a
+        text: Its size grows with the size of the miss.
+        correct: false
+        feedback: A slope whose size grows with the miss describes squared error.
+      - id: b
+        text: It is zero for every prediction below the target.
+        correct: false
+        feedback: Below the target, the absolute-error slope is minus one.
+      - id: c
+        text: Its size is one at every nonzero miss.
+        correct: true
+        feedback: The absolute-error slope is plus one above the target and minus one below it.
+    solution: Absolute error has slope magnitude one away from its corner at zero error.
+  - id: lossp-recall-large-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: loss-large-errors
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: Write the slope of squared-error cost with respect to the prediction, given error $e=\hat y-y$.
+    answer: 2*e
+    variables:
+      e:
+        - -8
+        - 8
+    solution: The squared-error slope with respect to the prediction is $2e$.
+  - id: lossp-recall-constant-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: loss-constant-choice
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, which constant prediction minimises MSE, and which minimises MAE?
+    rubric:
+      - id: first
+        criterion: Explain that the mean minimises MSE for a constant prediction.
+        weight: 1
+        required: true
+      - id: second
+        criterion: Explain that the median minimises MAE for a constant prediction.
+        weight: 1
+        required: true
+    exemplar: The mean of the targets gives the best constant prediction under MSE. A median gives the best constant prediction under MAE.
+  - id: lossp-recall-constant-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: loss-constant-choice
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: A model must predict the same number for four distinct sorted targets. Which choices give the smallest MAE?
+    options:
+      - id: a
+        text: Any number between the two middle targets
+        correct: true
+        feedback: With an even number of targets, the whole interval between the middle two minimises MAE.
+      - id: b
+        text: Only the mean of all four targets
+        correct: false
+        feedback: The mean minimises MSE.
+      - id: c
+        text: Only one of the two outer targets
+        correct: false
+        feedback: Outer targets leave most targets on one side, so moving inward lowers the absolute loss.
+    solution: For an even number of targets, every value between the two middle ones gives the smallest MAE.
+  - id: lossp-recall-constant-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: loss-constant-choice
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: A model predicts the same number for targets $y_1,y_2,y_3$. Write the constant that minimises MSE. Type `y1`, `y2`, `y3` for the targets.
+    answer: (y1+y2+y3)/3
+    variables:
+      y1:
+        - -5
+        - 0
+      y2:
+        - 1
+        - 5
+      y3:
+        - 6
+        - 12
+    solution: The best constant under MSE is the mean, $(y_1+y_2+y_3)/3$.
