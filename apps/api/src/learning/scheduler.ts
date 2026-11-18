@@ -567,10 +567,7 @@ function packWeekday(
   let newConceptCount = 0;
   const selectedConcepts = new Set<string>();
   const selectedLearnConcepts = new Set<string>();
-  const plannedActivityCount = (items: Candidate[]) => {
-    const reviews = items.filter((candidate) => candidate.activity.kind === 'review');
-    return items.length - reviews.length + mixReviewActivities(reviews, content).length;
-  };
+  const plannedActivityCount = (items: Candidate[]) => mixReviewActivities(items, content).length;
   const addRejectionReason = (candidate: Candidate) => {
     const reviewAlongsideLesson =
       candidate.activity.kind === 'review' &&

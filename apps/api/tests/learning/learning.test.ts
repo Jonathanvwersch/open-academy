@@ -1827,6 +1827,102 @@ test('Time budget is respected', () => {
   ).toBeLessThanOrEqual(17);
 });
 
+test('resumed lessons and due reviews stay within the activity limit', () => {
+  const eligibleReviewExercise = (conceptId: string, excludedId?: string) =>
+    (courseContent.exercisesByConcept.get(conceptId) ?? []).find(
+      (exercise) =>
+        exercise.id !== excludedId &&
+        !isTemplate(exercise) &&
+        !exercise.lesson_only &&
+        ['review', 'core', 'practice', 'transfer', 'basics'].includes(exercise.role),
+    );
+  const course = courseContent.courses.find((candidate) => {
+    const lessonConcepts = new Set(
+      candidate.units
+        .flatMap((unit) => unit.concepts)
+        .filter((conceptId) => {
+          const lesson = courseContent.lessonsByConcept.get(conceptId);
+          return (
+            (lesson?.knowledge_points.length ?? 0) > 0 &&
+            eligibleReviewExercise(conceptId, lesson?.final) !== undefined
+          );
+        }),
+    );
+    return lessonConcepts.size >= 2;
+  });
+  if (!course) throw new Error('Expected a course with two lesson concepts');
+  const resumedConceptIds = [...new Set(course.units.flatMap((unit) => unit.concepts))]
+    .filter((conceptId) => {
+      const lesson = courseContent.lessonsByConcept.get(conceptId);
+      return (
+        (lesson?.knowledge_points.length ?? 0) > 0 &&
+        eligibleReviewExercise(conceptId, lesson?.final) !== undefined
+      );
+    })
+    .slice(0, 2);
+  expect(resumedConceptIds).toHaveLength(2);
+  const dueConceptIds = [
+    ...new Set([
+      ...resumedConceptIds,
+      ...courseContent.concepts
+        .filter(
+          (concept) =>
+            concept.status !== 'stub' && eligibleReviewExercise(concept.id) !== undefined,
+        )
+        .map((concept) => concept.id),
+    ]),
+  ].slice(0, 12);
+  const state = studyState([course.id], courseContent);
+  const masteryByKey = new Map(
+    state.mastery.map((record) => [masteryKey(record.conceptId, record.dimension), record]),
+  );
+  for (const conceptId of dueConceptIds) {
+    const concept = required(courseContent.conceptsById.get(conceptId), conceptId);
+    for (const dimension of concept.dimensions) {
+      masteryByKey.set(masteryKey(conceptId, dimension), {
+        ...initialMastery(conceptId, dimension),
+        state: 'retained',
+      });
+    }
+  }
+  state.mastery = [...masteryByKey.values()];
+  state.lessonRuns = resumedConceptIds.map((conceptId) => ({
+    conceptId,
+    status: 'in_progress' as const,
+  }));
+  state.usedExerciseIds = resumedConceptIds.flatMap((conceptId) => {
+    const finalId = courseContent.lessonsByConcept.get(conceptId)?.final;
+    return finalId ? [finalId] : [];
+  });
+  state.cards = dueConceptIds.flatMap((conceptId) => {
+    const exercise = eligibleReviewExercise(conceptId);
+    return exercise
+      ? [
+          {
+            conceptId,
+            dimension: exercise.dimension,
+            dueAt: '2026-01-13T00:00:00.000Z',
+            retrievability: 0.6,
+          },
+        ]
+      : [];
+  });
+
+  const plan = planSession(state, courseContent, now, 600);
+
+  expect(
+    plan.activities
+      .filter((activity) => activity.kind === 'learn')
+      .map((activity) => activity.conceptId),
+  ).toEqual(expect.arrayContaining(resumedConceptIds));
+  expect(
+    plan.activities.length,
+    JSON.stringify(
+      plan.activities.map((activity) => `${activity.kind}:${activity.conceptId ?? ''}`),
+    ),
+  ).toBeLessThanOrEqual(SCHEDULER_CONFIG.weekday.maxActivities);
+});
+
 test('Interrupted session resumes its in-progress activity during replanning', () => {
   const inProgress = {
     kind: 'learn' as const,
