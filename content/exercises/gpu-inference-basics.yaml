@@ -670,3 +670,156 @@ exercises:
         required: false
     exemplar: "The weights take the number of parameters times the bytes per number, for example 8 billion times 2 bytes, or 16 GB, at FP16. That has to fit in the GPU's memory with room left for other working memory. When decoding, each new token needs every weight read from HBM, but only about 2 FLOPs are done with each one, so the maths waits on memory. Each token takes at least the weight bytes divided by the bandwidth, so one conversation gets at most bandwidth over weight bytes, about 209 tokens/s for 16 GB at 3.35 TB/s."
     solution: "The weights take the number of parameters times the bytes per number, which must fit in GPU memory with room to spare. Each decoded token reads every weight from HBM but does only about 2 FLOPs per weight, so a token takes at least weight bytes over bandwidth, and tokens/s is at most bandwidth over weight bytes."
+  - id: gibp-recall-model-memory-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: gib-model-memory
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, how does a model's weight precision affect its memory use, and why does a GPU still need free space after loading the weights?"
+    rubric:
+      - id: precision
+        criterion: "Explain that the precision sets the bytes per weight, so fewer bytes per weight use less memory at the same parameter count."
+        weight: 1
+        required: true
+      - id: room
+        criterion: "Explain that the GPU also needs memory for layer results and the KV caches of conversations."
+        weight: 1
+        required: true
+    exemplar: "The precision sets how many bytes each weight takes, so smaller formats use less memory for the same number of weights. The GPU also needs space for layer results and for each conversation's KV cache."
+  - id: gibp-recall-model-memory-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: gib-model-memory
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "After loading a model's weights, a GPU has room for the layer results but runs out of memory as one conversation gets longer. Which stored data grows with that conversation?"
+    options:
+      - id: a
+        text: "The model weights"
+        correct: false
+        feedback: "The model has the same number of weights throughout the conversation."
+      - id: b
+        text: "The bytes used by each weight"
+        correct: false
+        feedback: "The bytes per weight are set by the format, which stays the same."
+      - id: c
+        text: "The KV cache"
+        correct: true
+        feedback: "The KV cache keeps numbers about earlier tokens, so it grows as the conversation gets longer."
+    solution: "The conversation's KV cache grows with its history. Loading the weights is only part of the memory cost."
+  - id: gibp-recall-model-memory-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: gib-model-memory
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A model stores $N$ weights in a format with $k$ bits per number. Write the memory taken up by the weights in bytes."
+    answer: "N*k/8"
+    variables: { N: [1000, 100000], k: [4, 32] }
+    solution: "A byte is 8 bits, so each weight takes $k/8$ bytes and the weights take $Nk/8$ bytes."
+  - id: gibp-recall-memory-hierarchy-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: gib-memory-hierarchy
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what roles do HBM and SRAM play when a GPU kernel reuses weights?"
+    rubric:
+      - id: hbm
+        criterion: "Explain that HBM is the large GPU main memory where the weights live."
+        weight: 1
+        required: true
+      - id: sram
+        criterion: "Explain that the kernel can reuse weights from the smaller, faster SRAM on the chip after reading them from HBM."
+        weight: 1
+        required: true
+    exemplar: "HBM is the GPU's main memory, where the weights live. A kernel can read a weight into the smaller, faster SRAM on the chip and reuse it there."
+  - id: gibp-recall-memory-hierarchy-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: gib-memory-hierarchy
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Several streaming multiprocessors need recent data from memory on the GPU chip that all of them can reach. Which part of the memory hierarchy fits?"
+    options:
+      - id: a
+        text: "One SM's shared memory"
+        correct: false
+        feedback: "Shared memory is shared by the calculators inside one SM, and other SMs can't reach it."
+      - id: b
+        text: "The L2 cache"
+        correct: true
+        feedback: "L2 is memory on the chip, shared by all the SMs, that keeps copies of recent data."
+      - id: c
+        text: "HBM"
+        correct: false
+        feedback: "HBM is the main memory beside the chip, off the chip itself."
+    solution: "L2 keeps copies of recent data on the chip and is shared by all the SMs."
+  - id: gibp-recall-memory-hierarchy-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: gib-memory-hierarchy
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A GPU moves $D$ bytes from HBM. Its memory bandwidth is $W$ bytes per second. Write the minimum transfer time in seconds."
+    answer: "D/W"
+    variables: { D: [100, 100000], W: [100, 100000] }
+    solution: "At full bandwidth, moving $D$ bytes takes $D/W$ seconds."
+  - id: gibp-recall-decode-bound-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: gib-decode-bound
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, how does decoding a batch of $B$ conversations change the total tokens per second, and when does that growth stop?"
+    rubric:
+      - id: share
+        criterion: "Explain that the conversations share each read of the weights, so the step takes about the same time and makes $B$ tokens."
+        weight: 1
+        required: true
+      - id: limit
+        criterion: "Explain that once $B$ nears the GPU's ops:byte ratio, the maths takes longer than the read, so the step time grows and tokens per second levels off."
+        weight: 1
+        required: true
+    exemplar: "The $B$ conversations share each weight read, so a step takes about as long as before and makes $B$ tokens. Once $B$ nears the ops:byte ratio, the maths becomes slower than the read and tokens per second levels off."
+  - id: gibp-recall-decode-bound-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: gib-decode-bound
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A single-conversation decode pass is limited by reading the weights. Which upgrade alone raises its top speed in tokens per second, with the same model and weight format?"
+    options:
+      - id: a
+        text: "More HBM capacity at the same bandwidth"
+        correct: false
+        feedback: "Capacity says how much fits. The bytes still move at the same rate."
+      - id: b
+        text: "More HBM bandwidth at the same capacity"
+        correct: true
+        feedback: "The same weights can be read in less time, so the top speed rises."
+      - id: c
+        text: "More peak FLOP/s at the same bandwidth"
+        correct: false
+        feedback: "The arithmetic can finish sooner, but the weight read still takes the same time."
+    solution: "Higher HBM bandwidth shortens the weight read, so the top speed, bandwidth divided by weight bytes, rises."
+  - id: gibp-recall-decode-bound-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: gib-decode-bound
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "For one conversation, each decode pass reads $D$ bytes of weights and produces one token. Memory bandwidth is $W$ bytes per second. Ignoring other costs, write the weight-read ceiling on tokens per second."
+    answer: "W/D"
+    variables: { D: [1000, 100000], W: [1000, 100000] }
+    solution: "A read takes $D/W$ seconds at peak bandwidth. One token per read gives a ceiling of $W/D$ tokens per second."
