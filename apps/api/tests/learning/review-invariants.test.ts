@@ -1,6 +1,6 @@
 import { and, eq, inArray } from 'drizzle-orm';
 import { Rating } from 'ts-fsrs';
-import { afterAll, beforeAll, expect, it, vi } from 'vitest';
+import { afterAll, beforeAll, expect, vi, it as vitestIt } from 'vitest';
 import { createApp } from '../../src/app.js';
 import { env } from '../../src/config.js';
 import { subjectForCourse } from '../../src/content/index.js';
@@ -8,6 +8,7 @@ import { loadContent } from '../../src/content/load.js';
 import { instantiateExercise, isTemplate } from '../../src/content/templates.js';
 import type { ContentIndex } from '../../src/content/types.js';
 import { createDb } from '../../src/db/client.js';
+import { LearnerRepository } from '../../src/db/repository.js';
 import {
   attempts,
   courseEnrollments,
@@ -20,6 +21,7 @@ import {
 } from '../../src/db/schema.js';
 import { FakeProvider } from '../../src/features/tutor/provider.js';
 import { shiftLocalDate } from '../../src/http/request-context.js';
+import { filterSchedulerStateForContent } from '../../src/learning/content-filters.js';
 import {
   isDueToday,
   newReviewCard,
@@ -32,16 +34,21 @@ import {
   effectiveFocusSubjectId,
   explainReviewSelection,
   explainReviewSelectionForReplan,
+  sessionBudget,
 } from '../../src/learning/scheduler.js';
-import { localDateKey } from '../../src/learning/xp.js';
+import { localDateKey, sessionKindForDate } from '../../src/learning/xp.js';
 
 const db = createDb(env.TEST_DATABASE_URL);
-const userId = '00000000-0000-4000-8000-000000000098';
-const timezone = 'America/Los_Angeles';
+const realDataAuditMode = process.env.REVIEW_AUDIT_REALDATA === '1';
+const apiBaseUrl = process.env.REVIEW_AUDIT_API_URL?.replace(/\/$/, '');
+const it = realDataAuditMode ? vitestIt.skip : vitestIt;
+let userId = '00000000-0000-4000-8000-000000000098';
+const timezone = process.env.REVIEW_AUDIT_TIMEZONE ?? 'America/Los_Angeles';
 const startDate = '2026-02-22';
 let app: ReturnType<typeof createApp>;
 let content: ContentIndex;
 const seededReps = new Map<string, number>();
+const seededReviewLogCounts = new Map<string, number>();
 const violations = new Map<string, Set<string>>();
 const simulationFindings = new Map<string, string[]>();
 const auditTrail: string[] = [];
@@ -70,6 +77,12 @@ type PlanningEvidence = {
 const schedulerCalls: SchedulerCall[] = [];
 const activityPlanningEvidence = new Map<string, PlanningEvidence>();
 const activityCreationCalls = new Map<string, ApiCall>();
+const runCreatedActivityTopics = new Map<string, Set<string>>();
+const runCreatedAttemptIds = new Set<string>();
+const runCreatedReviewLogIds = new Set<string>();
+const legacyAuditFindings = new Map<string, Set<string>>();
+const latestAuditStatuses = new Map<string, 'HOLDS' | 'LEGACY' | 'VIOLATED'>();
+let currentPlanActivityIds = new Set<string>();
 type DueAtEvent = { at: Date; dueAt: Date; cause: string };
 const dueAtHistory = new Map<string, DueAtEvent[]>();
 let currentApiCall: ApiCall | undefined;
@@ -77,7 +90,7 @@ let simulationStepCount = 0;
 let simulationAttemptFailures: string[] = [];
 
 const checkerNames = ['I1', 'I2', 'I3', 'I4', 'I5', 'I6', 'I7', 'I8', 'I9'];
-vi.setConfig({ hookTimeout: 300_000, testTimeout: 60_000 });
+vi.setConfig({ hookTimeout: 300_000, testTimeout: realDataAuditMode ? 900_000 : 60_000 });
 
 function headersAt(now: Date) {
   return {
@@ -88,7 +101,10 @@ function headersAt(now: Date) {
 }
 
 async function readApi(path: string, now: Date): Promise<any> {
-  const response = await app.request(`/api${path}`, { headers: headersAt(now) });
+  const response =
+    realDataAuditMode && apiBaseUrl
+      ? await fetch(`${apiBaseUrl}/api${path}`, { headers: headersAt(now) })
+      : await app.request(`/api${path}`, { headers: headersAt(now) });
   return response.json() as Promise<Record<string, any>>;
 }
 
@@ -403,7 +419,8 @@ async function checkI5(_now: Date): Promise<string[]> {
         `${card.conceptId}/${card.dimension}: dueAt=${card.dueAt.toISOString()} fsrs.due=${new Date(fsrsDue).toISOString()}`,
       );
     const cardLogs = logs.filter(({ review_cards: logCard }) => logCard.id === card.id);
-    const expectedReps = (seededReps.get(card.id) ?? card.reps) + cardLogs.length;
+    const newLogCount = cardLogs.length - (seededReviewLogCounts.get(card.id) ?? 0);
+    const expectedReps = (seededReps.get(card.id) ?? card.reps) + newLogCount;
     if (card.reps !== expectedReps)
       failures.push(
         `${card.conceptId}/${card.dimension}: reps=${card.reps}, logs=${cardLogs.length}, seeded=${seededReps.get(card.id)}`,
@@ -528,8 +545,7 @@ async function checkI6({ now, today, active }: AuditContext): Promise<string[]> 
 }
 
 async function checkI7({ now, today, active, reviews }: AuditContext): Promise<string[]> {
-  const learnResponse = await app.request('/api/learn', { headers: headersAt(now) });
-  const learn = (await learnResponse.json()) as {
+  const learn = (await readApi('/learn', now)) as {
     tasks?: {
       activityKind?: string;
       conceptId?: string;
@@ -666,10 +682,69 @@ async function auditAll(now: Date, label: string) {
     readApi('/sessions/active', now),
     readApi('/reviews', now),
   ]);
+  currentPlanActivityIds = new Set(
+    [...todayActivities(today), ...(active?.activities ?? [])]
+      .map((activity: Record<string, any>) => activity.id)
+      .filter((id: unknown): id is string => typeof id === 'string'),
+  );
   const context = { now, today, active, reviews };
+  const findings = new Map<string, string[]>();
   for (let index = 0; index < checkers.length; index += 1) {
     const name = checkerNames[index]!;
-    for (const detail of await checkers[index]!(context)) invariantViolation(name, detail);
+    const details = await checkers[index]!(context);
+    findings.set(name, details);
+    for (const detail of details) invariantViolation(name, detail);
+  }
+  return findings;
+}
+
+function assertNoAuditViolations(label: string, findings: Map<string, string[]>) {
+  const runCreatedIds = [...activityCreationCalls.keys()];
+  const runCreatedTopics = new Set(
+    runCreatedIds
+      .filter((id) => currentPlanActivityIds.has(id))
+      .flatMap((id) => [...(runCreatedActivityTopics.get(id) ?? [])]),
+  );
+  const evidence = checkerNames.map((name) => ({
+    checker: name,
+    status: 'HOLDS' as 'HOLDS' | 'LEGACY' | 'VIOLATED',
+    evidence: findings.get(name) ?? [],
+  }));
+  for (const result of evidence) {
+    const details = result.evidence;
+    if (details.length === 0) {
+      latestAuditStatuses.set(result.checker, 'HOLDS');
+      continue;
+    }
+    const legacy = details.filter((detail) => {
+      if (runCreatedIds.some((id) => detail.includes(id))) return false;
+      if ([...runCreatedAttemptIds, ...runCreatedReviewLogIds].some((id) => detail.includes(id))) {
+        return false;
+      }
+      const conceptId = detail.split(':')[0];
+      if (
+        (result.checker === 'I2' || result.checker === 'I7') &&
+        conceptId &&
+        runCreatedTopics.has(conceptId)
+      ) {
+        return false;
+      }
+      return true;
+    });
+    const newFindings = details.filter((detail) => !legacy.includes(detail));
+    if (legacy.length > 0) {
+      const known = legacyAuditFindings.get(result.checker) ?? new Set<string>();
+      for (const detail of legacy) known.add(detail);
+      legacyAuditFindings.set(result.checker, known);
+    }
+    result.status = newFindings.length > 0 ? 'VIOLATED' : 'LEGACY';
+    latestAuditStatuses.set(result.checker, result.status);
+  }
+  console.log(`REALDATA_CHECKPOINT ${JSON.stringify({ label, results: evidence })}`);
+  if (evidence.some((result) => result.status === 'VIOLATED')) {
+    throw new Error(
+      `Real-data audit stopped after ${label} on a run-created activity; checker results:\n${JSON.stringify(evidence, null, 2)}`,
+    );
   }
 }
 
@@ -833,15 +908,29 @@ async function step(method: string, path: string, now: Date, body?: unknown) {
   currentApiCall = requestCall;
   let response: Response;
   try {
-    response = await app.request(`/api${path}`, {
+    const init = {
       method,
       headers: headersAt(now),
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-    });
+    };
+    response =
+      realDataAuditMode && apiBaseUrl
+        ? await fetch(`${apiBaseUrl}/api${path}`, init)
+        : await app.request(`/api${path}`, init);
   } finally {
     currentApiCall = undefined;
   }
   const data = (await response.json()) as Record<string, any>;
+  if (method === 'POST' && path === '/attempts' && typeof data.attemptId === 'string') {
+    runCreatedAttemptIds.add(data.attemptId);
+    if (realDataAuditMode) {
+      const createdLogs = await db
+        .select({ id: reviewLogs.id })
+        .from(reviewLogs)
+        .where(eq(reviewLogs.attemptId, data.attemptId));
+      for (const log of createdLogs) runCreatedReviewLogIds.add(log.id);
+    }
+  }
   if (cardsBeforeAttempt) await recordDueAtChanges(cardsBeforeAttempt, now);
   let sessionId = path === '/sessions' ? data.id : sessionIdBefore;
   if (!sessionId && schedulerCalls.length > callStart) {
@@ -858,7 +947,10 @@ async function step(method: string, path: string, now: Date, body?: unknown) {
       .from(sessionActivities)
       .where(eq(sessionActivities.sessionId, sessionId));
     const createdRows = rows.filter((row) => !previousIds.has(row.id));
-    for (const row of createdRows) activityCreationCalls.set(row.id, requestCall);
+    for (const row of createdRows) {
+      activityCreationCalls.set(row.id, requestCall);
+      runCreatedActivityTopics.set(row.id, new Set(activityTopics(row)));
+    }
     for (const call of schedulerCalls.slice(callStart)) {
       const explained = explainPlannerCall(call);
       const evidence: PlanningEvidence = {
@@ -870,7 +962,8 @@ async function step(method: string, path: string, now: Date, body?: unknown) {
       for (const row of createdRows) activityPlanningEvidence.set(row.id, evidence);
     }
   }
-  await auditAll(now, `${method} ${path}`);
+  const findings = await auditAll(now, `${method} ${path}`);
+  if (realDataAuditMode) assertNoAuditViolations(`${method} ${path}`, findings);
   return { response, data };
 }
 
@@ -904,12 +997,22 @@ async function seedLearner(now: Date) {
     ),
   );
   seededReps.clear();
+  seededReviewLogCounts.clear();
   violations.clear();
   auditTrail.length = 0;
   attemptFailures.length = 0;
   schedulerCalls.length = 0;
   activityPlanningEvidence.clear();
   activityCreationCalls.clear();
+  runCreatedActivityTopics.clear();
+  runCreatedAttemptIds.clear();
+  runCreatedReviewLogIds.clear();
+  legacyAuditFindings.clear();
+  latestAuditStatuses.clear();
+  currentPlanActivityIds.clear();
+  reviewAnswerStats.attempted = 0;
+  reviewAnswerStats.seededWrong = 0;
+  reviewAnswerStats.actuallyWrong = 0;
   dueAtHistory.clear();
 }
 
@@ -972,6 +1075,9 @@ function answerFor(exerciseId: string) {
   const indexed = content.exercisesById.get(exerciseId);
   if (!indexed) throw new Error(`Unknown exercise ${exerciseId}`);
   const exercise = isTemplate(indexed) ? instantiateExercise(indexed, 0).exercise : indexed;
+  if (exercise.type === 'explain' && 'exemplar' in exercise) {
+    return { text: exercise.exemplar };
+  }
   if (exercise.type === 'mc') {
     const correct = exercise.options.filter((option) => option.correct).map((option) => option.id);
     return exercise.multi ? correct : correct[0];
@@ -981,9 +1087,605 @@ function answerFor(exerciseId: string) {
   return { text: 'A correct explanation.' };
 }
 
+function seededWrongAnswerFor(exerciseId: string) {
+  const indexed = content.exercisesById.get(exerciseId);
+  if (!indexed) throw new Error(`Unknown exercise ${exerciseId}`);
+  const exercise = isTemplate(indexed) ? instantiateExercise(indexed, 0).exercise : indexed;
+  if (exercise.type !== 'mc') return answerFor(exerciseId);
+  const incorrect = exercise.options.find((option) => !option.correct);
+  if (!incorrect) return answerFor(exerciseId);
+  return exercise.multi ? [incorrect.id] : incorrect.id;
+}
+
+function shouldSeedWrongReviewAnswer(exerciseId: string, now: Date) {
+  const seed = `${exerciseId}|${localDateKey(now, timezone)}`;
+  let hash = 0;
+  for (const character of seed) hash = (hash * 31 + character.charCodeAt(0)) >>> 0;
+  return hash % 4 === 0;
+}
+
+type DueTopicSnapshot = { due: Set<string>; eligible: Set<string> };
+
+async function dueTopicSnapshot(now: Date): Promise<DueTopicSnapshot> {
+  const cards = await db.select().from(reviewCards).where(eq(reviewCards.userId, userId));
+  const due = new Set<string>();
+  const eligible = new Set<string>();
+  for (const card of cards) {
+    const concept = content.conceptsById.get(card.conceptId);
+    if (!concept || concept.status === 'stub' || !isDueToday(card.dueAt, now, timezone)) continue;
+    due.add(card.conceptId);
+    if (hasEligibleReviewExercise(card.conceptId, card.dimension)) eligible.add(card.conceptId);
+  }
+  return { due, eligible };
+}
+
+async function reviewedTopicsOn(day: string): Promise<Set<string>> {
+  const logs = await db
+    .select({ conceptId: reviewCards.conceptId, createdAt: reviewLogs.createdAt })
+    .from(reviewLogs)
+    .innerJoin(reviewCards, eq(reviewLogs.cardId, reviewCards.id))
+    .where(eq(reviewCards.userId, userId));
+  return new Set(
+    logs.filter((log) => localDateKey(log.createdAt, timezone) === day).map((log) => log.conceptId),
+  );
+}
+
+function localDateTime(day: string, wallTime: string): Date {
+  const dateParts = day.split('-').map(Number);
+  const timeParts = wallTime.split(':').map(Number);
+  const [year, month, date] = dateParts;
+  const [hour, minute] = timeParts;
+  if (
+    dateParts.length !== 3 ||
+    timeParts.length !== 2 ||
+    year === undefined ||
+    month === undefined ||
+    date === undefined ||
+    hour === undefined ||
+    minute === undefined
+  ) {
+    throw new Error(`Invalid local date/time: ${day} ${wallTime}`);
+  }
+  const desiredWallTime = Date.UTC(year, month - 1, date, hour, minute);
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23',
+  });
+  let instant = desiredWallTime;
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    const parts = Object.fromEntries(
+      formatter
+        .formatToParts(new Date(instant))
+        .filter((part) => part.type !== 'literal')
+        .map((part) => [part.type, Number(part.value)]),
+    );
+    const actualWallTime = Date.UTC(
+      Number(parts.year),
+      Number(parts.month) - 1,
+      Number(parts.day),
+      Number(parts.hour),
+      Number(parts.minute),
+      Number(parts.second),
+    );
+    instant += desiredWallTime - actualWallTime;
+  }
+  return new Date(instant);
+}
+
+async function explainSelectionAt08(
+  now: Date,
+  today: Record<string, any>,
+  active: Record<string, any> | null,
+) {
+  const repo = new LearnerRepository(db, userId);
+  const [learner, rawState] = await Promise.all([repo.user(), repo.schedulerState(now, content)]);
+  const state = filterSchedulerStateForContent(content, rawState);
+  const day = localDateKey(now, timezone);
+  const sessionKind =
+    (today.sessionKind as Parameters<typeof sessionBudget>[0] | undefined) ??
+    sessionKindForDate(day);
+  const budget = sessionBudget(
+    sessionKind,
+    (learner?.prefs ?? {}) as Parameters<typeof sessionBudget>[1],
+    day,
+  );
+  const results = explainReviewSelection(state, content, now, budget);
+  const selectedInPlan = new Set<string>(
+    todayActivities(today)
+      .filter((activity: Record<string, any>) => activity.kind === 'review')
+      .flatMap((activity: Record<string, any>) => activityTopics(activity)),
+  );
+  const notSelected = results
+    .filter((result) => result.result !== 'selected' || !selectedInPlan.has(result.conceptId))
+    .map((result) => ({
+      conceptId: result.conceptId,
+      reason:
+        result.result === 'selected'
+          ? 'selected by a fresh pack but absent from the current session plan'
+          : result.result,
+      selectedExerciseIds: result.exerciseIds,
+      selectedInCurrentPlan: selectedInPlan.has(result.conceptId),
+    }));
+  console.log(
+    `REALDATA_SELECTION ${JSON.stringify({
+      day,
+      budgetMinutes: budget,
+      activeSessionId: active?.id ?? null,
+      dueTopicCount: results.length,
+      selectedInCurrentPlan: [...selectedInPlan].sort(),
+      notSelected,
+    })}`,
+  );
+  return notSelected;
+}
+
+const reviewAnswerStats = { attempted: 0, seededWrong: 0, actuallyWrong: 0 };
+
+async function submitSeededAnswer(
+  activity: Record<string, any>,
+  exerciseId: string,
+  now: Date,
+  mode: 'practice' | 'assessment' | 'review',
+) {
+  const priorAttempts = await db
+    .select()
+    .from(attempts)
+    .where(
+      and(
+        eq(attempts.userId, userId),
+        eq(attempts.activityId, activity.id),
+        eq(attempts.exerciseId, exerciseId),
+      ),
+    );
+  if (
+    priorAttempts.some(
+      (attempt) => attempt.mode === mode && (mode === 'review' || attempt.correct >= 1),
+    )
+  ) {
+    return;
+  }
+  const exercise = content.exercisesById.get(exerciseId);
+  if (!exercise)
+    throw new Error(`No real-content exercise ${exerciseId} for activity ${activity.id}.`);
+  const seededWrong = mode === 'review' && shouldSeedWrongReviewAnswer(exerciseId, now);
+  const baseAnswer = seededWrong ? seededWrongAnswerFor(exerciseId) : answerFor(exerciseId);
+  const submit = (answer: unknown) =>
+    step('POST', '/attempts', now, {
+      exerciseId,
+      activityId: activity.id,
+      answer,
+      mode,
+      durationMs: 1_000,
+    });
+  let result = await submit(baseAnswer);
+  if (result.data.status === 'self_check_required' && exercise.type === 'explain') {
+    const scoringCriteria = exercise.rubric.some((criterion) => criterion.required)
+      ? exercise.rubric.filter((criterion) => criterion.required)
+      : exercise.rubric;
+    const text =
+      typeof baseAnswer === 'object' &&
+      baseAnswer !== null &&
+      'text' in baseAnswer &&
+      typeof baseAnswer.text === 'string'
+        ? baseAnswer.text
+        : 'A correct explanation.';
+    result = await submit({
+      text,
+      metCriteria: scoringCriteria.map((criterion) => criterion.id),
+    });
+  }
+  if (
+    result.response.ok &&
+    result.data.status === 'graded' &&
+    Number(result.data.correct) < 1 &&
+    result.data.retryAllowed === true &&
+    !seededWrong
+  ) {
+    result = await submit(baseAnswer);
+  }
+  const gradedWrong = result.data.status === 'graded' && Number(result.data.correct) < 1;
+  if (!result.response.ok || result.data.status !== 'graded' || (gradedWrong && !seededWrong)) {
+    throw new Error(
+      `Could not submit the seeded answer (${activity.kind}/${exerciseId}): ${result.response.status} ${JSON.stringify(result.data)}`,
+    );
+  }
+  if (mode === 'review') {
+    reviewAnswerStats.attempted += 1;
+    if (seededWrong) reviewAnswerStats.seededWrong += 1;
+    if (gradedWrong) reviewAnswerStats.actuallyWrong += 1;
+  }
+}
+
+async function completeActivityThroughApi(
+  sessionId: string,
+  activity: Record<string, any>,
+  now: Date,
+) {
+  const result = await step(
+    'POST',
+    `/sessions/${sessionId}/activities/${activity.id}/progress`,
+    now,
+    { complete: true },
+  );
+  if (!result.response.ok) {
+    throw new Error(
+      `Could not complete ${activity.kind} activity ${activity.id}: ${result.response.status} ${JSON.stringify(result.data)}`,
+    );
+  }
+}
+
+async function runSessionAt08(
+  now: Date,
+  skippedActivities: Set<string>,
+  selectionAudits: Array<{ day: string; notSelected: unknown[] }>,
+  includeSelectionExplanation = true,
+) {
+  const { response: todayResponse, data: today } = await step('GET', '/today', now);
+  if (!todayResponse.ok) {
+    throw new Error(`GET /today failed: ${todayResponse.status} ${JSON.stringify(today)}`);
+  }
+  const { response: activeResponse, data: active } = await step('GET', '/sessions/active', now);
+  if (!activeResponse.ok) {
+    throw new Error(
+      `GET /sessions/active failed: ${activeResponse.status} ${JSON.stringify(active)}`,
+    );
+  }
+  if (includeSelectionExplanation) {
+    selectionAudits.push({
+      day: localDateKey(now, timezone),
+      notSelected: await explainSelectionAt08(now, today, active),
+    });
+  }
+  let sessionId: string;
+  if (active?.id) {
+    sessionId = active.id;
+  } else {
+    const kind = today.sessionKind ?? sessionKindForDate(localDateKey(now, timezone));
+    const { response, data } = await step('POST', '/sessions', now, { kind });
+    if (!response.ok || typeof data.id !== 'string') {
+      throw new Error(`POST /sessions failed: ${response.status} ${JSON.stringify(data)}`);
+    }
+    sessionId = data.id;
+  }
+  const { response: openResponse, data: session } = await step(
+    'GET',
+    `/sessions/${sessionId}`,
+    now,
+  );
+  if (!openResponse.ok) {
+    throw new Error(
+      `Opening session ${sessionId} failed: ${openResponse.status} ${JSON.stringify(session)}`,
+    );
+  }
+  for (const activity of [...(session.activities ?? [])].sort(
+    (left: Record<string, any>, right: Record<string, any>) => (left.idx ?? 0) - (right.idx ?? 0),
+  )) {
+    if (activity.status === 'completed' || activity.status === 'skipped') continue;
+    if (activity.kind === 'learn') {
+      const lesson = activity.conceptId
+        ? content.lessonsByConcept.get(activity.conceptId)
+        : undefined;
+      if (lesson && (lesson.knowledge_points?.length || lesson.blocks.length > 0)) {
+        skippedActivities.add(
+          `${localDateKey(now, timezone)} learn/${activity.conceptId ?? activity.id}`,
+        );
+        continue;
+      }
+    }
+    if (activity.kind === 'review') {
+      for (const exerciseId of activity.exerciseIds ?? []) {
+        await submitSeededAnswer(activity, exerciseId, now, 'review');
+      }
+      continue;
+    }
+    if (activity.kind === 'paper') {
+      await completeActivityThroughApi(sessionId, activity, now);
+      continue;
+    }
+    if (activity.kind === 'lab' || activity.kind === 'project') {
+      skippedActivities.add(
+        `${localDateKey(now, timezone)} ${activity.kind}/${activity.conceptId ?? activity.projectId ?? activity.id}`,
+      );
+      continue;
+    }
+    const mode = activity.kind === 'quick_check' ? 'assessment' : 'practice';
+    for (const exerciseId of activity.exerciseIds ?? []) {
+      await submitSeededAnswer(activity, exerciseId, now, mode);
+    }
+    const [current] = await db
+      .select({ status: sessionActivities.status })
+      .from(sessionActivities)
+      .where(eq(sessionActivities.id, activity.id))
+      .limit(1);
+    if (current?.status !== 'completed') {
+      await completeActivityThroughApi(sessionId, activity, now);
+    }
+  }
+  const { response, data } = await step('GET', `/sessions/${sessionId}`, now);
+  if (!response.ok) {
+    throw new Error(
+      `Refreshing session ${sessionId} failed: ${response.status} ${JSON.stringify(data)}`,
+    );
+  }
+}
+
+async function runRealDataAudit() {
+  const startedAt = new Date();
+  const today = localDateKey(startedAt, timezone);
+  const todayAt20 = localDateTime(today, '20:00');
+  if (todayAt20.getTime() <= startedAt.getTime()) {
+    throw new Error('Today 20:00 is earlier than now; a forward-only simulation is not possible.');
+  }
+  const dailyDue = new Map<string, DueTopicSnapshot>();
+  const dailyRows: Array<Record<string, unknown>> = [];
+  const selectionAudits: Array<{ day: string; notSelected: unknown[] }> = [];
+  const skippedActivities = new Set<string>();
+  const starvedStreaks = new Map<string, { since: string; through: string; days: number }>();
+  const starvedTopics = new Map<string, { since: string; through: string; days: number }>();
+  dailyDue.set(today, await dueTopicSnapshot(startedAt));
+
+  const firstFindings = await auditAll(startedAt, 'now');
+  assertNoAuditViolations('now', firstFindings);
+  const activeResult = await step('GET', '/sessions/active', startedAt);
+  if (!activeResult.response.ok || typeof activeResult.data?.id !== 'string') {
+    throw new Error(
+      `Could not locate the active session at now: ${JSON.stringify(activeResult.data)}`,
+    );
+  }
+  const sessionId = activeResult.data.id;
+  const opened = await step('GET', `/sessions/${sessionId}`, startedAt);
+  if (!opened.response.ok) {
+    throw new Error(`Could not open active session ${sessionId}: ${JSON.stringify(opened.data)}`);
+  }
+  const session = opened.data;
+  const priorReviewActivities = (session.activities ?? []).filter(
+    (activity: Record<string, any>) => activity.kind === 'review',
+  );
+  const coveredReviewTopics = new Set(
+    priorReviewActivities.flatMap((activity: Record<string, any>) => activityTopics(activity)),
+  );
+  const priorReviewExerciseIds = new Set(
+    priorReviewActivities.flatMap((activity: Record<string, any>) => activity.exerciseIds ?? []),
+  );
+  const maximumLikelihoodMathCovered = (
+    content.exercisesByConcept.get('maximum-likelihood') ?? []
+  ).some((exercise) => exercise.dimension === 'math' && priorReviewExerciseIds.has(exercise.id));
+  const elapsedMinutes = session.startedAt
+    ? Math.max(0, Math.floor((startedAt.getTime() - Date.parse(session.startedAt)) / 60_000))
+    : 0;
+  const remainingBudgetMinutes = Math.max(0, session.plannedMinutes - elapsedMinutes);
+  const previousActivityIds = new Set(activityCreationCalls.keys());
+  const replanned =
+    process.env.REVIEW_AUDIT_RESUME === '1'
+      ? null
+      : await step('POST', `/sessions/${sessionId}/replan`, startedAt, {
+          remainingBudgetMinutes,
+        });
+  if (replanned && !replanned.response.ok) {
+    throw new Error(
+      `Replan failed: ${replanned.response.status} ${JSON.stringify(replanned.data)}`,
+    );
+  }
+  const refreshed = await step('GET', `/sessions/${sessionId}`, startedAt);
+  if (!refreshed.response.ok) {
+    throw new Error(`Could not refresh replanned session: ${JSON.stringify(refreshed.data)}`);
+  }
+  const newReviewActivities = (refreshed.data.activities ?? []).filter(
+    (activity: Record<string, any>) =>
+      activity.kind === 'review' &&
+      activityCreationCalls.has(activity.id) &&
+      !previousActivityIds.has(activity.id),
+  );
+  const addedReviewTopics = new Set(
+    newReviewActivities.flatMap((activity: Record<string, any>) => activityTopics(activity)),
+  );
+  const addedDimensions: Array<{
+    conceptId: string | undefined;
+    dimension: string | undefined;
+    exerciseId: string;
+  }> = newReviewActivities.flatMap((activity: Record<string, any>) =>
+    (activity.exerciseIds ?? []).map((exerciseId: string) => {
+      const conceptId = activityTopics(activity).find((topic) =>
+        content.exercisesByConcept.get(topic)?.some((candidate) => candidate.id === exerciseId),
+      );
+      const exercise = conceptId
+        ? (content.exercisesByConcept.get(conceptId) ?? []).find(
+            (candidate) => candidate.id === exerciseId,
+          )
+        : undefined;
+      return {
+        conceptId,
+        dimension: exercise?.dimension,
+        exerciseId,
+      };
+    }),
+  );
+  const duplicateCoveredTopics = [...addedReviewTopics].filter((topic) =>
+    coveredReviewTopics.has(topic),
+  );
+  console.log(
+    `REALDATA_REPLAN ${JSON.stringify({
+      sessionId,
+      remainingBudgetMinutes,
+      addedReviewTopics: [...addedReviewTopics].sort(),
+      addedDimensions,
+      addedLogisticRegression: addedReviewTopics.has('logistic-regression'),
+      maximumLikelihoodMathCoveredBefore: maximumLikelihoodMathCovered,
+      addedMaximumLikelihoodMath: addedDimensions.some(
+        (exercise) => exercise.conceptId === 'maximum-likelihood' && exercise.dimension === 'math',
+      ),
+      duplicateCoveredTopics,
+    })}`,
+  );
+  if (duplicateCoveredTopics.length > 0) {
+    throw new Error(
+      `Replan added already-covered review topics: ${duplicateCoveredTopics.join(', ')}`,
+    );
+  }
+  await runSessionAt08(startedAt, skippedActivities, [], false);
+  const activeAfterCompletion = await step('GET', '/sessions/active', startedAt);
+  if (activeAfterCompletion.data?.id === sessionId) {
+    const ended = await step('POST', `/sessions/${sessionId}/end`, startedAt);
+    if (!ended.response.ok) {
+      throw new Error(
+        `Could not end active session: ${ended.response.status} ${JSON.stringify(ended.data)}`,
+      );
+    }
+  }
+  for (const moment of [
+    { day: today, wallTime: '20:00', instant: todayAt20 },
+    ...Array.from({ length: 14 }, (_, index) => {
+      const day = shiftLocalDate(today, index + 1);
+      return [
+        { day, wallTime: '08:00', instant: localDateTime(day, '08:00') },
+        { day, wallTime: '20:00', instant: localDateTime(day, '20:00') },
+      ];
+    }).flat(),
+  ]) {
+    if (moment.wallTime === '08:00') {
+      dailyDue.set(moment.day, await dueTopicSnapshot(moment.instant));
+      await runSessionAt08(moment.instant, skippedActivities, selectionAudits);
+    } else {
+      const findings = await auditAll(moment.instant, `${moment.day} ${moment.wallTime}`);
+      assertNoAuditViolations(`${moment.day} ${moment.wallTime}`, findings);
+      const snapshot = dailyDue.get(moment.day) ?? { due: new Set(), eligible: new Set() };
+      const reviewed = await reviewedTopicsOn(moment.day);
+      const reviewedDue = new Set([...snapshot.due].filter((conceptId) => reviewed.has(conceptId)));
+      const eligibleUnreviewed = [...snapshot.eligible].filter(
+        (conceptId) => !reviewed.has(conceptId),
+      );
+      for (const conceptId of new Set([...starvedStreaks.keys(), ...snapshot.eligible])) {
+        if (!snapshot.eligible.has(conceptId) || reviewed.has(conceptId)) {
+          starvedStreaks.delete(conceptId);
+          continue;
+        }
+        const previous = starvedStreaks.get(conceptId);
+        const days =
+          previous && shiftLocalDate(previous.through, 1) === moment.day ? previous.days + 1 : 1;
+        const since = previous && days > 1 ? previous.since : moment.day;
+        starvedStreaks.set(conceptId, { since, through: moment.day, days });
+        if (days > 2) starvedTopics.set(conceptId, { since, through: moment.day, days });
+      }
+      const row = {
+        day: moment.day,
+        dueTopics: snapshot.due.size,
+        reviewedDueTopics: reviewedDue.size,
+        dueConceptIds: [...snapshot.due].sort(),
+        reviewedDueConceptIds: [...reviewedDue].sort(),
+        eligibleDueButUnreviewed: eligibleUnreviewed.sort(),
+      };
+      dailyRows.push(row);
+      console.log(`REALDATA_DAY ${JSON.stringify(row)}`);
+    }
+  }
+
+  console.log(
+    `REALDATA_AUDIT_REPORT ${JSON.stringify({
+      learnerCount: 1,
+      timezone,
+      startedAt: startedAt.toISOString(),
+      apiPort: new URL(apiBaseUrl!).port,
+      reviewAnswerStats,
+      checkers: checkerNames.map((checker) => ({
+        checker,
+        status: latestAuditStatuses.get(checker) ?? 'HOLDS',
+        legacyFindings: [...(legacyAuditFindings.get(checker) ?? [])],
+      })),
+      dailyDueVsReviewed: dailyRows,
+      morningSelectionExplanations: selectionAudits,
+      starvedMoreThanTwoDays: [...starvedTopics].map(([conceptId, interval]) => ({
+        conceptId,
+        ...interval,
+      })),
+      skippedLearnOrProjectActivities: [...skippedActivities].sort(),
+    })}`,
+  );
+}
+
 let simulationDone = false;
 
 beforeAll(async () => {
+  if (realDataAuditMode) {
+    const databaseName = new URL(env.TEST_DATABASE_URL).pathname.replace(/^\//, '');
+    if (databaseName !== 'academy_realdata') {
+      throw new Error('Real-data audit requires TEST_DATABASE_URL to target academy_realdata.');
+    }
+    if (!apiBaseUrl) {
+      throw new Error('Real-data audit requires REVIEW_AUDIT_API_URL.');
+    }
+    content = await loadContent();
+    const learners = await db.select({ id: users.id }).from(users).limit(2);
+    if (learners.length !== 1) {
+      throw new Error(`Expected one real learner in academy_realdata, found ${learners.length}.`);
+    }
+    const learner = learners[0];
+    if (!learner) throw new Error('No real learner found in academy_realdata.');
+    userId = process.env.REVIEW_AUDIT_USER_ID ?? learner.id;
+    if (!learners.some((learner) => learner.id === userId)) {
+      throw new Error(
+        'REVIEW_AUDIT_USER_ID does not identify the sole learner in academy_realdata.',
+      );
+    }
+    app = createApp({ db, content, tutorProvider: new FakeProvider() });
+    const cards = await db.select().from(reviewCards).where(eq(reviewCards.userId, userId));
+    seededReps.clear();
+    for (const card of cards) seededReps.set(card.id, card.reps);
+    const initialLogs = await db
+      .select({ cardId: reviewLogs.cardId })
+      .from(reviewLogs)
+      .innerJoin(reviewCards, eq(reviewLogs.cardId, reviewCards.id))
+      .where(eq(reviewCards.userId, userId));
+    seededReviewLogCounts.clear();
+    for (const { cardId } of initialLogs) {
+      seededReviewLogCounts.set(cardId, (seededReviewLogCounts.get(cardId) ?? 0) + 1);
+    }
+    violations.clear();
+    simulationFindings.clear();
+    auditTrail.length = 0;
+    attemptFailures.length = 0;
+    schedulerCalls.length = 0;
+    activityPlanningEvidence.clear();
+    activityCreationCalls.clear();
+    runCreatedActivityTopics.clear();
+    runCreatedAttemptIds.clear();
+    runCreatedReviewLogIds.clear();
+    legacyAuditFindings.clear();
+    latestAuditStatuses.clear();
+    currentPlanActivityIds.clear();
+    reviewAnswerStats.attempted = 0;
+    reviewAnswerStats.seededWrong = 0;
+    reviewAnswerStats.actuallyWrong = 0;
+    const priorRunStartValue = process.env.REVIEW_AUDIT_RUN_STARTED_AT;
+    if (priorRunStartValue) {
+      const priorRunStart = new Date(priorRunStartValue);
+      if (Number.isNaN(priorRunStart.getTime())) {
+        throw new Error('REVIEW_AUDIT_RUN_STARTED_AT must be an ISO timestamp.');
+      }
+      const priorAttempts = await db
+        .select({ id: attempts.id, createdAt: attempts.createdAt })
+        .from(attempts)
+        .where(eq(attempts.userId, userId));
+      for (const attempt of priorAttempts) {
+        if (attempt.createdAt >= priorRunStart) runCreatedAttemptIds.add(attempt.id);
+      }
+      const priorLogs = await db
+        .select({ id: reviewLogs.id, createdAt: reviewLogs.createdAt })
+        .from(reviewLogs)
+        .innerJoin(reviewCards, eq(reviewLogs.cardId, reviewCards.id))
+        .where(eq(reviewCards.userId, userId));
+      for (const log of priorLogs) {
+        if (log.createdAt >= priorRunStart) runCreatedReviewLogIds.add(log.id);
+      }
+    }
+    dueAtHistory.clear();
+    return;
+  }
   content = await loadContent('tests/fixtures/content');
   app = createApp({ db, content, tutorProvider: new FakeProvider() });
   const planSession = schedulerModule.planSession;
@@ -1141,7 +1843,7 @@ beforeAll(async () => {
 }, 300_000);
 
 afterAll(async () => {
-  await db.delete(users).where(eq(users.id, userId));
+  if (!realDataAuditMode) await db.delete(users).where(eq(users.id, userId));
   await db.$client.end();
 });
 
@@ -1626,3 +2328,9 @@ it('exercises the activity-progress prerequisite replan path', async () => {
   );
   expect(response.status).toBe(409);
 });
+
+if (realDataAuditMode) {
+  vitestIt('audits real learner review behavior across the requested timeline', async () => {
+    await runRealDataAudit();
+  });
+}
