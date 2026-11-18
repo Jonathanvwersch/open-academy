@@ -7,7 +7,7 @@ import { Rating } from 'ts-fsrs';
 import { z } from 'zod';
 import { serializedOptionOrder, serializeExercise } from '../../content/serialize.js';
 import { isTemplate } from '../../content/templates.js';
-import type { IndexedExercise } from '../../content/types.js';
+import type { ContentIndex, IndexedExercise } from '../../content/types.js';
 import {
   attempts,
   reviewCards,
@@ -27,7 +27,10 @@ import {
   canBringPrerequisiteDueNow,
 } from '../../learning/prerequisite-review.js';
 import { attemptAllowsRetry } from '../../learning/retry.js';
-import { buildReviewActivityForConcept } from '../../learning/scheduler.js';
+import {
+  buildReviewActivityForConcept,
+  interleaveReviewExercises,
+} from '../../learning/scheduler.js';
 import type { MasteryRecord } from '../../learning/types.js';
 import { type FeatureRequest, type FeatureServices, serviceResult } from '../../service-context.js';
 import {
@@ -54,6 +57,18 @@ type TutorGradeResult = {
   }>;
   exemplar: string;
 };
+
+function groupReviewExercisesByConcept(exerciseIds: string[], index: ContentIndex) {
+  const groups = new Map<string, string[]>();
+  for (const exerciseId of exerciseIds) {
+    const topicId = index.exercisesById.get(exerciseId)?.concept ?? exerciseId;
+    const topicExerciseIds = groups.get(topicId) ?? [];
+    topicExerciseIds.push(exerciseId);
+    groups.set(topicId, topicExerciseIds);
+  }
+  return [...groups].map(([topicId, exerciseIds]) => ({ topicId, exerciseIds }));
+}
+
 export async function getExercisesById(deps: FeatureServices, request: FeatureRequest) {
   const { content } = deps;
   const exercise = (await content()).exercisesById.get(request.params.id);
@@ -281,7 +296,7 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
         .limit(1)
     : [];
   const session = activityRow ? await repo.session(activityRow.sessionId) : undefined;
-  const activity = session?.activities.find((item) => item.id === body.data.activityId);
+  let activity = session?.activities.find((item) => item.id === body.data.activityId);
   if (body.data.activityId && !activity) {
     return serviceResult({ error: 'Activity not found' }, 404);
   }
@@ -624,11 +639,24 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
                       inArray(reviewCards.conceptId, hardPrerequisiteIds),
                     ),
                   );
-                const coveredConceptIds = new Set(
+                const coveredDimensionKeys = new Set(
                   (activity?.exerciseIds ?? []).flatMap((exerciseId) => {
-                    const conceptId = index.exercisesById.get(exerciseId)?.concept;
-                    return conceptId ? [conceptId] : [];
+                    const exercise = index.exercisesById.get(exerciseId);
+                    return exercise ? [`${exercise.concept}/${exercise.dimension}`] : [];
                   }),
+                );
+                const completedReviewConceptIds = new Set(
+                  (session?.activities ?? [])
+                    .filter(
+                      (sessionActivity) =>
+                        sessionActivity.kind === 'review' && sessionActivity.status === 'completed',
+                    )
+                    .flatMap((sessionActivity) =>
+                      sessionActivity.exerciseIds.flatMap((exerciseId) => {
+                        const conceptId = index.exercisesById.get(exerciseId)?.concept;
+                        return conceptId ? [conceptId] : [];
+                      }),
+                    ),
                 );
                 const weakest = bringWeakestPrerequisiteCardDueNow(
                   prerequisiteCards
@@ -637,7 +665,11 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
                         lastReviewAt: prerequisiteCard.lastReviewAt,
                         now,
                         timeZone: request.timeZone,
-                        coveredByActivity: coveredConceptIds.has(prerequisiteCard.conceptId),
+                        coveredByActivity:
+                          completedReviewConceptIds.has(prerequisiteCard.conceptId) ||
+                          coveredDimensionKeys.has(
+                            `${prerequisiteCard.conceptId}/${prerequisiteCard.dimension}`,
+                          ),
                       }),
                     )
                     .map((prerequisiteCard) => ({
@@ -679,7 +711,7 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
                     weakest.conceptId,
                     dueCardsForConcept,
                   );
-                  await db.transaction(async (tx) => {
+                  const extension = await db.transaction(async (tx) => {
                     await tx
                       .update(reviewCards)
                       .set({ dueAt: weakest.dueAt, fsrs: weakest.fsrs })
@@ -687,22 +719,78 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
                     if (!reviewActivity || !activityRow || activity?.kind !== 'review') return;
                     const sessionReviewActivities = await tx
                       .select({
+                        id: sessionActivities.id,
+                        idx: sessionActivities.idx,
                         kind: sessionActivities.kind,
                         status: sessionActivities.status,
                         exerciseIds: sessionActivities.exerciseIds,
+                        plannedMinutes: sessionActivities.plannedMinutes,
                       })
                       .from(sessionActivities)
-                      .where(eq(sessionActivities.sessionId, activityRow.sessionId));
-                    const alreadyCovered = sessionReviewActivities.some(
+                      .where(eq(sessionActivities.sessionId, activityRow.sessionId))
+                      .orderBy(asc(sessionActivities.idx));
+                    const coversPrerequisite = (
+                      sessionActivity: (typeof sessionReviewActivities)[number],
+                    ) =>
+                      sessionActivity.kind === 'review' &&
+                      sessionActivity.exerciseIds.some(
+                        (exerciseId) =>
+                          index.exercisesById.get(exerciseId)?.concept === weakest.conceptId,
+                      );
+                    const completedActivity = sessionReviewActivities.find(
                       (sessionActivity) =>
-                        sessionActivity.kind === 'review' &&
-                        ['planned', 'in_progress'].includes(sessionActivity.status) &&
-                        sessionActivity.exerciseIds.some(
-                          (exerciseId) =>
-                            index.exercisesById.get(exerciseId)?.concept === weakest.conceptId,
-                        ),
+                        sessionActivity.status === 'completed' &&
+                        coversPrerequisite(sessionActivity),
                     );
-                    if (alreadyCovered) return;
+                    if (completedActivity) return;
+                    const coveredActivity = sessionReviewActivities.find(
+                      (sessionActivity) =>
+                        ['planned', 'in_progress'].includes(sessionActivity.status) &&
+                        coversPrerequisite(sessionActivity),
+                    );
+                    if (coveredActivity) {
+                      const existingExerciseIds = new Set(coveredActivity.exerciseIds);
+                      const usedElsewhere = new Set(
+                        sessionReviewActivities
+                          .filter((sessionActivity) => sessionActivity.id !== coveredActivity.id)
+                          .flatMap((sessionActivity) => sessionActivity.exerciseIds),
+                      );
+                      const addedExerciseIds = [...new Set(reviewActivity.exerciseIds)].filter(
+                        (exerciseId) =>
+                          !existingExerciseIds.has(exerciseId) && !usedElsewhere.has(exerciseId),
+                      );
+                      if (addedExerciseIds.length === 0) return;
+                      const exerciseIds =
+                        coveredActivity.status === 'planned'
+                          ? interleaveReviewExercises(
+                              groupReviewExercisesByConcept(
+                                [...coveredActivity.exerciseIds, ...addedExerciseIds],
+                                index,
+                              ),
+                            )
+                          : [
+                              ...coveredActivity.exerciseIds,
+                              ...interleaveReviewExercises(
+                                groupReviewExercisesByConcept(addedExerciseIds, index),
+                              ),
+                            ];
+                      const plannedMinutes =
+                        coveredActivity.plannedMinutes +
+                        addedExerciseIds.reduce(
+                          (total, exerciseId) =>
+                            total + (index.exercisesById.get(exerciseId)?.est_minutes ?? 0),
+                          0,
+                        );
+                      await tx
+                        .update(sessionActivities)
+                        .set({ exerciseIds, plannedMinutes })
+                        .where(eq(sessionActivities.id, coveredActivity.id));
+                      return {
+                        activityId: coveredActivity.id,
+                        exerciseIds,
+                        plannedMinutes,
+                      };
+                    }
                     const laterActivities = await tx
                       .select({ id: sessionActivities.id, idx: sessionActivities.idx })
                       .from(sessionActivities)
@@ -729,7 +817,15 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
                       status: 'planned',
                       reason: reviewActivity.reason,
                     });
+                    return undefined;
                   });
+                  if (extension && activity?.id === extension.activityId) {
+                    activity = {
+                      ...activity,
+                      exerciseIds: extension.exerciseIds,
+                      plannedMinutes: extension.plannedMinutes,
+                    };
+                  }
                 }
               }
             }
