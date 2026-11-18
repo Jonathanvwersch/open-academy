@@ -649,6 +649,7 @@ exercises:
     role: recall
     knowledge_point: it-surprise
     difficulty: 1
+    target_seconds: 30
     est_minutes: 0.5
     prompt: Which of these scores one outcome that happened, without averaging over a distribution?
     options:
@@ -707,6 +708,7 @@ exercises:
     role: recall
     knowledge_point: it-entropy
     difficulty: 1
+    target_seconds: 30
     est_minutes: 0.5
     prompt: "Weather follows actual probabilities $p$, and an app forecasts $q$. Which quantity averages surprise calculated from $p$ itself, weighted by $p$?"
     options:
@@ -765,6 +767,7 @@ exercises:
     role: recall
     knowledge_point: it-cross-entropy
     difficulty: 1
+    target_seconds: 30
     est_minutes: 0.5
     prompt: "In the cross-entropy $H(p,q)$, with actual probabilities $p$ and forecast probabilities $q$, which probabilities go inside the logarithms, and which weight the terms?"
     options:
@@ -850,7 +853,7 @@ exercises:
     knowledge_point: it-kl
     difficulty: 1
     est_minutes: 0.5
-    prompt: "Fill in the blank: $\\mathrm{KL}(p\\Vert q) = \\underline{\\quad\\quad} - H(p)$. Type the missing quantity, for example as `H(p,q)`."
+    prompt: "Fill in the blank: $\\mathrm{KL}(p\\Vert q) = \\underline{\\quad\\quad} - H(p)$. Type the missing quantity in symbols or in words."
     accept:
       [
         "H(p,q)",
@@ -861,4 +864,5 @@ exercises:
         "the cross entropy",
         "crossentropy",
       ]
+    regex: '^\s*h\s*\(\s*p\s*,\s*q\s*\)\s*$'
     solution: "$\\mathrm{KL}(p\\Vert q)=H(p,q)-H(p)$: cross-entropy minus entropy."

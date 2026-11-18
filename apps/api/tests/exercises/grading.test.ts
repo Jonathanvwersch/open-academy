@@ -257,8 +257,19 @@ test('every authored expression answer in content is accepted', async () => {
 
 test('text accepts normalized answers and regular-expression matches', async () => {
   const exercise = required(content.exercisesById.get('vectors-dot-product'), 'text exercise');
+  if (exercise.type !== 'text') throw new Error('Expected a text exercise');
   expect(await gradeExercise(exercise, '  ORTHOGONAL  ')).toMatchObject({ correct: 1 });
   expect(await gradeExercise(exercise, 'unrelated')).toMatchObject({ correct: 0 });
+  expect(
+    await gradeExercise(
+      {
+        ...exercise,
+        accept: ['cross-entropy'],
+        regex: String.raw`^\s*h\s*\(\s*p\s*,\s*q\s*\)\s*$`,
+      },
+      'H( p, q )',
+    ),
+  ).toMatchObject({ correct: 1 });
 });
 
 test('code reading delegates to numeric grading', async () => {
