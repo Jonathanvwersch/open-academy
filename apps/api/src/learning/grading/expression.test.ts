@@ -41,3 +41,16 @@ test('retains scalar functions and implicit multiplication', () => {
     correct: 1,
   });
 });
+
+test('grades log2 of a reciprocal as equivalent to a natural-log ratio', () => {
+  const logarithmExercise: ExpressionExercise = {
+    ...exercise,
+    answer: '-log(r)/log(2)',
+    variables: { r: [0.1, 0.9] },
+  };
+
+  expect(gradeExpression(logarithmExercise, 'log2(1/r)', { random: () => 0.5 })).toMatchObject({
+    status: 'graded',
+    correct: 1,
+  });
+});
