@@ -724,3 +724,167 @@ exercises:
         category: math_error
         feedback: "This is a downhill direction, but its slope is -9.6, not the steepest possible slope -10."
     solution: "The gradient is $(6,8)$ with length 10, so the steepest downhill unit direction is $-(6,8)/10=(-0.6,-0.8)$ and its slope is $-10$."
+  - id: grad-recall-gradient-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: grad-vector-of-partials
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what does the gradient contain, and how are its components ordered?"
+    rubric:
+      - id: point1
+        criterion: "Explain that the gradient is a vector containing one partial derivative per input."
+        weight: 1
+        required: true
+      - id: point2
+        criterion: "State that those derivatives are kept in input order."
+        weight: 1
+        required: true
+    exemplar: "The gradient is a vector with one partial derivative for every input. Its components follow the input order."
+  - id: grad-recall-gradient-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: grad-vector-of-partials
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 0.5
+    prompt: "Which quantity keeps the slopes for every input together at a point?"
+    options:
+      - id: a
+        text: "A partial derivative"
+        correct: false
+        feedback: "A partial derivative measures the slope for a single input with the others fixed."
+      - id: b
+        text: "The function value"
+        correct: false
+        feedback: "The function value gives the height at the point."
+      - id: c
+        text: "The gradient"
+        correct: true
+        feedback: "The gradient is a vector containing one partial derivative per input."
+    solution: "The gradient is a vector containing one partial derivative per input."
+  - id: grad-recall-gradient-formula
+    dimension: math
+    type: text
+    role: recall
+    knowledge_point: grad-vector-of-partials
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "For inputs ordered $(x,y)$, complete $\\nabla f=(\\partial f/\\partial x,\\underline{\\quad})$. Type the missing derivative in symbols or words."
+    accept:
+      [
+        "∂f/∂y",
+        "partial f/partial y",
+        "f_y",
+        "fy",
+        "partial derivative with respect to y",
+        "the partial derivative with respect to y",
+      ]
+    regex: "^\\s*(?:(?:∂|partial\\s*)f\\s*/\\s*(?:∂|partial\\s*)y|f\\s*_?\\s*y|(?:the\\s+)?partial\\s+derivative\\s+(?:of\\s+f\\s+)?with\\s+respect\\s+to\\s+y)\\s*$"
+    solution: "The second component is $\\partial f/\\partial y$, the slope for the second input."
+  - id: grad-recall-direction-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: grad-points-uphill
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what does a directional derivative measure, and why do we use a direction vector of length one?"
+    rubric:
+      - id: point1
+        criterion: "Explain that it is the slope at a point in a chosen direction."
+        weight: 1
+        required: true
+      - id: point2
+        criterion: "Explain that a unit direction makes the result measure change per unit distance."
+        weight: 1
+        required: true
+    exemplar: "A directional derivative is the slope at a point in a chosen direction. Using a vector of length one measures the output change per unit distance."
+  - id: grad-recall-direction-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: grad-points-uphill
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 0.5
+    prompt: "Which operation gives the slope in a chosen unit direction $\\mathbf u$ at $P$?"
+    options:
+      - id: a
+        text: "The function value $f(P)$"
+        correct: false
+        feedback: "The function value gives height at the starting point."
+      - id: b
+        text: "The dot product $\\nabla f(P)\\cdot\\mathbf u$"
+        correct: true
+        feedback: "The dot product combines the effects of the input changes in that direction."
+      - id: c
+        text: "The length $\\|\\nabla f(P)\\|$"
+        correct: false
+        feedback: "The gradient's length gives the largest possible uphill slope."
+    solution: "The dot product combines the effects of the input changes in that direction."
+  - id: grad-recall-direction-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: grad-points-uphill
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "The gradient at $P$ is $(a,b)$ and a unit direction is $(0.6,0.8)$. Write the slope in that direction as a scalar expression."
+    answer: "0.6*a+0.8*b"
+    variables: { "a": [1, 5], "b": [-4, 4] }
+    solution: "The dot product gives $0.6a+0.8b$."
+  - id: grad-recall-descent-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: grad-steepest-descent
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, at a point with a nonzero gradient, which direction gives the fastest decrease per unit distance, and how do you make it a unit vector?"
+    rubric:
+      - id: point1
+        criterion: "State that the negative gradient points in the direction of fastest decrease."
+        weight: 1
+        required: true
+      - id: point2
+        criterion: "Explain that dividing the negative gradient by its length gives a unit direction."
+        weight: 1
+        required: true
+    exemplar: "The negative gradient points steepest downhill. Divide it by its length to get a unit vector."
+  - id: grad-recall-descent-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: grad-steepest-descent
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 0.5
+    prompt: "For a nonzero gradient, which direction gives zero directional slope?"
+    options:
+      - id: a
+        text: "A direction perpendicular to the gradient"
+        correct: true
+        feedback: "Perpendicular vectors have zero dot product."
+      - id: b
+        text: "A direction along the gradient"
+        correct: false
+        feedback: "Along the gradient the slope is largest and positive."
+      - id: c
+        text: "A direction opposite the gradient"
+        correct: false
+        feedback: "Opposite the gradient the slope is smallest and negative."
+    solution: "Perpendicular vectors have zero dot product."
+  - id: grad-recall-descent-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: grad-steepest-descent
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A nonzero gradient has components $(a,b)$. Write the first component of the steepest downhill unit vector. Type `sqrt(...)` for a square root."
+    answer: "-a/sqrt(a^2+b^2)"
+    variables: { "a": [1, 5], "b": [1, 5] }
+    solution: "Reverse the gradient and divide by its length. The first component is $-a/\\sqrt{a^2+b^2}$."

@@ -729,3 +729,211 @@ exercises:
     solution:
       The fitted $\mu$ and $\sigma$ are the values that make the first 200 readings most likely, so they
       score those readings slightly better than new ones. A gap of 0.05 per reading is small.
+  - id: mle-recall-likelihood-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: mle-score-guess
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what is the likelihood of a guess for a coin's chance of heads, and which guess does maximum likelihood choose?"
+    rubric:
+      - id: point1
+        criterion: "Explain that likelihood is the probability of the observed flips assuming the guess is true."
+        weight: 1
+        required: true
+      - id: point2
+        criterion: "State that maximum likelihood chooses the guess with the largest likelihood."
+        weight: 1
+        required: true
+    exemplar: "Likelihood is the probability of the observed flips if a proposed chance of heads were true. Maximum likelihood chooses the highest-scoring guess."
+  - id: mle-recall-likelihood-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: mle-score-guess
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 0.5
+    prompt: "When comparing guesses for a coin's chance of heads by likelihood, what stays fixed?"
+    options:
+      - id: a
+        text: "The proposed chance of heads"
+        correct: false
+        feedback: "The proposed chance changes as we compare guesses."
+      - id: b
+        text: "The probability assigned to the observed flips"
+        correct: false
+        feedback: "Different guesses can assign different probabilities to the same flips."
+      - id: c
+        text: "The observed flips"
+        correct: true
+        feedback: "Likelihood scores different guesses against the same observed data."
+    solution: "Likelihood scores different guesses against the same observed data."
+  - id: mle-recall-likelihood-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: mle-score-guess
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Independent coin flips give the exact sequence heads, heads, tails. Write its likelihood as a function of the guessed heads probability $p$."
+    answer: "p^2*(1-p)"
+    variables: { "p": [0.05, 0.95] }
+    solution: "Multiply the three flip probabilities: $p\\cdot p\\cdot(1-p)$."
+  - id: mle-recall-logs-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: mle-logs
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, why take logs when scoring many independent observations, and what happens to the best guess?"
+    rubric:
+      - id: point1
+        criterion: "Explain that logs turn a product of small probabilities into a manageable sum."
+        weight: 1
+        required: true
+      - id: point2
+        criterion: "Explain that logs preserve the ranking of positive likelihoods, so the best guess stays the same."
+        weight: 1
+        required: true
+    exemplar: "Logs turn the product of many small probabilities into a manageable sum. They preserve the ordering of positive likelihoods, so the best guess stays the same."
+  - id: mle-recall-logs-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: mle-logs
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 0.5
+    prompt: "Which training objective chooses the same guess as maximising likelihood?"
+    options:
+      - id: a
+        text: "Maximise negative log-likelihood"
+        correct: false
+        feedback: "Maximising the negative log-likelihood is the same as minimising the log-likelihood, which picks the least likely guess."
+      - id: b
+        text: "Minimise negative log-likelihood"
+        correct: true
+        feedback: "Flipping the log-likelihood's sign turns its maximum into a minimum."
+      - id: c
+        text: "Minimise log-likelihood"
+        correct: false
+        feedback: "Minimising the log-likelihood picks the guess with the smallest likelihood."
+    solution: "Flipping the log-likelihood's sign turns its maximum into a minimum."
+  - id: mle-recall-logs-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: mle-logs
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "For an exact sequence of independent flips containing $h$ heads and $t$ tails, write the log-likelihood as a function of heads probability $p$. Type `ln(...)` for natural logarithms."
+    answer: "h*log(p)+t*log(1-p)"
+    variables: { "h": [2, 10], "t": [2, 10], "p": [0.05, 0.95] }
+    solution: "Each heads contributes $\\ln p$ and each tails contributes $\\ln(1-p)$, giving $h\\ln p+t\\ln(1-p)$."
+  - id: mle-recall-centre-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: mle-gauss-centre
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, for independent Gaussian readings with fixed standard deviation, how does maximum likelihood choose a common centre, and which average gives it?"
+    rubric:
+      - id: point1
+        criterion: "Explain that it chooses the centre with the smallest sum of squared distances to the readings."
+        weight: 1
+        required: true
+      - id: point2
+        criterion: "State that the chosen centre is the readings' mean."
+        weight: 1
+        required: true
+    exemplar: "Maximum likelihood minimises the sum of squared distances to the readings when standard deviation is fixed. The centre that does this is their mean."
+  - id: mle-recall-centre-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: mle-gauss-centre
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 0.5
+    prompt: "For the same independent Gaussian readings, changing the fixed standard deviation has what effect on the maximum likelihood centre?"
+    options:
+      - id: a
+        text: "The best centre stays at the readings' mean"
+        correct: true
+        feedback: "Changing the fixed spread reshapes the likelihood hill while leaving its top at the mean."
+      - id: b
+        text: "The best centre moves one standard deviation above the mean"
+        correct: false
+        feedback: "Standard deviation scales the squared-distance penalty without shifting its minimum."
+      - id: c
+        text: "The best centre moves to the most distant reading"
+        correct: false
+        feedback: "The squared-distance sum uses every reading and is smallest at their mean."
+    solution: "Changing the fixed spread reshapes the likelihood hill while leaving its top at the mean."
+  - id: mle-recall-centre-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: mle-gauss-centre
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Independent Gaussian readings $a$, $b$ and $c$ share an unknown centre and a fixed positive standard deviation. Write the maximum likelihood centre."
+    answer: "(a+b+c)/3"
+    variables: { "a": [1, 4], "b": [5, 8], "c": [9, 12] }
+    solution: "The maximum likelihood centre is the arithmetic mean, $(a+b+c)/3$."
+  - id: mle-recall-mse-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: mle-mse
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what is mean squared error, and under which noise assumption does minimising it give maximum likelihood?"
+    rubric:
+      - id: point1
+        criterion: "Explain that MSE is the average squared gap between each reading and its prediction."
+        weight: 1
+        required: true
+      - id: point2
+        criterion: "State that the readings have independent Gaussian noise around predictions with a fixed standard deviation."
+        weight: 1
+        required: true
+    exemplar: "MSE averages the squared differences between readings and predictions. Minimising it gives maximum likelihood with independent Gaussian noise of fixed standard deviation around the predictions."
+  - id: mle-recall-mse-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: mle-mse
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 0.5
+    prompt: "Why can one badly misfiring sensor reading strongly influence a model trained with mean squared error?"
+    options:
+      - id: a
+        text: "Averaging gives every error the same squared size"
+        correct: false
+        feedback: "Averaging divides the sum by the count, so a large squared error stays large compared with the others."
+      - id: b
+        text: "The Gaussian model assigns frequent large errors high probability"
+        correct: false
+        feedback: "Gaussian noise rarely produces readings far from the prediction."
+      - id: c
+        text: "Squaring gives large errors much greater weight"
+        correct: true
+        feedback: "An error ten times as large contributes one hundred times as much squared error."
+    solution: "An error ten times as large contributes one hundred times as much squared error."
+  - id: mle-recall-mse-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: mle-mse
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Two readings are $a$ and $b$, with predictions $u$ and $v$ respectively. Write their mean squared error."
+    answer: "((a-u)^2+(b-v)^2)/2"
+    variables: { "a": [1, 5], "b": [6, 10], "u": [1, 5], "v": [6, 10] }
+    solution: "Square both prediction errors and average them: $((a-u)^2+(b-v)^2)/2$."

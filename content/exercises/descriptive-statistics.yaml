@@ -657,3 +657,214 @@ exercises:
           category: misunderstood_definition,
         }
     solution: Two standard errors give a margin of $2(0.03)=0.06$. The difference interval is $[0.04-0.06,0.04+0.06]=[-0.02,0.10]$, which includes zero and leaves us unsure.
+  - id: ds-recall-spread-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: ds-centre-spread
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what does sample variance measure, and how does sample standard deviation change its units?"
+    rubric:
+      - id: point1
+        criterion: "Explain that sample variance measures spread using squared distances from the sample mean."
+        weight: 1
+        required: true
+      - id: point2
+        criterion: "Explain that standard deviation takes the square root, returning to the observations' original units."
+        weight: 1
+        required: true
+    exemplar: "Sample variance measures spread through squared distances from the mean. Standard deviation takes its square root to express spread in the original units."
+  - id: ds-recall-spread-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: ds-centre-spread
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 0.5
+    prompt: "Which quantity describes variation among individual grasp times in seconds?"
+    options:
+      - id: a
+        text: "Sample variance"
+        correct: false
+        feedback: "Variance measures spread in seconds squared."
+      - id: b
+        text: "Sample mean"
+        correct: false
+        feedback: "The mean gives the average grasp time."
+      - id: c
+        text: "Sample standard deviation"
+        correct: true
+        feedback: "Standard deviation measures individual spread in seconds."
+    solution: "Standard deviation measures individual spread in seconds."
+  - id: ds-recall-spread-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: ds-centre-spread
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "For $n$ observations, let $Q$ be the sum of their squared distances from the sample mean. Write the sample variance."
+    answer: "Q/(n-1)"
+    variables: { "Q": [1, 30], "n": [3, 20] }
+    solution: "Sample variance divides the squared-distance sum by one less than the count: $Q/(n-1)$."
+  - id: ds-recall-mean-se-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: ds-average-wobble
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what does the standard error of a sample mean measure, and how does a larger trial count affect it?"
+    rubric:
+      - id: point1
+        criterion: "Explain that it measures how much means vary across repeated experiments of the same size."
+        weight: 1
+        required: true
+      - id: point2
+        criterion: "Explain that more independent trials under unchanged conditions reduce the standard error."
+        weight: 1
+        required: true
+    exemplar: "Standard error measures how much the mean varies across repeated experiments of the same size. More independent trials under unchanged conditions make it smaller."
+  - id: ds-recall-mean-se-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: ds-average-wobble
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 0.5
+    prompt: "An approximate 95% confidence interval for a mean is built repeatedly under suitable conditions. What does 95% describe?"
+    options:
+      - id: a
+        text: "The share of sample means exactly equal to the long-run average"
+        correct: false
+        feedback: "Sample means vary between experiments, so almost none equal the long-run average exactly."
+      - id: b
+        text: "The share of these intervals containing the long-run average"
+        correct: true
+        feedback: "About 95% of intervals from this method contain the long-run average."
+      - id: c
+        text: "The share of individual times inside each interval"
+        correct: false
+        feedback: "Individual times can lie well outside an interval for their average."
+    solution: "About 95% of intervals from this method contain the long-run average."
+  - id: ds-recall-mean-se-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: ds-average-wobble
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Individual observations have sample standard deviation $s$, and there are $n$ independent trials under unchanged conditions. Write the standard error of their mean. Type `sqrt(...)` for a square root."
+    answer: "s/sqrt(n)"
+    variables: { "s": [0.5, 5], "n": [25, 400] }
+    solution: "Divide the individual spread by the square root of the count: $s/\\sqrt n$."
+  - id: ds-recall-rate-se-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: ds-success-uncertainty
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, how can a success rate be viewed as an average, and what does its standard error measure?"
+    rubric:
+      - id: point1
+        criterion: "Explain that successes count as one and failures as zero, whose average is the success rate."
+        weight: 1
+        required: true
+      - id: point2
+        criterion: "Explain that standard error measures variation in the rate across repeated experiments."
+        weight: 1
+        required: true
+    exemplar: "A success rate averages ones for successes and zeros for failures. Its standard error describes how much that rate varies across repeated experiments."
+  - id: ds-recall-rate-se-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: ds-success-uncertainty
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 0.5
+    prompt: "Which test setup supports an approximate two-standard-error range for a success chance?"
+    options:
+      - id: a
+        text: "Independent varied trials with at least ten successes and ten failures"
+        correct: true
+        feedback: "Both outcome counts support the bell approximation, and varied independent trials suit the intended conditions."
+      - id: b
+        text: "Independent varied trials with many successes and one failure"
+        correct: false
+        feedback: "Very few failures can make repeated rates lopsided, weakening the bell approximation."
+      - id: c
+        text: "Repeated trials on one fixed object whose shared quirks affect every attempt"
+        correct: false
+        feedback: "Shared setup effects prevent the attempts from supplying independent evidence about varied conditions."
+    solution: "Both outcome counts support the bell approximation, and varied independent trials suit the intended conditions."
+  - id: ds-recall-rate-se-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: ds-success-uncertainty
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A success rate $\\hat p$ comes from $n$ independent attempts. Write its approximate standard error, typing `p` for $\\hat p$ and `sqrt(...)` for a square root."
+    answer: "sqrt(p*(1-p)/n)"
+    variables: { "p": [0.2, 0.8], "n": [100, 400] }
+    solution: "The rate's standard error is $\\sqrt{\\hat p(1-\\hat p)/n}$."
+  - id: ds-recall-difference-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: ds-compare-rates
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, how do we estimate an update's improvement in success rate, and what does a suitable difference interval excluding zero support?"
+    rubric:
+      - id: point1
+        criterion: "State that improvement is the updated rate minus the original rate."
+        weight: 1
+        required: true
+      - id: point2
+        criterion: "Explain that an interval excluding zero supports a real difference between the success rates."
+        weight: 1
+        required: true
+      - id: conditions
+        criterion: "Mention that this needs independent tests, comparable conditions and large enough counts."
+        weight: 1
+    exemplar: "Subtract the original rate from the updated rate. A difference interval excluding zero supports a real difference when independent tests have comparable conditions and large enough counts."
+  - id: ds-recall-difference-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: ds-compare-rates
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 0.5
+    prompt: "Independent, comparable tests with large enough counts give a difference interval containing zero. What can we conclude?"
+    options:
+      - id: a
+        text: "The long-run rates are exactly equal"
+        correct: false
+        feedback: "Including zero leaves uncertainty about equality."
+      - id: b
+        text: "The update has definitely reduced the long-run rate"
+        correct: false
+        feedback: "A definite decrease would need evidence favouring negative differences."
+      - id: c
+        text: "The evidence leaves open whether the long-run rates differ"
+        correct: true
+        feedback: "An interval containing zero leaves equality and differences compatible with the evidence."
+    solution: "An interval containing zero leaves equality and differences compatible with the evidence."
+  - id: ds-recall-difference-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: ds-compare-rates
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Two independent rate estimates have standard errors $a$ and $b$. Write the standard error of their difference. Type `sqrt(...)` for a square root."
+    answer: "sqrt(a^2+b^2)"
+    variables: { "a": [0.01, 0.1], "b": [0.01, 0.1] }
+    solution: "Add squared standard errors and take the square root: $\\sqrt{a^2+b^2}$."
