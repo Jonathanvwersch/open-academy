@@ -569,18 +569,12 @@ exercises:
     prompt: Write accuracy using the four confusion-matrix counts $\text{TP}$, $\text{TN}$, $\text{FP}$ and $\text{FN}$. Type `tp`, `tn`, `fp` and `fn` for those counts.
     answer: (tp+tn)/(tp+tn+fp+fn)
     variables:
-      tp:
-        - 1
-        - 50
-      tn:
-        - 1
-        - 100
-      fp:
-        - 1
-        - 30
-      fn:
-        - 1
-        - 30
+      {
+        "tp": { "values": [1, 25, 50] },
+        "tn": { "values": [1, 50, 100] },
+        "fp": { "values": [1, 15, 30] },
+        "fn": { "values": [1, 15, 30] },
+      }
     solution: "Accuracy divides the correct counts by all counts: $(\text{TP}+\text{TN})/(\text{TP}+\text{TN}+\text{FP}+\text{FN})$."
   - id: evm-recall-catch-say
     dimension: conceptual
@@ -632,15 +626,11 @@ exercises:
     prompt: Write precision using confusion-matrix counts $\text{TP}$, $\text{FP}$ and $\text{FN}$. Type `tp`, `fp` and `fn` for those counts.
     answer: tp/(tp+fp)
     variables:
-      tp:
-        - 1
-        - 50
-      fp:
-        - 1
-        - 30
-      fn:
-        - 1
-        - 30
+      {
+        "tp": { "values": [1, 25, 50] },
+        "fp": { "values": [1, 15, 30] },
+        "fn": { "values": [1, 15, 30] },
+      }
     solution: Precision is $\text{TP}/(\text{TP}+\text{FP})$, the share of all flags that are actually faulty.
   - id: evm-recall-numbers-say
     dimension: conceptual

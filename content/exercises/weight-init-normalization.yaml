@@ -984,7 +984,7 @@ exercises:
     est_minutes: 0.5
     prompt: "A chain has $d$ layers with weight $w$ in each, no bias and no activation function. For input $x$, write the final output."
     answer: "w^d*x"
-    variables: { "w": [0.2, 2], "d": [2, 8], "x": [0.5, 3] }
+    variables: { "w": [0.2, 2], "d": { "values": [2, 4, 8] }, "x": [0.5, 3] }
     solution: "Repeated multiplication gives $h_d=w^d x$."
   - id: wi-recall-init-say
     dimension: conceptual
@@ -1035,7 +1035,7 @@ exercises:
     est_minutes: 0.5
     prompt: "A neuron has $n$ inputs of typical size one and uses ReLU. Write the typical size of its starting weights under He initialization. Type `sqrt(...)` for a square root."
     answer: "sqrt(2/n)"
-    variables: { "n": [2, 512] }
+    variables: { "n": { "values": [2, 32, 512] } }
     solution: "He initialization uses $a=\\sqrt{2/n}$."
   - id: wi-recall-layer-say
     dimension: conceptual

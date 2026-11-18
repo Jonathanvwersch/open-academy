@@ -646,7 +646,7 @@ exercises:
     est_minutes: 0.5
     prompt: "A model uses embedding width $d$ and $h$ equal-width heads, with $d$ divisible by $h$. Write the head width $d_k$."
     answer: "d/h"
-    variables: { "d": [8, 512], "h": [1, 8] }
+    variables: { "d": { "values": [8, 64, 512] }, "h": { "values": [1, 2, 4, 8] } }
     solution: "Each head has width $d_k=d/h$."
   - id: mha-recall-combine-say
     dimension: conceptual
@@ -748,5 +748,5 @@ exercises:
     est_minutes: 0.5
     prompt: "A multi-head attention layer has embedding width $d$. Write the number of learned entries in its combined query, key, value and output matrices."
     answer: "4*d*d"
-    variables: { "d": [2, 512] }
+    variables: { "d": { "values": [2, 64, 512] } }
     solution: "The four matrices each have $d^2$ entries, giving $4d^2$."

@@ -1010,7 +1010,12 @@ exercises:
     est_minutes: 0.5
     prompt: "For one head of standard attention on a prompt of $T$ tokens, the head width is $d_h$ and each number uses $b$ bytes. Write the total bytes moved across the three kernels. Type `dh` for the head width."
     answer: "b*(4*T*dh+4*T^2)"
-    variables: { T: [16, 2048], dh: [16, 128], b: [1, 4] }
+    variables:
+      {
+        "T": { "values": [16, 256, 2048] },
+        "dh": { "values": [16, 64, 128] },
+        "b": { "values": [1, 2, 4] },
+      }
     solution: "Four matrices contribute $Td_h$ numbers each. The two $T^2$ tables are each written and read, giving $b(4Td_h+4T^2)$ bytes."
   - id: fa-recall-fused-kernel-say
     dimension: conceptual
@@ -1061,7 +1066,7 @@ exercises:
     est_minutes: 0.5
     prompt: "One attention head has prompt length $T$ and head width $d_h$. Assume a fused kernel can read each input once and write the output once. Write its minimum traffic in numbers moved. Type `dh` for the head width."
     answer: "4*T*dh"
-    variables: { T: [16, 2048], dh: [16, 128] }
+    variables: { "T": { "values": [16, 256, 2048] }, "dh": { "values": [16, 64, 128] } }
     solution: "The kernel reads $Q$, $K$ and $V$ and writes $O$. Each has $Td_h$ numbers, so the minimum is $4Td_h$."
   - id: fa-recall-online-softmax-say
     dimension: conceptual

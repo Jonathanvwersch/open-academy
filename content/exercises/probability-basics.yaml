@@ -845,5 +845,5 @@ exercises:
     est_minutes: 0.5
     prompt: "Among equally likely outcomes, $a$ belong to both $A$ and $B$, and $b$ belong to $B$ in total. Write $P(A\\mid B)$ in terms of $a$ and $b$."
     answer: "a/b"
-    variables: { "a": [1, 5], "b": [6, 12] }
+    variables: { "a": { "values": [1, 3, 5] }, "b": { "values": [6, 9, 12] } }
     solution: "Divide the count in both events by the count in the known event: $a/b$."

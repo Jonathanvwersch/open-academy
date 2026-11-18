@@ -808,7 +808,7 @@ exercises:
     est_minutes: 0.5
     prompt: BPE starts with $c$ distinct characters and learns $m$ merges. Write the vocabulary size $N$, with no extra special tokens.
     answer: c+m
-    variables: { c: [2, 256], m: [1, 50000] }
+    variables: { "c": { "values": [2, 16, 256] }, "m": { "values": [1, 100, 50000] } }
     solution: Each merge adds one vocabulary entry, so $N=c+m$.
   - id: tok-recall-encode-say
     dimension: conceptual

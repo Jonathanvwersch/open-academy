@@ -539,7 +539,13 @@ exercises:
     est_minutes: 0.5
     prompt: "A matrix product has input shapes $m\\times k$ and $k\\times n$. Each entry uses $b$ bytes. Write the total bytes moved if each input is read once and the output is written once."
     answer: "b*(m*k+k*n+m*n)"
-    variables: { m: [2, 24], k: [2, 24], n: [2, 24], b: [1, 4] }
+    variables:
+      {
+        "m": { "values": [2, 13, 24] },
+        "k": { "values": [2, 13, 24] },
+        "n": { "values": [2, 13, 24] },
+        "b": { "values": [1, 2, 4] },
+      }
     solution: "The two inputs contain $mk$ and $kn$ entries. The output has $mn$ entries, giving $b(mk+kn+mn)$ bytes."
   - id: aip-recall-roofline-say
     dimension: conceptual
@@ -645,5 +651,5 @@ exercises:
     est_minutes: 0.5
     prompt: "A product applies a $d\\times d$ weight matrix to $m$ token rows of width $d$. Each entry takes 2 bytes. Read both inputs once and write the output once. Write the exact arithmetic intensity in FLOPs per byte."
     answer: "m*d/(d+2*m)"
-    variables: { m: [1, 512], d: [32, 4096] }
+    variables: { "m": { "values": [1, 64, 512] }, "d": { "values": [32, 256, 4096] } }
     solution: "The work is $2md^2$ FLOPs and the traffic is $2(d^2+2md)$ bytes. Their ratio simplifies to $md/(d+2m)$."

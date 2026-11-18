@@ -1763,6 +1763,44 @@ test('expression answer keys must grade as correct against themselves', async ()
   );
 });
 
+test('expression self-grading uses varied samples around singular midpoints', async () => {
+  const data = await notationFixture();
+  const exercise = data.exercises.find(({ value }) => value.type === 'expression');
+  if (exercise?.value.type !== 'expression') {
+    throw new Error('Missing expression fixture');
+  }
+  exercise.value.answer = '1/(x-y)';
+  exercise.value.variables = { x: [1, 2], y: [1, 2] };
+
+  expect(validateContent(data)).not.toContainEqual(
+    expect.objectContaining({
+      id: exercise.value.id,
+      message: expect.stringContaining(
+        'expression answer does not grade as correct against itself',
+      ),
+    }),
+  );
+});
+
+test('expression answer keys without finite samples are rejected', async () => {
+  const data = await notationFixture();
+  const exercise = data.exercises.find(({ value }) => value.type === 'expression');
+  if (exercise?.value.type !== 'expression') {
+    throw new Error('Missing expression fixture');
+  }
+  exercise.value.answer = 'sqrt(-1-x*x)';
+  exercise.value.variables = { x: [0, 1] };
+
+  expect(validateContent(data)).toContainEqual(
+    expect.objectContaining({
+      id: exercise.value.id,
+      message: expect.stringContaining(
+        'expression answer does not grade as correct against itself',
+      ),
+    }),
+  );
+});
+
 test('template validator rejects answers that are not accepted when displayed', async () => {
   const data = await notationFixture();
   const exercise = ExerciseSchema.parse({

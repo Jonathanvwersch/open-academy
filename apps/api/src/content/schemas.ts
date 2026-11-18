@@ -442,10 +442,19 @@ const NumericExerciseSchema = z.union([
   }).strict(),
 ]);
 
+const ExpressionVariableSchema = z.union([
+  z.tuple([z.number().finite(), z.number().finite()]),
+  z
+    .object({
+      values: z.array(z.number().finite()).min(1),
+    })
+    .strict(),
+]);
+
 const ExpressionExerciseSchema = CommonExerciseSchema.extend({
   type: z.literal('expression'),
   answer: z.string().min(1),
-  variables: z.record(z.string(), z.tuple([z.number(), z.number()])),
+  variables: z.record(z.string(), ExpressionVariableSchema),
   common_wrong: z.array(CommonWrongExpressionSchema).optional(),
 }).strict();
 

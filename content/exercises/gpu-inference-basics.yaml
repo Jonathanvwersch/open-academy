@@ -719,7 +719,7 @@ exercises:
     est_minutes: 0.5
     prompt: "A model stores $N$ weights in a format with $k$ bits per number. Write the memory taken up by the weights in bytes."
     answer: "N*k/8"
-    variables: { N: [1000, 100000], k: [4, 32] }
+    variables: { "N": { "values": [1000, 10000, 100000] }, "k": { "values": [4, 8, 16, 32] } }
     solution: "A byte is 8 bits, so each weight takes $k/8$ bytes and the weights take $Nk/8$ bytes."
   - id: gibp-recall-memory-hierarchy-say
     dimension: conceptual
@@ -770,7 +770,7 @@ exercises:
     est_minutes: 0.5
     prompt: "A GPU moves $D$ bytes from HBM. Its memory bandwidth is $W$ bytes per second. Write the minimum transfer time in seconds."
     answer: "D/W"
-    variables: { D: [100, 100000], W: [100, 100000] }
+    variables: { "D": { "values": [100, 10000, 100000] }, "W": [100, 100000] }
     solution: "At full bandwidth, moving $D$ bytes takes $D/W$ seconds."
   - id: gibp-recall-decode-bound-say
     dimension: conceptual
@@ -821,5 +821,5 @@ exercises:
     est_minutes: 0.5
     prompt: "For one conversation, each decode pass reads $D$ bytes of weights and produces one token. Memory bandwidth is $W$ bytes per second. Ignoring other costs, write the weight-read ceiling on tokens per second."
     answer: "W/D"
-    variables: { D: [1000, 100000], W: [1000, 100000] }
+    variables: { "D": { "values": [1000, 10000, 100000] }, "W": [1000, 100000] }
     solution: "A read takes $D/W$ seconds at peak bandwidth. One token per read gives a ceiling of $W/D$ tokens per second."

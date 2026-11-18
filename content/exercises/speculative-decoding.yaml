@@ -877,7 +877,7 @@ exercises:
     est_minutes: 0.5
     prompt: "The draft proposes $k$ tokens in one greedy speculative-decoding round. Write the number of predictions in the target check, including its prediction for a possible bonus token."
     answer: "k+1"
-    variables: { k: [2, 12] }
+    variables: { "k": { "values": [2, 6, 12] } }
     solution: "The target makes one prediction for each of the $k$ guesses and one extra prediction, for $k+1$ in all."
   - id: sdp-recall-speed-say
     dimension: conceptual
@@ -928,7 +928,7 @@ exercises:
     est_minutes: 0.5
     prompt: "A speculative round makes $k$ draft guesses. Each passes independently with the same probability $\\alpha$, where $0<\\alpha<1$. Write the expected number of output tokens per round. Type `alpha` for $\\alpha$."
     answer: "(1-alpha^(k+1))/(1-alpha)"
-    variables: { alpha: [0.1, 0.95], k: [2, 12] }
+    variables: { "alpha": [0.1, 0.95], "k": { "values": [2, 6, 12] } }
     solution: "A correction or bonus gives one guaranteed token. Add each guess's probability of surviving up to its position: $1+\\alpha+\\cdots+\\alpha^k=(1-\\alpha^{k+1})/(1-\\alpha)$."
   - id: sdp-recall-exact-sampling-say
     dimension: conceptual

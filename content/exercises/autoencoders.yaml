@@ -876,7 +876,7 @@ exercises:
     est_minutes: 0.5
     prompt: "An image contains $n$ input values and its latent vector contains $k$ values. Write the compression factor."
     answer: "n/k"
-    variables: { "n": [500, 2000], "k": [2, 128] }
+    variables: { "n": { "values": [500, 1000, 2000] }, "k": { "values": [2, 32, 128] } }
     solution: "The compression factor is the number of input values per latent value, $n/k$."
   - id: ae-recall-latent-say
     dimension: conceptual

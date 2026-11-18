@@ -922,7 +922,7 @@ exercises:
     est_minutes: 0.5
     prompt: "A robot moves epsilon-greedily with exploration probability $\\varepsilon$. There are $k$ available actions and one has the highest value. Write the probability of taking that action. Type `eps` for $\\varepsilon$."
     answer: "1 - eps + eps/k"
-    variables: { eps: [0.01, 0.5], k: [2, 10] }
+    variables: { "eps": [0.01, 0.5], "k": { "values": [2, 5, 10] } }
     solution: "The greedy branch gives $1-\\varepsilon$, and the random pick lands on the greedy action with probability $\\varepsilon/k$, so the total is $1-\\varepsilon+\\varepsilon/k$."
   - id: ql-recall-full-run-say
     dimension: conceptual

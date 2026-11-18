@@ -666,5 +666,5 @@ exercises:
     est_minutes: 0.5
     prompt: "A calculation has $o$ outputs. Write the total number of passes reverse mode uses to find all output slopes, including the recording pass."
     answer: "1+o"
-    variables: { o: [1, 12] }
+    variables: { "o": { "values": [1, 4, 12] } }
     solution: "One recording pass serves all the outputs. Add $o$ backward passes, one per output."

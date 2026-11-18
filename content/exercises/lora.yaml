@@ -950,7 +950,12 @@ exercises:
     est_minutes: 0.5
     prompt: "A weight matrix has $d$ rows and $k$ columns. Write the number of trainable parameters for a rank-$r$ LoRA change to this matrix."
     answer: "r*(d+k)"
-    variables: { "d": [32, 256], "k": [32, 256], "r": [1, 8] }
+    variables:
+      {
+        "d": { "values": [32, 128, 256] },
+        "k": { "values": [32, 128, 256] },
+        "r": { "values": [1, 2, 4, 8] },
+      }
     solution: "$B$ has $dr$ entries and $A$ has $rk$, for $r(d+k)$ in total."
   - id: "lorp-recall-merge-say"
     dimension: "conceptual"

@@ -72,6 +72,17 @@ const AVOIDED_PROSE_EXCLUDED_KEYS = new Set([
   'variables',
 ]);
 
+function mulberry32(seed: number): () => number {
+  let state = seed >>> 0;
+  return () => {
+    let value = state + 0x6d2b79f5;
+    state = value;
+    value = Math.imul(value ^ (value >>> 15), value | 1);
+    value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
+    return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
 function svgIssue(source: string): string | null {
   if (/<\s*(script|foreignObject)\b/i.test(source)) return 'forbidden element';
   if (/\bon[a-z0-9_-]*\s*=/i.test(source)) return 'event attributes are forbidden';
@@ -385,7 +396,7 @@ export function validateContent(data: ContentSourceData): ContentIssue[] {
     }
     if (value.type === 'expression') {
       if (!isTemplate(value)) {
-        const grade = gradeExpression(value, value.answer, { random: () => 0.5 });
+        const grade = gradeExpression(value, value.answer, { random: mulberry32(0x5eed1234) });
         if (grade.status !== 'graded' || grade.correct !== 1) {
           addIssue(
             issues,

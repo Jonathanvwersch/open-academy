@@ -757,7 +757,7 @@ exercises:
     est_minutes: 0.5
     prompt: "A corridor has $n$ cells numbered from left to right. A robot starts in cell 1, the goal is cell $n$, and walls keep it inside the corridor. On each move it independently picks left or right with equal chance. Write the probability it reaches the goal in the fewest possible moves."
     answer: "(1/2)^(n-1)"
-    variables: { n: [2, 12] }
+    variables: { "n": { "values": [2, 7, 12] } }
     common_wrong:
       - answer: "(1/2)^n"
         category: math_error

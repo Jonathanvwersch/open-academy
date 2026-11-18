@@ -1028,7 +1028,7 @@ exercises:
     est_minutes: 0.5
     prompt: "A vectorised environment runs $N$ copies and resets each finished copy within the same call. Write how many transitions $k$ calls collect."
     answer: "k*N"
-    variables: { k: [2, 20], N: [2, 16] }
+    variables: { "k": { "values": [2, 10, 20] }, "N": { "values": [2, 8, 16] } }
     solution: "Each call gives one transition per copy, so $k$ calls give $kN$ transitions."
   - id: sim-recall-to-real-say
     dimension: conceptual

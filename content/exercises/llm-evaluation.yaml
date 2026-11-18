@@ -527,7 +527,7 @@ exercises:
     est_minutes: 0.5
     prompt: "A benchmark scores $Q$ questions right or wrong and the model answers $C$ correctly. Write its accuracy as a fraction."
     answer: "C/Q"
-    variables: { "C": [1, 10], "Q": [12, 50] }
+    variables: { "C": { "values": [1, 5, 10] }, "Q": { "values": [12, 30, 50] } }
     solution: "Accuracy is correct answers divided by all questions scored."
   - id: "lev-recall-pairwise-say"
     dimension: "conceptual"
@@ -578,7 +578,12 @@ exercises:
     est_minutes: 0.5
     prompt: "Model A wins $W_A$ times and draws $D$ times across $P$ prompts with final decisions. Write A's tie-adjusted win rate as a fraction. Type `WA` for $W_A$."
     answer: "(WA+0.5*D)/P"
-    variables: { WA: [1, 10], D: [1, 5], P: [20, 40] }
+    variables:
+      {
+        "WA": { "values": [1, 5, 10] },
+        "D": { "values": [1, 3, 5] },
+        "P": { "values": [20, 30, 40] },
+      }
     solution: "Give one point per win and half per draw, then divide by all decisions."
   - id: "lev-recall-judge-say"
     dimension: "conceptual"

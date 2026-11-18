@@ -625,7 +625,7 @@ exercises:
     est_minutes: 0.5
     prompt: "A dataset has $N$ training examples. You use one update per batch of size $m$, and all batches are full. Write the number of updates per epoch."
     answer: "N/m"
-    variables: { N: [12, 120], m: [2, 10] }
+    variables: { "N": { "values": [60, 120] }, "m": { "values": [2, 3, 4, 5, 6, 10] } }
     solution: "An epoch uses all $N$ examples. With $m$ in every batch, there are $N/m$ batches and as many updates."
   - id: sgm-recall-noise-say
     dimension: conceptual

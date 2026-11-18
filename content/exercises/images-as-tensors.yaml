@@ -568,7 +568,7 @@ exercises:
     est_minutes: 0.5
     prompt: "A grayscale image has height $H$ and width $W$. Write its number of pixels."
     answer: "H*W"
-    variables: { "H": [2, 1000], "W": [2, 1000] }
+    variables: { "H": { "values": [2, 100, 1000] }, "W": { "values": [2, 100, 1000] } }
     solution: "There are $H$ rows of $W$ pixels, giving $HW$ pixels."
   - id: iat-recall-layout-say
     dimension: conceptual

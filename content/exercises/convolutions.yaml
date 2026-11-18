@@ -816,7 +816,12 @@ exercises:
     est_minutes: 0.5
     prompt: "A convolution has $C_{\\mathrm{in}}$ input channels and $C_{\\mathrm{out}}$ filters of square side $k$. Each filter has one bias. Write the layer’s parameter count. Type `C_in` and `C_out`."
     answer: "C_out*(C_in*k^2+1)"
-    variables: { "C_in": [1, 8], "C_out": [2, 32], "k": [2, 7] }
+    variables:
+      {
+        "C_in": { "values": [1, 4, 8] },
+        "C_out": { "values": [2, 16, 32] },
+        "k": { "values": [2, 4, 7] },
+      }
     solution: "Count $C_{\\mathrm{in}}k^2$ weights and one bias for each filter to get $C_{\\mathrm{out}}(C_{\\mathrm{in}}k^2+1)$."
   - id: conv-recall-pool-say
     dimension: conceptual
@@ -867,5 +872,5 @@ exercises:
     est_minutes: 0.5
     prompt: "Stack $L$ convolutional layers, each with a square filter of side $k$, stride one and no padding or pooling. Write the side length of an output cell’s receptive field in the original image."
     answer: "1+L*(k-1)"
-    variables: { "L": [1, 8], "k": [2, 7] }
+    variables: { "L": { "values": [1, 4, 8] }, "k": { "values": [2, 4, 7] } }
     solution: "Start with a single pixel. Each layer adds $k-1$ to the side length, giving $1+L(k-1)$."

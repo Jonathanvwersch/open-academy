@@ -869,7 +869,8 @@ exercises:
     est_minutes: 0.5
     prompt: "A server emits $N$ output tokens over $D$ decode steps, each taking $t$ seconds. Write its throughput in output tokens per second."
     answer: "N/(D*t)"
-    variables: { N: [100, 300], D: [10, 80], t: [0.005, 0.05] }
+    variables:
+      { "N": { "values": [100, 200, 300] }, "D": { "values": [10, 40, 80] }, "t": [0.005, 0.05] }
     solution: "The steps take $Dt$ seconds in total, so throughput is $N/(Dt)$."
   - id: lsv-recall-paging-say
     dimension: conceptual
@@ -977,7 +978,12 @@ exercises:
     est_minutes: 0.5
     prompt: "Tensor parallelism splits $D$ weight bytes evenly across $N$ GPUs with memory bandwidth $W$ bytes per second each. Write the weight-read time per step in seconds, ignoring the exchange of results."
     answer: "D/(N*W)"
-    variables: { D: [1000, 100000], N: [2, 16], W: [100, 10000] }
+    variables:
+      {
+        "D": { "values": [1000, 10000, 100000] },
+        "N": { "values": [2, 4, 8, 16] },
+        "W": [100, 10000],
+      }
     solution: "Each GPU reads $D/N$ bytes at bandwidth $W$, taking about $D/(NW)$ seconds."
   - id: lsv-recall-prefill-say
     dimension: conceptual

@@ -831,7 +831,7 @@ exercises:
     est_minutes: 0.5
     prompt: "For an exact sequence of independent flips containing $h$ heads and $t$ tails, write the log-likelihood as a function of heads probability $p$. Type `ln(...)` for natural logarithms."
     answer: "h*log(p)+t*log(1-p)"
-    variables: { "h": [2, 10], "t": [2, 10], "p": [0.05, 0.95] }
+    variables: { "h": { "values": [2, 5, 10] }, "t": { "values": [2, 5, 10] }, "p": [0.05, 0.95] }
     solution: "Each heads contributes $\\ln p$ and each tails contributes $\\ln(1-p)$, giving $h\\ln p+t\\ln(1-p)$."
   - id: mle-recall-centre-say
     dimension: conceptual

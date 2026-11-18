@@ -681,7 +681,7 @@ exercises:
     est_minutes: 0.5
     prompt: "An epsilon-greedy agent has $k$ actions, one with a higher estimate than the rest, and exploration rate $\\varepsilon$. Write the chance of choosing one particular action from the rest. Type `eps` for $\\varepsilon$."
     answer: "eps/k"
-    variables: { eps: [0.01, 0.9], k: [2, 10] }
+    variables: { "eps": [0.01, 0.9], "k": { "values": [2, 6, 10] } }
     common_wrong:
       - answer: "eps"
         category: misunderstood_definition

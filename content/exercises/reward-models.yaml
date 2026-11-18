@@ -674,7 +674,7 @@ exercises:
     est_minutes: 0.5
     prompt: "A person ranks $k$ responses to one prompt with no ties. Write how many preference pairs this ranking gives."
     answer: "k*(k-1)/2"
-    variables: { "k": [3, 9] }
+    variables: { "k": { "values": [3, 6, 9] } }
     solution: "There are $k(k-1)$ ordered choices. Divide by two to count each pair once."
   - id: "rmp-recall-probability-say"
     dimension: "conceptual"

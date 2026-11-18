@@ -689,7 +689,7 @@ exercises:
     est_minutes: 0.5
     prompt: "Write binary cross-entropy for predicted probability $p$ of label 1 and observed label $y$, which is 0 or 1. Type `ln(...)` for the natural logarithm."
     answer: "-(y*log(p)+(1-y)*log(1-p))"
-    variables: { "p": [0.05, 0.95], "y": [0, 1] }
+    variables: { "p": [0.05, 0.95], "y": { "values": [0, 1] } }
     solution: "The loss is $-[y\\ln p+(1-y)\\ln(1-p)]$."
   - id: "lr-recall-gradient-say"
     dimension: "conceptual"
@@ -740,5 +740,12 @@ exercises:
     est_minutes: 0.5
     prompt: "For one logistic-regression example with binary cross-entropy, write the updated weight from current weight $w$, probability $p$, observed label $y$, input $x$ and learning rate $\\eta$. Type `eta` for the learning rate."
     answer: "w-eta*(p-y)*x"
-    variables: { "w": [-2, 2], "p": [0.05, 0.95], "y": [0, 1], "x": [1, 5], "eta": [0.01, 0.2] }
+    variables:
+      {
+        "w": [-2, 2],
+        "p": [0.05, 0.95],
+        "y": { "values": [0, 1] },
+        "x": [1, 5],
+        "eta": [0.01, 0.2],
+      }
     solution: "Subtract the scaled weight slope: $w_{\\text{new}}=w-\\eta(p-y)x$."

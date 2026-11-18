@@ -659,7 +659,7 @@ exercises:
     est_minutes: 0.5
     prompt: "A reply has $N$ output tokens. Its time to first token is $t$ and its average inter-token latency is $g$, both in seconds. Write its end-to-end latency in seconds."
     answer: "t+(N-1)*g"
-    variables: { N: [2, 120], t: [0.1, 0.8], g: [0.01, 0.08] }
+    variables: { "N": { "values": [2, 10, 120] }, "t": [0.1, 0.8], "g": [0.01, 0.08] }
     solution: "The total is $t+(N-1)g$. The first token arrives after $t$, and there are $N-1$ gaps after it."
   - id: infm-recall-percentiles-say
     dimension: conceptual
@@ -710,7 +710,7 @@ exercises:
     est_minutes: 0.5
     prompt: "You have $n$ recorded waits sorted from fastest to slowest. In the nearest-rank rule for the $p$th percentile, write the expression for the position before rounding up."
     answer: "p*n/100"
-    variables: { p: [5, 99], n: [20, 300] }
+    variables: { "p": { "values": [5, 50, 99] }, "n": { "values": [20, 100, 300] } }
     solution: "Multiply $p$ by $n$ and divide by 100. Round $pn/100$ up to get the position in the sorted waits."
   - id: infm-recall-batching-say
     dimension: conceptual
@@ -761,5 +761,5 @@ exercises:
     est_minutes: 0.5
     prompt: "A server runs a batch of $B$ requests, and each run takes $t$ seconds. Write the server's total output throughput in tokens per second."
     answer: "B/t"
-    variables: { B: [2, 128], t: [0.005, 0.08] }
+    variables: { "B": { "values": [2, 16, 128] }, "t": [0.005, 0.08] }
     solution: "Each run produces one token per request, so the server makes $B/t$ tokens per second."

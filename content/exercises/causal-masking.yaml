@@ -748,7 +748,7 @@ exercises:
     est_minutes: 0.5
     prompt: "For $T$ tokens, write the total number of allowed query–source pairs in a causal attention mask."
     answer: "T*(T+1)/2"
-    variables: { "T": [2, 128] }
+    variables: { "T": { "values": [2, 16, 128] } }
     solution: "Rows allow $1,2,\\dots,T$ cells, whose sum is $T(T+1)/2$."
   - id: cm-recall-scores-say
     dimension: conceptual

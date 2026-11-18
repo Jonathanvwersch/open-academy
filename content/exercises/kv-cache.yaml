@@ -697,7 +697,7 @@ exercises:
     est_minutes: 0.5
     prompt: "An attention layer has $n_h$ query heads and $n_{kv}$ key-value heads. Each key-value head serves a group of equal size. Write the number of query heads per group. Type `nh` and `nkv`."
     answer: "nh/nkv"
-    variables: { nh: [8, 64], nkv: [1, 8] }
+    variables: { "nh": { "values": [8, 16, 32, 64] }, "nkv": { "values": [1, 2, 4, 8] } }
     solution: "Divide the number of query heads by the number of groups to get $n_h/n_{kv}$."
   - id: kvc-recall-memory-say
     dimension: conceptual
@@ -748,7 +748,15 @@ exercises:
     est_minutes: 0.5
     prompt: "A batch has $B$ sequences, each with $T$ processed tokens. The model has $L$ layers, $n_{kv}$ key-value heads per layer and head size $d_h$. Each number takes $b$ bytes. Write the batch's KV-cache size in bytes. Type `nkv` and `dh` for the head count and size."
     answer: "2*L*nkv*dh*b*T*B"
-    variables: { L: [2, 64], nkv: [1, 16], dh: [32, 128], b: [1, 4], T: [16, 2048], B: [1, 64] }
+    variables:
+      {
+        "L": { "values": [2, 8, 64] },
+        "nkv": { "values": [1, 2, 4, 8, 16] },
+        "dh": { "values": [32, 64, 128] },
+        "b": { "values": [1, 2, 4] },
+        "T": { "values": [16, 256, 2048] },
+        "B": { "values": [1, 8, 64] },
+      }
     solution: "There are $2Ln_{kv}d_hb$ bytes per token, counting the key and the value. Multiply by $TB$ processed tokens to get the batch size in bytes."
   - id: kvc-recall-prefix-say
     dimension: conceptual
@@ -799,5 +807,5 @@ exercises:
     est_minutes: 0.5
     prompt: "A new prompt has $T$ tokens and reuses the keys and values for its first $R$ tokens, with $R<T$. Write the number of prompt tokens still to process."
     answer: "T-R"
-    variables: { T: [32, 256], R: [1, 31] }
+    variables: { "T": { "values": [32, 128, 256] }, "R": { "values": [1, 16, 31] } }
     solution: "Subtract the reused prefix length from the new prompt length. There are $T-R$ prompt tokens left to process."

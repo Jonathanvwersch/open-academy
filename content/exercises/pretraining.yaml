@@ -994,7 +994,7 @@ exercises:
     est_minutes: 0.5
     prompt: "A pretraining window contains $T$ tokens and is trained on its own. How many next-token predictions does it supply? Write an expression."
     answer: "T-1"
-    variables: { "T": [4, 2048] }
+    variables: { "T": { "values": [4, 512, 2048] } }
     solution: "The first token has no preceding token. Each of the other $T-1$ tokens is a prediction target."
   - id: "pt-recall-compute-say"
     dimension: "conceptual"
@@ -1045,7 +1045,8 @@ exercises:
     est_minutes: 0.5
     prompt: "Write the approximate training compute in FLOPs for $P$ parameters and $D$ training tokens."
     answer: "6*P*D"
-    variables: { "P": [1000, 1000000], "D": [10000, 10000000] }
+    variables:
+      { "P": { "values": [1000, 100000, 1000000] }, "D": { "values": [10000, 1000000, 10000000] } }
     solution: "Each parameter costs about six FLOPs per training token."
   - id: "pt-recall-scaling-say"
     dimension: "conceptual"
@@ -1096,7 +1097,7 @@ exercises:
     est_minutes: 0.5
     prompt: "A compute scaling law gives $90\\%$ of the previous loss at each tenfold increase in compute. If the starting loss is $L_0$, write the loss after $k$ tenfold increases. Type `L0` for the starting loss."
     answer: "L0*0.9^k"
-    variables: { "L0": [1, 8], "k": [1, 6] }
+    variables: { "L0": [1, 8], "k": { "values": [1, 3, 6] } }
     solution: "$L=L_0\\times0.9^k$: multiply the starting loss by $0.9$ once per tenfold increase."
   - id: "pt-recall-pipeline-say"
     dimension: "conceptual"
@@ -1147,5 +1148,9 @@ exercises:
     est_minutes: 0.5
     prompt: "Pretraining and fine-tuning train the same model. They use $D_{\\text{pre}}$ and $D_{\\text{fine}}$ tokens, respectively. Write the ratio of estimated pretraining compute to estimated fine-tuning compute. Type `Dpre` and `Dfine`."
     answer: "Dpre/Dfine"
-    variables: { "Dpre": [100000, 1000000], "Dfine": [1000, 10000] }
+    variables:
+      {
+        "Dpre": { "values": [100000, 500000, 1000000] },
+        "Dfine": { "values": [1000, 5000, 10000] },
+      }
     solution: "Each stage uses about $6P$ FLOPs per token. The common factor cancels when you divide the two estimates."

@@ -471,7 +471,13 @@ exercises:
     est_minutes: 0.5
     prompt: "A layer has $n$ experts with $C$ parameters each, input width $d$, a bias-free router and top-$k$ routing. Write the active parameter count per token."
     answer: "k*C+n*d"
-    variables: { "n": [4, 16], "C": [20, 100], "d": [2, 8], "k": [1, 3] }
+    variables:
+      {
+        "n": { "values": [4, 8, 16] },
+        "C": { "values": [20, 60, 100] },
+        "d": { "values": [2, 4, 8] },
+        "k": { "values": [1, 2, 3] },
+      }
     solution: "Count $kC$ parameters in the selected experts and $nd$ weights in the router."
   - id: "moe-recall-balance-say"
     dimension: "conceptual"

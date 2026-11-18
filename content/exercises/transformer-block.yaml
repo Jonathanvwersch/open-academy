@@ -967,5 +967,5 @@ exercises:
     est_minutes: 0.5
     prompt: "Write the total parameter count of a width-$d$ block with a width-$4d$ MLP hidden layer. Include attention and MLP weights and biases, and two LayerNorms' gains and shifts."
     answer: "12*d*d+13*d"
-    variables: { d: [2, 1024] }
+    variables: { "d": { "values": [2, 64, 1024] } }
     solution: "Matrix weights contribute $12d^2$, biases contribute $9d$, and LayerNorm contributes $4d$, giving $12d^2+13d$."

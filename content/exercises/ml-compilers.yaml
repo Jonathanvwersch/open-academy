@@ -980,7 +980,7 @@ exercises:
     est_minutes: 0.5
     prompt: "A tensor takes $S$ bytes. In eager execution, each of $k$ elementwise operations launches its own kernel and reads and writes the full tensor through HBM. Write the total eager HBM traffic in bytes."
     answer: "2*k*S"
-    variables: { S: [100, 100000], k: [2, 12] }
+    variables: { "S": { "values": [100, 10000, 100000] }, "k": { "values": [2, 6, 12] } }
     solution: "Each kernel moves $2S$ bytes for its read and write. Over $k$ kernels that is $2kS$."
   - id: mlcp-recall-egraph-say
     dimension: conceptual
@@ -1031,7 +1031,7 @@ exercises:
     est_minutes: 0.5
     prompt: "In an e-graph, a node takes one input from a group with $p$ versions and one input from a group with $q$ versions. Write the number of versions this node represents."
     answer: "p*q"
-    variables: { p: [2, 20], q: [2, 20] }
+    variables: { "p": { "values": [2, 10, 20] }, "q": { "values": [2, 10, 20] } }
     solution: "Each of the $p$ versions of the first input can pair with each of the $q$ versions of the second, giving $pq$ versions."
   - id: mlcp-recall-autotune-say
     dimension: conceptual
@@ -1082,5 +1082,5 @@ exercises:
     est_minutes: 0.5
     prompt: "A memory-bound kernel moves $D$ bytes on a GPU with bandwidth $W$ bytes per second. Its autotuned run takes $t$ seconds. Write the fraction of the best possible speed that the run reaches."
     answer: "D/(W*t)"
-    variables: { D: [100, 1000], W: [1000, 5000], t: [1.1, 10] }
+    variables: { "D": { "values": [100, 500, 1000] }, "W": [1000, 5000], "t": [1.1, 10] }
     solution: "The fastest possible time is $D/W$ seconds. Divide it by the measured time to get $D/(Wt)$."

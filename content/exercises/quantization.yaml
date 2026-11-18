@@ -819,7 +819,7 @@ exercises:
     est_minutes: 0.5
     prompt: "Quantised weights take $D$ bytes. A GPU reads them at bandwidth $W$ bytes per second. Write the estimate of seconds per token for a single request whose decode time is set by weight reads."
     answer: "D/W"
-    variables: { D: [1000, 100000], W: [1000, 100000] }
+    variables: { "D": { "values": [1000, 10000, 100000] }, "W": [1000, 100000] }
     solution: "The GPU reads $D$ bytes per token. At bandwidth $W$, that takes about $D/W$ seconds."
   - id: qzp-recall-int8-scale-say
     dimension: conceptual

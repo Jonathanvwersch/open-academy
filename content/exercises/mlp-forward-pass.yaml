@@ -1041,7 +1041,7 @@ exercises:
     knowledge_point: mlp-shapes
     difficulty: 1
     est_minutes: 0.5
-    prompt: "A batch of inputs is stored in $X$, and a layer's weights are stored in $W$. Which row or column from each matrix goes into the dot product for one example at one neuron?"
+    prompt: "For one input column vector $x$, a layer computes scores $z=Wx+b$. A batch matrix $X$ stores examples as rows. Which row or column from each matrix goes into the dot product for one example at one neuron?"
     options:
       - id: a
         text: "A column of $X$ and a row of $W$."

@@ -671,11 +671,5 @@ exercises:
     est_minutes: 0.5
     prompt: For softmax with cross-entropy, write the loss slope against one class score using its probability $p$ and one-hot label $y$.
     answer: p-y
-    variables:
-      p:
-        - 0.05
-        - 0.95
-      y:
-        - 0
-        - 1
+    variables: { "p": [0.05, 0.95], "y": { "values": [0, 1] } }
     solution: The score slope is $p-y$.
