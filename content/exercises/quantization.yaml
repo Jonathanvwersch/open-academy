@@ -846,21 +846,21 @@ exercises:
     knowledge_point: qz-int8-scale
     difficulty: 1
     est_minutes: 0.5
-    prompt: "One weight in a symmetric INT8 group becomes a much larger outlier. The scale is then chosen again. What happens to the spacing between the approximated weights?"
+    prompt: "One weight in a symmetric INT8 group becomes a much larger outlier, and the scale is chosen again. Which of these gets larger?"
     options:
       - id: a
-        text: "The spacing gets smaller."
+        text: "The range of stored integers"
         correct: false
-        feedback: "A smaller scale would give finer steps, but the larger outlier increases the scale."
+        feedback: "The integers still run from $-127$ to $127$."
       - id: b
-        text: "The spacing stays the same."
-        correct: false
-        feedback: "The integer limits stay the same, but the scale depends on the largest size in the group."
-      - id: c
-        text: "The spacing gets larger."
+        text: "The scale $s$"
         correct: true
-        feedback: "The outlier increases the largest size and therefore increases the group scale."
-    solution: "The scale is set by the largest size in the group. A larger outlier makes the scale and the spacing larger."
+        feedback: "The outlier raises $\\max|x|$, and $s=\\max|x|/127$."
+      - id: c
+        text: "The bytes per stored integer"
+        correct: false
+        feedback: "Each INT8 integer still takes 1 byte."
+    solution: "The scale is the largest size in the group divided by 127, so the outlier makes $s$ larger. Every other weight in the group then gets coarser steps."
   - id: qzp-recall-int8-scale-formula
     dimension: math
     type: expression
@@ -868,10 +868,10 @@ exercises:
     knowledge_point: qz-int8-scale
     difficulty: 1
     est_minutes: 0.5
-    prompt: "A symmetric INT8 group contains two weights $x_1$ and $x_2$, with at least one nonzero. Write the group scale $s$. Type `x1`, `x2`, and use `abs(...)` and `max(...)`."
-    answer: "max(abs(x1),abs(x2))/127"
-    variables: { x1: [-4, -0.05], x2: [-1, 3] }
-    solution: "Use the largest magnitude in the group and divide it by 127, the positive limit of the symmetric integer range."
+    prompt: "A symmetric INT8 group has scale $s$, and no weight is clamped. Write the largest possible error $|x-\\hat x|$ between a weight and its dequantised value."
+    answer: "s/2"
+    variables: { s: [0.001, 0.1] }
+    solution: "Rounding moves $x/s$ by at most $1/2$, and multiplying back by $s$ gives an error of at most $s/2$."
   - id: qzp-recall-formats-say
     dimension: conceptual
     type: explain
@@ -962,18 +962,18 @@ exercises:
     prompt: "Two versions of a model have almost the same loss on held-out text. You suspect the quantised one has got worse at writing code. Which comparison best checks that suspicion?"
     options:
       - id: a
-        text: "Compare their perplexity on the same text."
+        text: "Compare their perplexity on the same held-out text."
         correct: false
-        feedback: "Perplexity is calculated from average loss, so it can hide the same drop on code."
+        feedback: "Perplexity is $e$ raised to the average loss, so it can hide the same drop on code."
       - id: b
-        text: "Compare their loss on text used to choose the scales."
+        text: "Compare their loss on the text used to choose the scales."
         correct: false
-        feedback: "That text isn't held out and may make the comparison too easy."
+        feedback: "That text isn't held out, so it makes the test too easy."
       - id: c
-        text: "Compare their scores on the same coding tasks and generation settings."
+        text: "Compare their accuracy on a set of programming problems."
         correct: true
-        feedback: "This tests the skill of interest under the same conditions for both models."
-    solution: "Use tasks that exercise the skill you care about. Average loss on text can hide a drop in its performance."
+        feedback: "This tests the skill you suspect directly, with the same problems for both models."
+    solution: "Use tasks that exercise the skill you care about. Average loss on text can hide a drop in a skill few tokens depend on."
   - id: qzp-recall-quality-formula
     dimension: math
     type: expression

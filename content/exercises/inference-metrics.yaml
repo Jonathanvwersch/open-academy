@@ -668,17 +668,17 @@ exercises:
     knowledge_point: infm-percentiles
     difficulty: 1
     est_minutes: 1
-    prompt: "In one or two sentences, what is a percentile of recorded request times, and how does the nearest-rank rule pick the pth percentile?"
+    prompt: "In one or two sentences, what is a percentile of recorded request times, and how does the nearest-rank rule pick the $p$th percentile?"
     rubric:
       - id: value
         criterion: "Explain that a percentile is a value at a chosen position in the times sorted from fastest to slowest."
         weight: 1
         required: true
       - id: rank
-        criterion: "State that the position for the pth percentile is p times the number of recorded times divided by 100, rounded up."
+        criterion: "State that the position for the $p$th percentile is $p$ times the number of recorded times divided by 100, rounded up."
         weight: 1
         required: true
-    exemplar: "A percentile is a value at a chosen position in the recorded times sorted from fastest to slowest. For the pth percentile, multiply p by the number of times, divide by 100 and round up to get the position."
+    exemplar: "A percentile is a value at a chosen position in the recorded times sorted from fastest to slowest. For the $p$th percentile, multiply $p$ by the number of times, divide by 100 and round up to get the position."
   - id: infm-recall-percentiles-contrast
     dimension: conceptual
     type: mc
@@ -719,7 +719,7 @@ exercises:
     knowledge_point: infm-batching
     difficulty: 1
     est_minutes: 1
-    prompt: "In one or two sentences, what is batching during decode, and what expensive work do the requests share?"
+    prompt: "In one or two sentences, what is batching, and what expensive work do the requests share?"
     rubric:
       - id: requests
         criterion: "Explain that batching runs the model on several requests at once and gives each its next token."
@@ -737,21 +737,21 @@ exercises:
     knowledge_point: infm-batching
     difficulty: 1
     est_minutes: 0.5
-    prompt: "A server doubles its decode batch size. It still makes one token per request per run, but each run now takes twice as long. What happens to total throughput?"
+    prompt: "A server doubles its batch size. It still makes one token per request per run, but each run now takes twice as long. Which measure stays the same?"
     options:
       - id: a
-        text: "It falls to half the old rate."
+        text: "Each user's tokens per second"
         correct: false
-        feedback: "That is the change in each user's streaming rate. The server makes twice as many tokens per run."
+        feedback: "Each user still gets one token per run, and a run takes twice as long, so this rate halves."
       - id: b
-        text: "It rises to twice the old rate."
+        text: "The inter-token latency"
         correct: false
-        feedback: "That would happen if the run time stayed fixed. Here the run takes twice as long."
+        feedback: "Each user's gap between tokens is the time per run, which doubles."
       - id: c
-        text: "It stays at the old rate."
+        text: "The server's total throughput"
         correct: true
-        feedback: "Both the tokens per run and the time per run double."
-    solution: "The server makes twice as many tokens in twice as much time, so total tokens per second stays the same."
+        feedback: "The server makes twice as many tokens per run in twice the time."
+    solution: "The server makes twice as many tokens in twice as much time, so total tokens per second stays the same. Each user's ITL doubles, so each user's tokens per second halves."
   - id: infm-recall-batching-formula
     dimension: math
     type: expression
@@ -759,7 +759,7 @@ exercises:
     knowledge_point: infm-batching
     difficulty: 1
     est_minutes: 0.5
-    prompt: "A server decodes a batch of $B$ requests, and each run takes $t$ seconds. Write the server's total output throughput in tokens per second."
+    prompt: "A server runs a batch of $B$ requests, and each run takes $t$ seconds. Write the server's total output throughput in tokens per second."
     answer: "B/t"
     variables: { B: [2, 128], t: [0.005, 0.08] }
     solution: "Each run produces one token per request, so the server makes $B/t$ tokens per second."

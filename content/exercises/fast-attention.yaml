@@ -1088,21 +1088,21 @@ exercises:
     knowledge_point: fa-online-softmax
     difficulty: 1
     est_minutes: 0.5
-    prompt: "For one query, two key blocks contain the same number of keys. Every score in the second block is larger than every score in the first. A kernel calculates a softmax output for each block separately. How should it combine them for full-row attention?"
+    prompt: "A kernel works through one query's keys in blocks. Which method gives the same output as softmax over the whole row?"
     options:
       - id: a
-        text: "Give each block the same weight."
+        text: "Average the blocks' separate softmax outputs"
         correct: false
-        feedback: "This ignores the larger score exponentials in the second block."
+        feedback: "Equal weights ignore that a block with larger exponentials should count for more."
       - id: b
-        text: "Weight each block by its total of score exponentials."
+        text: "Divide the summed weighted values by the summed exponentials"
         correct: true
-        feedback: "Full-row attention gives the blocks shares proportional to those totals."
+        feedback: "Both sums can be built a block at a time, and their ratio is exactly the softmax output."
       - id: c
-        text: "Keep only the block with the largest score."
+        text: "Use the softmax output of the block with the largest score"
         correct: false
-        feedback: "The other block still contributes to the sum over all keys."
-    solution: "The full row uses one denominator across both blocks. Weighting by each block's share of that total gives the same result."
+        feedback: "The other blocks' keys still add to both sums, so they change the output."
+    solution: "Keep the running totals $u=\\sum e^{s_j}v_j$ and $\\ell=\\sum e^{s_j}$ across blocks and divide once at the end. Averaging block outputs gives each block equal say, which is wrong."
   - id: fa-recall-online-softmax-formula
     dimension: math
     type: text
@@ -1119,7 +1119,7 @@ exercises:
       - "\\frac{u}{\\ell}"
       - "u ÷ ℓ"
       - "u over ell"
-    regex: '^\s*\$?\s*(?:u\s*(?:[/÷]|\s+over)\s*(?:\\?ell|ℓ|l)|\\(?:d|t)?frac\s*\{\s*u\s*\}\s*\{\s*(?:\\?ell|ℓ|l)\s*\})\s*\$?\s*$'
+    regex: '^\s*\$?\s*(?:o\s*=\s*)?(?:u\s*(?:[/÷]|\s+over)\s*(?:\\?ell|ℓ|l)|\\(?:d|t)?frac\s*\{\s*u\s*\}\s*\{\s*(?:\\?ell|ℓ|l)\s*\})\s*\$?\s*$'
     solution: "Divide $u$, the sum of the values weighted by their score exponentials, by $\\ell$, the sum of those exponentials. The result is $u/\\ell$."
   - id: fa-recall-running-max-say
     dimension: conceptual
@@ -1128,17 +1128,17 @@ exercises:
     knowledge_point: fa-running-max
     difficulty: 1
     est_minutes: 1
-    prompt: "In one or two sentences, why does online softmax shift scores by the largest seen so far, and what does it do to its old totals if that largest score rises?"
+    prompt: "In one or two sentences, why does a kernel working in blocks shift scores by the largest score seen so far, and what does it do to its old totals if that score rises?"
     rubric:
       - id: shift
-        criterion: "Explain that subtracting the largest score makes every exponential at most one, preventing overflow from large scores."
+        criterion: "Explain that the largest score isn't known until the last block, so the kernel subtracts the largest so far, which keeps each exponential at most one and avoids overflow."
         weight: 1
         required: true
       - id: rescale
         criterion: "State that both old totals are multiplied by the same factor before adding the new block's terms."
         weight: 1
         required: true
-    exemplar: "Subtracting the largest seen score makes each exponential at most one and avoids overflow from large scores. If the largest score rises, the kernel rescales both old totals by the same factor before adding the new terms."
+    exemplar: "The largest score is only known after the last block, so the kernel subtracts the largest so far, which keeps each exponential at most one. If that score rises, it multiplies both old totals by the same factor before adding the new terms."
   - id: fa-recall-running-max-contrast
     dimension: conceptual
     type: mc
@@ -1146,21 +1146,21 @@ exercises:
     knowledge_point: fa-running-max
     difficulty: 1
     est_minutes: 0.5
-    prompt: "A new key block raises the running maximum. The kernel rescales the two old totals before adding any new terms. What happens to the ratio of just those old totals?"
+    prompt: "A new key block raises the running largest score from $m$ to $m_{\\text{new}}$. What does the kernel multiply by $e^{m-m_{\\text{new}}}$?"
     options:
       - id: a
-        text: "It increases."
+        text: "Only the old total $\\ell$"
         correct: false
-        feedback: "The denominator shrinks, but the numerator shrinks by the same factor."
+        feedback: "The old $u$ was also built from $e^{s_j-m}$, and scaling only $\\ell$ would change $u/\\ell$."
       - id: b
-        text: "It decreases."
-        correct: false
-        feedback: "The numerator shrinks, but the denominator shrinks by the same factor."
-      - id: c
-        text: "It stays the same."
+        text: "Both old totals, $\\ell$ and $u$"
         correct: true
-        feedback: "Both totals are multiplied by the same factor, which cancels in the ratio."
-    solution: "Rescaling puts the old totals on the new score scale. The common factor leaves their ratio unchanged."
+        feedback: "Every old term was measured from $m$, so both totals need the same factor."
+      - id: c
+        text: "The new block's terms"
+        correct: false
+        feedback: "The new terms are computed from $m_{\\text{new}}$ directly, so they need no rescaling."
+    solution: "Every old term in $\\ell$ and $u$ was measured from $m$. Multiplying both by $e^{m-m_{\\text{new}}}$ measures them from $m_{\\text{new}}$, and the new block's terms are added after that."
   - id: fa-recall-running-max-formula
     dimension: math
     type: expression

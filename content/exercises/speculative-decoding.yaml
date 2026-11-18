@@ -886,17 +886,17 @@ exercises:
     knowledge_point: sd-expected-speed
     difficulty: 1
     est_minutes: 1
-    prompt: "In one or two sentences, what does the acceptance rate measure in the expected speed estimate, and why can a longer draft give a smaller speed-up?"
+    prompt: "In one or two sentences, why does each extra draft guess add less to the expected tokens per round, and why can a longer draft give a smaller speed-up?"
     rubric:
-      - id: accept
-        criterion: "Explain that the acceptance rate measures how often a draft guess passes the target's check."
+      - id: chain
+        criterion: "Explain that a guess only counts if every guess before it passed too, so guess $j$ adds $\\alpha^j$ on average, which shrinks as $j$ grows."
         weight: 1
         required: true
-      - id: tradeoff
-        criterion: "Explain that drafting more tokens costs more time, while later guesses only help when the earlier guesses also pass."
+      - id: cost
+        criterion: "Explain that every guess adds drafting time, so past some length the extra cost outweighs the small gain in tokens."
         weight: 1
         required: true
-    exemplar: "The acceptance rate is how often a draft guess passes. A longer draft costs more time, and later guesses help only in rounds where all the earlier guesses pass too."
+    exemplar: "Guess $j$ only counts if guesses 1 to $j$ all pass, so it adds $\\alpha^j$ tokens on average, less for each later guess. Every guess still costs drafting time, so a long draft can pay more than it gains."
   - id: sdp-recall-speed-contrast
     dimension: conceptual
     type: mc
@@ -904,21 +904,21 @@ exercises:
     knowledge_point: sd-expected-speed
     difficulty: 1
     est_minutes: 0.5
-    prompt: "A draft always gets its first guess wrong. The draft takes time and checking costs the same as one ordinary target pass. How does this compare with ordinary decoding?"
+    prompt: "A draft always gets its first guess wrong. What does each speculative round give, compared with one ordinary decoding step?"
     options:
       - id: a
-        text: "It is faster because the failed round skips the target pass."
+        text: "No tokens, because every guess is thrown away"
         correct: false
-        feedback: "The target still checks the draft and produces the first correction."
+        feedback: "A round always gives at least one token, because the target emits its correction."
       - id: b
-        text: "It is slower because the draft adds time for the same output count."
-        correct: true
-        feedback: "The target emits one correction per round, and each round also pays the drafting cost."
-      - id: c
-        text: "It runs at the same speed because every round emits a token."
+        text: "One token, in the same time as an ordinary step"
         correct: false
-        feedback: "Both emit one token, but only the speculative round pays for drafting as well."
-    solution: "A failed first guess still produces one token. The total cost is one target pass plus the draft's work, so it is slower."
+        feedback: "The check costs about one ordinary pass, and drafting adds $kc$ on top."
+      - id: c
+        text: "One token, in more time than an ordinary step"
+        correct: true
+        feedback: "The target emits its correction, and the round also pays for drafting."
+    solution: "With every first guess wrong, $E=1$ and the round costs $kc+1$ target passes, so the speed-up $1/(kc+1)$ is below one."
   - id: sdp-recall-speed-formula
     dimension: math
     type: expression
@@ -937,17 +937,17 @@ exercises:
     knowledge_point: sd-exact-sampling
     difficulty: 1
     est_minutes: 1
-    prompt: "In one or two sentences, what probabilities does exact speculative sampling preserve, and how does it choose a replacement after a rejection?"
+    prompt: "In one or two sentences, how does exact speculative sampling decide whether to keep a proposed token, and how does it choose a replacement after a rejection?"
     rubric:
-      - id: target
-        criterion: "Explain that each output token keeps the probability the target would give it."
+      - id: accept
+        criterion: "Explain that a proposal is always kept when the target gives it at least the draft's probability, and otherwise kept only the fraction $p(x)/q(x)$ of the time."
         weight: 1
         required: true
       - id: leftover
         criterion: "Explain that replacements are sampled according to each token's positive leftover probability, the amount still missing after acceptance, divided by the sum of those leftovers."
         weight: 1
         required: true
-    exemplar: "Exact speculative sampling preserves the target's output probabilities. After a rejection it draws a replacement from the positive probabilities still missing after acceptance, scaled so they sum to one."
+    exemplar: "A proposal $x$ is always kept when $p(x)\\ge q(x)$, and otherwise kept with probability $p(x)/q(x)$. After a rejection, the replacement is drawn from the leftovers $\\max(0,p-q)$, divided by their total."
   - id: sdp-recall-exact-sampling-contrast
     dimension: conceptual
     type: mc
@@ -955,20 +955,20 @@ exercises:
     knowledge_point: sd-exact-sampling
     difficulty: 1
     est_minutes: 0.5
-    prompt: "The draft sometimes proposes a token more often than the target would. Which rule prevents accepted drafts from already giving that token too much probability?"
+    prompt: "The draft proposes token $x$ more often than the target would choose it. Which rule stops accepted proposals from giving $x$ more probability than the target does?"
     options:
       - id: a
-        text: "Keep every proposal of that token."
+        text: "Keep every proposal of $x$."
         correct: false
-        feedback: "Keeping them all would give the token more probability than the target does."
+        feedback: "Keeping them all would give $x$ its draft probability, which is more than the target's."
       - id: b
-        text: "Keep it only when it is the target's top token."
+        text: "Keep $x$ only when it is the target's top token."
         correct: false
-        feedback: "That is a greedy check and can lose the target's sampling probabilities."
+        feedback: "That is a greedy check, and it loses the target's sampling probabilities."
       - id: c
-        text: "Keep only a fraction of those proposals."
+        text: "Keep only a fraction of the proposals of $x$."
         correct: true
-        feedback: "Accepting a fraction reduces how often that token is emitted through the draft."
+        feedback: "Accepting the fraction $p(x)/q(x)$ brings $x$'s accepted probability down to the target's."
     solution: "For an over-proposed token, accept only the fraction given by its target probability divided by its draft probability."
   - id: sdp-recall-exact-sampling-formula
     dimension: math
@@ -1040,5 +1040,5 @@ exercises:
       - "the target's probability of x"
       - "probability of x under the target"
       - "the probability of token x under the target"
-    regex: '^\s*\$?\s*(?:p(?:\s*\(\s*x\s*\))?|(?:the\s+)?(?:target(?:[''’]s)?\s+probability(?:\s+(?:of|for)\s+(?:token\s+)?x)?|probability\s+(?:of|for)\s+(?:token\s+)?x\s+(?:under|from)\s+(?:the\s+)?target(?:\s+model)?))\s*\$?\s*\.?\s*$'
+    regex: '^\s*\$?\s*(?:p(?:\s*\(\s*x\s*\))?|\\?min\s*\(\s*(?:1\s*,\s*p(?:\s*\(\s*x\s*\))?|p(?:\s*\(\s*x\s*\))?\s*,\s*1)\s*\)|(?:the\s+)?(?:target(?:[''’]s)?\s+probability(?:\s+(?:of|for)\s+(?:token\s+)?x)?|probability\s+(?:of|for)\s+(?:token\s+)?x\s+(?:under|from)\s+(?:the\s+)?target(?:\s+model)?))\s*\$?\s*\.?\s*$'
     solution: "The draft's probability for the copied token is one. The acceptance rule then gives the target's probability $p(x)$."

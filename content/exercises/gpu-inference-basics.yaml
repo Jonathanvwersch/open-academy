@@ -704,11 +704,11 @@ exercises:
       - id: b
         text: "The bytes used by each weight"
         correct: false
-        feedback: "The bytes per weight are set by the format."
+        feedback: "The bytes per weight are set by the format, which stays the same."
       - id: c
-        text: "The conversation's KV cache"
+        text: "The KV cache"
         correct: true
-        feedback: "The KV cache keeps numbers about earlier tokens and grows as the conversation gets longer."
+        feedback: "The KV cache keeps numbers about earlier tokens, so it grows as the conversation gets longer."
     solution: "The conversation's KV cache grows with its history. Loading the weights is only part of the memory cost."
   - id: gibp-recall-model-memory-formula
     dimension: math
@@ -717,10 +717,10 @@ exercises:
     knowledge_point: gib-model-memory
     difficulty: 1
     est_minutes: 0.5
-    prompt: "A model stores $N$ weights with $b$ bytes per weight. Write the memory taken up by the weights in bytes."
-    answer: "N*b"
-    variables: { N: [1000, 100000], b: [0.5, 4] }
-    solution: "Each of the $N$ weights uses $b$ bytes, so the weights take $Nb$ bytes."
+    prompt: "A model stores $N$ weights in a format with $k$ bits per number. Write the memory taken up by the weights in bytes."
+    answer: "N*k/8"
+    variables: { N: [1000, 100000], k: [4, 32] }
+    solution: "A byte is 8 bits, so each weight takes $k/8$ bytes and the weights take $Nk/8$ bytes."
   - id: gibp-recall-memory-hierarchy-say
     dimension: conceptual
     type: explain
@@ -746,20 +746,20 @@ exercises:
     knowledge_point: gib-memory-hierarchy
     difficulty: 1
     est_minutes: 0.5
-    prompt: "Several streaming multiprocessors need recent data from a cache they can all access on the GPU chip. Which part of the memory hierarchy fits?"
+    prompt: "Several streaming multiprocessors need recent data from memory on the GPU chip that all of them can reach. Which part of the memory hierarchy fits?"
     options:
       - id: a
         text: "One SM's shared memory"
         correct: false
-        feedback: "Shared memory is shared by calculators inside one SM."
+        feedback: "Shared memory is shared by the calculators inside one SM, and other SMs can't reach it."
       - id: b
         text: "The L2 cache"
         correct: true
-        feedback: "L2 is a cache on the chip shared by all the SMs."
+        feedback: "L2 is memory on the chip, shared by all the SMs, that keeps copies of recent data."
       - id: c
         text: "HBM"
         correct: false
-        feedback: "HBM is the main memory beside the chip."
+        feedback: "HBM is the main memory beside the chip, off the chip itself."
     solution: "L2 keeps copies of recent data on the chip and is shared by all the SMs."
   - id: gibp-recall-memory-hierarchy-formula
     dimension: math
@@ -779,17 +779,17 @@ exercises:
     knowledge_point: gib-decode-bound
     difficulty: 1
     est_minutes: 1
-    prompt: "In one or two sentences, what must a single-conversation decode pass read, and why does reading set the speed in the weight-only estimate?"
+    prompt: "In one or two sentences, how does decoding a batch of $B$ conversations change the total tokens per second, and when does that growth stop?"
     rubric:
-      - id: read
-        criterion: "Explain that a pass reads nearly every model weight from HBM to produce one token."
+      - id: share
+        criterion: "Explain that the conversations share each read of the weights, so the step takes about the same time and makes $B$ tokens."
         weight: 1
         required: true
-      - id: bound
-        criterion: "Explain that its intensity is below the GPU's ops:byte ratio, so reading takes longer than the maths."
+      - id: limit
+        criterion: "Explain that once $B$ nears the GPU's ops:byte ratio, the maths takes longer than the read, so the step time grows and tokens per second levels off."
         weight: 1
         required: true
-    exemplar: "Each pass needs nearly every weight from HBM to produce one token. The pass does few FLOPs per byte, below the GPU's ops:byte ratio, so the read takes longer than the maths."
+    exemplar: "The $B$ conversations share each weight read, so a step takes about as long as before and makes $B$ tokens. Once $B$ nears the ops:byte ratio, the maths becomes slower than the read and tokens per second levels off."
   - id: gibp-recall-decode-bound-contrast
     dimension: conceptual
     type: mc
@@ -797,7 +797,7 @@ exercises:
     knowledge_point: gib-decode-bound
     difficulty: 1
     est_minutes: 0.5
-    prompt: "A single-conversation decode pass is limited by reading the weights. Which upgrade alone raises its weight-read speed ceiling, with the same model and weight format?"
+    prompt: "A single-conversation decode pass is limited by reading the weights. Which upgrade alone raises its top speed in tokens per second, with the same model and weight format?"
     options:
       - id: a
         text: "More HBM capacity at the same bandwidth"
@@ -806,12 +806,12 @@ exercises:
       - id: b
         text: "More HBM bandwidth at the same capacity"
         correct: true
-        feedback: "The same weights can be read in less time, so the ceiling rises."
+        feedback: "The same weights can be read in less time, so the top speed rises."
       - id: c
         text: "More peak FLOP/s at the same bandwidth"
         correct: false
         feedback: "The arithmetic can finish sooner, but the weight read still takes the same time."
-    solution: "Higher HBM bandwidth shortens the weight read and raises the weight-read tokens-per-second ceiling."
+    solution: "Higher HBM bandwidth shortens the weight read, so the top speed, bandwidth divided by weight bytes, rises."
   - id: gibp-recall-decode-bound-formula
     dimension: math
     type: expression

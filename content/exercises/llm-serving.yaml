@@ -878,17 +878,17 @@ exercises:
     knowledge_point: lsv-paging
     difficulty: 1
     est_minutes: 1
-    prompt: "In one or two sentences, how does PagedAttention allocate space as a sequence grows, and how does attention find the stored tokens?"
+    prompt: "In one or two sentences, why do more requests fit with PagedAttention than when each request reserves room for its longest allowed sequence, and what stays the same for each token?"
     rubric:
-      - id: alloc
-        criterion: "Explain that the KV cache uses fixed-size blocks, and the sequence gets another block when its last one is full."
+      - id: waste
+        criterion: "Explain that a reservation leaves most of its stretch empty, while paging hands out a new block only when the last one is full, so only the last block is partly empty."
         weight: 1
         required: true
-      - id: lookup
-        criterion: "Explain that the sequence's block table lists the blocks in token order so attention can find them wherever they sit."
+      - id: same
+        criterion: "State that each token still takes the same number of cache bytes."
         weight: 1
         required: true
-    exemplar: "PagedAttention gives a growing sequence another fixed-size block when its last one is full. Attention uses the sequence's block table to find its blocks in order."
+    exemplar: "A fixed reservation leaves most of its stretch empty, while paging adds a block only when the last one is full, so only that last block has empty room. Each token still takes the same cache bytes."
   - id: lsv-recall-paging-contrast
     dimension: conceptual
     type: mc
@@ -935,17 +935,17 @@ exercises:
     knowledge_point: lsv-parallel
     difficulty: 1
     est_minutes: 1
-    prompt: "In one or two sentences, what gets split in tensor parallelism, and what must the GPUs do with the results at each layer?"
+    prompt: "In one or two sentences, why does tensor parallelism shorten each decode step when replicas don't, and what cost does it add?"
     rubric:
-      - id: split
-        criterion: "Explain that the GPUs split each weight matrix so each stores and reads its share."
+      - id: share
+        criterion: "Explain that with tensor parallelism each GPU reads only its share of the weights, while each replica still reads all the weights every step."
         weight: 1
         required: true
-      - id: exchange
-        criterion: "Explain that the GPUs exchange their results so they can continue to the next layer."
+      - id: swap
+        criterion: "State that the GPUs must exchange results in every layer, which adds time to every step."
         weight: 1
         required: true
-    exemplar: "Tensor parallelism splits each weight matrix across GPUs, so each stores and reads only its own part. The GPUs exchange their results in each layer before going on to the next."
+    exemplar: "With tensor parallelism each GPU reads only its share of the weights, while a replica still reads all of them every step. The GPUs must exchange results in every layer, and that time is added to each step."
   - id: lsv-recall-parallel-contrast
     dimension: conceptual
     type: mc

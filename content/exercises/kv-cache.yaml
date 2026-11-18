@@ -593,17 +593,17 @@ exercises:
     knowledge_point: kvc-reuse
     difficulty: 1
     est_minutes: 1
-    prompt: "In one or two sentences, which entries can a decoder reuse when a token is appended, and why do those entries stay valid with fixed model weights?"
+    prompt: "In one or two sentences, why do earlier tokens' keys and values stay valid when a token is appended, and what does the cache save at each new step?"
     rubric:
-      - id: entries
-        criterion: "Explain that the decoder reuses keys and values for earlier tokens at each layer."
-        weight: 1
-        required: true
       - id: causal
         criterion: "Explain that causal attention lets earlier tokens attend only to themselves and tokens before them, so appending a token leaves their representations unchanged."
         weight: 1
         required: true
-    exemplar: "The decoder reuses each layer's keys and values for earlier tokens. Causal attention keeps those tokens from using the appended token, so their representations stay the same."
+      - id: saving
+        criterion: "Explain that the decoder computes keys and values only for the new token and reuses the earlier tokens' entries at every layer."
+        weight: 1
+        required: true
+    exemplar: "Causal attention keeps earlier tokens from using the appended token, so their keys and values stay the same. Each step then computes keys and values only for the new token and reuses the stored ones at every layer."
   - id: kvc-recall-reuse-contrast
     dimension: conceptual
     type: mc
@@ -644,9 +644,9 @@ exercises:
         correct: false
         feedback: "The earlier keys stay the same and can be reused."
       - id: c
-        text: "Recompute earlier tokens' attention outputs."
+        text: "Score its own key with the earlier tokens' queries."
         correct: false
-        feedback: "Appending a token leaves earlier representations unchanged under causal attention."
+        feedback: "An earlier query's job ended once it produced its token's output, so the cache leaves queries out."
     solution: "Caching saves the earlier keys and values. The new query still scores the cached keys and mixes their values."
   - id: kvc-recall-heads-say
     dimension: conceptual
@@ -655,17 +655,17 @@ exercises:
     knowledge_point: kvc-heads
     difficulty: 1
     est_minutes: 1
-    prompt: "In one or two sentences, how does grouped-query attention share keys and values, and what can each query head still compute for itself?"
+    prompt: "In one or two sentences, why does grouped-query attention make the KV cache smaller, and what does each query head still compute for itself?"
     rubric:
       - id: groups
-        criterion: "Explain that several query heads in each group share one key-value head, with more than one group."
+        criterion: "Explain that several query heads share each key-value head, so fewer key-value heads are stored for each token."
         weight: 1
         required: true
       - id: weights
         criterion: "State that each query head still computes its own attention weights."
         weight: 1
         required: true
-    exemplar: "In grouped-query attention, each group of query heads shares a key-value head. Each query head can still compute its own attention weights."
+    exemplar: "Each group of query heads shares one key-value head, so the cache stores fewer key-value heads per token. Each query head still computes its own attention weights."
   - id: kvc-recall-heads-contrast
     dimension: conceptual
     type: mc
@@ -673,16 +673,16 @@ exercises:
     knowledge_point: kvc-heads
     difficulty: 1
     est_minutes: 0.5
-    prompt: "An attention layer starts with several query heads, each with its own key-value head. Which different architecture would store exactly one key-value head in total for each token?"
+    prompt: "In an attention layer, every query head has its own key-value head. Which design stores just one key-value head for each token?"
     options:
       - id: a
         text: "Grouped-query attention"
         correct: false
-        feedback: "Grouped-query attention keeps more than one group and one key-value head per group."
+        feedback: "Grouped-query attention keeps more than one group, with one key-value head per group."
       - id: b
         text: "Multi-query attention"
         correct: true
-        feedback: "All query heads share a single key-value head."
+        feedback: "All the query heads share a single key-value head."
       - id: c
         text: "Multi-head attention"
         correct: false
@@ -724,21 +724,21 @@ exercises:
     knowledge_point: kvc-memory
     difficulty: 1
     est_minutes: 0.5
-    prompt: "Two batches use the same model and cache format. The second has longer sequences but fewer of them, with the same total number of processed tokens. How does the second batch's KV-cache size compare if we count only stored numbers?"
+    prompt: "A server doubles the number of conversations in its batch, each with the same length as before. Which of these doubles?"
     options:
       - id: a
-        text: "Larger"
+        text: "The cache bytes for each token"
         correct: false
-        feedback: "There are fewer sequences, so the longer lengths do not increase the total token count."
+        feedback: "Each token still stores the same keys and values, $2Ln_{kv}d_hb$ bytes."
       - id: b
-        text: "Smaller"
+        text: "The memory for the model weights"
         correct: false
-        feedback: "The sequences are longer, so fewer sequences do not mean fewer stored tokens."
+        feedback: "All the conversations use the same weights, stored once."
       - id: c
-        text: "The same size"
+        text: "The total KV-cache size"
         correct: true
-        feedback: "The bytes stored per token and the total number of tokens are the same."
-    solution: "Cache bytes count all processed tokens across the batch. With the same model, format and total tokens, the two caches store the same number of bytes."
+        feedback: "The cache grows with $B$, so twice the conversations store twice the bytes."
+    solution: "Cache bytes are $2Ln_{kv}d_hbTB$. Doubling $B$ doubles the total, while the bytes per token and the weights stay the same."
   - id: kvc-recall-memory-formula
     dimension: math
     type: expression
@@ -757,17 +757,17 @@ exercises:
     knowledge_point: kvc-prefix
     difficulty: 1
     est_minutes: 1
-    prompt: "In one or two sentences, what does prefix caching save between requests, and when can another request reuse it?"
+    prompt: "In one or two sentences, what work does prefix caching save for a new request, and what work does that request still need?"
     rubric:
-      - id: stored
-        criterion: "Explain that prefix caching saves the keys and values from the beginning of a prompt."
+      - id: saved
+        criterion: "Explain that the request reuses the keys and values already stored for the matching start of its prompt, which saves that prefill work."
         weight: 1
         required: true
-      - id: match
-        criterion: "State that reuse requires the same starting token IDs, the same model weights and the same original token positions."
+      - id: still
+        criterion: "State that the prompt tokens after the shared start still need prefill, and the reply still needs decode."
         weight: 1
         required: true
-    exemplar: "Prefix caching saves the keys and values from the beginning of a prompt. Another request can reuse them when its starting token IDs, positions and model weights match."
+    exemplar: "The request reuses the stored keys and values for the matching start of its prompt, so it skips that prefill work. Its remaining prompt tokens still need prefill, and its reply still needs decode."
   - id: kvc-recall-prefix-contrast
     dimension: conceptual
     type: mc

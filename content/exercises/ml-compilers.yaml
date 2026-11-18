@@ -938,17 +938,17 @@ exercises:
     knowledge_point: mlc-fuse-elementwise
     difficulty: 1
     est_minutes: 1
-    prompt: "In one or two sentences, what happens to intermediate data when a compiler fuses an elementwise chain, and how does fusion affect the chain's FLOP count?"
+    prompt: "In one or two sentences, why does fusing a long elementwise chain on a large tensor make it faster, and what stays the same?"
     rubric:
-      - id: data
-        criterion: "Explain that the intermediate values stay on chip between operations in the fused kernel."
+      - id: bytes
+        criterion: "Explain that the chain is memory-bound and the fused kernel keeps in-between results on chip, so far fewer bytes move through HBM."
         weight: 1
         required: true
       - id: work
         criterion: "State that the chain still does the same FLOPs."
         weight: 1
         required: true
-    exemplar: "Fusing the chain keeps its intermediate values on chip. The same arithmetic still happens, so the FLOP count stays the same."
+    exemplar: "The chain is memory-bound, and the fused kernel keeps in-between results on chip, so it moves far fewer bytes through HBM. It still does the same FLOPs."
   - id: mlcp-recall-fuse-elementwise-contrast
     dimension: conceptual
     type: mc
@@ -989,17 +989,17 @@ exercises:
     knowledge_point: mlc-egraph
     difficulty: 1
     est_minutes: 1
-    prompt: "In one or two sentences, how does an e-graph group expressions, and when can a rewrite merge two groups?"
+    prompt: "In one or two sentences, why can a greedy rewriter miss the cheapest version of a calculation, and how does an e-graph avoid that?"
     rubric:
-      - id: group
-        criterion: "Explain that each e-class holds expressions with the same value."
+      - id: greedy
+        criterion: "Explain that a greedy rewriter throws the old version away after each swap, so a rule that needed the old version can no longer match."
         weight: 1
         required: true
-      - id: merge
-        criterion: "State that a rewrite can merge two groups when it shows they are equal."
+      - id: keep
+        criterion: "Explain that an e-graph keeps every version, and extraction picks the cheapest one at the end."
         weight: 1
         required: true
-    exemplar: "An e-graph puts expressions with the same value into e-classes. A rule can merge two classes when it shows they are equal."
+    exemplar: "A greedy rewriter throws away the old version after each swap, so a rule that needed it can no longer match. An e-graph keeps every version, and extraction picks the cheapest at the end."
   - id: mlcp-recall-egraph-contrast
     dimension: conceptual
     type: mc
@@ -1040,17 +1040,17 @@ exercises:
     knowledge_point: mlc-autotune
     difficulty: 1
     est_minutes: 1
-    prompt: "In one or two sentences, how does autotuning choose a kernel version, and why might the winner change for another run on different hardware or tensor shapes?"
+    prompt: "In one or two sentences, why does a compiler time tile sizes on the GPU to choose one, and why must it tune again for a new GPU or tensor shape?"
     rubric:
       - id: measure
-        criterion: "Explain that the compiler times candidate kernels on the actual GPU at the given tensor shapes and keeps the fastest."
+        criterion: "Explain that many small tiles waste start-up time and big tiles let fewer run at once, and these effects are hard to predict, so the compiler times the candidates."
         weight: 1
         required: true
       - id: specific
-        criterion: "Explain that tiling choices depend on both the GPU's resources and the tensor shapes."
+        criterion: "Explain that the best choice depends on the GPU's resources, such as its SRAM and compute units, and on the tensor shapes."
         weight: 1
         required: true
-    exemplar: "Autotuning times candidate kernels on the actual GPU with the given tensor shapes and keeps the fastest. A different GPU or shape changes how those choices use the available resources."
+    exemplar: "Small tiles waste start-up time and big tiles let fewer run at once, and the balance is hard to predict, so the compiler times the candidates. The best tile depends on the GPU's SRAM and compute units and on the tensor shapes, so a new GPU or shape needs new timings."
   - id: mlcp-recall-autotune-contrast
     dimension: conceptual
     type: mc

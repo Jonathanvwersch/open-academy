@@ -497,17 +497,17 @@ exercises:
     knowledge_point: ai-count-work-bytes
     difficulty: 1
     est_minutes: 1
-    prompt: "In one or two sentences, what does arithmetic intensity measure, and which transfers count for a matrix product that reads its inputs once?"
+    prompt: "In one or two sentences, how is the FLOP count of an $(m\\times k)$ by $(k\\times n)$ matrix product made up, and which transfers count toward its bytes moved?"
     rubric:
-      - id: rate
-        criterion: "Explain that arithmetic intensity is the FLOPs done per byte moved."
+      - id: work
+        criterion: "Explain that each of the $mn$ outputs needs $k$ multiply-adds, and each multiply-add counts as 2 FLOPs."
         weight: 1
         required: true
       - id: traffic
         criterion: "State that bytes moved include reading both inputs and writing the output."
         weight: 1
         required: true
-    exemplar: "Arithmetic intensity is the FLOPs done per byte moved. In this product the bytes include both input reads and the output write."
+    exemplar: "Each of the $mn$ outputs needs $k$ multiply-adds, at 2 FLOPs each, so $F=2mkn$. The bytes moved include reading both inputs and writing the output."
   - id: aip-recall-count-contrast
     dimension: conceptual
     type: mc
@@ -515,21 +515,21 @@ exercises:
     knowledge_point: ai-count-work-bytes
     difficulty: 1
     est_minutes: 0.5
-    prompt: "A matrix product does the same arithmetic as before. Its inputs no longer fit in fast storage, so it reads some of them again from GPU memory. What happens to arithmetic intensity?"
+    prompt: "A matrix product's inputs no longer fit in fast storage, so it reads some of them again from GPU memory. Which of these stays the same?"
     options:
       - id: a
-        text: "It rises."
+        text: "The bytes moved, $D$"
         correct: false
-        feedback: "More reads add bytes moved without adding any arithmetic."
+        feedback: "Each extra read adds bytes to $D$."
       - id: b
-        text: "It falls."
+        text: "The FLOP count, $F$"
         correct: true
-        feedback: "The same FLOPs are spread over more bytes moved."
+        feedback: "The product does the same multiply-adds however often it reads its inputs."
       - id: c
-        text: "It stays the same."
+        text: "The arithmetic intensity, $I$"
         correct: false
-        feedback: "The FLOP count stays the same, but intensity also depends on the bytes moved."
-    solution: "Extra reads increase the bytes moved. With the same FLOP count, the product does fewer FLOPs per byte."
+        feedback: "The same FLOPs are divided by more bytes, so $I$ falls."
+    solution: "Extra reads add bytes moved without adding arithmetic. $F$ stays the same, $D$ grows and $I=F/D$ falls."
   - id: aip-recall-count-formula
     dimension: math
     type: expression
@@ -566,21 +566,25 @@ exercises:
     knowledge_point: ai-speed-limits
     difficulty: 1
     est_minutes: 0.5
-    prompt: "An operation moves to a GPU with higher memory bandwidth but the same peak compute rate. Which roofline quantity stays fixed if the operation moves the same bytes and does the same work?"
+    prompt: "An operation moves to a GPU with higher memory bandwidth and the same peak compute rate. It moves the same bytes and does the same work. Which roofline quantity falls?"
     options:
       - id: a
-        text: "The compute ceiling"
+        text: "The ops:byte ratio"
         correct: true
-        feedback: "The compute ceiling is the same peak compute rate."
+        feedback: "The peak compute rate divided by a higher bandwidth gives a lower ratio."
       - id: b
         text: "The rate memory can supply at this intensity"
         correct: false
-        feedback: "At the same intensity, higher bandwidth raises the rate memory can supply."
+        feedback: "The intensity times a higher bandwidth gives a higher rate."
       - id: c
-        text: "The ops:byte ratio"
+        text: "The compute ceiling"
         correct: false
-        feedback: "Peak compute rate divided by a higher bandwidth gives a lower ratio."
-    solution: "The compute ceiling stays at the peak compute rate. Higher bandwidth raises the memory ceiling at this intensity and moves the point where the ceilings meet."
+        feedback: "The compute ceiling is the peak compute rate, which hasn't changed."
+      - id: d
+        text: "The operation's arithmetic intensity"
+        correct: false
+        feedback: "The FLOPs and the bytes are the same, so their ratio is too."
+    solution: "The ops:byte ratio is the peak compute rate divided by the bandwidth, so higher bandwidth lowers it. The compute ceiling and the intensity stay the same, and the memory ceiling at this intensity rises."
   - id: aip-recall-roofline-formula
     dimension: math
     type: expression
@@ -599,17 +603,17 @@ exercises:
     knowledge_point: ai-weight-reuse
     difficulty: 1
     est_minutes: 1
-    prompt: "In one or two sentences, how can a matrix product reuse one weight read across several token rows, and what does that do to the weight bytes read per row?"
+    prompt: "In one or two sentences, why does one decode row multiplied by a square $d\\times d$ weight matrix have an arithmetic intensity near 1, and which ceiling then sets its speed?"
     rubric:
-      - id: block
-        criterion: "Explain that a block of weights is loaded into fast storage and used for several input rows before loading the next block."
+      - id: low
+        criterion: "Explain that all $d^2$ weights are read to serve just one row, so the FLOPs and the bytes moved are about equal."
         weight: 1
         required: true
-      - id: per-row
-        criterion: "State that sharing the read means fewer weight bytes read per row."
+      - id: ceiling
+        criterion: "State that this intensity is far below the ops:byte ratio of about 300, so memory sets the lower ceiling."
         weight: 1
         required: true
-    exemplar: "The product loads a block of weights into fast storage and uses it for several input rows before loading the next block. That way each row accounts for fewer weight bytes read from GPU memory."
+    exemplar: "All $d^2$ weights are read to serve a single row, so the product does about as many FLOPs as it moves bytes. That intensity is far below about 300, so memory sets its lower ceiling."
   - id: aip-recall-reuse-contrast
     dimension: conceptual
     type: mc
