@@ -440,3 +440,181 @@ exercises:
         weight: 1
         required: true
     exemplar: "Learned positional encodings add a learned position-table row to each token embedding. Sinusoidal encodings add a position vector computed from fixed sine and cosine waves. Rotary encodings rotate query/key pairs by their positions, making the positional effect on their dot product depend on the gap between positions."
+  - id: pe-recall-order-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: pe-reordering
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what does permutation equivariance mean for attention without position-dependent rules, and why does a moved token keep its mixture?"
+    rubric:
+      - id: r1
+        criterion: "Explain that rearranging the inputs rearranges their corresponding outputs in the same way."
+        weight: 1
+        required: true
+      - id: r2
+        criterion: "Explain that queries and keys stay the same for each token pair and each value keeps its weight."
+        weight: 1
+        required: true
+    exemplar: "Rearranging the inputs rearranges the corresponding outputs the same way. The query and key for each token pair stay the same, so each value keeps its weight and the mixture follows its query token."
+  - id: pe-recall-order-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: pe-reordering
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Attention uses shared transformations and every token can attend to every token. After swapping two tokens, which result describes permutation equivariance?"
+    options:
+      - id: a
+        text: "The corresponding outputs swap slots."
+        correct: true
+        feedback: "Each token keeps its mixture, and that output follows it to its new slot."
+      - id: b
+        text: "The output sequence stays in its old order."
+        correct: false
+        feedback: "This describes an unchanged output sequence. Equivariance moves corresponding outputs with their inputs."
+      - id: c
+        text: "Each token gets its new slot's position vector."
+        correct: false
+        feedback: "Position vectors are an added rule. Shared attention alone uses the token's unchanged embedding."
+    solution: "Without a position-dependent rule, the outputs follow the input rearrangement."
+  - id: pe-recall-order-contrast2
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: pe-reordering
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Which rule gives a moved token access to its new slot number?"
+    options:
+      - id: a
+        text: "Apply the same query matrix at every slot."
+        correct: false
+        feedback: "Shared transformations use the embedding alone, so a moved token keeps its query."
+      - id: b
+        text: "Add a vector chosen from the slot number."
+        correct: true
+        feedback: "A position vector supplies slot information, so moving a token can change its input."
+      - id: c
+        text: "Mix source values using query–key weights."
+        correct: false
+        feedback: "Shared attention keeps each source's weight with its value when tokens move, preserving the query token's mixture."
+    solution: "A slot-dependent position vector gives the input information about the token's new position."
+  - id: pe-recall-add-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: pe-add-position
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, how does additive positional encoding change the input to attention, and where can the position vectors come from?"
+    rubric:
+      - id: r1
+        criterion: "Explain that a position vector is added to the token embedding before making queries, keys and values."
+        weight: 1
+        required: true
+      - id: r2
+        criterion: "State that position vectors can be learned table rows or computed from fixed sine and cosine waves."
+        weight: 1
+        required: true
+    exemplar: "Additive positional encoding adds a position vector to the token embedding before making queries, keys and values. These vectors can be learned table rows or come from fixed sine and cosine waves."
+  - id: pe-recall-add-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: pe-add-position
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Which description belongs to sinusoidal positional encoding?"
+    options:
+      - id: a
+        text: "A trained table stores a vector for each slot."
+        correct: false
+        feedback: "That is learned positional encoding. Training adjusts each stored position row."
+      - id: b
+        text: "A lookup selects a vector for each token id."
+        correct: false
+        feedback: "That is the token embedding lookup. A token keeps that vector when it moves between slots."
+      - id: c
+        text: "Fixed waves generate a vector for each slot."
+        correct: true
+        feedback: "Sinusoidal encodings compute position vectors with fixed sine and cosine waves."
+    solution: "Sinusoidal position vectors come from fixed sine and cosine rules."
+  - id: pe-recall-add-formula
+    dimension: math
+    type: text
+    role: recall
+    knowledge_point: pe-add-position
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "With token embedding $e_t$ and position vector $p_t$, fill in the missing operation: $z_t=e_t\\;\\underline{\\quad}\\;p_t$."
+    accept: ["+", "plus", "add", "addition", "vector addition", "$+$"]
+    regex: "^\\s*(?:\\$?\\s*\\+\\s*\\$?|plus|add|addition|vector\\s+addition)\\s*$"
+    solution: "The combined input is $z_t=e_t+p_t$."
+  - id: pe-recall-rotary-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: pe-rotate-position
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what does rotary positional encoding rotate, and how does the gap between positions affect the comparison?"
+    rubric:
+      - id: r1
+        criterion: "Explain that pairs of query and key entries are rotated by angles chosen from their positions."
+        weight: 1
+        required: true
+      - id: r2
+        criterion: "Explain that for fixed original query and key vectors, the positional effect on their dot product depends on the gap between positions."
+        weight: 1
+        required: true
+    exemplar: "Rotary positional encoding rotates pairs of query and key entries by position. For fixed original vectors, the positional effect on their dot product depends on the gap between their positions."
+  - id: pe-recall-rotary-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: pe-rotate-position
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Where does rotary positional encoding apply its position-dependent change?"
+    options:
+      - id: a
+        text: "To embeddings by adding position vectors"
+        correct: false
+        feedback: "Adding position vectors is additive positional encoding, before making queries, keys and values."
+      - id: b
+        text: "To query and key pairs before scoring"
+        correct: true
+        feedback: "Rotary encoding rotates their entries before the dot product."
+      - id: c
+        text: "To values before forming their weighted sum"
+        correct: false
+        feedback: "Values carry the mixed information and stay unchanged by the rotary operation taught here."
+    solution: "Rotary encoding rotates query and key pairs before comparing them."
+  - id: pe-recall-rotary-formula
+    dimension: math
+    type: text
+    role: recall
+    knowledge_point: pe-rotate-position
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A rotary attention score is $s_{tj}=(\\tilde q_t\\cdot\\tilde k_j)/\\underline{\\quad}$. With query/key width $d_k$, fill in the divisor in symbols or words."
+    accept:
+      [
+        "sqrt(d_k)",
+        "sqrt(dk)",
+        "sqrt(d_{k})",
+        "√d_k",
+        "√(d_k)",
+        "\\sqrt{d_k}",
+        "\\sqrt{d_{k}}",
+        "$\\sqrt{d_k}$",
+        "square root of d_k",
+        "the square root of d_k",
+        "square root of the key width",
+        "the square root of the key width",
+      ]
+    regex: "^\\s*\\$?\\s*(?:sqrt\\s*\\(\\s*d\\s*_?\\s*\\{?\\s*k\\s*\\}?\\s*\\)|\\\\sqrt\\s*\\{\\s*d\\s*_?\\s*(?:k|\\{\\s*k\\s*\\})\\s*\\}|√\\s*\\(?\\s*d\\s*_?\\s*k\\s*\\)?)\\s*\\$?\\s*$"
+    solution: "Divide the rotated query–key dot product by $\\sqrt{d_k}$."

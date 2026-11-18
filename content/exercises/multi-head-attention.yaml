@@ -597,3 +597,156 @@ exercises:
         required: true
     exemplar: "Each head has its own learned query, key and value matrices, so heads can learn different token relationships. Concatenating their $T\\times d_k$ outputs side by side gives $T\\times d$. A learned $d\\times d$ matrix $W_O$ mixes that joined result so each output entry can use every head."
     solution: "Each head has its own learned query, key and value matrices, so heads can learn different token relationships. Concatenating their $T\\times d_k$ outputs side by side gives $T\\times d$. A learned $d\\times d$ matrix $W_O$ mixes that joined result so each output entry can use every head."
+  - id: mha-recall-heads-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: mha-heads
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what is an attention head, and how can several heads give a token different information?"
+    rubric:
+      - id: r1
+        criterion: "Explain that each head does attention with its own query, key and value matrices."
+        weight: 1
+        required: true
+      - id: r2
+        criterion: "Explain that the heads give each token separate mixtures that can focus on different information."
+        weight: 1
+        required: true
+    exemplar: "Each head does attention with its own query, key and value matrices. Its separate mixture can focus on different information from the other heads."
+  - id: mha-recall-heads-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: mha-heads
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A head has width $d_k$ inside a model with embedding width $d$. Which entries of an embedding can its query matrix use?"
+    options:
+      - id: a
+        text: "All $d$ embedding entries"
+        correct: true
+        feedback: "A head's query matrix has shape $d\\times d_k$, so each query entry can use the whole embedding."
+      - id: b
+        text: "Only its own $d_k$ embedding entries"
+        correct: false
+        feedback: "The narrower width describes the query produced. Every column of its matrix uses all input entries."
+      - id: c
+        text: "All entries of a source key"
+        correct: false
+        feedback: "Source keys enter the scoring comparison. The query matrix first transforms the token's embedding."
+    solution: "Each head transforms the whole width-$d$ embedding into a width-$d_k$ query."
+  - id: mha-recall-heads-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: mha-heads
+    difficulty: 2
+    est_minutes: 0.5
+    prompt: "A model uses embedding width $d$ and $h$ equal-width heads, with $d$ divisible by $h$. Write the head width $d_k$."
+    answer: "d/h"
+    variables: { "d": [8, 512], "h": [1, 8] }
+    solution: "Each head has width $d_k=d/h$."
+  - id: mha-recall-combine-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: mha-combine
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, how are the head outputs joined for one token, and what does $W_O$ do?"
+    rubric:
+      - id: r1
+        criterion: "Explain that concatenation writes the head outputs side by side into a vector of width $d$."
+        weight: 1
+        required: true
+      - id: r2
+        criterion: "Explain that the learned output matrix mixes the joined entries so each output entry can use every head."
+        weight: 1
+        required: true
+    exemplar: "Concatenation writes the head outputs side by side into a width-$d$ vector. The learned matrix $W_O$ mixes its entries so each output entry can use every head."
+  - id: mha-recall-combine-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: mha-combine
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Which operation joins $h$ width-$d_k$ head outputs into one width-$d$ vector before applying $W_O$?"
+    options:
+      - id: a
+        text: "Average the outputs"
+        correct: false
+        feedback: "Averaging keeps width $d_k$ and uses the same mixture for every entry."
+      - id: b
+        text: "Concatenate the outputs"
+        correct: true
+        feedback: "Concatenation writes all head entries side by side, giving width $hd_k=d$."
+      - id: c
+        text: "Add the outputs"
+        correct: false
+        feedback: "Adding equal-width outputs keeps width $d_k$, leaving too few entries for $W_O$."
+    solution: "Concatenation restores width $d$ before the output matrix mixes the entries."
+  - id: mha-recall-combine-formula
+    dimension: math
+    type: text
+    role: recall
+    knowledge_point: mha-combine
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Fill in the missing learned matrix: $o_t=\\operatorname{concat}(o_t^{(1)},\\dots,o_t^{(h)})\\,\\underline{\\quad}$."
+    accept: ["W_O", "W_O.", "W_{O}", "WO", "W O", "$W_O$", "output matrix", "the output matrix"]
+    regex: "^\\s*\\$?\\s*w\\s*(?:_\\s*\\{?\\s*o\\s*\\}?|o)\\s*\\$?\\s*$"
+    solution: "The joined row vector is multiplied by the learned output matrix $W_O$."
+  - id: mha-recall-shapes-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: mha-shapes
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what does each row of a head's attention weight matrix represent, and why is the matrix $T\\times T$ for $T$ tokens?"
+    rubric:
+      - id: r1
+        criterion: "Explain that a row holds one query token's weights across source tokens."
+        weight: 1
+        required: true
+      - id: r2
+        criterion: "Explain that every one of the $T$ queries compares with all $T$ keys."
+        weight: 1
+        required: true
+    exemplar: "Each row holds one query token's weights across all sources. There are $T$ queries and $T$ keys, so each head has a $T\\times T$ weight matrix."
+  - id: mha-recall-shapes-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: mha-shapes
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "With embedding width $d$ fixed, which quantity grows when the number of heads $h$ increases?"
+    options:
+      - id: a
+        text: "The width of each head"
+        correct: false
+        feedback: "Head width is $d/h$, so increasing the number of heads narrows each head."
+      - id: b
+        text: "The number of learned matrix entries"
+        correct: false
+        feedback: "The combined query, key, value and output matrices each stay $d\\times d$."
+      - id: c
+        text: "The number of attention weights"
+        correct: true
+        feedback: "Each head has $T\\times T$ weights, giving $hT^2$ weights in total."
+    solution: "More heads increase the total attention weights while the four combined learned matrices keep their shapes."
+  - id: mha-recall-shapes-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: mha-shapes
+    difficulty: 2
+    est_minutes: 0.5
+    prompt: "A multi-head attention layer has embedding width $d$. Write the number of learned entries in its combined query, key, value and output matrices."
+    answer: "4*d*d"
+    variables: { "d": [2, 512] }
+    solution: "The four matrices each have $d^2$ entries, giving $4d^2$."

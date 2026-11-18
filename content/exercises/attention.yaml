@@ -507,3 +507,156 @@ exercises:
         "Scores are $\\sqrt2 \\approx 1.414$ and $0$; apply softmax to them.",
       ]
     solution: "The scores are $s_{11}=\\sqrt2\\approx1.414$ and $s_{12}=0$, with $e^{1.414}\\approx4.112$. Softmax exponentiates and normalizes these scores, giving $a_{11}=e^{\\sqrt2}/(e^{\\sqrt2}+1)\\approx0.80443$ and $a_{12}\\approx0.19557$ when computed without intermediate rounding. Their weighted sum is $o_1\\approx(8.0443,0)$, so the first component rounds to $8.04$."
+  - id: attn-recall-score-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: attn-score-matches
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what does a scaled query–key score compare, and how is it calculated?"
+    rubric:
+      - id: r1
+        criterion: "Explain that a query describes what a token needs and a source key describes what it offers."
+        weight: 1
+        required: true
+      - id: r2
+        criterion: "State that the score is their dot product divided by the square root of the key width."
+        weight: 1
+        required: true
+    exemplar: "A query describes what a token needs, and each source key describes what it offers. Their score is the query–key dot product divided by the square root of the key width."
+  - id: attn-recall-score-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: attn-score-matches
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Which calculation has a divisor that always stays fixed when a query is doubled while its width stays the same?"
+    options:
+      - id: a
+        text: "Scaled dot-product scoring"
+        correct: true
+        feedback: "The divisor depends on key width, so doubling the query doubles the score."
+      - id: b
+        text: "Cosine similarity"
+        correct: false
+        feedback: "Cosine similarity divides by vector lengths. Doubling a vector also doubles its length."
+      - id: c
+        text: "Softmax weighting"
+        correct: false
+        feedback: "Softmax divides a score's exponential by the sum of all score exponentials. That total changes with the scores."
+    solution: "Scaled scores divide by the square root of key width, which stays fixed here."
+  - id: attn-recall-score-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: attn-score-matches
+    difficulty: 2
+    est_minutes: 0.5
+    prompt: "Write the scaled attention score for query $(a,b)$ and key $(c,d)$. Type `sqrt(...)` for square root."
+    answer: "(a*c+b*d)/sqrt(2)"
+    variables: { "a": [-4, 4], "b": [-4, 4], "c": [-4, 4], "d": [-4, 4] }
+    solution: "The dot product is $ac+bd$, and the key width is 2, giving $(ac+bd)/\\sqrt2$."
+  - id: attn-recall-weights-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: attn-make-weights
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what is an attention weight, and how does softmax obtain it from scores?"
+    rubric:
+      - id: r1
+        criterion: "Explain that an attention weight is one source's share for a particular query."
+        weight: 1
+        required: true
+      - id: r2
+        criterion: "Explain that softmax divides that source's score exponential by the total score exponentials across sources."
+        weight: 1
+        required: true
+    exemplar: "An attention weight is one source's share for a particular query. Softmax exponentiates every score and divides each exponential by their total across sources."
+  - id: attn-recall-weights-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: attn-make-weights
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Which quantity must be positive and belongs to a set that adds up to 1 for each query?"
+    options:
+      - id: a
+        text: "A scaled query–key score"
+        correct: false
+        feedback: "Scaled scores can be negative or exceed 1."
+      - id: b
+        text: "An attention weight"
+        correct: true
+        feedback: "Softmax gives each source a positive share, and the shares sum to 1."
+      - id: c
+        text: "A value component"
+        correct: false
+        feedback: "A value component carries information to mix. Values have no positive-share constraint."
+    solution: "Attention weights are the positive shares produced by softmax for one query."
+  - id: attn-recall-weights-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: attn-make-weights
+    difficulty: 2
+    est_minutes: 0.5
+    prompt: "A query has two source scores $x$ and $y$. Write the attention weight for the first source. Type `exp(...)` for the exponential."
+    answer: "exp(x)/(exp(x)+exp(y))"
+    variables: { "x": [-5, 5], "y": [-5, 5] }
+    solution: "The first source gets $e^x/(e^x+e^y)$."
+  - id: attn-recall-mix-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: attn-mix-values
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, how is an attention output formed from values and weights, and why must the values have equal widths?"
+    rubric:
+      - id: r1
+        criterion: "Explain that each value vector is multiplied by its attention weight and the results are added."
+        weight: 1
+        required: true
+      - id: r2
+        criterion: "Explain that equal value widths let matching components line up for addition."
+        weight: 1
+        required: true
+    exemplar: "Multiply each value vector by its attention weight and add the results. Values need equal widths so matching components line up for addition."
+  - id: attn-recall-mix-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: attn-mix-values
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Which vectors supply the information added together to form an attention output?"
+    options:
+      - id: a
+        text: "Source keys"
+        correct: false
+        feedback: "Keys supply the vectors compared with a query to score sources."
+      - id: b
+        text: "Token queries"
+        correct: false
+        feedback: "Queries describe the information sought and are compared with keys."
+      - id: c
+        text: "Source values"
+        correct: true
+        feedback: "The output adds source values after multiplying each by its attention weight."
+    solution: "Keys and queries determine scores; values supply the information mixed into the output."
+  - id: attn-recall-mix-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: attn-mix-values
+    difficulty: 2
+    est_minutes: 0.5
+    prompt: "Two sources have attention weights $w$ and $1-w$. Their value components in one column are $x$ and $y$. Write that column's output component."
+    answer: "w*x+(1-w)*y"
+    variables: { "w": [0.05, 0.95], "x": [-5, 5], "y": [-5, 5] }
+    solution: "Weight each value component and add: $wx+(1-w)y$."
