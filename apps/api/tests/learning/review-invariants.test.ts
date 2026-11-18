@@ -1147,17 +1147,15 @@ afterAll(async () => {
 
 async function assertInvariant(name: string) {
   expect(simulationDone).toBe(true);
+  const found = [...(simulationFindings.get(name) ?? [])];
   if (name === 'I1') {
     const now = atLocalNoon(startDate);
     await seedLearner(now);
     await seedCards(now);
     const { data: session } = await step('POST', '/sessions', now, { budgetMinutes: 600 });
     await step('POST', `/sessions/${session.id}/replan`, now, {});
-    const repeatedTopic = [...(violations.get('I1') ?? [])];
-    expect(repeatedTopic, 'I1: replan must preserve mixed review concept coverage').toEqual([]);
-    return;
+    found.push(...(violations.get('I1') ?? []));
   }
-  const found = [...(simulationFindings.get(name) ?? [])];
   if (name === 'I4') {
     found.push(
       ...simulationAttemptFailures.map((failure) => `Rejected attempt/progress: ${failure}`),
@@ -1170,6 +1168,17 @@ async function assertInvariant(name: string) {
     `${name} violations:\n${found.join('\n')}\nAudited ${simulationStepCount} API steps${failedAttempts}`,
   ).toEqual([]);
 }
+
+it('I1 assertion includes simulated findings', async () => {
+  const previousFindings = simulationFindings.get('I1');
+  simulationFindings.set('I1', ['synthetic I1 simulation finding']);
+  try {
+    await expect(assertInvariant('I1')).rejects.toThrow('synthetic I1 simulation finding');
+  } finally {
+    if (previousFindings) simulationFindings.set('I1', previousFindings);
+    else simulationFindings.delete('I1');
+  }
+});
 
 // I1: session replan can schedule an already-covered topic again.
 it('I1 review scheduling invariant', () => assertInvariant('I1'));

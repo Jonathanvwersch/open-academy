@@ -1843,7 +1843,7 @@ test('resumed lessons and due reviews stay within the activity limit', () => {
         .filter((conceptId) => {
           const lesson = courseContent.lessonsByConcept.get(conceptId);
           return (
-            (lesson?.knowledge_points.length ?? 0) > 0 &&
+            (lesson?.knowledge_points?.length ?? 0) > 0 &&
             eligibleReviewExercise(conceptId, lesson?.final) !== undefined
           );
         }),
@@ -1855,7 +1855,7 @@ test('resumed lessons and due reviews stay within the activity limit', () => {
     .filter((conceptId) => {
       const lesson = courseContent.lessonsByConcept.get(conceptId);
       return (
-        (lesson?.knowledge_points.length ?? 0) > 0 &&
+        (lesson?.knowledge_points?.length ?? 0) > 0 &&
         eligibleReviewExercise(conceptId, lesson?.final) !== undefined
       );
     })
