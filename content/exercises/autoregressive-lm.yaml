@@ -639,3 +639,167 @@ exercises:
         required: true
     exemplar: "Given the prefix, the model produces one score per vocabulary token and uses softmax to make next-token probabilities. Training averages minus the log of the probability given to each true next token. To generate, it chooses a token greedily or by sampling those probabilities, appends it to the prefix and runs again."
     solution: "Given the prefix, the model produces one score per vocabulary token and uses softmax to make next-token probabilities. Training averages minus the log of the probability given to each true next token. To generate, it chooses a token greedily or by sampling those probabilities, appends it to the prefix and runs again."
+  - id: alm-recall-next-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: alm-next-token
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what does a next-token distribution describe, and how does the model obtain it from the vector at a position?"
+    rubric:
+      - id: r1
+        criterion: "Explain that it gives a probability for every vocabulary token to come next after the tokens so far."
+        weight: 1
+        required: true
+      - id: r2
+        criterion: "Explain that an output layer produces one score per vocabulary token and softmax turns those scores into probabilities."
+        weight: 1
+        required: true
+    exemplar: "A next-token distribution gives a probability for every vocabulary token to come next after the prefix. An output layer makes one score per token and softmax turns the scores into probabilities."
+  - id: alm-recall-next-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: alm-next-token
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "What does $p(\\text{sat}\\mid\\text{the cat})$ describe?"
+    options:
+      - id: a
+        text: "The probability that sat comes directly after the cat"
+        correct: true
+        feedback: "The expression predicts the next token after that prefix."
+      - id: b
+        text: "The score assigned to sat before applying softmax"
+        correct: false
+        feedback: "A score is an output-layer number. Softmax converts scores into the probabilities written with $p$."
+      - id: c
+        text: "The attention weight assigned to the token cat"
+        correct: false
+        feedback: "Attention weights mix source values inside the transformer. This probability is over possible next vocabulary tokens."
+    solution: "The conditional probability gives the chance of sat as the next token after the cat."
+  - id: alm-recall-next-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: alm-next-token
+    difficulty: 2
+    est_minutes: 0.5
+    prompt: "Let $a=p(\\text{cat}\\mid\\text{the})$ and $b=p(\\text{sat}\\mid\\text{the cat})$. Write $p(\\text{cat sat}\\mid\\text{the})$."
+    answer: "a*b"
+    variables: { "a": [0.05, 0.95], "b": [0.05, 0.95] }
+    solution: "Multiply successive conditional probabilities: $p(\\text{cat sat}\\mid\\text{the})=ab$."
+  - id: alm-recall-teacher-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: alm-teacher-forcing
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what is teacher forcing, and which token is the target for output position $t$?"
+    rubric:
+      - id: r1
+        criterion: "Explain that training feeds the true earlier tokens even where the model would have guessed wrong."
+        weight: 1
+        required: true
+      - id: r2
+        criterion: "State that output position $t$ is scored against the true next token $x_{t+1}$."
+        weight: 1
+        required: true
+    exemplar: "Teacher forcing feeds the true earlier tokens during training, even where the model would have guessed wrong. Output position $t$ is scored against the true next token $x_{t+1}$."
+  - id: alm-recall-teacher-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: alm-teacher-forcing
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "During training, the output at position $t$ is scored against which token?"
+    options:
+      - id: a
+        text: "$x_t$"
+        correct: false
+        feedback: "Position $t$ already has $x_t$ as input, so scoring against it would only teach copying."
+      - id: b
+        text: "$x_{t+1}$"
+        correct: true
+        feedback: "The targets are the sentence shifted left by one, so position $t$ predicts the token after it."
+      - id: c
+        text: "$x_{t-1}$"
+        correct: false
+        feedback: "Position $t$ can already see the earlier token $x_{t-1}$. Its target is the token after $x_t$."
+    solution: "Each position predicts the next token, so the output at position $t$ is scored against $x_{t+1}$."
+  - id: alm-recall-teacher-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: alm-teacher-forcing
+    difficulty: 2
+    est_minutes: 0.5
+    prompt: "A three-token training sentence supplies two next-token targets. Their true-token probabilities are $p$ and $q$. Write the sentence's mean cross-entropy loss. Type `ln(...)` for the natural logarithm."
+    answer: "-(log(p)+log(q))/2"
+    variables: { "p": [0.05, 0.95], "q": [0.05, 0.95] }
+    solution: "Average the two losses: $L=(-\\ln p-\\ln q)/2$."
+  - id: alm-recall-sampling-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: alm-sampling
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, how does autoregressive generation extend a prompt, and how do its own choices affect later predictions?"
+    rubric:
+      - id: r1
+        criterion: "Explain that generation repeatedly predicts a next-token distribution, chooses a token and appends it to the text."
+        weight: 1
+        required: true
+      - id: r2
+        criterion: "Explain that each chosen token becomes part of the prefix for later predictions, so a poor choice can lead to more poor choices."
+        weight: 1
+        required: true
+    exemplar: "Generation predicts a next-token distribution, chooses a token and appends it, then repeats. Every choice enters later prefixes, so a poor choice can lead to more poor choices."
+  - id: alm-recall-sampling-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: alm-sampling
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Which rule can choose a lower-probability token while giving each token its predicted chance over many draws?"
+    options:
+      - id: a
+        text: "Greedy decoding"
+        correct: false
+        feedback: "Greedy decoding always takes a token with the highest probability."
+      - id: b
+        text: "Teacher forcing"
+        correct: false
+        feedback: "Teacher forcing supplies the true earlier tokens during training."
+      - id: c
+        text: "Sampling"
+        correct: true
+        feedback: "Sampling draws from the distribution, so even a lower-probability token can be selected."
+    solution: "Sampling draws a token at random using its predicted probability."
+  - id: alm-recall-sampling-contrast2
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: alm-sampling
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Why does generation need another model run after choosing each token?"
+    options:
+      - id: a
+        text: "Its next input includes the token just chosen."
+        correct: true
+        feedback: "The new prefix depends on that choice, so the next prediction uses the extended text."
+      - id: b
+        text: "Its next input is already supplied by the training text."
+        correct: false
+        feedback: "That describes teacher forcing. During generation the continuation consists of the model's choices."
+      - id: c
+        text: "Its causal mask is removed to expose later tokens."
+        correct: false
+        feedback: "Later tokens do not exist yet. Causal prediction uses only the prefix already available."
+    solution: "Each chosen token extends the prefix needed to predict the following token."

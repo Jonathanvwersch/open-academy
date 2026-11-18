@@ -755,3 +755,217 @@ exercises:
         required: false
     exemplar: "Attention lets tokens share information. The MLP computes features for each token separately, using the same weights at every position. Each residual connection adds a sublayer's output to its original input. Blocks preserve shape $T\\times d$, so one block's output can feed the next."
     solution: "Attention lets tokens share information. The MLP computes features for each token separately, using the same weights at every position. Each residual connection adds a sublayer's output to its original input. Blocks preserve shape $T\\times d$, so one block's output can feed the next."
+  - id: tb-recall-residual-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: tb-residual
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what does a residual connection add, and how does its shortcut help slopes travel through many layers?"
+    rubric:
+      - id: r1
+        criterion: "Explain that a residual connection adds a sublayer's output to its own input."
+        weight: 1
+        required: true
+      - id: r2
+        criterion: "Explain that the shortcut contributes a slope of 1, keeping the combined factor close to 1 when the sublayer's slope is small."
+        weight: 1
+        required: true
+    exemplar: "A residual connection adds a sublayer's output to its input. The shortcut contributes a slope of 1, so a small sublayer slope gives a combined factor close to 1."
+  - id: tb-recall-residual-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: tb-residual
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Which operation supplies the direct input-to-output path around a sublayer?"
+    options:
+      - id: a
+        text: "Adding the original input"
+        correct: true
+        feedback: "The residual sum carries the original vector directly to the output."
+      - id: b
+        text: "Normalizing the input vector"
+        correct: false
+        feedback: "LayerNorm rescales a vector before a sublayer in pre-norm. The shortcut carries the original vector."
+      - id: c
+        text: "Concatenating the head outputs"
+        correct: false
+        feedback: "Concatenation joins head outputs side by side before their output matrix mixes them."
+    solution: "The residual connection adds the original input to the sublayer result."
+  - id: tb-recall-residual-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: tb-residual
+    difficulty: 2
+    est_minutes: 0.5
+    prompt: "A layer computes $y=z+f(z)$ for one number $z$, and the sublayer $f$ has local slope $a$. Write the layer's local slope $dy/dz$."
+    answer: "1+a"
+    variables: { "a": [-0.5, 0.5] }
+    solution: "The shortcut adds slope $1$ and the sublayer adds slope $a$, so $dy/dz=1+a$."
+  - id: tb-recall-sublayers-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: tb-two-sublayers
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what different jobs do attention and the MLP perform inside a transformer block?"
+    rubric:
+      - id: r1
+        criterion: "Explain that attention lets tokens share information."
+        weight: 1
+        required: true
+      - id: r2
+        criterion: "Explain that the MLP processes each token's vector separately with the same weights at every position."
+        weight: 1
+        required: true
+    exemplar: "Attention lets tokens share information. The MLP then processes each token's vector separately, using the same weights at every position."
+  - id: tb-recall-sublayers-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: tb-two-sublayers
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Which part computes new features separately for each token after it has gathered information?"
+    options:
+      - id: a
+        text: "The attention mixture"
+        correct: false
+        feedback: "Attention gathers information by blending source value vectors across tokens."
+      - id: b
+        text: "The two-layer MLP"
+        correct: true
+        feedback: "The MLP uses a nonlinearity to compute features from each token's gathered vector."
+      - id: c
+        text: "The residual shortcut"
+        correct: false
+        feedback: "The shortcut passes the input directly into an addition with a sublayer's output."
+    solution: "The MLP processes each token separately and its nonlinearity lets it compute new features."
+  - id: tb-recall-sublayers-formula
+    dimension: math
+    type: text
+    role: recall
+    knowledge_point: tb-two-sublayers
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "In a block without normalization, $u_t$ is position $t$'s vector after attention and its shortcut. Fill in the MLP's input: $y_t=u_t+\\text{MLP}(\\underline{\\quad})$."
+    accept: ["u_t", "u_{t}", "ut", "uₜ", "$u_t$"]
+    regex: "^\\s*\\$?\\s*u\\s*(?:_\\s*\\{?\\s*t\\s*\\}?|t|ₜ)\\s*\\$?\\s*$"
+    solution: "The MLP reads only this token's vector, so $y_t=u_t+\\text{MLP}(u_t)$."
+  - id: tb-recall-prenorm-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: tb-pre-norm
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, where does LayerNorm sit in a pre-norm block, and which vector does the shortcut carry?"
+    rubric:
+      - id: r1
+        criterion: "Explain that LayerNorm normalizes a copy before each sublayer reads it."
+        weight: 1
+        required: true
+      - id: r2
+        criterion: "Explain that the shortcut carries the original vector, which is added to the sublayer output."
+        weight: 1
+        required: true
+    exemplar: "LayerNorm normalizes a copy before each sublayer. The shortcut carries the original vector, and the sublayer output is added to that original."
+  - id: tb-recall-prenorm-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: tb-pre-norm
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Which layout puts LayerNorm after each residual addition?"
+    options:
+      - id: a
+        text: "Pre-norm"
+        correct: false
+        feedback: "Pre-norm normalizes the copy that feeds each sublayer."
+      - id: b
+        text: "Post-norm"
+        correct: true
+        feedback: "Post-norm applies LayerNorm to the result of the residual sum."
+      - id: c
+        text: "Final LayerNorm"
+        correct: false
+        feedback: "The final LayerNorm follows the last block of a pre-norm model. It is a single final normalization."
+    solution: "Post-norm places LayerNorm after each sublayer's residual addition."
+  - id: tb-recall-prenorm-formula
+    dimension: math
+    type: text
+    role: recall
+    knowledge_point: tb-pre-norm
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Fill in the input transformation in a pre-norm MLP update: $y_t=u_t+\\mathrm{MLP}(\\underline{\\quad}(u_t))$."
+    accept:
+      [
+        "LN",
+        "LayerNorm",
+        "layer norm",
+        "layer normalization",
+        "$LN$",
+        "\\text{LN}",
+        "\\mathrm{LN}",
+        "\\operatorname{LN}",
+      ]
+    regex: "^\\s*\\$?\\s*(?:ln|\\\\(?:text|mathrm|operatorname)\\s*\\{\\s*ln\\s*\\}|layer\\s*norm(?:alization)?)\\s*\\$?\\s*$"
+    solution: "The MLP reads $\\text{LN}(u_t)$, while the shortcut carries $u_t$."
+  - id: tb-recall-stack-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: tb-stack
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, why can transformer blocks be stacked directly, and do they share their learned weights?"
+    rubric:
+      - id: r1
+        criterion: "Explain that every block takes and returns a $T\\times d$ grid, preserving token count and width."
+        weight: 1
+        required: true
+      - id: r2
+        criterion: "State that each block has its own learned weights."
+        weight: 1
+        required: true
+    exemplar: "Every block takes and returns a $T\\times d$ grid, so its output fits the next block's input. Each block has its own learned weights."
+  - id: tb-recall-stack-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: tb-stack
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "For the standard block with a width-$4d$ MLP hidden layer, which group holds the most matrix weights?"
+    options:
+      - id: a
+        text: "The two MLP matrices"
+        correct: true
+        feedback: "They hold $8d^2$ weights in total."
+      - id: b
+        text: "The four attention matrices"
+        correct: false
+        feedback: "They hold $4d^2$ weights in total, half as many as the MLP matrices."
+      - id: c
+        text: "The two LayerNorms"
+        correct: false
+        feedback: "Their gains and shifts total $4d$ parameters, growing linearly with width."
+    solution: "The MLP matrices hold $8d^2$ weights, compared with attention's $4d^2$."
+  - id: tb-recall-stack-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: tb-stack
+    difficulty: 2
+    est_minutes: 0.5
+    prompt: "Write the total parameter count of a width-$d$ block with a width-$4d$ MLP hidden layer. Include attention and MLP weights and biases, and two LayerNorms' gains and shifts."
+    answer: "12*d*d+13*d"
+    variables: { d: [2, 1024] }
+    solution: "Matrix weights contribute $12d^2$, biases contribute $9d$, and LayerNorm contributes $4d$, giving $12d^2+13d$."
