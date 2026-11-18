@@ -845,7 +845,7 @@ exercises:
       It is zero when the prediction equals the price:
 
       $$b=20$$
-  - id: lab-recall-fixed-say
+  - id: pd-recall-fixed-say
     dimension: conceptual
     type: explain
     role: recall
@@ -863,7 +863,7 @@ exercises:
         weight: 1
         required: true
     exemplar: "A partial derivative in $x$ measures the function's slope as $x$ changes. All the other inputs stay fixed."
-  - id: lab-recall-fixed-contrast
+  - id: pd-recall-fixed-contrast
     dimension: conceptual
     type: mc
     role: recall
@@ -880,13 +880,13 @@ exercises:
       - id: b
         text: "Changing $x$ and $y$ together"
         correct: false
-        feedback: "Moving both inputs requires accounting for both effects."
+        feedback: "Moving $x$ and $y$ together mixes both slopes. $\\partial f/\\partial x$ moves only $x$."
       - id: c
         text: "Changing $x$ while $y$ stays fixed"
         correct: true
-        feedback: "The denominator names the input whose change is measured."
-    solution: "The denominator names the input whose change is measured."
-  - id: lab-recall-fixed-formula
+        feedback: "Only $x$ changes, and every other input stays fixed."
+    solution: "Only $x$ changes, and every other input stays fixed."
+  - id: pd-recall-fixed-formula
     dimension: math
     type: text
     role: recall
@@ -894,10 +894,10 @@ exercises:
     difficulty: 1
     est_minutes: 0.5
     prompt: "Fill in the blank: $\\frac{\\partial f}{\\partial x}=\\lim_{h\\to0}\\frac{\\underline{\\quad}-f(x,y)}{h}$. Type the missing function value."
-    accept: ["f(x+h,y)", "f(x + h, y)"]
-    regex: "^\\s*f\\s*\\(\\s*x\\s*\\+\\s*h\\s*,\\s*y\\s*\\)\\s*$"
+    accept: ["f(x+h,y)", "f(x + h, y)", "f(h+x,y)", "f(h + x, y)"]
+    regex: "^\\s*f\\s*\\(\\s*(?:x\\s*\\+\\s*h|h\\s*\\+\\s*x)\\s*,\\s*y\\s*\\)\\s*$"
     solution: "The new output is $f(x+h,y)$: only $x$ receives the step."
-  - id: lab-recall-compute-say
+  - id: pd-recall-compute-say
     dimension: conceptual
     type: explain
     role: recall
@@ -915,7 +915,7 @@ exercises:
         weight: 1
         required: true
     exemplar: "A fixed multiplier stays in the derivative. A term made only of fixed inputs contributes zero slope."
-  - id: lab-recall-compute-contrast
+  - id: pd-recall-compute-contrast
     dimension: conceptual
     type: mc
     role: recall
@@ -936,20 +936,20 @@ exercises:
       - id: c
         text: "Remove $y$ from the first term; the second term gives zero"
         correct: false
-        feedback: "Holding $y$ fixed preserves its value as a multiplier."
+        feedback: "Holding $y$ fixed makes it a constant factor, and a constant factor stays, like the $5$ in $(5x^2)'=10x$."
     solution: "The first $y$ scales the changing power; the whole $5y$ term is fixed."
-  - id: lab-recall-compute-formula
+  - id: pd-recall-compute-formula
     dimension: math
     type: expression
     role: recall
     knowledge_point: pd-compute
     difficulty: 1
     est_minutes: 0.5
-    prompt: "For $f(x,y)=x^2y+5y$, write $\\partial f/\\partial x$ as an expression in $x$ and $y$."
-    answer: "2*x*y"
+    prompt: "For $f(x,y)=x^3y+4y^2$, write $\\partial f/\\partial x$ as an expression in $x$ and $y$."
+    answer: "3*x^2*y"
     variables: { "x": [0.5, 4], "y": [0.5, 4] }
-    solution: "Keep $y$ as a fixed multiplier; $5y$ contributes zero. The result is $2xy$."
-  - id: lab-recall-model-say
+    solution: "Keep $y$ as a fixed multiplier; $4y^2$ has no $x$, so it contributes zero. The result is $3x^2y$."
+  - id: pd-recall-model-say
     dimension: conceptual
     type: explain
     role: recall
@@ -967,7 +967,7 @@ exercises:
         weight: 1
         required: true
     exemplar: "Training adjusts the weight $w$ and bias $b$. The area $x$ and recorded price $y$ stay fixed because they are data."
-  - id: lab-recall-model-contrast
+  - id: pd-recall-model-contrast
     dimension: conceptual
     type: mc
     role: recall
@@ -980,17 +980,17 @@ exercises:
       - id: a
         text: "$\\partial L/\\partial w$"
         correct: true
-        feedback: "This partial derivative measures the loss's rate of change as weight rises."
+        feedback: "This partial derivative is the loss's rate of change as the weight rises, with $b$ held fixed."
       - id: b
-        text: "$wx+b-y$"
+        text: "$\\partial L/\\partial b$"
         correct: false
-        feedback: "This is the prediction error, the gap before squaring."
+        feedback: "This is the loss's rate of change as the bias rises."
       - id: c
-        text: "$L$"
+        text: "$\\partial L/\\partial x$"
         correct: false
-        feedback: "This is the squared error's value at the current parameters."
-    solution: "This partial derivative measures the loss's rate of change as weight rises."
-  - id: lab-recall-model-formula
+        feedback: "The area $x$ is recorded data that training can't change, so training needs no slope for it."
+    solution: "This partial derivative is the loss's rate of change as the weight rises, with $b$ held fixed."
+  - id: pd-recall-model-formula
     dimension: math
     type: expression
     role: recall

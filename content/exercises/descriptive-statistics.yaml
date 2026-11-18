@@ -740,7 +740,7 @@ exercises:
       - id: a
         text: "The share of sample means exactly equal to the long-run average"
         correct: false
-        feedback: "Sample means vary; the method concerns intervals containing the average."
+        feedback: "Sample means vary between experiments, so almost none equal the long-run average exactly."
       - id: b
         text: "The share of these intervals containing the long-run average"
         correct: true
@@ -809,10 +809,10 @@ exercises:
     knowledge_point: ds-success-uncertainty
     difficulty: 1
     est_minutes: 0.5
-    prompt: "A success rate is $p$ from $n$ independent attempts. Write its approximate standard error. Type `sqrt(...)` for a square root."
+    prompt: "A success rate $\\hat p$ comes from $n$ independent attempts. Write its approximate standard error, typing `p` for $\\hat p$ and `sqrt(...)` for a square root."
     answer: "sqrt(p*(1-p)/n)"
     variables: { "p": [0.2, 0.8], "n": [100, 400] }
-    solution: "The rate's standard error is $\\sqrt{p(1-p)/n}$."
+    solution: "The rate's standard error is $\\sqrt{\\hat p(1-\\hat p)/n}$."
   - id: ds-recall-difference-say
     dimension: conceptual
     type: explain
@@ -827,9 +827,12 @@ exercises:
         weight: 1
         required: true
       - id: point2
-        criterion: "Explain that an interval excluding zero supports a real difference when tests are independent, conditions comparable and counts large enough."
+        criterion: "Explain that an interval excluding zero supports a real difference between the success rates."
         weight: 1
         required: true
+      - id: conditions
+        criterion: "Mention that this needs independent tests, comparable conditions and large enough counts."
+        weight: 1
     exemplar: "Subtract the original rate from the updated rate. A difference interval excluding zero supports a real difference when independent tests have comparable conditions and large enough counts."
   - id: ds-recall-difference-contrast
     dimension: conceptual

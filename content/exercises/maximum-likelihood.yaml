@@ -812,7 +812,7 @@ exercises:
       - id: a
         text: "Maximise negative log-likelihood"
         correct: false
-        feedback: "Maximising its negative also favours smaller likelihoods."
+        feedback: "Maximising the negative log-likelihood is the same as minimising the log-likelihood, which picks the least likely guess."
       - id: b
         text: "Minimise negative log-likelihood"
         correct: true
@@ -820,7 +820,7 @@ exercises:
       - id: c
         text: "Minimise log-likelihood"
         correct: false
-        feedback: "Minimising log-likelihood favours smaller likelihoods."
+        feedback: "Minimising the log-likelihood picks the guess with the smallest likelihood."
     solution: "Flipping the log-likelihood's sign turns its maximum into a minimum."
   - id: mle-recall-logs-formula
     dimension: math
@@ -830,7 +830,7 @@ exercises:
     difficulty: 1
     est_minutes: 0.5
     prompt: "For an exact sequence of independent flips containing $h$ heads and $t$ tails, write the log-likelihood as a function of heads probability $p$. Type `ln(...)` for natural logarithms."
-    answer: "h*ln(p)+t*ln(1-p)"
+    answer: "h*log(p)+t*log(1-p)"
     variables: { "h": [2, 10], "t": [2, 10], "p": [0.05, 0.95] }
     solution: "Each heads contributes $\\ln p$ and each tails contributes $\\ln(1-p)$, giving $h\\ln p+t\\ln(1-p)$."
   - id: mle-recall-centre-say
@@ -916,7 +916,7 @@ exercises:
       - id: a
         text: "Averaging gives every error the same squared size"
         correct: false
-        feedback: "Averaging scales the sum by the count while preserving the differences in squared sizes."
+        feedback: "Averaging divides the sum by the count, so a large squared error stays large compared with the others."
       - id: b
         text: "The Gaussian model assigns frequent large errors high probability"
         correct: false

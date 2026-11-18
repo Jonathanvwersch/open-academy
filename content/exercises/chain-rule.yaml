@@ -500,7 +500,7 @@ exercises:
         'Fan route: $\frac{\partial T}{\partial s}\cdot\frac{ds}{dq}=-0.4\times20$.',
       ]
     solution: '$\frac{dT}{dq}=3\times2+(-0.4)\times20=6-8=-2$. Opening the throttle cools the motor slightly, because the fan route outweighs the power route.'
-  - id: lab-recall-rates-say
+  - id: cr-recall-rates-say
     dimension: conceptual
     type: explain
     role: recall
@@ -518,7 +518,7 @@ exercises:
         weight: 1
         required: true
     exemplar: "Multiply the rates along the chain. Each step scales the change it receives from the previous step."
-  - id: lab-recall-rates-contrast
+  - id: cr-recall-rates-contrast
     dimension: conceptual
     type: mc
     role: recall
@@ -535,24 +535,24 @@ exercises:
       - id: b
         text: "Divide the second rate by the first"
         correct: false
-        feedback: "Division reverses the effect of the first scaling."
+        feedback: "Dividing would undo the first step's scaling. The second step scales the already scaled change again, so the rates multiply."
       - id: c
         text: "Multiply the two rates"
         correct: true
         feedback: "Successive scaling multiplies the rates."
     solution: "Successive scaling multiplies the rates."
-  - id: lab-recall-rates-formula
+  - id: cr-recall-rates-formula
     dimension: math
     type: expression
     role: recall
     knowledge_point: cr-rates-multiply
     difficulty: 1
     est_minutes: 0.5
-    prompt: "In a chain $x$ to $u$ to $y$, let $a=du/dx$ and $b=dy/du$ at the inputs being considered. Write $dy/dx$ in terms of $a$ and $b$."
+    prompt: "In a chain $x$ to $u$ to $y$, let $a=du/dx$ and $b=dy/du$ at the current input. Write $dy/dx$ in terms of $a$ and $b$."
     answer: "a*b"
     variables: { "a": [1.5, 5], "b": [-4, -0.5] }
     solution: "The chain rule multiplies the two rates, giving $ab$."
-  - id: lab-recall-nested-say
+  - id: cr-recall-nested-say
     dimension: conceptual
     type: explain
     role: recall
@@ -570,7 +570,7 @@ exercises:
         weight: 1
         required: true
     exemplar: "Evaluate the outer derivative at $g(x)$. Multiply that rate by the inner derivative $g'(x)$."
-  - id: lab-recall-nested-contrast
+  - id: cr-recall-nested-contrast
     dimension: conceptual
     type: mc
     role: recall
@@ -593,18 +593,18 @@ exercises:
         correct: false
         feedback: "Using $x$ skips the inner calculation."
     solution: "The outer function receives the inner function's output."
-  - id: lab-recall-nested-formula
+  - id: cr-recall-nested-formula
     dimension: math
     type: expression
     role: recall
     knowledge_point: cr-nested-formulas
     difficulty: 1
     est_minutes: 0.5
-    prompt: "Write the derivative of $(3x+1)^2$ with respect to $x$."
-    answer: "6*(3*x+1)"
+    prompt: "Write the derivative of $(4x-1)^3$ with respect to $x$."
+    answer: "12*(4*x-1)^2"
     variables: { "x": [-2, 3] }
-    solution: "The outer rate is $2(3x+1)$ and the inner rate is $3$, giving $6(3x+1)$."
-  - id: lab-recall-routes-say
+    solution: "The outer rate is $3(4x-1)^2$ and the inner rate is $4$, giving $12(4x-1)^2$."
+  - id: cr-recall-routes-say
     dimension: conceptual
     type: explain
     role: recall
@@ -622,7 +622,7 @@ exercises:
         weight: 1
         required: true
     exemplar: "Multiply the rates along each route to find its contribution. Add the route contributions to get the full derivative."
-  - id: lab-recall-routes-contrast
+  - id: cr-recall-routes-contrast
     dimension: conceptual
     type: mc
     role: recall
@@ -645,7 +645,7 @@ exercises:
         correct: false
         feedback: "Both routes affect the output, including a smaller contribution with opposite sign."
     solution: "Each route adds its own effect to the total output change."
-  - id: lab-recall-routes-formula
+  - id: cr-recall-routes-formula
     dimension: math
     type: expression
     role: recall

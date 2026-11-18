@@ -724,10 +724,10 @@ exercises:
     knowledge_point: gauss-density-formula
     difficulty: 1
     est_minutes: 0.5
-    prompt: "Write the Gaussian density at reading $x$ for mean $m$ and positive standard deviation $s$. Use `exp(...)`, `sqrt(...)` and `pi`."
-    answer: "exp(-(x-m)^2/(2*s^2))/(s*sqrt(2*pi))"
-    variables: { "x": [-3, 3], "m": [-2, 2], "s": [0.5, 3] }
-    solution: "The density is $\\frac{1}{s\\sqrt{2\\pi}}\\exp(-(x-m)^2/(2s^2))$."
+    prompt: "Write the Gaussian density at reading $x$ for mean $\\mu$ and standard deviation $\\sigma$. Type `mu` for $\\mu$, `sigma` for $\\sigma$, and use `exp(...)`, `sqrt(...)` and `pi`."
+    answer: "exp(-(x-mu)^2/(2*sigma^2))/(sigma*sqrt(2*pi))"
+    variables: { "x": [-3, 3], "mu": [-2, 2], "sigma": [0.5, 3] }
+    solution: "The density is $\\frac{1}{\\sigma\\sqrt{2\\pi}}\\exp(-(x-\\mu)^2/(2\\sigma^2))$."
   - id: gauss-recall-effects-say
     dimension: conceptual
     type: explain

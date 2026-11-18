@@ -1094,7 +1094,7 @@ exercises:
         category: misapplied_technique
         feedback: "That gives $9 + 10 \\times 2 = 29$, which is off the other way. No single slope is right over such a big nudge."
     solution: "The estimate $f(a + h) \\approx f(a) + f'(a)\\,h$ treats the curve as its tangent line. For $x^2$ the slope grows from 6 to 10 between 3 and 5, so over a nudge of 2 the tangent falls 4 short. For small nudges, like 0.1, the estimate is close."
-  - id: lab-recall-instant-say
+  - id: der-recall-instant-say
     dimension: conceptual
     type: explain
     role: recall
@@ -1112,7 +1112,7 @@ exercises:
         weight: 1
         required: true
     exemplar: "A derivative gives the slope at one input. It is the value approached by the average slope as the input step shrinks to zero."
-  - id: lab-recall-instant-contrast
+  - id: der-recall-instant-contrast
     dimension: conceptual
     type: mc
     role: recall
@@ -1135,7 +1135,7 @@ exercises:
         correct: true
         feedback: "The derivative gives the rate of change at that instant."
     solution: "The derivative gives the rate of change at that instant."
-  - id: lab-recall-instant-formula
+  - id: der-recall-instant-formula
     dimension: math
     type: text
     role: recall
@@ -1143,10 +1143,10 @@ exercises:
     difficulty: 1
     est_minutes: 0.5
     prompt: "Fill in the blank in the derivative definition: $f'(a)=\\lim_{h\\to0}\\frac{\\underline{\\quad}-f(a)}{h}$. Type the missing function value."
-    accept: ["f(a+h)", "f(a + h)"]
-    regex: "^\\s*f\\s*\\(\\s*a\\s*\\+\\s*h\\s*\\)\\s*$"
+    accept: ["f(a+h)", "f(a + h)", "f(h+a)", "f(h + a)"]
+    regex: "^\\s*f\\s*\\(\\s*(?:a\\s*\\+\\s*h|h\\s*\\+\\s*a)\\s*\\)\\s*$"
     solution: "The numerator is $f(a+h)-f(a)$, the new output minus the old output."
-  - id: lab-recall-power-say
+  - id: der-recall-power-say
     dimension: conceptual
     type: explain
     role: recall
@@ -1164,7 +1164,7 @@ exercises:
         weight: 1
         required: true
     exemplar: "The power rule brings the exponent down in front and lowers it by one. A fixed multiplier stays in front of the derivative."
-  - id: lab-recall-power-contrast
+  - id: der-recall-power-contrast
     dimension: conceptual
     type: mc
     role: recall
@@ -1177,7 +1177,7 @@ exercises:
       - id: a
         text: "Evaluate each term and add the values"
         correct: false
-        feedback: "Adding term values gives the function's height."
+        feedback: "Adding the term values gives the function's height at one input."
       - id: b
         text: "Differentiate each term and add the results"
         correct: true
@@ -1185,9 +1185,9 @@ exercises:
       - id: c
         text: "Multiply the derivatives of all the terms"
         correct: false
-        feedback: "Multiplying slopes fails to measure the change of a sum."
+        feedback: "Multiplying the term slopes is a mistake. The sum rule adds each term's slope."
     solution: "The sum rule adds the individual term slopes."
-  - id: lab-recall-power-formula
+  - id: der-recall-power-formula
     dimension: math
     type: expression
     role: recall
@@ -1198,7 +1198,7 @@ exercises:
     answer: "n*x^(n-1)"
     variables: { "x": [0.5, 4], "n": [2, 5] }
     solution: "Bring $n$ down in front and lower the power by one: $nx^{n-1}$."
-  - id: lab-recall-exp-log-say
+  - id: der-recall-exp-log-say
     dimension: conceptual
     type: explain
     role: recall
@@ -1216,7 +1216,7 @@ exercises:
         weight: 1
         required: true
     exemplar: "The slope of $e^x$ is $e^x$ itself. The slope of $\\ln x$ is $1/x$, with $x>0$."
-  - id: lab-recall-exp-log-contrast
+  - id: der-recall-exp-log-contrast
     dimension: conceptual
     type: mc
     role: recall
@@ -1239,7 +1239,7 @@ exercises:
         correct: false
         feedback: "The square has slope $2x$."
     solution: "The exponential $e^x$ is its own derivative."
-  - id: lab-recall-exp-log-formula
+  - id: der-recall-exp-log-formula
     dimension: math
     type: expression
     role: recall
@@ -1250,7 +1250,7 @@ exercises:
     answer: "exp(x)+1/x"
     variables: { "x": [0.5, 4] }
     solution: "Add the two slopes: $e^x+1/x$."
-  - id: lab-recall-product-say
+  - id: der-recall-product-say
     dimension: conceptual
     type: explain
     role: recall
@@ -1268,7 +1268,7 @@ exercises:
         weight: 1
         required: true
     exemplar: "Either factor's change affects the product. The derivative adds the two effects, $u'v+uv'$."
-  - id: lab-recall-product-contrast
+  - id: der-recall-product-contrast
     dimension: conceptual
     type: mc
     role: recall
@@ -1289,9 +1289,9 @@ exercises:
       - id: c
         text: "$(u'v-uv')/v^2$"
         correct: true
-        feedback: "The quotient rule subtracts the numerator's second term and divides by $v^2$."
-    solution: "The quotient rule subtracts the numerator's second term and divides by $v^2$."
-  - id: lab-recall-product-formula
+        feedback: "The quotient rule takes $u'v$ minus $uv'$ and divides by $v^2$."
+    solution: "The quotient rule takes $u'v$ minus $uv'$ and divides by $v^2$."
+  - id: der-recall-product-formula
     dimension: math
     type: expression
     role: recall

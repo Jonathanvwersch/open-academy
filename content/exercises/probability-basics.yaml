@@ -664,18 +664,22 @@ exercises:
     prompt: "Which quantity estimates an event's probability from records of past cases?"
     options:
       - id: a
-        text: "The number of possible outcomes"
-        correct: false
-        feedback: "A count of possible outcomes alone gives no fraction of past cases."
-      - id: b
-        text: "The number of cases outside the event"
-        correct: false
-        feedback: "The cases outside the event belong to its complement."
-      - id: c
-        text: "Its frequency in those cases"
+        text: "The fraction of past cases that were in the event"
         correct: true
-        feedback: "Frequency is the fraction of past cases in the event."
-    solution: "Frequency is the fraction of past cases in the event."
+        feedback: "This fraction is the event's frequency, our estimate of its probability."
+      - id: b
+        text: "The number of past cases that were in the event"
+        correct: false
+        feedback: "A count alone isn't a probability. Divide it by the number of past cases."
+      - id: c
+        text: "One minus the fraction of past cases in the event"
+        correct: false
+        feedback: "This estimates the complement, the chance the event doesn't happen."
+      - id: d
+        text: "The event's outcomes divided by all possible outcomes"
+        correct: false
+        feedback: "This counts equally likely outcomes, which past records like house sales don't give us."
+    solution: "This fraction is the event's frequency, our estimate of its probability."
   - id: pb-recall-events-formula
     dimension: math
     type: expression
@@ -730,15 +734,15 @@ exercises:
     solution: "A distribution lists the possible values and their probabilities."
   - id: pb-recall-distribution-formula
     dimension: math
-    type: text
+    type: expression
     role: recall
     knowledge_point: pb-distributions
     difficulty: 1
     est_minutes: 0.5
-    prompt: "A random variable $X$ takes only the values 0, 1 and 2. Complete $P(X\\ge1)=P(X=1)+\\underline{\\quad}$. Type the missing probability."
-    accept: ["P(X=2)", "P(X = 2)", "probability that X equals 2", "the probability that X equals 2"]
-    regex: "^\\s*(?:p\\s*\\(\\s*x\\s*=\\s*2\\s*\\)|(?:the\\s+)?probability\\s+that\\s+x\\s+equals\\s+2)\\s*$"
-    solution: "Include both values at least one: $P(X=1)+P(X=2)$."
+    prompt: "A random variable $X$ takes only the values 0, 1 and 2, with $P(X=0)=a$ and $P(X=1)=b$. Write $P(X=2)$."
+    answer: "1-a-b"
+    variables: { "a": [0.1, 0.4], "b": [0.1, 0.4] }
+    solution: "A distribution's probabilities add up to 1, so $P(X=2)=1-a-b$."
   - id: pb-recall-expectation-say
     dimension: conceptual
     type: explain
@@ -774,7 +778,7 @@ exercises:
       - id: b
         text: "The most likely points on one spin"
         correct: false
-        feedback: "The most likely value is whichever has the largest probability."
+        feedback: "The most likely value is the one with the largest probability, and one spin always gives a whole number of points."
       - id: c
         text: "The chance of scoring at least one point"
         correct: false

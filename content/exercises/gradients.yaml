@@ -724,7 +724,7 @@ exercises:
         category: math_error
         feedback: "This is a downhill direction, but its slope is -9.6, not the steepest possible slope -10."
     solution: "The gradient is $(6,8)$ with length 10, so the steepest downhill unit direction is $-(6,8)/10=(-0.6,-0.8)$ and its slope is $-10$."
-  - id: lab-recall-gradient-say
+  - id: grad-recall-gradient-say
     dimension: conceptual
     type: explain
     role: recall
@@ -742,7 +742,7 @@ exercises:
         weight: 1
         required: true
     exemplar: "The gradient is a vector with one partial derivative for every input. Its components follow the input order."
-  - id: lab-recall-gradient-contrast
+  - id: grad-recall-gradient-contrast
     dimension: conceptual
     type: mc
     role: recall
@@ -765,7 +765,7 @@ exercises:
         correct: true
         feedback: "The gradient is a vector containing one partial derivative per input."
     solution: "The gradient is a vector containing one partial derivative per input."
-  - id: lab-recall-gradient-formula
+  - id: grad-recall-gradient-formula
     dimension: math
     type: text
     role: recall
@@ -777,15 +777,14 @@ exercises:
       [
         "∂f/∂y",
         "partial f/partial y",
-        "df/dy",
         "f_y",
         "fy",
         "partial derivative with respect to y",
         "the partial derivative with respect to y",
       ]
-    regex: "^\\s*(?:(?:∂|partial\\s*)f\\s*/\\s*(?:∂|partial\\s*)y|d\\s*f\\s*/\\s*d\\s*y|f\\s*_?\\s*y|(?:the\\s+)?partial\\s+derivative\\s+(?:of\\s+f\\s+)?with\\s+respect\\s+to\\s+y)\\s*$"
+    regex: "^\\s*(?:(?:∂|partial\\s*)f\\s*/\\s*(?:∂|partial\\s*)y|f\\s*_?\\s*y|(?:the\\s+)?partial\\s+derivative\\s+(?:of\\s+f\\s+)?with\\s+respect\\s+to\\s+y)\\s*$"
     solution: "The second component is $\\partial f/\\partial y$, the slope for the second input."
-  - id: lab-recall-direction-say
+  - id: grad-recall-direction-say
     dimension: conceptual
     type: explain
     role: recall
@@ -803,7 +802,7 @@ exercises:
         weight: 1
         required: true
     exemplar: "A directional derivative is the slope at a point in a chosen direction. Using a vector of length one measures the output change per unit distance."
-  - id: lab-recall-direction-contrast
+  - id: grad-recall-direction-contrast
     dimension: conceptual
     type: mc
     role: recall
@@ -826,7 +825,7 @@ exercises:
         correct: false
         feedback: "The gradient's length gives the largest possible uphill slope."
     solution: "The dot product combines the effects of the input changes in that direction."
-  - id: lab-recall-direction-formula
+  - id: grad-recall-direction-formula
     dimension: math
     type: expression
     role: recall
@@ -837,7 +836,7 @@ exercises:
     answer: "0.6*a+0.8*b"
     variables: { "a": [1, 5], "b": [-4, 4] }
     solution: "The dot product gives $0.6a+0.8b$."
-  - id: lab-recall-descent-say
+  - id: grad-recall-descent-say
     dimension: conceptual
     type: explain
     role: recall
@@ -855,7 +854,7 @@ exercises:
         weight: 1
         required: true
     exemplar: "The negative gradient points steepest downhill. Divide it by its length to get a unit vector."
-  - id: lab-recall-descent-contrast
+  - id: grad-recall-descent-contrast
     dimension: conceptual
     type: mc
     role: recall
@@ -878,7 +877,7 @@ exercises:
         correct: false
         feedback: "Opposite the gradient the slope is smallest and negative."
     solution: "Perpendicular vectors have zero dot product."
-  - id: lab-recall-descent-formula
+  - id: grad-recall-descent-formula
     dimension: math
     type: expression
     role: recall
