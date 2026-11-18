@@ -811,3 +811,207 @@ exercises:
         required: true
     exemplar: "The update becomes $w_{\\text{new}}=(1-2\\eta\\lambda)w-\\eta\\,\\partial L_{\\text{data}}/\\partial w$. Smaller weights make predictions change more gently, limiting how closely the model can copy training quirks. Train with several values of $\\lambda$ and keep the one with lowest validation error."
     solution: "The update becomes $w_{\\text{new}}=(1-2\\eta\\lambda)w-\\eta\\,\\partial L_{\\text{data}}/\\partial w$. Smaller weights make predictions change more gently, limiting how closely the model can copy training quirks. Train with several values of $\\lambda$ and keep the one with lowest validation error."
+  - id: rg-recall-penalty-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: rg-penalty
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what does an L2 penalty add to the training loss, and why can this help predictions on new examples?"
+    rubric:
+      - id: point0
+        criterion: "Explain that an L2 penalty adds the penalty strength times the sum of squared weights to the data loss."
+        weight: 1
+        required: true
+      - id: point1
+        criterion: "Explain that small weights make predictions change more gently between nearby inputs, which is more likely to hold up on new examples."
+        weight: 1
+        required: true
+    exemplar: "An L2 penalty adds the penalty strength times the sum of squared weights to the data loss. Small weights make predictions change more gently between nearby inputs, which is more likely to hold up on new examples."
+  - id: rg-recall-penalty-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: rg-penalty
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A model predicts $w$ for a training example with a positive target and uses squared error. The best weight matches the target exactly before regularization. How does a positive L2 penalty change the best weight?"
+    options:
+      - id: a
+        text: "It moves partway towards zero."
+        correct: true
+        feedback: "At the new minimum, the penalty slope balances the data slope. The best weight is smaller and still positive."
+      - id: b
+        text: "It stays at the original value."
+        correct: false
+        feedback: "At the original value the data slope is zero. The penalty adds a slope that pulls the weight towards zero."
+      - id: c
+        text: "It moves all the way to zero."
+        correct: false
+        feedback: "An L1 penalty can hold a weight at zero. The L2 penalty’s pull weakens as the weight approaches zero."
+    solution: "The weight moves towards zero until shrinking it further would add more data loss than it saves in penalty."
+  - id: rg-recall-penalty-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: rg-penalty
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A model has one weight $w$, data loss $L_{\\mathrm{data}}$ and L2 penalty strength $\\lambda$. Write the total loss. Type `L_data` and `lambda`."
+    answer: "L_data+lambda*w^2"
+    variables: { "L_data": [0, 10], "lambda": [0, 3], "w": [-5, 5] }
+    solution: "Add the squared-weight penalty to the data loss to get $L_{\\mathrm{data}}+\\lambda w^2$."
+  - id: rg-recall-decay-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: rg-weight-decay
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, how does weight decay change each gradient-descent update, and where does a weight settle?"
+    rubric:
+      - id: point0
+        criterion: "Explain that weight decay shrinks each weight by a fixed fraction on every update in addition to the usual data step."
+        weight: 1
+        required: true
+      - id: point1
+        criterion: "Explain that the weight settles where the data and penalty pulls balance."
+        weight: 1
+        required: true
+    exemplar: "Weight decay shrinks each weight by a fixed fraction on every update in addition to the usual data step. The weight settles where the data and penalty pulls balance."
+  - id: rg-recall-decay-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: rg-weight-decay
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "With the data contribution held aside, how does L2 weight decay move weights towards zero?"
+    options:
+      - id: a
+        text: "It removes the same fraction of each weight."
+        correct: true
+        feedback: "The L2 slope is proportional to the weight, so its update removes a fixed fraction."
+      - id: b
+        text: "It removes the same distance from each weight."
+        correct: false
+        feedback: "A fixed distance towards zero describes the L1 penalty's pull."
+      - id: c
+        text: "It randomly sets some unit outputs to zero."
+        correct: false
+        feedback: "Randomly zeroing unit outputs during training describes dropout."
+    solution: "The L2 slope is proportional to the weight, so its update removes a fixed fraction."
+  - id: rg-recall-decay-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: rg-weight-decay
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A weight is $w$ and its data slope is $g$. Write the new weight $w_{\\mathrm{new}}$ after one gradient-descent update with L2 penalty strength $\\lambda$ and learning rate $\\eta$. Type `lambda` and `eta`."
+    answer: "(1-2*eta*lambda)*w-eta*g"
+    variables: { "w": [-5, 5], "g": [-3, 3], "lambda": [0.1, 1], "eta": [0.01, 0.2] }
+    solution: "The penalty adds slope $2\\lambda w$, so the new weight is $w-\\eta(g+2\\lambda w)$."
+  - id: rg-recall-strength-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: rg-strength
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, how do you choose the penalty strength, and what can happen if it is too large?"
+    rubric:
+      - id: point0
+        criterion: "Explain that we train with several penalty strengths and keep the one with the lowest validation error."
+        weight: 1
+        required: true
+      - id: point1
+        criterion: "Explain that a penalty that is too large pushes weights close to zero and causes underfitting."
+        weight: 1
+        required: true
+    exemplar: "We train with several penalty strengths and keep the one with the lowest validation error. A penalty that is too large pushes weights close to zero and causes underfitting."
+  - id: rg-recall-strength-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: rg-strength
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "You compare house-price models trained with several values of $\\lambda$. What pattern suggests that a model’s penalty is too strong?"
+    options:
+      - id: a
+        text: "It has low training error and high validation error."
+        correct: false
+        feedback: "This suggests overfitting. A weak penalty can still let the model copy training quirks."
+      - id: b
+        text: "It has high error on both training and validation houses."
+        correct: true
+        feedback: "A large penalty can drive the weights so close to zero that the model underfits."
+      - id: c
+        text: "It has low error on both training and validation houses."
+        correct: false
+        feedback: "Low errors on both sets suggest the model follows a pattern that works on new houses."
+    solution: "Too much regularization pushes weights close to zero, so the model struggles to fit even the training pattern."
+  - id: rg-recall-strength-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: rg-strength
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "During dropout, a unit would output $x$ and is kept with probability $p$. Write the scaled output when it is kept. Use $0<p<1$."
+    answer: "x/p"
+    variables: { "x": [0.5, 10], "p": [0.1, 0.9] }
+    solution: "Divide a kept output by its probability of being kept so its average is preserved."
+  - id: rg-recall-l1-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: rg-l1
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what does the L1 penalty charge, and how can it make a model ignore an input?"
+    rubric:
+      - id: point0
+        criterion: "Explain that the L1 penalty charges the penalty strength times the sum of absolute weight sizes."
+        weight: 1
+        required: true
+      - id: point1
+        criterion: "Explain that it can set weak weights to exactly zero, so the model ignores those inputs."
+        weight: 1
+        required: true
+    exemplar: "The L1 penalty charges the penalty strength times the sum of absolute weight sizes. It can set weak weights to exactly zero, so the model ignores those inputs."
+  - id: rg-recall-l1-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: rg-l1
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Which behavior is characteristic of L1 regularization?"
+    options:
+      - id: a
+        text: "It usually leaves almost all weights small and nonzero."
+        correct: false
+        feedback: "L2 usually makes weights small while leaving almost all nonzero."
+      - id: b
+        text: "It randomly zeros unit outputs during training only."
+        correct: false
+        feedback: "Dropout randomly zeros outputs during training and is switched off for predictions."
+      - id: c
+        text: "It can keep weak input weights at exactly zero."
+        correct: true
+        feedback: "L1 can set weak weights to zero, letting the model ignore their inputs."
+    solution: "L1 can set weak weights to zero, letting the model ignore their inputs."
+  - id: rg-recall-l1-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: rg-l1
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A model has one weight $w$, data loss $L_{\\mathrm{data}}$ and L1 penalty strength $\\lambda$. Write the total loss. Type `L_data`, `lambda` and `abs(...)`."
+    answer: "L_data+lambda*abs(w)"
+    variables: { "L_data": [0, 10], "lambda": [0, 3], "w": [-5, 5] }
+    solution: "Add the absolute-weight penalty to the data loss to get $L_{\\mathrm{data}}+\\lambda|w|$."
