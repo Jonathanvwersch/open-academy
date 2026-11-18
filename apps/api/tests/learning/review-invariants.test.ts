@@ -232,9 +232,62 @@ function recordBudgetDeferred(
   budgetDeferralsByDay.set(day, dayRecords);
 }
 
-function isExplicitReviewExclusion(result: string | undefined) {
-  return Boolean(result?.startsWith('not_candidate:'));
+function hasReviewLogForConceptToday(
+  conceptId: string,
+  now: Date,
+  logs: Array<{ conceptId: string; createdAt: Date }>,
+) {
+  const day = localDateKey(now, timezone);
+  return logs.some(
+    (log) => log.conceptId === conceptId && localDateKey(log.createdAt, timezone) === day,
+  );
 }
+
+function reviewMinuteCapIsActuallyBinding(
+  selection: PlannerSelection,
+  conceptId: string,
+  now: Date,
+) {
+  const minutesFor = (candidateConceptId: string) => {
+    const dueCards = selection.state.cards.filter(
+      (card) => card.conceptId === candidateConceptId && isDueToday(card.dueAt, now, timezone),
+    );
+    return buildReviewActivityForConcept(
+      selection.state,
+      content,
+      now,
+      candidateConceptId,
+      dueCards,
+    )?.plannedMinutes;
+  };
+  const candidateMinutes = minutesFor(conceptId);
+  if (candidateMinutes === undefined) return false;
+  const selectedMinutes = selection.results
+    .filter((result) => result.result === 'selected')
+    .reduce((sum, result) => sum + (minutesFor(result.conceptId) ?? 0), 0);
+  return (
+    selectedMinutes + candidateMinutes >
+    Math.floor(selection.budget * SCHEDULER_CONFIG.weekday.reviewBudgetRatio)
+  );
+}
+
+vitestIt('only accepts reviewedToday when the concept has a review log on the local day', () => {
+  const now = new Date('2026-11-18T16:00:00.000Z');
+  const logs = [
+    { conceptId: 'reviewed-topic', createdAt: new Date('2026-11-18T15:00:00.000Z') },
+    { conceptId: 'other-topic', createdAt: new Date('2026-11-18T15:00:00.000Z') },
+    { conceptId: 'reviewed-topic', createdAt: new Date('2026-11-18T07:59:00.000Z') },
+  ];
+
+  expect(hasReviewLogForConceptToday('reviewed-topic', now, logs)).toBe(true);
+  expect(hasReviewLogForConceptToday('other-topic', now, logs)).toBe(true);
+  expect(hasReviewLogForConceptToday('missing-topic', now, logs)).toBe(false);
+  expect(
+    hasReviewLogForConceptToday('previous-day-topic', now, [
+      { conceptId: 'previous-day-topic', createdAt: new Date('2026-11-18T07:59:00.000Z') },
+    ]),
+  ).toBe(false);
+});
 
 function isLegacyFinding(detail: string, preRunIds: ReadonlySet<string>) {
   const identifiers = detail.match(
@@ -371,13 +424,7 @@ async function checkI3({ now, today, active, selection }: AuditContext): Promise
   const focusedConcepts = await focusedConceptIds();
   const failures = cards.flatMap((card) => {
     const concept = content.conceptsById.get(card.conceptId);
-    if (
-      !concept ||
-      concept.status === 'stub' ||
-      !isDueToday(card.dueAt, now, timezone) ||
-      gradedToday.has(card.conceptId)
-    )
-      return [];
+    if (!concept || concept.status === 'stub' || !isDueToday(card.dueAt, now, timezone)) return [];
     if (focusedConcepts && !focusedConcepts.has(card.conceptId)) return [];
     const eligible = hasEligibleReviewExercise(card.conceptId, card.dimension);
     if (
@@ -391,11 +438,20 @@ async function checkI3({ now, today, active, selection }: AuditContext): Promise
     const plannerResult = selection?.results.find(
       (result) => result.conceptId === card.conceptId,
     )?.result;
-    if (plannerResult === 'rejected:reviewMinuteCap') {
+    if (
+      plannerResult === 'not_candidate:reviewedToday' &&
+      hasReviewLogForConceptToday(card.conceptId, now, todayLogs)
+    )
+      return [];
+    if (gradedToday.has(card.conceptId)) return [];
+    if (
+      plannerResult === 'rejected:reviewMinuteCap' &&
+      selection &&
+      reviewMinuteCapIsActuallyBinding(selection, card.conceptId, now)
+    ) {
       recordBudgetDeferred('I3', card, now);
       return [];
     }
-    if (selection && isExplicitReviewExclusion(plannerResult)) return [];
     return [
       `${card.conceptId}/${card.dimension} due ${card.dueAt.toISOString()} is eligible but no review exercise of that dimension was selected; eligible=${
         (content.exercisesByConcept.get(card.conceptId) ?? [])
@@ -585,15 +641,12 @@ async function checkI6({ now, today, active, selection }: AuditContext): Promise
     if (!answered) return [];
     return activityTopics(activity).flatMap((conceptId) => {
       if (focusedConcepts && !focusedConcepts.has(conceptId)) return [];
+      const concept = content.conceptsById.get(conceptId);
+      if (!concept || concept.status === 'stub') return [];
       const dueUngraded = cards.some(
         (card) =>
           card.conceptId === conceptId &&
           isDueToday(card.dueAt, now, timezone) &&
-          !logs.some(
-            ({ review_cards: logCard, review_logs: log }) =>
-              logCard.conceptId === conceptId &&
-              localDateKey(log.createdAt, timezone) === localDateKey(now, timezone),
-          ) &&
           hasEligibleReviewExercise(card.conceptId, card.dimension) &&
           !logs.some(
             ({ review_cards: logCard, review_logs: log }) =>
@@ -610,11 +663,21 @@ async function checkI6({ now, today, active, selection }: AuditContext): Promise
       const plannerResult = selection?.results.find(
         (result) => result.conceptId === conceptId,
       )?.result;
-      if (plannerResult === 'rejected:reviewMinuteCap') {
+      const hasConceptReviewLogToday = logs.some(
+        ({ review_cards: logCard, review_logs: log }) =>
+          logCard.conceptId === conceptId &&
+          localDateKey(log.createdAt, timezone) === localDateKey(now, timezone),
+      );
+      if (plannerResult === 'not_candidate:reviewedToday' && hasConceptReviewLogToday) return [];
+      if (hasConceptReviewLogToday) return [];
+      if (
+        plannerResult === 'rejected:reviewMinuteCap' &&
+        selection &&
+        reviewMinuteCapIsActuallyBinding(selection, conceptId, now)
+      ) {
         for (const card of dueCards) recordBudgetDeferred('I6', card, now);
         return [];
       }
-      if (selection && isExplicitReviewExclusion(plannerResult)) return [];
       const eligible = (content.exercisesByConcept.get(conceptId) ?? [])
         .filter((exercise) => dueCards.some((card) => card.dimension === exercise.dimension))
         .map((exercise) => exercise.id);
