@@ -519,3 +519,181 @@ exercises:
         required: true
     exemplar: "Precision is $6/8=0.75$, so three quarters of flags are genuine faults. Recall is $6/10=0.60$, so four of ten faults were missed. The $88$ true negatives make accuracy high while those dangerous misses remain."
     solution: "Precision is $6/8=0.75$, so three quarters of flags are genuine faults. Recall is $6/10=0.60$, so four of ten faults were missed. The $88$ true negatives make accuracy high while those dangerous misses remain."
+  - id: evm-recall-count-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: evm-count
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, what does accuracy measure, and why can it hide missed faults when faults are rare?
+    rubric:
+      - id: first
+        criterion: Explain that accuracy is the fraction of all test parts classified correctly.
+        weight: 1
+        required: true
+      - id: second
+        criterion: Explain that correctly cleared fine parts can give high accuracy while the camera misses every fault.
+        weight: 1
+        required: true
+    exemplar: Accuracy is the share of all test parts the camera gets right. When faults are rare, correctly clearing the many fine parts can give high accuracy even when every fault is missed.
+  - id: evm-recall-count-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: evm-count
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: A factory camera calls a fine part faulty. Which confusion-matrix count increases?
+    options:
+      - id: a
+        text: False negatives
+        correct: false
+        feedback: A false negative is a faulty part that the camera misses.
+      - id: b
+        text: False positives
+        correct: true
+        feedback: A false positive is a fine part wrongly flagged as faulty.
+      - id: c
+        text: True positives
+        correct: false
+        feedback: A true positive is a faulty part correctly flagged.
+    solution: A fine part wrongly flagged is a false positive.
+  - id: evm-recall-count-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: evm-count
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: Write accuracy using the four confusion-matrix counts $\text{TP}$, $\text{TN}$, $\text{FP}$ and $\text{FN}$. Type `tp`, `tn`, `fp` and `fn` for those counts.
+    answer: (tp+tn)/(tp+tn+fp+fn)
+    variables:
+      tp:
+        - 1
+        - 50
+      tn:
+        - 1
+        - 100
+      fp:
+        - 1
+        - 30
+      fn:
+        - 1
+        - 30
+    solution: "Accuracy divides the correct counts by all counts: $(\text{TP}+\text{TN})/(\text{TP}+\text{TN}+\text{FP}+\text{FN})$."
+  - id: evm-recall-catch-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: evm-catch
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, what do precision and recall each measure for a fault-detection camera?
+    rubric:
+      - id: first
+        criterion: Explain that precision is the fraction of flagged parts that are actually faulty.
+        weight: 1
+        required: true
+      - id: second
+        criterion: Explain that recall is the fraction of actually faulty parts that the camera flags.
+        weight: 1
+        required: true
+    exemplar: Precision is the fraction of flagged parts that are actually faulty. Recall is the fraction of actually faulty parts the camera flags.
+  - id: evm-recall-catch-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: evm-catch
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: A camera flags no parts in a test batch that contains faulty parts. What should be reported for its precision?
+    options:
+      - id: a
+        text: Precision is 1.
+        correct: false
+        feedback: Having no false alarms can look perfect, but with no flags there is nothing to divide by.
+      - id: b
+        text: Precision is 0.
+        correct: false
+        feedback: It is recall that is 0, because every fault was missed. Precision has zero flags on the bottom.
+      - id: c
+        text: Precision can't be computed.
+        correct: true
+        feedback: There are no flags, so precision would be $0/0$.
+    solution: Precision divides caught faults by all flags. With no flags, it is $0/0$ and can't be computed.
+  - id: evm-recall-catch-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: evm-catch
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: Write precision using confusion-matrix counts $\text{TP}$, $\text{FP}$ and $\text{FN}$. Type `tp`, `fp` and `fn` for those counts.
+    answer: tp/(tp+fp)
+    variables:
+      tp:
+        - 1
+        - 50
+      fp:
+        - 1
+        - 30
+      fn:
+        - 1
+        - 30
+    solution: Precision is $\text{TP}/(\text{TP}+\text{FP})$, the share of all flags that are actually faulty.
+  - id: evm-recall-numbers-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: evm-numbers
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, what does mean absolute error average, and why does RMSE use the same units as the predicted prices?
+    rubric:
+      - id: first
+        criterion: Explain that mean absolute error averages the sizes of the errors, ignoring their signs.
+        weight: 1
+        required: true
+      - id: second
+        criterion: Explain that taking the square root of mean squared error puts RMSE back in the units of the prices.
+        weight: 1
+        required: true
+    exemplar: Mean absolute error averages the sizes of the misses, ignoring their signs. RMSE takes the square root of MSE, returning the score to the units of the prices.
+  - id: evm-recall-numbers-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: evm-numbers
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: Two house-price models tie on mean absolute error. One has a much larger single miss. Which score gives that large miss extra influence?
+    options:
+      - id: a
+        text: Mean squared error
+        correct: true
+        feedback: Squaring makes a large miss contribute much more than a small miss.
+      - id: b
+        text: Mean signed error
+        correct: false
+        feedback: Positive and negative signed errors can cancel.
+      - id: c
+        text: Mean absolute error
+        correct: false
+        feedback: Absolute error counts each miss by its size, and the models tie on this score.
+    solution: MSE squares each error before averaging, giving large misses extra influence.
+  - id: evm-recall-numbers-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: evm-numbers
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: A price model has signed errors $e_1$, $e_2$, $e_3$ and $e_4$ on four held-out houses. Write its root mean squared error. Type `e1` for $e_1$, and so on, and `sqrt(...)` for a square root.
+    answer: sqrt((e1^2+e2^2+e3^2+e4^2)/4)
+    variables:
+      e1: [-40, 40]
+      e2: [-40, 40]
+      e3: [-40, 40]
+      e4: [-40, 40]
+    solution: 'Square each error, average the squares to get the MSE, then take the square root: $\text{RMSE}=\sqrt{(e_1^2+e_2^2+e_3^2+e_4^2)/4}$.'

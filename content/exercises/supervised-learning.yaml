@@ -929,3 +929,227 @@ exercises:
           feedback: "True of the new house itself, which is why you score held-back sales: they have known prices but played no part in training.",
         }
     solution: "The training score was made small on purpose, so it flatters the model. The held-back sales were not used to choose $w$ and $b$, so their score of 250 is the fair guide to new houses."
+  - id: slp-recall-parts-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: sl-inputs-targets
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, what are the input and target in a supervised prediction problem?
+    rubric:
+      - id: input
+        criterion: Explain that the input is what we know when making a prediction.
+        weight: 1
+        required: true
+      - id: target
+        criterion: Explain that the target is the answer we want, known for every example in the dataset.
+        weight: 1
+        required: true
+    exemplar: The input is what we know when making a prediction, such as a house's size. The target is the answer we want, such as its sale price, known for each example in the dataset.
+  - id: slp-recall-parts-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: sl-inputs-targets
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: A house model gives a price estimate before the house sells. What is this estimate called?
+    options:
+      - id: a
+        text: The target $y$
+        correct: false
+        feedback: The target is the known answer used to compare with the estimate.
+      - id: b
+        text: The parameters $\theta$
+        correct: false
+        feedback: The parameters are adjustable numbers inside the model, such as its weight and bias.
+      - id: c
+        text: The prediction $\hat y$
+        correct: true
+        feedback: The prediction is the guess the model produces from the input.
+    solution: The model turns an input into a prediction. The target supplies the answer for comparison.
+  - id: slp-recall-parts-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: sl-inputs-targets
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: Write the house model's prediction for size $x$, weight $w$ and bias $b$.
+    answer: w*x+b
+    variables: { x: [40, 150], w: [1, 5], b: [0, 100] }
+    solution: 'The prediction is $\hat y=wx+b$: multiply size by the weight and add the bias.'
+  - id: slp-recall-error-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: sl-measuring-error
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, how does squared error score a prediction, and why square the error before adding scores?
+    rubric:
+      - id: score
+        criterion: Explain that squared error is the square of the prediction minus the target.
+        weight: 1
+        required: true
+      - id: cancelling
+        criterion: Explain that squaring stops misses that are too high and too low from cancelling.
+        weight: 1
+        required: true
+    exemplar: Squared error squares the prediction minus the target. Squaring makes both high and low misses positive, so they cannot cancel when added.
+  - id: slp-recall-error-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: sl-measuring-error
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: Which score becomes four times as large when the size of a miss doubles?
+    options:
+      - id: a
+        text: Squared error
+        correct: true
+        feedback: Squaring a doubled miss multiplies its score by four.
+      - id: b
+        text: Absolute error
+        correct: false
+        feedback: Absolute error drops the sign, so doubling a miss doubles its score.
+      - id: c
+        text: Signed error
+        correct: false
+        feedback: Signed error is prediction minus target. Doubling a miss doubles its size.
+    solution: Squared error grows with the square of the miss, so doubling a miss quadruples the score.
+  - id: slp-recall-error-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: sl-measuring-error
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: 'Write the squared-error loss for prediction $\hat y$ and target $y$. Use `yhat` for the prediction and `y` for the target.'
+    answer: (yhat-y)^2
+    variables: { yhat: [-10, 10], y: [-10, 10] }
+    solution: 'Squared error is $L(\hat y,y)=(\hat y-y)^2$.'
+  - id: slp-recall-training-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: sl-training-loss
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, how does training score a parameter setting across a dataset, and which setting does it seek?
+    rubric:
+      - id: average
+        criterion: Explain that a setting is scored by averaging its losses over the examples.
+        weight: 1
+        required: true
+      - id: smallest
+        criterion: Explain that training seeks the parameters with the smallest average loss.
+        weight: 1
+        required: true
+    exemplar: Each parameter setting gets the average of its losses across the dataset. Training seeks the setting with the smallest average loss.
+  - id: slp-recall-training-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: sl-training-loss
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: When training a house model on recorded sales, which numbers can change?
+    options:
+      - id: a
+        text: The sizes of the houses
+        correct: false
+        feedback: Sizes are fixed inputs in the dataset.
+      - id: b
+        text: The weight and the bias
+        correct: true
+        feedback: Training changes the parameters to lower the average loss.
+      - id: c
+        text: The recorded sale prices
+        correct: false
+        feedback: Sale prices are fixed targets used to score predictions.
+    solution: Training moves the parameters while inputs and targets stay fixed.
+  - id: slp-recall-training-formula
+    dimension: math
+    type: text
+    role: recall
+    knowledge_point: sl-training-loss
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: 'Training picks the best setting $\theta^\star$ of the parameters. Fill in the blank: $\theta^\star=\underline{\quad\quad}\ \frac{1}{n}\sum_{i=1}^{n}L\big(f_\theta(x_i),y_i\big)$.'
+    accept:
+      - argmin
+      - arg min
+      - argmin_theta
+      - arg min_theta
+      - argmin_θ
+      - arg min_θ
+      - \arg\min
+      - \arg\min_\theta
+      - \arg\min_{\theta}
+    regex: ^\s*\$?\s*\\?arg\s*\\?min\s*(?:_\s*\{?\s*(?:\\theta|θ|theta)\s*\}?)?\s*\$?\s*$
+    solution: '$\arg\min_\theta$ gives the $\theta$ that makes the average loss smallest. Plain $\min_\theta$ would give the smallest loss itself.'
+  - id: slp-recall-new-data-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: sl-new-data-targets
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, how are held-back examples used, and why do they give a fair guide to performance on new examples?
+    rubric:
+      - id: held-back
+        criterion: Explain that held-back examples are scored and play no part in choosing the parameters.
+        weight: 1
+        required: true
+      - id: new
+        criterion: Explain that these examples are new to the model, like the future examples it will predict.
+        weight: 1
+        required: true
+    exemplar: Held-back examples are only scored and play no part in choosing the model's parameters. They are new to the model, like future examples, so their score is a fair guide to its performance.
+  - id: slp-recall-new-data-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: sl-new-data-targets
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: A house model has a very small loss on the sales used to choose its weights. Which score best checks its usefulness for future sales?
+    options:
+      - id: a
+        text: Loss on sales kept out of training
+        correct: true
+        feedback: Held-back sales are new to the model, so they check how it handles new houses.
+      - id: b
+        text: Loss on the sales used for training
+        correct: false
+        feedback: The weights were chosen to make this loss small, so it flatters the model.
+      - id: c
+        text: Loss on the closest training sale
+        correct: false
+        feedback: A single familiar sale gives even less evidence about performance on new houses.
+    solution: Score sales kept back from choosing the weights to check performance on new houses.
+  - id: slp-recall-new-data-contrast2
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: sl-new-data-targets
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: A model predicts whether a house will sell above its asking price, giving yes or no. What kind of task is this?
+    options:
+      - id: a
+        text: Regression
+        correct: false
+        feedback: Regression predicts a number, such as the sale price.
+      - id: b
+        text: Classification
+        correct: true
+        feedback: Classification predicts a category from a fixed list, here yes or no.
+      - id: c
+        text: Reinforcement learning
+        correct: false
+        feedback: Reinforcement learning improves actions through trial and error with rewards.
+    solution: Yes and no are categories, so predicting which one applies is classification.
