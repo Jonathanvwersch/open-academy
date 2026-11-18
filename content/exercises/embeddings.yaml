@@ -658,3 +658,180 @@ exercises:
     hints: ["Describe each row's coefficient in the product."]
     exemplar: "Lookup selects row $i$ of $E$, a vector of $d$ numbers. The one-hot row $u_i$ has $N$ entries, with $1$ at position $i$ and $0$ elsewhere. Multiplying $u_iE$ keeps row $i$ because all other rows are multiplied by zero, giving the same embedding."
     solution: "Lookup selects row $i$ of $E$, a vector of $d$ numbers. The one-hot row $u_i$ has $N$ entries, with $1$ at position $i$ and $0$ elsewhere. Multiplying $u_iE$ keeps row $i$ because all other rows are multiplied by zero, giving the same embedding."
+  - id: emb-recall-lookup-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: emb-lookup-table
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, what is a token's embedding, and how does its id select it from the table $E$?
+    rubric:
+      - id: vector
+        criterion: Explain that an embedding is a vector of $d$ numbers for a token.
+        weight: 1
+        required: true
+      - id: row
+        criterion: Explain that token id $i$ selects row $i$ of the embedding table $E$.
+        weight: 1
+        required: true
+    exemplar: An embedding is a vector of $d$ numbers for a token. Token id $i$ selects row $i$ of the table $E$.
+  - id: emb-recall-lookup-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: emb-lookup-table
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: A sentence has $T$ tokens drawn from a vocabulary of $N$ tokens. Each embedding has $d$ numbers. Which shape belongs to the sentence's grid of embeddings?
+    options:
+      - id: a
+        text: $N\times d$
+        correct: false
+        feedback: This is the full embedding table, with one row per vocabulary token.
+      - id: b
+        text: $T\times d$
+        correct: true
+        feedback: The sentence grid has one row of $d$ numbers per token position.
+      - id: c
+        text: $T\times N$
+        correct: false
+        feedback: This shape gives each position one entry per vocabulary token. The embedding width is $d$.
+    solution: Stacking one embedding per sentence position gives a $T\times d$ grid.
+  - id: emb-recall-lookup-formula
+    dimension: math
+    type: text
+    role: recall
+    knowledge_point: emb-lookup-table
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: 'A sentence has token ids $x_1,\dots,x_T$. Fill in the blank: the embedding $e_t$ at position $t$ is row $\underline{\quad}$ of $E$. Type the missing row index.'
+    accept:
+      [
+        "x_t",
+        "x_{t}",
+        "xt",
+        "xₜ",
+        "x(t)",
+        "x[t]",
+        "$x_t$",
+        "the token id at position t",
+        "token id at position t",
+      ]
+    regex: '^\s*\$?\s*x\s*(?:_\s*\{?\s*t\s*\}?|t|ₜ|\(\s*t\s*\)|\[\s*t\s*\])\s*\$?\s*$'
+    solution: The row index is $x_t$, the id of the token at position $t$.
+  - id: emb-recall-onehot-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: emb-onehot-product
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, what is the one-hot vector $u_i$ for token $i$, and why does $u_iE$ give its embedding?
+    rubric:
+      - id: entries
+        criterion: State that $u_i$ has $N$ entries, with a single 1 in place $i$ and zeros elsewhere.
+        weight: 1
+        required: true
+      - id: selection
+        criterion: Explain that multiplication keeps row $i$ of $E$ while every other row is multiplied by zero.
+        weight: 1
+        required: true
+    exemplar: The one-hot vector $u_i$ has $N$ entries, with 1 in place $i$ and zeros elsewhere. In $u_iE$, the 1 keeps row $i$ and the zeros drop every other row, giving the token's embedding.
+  - id: emb-recall-onehot-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: emb-onehot-product
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: Which statement describes a token's one-hot vector?
+    options:
+      - id: a
+        text: Its entries are the learned numbers in the token's table row.
+        correct: false
+        feedback: Those learned numbers form the embedding selected by the one-hot vector.
+      - id: b
+        text: Its single entry is the token's number in the vocabulary.
+        correct: false
+        feedback: That describes a token id. A one-hot vector has one entry per vocabulary token.
+      - id: c
+        text: Its entries are zero except for a 1 at the token's id.
+        correct: true
+        feedback: The single 1 chooses which row of the embedding table contributes.
+    solution: A one-hot vector has $N$ entries and a single 1 in the token's place.
+  - id: emb-recall-onehot-formula
+    dimension: math
+    type: text
+    role: recall
+    knowledge_point: emb-onehot-product
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: 'The one-hot row for token $i$ is $u_i$, and the embedding table is $E$. Fill in the missing product: $\underline{\quad\quad}=\text{row }i\text{ of }E$.'
+    accept:
+      [
+        "u_iE",
+        "u_i E",
+        "u_i*E",
+        "u_i * E",
+        "u_i × E",
+        "u_i \\times E",
+        "u_i \\cdot E",
+        "u_{i}E",
+        "uiE",
+        "$u_iE$",
+        "uᵢE",
+      ]
+    regex: '^\s*\$?\s*u\s*(?:_\s*\{?\s*i\s*\}?|i|ᵢ)\s*(?:\*|×|·|\\times|\\cdot)?\s*e\s*\$?\s*$'
+    solution: $u_iE$ selects row $i$ of $E$ because all the other rows receive a coefficient of zero.
+  - id: emb-recall-similar-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: emb-learned-similar
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, how does training change the embedding table, and what tends to happen to tokens used in similar ways?
+    rubric:
+      - id: training
+        criterion: Explain that training adjusts the table's numbers to improve the model's task, such as guessing the next token.
+        weight: 1
+        required: true
+      - id: directions
+        criterion: Explain that tokens used in similar ways tend to get vectors pointing in similar directions.
+        weight: 1
+        required: true
+    exemplar: Training adjusts the embedding table's numbers to help the model do its task, such as guessing the next token. Tokens used in similar ways tend to get vectors pointing in similar directions.
+  - id: emb-recall-similar-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: emb-learned-similar
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: Two embeddings have different lengths. Which measure compares their directions while removing the effect of their lengths?
+    options:
+      - id: a
+        text: Their dot product
+        correct: false
+        feedback: The dot product depends on vector lengths as well as directions.
+      - id: b
+        text: Their cosine similarity
+        correct: true
+        feedback: Cosine similarity divides the dot product by both lengths.
+      - id: c
+        text: Their vocabulary ids
+        correct: false
+        feedback: Vocabulary ids label the tokens. They carry no information about embedding directions.
+    solution: Cosine similarity divides the dot product by both vector lengths, leaving a comparison of directions.
+  - id: emb-recall-similar-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: emb-learned-similar
+    difficulty: 2
+    est_minutes: 0.5
+    prompt: Write the cosine similarity of the two-dimensional vectors $(a,b)$ and $(c,d)$. Type `sqrt(...)` for square root.
+    answer: (a*c+b*d)/(sqrt(a*a+b*b)*sqrt(c*c+d*d))
+    variables: { a: [1, 5], b: [-5, 5], c: [1, 5], d: [-5, 5] }
+    solution: The dot product is $ac+bd$. Divide by both lengths to get $\frac{ac+bd}{\sqrt{a^2+b^2}\sqrt{c^2+d^2}}$.
