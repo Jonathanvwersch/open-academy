@@ -806,6 +806,10 @@ export function registerLearnCourseRoutes(
             : await repo.dueCards(now, timeZone)
           )
             .map((card) => card.conceptId)
+            .filter((conceptId) => {
+              const concept = index.conceptsById.get(conceptId);
+              return concept !== undefined && concept.status !== 'stub';
+            })
             .filter((conceptId) => !focusedConceptIds.has(conceptId)),
         ).size
       : 0;
