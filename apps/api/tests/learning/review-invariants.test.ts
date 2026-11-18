@@ -2036,8 +2036,11 @@ let simulationDone = false;
 beforeAll(async () => {
   if (realDataAuditMode) {
     const databaseName = new URL(env.TEST_DATABASE_URL).pathname.replace(/^\//, '');
-    if (databaseName !== 'academy_realdata') {
-      throw new Error('Real-data audit requires TEST_DATABASE_URL to target academy_realdata.');
+    const expectedDatabaseName = process.env.REVIEW_AUDIT_DATABASE_NAME ?? 'academy_realdata';
+    if (databaseName !== expectedDatabaseName) {
+      throw new Error(
+        `Real-data audit requires TEST_DATABASE_URL to target ${expectedDatabaseName}.`,
+      );
     }
     if (!apiBaseUrl) {
       throw new Error('Real-data audit requires REVIEW_AUDIT_API_URL.');
@@ -2045,14 +2048,14 @@ beforeAll(async () => {
     content = await loadContent();
     const learners = await db.select({ id: users.id }).from(users).limit(2);
     if (learners.length !== 1) {
-      throw new Error(`Expected one real learner in academy_realdata, found ${learners.length}.`);
+      throw new Error(`Expected one real learner in ${databaseName}, found ${learners.length}.`);
     }
     const learner = learners[0];
-    if (!learner) throw new Error('No real learner found in academy_realdata.');
+    if (!learner) throw new Error(`No real learner found in ${databaseName}.`);
     userId = process.env.REVIEW_AUDIT_USER_ID ?? learner.id;
     if (!learners.some((learner) => learner.id === userId)) {
       throw new Error(
-        'REVIEW_AUDIT_USER_ID does not identify the sole learner in academy_realdata.',
+        `REVIEW_AUDIT_USER_ID does not identify the sole learner in ${databaseName}.`,
       );
     }
     app = createApp({ db, content, tutorProvider: new FakeProvider() });
