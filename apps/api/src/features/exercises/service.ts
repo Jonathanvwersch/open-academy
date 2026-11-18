@@ -703,18 +703,17 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
                         ),
                     );
                     if (alreadyCovered) return;
-                    const laterPlanned = await tx
+                    const laterActivities = await tx
                       .select({ id: sessionActivities.id, idx: sessionActivities.idx })
                       .from(sessionActivities)
                       .where(
                         and(
                           eq(sessionActivities.sessionId, activityRow.sessionId),
-                          eq(sessionActivities.status, 'planned'),
                           gt(sessionActivities.idx, activityRow.idx),
                         ),
                       )
                       .orderBy(desc(sessionActivities.idx));
-                    for (const laterActivity of laterPlanned) {
+                    for (const laterActivity of laterActivities) {
                       await tx
                         .update(sessionActivities)
                         .set({ idx: laterActivity.idx + 1 })

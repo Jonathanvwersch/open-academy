@@ -863,6 +863,45 @@ test('two consecutive Again review activities pull the weakest hard-prerequisite
   ).toBe(true);
 });
 
+test('double Again inserts before a skipped session activity', async () => {
+  await resetLearner();
+  await createPrerequisiteReviewCards(new Date('2026-02-01T12:00:00.000Z'));
+  const firstActivity = await createReviewActivity('gradient-descent', 'gradient-descent-step');
+  const secondActivity = await createReviewActivity('gradient-descent', 'gradient-descent-step');
+  const [skippedActivity] = await db
+    .insert(sessionActivities)
+    .values({
+      sessionId: secondActivity.sessionId,
+      idx: secondActivity.idx + 1,
+      kind: 'review',
+      conceptId: 'linear-models',
+      exerciseIds: ['linear-models-slope'],
+      plannedMinutes: 5,
+      status: 'skipped',
+      reason: secondActivity.reason,
+    })
+    .returning();
+  if (!skippedActivity) throw new Error('Expected a skipped activity');
+
+  await submitReviewActivityAgain(firstActivity.id);
+  await submitReviewActivityAgain(secondActivity.id);
+
+  const activities = await db
+    .select()
+    .from(sessionActivities)
+    .where(eq(sessionActivities.sessionId, secondActivity.sessionId))
+    .orderBy(asc(sessionActivities.idx));
+  expect(activities.map((item) => item.idx)).toEqual([
+    secondActivity.idx,
+    secondActivity.idx + 1,
+    secondActivity.idx + 2,
+  ]);
+  expect(activities[0]?.id).toBe(secondActivity.id);
+  expect(activities[1]?.status).toBe('in_progress');
+  expect(activities[2]?.id).toBe(skippedActivity.id);
+  expect(activities[2]?.status).toBe('skipped');
+});
+
 test('double Again inserts one prerequisite review for all due dimensions and replanning does not duplicate it', async () => {
   await resetLearner();
   const { weakest, alreadyDueConceptual } = await createPrerequisiteReviewCards(
