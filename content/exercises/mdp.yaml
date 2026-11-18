@@ -605,9 +605,9 @@ exercises:
     knowledge_point: mdp-task
     difficulty: 1
     est_minutes: 0.5
-    prompt: "Time steps are labelled $t=0,1,2,\\dots$, and a reward is labelled by its arrival time. Action $a_t$ is taken in state $s_t$. Fill in the blank: that action produces the reward $\\underline{\\quad\\quad}$. Type the reward's symbol."
-    accept: ["r_{t+1}", "r_(t+1)", "r_t+1", "r t+1", "rt+1", "r_{1+t}", "r_(1+t)"]
-    regex: '^\s*r\s*_?\s*[\{\(]?\s*(t\s*\+\s*1|1\s*\+\s*t)\s*[\}\)]?\s*$'
+    prompt: "An MDP labels rewards by their arrival time. After taking $a_t$ in state $s_t$, what symbol goes in the reward slot $\\underline{\\quad\\quad}$ of that transition?"
+    accept: ["r_{t+1}", r_(t+1), r_t+1, r t+1, rt+1, "r_{1+t}", r_(1+t), rₜ₊₁]
+    regex: "^\\s*(?:r\\s*_?\\s*(?:\\{\\s*(?:t\\s*\\+\\s*1|1\\s*\\+\\s*t)\\s*\\}|\\(\\s*(?:t\\s*\\+\\s*1|1\\s*\\+\\s*t)\\s*\\)|t\\s*\\+\\s*1|1\\s*\\+\\s*t))\\s*$"
     solution: "The reward arrives one step later, so $(s_t,a_t)\\longrightarrow(r_{t+1},s_{t+1})$."
   - id: mdpp-recall-transitions-say
     dimension: conceptual
@@ -637,25 +637,25 @@ exercises:
     knowledge_point: mdp-transitions
     difficulty: 1
     est_minutes: 0.5
-    prompt: Which quantity is found by multiplying each possible reward of one command by the chance of receiving it and adding the products?
+    prompt: "The same robot command can either reach the goal or leave the robot in place. You want the average score from trying that command many times. Which part of the model gives you that average?"
     options:
       - id: a
-        text: The expected next reward
+        text: "The expected next reward"
         correct: true
-        feedback: The expected next reward is the average reward of one command over its possible outcomes.
+        feedback: "Average the scores of the two outcomes using their chances as weights."
       - id: b
-        text: The transition probability
+        text: "The transition probability"
         correct: false
-        feedback: A transition probability is the chance of one next state. It is a weight in the sum, and the sum is the expected next reward.
+        feedback: "A transition probability gives the chance of one destination. Combine it with the score for that outcome to get its contribution to the average."
       - id: c
-        text: The reward rule
+        text: "The reward rule"
         correct: false
-        feedback: The reward rule gives the score after each transition. It says nothing about how often each outcome happens.
+        feedback: "The reward rule gives the score of each outcome. The average also needs each outcome's chance."
       - id: d
-        text: The discounted reward $\gamma^k r$
+        text: "The discounted reward"
         correct: false
-        feedback: A discounted reward weights one later reward by its delay. It does not average over outcomes.
-    solution: The expected next reward weights each possible reward by its chance and adds the products.
+        feedback: "Discounting weights rewards by when they arrive. Both of these possible scores would arrive after one command."
+    solution: "The expected next reward combines the two scores according to how often each occurs."
   - id: mdpp-recall-transitions-formula
     dimension: math
     type: expression
@@ -695,25 +695,25 @@ exercises:
     knowledge_point: mdp-discount
     difficulty: 1
     est_minutes: 0.5
-    prompt: Which list is a complete description of a Markov decision process?
+    prompt: "In an MDP, a robot can postpone a penalty and make it count very little. Which change would make the same penalty count more even if the robot delays it?"
     options:
       - id: a
-        text: "$(S,A,p,R,\\gamma)$"
+        text: "Raise the discount factor $\\gamma$"
         correct: true
-        feedback: States, actions, transition probabilities, the reward rule and the discount factor together complete the task description.
+        feedback: "A larger discount factor gives later rewards and penalties more weight."
       - id: b
-        text: "$(S,A,p,R)$"
+        text: "Lower the discount factor $\\gamma$"
         correct: false
-        feedback: This list has no discount factor, so it doesn't say how much later rewards count.
+        feedback: "A smaller discount factor makes the weight fall faster with delay."
       - id: c
-        text: "$(S,A,R,\\gamma)$"
+        text: "Change the reward rule $R$"
         correct: false
-        feedback: This list has no transition probabilities, so it doesn't say where each action leads.
+        feedback: "The reward rule sets the penalty itself. Here the penalty stays the same and only its weight changes."
       - id: d
-        text: "$(S,A,p,\\gamma)$"
+        text: "Change the transition probabilities $p$"
         correct: false
-        feedback: This list has no reward rule, so it doesn't say what each transition scores.
-    solution: "An MDP is $(S,A,p,R,\\gamma)$: states, actions, transition probabilities, reward rule and discount factor."
+        feedback: "Transition probabilities change where actions can lead. They leave the weight for each delay unchanged."
+    solution: "Raising $\\gamma$ makes the weight fall more slowly with delay, so a later penalty counts more."
   - id: mdpp-recall-discount-formula
     dimension: math
     type: expression

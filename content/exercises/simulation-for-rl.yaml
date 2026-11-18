@@ -873,25 +873,21 @@ exercises:
     knowledge_point: sim-reset-step
     difficulty: 1
     est_minutes: 0.5
-    prompt: A step call has just reported that the episode ended. What must the next call to the environment be?
+    prompt: "A single simulator has no automatic reset. A call to step reports that the episode ended. What should the program do before applying another action?"
     options:
       - id: a
-        text: Reset
+        text: "Call reset to start a new episode"
         correct: true
-        feedback: Reset starts the next episode and returns its start state.
+        feedback: "Reset returns the initial state of the next episode."
       - id: b
-        text: Step, with any action
+        text: "Call step again with the action that ended the episode"
         correct: false
-        feedback: Step's answers mean nothing after an episode ends, and many environments warn or raise an error.
+        feedback: "The action was already applied. After an ending, step has no valid next move until reset."
       - id: c
-        text: Step, with the action that ended the episode
+        text: "Set a new random seed and keep the current state"
         correct: false
-        feedback: Repeating the action doesn't help. The episode is over, so the next call must start a new one.
-      - id: d
-        text: None, because the environment restarts the episode by itself
-        correct: false
-        feedback: A single environment holds the finished state until the code calls reset.
-    solution: After an episode ends, call reset before stepping again.
+        feedback: "A seed controls random draws. Changing it alone leaves the environment in the completed episode."
+    solution: "After the episode ends, call reset before sending another action to step."
   - id: sim-recall-reset-step-formula
     dimension: math
     type: expression
@@ -899,7 +895,7 @@ exercises:
     knowledge_point: sim-reset-step
     difficulty: 2
     est_minutes: 0.5
-    prompt: "On a slippery floor, each move works with probability $p$, and otherwise the robot stays put, with fresh random draws for every move. Write the probability that two moves give exactly one slip and one success."
+    prompt: "A simulator attempts two moves away from walls on a slippery floor. Each move works with probability $p$ and otherwise slips, leaving the robot in place. The draws are independent. Write the probability of one slip and one success, in either order."
     answer: "2*p*(1-p)"
     variables: { p: [0.05, 0.95] }
     common_wrong:
@@ -917,15 +913,15 @@ exercises:
     prompt: In one or two sentences, what does the interaction loop repeat, and how do the terminated and truncated flags differ?
     rubric:
       - id: loop
-        criterion: Explain that the loop calls reset once, then repeats until the episode ends that the policy picks an action from the current state, step applies it, and the reward is added.
+        criterion: "Explain that after reset the policy picks an action, step applies it, and the loop adds the reward and carries on from the next state until the episode ends."
         weight: 1
         required: true
       - id: flags
-        criterion: Explain that terminated means a terminal state was reached and the task is over, while truncated means the time limit cut the episode short and more reward could still have followed.
+        criterion: "Explain that terminated means the task itself reached a terminal state, and truncated means a time limit stopped the episode while the task could still carry on."
         weight: 1
         required: true
       - id: either
-        criterion: Mention that the loop stops when either flag is true, because stopping on terminated alone can run forever.
+        criterion: "Mention that the loop stops when either flag is true."
         weight: 1
     exemplar: "The loop calls reset once, then repeatedly lets the policy pick an action, calls step and adds the reward, until the episode ends. Terminated means a terminal state was reached, and truncated means the time limit stopped an episode that could have earned more."
   - id: sim-recall-interaction-loop-contrast
@@ -961,25 +957,21 @@ exercises:
     knowledge_point: sim-interaction-loop
     difficulty: 2
     est_minutes: 0.5
-    prompt: Why does step report terminated and truncated as two separate flags?
+    prompt: "One run stops at the time limit in a nonterminal state. Another reaches a terminal state. What does this difference tell you about future rewards?"
     options:
       - id: a
-        text: Only a time-limit stop could have been followed by more reward
+        text: "More rewards could follow the time-limit stop if the task continued"
         correct: true
-        feedback: Later lessons estimate how much reward is still to come, and they use the flags to tell these cases apart.
+        feedback: "A time-limit stop can leave the robot in a state with actions and rewards still ahead."
       - id: b
-        text: Truncated episodes have their total reward set back to zero
+        text: "More rewards could follow only the stop in the terminal state"
         correct: false
-        feedback: The rewards a truncated episode earned still count. The flag only says how the episode ended.
+        feedback: "A terminal state ends the task, so it has no further rewards."
       - id: c
-        text: Terminated means the simulator raised an error
+        text: "Neither ending can have future rewards because both require reset"
         correct: false
-        feedback: Terminated means the task really ended at a terminal state, such as reaching cell 4.
-      - id: d
-        text: Only truncated episodes need a call to reset
-        correct: false
-        feedback: Every finished episode, whichever flag ended it, needs reset before the next step.
-    solution: Terminated means nothing more can be earned, and truncated means the task was cut short, so more reward could have followed.
+        feedback: "Both runs stop, but cutting one short can leave it in a state where the task could still continue."
+    solution: "A truncated episode can leave rewards ahead if the task continues. A terminal state has no actions or rewards left."
   - id: sim-recall-vector-envs-say
     dimension: conceptual
     type: explain
@@ -987,20 +979,20 @@ exercises:
     knowledge_point: sim-vector-envs
     difficulty: 1
     est_minutes: 1
-    prompt: In one or two sentences, what is a vectorised environment, and what happens when one of its copies finishes an episode?
+    prompt: "In one or two sentences, what is a vectorised environment, and what happens when one of its copies finishes an episode?"
     rubric:
       - id: copies
-        criterion: Explain that a vectorised environment runs $N$ copies side by side, and each copy takes its own action and reports its own result on every call.
+        criterion: "Explain that a vectorised environment runs $N$ copies side by side, and each active copy gets its own action and reports its own result."
         weight: 1
         required: true
       - id: restart
-        criterion: Explain that a finished copy is reset on its own while the other copies keep running.
+        criterion: "Explain that a finished copy resets on its own and the other copies can keep taking steps."
         weight: 1
         required: true
-      - id: speed
-        criterion: Mention that running copies together collects more transitions per second, so learning is faster.
+      - id: reset
+        criterion: "Mention that in next-step reset mode a call that only resets a copy gives no transition for that copy."
         weight: 1
-    exemplar: "A vectorised environment runs $N$ copies of the simulator side by side, and each call gives every copy its own action and returns its own result. When one copy finishes, it restarts on its own and the others carry on."
+    exemplar: "A vectorised environment runs several copies side by side, giving each active copy its own action and result. When one copy finishes, it resets on its own and the others keep running."
   - id: sim-recall-vector-envs-contrast
     dimension: conceptual
     type: mc
@@ -1036,7 +1028,7 @@ exercises:
     est_minutes: 0.5
     prompt: "A vectorised environment runs $N$ copies and resets each finished copy within the same call. Write how many transitions $k$ calls collect."
     answer: "k*N"
-    variables: { k: [1, 20], N: [2, 16] }
+    variables: { k: [2, 20], N: [2, 16] }
     solution: "Each call gives one transition per copy, so $k$ calls give $kN$ transitions."
   - id: sim-recall-to-real-say
     dimension: conceptual
@@ -1045,20 +1037,20 @@ exercises:
     knowledge_point: sim-to-real
     difficulty: 1
     est_minutes: 1
-    prompt: In one or two sentences, what is the sim-to-real gap, and how does domain randomisation help close it?
+    prompt: "In one or two sentences, what is the sim-to-real gap, and how does domain randomisation help close it?"
     rubric:
       - id: gap
-        criterion: Explain that the sim-to-real gap is the drop in performance when a policy trained in simulation runs on the real robot, because no simulator matches the real world exactly.
+        criterion: "Explain that the sim-to-real gap is the drop in performance when a policy trained in simulation runs on the real robot because the simulator differs from the real world."
         weight: 1
         required: true
       - id: randomise
-        criterion: Explain that domain randomisation draws the simulator's uncertain settings, such as friction, at random from a range at every reset, so the policy learns to do well across the range and the real world is one more variation.
+        criterion: "Explain that domain randomisation draws uncertain simulator settings at each reset so the policy trains across a range of settings. If the real conditions fall within that range, the policy has trained on similar conditions."
         weight: 1
         required: true
-      - id: others
-        criterion: Mention another fix, such as measuring the real robot to set the simulator or practising briefly on the real robot.
+      - id: other
+        criterion: "Mention another fix, such as measuring the real robot to set the simulator or practising briefly on the real robot."
         weight: 1
-    exemplar: "The sim-to-real gap is the drop in performance when a policy trained in a simulator runs on the real robot, since no simulator is exact. Domain randomisation draws uncertain settings such as friction at random on every reset, so the policy works across a whole range, and the real world is just one more setting."
+    exemplar: "The sim-to-real gap is the drop in performance when a policy trained in a simulator runs on a real robot. Drawing settings like friction at every reset trains the policy across a range that can cover the conditions the robot will face."
   - id: sim-recall-to-real-contrast
     dimension: conceptual
     type: mc
@@ -1066,25 +1058,25 @@ exercises:
     knowledge_point: sim-to-real
     difficulty: 1
     est_minutes: 0.5
-    prompt: Which fix for the sim-to-real gap draws the simulator's uncertain settings, such as friction, at random at every reset?
+    prompt: "A robot's friction on the real floor is hard to measure and varies from place to place. Which training plan uses domain randomisation?"
     options:
       - id: a
-        text: Domain randomisation
+        text: "Train in simulation with a fresh friction draw for each episode"
         correct: true
-        feedback: The policy trains across the whole range of settings, so the real world is one more variation.
+        feedback: "Varying the friction at reset gives the policy practice across a range of floors."
       - id: b
-        text: Measuring the real robot to set the simulator
+        text: "Train in simulation with one friction value measured on the real floor"
         correct: false
-        feedback: This sets each setting to one measured value, with no random draws.
+        feedback: "Measuring the real robot can improve the simulator. A single fixed setting doesn't give practice across a range."
       - id: c
-        text: Practising briefly on the real robot
+        text: "Train in simulation first, then practise briefly on the real floor"
         correct: false
-        feedback: This trains on the real robot at the end, outside the simulator.
+        feedback: "That adapts the policy with real experience. Domain randomisation varies settings during simulated training."
       - id: d
-        text: A vectorised environment
+        text: "Train many simulator copies in parallel with one fixed friction value"
         correct: false
-        feedback: A vectorised environment runs many copies at once to collect experience faster. It doesn't change their settings.
-    solution: Drawing uncertain settings at random on every reset is domain randomisation.
+        feedback: "Parallel copies collect experience faster. Keeping friction fixed gives no practice at other friction values."
+    solution: "Domain randomisation draws a friction value at each reset so the policy trains across a range of simulated floors."
   - id: sim-recall-to-real-formula
     dimension: math
     type: expression
@@ -1092,7 +1084,7 @@ exercises:
     knowledge_point: sim-to-real
     difficulty: 3
     est_minutes: 0.5
-    prompt: "With domain randomisation, each reset draws a jump's chance of working as $a$, $b$ or $c$, each equally likely, and the agent isn't told which. A jump that works gives an episode total of $9$, and a fall gives $-10$. Write the expected total of the jumping policy."
-    answer: "(a*9 + (1-a)*(-10) + b*9 + (1-b)*(-10) + c*9 + (1-c)*(-10))/3"
-    variables: { a: [0, 1], b: [0, 1], c: [0, 1] }
-    solution: "Each setting gives $9q-10(1-q)$ for its chance $q$, and each setting comes up a third of the time, so average the three: $\\frac{(19a-10)+(19b-10)+(19c-10)}{3}$."
+    prompt: "A simulator picks one of two floor settings with equal chance at every reset. Under the first setting a jump works with probability $a$, and under the second it works with probability $b$. A successful jump gives an episode total of $9$ and a fall gives $-10$. Write the expected total for a robot that always jumps."
+    answer: "(9*a - 10*(1-a) + 9*b - 10*(1-b))/2"
+    variables: { a: [0, 1], b: [0, 1] }
+    solution: "The overall chance of success is $(a+b)/2$. Weight the totals $9$ and $-10$ by success and failure to get $19(a+b)/2-10$."

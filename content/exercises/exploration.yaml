@@ -580,25 +580,25 @@ exercises:
     knowledge_point: xpl-greedy-trap
     difficulty: 1
     est_minutes: 0.5
-    prompt: Which term names taking an action to learn more about it, usually one that doesn't look best?
+    prompt: "A slot-machine agent has a higher estimate for arm A, so it pulls A to collect the best payout it currently expects. What is this choice an example of?"
     options:
       - id: a
-        text: Exploration
+        text: "Exploitation"
         correct: true
-        feedback: Exploring usually pays less now, but it improves an estimate so later choices can be better.
+        feedback: "Exploitation uses the best estimate the agent has to earn reward now."
       - id: b
-        text: Exploitation
+        text: "Exploration"
         correct: false
-        feedback: Exploiting takes the action with the best estimate, to collect the most reward the agent can expect now.
+        feedback: "Exploration tries an action to learn more about it, even if another action currently looks better."
       - id: c
-        text: Acting greedily
+        text: "A random pick in epsilon-greedy"
         correct: false
-        feedback: A greedy agent always exploits, so it never takes an action just to learn about it.
+        feedback: "On the random branch, every arm has an equal chance. This agent picked the arm with the higher estimate."
       - id: d
-        text: An entropy bonus
+        text: "An entropy bonus"
         correct: false
-        feedback: An entropy bonus is a term added to a learned policy's objective. It is one way to keep a policy exploring.
-    solution: Taking an action to learn more about it is exploration.
+        feedback: "An entropy bonus is part of an objective that keeps a learned policy's probabilities spread out. It doesn't name the choice to use the best estimate."
+    solution: "The agent uses its current estimate to pick the arm it expects to pay best. That is exploitation."
   - id: xpl-recall-greedy-trap-contrast2
     dimension: conceptual
     type: mc
@@ -606,7 +606,7 @@ exercises:
     knowledge_point: xpl-greedy-trap
     difficulty: 1
     est_minutes: 0.5
-    prompt: An agent pulls the arms of a slot machine without knowing how they pay. Which number does it keep for each arm as its estimate?
+    prompt: "An agent estimates each slot-machine arm's payout from its own pulls. Which number does it keep for each arm?"
     options:
       - id: a
         text: The average of the rewards that arm has paid so far
@@ -624,7 +624,7 @@ exercises:
         text: The largest reward that arm has paid
         correct: false
         feedback: The estimate is the average of the arm's rewards. Its largest reward would make an arm look better than it is.
-    solution: An arm's estimate is the average of the rewards it has paid so far.
+    solution: "In this example the estimate is the average of that arm's past rewards."
   - id: xpl-recall-epsilon-greedy-say
     dimension: conceptual
     type: explain
@@ -632,7 +632,7 @@ exercises:
     knowledge_point: xpl-epsilon-greedy
     difficulty: 1
     est_minutes: 1
-    prompt: "In one or two sentences, how does epsilon-greedy choose an action, and why does the best-looking action get a probability above $1-\\varepsilon$?"
+    prompt: "In one or two sentences, how does epsilon-greedy choose an action? When $\\varepsilon>0$ and one action has the highest estimate, why is its chance of being chosen greater than $1-\\varepsilon$?"
     rubric:
       - id: rule
         criterion: Explain that with probability $\varepsilon$ the agent picks an action at random with each action equally likely, and otherwise it takes the action with the best estimate.
@@ -679,7 +679,7 @@ exercises:
     knowledge_point: xpl-epsilon-greedy
     difficulty: 1
     est_minutes: 0.5
-    prompt: "An epsilon-greedy agent has $k$ actions and exploration rate $\\varepsilon$. Write the probability that it picks one particular action that isn't the best-looking one. Type `eps` for $\\varepsilon$."
+    prompt: "An epsilon-greedy agent has $k$ actions, one with a higher estimate than the rest, and exploration rate $\\varepsilon$. Write the chance of choosing one particular action from the rest. Type `eps` for $\\varepsilon$."
     answer: "eps/k"
     variables: { eps: [0.01, 0.9], k: [2, 10] }
     common_wrong:
@@ -707,7 +707,7 @@ exercises:
       - id: beta
         criterion: Mention that a larger $\beta$ keeps the policy more spread out.
         weight: 1
-    exemplar: "A policy's entropy measures how spread out its action probabilities are, largest when all actions are equally likely and 0 when one action is certain. An entropy bonus adds $\\beta$ times the entropy to the objective, so training keeps the probabilities spread and the agent keeps trying other actions."
+    exemplar: "A policy's entropy measures how spread out its action probabilities are. An entropy bonus adds $\\beta$ times the entropy to the objective, giving training an incentive to keep the probabilities spread out."
   - id: xpl-recall-entropy-bonus-contrast
     dimension: conceptual
     type: mc
@@ -715,25 +715,21 @@ exercises:
     knowledge_point: xpl-entropy-bonus
     difficulty: 1
     est_minutes: 0.5
-    prompt: Which policy over two actions has the largest entropy?
+    prompt: "Two policies have the same expected return. One usually picks the same action; the other chooses both actions equally often. Which policy has the higher objective when the entropy weight $\\beta$ is positive?"
     options:
       - id: a
-        text: Probabilities $0.5$ and $0.5$
+        text: "The policy that chooses both actions equally often"
         correct: true
-        feedback: Entropy is largest when every action is equally likely, about $0.69$ for two actions.
+        feedback: "It has the same expected return and higher entropy, so it gets a bigger bonus."
       - id: b
-        text: Probabilities $0.9$ and $0.1$
+        text: "The policy that usually picks the same action"
         correct: false
-        feedback: This policy leans toward one action, so its probabilities are less spread out.
+        feedback: "Putting more probability on one action makes entropy smaller, so it earns a smaller bonus."
       - id: c
-        text: Probabilities $0.99$ and $0.01$
+        text: "They tie because their expected returns are the same"
         correct: false
-        feedback: This policy almost always picks one action, so its entropy is close to 0.
-      - id: d
-        text: Probabilities $1$ and $0$
-        correct: false
-        feedback: When one action has probability 1, the entropy is 0.
-    solution: Entropy is largest when the actions are equally likely, so the policy with $0.5$ and $0.5$ has the largest entropy.
+        feedback: "They tie without an entropy bonus. A positive entropy weight gives an edge to the policy with higher entropy."
+    solution: "Equal action probabilities give the highest entropy. With equal expected return and a positive entropy weight, the policy with evenly spread probabilities has the higher objective."
   - id: xpl-recall-entropy-bonus-formula
     dimension: math
     type: expression

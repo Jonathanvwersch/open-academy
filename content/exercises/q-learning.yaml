@@ -748,20 +748,20 @@ exercises:
     knowledge_point: ql-q-table
     difficulty: 1
     est_minutes: 1
-    prompt: In one or two sentences, what does a Q-table store, and how does a robot act greedily with it?
+    prompt: "In one or two sentences, what does a Q-table store, and how does a robot act greedily with it?"
     rubric:
-      - id: entries
-        criterion: Explain that a Q-table stores one number $Q(s,a)$ for every state and action, the current guess of that move's value.
+      - id: table
+        criterion: "Explain that the table holds one estimate $Q(s,a)$ for each available action $a$ in each state $s$."
         weight: 1
         required: true
       - id: greedy
-        criterion: Explain that acting greedily means taking the action with the biggest value in the current state.
+        criterion: "Explain that acting greedily means taking the action with the largest estimate in the current state."
         weight: 1
         required: true
-      - id: after
-        criterion: Mention that each value counts the move's reward plus the discounted best value of where it lands, so it is more than the reward of one move.
+      - id: reward
+        criterion: "Mention that the best action value includes the move's reward and the discounted best value of the state it reaches."
         weight: 1
-    exemplar: "A Q-table holds one number $Q(s,a)$ for each state and action, its current guess of how good that move is. Acting greedily means taking the action with the biggest number in the current state."
+    exemplar: "A Q-table stores one estimate for each available action in each state. A greedy robot picks the action with the largest estimate in its current state."
   - id: ql-recall-q-table-contrast
     dimension: conceptual
     type: mc
@@ -769,25 +769,25 @@ exercises:
     knowledge_point: ql-q-table
     difficulty: 1
     est_minutes: 0.5
-    prompt: "In a corridor, moving right from cell 2 earns $-1$, and its best value is $Q^*(2,\\text{right})=8$. What does the $8$ count?"
+    prompt: "A maze robot has learned the best action values. At a fork, left is the best first move, but the robot looks up the entry for turning right. What does that entry measure?"
     options:
       - id: a
-        text: The move's reward plus the discounted best value of the cell it lands in
+        text: "The return from going right once, then choosing the best later moves"
         correct: true
-        feedback: A best action value counts the move's reward and the most return the robot can collect after it.
+        feedback: "The action value counts the rewards from the chosen move and the best possible moves after it."
       - id: b
-        text: The reward of moving right from cell 2
+        text: "The return from turning right at every fork from then on"
         correct: false
-        feedback: That reward is $-1$. The value also counts the $+10$ that comes later.
+        feedback: "Always turning right is one particular policy. The best later move may go in a different direction."
       - id: c
-        text: The chance, in percent, that the robot picks right in cell 2
+        text: "The return from choosing the best move immediately at the fork"
         correct: false
-        feedback: Chances of picking moves come from a policy. A Q-table value is an expected return.
+        feedback: "The optimal state value would use left first here. This entry fixes the first move to the right."
       - id: d
-        text: The average reward of all moves from cell 2
+        text: "The average return over all first moves at the fork"
         correct: false
-        feedback: A Q-table value scores one move in one state, followed by the best moves after it.
-    solution: "$Q^*(2,\\text{right})=-1+0.9\\times10=8$: the move's reward plus the discounted best value of cell 3."
+        feedback: "An average across first moves mixes entries. Each action value starts with one particular action."
+    solution: "$Q^*(s,\\text{right})$ fixes the first action to right and counts the best possible return after that choice."
   - id: ql-recall-q-table-formula
     dimension: math
     type: text
@@ -795,18 +795,19 @@ exercises:
     knowledge_point: ql-q-table
     difficulty: 2
     est_minutes: 0.5
-    prompt: "A move from state $s$ with action $a$ earns reward $r$ and lands in state $s'$. Fill in the blank: $Q^*(s,a)=r+\\gamma\\,\\underline{\\quad\\quad}$. Type the missing term."
+    prompt: "In a corridor with reliable moves, taking $a$ in $s$ earns $r$ and always lands in the same nonterminal state $s'$. Fill in the missing value in $Q^*(s,a)=r+\\gamma\\,\\underline{\\quad\\quad}$. Use symbols or words."
     accept:
       [
         "max_a' Q*(s',a')",
         "max_{a'} Q^*(s',a')",
         "max Q*(s',a')",
-        "max_a' Q(s',a')",
-        "max Q(s',a')",
-        "\\max_{a'}Q^*(s',a')",
+        '\max_{a''}Q^*(s'',a'')',
+        V*(s'),
+        the optimal value of the next state,
+        the best action value in the next state,
       ]
-    regex: '^\s*\\?max\s*(_\s*\{?\s*a\s*[''’′]?\s*\}?)?\s*q\s*(\^\s*\{?\s*\*\s*\}?|\*)?\s*\(\s*s\s*[''’′]\s*,\s*a\s*[''’′]\s*\)\s*$'
-    solution: "$Q^*(s,a)=r+\\gamma\\max_{a'}Q^*(s',a')$: the best value over the actions of the state the move lands in."
+    regex: "^\\s*(?:(?:\\\\?max(?:imum)?\\s*(?:_\\s*(?:\\{\\s*a\\s*['’′]\\s*\\}|a\\s*['’′])\\s*|(?:over\\s+)?a\\s*['’′]\\s+)?(?:of\\s+)?q\\s*(?:\\^\\s*(?:\\{\\s*\\*\\s*\\}|\\*)|\\*)\\s*\\(\\s*s\\s*['’′]\\s*,\\s*a\\s*['’′]\\s*\\)|v\\s*(?:\\^\\s*(?:\\{\\s*\\*\\s*\\}|\\*)|\\*)\\s*\\(\\s*s\\s*['’′]\\s*\\)|(?:the\\s+)?(?:largest|highest|maximum|best|optimal)\\s+(?:action\\s+|state\\s+|q[- ]?)?value\\s+(?:of|in|for|from|at)\\s+(?:the\\s+)?(?:next\\s+state|s\\s*['’′])))\\s*$"
+    solution: "The missing term is $\\max_{a'} Q^*(s',a')$, also written $V^*(s')$. It is the best action value in the state the move reaches."
   - id: ql-recall-update-rule-say
     dimension: conceptual
     type: explain
@@ -814,20 +815,20 @@ exercises:
     knowledge_point: ql-update-rule
     difficulty: 1
     est_minutes: 1
-    prompt: In one or two sentences, what is the TD target in Q-learning, and how does the update use it?
+    prompt: "In one or two sentences, what is the TD target in Q-learning when the move doesn't end the episode, and how does the update use it?"
     rubric:
       - id: target
-        criterion: Explain that the TD target is the move's reward plus the discounted best table value in the state it lands in, $r+\gamma\max_{a'}Q(s',a')$, or just $r$ if the episode ended.
+        criterion: "Explain that the target is the reward plus the discounted largest table value in the next state, $r+\\gamma\\max_{a'}Q(s',a')$."
         weight: 1
         required: true
-      - id: partway
-        criterion: Explain that the update moves $Q(s,a)$ part of the way toward the target, by the learning rate $\eta$ times the TD error, the target minus the old value.
+      - id: update
+        criterion: "Explain that the update adds $\\eta$ times the difference between the target and the old $Q(s,a)$."
         weight: 1
         required: true
-      - id: landed
-        criterion: Mention that the max is over the actions of $s'$, the state the robot landed in.
+      - id: terminal
+        criterion: "Mention that the target is just the reward if the move ends the episode."
         weight: 1
-    exemplar: "The TD target is the reward plus $\\gamma$ times the biggest table value in the new state, $r+\\gamma\\max_{a'}Q(s',a')$. The update moves $Q(s,a)$ a fraction $\\eta$ of the way from its old value toward that target."
+    exemplar: "The TD target is the reward plus the discounted largest table value in the next state. The update moves $Q(s,a)$ a fraction $\\eta$ of the way from its old value toward the target."
   - id: ql-recall-update-rule-contrast
     dimension: conceptual
     type: mc
@@ -893,25 +894,25 @@ exercises:
     knowledge_point: ql-explore
     difficulty: 2
     est_minutes: 0.5
-    prompt: An epsilon-greedy robot's random pick sends it right from cell 1 into cell 2, and its next move will be random too. Which next-state value does Q-learning put in the target?
+    prompt: "An epsilon-greedy robot lands in cell 2, where left has a higher Q-value than right. The robot's next random pick is right. Which value goes into the Q-learning target for the move that brought it to cell 2?"
     options:
       - id: a
-        text: The largest value over the actions in cell 2
+        text: "The value of left in cell 2"
         correct: true
-        feedback: Q-learning's target always uses the best value in the state landed in, whatever move comes next.
+        feedback: "Q-learning uses the largest next-state value even when the robot takes a different action next."
       - id: b
-        text: The value of the move the robot makes next in cell 2
+        text: "The value of right in cell 2"
         correct: false
-        feedback: That is what SARSA does, and it learns the values of the epsilon-greedy policy itself.
+        feedback: "Using the action actually taken next is what SARSA does. Q-learning uses the largest next-state value."
       - id: c
-        text: The largest value over the actions in cell 1
+        text: "The average of both action values in cell 2"
         correct: false
-        feedback: The max is over the actions of the state the robot landed in, cell 2. Cell 1 is the state it just left.
+        feedback: "Averaging gives the value of a policy that picks both actions equally often. Q-learning uses the largest action value."
       - id: d
-        text: No next-state value, because the move was random
+        text: "The largest action value in the cell it just left"
         correct: false
-        feedback: A random move is updated like any other. Only a move that ends the episode uses just the reward.
-    solution: "The target is $r+\\gamma\\max_{a'}Q(2,a')$, even when the next move will be random."
+        feedback: "The value in the target comes from where the robot landed. The old state's entry is the one being updated."
+    solution: "Q-learning uses $r+\\gamma\\max_{a'}Q(2,a')$. In cell 2 the largest action value is for left."
   - id: ql-recall-explore-formula
     dimension: math
     type: expression
@@ -919,7 +920,7 @@ exercises:
     knowledge_point: ql-explore
     difficulty: 1
     est_minutes: 0.5
-    prompt: "A robot moves epsilon-greedily among $k$ actions with exploration probability $\\varepsilon$. Write the probability that it takes the greedy action. Type `eps` for $\\varepsilon$."
+    prompt: "A robot moves epsilon-greedily with exploration probability $\\varepsilon$. There are $k$ available actions and one has the highest value. Write the probability of taking that action. Type `eps` for $\\varepsilon$."
     answer: "1 - eps + eps/k"
     variables: { eps: [0.01, 0.5], k: [2, 10] }
     solution: "The greedy branch gives $1-\\varepsilon$, and the random pick lands on the greedy action with probability $\\varepsilon/k$, so the total is $1-\\varepsilon+\\varepsilon/k$."
@@ -930,20 +931,17 @@ exercises:
     knowledge_point: ql-full-run
     difficulty: 1
     est_minutes: 1
-    prompt: In one or two sentences, what does Q-learning repeat on each move, and why does a Q-table stop working when there are very many states?
+    prompt: "In one or two sentences, what does Q-learning repeat on each move, and why can a Q-table fail when there are too many states?"
     rubric:
       - id: loop
-        criterion: Explain that on each move Q-learning chooses a move with epsilon-greedy, sees the reward and the new state, and updates that move's value.
+        criterion: "Explain that on each move the agent chooses an action with epsilon-greedy, sees the reward and next state, and updates that move's table entry."
         weight: 1
         required: true
-      - id: limit
-        criterion: Explain that a table needs one entry for every state and action and each entry only learns when that exact move is made, so with very many states it can't store them and almost never sees the same state twice.
+      - id: table
+        criterion: "Explain that a table needs an entry for each state and action and learns for that entry only when that exact move is made, so storing and revisiting entries is hard with very many states."
         weight: 1
         required: true
-      - id: spread
-        criterion: Mention that over many episodes the goal's reward spreads back until the table holds the best values.
-        weight: 1
-    exemplar: "On each move Q-learning picks an action with epsilon-greedy, sees the reward and next state, and updates that one entry. A table needs an entry for each state and action, and each entry learns only from that exact move, so with huge numbers of states it can't store them all and rarely sees one twice."
+    exemplar: "On each move the agent selects an action with epsilon-greedy, sees the reward and next state, and updates that one entry. A Q-table has one entry for each state and action and can't share what it learns across entries, so a huge number of states makes it hard to store and update the entries."
   - id: ql-recall-full-run-contrast
     dimension: conceptual
     type: mc
@@ -951,25 +949,25 @@ exercises:
     knowledge_point: ql-full-run
     difficulty: 2
     est_minutes: 0.5
-    prompt: Why can't a Q-table learn to play a video game from the whole screen?
+    prompt: "A game agent tries to use the whole screen as the state for a Q-table. Why does having many distinct screens make learning hard?"
     options:
       - id: a
-        text: There are too many screens, and the same one rarely comes back
+        text: "An update for one screen changes only that screen's entry"
         correct: true
-        feedback: Each entry learns only when its exact state and move come up, so nothing learned carries over to new screens.
+        feedback: "A Q-table has separate entries. Experience with one screen doesn't update the entries for new screens."
       - id: b
-        text: The game's rewards arrive too many steps later for the discount factor
+        text: "An update for one screen overwrites the values of similar screens"
         correct: false
-        feedback: Delayed rewards spread back through the table over many episodes. The problem is the number of states.
+        feedback: "A table keeps each entry separate. The problem is that it can't share an update across screens."
       - id: c
-        text: Epsilon-greedy can't pick random actions in a game
+        text: "An update for one screen must wait until the episode ends"
         correct: false
-        feedback: A game has a list of actions, and epsilon-greedy can pick from it. The problem is the number of states.
+        feedback: "Q-learning updates on each step. It doesn't need to wait to see the whole run."
       - id: d
-        text: The update needs to know in advance where each move leads
+        text: "An update for one screen requires the reward rule for every action there"
         correct: false
-        feedback: Q-learning learns from the moves it makes, without knowing in advance where they lead.
-    solution: A table needs one entry per state and action, and a screen-sized state almost never repeats, so the table can't store or reuse what it learns.
+        feedback: "Q-learning uses the reward it observed on that step. It doesn't need the task's reward rule."
+    solution: "A Q-table stores a separate value for each state and action. If screens rarely repeat, the agent rarely gets to update or use the same entries."
   - id: ql-recall-full-run-contrast2
     dimension: conceptual
     type: mc
@@ -977,22 +975,22 @@ exercises:
     knowledge_point: ql-full-run
     difficulty: 2
     est_minutes: 0.5
-    prompt: "Watkins and Dayan proved that Q-learning reaches the best values for a finite problem with bounded rewards and $\\gamma<1$. What else does the proof need?"
+    prompt: "Watkins and Dayan's Q-learning result assumes a finite number of states and actions, bounded rewards and $\\gamma<1$. What does it require from exploration and the learning rate?"
     options:
       - id: a
-        text: Every action keeps being tried in every state, and the learning rate shrinks toward 0 at the right speed
+        text: "Keep trying all actions in every state and shrink the learning rate at the right speed"
         correct: true
-        feedback: Entries learn only from moves that are made, so every move must keep coming up.
+        feedback: "Every state-action pair must keep being updated, and the learning rate must shrink toward zero at the right speed."
       - id: b
-        text: The robot moves greedily from the first episode, and the learning rate stays fixed
+        text: "Keep trying all actions in every state and leave the learning rate fixed"
         correct: false
-        feedback: A greedy robot can stop trying a move for ever, and that entry then never learns.
+        feedback: "A fixed rate can work in the corridor. The general convergence result requires a suitably shrinking learning rate."
       - id: c
-        text: The table starts at the best values, and the robot explores at random
+        text: "Try each action once in every state and gradually shrink the learning rate"
         correct: false
-        feedback: The table starts at 0 everywhere. Q-learning gets to the best values from experience.
+        feedback: "One visit gives one sample. Every state-action pair needs repeated visits."
       - id: d
-        text: Every move succeeds, and the discount factor is 1
+        text: "Keep visiting each state greedily and gradually shrink the learning rate"
         correct: false
-        feedback: The proof needs $\gamma<1$, and it doesn't need moves to be certain.
-    solution: The proof needs every action to keep being tried in every state and a learning rate that shrinks toward 0 at the right speed.
+        feedback: "A greedy policy can leave some actions untried, so visiting each state alone doesn't ensure every entry keeps getting updated."
+    solution: "The result requires each state-action pair to keep being visited and a learning rate that shrinks toward zero at the right speed."
