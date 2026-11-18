@@ -631,3 +631,207 @@ exercises:
 
       Top-k keeps the k most probable tokens. Top-p keeps the smallest set of most likely tokens whose cumulative probability reaches at least p, including the token that crosses the threshold. Both divide surviving probabilities by the retained total, then sample from that distribution.
     solution: Connect prompt processing to the first-token wait and sequential generation to later gaps. Then describe temperature's scaling and the two ways to select and renormalise a candidate set.
+  - id: pd-recall-phases-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: pd-request-phases
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what does prefill do, and why does ordinary decode within one request proceed one token at a time?"
+    rubric:
+      - id: prefill
+        criterion: "Explain that prefill processes the known prompt and supplies probabilities for the first output token."
+        weight: 1
+        required: true
+      - id: decode
+        criterion: "Explain that each later decode prediction needs the token chosen at the previous step."
+        weight: 1
+        required: true
+    exemplar: "Prefill processes the whole known prompt and gives the probabilities for the first output token. Each later decode prediction needs the token just chosen, so those steps run in order."
+  - id: pd-recall-phases-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: pd-request-phases
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A model processes longer prompts in the same number of passes, but each request is slower to produce its first token. Queueing, delivery and token choice times are unchanged. Which model work explains the extra wait?"
+    options:
+      - id: a
+        text: "A longer first decode pass"
+        correct: false
+        feedback: "The first decode pass uses the first output token to predict the second."
+      - id: b
+        text: "A longer prefill pass"
+        correct: true
+        feedback: "Prefill provides the probabilities used to choose the first output token."
+      - id: c
+        text: "More decode passes"
+        correct: false
+        feedback: "Later decode passes contribute to the overall reply time after the first token has already arrived."
+    solution: "Prefill supplies the first output probabilities. Later decode passes contribute to the gaps once the reply starts."
+  - id: pd-recall-phases-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: pd-request-phases
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A reply streams with steady inter-token latency $g$, measured in seconds. Write its streaming rate in tokens per second."
+    answer: "1/g"
+    variables: { g: [0.01, 0.25] }
+    solution: "One token arrives every $g$ seconds, so the streaming rate is $1/g$ tokens per second."
+  - id: pd-recall-temperature-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: pd-temperature
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, how is positive temperature used before sampling a token? If one token has the highest logit, say what happens to its probability as temperature rises."
+    rubric:
+      - id: scale
+        criterion: "Explain that temperature divides the logits before softmax."
+        weight: 1
+        required: true
+      - id: spread
+        criterion: "Explain that raising temperature makes the probabilities more even and reduces the leader's probability."
+        weight: 1
+        required: true
+    exemplar: "Temperature divides the logits before softmax. Raising it makes the probabilities more even, so the highest-scoring token loses probability."
+  - id: pd-recall-temperature-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: pd-temperature
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "For a model with a single highest logit, which rule always picks the token with that logit?"
+    options:
+      - id: a
+        text: "Sample after applying temperature 1."
+        correct: false
+        feedback: "Temperature 1 gives ordinary softmax, so a lower-scoring token can still be drawn."
+      - id: b
+        text: "Sample after lowering a positive temperature."
+        correct: false
+        feedback: "A lower positive temperature concentrates probability on higher scores, but lower-scoring tokens can still be drawn."
+      - id: c
+        text: "Choose with greedy decoding."
+        correct: true
+        feedback: "Greedy decoding chooses the highest-scoring token."
+    solution: "Greedy decoding chooses the highest-scoring token. Sampling at a positive temperature can select a lower-scoring token."
+  - id: pd-recall-temperature-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: pd-temperature
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A model has two vocabulary tokens with logits $z_1$ and $z_2$. Write the probability of token 1 at positive temperature $\\tau$. Type `z1`, `z2` and `tau`, and use `exp(...)` for powers of $e$."
+    answer: "exp(z1/tau)/(exp(z1/tau)+exp(z2/tau))"
+    variables: { z1: [-2, 2], z2: [-2, 2], tau: [0.3, 3] }
+    solution: "Divide both logits by $\\tau$, exponentiate, then divide token 1's weight by the sum: $\\frac{e^{z_1/\\tau}}{e^{z_1/\\tau}+e^{z_2/\\tau}}$."
+  - id: pd-recall-topk-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: pd-top-k
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, which tokens survive top-k sampling, and how are their probabilities adjusted before the draw?"
+    rubric:
+      - id: keep
+        criterion: "Explain that the filter keeps the k most probable tokens and removes the rest."
+        weight: 1
+        required: true
+      - id: normalise
+        criterion: "State that each retained probability is divided by the sum of the retained probabilities."
+        weight: 1
+        required: true
+    exemplar: "Top-k keeps the k most probable tokens. Divide each kept probability by their total so the probabilities for the draw add up to one."
+  - id: pd-recall-topk-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: pd-top-k
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A model's next-token probabilities change from a clear favourite to a nearly even spread. Which setting is designed to keep a fixed number of candidates smaller than the vocabulary in both cases?"
+    options:
+      - id: a
+        text: "A fixed top-p threshold"
+        correct: false
+        feedback: "With top-p the number kept depends on how quickly the probabilities reach the threshold."
+      - id: b
+        text: "A fixed top-k setting"
+        correct: true
+        feedback: "Top-k fixes how many of the most probable tokens survive each step."
+      - id: c
+        text: "A fixed positive temperature"
+        correct: false
+        feedback: "Positive temperature changes the probabilities and leaves the entire vocabulary available."
+    solution: "Top-k fixes the number of retained tokens. The identities of those tokens can change at each step."
+  - id: pd-recall-topk-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: pd-top-k
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Top-k with $k=2$ leaves two tokens whose original probabilities are $p_1$ and $p_2$. Write the probability of drawing token 1 after filtering. Type `p1` and `p2`."
+    answer: "p1/(p1+p2)"
+    variables: { p1: [0.35, 0.5], p2: [0.2, 0.3] }
+    solution: "The two survivors have total probability $p_1+p_2$. Token 1 gets $p_1/(p_1+p_2)$."
+  - id: pd-recall-topp-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: pd-top-p
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, how does top-p sampling decide where to stop keeping tokens, and what does it do with the token at that stopping point?"
+    rubric:
+      - id: cutoff
+        criterion: "Explain that it adds probabilities from most to least probable until the running total first reaches or exceeds p."
+        weight: 1
+        required: true
+      - id: include
+        criterion: "State that it keeps the token that reaches or crosses the threshold with its full probability before renormalising."
+        weight: 1
+        required: true
+    exemplar: "Top-p adds probabilities from most to least probable until the total first reaches or exceeds p. It keeps the token at that point with its full probability before renormalising."
+  - id: pd-recall-topp-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: pd-top-p
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "At a top-p threshold of 0.8, the top three tokens total 0.8 exactly. A fourth token would bring the total to 0.9. Which set is available for the draw?"
+    options:
+      - id: a
+        text: "The two most probable tokens"
+        correct: false
+        feedback: "The third token has positive probability, so the first two fall short of 0.8."
+      - id: b
+        text: "The four most probable tokens"
+        correct: false
+        feedback: "The filter stops as soon as the total reaches the threshold, including on equality."
+      - id: c
+        text: "The three most probable tokens"
+        correct: true
+        feedback: "With the third token the running total reaches 0.8, so these three are kept."
+    solution: "Top-p stops at the first total at or above the threshold. A total exactly equal to 0.8 is enough."
+  - id: pd-recall-topp-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: pd-top-p
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Top-p keeps three tokens, with original probabilities $p_1$, $p_2$ and $p_3$. Write the new probability of token 3. Type `p1`, `p2` and `p3`."
+    answer: "p3/(p1+p2+p3)"
+    variables: { p1: [0.3, 0.4], p2: [0.2, 0.25], p3: [0.12, 0.18] }
+    solution: "Divide $p_3$ by the actual retained total, $p_1+p_2+p_3$."

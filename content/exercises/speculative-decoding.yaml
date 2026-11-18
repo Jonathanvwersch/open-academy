@@ -828,3 +828,217 @@ exercises:
         }
     exemplar: A cheap draft proposes several tokens that the target checks together while sharing a weight read. At small batch sizes this can produce several tokens for roughly one target pass plus drafting time. With independent acceptance $\alpha$, the expected token count is $1+\alpha+\cdots+\alpha^k$, and dividing by $kc+1$ gives the estimated speed-up. Accepting $x$ with probability $\min(1,p(x)/q(x))$ supplies probability $\min(p(x),q(x))$. Rejection samples the normalised positive leftover $p-q$, so the two routes add to $p$ for each token. Repeating this at every prefix preserves the target distribution over outputs.
     solution: Compare expected useful tokens with total draft-and-check time. Exactness follows by adding accepted probability and the leftover correction probability to recover $p$.
+  - id: sdp-recall-draft-check-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: sd-draft-check
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what does the target do with a mismatch when checking a greedy draft, and when can it add a bonus token?"
+    rubric:
+      - id: mismatch
+        criterion: "Explain that the target keeps matches up to the first mismatch, emits its correction and discards later guesses."
+        weight: 1
+        required: true
+      - id: bonus
+        criterion: "State that the target can add a bonus token when all guesses pass."
+        weight: 1
+        required: true
+    exemplar: "The target keeps the matching guesses up to the first mismatch, emits its own token there and discards the later guesses. If every guess passes, it can emit one extra token from its last prediction."
+  - id: sdp-recall-draft-check-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: sd-draft-check
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "In greedy speculative decoding, the first guess passes and the second fails. The third guess matches the target's prediction at that position in the same check. What should go into the reply from this round?"
+    options:
+      - id: a
+        text: "The first guess and the target's second token."
+        correct: true
+        feedback: "Keep the match and the correction. The check for the third guess used the rejected second token."
+      - id: b
+        text: "The first guess, the correction and the third guess."
+        correct: false
+        feedback: "The third guess was checked against a prediction made from the wrong prefix."
+      - id: c
+        text: "Just the first guess, with the correction left for the next round."
+        correct: false
+        feedback: "The target emits its correction at the first mismatch in this round."
+    solution: "Keep the first guess and emit the target's correction at the second position. Skip the third guess because its check used the rejected second token."
+  - id: sdp-recall-draft-check-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: sd-draft-check
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "The draft proposes $k$ tokens in one greedy speculative-decoding round. Write the number of predictions in the target check, including its prediction for a possible bonus token."
+    answer: "k+1"
+    variables: { k: [2, 12] }
+    solution: "The target makes one prediction for each of the $k$ guesses and one extra prediction, for $k+1$ in all."
+  - id: sdp-recall-speed-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: sd-expected-speed
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what does the acceptance rate measure in the expected speed estimate, and why can a longer draft give a smaller speed-up?"
+    rubric:
+      - id: accept
+        criterion: "Explain that the acceptance rate measures how often a draft guess passes the target's check."
+        weight: 1
+        required: true
+      - id: tradeoff
+        criterion: "Explain that drafting more tokens costs more time, while later guesses only help when the earlier guesses also pass."
+        weight: 1
+        required: true
+    exemplar: "The acceptance rate is how often a draft guess passes. A longer draft costs more time, and later guesses help only in rounds where all the earlier guesses pass too."
+  - id: sdp-recall-speed-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: sd-expected-speed
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A draft always gets its first guess wrong. The draft takes time and checking costs the same as one ordinary target pass. How does this compare with ordinary decoding?"
+    options:
+      - id: a
+        text: "It is faster because the failed round skips the target pass."
+        correct: false
+        feedback: "The target still checks the draft and produces the first correction."
+      - id: b
+        text: "It is slower because the draft adds time for the same output count."
+        correct: true
+        feedback: "The target emits one correction per round, and each round also pays the drafting cost."
+      - id: c
+        text: "It runs at the same speed because every round emits a token."
+        correct: false
+        feedback: "Both emit one token, but only the speculative round pays for drafting as well."
+    solution: "A failed first guess still produces one token. The total cost is one target pass plus the draft's work, so it is slower."
+  - id: sdp-recall-speed-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: sd-expected-speed
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A speculative round makes $k$ draft guesses. Each passes independently with the same probability $\\alpha$, where $0<\\alpha<1$. Write the expected number of output tokens per round. Type `alpha` for $\\alpha$."
+    answer: "(1-alpha^(k+1))/(1-alpha)"
+    variables: { alpha: [0.1, 0.95], k: [2, 12] }
+    solution: "A correction or bonus gives one guaranteed token. Add each guess's probability of surviving up to its position: $1+\\alpha+\\cdots+\\alpha^k=(1-\\alpha^{k+1})/(1-\\alpha)$."
+  - id: sdp-recall-exact-sampling-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: sd-exact-sampling
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what probabilities does exact speculative sampling preserve, and how does it choose a replacement after a rejection?"
+    rubric:
+      - id: target
+        criterion: "Explain that each output token keeps the probability the target would give it."
+        weight: 1
+        required: true
+      - id: leftover
+        criterion: "Explain that replacements are sampled according to each token's positive leftover probability, the amount still missing after acceptance, divided by the sum of those leftovers."
+        weight: 1
+        required: true
+    exemplar: "Exact speculative sampling preserves the target's output probabilities. After a rejection it draws a replacement from the positive probabilities still missing after acceptance, scaled so they sum to one."
+  - id: sdp-recall-exact-sampling-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: sd-exact-sampling
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "The draft sometimes proposes a token more often than the target would. Which rule prevents accepted drafts from already giving that token too much probability?"
+    options:
+      - id: a
+        text: "Keep every proposal of that token."
+        correct: false
+        feedback: "Keeping them all would give the token more probability than the target does."
+      - id: b
+        text: "Keep it only when it is the target's top token."
+        correct: false
+        feedback: "That is a greedy check and can lose the target's sampling probabilities."
+      - id: c
+        text: "Keep only a fraction of those proposals."
+        correct: true
+        feedback: "Accepting a fraction reduces how often that token is emitted through the draft."
+    solution: "For an over-proposed token, accept only the fraction given by its target probability divided by its draft probability."
+  - id: sdp-recall-exact-sampling-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: sd-exact-sampling
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A draft proposes token $x$. Its probability under the target is $p(x)$ and its probability under the draft is $q(x)>0$. Write the probability of accepting this proposal. Use `p` and `q` for those probabilities and `min(...)` or `max(...)` to select between values."
+    answer: "min(1,p/q)"
+    variables: { p: [0.01, 0.95], q: [0.05, 0.95] }
+    solution: "Accept with probability $\\min(1,p(x)/q(x))$. The cap keeps the probability at one when the target is at least as likely to choose $x$."
+  - id: sdp-recall-guess-sources-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: sd-guess-sources
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, where do Medusa's extra heads get their input, and what does each one predict?"
+    rubric:
+      - id: input
+        criterion: "State that the heads read the target's final internal vector at a computed position."
+        weight: 1
+        required: true
+      - id: prediction
+        criterion: "Explain that different heads guess tokens at different future positions."
+        weight: 1
+        required: true
+    exemplar: "Medusa's extra heads read the target's final internal vector at a computed position. Each head guesses a token at a different future position."
+  - id: sdp-recall-guess-sources-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: sd-guess-sources
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Which draft method can make a guess for a repeated phrase without running any extra model or prediction heads?"
+    options:
+      - id: a
+        text: "A separate small draft model"
+        correct: false
+        feedback: "It uses its own weights and forward passes."
+      - id: b
+        text: "N-gram lookup"
+        correct: true
+        feedback: "It copies the tokens that followed an earlier occurrence of the recent tokens."
+      - id: c
+        text: "An EAGLE draft network"
+        correct: false
+        feedback: "It still runs a small network to predict the next internal vector."
+    solution: "N-gram lookup proposes text from an earlier match in the prompt or generated text. It needs no draft model."
+  - id: sdp-recall-guess-sources-formula
+    dimension: math
+    type: text
+    role: recall
+    knowledge_point: sd-guess-sources
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "N-gram lookup always proposes the copied token $x$ at this position. Fill in the blank under exact speculative sampling: the probability of accepting that proposal is $\\underline{\\qquad}$. Use the usual probability notation or words."
+    accept:
+      - "p(x)"
+      - "p"
+      - "target probability"
+      - "the target probability"
+      - "the target's probability"
+      - "target probability of x"
+      - "the target probability of x"
+      - "the target's probability of x"
+      - "probability of x under the target"
+      - "the probability of token x under the target"
+    regex: '^\s*\$?\s*(?:p(?:\s*\(\s*x\s*\))?|(?:the\s+)?(?:target(?:[''’]s)?\s+probability(?:\s+(?:of|for)\s+(?:token\s+)?x)?|probability\s+(?:of|for)\s+(?:token\s+)?x\s+(?:under|from)\s+(?:the\s+)?target(?:\s+model)?))\s*\$?\s*\.?\s*$'
+    solution: "The draft's probability for the copied token is one. The acceptance rule then gives the target's probability $p(x)$."

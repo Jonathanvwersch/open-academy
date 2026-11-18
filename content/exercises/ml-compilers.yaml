@@ -869,3 +869,218 @@ exercises:
         weight: 1
         required: false
     exemplar: Eager execution dispatches each operation as Python reaches it. A compiler records the graph first, so it can see that a result is used only by the next operation. In our chain, the separate eager kernels write and reread intermediate tensors. A fused kernel keeps those results on chip, reading the input once and writing the output once. This reduces memory traffic and kernel-launch overhead. For our large, memory-bound chain, the estimated time falls by about the same factor as bytes moved. An e-graph keeps equivalent versions in groups under its numerical rules, which use exact real arithmetic in our toy search. Keeping alternatives lets later rules reach versions a greedy rewrite could lose. Extraction picks the cheapest version using a cost model.
+  - id: mlcp-recall-record-graph-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: mlc-record-graph
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what does an ML compiler record in a computational graph, and what does it mean to lower that graph?"
+    rubric:
+      - id: record
+        criterion: "Explain that the graph records the model's operations and shows which operations use earlier results."
+        weight: 1
+        required: true
+      - id: lower
+        criterion: "Explain that lowering rewrites big operations as smaller primitive operations."
+        weight: 1
+        required: true
+    exemplar: "The compiler records the model's operations and which earlier results they use. It lowers the graph by rewriting big operations as a few smaller primitives."
+  - id: mlcp-recall-record-graph-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: mlc-record-graph
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A model uses a Python `if` whose condition depends on a number inside a tensor. What does `torch.compile` do at that point?"
+    options:
+      - id: a
+        text: "Continue one graph through the branch with stand-in tensor shapes."
+        correct: false
+        feedback: "The shape alone doesn't tell it the number that decides the branch."
+      - id: b
+        text: "Check the condition in Python and run a graph for the branch taken."
+        correct: true
+        feedback: "The tensor value matters, so the conditional splits the graph."
+      - id: c
+        text: "Lower both branches into one graph and keep their results."
+        correct: false
+        feedback: "This tensor-dependent Python condition splits the graph. Python decides which branch to run."
+    solution: "The compiled graph stops at the data-dependent condition. Python checks it, and the program runs a graph for the branch it takes."
+  - id: mlcp-recall-record-graph-contrast2
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: mlc-record-graph
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "In a lowered graph, one primitive adds all the numbers in a row to give a single number. What kind of primitive is it?"
+    options:
+      - id: a
+        text: "An elementwise operation"
+        correct: false
+        feedback: "An elementwise operation changes each number separately."
+      - id: b
+        text: "A movement operation"
+        correct: false
+        feedback: "A movement operation rearranges numbers without doing arithmetic."
+      - id: c
+        text: "A reduce operation"
+        correct: true
+        feedback: "A reduce operation combines many numbers into one."
+    solution: "Summing a row combines many entries into one result, so it is a reduce operation."
+  - id: mlcp-recall-fuse-elementwise-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: mlc-fuse-elementwise
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what happens to intermediate data when a compiler fuses an elementwise chain, and how does fusion affect the chain's FLOP count?"
+    rubric:
+      - id: data
+        criterion: "Explain that the intermediate values stay on chip between operations in the fused kernel."
+        weight: 1
+        required: true
+      - id: work
+        criterion: "State that the chain still does the same FLOPs."
+        weight: 1
+        required: true
+    exemplar: "Fusing the chain keeps its intermediate values on chip. The same arithmetic still happens, so the FLOP count stays the same."
+  - id: mlcp-recall-fuse-elementwise-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: mlc-fuse-elementwise
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A compiler fuses a short elementwise chain on a very small tensor. Moving its data takes little time. Which other saving can still matter?"
+    options:
+      - id: a
+        text: "Fewer floating-point operations"
+        correct: false
+        feedback: "Fusion keeps the arithmetic for the chain the same."
+      - id: b
+        text: "Fewer kernel launches"
+        correct: true
+        feedback: "One fused kernel replaces several launches, which can matter even when the tensor is small."
+      - id: c
+        text: "Fewer bytes stored per number"
+        correct: false
+        feedback: "Fusion can keep values on chip while preserving their storage precision."
+    solution: "Starting kernels takes time. Fusion can save that time even when there is little data to move."
+  - id: mlcp-recall-fuse-elementwise-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: mlc-fuse-elementwise
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A tensor takes $S$ bytes. In eager execution, each of $k$ elementwise operations launches its own kernel and reads and writes the full tensor through HBM. Write the total eager HBM traffic in bytes."
+    answer: "2*k*S"
+    variables: { S: [100, 100000], k: [2, 12] }
+    solution: "Each kernel moves $2S$ bytes for its read and write. Over $k$ kernels that is $2kS$."
+  - id: mlcp-recall-egraph-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: mlc-egraph
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, how does an e-graph group expressions, and when can a rewrite merge two groups?"
+    rubric:
+      - id: group
+        criterion: "Explain that each e-class holds expressions with the same value."
+        weight: 1
+        required: true
+      - id: merge
+        criterion: "State that a rewrite can merge two groups when it shows they are equal."
+        weight: 1
+        required: true
+    exemplar: "An e-graph puts expressions with the same value into e-classes. A rule can merge two classes when it shows they are equal."
+  - id: mlcp-recall-egraph-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: mlc-egraph
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A compiler has stopped adding forms to an e-graph. Which step uses the cost model to choose a form to run?"
+    options:
+      - id: a
+        text: "Lowering"
+        correct: false
+        feedback: "Lowering rewrites big operations into primitive operations."
+      - id: b
+        text: "Equality saturation"
+        correct: false
+        feedback: "Equality saturation applies rewrite rules to add equivalent forms."
+      - id: c
+        text: "Extraction"
+        correct: true
+        feedback: "Extraction uses the cost model to find the cheapest form in the top group."
+    solution: "Extraction chooses the lowest-cost version after the e-graph search."
+  - id: mlcp-recall-egraph-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: mlc-egraph
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "In an e-graph, a node takes one input from a group with $p$ versions and one input from a group with $q$ versions. Write the number of versions this node represents."
+    answer: "p*q"
+    variables: { p: [2, 20], q: [2, 20] }
+    solution: "Each of the $p$ versions of the first input can pair with each of the $q$ versions of the second, giving $pq$ versions."
+  - id: mlcp-recall-autotune-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: mlc-autotune
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, how does autotuning choose a kernel version, and why might the winner change for another run on different hardware or tensor shapes?"
+    rubric:
+      - id: measure
+        criterion: "Explain that the compiler times candidate kernels on the actual GPU at the given tensor shapes and keeps the fastest."
+        weight: 1
+        required: true
+      - id: specific
+        criterion: "Explain that tiling choices depend on both the GPU's resources and the tensor shapes."
+        weight: 1
+        required: true
+    exemplar: "Autotuning times candidate kernels on the actual GPU with the given tensor shapes and keeps the fastest. A different GPU or shape changes how those choices use the available resources."
+  - id: mlcp-recall-autotune-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: mlc-autotune
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "An autotuner measures a few candidate kernels, then wants to avoid timing every remaining candidate. What can its cost model do?"
+    options:
+      - id: a
+        text: "Predict the time of untried versions from their code."
+        correct: true
+        feedback: "It can learn from measured times and use code descriptions to pick promising versions to time."
+      - id: b
+        text: "Replace the kernels with equivalent arithmetic expressions."
+        correct: false
+        feedback: "Equivalent forms come from rewrite rules. The model estimates how a candidate will perform."
+      - id: c
+        text: "Combine the operations into one new kernel."
+        correct: false
+        feedback: "Fusion combines operations. The cost model helps choose which versions are worth measuring."
+    solution: "The cost model predicts which unmeasured candidates look fast. The autotuner can spend its measurements on those."
+  - id: mlcp-recall-autotune-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: mlc-autotune
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A memory-bound kernel moves $D$ bytes on a GPU with bandwidth $W$ bytes per second. Its autotuned run takes $t$ seconds. Write the fraction of the best possible speed that the run reaches."
+    answer: "D/(W*t)"
+    variables: { D: [100, 1000], W: [1000, 5000], t: [1.1, 10] }
+    solution: "The fastest possible time is $D/W$ seconds. Divide it by the measured time to get $D/(Wt)$."

@@ -820,3 +820,213 @@ exercises:
         required: false
     exemplar: Continuous batching replaces finished sequences after every decode step, keeping slots busy while each step still takes about the same time. A decode step reads all the weights whatever the batch size. Every sequence needs KV-cache memory. PagedAttention hands out blocks as needed, avoiding memory held for tokens that do not exist yet, so more sequences fit. Only the last block can be partly empty, wasting less than one block per sequence. If long prompts caused inter-token latency jumps, I would split them into chunks processed over several steps. Another option is to run prefill on separate GPUs and copy each prompt's KV cache to a decode GPU.
     solution: Continuous batching keeps slots busy by replacing finished sequences after each decode step, with about the same step time. Allocating KV-cache blocks as needed leaves room for more sequences. Chunked prefill spreads long prompts over several steps, or separate prefill GPUs copy the KV cache to decode GPUs to keep prompt work out of decode steps.
+  - id: lsv-recall-batching-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: lsv-batching
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, when does continuous batching refill a slot, and why can this raise throughput even if each decode step takes the same time?"
+    rubric:
+      - id: refill
+        criterion: "Explain that after each decode step, finished sequences leave and waiting requests can fill their slots."
+        weight: 1
+        required: true
+      - id: gain
+        criterion: "Explain that filling idle slots means more output tokens can be made in the same number of steps."
+        weight: 1
+        required: true
+    exemplar: "After each decode step, the server replaces finished sequences with waiting requests. Filling those idle slots lets it make more output tokens in the same number of steps."
+  - id: lsv-recall-batching-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: lsv-batching
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A batch has two active replies. One finishes while the other has several tokens left to generate. With continuous batching and another request ready to join, what happens at the next step?"
+    options:
+      - id: a
+        text: "The waiting request can join the reply still decoding."
+        correct: true
+        feedback: "Continuous batching replaces a finished sequence after any step, so the free slot can be used right away."
+      - id: b
+        text: "The waiting request joins after the longer reply finishes."
+        correct: false
+        feedback: "That is what happens with static batching, which starts the next batch when every reply is done."
+      - id: c
+        text: "The waiting request starts in a second batch on its own."
+        correct: false
+        feedback: "The new request can use the freed slot in the current batch."
+    solution: "Continuous batching can add a waiting request as soon as either slot frees up. The longer reply continues in the same batch."
+  - id: lsv-recall-batching-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: lsv-batching
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A server emits $N$ output tokens over $D$ decode steps, each taking $t$ seconds. Write its throughput in output tokens per second."
+    answer: "N/(D*t)"
+    variables: { N: [100, 300], D: [10, 80], t: [0.005, 0.05] }
+    solution: "The steps take $Dt$ seconds in total, so throughput is $N/(Dt)$."
+  - id: lsv-recall-paging-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: lsv-paging
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, how does PagedAttention allocate space as a sequence grows, and how does attention find the stored tokens?"
+    rubric:
+      - id: alloc
+        criterion: "Explain that the KV cache uses fixed-size blocks, and the sequence gets another block when its last one is full."
+        weight: 1
+        required: true
+      - id: lookup
+        criterion: "Explain that the sequence's block table lists the blocks in token order so attention can find them wherever they sit."
+        weight: 1
+        required: true
+    exemplar: "PagedAttention gives a growing sequence another fixed-size block when its last one is full. Attention uses the sequence's block table to find its blocks in order."
+  - id: lsv-recall-paging-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: lsv-paging
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A server switches from reserving space for every request's maximum length to PagedAttention. It keeps the same KV-cache format. Where does the memory saving come from?"
+    options:
+      - id: a
+        text: "Storing each key and value in fewer bytes"
+        correct: false
+        feedback: "Paging keeps the same numbers and the same bytes per token."
+      - id: b
+        text: "Sharing cache entries between matching prompts"
+        correct: false
+        feedback: "That is prefix caching. Paging changes where a sequence stores its own cache."
+      - id: c
+        text: "Allocating space as each sequence grows"
+        correct: true
+        feedback: "Only the last block can have empty slots, so the server avoids reserving a full maximum-length stretch."
+    solution: "Paging assigns new blocks as needed. Each token keeps the same number of cache bytes."
+  - id: lsv-recall-paging-formula
+    dimension: math
+    type: text
+    role: recall
+    knowledge_point: lsv-paging
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A sequence has $T$ tokens and each KV-cache block holds $S$ tokens. In the formula for the number of blocks, what goes inside the round-up brackets? Write the missing expression: $\\left\\lceil\\underline{\\qquad}\\right\\rceil$."
+    accept:
+      - "T/S"
+      - "T ÷ S"
+      - "\\frac{T}{S}"
+      - "T over S"
+      - "T divided by S"
+      - "T S^-1"
+    regex: '^\s*\$?\s*(?:\(?\s*t\s*(?:[/÷]|\s+(?:over|divided\s+by))\s*s\s*\)?|\\(?:d|t)?frac\s*(?:\{\s*t\s*\}|t)\s*(?:\{\s*s\s*\}|s))\s*\$?\s*$'
+    solution: "Divide the token count by tokens per block, then round up to allow for a partly full last block: $\\lceil T/S\\rceil$."
+  - id: lsv-recall-parallel-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: lsv-parallel
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what gets split in tensor parallelism, and what must the GPUs do with the results at each layer?"
+    rubric:
+      - id: split
+        criterion: "Explain that the GPUs split each weight matrix so each stores and reads its share."
+        weight: 1
+        required: true
+      - id: exchange
+        criterion: "Explain that the GPUs exchange their results so they can continue to the next layer."
+        weight: 1
+        required: true
+    exemplar: "Tensor parallelism splits each weight matrix across GPUs, so each stores and reads only its own part. The GPUs exchange their results in each layer before going on to the next."
+  - id: lsv-recall-parallel-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: lsv-parallel
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A dense model fits on one GPU. The team adds GPUs chiefly to shorten the weight read for each user's decode step. Which arrangement tackles that read directly?"
+    options:
+      - id: a
+        text: "Put a full model replica on each GPU."
+        correct: false
+        feedback: "Replicas serve more users, but each replica still reads the whole weight set per step."
+      - id: b
+        text: "Split each weight matrix across the GPUs."
+        correct: true
+        feedback: "Each GPU reads a smaller share of the weights during the same step."
+      - id: c
+        text: "Put different experts on different GPUs."
+        correct: false
+        feedback: "Expert parallelism applies to a mixture-of-experts model. This dense model has no experts to split."
+    solution: "Tensor parallelism divides the weights read per GPU. The GPUs still have to exchange results, so the saving depends on the cost of that exchange."
+  - id: lsv-recall-parallel-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: lsv-parallel
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Tensor parallelism splits $D$ weight bytes evenly across $N$ GPUs with memory bandwidth $W$ bytes per second each. Write the weight-read time per step in seconds, ignoring the exchange of results."
+    answer: "D/(N*W)"
+    variables: { D: [1000, 100000], N: [2, 16], W: [100, 10000] }
+    solution: "Each GPU reads $D/N$ bytes at bandwidth $W$, taking about $D/(NW)$ seconds."
+  - id: lsv-recall-prefill-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: lsv-prefill
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, how does disaggregated serving separate prefill and decode, and what must happen before the new request can decode?"
+    rubric:
+      - id: separate
+        criterion: "Explain that one set of GPUs runs prefill and another runs decode."
+        weight: 1
+        required: true
+      - id: copy
+        criterion: "State that the prompt's KV cache is copied to a decode GPU before decode can start."
+        weight: 1
+        required: true
+    exemplar: "Disaggregated serving runs prefill and decode on separate sets of GPUs. The prefill GPUs send the prompt's KV cache to a decode GPU, which can start decoding once it arrives."
+  - id: lsv-recall-prefill-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: lsv-prefill
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A server's token gaps spike when a long prompt joins the decode batch, but the team must keep prefill and decode on the same GPU. Which change targets those spikes?"
+    options:
+      - id: a
+        text: "Use static batching."
+        correct: false
+        feedback: "Waiting for an entire batch to finish can leave slots idle. It does not split the work of a long prompt."
+      - id: b
+        text: "Use chunked prefill."
+        correct: true
+        feedback: "Each step handles only one piece of the long prompt alongside decoding."
+      - id: c
+        text: "Use disaggregated serving."
+        correct: false
+        feedback: "Separate prefill and decode GPUs would avoid the stalls but would require separate GPUs."
+    solution: "Chunked prefill spreads the prompt's work over several steps. That reduces the longest gap for users already decoding on that GPU."
+  - id: lsv-recall-prefill-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: lsv-prefill
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A batch step has weight-read time $r$ seconds and arithmetic time $c$ seconds, with both done in parallel. Write its estimated step time in seconds. Use `min(...)` or `max(...)` to select between values."
+    answer: "max(r,c)"
+    variables: { r: [0.002, 0.02], c: [0.002, 0.04] }
+    solution: "The step waits for the slower of reading and arithmetic, so the estimate is $\\max(r,c)$."
