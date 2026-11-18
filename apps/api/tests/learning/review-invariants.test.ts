@@ -1545,6 +1545,10 @@ async function explainSelectionAt08(
   const { state, budget, results } = await plannerSelectionForAudit(now, today);
   const snapshot = resumedSelectionSnapshot();
   const resumeSnapshot = snapshot?.day === day ? snapshot : undefined;
+  const plannedActivities = todayActivities(today) as Array<{
+    kind: string;
+    plannedMinutes?: number | null;
+  }>;
   const cards = await db.select().from(reviewCards).where(eq(reviewCards.userId, userId));
   const dueCardsByTopic = new Map<string, typeof cards>();
   for (const card of cards) {
@@ -1619,6 +1623,19 @@ async function explainSelectionAt08(
   const notSelectedForReport = resumeSnapshot?.notSelected ?? notSelected;
   const selectedTopicsForReport =
     resumeSnapshot?.selectedInCurrentPlan ?? [...selectedInPlan].sort();
+  const resultByConcept = new Map(results.map((result) => [result.conceptId, result.result]));
+  const selectedOverdueTopics = selectedTopicsForReport.filter(
+    (conceptId) => resultByConcept.get(conceptId) === 'selected:overdue',
+  );
+  const selectedCappedTopics = selectedTopicsForReport.filter(
+    (conceptId) => resultByConcept.get(conceptId) === 'selected',
+  );
+  const reviewMinutes = plannedActivities
+    .filter((activity) => activity.kind === 'review')
+    .reduce((total, activity) => total + (activity.plannedMinutes ?? 0), 0);
+  const newLessonMinutes = plannedActivities
+    .filter((activity) => activity.kind === 'learn')
+    .reduce((total, activity) => total + (activity.plannedMinutes ?? 0), 0);
   const deferredTopicsForReport =
     resumeSnapshot?.budgetDeferredTopics ??
     [...new Set(deferredResults.map((result) => result.conceptId))].sort().map((conceptId) => ({
@@ -1634,6 +1651,10 @@ async function explainSelectionAt08(
       dueTopicCount: resumeSnapshot?.dueTopicCount ?? results.length,
       selectedInCurrentPlan: selectedTopicsForReport,
       selectedCount: selectedTopicsForReport.length,
+      selectedCappedTopics,
+      selectedOverdueTopics,
+      reviewMinutes,
+      newLessonMinutes,
       budgetDeferredTopics: deferredTopicsForReport,
       notSelected: notSelectedForReport,
       priorityFindings,
@@ -1643,6 +1664,10 @@ async function explainSelectionAt08(
     day,
     dueTopicCount: resumeSnapshot?.dueTopicCount ?? results.length,
     selectedTopics: selectedTopicsForReport,
+    selectedCappedTopics,
+    selectedOverdueTopics,
+    reviewMinutes,
+    newLessonMinutes,
     budgetDeferredTopics: deferredTopicsForReport.map((topic) => topic.conceptId),
     notSelected: notSelectedForReport,
     priorityFindings,
@@ -1847,9 +1872,7 @@ async function runRealDataAudit() {
   const resumed = process.env.REVIEW_AUDIT_RESUME === '1' || Boolean(resumeAtValue);
   const today = localDateKey(startedAt, timezone);
   const todayAt20 = localDateTime(today, '20:00');
-  if (todayAt20.getTime() <= startedAt.getTime()) {
-    throw new Error('Today 20:00 is earlier than now; a forward-only simulation is not possible.');
-  }
+  const includeToday20 = todayAt20.getTime() > startedAt.getTime();
   const dailyDue = new Map<string, DueTopicSnapshot>();
   const dailyRows: Array<Record<string, unknown>> = [];
   const selectionAudits: MorningSelectionAudit[] = [];
@@ -1997,7 +2020,7 @@ async function runRealDataAudit() {
   }
   const futureDays = resumed ? 13 : 14;
   for (const moment of [
-    { day: today, wallTime: '20:00', instant: todayAt20 },
+    ...(includeToday20 ? [{ day: today, wallTime: '20:00', instant: todayAt20 }] : []),
     ...Array.from({ length: futureDays }, (_, index) => {
       const day = shiftLocalDate(today, index + 1);
       return [
@@ -2032,8 +2055,12 @@ async function runRealDataAudit() {
         day: moment.day,
         due: snapshot.due.size,
         selected: selectedTopics.length,
+        selectedCapped: morning?.selectedCappedTopics.length ?? 0,
+        selectedOverdue: morning?.selectedOverdueTopics.length ?? 0,
         reviewed: reviewedDue.size,
         budgetDeferred: budgetDeferredTopics.size,
+        reviewMinutes: morning?.reviewMinutes ?? 0,
+        newLessonMinutes: morning?.newLessonMinutes ?? 0,
         dueTopics: snapshot.due.size,
         selectedTopics,
         reviewedDueTopics: reviewedDue.size,
