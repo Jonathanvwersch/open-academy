@@ -477,3 +477,168 @@ exercises:
         weight: 1
         required: true
     exemplar: "Public benchmark questions or answers may have entered training, so a high score can partly reflect recall. Reserve fresh, representative evaluation questions and keep their answers out of training and development. Count ties as half a win and compute $(\\text{wins}+0.5\\times\\text{ties})/(\\text{wins}+\\text{ties}+\\text{losses})$ from the final decisions."
+
+  - id: "lev-recall-clean-say"
+    dimension: "conceptual"
+    type: "explain"
+    role: "recall"
+    knowledge_point: "lev-clean-benchmarks"
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What is benchmark contamination, and how can it affect a reported score?"
+    rubric:
+      - id: "definition"
+        criterion: "Explain that test questions, answers or close copies have entered training data."
+        weight: 1
+        required: true
+      - id: "meaning"
+        criterion: "Explain that recalling seen questions and answers can raise the score."
+        weight: 1
+        required: true
+    exemplar: "Contamination occurs when test questions, answers or close copies enter training. Recalling them can raise the score."
+  - id: "lev-recall-clean-contrast"
+    dimension: "conceptual"
+    type: "mc"
+    role: "recall"
+    knowledge_point: "lev-clean-benchmarks"
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Which practice preserves an independent final check after choosing model changes?"
+    options:
+      - id: "a"
+        text: "Save a second test group until model selection is finished."
+        correct: true
+        feedback: "A saved second group avoids adapting model choices to the final test."
+      - id: "b"
+        text: "Choose changes using the same group used for the final report."
+        correct: false
+        feedback: "Choices can adapt the model to that group."
+      - id: "c"
+        text: "Train on close copies of the final evaluation questions."
+        correct: false
+        feedback: "Close copies in training contaminate the evaluation."
+    solution: "A saved second group avoids adapting model choices to the final test."
+  - id: "lev-recall-clean-formula"
+    dimension: "math"
+    type: "expression"
+    role: "recall"
+    knowledge_point: "lev-clean-benchmarks"
+    difficulty: 2
+    est_minutes: 0.5
+    prompt: "A benchmark scores Q questions right or wrong and the model answers C correctly. Write its accuracy as a fraction."
+    answer: "C/Q"
+    variables: { "C": [1, 10], "Q": [12, 50] }
+    solution: "Accuracy is correct answers divided by all questions scored."
+  - id: "lev-recall-pairwise-say"
+    dimension: "conceptual"
+    type: "explain"
+    role: "recall"
+    knowledge_point: "lev-pairwise-scores"
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What does a pairwise evaluation judge, and how much credit does a tie receive in the tie-adjusted win rate?"
+    rubric:
+      - id: "definition"
+        criterion: "Explain that it compares two answers to the same prompt using a stated rule."
+        weight: 1
+        required: true
+      - id: "meaning"
+        criterion: "Explain that a tie receives half a point."
+        weight: 1
+        required: true
+    exemplar: "A pairwise evaluation compares two answers to one prompt using a stated rule. The tie-adjusted rate gives half a point for a tie."
+  - id: "lev-recall-pairwise-contrast"
+    dimension: "conceptual"
+    type: "mc"
+    role: "recall"
+    knowledge_point: "lev-pairwise-scores"
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "What does a tie-adjusted win rate describe?"
+    options:
+      - id: "a"
+        text: "The fraction of answers that are factually correct."
+        correct: false
+        feedback: "Accuracy counts correct answers; pairwise judging can favour one of two wrong answers."
+      - id: "b"
+        text: "The probability assigned to the next token."
+        correct: false
+        feedback: "Next-token probability is a model prediction."
+      - id: "c"
+        text: "Comparison performance against a particular opponent."
+        correct: true
+        feedback: "The rate depends on the opponent, prompts and judging rule."
+    solution: "The rate depends on the opponent, prompts and judging rule."
+  - id: "lev-recall-pairwise-formula"
+    dimension: "math"
+    type: "expression"
+    role: "recall"
+    knowledge_point: "lev-pairwise-scores"
+    difficulty: 2
+    est_minutes: 0.5
+    prompt: "A model wins W of P final prompt decisions and draws D. Write its tie-adjusted win rate as a fraction, keeping ties in the denominator."
+    answer: "(W+0.5*D)/P"
+    variables: { "W": [1, 10], "D": [1, 5], "P": [20, 40] }
+    solution: "Give one point per win and half per draw, then divide by all decisions."
+  - id: "lev-recall-judge-say"
+    dimension: "conceptual"
+    type: "explain"
+    role: "recall"
+    knowledge_point: "lev-judge-bias"
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What is position bias in an LLM judge, and how do swapped-order comparisons check for it?"
+    rubric:
+      - id: "definition"
+        criterion: "Explain that displayed position can influence an answer's rating."
+        weight: 1
+        required: true
+      - id: "meaning"
+        criterion: "Explain that the same answers are compared in both display orders to check whether position changes the choice."
+        weight: 1
+        required: true
+    exemplar: "Position bias means displayed place influences the rating. Comparing the same answers in both orders checks whether the choice changes with position."
+  - id: "lev-recall-judge-contrast"
+    dimension: "conceptual"
+    type: "mc"
+    role: "recall"
+    knowledge_point: "lev-judge-bias"
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Both display orders favour the same model. What additional check can catch a preference for longer answers?"
+    options:
+      - id: "a"
+        text: "Show the first verdict in the second request."
+        correct: false
+        feedback: "An earlier verdict can influence the second judgment."
+      - id: "b"
+        text: "Have a human review a sample of agreed pairs."
+        correct: true
+        feedback: "Length preferences can survive swapping, so human sample checks still matter."
+      - id: "c"
+        text: "Treat all agreed pairs as proven correct."
+        correct: false
+        feedback: "Agreement across orders checks position effects and can leave other biases."
+    solution: "Length preferences can survive swapping, so human sample checks still matter."
+  - id: "lev-recall-judge-contrast2"
+    dimension: "conceptual"
+    type: "mc"
+    role: "recall"
+    knowledge_point: "lev-judge-bias"
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "The two display orders select different models. Under the stated judging procedure, what happens next?"
+    options:
+      - id: "a"
+        text: "A human applies the rubric to reach one final decision."
+        correct: true
+        feedback: "Disagreements go to the chosen human reviewer and remain unresolved until reviewed."
+      - id: "b"
+        text: "The first display order supplies the final decision."
+        correct: false
+        feedback: "The procedure keeps both votes and sends disagreement to review."
+      - id: "c"
+        text: "The two votes automatically count as a final tie."
+        correct: false
+        feedback: "A disagreement is unresolved; a final tie needs a decision under the rubric."
+    solution: "Disagreements go to the chosen human reviewer and remain unresolved until reviewed."

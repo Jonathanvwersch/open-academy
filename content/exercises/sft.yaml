@@ -346,3 +346,127 @@ exercises:
         required: false
     exemplar: "Select response targets, including the first response token predicted by the last prompt position and the response ending marker. Divide the sum of their negative log probabilities by the selected-target count. Prompt tokens remain context for predicting the response. Reject examples with no selected targets before taking the mean."
     solution: "Select response targets, including the first response token predicted by the last prompt position and the response ending marker. Divide the sum of their negative log probabilities by the selected-target count. Prompt tokens remain context for predicting the response. Reject examples with no selected targets before taking the mean."
+
+  - id: "sft-recall-examples-say"
+    dimension: "conceptual"
+    type: "explain"
+    role: "recall"
+    knowledge_point: "sft-example-responses"
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What does supervised fine-tuning start from, and what do its prompt–response demonstrations teach?"
+    rubric:
+      - id: "definition"
+        criterion: "Explain that SFT starts from already learned model weights."
+        weight: 1
+        required: true
+      - id: "meaning"
+        criterion: "Explain that training increases the probability of the demonstrated responses to their prompts."
+        weight: 1
+        required: true
+    exemplar: "SFT starts from already learned weights. It trains on prompt–response demonstrations to increase the probability of those example answers."
+  - id: "sft-recall-examples-contrast"
+    dimension: "conceptual"
+    type: "mc"
+    role: "recall"
+    knowledge_point: "sft-example-responses"
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Which action actually trains an assistant on demonstrations?"
+    options:
+      - id: "a"
+        text: "Update weights using demonstrated response targets."
+        correct: true
+        feedback: "Training adjusts weights to increase the probability of the targets."
+      - id: "b"
+        text: "Add role markers to the same text."
+        correct: false
+        feedback: "Role markers format the conversation."
+      - id: "c"
+        text: "Save a copy of the current weights."
+        correct: false
+        feedback: "Saving weights creates a checkpoint."
+    solution: "Training adjusts weights to increase the probability of the targets."
+  - id: "sft-recall-examples-contrast2"
+    dimension: "conceptual"
+    type: "mc"
+    role: "recall"
+    knowledge_point: "sft-example-responses"
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "What is the purpose of a chat template's role markers?"
+    options:
+      - id: "a"
+        text: "Choose which weights stay fixed in training."
+        correct: false
+        feedback: "Freezing determines which weights stay fixed."
+      - id: "b"
+        text: "Measure performance on unseen prompts."
+        correct: false
+        feedback: "Evaluation measures performance on unseen prompts."
+      - id: "c"
+        text: "Show who is speaking in the token sequence."
+        correct: true
+        feedback: "Role markers separate messages by roles such as user and assistant."
+    solution: "Role markers separate messages by roles such as user and assistant."
+  - id: "sft-recall-mask-say"
+    dimension: "conceptual"
+    type: "explain"
+    role: "recall"
+    knowledge_point: "sft-response-loss"
+    difficulty: 1
+    est_minutes: 1
+    prompt: "How is response-only loss formed, and what happens to the prompt in the input?"
+    rubric:
+      - id: "definition"
+        criterion: "Explain that it selects and averages losses for response predictions."
+        weight: 1
+        required: true
+      - id: "meaning"
+        criterion: "Explain that the prompt stays in the input to help predict the response."
+        weight: 1
+        required: true
+    exemplar: "Response-only masking averages losses for response predictions. The prompt remains in the input and provides context for those predictions."
+  - id: "sft-recall-mask-contrast"
+    dimension: "conceptual"
+    type: "mc"
+    role: "recall"
+    knowledge_point: "sft-response-loss"
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Which prediction is included by response-only masking?"
+    options:
+      - id: "a"
+        text: "The first sequence token, which has no preceding position."
+        correct: false
+        feedback: "The first token has no prediction loss in this setup."
+      - id: "b"
+        text: "The prediction of the first response token."
+        correct: true
+        feedback: "The predicted token belongs to the response, so this loss counts."
+      - id: "c"
+        text: "The prediction of a prompt token from earlier prompt tokens."
+        correct: false
+        feedback: "The predicted token belongs to the prompt, so its loss is excluded."
+    solution: "The predicted token belongs to the response, so this loss counts."
+  - id: "sft-recall-mask-formula"
+    dimension: "math"
+    type: "text"
+    role: "recall"
+    knowledge_point: "sft-response-loss"
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "In response-only loss, the numerator sums the selected prediction losses. What does the denominator count? Answer in words."
+    accept:
+      [
+        "selected targets",
+        "response targets",
+        "selected response targets",
+        "the selected targets",
+        "the number of selected targets",
+        "the number of response targets",
+        "selected prediction losses",
+        "the number of selected prediction losses",
+      ]
+    regex: "^\\s*(?:the\\s+)?(?:number\\s+of\\s+)?(?:selected\\s+)?(?:response\\s+targets|selected\\s+targets|selected\\s+prediction\\s+losses)\\s*$"
+    solution: "Divide by the number of selected targets to average their losses."

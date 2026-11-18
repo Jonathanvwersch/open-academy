@@ -370,3 +370,163 @@ exercises:
         required: false
     exemplar: The router scores all n experts, selects k for each token, and combines their outputs. With C parameters per expert and a bias-free width-d router, the layer stores nC+nd parameters but uses kC+nd per token. Different tokens can still crowd onto the same experts, leaving others idle and possibly creating device bottlenecks, so a balancing loss encourages sharing work while the main loss teaches prediction.
     solution: Running only selected experts reduces work per token. The router also needs to spread tokens across experts to use them well and avoid bottlenecks.
+
+  - id: "moe-recall-route-say"
+    dimension: "conceptual"
+    type: "explain"
+    role: "recall"
+    knowledge_point: "moe-choose"
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What does a router read, and how does top-k routing form a token's output?"
+    rubric:
+      - id: "definition"
+        criterion: "Explain that the learned router reads the token's vector and scores each expert."
+        weight: 1
+        required: true
+      - id: "meaning"
+        criterion: "Explain that the k highest-scoring experts run and their weighted outputs are combined."
+        weight: 1
+        required: true
+    exemplar: "A learned router scores experts from the token's vector. The k highest-scoring experts run, and their weighted outputs form the result."
+  - id: "moe-recall-route-contrast"
+    dimension: "conceptual"
+    type: "mc"
+    role: "recall"
+    knowledge_point: "moe-choose"
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Which part of an MoE layer decides which MLPs process a token?"
+    options:
+      - id: "a"
+        text: "The router"
+        correct: true
+        feedback: "The router scores experts and selects the highest-scoring ones."
+      - id: "b"
+        text: "An expert"
+        correct: false
+        feedback: "An expert processes the tokens assigned to it."
+      - id: "c"
+        text: "The residual connection"
+        correct: false
+        feedback: "A residual connection adds a sublayer's result to its input."
+    solution: "The router scores experts and selects the highest-scoring ones."
+  - id: "moe-recall-route-formula"
+    dimension: "math"
+    type: "text"
+    role: "recall"
+    knowledge_point: "moe-choose"
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Complete the routing weight rule for a selected expert: $g_i=p_i/\\underline{\\quad}$. Which probabilities are added in the denominator? Answer in words."
+    accept:
+      [
+        "the selected experts' probabilities",
+        "selected expert probabilities",
+        "sum of selected probabilities",
+        "the sum of the selected experts' probabilities",
+      ]
+    regex: "^\\s*(?:the\\s+)?(?:sum\\s+of\\s+)?(?:the\\s+)?selected\\s+experts?'?\\s+probabilities\\s*$"
+    solution: "Divide by the sum of probabilities of the selected experts."
+  - id: "moe-recall-count-say"
+    dimension: "conceptual"
+    type: "explain"
+    role: "recall"
+    knowledge_point: "moe-count"
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What do total parameters and active parameters per token each count in an MoE layer?"
+    rubric:
+      - id: "definition"
+        criterion: "Explain that total parameters count the router and all experts."
+        weight: 1
+        required: true
+      - id: "meaning"
+        criterion: "Explain that active parameters count the router and the selected experts."
+        weight: 1
+        required: true
+    exemplar: "Total parameters include the router and all experts. Active parameters include the router and only the experts selected for one token."
+  - id: "moe-recall-count-contrast"
+    dimension: "conceptual"
+    type: "mc"
+    role: "recall"
+    knowledge_point: "moe-count"
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "With expert size fixed, which change increases expert storage while leaving the selected expert count per token unchanged?"
+    options:
+      - id: "a"
+        text: "Increase k while keeping n fixed."
+        correct: false
+        feedback: "Larger k makes each token run more experts."
+      - id: "b"
+        text: "Increase each expert's hidden width."
+        correct: false
+        feedback: "Wider experts increase both stored and active expert parameters."
+      - id: "c"
+        text: "Increase n while keeping k fixed."
+        correct: true
+        feedback: "More experts need storage while each token still selects k."
+    solution: "More experts need storage while each token still selects k."
+  - id: "moe-recall-count-formula"
+    dimension: "math"
+    type: "expression"
+    role: "recall"
+    knowledge_point: "moe-count"
+    difficulty: 2
+    est_minutes: 0.5
+    prompt: "A layer has n equal experts with C parameters each, input width d, a bias-free router and top-k routing. Write the active parameter count per token."
+    answer: "k*C+n*d"
+    variables: { "n": [4, 16], "C": [20, 100], "d": [2, 8], "k": [1, 3] }
+    solution: "Count k experts and all nd router weights."
+  - id: "moe-recall-balance-say"
+    dimension: "conceptual"
+    type: "explain"
+    role: "recall"
+    knowledge_point: "moe-balance"
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What is routing collapse, and what does a load-balancing loss encourage?"
+    rubric:
+      - id: "definition"
+        criterion: "Explain that routing collapse concentrates almost all work on a few experts."
+        weight: 1
+        required: true
+      - id: "meaning"
+        criterion: "Explain that the extra loss encourages work to spread across experts."
+        weight: 1
+        required: true
+    exemplar: "Routing collapse puts almost all work on a few experts while others sit idle. A load-balancing loss encourages the router to spread work across experts."
+  - id: "moe-recall-balance-contrast"
+    dimension: "conceptual"
+    type: "mc"
+    role: "recall"
+    knowledge_point: "moe-balance"
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "What does the auxiliary penalty in MoE training address?"
+    options:
+      - id: "a"
+        text: "The number of parameters stored in experts"
+        correct: false
+        feedback: "Stored parameter counts depend on the layer's size; the penalty uses assignment fractions and router probabilities."
+      - id: "b"
+        text: "Uneven use of the available experts"
+        correct: true
+        feedback: "The extra penalty encourages more even expert use."
+      - id: "c"
+        text: "Errors in predicted next-token probabilities"
+        correct: false
+        feedback: "Next-token cross-entropy measures prediction loss."
+    solution: "The extra penalty encourages more even expert use."
+  - id: "moe-recall-balance-formula"
+    dimension: "math"
+    type: "expression"
+    role: "recall"
+    knowledge_point: "moe-balance"
+    difficulty: 2
+    est_minutes: 0.5
+    prompt: "For two top-1 experts, f is the fraction of tokens assigned to expert 1 and P is its average router probability before selection. Write the auxiliary load-balancing loss."
+    answer: "2*(f*P+(1-f)*(1-P))"
+    variables: { "f": [0.05, 0.95], "P": [0.05, 0.95] }
+    solution: "For two experts, multiply the sum of the two fraction-probability products by 2."

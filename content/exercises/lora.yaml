@@ -798,3 +798,208 @@ exercises:
         weight: 1
         required: true
     exemplar: "LoRA keeps the pretrained matrix $W$ fixed. It trains the change $\\Delta W=BA$, where $B$ has shape $d\\times r$ and $A$ has shape $r\\times k$. Those factors contain $r(d+k)$ trainable numbers, far fewer than $dk$ when $r$ is small."
+
+  - id: "lorp-recall-frozen-say"
+    dimension: "conceptual"
+    type: "explain"
+    role: "recall"
+    knowledge_point: "lora-frozen-change"
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What does freezing W mean, and what does training update in the separate-change description?"
+    rubric:
+      - id: "definition"
+        criterion: "Explain that freezing W leaves it out of training so its entries stay fixed."
+        weight: 1
+        required: true
+      - id: "meaning"
+        criterion: "Explain that training updates the separate change matrix ΔW."
+        weight: 1
+        required: true
+    exemplar: "Freezing W keeps its entries fixed during training. Training updates the separate change ΔW, whose output is added to Wx."
+  - id: "lorp-recall-frozen-contrast"
+    dimension: "conceptual"
+    type: "mc"
+    role: "recall"
+    knowledge_point: "lora-frozen-change"
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Which operation changes a layer's behaviour while keeping its pretrained W fixed?"
+    options:
+      - id: "a"
+        text: "Train a separate change ΔW."
+        correct: true
+        feedback: "A separate trained change can alter the output while W stays fixed."
+      - id: "b"
+        text: "Update every entry of W."
+        correct: false
+        feedback: "Updating W is full fine-tuning of that matrix."
+      - id: "c"
+        text: "Set the input vector to zero."
+        correct: false
+        feedback: "A zero input removes the input signal and supplies no trained change."
+    solution: "A separate trained change can alter the output while W stays fixed."
+  - id: "lorp-recall-frozen-formula"
+    dimension: "math"
+    type: "text"
+    role: "recall"
+    knowledge_point: "lora-frozen-change"
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Complete the layer identity: $Wx+\\Delta Wx=\\underline{\\quad}x$. Type the matrix that multiplies x."
+    accept: ["W+ΔW", "W + ΔW", "W+delta W", "W+deltaW", "W+\\Delta W", "(W+ΔW)", "(W+\\Delta W)"]
+    regex: "^\\s*\\(?\\s*w\\s*\\+\\s*(?:Δ|\\\\?delta)\\s*w\\s*\\)?\\s*$"
+    solution: "The matrix is W+ΔW. Multiplication distributes over addition."
+  - id: "lorp-recall-factors-say"
+    dimension: "conceptual"
+    type: "explain"
+    role: "recall"
+    knowledge_point: "lora-two-thin-matrices"
+    difficulty: 1
+    est_minutes: 1
+    prompt: "How does LoRA build ΔW from A and B, and what does the chosen rank r limit?"
+    rubric:
+      - id: "definition"
+        criterion: "Explain that ΔW equals BA, with B having r columns and A having r rows."
+        weight: 1
+        required: true
+      - id: "meaning"
+        criterion: "Explain that BA has rank at most r."
+        weight: 1
+        required: true
+    exemplar: "LoRA builds ΔW as BA, where B has r columns and A has r rows. The product has rank at most r."
+  - id: "lorp-recall-factors-contrast"
+    dimension: "conceptual"
+    type: "mc"
+    role: "recall"
+    knowledge_point: "lora-two-thin-matrices"
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "To apply a LoRA change to input x without building the full change matrix, which computation is used?"
+    options:
+      - id: "a"
+        text: "A(Bx)"
+        correct: false
+        feedback: "This reverses the two factors and generally has incompatible sizes."
+      - id: "b"
+        text: "Wx"
+        correct: false
+        feedback: "Wx is the frozen matrix's output."
+      - id: "c"
+        text: "B(Ax)"
+        correct: true
+        feedback: "Apply A to reduce to r numbers, then B to reach the output width."
+    solution: "Apply A to reduce to r numbers, then B to reach the output width."
+  - id: "lorp-recall-factors-formula"
+    dimension: "math"
+    type: "text"
+    role: "recall"
+    knowledge_point: "lora-two-thin-matrices"
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Complete the LoRA change formula: $\\Delta W=\\underline{\\quad}$. Type the two factors in order."
+    accept: ["BA", "B A", "B*A", "B·A", "B×A", "B times A"]
+    regex: "^\\s*b\\s*(?:\\*|·|×|times)?\\s*a\\s*$"
+    solution: "ΔW=BA: B has shape d by r and A has shape r by k."
+  - id: "lorp-recall-savings-say"
+    dimension: "conceptual"
+    type: "explain"
+    role: "recall"
+    knowledge_point: "lora-count-savings"
+    difficulty: 1
+    est_minutes: 1
+    prompt: "Why does training fewer LoRA parameters save training memory, and why do frozen weights still matter for memory?"
+    rubric:
+      - id: "definition"
+        criterion: "Explain that gradients and Adam's running averages are stored only for trained parameters."
+        weight: 1
+        required: true
+      - id: "meaning"
+        criterion: "Explain that frozen weights still occupy memory."
+        weight: 1
+        required: true
+    exemplar: "Gradients and Adam's running averages are needed only for A and B. The frozen weights still occupy memory, so memory savings are smaller than trainable-parameter savings."
+  - id: "lorp-recall-savings-contrast"
+    dimension: "conceptual"
+    type: "mc"
+    role: "recall"
+    knowledge_point: "lora-count-savings"
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Which stored items shrink when only A and B are trained?"
+    options:
+      - id: "a"
+        text: "The number of input tokens."
+        correct: false
+        feedback: "LoRA changes which weights train; input length is a separate choice."
+      - id: "b"
+        text: "Gradients and Adam's running averages."
+        correct: true
+        feedback: "These training quantities are kept for the trained numbers."
+      - id: "c"
+        text: "The frozen pretrained matrices."
+        correct: false
+        feedback: "The pretrained weights stay in memory."
+    solution: "These training quantities are kept for the trained numbers."
+  - id: "lorp-recall-savings-formula"
+    dimension: "math"
+    type: "expression"
+    role: "recall"
+    knowledge_point: "lora-count-savings"
+    difficulty: 2
+    est_minutes: 0.5
+    prompt: "A weight matrix has d rows and k columns. Write the number of trainable parameters in a rank-r LoRA adapter with no biases."
+    answer: "r*(d+k)"
+    variables: { "d": [32, 256], "k": [32, 256], "r": [1, 8] }
+    solution: "B has dr entries and A has rk, for r(d+k) in total."
+  - id: "lorp-recall-merge-say"
+    dimension: "conceptual"
+    type: "explain"
+    role: "recall"
+    knowledge_point: "lora-merge"
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What does merging a trained LoRA adapter do, and what happens to prediction work after merging?"
+    rubric:
+      - id: "definition"
+        criterion: "Explain that merging adds the trained product BA into W to form W'."
+        weight: 1
+        required: true
+      - id: "meaning"
+        criterion: "Explain that the merged matrix has the same shape and prediction work as the original matrix."
+        weight: 1
+        required: true
+    exemplar: "Merging forms W'=W+BA. The merged matrix has the same shape as W, so predicting with it takes the same work as with the original matrix."
+  - id: "lorp-recall-merge-contrast"
+    dimension: "conceptual"
+    type: "mc"
+    role: "recall"
+    knowledge_point: "lora-merge"
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Which setup lets one frozen model serve several task-specific LoRA changes?"
+    options:
+      - id: "a"
+        text: "Keep separate adapters and swap them."
+        correct: true
+        feedback: "Separate adapters keep each task's change available."
+      - id: "b"
+        text: "Merge one adapter and discard the others."
+        correct: false
+        feedback: "A merged matrix holds the change for that one task."
+      - id: "c"
+        text: "Initialize both factors to zero and train."
+        correct: false
+        feedback: "Both factors at zero give zero gradients and prevent learning."
+    solution: "Separate adapters keep each task's change available."
+  - id: "lorp-recall-merge-formula"
+    dimension: "math"
+    type: "text"
+    role: "recall"
+    knowledge_point: "lora-merge"
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Complete the merge rule after training: $W'=W+\\underline{\\quad}$. Type the added product."
+    accept: ["BA", "B A", "B*A", "B·A", "B×A", "B times A"]
+    regex: "^\\s*b\\s*(?:\\*|·|×|times)?\\s*a\\s*$"
+    solution: "Build BA once and add it to W."

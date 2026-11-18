@@ -944,3 +944,208 @@ exercises:
         required: true
     exemplar: "Tokenize the cleaned text and pack the tokens into fixed-length windows. Pretraining predicts the next token across that text, producing a base model that continues text. Post-training continues training on example conversations so it responds as an assistant."
     solution: "Tokenize the cleaned text and pack the tokens into fixed-length windows. Pretraining predicts the next token across that text, producing a base model that continues text. Post-training continues training on example conversations so it responds as an assistant."
+
+  - id: "pt-recall-data-say"
+    dimension: "conceptual"
+    type: "explain"
+    role: "recall"
+    knowledge_point: "pt-training-data"
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What is pretraining data, and why are its tokens packed into equal-length windows?"
+    rubric:
+      - id: "definition"
+        criterion: "Explain that pretraining data is a stream of cleaned, deduplicated text tokens."
+        weight: 1
+        required: true
+      - id: "meaning"
+        criterion: "Explain that equal-length windows let the computer process many windows side by side."
+        weight: 1
+        required: true
+    exemplar: "Pretraining data is cleaned, deduplicated text turned into a token stream. Equal-length windows let the computer process many windows side by side."
+  - id: "pt-recall-data-contrast"
+    dimension: "conceptual"
+    type: "mc"
+    role: "recall"
+    knowledge_point: "pt-training-data"
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Which preparation stage removes repeated copies of text?"
+    options:
+      - id: "a"
+        text: "Deduplication"
+        correct: true
+        feedback: "Deduplication removes repeated copies."
+      - id: "b"
+        text: "Filtering"
+        correct: false
+        feedback: "Filtering removes poor text such as spam and gibberish."
+      - id: "c"
+        text: "Tokenization"
+        correct: false
+        feedback: "Tokenization turns text into tokens."
+    solution: "Deduplication removes repeated copies."
+  - id: "pt-recall-data-formula"
+    dimension: "math"
+    type: "expression"
+    role: "recall"
+    knowledge_point: "pt-training-data"
+    difficulty: 2
+    est_minutes: 0.5
+    prompt: "A pretraining window contains T tokens and is trained on its own. How many next-token predictions does it supply? Write an expression."
+    answer: "T-1"
+    variables: { "T": [4, 2048] }
+    solution: "The first token has no preceding token; each of the remaining T-1 tokens supplies a prediction."
+  - id: "pt-recall-compute-say"
+    dimension: "conceptual"
+    type: "explain"
+    role: "recall"
+    knowledge_point: "pt-training-compute"
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What does training compute measure, and which two run sizes determine it in the approximation C ≈ 6PD?"
+    rubric:
+      - id: "definition"
+        criterion: "Explain that training compute is the total number of floating-point operations in a run."
+        weight: 1
+        required: true
+      - id: "meaning"
+        criterion: "Explain that P counts model parameters and D counts training tokens."
+        weight: 1
+        required: true
+    exemplar: "Training compute counts the run's floating-point operations. P is the parameter count and D is the number of training tokens."
+  - id: "pt-recall-compute-contrast"
+    dimension: "conceptual"
+    type: "mc"
+    role: "recall"
+    knowledge_point: "pt-training-compute"
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Which quantity counts the additions and multiplications used by a training run?"
+    options:
+      - id: "a"
+        text: "Model parameter count"
+        correct: false
+        feedback: "Parameter count measures the model's learned numbers."
+      - id: "b"
+        text: "Training token count"
+        correct: false
+        feedback: "Token count measures how much tokenized text is used."
+      - id: "c"
+        text: "Training compute"
+        correct: true
+        feedback: "Compute measures floating-point operations."
+    solution: "Compute measures floating-point operations."
+  - id: "pt-recall-compute-formula"
+    dimension: "math"
+    type: "expression"
+    role: "recall"
+    knowledge_point: "pt-training-compute"
+    difficulty: 2
+    est_minutes: 0.5
+    prompt: "Write the approximate training compute in FLOPs for P parameters and D training tokens."
+    answer: "6*P*D"
+    variables: { "P": [1000, 1000000], "D": [10000, 10000000] }
+    solution: "Each parameter costs about six FLOPs per training token."
+  - id: "pt-recall-scaling-say"
+    dimension: "conceptual"
+    type: "explain"
+    role: "recall"
+    knowledge_point: "pt-scaling-laws"
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What does a scaling law predict, and how can small training runs help plan a larger run?"
+    rubric:
+      - id: "definition"
+        criterion: "Explain that a scaling law predicts loss from compute, parameters or training data."
+        weight: 1
+        required: true
+      - id: "meaning"
+        criterion: "Explain that measurements from small runs can be extended to predict a larger run's loss."
+        weight: 1
+        required: true
+    exemplar: "A scaling law predicts loss from the resources used for training. Measurements from small runs can be extended to estimate the loss of a larger run."
+  - id: "pt-recall-scaling-contrast"
+    dimension: "conceptual"
+    type: "mc"
+    role: "recall"
+    knowledge_point: "pt-scaling-laws"
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Which claim is the kind of prediction a scaling law provides?"
+    options:
+      - id: "a"
+        text: "The next token for a given prompt."
+        correct: false
+        feedback: "Next-token probabilities come from running the language model."
+      - id: "b"
+        text: "Expected loss at a larger compute budget."
+        correct: true
+        feedback: "Scaling laws predict loss from training resources."
+      - id: "c"
+        text: "The exact skills at a chosen loss."
+        correct: false
+        feedback: "The lesson says forecasting specific skills from loss is much harder."
+    solution: "Scaling laws predict loss from training resources."
+  - id: "pt-recall-scaling-formula"
+    dimension: "math"
+    type: "expression"
+    role: "recall"
+    knowledge_point: "pt-scaling-laws"
+    difficulty: 2
+    est_minutes: 0.5
+    prompt: "A scaling pattern multiplies loss by 0.9 for each tenfold compute increase. Starting at loss L0, write the loss after k such increases."
+    answer: "L0*0.9^k"
+    variables: { "L0": [1, 8], "k": [1, 6] }
+    solution: "Multiply L0 by 0.9 once per tenfold increase."
+  - id: "pt-recall-pipeline-say"
+    dimension: "conceptual"
+    type: "explain"
+    role: "recall"
+    knowledge_point: "pt-training-pipeline"
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What does pretraining produce, and what is post-training meant to change?"
+    rubric:
+      - id: "definition"
+        criterion: "Explain that pretraining produces a base model that continues text."
+        weight: 1
+        required: true
+      - id: "meaning"
+        criterion: "Explain that post-training turns the base model into a helpful assistant and mostly changes how it responds."
+        weight: 1
+        required: true
+    exemplar: "Pretraining produces a base model that continues text. Post-training turns it into a helpful assistant, mostly changing how it responds."
+  - id: "pt-recall-pipeline-contrast"
+    dimension: "conceptual"
+    type: "mc"
+    role: "recall"
+    knowledge_point: "pt-training-pipeline"
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Which activity gives an independent check while model weights are being developed?"
+    options:
+      - id: "a"
+        text: "Evaluation on unseen tests"
+        correct: true
+        feedback: "Evaluation checks tasks the model never trained on."
+      - id: "b"
+        text: "Saving model checkpoints"
+        correct: false
+        feedback: "Checkpoints save weights so training can resume."
+      - id: "c"
+        text: "Training on example conversations"
+        correct: false
+        feedback: "Example conversations are used in supervised fine-tuning."
+    solution: "Evaluation checks tasks the model never trained on."
+  - id: "pt-recall-pipeline-formula"
+    dimension: "math"
+    type: "expression"
+    role: "recall"
+    knowledge_point: "pt-training-pipeline"
+    difficulty: 2
+    est_minutes: 0.5
+    prompt: "Two stages train the same model. Pretraining uses Dpre tokens and fine-tuning uses Dfine tokens. Using the compute approximation for each, write pretraining compute divided by fine-tuning compute."
+    answer: "Dpre/Dfine"
+    variables: { "Dpre": [100000, 1000000], "Dfine": [1000, 10000] }
+    solution: "The common factor 6P cancels, leaving the token-count ratio."
