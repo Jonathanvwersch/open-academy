@@ -23,6 +23,7 @@ import {
   outlinePosition,
   prerequisiteMet,
 } from '../../src/learning/prerequisites.js';
+import { reviewTopicsForActivity } from '../../src/learning/review-topics.js';
 import type { Candidate, PlannedActivity, SchedulerState } from '../../src/learning/scheduler.js';
 import {
   currentLearnerUnit,
@@ -81,6 +82,35 @@ function reviewCandidate(
 beforeAll(async () => {
   content = await loadContent('tests/fixtures/content');
   courseContent = await loadContent('content');
+});
+
+test('in-progress review topics omit topics whose exercises have attempts', () => {
+  const vectorsExercise = required(
+    content.exercisesByConcept.get('vectors')?.[0],
+    'vectors exercise',
+  );
+  const derivativesExercise = required(
+    content.exercisesByConcept.get('derivatives')?.[0],
+    'derivatives exercise',
+  );
+  const activity = {
+    kind: 'review',
+    status: 'in_progress',
+    exerciseIds: [vectorsExercise.id, derivativesExercise.id],
+  };
+
+  expect(
+    reviewTopicsForActivity(activity, content, new Set([vectorsExercise.id])).map(
+      (topic) => topic.conceptId,
+    ),
+  ).toEqual(['derivatives']);
+  expect(
+    reviewTopicsForActivity(
+      { ...activity, status: 'planned' },
+      content,
+      new Set(activity.exerciseIds),
+    ).map((topic) => topic.conceptId),
+  ).toEqual(['vectors', 'derivatives']);
 });
 
 function emptyState(): SchedulerState {

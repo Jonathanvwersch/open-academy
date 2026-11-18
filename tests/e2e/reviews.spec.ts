@@ -168,6 +168,31 @@ test('Reviews page shows due and upcoming topics at desktop and mobile widths', 
   }
 });
 
+test('Reviews page notes only due topics omitted from today’s plan', async ({ page }) => {
+  await insertReviewCards();
+  let plannedReviews = 0;
+  await page.route('**/api/today', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        dueReviews: plannedReviews,
+        sessionKind: 'weekday',
+        activeSessionId: null,
+      }),
+    }),
+  );
+
+  await page.goto('/reviews');
+  await expect(page.getByText("Today's plan covers 0 of these. The rest stay due.")).toBeVisible();
+
+  plannedReviews = 1;
+  await page.reload();
+  await expect(
+    page.getByText(/Today's plan covers \d+ of these\. The rest stay due\./),
+  ).toHaveCount(0);
+});
+
 test('mixed reviews show their topics on Home and beside each session question', async ({
   page,
 }, testInfo) => {

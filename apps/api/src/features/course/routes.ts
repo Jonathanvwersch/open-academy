@@ -7,6 +7,7 @@ import type { ContentIndex } from '../../content/types.js';
 import type { Database } from '../../db/client.js';
 import type { LearnerRepository } from '../../db/repository.js';
 import {
+  attempts,
   diagnosticRuns,
   lessonProblems,
   lessonRuns,
@@ -39,6 +40,7 @@ import {
   masteryKey,
   prerequisiteMet,
 } from '../../learning/prerequisites.js';
+import { reviewTopicsForActivity } from '../../learning/review-topics.js';
 import type { PlannedActivity, SessionPreferences } from '../../learning/scheduler.js';
 import {
   currentLearnerUnit,
@@ -425,6 +427,27 @@ export function registerLearnCourseRoutes(
           (activity.status === 'planned' || activity.status === 'in_progress') &&
           sessionActivityIsInContent(index, activity),
       ) ?? [];
+    const inProgressReviewActivityIds = activeActivities
+      .filter((activity) => activity.kind === 'review' && activity.status === 'in_progress')
+      .map((activity) => activity.id);
+    const reviewAttempts = inProgressReviewActivityIds.length
+      ? await deps.db
+          .select({ activityId: attempts.activityId, exerciseId: attempts.exerciseId })
+          .from(attempts)
+          .where(
+            and(
+              eq(attempts.userId, userId),
+              inArray(attempts.activityId, inProgressReviewActivityIds),
+            ),
+          )
+      : [];
+    const attemptedExerciseIdsByActivity = new Map<string, Set<string>>();
+    for (const attempt of reviewAttempts) {
+      if (!attempt.activityId) continue;
+      const exerciseIds = attemptedExerciseIdsByActivity.get(attempt.activityId) ?? new Set();
+      exerciseIds.add(attempt.exerciseId);
+      attemptedExerciseIdsByActivity.set(attempt.activityId, exerciseIds);
+    }
     const activeSessionId =
       activeSession && (activeSession.activities.length === 0 || activeActivities.length > 0)
         ? (active?.id ?? null)
@@ -436,16 +459,11 @@ export function registerLearnCourseRoutes(
     const tasks = activities.map((activity, taskIndex) => {
       const conceptId = activity.conceptId;
       const concept = conceptId ? index.conceptsById.get(conceptId) : undefined;
+      const attemptedExerciseIds =
+        'id' in activity ? attemptedExerciseIdsByActivity.get(activity.id) : undefined;
       const reviewTopics =
         activity.kind === 'review'
-          ? Array.from(
-              new Set(
-                activity.exerciseIds.flatMap((exerciseId) => {
-                  const id = index.exercisesById.get(exerciseId)?.concept;
-                  return id ? [id] : [];
-                }),
-              ),
-            ).map((id) => ({ conceptId: id, title: index.conceptsById.get(id)?.title ?? id }))
+          ? reviewTopicsForActivity(activity, index, attemptedExerciseIds)
           : [];
       const lesson = conceptId ? index.lessonsByConcept.get(conceptId) : undefined;
       const run = conceptId ? runsByConcept.get(conceptId) : undefined;
@@ -676,15 +694,7 @@ export function registerLearnCourseRoutes(
     const finishProjectionCourses = focusSubjectId
       ? buildProjectionCourses(index, focusedCourseIds, topicState, completionDates, focusSubjectId)
       : projectionCourses;
-    const projectionSchedulerState = schedulerState ?? {
-      activeCourseId,
-      studyCourseIds,
-      focusSubjectId: focusSubjectId ?? undefined,
-      mastery,
-      reviewedTodayConceptIds: [],
-      lessonRuns: lessonRunState,
-      recentLearnMinutesByConcept,
-    };
+    const projectionSchedulerState = await loadSchedulerState();
     const recentLearnMinutesBySubject = schedulerRecentLearnMinutesBySubject(
       projectionSchedulerState,
       index,

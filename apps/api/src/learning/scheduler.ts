@@ -130,6 +130,48 @@ export interface Candidate {
   courseId?: string;
 }
 
+export type ReviewSelectionResult =
+  | 'selected'
+  | 'not_candidate:reviewedToday'
+  | 'not_candidate:stub'
+  | 'not_candidate:focusFilter'
+  | 'not_candidate:noEligibleExercise'
+  | 'not_candidate:excludedByReplan'
+  | 'rejected:reviewMinuteCap'
+  | 'rejected:budget'
+  | 'rejected:maxActivities'
+  | 'rejected:usesSelectedExercise'
+  | 'rejected:selectedConceptConflict'
+  | 'rejected:other';
+
+export interface ReviewSelectionExplanation {
+  conceptId: string;
+  result: ReviewSelectionResult;
+  exerciseIds: string[];
+  exerciseDimensions: string[];
+  reviewMinutes: number;
+  reviewCap: number;
+  usedMinutes: number;
+  budget: number;
+  plannedActivityCount: number;
+}
+
+type ReviewSelectionTrace = {
+  results: Map<string, ReviewSelectionResult>;
+  exerciseIds: Map<string, string[]>;
+  metrics: Map<
+    string,
+    Pick<
+      ReviewSelectionExplanation,
+      'reviewMinutes' | 'reviewCap' | 'usedMinutes' | 'budget' | 'plannedActivityCount'
+    >
+  >;
+  finalMetrics?: Pick<
+    ReviewSelectionExplanation,
+    'reviewMinutes' | 'reviewCap' | 'usedMinutes' | 'budget' | 'plannedActivityCount'
+  >;
+};
+
 interface SchedulerCourseContext {
   course: IndexedCourse;
   currentUnit: number;
@@ -347,6 +389,57 @@ export function planSession(
   );
 }
 
+export function explainReviewSelection(
+  state: SchedulerState,
+  content: ContentIndex,
+  now: Date,
+  budgetMinutes: number,
+  excludedReviewConceptIds: ReadonlySet<string> = new Set(),
+): ReviewSelectionExplanation[] {
+  const trace: ReviewSelectionTrace = {
+    results: new Map(),
+    exerciseIds: new Map(),
+    metrics: new Map(),
+  };
+  packWeekday(
+    state,
+    content,
+    now,
+    Math.max(0, budgetMinutes),
+    new Set(),
+    excludedReviewConceptIds,
+    trace,
+  );
+  const conceptIds = [
+    ...new Set(
+      state.cards
+        .filter((card) => isDueToday(card.dueAt, now, state.timezone ?? 'UTC'))
+        .map((card) => card.conceptId),
+    ),
+  ];
+  return conceptIds.map((conceptId) => ({
+    conceptId,
+    result: trace.results.get(conceptId) ?? 'rejected:other',
+    exerciseIds: trace.exerciseIds.get(conceptId) ?? [],
+    exerciseDimensions: [
+      ...new Set(
+        (trace.exerciseIds.get(conceptId) ?? []).flatMap((exerciseId) => {
+          const dimension = content.exercisesById.get(exerciseId)?.dimension;
+          return dimension ? [dimension] : [];
+        }),
+      ),
+    ],
+    ...(trace.metrics.get(conceptId) ??
+      trace.finalMetrics ?? {
+        reviewMinutes: 0,
+        reviewCap: Math.floor(budgetMinutes * SCHEDULER_CONFIG.weekday.reviewBudgetRatio),
+        usedMinutes: 0,
+        budget: Math.max(0, budgetMinutes),
+        plannedActivityCount: 0,
+      }),
+  }));
+}
+
 export function replan(
   state: SchedulerState,
   content: ContentIndex,
@@ -412,16 +505,30 @@ function packWeekday(
   budget: number,
   excludedLearnConceptIds: ReadonlySet<string> = new Set(),
   excludedReviewConceptIds: ReadonlySet<string> = new Set(),
+  reviewSelectionTrace?: ReviewSelectionTrace,
 ): SessionPlan {
-  const candidates = generateCandidates(state, content, now).filter(
+  const generatedCandidates = generateCandidates(state, content, now, reviewSelectionTrace);
+  const candidates = generatedCandidates.filter(
     (candidate) =>
       (candidate.activity.kind !== 'learn' ||
         !excludedLearnConceptIds.has(candidate.activity.conceptId ?? '')) &&
       (candidate.activity.kind !== 'review' ||
         !excludedReviewConceptIds.has(candidate.activity.conceptId ?? '')),
   );
+  for (const candidate of generatedCandidates) {
+    const conceptId = candidate.activity.conceptId;
+    if (
+      candidate.activity.kind === 'review' &&
+      conceptId &&
+      excludedReviewConceptIds.has(conceptId)
+    ) {
+      reviewSelectionTrace?.results.set(conceptId, 'not_candidate:excludedByReplan');
+    }
+  }
   const selected: Candidate[] = [];
   let usedMinutes = 0;
+  let reviewMinutes = 0;
+  const reviewCap = Math.floor(budget * SCHEDULER_CONFIG.weekday.reviewBudgetRatio);
   let newConceptCount = 0;
   const selectedConcepts = new Set<string>();
   const selectedLearnConcepts = new Set<string>();
@@ -429,7 +536,7 @@ function packWeekday(
     const reviews = items.filter((candidate) => candidate.activity.kind === 'review');
     return items.length - reviews.length + mixReviewActivities(reviews, content).length;
   };
-  const canAdd = (candidate: Candidate) => {
+  const addRejectionReason = (candidate: Candidate) => {
     const reviewAlongsideLesson =
       candidate.activity.kind === 'review' &&
       Boolean(candidate.activity.conceptId) &&
@@ -438,17 +545,40 @@ function packWeekday(
           selectedCandidate.activity.kind === 'learn' &&
           selectedCandidate.activity.conceptId === candidate.activity.conceptId,
       );
-    return (
-      plannedActivityCount([...selected, candidate]) <= SCHEDULER_CONFIG.weekday.maxActivities &&
-      usedMinutes + candidate.adjustedMinutes <= budget &&
-      !usesSelectedExercise(candidate, selected) &&
-      (!candidate.activity.conceptId ||
-        !selectedConcepts.has(candidate.activity.conceptId) ||
-        reviewAlongsideLesson)
-    );
+    if (plannedActivityCount([...selected, candidate]) > SCHEDULER_CONFIG.weekday.maxActivities)
+      return 'maxActivities' as const;
+    if (usedMinutes + candidate.adjustedMinutes > budget) return 'budget' as const;
+    if (usesSelectedExercise(candidate, selected)) return 'usesSelectedExercise' as const;
+    if (
+      candidate.activity.conceptId &&
+      selectedConcepts.has(candidate.activity.conceptId) &&
+      !reviewAlongsideLesson
+    )
+      return 'selectedConceptConflict' as const;
+    return undefined;
   };
+  const metrics = () => ({
+    reviewMinutes,
+    reviewCap,
+    usedMinutes,
+    budget,
+    plannedActivityCount: plannedActivityCount(selected),
+  });
+  const recordReviewResult = (
+    conceptId: string,
+    result: ReviewSelectionResult,
+    candidate?: Candidate,
+  ) => {
+    if (!reviewSelectionTrace) return;
+    reviewSelectionTrace.results.set(conceptId, result);
+    if (candidate) {
+      reviewSelectionTrace.exerciseIds.set(conceptId, candidate.activity.exerciseIds);
+    }
+    reviewSelectionTrace.metrics.set(conceptId, metrics());
+  };
+  const canAdd = (candidate: Candidate) => addRejectionReason(candidate) === undefined;
   const add = (candidate: Candidate) => {
-    if (!canAdd(candidate)) return false;
+    if (addRejectionReason(candidate)) return false;
     selected.push(candidate);
     usedMinutes += candidate.adjustedMinutes;
     if (candidate.activity.conceptId) selectedConcepts.add(candidate.activity.conceptId);
@@ -519,15 +649,30 @@ function packWeekday(
   const reviewCandidates = candidates
     .filter((candidate) => candidate.activity.kind === 'review')
     .sort((left, right) => right.score - left.score);
-  const reviewCap = Math.floor(budget * SCHEDULER_CONFIG.weekday.reviewBudgetRatio);
-  let reviewMinutes = 0;
   for (const candidate of reviewCandidates) {
-    if (reviewMinutes + candidate.adjustedMinutes > reviewCap) continue;
-    if (add(candidate)) reviewMinutes += candidate.adjustedMinutes;
+    const conceptId = candidate.activity.conceptId;
+    if (!conceptId) continue;
+    if (reviewMinutes + candidate.adjustedMinutes > reviewCap) {
+      recordReviewResult(conceptId, 'rejected:reviewMinuteCap', candidate);
+      continue;
+    }
+    const rejectionReason = addRejectionReason(candidate);
+    if (rejectionReason) {
+      recordReviewResult(conceptId, `rejected:${rejectionReason}`, candidate);
+      continue;
+    }
+    add(candidate);
+    reviewMinutes += candidate.adjustedMinutes;
+    recordReviewResult(conceptId, 'selected', candidate);
   }
   if (!selected.some((candidate) => candidate.activity.kind === 'review')) {
     const fallbackReview = reviewCandidates.find(canAdd);
-    if (fallbackReview) add(fallbackReview);
+    if (fallbackReview) {
+      add(fallbackReview);
+      reviewMinutes += fallbackReview.adjustedMinutes;
+      if (fallbackReview.activity.conceptId)
+        recordReviewResult(fallbackReview.activity.conceptId, 'selected', fallbackReview);
+    }
   }
   const learnCandidates = candidates
     .filter((candidate) => candidate.activity.kind === 'learn')
@@ -618,6 +763,12 @@ function packWeekday(
     ...mixedReviewCandidates.map((candidate) => candidate.activity),
     ...optionalActivities,
   ];
+  if (reviewSelectionTrace) {
+    reviewSelectionTrace.finalMetrics = {
+      ...metrics(),
+      plannedActivityCount: activities.length,
+    };
+  }
   return { activities, reasons: activities.map((activity) => activity.reason) };
 }
 
@@ -762,7 +913,12 @@ export function interleaveReviewExercises(
   return exerciseIds;
 }
 
-function generateCandidates(state: SchedulerState, content: ContentIndex, now: Date): Candidate[] {
+function generateCandidates(
+  state: SchedulerState,
+  content: ContentIndex,
+  now: Date,
+  reviewSelectionTrace?: ReviewSelectionTrace,
+): Candidate[] {
   const candidates: Candidate[] = [];
   const courseContexts = schedulerCourseContexts(state, content);
   const focusSubjectId = effectiveFocusSubjectId(
@@ -867,13 +1023,18 @@ function generateCandidates(state: SchedulerState, content: ContentIndex, now: D
   const timezone = state.timezone ?? 'UTC';
   const reviewedToday = new Set(state.reviewedTodayConceptIds);
   for (const card of state.cards) {
-    if (!isDueToday(card.dueAt, now, timezone) || reviewedToday.has(card.conceptId)) continue;
+    if (!isDueToday(card.dueAt, now, timezone)) continue;
+    if (reviewedToday.has(card.conceptId)) {
+      reviewSelectionTrace?.results.set(card.conceptId, 'not_candidate:reviewedToday');
+      continue;
+    }
     const concept = content.conceptsById.get(card.conceptId);
-    if (
-      !concept ||
-      concept.status === 'stub' ||
-      (focusSubjectId && !newConceptIds.has(concept.id))
-    ) {
+    if (!concept || concept.status === 'stub') {
+      reviewSelectionTrace?.results.set(card.conceptId, 'not_candidate:stub');
+      continue;
+    }
+    if (focusSubjectId && !newConceptIds.has(concept.id)) {
+      reviewSelectionTrace?.results.set(card.conceptId, 'not_candidate:focusFilter');
       continue;
     }
     const dueCards = dueCardsByConcept.get(card.conceptId) ?? [];
@@ -913,7 +1074,10 @@ function generateCandidates(state: SchedulerState, content: ContentIndex, now: D
       }
       if (exercises.length > 0) selectedByDimension.push({ card, exercises });
     }
-    if (selectedByDimension.length === 0) continue;
+    if (selectedByDimension.length === 0) {
+      reviewSelectionTrace?.results.set(conceptId, 'not_candidate:noEligibleExercise');
+      continue;
+    }
     const includedCards = selectedByDimension.map(({ card }) => card);
     const maxQuestions = Math.max(...selectedByDimension.map(({ exercises }) => exercises.length));
     const exercises: IndexedExercise[] = [];
@@ -953,7 +1117,10 @@ function generateCandidates(state: SchedulerState, content: ContentIndex, now: D
     const reviewCourseContext =
       courseContexts.find((course) => course.newConceptIds.has(concept.id)) ??
       fallbackCourseContext(state, content);
-    if (!reviewCourseContext) continue;
+    if (!reviewCourseContext) {
+      reviewSelectionTrace?.results.set(conceptId, 'rejected:other');
+      continue;
+    }
     const reviewProjectId =
       reviewCourseContext.course.units[reviewCourseContext.currentUnit - 1]?.project;
     const reviewProject = reviewProjectId ? content.projectsById.get(reviewProjectId) : undefined;
