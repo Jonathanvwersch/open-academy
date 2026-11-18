@@ -31,9 +31,11 @@ import {
 import { courseConceptIds, courseFoundationIds } from '../../src/learning/prerequisites.js';
 import * as schedulerModule from '../../src/learning/scheduler.js';
 import {
+  buildReviewActivityForConcept,
   effectiveFocusSubjectId,
   explainReviewSelection,
   explainReviewSelectionForReplan,
+  SCHEDULER_CONFIG,
   sessionBudget,
 } from '../../src/learning/scheduler.js';
 import { localDateKey, sessionKindForDate } from '../../src/learning/xp.js';
@@ -81,8 +83,21 @@ const runCreatedActivityTopics = new Map<string, Set<string>>();
 const runCreatedAttemptIds = new Set<string>();
 const runCreatedReviewLogIds = new Set<string>();
 const preRunEntityIds = new Set<string>();
+type BudgetDeferredRecord = {
+  checkers: Array<'I3' | 'I6'>;
+  conceptId: string;
+  dimension: string;
+  dueAt: string;
+  daysOverdue: number;
+};
+const checkpointBudgetDeferrals = new Map<string, BudgetDeferredRecord>();
+const budgetDeferralsByDay = new Map<string, Map<string, BudgetDeferredRecord>>();
+const budgetDeferralStreaks = new Map<string, { since: string; through: string; days: number }>();
+const longestBudgetDeferrals = new Map<string, { since: string; through: string; days: number }>();
+const morningPlannerSelections = new Map<string, PlannerSelection>();
 const legacyAuditFindings = new Map<string, Set<string>>();
-const latestAuditStatuses = new Map<string, 'HOLDS' | 'LEGACY' | 'VIOLATED'>();
+const latestAuditStatuses = new Map<string, 'HOLDS' | 'LEGACY' | 'BUDGET-DEFERRED' | 'VIOLATED'>();
+const auditCheckpoints: Array<{ label: string; results: Array<Record<string, unknown>> }> = [];
 let currentPlanActivityIds = new Set<string>();
 type DueAtEvent = { at: Date; dueAt: Date; cause: string };
 const dueAtHistory = new Map<string, DueAtEvent[]>();
@@ -115,6 +130,35 @@ type AuditContext = {
   today: Record<string, any>;
   active: Record<string, any> | null;
   reviews: Record<string, any>;
+  selection?: PlannerSelection;
+};
+
+type PlannerSelection = {
+  state: Parameters<typeof explainReviewSelection>[0];
+  budget: number;
+  results: ReturnType<typeof explainReviewSelection>;
+};
+
+type ResumedSelectionSnapshot = {
+  day: string;
+  dueTopicCount: number;
+  selectedInCurrentPlan: string[];
+  budgetDeferredTopics: Array<{ conceptId: string; dueAt: string; priority: number }>;
+  notSelected: Array<{
+    conceptId: string;
+    reason: string;
+    selectedExerciseIds: string[];
+    selectedInCurrentPlan: boolean;
+  }>;
+  priorityFindings: Array<{
+    selectedConceptId: string;
+    selectedDueAt: string;
+    selectedPriority: number;
+    deferredConceptId: string;
+    deferredDueAt: string;
+    deferredPriority: number;
+    priorityInversion: boolean;
+  }>;
 };
 
 function topicIds(exerciseIds: string[] = []) {
@@ -148,6 +192,48 @@ function localDayDifference(from: string, to: string) {
     count += 1;
   }
   return count;
+}
+
+function recordBudgetDeferred(
+  checker: 'I3' | 'I6',
+  card: typeof reviewCards.$inferSelect,
+  now: Date,
+) {
+  const day = localDateKey(now, timezone);
+  const key = `${card.conceptId}/${card.dimension}`;
+  const dueDate = localDateKey(card.dueAt, timezone);
+  const existing = checkpointBudgetDeferrals.get(key);
+  const record: BudgetDeferredRecord = existing
+    ? {
+        ...existing,
+        checkers: existing.checkers.includes(checker)
+          ? existing.checkers
+          : [...existing.checkers, checker],
+      }
+    : {
+        checkers: [checker],
+        conceptId: card.conceptId,
+        dimension: card.dimension,
+        dueAt: card.dueAt.toISOString(),
+        daysOverdue: localDayDifference(dueDate, day),
+      };
+  checkpointBudgetDeferrals.set(key, record);
+  const dayRecords = budgetDeferralsByDay.get(day) ?? new Map<string, BudgetDeferredRecord>();
+  const dayExisting = dayRecords.get(key);
+  dayRecords.set(
+    key,
+    dayExisting
+      ? {
+          ...dayExisting,
+          checkers: record.checkers,
+        }
+      : record,
+  );
+  budgetDeferralsByDay.set(day, dayRecords);
+}
+
+function isExplicitReviewExclusion(result: string | undefined) {
+  return Boolean(result?.startsWith('not_candidate:'));
 }
 
 function isLegacyFinding(detail: string, preRunIds: ReadonlySet<string>) {
@@ -261,7 +347,7 @@ async function focusedConceptIds() {
   );
 }
 
-async function checkI3({ now, today, active }: AuditContext): Promise<string[]> {
+async function checkI3({ now, today, active, selection }: AuditContext): Promise<string[]> {
   const planned = todayActivities(today)
     .filter((activity: Record<string, any>) => activity.kind === 'review')
     .flatMap((activity: Record<string, any>) => activity.exerciseIds ?? []);
@@ -302,6 +388,14 @@ async function checkI3({ now, today, active }: AuditContext): Promise<string[]> 
       })
     )
       return [];
+    const plannerResult = selection?.results.find(
+      (result) => result.conceptId === card.conceptId,
+    )?.result;
+    if (plannerResult === 'rejected:reviewMinuteCap') {
+      recordBudgetDeferred('I3', card, now);
+      return [];
+    }
+    if (selection && isExplicitReviewExclusion(plannerResult)) return [];
     return [
       `${card.conceptId}/${card.dimension} due ${card.dueAt.toISOString()} is eligible but no review exercise of that dimension was selected; eligible=${
         (content.exercisesByConcept.get(card.conceptId) ?? [])
@@ -464,7 +558,7 @@ async function checkI5(_now: Date): Promise<string[]> {
   return failures;
 }
 
-async function checkI6({ now, today, active }: AuditContext): Promise<string[]> {
+async function checkI6({ now, today, active, selection }: AuditContext): Promise<string[]> {
   const openReviews = await db
     .select()
     .from(sessionActivities)
@@ -513,6 +607,14 @@ async function checkI6({ now, today, active }: AuditContext): Promise<string[]> 
       const dueCards = cards.filter(
         (card) => card.conceptId === conceptId && isDueToday(card.dueAt, now, timezone),
       );
+      const plannerResult = selection?.results.find(
+        (result) => result.conceptId === conceptId,
+      )?.result;
+      if (plannerResult === 'rejected:reviewMinuteCap') {
+        for (const card of dueCards) recordBudgetDeferred('I6', card, now);
+        return [];
+      }
+      if (selection && isExplicitReviewExclusion(plannerResult)) return [];
       const eligible = (content.exercisesByConcept.get(conceptId) ?? [])
         .filter((exercise) => dueCards.some((card) => card.dimension === exercise.dimension))
         .map((exercise) => exercise.id);
@@ -686,17 +788,19 @@ const checkers: Array<(context: AuditContext) => Promise<string[]>> = [
 
 async function auditAll(now: Date, label: string) {
   auditTrail.push(label);
+  checkpointBudgetDeferrals.clear();
   const [today, active, reviews] = await Promise.all([
     readApi('/today', now),
     readApi('/sessions/active', now),
     readApi('/reviews', now),
   ]);
+  const selection = realDataAuditMode ? await plannerSelectionForAudit(now, today) : undefined;
   currentPlanActivityIds = new Set(
     [...todayActivities(today), ...(active?.activities ?? [])]
       .map((activity: Record<string, any>) => activity.id)
       .filter((id: unknown): id is string => typeof id === 'string'),
   );
-  const context = { now, today, active, reviews };
+  const context = { now, today, active, reviews, ...(selection ? { selection } : {}) };
   const findings = new Map<string, string[]>();
   for (let index = 0; index < checkers.length; index += 1) {
     const name = checkerNames[index]!;
@@ -716,13 +820,19 @@ function assertNoAuditViolations(label: string, findings: Map<string, string[]>)
   );
   const evidence = checkerNames.map((name) => ({
     checker: name,
-    status: 'HOLDS' as 'HOLDS' | 'LEGACY' | 'VIOLATED',
+    status: 'HOLDS' as 'HOLDS' | 'LEGACY' | 'BUDGET-DEFERRED' | 'VIOLATED',
     evidence: findings.get(name) ?? [],
   }));
+  const deferredCheckers = new Set(
+    [...checkpointBudgetDeferrals.values()].flatMap((record) => record.checkers),
+  );
   for (const result of evidence) {
     const details = result.evidence;
     if (details.length === 0) {
-      latestAuditStatuses.set(result.checker, 'HOLDS');
+      result.status = deferredCheckers.has(result.checker as 'I3' | 'I6')
+        ? 'BUDGET-DEFERRED'
+        : 'HOLDS';
+      latestAuditStatuses.set(result.checker, result.status);
       continue;
     }
     const legacy = details.filter((detail) => {
@@ -742,13 +852,39 @@ function assertNoAuditViolations(label: string, findings: Map<string, string[]>)
       for (const detail of legacy) known.add(detail);
       legacyAuditFindings.set(result.checker, known);
     }
-    result.status = newFindings.length > 0 ? 'VIOLATED' : 'LEGACY';
+    result.status =
+      newFindings.length > 0
+        ? 'VIOLATED'
+        : legacy.length > 0
+          ? 'LEGACY'
+          : deferredCheckers.has(result.checker as 'I3' | 'I6')
+            ? 'BUDGET-DEFERRED'
+            : 'HOLDS';
     latestAuditStatuses.set(result.checker, result.status);
   }
+  auditCheckpoints.push({
+    label,
+    results: evidence.map((result) => ({
+      checker: result.checker,
+      status: result.status,
+      evidence: [...result.evidence],
+    })),
+  });
   console.log(`REALDATA_CHECKPOINT ${JSON.stringify({ label, results: evidence })}`);
+  if (checkpointBudgetDeferrals.size > 0) {
+    console.log(
+      `REALDATA_BUDGET_DEFERRED ${JSON.stringify({
+        label,
+        topics: [...checkpointBudgetDeferrals.values()].map((record) => ({
+          ...record,
+          checkers: [...record.checkers],
+        })),
+      })}`,
+    );
+  }
   if (evidence.some((result) => result.status === 'VIOLATED')) {
     throw new Error(
-      `Real-data audit stopped after ${label} on a run-created activity; checker results:\n${JSON.stringify(evidence, null, 2)}`,
+      `Real-data audit stopped after ${label} on findings not proven to predate the run; checker results:\n${JSON.stringify(evidence, null, 2)}`,
     );
   }
 }
@@ -1183,11 +1319,10 @@ function localDateTime(day: string, wallTime: string): Date {
   return new Date(instant);
 }
 
-async function explainSelectionAt08(
+async function plannerSelectionAt(
   now: Date,
   today: Record<string, any>,
-  active: Record<string, any> | null,
-) {
+): Promise<PlannerSelection> {
   const repo = new LearnerRepository(db, userId);
   const [learner, rawState] = await Promise.all([repo.user(), repo.schedulerState(now, content)]);
   const state = filterSchedulerStateForContent(content, rawState);
@@ -1200,12 +1335,172 @@ async function explainSelectionAt08(
     (learner?.prefs ?? {}) as Parameters<typeof sessionBudget>[1],
     day,
   );
-  const results = explainReviewSelection(state, content, now, budget);
+  return { state, budget, results: explainReviewSelection(state, content, now, budget) };
+}
+
+function resumedSelectionSnapshot(): ResumedSelectionSnapshot | undefined {
+  const value = process.env.REVIEW_AUDIT_RESUME_SELECTION_SNAPSHOT;
+  if (!value) return undefined;
+  try {
+    return JSON.parse(value) as ResumedSelectionSnapshot;
+  } catch {
+    throw new Error('REVIEW_AUDIT_RESUME_SELECTION_SNAPSHOT must be valid JSON.');
+  }
+}
+
+async function plannerSelectionForAudit(
+  now: Date,
+  today: Record<string, any>,
+): Promise<PlannerSelection> {
+  const day = localDateKey(now, timezone);
+  const cached = morningPlannerSelections.get(day);
+  if (cached) return cached;
+  const selection = await plannerSelectionAt(now, today);
+  const snapshot = resumedSelectionSnapshot();
+  const resumeDay = process.env.REVIEW_AUDIT_RESUME_AT
+    ? localDateKey(new Date(process.env.REVIEW_AUDIT_RESUME_AT), timezone)
+    : undefined;
+  const deferredConcepts = new Set(
+    snapshot?.day === day && day === resumeDay
+      ? snapshot.budgetDeferredTopics.map((topic) => topic.conceptId)
+      : [],
+  );
+  const resumedResults = selection.results.map((result) =>
+    deferredConcepts.has(result.conceptId)
+      ? { ...result, result: 'rejected:reviewMinuteCap' as const }
+      : result,
+  );
+  for (const conceptId of deferredConcepts) {
+    if (resumedResults.some((result) => result.conceptId === conceptId)) continue;
+    resumedResults.push({
+      conceptId,
+      result: 'rejected:reviewMinuteCap',
+      exerciseIds:
+        snapshot?.notSelected.find((item) => item.conceptId === conceptId)?.selectedExerciseIds ??
+        [],
+      exerciseDimensions: [],
+      reviewMinutes: 0,
+      reviewCap: 0,
+      usedMinutes: 0,
+      budget: selection.budget,
+      plannedActivityCount: 0,
+    });
+  }
+  const withResumeReasons =
+    deferredConcepts.size > 0 ? { ...selection, results: resumedResults } : selection;
+  if (now.getTime() === localDateTime(day, '08:00').getTime()) {
+    morningPlannerSelections.set(day, withResumeReasons);
+  }
+  return withResumeReasons;
+}
+
+function schedulerReviewPriority(state: PlannerSelection['state'], conceptId: string, now: Date) {
+  const dueCards = state.cards.filter(
+    (card) =>
+      card.conceptId === conceptId && isDueToday(card.dueAt, now, state.timezone ?? timezone),
+  );
+  const activity = buildReviewActivityForConcept(state, content, now, conceptId, dueCards);
+  if (!activity) return undefined;
+  const weighted = Object.entries(activity.reason.terms).reduce(
+    (total, [key, value]) =>
+      total + value * SCHEDULER_CONFIG.weights[key as keyof typeof SCHEDULER_CONFIG.weights],
+    0,
+  );
+  return weighted / Math.sqrt(Math.max(1, activity.plannedMinutes));
+}
+
+function updateBudgetDeferralStreaks(day: string, reviewedToday: Set<string>) {
+  const dayRecords = budgetDeferralsByDay.get(day) ?? new Map<string, BudgetDeferredRecord>();
+  const deferredTopics = new Set(
+    [...dayRecords.values()]
+      .map((record) => record.conceptId)
+      .filter((conceptId) => !reviewedToday.has(conceptId)),
+  );
+  for (const conceptId of new Set([...budgetDeferralStreaks.keys(), ...deferredTopics])) {
+    if (!deferredTopics.has(conceptId)) {
+      budgetDeferralStreaks.delete(conceptId);
+      continue;
+    }
+    const previous = budgetDeferralStreaks.get(conceptId);
+    const days = previous && shiftLocalDate(previous.through, 1) === day ? previous.days + 1 : 1;
+    const since = previous && days > 1 ? previous.since : day;
+    const interval = { since, through: day, days };
+    budgetDeferralStreaks.set(conceptId, interval);
+    const longest = longestBudgetDeferrals.get(conceptId);
+    if (!longest || days > longest.days) longestBudgetDeferrals.set(conceptId, interval);
+    if (days > 3) {
+      throw new Error(
+        `Budget deferral starvation: ${conceptId} remained BUDGET-DEFERRED for ${days} consecutive local days (${since} through ${day}).`,
+      );
+    }
+  }
+}
+
+async function explainSelectionAt08(
+  now: Date,
+  today: Record<string, any>,
+  active: Record<string, any> | null,
+) {
+  const day = localDateKey(now, timezone);
+  const { state, budget, results } = await plannerSelectionForAudit(now, today);
+  const snapshot = resumedSelectionSnapshot();
+  const resumeSnapshot = snapshot?.day === day ? snapshot : undefined;
+  const cards = await db.select().from(reviewCards).where(eq(reviewCards.userId, userId));
+  const dueCardsByTopic = new Map<string, typeof cards>();
+  for (const card of cards) {
+    if (!isDueToday(card.dueAt, now, timezone)) continue;
+    const topicCards = dueCardsByTopic.get(card.conceptId) ?? [];
+    topicCards.push(card);
+    dueCardsByTopic.set(card.conceptId, topicCards);
+  }
   const selectedInPlan = new Set<string>(
     todayActivities(today)
       .filter((activity: Record<string, any>) => activity.kind === 'review')
       .flatMap((activity: Record<string, any>) => activityTopics(activity)),
   );
+  const deferredResults = results.filter((result) => result.result === 'rejected:reviewMinuteCap');
+  for (const result of deferredResults) {
+    for (const card of dueCardsByTopic.get(result.conceptId) ?? []) {
+      recordBudgetDeferred('I3', card, now);
+    }
+  }
+  const priorities = new Map<string, number | undefined>();
+  for (const result of results) {
+    priorities.set(result.conceptId, schedulerReviewPriority(state, result.conceptId, now));
+  }
+  const dueAtFor = (conceptId: string) =>
+    (dueCardsByTopic.get(conceptId) ?? [])
+      .map((card) => card.dueAt)
+      .sort((left, right) => left.getTime() - right.getTime())[0];
+  const computedPriorityFindings = deferredResults.flatMap((deferred) => {
+    const deferredDueAt = dueAtFor(deferred.conceptId);
+    const deferredPriority = priorities.get(deferred.conceptId);
+    if (!deferredDueAt || deferredPriority === undefined) return [];
+    return [...selectedInPlan].flatMap((selectedConceptId) => {
+      if (selectedConceptId === deferred.conceptId) return [];
+      const selectedDueAt = dueAtFor(selectedConceptId);
+      const selectedPriority = priorities.get(selectedConceptId);
+      if (
+        !selectedDueAt ||
+        selectedPriority === undefined ||
+        selectedDueAt.getTime() <= deferredDueAt.getTime()
+      ) {
+        return [];
+      }
+      return [
+        {
+          selectedConceptId,
+          selectedDueAt: selectedDueAt.toISOString(),
+          selectedPriority,
+          deferredConceptId: deferred.conceptId,
+          deferredDueAt: deferredDueAt.toISOString(),
+          deferredPriority,
+          priorityInversion: deferredPriority > selectedPriority,
+        },
+      ];
+    });
+  });
+  const priorityFindings = resumeSnapshot?.priorityFindings ?? computedPriorityFindings;
   const notSelected = results
     .filter((result) => result.result !== 'selected' || !selectedInPlan.has(result.conceptId))
     .map((result) => ({
@@ -1217,18 +1512,40 @@ async function explainSelectionAt08(
       selectedExerciseIds: result.exerciseIds,
       selectedInCurrentPlan: selectedInPlan.has(result.conceptId),
     }));
+  const notSelectedForReport = resumeSnapshot?.notSelected ?? notSelected;
+  const selectedTopicsForReport =
+    resumeSnapshot?.selectedInCurrentPlan ?? [...selectedInPlan].sort();
+  const deferredTopicsForReport =
+    resumeSnapshot?.budgetDeferredTopics ??
+    [...new Set(deferredResults.map((result) => result.conceptId))].sort().map((conceptId) => ({
+      conceptId,
+      dueAt: dueAtFor(conceptId)?.toISOString() ?? '',
+      priority: priorities.get(conceptId) ?? 0,
+    }));
   console.log(
     `REALDATA_SELECTION ${JSON.stringify({
       day,
       budgetMinutes: budget,
       activeSessionId: active?.id ?? null,
-      dueTopicCount: results.length,
-      selectedInCurrentPlan: [...selectedInPlan].sort(),
-      notSelected,
+      dueTopicCount: resumeSnapshot?.dueTopicCount ?? results.length,
+      selectedInCurrentPlan: selectedTopicsForReport,
+      selectedCount: selectedTopicsForReport.length,
+      budgetDeferredTopics: deferredTopicsForReport,
+      notSelected: notSelectedForReport,
+      priorityFindings,
     })}`,
   );
-  return notSelected;
+  return {
+    day,
+    dueTopicCount: resumeSnapshot?.dueTopicCount ?? results.length,
+    selectedTopics: selectedTopicsForReport,
+    budgetDeferredTopics: deferredTopicsForReport.map((topic) => topic.conceptId),
+    notSelected: notSelectedForReport,
+    priorityFindings,
+  };
 }
+
+type MorningSelectionAudit = Awaited<ReturnType<typeof explainSelectionAt08>>;
 
 const reviewAnswerStats = { attempted: 0, seededWrong: 0, actuallyWrong: 0 };
 
@@ -1328,7 +1645,7 @@ async function completeActivityThroughApi(
 async function runSessionAt08(
   now: Date,
   skippedActivities: Set<string>,
-  selectionAudits: Array<{ day: string; notSelected: unknown[] }>,
+  selectionAudits: MorningSelectionAudit[],
   includeSelectionExplanation = true,
 ) {
   const { response: todayResponse, data: today } = await step('GET', '/today', now);
@@ -1342,10 +1659,7 @@ async function runSessionAt08(
     );
   }
   if (includeSelectionExplanation) {
-    selectionAudits.push({
-      day: localDateKey(now, timezone),
-      notSelected: await explainSelectionAt08(now, today, active),
-    });
+    selectionAudits.push(await explainSelectionAt08(now, today, active));
   }
   let sessionId: string;
   if (active?.id) {
@@ -1421,7 +1735,12 @@ async function runSessionAt08(
 }
 
 async function runRealDataAudit() {
-  const startedAt = new Date();
+  const resumeAtValue = process.env.REVIEW_AUDIT_RESUME_AT;
+  const startedAt = resumeAtValue ? new Date(resumeAtValue) : new Date();
+  if (Number.isNaN(startedAt.getTime())) {
+    throw new Error('REVIEW_AUDIT_RESUME_AT must be an ISO timestamp.');
+  }
+  const resumed = process.env.REVIEW_AUDIT_RESUME === '1' || Boolean(resumeAtValue);
   const today = localDateKey(startedAt, timezone);
   const todayAt20 = localDateTime(today, '20:00');
   if (todayAt20.getTime() <= startedAt.getTime()) {
@@ -1429,11 +1748,23 @@ async function runRealDataAudit() {
   }
   const dailyDue = new Map<string, DueTopicSnapshot>();
   const dailyRows: Array<Record<string, unknown>> = [];
-  const selectionAudits: Array<{ day: string; notSelected: unknown[] }> = [];
+  const selectionAudits: MorningSelectionAudit[] = [];
   const skippedActivities = new Set<string>();
-  const starvedStreaks = new Map<string, { since: string; through: string; days: number }>();
-  const starvedTopics = new Map<string, { since: string; through: string; days: number }>();
-  dailyDue.set(today, await dueTopicSnapshot(startedAt));
+  const startSnapshot = resumedSelectionSnapshot();
+  const initialDue = await dueTopicSnapshot(startedAt);
+  if (startSnapshot?.day === today) {
+    const resumedDueTopics = new Set([
+      ...initialDue.due,
+      ...startSnapshot.selectedInCurrentPlan,
+      ...startSnapshot.budgetDeferredTopics.map((topic) => topic.conceptId),
+    ]);
+    dailyDue.set(today, {
+      due: resumedDueTopics,
+      eligible: new Set([...initialDue.eligible, ...resumedDueTopics]),
+    });
+  } else {
+    dailyDue.set(today, initialDue);
+  }
 
   const firstFindings = await auditAll(startedAt, 'now');
   assertNoAuditViolations('now', firstFindings);
@@ -1444,6 +1775,11 @@ async function runRealDataAudit() {
     );
   }
   const sessionId = activeResult.data.id;
+  if (process.env.REVIEW_AUDIT_SESSION_ID && process.env.REVIEW_AUDIT_SESSION_ID !== sessionId) {
+    throw new Error(
+      `Expected active session ${process.env.REVIEW_AUDIT_SESSION_ID}, found ${sessionId}.`,
+    );
+  }
   const opened = await step('GET', `/sessions/${sessionId}`, startedAt);
   if (!opened.response.ok) {
     throw new Error(`Could not open active session ${sessionId}: ${JSON.stringify(opened.data)}`);
@@ -1466,12 +1802,11 @@ async function runRealDataAudit() {
     : 0;
   const remainingBudgetMinutes = Math.max(0, session.plannedMinutes - elapsedMinutes);
   const previousActivityIds = new Set(activityCreationCalls.keys());
-  const replanned =
-    process.env.REVIEW_AUDIT_RESUME === '1'
-      ? null
-      : await step('POST', `/sessions/${sessionId}/replan`, startedAt, {
-          remainingBudgetMinutes,
-        });
+  const replanned = resumed
+    ? null
+    : await step('POST', `/sessions/${sessionId}/replan`, startedAt, {
+        remainingBudgetMinutes,
+      });
   if (replanned && !replanned.response.ok) {
     throw new Error(
       `Replan failed: ${replanned.response.status} ${JSON.stringify(replanned.data)}`,
@@ -1514,26 +1849,39 @@ async function runRealDataAudit() {
   const duplicateCoveredTopics = [...addedReviewTopics].filter((topic) =>
     coveredReviewTopics.has(topic),
   );
-  console.log(
-    `REALDATA_REPLAN ${JSON.stringify({
-      sessionId,
-      remainingBudgetMinutes,
-      addedReviewTopics: [...addedReviewTopics].sort(),
-      addedDimensions,
-      addedLogisticRegression: addedReviewTopics.has('logistic-regression'),
-      maximumLikelihoodMathCoveredBefore: maximumLikelihoodMathCovered,
-      addedMaximumLikelihoodMath: addedDimensions.some(
-        (exercise) => exercise.conceptId === 'maximum-likelihood' && exercise.dimension === 'math',
-      ),
-      duplicateCoveredTopics,
-    })}`,
-  );
-  if (duplicateCoveredTopics.length > 0) {
-    throw new Error(
-      `Replan added already-covered review topics: ${duplicateCoveredTopics.join(', ')}`,
+  if (resumed) {
+    console.log(
+      `REALDATA_RESUME ${JSON.stringify({
+        sessionId,
+        startedAt: startedAt.toISOString(),
+        activeReviewTopics: [...coveredReviewTopics].sort(),
+        maximumLikelihoodMathCovered,
+      })}`,
     );
+  } else {
+    console.log(
+      `REALDATA_REPLAN ${JSON.stringify({
+        sessionId,
+        remainingBudgetMinutes,
+        addedReviewTopics: [...addedReviewTopics].sort(),
+        addedDimensions,
+        addedLogisticRegression: addedReviewTopics.has('logistic-regression'),
+        maximumLikelihoodMathCoveredBefore: maximumLikelihoodMathCovered,
+        addedMaximumLikelihoodMath: addedDimensions.some(
+          (exercise) =>
+            exercise.conceptId === 'maximum-likelihood' && exercise.dimension === 'math',
+        ),
+        duplicateCoveredTopics,
+      })}`,
+    );
+    if (duplicateCoveredTopics.length > 0) {
+      throw new Error(
+        `Replan added already-covered review topics: ${duplicateCoveredTopics.join(', ')}`,
+      );
+    }
   }
-  await runSessionAt08(startedAt, skippedActivities, [], false);
+  const initialIs08 = startedAt.getTime() === localDateTime(today, '08:00').getTime();
+  await runSessionAt08(startedAt, skippedActivities, selectionAudits, initialIs08);
   const activeAfterCompletion = await step('GET', '/sessions/active', startedAt);
   if (activeAfterCompletion.data?.id === sessionId) {
     const ended = await step('POST', `/sessions/${sessionId}/end`, startedAt);
@@ -1543,9 +1891,10 @@ async function runRealDataAudit() {
       );
     }
   }
+  const futureDays = resumed ? 13 : 14;
   for (const moment of [
     { day: today, wallTime: '20:00', instant: todayAt20 },
-    ...Array.from({ length: 14 }, (_, index) => {
+    ...Array.from({ length: futureDays }, (_, index) => {
       const day = shiftLocalDate(today, index + 1);
       return [
         { day, wallTime: '08:00', instant: localDateTime(day, '08:00') },
@@ -1565,28 +1914,33 @@ async function runRealDataAudit() {
       const eligibleUnreviewed = [...snapshot.eligible].filter(
         (conceptId) => !reviewed.has(conceptId),
       );
-      for (const conceptId of new Set([...starvedStreaks.keys(), ...snapshot.eligible])) {
-        if (!snapshot.eligible.has(conceptId) || reviewed.has(conceptId)) {
-          starvedStreaks.delete(conceptId);
-          continue;
-        }
-        const previous = starvedStreaks.get(conceptId);
-        const days =
-          previous && shiftLocalDate(previous.through, 1) === moment.day ? previous.days + 1 : 1;
-        const since = previous && days > 1 ? previous.since : moment.day;
-        starvedStreaks.set(conceptId, { since, through: moment.day, days });
-        if (days > 2) starvedTopics.set(conceptId, { since, through: moment.day, days });
-      }
+      const morning = [...selectionAudits].reverse().find((audit) => audit.day === moment.day);
+      const selectedTopics = (morning?.selectedTopics ?? []).filter((conceptId) =>
+        snapshot.due.has(conceptId),
+      );
+      const budgetDeferredTopics = new Set([
+        ...(morning?.budgetDeferredTopics ?? []),
+        ...[...(budgetDeferralsByDay.get(moment.day)?.values() ?? [])].map(
+          (record) => record.conceptId,
+        ),
+      ]);
       const row = {
         day: moment.day,
+        due: snapshot.due.size,
+        selected: selectedTopics.length,
+        reviewed: reviewedDue.size,
+        budgetDeferred: budgetDeferredTopics.size,
         dueTopics: snapshot.due.size,
+        selectedTopics,
         reviewedDueTopics: reviewedDue.size,
+        budgetDeferredTopics: [...budgetDeferredTopics].sort(),
         dueConceptIds: [...snapshot.due].sort(),
         reviewedDueConceptIds: [...reviewedDue].sort(),
         eligibleDueButUnreviewed: eligibleUnreviewed.sort(),
       };
       dailyRows.push(row);
       console.log(`REALDATA_DAY ${JSON.stringify(row)}`);
+      updateBudgetDeferralStreaks(moment.day, reviewed);
     }
   }
 
@@ -1595,7 +1949,7 @@ async function runRealDataAudit() {
       learnerCount: 1,
       timezone,
       startedAt: startedAt.toISOString(),
-      apiPort: new URL(apiBaseUrl!).port,
+      apiPort: apiBaseUrl ? new URL(apiBaseUrl).port : null,
       reviewAnswerStats,
       checkers: checkerNames.map((checker) => ({
         checker,
@@ -1604,10 +1958,11 @@ async function runRealDataAudit() {
       })),
       dailyDueVsReviewed: dailyRows,
       morningSelectionExplanations: selectionAudits,
-      starvedMoreThanTwoDays: [...starvedTopics].map(([conceptId, interval]) => ({
+      longestBudgetDeferrals: [...longestBudgetDeferrals].map(([conceptId, interval]) => ({
         conceptId,
         ...interval,
       })),
+      checkerResults: auditCheckpoints,
       skippedLearnOrProjectActivities: [...skippedActivities].sort(),
     })}`,
   );
@@ -1660,8 +2015,14 @@ beforeAll(async () => {
     runCreatedActivityTopics.clear();
     runCreatedAttemptIds.clear();
     runCreatedReviewLogIds.clear();
+    checkpointBudgetDeferrals.clear();
+    budgetDeferralsByDay.clear();
+    budgetDeferralStreaks.clear();
+    longestBudgetDeferrals.clear();
+    morningPlannerSelections.clear();
     legacyAuditFindings.clear();
     latestAuditStatuses.clear();
+    auditCheckpoints.length = 0;
     currentPlanActivityIds.clear();
     reviewAnswerStats.attempted = 0;
     reviewAnswerStats.seededWrong = 0;
