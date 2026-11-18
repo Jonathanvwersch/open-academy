@@ -9,6 +9,7 @@ interface Sample {
 }
 
 type CommonWrongExpression = NonNullable<ExpressionExercise['common_wrong']>[number];
+type ExpressionVariable = ExpressionExercise['variables'][string];
 
 const expressionFunctions = [
   'exp',
@@ -39,29 +40,40 @@ export function normalizeLearnerExpression(input: string, variables: string[]): 
     .replaceAll('ŷ', variableSet.has('yhat') ? 'yhat' : 'ŷ')
     .replaceAll('y\u0302', variableSet.has('yhat') ? 'yhat' : 'y\u0302');
 
-  return normalized.replace(/[A-Za-z_][A-Za-z0-9_]*/g, (identifier, offset, source: string) => {
-    if (identifier === 'ln') return 'log';
-    if (
-      variableSet.has(identifier) ||
-      expressionFunctionSet.has(identifier) ||
-      expressionConstants.has(identifier)
-    ) {
-      return identifier;
-    }
+  const normalizedIdentifiers = normalized.replace(
+    /[A-Za-z_][A-Za-z0-9_]*/g,
+    (identifier, offset, source: string) => {
+      if (identifier === 'ln') return 'log';
+      if (variableSet.has(identifier)) {
+        return source[offset + identifier.length] === '(' && !expressionFunctionSet.has(identifier)
+          ? `${identifier}*`
+          : identifier;
+      }
+      if (expressionFunctionSet.has(identifier) || expressionConstants.has(identifier)) {
+        return identifier;
+      }
 
-    if (source[offset + identifier.length] === '(') {
-      for (const fn of expressionFunctions) {
-        if (identifier.length <= fn.length || !identifier.endsWith(fn)) continue;
-        const prefix = identifier.slice(0, -fn.length);
-        const prefixVariables = splitVariables(prefix, variables);
-        if (prefixVariables) {
-          return `${prefixVariables.join('*')}*${fn === 'ln' ? 'log' : fn}`;
+      if (source[offset + identifier.length] === '(') {
+        for (const fn of expressionFunctions) {
+          if (identifier.length <= fn.length || !identifier.endsWith(fn)) continue;
+          const prefix = identifier.slice(0, -fn.length);
+          const prefixVariables = splitVariables(prefix, variables);
+          if (prefixVariables) {
+            return `${prefixVariables.join('*')}*${fn === 'ln' ? 'log' : fn}`;
+          }
         }
       }
-    }
 
-    return splitVariables(identifier, variables)?.join('*') ?? identifier;
-  });
+      return splitVariables(identifier, variables)?.join('*') ?? identifier;
+    },
+  );
+
+  return normalizedIdentifiers
+    .replace(
+      /(^|[^A-Za-z0-9_.])((?:\d+(?:\.\d+)?|\.\d+)(?:[eE][+-]?\d+)?)(?![\d.]|[eE][+-]?\d)(?=[A-Za-z_(])/g,
+      '$1$2*',
+    )
+    .replace(/\)(?=[A-Za-z_(\d])/g, ')*');
 }
 
 export function gradeExpression(
@@ -83,15 +95,17 @@ export function gradeExpression(
     feedback: string;
   }> = [];
   const variables = Object.keys(exercise.variables);
-  const learnerExpression = normalizeLearnerExpression(answer, variables);
+  const normalizeExpression = (expression: string) =>
+    normalizeLearnerExpression(expression, variables);
+  const learnerExpression = normalizeExpression(answer);
   try {
-    expected = parseExpression(exercise.answer) as MathNode;
+    expected = parseExpression(normalizeExpression(exercise.answer)) as MathNode;
     learner = parseExpression(learnerExpression) as MathNode;
     if (!isScalarExpression(learner)) {
       return invalid('Use a scalar expression with arithmetic and supported math functions.');
     }
     commonWrong = (exercise.common_wrong ?? []).map((entry) => ({
-      node: parseExpression(normalizeLearnerExpression(entry.answer, variables)) as MathNode,
+      node: parseExpression(normalizeExpression(entry.answer)) as MathNode,
       category: entry.category,
       feedback: entry.feedback,
     }));
@@ -221,10 +235,8 @@ function sampleValues(
   const samples: Sample[] = [];
   for (let index = 0; index < 20; index += 1) {
     const scope: Record<string, number> = {};
-    for (const [name, range] of Object.entries(exercise.variables)) {
-      const draw = random();
-      const boundedDraw = Number.isFinite(draw) ? Math.min(1, Math.max(0, draw)) : 0.5;
-      scope[name] = range[0] + (range[1] - range[0]) * boundedDraw;
+    for (const [name, variable] of Object.entries(exercise.variables)) {
+      scope[name] = sampleVariable(variable, random);
     }
     const keyValue = evaluate(expected, scope);
     if (keyValue !== undefined) {
@@ -246,9 +258,7 @@ function matchesSamples(
     const valueScope = { ...sample.scope };
     for (const name of variables) {
       if (!(name in valueScope)) {
-        const range = exercise.variables[name];
-        const draw = random();
-        valueScope[name] = range[0] + (range[1] - range[0]) * Math.min(1, Math.max(0, draw));
+        valueScope[name] = sampleVariable(exercise.variables[name], random);
       }
     }
     const actual = evaluate(node, valueScope);
@@ -261,6 +271,21 @@ function matchesSamples(
     }
   }
   return tested > 0;
+}
+
+function sampleVariable(variable: ExpressionVariable, random: () => number): number {
+  const draw = random();
+  const boundedDraw = Number.isFinite(draw) ? Math.min(1, Math.max(0, draw)) : 0.5;
+  if (Array.isArray(variable)) {
+    return variable[0] + (variable[1] - variable[0]) * boundedDraw;
+  }
+  const index = Math.min(
+    variable.values.length - 1,
+    Math.floor(boundedDraw * variable.values.length),
+  );
+  const value = variable.values[index];
+  if (value === undefined) throw new Error('A discrete expression variable must have values.');
+  return value;
 }
 
 function matchesExpressions(left: MathNode, right: MathNode, samples: Sample[]): boolean {

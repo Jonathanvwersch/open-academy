@@ -346,3 +346,127 @@ exercises:
         required: false
     exemplar: "Select response targets, including the first response token predicted by the last prompt position and the response ending marker. Divide the sum of their negative log probabilities by the selected-target count. Prompt tokens remain context for predicting the response. Reject examples with no selected targets before taking the mean."
     solution: "Select response targets, including the first response token predicted by the last prompt position and the response ending marker. Divide the sum of their negative log probabilities by the selected-target count. Prompt tokens remain context for predicting the response. Reject examples with no selected targets before taking the mean."
+
+  - id: "sft-recall-examples-say"
+    dimension: "conceptual"
+    type: "explain"
+    role: "recall"
+    knowledge_point: "sft-example-responses"
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What does supervised fine-tuning start from, and what do its demonstrations teach the model to predict?"
+    rubric:
+      - id: "definition"
+        criterion: "Explain that SFT starts from already learned model weights."
+        weight: 1
+        required: true
+      - id: "meaning"
+        criterion: "Explain that training increases the probability of the demonstrated responses to their prompts."
+        weight: 1
+        required: true
+    exemplar: "SFT starts from already learned weights. It uses example requests and answers to teach the model to predict those answers for those requests."
+  - id: "sft-recall-examples-contrast"
+    dimension: "conceptual"
+    type: "mc"
+    role: "recall"
+    knowledge_point: "sft-example-responses"
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A team prepares example conversations for supervised fine-tuning. Which action changes what the model has learned?"
+    options:
+      - id: "a"
+        text: "Update the weights using the example answers."
+        correct: true
+        feedback: "Training adjusts weights to increase the probability of the targets."
+      - id: "b"
+        text: "Add role markers to the example conversations."
+        correct: false
+        feedback: "Role markers format the conversation."
+      - id: "c"
+        text: "Save the current weights to a checkpoint."
+        correct: false
+        feedback: "Saving weights creates a checkpoint."
+    solution: "Training adjusts weights to increase the probability of the targets."
+  - id: "sft-recall-examples-contrast2"
+    dimension: "conceptual"
+    type: "mc"
+    role: "recall"
+    knowledge_point: "sft-example-responses"
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "What is the purpose of a chat template's role markers?"
+    options:
+      - id: "a"
+        text: "Mark tokens whose prediction losses training should count."
+        correct: false
+        feedback: "A loss mask selects which prediction losses count. A role marker identifies a message's speaker."
+      - id: "b"
+        text: "Mark predictions where the model made an error."
+        correct: false
+        feedback: "The loss measures how well the model predicts the target token. Role markers are part of the input."
+      - id: "c"
+        text: "Show who is speaking in the token sequence."
+        correct: true
+        feedback: "Role markers separate messages by roles such as user and assistant."
+    solution: "Role markers separate messages by roles such as user and assistant."
+  - id: "sft-recall-mask-say"
+    dimension: "conceptual"
+    type: "explain"
+    role: "recall"
+    knowledge_point: "sft-response-loss"
+    difficulty: 1
+    est_minutes: 1
+    prompt: "How is response-only loss formed, and what happens to the prompt in the input?"
+    rubric:
+      - id: "definition"
+        criterion: "Explain that it selects and averages losses for response predictions."
+        weight: 1
+        required: true
+      - id: "meaning"
+        criterion: "Explain that the prompt stays in the input to help predict the response."
+        weight: 1
+        required: true
+    exemplar: "Response-only masking averages losses for response predictions. The prompt remains in the input and provides context for those predictions."
+  - id: "sft-recall-mask-contrast"
+    dimension: "conceptual"
+    type: "mc"
+    role: "recall"
+    knowledge_point: "sft-response-loss"
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "The model has just read the last prompt token and predicts the first answer token. How does response-only masking handle this prediction?"
+    options:
+      - id: "a"
+        text: "It skips the loss because the input ends with a prompt token."
+        correct: false
+        feedback: "The mask is based on the target token. The first answer token is a response target."
+      - id: "b"
+        text: "It counts the loss because the target is an answer token."
+        correct: true
+        feedback: "The predicted token belongs to the response, so this loss counts."
+      - id: "c"
+        text: "It skips the loss because the input contains no answer tokens yet."
+        correct: false
+        feedback: "The prompt alone gives the context for predicting the first answer token. That prediction loss counts."
+    solution: "The predicted token belongs to the response, so this loss counts."
+  - id: "sft-recall-mask-formula"
+    dimension: "math"
+    type: "text"
+    role: "recall"
+    knowledge_point: "sft-response-loss"
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Supervised fine-tuning uses a mask of zeros and ones to compute a response-only mean. The numerator is the sum of the weighted prediction losses. What count goes in the denominator? Answer in words."
+    accept:
+      - response tokens
+      - answer tokens
+      - response targets
+      - answer targets
+      - response predictions
+      - answer predictions
+      - kept losses
+      - mask entries set to one
+      - sum of the mask values
+      - sum of the mask entries
+    regex: '^\s*(?:(?:the\s+)?(?:number|count)\s+of\s+)?(?:(?:assistant[ -]+)?(?:answer|response)[ -]+(?:token[ -]+)?(?:tokens?|targets?|predictions?)|(?:kept|selected|unmasked)[ -]+(?:prediction[ -]+)?(?:tokens?|targets?|losses|predictions?)|mask[ -]+(?:entries|values)(?:[ -]+(?:set[ -]+to|equal[ -]+to|of))?[ -]+(?:1|one)|ones[ -]+in[ -]+the[ -]+mask)\s*[.]?\s*$'
+    solution: "Divide by the number of response targets. Their mask entries are one, so adding the mask entries gives that count."

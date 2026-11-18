@@ -1048,6 +1048,26 @@ test('avoid patterns ignore code spans, fenced code, code fields, and IDs', asyn
   );
 });
 
+test('avoid patterns ignore recall knowledge-point metadata and still inspect prompts', async () => {
+  const data = await notationFixture();
+  addAvoidPattern(data);
+  const lesson = data.lessons.find((entry) => entry.value.concept === 'derivatives')?.value;
+  const point = lesson?.knowledge_points?.[0];
+  if (!point) throw new Error('Missing derivatives knowledge-point fixture');
+  point.id = 'lr-point';
+  const recall = recallExerciseFixture(data);
+  data.exercises.push(recall);
+
+  expect(validateContent(data).filter((issue) => issue.id === recall.value.id)).toEqual([]);
+
+  recall.value.prompt = 'Train with lr = 0.1.';
+  expect(validateContent(data)).toContainEqual({
+    file: recall.file,
+    id: recall.value.id,
+    message: '"lr": write "learning rate" or $\\eta$',
+  });
+});
+
 test('avoid patterns inspect lesson and project prose', async () => {
   const data = await notationFixture();
   addAvoidPattern(data);
@@ -1721,6 +1741,63 @@ test('template validation reports unsatisfied constraints, unresolved text, cons
         message: 'knowledge point must include at least 1 fixed problem',
       }),
     ]),
+  );
+});
+
+test('expression answer keys must grade as correct against themselves', async () => {
+  const data = await notationFixture();
+  const exercise = data.exercises.find(({ value }) => value.type === 'expression');
+  if (exercise?.value.type !== 'expression') {
+    throw new Error('Missing expression fixture');
+  }
+  exercise.value.answer = 'k(m+n)';
+  exercise.value.variables = { m: [1, 2], n: [1, 2] };
+
+  expect(validateContent(data)).toContainEqual(
+    expect.objectContaining({
+      id: exercise.value.id,
+      message: expect.stringContaining(
+        'expression answer does not grade as correct against itself',
+      ),
+    }),
+  );
+});
+
+test('expression self-grading uses varied samples around singular midpoints', async () => {
+  const data = await notationFixture();
+  const exercise = data.exercises.find(({ value }) => value.type === 'expression');
+  if (exercise?.value.type !== 'expression') {
+    throw new Error('Missing expression fixture');
+  }
+  exercise.value.answer = '1/(x-y)';
+  exercise.value.variables = { x: [1, 2], y: [1, 2] };
+
+  expect(validateContent(data)).not.toContainEqual(
+    expect.objectContaining({
+      id: exercise.value.id,
+      message: expect.stringContaining(
+        'expression answer does not grade as correct against itself',
+      ),
+    }),
+  );
+});
+
+test('expression answer keys without finite samples are rejected', async () => {
+  const data = await notationFixture();
+  const exercise = data.exercises.find(({ value }) => value.type === 'expression');
+  if (exercise?.value.type !== 'expression') {
+    throw new Error('Missing expression fixture');
+  }
+  exercise.value.answer = 'sqrt(-1-x*x)';
+  exercise.value.variables = { x: [0, 1] };
+
+  expect(validateContent(data)).toContainEqual(
+    expect.objectContaining({
+      id: exercise.value.id,
+      message: expect.stringContaining(
+        'expression answer does not grade as correct against itself',
+      ),
+    }),
   );
 });
 

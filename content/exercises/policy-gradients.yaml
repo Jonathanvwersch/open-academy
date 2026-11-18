@@ -1058,3 +1058,245 @@ exercises:
         required: false
     exemplar: "REINFORCE uses gradient ascent on expected return $J(\\theta)=E[G_0]$. One episode gives the estimate $G_0\\sum_t\\nabla_\\theta\\ln\\pi_\\theta(a_t\\mid s_t)$. An action-independent baseline replaces $G_0$ with $G_0-b$. A baseline near the typical return usually reduces noise, while a bad choice can add noise."
     solution: "REINFORCE uses gradient ascent on expected return $J(\\theta)=E[G_0]$. One episode gives the estimate $G_0\\sum_t\\nabla_\\theta\\ln\\pi_\\theta(a_t\\mid s_t)$. An action-independent baseline replaces $G_0$ with $G_0-b$. A baseline near the typical return usually reduces noise, while a bad choice can add noise."
+  - id: pg-recall-score-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: pg-score
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what is the score $J(\\theta)$ of a policy, and how does gradient ascent use it?"
+    rubric:
+      - id: score
+        criterion: "Explain that $J(\\theta)=E[G_0]$ is the expected return from the start, the average of $G_0$ over many episodes played with $\\pi_\\theta$."
+        weight: 1
+        required: true
+      - id: ascent
+        criterion: "Explain that gradient ascent steps the parameters along the gradient, $\\theta_{\\text{new}}=\\theta+\\eta\\,\\nabla_\\theta J(\\theta)$, to make $J$ larger."
+        weight: 1
+        required: true
+      - id: unknown
+        criterion: Mention that the robot isn't told the world's rules, so it can't write $J$ as a formula and has to estimate the slope from played episodes.
+        weight: 1
+    exemplar: "$J(\\theta)=E[G_0]$ is the policy's expected return from the start, its average return over many episodes. Gradient ascent raises it by stepping $\\theta$ along the slope, $\\theta_{\\text{new}}=\\theta+\\eta\\,\\nabla_\\theta J$."
+  - id: pg-recall-score-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: pg-score
+    difficulty: 2
+    est_minutes: 0.5
+    prompt: "A robot knows its policy formula and can record its returns in a building. What else would it need to calculate $J(\\theta)$ directly by averaging over all possible episodes?"
+    options:
+      - id: a
+        text: "The rewards and chances of the outcomes its actions can cause"
+        correct: true
+        feedback: "The expected return depends on both the policy and the world's rules. Runs give evidence about those outcomes."
+      - id: b
+        text: "The learning rate it will use to update the policy"
+        correct: false
+        feedback: "The learning rate controls how far an update moves the parameters. It does not enter the expected return for the current policy."
+      - id: c
+        text: "The return from the best episode it has recorded"
+        correct: false
+        feedback: "One recorded return scores one run. The expected return weights every possible run by its chance."
+    solution: "The score averages returns over the possible episodes. Without the world's rules, the robot can observe episodes and use them to estimate how the expected return changes."
+  - id: pg-recall-score-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: pg-score
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A policy has one parameter $\\theta$, and the slope of its score $J$ at $\\theta$ is $g$. With learning rate $\\eta$, write the new parameter after one gradient-ascent step. Type `theta` for $\\theta$ and `eta` for $\\eta$."
+    answer: "theta + eta*g"
+    variables: { theta: [-3, 3], eta: [0.01, 0.5], g: [-5, 5] }
+    common_wrong:
+      - answer: "theta - eta*g"
+        category: misapplied_technique
+        feedback: Subtracting is gradient descent, which lowers the score. Gradient ascent adds the step.
+    solution: "Gradient ascent steps along the slope: $\\theta_{\\text{new}}=\\theta+\\eta g$."
+  - id: pg-recall-log-trick-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: pg-log-trick
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, what does the log-derivative trick say, and why does it let an agent estimate the slope of its score by trying actions?
+    rubric:
+      - id: trick
+        criterion: "State the trick, $\\nabla_\\theta\\pi_\\theta(a)=\\pi_\\theta(a)\\,\\nabla_\\theta\\ln\\pi_\\theta(a)$."
+        weight: 1
+        required: true
+      - id: average
+        criterion: "Explain that it weights each term by its own probability, so the slope becomes an expected value, $E\\big[G\\,\\nabla_\\theta\\ln\\pi_\\theta(a)\\big]$, which is estimated by averaging $G\\,\\nabla_\\theta\\ln\\pi_\\theta(a)$ over tries."
+        weight: 1
+        required: true
+      - id: single
+        criterion: Mention that one estimate can point the wrong way, and only the average of many is the true slope.
+        weight: 1
+    exemplar: "The trick says $\\nabla_\\theta\\pi_\\theta(a)=\\pi_\\theta(a)\\,\\nabla_\\theta\\ln\\pi_\\theta(a)$. Then every term of the slope is weighted by its action's probability, so the slope is the average of $G\\,\\nabla_\\theta\\ln\\pi_\\theta(a)$ over the actions the policy picks."
+  - id: pg-recall-log-trick-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: pg-log-trick
+    difficulty: 2
+    est_minutes: 0.5
+    prompt: "An agent samples one action and gets a negative log-derivative estimate of the slope of $J$. What can it conclude about the sign of the true slope?"
+    options:
+      - id: a
+        text: "It could have either sign because one sample can point the wrong way"
+        correct: true
+        feedback: "The estimator is right on average. One action and payout can give a different sign from the true slope."
+      - id: b
+        text: "It must be negative because the estimate came from the current policy"
+        correct: false
+        feedback: "Sampling from the current policy gives the right average over many draws. A single draw can disagree with that average."
+      - id: c
+        text: "It must be zero because action probabilities add to one"
+        correct: false
+        feedback: "The gradients of the probabilities add to zero. The estimate also weights each action by the reward it earns."
+    solution: "One estimate is noisy. Averaging the estimates over many sampled actions gives the true slope in expectation."
+  - id: pg-recall-log-trick-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: pg-log-trick
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A policy with one parameter $\\theta$ gives an action probability $p$. The slope of the natural log of that probability with respect to $\\theta$ is $g$. Write the slope of the probability itself."
+    answer: "p*g"
+    variables: { p: [0.05, 0.95], g: [-5, 5] }
+    solution: "The natural log has slope $1/p$ at $p$, so the slope of the probability is $pg$."
+  - id: pg-recall-reinforce-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: pg-reinforce
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, how does whole-episode REINFORCE update the policy, and why can it do that without knowing the world's rules?"
+    rubric:
+      - id: update
+        criterion: "Explain that it takes a gradient-ascent step using the episode return $G_0$ times the sum of the log-probability gradients of the actions taken."
+        weight: 1
+        required: true
+      - id: world
+        criterion: "Explain that the world's transition probabilities do not depend on $\\theta$, so their log terms have zero gradient with respect to $\\theta$."
+        weight: 1
+        required: true
+    exemplar: "After an episode, REINFORCE takes a gradient-ascent step using $G_0$ times the sum of the actions' log-probability gradients. The world's transition probabilities are fixed with respect to $\\theta$, so their log terms contribute zero to that gradient."
+  - id: pg-recall-reinforce-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: pg-reinforce
+    difficulty: 2
+    est_minutes: 0.5
+    prompt: "An episode's probability includes both the policy's action probabilities and the world's transition probabilities. Why can REINFORCE compute its update without the world's probabilities?"
+    options:
+      - id: a
+        text: "The world's probabilities stay fixed when $\\theta$ changes"
+        correct: true
+        feedback: "Their log terms have zero slope with respect to the policy's parameters."
+      - id: b
+        text: "The world's probabilities are always 1 on the path it took"
+        correct: false
+        feedback: "A path can include random moves. The world's probabilities still have zero slope with respect to the policy parameters."
+      - id: c
+        text: "The return contains the probability of each movement that occurred"
+        correct: false
+        feedback: "The return combines rewards. It doesn't encode the chance of each movement."
+      - id: d
+        text: "The world's probabilities cancel because all moves are equally likely"
+        correct: false
+        feedback: "Moves can have different chances. What matters is that their chances are fixed when the policy parameters change."
+    solution: "The world's log transition probabilities do not vary with $\\theta$. Only the policy's terms contribute to the log-probability gradient."
+  - id: pg-recall-reinforce-formula
+    dimension: math
+    type: text
+    role: recall
+    knowledge_point: pg-reinforce
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Fill in the quantity that weights all the action terms in the original whole-episode REINFORCE update: $\\theta_{\\text{new}}=\\theta+\\eta\\,\\underline{\\quad\\quad}\\sum_{t=0}^{T-1}\\nabla_\\theta\\ln\\pi_\\theta(a_t\\mid s_t)$. Use symbols or words."
+    accept:
+      [
+        G_0,
+        "G_{0}",
+        G0,
+        G₀,
+        the episode return,
+        the return from the start,
+        the whole episode's return,
+        discounted return for the whole episode,
+      ]
+    regex: "^\\s*(?:(?:g\\s*_?\\s*(?:\\{\\s*0\\s*\\}|0|₀)|(?:the\\s+)?(?:whole[- ]episode\\s+|(?:whole\\s+|full\\s+)?episode['’]s?\\s+|episode\\s+|total\\s+)?(?:discounted\\s+)?return(?:\\s+(?:from\\s+(?:the\\s+)?start(?:\\s+of\\s+the\\s+episode)?|(?:of|for)\\s+(?:the\\s+)?(?:(?:whole|full|entire)\\s+)?episode|at\\s+(?:time\\s+)?0))?))\\s*$"
+    solution: "Whole-episode REINFORCE multiplies every action's term by $G_0$, the return from the start of the episode."
+  - id: pg-recall-baseline-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: pg-baseline
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, what is a baseline in REINFORCE, and why does subtracting it leave the average estimate the same?
+    rubric:
+      - id: baseline
+        criterion: "Explain that a baseline $b$ is a number that doesn't depend on the action taken, subtracted from the return so the step uses $G-b$."
+        weight: 1
+        required: true
+      - id: zero
+        criterion: Explain that the subtracted part averages to zero, because the probabilities always add up to 1, so their changes cancel.
+        weight: 1
+        required: true
+      - id: noise
+        criterion: Mention that a baseline near the typical return usually cuts the noise, while a badly chosen one can add noise.
+        weight: 1
+    exemplar: "A baseline $b$ is a number that doesn't depend on the action, subtracted from the return so each step uses $G-b$. The part we subtract averages to zero, because the action probabilities add up to 1 and their changes cancel."
+  - id: pg-recall-baseline-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: pg-baseline
+    difficulty: 2
+    est_minutes: 0.5
+    prompt: "Arm A pays $11$ and arm B pays $13$. Under the current policy, each arm is equally likely and the slopes of their log probabilities are equal in size and opposite in sign. Which constant baseline makes the two gradient estimates agree?"
+    options:
+      - id: a
+        text: "$b=12$"
+        correct: true
+        feedback: "The two payouts are equally far from 12, on opposite sides. Multiplying by opposite slopes makes the two estimates equal."
+      - id: b
+        text: "$b=0$"
+        correct: false
+        feedback: "Both adjusted payouts stay positive, so multiplying by opposite slopes still gives estimates with different signs."
+      - id: c
+        text: "$b=11$"
+        correct: false
+        feedback: "Arm A's adjusted payout is zero, and arm B's is still positive. Their estimates differ."
+      - id: d
+        text: "$b=13$"
+        correct: false
+        feedback: "Arm B's adjusted payout is zero, and arm A's is negative. Their estimates differ."
+    solution: "With $b=12$, the weights on arms A and B are $-1$ and $1$, so their opposite log-probability slopes give the same gradient estimate."
+  - id: pg-recall-baseline-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: pg-baseline
+    difficulty: 2
+    est_minutes: 0.5
+    prompt: "One pull returns $G$, the baseline is $b$, and the pulled action's slope $\\nabla_\\theta\\ln\\pi_\\theta(a)$ is $d$. With learning rate $\\eta$, write the new parameter after one REINFORCE step from $\\theta$. Type `theta` for $\\theta$ and `eta` for $\\eta$."
+    answer: "theta + eta*(G - b)*d"
+    variables: { theta: [-3, 3], eta: [0.01, 0.5], G: [-10, 15], b: [-5, 12], d: [-1, 1] }
+    common_wrong:
+      - answer: "theta + eta*(b - G)*d"
+        category: math_error
+        feedback: The baseline is subtracted from the return, so the factor is $G-b$.
+      - answer: "theta - eta*(G - b)*d"
+        category: misapplied_technique
+        feedback: Subtracting is gradient descent. REINFORCE adds the step to raise the score.
+    solution: "$\\theta_{\\text{new}}=\\theta+\\eta\\,(G-b)\\,d$."

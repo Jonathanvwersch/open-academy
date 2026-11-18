@@ -764,3 +764,224 @@ exercises:
           required: false,
         }
     exemplar: "Zero hidden weights and biases give every hidden neuron a score of $0$, so its ReLU output is $0$. At exactly $0$, we take ReLU's local derivative as $0$. The backward step multiplies the arriving loss slope by that local derivative, so the slope passed back through each hidden ReLU is $0$. Even when all hidden outputs are $0$, the output bias still contributes to the prediction."
+  - id: bp-recall-reuse-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: bp-why-backprop
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what does backpropagation find by working backward from the loss, and what can it reuse when two parameters affect the same prediction?"
+    rubric:
+      - id: goal
+        criterion: "State that it finds the loss's partial derivative for every parameter by going backward through the graph."
+        weight: 1
+        required: true
+      - id: reuse
+        criterion: "Explain that it computes the loss slope at the shared prediction once and uses it for both parameters."
+        weight: 1
+        required: true
+    exemplar: "Backpropagation works backward from the loss to find its slope for every parameter. When two parameters feed the same prediction, it works out the prediction's loss slope once and passes it back to both."
+  - id: bp-recall-reuse-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: bp-why-backprop
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Both a weight and a bias affect a prediction, and that prediction feeds the loss. Which slope do the two backward calculations share?"
+    options:
+      - id: a
+        text: "The prediction's slope for the weight."
+        correct: false
+        feedback: "That is the weight's own local derivative. The bias has a separate local derivative."
+      - id: b
+        text: "The loss's slope for the prediction."
+        correct: true
+        feedback: "Both paths go through the prediction, so they use the same loss slope there."
+      - id: c
+        text: "The prediction's slope for the bias."
+        correct: false
+        feedback: "That is the bias's own local derivative. The weight has a separate local derivative."
+    solution: "Find the loss slope at the shared prediction once. Each parameter then uses its own local derivative to get its loss slope."
+  - id: bp-recall-reuse-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: bp-why-backprop
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A model predicts $\\hat y=wx+b$ and uses squared error against target $y$. Write the loss's partial derivative with respect to the bias $b$, using $w,x,b,y$."
+    answer: "2*(w*x+b-y)"
+    variables: { w: [-3, 3], x: [-3, 3], b: [-2, 2], y: [-4, 4] }
+    solution: "The prediction's loss slope is $2(\\hat y-y)$. The prediction changes by one per unit of bias, so the bias slope is $2(wx+b-y)$."
+  - id: bp-recall-relu-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: bp-by-hand
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, how does a backward step through ReLU handle the arriving loss slope for a positive saved score, and for a score of zero or less?"
+    rubric:
+      - id: positive
+        criterion: "Explain that a positive saved score gives local derivative 1, so the arriving slope passes through unchanged."
+        weight: 1
+        required: true
+      - id: blocked
+        criterion: "Explain that a negative score has local derivative 0 and zero uses 0 by convention, so the slope passed back is zero in both cases."
+        weight: 1
+        required: true
+    exemplar: "At a positive saved score, ReLU multiplies the arriving slope by 1 and passes it back unchanged. For a negative score, or at zero by convention, it multiplies the slope by 0."
+  - id: bp-recall-relu-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: bp-by-hand
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A value in a network feeds two later operations. In the backward pass, each route sends a loss-slope contribution back to that value. How do you combine the two?"
+    options:
+      - id: a
+        text: "Multiply the two contributions."
+        correct: false
+        feedback: "Multiplication combines slopes along a single route. The two arriving contributions come from separate routes."
+      - id: b
+        text: "Add the two contributions."
+        correct: true
+        feedback: "The loss can change through both uses of the value, so both effects add."
+      - id: c
+        text: "Average the two contributions."
+        correct: false
+        feedback: "Each use makes a full contribution. Averaging would shrink their combined effect."
+    solution: "Add the contributions from the two routes to get the loss slope for the shared value."
+  - id: bp-recall-relu-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: bp-by-hand
+    difficulty: 2
+    est_minutes: 0.5
+    prompt: "A two-layer network uses the hidden value $h$ to predict $\\hat y=w_2h$, then takes the squared error against target $y$. Write the loss slope for $w_2$ in terms of $w_2,h,y$. Type w2 for the output weight."
+    answer: "2*(w2*h-y)*h"
+    variables: { w2: [-3, 4], h: [0, 4], y: [-4, 4] }
+    solution: "The slope arriving at the prediction is $2(w_2h-y)$. Multiply by its local derivative for the weight, $h$."
+  - id: bp-recall-batch-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: bp-arrays
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, how does one example contribute to a shared weight's loss slope, and how do you combine the contributions across a batch?"
+    rubric:
+      - id: one
+        criterion: "Explain that one example contributes its prediction's loss slope times that example's input for the weight."
+        weight: 1
+        required: true
+      - id: sum
+        criterion: "State that the shared weight adds those contributions across the batch."
+        weight: 1
+        required: true
+    exemplar: "Each example contributes its prediction's loss slope times its input for that weight. The weight is shared, so we add those products across the batch."
+  - id: bp-recall-batch-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: bp-arrays
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A batch uses mean squared error, and $G$ holds the loss slopes for its predictions. You have summed the examples' contributions to a weight's slope using $G$. What should you do with that sum?"
+    options:
+      - id: a
+        text: "Use it as the weight's loss slope."
+        correct: true
+        feedback: "The averaging in mean squared error is already included in the entries of G."
+      - id: b
+        text: "Divide it by the batch size."
+        correct: false
+        feedback: "That would average a second time, since the entries of G already include the division."
+      - id: c
+        text: "Multiply it by the batch size."
+        correct: false
+        feedback: "That would undo the division from the mean squared error and give the slope of the sum."
+    solution: "Use the sum directly. The loss's average is already reflected in the prediction slopes."
+  - id: bp-recall-batch-formula
+    dimension: math
+    type: text
+    role: recall
+    knowledge_point: bp-arrays
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "For a batch with examples as rows, $G$ holds the loss slope for every score, one neuron per column. The bias slope vector is obtained by taking the ____ of $G$. Name the operation in words or write it as a NumPy expression."
+    accept:
+      [
+        "column sums",
+        "the column sums",
+        "sum of each column",
+        "sum down each column",
+        "sum each column",
+        "sum over rows",
+        "sum across examples",
+        "add down each column",
+        "add across the rows",
+        "G.sum(axis=0)",
+        "G.sum(0)",
+        "np.sum(G, axis=0)",
+        "np.sum(G, 0)",
+        "sum(axis=0)",
+        "sum along axis 0",
+      ]
+    regex: '^\s*(?:(?:the\s+)?column[\s-]+sums?|(?:the\s+)?sum(?:s|ming)?\s+(?:(?:of|down|within)\s+)?(?:each|every|individual)\s+column|(?:sum|add)(?:s|ing)?\s+(?:over|across|down)\s+(?:(?:all|the|its)\s+)?(?:rows|examples)|(?:sum|add)(?:s|ing)?\s+down\s+(?:(?:all|the|its)\s+)?columns?|add\s+(?:down\s+)?(?:each|every)\s+column|sum\s+(?:along|over|on)\s+axis\s*0|(?:g\s*\.\s*)?sum\s*\(\s*(?:axis\s*=\s*)?0\s*\)|(?:(?:np|numpy)\s*\.\s*)?sum\s*\(\s*g\s*,\s*(?:axis\s*=\s*)?0\s*\))\s*[.!]?\s*$'
+    solution: "Sum down each column of $G$. Each bias changes every example's score in its own column by the same amount."
+  - id: bp-recall-check-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: bp-checking
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, how do you get a central difference for one weight, and what do you compare it with in a gradient check?"
+    rubric:
+      - id: measure
+        criterion: "Explain that you hold other parameters fixed, subtract the loss just below the weight from the loss just above it, and divide by the distance between them."
+        weight: 1
+        required: true
+      - id: compare
+        criterion: "State that you compare this slope estimate with the loss slope from backpropagation at that weight."
+        weight: 1
+        required: true
+    exemplar: "Hold the other parameters fixed and measure the loss equally far below and above the weight. Subtract the lower-weight loss from the higher-weight loss, divide by the distance between the weights and compare with backpropagation's slope."
+  - id: bp-recall-check-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: bp-checking
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Backpropagation and a central difference agree for one weight at the current parameter values. What does that check support?"
+    options:
+      - id: a
+        text: "The tested weight's slope is right at every parameter setting."
+        correct: false
+        feedback: "The loss and the backward calculation can behave differently at other settings. This check only measures the current one."
+      - id: b
+        text: "Every parameter's slope is right at this parameter setting."
+        correct: false
+        feedback: "Only one weight was nudged, so the comparison covers that weight's slope."
+      - id: c
+        text: "The tested weight's slope is right at this parameter setting."
+        correct: true
+        feedback: "The estimate checks the chosen parameter at the point where it was measured."
+    solution: "A gradient check gives evidence about the parameter and point you actually tested."
+  - id: bp-recall-check-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: bp-checking
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "To check a weight $w$, take a positive nudge $\\varepsilon$ on either side. Let Lp be $L(w+\\varepsilon)$, Lm be $L(w-\\varepsilon)$ and eps be the nudge size. Write the central-difference estimate using Lp, Lm and eps."
+    answer: "(Lp-Lm)/(2*eps)"
+    variables: { Lp: [0, 10], Lm: [0, 10], eps: [0.001, 0.2] }
+    solution: "Subtract the lower-weight loss from the higher-weight loss and divide by $2\\varepsilon$, the gap between the two weights."

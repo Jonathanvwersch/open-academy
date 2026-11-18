@@ -635,3 +635,215 @@ exercises:
         weight: 1
         required: true
     exemplar: "A distribution lists each possible offer count with its probability, and those probabilities add to $1$. Expected offers multiplies each count by its probability and adds, giving the long-run average. To estimate above-asking probability given at least two offers, keep only sales with at least two offers and find the fraction above asking."
+  - id: pb-recall-events-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: pb-events
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what is an event, and what does its probability tell us?"
+    rubric:
+      - id: point1
+        criterion: "Explain that an event is a set of possible outcomes."
+        weight: 1
+        required: true
+      - id: point2
+        criterion: "Explain that its probability is a number from zero to one measuring how likely it is."
+        weight: 1
+        required: true
+    exemplar: "An event is a set of outcomes. Its probability measures how likely it is, on a scale from zero to one."
+  - id: pb-recall-events-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: pb-events
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 0.5
+    prompt: "Which quantity estimates an event's probability from records of past cases?"
+    options:
+      - id: a
+        text: "The fraction of past cases that were in the event"
+        correct: true
+        feedback: "This fraction is the event's frequency, our estimate of its probability."
+      - id: b
+        text: "The number of past cases that were in the event"
+        correct: false
+        feedback: "A count alone isn't a probability. Divide it by the number of past cases."
+      - id: c
+        text: "One minus the fraction of past cases in the event"
+        correct: false
+        feedback: "This estimates the complement, the chance the event doesn't happen."
+      - id: d
+        text: "The event's outcomes divided by all possible outcomes"
+        correct: false
+        feedback: "This counts equally likely outcomes, which past records like house sales don't give us."
+    solution: "This fraction is the event's frequency, our estimate of its probability."
+  - id: pb-recall-events-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: pb-events
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "An event $A$ has probability $p$. Write the probability of its complement."
+    answer: "1-p"
+    variables: { "p": [0.05, 0.95] }
+    solution: "An event and its complement have probabilities adding to one, so the complement has probability $1-p$."
+  - id: pb-recall-distribution-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: pb-distributions
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what is a random variable, and what does its distribution list?"
+    rubric:
+      - id: point1
+        criterion: "Explain that a random variable is a number decided by an uncertain outcome."
+        weight: 1
+        required: true
+      - id: point2
+        criterion: "Explain that its distribution lists every possible value with its probability."
+        weight: 1
+        required: true
+    exemplar: "A random variable is a number decided by an uncertain outcome. Its distribution pairs every possible value with its probability."
+  - id: pb-recall-distribution-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: pb-distributions
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 0.5
+    prompt: "Which object describes all the possible numbers of offers a house could get and the chance of each?"
+    options:
+      - id: a
+        text: "An expected value"
+        correct: false
+        feedback: "An expected value summarises the values in one long-run average."
+      - id: b
+        text: "A distribution"
+        correct: true
+        feedback: "A distribution lists the possible values and their probabilities."
+      - id: c
+        text: "An event"
+        correct: false
+        feedback: "An event picks out a set of outcomes meeting a condition."
+    solution: "A distribution lists the possible values and their probabilities."
+  - id: pb-recall-distribution-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: pb-distributions
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A random variable $X$ takes only the values 0, 1 and 2, with $P(X=0)=a$ and $P(X=1)=b$. Write $P(X=2)$."
+    answer: "1-a-b"
+    variables: { "a": [0.1, 0.4], "b": [0.1, 0.4] }
+    solution: "A distribution's probabilities add up to 1, so $P(X=2)=1-a-b$."
+  - id: pb-recall-expectation-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: pb-expectation
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what does expected value describe, and how does it use the possible values and their probabilities?"
+    rubric:
+      - id: point1
+        criterion: "Explain that expected value is the long-run average per try."
+        weight: 1
+        required: true
+      - id: point2
+        criterion: "Explain that each value is multiplied by its probability and the results are added."
+        weight: 1
+        required: true
+    exemplar: "Expected value is the average per try over many tries. Multiply each possible value by its probability and add those contributions."
+  - id: pb-recall-expectation-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: pb-expectation
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 0.5
+    prompt: "A spinner's expected value is 0.75 points. What does that number describe?"
+    options:
+      - id: a
+        text: "The long-run average points per spin"
+        correct: true
+        feedback: "Over many spins, the average points per spin settles near the expected value."
+      - id: b
+        text: "The most likely points on one spin"
+        correct: false
+        feedback: "The most likely value is the one with the largest probability, and one spin always gives a whole number of points."
+      - id: c
+        text: "The chance of scoring at least one point"
+        correct: false
+        feedback: "An event's probability measures its chance, with no units of points."
+    solution: "Over many spins, the average points per spin settles near the expected value."
+  - id: pb-recall-expectation-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: pb-expectation
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A random variable takes value $a$ with probability $p$ and value $b$ with probability $1-p$. Write its expected value."
+    answer: "a*p+b*(1-p)"
+    variables: { "a": [1, 3], "b": [5, 8], "p": [0.1, 0.9] }
+    solution: "Weight each value by its probability: $ap+b(1-p)$."
+  - id: pb-recall-conditional-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: pb-conditional
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what does $P(A\\mid B)$ mean, and which outcomes do we keep when finding it?"
+    rubric:
+      - id: point1
+        criterion: "Explain that it is the chance of $A$ once we know $B$ happened."
+        weight: 1
+        required: true
+      - id: point2
+        criterion: "Explain that we keep the outcomes in $B$ and find the fraction also in $A$."
+        weight: 1
+        required: true
+    exemplar: "It is the chance of $A$ given that $B$ happened. Keep the outcomes in $B$ and find the share also belonging to $A$."
+  - id: pb-recall-conditional-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: pb-conditional
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 0.5
+    prompt: "Which equality expresses independence of $A$ and $B$, with $P(B)>0$?"
+    options:
+      - id: a
+        text: "$P(A\\mid B)=P(B\\mid A)$"
+        correct: false
+        feedback: "Swapping the known event changes which outcomes are kept. Independence means that learning $B$ leaves the chance of $A$ unchanged."
+      - id: b
+        text: "$P(A\\mid B)=1-P(A)$"
+        correct: false
+        feedback: "One minus $P(A)$ is the complement's chance."
+      - id: c
+        text: "$P(A\\mid B)=P(A)$"
+        correct: true
+        feedback: "Knowing $B$ leaves the chance of $A$ unchanged."
+    solution: "Knowing $B$ leaves the chance of $A$ unchanged."
+  - id: pb-recall-conditional-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: pb-conditional
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Among equally likely outcomes, $a$ belong to both $A$ and $B$, and $b$ belong to $B$ in total. Write $P(A\\mid B)$ in terms of $a$ and $b$."
+    answer: "a/b"
+    variables: { "a": { "values": [1, 3, 5] }, "b": { "values": [6, 9, 12] } }
+    solution: "Divide the count in both events by the count in the known event: $a/b$."

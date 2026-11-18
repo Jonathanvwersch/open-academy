@@ -770,3 +770,218 @@ exercises:
         weight: 1
         required: true
     exemplar: "Find the largest weight size in the matrix and divide it by 127 to get the scale $s$. Divide each weight by $s$, round it and clamp it to $[-127,127]$; to use it, multiply the integer by $s$. Decoding reads every weight from memory for each token, so storing 1 byte per weight in place of 2 halves the bytes read and makes each token faster. To check quality, run both the 16-bit and INT8 models on the same held-out text and compare their loss or perplexity, and also compare their scores on real tasks the users care about."
+  - id: qzp-recall-memory-speed-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: qz-memory-speed
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, why can storing weights in fewer bits speed up single-request decode, and what other benefit does it bring to the GPU's memory budget?"
+    rubric:
+      - id: decode
+        criterion: "Explain that each decode step reads the weights, so fewer weight bytes shorten the read that limits single-request decode."
+        weight: 1
+        required: true
+      - id: space
+        criterion: "Explain that smaller weights leave more GPU memory for the other numbers stored by requests."
+        weight: 1
+        required: true
+    exemplar: "A single-request decode step spends most of its time reading weights, so fewer bytes make that read shorter. The smaller weights also leave more room for the other data requests must store."
+  - id: qzp-recall-memory-speed-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: qz-memory-speed
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A GPU serves one request at a time and gets a long prompt. The model's weights now take half the space, but the GPU does maths at the old rate. Which part of the request benefits most from the smaller weights?"
+    options:
+      - id: a
+        text: "Prefill for the long prompt"
+        correct: false
+        feedback: "A compute-bound prefill spends its time on the arithmetic, whose rate has not changed."
+      - id: b
+        text: "Decode for the reply"
+        correct: true
+        feedback: "The read is the bottleneck for this decode, so fewer bytes help."
+      - id: c
+        text: "Prefill and decode equally"
+        correct: false
+        feedback: "Less weight traffic shortens the read, but the compute-bound prefill is still limited by the maths."
+    solution: "Smaller weights shorten the read that limits single-request decode. A compute-bound prefill still has the same arithmetic limit."
+  - id: qzp-recall-memory-speed-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: qz-memory-speed
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Quantised weights take $D$ bytes. A GPU reads them at bandwidth $W$ bytes per second. Write the estimate of seconds per token for a single request whose decode time is set by weight reads."
+    answer: "D/W"
+    variables: { "D": { "values": [1000, 10000, 100000] }, "W": [1000, 100000] }
+    solution: "The GPU reads $D$ bytes per token. At bandwidth $W$, that takes about $D/W$ seconds."
+  - id: qzp-recall-int8-scale-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: qz-int8-scale
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, how does a group scale turn a weight into a symmetric INT8 integer and then turn it back into an approximate weight?"
+    rubric:
+      - id: encode
+        criterion: "Explain that you divide the weight by the scale, round and clamp to the range from $-127$ to $127$."
+        weight: 1
+        required: true
+      - id: decode
+        criterion: "State that you multiply the stored integer by the same scale to recover an approximate weight."
+        weight: 1
+        required: true
+    exemplar: "Divide the weight by the group scale, round it and clamp it to the range from $-127$ to $127$. Multiply the stored integer by that scale to get the approximate weight back."
+  - id: qzp-recall-int8-scale-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: qz-int8-scale
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "One weight in a symmetric INT8 group becomes a much larger outlier, and the scale is chosen again. Which of these gets larger?"
+    options:
+      - id: a
+        text: "The range of stored integers"
+        correct: false
+        feedback: "The integers still run from $-127$ to $127$."
+      - id: b
+        text: "The scale $s$"
+        correct: true
+        feedback: "The outlier raises $\\max|x|$, and $s=\\max|x|/127$."
+      - id: c
+        text: "The bytes per stored integer"
+        correct: false
+        feedback: "Each INT8 integer still takes 1 byte."
+    solution: "The scale is the largest size in the group divided by 127, so the outlier makes $s$ larger. Every other weight in the group then gets coarser steps."
+  - id: qzp-recall-int8-scale-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: qz-int8-scale
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A symmetric INT8 group has scale $s$, and no weight is clamped. Write the largest possible error $|x-\\hat x|$ between a weight and its dequantised value."
+    answer: "s/2"
+    variables: { s: [0.001, 0.1] }
+    solution: "Rounding moves $x/s$ by at most $1/2$, and multiplying back by $s$ gives an error of at most $s/2$."
+  - id: qzp-recall-formats-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: qz-formats
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what changes in the inputs and in the maths when a GPU uses 8-bit weight-and-activation quantisation?"
+    rubric:
+      - id: inputs
+        criterion: "Explain that both matrix multiply inputs, weights and activations, use an 8-bit format."
+        weight: 1
+        required: true
+      - id: maths
+        criterion: "State that the GPU does the matrix multiply using 8-bit maths."
+        weight: 1
+        required: true
+    exemplar: "Both weights and activations use an 8-bit format. The GPU then does 8-bit maths in the matrix multiply."
+  - id: qzp-recall-formats-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: qz-formats
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A prefill is limited by the rate of 16-bit matrix multiplies. Which change can speed up the maths itself on an H100?"
+    options:
+      - id: a
+        text: "Store weights in INT8 and do 16-bit maths."
+        correct: false
+        feedback: "Weight-only quantisation saves weight reads but still uses 16-bit matrix multiplies."
+      - id: b
+        text: "Use FP8 weights and activations for FP8 maths."
+        correct: true
+        feedback: "The H100 can do FP8 maths faster than 16-bit maths."
+      - id: c
+        text: "Store weights in INT4 and do 16-bit maths."
+        correct: false
+        feedback: "This saves more weight bytes but leaves the arithmetic format unchanged."
+    solution: "Using FP8 on both inputs lets the H100 do FP8 maths. That can help prefill when its speed is set by arithmetic."
+  - id: qzp-recall-formats-contrast2
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: qz-formats
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A floating-point format needs to represent a wider range of sizes. Which change directly helps?"
+    options:
+      - id: a
+        text: "Add more exponent bits."
+        correct: true
+        feedback: "The exponent controls the size, so more exponent bits give a wider range."
+      - id: b
+        text: "Add more mantissa bits."
+        correct: false
+        feedback: "More mantissa bits give finer steps."
+      - id: c
+        text: "Use a smaller scale for an integer group."
+        correct: false
+        feedback: "A smaller group scale gives finer integer steps and makes the largest representable size smaller."
+    solution: "More exponent bits widen a floating-point format's range. Mantissa bits affect the spacing of representable values."
+  - id: qzp-recall-quality-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: qz-quality
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, why do we use held-out text to measure language-modelling loss, and why do we also test tasks that users care about?"
+    rubric:
+      - id: held-out
+        criterion: "Explain that text used to train the model or choose scales would make the test too easy."
+        weight: 1
+        required: true
+      - id: tasks
+        criterion: "Explain that average loss can hide a large drop in a skill few tokens depend on, so user tasks need their own tests."
+        weight: 1
+        required: true
+    exemplar: "Held-out text was used neither to train the model nor to choose scales, so it avoids an overly easy test. Average loss can miss a drop in a skill few tokens depend on, so we also compare scores on tasks users care about."
+  - id: qzp-recall-quality-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: qz-quality
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Two versions of a model have almost the same loss on held-out text. You suspect the quantised one has got worse at writing code. Which comparison best checks that suspicion?"
+    options:
+      - id: a
+        text: "Compare their perplexity on the same held-out text."
+        correct: false
+        feedback: "Perplexity is $e$ raised to the average loss, so it can hide the same drop on code."
+      - id: b
+        text: "Compare their loss on the text used to choose the scales."
+        correct: false
+        feedback: "That text isn't held out, so it makes the test too easy."
+      - id: c
+        text: "Compare their accuracy on a set of programming problems."
+        correct: true
+        feedback: "This tests the skill you suspect directly, with the same problems for both models."
+    solution: "Use tasks that exercise the skill you care about. Average loss on text can hide a drop in a skill few tokens depend on."
+  - id: qzp-recall-quality-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: qz-quality
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A model's average language-modelling loss on held-out text is $L$. Write its perplexity. Use `exp(...)` for powers of $e$."
+    answer: "exp(L)"
+    variables: { L: [0.1, 5] }
+    solution: "Perplexity is $e^L$, the exponential of the average loss."

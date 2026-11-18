@@ -521,3 +521,171 @@ exercises:
         required: false
     exemplar: "Full-batch descent checks every training example before moving. Minibatch descent averages only a chosen group's gradients, all at the current parameters, then subtracts the learning rate times that average. Each batch produces one update; using all the examples once completes an epoch, after which we shuffle and continue from the learned parameters. Small batches need fewer examples before moving but can point against the full gradient, so even correct arithmetic can raise full-data loss. Bigger batches generally give steadier directions but need more examples and usually more memory per update."
     solution: "The parameter update is unchanged; the examples supplying its gradient change. One epoch can contain many batch updates, and sampling noise trades cheaper updates against less reliable directions."
+  - id: sgm-recall-batch-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: sgm-average-slopes
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, how do you form a minibatch gradient for one update, and how do you use it to move a parameter?"
+    rubric:
+      - id: average
+        criterion: "Explain that you calculate each batch example's slope at the same current parameter values and average the slopes for each parameter."
+        weight: 1
+        required: true
+      - id: move
+        criterion: "State that you subtract the learning rate times the average slope from the parameter."
+        weight: 1
+        required: true
+    exemplar: "Use the current parameters to find the slopes for all the examples in the batch, then average them for each parameter. Subtract the learning rate times that parameter's average slope."
+  - id: sgm-recall-batch-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: sgm-average-slopes
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "The first minibatch changes a weight. In the next minibatch, you find the slope for its first example. Which weight value should you use to find the slope for its second example?"
+    options:
+      - id: a
+        text: "The value after a move using the first example."
+        correct: false
+        feedback: "That would make a one-example update. A minibatch combines its examples' slopes before moving."
+      - id: b
+        text: "The value used to find the first example's slope."
+        correct: true
+        feedback: "Every example in a batch is evaluated at the same parameter values."
+      - id: c
+        text: "The value from the start of the epoch."
+        correct: false
+        feedback: "The first minibatch has already changed the weight. Use its updated value for both examples in the next batch."
+    solution: "A minibatch makes one move after averaging its slopes. Every slope in the batch uses the weight at the start of that batch."
+  - id: sgm-recall-batch-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: sgm-average-slopes
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A minibatch has two examples with slopes $g_1$ and $g_2$ at parameter value $w$. Write the updated $w$ for learning rate $\\eta$. Type g1, g2 and eta for these quantities."
+    answer: "w-eta*(g1+g2)/2"
+    variables: { w: [-3, 5], g1: [-6, 6], g2: [-6, 6], eta: [0.05, 0.5] }
+    solution: "Average the two slopes, then subtract the learning rate times that average. The new value is $w-\\eta(g_1+g_2)/2$."
+  - id: sgm-recall-epoch-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: sgm-count-passes
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what makes up an epoch in minibatch training, and when do the parameter updates happen during it?"
+    rubric:
+      - id: epoch
+        criterion: "State that an epoch is one complete pass through the training examples."
+        weight: 1
+        required: true
+      - id: updates
+        criterion: "Explain that each batch produces an update before the next batch starts."
+        weight: 1
+        required: true
+    exemplar: "An epoch uses every training example once. Each batch produces one update, and the next batch starts from those updated parameters."
+  - id: sgm-recall-epoch-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: sgm-count-passes
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "You just finished the first epoch of minibatch training. What starting point and example order should you use for the next epoch?"
+    options:
+      - id: a
+        text: "Start from the initial parameters and shuffle the examples."
+        correct: false
+        feedback: "Shuffling is right, but resetting the parameters would discard what the first pass learned."
+      - id: b
+        text: "Keep the current parameters and reuse the same order."
+        correct: false
+        feedback: "Keeping the parameters continues learning, but shuffling avoids repeating the same batches and update order."
+      - id: c
+        text: "Keep the current parameters and shuffle the examples."
+        correct: true
+        feedback: "Continue from the learned values and shuffle to change which examples are grouped and which batches go first."
+      - id: d
+        text: "Start from the initial parameters and reuse the same order."
+        correct: false
+        feedback: "Resetting loses the first epoch's updates. Reusing the order also keeps the same groups."
+    solution: "Begin from the last batch's updated parameters and shuffle the examples before splitting them into new batches."
+  - id: sgm-recall-epoch-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: sgm-count-passes
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A dataset has $N$ training examples. You use one update per batch of size $m$, and all batches are full. Write the number of updates per epoch."
+    answer: "N/m"
+    variables: { "N": { "values": [60, 120] }, "m": { "values": [2, 3, 4, 5, 6, 10] } }
+    solution: "An epoch uses all $N$ examples. With $m$ in every batch, there are $N/m$ batches and as many updates."
+  - id: sgm-recall-noise-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: sgm-choose-size
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what is gradient noise in minibatch training, and what happens to it when you use the entire dataset for one update?"
+    rubric:
+      - id: difference
+        criterion: "Explain that gradient noise is the difference between the batch gradient and the full-data gradient at the same parameter values."
+        weight: 1
+        required: true
+      - id: all
+        criterion: "State that using the whole dataset removes this noise because the update uses the full-data gradient."
+        weight: 1
+        required: true
+    exemplar: "Gradient noise is the difference between the batch's gradient and the whole dataset's gradient at the same parameter values. With the full dataset in each update, there is no subset to introduce that difference."
+  - id: sgm-recall-noise-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: sgm-choose-size
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "At the same weight, a minibatch gives a gradient of $+3$ and the full dataset gives a gradient of $-2$. The learning rate is positive. If you use the full dataset for this update, what happens to the weight?"
+    options:
+      - id: a
+        text: "The weight decreases."
+        correct: false
+        feedback: "The positive minibatch gradient would decrease the weight. The full-data gradient here is negative."
+      - id: b
+        text: "The weight increases."
+        correct: true
+        feedback: "Subtracting the negative full-data gradient times a positive learning rate increases the weight."
+      - id: c
+        text: "The weight stays the same."
+        correct: false
+        feedback: "The two gradients describe different sets of examples. Use the full-data gradient on its own; it is nonzero."
+    solution: "Use the full-data gradient of $-2$. It moves the weight up, while the minibatch gradient of $+3$ would move it down."
+  - id: sgm-recall-noise-contrast2
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: sgm-choose-size
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Two batch sizes train the same model for one minute each from the same starting parameters. Which result tells you which run made more training progress in that minute?"
+    options:
+      - id: a
+        text: "The run that made more updates."
+        correct: false
+        feedback: "Small batches may update more often, but each direction can be noisier. Update count alone gives no loss comparison."
+      - id: b
+        text: "The run with the lower loss on its last batch."
+        correct: false
+        feedback: "The last batches can contain different examples. Their losses can differ even at the same parameters."
+      - id: c
+        text: "The run with the lower loss on the full training dataset."
+        correct: true
+        feedback: "Both runs are scored on the same examples after the same time, so the loss measures comparable progress."
+    solution: "Compare loss on the full dataset after equal elapsed time."

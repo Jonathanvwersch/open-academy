@@ -697,3 +697,178 @@ exercises:
         weight: 1
         required: true
     exemplar: "Start with characters or bytes and repeatedly add the most frequent neighbouring token pair until the vocabulary reaches the chosen size, recording the merges in order. Encode a new word by starting from its characters and applying those learned merges in order. Unseen words can be built from known smaller pieces, avoiding a whole-word tokenizer's unknown-word ID."
+  - id: tok-recall-ids-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: tok-text-to-ids
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, what does tokenization do to text, and what does a token id mean?
+    rubric:
+      - id: pieces
+        criterion: Explain that tokenization cuts text into pieces called tokens and replaces each with a number.
+        weight: 1
+        required: true
+      - id: position
+        criterion: Explain that a token id is the token's position in a fixed vocabulary list.
+        weight: 1
+        required: true
+    exemplar: Tokenization cuts text into pieces called tokens and replaces each with a number. That number is the token's position in the fixed vocabulary list.
+  - id: tok-recall-ids-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: tok-text-to-ids
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: A tokenizer turns a list of token ids back into text. What is this operation called?
+    options:
+      - id: a
+        text: Encoding
+        correct: false
+        feedback: Encoding turns text into token ids.
+      - id: b
+        text: Decoding
+        correct: true
+        feedback: Decoding looks up the text pieces for the ids.
+      - id: c
+        text: Merging
+        correct: false
+        feedback: Merging joins neighbouring tokens into a larger token.
+    solution: Decoding turns token ids back into text using the vocabulary.
+  - id: tok-recall-ids-contrast2
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: tok-text-to-ids
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: What does the vocabulary size $N$ count?
+    options:
+      - id: a
+        text: All token occurrences in the input text
+        correct: false
+        feedback: The text length $T$ counts token occurrences, including repeats.
+      - id: b
+        text: All character occurrences in the input text
+        correct: false
+        feedback: Counting every character occurrence gives the text length $T$ of a character tokenizer. $N$ counts the different tokens in the vocabulary.
+      - id: c
+        text: All entries in the fixed token list
+        correct: true
+        feedback: The vocabulary contains one entry for every token the tokenizer knows.
+    solution: $N$ counts vocabulary entries. A text's token count is $T$.
+  - id: tok-recall-merges-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: tok-bpe-merges
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, how does BPE choose each new token, and when does it stop building the vocabulary?
+    rubric:
+      - id: pair
+        criterion: Explain that BPE joins the most frequent pair of neighbouring tokens in the training text into a new token.
+        weight: 1
+        required: true
+      - id: stop
+        criterion: State that BPE stops when the vocabulary reaches the size chosen in advance.
+        weight: 1
+        required: true
+    exemplar: BPE repeatedly joins the most frequent pair of neighbouring tokens in the training text into a new token. It stops when the vocabulary reaches the chosen size.
+  - id: tok-recall-merges-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: tok-bpe-merges
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: During BPE training, which count decides the next merge?
+    options:
+      - id: a
+        text: The frequency of each neighbouring token pair
+        correct: true
+        feedback: BPE joins the pair that occurs most often, then counts pairs again.
+      - id: b
+        text: The frequency of each individual character
+        correct: false
+        feedback: A common character can have several different neighbours. BPE counts each pair together.
+      - id: c
+        text: The frequency of each complete word
+        correct: false
+        feedback: Whole-word counts treat each word as a unit. BPE also learns pieces that occur inside words.
+    solution: BPE counts neighbouring token pairs and joins the most frequent pair.
+  - id: tok-recall-merges-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: tok-bpe-merges
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: BPE starts with $c$ distinct characters and learns $m$ merges. Write the vocabulary size $N$, with no extra special tokens.
+    answer: c+m
+    variables: { "c": { "values": [2, 16, 256] }, "m": { "values": [1, 100, 50000] } }
+    solution: Each merge adds one vocabulary entry, so $N=c+m$.
+  - id: tok-recall-encode-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: tok-bpe-encode
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, how does a trained BPE tokenizer split new text, and what stays fixed after training?
+    rubric:
+      - id: replay
+        criterion: Explain that encoding starts from characters and applies the learned merges in order wherever each pair appears.
+        weight: 1
+        required: true
+      - id: fixed
+        criterion: State that the vocabulary and merge order stay fixed after training.
+        weight: 1
+        required: true
+    exemplar: The tokenizer starts from characters and applies each learned merge in order wherever its pair appears. The vocabulary and merge order stay fixed after training.
+  - id: tok-recall-encode-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: tok-bpe-encode
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: A trained BPE tokenizer meets the word "cats" in one document and again in a second document. How does it split "cats" the second time?
+    options:
+      - id: a
+        text: Into the same tokens as the first time
+        correct: true
+        feedback: Splitting replays the fixed merge list in order, so a word is always split the same way.
+      - id: b
+        text: By the pairs most common in the second document
+        correct: false
+        feedback: Counting pairs to choose merges happens only once, during training. New text replays the learned merges.
+      - id: c
+        text: As one token, added to the vocabulary the first time
+        correct: false
+        feedback: The vocabulary stays fixed after training. A new word is built from pieces the tokenizer already has.
+    solution: Encoding starts from characters and replays the learned merges in order, so "cats" gets the same tokens every time.
+  - id: tok-recall-encode-contrast2
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: tok-bpe-encode
+    difficulty: 2
+    est_minutes: 0.5
+    prompt: What trade-off comes from learning more BPE merges on the same training text?
+    options:
+      - id: a
+        text: A smaller vocabulary and longer token lists
+        correct: false
+        feedback: This describes moving toward character tokens by using fewer merges.
+      - id: b
+        text: A larger vocabulary and longer token lists
+        correct: false
+        feedback: Each merge adds a vocabulary entry and joins occurrences of two tokens into one, shortening the lists.
+      - id: c
+        text: A larger vocabulary and shorter token lists
+        correct: true
+        feedback: More merges shorten the text while adding vocabulary entries, including rarer tokens to learn about.
+    solution: Merges add vocabulary entries and reduce the number of tokens in the training text.

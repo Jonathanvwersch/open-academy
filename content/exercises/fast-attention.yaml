@@ -961,3 +961,219 @@ exercises:
           required: false,
         }
     exemplar: Three-kernel attention writes the T by T score table to HBM, reads it back to apply softmax, writes the weight table, and reads that back to mix the values, so for long prompts those tables are most of the traffic. A fused kernel keeps the scores in on-chip memory, so it only reads Q, K and V and writes O. It brings the keys and values in a block at a time and keeps two running sums for each query, the sum of the exponentials of the scores and the sum of the values each multiplied by its exponential. Every weight divides by the same total, so after the last block one division gives exactly the softmax output, apart from rounding. To stop the exponentials overflowing, it also subtracts a running largest score and rescales both sums when that score grows.
+  - id: fa-recall-standard-traffic-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: fa-standard-traffic
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what are the two intermediate tables in standard attention, and why do they dominate memory traffic for long prompts?"
+    rubric:
+      - id: tables
+        criterion: "Name the score table and the softmax weight table."
+        weight: 1
+        required: true
+      - id: traffic
+        criterion: "Explain that each table has one entry per query and key pair, so each has $T^2$ entries that are written and read."
+        weight: 1
+        required: true
+    exemplar: "Standard attention writes and reads the score table and the softmax weight table. Both have one entry per query and key pair, so each grows as $T^2$ and dominates the traffic for long prompts."
+  - id: fa-recall-standard-traffic-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: fa-standard-traffic
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "The prompt grows while head width stays fixed. Which pair of matrices accounts for a growing share of HBM traffic in standard attention?"
+    options:
+      - id: a
+        text: "The query and key matrices"
+        correct: false
+        feedback: "Both have one row per token and a fixed number of columns."
+      - id: b
+        text: "The score and weight tables"
+        correct: true
+        feedback: "Both grow with the number of query and key pairs, and both are written and read."
+      - id: c
+        text: "The value and output matrices"
+        correct: false
+        feedback: "Both grow in proportion to the number of tokens."
+    solution: "The score and weight tables grow as the square of the token count. The other matrices grow in proportion to the token count."
+  - id: fa-recall-standard-traffic-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: fa-standard-traffic
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "For one head of standard attention on a prompt of $T$ tokens, the head width is $d_h$ and each number uses $b$ bytes. Write the total bytes moved across the three kernels. Type `dh` for the head width."
+    answer: "b*(4*T*dh+4*T^2)"
+    variables:
+      {
+        "T": { "values": [16, 256, 2048] },
+        "dh": { "values": [16, 64, 128] },
+        "b": { "values": [1, 2, 4] },
+      }
+    solution: "Four matrices contribute $Td_h$ numbers each. The two $T^2$ tables are each written and read, giving $b(4Td_h+4T^2)$ bytes."
+  - id: fa-recall-fused-kernel-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: fa-fused-kernel
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, why does fused attention work in blocks, and what happens to a query block's output as key blocks arrive?"
+    rubric:
+      - id: space
+        criterion: "Explain that the full key matrix may not fit in on-chip memory, so the kernel loads keys and values one block at a time."
+        weight: 1
+        required: true
+      - id: update
+        criterion: "State that scores for each key block update a running output, and the output is written after the last block."
+        weight: 1
+        required: true
+    exemplar: "The full key matrix can be too large for on-chip memory, so the kernel loads keys and values one block at a time. It uses each block's scores to update the running output and writes that output after the last block."
+  - id: fa-recall-fused-kernel-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: fa-fused-kernel
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A fused attention kernel finishes its work on the current key block and has updated the running output. Which data can the kernel discard before moving to the next key block?"
+    options:
+      - id: a
+        text: "The running output for its query block"
+        correct: false
+        feedback: "This carries the work done so far into the next key block."
+      - id: b
+        text: "The query rows it is working on"
+        correct: false
+        feedback: "The same queries are needed again with the next key block."
+      - id: c
+        text: "The scores for these query and key rows"
+        correct: true
+        feedback: "The scores have already been used to update the running output."
+    solution: "The kernel uses each small score block on chip to update the running output. It can then discard those scores."
+  - id: fa-recall-fused-kernel-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: fa-fused-kernel
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "One attention head has prompt length $T$ and head width $d_h$. Assume a fused kernel can read each input once and write the output once. Write its minimum traffic in numbers moved. Type `dh` for the head width."
+    answer: "4*T*dh"
+    variables: { "T": { "values": [16, 256, 2048] }, "dh": { "values": [16, 64, 128] } }
+    solution: "The kernel reads $Q$, $K$ and $V$ and writes $O$. Each has $Td_h$ numbers, so the minimum is $4Td_h$."
+  - id: fa-recall-online-softmax-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: fa-online-softmax
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what two totals does online softmax keep for one query before any shift for large scores?"
+    rubric:
+      - id: scalar
+        criterion: "State that one total sums the exponentials of the scores seen so far."
+        weight: 1
+        required: true
+      - id: vector
+        criterion: "State that the other total sums the value vectors multiplied by the exponentials of their scores."
+        weight: 1
+        required: true
+    exemplar: "Online softmax keeps a sum of the score exponentials seen so far. It also keeps a vector sum of the values, each multiplied by its score exponential."
+  - id: fa-recall-online-softmax-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: fa-online-softmax
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A kernel works through one query's keys in blocks. Which method gives the same output as softmax over the whole row?"
+    options:
+      - id: a
+        text: "Average the blocks' separate softmax outputs"
+        correct: false
+        feedback: "Equal weights ignore that a block with larger exponentials should count for more."
+      - id: b
+        text: "Divide the summed weighted values by the summed exponentials"
+        correct: true
+        feedback: "Both sums can be built a block at a time, and their ratio is exactly the softmax output."
+      - id: c
+        text: "Use the softmax output of the block with the largest score"
+        correct: false
+        feedback: "The other blocks' keys still add to both sums, so they change the output."
+    solution: "Keep the running totals $u=\\sum e^{s_j}v_j$ and $\\ell=\\sum e^{s_j}$ across blocks and divide once at the end. Averaging block outputs gives each block equal say, which is wrong."
+  - id: fa-recall-online-softmax-formula
+    dimension: math
+    type: text
+    role: recall
+    knowledge_point: fa-online-softmax
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Fill in the blank for online softmax after the last key block: $o=\\underline{\\qquad}$. Give the expression in terms of the two running totals, using the symbols for those totals."
+    accept:
+      - "u/ell"
+      - "u/l"
+      - "u/ℓ"
+      - "u/\\ell"
+      - "\\frac{u}{\\ell}"
+      - "u ÷ ℓ"
+      - "u over ell"
+    regex: '^\s*\$?\s*(?:o\s*=\s*)?(?:u\s*(?:[/÷]|\s+over)\s*(?:\\?ell|ℓ|l)|\\(?:d|t)?frac\s*\{\s*u\s*\}\s*\{\s*(?:\\?ell|ℓ|l)\s*\})\s*\$?\s*$'
+    solution: "Divide $u$, the sum of the values weighted by their score exponentials, by $\\ell$, the sum of those exponentials. The result is $u/\\ell$."
+  - id: fa-recall-running-max-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: fa-running-max
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, why does a kernel working in blocks shift scores by the largest score seen so far, and what does it do to its old totals if that score rises?"
+    rubric:
+      - id: shift
+        criterion: "Explain that the largest score isn't known until the last block, so the kernel subtracts the largest so far, which keeps each exponential at most one and avoids overflow."
+        weight: 1
+        required: true
+      - id: rescale
+        criterion: "State that both old totals are multiplied by the same factor before adding the new block's terms."
+        weight: 1
+        required: true
+    exemplar: "The largest score is only known after the last block, so the kernel subtracts the largest so far, which keeps each exponential at most one. If that score rises, it multiplies both old totals by the same factor before adding the new terms."
+  - id: fa-recall-running-max-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: fa-running-max
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A new key block raises the running largest score from $m$ to $m_{\\text{new}}$. What does the kernel multiply by $e^{m-m_{\\text{new}}}$?"
+    options:
+      - id: a
+        text: "Only the old total $\\ell$"
+        correct: false
+        feedback: "The old $u$ was also built from $e^{s_j-m}$, and scaling only $\\ell$ would change $u/\\ell$."
+      - id: b
+        text: "Both old totals, $\\ell$ and $u$"
+        correct: true
+        feedback: "Every old term was measured from $m$, so both totals need the same factor."
+      - id: c
+        text: "The new block's terms"
+        correct: false
+        feedback: "The new terms are computed from $m_{\\text{new}}$ directly, so they need no rescaling."
+    solution: "Every old term in $\\ell$ and $u$ was measured from $m$. Multiplying both by $e^{m-m_{\\text{new}}}$ measures them from $m_{\\text{new}}$, and the new block's terms are added after that."
+  - id: fa-recall-running-max-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: fa-running-max
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Online softmax has old maximum $m$ and a new, larger maximum $m_{\\text{new}}$. Write the factor by which it multiplies both old totals. Type `mnew` for the new maximum and use `exp(...)`."
+    answer: "exp(m-mnew)"
+    variables: { m: [-3, 2], mnew: [2.1, 8] }
+    solution: "Replacing $s_j-m$ with $s_j-m_{\\text{new}}$ adds $m-m_{\\text{new}}$ to the exponent. The factor is $e^{m-m_{\\text{new}}}$."

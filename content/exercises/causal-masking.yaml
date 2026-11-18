@@ -699,3 +699,167 @@ exercises:
         weight: 1
         required: true
     exemplar: A language model learns to predict each next token, and in training the whole sentence goes in at once. With plain attention, position $t$ could attend to token $x_{t+1}$ and copy it. The causal mask is a $T\times T$ grid with 0 on and below the diagonal and $-\infty$ above it. Adding it to the scores before the softmax gives every later position $e^{-\infty}=0$ weight, while the allowed weights still add up to 1. So each output $o_t$ mixes only $v_1$ to $v_t$ and depends only on the first $t$ tokens, which means every prediction in one pass is made without seeing its answer.
+  - id: cm-recall-hide-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: cm-hide-future
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, which positions may a causal mask let a token read, and why is this rule needed during next-token training?"
+    rubric:
+      - id: r1
+        criterion: "State that position $t$ can attend to itself and earlier positions only."
+        weight: 1
+        required: true
+      - id: r2
+        criterion: "Explain that blocking later tokens prevents the model from copying the next token it is meant to predict."
+        weight: 1
+        required: true
+    exemplar: "Position $t$ may attend to itself and earlier positions only. Later tokens are present during training, so blocking them prevents copying the next-token answer."
+  - id: cm-recall-hide-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: cm-hide-future
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Which token is visible to position $t$ under a causal mask?"
+    options:
+      - id: a
+        text: "The token at position $t+1$"
+        correct: false
+        feedback: "That token is the next-token target, so the mask blocks its column."
+      - id: b
+        text: "The token at position $t$"
+        correct: true
+        feedback: "The current token is already known and the diagonal remains allowed."
+      - id: c
+        text: "Every token in the sentence"
+        correct: false
+        feedback: "That describes plain attention. A causal mask blocks later positions."
+    solution: "The mask allows the diagonal and earlier columns."
+  - id: cm-recall-hide-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: cm-hide-future
+    difficulty: 2
+    est_minutes: 0.5
+    prompt: "For $T$ tokens, write the total number of allowed query–source pairs in a causal attention mask."
+    answer: "T*(T+1)/2"
+    variables: { "T": { "values": [2, 16, 128] } }
+    solution: "Rows allow $1,2,\\dots,T$ cells, whose sum is $T(T+1)/2$."
+  - id: cm-recall-scores-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: cm-mask-scores
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, how does a causal mask change scores before softmax, and what happens to the resulting weights?"
+    rubric:
+      - id: r1
+        criterion: "State that the mask adds 0 to allowed scores and minus infinity to blocked scores before softmax."
+        weight: 1
+        required: true
+      - id: r2
+        criterion: "Explain that blocked weights become exactly zero while allowed weights still add up to 1."
+        weight: 1
+        required: true
+    exemplar: "The mask adds 0 to allowed scores and minus infinity to blocked scores before softmax. Blocked weights become zero, and allowed weights still sum to 1."
+  - id: cm-recall-scores-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: cm-mask-scores
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Which procedure removes future sources while keeping the remaining attention weights adding up to 1?"
+    options:
+      - id: a
+        text: "Set blocked scores to zero before softmax."
+        correct: false
+        feedback: "A zero score gives an exponential of 1, leaving blocked tokens a positive share."
+      - id: b
+        text: "Set blocked weights to zero after softmax."
+        correct: false
+        feedback: "Simply zeroing weights after softmax leaves the remaining shares with a total below 1."
+      - id: c
+        text: "Add minus infinity to blocked scores before softmax."
+        correct: true
+        feedback: "Each blocked term becomes $e^{-\\infty}=0$, so it drops out of the top and the bottom of softmax, and the allowed weights still add up to 1."
+    solution: "Mask scores before softmax so blocked sources contribute zero to its total."
+  - id: cm-recall-scores-formula
+    dimension: math
+    type: text
+    role: recall
+    knowledge_point: cm-mask-scores
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Fill in the blocked mask value: $m_{tj}=\\underline{\\quad}$ when $j>t$. Give the mathematical value in symbols or words."
+    accept:
+      [
+        "-∞",
+        "−∞",
+        "-infinity",
+        "minus infinity",
+        "negative infinity",
+        "-inf",
+        "-\\infty",
+        "$-\\infty$",
+        "-np.inf",
+      ]
+    regex: "^\\s*\\$?\\s*(?:[-−]\\s*(?:∞|\\\\infty|infinity|inf|np\\s*\\.\\s*inf)|(?:minus|negative)\\s+infinity)\\s*\\$?\\s*$"
+    solution: "For a blocked cell, $m_{tj}=-\\infty$, making its exponential zero."
+  - id: cm-recall-code-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: cm-mask-code
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what shape and entries does the causal mask grid have, and where must it be applied to keep future information out of a stacked model?"
+    rubric:
+      - id: r1
+        criterion: "Describe a $T\\times T$ mask with 0 on and below the diagonal and minus infinity above it."
+        weight: 1
+        required: true
+      - id: r2
+        criterion: "State that every attention layer applies the mask to its scores before row-wise softmax."
+        weight: 1
+        required: true
+    exemplar: "The mask is $T\\times T$, with 0 on and below the diagonal and minus infinity above it. Every attention layer adds it to scores before taking softmax along each row."
+  - id: cm-recall-code-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: cm-mask-code
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "What does applying the causal mask change?"
+    options:
+      - id: a
+        text: "The number of tokens kept in the input"
+        correct: false
+        feedback: "All tokens remain in the input and each keeps its own prediction."
+      - id: b
+        text: "The sources each position can read"
+        correct: true
+        feedback: "The mask stops earlier queries from reading later sources."
+      - id: c
+        text: "The vectors stored in the embedding table"
+        correct: false
+        feedback: "Embedding lookup supplies token vectors. The mask is added to attention scores."
+    solution: "The mask restricts attention links while keeping every input token."
+  - id: cm-recall-code-formula
+    dimension: math
+    type: text
+    role: recall
+    knowledge_point: cm-mask-code
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "The score grid is $S$ and the additive causal mask is $M$. Fill in the grid sent to row-wise softmax: $A=\\operatorname{softmax}_{\\mathrm{rows}}(\\underline{\\quad})$."
+    accept: ["S+M", "S + M", "M+S", "M + S", "$S+M$", "scores plus mask", "scores + mask"]
+    regex: "^\\s*\\$?\\s*\\{?\\s*(?:s\\s*\\+\\s*m|m\\s*\\+\\s*s)\\s*\\}?\\s*\\$?\\s*$"
+    solution: "Add the grids first: $A=\\operatorname{softmax}_{\\mathrm{rows}}(S+M)$."

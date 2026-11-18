@@ -845,3 +845,159 @@ exercises:
       It is zero when the prediction equals the price:
 
       $$b=20$$
+  - id: pd-recall-fixed-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: pd-hold-fixed
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what does a partial derivative with respect to $x$ measure, and what happens to the other inputs?"
+    rubric:
+      - id: point1
+        criterion: "Explain that it measures the slope when $x$ changes."
+        weight: 1
+        required: true
+      - id: point2
+        criterion: "Explain that every other input is held fixed."
+        weight: 1
+        required: true
+    exemplar: "A partial derivative in $x$ measures the function's slope as $x$ changes. All the other inputs stay fixed."
+  - id: pd-recall-fixed-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: pd-hold-fixed
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 0.5
+    prompt: "Which change is measured by $\\partial f/\\partial x$ for $f(x,y)$?"
+    options:
+      - id: a
+        text: "Changing $y$ while $x$ stays fixed"
+        correct: false
+        feedback: "This describes the partial derivative with respect to $y$."
+      - id: b
+        text: "Changing $x$ and $y$ together"
+        correct: false
+        feedback: "Moving $x$ and $y$ together mixes both slopes. $\\partial f/\\partial x$ moves only $x$."
+      - id: c
+        text: "Changing $x$ while $y$ stays fixed"
+        correct: true
+        feedback: "Only $x$ changes, and every other input stays fixed."
+    solution: "Only $x$ changes, and every other input stays fixed."
+  - id: pd-recall-fixed-formula
+    dimension: math
+    type: text
+    role: recall
+    knowledge_point: pd-hold-fixed
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Fill in the blank: $\\frac{\\partial f}{\\partial x}=\\lim_{h\\to0}\\frac{\\underline{\\quad}-f(x,y)}{h}$. Type the missing function value."
+    accept: ["f(x+h,y)", "f(x + h, y)", "f(h+x,y)", "f(h + x, y)"]
+    regex: "^\\s*f\\s*\\(\\s*(?:x\\s*\\+\\s*h|h\\s*\\+\\s*x)\\s*,\\s*y\\s*\\)\\s*$"
+    solution: "The new output is $f(x+h,y)$: only $x$ receives the step."
+  - id: pd-recall-compute-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: pd-compute
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, when differentiating in $x$, how do you handle a fixed input that multiplies $x$, and a term containing only fixed inputs?"
+    rubric:
+      - id: point1
+        criterion: "Explain that a fixed input multiplying $x$ stays as a constant factor."
+        weight: 1
+        required: true
+      - id: point2
+        criterion: "Explain that a term containing only fixed inputs has derivative zero."
+        weight: 1
+        required: true
+    exemplar: "A fixed multiplier stays in the derivative. A term made only of fixed inputs contributes zero slope."
+  - id: pd-recall-compute-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: pd-compute
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 0.5
+    prompt: "When taking the partial in $x$ of $x^2y+5y$, how should the two appearances of $y$ be handled?"
+    options:
+      - id: a
+        text: "Keep $y$ as a multiplier in the first term; the second term gives five"
+        correct: false
+        feedback: "A slope of five comes from differentiating $5y$ in $y$."
+      - id: b
+        text: "Keep $y$ as a multiplier in the first term; the second term gives zero"
+        correct: true
+        feedback: "The first $y$ scales the changing power; the whole $5y$ term is fixed."
+      - id: c
+        text: "Remove $y$ from the first term; the second term gives zero"
+        correct: false
+        feedback: "Holding $y$ fixed makes it a constant factor, and a constant factor stays, like the $5$ in $(5x^2)'=10x$."
+    solution: "The first $y$ scales the changing power; the whole $5y$ term is fixed."
+  - id: pd-recall-compute-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: pd-compute
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "For $f(x,y)=x^3y+4y^2$, write $\\partial f/\\partial x$ as an expression in $x$ and $y$."
+    answer: "3*x^2*y"
+    variables: { "x": [0.5, 4], "y": [0.5, 4] }
+    solution: "Keep $y$ as a fixed multiplier; $4y^2$ has no $x$, so it contributes zero. The result is $3x^2y$."
+  - id: pd-recall-model-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: pd-many-inputs
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, for the loss $L=(wx+b-y)^2$ of a house-price model, which quantities can training change, and why are $x$ and $y$ held fixed?"
+    rubric:
+      - id: point1
+        criterion: "State that training adjusts the weight $w$ and bias $b$."
+        weight: 1
+        required: true
+      - id: point2
+        criterion: "Explain that area $x$ and price $y$ are recorded data."
+        weight: 1
+        required: true
+    exemplar: "Training adjusts the weight $w$ and bias $b$. The area $x$ and recorded price $y$ stay fixed because they are data."
+  - id: pd-recall-model-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: pd-many-inputs
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 0.5
+    prompt: "A model predicts $wx+b$ for a house with recorded price $y$. Which quantity tells how its squared loss responds to a small increase in weight?"
+    options:
+      - id: a
+        text: "$\\partial L/\\partial w$"
+        correct: true
+        feedback: "This partial derivative is the loss's rate of change as the weight rises, with $b$ held fixed."
+      - id: b
+        text: "$\\partial L/\\partial b$"
+        correct: false
+        feedback: "This is the loss's rate of change as the bias rises."
+      - id: c
+        text: "$\\partial L/\\partial x$"
+        correct: false
+        feedback: "The area $x$ is recorded data that training can't change, so training needs no slope for it."
+    solution: "This partial derivative is the loss's rate of change as the weight rises, with $b$ held fixed."
+  - id: pd-recall-model-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: pd-many-inputs
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "For $L=(wx+b-y)^2$, write $\\partial L/\\partial w$. Treat $x$ and $y$ as fixed data and $b$ as fixed while taking this partial."
+    answer: "2*(w*x+b-y)*x"
+    variables: { "w": [0.5, 3], "x": [1, 4], "b": [0.5, 3], "y": [4, 10] }
+    solution: "The weight slope is $2ex$, where $e=wx+b-y$, giving $2(wx+b-y)x$."

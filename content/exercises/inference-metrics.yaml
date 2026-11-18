@@ -610,3 +610,156 @@ exercises:
         required: true
     exemplar: "The time to first token is the wait from sending the request until the first output token arrives. The inter-token latency is the gap between consecutive output tokens. Each batched run gives every sequence its next token and shares the weight read, which can improve throughput before saturation. Larger batches can lengthen runs and increase each user's ITL, as they do on the made-up server in the lesson. Once the maths takes most of each run, gains can plateau: going from 32 tokens in 20 ms to 64 in 40 ms leaves throughput at 1,600 tokens/s."
     solution: "TTFT measures the initial wait and ITL measures the gaps during streaming. Sharing weight reads across a batch can improve throughput before saturation; larger batches can lengthen each user's ITL, and throughput gains can plateau when run time grows in proportion to batch size."
+  - id: infm-recall-trace-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: infm-one-request
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what does inter-token latency measure, and how do you find its average from a stream of at least two output tokens?"
+    rubric:
+      - id: gap
+        criterion: "Explain that inter-token latency is the time between consecutive output tokens."
+        weight: 1
+        required: true
+      - id: average
+        criterion: "State that you divide the time from the first output token to the last by the number of gaps."
+        weight: 1
+        required: true
+    exemplar: "Inter-token latency is the gap between two consecutive output tokens. To average it, divide the time from the first output token to the last by the number of gaps."
+  - id: infm-recall-trace-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: infm-one-request
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "After a server update, the same reply starts sooner but streams at the same pace. Which measure stays the same?"
+    options:
+      - id: a
+        text: "Time to first token"
+        correct: false
+        feedback: "The first token arrives sooner, so this wait is shorter."
+      - id: b
+        text: "End-to-end latency"
+        correct: false
+        feedback: "With the same later gaps, the earlier start brings the last token forward too."
+      - id: c
+        text: "Average inter-token latency"
+        correct: true
+        feedback: "The pace of the stream is unchanged, so the average gap stays the same."
+    solution: "Inter-token latency measures the gaps after the first token. Starting sooner leaves those gaps unchanged."
+  - id: infm-recall-trace-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: infm-one-request
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A reply has $N$ output tokens. Its time to first token is $t$ and its average inter-token latency is $g$, both in seconds. Write its end-to-end latency in seconds."
+    answer: "t+(N-1)*g"
+    variables: { "N": { "values": [2, 10, 120] }, "t": [0.1, 0.8], "g": [0.01, 0.08] }
+    solution: "The total is $t+(N-1)g$. The first token arrives after $t$, and there are $N-1$ gaps after it."
+  - id: infm-recall-percentiles-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: infm-percentiles
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what is a percentile of recorded request times, and how does the nearest-rank rule pick the $p$th percentile?"
+    rubric:
+      - id: value
+        criterion: "Explain that a percentile is a value at a chosen position in the times sorted from fastest to slowest."
+        weight: 1
+        required: true
+      - id: rank
+        criterion: "State that the position for the $p$th percentile is $p$ times the number of recorded times divided by 100, rounded up."
+        weight: 1
+        required: true
+    exemplar: "A percentile is a value at a chosen position in the recorded times sorted from fastest to slowest. For the $p$th percentile, multiply $p$ by the number of times, divide by 100 and round up to get the position."
+  - id: infm-recall-percentiles-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: infm-percentiles
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A server records 100 waits. The two slowest waits grow longer while the other 98 stay the same. Which summary stays the same?"
+    options:
+      - id: a
+        text: "Mean wait"
+        correct: false
+        feedback: "Both longer waits add to the sum, so the mean rises."
+      - id: b
+        text: "p99 wait"
+        correct: false
+        feedback: "The 99th wait in the sorted list is one of the two that grew longer."
+      - id: c
+        text: "p50 wait"
+        correct: true
+        feedback: "The 50th wait in the sorted list stays the same."
+    solution: "The longer waits change the mean and p99. The 50th wait stays fixed, so p50 does too."
+  - id: infm-recall-percentiles-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: infm-percentiles
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "You have $n$ recorded waits sorted from fastest to slowest. In the nearest-rank rule for the $p$th percentile, write the expression for the position before rounding up."
+    answer: "p*n/100"
+    variables: { "p": { "values": [5, 50, 99] }, "n": { "values": [20, 100, 300] } }
+    solution: "Multiply $p$ by $n$ and divide by 100. Round $pn/100$ up to get the position in the sorted waits."
+  - id: infm-recall-batching-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: infm-batching
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what is batching, and what expensive work do the requests share?"
+    rubric:
+      - id: requests
+        criterion: "Explain that batching runs the model on several requests at once and gives each its next token."
+        weight: 1
+        required: true
+      - id: shared-read
+        criterion: "State that the requests share one read of the model weights per run."
+        weight: 1
+        required: true
+    exemplar: "Batching runs the model on several requests at once and gives each its next token. The requests share one read of the model weights per run."
+  - id: infm-recall-batching-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: infm-batching
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A server doubles its batch size. It still makes one token per request per run, but each run now takes twice as long. Which measure stays the same?"
+    options:
+      - id: a
+        text: "Each user's tokens per second"
+        correct: false
+        feedback: "Each user still gets one token per run, and a run takes twice as long, so this rate halves."
+      - id: b
+        text: "The inter-token latency"
+        correct: false
+        feedback: "Each user's gap between tokens is the time per run, which doubles."
+      - id: c
+        text: "The server's total throughput"
+        correct: true
+        feedback: "The server makes twice as many tokens per run in twice the time."
+    solution: "The server makes twice as many tokens in twice as much time, so total tokens per second stays the same. Each user's ITL doubles, so each user's tokens per second halves."
+  - id: infm-recall-batching-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: infm-batching
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A server runs a batch of $B$ requests, and each run takes $t$ seconds. Write the server's total output throughput in tokens per second."
+    answer: "B/t"
+    variables: { "B": { "values": [2, 16, 128] }, "t": [0.005, 0.08] }
+    solution: "Each run produces one token per request, so the server makes $B/t$ tokens per second."

@@ -1,4 +1,5 @@
 import { parse as parseExpression } from 'mathjs';
+import { gradeExpression } from '../learning/grading/expression.js';
 import { gradeNumeric } from '../learning/grading/numeric.js';
 import { formatTemplateNumber, instantiateExercise, isTemplate } from './templates.js';
 import type { ContentIssue, ContentSourceData } from './types.js';
@@ -38,7 +39,14 @@ const MATH_PROSE_KEYS = new Set([
   'solution',
 ]);
 const PLAIN_TEXT_MATH = /[A-Za-z]_[A-Za-z0-9({]|[A-Za-z][\u2080-\u2089]|[∇θ‖]/u;
-const STRING_VALUE_METADATA_KEYS = new Set(['id', 'type', 'role', 'dimension', 'category']);
+const STRING_VALUE_METADATA_KEYS = new Set([
+  'id',
+  'type',
+  'role',
+  'dimension',
+  'category',
+  'knowledge_point',
+]);
 const AVOIDED_PROSE_EXCLUDED_KEYS = new Set([
   'accept',
   'answer',
@@ -63,6 +71,17 @@ const AVOIDED_PROSE_EXCLUDED_KEYS = new Set([
   'tests',
   'variables',
 ]);
+
+function mulberry32(seed: number): () => number {
+  let state = seed >>> 0;
+  return () => {
+    let value = state + 0x6d2b79f5;
+    state = value;
+    value = Math.imul(value ^ (value >>> 15), value | 1);
+    value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
+    return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
+  };
+}
 
 function svgIssue(source: string): string | null {
   if (/<\s*(script|foreignObject)\b/i.test(source)) return 'forbidden element';
@@ -376,10 +395,16 @@ export function validateContent(data: ContentSourceData): ContentIssue[] {
       addIssue(issues, file, value.id, 'debug exercise must have at least one correct fix option');
     }
     if (value.type === 'expression') {
-      try {
-        parseExpression(value.answer);
-      } catch (error) {
-        addIssue(issues, file, value.id, `expression answer does not parse: ${messageOf(error)}`);
+      if (!isTemplate(value)) {
+        const grade = gradeExpression(value, value.answer, { random: mulberry32(0x5eed1234) });
+        if (grade.status !== 'graded' || grade.correct !== 1) {
+          addIssue(
+            issues,
+            file,
+            value.id,
+            `expression answer does not grade as correct against itself: ${grade.feedback}`,
+          );
+        }
       }
       for (const commonWrong of value.common_wrong ?? []) {
         try {

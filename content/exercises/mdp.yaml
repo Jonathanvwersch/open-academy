@@ -551,3 +551,177 @@ exercises:
         required: true
     exemplar: "Record enough state information, such as cell and battery charge, that the current state and action predict outcomes without earlier history. For each state and command, list the possible next states and probabilities adding to $1$. Assign a numeric reward to each transition."
     solution: "Record enough state information, such as cell and battery charge, that the current state and action predict outcomes without earlier history. For each state and command, list the possible next states and probabilities adding to $1$. Assign a numeric reward to each transition."
+  - id: mdpp-recall-task-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: mdp-task
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, what does a state record in a decision task, and when does a state have the Markov property?
+    rubric:
+      - id: situation
+        criterion: Explain that a state records the current situation, such as which cell the robot is in.
+        weight: 1
+        required: true
+      - id: markov
+        criterion: Explain that a state has the Markov property when the current state and action determine the probabilities of the next state and reward without earlier history.
+        weight: 1
+        required: true
+      - id: battery
+        criterion: Mention that a state can need extra information, such as the battery level as well as the cell, to predict what happens next.
+        weight: 1
+    exemplar: "A state records the current situation, such as the robot's cell. It has the Markov property when the current state and action are enough to give the probabilities of the next state and reward, so the earlier history adds nothing."
+  - id: mdpp-recall-task-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: mdp-task
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: Which term names the record of one time step, from the current state and action to the reward and next state that follow?
+    options:
+      - id: a
+        text: A transition
+        correct: true
+        feedback: A transition records what happens during one time step, including staying in place.
+      - id: b
+        text: An episode
+        correct: false
+        feedback: An episode is a whole run, made of many time steps, that stops at a terminal state.
+      - id: c
+        text: A state
+        correct: false
+        feedback: A state records only the current situation, before the action is taken.
+      - id: d
+        text: A reward
+        correct: false
+        feedback: A reward is the score received after acting, which is one part of the step's record.
+    solution: "A transition records one time step: $(s_t,a_t)\\longrightarrow(r_{t+1},s_{t+1})$."
+  - id: mdpp-recall-task-formula
+    dimension: math
+    type: text
+    role: recall
+    knowledge_point: mdp-task
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "An MDP labels rewards by their arrival time. After taking $a_t$ in state $s_t$, what symbol goes in the reward slot $\\underline{\\quad\\quad}$ of that transition?"
+    accept: ["r_{t+1}", r_(t+1), r_t+1, r t+1, rt+1, "r_{1+t}", r_(1+t), rₜ₊₁]
+    regex: "^\\s*(?:r\\s*_?\\s*(?:\\{\\s*(?:t\\s*\\+\\s*1|1\\s*\\+\\s*t)\\s*\\}|\\(\\s*(?:t\\s*\\+\\s*1|1\\s*\\+\\s*t)\\s*\\)|t\\s*\\+\\s*1|1\\s*\\+\\s*t))\\s*$"
+    solution: "The reward arrives one step later, so $(s_t,a_t)\\longrightarrow(r_{t+1},s_{t+1})$."
+  - id: mdpp-recall-transitions-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: mdp-transitions
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what is a transition probability $p(s'\\mid s,a)$, and what must be true of these probabilities for a fixed state and action?"
+    rubric:
+      - id: chance
+        criterion: Explain that $p(s'\mid s,a)$ is the chance of next state $s'$ given the current state $s$ and action $a$.
+        weight: 1
+        required: true
+      - id: sum
+        criterion: State that for each fixed state and action, the probabilities over all next states add to 1.
+        weight: 1
+        required: true
+      - id: deterministic
+        criterion: Mention that a deterministic transition has one certain next state, with probability 1.
+        weight: 1
+    exemplar: "A transition probability $p(s'\\mid s,a)$ is the chance of landing in next state $s'$ after taking action $a$ in state $s$. For each fixed state and action, these chances over all next states add to 1."
+  - id: mdpp-recall-transitions-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: mdp-transitions
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "The same robot command can either reach the goal or leave the robot in place. You want the average score from trying that command many times. Which part of the model gives you that average?"
+    options:
+      - id: a
+        text: "The expected next reward"
+        correct: true
+        feedback: "Average the scores of the two outcomes using their chances as weights."
+      - id: b
+        text: "The transition probability"
+        correct: false
+        feedback: "A transition probability gives the chance of one destination. Combine it with the score for that outcome to get its contribution to the average."
+      - id: c
+        text: "The reward rule"
+        correct: false
+        feedback: "The reward rule gives the score of each outcome. The average also needs each outcome's chance."
+      - id: d
+        text: "The discounted reward"
+        correct: false
+        feedback: "Discounting weights rewards by when they arrive. Both of these possible scores would arrive after one command."
+    solution: "The expected next reward combines the two scores according to how often each occurs."
+  - id: mdpp-recall-transitions-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: mdp-transitions
+    difficulty: 2
+    est_minutes: 0.5
+    prompt: "A command moves the robot as intended with probability $q$ and earns reward $g$. Otherwise it leaves the robot in place and earns reward $c$. Write the command's expected next reward."
+    answer: "q*g + (1-q)*c"
+    variables: { q: [0.05, 0.95], g: [1, 20], c: [-5, -0.5] }
+    solution: "Weight each reward by its chance and add: $qg+(1-q)c$."
+  - id: mdpp-recall-discount-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: mdp-discount
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what does the discount factor $\\gamma$ do to a reward that arrives later, and which values can $\\gamma$ take?"
+    rubric:
+      - id: weight
+        criterion: Explain that each extra step of delay multiplies a reward's weight by $\gamma$, so a reward $k$ extra steps after the next reward counts as $\gamma^k r$.
+        weight: 1
+        required: true
+      - id: range
+        criterion: State that $\gamma$ is between 0 and 1, including both endpoints.
+        weight: 1
+        required: true
+      - id: ends
+        criterion: Mention that with $\gamma=0$ only the next reward counts, and with $\gamma=1$ every reward has weight 1.
+        weight: 1
+    exemplar: "The discount factor multiplies a reward's weight by $\\gamma$ for each extra step of delay, so a reward $k$ extra steps after the next one counts as $\\gamma^k r$. It lies between 0 and 1, including both endpoints."
+  - id: mdpp-recall-discount-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: mdp-discount
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "In an MDP, a robot can postpone a penalty and make it count very little. Which change would make the same penalty count more even if the robot delays it?"
+    options:
+      - id: a
+        text: "Raise the discount factor $\\gamma$"
+        correct: true
+        feedback: "A larger discount factor gives later rewards and penalties more weight."
+      - id: b
+        text: "Lower the discount factor $\\gamma$"
+        correct: false
+        feedback: "A smaller discount factor makes the weight fall faster with delay."
+      - id: c
+        text: "Change the reward rule $R$"
+        correct: false
+        feedback: "The reward rule sets the penalty itself. Here the penalty stays the same and only its weight changes."
+      - id: d
+        text: "Change the transition probabilities $p$"
+        correct: false
+        feedback: "Transition probabilities change where actions can lead. They leave the weight for each delay unchanged."
+    solution: "Raising $\\gamma$ makes the weight fall more slowly with delay, so a later penalty counts more."
+  - id: mdpp-recall-discount-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: mdp-discount
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A reward $r$ arrives $k$ extra steps after the next reward. Write its weighted amount with discount factor $\\gamma$. Type `gamma` for $\\gamma$ and `^` for a power."
+    answer: "gamma^k * r"
+    variables: { "gamma": [0.1, 0.95], "k": { "values": [1, 3, 5] }, "r": [-10, 10] }
+    solution: "Each extra step multiplies by $\\gamma$, so the weighted amount is $\\gamma^k r$."

@@ -935,3 +935,207 @@ exercises:
         weight: 1
         required: true
     exemplar: "Repeated multiplication makes activations shrink when factors have size below $1$ and grow when their size is above $1$. More randomly weighted inputs require smaller starting weights to keep typical score size steady. LayerNorm subtracts one example's layer-output mean and divides by its standard deviation. It then applies a learned gain and shift so training can choose another size and centre."
+  - id: wi-recall-depth-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: wi-depth-chain
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, why can activations and gradients vanish in a deep chain whose layers all multiply by $0.5$?"
+    rubric:
+      - id: point0
+        criterion: "Explain that each layer multiplies its input by $0.5$, so repeated layers shrink activations towards zero."
+        weight: 1
+        required: true
+      - id: point1
+        criterion: "Explain that backpropagation multiplies slopes by $0.5$ at each layer too, making early gradients tiny."
+        weight: 1
+        required: true
+    exemplar: "Each layer multiplies its input by $0.5$, so repeated layers shrink activations towards zero. Backpropagation multiplies slopes by $0.5$ at each layer too, making early gradients tiny."
+  - id: wi-recall-depth-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: wi-depth-chain
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A long chain has one neuron per layer, with weight $0.5$, no bias and no activation function. The loss slope at the final output is nonzero. How do the loss slopes at the first few layer outputs compare with that final slope?"
+    options:
+      - id: a
+        text: "They are much smaller in size."
+        correct: true
+        feedback: "Each layer multiplies the incoming slope by $0.5$. The first layers receive a tiny slope."
+      - id: b
+        text: "They are much larger in size."
+        correct: false
+        feedback: "Growing slopes would cause exploding gradients. In this chain the local derivatives are less than one."
+      - id: c
+        text: "They are about the same size."
+        correct: false
+        feedback: "A weight of size $1$ preserves the size of the slope. Here each layer halves it."
+    solution: "Backpropagation multiplies the slope by $0.5$ at each layer, so each earlier layer receives a smaller slope."
+  - id: wi-recall-depth-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: wi-depth-chain
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A chain has $d$ layers with weight $w$ in each, no bias and no activation function. For input $x$, write the final output."
+    answer: "w^d*x"
+    variables: { "w": [0.2, 2], "d": { "values": [2, 4, 8] }, "x": [0.5, 3] }
+    solution: "Repeated multiplication gives $h_d=w^d x$."
+  - id: wi-recall-init-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: wi-init-scale
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, why do more inputs call for smaller starting weights, and why do layers with ReLU use larger weights than layers without it when scores are symmetric?"
+    rubric:
+      - id: point0
+        criterion: "Explain that adding more randomly weighted inputs increases the typical size of the score, so smaller weights keep that size steady."
+        weight: 1
+        required: true
+      - id: point1
+        criterion: "Explain that ReLU drops the negative scores, which account for half the average square when scores are symmetric. Using larger weights makes up for that drop."
+        weight: 1
+        required: true
+    exemplar: "Adding more randomly weighted inputs makes the score typically larger, so smaller weights keep that size steady. With symmetric scores, ReLU removes half the average square, so we use larger weights to make up for it."
+  - id: wi-recall-init-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: wi-init-scale
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Which target is He initialization designed to achieve for a layer with symmetric starting scores?"
+    options:
+      - id: a
+        text: "Keep the typical size steady through the weighted sum alone."
+        correct: false
+        feedback: "LeCun initialization keeps the typical size steady through the weighted sum before any ReLU."
+      - id: b
+        text: "Keep the typical size steady through the weighted sum and ReLU."
+        correct: true
+        feedback: "ReLU removes half the average square of symmetric scores, so He initialization uses larger weights."
+      - id: c
+        text: "Keep the typical size steady as weights change during training."
+        correct: false
+        feedback: "Normalization rescales a layer’s outputs on each forward pass during training."
+    solution: "He initialization uses larger starting weights to make up for the drop in typical size from ReLU."
+  - id: wi-recall-init-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: wi-init-scale
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A neuron has $n$ inputs of typical size one and uses ReLU. Write the typical size of its starting weights under He initialization. Type `sqrt(...)` for a square root."
+    answer: "sqrt(2/n)"
+    variables: { "n": { "values": [2, 32, 512] } }
+    solution: "He initialization uses $a=\\sqrt{2/n}$."
+  - id: wi-recall-layer-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: wi-layer-norm
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what does LayerNorm do before its learned gain and shift, and which outputs supply its statistics?"
+    rubric:
+      - id: point0
+        criterion: "Explain that LayerNorm subtracts the mean and divides by the standard deviation."
+        weight: 1
+        required: true
+      - id: point1
+        criterion: "Explain that these statistics come from one example's outputs across a layer."
+        weight: 1
+        required: true
+    exemplar: "LayerNorm subtracts the mean and divides by the standard deviation. These statistics come from one example's outputs across a layer."
+  - id: wi-recall-layer-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: wi-layer-norm
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Which outputs supply LayerNorm's mean and standard deviation?"
+    options:
+      - id: a
+        text: "One neuron's outputs across the current batch."
+        correct: false
+        feedback: "BatchNorm uses one neuron's outputs across examples."
+      - id: b
+        text: "One neuron's saved statistics from past batches."
+        correct: false
+        feedback: "BatchNorm uses saved batch statistics after training."
+      - id: c
+        text: "One example's outputs across the current layer."
+        correct: true
+        feedback: "LayerNorm computes statistics across a layer for one example."
+    solution: "LayerNorm computes statistics across a layer for one example."
+  - id: wi-recall-layer-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: wi-layer-norm
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "For one example, neuron $i$ outputs $h_i$. The layer’s outputs have mean $\\mu$ and standard deviation $s>0$. Write $\\hat h_i$ before LayerNorm applies learned gain and shift. Type `h_i` and `mu`."
+    answer: "(h_i-mu)/s"
+    variables: { "h_i": [-10, 10], "mu": [-5, 5], "s": [0.1, 5] }
+    solution: "Subtract the mean from the neuron’s output and divide by the standard deviation to get $(h_i-\\mu)/s$."
+  - id: wi-recall-batch-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: wi-batch-norm
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, which outputs does BatchNorm normalize together during training, and what statistics does it use after training?"
+    rubric:
+      - id: point0
+        criterion: "Explain that BatchNorm normalizes each neuron's outputs across the examples in a batch."
+        weight: 1
+        required: true
+      - id: point1
+        criterion: "Explain that after training it uses saved running averages of the mean and squared standard deviation."
+        weight: 1
+        required: true
+    exemplar: "BatchNorm normalizes each neuron's outputs across the examples in a batch. After training it uses saved running averages of the mean and squared standard deviation."
+  - id: wi-recall-batch-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: wi-batch-norm
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A trained network with BatchNorm now predicts one example at a time. Which statistics does it use to normalize an output?"
+    options:
+      - id: a
+        text: "The current example’s mean and spread across the layer."
+        correct: false
+        feedback: "LayerNorm computes statistics across neurons from the current example."
+      - id: b
+        text: "The last training batch’s mean and spread for each neuron."
+        correct: false
+        feedback: "During training, BatchNorm uses the current batch. The saved statistics combine information from many batches."
+      - id: c
+        text: "The running statistics saved for each neuron during training."
+        correct: true
+        feedback: "BatchNorm saves a running average of each neuron’s mean and squared standard deviation during training."
+    solution: "After training, BatchNorm uses the running statistics it saved during training."
+  - id: wi-recall-batch-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: wi-batch-norm
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A neuron outputs $h$. Its outputs across the training batch have mean $\\mu$ and standard deviation $s>0$. Write its BatchNorm output including learned gain $\\gamma$ and shift $\\beta$. Type `mu`, `gamma` and `beta`."
+    answer: "gamma*(h-mu)/s+beta"
+    variables: { "h": [-10, 10], "mu": [-5, 5], "s": [0.1, 5], "gamma": [0.5, 2], "beta": [-2, 2] }
+    solution: "Subtract the mean, divide by the standard deviation, multiply by the gain and add the shift to get $\\gamma(h-\\mu)/s+\\beta$."

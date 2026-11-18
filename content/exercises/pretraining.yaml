@@ -944,3 +944,213 @@ exercises:
         required: true
     exemplar: "Tokenize the cleaned text and pack the tokens into fixed-length windows. Pretraining predicts the next token across that text, producing a base model that continues text. Post-training continues training on example conversations so it responds as an assistant."
     solution: "Tokenize the cleaned text and pack the tokens into fixed-length windows. Pretraining predicts the next token across that text, producing a base model that continues text. Post-training continues training on example conversations so it responds as an assistant."
+
+  - id: "pt-recall-data-say"
+    dimension: "conceptual"
+    type: "explain"
+    role: "recall"
+    knowledge_point: "pt-training-data"
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What is pretraining data, and why are its tokens packed into equal-length windows?"
+    rubric:
+      - id: "definition"
+        criterion: "Explain that pretraining data is a stream of cleaned, deduplicated text tokens."
+        weight: 1
+        required: true
+      - id: "meaning"
+        criterion: "Explain that equal-length windows let the computer process many windows side by side."
+        weight: 1
+        required: true
+    exemplar: "Pretraining data is cleaned, deduplicated text turned into a token stream. Equal-length windows let the computer process many windows side by side."
+  - id: "pt-recall-data-contrast"
+    dimension: "conceptual"
+    type: "mc"
+    role: "recall"
+    knowledge_point: "pt-training-data"
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A pretraining dataset keeps hundreds of copies of a well-written passage. What problem can this cause?"
+    options:
+      - id: "a"
+        text: "The model can learn to repeat the passage word for word."
+        correct: true
+        feedback: "Deduplication removes extra copies so the model sees the same passage fewer times."
+      - id: "b"
+        text: "The model can lose track of where each document ends."
+        correct: false
+        feedback: "End-of-text tokens still mark document boundaries, even for repeated text."
+      - id: "c"
+        text: "The model can stop learning from windows that contain copies."
+        correct: false
+        feedback: "Windows with copies still give next-token targets. They repeat targets the model has already seen."
+    solution: "Repeated exposure can lead the model to memorise the passage and costs extra training time."
+  - id: "pt-recall-data-formula"
+    dimension: "math"
+    type: "expression"
+    role: "recall"
+    knowledge_point: "pt-training-data"
+    difficulty: 2
+    est_minutes: 0.5
+    prompt: "A pretraining window contains $T$ tokens and is trained on its own. How many next-token predictions does it supply? Write an expression."
+    answer: "T-1"
+    variables: { "T": { "values": [4, 512, 2048] } }
+    solution: "The first token has no preceding token. Each of the other $T-1$ tokens is a prediction target."
+  - id: "pt-recall-compute-say"
+    dimension: "conceptual"
+    type: "explain"
+    role: "recall"
+    knowledge_point: "pt-training-compute"
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What does training compute measure, and which two run sizes determine it in the approximation $C\\approx6PD$?"
+    rubric:
+      - id: "definition"
+        criterion: "Explain that training compute is the total number of floating-point operations in a run."
+        weight: 1
+        required: true
+      - id: "meaning"
+        criterion: "Explain that P counts model parameters and D counts training tokens."
+        weight: 1
+        required: true
+    exemplar: "Training compute counts the run's floating-point operations. $P$ is the parameter count and $D$ is the number of training tokens."
+  - id: "pt-recall-compute-contrast"
+    dimension: "conceptual"
+    type: "mc"
+    role: "recall"
+    knowledge_point: "pt-training-compute"
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A team doubles its model's parameter count. Which change keeps the estimated training compute about the same?"
+    options:
+      - id: "a"
+        text: "Use twice as many training tokens."
+        correct: false
+        feedback: "Doubling both counts would use about four times the compute."
+      - id: "b"
+        text: "Use the same number of training tokens."
+        correct: false
+        feedback: "At the same token count, the larger model needs about twice the compute."
+      - id: "c"
+        text: "Use half as many training tokens."
+        correct: true
+        feedback: "Doubling the parameter count and halving the token count preserves their product."
+    solution: "The estimate depends on the product of the two counts. Halving the token count offsets the larger model."
+  - id: "pt-recall-compute-formula"
+    dimension: "math"
+    type: "expression"
+    role: "recall"
+    knowledge_point: "pt-training-compute"
+    difficulty: 2
+    est_minutes: 0.5
+    prompt: "Write the approximate training compute in FLOPs for $P$ parameters and $D$ training tokens."
+    answer: "6*P*D"
+    variables:
+      { "P": { "values": [1000, 100000, 1000000] }, "D": { "values": [10000, 1000000, 10000000] } }
+    solution: "Each parameter costs about six FLOPs per training token."
+  - id: "pt-recall-scaling-say"
+    dimension: "conceptual"
+    type: "explain"
+    role: "recall"
+    knowledge_point: "pt-scaling-laws"
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What does a scaling law predict, and how can small training runs help plan a larger run?"
+    rubric:
+      - id: "definition"
+        criterion: "Explain that a scaling law predicts loss from compute, parameters or training data."
+        weight: 1
+        required: true
+      - id: "meaning"
+        criterion: "Explain that measurements from small runs can be extended to predict a larger run's loss."
+        weight: 1
+        required: true
+    exemplar: "A scaling law predicts loss from the resources used for training. Measurements from small runs can be extended to estimate the loss of a larger run."
+  - id: "pt-recall-scaling-contrast"
+    dimension: "conceptual"
+    type: "mc"
+    role: "recall"
+    knowledge_point: "pt-scaling-laws"
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A lab has fitted a curve for loss as compute rises. What separate question does the rule of about 20 training tokens per parameter help answer?"
+    options:
+      - id: "a"
+        text: "How much loss falls after a tenfold rise in compute."
+        correct: false
+        feedback: "The loss-versus-compute curve predicts the drop. The token rule helps choose the model and data sizes."
+      - id: "b"
+        text: "How to split a fixed compute budget between model size and data."
+        correct: true
+        feedback: "The ratio gives a way to choose the model size and token count at a fixed budget."
+      - id: "c"
+        text: "Which skills a model will gain at a given loss."
+        correct: false
+        feedback: "A model's loss makes specific skills hard to forecast. The token rule helps plan the run."
+    solution: "At a fixed budget, the token-to-parameter ratio helps choose model size and the amount of training data."
+  - id: "pt-recall-scaling-formula"
+    dimension: "math"
+    type: "expression"
+    role: "recall"
+    knowledge_point: "pt-scaling-laws"
+    difficulty: 2
+    est_minutes: 0.5
+    prompt: "A compute scaling law gives $90\\%$ of the previous loss at each tenfold increase in compute. If the starting loss is $L_0$, write the loss after $k$ tenfold increases. Type `L0` for the starting loss."
+    answer: "L0*0.9^k"
+    variables: { "L0": [1, 8], "k": { "values": [1, 3, 6] } }
+    solution: "$L=L_0\\times0.9^k$: multiply the starting loss by $0.9$ once per tenfold increase."
+  - id: "pt-recall-pipeline-say"
+    dimension: "conceptual"
+    type: "explain"
+    role: "recall"
+    knowledge_point: "pt-training-pipeline"
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What does pretraining produce, and what is post-training meant to change?"
+    rubric:
+      - id: "definition"
+        criterion: "Explain that pretraining produces a base model that continues text."
+        weight: 1
+        required: true
+      - id: "meaning"
+        criterion: "Explain that post-training turns the base model into a helpful assistant and mostly changes how it responds."
+        weight: 1
+        required: true
+    exemplar: "Pretraining produces a base model that continues text. Post-training turns it into a helpful assistant, mostly changing how it responds."
+  - id: "pt-recall-pipeline-contrast"
+    dimension: "conceptual"
+    type: "mc"
+    role: "recall"
+    knowledge_point: "pt-training-pipeline"
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Which activity gives an independent check while model weights are being developed?"
+    options:
+      - id: "a"
+        text: "Evaluation on unseen tests"
+        correct: true
+        feedback: "Evaluation checks tasks the model never trained on."
+      - id: "b"
+        text: "Saving model checkpoints"
+        correct: false
+        feedback: "Checkpoints save weights so training can resume."
+      - id: "c"
+        text: "Training on example conversations"
+        correct: false
+        feedback: "Example conversations are used in supervised fine-tuning."
+    solution: "Evaluation checks tasks the model never trained on."
+  - id: "pt-recall-pipeline-formula"
+    dimension: "math"
+    type: "expression"
+    role: "recall"
+    knowledge_point: "pt-training-pipeline"
+    difficulty: 2
+    est_minutes: 0.5
+    prompt: "Pretraining and fine-tuning train the same model. They use $D_{\\text{pre}}$ and $D_{\\text{fine}}$ tokens, respectively. Write the ratio of estimated pretraining compute to estimated fine-tuning compute. Type `Dpre` and `Dfine`."
+    answer: "Dpre/Dfine"
+    variables:
+      {
+        "Dpre": { "values": [100000, 500000, 1000000] },
+        "Dfine": { "values": [1000, 5000, 10000] },
+      }
+    solution: "Each stage uses about $6P$ FLOPs per token. The common factor cancels when you divide the two estimates."

@@ -553,3 +553,175 @@ exercises:
         weight: 1
         required: true
     exemplar: "Machine learning fits a movement rule to the human examples. The loss measures how far the predicted movement is from the demonstrated movement. Training changes the model's weights to make that loss smaller."
+  - id: ml-recall-rule-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: ml-what-it-is
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, what does learning a model from examples mean, and what can the learned rule do with a new example?
+    rubric:
+      - id: weights
+        criterion: Explain that learning chooses the model's adjustable weights so its rule fits the examples.
+        weight: 1
+        required: true
+      - id: new
+        criterion: Explain that the learned rule can give answers for examples it has never seen.
+        weight: 1
+        required: true
+    exemplar: Learning chooses a model's weights to fit the examples. The resulting rule can give answers for new examples it has never seen.
+  - id: ml-recall-rule-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: ml-what-it-is
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: A house-price model contains a number that learning can adjust. What is that number called?
+    options:
+      - id: a
+        text: A target
+        correct: false
+        feedback: A target is a known answer, such as a recorded sale price.
+      - id: b
+        text: A weight
+        correct: true
+        feedback: Weights are the adjustable numbers that learning chooses to fit the examples.
+      - id: c
+        text: A prediction
+        correct: false
+        feedback: A prediction is the answer the model gives for an input.
+    solution: Learning adjusts weights. The model uses them to produce predictions that can be compared with targets.
+  - id: ml-recall-rule-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: ml-what-it-is
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: The simplest house model prices a house from its area alone, using one weight $w$. Write its predicted price, in thousands of pounds, for a house of area $a$ square metres.
+    answer: w*a
+    variables:
+      w: [1, 5]
+      a: [40, 150]
+    solution: The rule is price $=w\times$ area, so the prediction is $wa$, with $w$ the price per square metre in thousands of pounds.
+  - id: ml-recall-house-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: ml-house-model
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, what does a loss measure in a house-price model, and what does training do?
+    rubric:
+      - id: loss
+        criterion: Explain that a loss grows as the predictions move further from the targets.
+        weight: 1
+        required: true
+      - id: training
+        criterion: Explain that training repeatedly changes the weights to make the loss on the examples smaller.
+        weight: 1
+        required: true
+    exemplar: A loss measures how far predictions miss the targets, growing as the misses grow. Training changes the weights again and again to make this loss smaller.
+  - id: ml-recall-house-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: ml-house-model
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: Which piece of the house-price setup turns measurements into a predicted price?
+    options:
+      - id: a
+        text: The loss
+        correct: false
+        feedback: The loss scores how far predictions miss the targets.
+      - id: b
+        text: The derivative
+        correct: false
+        feedback: A derivative measures how the loss responds when a weight changes.
+      - id: c
+        text: The weighted sum
+        correct: true
+        feedback: The weighted sum adds each measurement times its weight to produce the price.
+    solution: The weighted sum produces a prediction. The loss scores it, and derivatives guide changes to the weights.
+  - id: ml-recall-house-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: ml-house-model
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: A house model describes each house by three measurements $x_1,x_2,x_3$, and gives each measurement its own weight, $w_1,w_2,w_3$. Write the model's prediction. Type `x1` for $x_1$ and `w1` for $w_1$, and so on.
+    answer: w1*x1+w2*x2+w3*x3
+    variables:
+      w1: [-3, 3]
+      w2: [-3, 3]
+      w3: [-3, 3]
+      x1: [1, 20]
+      x2: [1, 5]
+      x3: [0, 40]
+    solution: The prediction is the weighted sum $w_1x_1+w_2x_2+w_3x_3$, each measurement times its weight, added up.
+  - id: ml-recall-robots-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: ml-to-robots
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, what is a robot's policy, and what are its input and output?
+    rubric:
+      - id: policy
+        criterion: Explain that a policy is a model that controls a robot.
+        weight: 1
+        required: true
+      - id: input-output
+        criterion: Explain that its input is what the robot senses and its output is what it does next.
+        weight: 1
+        required: true
+    exemplar: A policy is a model that controls a robot. It takes what the robot senses as input and outputs what the robot does next.
+  - id: ml-recall-robots-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: ml-to-robots
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: A robot learns to pick up a cup from 200 recordings of a person steering it with a joystick. Which kind of learning is this?
+    options:
+      - id: a
+        text: Imitation learning
+        correct: true
+        feedback: Imitation learning treats a person's recorded demonstrations as the answers, then uses the supervised cycle.
+      - id: b
+        text: Reinforcement learning
+        correct: false
+        feedback: Reinforcement learning has no recorded answers. It learns by trial and error from a reward for each attempt.
+      - id: c
+        text: Writing a rule by hand
+        correct: false
+        feedback: A hand-written rule comes from a person and is never fitted to the recordings.
+    solution: The recorded movements are the answers the robot copies, which is imitation learning.
+  - id: ml-recall-robots-contrast2
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: ml-to-robots
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: A robot learns by trial and error. What tells it how well an attempt went?
+    options:
+      - id: a
+        text: A recorded movement to copy
+        correct: false
+        feedback: Recorded movements are the answers in imitation learning, which copies a person's demonstrations.
+      - id: b
+        text: A reward score for the attempt
+        correct: true
+        feedback: Reinforcement learning scores each attempt with a reward and learns to make it as large as possible.
+      - id: c
+        text: A weight inside its model
+        correct: false
+        feedback: Weights are the numbers training changes. They give no score for an attempt.
+    solution: Reinforcement learning scores attempts with rewards and learns to increase them.

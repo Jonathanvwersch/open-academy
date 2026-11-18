@@ -718,3 +718,241 @@ exercises:
         weight: 1
         required: true
     exemplar: "The value $V^\\pi(s)$ is expected return from state $s$ while following $\\pi$. The value $Q^\\pi(s,a)$ is expected return after taking action $a$ first and then following $\\pi$. A Bellman expectation backup averages $r+\\gamma V^\\pi(s')$ over the policy's actions and possible next states, using their probabilities and current value estimates."
+  - id: vf-recall-state-value-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: vf-state-value
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what does the state value $V^\\pi(s)$ measure, and why does it depend on the policy $\\pi$?"
+    rubric:
+      - id: expected
+        criterion: Explain that $V^\pi(s)$ is the expected return when the agent starts in state $s$ and follows the policy $\pi$ from then on.
+        weight: 1
+        required: true
+      - id: policy
+        criterion: Explain that a value belongs to a state and a policy together, so the same cell can be worth a lot under one policy and very little under another.
+        weight: 1
+        required: true
+      - id: future
+        criterion: Mention that the value counts every reward still to come, so it is different from the next reward.
+        weight: 1
+    exemplar: "$V^\\pi(s)$ is the expected return from starting in state $s$ and following $\\pi$ from then on. The policy changes which paths the robot takes, so the same state can have different values under different policies."
+  - id: vf-recall-state-value-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: vf-state-value
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Two policies always take the same first action from state $s$, but can make different choices after that. Can their state values at $s$ differ?"
+    options:
+      - id: a
+        text: "Yes, because the later actions can lead to different rewards"
+        correct: true
+        feedback: "The state value includes the expected return from the whole remaining trip under each policy."
+      - id: b
+        text: "No, because the first action fixes the whole return"
+        correct: false
+        feedback: "The first action sets up what happens next. Later actions can still affect the rewards that follow."
+      - id: c
+        text: "No, because both values use the best possible later actions"
+        correct: false
+        feedback: "Using the best possible later actions gives the optimal value. Each policy's state value uses the actions that policy chooses."
+    solution: "$V^\\pi(s)$ follows $\\pi$ for the whole remaining trip, so a difference in later choices can change its value."
+  - id: vf-recall-state-value-formula
+    dimension: math
+    type: text
+    role: recall
+    knowledge_point: vf-state-value
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Fill in the quantity being averaged in the definition of the state value: $V^\\pi(s)=E\\big[\\underline{\\quad\\quad}\\mid s_t=s\\big]$. Use symbols or words."
+    accept: [G_t, "G_{t}", Gt, Gₜ, G, return, discounted return, return from time t, G(t)]
+    regex: '^\s*(?:g(?:\s*_?\s*(?:\{\s*t\s*\}|t|ₜ)|\s*\(\s*t\s*\))?|(?:the\s+)?(?:discounted\s+)?return(?:\s+(?:(?:from|at|starting\s+at)\s+(?:(?:time|step)\s+)?t|g\s*_?\s*(?:\{\s*t\s*\}|t|ₜ)))?|(?:the\s+)?(?:sum\s+of\s+(?:the\s+)?)?discounted\s+future\s+rewards)\s*$'
+    solution: "$V^\\pi(s)=E\\big[G_t\\mid s_t=s\\big]$: the expected return, given that the agent is in state $s$."
+  - id: vf-recall-action-value-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: vf-action-value
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what does the action value $Q^\\pi(s,a)$ measure? Say what the agent does after its first action."
+    rubric:
+      - id: first
+        criterion: Explain that $Q^\pi(s,a)$ is the expected return when the agent starts in state $s$ and takes action $a$ first.
+        weight: 1
+        required: true
+      - id: after
+        criterion: Explain that after that first action the agent follows the policy $\pi$.
+        weight: 1
+        required: true
+      - id: one-outcome
+        criterion: Mention that for a move with one outcome it is the reward plus the discounted value of the next state, $r+\gamma V^\pi(s')$.
+        weight: 1
+    exemplar: "$Q^\\pi(s,a)$ is the expected return from taking action $a$ in state $s$ first. After that one move, the agent goes back to following $\\pi$."
+  - id: vf-recall-action-value-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: vf-action-value
+    difficulty: 2
+    est_minutes: 0.5
+    prompt: "In a corridor of four cells, policy $\\pi$ always moves left, and the discount factor is $0.9$. What does $Q^\\pi(2,\\text{right})$ score?"
+    options:
+      - id: a
+        text: "Move right once, then always move left"
+        correct: true
+        feedback: "Take the named action first, then let the given policy choose every later action."
+      - id: b
+        text: "Move right once, then follow the best policy"
+        correct: false
+        feedback: "Using the best policy after the first move would give the optimal action value $Q^*$."
+      - id: c
+        text: "Move left once, then always move left"
+        correct: false
+        feedback: "That would score the left move under the same policy."
+      - id: d
+        text: "Move right once and count only that reward"
+        correct: false
+        feedback: "The immediate reward is one part of the action value. The later rewards under the policy also count."
+    solution: "$Q^\\pi(2,\\text{right})$ includes the reward for moving right and the discounted rewards from following $\\pi$ after that."
+  - id: vf-recall-action-value-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: vf-action-value
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Action $a$ in state $s$ always gives reward $r$ and lands in state $s'$, whose value under policy $\\pi$ is $v$. With discount factor $\\gamma$, write $Q^\\pi(s,a)$. Type `gamma` for $\\gamma$."
+    answer: "r + gamma*v"
+    variables: { r: [-5, 10], gamma: [0.1, 0.95], v: [-10, 10] }
+    solution: "$Q^\\pi(s,a)=r+\\gamma V^\\pi(s')=r+\\gamma v$."
+  - id: vf-recall-bellman-expectation-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: vf-bellman-expectation
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what does the Bellman expectation equation say about $V^\\pi(s)$, and what is one Bellman backup?"
+    rubric:
+      - id: equation
+        criterion: Explain that a state's value is the expected reward for one step plus the discounted value of the next state, averaged over the policy's actions and the possible next states.
+        weight: 1
+        required: true
+      - id: backup
+        criterion: Explain that a Bellman backup puts the current estimates into the right-hand side to get a new estimate for one state.
+        weight: 1
+        required: true
+      - id: converge
+        criterion: Mention that repeating backups for every state brings the estimates to $V^\pi$ when $\gamma<1$.
+        weight: 1
+    exemplar: "The Bellman expectation equation says $V^\\pi(s)$ is the expected one-step reward plus the discounted value of the next state, averaged over what the policy and moves can do. A Bellman backup puts current estimates into that right-hand side to get a new estimate for one state."
+  - id: vf-recall-bellman-expectation-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: vf-bellman-expectation
+    difficulty: 2
+    est_minutes: 0.5
+    prompt: "At one state, moving right has a higher action value than moving left. The policy chooses right 80% of the time and left 20% of the time. Where does the Bellman expectation equation put the state's value?"
+    options:
+      - id: a
+        text: "Between the two action values, closer to right"
+        correct: true
+        feedback: "The equation averages both moves using the policy's probabilities, so right has more weight."
+      - id: b
+        text: "Between the two action values, halfway between them"
+        correct: false
+        feedback: "A halfway value gives the moves equal weight. This policy chooses right more often."
+      - id: c
+        text: "At the value of moving right"
+        correct: false
+        feedback: "Taking the larger value ignores the times the policy moves left. The expectation equation uses both actions."
+      - id: d
+        text: "Between the two action values, closer to left"
+        correct: false
+        feedback: "That would give left more weight, even though the policy picks it less often."
+    solution: "The state's value is 80% of the right action value plus 20% of the left action value, so it lies closer to right."
+  - id: vf-recall-bellman-expectation-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: vf-bellman-expectation
+    difficulty: 2
+    est_minutes: 0.5
+    prompt: "A policy moves right with probability $p$ and left with probability $1-p$, and moves always work. Each move earns $-1$. Moving right lands in a state with estimate $x$, and moving left lands in a state with estimate $y$. With discount factor $\\gamma$, write the new estimate of this state's value under the policy. Type `gamma` for $\\gamma$."
+    answer: "p*(-1 + gamma*x) + (1-p)*(-1 + gamma*y)"
+    variables: { p: [0.05, 0.95], gamma: [0.1, 0.95], x: [-10, 10], y: [-10, 10] }
+    solution: "Average the one-step look-aheads with the policy's probabilities: $p(-1+\\gamma x)+(1-p)(-1+\\gamma y)$."
+  - id: vf-recall-bellman-optimality-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: vf-bellman-optimality
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what is the optimal state value $V^*(s)$, and how does the Bellman optimality equation calculate it from the next states?"
+    rubric:
+      - id: meaning
+        criterion: "Explain that $V^*(s)$ is the largest expected return any policy can get from $s$."
+        weight: 1
+        required: true
+      - id: max
+        criterion: "Explain that for each action we average $r+\\gamma V^*(s')$ over the possible outcomes, then take the largest of those action values."
+        weight: 1
+        required: true
+      - id: iteration
+        criterion: "Mention that repeating these backups for every state is called value iteration."
+        weight: 1
+    exemplar: "$V^*(s)$ is the largest expected return any policy can get from $s$. For each action, average $r+\\gamma V^*(s')$ over its outcomes, then take the largest of those averages."
+  - id: vf-recall-bellman-optimality-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: vf-bellman-optimality
+    difficulty: 2
+    est_minutes: 0.5
+    prompt: "You know $V^*$ for every state in a corridor. How can you use it to choose the best next move from cell 2, where each move leads to a known cell?"
+    options:
+      - id: a
+        text: "Pick the move with the largest $r+\\gamma V^*(s')$"
+        correct: true
+        feedback: "The best move accounts for the reward it earns and the value of where it leads."
+      - id: b
+        text: "Pick the move with the largest $V^*(s')$"
+        correct: false
+        feedback: "The next state's value counts later rewards. You also need the reward for getting there."
+      - id: c
+        text: "Pick the move with the largest immediate reward $r$"
+        correct: false
+        feedback: "The immediate reward misses what the robot can earn after the move."
+      - id: d
+        text: "Pick the move with the largest $\\pi(a\\mid s)$"
+        correct: false
+        feedback: "That follows a given policy's most likely action. The policy may choose a move with a lower action value."
+    solution: "For each move, compute $Q^*(s,a)=r+\\gamma V^*(s')$ and pick the move with the largest value."
+  - id: vf-recall-bellman-optimality-formula
+    dimension: math
+    type: text
+    role: recall
+    knowledge_point: vf-bellman-optimality
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Fill in the blank in the Bellman optimality equation: $V^*(s)=\\underline{\\quad\\quad}\\;E\\big[r+\\gamma V^*(s')\\big]$. Type the missing operation."
+    accept:
+      [
+        max,
+        maximum,
+        max_a,
+        "max_{a}",
+        '\max_{a}',
+        max over a,
+        max over all actions,
+        take the largest over actions,
+      ]
+    regex: "^\\s*(?:(?:(?:the\\s+)?\\\\?max(?:imum)?(?:\\s*_\\s*(?:\\{\\s*a\\s*\\}|a)|\\s+(?:(?:over|across|of|among)\\s+)?(?:a|(?:all\\s+(?:the\\s+)?)?actions?))?|(?:take\\s+)?(?:the\\s+)?(?:largest|highest|greatest)(?:\\s+value)?(?:\\s+(?:over|across|among)\\s+(?:a|(?:all\\s+)?actions))?))\\s*$"
+    solution: "$V^*(s)=\\max_a E\\big[r+\\gamma V^*(s')\\big]$: the value of the best action."

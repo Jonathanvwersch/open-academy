@@ -586,3 +586,226 @@ exercises:
         weight: 1
         required: true
     exemplar: Prefill stores the prompt's keys and values at every layer. Decode appends each newly processed token's keys and values and uses its query to read the cache. Stored bytes are 2 times layers times key-value heads times head size times bytes per number times tokens per sequence times sequences; the 2 counts keys and values. Another request can reuse a retained initial sequence when token IDs, model weights and positions match, saving prefill work on those tokens.
+  - id: kvc-recall-reuse-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: kvc-reuse
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, why do earlier tokens' keys and values stay valid when a token is appended, and what does the cache save at each new step?"
+    rubric:
+      - id: causal
+        criterion: "Explain that causal attention lets earlier tokens attend only to themselves and tokens before them, so appending a token leaves their representations unchanged."
+        weight: 1
+        required: true
+      - id: saving
+        criterion: "Explain that the decoder computes keys and values only for the new token and reuses the earlier tokens' entries at every layer."
+        weight: 1
+        required: true
+    exemplar: "Causal attention keeps earlier tokens from using the appended token, so their keys and values stay the same. Each step then computes keys and values only for the new token and reuses the stored ones at every layer."
+  - id: kvc-recall-reuse-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: kvc-reuse
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A decoder passes in the newest token by itself after processing a prompt. Which position should it use for that token?"
+    options:
+      - id: a
+        text: "The last position in the prompt"
+        correct: false
+        feedback: "The last prompt token already occupies that position."
+      - id: b
+        text: "The first position in the new call"
+        correct: false
+        feedback: "The call has one input, but the token's position is its place in the full sequence."
+      - id: c
+        text: "The next position in the full sequence"
+        correct: true
+        feedback: "Feeding one token alone doesn't reset its position."
+    solution: "Use the token's position in the full sequence. The position may affect its key."
+  - id: kvc-recall-reuse-contrast2
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: kvc-reuse
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "With a KV cache in use, which attention work does a newly appended token still need to do?"
+    options:
+      - id: a
+        text: "Score the stored keys with its own query."
+        correct: true
+        feedback: "The new query still reads the whole cache."
+      - id: b
+        text: "Recompute earlier tokens' keys."
+        correct: false
+        feedback: "The earlier keys stay the same and can be reused."
+      - id: c
+        text: "Score its own key with the earlier tokens' queries."
+        correct: false
+        feedback: "An earlier query's job ended once it produced its token's output, so the cache leaves queries out."
+    solution: "Caching saves the earlier keys and values. The new query still scores the cached keys and mixes their values."
+  - id: kvc-recall-heads-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: kvc-heads
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, why does grouped-query attention make the KV cache smaller, and what does each query head still compute for itself?"
+    rubric:
+      - id: groups
+        criterion: "Explain that several query heads share each key-value head, so fewer key-value heads are stored for each token."
+        weight: 1
+        required: true
+      - id: weights
+        criterion: "State that each query head still computes its own attention weights."
+        weight: 1
+        required: true
+    exemplar: "Each group of query heads shares one key-value head, so the cache stores fewer key-value heads per token. Each query head still computes its own attention weights."
+  - id: kvc-recall-heads-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: kvc-heads
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "In an attention layer, every query head has its own key-value head. Which design stores just one key-value head for each token?"
+    options:
+      - id: a
+        text: "Grouped-query attention"
+        correct: false
+        feedback: "Grouped-query attention keeps more than one group, with one key-value head per group."
+      - id: b
+        text: "Multi-query attention"
+        correct: true
+        feedback: "All the query heads share a single key-value head."
+      - id: c
+        text: "Multi-head attention"
+        correct: false
+        feedback: "Ordinary multi-head attention gives each query head its own key-value head."
+    solution: "Multi-query attention shares one key-value head among all the query heads."
+  - id: kvc-recall-heads-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: kvc-heads
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "An attention layer has $n_h$ query heads and $n_{kv}$ key-value heads. Each key-value head serves a group of equal size. Write the number of query heads per group. Type `nh` and `nkv`."
+    answer: "nh/nkv"
+    variables: { "nh": { "values": [8, 16, 32, 64] }, "nkv": { "values": [1, 2, 4, 8] } }
+    solution: "Divide the number of query heads by the number of groups to get $n_h/n_{kv}$."
+  - id: kvc-recall-memory-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: kvc-memory
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what does the KV-cache size count for each processed token, and how does it change when sequence length doubles with everything else fixed?"
+    rubric:
+      - id: storage
+        criterion: "Explain that it counts the stored key and value vectors for the token across all layers and key-value heads."
+        weight: 1
+        required: true
+      - id: length
+        criterion: "State that doubling the number of processed tokens doubles the cache size when other settings stay fixed."
+        weight: 1
+        required: true
+    exemplar: "For each processed token the cache holds a key and a value vector in each key-value head of every layer. If sequence length doubles with everything else fixed, the cache doubles."
+  - id: kvc-recall-memory-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: kvc-memory
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A server doubles the number of conversations in its batch, each with the same length as before. Which of these doubles?"
+    options:
+      - id: a
+        text: "The cache bytes for each token"
+        correct: false
+        feedback: "Each token still stores the same keys and values, $2Ln_{kv}d_hb$ bytes."
+      - id: b
+        text: "The memory for the model weights"
+        correct: false
+        feedback: "All the conversations use the same weights, stored once."
+      - id: c
+        text: "The total KV-cache size"
+        correct: true
+        feedback: "The cache grows with $B$, so twice the conversations store twice the bytes."
+    solution: "Cache bytes are $2Ln_{kv}d_hbTB$. Doubling $B$ doubles the total, while the bytes per token and the weights stay the same."
+  - id: kvc-recall-memory-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: kvc-memory
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A batch has $B$ sequences, each with $T$ processed tokens. The model has $L$ layers, $n_{kv}$ key-value heads per layer and head size $d_h$. Each number takes $b$ bytes. Write the batch's KV-cache size in bytes. Type `nkv` and `dh` for the head count and size."
+    answer: "2*L*nkv*dh*b*T*B"
+    variables:
+      {
+        "L": { "values": [2, 8, 64] },
+        "nkv": { "values": [1, 2, 4, 8, 16] },
+        "dh": { "values": [32, 64, 128] },
+        "b": { "values": [1, 2, 4] },
+        "T": { "values": [16, 256, 2048] },
+        "B": { "values": [1, 8, 64] },
+      }
+    solution: "There are $2Ln_{kv}d_hb$ bytes per token, counting the key and the value. Multiply by $TB$ processed tokens to get the batch size in bytes."
+  - id: kvc-recall-prefix-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: kvc-prefix
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what work does prefix caching save for a new request, and what work does that request still need?"
+    rubric:
+      - id: saved
+        criterion: "Explain that the request reuses the keys and values already stored for the matching start of its prompt, which saves that prefill work."
+        weight: 1
+        required: true
+      - id: still
+        criterion: "State that the prompt tokens after the shared start still need prefill, and the reply still needs decode."
+        weight: 1
+        required: true
+    exemplar: "The request reuses the stored keys and values for the matching start of its prompt, so it skips that prefill work. Its remaining prompt tokens still need prefill, and its reply still needs decode."
+  - id: kvc-recall-prefix-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: kvc-prefix
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A new prompt matches an old prompt exactly. The server saved only the keys and values. What is the least prompt work it can do and still get the next-token scores?"
+    options:
+      - id: a
+        text: "Read the scores straight from the saved values."
+        correct: false
+        feedback: "Keys and values alone do not provide the final next-token scores."
+      - id: b
+        text: "Reuse the earlier entries and process the last prompt token again."
+        correct: true
+        feedback: "Processing the last token with the earlier cache recovers the scores."
+      - id: c
+        text: "Reprocess every prompt token from the beginning."
+        correct: false
+        feedback: "That would work, but the earlier prompt entries already match and can be reused."
+    solution: "Keys and values alone do not supply the scores. Reuse the matching earlier entries and process the last token again to get them."
+  - id: kvc-recall-prefix-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: kvc-prefix
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A new prompt has $T$ tokens and reuses the keys and values for its first $R$ tokens, with $R<T$. Write the number of prompt tokens still to process."
+    answer: "T-R"
+    variables: { "T": { "values": [32, 128, 256] }, "R": { "values": [1, 16, 31] } }
+    solution: "Subtract the reused prefix length from the new prompt length. There are $T-R$ prompt tokens left to process."

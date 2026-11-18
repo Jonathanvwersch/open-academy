@@ -508,3 +508,168 @@ exercises:
         weight: 1
         required: true
     exemplar: "Divide $(e^3,e,e)$ by $e^3+2e$ to get probabilities about $(0.79,0.11,0.11)$. Box is true, so the loss is $-\\ln(e/(e^3+2e))\\approx2.24$. Subtracting $(0,0,1)$ from the unrounded probabilities gives slopes about $(0.79,0.11,-0.89)$."
+  - id: sm-recall-softmax-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: sm-softmax
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, how does softmax turn class scores into probabilities?
+    rubric:
+      - id: first
+        criterion: Explain that softmax raises e to the power of each score, making every result positive.
+        weight: 1
+        required: true
+      - id: second
+        criterion: Explain that it divides each result by their total, so the probabilities add up to 1.
+        weight: 1
+        required: true
+    exemplar: Softmax raises e to each score and divides each result by the total of those exponentials. The resulting probabilities add up to 1.
+  - id: sm-recall-softmax-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: sm-softmax
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: A classifier adds the same number to every class score before applying softmax. What happens to its probabilities?
+    options:
+      - id: a
+        text: They become more evenly spread.
+        correct: false
+        feedback: Equal scores give equal shares. Adding the same number preserves all score differences.
+      - id: b
+        text: They stay the same.
+        correct: true
+        feedback: The shared exponential factor cancels from every probability.
+      - id: c
+        text: They become more concentrated.
+        correct: false
+        feedback: Increasing the differences between scores makes the probabilities more concentrated.
+    solution: Adding the same number to all scores leaves every softmax probability unchanged.
+  - id: sm-recall-softmax-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: sm-softmax
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: For three classes with scores $z_1$, $z_2$ and $z_3$, write the softmax probability of class 1. Type `z1`, `z2`, `z3` for the scores and `exp(...)` for the exponential function.
+    answer: exp(z1)/(exp(z1)+exp(z2)+exp(z3))
+    variables:
+      z1:
+        - -3
+        - 3
+      z2:
+        - -3
+        - 3
+      z3:
+        - -3
+        - 3
+    solution: "Each exponential is divided by the total: $p_1=e^{z_1}/(e^{z_1}+e^{z_2}+e^{z_3})$."
+  - id: sm-recall-cross-entropy-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: sm-cross-entropy
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, how does multiclass cross-entropy score one labelled example, and when is the loss large?
+    rubric:
+      - id: first
+        criterion: Explain that it takes minus the natural log of the probability assigned to the true class.
+        weight: 1
+        required: true
+      - id: second
+        criterion: Explain that the loss is large when the probability assigned to the true class is near zero.
+        weight: 1
+        required: true
+    exemplar: Multiclass cross-entropy takes minus the natural log of the true class probability. It is large when the model gives that class a probability near zero.
+  - id: sm-recall-cross-entropy-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: sm-cross-entropy
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: An object is a ball. A model raises its cup score while holding its ball and box scores fixed. What happens to its cross-entropy loss?
+    options:
+      - id: a
+        text: The loss stays the same.
+        correct: false
+        feedback: All probabilities share a total, so changing a competing score changes the true class probability.
+      - id: b
+        text: The loss decreases.
+        correct: false
+        feedback: A lower loss would need a larger probability for the observed ball.
+      - id: c
+        text: The loss increases.
+        correct: true
+        feedback: Cup takes a larger share, reducing the true ball probability and raising its loss.
+    solution: The larger cup score reduces the ball's share of the total. Minus the log of the ball probability increases.
+  - id: sm-recall-cross-entropy-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: sm-cross-entropy
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: A classifier gives three classes the scores $z_1$, $z_2$ and $z_3$, and the object really is class 1. Write its multiclass cross-entropy loss. Type `z1`, `z2`, `z3` for the scores, `exp(...)` for the exponential function and `ln(...)` for the natural logarithm.
+    answer: -log(exp(z1)/(exp(z1)+exp(z2)+exp(z3)))
+    variables:
+      z1: [-3, 3]
+      z2: [-3, 3]
+      z3: [-3, 3]
+    solution: 'Softmax gives class 1 the probability $p_1=e^{z_1}/(e^{z_1}+e^{z_2}+e^{z_3})$, and the loss is $L=-\ln p_1$, which also equals $\ln(e^{z_1}+e^{z_2}+e^{z_3})-z_1$.'
+  - id: sm-recall-gradient-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: sm-gradient
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, how is a multiclass label written in one-hot form, and what is the loss slope against each score?
+    rubric:
+      - id: first
+        criterion: Explain that the label has 1 for the true class and 0 for every other class.
+        weight: 1
+        required: true
+      - id: second
+        criterion: Explain that each score slope is its class probability minus its label.
+        weight: 1
+        required: true
+    exemplar: A one-hot label has 1 for the true class and 0 for every other class. Each score slope is that class's probability minus its label.
+  - id: sm-recall-gradient-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: sm-gradient
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: A softmax classifier with cross-entropy loss takes one gradient descent step on a labelled example. What happens to the class scores?
+    options:
+      - id: a
+        text: The true class's score goes up and every other score goes down.
+        correct: true
+        feedback: The true class has slope $p-1$, which is negative, and every other class has slope $p_k$, which is positive.
+      - id: b
+        text: The true class's score goes up and the other scores stay the same.
+        correct: false
+        feedback: Every other class has a positive slope $p_k$, so each one is pushed down in proportion to the probability it took.
+      - id: c
+        text: The true class's score goes down and every other score goes up.
+        correct: false
+        feedback: This follows the slopes uphill. Gradient descent subtracts the slopes, so the true class's negative slope raises its score.
+    solution: Each slope is $p_k-y_k$, negative for the true class and positive for the others, so subtracting them raises the true class's score and lowers the rest.
+  - id: sm-recall-gradient-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: sm-gradient
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: For softmax with cross-entropy, write the loss slope against one class score using its probability $p$ and one-hot label $y$.
+    answer: p-y
+    variables: { "p": [0.05, 0.95], "y": { "values": [0, 1] } }
+    solution: The score slope is $p-y$.

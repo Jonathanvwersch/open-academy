@@ -646,3 +646,231 @@ exercises:
         required: true
     exemplar: "Each convolution output reads a small local patch, limiting the number of input connections it needs. The same filter weights and bias are reused across positions, so extra positions need no extra filter parameters. Each filter produces one output channel."
     solution: "Each convolution output reads a small local patch, limiting the number of input connections it needs. The same filter weights and bias are reused across positions, so extra positions need no extra filter parameters. Each filter produces one output channel."
+  - id: conv-recall-slide-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: conv-slide
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what is a convolutional filter, and how does it produce a feature map?"
+    rubric:
+      - id: point0
+        criterion: "Explain that a filter is a small grid of weights reused across image patches."
+        weight: 1
+        required: true
+      - id: point1
+        criterion: "Explain that at each patch it multiplies pixels by matching weights, adds the products and a bias, then places that score in the feature map."
+        weight: 1
+        required: true
+    exemplar: "A filter is a small grid of weights reused across image patches. At each patch it multiplies pixels by matching weights, adds the products and a bias, then places that score in the feature map."
+  - id: conv-recall-slide-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: conv-slide
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "What does one cell of a convolutional feature map contain before any ReLU?"
+    options:
+      - id: a
+        text: "The largest pixel brightness in the corresponding patch."
+        correct: false
+        feedback: "Keeping the largest value describes max pooling."
+      - id: b
+        text: "The weighted sum of that patch’s pixels plus a bias."
+        correct: true
+        feedback: "The convolution applies the shared filter to that patch and adds its bias."
+      - id: c
+        text: "The weighted sum of all image pixels plus a bias."
+        correct: false
+        feedback: "A fully connected neuron can use the whole image for one score. A convolution computes a score for each local patch."
+    solution: "A convolution applies the shared filter to a patch and adds its bias to produce one score."
+  - id: conv-recall-slide-formula
+    dimension: math
+    type: text
+    role: recall
+    knowledge_point: conv-slide
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A grayscale convolution uses filter weights $w_{u,v}$ and pixels $x$. Fill in the missing term in its score formula: $y_{i,j}=\\sum_{u=0}^{k-1}\\sum_{v=0}^{k-1}w_{u,v}x_{i+u,j+v}+\\underline{\\quad}$. Type a symbol or words."
+    accept:
+      [
+        "b",
+        "bias",
+        "the bias",
+        "shared bias",
+        "bias term",
+        "filter bias",
+        "learned bias",
+        "the shared bias",
+      ]
+    regex: "^\\s*(?:(?=\\$[\\s\\S]*\\$\\s*$)|(?=\\x60[\\s\\S]*\\x60\\s*$)|(?=\\\\\\([\\s\\S]*\\\\\\)\\s*$)|(?!\\$|\\x60|\\\\\\()(?![\\s\\S]*(?:\\$|\\x60|\\\\\\))\\s*$))(?:\\$|\\x60|\\\\\\()?\\s*(?:b|\\(\\s*b\\s*\\)|(?:(?:the|a)\\s+)?(?:(?:shared|learned|learnt|filter|convolution(?:al)?)\\s+)*bias(?:\\s+(?:term|parameter|b))?)\\s*(?:\\$|\\x60|\\\\\\))?\\s*$"
+    solution: "Each output score adds the shared bias $b$ once after summing the weighted pixels."
+  - id: conv-recall-size-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: conv-size
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what are zero padding and stride in a convolution?"
+    rubric:
+      - id: point0
+        criterion: "Explain that zero padding adds a border of zeros around the image."
+        weight: 1
+        required: true
+      - id: point1
+        criterion: "Explain that stride is the distance between neighbouring patch starts."
+        weight: 1
+        required: true
+    exemplar: "Zero padding adds a border of zeros around the image. Stride is the distance between neighbouring patch starts."
+  - id: conv-recall-size-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: conv-size
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "An unpadded convolution misses some patterns near the image borders. Which change lets the filter cover those borders in more positions?"
+    options:
+      - id: a
+        text: "Add zero padding around the image."
+        correct: true
+        feedback: "Padding gives the filter more places to fit beside the original edge."
+      - id: b
+        text: "Increase the number of filters in the layer."
+        correct: false
+        feedback: "More filters add output channels. The positions available to each filter stay the same."
+      - id: c
+        text: "Increase the stride between patch starts."
+        correct: false
+        feedback: "A larger stride skips more starts, so the filter fits in fewer positions."
+    solution: "Zero padding lets a patch extend beyond the original edge, which adds places that include the border pixels."
+  - id: conv-recall-size-formula
+    dimension: math
+    type: text
+    role: recall
+    knowledge_point: conv-size
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "For image height $H$, square filter side $k$, padding $p$ and stride $s$, which rounding operation do you apply to $(H+2p-k)/s$ before adding $1$?"
+    accept:
+      [
+        "floor",
+        "the floor function",
+        "round down",
+        "rounding down to the nearest integer",
+        "round down to a whole number",
+        "round toward negative infinity",
+        "greatest integer less than or equal to the value",
+      ]
+    regex: "^\\s*(?:(?=\\$[\\s\\S]*\\$\\s*$)|(?=\\x60[\\s\\S]*\\x60\\s*$)|(?=\\\\\\([\\s\\S]*\\\\\\)\\s*$)|(?!\\$|\\x60|\\\\\\()(?![\\s\\S]*(?:\\$|\\x60|\\\\\\))\\s*$))(?:\\$|\\x60|\\\\\\()?\\s*(?:(?:(?:take|apply|use)\\s+)?(?:the\\s+)?floor(?:\\s+(?:function|operation))?|floor(?:ing)?\\s+(?:the\\s+)?(?:result|value|quotient)|round(?:ing)?\\s+down(?:\\s+to\\s+(?:an?|the(?:\\s+(?:nearest|next|lower))?)\\s+(?:whole\\s+number|integer))?|round(?:ing)?\\s+towards?\\s+(?:negative\\s+infinity|[-−]∞)|(?:the\\s+)?(?:greatest|largest)\\s+integer\\s+(?:less\\s+than\\s+or\\s+equal\\s+to|at\\s+most|no\\s+greater\\s+than)\\s+(?:the\\s+(?:value|number|result)|it|x)|(?:(?:math|np|numpy)\\.)?floor\\s*\\(\\s*(?:x|\\.{3}|…)?\\s*\\)|(?:⌊\\s*(?:x|\\.{3}|…)?\\s*⌋|\\\\lfloor\\s*(?:x|\\.{3}|…)?\\s*\\\\rfloor))\\s*(?:\\$|\\x60|\\\\\\))?\\s*$"
+    solution: "Take the floor, which rounds down, then count the starting position at zero by adding $1$. The height is $\\lfloor(H+2p-k)/s\\rfloor+1$."
+  - id: conv-recall-channels-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: conv-channels
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, how does a colour-image filter combine input channels, and how many output maps does each filter produce?"
+    rubric:
+      - id: point0
+        criterion: "Explain that a filter has weights for every input channel and adds their weighted pixel contributions with one bias into a score."
+        weight: 1
+        required: true
+      - id: point1
+        criterion: "Explain that each filter produces one output feature map."
+        weight: 1
+        required: true
+    exemplar: "A filter has weights for every input channel and adds their weighted pixel contributions with one bias into a score. Each filter produces one output feature map."
+  - id: conv-recall-channels-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: conv-channels
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "You double the number of filters in a convolution and keep the input, filter size, stride and padding fixed. Which dimension of the output doubles?"
+    options:
+      - id: a
+        text: "The number of output channels."
+        correct: true
+        feedback: "Each filter produces one output channel. Doubling the filters doubles the number of channels."
+      - id: b
+        text: "The height of each output map."
+        correct: false
+        feedback: "Map height counts allowed patch starts down the image. More filters reuse those same starts."
+      - id: c
+        text: "The width of each output map."
+        correct: false
+        feedback: "Map width counts allowed patch starts across the image. More filters reuse those same starts."
+    solution: "Each extra filter adds a map with the same height and width, so doubling the filters doubles the output channels."
+  - id: conv-recall-channels-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: conv-channels
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A convolution has $C_{\\mathrm{in}}$ input channels and $C_{\\mathrm{out}}$ filters of square side $k$. Each filter has one bias. Write the layer’s parameter count. Type `C_in` and `C_out`."
+    answer: "C_out*(C_in*k^2+1)"
+    variables:
+      {
+        "C_in": { "values": [1, 4, 8] },
+        "C_out": { "values": [2, 16, 32] },
+        "k": { "values": [2, 4, 7] },
+      }
+    solution: "Count $C_{\\mathrm{in}}k^2$ weights and one bias for each filter to get $C_{\\mathrm{out}}(C_{\\mathrm{in}}k^2+1)$."
+  - id: conv-recall-pool-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: conv-pool
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In one or two sentences, what does max pooling keep from each patch, and what location information does it discard?"
+    rubric:
+      - id: point0
+        criterion: "Explain that max pooling keeps the largest value in each patch separately in each channel."
+        weight: 1
+        required: true
+      - id: point1
+        criterion: "Explain that it discards the maximum's position within that patch."
+        weight: 1
+        required: true
+    exemplar: "Max pooling keeps the largest value in each patch separately in each channel. It discards the maximum's position within that patch."
+  - id: conv-recall-pool-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: conv-pool
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "After you swap two values inside one patch, how does the pooled value for that patch change under max pooling?"
+    options:
+      - id: a
+        text: "It changes whenever the patch values are in a different order."
+        correct: false
+        feedback: "A weighted filter can respond differently when values move. Max pooling only reads the largest value."
+      - id: b
+        text: "It changes only if the largest value ends up in a different cell."
+        correct: false
+        feedback: "The largest value’s position can change, but pooling keeps only its value."
+      - id: c
+        text: "It stays the same for any swap inside the patch."
+        correct: true
+        feedback: "A swap leaves the set of values in the patch unchanged, so its maximum stays the same."
+    solution: "Max pooling keeps the largest value in the patch. Swapping its position with another value leaves that maximum unchanged."
+  - id: conv-recall-pool-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: conv-pool
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Stack $L$ convolutional layers, each with a square filter of side $k$, stride one and no padding or pooling. Write the side length of an output cell’s receptive field in the original image."
+    answer: "1+L*(k-1)"
+    variables: { "L": { "values": [1, 4, 8] }, "k": { "values": [2, 4, 7] } }
+    solution: "Start with a single pixel. Each layer adds $k-1$ to the side length, giving $1+L(k-1)$."
