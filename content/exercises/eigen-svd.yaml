@@ -6,40 +6,40 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 2
-    prompt: Two PCA implementations return unit directions $v$ and $-v$ for the same distinct eigenvalue. Both use their own directions for projection and reconstruction. How do their reconstructed vectors compare?
+    prompt: An SVD writes a matrix as a sum of pieces $s_i u_i v_i^\top$. In one piece, the output direction $u_i$ and input direction $v_i$ both change sign while $s_i$ stays fixed. How does that piece change?
     options:
       - id: same
-        text: They are identical.
+        text: It stays the same.
         correct: true
-        feedback: Reversing both the coordinate and the direction preserves their product.
+        feedback: The two factors of $-1$ multiply to $1$.
       - id: negative
-        text: They have opposite signs.
+        text: It changes sign.
         correct: false
         category: incorrect_reasoning
-        feedback: The projected coordinate also changes sign, so mapping back reverses that sign change.
+        feedback: Changing just one vector's sign changes the piece's sign. Changing both gives two factors of $-1$.
       - id: zero
-        text: They both become zero.
+        text: It becomes zero.
         correct: false
         category: incorrect_reasoning
-        feedback: A sign flip preserves the direction's length and its contribution.
-    solution: Reversing the direction reverses its projected coordinate. Multiplying the coordinate by the direction gives the same contribution to reconstruction.
+        feedback: Multiplying each vector by $-1$ keeps its length, and the two sign changes cancel in the product.
+    solution: Since $(-v_i)^\top=-v_i^\top$, the changed piece is $s_i(-u_i)(-v_i)^\top=s_i u_i v_i^\top$. Both sign choices give the same piece.
   - id: lab-pca-numpy-retained
     dimension: math
     type: numeric
     role: core
     difficulty: 2
     est_minutes: 2
-    prompt: A centred dataset has covariance eigenvalues 12, 6 and 2. What fraction of its total variance is retained by the best rank-2 PCA reconstruction? Give a decimal.
-    answer: 0.9
+    prompt: A matrix has singular values $12$, $6$ and $2$. For its closest rank-2 approximation, what is the largest output error over all length-1 input vectors?
+    answer: 2
     tolerance: { abs: 0.001 }
     common_wrong:
-      - answer: 0.6
+      - answer: 6
         category: incorrect_reasoning
-        feedback: That keeps only the largest direction. Rank 2 keeps the two largest eigenvalues.
-      - answer: 0.1
+        feedback: The piece with singular value $6$ is kept. The error comes from the first piece dropped.
+      - answer: 12
         category: incorrect_reasoning
-        feedback: That is the discarded fraction. The question asks for the retained fraction.
-    solution: Keep the two largest eigenvalues, giving $(12+6)/(12+6+2)=0.9$.
+        feedback: The largest singular value describes the biggest stretch in the original matrix. Its piece is kept.
+    solution: The rank-2 approximation keeps the pieces with singular values $12$ and $6$. The first dropped singular value is $2$, which is the largest output error over length-1 inputs.
   - id: eig-stretch-directions-basics
     dimension: conceptual
     type: mc

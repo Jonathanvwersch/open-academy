@@ -1,5 +1,221 @@
 concept: determinants
 exercises:
+  - id: det-pivots-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 1
+    prompt: After using only row additions and row swaps to make a square matrix upper triangular, how do you find the original determinant?
+    options:
+      - id: product-sign
+        text: Multiply the diagonal entries and reverse the sign for each swap.
+        correct: true
+        feedback: Row additions preserve the determinant, while each swap reverses its sign.
+      - id: sum-sign
+        text: Add the diagonal entries and reverse the sign for each swap.
+        correct: false
+        feedback: A triangular determinant is a product of diagonal entries. Adding them does not give its area or volume scale.
+      - id: product-additions
+        text: Multiply the diagonal entries and reverse the sign for each row addition.
+        correct: false
+        feedback: Row additions keep the determinant unchanged. Swaps cause the sign reversals.
+    solution: Multiply the triangular diagonal entries, then multiply by $(-1)^{\text{swaps}}$ to account for the row swaps.
+  - id: det-pivots-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    lesson_only: true
+    difficulty: 2
+    est_minutes: 2
+    prompt: For $A=\begin{bmatrix}0&2&1\\2&2&0\\4&6&5\end{bmatrix}$, one row swap followed by two row additions gives $T=\begin{bmatrix}2&2&0\\0&2&1\\0&0&4\end{bmatrix}$. Why do the row additions leave the determinant unchanged?
+    options:
+      - id: one-swap
+        text: They slide output coordinates while preserving volume and orientation.
+        correct: true
+        feedback: Each slide keeps base area and perpendicular height, and it preserves orientation.
+      - id: two-additions
+        text: They change entries below the diagonal, which never affect a determinant.
+        correct: false
+        feedback: Entries below the diagonal can affect a determinant. The diagonal-product shortcut applies once the matrix is triangular.
+      - id: initial-zero
+        text: They keep each row's sum fixed, which preserves volume and orientation.
+        correct: false
+        feedback: The third row's sum changes from 15 to 7 to 4 during the additions. Row sums do not measure volume.
+    solution: Row additions slide the output picture while keeping its volume and orientation. The triangular determinant is $2\times2\times4=16$; only the row swap reverses the original determinant's sign, giving $-16$.
+  - id: det-pivots-triangular-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 1
+    prompt: What is the determinant of $T=\begin{bmatrix}{{=p}}&2&1\\0&-{{=q}}&3\\0&0&{{=r}}\end{bmatrix}$?
+    params:
+      p: { min: 2, max: 4 }
+      q: { min: 2, max: 4 }
+      r: { min: 2, max: 4 }
+    answer_expr: -p*q*r
+    tolerance: { abs: 0.000001 }
+    common_wrong:
+      - answer_expr: p*q*r
+        category: math_error
+        feedback: The middle diagonal entry is negative, so the diagonal product is negative.
+      - answer_expr: p-q+r
+        category: misunderstood_definition
+        feedback: Multiply the diagonal entries. Their sum does not give a triangular determinant.
+    solution: The matrix is upper triangular, so its determinant is ${{=p}}\times(-{{=q}})\times{{=r}}={{=-p*q*r}}$.
+  - id: det-pivots-row-addition-error
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A learner changes $\begin{bmatrix}2&1\\4&5\end{bmatrix}$ to $\begin{bmatrix}2&1\\0&3\end{bmatrix}$ by subtracting twice row 1 from row 2, then says the determinant changed sign. Which statement corrects the error?
+    options:
+      - id: addition-preserves
+        text: Adding a multiple of another row keeps the determinant unchanged.
+        correct: true
+        feedback: This operation slides the output picture while preserving its area and orientation.
+      - id: negative-multiple
+        text: Subtracting a row multiple changes the determinant to a negative number.
+        correct: false
+        feedback: The sign of the multiple does not matter. Adding any row multiple preserves the determinant.
+      - id: zero-collapse
+        text: Creating a zero entry makes the determinant vanish.
+        correct: false
+        feedback: A single zero entry does not imply collapse. The new diagonal product is $2\times3=6$.
+    solution: Subtracting twice another row is a row addition, so the determinant stays 6. A row swap would reverse its sign.
+  - id: det-pivots-two-swaps
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: Two row swaps and several row additions change a matrix $A$ into $T=\begin{bmatrix}2&0&0\\1&-3&0\\0&2&4\end{bmatrix}$. What is $\det(A)$?
+    answer: -24
+    tolerance: { abs: 0.000001 }
+    common_wrong:
+      - answer: 24
+        category: incorrect_reasoning
+        feedback: Two swaps reverse the sign twice. The original determinant has the same sign as the triangular product.
+      - answer: 3
+        category: misunderstood_definition
+        feedback: That adds the diagonal entries. Multiply them to find the determinant.
+    solution: The triangular determinant is $2\times(-3)\times4=-24$. The factor $(-1)^2=1$ leaves it unchanged.
+  - id: det-pivots-zero-column
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A square matrix becomes $T=\begin{bmatrix}2&1&3\\0&0&4\\0&0&0\end{bmatrix}$ using row additions. What does this tell you about its determinant?
+    options:
+      - id: zero-diagonal
+        text: It is zero because the triangular diagonal product contains zero.
+        correct: true
+        feedback: There is no second-column pivot available, and the diagonal product is $2\times0\times0=0$.
+      - id: nonzero-pivots
+        text: It is 8 because the two nonzero pivots multiply to 8.
+        correct: false
+        feedback: A full set of pivots is missing. Include every diagonal position, including its zeros.
+      - id: last-entry
+        text: It is 4 because the last nonzero row ends with 4.
+        correct: false
+        feedback: The determinant uses all diagonal entries. A row's last entry alone does not determine it.
+    solution: Row additions preserve the determinant, and the triangular matrix has diagonal product zero. Missing pivots prevent a full set of nonzero diagonal entries.
+  - id: det-pivots-three-by-three
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: What is the determinant of $A=\begin{bmatrix}0&1&2\\2&1&1\\4&3&6\end{bmatrix}$?
+    answer: -4
+    tolerance: { abs: 0.000001 }
+    common_wrong:
+      - answer: 4
+        category: incorrect_reasoning
+        feedback: Swapping the first two rows lets you start clearing entries. Include the sign reversal from that swap.
+      - answer: 0
+        category: misunderstood_definition
+        feedback: A zero at the top left can be replaced by swapping in a nonzero entry from below.
+    solution: Swap rows 1 and 2, subtract twice the new row 1 from row 3, then subtract row 2 from row 3. The triangular diagonal is $2,1,2$, giving $\det(A)=-(2\times1\times2)=-4$.
+  - id: det-pivots-coordinate-map
+    dimension: transfer
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: A robot's planar coordinate map sends $(1,0)$ to $(0,2)$ and $(0,1)$ to $(3,1)$. What is the signed area scale of this map?
+    answer: -6
+    tolerance: { abs: 0.000001 }
+    common_wrong:
+      - answer: 6
+        category: incorrect_reasoning
+        feedback: The magnitude is 6, and the coordinate map reverses orientation. Keep the sign.
+      - answer: 0
+        category: misunderstood_definition
+        feedback: A zero entry alone does not force a zero determinant. Swap the rows to get a nonzero first pivot.
+    solution: The two outputs are the columns of $A=\begin{bmatrix}0&3\\2&1\end{bmatrix}$. Swapping rows gives a triangular matrix with diagonal $2,3$, so the original signed area scale is $-(2\times3)=-6$.
+  - id: det-recall-pivots-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: det-pivots
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, what is a pivot when clearing entries below the diagonal, and how do pivots give the determinant of a square matrix when every column has one? Assume only row additions and row swaps are used.
+    rubric:
+      - id: pivot
+        criterion: Explain that a pivot is the first nonzero entry of a row used to clear entries below it.
+        weight: 1
+        required: true
+      - id: product-and-sign
+        criterion: Explain that a full set of pivots lies on the triangular diagonal, whose product is multiplied by $(-1)^{\text{swaps}}$.
+        weight: 1
+        required: true
+    exemplar: A pivot is the first nonzero entry of a row used to make the entries below it zero. With a pivot in every column, multiply the pivots on the triangular diagonal and multiply by $(-1)^{\text{swaps}}$ to account for row swaps.
+    solution: Row additions preserve the determinant, so only the triangular diagonal and the swap count enter the final product.
+  - id: det-recall-pivots-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: det-pivots
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 0.5
+    prompt: Which row move always preserves a matrix's determinant?
+    options:
+      - id: row-addition
+        text: Add three times row 1 to row 2, keeping row 1.
+        correct: true
+        feedback: Adding a multiple of another row preserves area or volume and orientation.
+      - id: swap
+        text: Exchange row 1 and row 2, keeping every entry.
+        correct: false
+        feedback: A row swap reverses the determinant's sign. A nonzero determinant changes.
+      - id: erase
+        text: Replace row 2 with zeros, keeping row 1.
+        correct: false
+        feedback: Erasing a row can collapse area or volume and make a nonzero determinant zero.
+    solution: Adding a row multiple slides the output picture while preserving its area or volume and orientation. This keeps its determinant.
+  - id: det-recall-pivots-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: det-pivots
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: Row additions and $s$ row swaps turn a $3\times3$ matrix into a triangular matrix with diagonal entries $p,q,r$. Write the original determinant. Use `*` for multiplication and `^` for powers.
+    answer: p*q*r*(-1)^s
+    variables:
+      p: { values: [-3, -1, 2, 4] }
+      q: { values: [-2, 1, 3] }
+      r: { values: [-4, 1, 2] }
+      s: { values: [0, 1, 2, 3] }
+    solution: Multiply the three diagonal entries and include one factor of $-1$ for each row swap, giving $pqr(-1)^s$.
   - id: det-area-basics
     dimension: conceptual
     type: mc

@@ -261,12 +261,7 @@ concepts:
     est_minutes: 35
     goal_weight: 2
     dimensions: [conceptual, math]
-    prereqs:
-      [
-        { id: matrices },
-        { id: rank-span, strength: soft },
-        { id: orthogonality-projections, strength: soft },
-      ]
+    prereqs: [{ id: matrices }, { id: orthogonality-projections }]
     objectives:
       - { text: "Find the eigenvalues of a 2×2 matrix", dimension: math }
       - { text: "Explain SVD as rotate, stretch, rotate", dimension: conceptual }
