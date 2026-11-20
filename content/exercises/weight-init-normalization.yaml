@@ -291,7 +291,7 @@ exercises:
     prompt: In the worked ReLU layer, which change in average squared size explains the factor 2 in
       He initialization?
     solution:
-      When positive and negative starting scores are equally likely, ReLU removes half the average squared size. He initialization
+      When each score and its negative are equally likely, ReLU removes half the average squared size. He initialization
       doubles the score average square before ReLU, preserving the intended output typical size.
     options:
       - id: a
@@ -303,20 +303,20 @@ exercises:
         text: ReLU halves typical size, so doubling the weight typical size exactly restores it.
         correct: false
         feedback:
-          ReLU halves the average square when positive and negative scores are equally likely; that calls for a square-root-of-two
+          ReLU halves the average square when each score and its negative are equally likely; that calls for a square-root-of-two
           change in weight typical size.
         category: incorrect_reasoning
       - id: c
         text: ReLU halves average squared size, so the score average square starts twice as large.
         correct: true
         feedback:
-          When positive and negative scores are equally likely, the negative half contributes half the average square and is
+          Because each score and its negative are equally likely, negative scores contribute half the average square and are
           removed.
       - id: d
         text: ReLU halves the mean score, so doubling the mean is what preserves typical size.
         correct: false
         feedback:
-          When positive and negative scores are equally likely, the mean is zero; the calculation preserves average
+          Because each score and its negative are equally likely, the mean is zero; the calculation preserves average
           squared size.
         category: incorrect_reasoning
   - id: wip-init-three-inputs
@@ -1014,17 +1014,17 @@ exercises:
     knowledge_point: wi-init-scale
     difficulty: 1
     est_minutes: 1
-    prompt: "In one or two sentences, why do more inputs call for smaller starting weights, and why do layers with ReLU use larger weights than layers without it when positive and negative scores are equally likely?"
+    prompt: "In one or two sentences, why do more inputs call for smaller starting weights, and why do layers with ReLU use larger weights than layers without it when each score and its negative are equally likely?"
     rubric:
       - id: point0
         criterion: "Explain that adding more randomly weighted inputs increases the typical size of the score, so smaller weights keep that size steady."
         weight: 1
         required: true
       - id: point1
-        criterion: "Explain that ReLU drops the negative scores, which account for half the average square when positive and negative scores are equally likely. Using larger weights makes up for that drop."
+        criterion: "Explain that ReLU drops the negative scores. Because each score and its negative are equally likely, the negative scores account for half the average square. Using larger weights makes up for that drop."
         weight: 1
         required: true
-    exemplar: "Adding more randomly weighted inputs makes the score typically larger, so smaller weights keep that size steady. When positive and negative scores are equally likely, ReLU removes half the average square, so we use larger weights to make up for it."
+    exemplar: "Adding more randomly weighted inputs makes the score typically larger, so smaller weights keep that size steady. When each score and its negative are equally likely, ReLU removes half the average square, so we use larger weights to make up for it."
   - id: wi-recall-init-contrast
     dimension: conceptual
     type: mc
@@ -1032,7 +1032,7 @@ exercises:
     knowledge_point: wi-init-scale
     difficulty: 1
     est_minutes: 0.5
-    prompt: "Which target is He initialization designed to achieve when positive and negative starting scores are equally likely?"
+    prompt: "Which target is He initialization designed to achieve when each starting score and its negative are equally likely?"
     options:
       - id: a
         text: "Keep the typical size steady through the weighted sum alone."
@@ -1041,7 +1041,7 @@ exercises:
       - id: b
         text: "Keep the typical size steady through the weighted sum and ReLU."
         correct: true
-        feedback: "ReLU removes half the average square when positive and negative scores are equally likely, so He initialization uses larger weights."
+        feedback: "ReLU removes half the average square when each score and its negative are equally likely, so He initialization uses larger weights."
       - id: c
         text: "Keep the typical size steady as weights change during training."
         correct: false

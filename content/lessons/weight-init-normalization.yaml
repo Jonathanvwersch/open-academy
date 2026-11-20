@@ -182,7 +182,7 @@ knowledge_points:
       - $a=0.1$ gives typical size $1$, so the size is kept.
       - $a=0.01$ gives typical size $0.1$, so the activations vanish over several layers.
 
-      These scores are equally likely positive or negative. ReLU sets the negative half to $0$, halving their average square. To compensate:
+      A score and its negative are equally likely: each weight is as likely to be $+a$ as $-a$, so flipping every weight's sign gives an equally likely score of the opposite sign. ReLU sets negative scores to $0$, halving their average square. To compensate:
       $$
       \begin{aligned}
       \tfrac12 n a^2&=1 &&\text{halve the average square}\\
