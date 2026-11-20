@@ -4,7 +4,7 @@ objective: |
   **Goal:** write the loop that lets an agent practise in a simulated environment, using reset and step to run episodes that end by termination or a time limit, explain why many copies run at once, and say why a policy trained in simulation can fail on a real robot.
 recap:
   - concept: mdp
-    text: "A Markov decision process (MDP) describes states $s$, actions $a$, the chance $p(s'\\mid s,a)$ of each next state, and reward $r_{t+1}$ for each step."
+    text: "A Markov decision process (MDP) describes states $s$, actions $a$, next-state chances $p(s'\\mid s,a)$ and rewards $r_{t+1}$. From probability basics, independent chances multiply. Add the chances of distinct sequences that give the same result."
 where_this_fits: |
   ### What is a simulation environment?
 
@@ -62,7 +62,7 @@ knowledge_points:
 
       Suppose the floor is slippery: a move works with probability $0.8$, otherwise the robot stays put. Step draws a random number from 0 to 1 and moves only if it is below $0.8$. A move away from a wall now has two possible next states, so identical actions can give different episodes. A computer's random numbers follow a fixed rule that starts from a **seed**. The same seed gives the same numbers and repeats a run, which helps find bugs.
 
-      Fresh random draws are independent, so multiply chances along a sequence. Add chances for different sequences with the same result. If a move works with probability $p$, one slip and one success can happen in two orders:
+      Fresh random draws are independent, so multiply chances along a sequence, as in probability basics. Add chances for different sequences with the same result. If a move works with probability $p$, one slip and one success can happen in two orders:
       $$
       \begin{aligned}
       P(\text{slip, success})&=(1-p)p &&\text{multiply the first order's chances}\\
@@ -229,11 +229,11 @@ knowledge_points:
     explain: |
       ### Why one copy is slow
 
-      Training takes millions of steps, but one simulator leaves most processor cores idle. Running episodes together gives varied situations because policies often pick actions at random.
+      Training takes millions of steps, but one simulator can leave most processor cores idle. A core is one part of a processor that runs instructions. Running episodes together gives varied situations because policies often pick actions at random.
 
       ### Many corridors side by side
 
-      A **vectorised environment** runs $N$ copies side by side. Each active copy gets one action per call. Gymnasium's `AsyncVectorEnv` runs copies in separate processes. Reset returns $N$ start states; step returns a next state, reward, terminated flag and truncated flag for each copy.
+      A **vectorised environment** runs $N$ copies side by side. Each active copy gets one action per call. A process is a running program that the computer can schedule on a core. Gymnasium's `AsyncVectorEnv` runs each copy in a separate process, allowing the computer to work on copies at the same time. Reset returns $N$ start states; step returns a next state, reward, terminated flag and truncated flag for each copy.
 
       The loop still chooses actions and calls step repeatedly, but it checks the ending flags separately for each copy. A finished copy restarts while the others carry on.
 

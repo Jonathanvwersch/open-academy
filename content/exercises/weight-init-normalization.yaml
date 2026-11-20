@@ -228,6 +228,28 @@ exercises:
         correct: false
         feedback: Large readings do not explain the repeated shrinking of slopes across layers.
         category: incorrect_reasoning
+  - id: wip-chain-weight-update
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A four-layer network takes input $1$. Each layer multiplies its input by its own weight,
+      with weights $1$, $0.5$, $0.5$ and $0.5$ in order. The loss slope for the last output is $4$.
+      What is the first layer's weight after one gradient descent update with learning rate $0.2$?
+    solution: Passing back through the last three layers gives the first output's slope
+      $4(0.5)^3=0.5$, and multiplying by the input $1$ gives the first weight's slope $0.5$.
+      The update leaves the first weight at $1-0.2(0.5)=0.9$.
+    answer: 0.9
+    tolerance:
+      abs: 0.000001
+    common_wrong:
+      - answer: 0.5
+        category: math_error
+        feedback: Multiply the weight's slope by the learning rate before subtracting.
+      - answer: 1.1
+        category: math_error
+        feedback: Subtract the learning rate times the slope to move downhill.
   - id: wi-init-scale-basics
     dimension: conceptual
     type: mc
@@ -269,7 +291,7 @@ exercises:
     prompt: In the worked ReLU layer, which change in average squared size explains the factor 2 in
       He initialization?
     solution:
-      For symmetric starting scores, ReLU removes half the average squared size. He initialization
+      When each score and its negative are equally likely, ReLU removes half the average squared size. He initialization
       doubles the score average square before ReLU, preserving the intended output typical size.
     options:
       - id: a
@@ -281,19 +303,20 @@ exercises:
         text: ReLU halves typical size, so doubling the weight typical size exactly restores it.
         correct: false
         feedback:
-          ReLU halves the average square for symmetric scores; that calls for a square-root-of-two
+          ReLU halves the average square when each score and its negative are equally likely; that calls for a square-root-of-two
           change in weight typical size.
         category: incorrect_reasoning
       - id: c
         text: ReLU halves average squared size, so the score average square starts twice as large.
         correct: true
-        feedback: For symmetric scores, the negative half contributes half the average square and is
+        feedback:
+          Because each score and its negative are equally likely, negative scores contribute half the average square and are
           removed.
       - id: d
         text: ReLU halves the mean score, so doubling the mean is what preserves typical size.
         correct: false
         feedback:
-          A symmetric score distribution starts with mean zero; the calculation preserves average
+          Because each score and its negative are equally likely, the mean is zero; the calculation preserves average
           squared size.
         category: incorrect_reasoning
   - id: wip-init-three-inputs
@@ -346,9 +369,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt:
-      A neuron has 400 inputs of typical size 1 and random weights of typical size 0.1. With no
-      activation function, what is the typical size of its score?
+    prompt: A neuron has 400 inputs of typical size 1. Its weights are chosen independently and
+      each is equally likely to be $+0.1$ or $-0.1$. What is the typical size of its score?
     solution: The score's average square is $400\times0.1^2=4$. Its typical size is $\sqrt4=2$.
     answer: 2
     tolerance:
@@ -397,10 +419,9 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt:
-      Each neuron in each of 5 layers has 100 inputs and random weights of typical size 0.2. There
-      is no activation function. Starting from input typical size 1, what is the typical size after
-      all 5 layers?
+    prompt: Each neuron in each of 5 layers has 100 inputs. All weights are chosen independently
+      and each is equally likely to be $+0.2$ or $-0.2$. There are no biases or activation
+      functions. Starting from input typical size 1, what is the typical size after all 5 layers?
     solution: Each layer multiplies typical size by $\sqrt{100\times0.2^2}=2$. Five layers give $2^5=32$.
     answer: 32
     tolerance:
@@ -561,7 +582,7 @@ exercises:
         tolerance:
           abs: 0.01
         category: math_error
-        feedback: That divides by one less than the count, as a sample standard deviation does. LayerNorm divides by the count, 4.
+        feedback: That divides by one less than the count, as a small-sample estimate does. LayerNorm divides by the count, 4.
     params:
       c:
         min: 10
@@ -721,7 +742,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: Which statistics does BatchNorm use for example 1 in the worked training batch?
+    prompt: Which mean and standard deviation does BatchNorm use for example 1 in the worked training batch?
     solution:
       BatchNorm uses the current neuron's outputs across the training examples. In the worked
       column, 1, 5, 1 and 5 give mean 3 and standard deviation 2, making example 1 depend on the other
@@ -735,7 +756,7 @@ exercises:
       - id: b
         text: The saved mean and standard deviation from earlier batches only.
         correct: false
-        feedback: During this training calculation, BatchNorm uses the current batch's column statistics.
+        feedback: During this training calculation, BatchNorm uses the current batch's mean and standard deviation for that column.
         category: incorrect_reasoning
       - id: c
         text: The mean and standard deviation across the current neuron's batch outputs.
@@ -744,7 +765,7 @@ exercises:
       - id: d
         text: One mean and standard deviation across every entry in the batch grid.
         correct: false
-        feedback: Each neuron gets its own statistics, so different columns are kept separate.
+        feedback: Each neuron gets its own mean and standard deviation, so different columns are kept separate.
         category: incorrect_reasoning
   - id: wip-bn-direction
     dimension: conceptual
@@ -993,17 +1014,17 @@ exercises:
     knowledge_point: wi-init-scale
     difficulty: 1
     est_minutes: 1
-    prompt: "In one or two sentences, why do more inputs call for smaller starting weights, and why do layers with ReLU use larger weights than layers without it when scores are symmetric?"
+    prompt: "In one or two sentences, why do more inputs call for smaller starting weights, and why do layers with ReLU use larger weights than layers without it when each score and its negative are equally likely?"
     rubric:
       - id: point0
         criterion: "Explain that adding more randomly weighted inputs increases the typical size of the score, so smaller weights keep that size steady."
         weight: 1
         required: true
       - id: point1
-        criterion: "Explain that ReLU drops the negative scores, which account for half the average square when scores are symmetric. Using larger weights makes up for that drop."
+        criterion: "Explain that ReLU drops the negative scores. Because each score and its negative are equally likely, the negative scores account for half the average square. Using larger weights makes up for that drop."
         weight: 1
         required: true
-    exemplar: "Adding more randomly weighted inputs makes the score typically larger, so smaller weights keep that size steady. With symmetric scores, ReLU removes half the average square, so we use larger weights to make up for it."
+    exemplar: "Adding more randomly weighted inputs makes the score typically larger, so smaller weights keep that size steady. When each score and its negative are equally likely, ReLU removes half the average square, so we use larger weights to make up for it."
   - id: wi-recall-init-contrast
     dimension: conceptual
     type: mc
@@ -1011,7 +1032,7 @@ exercises:
     knowledge_point: wi-init-scale
     difficulty: 1
     est_minutes: 0.5
-    prompt: "Which target is He initialization designed to achieve for a layer with symmetric starting scores?"
+    prompt: "Which target is He initialization designed to achieve when each starting score and its negative are equally likely?"
     options:
       - id: a
         text: "Keep the typical size steady through the weighted sum alone."
@@ -1020,7 +1041,7 @@ exercises:
       - id: b
         text: "Keep the typical size steady through the weighted sum and ReLU."
         correct: true
-        feedback: "ReLU removes half the average square of symmetric scores, so He initialization uses larger weights."
+        feedback: "ReLU removes half the average square when each score and its negative are equally likely, so He initialization uses larger weights."
       - id: c
         text: "Keep the typical size steady as weights change during training."
         correct: false
@@ -1044,17 +1065,17 @@ exercises:
     knowledge_point: wi-layer-norm
     difficulty: 1
     est_minutes: 1
-    prompt: "In one or two sentences, what does LayerNorm do before its learned gain and shift, and which outputs supply its statistics?"
+    prompt: "In one or two sentences, what does LayerNorm do before its learned gain and shift, and which outputs supply the mean and standard deviation?"
     rubric:
       - id: point0
         criterion: "Explain that LayerNorm subtracts the mean and divides by the standard deviation."
         weight: 1
         required: true
       - id: point1
-        criterion: "Explain that these statistics come from one example's outputs across a layer."
+        criterion: "Explain that the mean and standard deviation come from one example's outputs across a layer."
         weight: 1
         required: true
-    exemplar: "LayerNorm subtracts the mean and divides by the standard deviation. These statistics come from one example's outputs across a layer."
+    exemplar: "LayerNorm subtracts the mean and divides by the standard deviation. These values come from one example's outputs across a layer."
   - id: wi-recall-layer-contrast
     dimension: conceptual
     type: mc
@@ -1095,17 +1116,17 @@ exercises:
     knowledge_point: wi-batch-norm
     difficulty: 1
     est_minutes: 1
-    prompt: "In one or two sentences, which outputs does BatchNorm normalize together during training, and what statistics does it use after training?"
+    prompt: "In one or two sentences, which outputs does BatchNorm normalize together during training, and which saved values does it use afterwards?"
     rubric:
       - id: point0
         criterion: "Explain that BatchNorm normalizes each neuron's outputs across the examples in a batch."
         weight: 1
         required: true
       - id: point1
-        criterion: "Explain that after training it uses saved running averages of the mean and squared standard deviation."
+        criterion: "Explain that after training it uses saved values for the mean and squared standard deviation, updated after each batch."
         weight: 1
         required: true
-    exemplar: "BatchNorm normalizes each neuron's outputs across the examples in a batch. After training it uses saved running averages of the mean and squared standard deviation."
+    exemplar: "BatchNorm normalizes each neuron's outputs across the examples in a batch. After training it uses saved values for the mean and squared standard deviation, updated after each batch."
   - id: wi-recall-batch-contrast
     dimension: conceptual
     type: mc
@@ -1113,7 +1134,7 @@ exercises:
     knowledge_point: wi-batch-norm
     difficulty: 1
     est_minutes: 0.5
-    prompt: "A trained network with BatchNorm now predicts one example at a time. Which statistics does it use to normalize an output?"
+    prompt: "A trained network with BatchNorm now predicts one example at a time. Which saved values does it use to normalize an output?"
     options:
       - id: a
         text: "The current example’s mean and spread across the layer."
@@ -1126,8 +1147,8 @@ exercises:
       - id: c
         text: "The running statistics saved for each neuron during training."
         correct: true
-        feedback: "BatchNorm saves a running average of each neuron’s mean and squared standard deviation during training."
-    solution: "After training, BatchNorm uses the running statistics it saved during training."
+        feedback: "BatchNorm saves each neuron's mean and squared standard deviation, updating those values after every batch."
+    solution: "After training, BatchNorm uses the mean and squared standard deviation it saved during training."
   - id: wi-recall-batch-formula
     dimension: math
     type: expression

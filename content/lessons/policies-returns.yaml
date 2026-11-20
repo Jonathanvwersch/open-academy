@@ -162,8 +162,8 @@ knowledge_points:
     title: Choose how much delay matters
     tldr: |
       - The discount factor sets how much a reward counts for each step it is delayed.
-      - Raising it makes a far-off goal count for more.
-      - It also makes a far-off penalty hurt more, so raising it can lower the score too.
+      - Raising it gives distant gains and penalties more weight, so the score can rise or fall.
+      - For constant rewards forever, a discount below one gives a finite total.
       - One trip's score can't judge a random policy, since it can take many trips.
     explain: |
       ### The same trip with different weights
@@ -212,7 +212,19 @@ knowledge_points:
       $$
       Both trips can occur under this policy. Judging it requires their chances too.
 
-      We use $\gamma=1$ only for finite episodes here. Some tasks have no set end, such as a robot that keeps patrolling. If it keeps earning $+1$ each step, the totals after one, two and three actions are $1$, $2$ and $3$. The total keeps growing without a finite limit. Choosing $\gamma<1$ makes the total finite in this example.
+      We use $\gamma=1$ only for finite episodes here. A robot patrolling forever for $+1$ per step has an ever-growing total at $\gamma=1$. Its weights form a **geometric series**: each term is the one before times $\gamma$. For $0\leq\gamma<1$, call its total $S$:
+
+      $$
+      \begin{aligned}
+      S&=1+\gamma+\gamma^2+\dots &&\text{name the sum}\\
+      &=1+\gamma(1+\gamma+\dots) &&\text{factor out }\gamma\\
+      &=1+\gamma S &&\text{the bracket is }S\text{ again}\\
+      (1-\gamma)S&=1 &&\text{subtract }\gamma S\\
+      S&=\frac{1}{1-\gamma} &&\text{divide by }1-\gamma
+      \end{aligned}
+      $$
+
+      The patrol's return at $\gamma=0.9$ is $1/(1-0.9)=10$. Earning $-1$ each step instead gives $-10$.
     worked: |
       Let's compare how much the end reward adds to our three-move corridor return at $\gamma=0.5$ and $\gamma=0.9$.
 
@@ -253,6 +265,7 @@ knowledge_points:
       - pr-discount-continuing
       - pr-discount-patrol
       - pr-discount-new
+      - pr-discount-patrol-total
 final: pr-explain-trip
 summary: |
   - A deterministic policy $\pi(s)$ picks one action in each state. A stochastic policy $\pi(a\mid s)$ assigns action probabilities that add to $1$.

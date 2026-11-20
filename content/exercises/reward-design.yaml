@@ -656,7 +656,7 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: A language model is trained with reinforcement learning to get high scores from a reward model, a second model trained to score replies the way people would. The reward model happens to give longer replies higher scores. What is the risk?
+    prompt: A language model, a program that writes replies, is trained with reinforcement learning to get high scores from a reward model, a second model trained to score replies the way people would. The reward model happens to give longer replies higher scores. What is the risk?
     options:
       - id: a
         text: It learns to write long, padded replies that score well but people don't prefer.

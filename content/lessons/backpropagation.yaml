@@ -273,6 +273,7 @@ knowledge_points:
       ```
 
       It prints `[[10.]] [6.]`, then `[[6] [0]]`: only the positive score lets the $6$ through.
+      `np.where(z > 0, g, 0)` keeps each entry of `g` where `z` is positive and puts $0$ everywhere else.
     problems:
       [
         bp-arrays-basics,
@@ -340,7 +341,7 @@ knowledge_points:
 
       ### What a check can't do
 
-      Each estimate costs two extra forward passes for one parameter, far too slow for every weight, so we only check a few. Very tiny nudges lose accuracy in computer arithmetic, so nudges of about $0.01$ usually work better. We avoid nudging a ReLU score across $0$, where its slope jumps. And a passing check only covers the points we tested.
+      Each estimate costs two extra forward passes for one parameter, far too slow for every weight, so we only check a few. A large nudge can span a bend in the loss curve, so the estimate can miss the slope at the weight. With a tiny nudge, computer rounding can hide the difference between the two almost equal losses. Nudges of about $0.01$ usually work better. We avoid nudging a ReLU score across $0$, where its slope jumps. And a passing check only covers the points we tested.
     worked: |
       Let's check the slope $12$ for $L(w)=(2w+1)^2$ at $w=1$, with the nudge $\varepsilon=0.1$.
 

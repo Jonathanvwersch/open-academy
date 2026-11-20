@@ -253,7 +253,7 @@ knowledge_points:
 
       ### Which way the rewards move
 
-      In logistic regression, the loss's slope against the score was $p-y$. Here the score is $r_w-r_l$ and the label is $y=1$, since the chosen response won. Follow each reward's effect on that score:
+      In logistic regression, the loss's slope against the score was $p-y$. Here the score is $r_w-r_l$ and the label is $y=1$, since the chosen response won. As in backpropagation, the chain rule multiplies this loss slope by the score's own slope with respect to each reward:
       $$
       \begin{aligned}
       \frac{\partial L}{\partial(r_w-r_l)}&=p-1 &&\text{substitute the label}\\

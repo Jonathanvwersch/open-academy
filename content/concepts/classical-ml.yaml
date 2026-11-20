@@ -94,12 +94,7 @@ concepts:
     est_minutes: 35
     goal_weight: 2
     dimensions: [conceptual, math, implementation]
-    prereqs:
-      [
-        { id: linear-regression },
-        { id: gradient-descent },
-        { id: probability-basics, strength: soft },
-      ]
+    prereqs: [{ id: linear-regression }, { id: gradient-descent }, { id: probability-basics }]
     confused_with: [classification-softmax]
     objectives:
       - { text: "Compute sigmoid outputs and binary cross-entropy", dimension: math }

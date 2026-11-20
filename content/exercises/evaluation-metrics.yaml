@@ -6,20 +6,56 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 2
-    prompt: "A binary classifier has confusion matrix [[18, 6], [2, 4]], with true classes in rows and predicted classes in columns, ordered 0 then 1. What is precision for class 1?"
+    prompt: |
+      Class 1 is the positive class. What is its precision? Give a decimal.
+
+      | Actual class | Predicted 0 | Predicted 1 |
+      | --- | --- | --- |
+      | Class 0 | 18 | 6 |
+      | Class 1 | 2 | 4 |
     answer: 0.4
     tolerance: { abs: 0.001 }
-    solution: The class-1 column has 10 predictions, of which 4 are correct. Precision is 4/10 = 0.4.
+    solution: The Predicted 1 column has $6+4=10$ predictions, and 4 are correct. Precision is $4/10=0.4$.
   - id: lab-classifier-recall
     dimension: math
     type: numeric
     role: core
     difficulty: 2
     est_minutes: 2
-    prompt: "A three-class classifier has confusion matrix [[8, 1, 1], [2, 6, 2], [0, 3, 9]], with true classes in rows and predicted classes in columns, ordered 0, 1, 2. What is recall for class 2?"
+    prompt: |
+      The two classes in this table are class 2 and Other. Class 2 is the positive class. What is its recall? Give a decimal.
+
+      | Actual class | Predicted Other | Predicted 2 |
+      | --- | --- | --- |
+      | Other | 17 | 3 |
+      | Class 2 | 3 | 9 |
     answer: 0.75
     tolerance: { abs: 0.001 }
-    solution: The class-2 row contains 12 actual examples and 9 correct predictions. Recall is 9/12 = 0.75.
+    solution: The Class 2 row contains $3+9=12$ actual examples, and 9 are correct. Recall is $9/12=0.75$.
+  - id: evm-recall-three-classes
+    dimension: transfer
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: |
+      A camera sorts parts into scratch, dent and fine. Find recall for dents minus recall for scratches. Give the difference as a decimal.
+
+      | Actual class | Predicted scratch | Predicted dent | Predicted fine |
+      | --- | --- | --- | --- |
+      | Scratch | 5 | 1 | 4 |
+      | Dent | 1 | 6 | 1 |
+      | Fine | 1 | 1 | 8 |
+    answer: 0.25
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - answer: -0.25
+        category: math_error
+        feedback: The question asks for dent recall first, then subtract scratch recall.
+      - answer: 0.03571428571428571
+        category: misapplied_technique
+        feedback: Column totals give precision. Each recall uses the total of the actual class's row.
+    solution: The Dent row gives $6/(1+6+1)=0.75$. The Scratch row gives $5/(5+1+4)=0.5$, so the difference is $0.25$.
   - id: evm-count-basics
     dimension: conceptual
     type: mc

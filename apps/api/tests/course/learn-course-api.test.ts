@@ -1300,12 +1300,18 @@ test('course details group builds-on topics by source course in subject order', 
 
   expect(payload.buildsOn).toEqual([
     {
+      courseId: 'maths-for-ml',
+      title: 'Mathematics for Machine Learning',
+      topicCount: 4,
+      remaining: 4,
+    },
+    {
       courseId: 'ml-foundations',
       title: 'Machine Learning Foundations',
-      topicCount: 16,
-      remaining: 16,
+      topicCount: 20,
+      remaining: 20,
     },
-    { courseId: 'deep-learning', title: 'Deep Learning', topicCount: 3, remaining: 3 },
+    { courseId: 'deep-learning', title: 'Deep Learning', topicCount: 6, remaining: 6 },
     {
       courseId: 'reinforcement-learning',
       title: 'Reinforcement Learning',

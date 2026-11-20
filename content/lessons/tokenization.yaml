@@ -65,7 +65,7 @@ knowledge_points:
 
       ### Words or letters?
 
-      Cutting at the spaces has a problem. This vocabulary has no entry for "mats". A real word tokenizer gives such a word a single unknown-word id, so the model never sees which word it was. The other extreme makes every character a token, the space included. For our sentence:
+      Cutting at the spaces has a problem. This vocabulary has no entry for "mats". A word tokenizer can use one id that means "unknown word" for every word outside its list. The model then loses the spelling. We could also make every character a token, including spaces. For our sentence:
 
       | One token per | $N$ | $T$ |
       | --- | --- | --- |
@@ -104,25 +104,25 @@ knowledge_points:
       - tok-ids-unknown
       - tok-ids-robot
   - id: tok-bpe-merges
-    title: "Build a vocabulary by merging pairs"
+    title: "Merge pairs of tokens"
     tldr: |
       - Start with letters and count which neighbouring pairs appear most often in example text.
-      - Join the most common pair into a new token, then count again.
+      - Join the most common pair from left to right, using each token at most once in the pass.
       - Repeating this builds a vocabulary of larger pieces and makes the text use fewer tokens.
     explain: |
       ### Start from letters, then join the commonest pairs
 
-      **Byte-pair encoding**, or BPE, finds tokens in between letters and words. It starts with single characters and learns longer tokens from example text called the training text. Repeatedly, it finds the pair of neighbouring tokens that appears most often and adds the two joined together as a new token. Common words end up as one token, and rare words are left as smaller pieces.
+      **Byte-pair encoding**, or BPE, learns tokens from example text. A byte holds a number from 0 to 255, and computers store text as sequences of bytes. We'll start from letters for this example. Count neighbouring pairs of tokens and join the most frequent pair into a new token. Repeat on the updated text.
 
       ### Three merges on our sentence
 
-      Let's pretend "the cat sat on the mat" is our whole training text. We first split it at the spaces and only join tokens inside a word, so no token ever contains a space. Real tokenizers keep the spaces, usually as part of the next word's token, so decoding gives back the exact text. We drop them here only to keep the example small. That leaves $17$ letters, and the starting vocabulary is the $9$ different letters, a, c, e, h, m, n, o, s and t.
+      Start with "the cat sat on the mat". We set the spaces aside and merge only inside words. Real tokenizers keep spaces so they can recover the original text. Here we have $17$ letter tokens from a vocabulary of $9$ letters.
 
-      Now we count every pair of neighbouring tokens. "a" followed by "t" appears $3$ times, in cat, sat and mat, more than any other pair. Each merge replaces two tokens with one at every occurrence:
+      The most frequent pair is "a" followed by "t". Its three matches are in cat, sat and mat, so the merge replaces all three.
 
       1. **Join a and t.** Making "at" removes one token in each of three words.
          $$17-3=14$$
-      2. **Join t and h.** Making "th" removes one token in each "the".
+      2. **Join t and h.** The pairs "t h" and "h e" tie, and "t h" appears first. Making "th" removes one token in each "the".
          $$14-2=12$$
       3. **Join th and e.** Making "the" removes one more in each copy.
          $$12-2=10$$
@@ -193,17 +193,19 @@ knowledge_points:
       </svg>
       ```
 
-      ### The rule
+      ### When two matches share a token
+
+      Two matches can share a token, so the count can exceed the number of replacements. In `a a a`, the pair `a a` counts twice, at positions 1–2 and 2–3. To apply the merge, scan left to right. Join positions 1 and 2 into `aa`, then continue at position 3. Position 2 is already used, so we get `aa a`.
+
+      ### When to stop merging
 
       Each merge adds exactly one token, so
 
       $$N=\text{starting characters}+\text{merges}.$$
 
-      For us that's $9+3=12$. We choose the vocabulary size in advance and stop once $N$ reaches it. The tokenizer also keeps the list of merges in the order it learned them, which the next step needs.
+      Here $N=9+3=12$. Set a vocabulary size before training the tokenizer. Stop when $N$ reaches it and save the merges in order.
 
-      Be careful not to just pick the commonest letter. "t" is the commonest letter here, but BPE counts pairs of neighbours, because a new token has to be a piece that actually occurs together in the text.
-
-      GPT-2, an OpenAI language model, starts from the $256$ possible bytes, the numbers computers store text as, so it can encode anything. It learns $50{,}000$ merges and adds one token marking where text ends:
+      GPT-2, an OpenAI language model, starts from all $256$ possible bytes. It learns $50{,}000$ merges and adds a token the model can use to mark where text ends.
       $$
       \begin{aligned}
       256+50{,}000&=50{,}256 &&\text{starting bytes plus merges}\\
@@ -236,16 +238,17 @@ knowledge_points:
       - tok-bpe-letters
       - tok-bpe-gpt2
       - tok-bpe-two-merges
+      - tok-bpe-overlapping-pair-count
   - id: tok-bpe-encode
     title: "Split new text with the learned merges"
     tldr: |
       - Once training ends, the vocabulary and merge order stay fixed.
-      - To split new text, start with letters and replay the learned merges in order.
+      - Start with letters and replay the merges in order, joining pairs left to right.
       - Words never seen in training still get split into smaller pieces, and more merges usually mean fewer tokens per text.
     explain: |
       ### Using the merges on new text
 
-      Training has given us a vocabulary and an ordered list of merges, and both now stay fixed. To split new text, we start from single characters and apply the merges one at a time, in the order they were learned, each one wherever its pair appears. Be careful not to count pairs again in the new text. Counting happens only once, during training. Splitting just replays the merges, so a word is always split the same way.
+      We have a vocabulary and a fixed list of merges from the example text. To split new text, start from single characters and replay the merges in order. For each merge, scan left to right. When you join two tokens, resume at the next unused token. This gives the same split each time we encode a word.
 
       Our three merges were a + t, then t + h, then th + e. The picture applies them to two words that weren't in the training text.
 
@@ -332,6 +335,7 @@ knowledge_points:
       - tok-enc-order
       - tok-enc-spelling
       - tok-enc-robot
+      - tok-enc-overlapping-pairs
 final: tok-explain-bpe
 summary: |
   - Tokenization cuts text into tokens and replaces each with its token id, its position in a fixed vocabulary of $N$ tokens, so a text becomes the list of ids $x_1,\dots,x_T$.

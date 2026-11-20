@@ -121,7 +121,7 @@ knowledge_points:
 
       ### Three houses on the curve
 
-      The green curve is the sigmoid, with the score along the bottom and the probability up the side. Here are three new houses marked on it, with the score $z=x-4$:
+      The green curve is the sigmoid, with the score along the bottom and the probability up the side. Here are three houses the model has yet to see. Their viewing counts match some of the earlier houses, so we can use the same score rule $z=x-4$:
 
       - 2 viewings: score $-2$, probability $0.12$, so a sale is unlikely.
       - 4 viewings: score $0$, probability $0.5$, so the model can't tell.
@@ -165,6 +165,8 @@ knowledge_points:
 
       1. **Work out $e^{-z}$.** The sigmoid needs $e$ raised to minus the score.
          $$e^{-2}\approx0.135.$$
+
+         If the score is $-\ln4$, we can get an exact value for this first move: the inverse rule from the derivatives lesson gives $e^{-z}=e^{\ln4}=4$.
 
       2. **Put it into the sigmoid.** Dividing 1 by $1+e^{-z}$ gives a number between 0 and 1.
          $$p=\frac{1}{1+0.135}\approx0.88.$$

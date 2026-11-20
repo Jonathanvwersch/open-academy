@@ -193,21 +193,21 @@ exercises:
     role: review
     difficulty: 2
     est_minutes: 2
-    prompt: "For one example, $\\ell(\\hat y) = (\\hat y - y)^2$. Give $d\\ell/d\\hat y$ in terms of $\\hat y$ and $y$ (type `yhat` for $\\hat y$)."
+    prompt: "For one example, $\\ell(\\hat y) = (\\hat y - y)^2$. What is the slope of $\\ell$ with respect to $\\hat y$? Use `yhat` for the prediction, `y` for the target and `*` for multiplication."
     answer: "2*(yhat - y)"
     variables: { yhat: [-3, 3], y: [-3, 3] }
-    solution: "$2(\\hat y - y)$."
+    solution: The error is $\hat y-y$ and rises by one per unit rise in $\hat y$. Squaring that error gives the loss slope $2(\hat y-y)$.
   - id: loss-transfer-median
     dimension: transfer
     type: mc
     role: transfer
     difficulty: 3
     est_minutes: 3
-    prompt: "A delivery robot's travel times on one route are usually 10 min but occasionally 60 min (blocked doors). You must predict one number for that route. Which loss gives the 'typical' value, and which is pulled toward the rare long trips?"
+    prompt: "A delivery robot's travel times on one route are usually 10 min, with a few 60-minute trips caused by blocked doors. You must predict one number for that route. Which loss gives the typical value, and which is pulled toward the rare long trips?"
     options:
       - {
           id: a,
-          text: "MAE gives the median (≈10); MSE gives the mean, pulled toward 60",
+          text: "MAE gives the middle value, about 10; MSE gives the average, pulled toward 60",
           correct: true,
         }
       - {
@@ -215,20 +215,20 @@ exercises:
           text: "MSE gives the median; MAE gives the mean",
           correct: false,
           category: misunderstood_definition,
-          feedback: "A rare 60-minute trip has much more leverage under a squared penalty than under an absolute one. Ask which statistic minimizes each penalty when you must choose a single value.",
+          feedback: "A rare 60-minute trip changes the squared penalty more than the absolute penalty. Ask which single value minimizes each total penalty.",
         }
       - {
           id: c,
           text: "Both give the same constant",
           correct: false,
           category: incorrect_reasoning,
-          feedback: "They do not generally give the same constant: a squared penalty gives an unusually long trip more influence than an absolute penalty. Consider how the two losses weigh the outlier.",
+          feedback: "They can differ because a squared penalty gives a long trip more influence than an absolute penalty. Compare how each loss weighs large misses.",
         }
     hints:
       [
-        "What single number minimises the sum of squared deviations? The sum of absolute deviations?",
+        "Which single number minimises the total squared misses? Which minimises the total absolute misses?",
       ]
-    solution: "The constant minimising MSE is the mean; the one minimising MAE is the median. A skewed distribution separates them."
+    solution: "MSE is minimized by the average, which rises when the rare 60-minute trips are included. MAE is minimized by the middle value, which stays near 10 because most trips take 10 minutes."
   - id: lossp-why-not-count
     dimension: conceptual
     type: mc

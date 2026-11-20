@@ -86,7 +86,7 @@ exercises:
       - id: c
         text: Clipping resets the old probability after each step; this result shows an outdated denominator.
         correct: false
-        feedback: Old probabilities stay fixed across the PPO epochs for a collected batch.
+        feedback: Old probabilities stay fixed for all training passes over the collected batch.
     solution: |
       The clipped branch can remove a sample's incentive for further movement.
       A finite update, including contributions from other samples, can still move its ratio beyond the boundary.

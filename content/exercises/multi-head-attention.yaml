@@ -7,7 +7,7 @@ exercises:
     difficulty: 2
     est_minutes: 3
     prompt: |
-      A tensor has shape (batch, time, features) = (1, 2, 4). Its two token vectors are [0, 1, 2, 3] and [4, 5, 6, 7]. We want two heads with shape (1, 2, 2, 2), ordered as batch, head, time, feature. A learner reshapes directly to that shape. What two token vectors should head zero receive, and why can the direct reshape pass a shape check while giving the wrong attention inputs?
+      A tensor is a multi-dimensional array. Here its axes are batch (examples), time (token positions), and features (entries of each token vector), with shape (1, 2, 4). Its two token vectors are [0, 1, 2, 3] and [4, 5, 6, 7]. We want two heads with shape (1, 2, 2, 2), ordered as batch, head, time, feature. A learner reshapes directly to that shape. What two token vectors should head zero receive, and why can the direct reshape pass a shape check while giving the wrong attention inputs?
     rubric:
       - id: values
         criterion: Give head zero the token vectors $[0,1]$ and $[4,5]$.

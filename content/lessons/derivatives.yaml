@@ -5,9 +5,9 @@ objective: |
 where_this_fits: |
   ### What is a derivative?
 
-  A derivative measures how fast a function's output is changing at one particular input. On a graph, it's how steep the curve is at a single point, which we call the slope there.
+  A derivative is a function's slope at one input. It measures how fast the output is changing there.
 
-  Why do we need a new idea for that? Comparing two outputs only gives the average rate of change between two inputs, the way distance divided by time gives a car's average speed over a trip. A speedometer shows something different, the speed right now, and the derivative is how we work that out. Machine learning needs the same thing. A model improves by nudging its adjustable numbers, and the derivative tells it whether a small nudge makes its error bigger or smaller, and by how much.
+  Comparing two outputs gives an average rate of change, like a car's average speed over a trip. A speedometer gives speed now; a derivative gives the slope at one input. In machine learning, it tells whether a small nudge to a model's numbers makes its error larger or smaller, and by how much.
 final: der-explain
 knowledge_points:
   - id: der-speed-at-instant
@@ -113,6 +113,7 @@ knowledge_points:
       - To find the slope of a power of x, bring the power down in front and lower the power by one.
       - A number multiplying a term stays, while a number added on its own contributes no slope.
       - These rules let us find a sum's slope one term at a time.
+      - Smooth interior tops and bottoms have zero slope.
     explain: |
       ### A pattern in the slopes
 
@@ -184,6 +185,23 @@ knowledge_points:
          $$f'(2)=6\times2-4=8$$
 
       So at $x=2$ the curve rises about $8$ for each unit of input.
+
+      ### Finding a top or bottom
+
+      We also write $df/dx$ for $f'(x)$, the derivative of $f$ with respect to $x$. At a smooth top or bottom inside the input range, the tangent is horizontal, so the slope is zero. Solve $f'(x)=0$ to find possible tops and bottoms, then check the slopes on either side. A change from negative to positive gives a bottom; positive to negative gives a top. A zero slope alone can also occur where the curve keeps rising, as with $x^3$ at zero.
+
+      We can find the bottom of this curve.
+
+      1. **Set the slope to zero.** A smooth bottom has a horizontal tangent.
+         $$6x-4=0$$
+
+      2. **Solve for the input.** Add four and divide by six.
+         $$x=\frac46=\frac23$$
+
+      3. **Check the slopes on either side.** They change from negative to positive.
+         $$f'(0)=-4,\qquad f'(1)=2$$
+
+      The curve falls before $2/3$ and rises after it, so this input gives a bottom.
     problems:
       - der-power-rule-basics
       - derp-why-keep-constant
@@ -194,12 +212,14 @@ knowledge_points:
       - derp-power-value
       - derp-power-fraction
       - derp-flat-slope
+      - derp-top-bottom-signs
   - id: der-exp-log
     title: "Find slopes of exponentials and logarithms"
     tldr: |
       - An exponential puts the input in the power of a fixed number.
       - One special exponential has a slope equal to its height.
       - Its reverse is the natural logarithm, whose slope is one divided by its input.
+      - Logarithms turn products into sums and let us change the base.
     explain: |
       ### When the input is the power
 
@@ -264,6 +284,25 @@ knowledge_points:
          $$f'(2)=2\times2+\frac62=7$$
 
       So at $x=2$ the curve rises about $7$ for each unit of input.
+
+      ### Logarithm rules and changing base
+
+      For positive $a,b,x$, logarithms turn multiplication into addition and division into subtraction. Each rule below includes a number check:
+
+      | Rule | Check |
+      | --- | --- |
+      | $\ln(ab)=\ln a+\ln b$ | $\ln(e\cdot e^2)=3=1+2$ |
+      | $\ln(a^k)=k\ln a$ | $\ln(e^2)=2=2\ln e$ |
+      | $\ln(a/b)=\ln a-\ln b$ | $\ln(e^3/e)=2=3-1$ |
+      | $\ln(1/a)=-\ln a$ | $\ln(1/e^2)=-2$ |
+      | $e^{\ln x}=x$ | $e^{\ln 3}=3$ |
+      | $\ln(e^a)=a$ | $\ln(e^2)=2$ |
+
+      A power $a^k$ is $k$ copies of $a$ multiplied together, so its logarithm is a sum of $k$ copies of $\ln a$.
+
+      The last rule holds for every real $a$. To change from base two to natural logarithms, start from the definition of $\log_2 x$:
+      $$\begin{aligned}x&=2^{\log_2 x} &&\text{definition}\\\ln x&=(\ln2)\log_2 x &&\text{take natural logs}\end{aligned}$$
+      For $x=4$, this gives $\ln4=2\ln2\approx1.39$ on both sides.
     problems:
       - der-exp-log-basics
       - derp-why-six-over-x
@@ -274,6 +313,8 @@ knowledge_points:
       - derp-exp-value
       - derp-exp-log-mix
       - derp-log-flat
+      - derp-log-combine
+      - derp-log-base
   - id: der-product-quotient
     title: "Find slopes of products and fractions"
     tldr: |

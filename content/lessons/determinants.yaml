@@ -1,14 +1,14 @@
 concept: determinants
 version: 1
 objective: |
-  **Goal:** calculate a 2×2 determinant, explain its size and sign as area scaling and orientation, and use zero to recognise when a square matrix loses information.
+  **Goal:** calculate determinants with the 2×2 formula and row operations, explain their size and sign as area or volume scaling and orientation, and use zero to recognise when a square matrix loses information.
 recap:
   - concept: matrices
     text: "Multiplying a matrix by a vector takes one dot product per row. For a two-entry input, $\\begin{bmatrix}a&b\\\\c&d\\end{bmatrix}\\begin{bmatrix}x\\\\y\\end{bmatrix}=\\begin{bmatrix}ax+by\\\\cx+dy\\end{bmatrix}$."
 where_this_fits: |
   ### What is a determinant?
 
-  A determinant is a number that measures how much a matrix changes area or volume, with a sign that records a mirror flip. It belongs to a **square matrix**, which has the same number of rows and columns. We'll work with $2\times2$ matrices and flat pictures, so the size of the determinant tells us how much areas grow or shrink.
+  A determinant is a number that measures how much a matrix changes area or volume, with a sign that records a mirror flip. It belongs to a **square matrix**, which has the same number of rows and columns. We'll start with $2\times2$ matrices and flat pictures, then use row operations to calculate determinants of larger matrices.
 
   Matrix multiplication already lets us calculate where each point goes. The determinant answers a question about the whole picture: does it cover more area, turn over, or collapse? That last case matters when we want to recover an input from an output, because a collapse can erase information.
 
@@ -308,10 +308,94 @@ knowledge_points:
       - det-zero-entry-mistake
       - det-zero-negative-inverse
       - det-zero-robot-inputs
+  - id: det-pivots
+    title: "Find determinants with row moves"
+    tldr: |
+      - Adding a multiple of one row to another keeps the determinant unchanged.
+      - Swapping two rows reverses its sign.
+      - Make zeros below the diagonal, then multiply the diagonal entries and account for every swap.
+    explain: |
+      ### Row moves that keep track of area
+
+      We can calculate larger determinants by making zeros. A **row operation** changes whole rows. Write $R_i$ for row $i$. A **row addition** multiplies every entry of one row by a number, then adds those results to another row:
+
+      $$R_2\leftarrow R_2-2R_1.$$
+
+      This replaces row 2 and keeps row 1. It leaves the determinant unchanged because it slides one output coordinate in proportion to another. The slide keeps base, perpendicular height and orientation, preserving area. In three dimensions it keeps base area and perpendicular height, preserving volume.
+
+      The picture shows a rectangle's top sliding right while its base stays fixed. Both shapes have base 2 and height 3.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 220" aria-label="A rectangle with corners (0,0), (2,0), (2,3), (0,3) becomes a parallelogram with corners (0,0), (2,0), (5,3), (3,3) under (x,y) to (x+y,y). Both have base 2, height 3 and area 6." font-family="ui-sans-serif, system-ui, sans-serif">
+      <path d="M40 170 H190 M60 190 V40 M280 170 H560 M300 190 V40" fill="#ffffff" fill-opacity="0" stroke="#d4d4d4"/>
+      <path d="M60 170 H140 V50 H60 Z" fill="#3b82f6" fill-opacity="0.15" stroke="#3b82f6" stroke-width="2"/>
+      <path d="M300 170 H380 L500 50 H420 Z" fill="#10b981" fill-opacity="0.15" stroke="#10b981" stroke-width="2"/>
+      <path d="M420 50 V170 M300 50 H420" fill="#ffffff" fill-opacity="0" stroke="#737373" stroke-dasharray="4 3"/>
+      <g font-size="14" fill="#171717">
+      <text x="100" y="197" text-anchor="middle">base 2</text><text x="50" y="112" text-anchor="end">3</text>
+      <text x="100" y="115" text-anchor="middle">area 6</text><text x="400" y="115" text-anchor="middle">area 6</text>
+      <text x="340" y="197" text-anchor="middle">base 2</text><text x="430" y="150">height 3</text>
+      <text x="230" y="95" text-anchor="middle">slide</text><text x="230" y="118" text-anchor="middle">(x+y, y)</text>
+      <text x="460" y="35" text-anchor="middle">top shifted right by 3</text>
+      </g></svg>
+      ```
+
+      A **row swap**, written $R_1\leftrightarrow R_2$, exchanges two entire rows. This exchanges two output coordinates, reflecting the picture across the line where those coordinates agree. Area or volume stays the same, while orientation reverses, so each swap flips the determinant's sign.
+
+      ### Zeros below the diagonal
+
+      The **main diagonal** runs from top left to bottom right. An **upper triangular matrix** has zeros below it; a **lower triangular matrix** has zeros above it. Either determinant is the product of its diagonal entries. For the upper case in two dimensions, the first column gives a horizontal base and the second gives its height. In three dimensions, the first two columns give a base in the first two coordinate directions; the third diagonal entry gives the perpendicular height. Multiplying these signed lengths gives signed area or volume. The same base-and-height argument works for the lower case.
+
+      A **pivot** is the first nonzero entry of a row used to clear entries below it. Work left to right, swapping in a nonzero entry when needed. Add multiples of that row to make the entries below its pivot zero. For a square matrix with a pivot in every column, the pivots end up on the diagonal. If no pivot is available in a column, the resulting triangular matrix has a zero diagonal entry and determinant zero.
+
+      ### Multiply and restore the sign
+
+      Using only row additions and swaps gives
+
+      $$\det(A)=(\text{product of the triangular diagonal entries})\,(-1)^{\text{swaps}}.$$
+
+      With a full set of pivots, that diagonal product is the product of the pivots. An even number of swaps keeps the sign; an odd number reverses it.
+    worked: |
+      Let's find the determinant of $A=\begin{bmatrix}0&2&1\\2&2&0\\4&6&5\end{bmatrix}$ by making zeros below its diagonal.
+
+      1. **Swap in a first pivot.** Exchange rows 1 and 2 to put a nonzero entry in the top-left position. Record one swap.
+         $$\begin{bmatrix}2&2&0\\0&2&1\\4&6&5\end{bmatrix}$$
+
+      2. **Clear below the first pivot.** Replace row 3 by row 3 minus twice row 1. Row 2 already starts with zero.
+         $$R_3\leftarrow R_3-2R_1:\qquad\begin{bmatrix}2&2&0\\0&2&1\\0&2&5\end{bmatrix}$$
+
+      3. **Clear below the second pivot.** Subtract row 2 from row 3. This keeps the first zero in row 3.
+         $$R_3\leftarrow R_3-R_2:\qquad T=\begin{bmatrix}2&2&0\\0&2&1\\0&0&4\end{bmatrix}$$
+
+      4. **Multiply the pivots and account for the swap.** The additions kept the determinant; the single swap reversed it.
+         $$\det(A)=(2\times2\times4)(-1)^1=-16$$
+
+      Check the same method on $B=\begin{bmatrix}2&1\\4&5\end{bmatrix}$, where we can also use the two-product formula.
+
+      1. **Clear below the first pivot.** Subtract twice row 1 from row 2, without a swap.
+         $$R_2\leftarrow R_2-2R_1:\qquad\begin{bmatrix}2&1\\0&3\end{bmatrix}$$
+
+      2. **Multiply the pivots.** Zero swaps leave the sign unchanged.
+         $$\det(B)=2\times3=6$$
+
+      3. **Check with the two-product formula.** Use the entries of the original matrix.
+         $$\det(B)=2\times5-1\times4=6$$
+
+      Both methods give 6 for $B$. Row moves also handled the larger matrix $A$.
+    problems:
+      - det-pivots-basics
+      - det-pivots-self-explain
+      - det-pivots-triangular-template
+      - det-pivots-row-addition-error
+      - det-pivots-two-swaps
+      - det-pivots-zero-column
+      - det-pivots-three-by-three
+      - det-pivots-coordinate-map
 final: det-explain-map
 summary: |
   - A determinant is the signed area scale of a $2\times2$ matrix: $|\det(A)|$ multiplies area, and a negative sign reverses orientation.
   - For $A=\begin{bmatrix}a&b\\c&d\end{bmatrix}$, the determinant is $\det(A)=ad-bc$. This shortcut applies to $2\times2$ matrices, while determinants themselves are defined for square matrices of any size.
   - A zero determinant collapses a two-dimensional picture to a line or a point, so different inputs can share an output. A square matrix is invertible exactly when its determinant is nonzero.
+  - Row additions keep the determinant and each row swap reverses its sign. After making zeros below the diagonal, multiply the diagonal entries and restore the sign: $\det(A)=(\text{diagonal product})(-1)^{\text{swaps}}$.
 
-  **Next:** We'll look for directions a matrix only stretches, then describe a map as turns and stretches.
+  **Next:** We'll use row moves to solve systems of equations and find inverses.

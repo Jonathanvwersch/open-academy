@@ -8,15 +8,13 @@ recap:
   - concept: positional-encoding
     text: "The original design adds a position vector to each token's embedding before the first block; rotary encodings instead apply position information inside attention by rotating queries and keys."
   - concept: weight-init-normalization
-    text: "LayerNorm subtracts an example's mean $\\mu$, divides by its standard deviation $s$, then applies a learned gain $\\gamma$ and shift $\\beta$. A slope passing back through many layers is multiplied at each one, so it can vanish."
+    text: "Passing a loss slope back through a layer multiplies it by the layer's local slope. LayerNorm subtracts the mean and divides by the standard deviation, then multiplies each entry by its learned gain and adds its learned shift."
   - concept: mlp-forward-pass
     text: "A layer computes $h=\\phi(Wx+b)$: one weighted sum per neuron, then an activation such as ReLU on each score. An MLP runs layers like this in order, using the same weights for every example in a batch."
 where_this_fits: |
   ### What is a transformer block?
 
-  A transformer block updates each token's width-$d$ vector using attention, an MLP, shortcuts and normalization. Repeating blocks builds a model.
-
-  The MLP applies a nonlinearity such as ReLU to process each token separately.
+  A transformer block updates each token's vector. Attention gathers information from other tokens, and an MLP processes each token separately. Shortcuts and normalization help a model learn when it stacks many of these blocks.
 knowledge_points:
   - id: tb-residual
     title: "Add a layer's output to its input"
@@ -27,7 +25,7 @@ knowledge_points:
     explain: |
       ### A shortcut around each part
 
-      A transformer block has two parts, attention and an MLP, and a language model stacks dozens of blocks. A slope passing back through many layers is multiplied at each one, so it can shrink to almost nothing. The block keeps it alive by adding each part's output to that part's input.
+      A transformer block has two layers, attention and an MLP. We call each layer inside the block a **sublayer**. A shortcut sends its input straight to the sum at its output. We'll see how that path can keep the loss slope from shrinking in a stack of blocks.
 
       Take one token whose vector is $x=(1,-2)$, so the width is $d=2$. Some part of the block, which we'll call $f$, reads $x$, and we'll say it outputs $f(x)=(1,3)$. In the picture, $x$ travels two ways, up through $f$ along the blue path and straight along the grey shortcut. At the plus sign the two are added, giving $(2,1)$.
 
@@ -59,11 +57,13 @@ knowledge_points:
 
       $$y=x+f(x).$$
 
-      Here $x$ is the input vector, $f$ is the layer and $y$ is the result. A layer inside a block is often called a **sublayer**. Because $x$ already reaches the output along the shortcut, the sublayer only has to learn how to change $x$, and the sum only works when $f(x)$ has the same width $d$ as $x$. So every sublayer in a transformer block returns vectors of width $d$.
+      The input vector is $x$, the sublayer is $f$ and the result is $y$. The sublayer learns a change to add to $x$. The sum requires $f(x)$ to have the same width $d$ as $x$.
 
       ### Why the shortcut keeps slopes alive
 
-      Go back to one number per layer, as in the initialization lesson. Call the input $z$ and use a sublayer $f(z)=0.1z$, whose local slope is $0.1$. Add a shortcut to see how the slope changes:
+      The initialization lesson used layers with one number in and one out. A loss slope for an output tells us how fast the loss changes as that output changes. Nudge the input and the local slope tells us how much the output moves. To get the loss slope for the input, multiply the arriving loss slope by that local slope.
+
+      Call the input $z$ and use a sublayer $f(z)=0.1z$, whose local slope is $0.1$. Let's see how a shortcut changes that slope.
       $$
       \begin{aligned}
       y&=z+0.1z &&\text{add the input}\\
@@ -89,13 +89,13 @@ knowledge_points:
       2. **Find one layer's local slope.** Each layer outputs $z+0.1z$, so nudging $z$ moves the output by $1$ from the shortcut plus $0.1$ from the sublayer.
          $$\frac{d}{dz}(z+0.1z)=1+0.1=1.1$$
 
-      3. **Pass a slope of $1$ back through four layers.** It's multiplied by $1.1$ at each one.
+      3. **Pass the loss slope back through four layers.** Suppose the loss slope for the last output is $1$. Multiply by the local slope $1.1$ at each layer to get the loss slope for the first input.
          $$1\times1.1\times1.1\times1.1\times1.1=1.4641$$
 
       4. **Compare with no shortcuts.** Each layer would then be $0.1z$, with local slope $0.1$.
          $$0.1^4=0.0001$$
 
-      With shortcuts, the slope that reaches the first layer is about $1.46$. Without them it's $0.0001$, more than ten thousand times smaller, so the first layers would barely learn.
+      With shortcuts, the loss slope for the first input is about $1.46$. Without them it's $0.0001$, more than ten thousand times smaller, so the first layers would barely learn.
     problems:
       - tb-residual-basics
       - tbp-residual-self-explain
@@ -216,9 +216,9 @@ knowledge_points:
     explain: |
       ### Keeping the inputs a steady size
 
-      Each shortcut adds something to a token's vector, so as the vector passes through block after block its entries can grow much larger. The sublayers' weights are tuned during training to inputs of a steady size, so the block normalizes what goes into each sublayer. In the initialization lesson, LayerNorm rescaled one example's outputs to mean $0$ and standard deviation $1$. In a transformer it does that to one token's vector at a time.
+      Each shortcut adds something to a token's vector, so its entries can grow as it passes through blocks. The block applies LayerNorm to each token's vector before feeding it to each sublayer. To standardize the entries by hand, subtract their mean and divide by their standard deviation. With a positive standard deviation, this gives mean $0$ and standard deviation $1$.
 
-      To watch LayerNorm work on more than two numbers, we give one token four, $x=(-6,0,2,8)$, so here $d=4$. LayerNorm turns them into four numbers with mean $0$ and standard deviation $1$, and the worked example finds them.
+      LayerNorm then multiplies each standardized entry by its own learned gain and adds its own learned shift. These can change the mean and spread of the result.
 
       ### Where the LayerNorm goes
 
@@ -290,7 +290,7 @@ knowledge_points:
 
       In pre-norm, follow the route from $x$ to $y$ along the grey shortcuts and the main line through the plus signs. It passes through only additions. So a slope can travel from the last block to the first along the shortcuts, as in step 1. In post-norm, every LayerNorm sits on that route. Xiong and colleagues showed in 2020 that in post-norm the slopes for the layers near the output are large at the start of training, so big early steps can throw training off, and it needs a learning rate that starts small and rises, while pre-norm doesn't need that. GPT-2, an OpenAI language model from 2019, used pre-norm, and most language models since have too.
 
-      Because nothing normalizes the shortcut path, a pre-norm model adds one final LayerNorm after its last block, so the output layer also reads normalized vectors.
+      The shortcuts carry the vectors through the stack without rescaling them. A pre-norm model applies one final LayerNorm after its last block, before turning the vectors into scores for the next token.
 
       Be careful not to add the sublayer's output to the normalized copy. The normalized copy only feeds the sublayer, and the sum uses the original $x$.
     worked: |
@@ -318,6 +318,7 @@ knowledge_points:
       - tbp-prenorm-placement
       - tbp-prenorm-final-ln
       - tbp-prenorm-post-vs-pre
+      - tbp-prenorm-gain-shift-residual
   - id: tb-stack
     title: "Stack blocks and count their weights"
     tldr: |
@@ -329,7 +330,7 @@ knowledge_points:
 
       A single block takes $T$ vectors of width $d$ and returns $T$ vectors of width $d$. So the output of one block can be the input of the next, and a model is just many blocks in a row, each with its own weights.
 
-      The picture shows a whole model. The tokens "the cat sat on" become $T=4$ vectors of width $d$, from the embedding table plus position information. They pass through block 1, block 2 and so on to the last block, keeping the shape $T\times d$ all the way. The final LayerNorm from step 3 follows, and then an output layer turns each token's vector into one score for each of the $N$ tokens in the vocabulary, which a later lesson uses to predict the next token.
+      The picture shows a whole model. The tokens "the cat sat on" become $T=4$ vectors of width $d$, from the embedding table plus position information. Blocks keep the shape $T\times d$ all the way to the final LayerNorm. The output layer gives each vector one score for each of the $N$ tokens in the vocabulary, the list of tokens the model can use.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 400" aria-label="A whole model read from top to bottom. The tokens the cat sat on become T vectors of width d in the embedding and position box. They pass through block 1, block 2, and so on to the last block, each taking and returning T vectors of width d. A green final LayerNorm follows, then an output layer that gives each token one score per vocabulary token, T rows of N scores">
@@ -383,7 +384,7 @@ knowledge_points:
       12(7{,}087{,}872)&=85{,}054{,}464 &&\text{parameters across blocks}
       \end{aligned}
       $$
-      That's about $85$ million of the model's $124$ million parameters. Most of the rest is the embedding table: $50{,}257$ rows of width $768$. GPT-2 reuses it as its output layer.
+      That's about $85$ million of the model's $124$ million parameters. Most of the rest is in the embedding table. GPT-2 has $50{,}257$ tokens in its vocabulary, so the table has $50{,}257$ rows of width $768$. To score each possible next token, take the dot product of the final vector at that position with its embedding row. This reuse is called **weight tying**. The input lookup and output scores share the same $N\times d$ table, which counts once.
 
       Be careful not to count a head's weights once per head at full width. Each head's $W_Q$ is only $d\times d/h$, so the $h$ heads together fill $d\times d$.
     worked: |
@@ -401,7 +402,9 @@ knowledge_points:
       4. **Add them up.** This matches the formula $12d^2+13d$.
          $$80+148+16=244=12\times16+13\times4$$
 
-      Here is a pre-norm block in Python with NumPy, using one attention head. Four random token vectors stand in for "the cat sat on", and `rng.normal(0, 0.5, shape)` fills each weight array with random numbers of spread $0.5$. `x @ W` is a matrix product, `.T` transposes, `axis=-1` works along each row (one token), and `keepdims=True` keeps the result as a column so it lines up with each row. `x.var` is the variance, the square of the standard deviation, and the tiny `1e-5` stops a division by zero. `np.maximum(z, 0)` is ReLU. `make_block` returns a dictionary of named arrays, `p["Wq"]` looks one up, and `w.size` counts the numbers in an array.
+      Here is a pre-norm block in Python with NumPy, using one attention head. Four random token vectors stand in for "the cat sat on", and `rng.normal(0, 0.5, shape)` fills each weight array with random numbers of spread $0.5$. `np.zeros(shape)` makes an array with the given dimensions and fills every entry with zero. `np.ones(d)` makes a length-$d$ array of ones for the normalization gains, while `np.zeros(d)` makes zero-filled shifts. `x @ W` is a matrix product, `.T` transposes, `axis=-1` works along each row (one token), and `keepdims=True` keeps the result as a column so it lines up with each row. `x.var(...)` gives the variance, the average squared distance from the mean. The tiny `1e-5` prevents division by zero. `np.maximum(z, 0)` is ReLU. `make_block` returns a dictionary of named arrays, `p["Wq"]` looks one up, and `w.size` counts the numbers in an array.
+
+      The code shifts the scores before softmax. A common shift multiplies each exponential and their sum by the same factor. That factor cancels in the division, so the weights stay the same. Subtracting the row maximum makes the largest shifted score $0$ and its exponential $1$. The other exponentials are at most $1$, so none can grow too large for the computer to store.
 
       ```python
       import numpy as np
@@ -465,6 +468,8 @@ knowledge_points:
       - tbp-stack-heads-count
       - tbp-stack-code-read
       - tbp-stack-robot
+      - tbp-stack-shifted-softmax
+      - tbp-stack-tied-embedding-choice
 final: tb-explain-block
 summary: |
   - A residual connection adds a sublayer's output to its input, $y=x+f(x)$, so every sublayer returns width $d$ and a slope can pass back through the shortcut with a factor near $1$.

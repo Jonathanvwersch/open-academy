@@ -567,7 +567,7 @@ exercises:
         correct: true
         feedback: The needed change is mostly a few large scaled column-times-row tables, and a rank-$r$ change can match those.
       - id: b
-        text: The product of two thin matrices can express any full-rank change once both matrices are trained.
+        text: The product of two thin matrices can express a change of any rank once both matrices are trained.
         correct: false
         category: incorrect_reasoning
         feedback: Training can change the entries, but the rank of the product is still at most the inner size $r$.
@@ -595,10 +595,10 @@ exercises:
         category: incorrect_reasoning
         feedback: A smaller rank allows even less change, so it can only make the gap wider.
       - id: c
-        text: Keep rank 2 and increase both factor magnitudes to obtain a higher-rank product.
+        text: Keep rank 2 and multiply both matrices by larger values to make the product have rank 4.
         correct: false
         category: misunderstood_definition
-        feedback: Scaling the factors changes the size of the change, but its rank remains at most 2.
+        feedback: Making the matrix entries larger changes the size of the change, while the product's rank stays at most 2.
     solution: A rank-2 change can't express every change. When full fine-tuning does clearly better, the needed change is probably not close to rank 2, so people raise $r$ or adapt more matrices.
   - id: lora-merge-basics
     dimension: conceptual

@@ -339,7 +339,7 @@ exercises:
         text: "The order is arbitrary, and the lessons could be taken the other way round just as well"
         correct: false
         category: incorrect_reasoning
-        feedback: "Each Week 1 topic answers a question raised by the previous topic."
+        feedback: "Gradient descent uses the loss slope to choose its next step, so it helps to learn how to find that slope first."
     solution: "Derivatives tell gradient descent how the loss changes as each weight changes."
   - id: ml-why-new-houses
     dimension: conceptual
@@ -368,7 +368,7 @@ exercises:
         correct: false
         category: misunderstood_definition
         feedback: "Training houses are reused many times during training."
-    solution: "Unseen houses show whether the model works beyond the sales it trained on, the way it must for a house that comes up for sale tomorrow."
+    solution: "A model can fit the training houses closely by using details unique to those examples, so its training error can look low while its predictions for new houses remain poor. Testing houses it never saw checks whether it learned a pattern that carries over."
   - id: ml-to-robots-basics
     dimension: conceptual
     type: mc
@@ -457,28 +457,28 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "Which part of the course teaches a robot to learn by trial and error from rewards?"
+    prompt: "Which course focuses on training a robot by letting it try actions and score how well each attempt went?"
     options:
       - id: a
-        text: "Week 7, reinforcement learning"
+        text: "Reinforcement Learning"
         correct: true
-        feedback: "Reinforcement learning has no answers to copy, only a reward score."
+        feedback: "Reinforcement learning uses rewards to score attempts."
       - id: b
-        text: "Week 12, imitation learning"
+        text: "Deep Learning"
         correct: false
         category: misunderstood_definition
-        feedback: "Imitation learning copies demonstrations instead of using rewards."
+        feedback: "Deep Learning focuses on building and training neural networks."
       - id: c
-        text: "Week 1, ML fundamentals"
+        text: "Machine Learning Foundations"
         correct: false
         category: misunderstood_definition
-        feedback: "Week 1 learns from examples with known answers."
+        feedback: "Machine Learning Foundations focuses on learning from examples with known answers."
       - id: d
-        text: "Week 5, transformers"
+        text: "Transformers and LLMs"
         correct: false
         category: misunderstood_definition
-        feedback: "Transformers are a model design, not a way of learning from rewards."
-    solution: "Week 7 covers reinforcement learning, which learns by trial and error from rewards."
+        feedback: "Transformers and LLMs focuses on language models."
+    solution: "Reinforcement Learning teaches how to use rewards to learn from trial and error."
   - id: ml-why-houses
     dimension: conceptual
     type: mc

@@ -137,18 +137,20 @@ knowledge_points:
   - id: act-relu-sigmoid-tanh
     title: "Three common activation functions"
     tldr: |
-      - The step is flat almost everywhere, so training can't tell which way to move a weight.
+      - A flat activation gives no weight update to the weights feeding it.
       - So we use functions that bend and still have a slope training can follow.
       - ReLU keeps positive scores and turns negative scores into zero.
       - Sigmoid squeezes any score to between zero and one, and tanh squeezes it to between minus one and one.
     explain: |
       ### Why not use the step?
 
-      The perceptron's step is an activation function, and it does bend a stack of layers. But it's flat everywhere except at $z=0$, where it jumps. In the derivatives lesson, we saw that a nudge changes the output by about the slope times the nudge. The step's slope is $0$ wherever it has one, so nudging a score, or a weight behind it, changes nothing, and training can't tell which way to move. So we want functions that bend and still have a slope that training can use.
+      The perceptron's step bends a stack of layers, but it's flat everywhere except at its jump at $z=0$.
+
+      A prediction-error score measures how far a model's prediction is from its target, and training tries to reduce it. When a weight changes, the score changes through the activation's slope. Where the activation is flat, that slope is near zero, so the score barely changes along that path. The step's slope is $0$ wherever it has one, so that path gives no training signal. We want functions that bend and keep a slope training can use.
 
       ### Three curves
 
-      The picture shows three such functions, each plotted against a neuron's score $z$ from $-3$ to $3$. The green line is **ReLU**. It's flat at $0$ for negative scores and passes positive scores through unchanged, with one corner at $0$. The blue curve is the **sigmoid**, which rises smoothly from near $0$ to near $1$ and crosses $0.5$ at $z=0$. The orange curve is **tanh**, which has the same S shape but runs from near $-1$ to near $1$ and crosses $0$ at $z=0$.
+      The picture plots three such functions against a neuron's score $z$ from $-3$ to $3$. The green line is **ReLU**. It's $0$ for negative scores and passes positive scores through unchanged, with one corner at $0$. The blue **sigmoid** rises smoothly from near $0$ to near $1$, crossing $0.5$ at $z=0$. The orange **tanh** has the same S shape from near $-1$ to near $1$, crossing $0$ at $z=0$.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 420" aria-label="ReLU, sigmoid and tanh plotted against the score z from −3 to 3. ReLU is 0 for negative z and equals z for positive z. Sigmoid rises smoothly from near 0 to near 1 and is 0.5 at z = 0. Tanh rises smoothly from near −1 to near 1 and is 0 at z = 0.">
@@ -184,7 +186,7 @@ knowledge_points:
 
       $$\tanh(z)=\frac{e^{z}-e^{-z}}{e^{z}+e^{-z}}$$
 
-      ReLU, short for rectified linear unit, is the $\max(0,u)$ from the first step. The sigmoid is written $\sigma$, the Greek letter sigma, and $e\approx2.718$ is the number from the derivatives lesson. Because $e^{-z}$ is always positive, the bottom of the sigmoid's fraction is more than $1$, so $\sigma(z)$ stays between $0$ and $1$. Tanh is short for hyperbolic tangent. ReLU has no upper limit, while the sigmoid and tanh level off at both ends.
+      ReLU, short for rectified linear unit, is the $\max(0,u)$ from the first step. The sigmoid is written $\sigma$ (the Greek letter sigma), and $e\approx2.718$ is the number from the derivatives lesson. Because $e^{-z}$ is always positive, the bottom of the fraction is more than $1$, so $\sigma(z)$ stays between $0$ and $1$. Tanh is short for hyperbolic tangent. ReLU has no upper limit, while the sigmoid and tanh level off at both ends.
 
       Be careful not to treat the sigmoid as the step under another name. The step jumps from $0$ to $1$ at $z=0$, while the sigmoid changes smoothly, so a score of $0$ gives $0.5$ and a score of $1$ gives about $0.73$.
 

@@ -203,7 +203,7 @@ concepts:
     est_minutes: 20
     goal_weight: 1
     dimensions: [conceptual, math]
-    prereqs: [{ id: probability-basics }]
+    prereqs: [{ id: probability-basics }, { id: descriptive-statistics }]
     objectives:
       - { text: "Relate mean and variance to the normal density", dimension: math }
     projects: [gaussian-mle]
@@ -215,12 +215,7 @@ concepts:
     est_minutes: 30
     goal_weight: 2
     dimensions: [conceptual, math]
-    prereqs:
-      [
-        { id: probability-basics },
-        { id: gaussian-distribution, strength: soft },
-        { id: derivatives },
-      ]
+    prereqs: [{ id: probability-basics }, { id: gaussian-distribution }, { id: derivatives }]
     objectives:
       - { text: "Derive MSE as Gaussian maximum likelihood", dimension: math }
     projects: [gaussian-mle]
@@ -232,7 +227,7 @@ concepts:
     est_minutes: 30
     goal_weight: 2
     dimensions: [conceptual, math]
-    prereqs: [{ id: probability-basics }]
+    prereqs: [{ id: probability-basics }, { id: derivatives }]
     objectives:
       - { text: "Compute entropy and cross-entropy for a small distribution", dimension: math }
       - { text: "Explain why cross-entropy is the loss for classification", dimension: conceptual }
@@ -261,12 +256,7 @@ concepts:
     est_minutes: 35
     goal_weight: 2
     dimensions: [conceptual, math]
-    prereqs:
-      [
-        { id: matrices },
-        { id: rank-span, strength: soft },
-        { id: orthogonality-projections, strength: soft },
-      ]
+    prereqs: [{ id: matrices }, { id: orthogonality-projections }]
     objectives:
       - { text: "Find the eigenvalues of a 2×2 matrix", dimension: math }
       - { text: "Explain SVD as rotate, stretch, rotate", dimension: conceptual }

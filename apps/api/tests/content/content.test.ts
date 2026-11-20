@@ -1159,7 +1159,7 @@ test('a soft prerequisite does not allow notation use', async () => {
       expect.objectContaining({
         id: 'linear-models-fixture-practice-1',
         message: expect.stringMatching(
-          /^uses needle notation but none of vectors is a hard prerequisite; near ".+"\. Add one of them as a prerequisite$/,
+          /^uses needle notation, which vectors teaches, but vectors is only a soft prerequisite; near ".+"[.] Make it a hard prerequisite$/,
         ),
       }),
     ]),

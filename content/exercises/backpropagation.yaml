@@ -613,7 +613,7 @@ exercises:
       g_h1 = g_y @ W2.T
       g_z1 = g_h1 * (z1 > 0)
       dW1 = X.T @ g_z1
-      db1 = g_z1.mean(axis=0)
+      db1 = g_z1.mean(axis=0)  # .mean(axis=0) takes the average down each column
     buggy_line: 7
     fix_options:
       - {
@@ -707,36 +707,36 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 3
-    prompt: "The verifier compares a backward-pass gradient with central finite differences using a small, nonzero $\\epsilon$. Why use this two-sided estimate instead of making $\\epsilon$ as small as possible?"
+    prompt: "A gradient check estimates a loss slope by nudging one weight up and down by the same amount, with everything else fixed. Why can very large and very small nudges both give a poor slope estimate?"
     options:
       - {
           id: a,
-          text: "The two-sided estimate cancels first-order error, while a moderate step limits both curvature error and rounding noise.",
+          text: "For large nudges the curve can bend across the interval; for tiny nudges rounding can hide the loss difference.",
           correct: true,
-          feedback: "The central difference is more accurate than a one-sided difference for a smooth function, but an extremely small step can be lost to floating-point rounding.",
+          feedback: "A moderate nudge keeps the interval local while leaving a loss difference the computer can measure accurately.",
         }
       - {
           id: b,
-          text: "A central difference makes the estimate exact, so the size of the step no longer matters.",
+          text: "Large nudges make the weight stop affecting the loss; tiny nudges make the true slope become zero.",
           correct: false,
           category: incorrect_reasoning,
-          feedback: "Finite differences are approximations. Large steps include curvature effects, and tiny steps can be dominated by rounding.",
+          feedback: "Changing the nudge size changes the estimate's accuracy. It does not force the loss response or the true slope to vanish.",
         }
       - {
           id: c,
-          text: "The step must be tiny because a one-sided difference cannot check a neural network.",
+          text: "Large nudges introduce rounding by making the losses equal; tiny nudges span too much of the curve.",
           correct: false,
           category: misunderstood_definition,
-          feedback: "One-sided differences can estimate derivatives, but central differences use changes on both sides and cancel more of the leading approximation error.",
+          feedback: "Those causes are reversed. Tiny nudges can give nearly equal rounded losses, while large nudges span a wider part of the curve.",
         }
       - {
           id: d,
-          text: "The step should be large enough to average the loss over every training example.",
+          text: "Large nudges include too many training examples; tiny nudges include too few training examples.",
           correct: false,
           category: incorrect_reasoning,
-          feedback: "The step changes one parameter for the numerical estimate; the loss function itself already averages over the batch.",
+          feedback: "The examples stay fixed while one weight is nudged. The nudge size does not change how many examples enter the loss.",
         }
-    solution: "For a smooth loss, comparing equal positive and negative nudges cancels the leading one-sided error. The step must still be moderate: a large step measures curvature over a wider interval, while a tiny step can make the loss change indistinguishable from floating-point rounding."
+    solution: "A large nudge spans an interval where the curve can bend, so its slope estimate can differ from the slope at the weight. With a tiny nudge, rounding the two almost equal losses can hide their difference and spoil the estimate."
   - id: lab-nn-zero-initialization
     dimension: conceptual
     type: explain

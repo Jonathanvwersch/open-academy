@@ -10,7 +10,7 @@ where_this_fits: |
 
   Causal masking is a rule added to attention that stops each word in a sentence from looking at the words after it. Each position may attend only to itself and earlier positions.
 
-  We need it to train a language model, which learns to guess each next word from the earlier words. In training, the whole sentence goes in at once, so with plain attention every word could look ahead and copy the answer. The mask hides later words.
+  We need it to train a language model, which learns to guess each next word from the earlier words. In training, a stretch of text goes in all at once, so with plain attention a word could look ahead and copy the answer. The mask hides later words from each position.
 
 knowledge_points:
   - id: cm-hide-future
@@ -22,9 +22,9 @@ knowledge_points:
     explain: |
       ### Guessing the next word
 
-      A language model writes text one token at a time. At each position $t$ it looks at the tokens so far, $x_1$ to $x_t$, and gives a probability to every possible next token $x_{t+1}$. In this lesson each word is one token.
+      A language model writes text one token at a time. A token is a piece of text, such as a word or part of one. We'll use whole words here. At position $t$, the model reads words $x_1$ to $x_t$ and gives each possible next word a probability.
 
-      Let's train on "the cat sat on", the first four words of the sentence "the cat sat on the mat". We write $T$ for the number of tokens, so here $T=4$. "The" should guess "cat", "cat" should guess "sat", "sat" should guess "on", and "on" should guess the word after it, the second "the" in the full sentence. Attention works on every position at once, so the model makes all four guesses in one run over the sentence, which is called a pass.
+      Let's feed in "the cat sat on", the first four words of the sentence "the cat sat on the mat". We write $T$ for the number of input tokens, so here $T=4$. "The" should guess "cat", "cat" should guess "sat", "sat" should guess "on", and "on" should guess the word after it, the second "the" in the full sentence. Attention works on every input position at once, so the model makes all four guesses in one run over the input, which is called a pass.
 
       ### The problem with looking ahead
 
@@ -222,6 +222,7 @@ knowledge_points:
       - Build one grid that blocks every position above the diagonal.
       - Add it to the score grid before applying softmax to each row.
       - Using this mask in every attention layer keeps later words from affecting earlier predictions throughout the model.
+      - A next-word guess counts toward training when we have its target word.
     explain: |
       ### All the rows at once
 
@@ -233,11 +234,11 @@ knowledge_points:
 
       ### What the mask guarantees
 
-      Row $t$ of the weights is $0$ after column $t$, so the output $o_t$ mixes only $v_1$ to $v_t$, with weights worked out from $q_t$ and $k_1$ to $k_t$. A real language model repeats attention many times, one layer after another. In the first attention layer, each of those vectors is made from its own token, so $o_t$ depends only on the first $t$ tokens. If we change the last word of "the cat sat on" to "by", the outputs of the first three positions stay exactly the same.
+      Row $t$ of the weights is $0$ after column $t$, so the output $o_t$ mixes only $v_1$ to $v_t$, with weights worked out from $q_t$ and $k_1$ to $k_t$. In the first attention layer, each query, key and value comes from its own token's vector. So if we change the last word of "the cat sat on" to "by", the outputs of the first three positions stay the same.
 
-      That's the effect we wanted. Every position's guess of the next word is made from its own word and the words before it, so one pass over a sentence trains all $T$ guesses without any position seeing its answer. It also matches how the model is used, because when it writes new text, the later words don't exist yet.
+      To score a guess, check how much probability the model gave the word that actually came next. The inputs "the cat sat on" have targets "cat sat on the" if the original sentence continues with "the". If it ends at "on", that last guess has no target. In general, $T$ inputs give $T$ scored guesses with a following token and $T-1$ without one.
 
-      Every attention layer uses this mask. The layers in between work on each position by itself, without mixing positions. So each position only ever holds information from its own token and earlier ones, and nothing from a later word can reach it anywhere in the model.
+      Every attention layer uses the mask, so each position can still read only itself and earlier positions. The model's other operations, such as rescaling a token's vector, work on one position at a time. Repeating these operations gives no route from a later word to an earlier one.
 
       Be careful not to think the mask removes later words from the input. Every word is still there, with its own vectors and its own guess. The mask only stops earlier positions from reading them.
     worked: |
@@ -255,6 +256,8 @@ knowledge_points:
          $$(a_{31},a_{32},a_{33},a_{34})\approx(0.58,\ 0.21,\ 0.21,\ 0)$$
 
       Here is the same calculation in NumPy, the Python library for grids of numbers, loaded under the short name `np`. We write the scores with `np.array`. `S.shape` gives the grid's size as (rows, columns), and Python counts from 0, so `S.shape[0]` is the number of rows, $T$. To build the mask, we start from a $T\times T$ grid full of $-\infty$ with `np.full((T, T), -np.inf)`. Then `np.triu(..., k=1)` keeps only the part above the diagonal and sets everything else to $0$. The name "triu" stands for the upper triangle. The `k=1` makes the triangle start one place above the diagonal, so the diagonal stays allowed. After that we add `S + M`, raise $e$ to each number with `np.exp`, and divide each row by its total. `A.sum(axis=1, keepdims=True)` adds along each row and keeps the totals as a column, one per row, so each row is divided by its own total. The loop at the end prints each row rounded to 2 decimals.
+
+      `np.where(M == 0, S, -np.inf)` keeps each score in `S` where `M` is zero and puts negative infinity in blocked cells.
 
       ```python
       import numpy as np
@@ -275,6 +278,8 @@ knowledge_points:
       # [0.13, 0.37, 0.37, 0.13]
       ```
 
+      `row.tolist()` converts each NumPy row to an ordinary Python list for printing.
+
       Every number above the diagonal is $0$, and each row adds up to 1. The last row, for "on", has nothing blocked, so its weights are the softmax of all four of its scores.
     problems:
       - cm-code-basics
@@ -285,11 +290,12 @@ knowledge_points:
       - cm-code-robot
       - cm-code-debug
       - cm-code-read
+      - cm-code-shifted-targets
 final: cm-explain
 summary: |
   - A causal mask lets position $t$ attend only to positions $j\le t$, itself and the words before it, so a sentence of $T$ tokens has $T(T+1)/2$ allowed pairs.
   - Masking adds $0$ to allowed scores and $-\infty$ to blocked ones before the softmax, $a_{tj}=e^{s_{tj}+m_{tj}}/\sum_i e^{s_{ti}+m_{ti}}$. Blocked weights become exactly $0$ and the allowed weights still add up to 1.
   - In code the mask is a $T\times T$ grid with $-\infty$ above the diagonal, built once with `np.triu(..., k=1)` and added to the whole score grid.
-  - With the mask, each output $o_t$ depends only on the first $t$ tokens, so one pass over a sentence trains every next-word guess without letting any position see its answer.
+  - With the mask, each output $o_t$ depends only on the first $t$ tokens. One pass scores all guesses that have a next token to use as the target.
 
   **Next:** The next lesson builds a full language model that writes text one token at a time, each from the ones before, and shows how one masked pass over a sentence gives it many training examples.

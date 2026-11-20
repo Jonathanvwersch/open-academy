@@ -139,7 +139,7 @@ exercises:
     difficulty: 1
     target_seconds: 30
     est_minutes: 2
-    prompt: How does a continuous Gaussian model assign probability to an interval?
+    prompt: How does a Gaussian model for measurements that can take any value on a number line assign probability to an interval?
     options:
       - id: a
         text: By the area under its density curve across that interval.
@@ -205,7 +205,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: A continuous Gaussian model has density 0.20 per cm at exactly 100 cm. What is the
+    prompt:
+      A Gaussian model for measurements that can take any value on a number line has density 0.20 per cm at exactly 100 cm. What is the
       probability of exactly 100 cm before rounding?
     options:
       - id: a
@@ -221,7 +222,7 @@ exercises:
         correct: false
         feedback: The peak is a location of high density, not certainty.
     solution:
-      A single exact value has zero width and thus zero area in a continuous model. A rounded
+      A single exact value has zero width and thus zero area in a model for measurements that can take any value on a number line. A rounded
       reading represents an interval instead.
   - id: gauss-tail
     dimension: conceptual
@@ -518,7 +519,7 @@ exercises:
       - id: a
         text: It assigns area to negative and noninteger counts.
         correct: true
-        feedback: Customers are counted in nonnegative integers, so use a discrete count model.
+        feedback: Customers are counted in nonnegative whole numbers, so use a model made for counts.
       - id: b
         text: It cannot put its mean between two possible counts.
         correct: false
@@ -526,9 +527,10 @@ exercises:
       - id: c
         text: It has no defined standard deviation for small means.
         correct: false
-        feedback: A Gaussian can have this mean and spread, but its support is inappropriate.
-    solution: A Gaussian is continuous and extends below zero. Those predictions are unsuitable for
-      small nonnegative counts; use a count distribution.
+        feedback: A Gaussian can have this mean and spread, but it can also predict negative or fractional counts.
+    solution:
+      A Gaussian can predict negative or fractional values. Those predictions are unsuitable for
+      small nonnegative counts; use a model made for counts.
   - id: gauss-outliers
     dimension: conceptual
     type: mc

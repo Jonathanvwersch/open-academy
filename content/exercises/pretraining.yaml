@@ -310,6 +310,27 @@ exercises:
         category: incorrect_reasoning
         feedback: "The loss adds very little. The $6$ comes from the weights: $2$ FLOPs forward and about $4$ for the slopes."
     solution: "Multiplying a matrix by a vector multiplies each weight by a number and adds the result, $2$ FLOPs. Working out the slopes needs each weight's own slope and the slope it passes back, about $4$ more, so $6$ per parameter per token."
+  - id: ptp-backward-cost
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A team estimates training cost for a multilayer language model as $4PD$ FLOPs: $2PD$ for the forward pass and $2PD$ for finding each weight's own loss slope. Which additional work explains the usual $6PD$ estimate?"
+    options:
+      - id: a
+        text: Passing loss slopes to preceding layers, so their weights can get their own slopes.
+        correct: true
+        feedback: Backpropagation must pass slopes backwards through the layers as well as find each weight's own slope.
+      - id: b
+        text: Repeating the forward pass, because each weight's slope needs a second prediction.
+        correct: false
+        feedback: The forward pass runs once per token, and backpropagation reuses its stored values. The missing $2PD$ is passing slopes to preceding layers.
+      - id: c
+        text: Computing each weight's slope again, because every weight needs two separate loss slopes.
+        correct: false
+        feedback: Each weight needs one loss slope. The other backward calculation passes slopes to the preceding layer.
+    solution: Backpropagation passes loss slopes from each layer to the preceding one using the chain rule. Leaving out that work undercounts training compute, even if the estimate includes finding each weight's own slope.
   - id: ptp-double-tokens
     dimension: conceptual
     type: mc
@@ -578,7 +599,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "A team wants the compute-optimal training split described by the Chinchilla rule of thumb. Its model has ${{= a }}$ billion parameters. How many billion training tokens should it budget?"
+    prompt: "A team wants the training split expected to give the lowest loss for a fixed amount of processor work, following the Chinchilla rule of thumb. Its model has ${{= a }}$ billion parameters. How many billion training tokens should it budget?"
     params:
       a:
         min: 1
@@ -659,7 +680,7 @@ exercises:
         text: The extra tokens let the lab minimise training compute for the same target loss.
         correct: false
         category: incorrect_reasoning
-        feedback: The compute-optimal split already aims for the best loss per training budget. Overtraining trades extra training for cheaper deployment.
+        feedback: The rule describes the best split for a fixed training budget. More training costs extra now, while a smaller model costs less each time it answers a user.
       - id: c
         text: Once the model has enough data, additional training tokens cost no more FLOPs.
         correct: false
@@ -889,10 +910,10 @@ exercises:
         category: incorrect_reasoning
         feedback: Next-token prediction can learn the answers from ordinary text without separate correctness labels.
       - id: d
-        text: The score is reliable if the evaluation uses a different chat format from the pages.
+        text: The score is reliable if the test uses a different message layout from the web pages.
         correct: false
         category: incorrect_reasoning
-        feedback: Changing the format does not remove knowledge of test answers acquired during training.
+        feedback: Changing the page or message layout does not remove knowledge of test answers acquired during training.
     solution: Evaluation only tells us about new questions if the model never trained on the test. Here the test was in the pretraining data, so a high score may come from memorised answers.
   - id: ptp-robot-pipeline
     dimension: transfer

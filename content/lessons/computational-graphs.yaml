@@ -274,4 +274,4 @@ summary: |
   - A local derivative describes one operation's output for one input, with other inputs held fixed. We keep the values calculated in the forward pass because some derivative rules need them; for example, squaring's local derivative $2e$ needs the error $e$.
   - Multiply local derivatives along every path from an input to the output, then add the path products. One reused input can have several paths.
 
-  **Next:** Backpropagation uses these graph rules to reuse shared derivative calculations instead of following every path separately.
+  **Next:** The next topic uses these graph rules to find every slope in a network.

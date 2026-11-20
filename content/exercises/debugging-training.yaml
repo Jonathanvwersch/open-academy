@@ -6,11 +6,11 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 3
-    prompt: "A PyTorch image model has dropout. Its weights stay fixed, but repeated validation calls give different losses. The evaluator uses `torch.no_grad()` and calls `model.train()`. Explain the likely cause, the change you would make, and how you would check the fix."
+    prompt: "A model that sorts pictures into categories uses dropout. Its weights stay fixed, but repeated validation calls give different losses. The evaluator uses `torch.no_grad()` and calls `model.train()`. Explain the likely cause, the change you would make, and how you would check the fix."
     rubric:
       - {
           id: cause,
-          criterion: "Explain that dropout randomly sets some of its input numbers to $0$ in training mode, so the same input images and the same weights can give different losses.",
+          criterion: "Explain that dropout randomly sets some input numbers to $0$ in training mode, so the same pictures and weights can give different losses.",
           weight: 1,
           required: true,
         }
@@ -32,7 +32,7 @@ exercises:
           weight: 0.5,
           required: false,
         }
-    exemplar: "Training mode keeps dropout active, so some numbers are randomly set to $0$ on each call. I would call `model.eval()` to turn dropout off and keep `torch.no_grad()` to pause recording the calculations needed to find slopes. I would measure loss twice on the same images with the same weights and check that the losses agree. Before training again, I would call `model.train()`."
+    exemplar: "Training mode keeps dropout active, so some numbers are randomly set to $0$ on each call. I would call `model.eval()` to turn dropout off and keep `torch.no_grad()` to pause recording the calculations needed to find slopes. I would measure loss twice on the same pictures with the same weights and check that the losses agree. Before training again, I would call `model.train()`."
     solution: "Training mode keeps dropout active even inside `torch.no_grad()`. Call `model.eval()` with `torch.no_grad()` and compare repeated losses on unchanged inputs and weights."
   - id: dx-dl-5
     dimension: transfer
@@ -40,7 +40,7 @@ exercises:
     role: diagnostic
     difficulty: 3
     est_minutes: 3
-    prompt: "This PyTorch training loop runs without errors, but the loss never improves from the first batch onward. Which line is wrong, and what is the fix?"
+    prompt: "This PyTorch training loop takes inputs and targets from `loader`, one batch at a time. It runs without errors, but the loss never improves. Which line is wrong, and what is the fix?"
     code: |
       for xb, yb in loader:
           optimizer.zero_grad()
@@ -54,27 +54,27 @@ exercises:
           id: a,
           text: "Swap lines 5 and 6: call loss.backward() before optimizer.step()",
           correct: true,
-          feedback: "`step()` uses the gradients currently stored in `.grad`. Here they were just zeroed, so every step is a no-op; `backward()` then fills `.grad`, only for `zero_grad()` to clear it next iteration.",
+          feedback: "`optimizer.step()` uses the slopes in `.grad`. They have just been cleared, so the weights stay fixed.",
         }
       - {
           id: b,
           text: "Move `optimizer.zero_grad()` after `optimizer.step()`",
           correct: false,
-          feedback: "Zeroing after the step is fine in general, but the step would still run before backward(), on stale or zero gradients.",
+          feedback: "The update would still come before slope calculation, so it would lack slopes from the current batch.",
         }
       - {
           id: c,
-          text: "Call loss.detach() before loss.backward()",
+          text: "Add another `optimizer.zero_grad()` just after `loss.backward()`",
           correct: false,
-          feedback: "Detaching cuts the graph, so no gradients would reach the parameters at all.",
+          feedback: "This clears the slopes as soon as they are calculated.",
         }
       - {
           id: d,
           text: "Lower the learning rate",
           correct: false,
-          feedback: "With zero gradients at step time the learning rate is irrelevant: the update is $\\eta \\times 0$.",
+          feedback: "Changing the rate still leaves the update without the slopes it needs.",
         }
-    solution: "`optimizer.step()` reads `.grad`. Because `zero_grad()` ran first and `backward()` runs after the step, `.grad` is always zero at step time, so parameters never change. Order must be: `zero_grad()` → forward → loss → `backward()` → `step()`."
+    solution: "Every update reads `.grad` after the slopes have been cleared, so the weights stay fixed. Compute the current batch's slopes with `loss.backward()` before applying them with `optimizer.step()`."
   - id: dbt-curve-basics
     dimension: conceptual
     type: mc
@@ -86,13 +86,14 @@ exercises:
       update. Which measurement best tests whether updates are being applied?
     options:
       - id: a
-        text: Compare parameter values immediately before and after one optimiser step.
+        text: Compare parameter values immediately before and after one update.
         correct: true
         feedback: This directly checks whether the update changes the model.
       - id: b
         text: Compare training loss with validation loss at the end of the epoch.
         correct: false
-        feedback: That helps diagnose generalisation, but does not directly check parameter changes
+        feedback:
+          That helps check performance on new examples, but does not directly check parameter changes
           during a step.
         category: incorrect_reasoning
       - id: c
@@ -102,8 +103,8 @@ exercises:
           applied.
         category: incorrect_reasoning
     solution:
-      A before-and-after parameter comparison directly tests whether the optimiser changes the
-      model. If it changes nothing despite nonzero gradients, inspect the update code.
+      Check whether the parameters change from before the update to after it. If they stay the
+      same despite nonzero gradients, inspect the update code.
   - id: dbt-floor-why
     lesson_only: true
     dimension: conceptual
@@ -184,7 +185,7 @@ exercises:
         text: Compare training and validation losses to determine whether the update sign is correct.
         correct: false
         feedback:
-          That comparison diagnoses generalisation; it does not directly separate overshooting
+          That comparison checks performance on new examples; it does not directly separate overshooting
           from a sign error.
         category: incorrect_reasoning
     solution:
@@ -300,9 +301,10 @@ exercises:
           that.
         category: incorrect_reasoning
       - id: c
-        text: Whether a plateau on that batch proves the model lacks enough capacity.
+        text: Whether a plateau on that batch proves the model has too few adjustable weights.
         correct: false
-        feedback: The known zero-loss fit already establishes capacity for those examples; a plateau
+        feedback:
+          The known zero-loss fit already shows the model has enough adjustable weights for those examples; a plateau
           can come from code or settings.
         category: incorrect_reasoning
     solution:
@@ -443,7 +445,8 @@ exercises:
       - id: c
         text: Add more layers and compare the final training losses after the same long run.
         correct: false
-        feedback: The known fit already establishes enough capacity for this batch; extra layers add
+        feedback:
+          The known fit already shows the model has enough adjustable weights for this batch; extra layers add
           a new variable.
         category: incorrect_reasoning
     solution: Keep the known fitting case small while checking that parameters change and suspicious
@@ -487,7 +490,7 @@ exercises:
       - id: b
         text: Training loss and validation loss on different examples.
         correct: false
-        feedback: That comparison diagnoses generalisation, not a slope calculation.
+        feedback: That comparison checks performance on new examples. The question asks how to check the code's slope calculation.
         category: incorrect_reasoning
       - id: c
         text: Two learning rates with all weights changed at once.
@@ -527,8 +530,8 @@ exercises:
     est_minutes: 3
     prompt:
       A gradient check tests the model $\hat y=wx$ with squared-error loss $(wx-y)^2$. At $x={{=
-      x }}$, $y={{= y }}$ and $w={{= w }}$, what analytic weight slope should agree with the numerical
-      slope?
+      x }}$, $y={{= y }}$ and $w={{= w }}$, what weight slope should the model's calculation give,
+      matching the numerical slope?
     params:
       x:
         min: 2
@@ -576,9 +579,8 @@ exercises:
     difficulty: 2
     est_minutes: 3
     prompt:
-      A gradient check gives code slope $a={{= a }}$ and numerical slope $n={{= n }}$. Using the
-      larger slope magnitude as the reference size, what is their relative error? Give three decimal
-      places.
+      A gradient check gives code slope $a={{= a }}$ and numerical slope $n={{= n }}$. What fraction
+      of the larger slope magnitude is the size of their difference? Give three decimal places.
     params:
       a:
         min: -8
@@ -597,7 +599,7 @@ exercises:
     common_wrong:
       - answer_expr: abs(a-n)
         category: math_error
-        feedback: That is the absolute error; divide it by the larger slope magnitude for relative error.
+        feedback: That is just the size of the difference; divide it by the larger slope magnitude.
   - id: dbt-falling-trap
     dimension: conceptual
     type: mc
@@ -629,17 +631,17 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: A central-difference check nudges one weight at a time. For 1,000,000 weights, how many
-      loss evaluations does a complete numerical check require, excluding the analytic backward pass?
+    prompt: A numerical check estimates each weight's slope using one small increase and one small
+      decrease. For 1,000,000 weights, how many loss evaluations are needed?
     options:
       - id: a
         text: 2,000,000, using an upward and downward nudge for each weight.
         correct: true
-        feedback: Every coordinate needs its own pair of loss measurements.
+        feedback: Each separately adjusted weight needs its own pair of loss measurements.
       - id: b
         text: 1,000,001, sharing one baseline loss with one upward nudge per weight.
         correct: false
-        feedback: That describes a one-sided estimate; central differences use two nudges per coordinate.
+        feedback: That uses one shared starting loss and one upward nudge per weight; here each weight needs two nudges.
         category: incorrect_reasoning
       - id: c
         text: 2, using one upward and one downward nudge of all weights together.
@@ -684,6 +686,32 @@ exercises:
     solution:
       The bias adds directly to the prediction, so its slope is twice the error without x. Line
       4 should be db = 2 * e.
+  - id: dbt-check-dropout
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt:
+      You're checking a weight's slope in a model that assigns labels to pictures and uses dropout. On the same pictures,
+      the measured loss changes from call to call even before you nudge the weight. How can you
+      make the two loss measurements reflect just the weight nudge?
+    options:
+      - id: a
+        text: Use `model.train()` and measure both losses inside `torch.no_grad()`.
+        correct: false
+        feedback: Pausing slope recording leaves dropout active in training mode, so either loss can still vary.
+      - id: b
+        text: Use `model.eval()` and measure both losses inside `torch.no_grad()`.
+        correct: true
+        feedback: Evaluation mode turns dropout off for both measurements, so you can isolate the change in weight.
+      - id: c
+        text: Measure the first loss in `model.eval()` and the second in `model.train()`.
+        correct: false
+        feedback: Changing modes switches dropout on for the second measurement, so the losses can differ even without a weight nudge.
+    solution:
+      Keep the model in evaluation mode for both nudges so dropout stays off. When comparing with
+      the slope calculated by the training code, compute it in evaluation mode too, with slope recording enabled.
   - id: dbt-symptom-basics
     dimension: conceptual
     type: mc
@@ -770,7 +798,7 @@ exercises:
     difficulty: 2
     est_minutes: 2
     prompt:
-      Loss rises rapidly before becoming `nan`, and all input values are finite. Which trial first
+      Loss rises rapidly before becoming `nan` (not a number), and all input values are ordinary numbers. Which trial first
       tests unstable update sizes?
     options:
       - id: a
@@ -778,18 +806,18 @@ exercises:
         correct: true
         feedback: Smaller steps test whether large updates are causing the numerical blow-up.
       - id: b
-        text: Keep the rate fixed and use higher-precision arithmetic to delay numerical overflow.
+        text: Keep the rate fixed and use a number format that can store a wider range of values.
         correct: false
-        feedback: That tests numerical range while keeping the update size setting unchanged.
+        feedback: That tests the computer's number range while keeping the update size unchanged.
         category: incorrect_reasoning
       - id: c
-        text: Keep the rate fixed and add model layers to reduce representational error.
+        text: Keep the rate fixed and add adjustable weights so the model can fit more complex patterns.
         correct: false
-        feedback: Changing capacity adds another variable and does not isolate update size.
+        feedback: Changing the model size adds another variable and does not isolate update size.
         category: incorrect_reasoning
     solution:
       Rapidly increasing loss can indicate unstable parameter updates. Reducing the rate from
-      the same starting point tests that cause, although persistent nonfinite values still need investigation.
+      the same starting point tests that cause. If `nan` remains, inspect which calculations produce it.
   - id: dbt-check-order
     dimension: conceptual
     type: mc
@@ -830,7 +858,7 @@ exercises:
       - id: a
         text: Keep the best validation checkpoint and test an overfitting remedy.
         correct: true
-        feedback: The split trend points toward worsening generalisation despite improved training fit.
+        feedback: The split trend shows worse predictions on new examples despite improved training fit.
       - id: b
         text: Discard earlier checkpoints and keep the final model with the lowest training loss.
         correct: false
@@ -1002,7 +1030,7 @@ exercises:
       - id: b
         text: "Compare the trained model’s errors on a larger set of unseen trips."
         correct: false
-        feedback: "Unseen trips test generalization. The immediate problem is fitting these two training trips."
+        feedback: "Unseen trips test predictions on new examples. The immediate problem is fitting these two training trips."
       - id: c
         text: "Compare the average loss on different pairs of trips."
         correct: false
@@ -1066,7 +1094,7 @@ exercises:
     knowledge_point: dbt-grad-check
     difficulty: 1
     est_minutes: 0.5
-    prompt: "A gradient check gives a code slope $a$ and a numerical slope $n$, with at least one nonzero slope. Write their relative difference. Type `abs(...)` and `max(...)` for absolute value and maximum."
+    prompt: "A gradient check gives a code slope $a$ and a numerical slope $n$, with at least one nonzero slope. Write the size of their difference divided by the larger slope magnitude. Type `abs(...)` and `max(...)` for absolute value and maximum."
     answer: "abs(a-n)/max(abs(a),abs(n))"
     variables: { "a": [-20, 20], "n": [-15, -0.2] }
     solution: "Divide the size of the difference by the larger slope magnitude to get $|a-n|/\\max(|a|,|n|)$."

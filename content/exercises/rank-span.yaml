@@ -267,7 +267,9 @@ exercises:
       - answer: 1
         category: incorrect_reasoning
         feedback: Column 3 is independent of column 1, even though column 2 is twice column 1.
-    solution: Subtracting twice row 1 from row 2 and three times row 1 from row 3 leaves two identical rows $(0,0,1)$. Subtract one from the other to leave two pivots, so the rank is 2.
+    hints:
+      - After reducing a column, if it has no pivot, skip it and continue to the next column.
+    solution: Subtracting twice row 1 from row 2 and three times row 1 from row 3 leaves two identical rows $(0,0,1)$. Column 2 has no pivot, so skip it; column 3 has a pivot. Subtract the equal rows to leave two pivots, so the rank is 2.
   - id: rspp-dependent-template
     dimension: math
     type: numeric

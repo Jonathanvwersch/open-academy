@@ -139,7 +139,7 @@ knowledge_points:
       Suppose the people using this tool can tolerate an average price error below $30,000 when planning their budgets. That is the target they have given us, not a rule for every task. Throughout this step, errors are in thousands of dollars, so the target is below 30.
 
       - High training error suggests **underfitting**. A model whose shape cannot follow the pattern makes the same kind of mistake again and again. We call this **high bias**, as when the straight line cannot follow bending prices.
-      - Low training error with much higher validation error suggests **overfitting**. This often goes with **high variance**, meaning the model would change a lot if we had picked a different six training houses from all the sales we know about.
+      - Low training error with much higher validation error suggests **overfitting**. This often means predictions would change a lot if we had picked a different six training houses from all the sales we know about.
       - If both errors meet the users' target and are close together, the model seems to fit well.
 
       Picking six houses from a larger collection could give us five of the same houses and one different house. We imitate that by swapping one sale for another at the same size but a higher price. The old sale is a hollow blue circle and the replacement is a blue square. Refitting the wiggly curve changes predictions most near 80–120 m², but also near 170 m². Following individual sales so closely makes predictions between training houses unreliable. Validation houses can fall in those spaces, so exact training predictions can go with poor validation predictions.
@@ -189,7 +189,7 @@ knowledge_points:
 
       2. **Check the more flexible model.** Its training error is low, but its validation error is much higher.
          $$38-6=32$$
-         The more flexible model likely overfits. If its fitted shape also changes a lot when we swap training houses, that would show high variance.
+         The more flexible model likely overfits. If its fitted shape also changes a lot when we swap training houses, its predictions may depend heavily on which examples we picked.
 
       3. **Compare with the smooth curve.** Its rounded gap is slightly larger than the simpler model's gap, but both its errors meet the target.
          $$28-25=3$$
@@ -219,7 +219,7 @@ knowledge_points:
     explain: |
       ### Watch predictions change during training
 
-      The finished fits showed that following training prices too closely can hurt validation predictions. Now we'll watch a model get to that point so we can stop before it happens. The upper plot illustrates training the wiggly curve on more houses from our sales collection, rather than continuing the six-house fit. Training adjusts its weights a little during each pass through the training houses. These adjustable numbers control its predictions. Early adjustments can produce a smooth shape. Later adjustments can pull different parts towards individual training prices. One full pass is an **epoch**, and we can save a copy after each epoch.
+      The finished fits showed that following training prices too closely can hurt validation predictions. To see when that starts, the upper plot follows the wiggly model as it trains over many passes on a larger set of house sales. Each pass changes its **weights**, the adjustable numbers that control its predictions. Early updates can fit the broad pattern, while later ones can pull parts of the curve towards individual prices. One full pass is an **epoch**. We can save a copy of the model's weights after each epoch. Each saved copy is called a **checkpoint**.
 
       A **learning curve** shows how error changes during training. In both plots, the horizontal axis counts completed epochs and zero means before training. Throughout this step, errors are in thousands of dollars. Blue is training error and green is validation error.
 
@@ -307,7 +307,7 @@ knowledge_points:
       ]
 final: ovf-explain-diagnosis
 summary: |
-  - Underfitting misses useful patterns even in training data and can indicate high bias, while overfitting follows training quirks and often goes with high variance across different sets of training houses.
+  - Underfitting misses useful patterns even in training data and can indicate high bias, while overfitting follows training quirks and often gives predictions that change across different sets of training houses.
   - High training error suggests underfitting, low training error with much higher validation error suggests overfitting, and low, close errors suggest a good fit.
   - The error gap is validation error minus training error, but a small gap alone does not make either error useful.
   - Keep the model or saved epoch with the lowest validation error, and use the test set once after choosing.

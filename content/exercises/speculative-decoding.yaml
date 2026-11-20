@@ -192,6 +192,59 @@ exercises:
           feedback: Vocabulary compatibility says nothing about the number of model layers or weights.,
         }
     solution: Verification compares probabilities for the exact proposed tokens. Different token meanings would make that comparison invalid.
+  - id: sdp-check-positions
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: "A target model with a KV cache has written a {{=n}}-token reply so far, and it chose the last of those tokens on its previous pass. A draft model now proposes {{=k}} guesses. How many positions does the target process in its check pass?"
+    params:
+      n: { min: 20, max: 60, step: 10 }
+      k: { min: 2, max: 6, step: 1 }
+    answer_expr: k + 1
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer_expr: k,
+          category: misunderstood_definition,
+          feedback: "The last token of the reply isn't in the cache yet. A chosen token only enters the cache when it's fed back in, so the check processes it too.",
+        }
+      - {
+          answer_expr: n + k,
+          category: recall_failure,
+          feedback: "The cache already holds the keys and values for the earlier tokens, so the target doesn't process them again.",
+        }
+    solution: "The cache holds the first {{= n - 1 }} tokens. The check processes the last token of the reply plus the {{=k}} guesses, which is {{= k + 1 }} positions."
+  - id: sdp-cache-after-round
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: "A target model's KV cache holds the first {{=n}} tokens of a reply. Token {{= n + 1 }} was chosen on the previous pass. A draft proposes 4 guesses. The target accepts the first {{=a}} and replaces the next guess with its own token. How many tokens' keys and values should the cache hold when the round ends?"
+    params:
+      n: { min: 30, max: 60, step: 5 }
+      a: { min: 1, max: 3, step: 1 }
+    answer_expr: n + 1 + a
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer_expr: n + 2 + a,
+          category: misunderstood_definition,
+          feedback: "The correction was only predicted in this pass. It enters the cache next round, when it's fed in.",
+        }
+      - {
+          answer_expr: n + 5,
+          category: incorrect_reasoning,
+          feedback: "Rejected guesses aren't part of the reply, so their entries are dropped.",
+        }
+      - {
+          answer_expr: n + a,
+          category: recall_failure,
+          feedback: "The check also processed token {{= n + 1 }}, so its keys and values are now in the cache.",
+        }
+    solution: "The check processed token {{= n + 1 }} and the 4 guesses. The cache keeps token {{= n + 1 }} and the {{=a}} accepted guesses, giving {{= n + 1 + a }} entries. The correction enters next round."
   - id: sd-speed-basics
     dimension: conceptual
     type: mc
@@ -420,7 +473,7 @@ exercises:
     options:
       - {
           id: a,
-          text: Only A has target probability left after accepted mass.,
+          text: Only A still has target probability remaining after accounting for the accepted drafts.,
           correct: true,
           feedback: "The leftover vector is $(0.3, 0, 0)$, which normalises to $(1, 0, 0)$.",
         }
@@ -438,7 +491,7 @@ exercises:
           category: incorrect_reasoning,
           feedback: C has the smallest draft probability. The leftover target probability determines the replacement.,
         }
-    solution: B and C have all their target mass supplied by accepted drafts. Only A has positive leftover probability.
+    solution: The accepted drafts account for all the target probability for B and C. Only A has positive leftover probability.
   - id: sdp-accept-ratio
     dimension: math
     type: numeric
@@ -719,13 +772,13 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: A deterministic lookup proposes one token with probability one. What permits exact target sampling from these guesses?
+    prompt: A lookup always proposes the same token, giving it probability one. What permits exact target sampling from these guesses?
     options:
       - {
           id: a,
           text: The verifier uses its proposal probability in the exact correction rules.,
           correct: true,
-          feedback: A deterministic proposal is a valid distribution with probability one on one token.,
+          feedback: A proposal that always selects one token is a valid distribution with probability one on that token.,
         }
       - {
           id: b,
@@ -741,7 +794,7 @@ exercises:
           category: misapplied_technique,
           feedback: Greedy matching would not preserve a general sampled target distribution.,
         }
-    solution: Exact verification can use a deterministic proposal distribution, but it must account for its true probabilities and correct rejections.
+    solution: Exact verification can use a proposal that always selects one token, but it must account for its true probability and correct rejections.
   - id: sdp-quote-task
     dimension: conceptual
     type: mc

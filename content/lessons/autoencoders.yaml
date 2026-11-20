@@ -105,7 +105,7 @@ knowledge_points:
   - id: ae-reconstruction
     title: "Measure how good the copy is"
     tldr: |
-      - An autoencoder needs no labels, because the right answer for each image is the image itself.
+      - An autoencoder learns to copy each training image.
       - We score a copy by squaring each pixel's miss and adding them up, so misses can't cancel out.
       - Training makes that error small, and a narrow middle stops the network just passing pixels through, so it has to find patterns.
     explain: |
@@ -113,7 +113,7 @@ knowledge_points:
 
       In the last step we chose the weights by hand. A real network finds its own by **training**: it changes its weights and biases in small steps, over and over, so that one error number gets smaller. This lesson only needs that number.
 
-      For an autoencoder, it measures how far the reconstruction $\hat x$ is from the input $x$. Many networks learn from examples a person has labelled with the right answer, such as "cat". An autoencoder's right answer is the input itself, so a pile of unlabelled photos is enough.
+      For an autoencoder, it measures how far the reconstruction $\hat x$ is from the input $x$. A **label** is the answer someone attaches to a training input, such as "cat" for a photo of a cat. An autoencoder's right answer is the input itself, so a pile of unlabelled photos is enough.
 
       ### Measuring a bad copy
 
@@ -212,7 +212,7 @@ knowledge_points:
     explain: |
       ### From our tiny image to a real one
 
-      Our stripe network turned $4$ numbers into $2$, but real images are much bigger. A classic beginner's dataset, MNIST, holds $70{,}000$ handwritten digits, each a $28\times28$ grayscale image that flattens to $28\times28=784$ numbers. A common latent size for them is $32$, picked by trying sizes until one copies well. The picture draws input, latent vector and copy to scale.
+      Our stripe network turned $4$ numbers into $2$, but real images are much bigger. A common collection of $70{,}000$ handwritten digits has $28\times28$ grayscale images, each of which flattens to $28\times28=784$ numbers. A common latent size for them is $32$, picked by trying sizes until one copies well. The picture draws input, latent vector and copy to scale.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" aria-label="Bars drawn to scale for the digit autoencoder. The input bar, 784 numbers, is 200 pixels tall. The green latent bar, 32 numbers, is only about 8 pixels tall. The orange reconstruction bar, 784 numbers, is 200 pixels tall again. Grey bands narrow from the input to the latent and widen to the reconstruction">

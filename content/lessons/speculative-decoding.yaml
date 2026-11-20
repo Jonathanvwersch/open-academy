@@ -7,6 +7,8 @@ recap:
     text: "Prefill processes all prompt tokens in one pass, while decode produces one token per pass, and each new token depends on the tokens before it."
   - concept: arithmetic-intensity
     text: "Arithmetic intensity is FLOPs per byte moved. Decoding one token has low intensity, so the GPU waits on memory, and processing several tokens in one pass reuses each weight read for more FLOPs."
+  - concept: kv-cache
+    text: "A KV cache stores the keys and values of every token the model has processed, so each pass only processes new tokens. A newly chosen token enters the cache only when it's fed back in on a later pass."
 where_this_fits: |
   ### What is speculative decoding?
 
@@ -24,19 +26,19 @@ knowledge_points:
     explain: |
       ### Waiting for the next token
 
-      In the Prefill and decode lesson, we saw that prefill processes prompt tokens together, while decode waits for each token before producing the next. Suppose a **draft** model guesses the next $k$ tokens and a larger **target** model checks them. Could checking guesses together reduce that waiting?
+      In the Prefill and decode lesson, we saw that decode waits for each token before producing the next. Suppose a **draft** model guesses the next $k$ tokens and a larger **target** model checks them together. Could that reduce the waiting?
 
-      In the Memory-bound vs compute-bound lesson, we saw that arithmetic intensity measures FLOPs per byte moved. A FLOP is one floating-point operation, and FLOPs is the plural count. At batch size one, decode does little maths with each weight it reads, so waiting for memory limits its speed.
+      In the Memory-bound vs compute-bound lesson, we saw that decode at batch size one does little maths with each weight it reads, so waiting for memory limits its speed.
 
       ### Checking a short guess
 
-      Our chat assistant serves Llama 3 8B on one H100 SXM, with 16 GB of 16-bit weights. Suppose a 0.8-billion-parameter draft has 1.6 GB of weights. They share a tokenizer and vocabulary, so tokens mean the same thing to both. The target's probabilities pick its top token, which we compare with the guess.
+      Our chat assistant serves Llama 3 8B on one H100 SXM, with 16 GB of 16-bit weights. Suppose a 0.8-billion-parameter draft has 1.6 GB of weights. They share a tokenizer and vocabulary, so tokens mean the same thing to both.
 
-      Both models use **greedy decoding** here, choosing their most probable token. The $k$ draft passes run one after the other, and then the target checks. The target stores the keys and values attention computed for earlier tokens, so it only processes new positions in the sequence.
+      Both models use **greedy decoding** here, choosing their most probable token. The $k$ draft passes run one after the other, and then the target checks. The target keeps a KV cache, which ends just before the last token of the text, because the previous pass chose that token and it hasn't been fed back in. So the check processes that token plus the $k$ guesses.
 
-      At the last token already in the text, the target predicts the first guess. At each draft position, it predicts the next token. Its last prediction is a **bonus token**, an extra output if every guess passes. These are $k+1$ predictions. The causal mask hides later tokens, so each check uses only preceding text. We keep matches until the first mismatch, then use the target's correction and discard later guesses because their prefix is wrong.
+      At the last token of the text, the target predicts the first guess. At each draft position, it predicts the next token. Its last prediction is a **bonus token**, an extra output if every guess passes. These are $k+1$ predictions. The causal mask hides later tokens, so each check uses only preceding text. We keep matches until the first mismatch, then use the target's correction and discard later guesses because their prefix is wrong. Afterwards, the cache keeps entries for the last text token and the kept guesses. The correction or bonus enters next round.
 
-      After "The capital of France is", suppose the draft guesses "Paris . It is". Words and punctuation represent tokens here.
+      Suppose the reply so far ends "The capital of France is", and the target chose "is" on its previous pass. The draft guesses "Paris . It is". Words and punctuation represent tokens here.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 230" aria-label="Four draft tokens Paris, period, It, is. Target choices Paris, period, The, is. The first two match; the third fails. The fourth is discarded even though it matches. Output is Paris, period, The.">
@@ -49,9 +51,9 @@ knowledge_points:
       </g></svg>
       ```
 
-      The third fails, so output ends with "The". The target's later "is" used the wrong prefix ending in "It", so we ignore it. No bonus appears here because a guess failed.
+      The third fails, so the output ends with the target's "The". Its later "is" followed the wrong prefix, so we ignore it, and no bonus appears.
 
-      For readers who've met top-k sampling, which keeps the $k$ most probable tokens, its $k$ is unrelated to draft length.
+      If you've met top-k sampling, its $k$ is unrelated to draft length.
 
       ### Sharing the weight read
 
@@ -59,7 +61,7 @@ knowledge_points:
     worked: |
       Let's time the pictured round after "The capital of France is", using our 1.6 GB draft and 16 GB target. We'll estimate each pass from its weight read, keep unrounded times along the way, and round final times to one decimal place.
 
-      1. **Check how much maths the pass needs.** Each weight contributes a multiply and an add, giving 2 FLOPs per token, and takes 2 bytes at 16-bit precision. For $n$ positions, we therefore do $2n/2=n$ FLOPs per byte of weights. We also read stored values for earlier tokens, but short text has few such values compared with billions of weights. With five positions the weight-only intensity is 5 FLOPs per byte. Llama 3 8B has about $8\times10^9$ parameters. The H100's dense 16-bit rate is about 990 TFLOP/s, meaning $990\times10^{12}$ operations per second, which we round to 1,000 TFLOP/s. We multiply seconds by 1000 to express the result in milliseconds.
+      1. **Check how much maths the pass needs.** Each weight contributes a multiply and an add, giving 2 FLOPs per token, and takes 2 bytes at 16-bit precision. For $n$ positions, we therefore do $2n/2=n$ FLOPs per byte of weights. We also read stored values for earlier tokens, but short text has few such values compared with billions of weights. With five positions the weight-only intensity is 5 FLOPs per byte. Llama 3 8B has about $8\times10^9$ parameters. The H100's 16-bit maths rate is about 990 TFLOP/s, meaning $990\times10^{12}$ operations per second, which we round to 1,000 TFLOP/s. We multiply seconds by 1000 to express the result in milliseconds.
          $$\text{maths time}=\frac{2\times8\times10^9\times5}{1000\times10^{12}}\times1000=0.08\text{ ms}$$
 
       2. **Compare maths with reading weights.** The H100's memory bandwidth is 3.35 TB/s, so reading 16 GB takes about 4.8 ms. Here GB means $10^9$ bytes and TB means $10^{12}$ bytes. Dividing the rounded maths rate by bandwidth gives the GPU's **ops:byte ratio**, about $1000/3.35\approx300$ FLOPs per byte. This is the threshold because below it reading bytes takes longer than doing the maths. Our intensity of 5 is far below it. The draft is also memory-bound at batch size one, so we estimate target pass time $t$ and draft pass time $t_d$ from their weight reads. We call $c$ the draft's time as a fraction of the target's, which the next lesson step uses:
@@ -89,6 +91,8 @@ knowledge_points:
         sdp-round-time,
         sdp-intensity-limit,
         sdp-tokenizer,
+        sdp-check-positions,
+        sdp-cache-after-round,
       ]
   - id: sd-expected-speed
     title: Work out the expected speed-up

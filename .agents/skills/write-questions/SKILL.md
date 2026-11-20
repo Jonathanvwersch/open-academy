@@ -85,7 +85,13 @@ Recall questions follow the rest of this skill: they stand alone, pass the givea
 
 Follow the lesson skill's writing rules: plain words, short sentences, notation from `content/notation.yaml`, and only ideas from the concept's prerequisites. No "X, not Y" contrast lines and no em dashes. `solution` says how to get the answer in one or two sentences, using the same numbers.
 
-## 8. Checking before you ship
+## 8. Prerequisite check
+
+Run the same Prerequisite check as the lesson skill for every batch of new or rewritten questions, including lab, project, diagnostic and recall questions. Give the separate reviewer the output of `pnpm academy prereqs <concept-id>` for the question's concept, the lesson and all new questions. Follow the separate-session and API-key rules and use the prompt in `.agents/skills/write-lesson/SKILL.md`.
+
+Keep concept-pool questions within what the output lists or the lesson teaches. Put lab questions that need a later topic in the project.
+
+## 9. Checking before you ship
 
 1. Run the giveaway test (§1) on every question.
 2. Compute every numeric answer with a script (Python or Node), including every template combination.
@@ -93,6 +99,6 @@ Follow the lesson skill's writing rules: plain words, short sentences, notation 
 4. Check the step's mix: at least five questions, difficulties 1 to 3, and at least two angles per idea (§3), plus three recall questions (§6).
 5. Run `pnpm content:check`, `pnpm exec vitest run apps/api/tests/content/` and `pnpm check`.
 
-## Reviewing existing questions
+## 10. Reviewing existing questions
 
 To audit a set, read every question and apply §1 to §6. Rewrite only the ones that fail. Keep each exercise's `id`, `dimension`, `role`, `difficulty`, `lesson_only` and place in the lesson, because learner progress depends on them. Rewrite `prompt`, the answer, `options`, `feedback` and `solution` as needed, and change `type` if it makes a better question. If lesson text such as a `faded` block refers to the exercise, keep it consistent. Report each rewrite as `id`: the reason, then the old stem and the new stem.

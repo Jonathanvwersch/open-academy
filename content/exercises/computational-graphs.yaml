@@ -352,14 +352,14 @@ exercises:
         correct: false
         feedback: "These factors belong to one path through e and p, not separate paths."
       - id: c
-        text: "Each factor is a forward value, so their product gives the loss."
+        text: "Each factor is a forward value, so their product gives the mistake score."
         correct: false
         feedback: "The factors are local derivatives, not the forward values p, e and L."
       - id: d
-        text: "Each factor can give the loss derivative alone, so only one is needed."
+        text: "Each factor can give the mistake-score derivative alone, so only one is needed."
         correct: false
-        feedback: "One local derivative describes only one node; the loss derivative needs every factor on the path."
-    solution: "The local derivatives are $\\partial L/\\partial e=2$, $\\partial e/\\partial p=1$ and $\\partial p/\\partial w=3$; multiplying them gives the loss derivative 6."
+        feedback: "One local derivative describes only one node; the mistake-score derivative needs every factor on the path."
+    solution: "The local derivatives are $\\partial L/\\partial e=2$, $\\partial e/\\partial p=1$ and $\\partial p/\\partial w=3$; multiplying them gives the mistake-score derivative 6."
   - id: cgp-path-product
     dimension: "conceptual"
     type: "mc"

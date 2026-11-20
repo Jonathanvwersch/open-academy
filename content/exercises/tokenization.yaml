@@ -457,6 +457,20 @@ exercises:
         category: incorrect_reasoning
         feedback: '"toot" can''t become one token in two merges. After to + o, it is too t.'
     solution: "The pairs are t o $3$ times, o o twice and o t once, so merge 1 joins t + o: to, to o, to o t, which is $6$ tokens. Now to o appears twice and o t once, so merge 2 joins to + o: to, too, too t, which is $4$ tokens."
+  - id: tok-bpe-overlapping-pair-count
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: "A BPE trainer starts from the two words `aaaaa` and `aaa`, split into letters. It picks the pair `a a` for its first merge. By how much does this one merge reduce the total token count?"
+    answer: 3
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - answer: 6
+        category: incorrect_reasoning
+        feedback: There are six neighbouring pairs to count, but matching pairs that share a token cannot both be joined.
+    solution: Scanning left to right gives two replacements in the five-letter word and one in the three-letter word. Each replacement reduces the token count by one.
   - id: tok-enc-basics
     dimension: conceptual
     type: mc
@@ -670,6 +684,26 @@ exercises:
         category: recall_failure
         feedback: That is the number of letters. Apply the three merges in order.
     solution: Start from g r a b b e d. g + r gives gr a b b e d, a + b gives gr ab b e d, and gr + ab gives grab b e d, which is $4$ tokens.
+  - id: tok-enc-overlapping-pairs
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: "A BPE tokenizer learned to join `a` with `a`, then to join `aa` with `b`. What tokens does it produce for the new word `aaab`?"
+    options:
+      - id: a
+        text: "`aa a b`"
+        correct: true
+      - id: b
+        text: "`a aab`"
+        correct: false
+        feedback: "This would start from the rightmost match. The first merge starts at the left."
+      - id: c
+        text: "`a a a b`"
+        correct: false
+        feedback: "The first merge joins the first two letters even in a new word."
+    solution: "The first merge joins the leftmost two letters to give `aa a b`. The second merge needs `aa` immediately followed by `b`."
   - id: tok-explain-bpe
     dimension: conceptual
     type: explain
@@ -820,14 +854,14 @@ exercises:
     prompt: In one or two sentences, how does a trained BPE tokenizer split new text, and what stays fixed after training?
     rubric:
       - id: replay
-        criterion: Explain that encoding starts from characters and applies the learned merges in order wherever each pair appears.
+        criterion: Explain that encoding starts from characters and replays the learned merges in order.
         weight: 1
         required: true
       - id: fixed
         criterion: State that the vocabulary and merge order stay fixed after training.
         weight: 1
         required: true
-    exemplar: The tokenizer starts from characters and applies each learned merge in order wherever its pair appears. The vocabulary and merge order stay fixed after training.
+    exemplar: The tokenizer starts from characters and replays the learned merges in order, scanning left to right for each one. The vocabulary and merge order stay fixed after training.
   - id: tok-recall-encode-contrast
     dimension: conceptual
     type: mc

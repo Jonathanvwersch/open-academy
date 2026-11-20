@@ -5,6 +5,8 @@ objective: |
 recap:
   - concept: gpu-inference-basics
     text: "A model's weights take its parameter count times the bytes per number, so Llama 3 8B at 16 bits fills about 16 GB of an H100's 80 GB. Each decode step reads every weight from memory."
+  - concept: descriptive-statistics
+    text: "A success rate $\\hat p$ measured on $n$ independent attempts has standard error $\\sqrt{\\hat p(1-\\hat p)/n}$, which says how much luck alone typically moves it. About 95% of repeats land within two standard errors."
 where_this_fits: |
   ### What is quantisation?
 
@@ -184,6 +186,8 @@ knowledge_points:
       print(round((x - x_hat).abs().max().item(), 4))
       ```
 
+      `.tolist()` converts the tensor to an ordinary Python list so its integer values print in a readable form.
+
       It prints:
 
       ```text
@@ -342,7 +346,7 @@ knowledge_points:
 
     tldr: |
       - Rounding the model's numbers can quietly make its answers worse.
-      - So we test both versions on text they never trained on and on the tasks users care about.
+      - So we test both versions on text they never trained on and on the tasks users care about, with enough problems that luck can't explain a drop.
       - We keep the smaller model only if its scores drop by an amount the product can accept.
     explain: |
       ### Why we have to measure
@@ -355,7 +359,7 @@ knowledge_points:
 
       The text must be held out, meaning it wasn't used to train the model or choose the scales. Otherwise the test is too easy.
 
-      Many papers report perplexity in place of the loss. Perplexity is $e$ raised to the average loss:
+      Papers often report perplexity instead of the loss. Perplexity is $e$ raised to the average loss:
 
       $$\text{perplexity}=e^{\text{loss}}.$$
 
@@ -372,7 +376,7 @@ knowledge_points:
 
       ### Tests on real tasks
 
-      The loss is an average over ordinary text. It can barely move while a skill that few tokens depend on gets much worse, such as arithmetic, code, long prompts or a language that is rare in the text. So we also run the two models on tasks the assistant's users care about, and compare their scores. Both get the same prompts and the same settings, for example always picking the most likely next token. Use enough examples that a difference isn't just luck. With a few hundred problems, a drop of one or two percentage points, say from 80% to 79%, can easily be luck.
+      The loss is an average over ordinary text. It can barely move while a skill that few tokens depend on gets much worse, such as arithmetic, code, long prompts or a language that is rare in the text. So we also run the two models on tasks the assistant's users care about, and compare their scores. Both get the same prompts and the same settings, for example always picking the most likely next token. Use enough examples that a difference isn't just luck. A success rate $\hat p$ on $n$ problems has standard error $\sqrt{\hat p(1-\hat p)/n}$, and a drop of several standard errors is almost never luck.
 
       If both checks show only a small drop that is acceptable for the product, we ship the quantised model. If a task gets clearly worse, we can try a finer scale, such as one per row or per group, or keep some layers at 16 bits. To find which layers to keep, quantise one layer at a time and see which hurts the score most.
     worked: |
@@ -386,7 +390,11 @@ knowledge_points:
       3. **Turn the task counts into accuracy.** We divide each count by 500.
          $$400/500=80\%,\qquad360/500=72\%$$
 
-      4. **Compare the accuracies.** The score fell from 80% to 72%. We call that a drop of 8 percentage points, because we subtract the two percentages. With 500 problems, luck alone usually moves a score by about 2 percentage points, so a drop of 8 is real.
+      4. **Compare the accuracies.** The score fell from 80% to 72%. We call that a drop of 8 percentage points, because we subtract the two percentages.
+
+      5. **Check whether luck could explain the drop.** We find the standard error of the 16-bit model's success rate, $\hat p=0.8$ on $n=500$ problems.
+         $$\mathrm{SE}(\hat p)=\sqrt{\frac{0.8(0.2)}{500}}\approx0.018$$
+         That's about 1.8 percentage points. The drop of 8 points is more than four standard errors, so luck alone almost certainly didn't cause it.
 
       The loss rose by only $0.08$, but the maths score fell clearly. If the assistant's users ask maths questions, this INT4 model isn't good enough as it is.
     problems:
@@ -397,6 +405,7 @@ knowledge_points:
       - qzp-loss-hides
       - qzp-choose-eval
       - qzp-perplexity-ratio-template
+      - qzp-quality-luck-template
 final: qz-explain
 summary: |
   - Quantisation stores numbers with fewer bits. Llama 3 8B's weights take 16 GB at 16 bits, 8 GB at INT8 and 4 GB at INT4, and decode gets faster in proportion because it reads every weight for each token.

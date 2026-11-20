@@ -7,7 +7,7 @@ exercises:
     difficulty: 3
     est_minutes: 4
     prompt: |
-      A decoder predicts each next character from a whole training window. Its attention code takes softmax over every key, then sets future weights to zero without rescaling the remaining weights. The future weights test passes, but the row-sum test fails. Explain the failure and describe a correction that also preserves causal prediction.
+      A training window is a contiguous chunk of training text used as one input sequence. A character decoder predicts the next character at each position. Its attention code takes softmax over every key, then sets future weights to zero without rescaling the remaining weights. The future weights test passes, but the row-sum test fails. Explain the failure and describe a correction that also preserves causal prediction.
     rubric:
       - id: normalization
         criterion: Explain that removing the future weights takes away part of the row's total, leaving the remaining weights adding up to less than $1$.
@@ -534,7 +534,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: Fill the blank so that, after the softmax, every blocked position gets a weight of exactly 0 and the other scores are kept.
+    prompt: "`np.where(condition, a, b)` selects `a` where the condition is true and `b` everywhere else. `np.ones((2, 2))` makes a $2\\times2$ grid filled with ones. Fill the blank so that, after softmax, every blocked position gets a weight of exactly 0 and the other scores are kept before softmax."
     code: |
       import numpy as np
       S = np.array([[1.0, 2.0], [3.0, 4.0]])
@@ -549,7 +549,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: What does this print?
+    prompt: "`np.ones((5, 5))` makes a $5\\times5$ grid filled with ones. What does this code print?"
     code: |-
       import numpy as np
       print(int(np.triu(np.ones((5, 5)), k=1).sum()))
@@ -598,7 +598,7 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: What does this print?
+    prompt: "`np.where(condition, a, b)` selects `a` where the condition is true and `b` everywhere else. `np.ones((T, T))` makes a square grid of ones, and `dtype=float` stores the scores as decimal-valued numbers. Python starts indices at 0 and orders them row, then column, so `A[1, 0]` selects the second row and first column. What does this code print?"
     code: |-
       import numpy as np
       S = np.array([[2, 0, 1],
@@ -656,28 +656,48 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: 'A programmer builds the blocked cells with `np.triu(np.ones((T, T)), k=0) == 1`, puts $-\infty$ in them, raises $e$ to every entry and divides each row by its sum. What does the first row of weights come out as?'
+    prompt: 'A programmer starts with a $T\times T$ grid of finite scores with $T\ge2$. `np.ones((T, T))` makes a $T\times T$ grid filled with ones. They build the blocked cells with `np.triu(np.ones((T, T)), k=0) == 1`, put $-\infty$ in them, raise $e$ to each score and divide each row by its sum. Assume the finite scores give positive, finite exponentials. NumPy prints `nan` for $0/0$. Which row consists entirely of `nan`, and why?'
     options:
       - id: a
-        text: All `nan`, because every cell of row 1 is blocked and the row sum is 0.
+        text: The first row, because it has no allowed cells and its sum is zero.
         correct: true
         feedback: With `k=0` the diagonal is blocked too, so row 1 has only $-\infty$ and the division is $0/0$.
       - id: b
-        text: "`[1, 0, ..., 0]`, the same as with `k=1`."
+        text: Every row, because each blocked cell has a zero exponential.
         correct: false
         category: implementation_error
-        feedback: That needs the diagonal cell to stay allowed, and `k=0` blocks it.
+        feedback: A blocked cell has a zero exponential, but a row with allowed scores has a positive sum.
       - id: c
-        text: Equal weights of $1/T$, because all the scores in row 1 are the same.
+        text: The last row, because the blocked triangle fills that row.
         correct: false
         category: implementation_error
-        feedback: The scores are all $-\infty$, so every term is 0, and nothing is left to share.
+        feedback: The blocked triangle starts at the top row. The last row can still read the earlier tokens.
       - id: d
-        text: All 0, and every later row is unaffected.
+        text: No row, because each token still has its own score on the diagonal.
         correct: false
         category: implementation_error
-        feedback: Dividing 0 by a row sum of 0 gives `nan`, and the other rows lose their diagonal too.
-    solution: '`k=0` includes the diagonal, so row 1 is entirely $-\infty$. Every $e^{-\infty}$ is 0, the row sum is 0, and $0/0$ gives `nan`. Use `k=1` so each token can attend to itself.'
+        feedback: "With `k=0` the diagonal is part of the blocked triangle. The first row has no allowed score left."
+    solution: '`k=0` includes the diagonal, so the first row contains only $-\infty$. Its exponentials and their sum are all 0, so each division gives `nan`. Each later row has an allowed score to its left and hence a positive sum.'
+  - id: cm-code-shifted-targets
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A music model treats each note as one token. One recording has the notes C D E F G. Another ends after C D E F. The model takes C D E F as input for both recordings and uses a causal mask. Which lists of actual next notes can it score the predictions against?
+    options:
+      - id: a
+        text: D E F G for the first recording and D E F for the second.
+        correct: true
+      - id: b
+        text: D E F for both recordings, since both inputs end with F.
+        correct: false
+        feedback: The first recording supplies G as the target for F even though G is outside the input.
+      - id: c
+        text: C D E F for both recordings, since those notes are visible.
+        correct: false
+        feedback: Each position's target is the next note in the recording.
+    solution: "For each input note, the target is one place to its right in the recording. That gives a target for F in the first recording only."
   - id: cm-explain
     dimension: conceptual
     type: explain

@@ -188,11 +188,11 @@ exercises:
       we conclude?
     options:
       - id: a
-        text: It overfits, since zero training error means it memorised noise.
+        text: It overfits, since zero training error means it copied details that may not carry over.
         correct: false
         feedback: Exact fit alone is not proof. We need to check validation predictions too.
       - id: b
-        text: It generalises well, since it has learned every training pattern.
+        text: It predicts new houses well, since it has learned every training pattern.
         correct: false
         feedback: Training success alone does not tell us how validation houses will be predicted.
       - id: c
@@ -366,16 +366,16 @@ exercises:
     est_minutes: 2
     prompt:
       A flexible house-price curve changes shape dramatically when fitted to a different sample of six training
-      sales from the same market. Which idea describes that sensitivity?
+      sales from the same market. Which description fits that sensitivity?
     options:
       - id: a
-        text: High variance
+        text: "Its predictions depend strongly on the training sample."
         correct: true
-        feedback: Large changes across training samples indicate high variance.
+        feedback: Large changes across training samples mean predictions depend strongly on the sample.
       - id: b
-        text: High bias
+        text: A simple model keeps missing the same pattern.
         correct: false
-        feedback: Bias concerns persistent errors from the model's assumptions.
+        feedback: A simple model can keep making the same kind of mistake, even after seeing more examples.
       - id: c
         text: Underfitting
         correct: false
@@ -385,8 +385,8 @@ exercises:
         correct: false
         feedback: Sensitivity alone does not show accurate held-out predictions.
     solution:
-      Variance describes how much the fitted model changes when we pick different training houses. Large changes
-      suggest high variance.
+      The fitted model's shape and predictions change with the selected training houses. This sensitivity can make
+      its predictions unreliable on new houses.
   - id: ovfp-gap-choice
     dimension: transfer
     type: numeric
@@ -453,9 +453,9 @@ exercises:
         correct: true
         feedback: The rigid shape repeatedly misses the same pattern.
       - id: b
-        text: High variance
+        text: Predictions depend strongly on the training sample
         correct: false
-        feedback: High variance would show large changes across training samples.
+        feedback: Large changes across training samples would show strong dependence on the selected houses.
       - id: c
         text: Overfitting
         correct: false
@@ -777,21 +777,21 @@ exercises:
     knowledge_point: ovf-error-gap
     difficulty: 1
     est_minutes: 0.5
-    prompt: "Which description captures high variance?"
+    prompt: "A model's training error is almost zero, but its validation error is far higher. Which description fits this model?"
     options:
       - id: a
-        text: "Predictions change a lot when the training sample changes."
+        text: "Its predictions would change a lot if it were fitted to a different training sample."
         correct: true
-        feedback: "High variance means the fitted model changes a lot with a different selection of training houses."
+        feedback: "A large gap with near-zero training error means the fitted shape follows the particular training houses."
       - id: b
-        text: "The model systematically misses bends in its training data."
+        text: "It systematically misses bends in its training data."
         correct: false
-        feedback: "Systematic mistakes from an inflexible shape describe high bias."
+        feedback: "That is high bias, which shows up as high training error too."
       - id: c
-        text: "Both errors stay low and meet the users’ target."
+        text: "The validation houses must be mislabelled, since the model fits the training houses well."
         correct: false
-        feedback: "Low errors on both sets suggest a useful fit. To check variance, refit on a different sample and see how much predictions change."
-    solution: "High variance means the fitted model changes a lot with a different selection of training houses."
+        feedback: "Mislabelled houses can raise validation error, but a near-zero training error with a large gap is the usual sign the model fits its training sample too closely. Check by refitting on different houses."
+    solution: "The fitted shape follows the particular training houses, so its predictions would change if it were fitted to a different sample."
   - id: ovf-recall-gap-formula
     dimension: math
     type: expression
@@ -810,17 +810,17 @@ exercises:
     knowledge_point: ovf-learning-curves
     difficulty: 1
     est_minutes: 1
-    prompt: "In one or two sentences, what does a learning curve show, and how does early stopping choose a saved model?"
+    prompt: "In one or two sentences, what does a learning curve show, and how does stopping training early choose a saved model?"
     rubric:
       - id: point0
         criterion: "Explain that a learning curve shows how training and validation errors change across epochs."
         weight: 1
         required: true
       - id: point1
-        criterion: "Explain that early stopping keeps the saved copy with the lowest validation error."
+        criterion: "Explain that stopping training early keeps the saved copy with the lowest validation error."
         weight: 1
         required: true
-    exemplar: "A learning curve shows how training and validation errors change across epochs. Early stopping keeps the saved copy with the lowest validation error."
+    exemplar: "A learning curve shows how training and validation errors change across epochs. Stopping training early keeps the saved copy with the lowest validation error."
   - id: ovf-recall-curves-contrast
     dimension: conceptual
     type: mc

@@ -1,12 +1,55 @@
 concept: derivatives
 exercises:
+  - id: derp-top-bottom-signs
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: "A smooth curve has slope zero at $x=3$, negative slope just to its left and positive slope just to its right. What happens at $x=3$?"
+    options:
+      - { id: a, text: "The curve has a local bottom", correct: true }
+      - id: b
+        text: "The curve has a local top"
+        correct: false
+        feedback: "A top has positive slopes before it and negative slopes after it."
+      - id: c
+        text: "The curve keeps falling through it"
+        correct: false
+        feedback: "The positive slope to the right means the curve rises after this input."
+    solution: "The curve falls toward $x=3$ and rises away from it, so $x=3$ gives a local bottom."
+  - id: derp-log-combine
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: 'Find $\ln(e^3 e^2)+\ln(1/e^2)-\ln(e^4/e)$. Give an exact number.'
+    answer: 0
+    tolerance: { abs: 0.001 }
+    hints: ["Turn the product into a sum of logs, and the quotient into a difference."]
+    solution: "The product gives $3+2=5$, the reciprocal gives $-2$, and the quotient gives $4-1=3$. The total is $5-2-3=0$."
+  - id: derp-log-base
+    dimension: math
+    type: expression
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: 'A sensor reports $y=\log_2 x$ for a positive reading $x$. Write $e^{\ln x}+\ln x$ using only $y$ and constants. Use `log(...)` for natural logarithms, `^` for powers and `*` for multiplication.'
+    answer: "2^y+log(2)*y"
+    variables: { y: [-1, 2] }
+    hints:
+      [
+        "Undo the natural logarithm in the exponential, then change the base of the remaining logarithm.",
+      ]
+    solution: 'The inverse rule gives $e^{\ln x}=x=2^y$; change of base gives $\ln x=(\ln2)y$; the result is $2^y+(\ln2)y$.'
   - id: lab-gc-central-slope
     dimension: math
     type: numeric
     role: core
     difficulty: 2
     est_minutes: 2
-    prompt: "For $f(x)=x^3$, find the central-difference slope at $x=1$ with a distance of $0.5$ on each side."
+    prompt: "The central-difference slope is $(f(a+h)-f(a-h))/(2h)$. For $f(x)=x^3$, find this slope at $a=1$ with $h=0.5$."
     answer: 3.25
     tolerance: { abs: 0.001 }
     hints: ["Find the two function values before dividing by the distance between the inputs."]
@@ -258,7 +301,7 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 4
-    prompt: "A model has loss $L(w)=4w^2-24w+36$. Find its derivative, evaluate it at $w=2$, and explain what a small positive change in $w$ near $2$ does to the loss."
+    prompt: "A model's prediction-error score is $L(w)=4w^2-24w+36$. Find its derivative, evaluate it at $w=2$, and explain what a small positive change in $w$ near $2$ does to the score."
     rubric:
       - id: derivative
         criterion: Differentiate to obtain $L'(w)=8w-24$.
@@ -269,10 +312,10 @@ exercises:
         weight: 1
         required: true
       - id: r3
-        criterion: Explain that a small positive change in $w$ near $2$ lowers loss by about $8$ times that change.
+        criterion: Explain that a small positive change in $w$ near $2$ lowers the score by about $8$ times that change.
         weight: 1
         required: true
-    exemplar: "Differentiating gives $L'(w)=8w-24$. At $w=2$, this is $-8$. A small positive change in $w$ near $2$ therefore lowers the loss by about $8$ times that change."
+    exemplar: "Differentiating gives $L'(w)=8w-24$. At $w=2$, this is $-8$. A small positive change in $w$ near $2$ therefore lowers the score by about $8$ times that change."
   - id: derp-meaning
     dimension: conceptual
     type: mc

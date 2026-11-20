@@ -6,35 +6,36 @@ exercises:
     role: diagnostic
     difficulty: 4
     est_minutes: 3
-    prompt: "In REINFORCE, why is a baseline $b(s)$ subtracted from the return, giving $\\nabla_\\theta \\log \\pi_\\theta(a\\mid s)\\,(G - b(s))$?"
+    prompt: "In REINFORCE, why subtract a baseline $b(s)$ that depends only on the state from the return, giving $\\nabla_\\theta \\ln \\pi_\\theta(a\\mid s)\\,(G - b(s))$?"
     options:
       - {
           id: a,
-          text: "It reduces the variance of the gradient estimate without changing its expected value",
+          text: "It can reduce noise in the slope estimate while keeping its average right",
           correct: true,
+          feedback: "A baseline near the typical return can cut noise, and its subtracted contribution averages to zero.",
         }
       - {
           id: b,
-          text: "It makes the gradient estimate unbiased, which it otherwise is not",
+          text: "It corrects the average slope estimate, which is otherwise wrong",
           correct: false,
           category: misunderstood_definition,
-          feedback: "Plain REINFORCE is already unbiased. The baseline leaves the expectation unchanged because $\\mathbb E[\\nabla \\log \\pi] = 0$.",
+          feedback: "Plain REINFORCE already keeps the average right. The baseline's subtracted contribution averages to zero.",
         }
       - {
           id: c,
-          text: "It reduces variance by omitting the gradient contributions from actions whose returns fall below the baseline",
+          text: "It cuts noise by dropping actions whose returns fall below the baseline",
           correct: false,
           category: misunderstood_definition,
           feedback: "Returns below the baseline give negative weights. Their gradient contributions remain in the estimate.",
         }
       - {
           id: d,
-          text: "It trades a biased gradient estimate for lower variance, so the expected update optimises a different objective",
+          text: "It cuts noise by changing the average slope to favour a different score",
           correct: false,
           category: incorrect_reasoning,
-          feedback: "A state-only baseline has zero expected contribution to the policy gradient. Subtracting it does not change the expected gradient.",
+          feedback: "A state-only baseline's subtracted contribution averages to zero, so the average slope stays the same.",
         }
-    solution: "Because $\\mathbb E_{a\\sim\\pi}[\\nabla_\\theta \\log\\pi_\\theta(a\\mid s)] = 0$, subtracting any action-independent $b(s)$ keeps the estimator unbiased while centring the returns, which greatly reduces variance. Using $b(s) \\approx V(s)$ gives the advantage."
+    solution: "The subtracted part averages to zero because action probabilities always sum to one, whose slope is zero. A baseline near the typical return can reduce noise while keeping the average slope right."
   - id: pg-score-basics
     dimension: conceptual
     type: mc
