@@ -371,6 +371,8 @@ knowledge_points:
       The second piece handles $v_2$, so together the pieces handle every input:
       $$A=s_1u_1v_1^\top+s_2u_2v_2^\top.$$
 
+      Subtracting matrices means subtracting matching entries. Since the rank-1 copy keeps only the first piece, $A-A_1=s_2u_2v_2^\top$ is the piece it leaves out.
+
       ### Low-rank approximation
 
       The **rank** is the number of nonzero singular values. Keeping the biggest $k$ nonzero pieces gives a **low-rank approximation** $A_k$. Its maximum output error over length-$1$ inputs is the first singular value dropped. For the rank-1 copy $A_1=s_1u_1v_1^\top$, write a length-$1$ input as $x=c_1v_1+c_2v_2$. The coordinates and their lengths are:

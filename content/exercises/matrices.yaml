@@ -447,7 +447,7 @@ exercises:
         correct: false
         category: misunderstood_definition
         feedback: Broadcasting reuses each entry in its own column; it never adds the entries of `b` together.
-    solution: "`b` has shape (2,), one entry per output column. NumPy reuses it for both rows, so every price gains 20 and every rent gains 100."
+    solution: "`b` is a one-dimensional array with shape (2,), meaning it has two entries and no row dimension. One entry matches each output column, and NumPy reuses both entries for every row."
   - id: matp-broadcast
     dimension: implementation
     type: mc
@@ -476,7 +476,7 @@ exercises:
         text: It raises an error, because b has 2 entries and the array has 5 rows.
         correct: false
         category: misunderstood_definition
-        feedback: NumPy matches the last axis, which has size 2 in both, and repeats b across the rows.
+        feedback: NumPy matches the two bias entries to the two output columns, then reuses them across all five rows.
   - id: matp-code
     dimension: implementation
     type: mc

@@ -531,11 +531,11 @@ exercises:
         text: It has no SVD either.
         correct: false
         category: misunderstood_definition
-        feedback: Every matrix has an SVD; $\begin{bmatrix}4&-3\\6&8\end{bmatrix}$ has no eigenvalues and singular values $10$ and $5$.
+        feedback: Every matrix has an SVD; for $\begin{bmatrix}4&-3\\6&8\end{bmatrix}$ the greatest and least output lengths over all length-1 inputs are $10$ and $5$.
       - id: b
         text: It still has an SVD, because every matrix does.
         correct: true
-        feedback: Any $2\times2$ matrix that doesn't squash everything onto a line turns the circle of length-1 arrows into an ellipse, and the SVD reads off its longest and shortest directions.
+        feedback: Any $2\times2$ matrix that doesn't squash everything onto a line sends the set of all length-1 input vectors to an ellipse; the singular values are its longest and shortest output lengths.
       - id: c
         text: Its singular values are all zero.
         correct: false
@@ -546,7 +546,7 @@ exercises:
         correct: false
         category: misunderstood_definition
         feedback: Every matrix, of any shape, has an SVD.
-    solution: Every matrix has an SVD. A matrix with no eigenvalues still turns length-1 arrows into an ellipse, whose longest and shortest directions give the singular values.
+    solution: Every matrix has an SVD. Applying it to all length-1 input vectors gives an ellipse; the longest and shortest output lengths are the singular values.
   - id: eigp-robot-arm
     dimension: conceptual
     type: mc
@@ -556,7 +556,7 @@ exercises:
     prompt: A $2\times2$ matrix turns small joint movements of a robot arm into movements of its hand. Its singular values are $2$ and $0.01$. What does that say about the hand?
     options:
       - id: a
-        text: The hand moves easily along one direction but can barely move along the perpendicular one.
+        text: Across all length-1 joint movements, the hand's output length ranges from $0.01$ to $2$.
         correct: true
         feedback: A length-1 joint movement moves the hand at most $2$ in one direction and at most $0.01$ in the other.
       - id: b
@@ -574,7 +574,7 @@ exercises:
         correct: false
         category: misunderstood_definition
         feedback: The singular values are exactly the longest and shortest output lengths for length-1 inputs.
-    solution: Length-1 joint movements send the hand along an ellipse with half-lengths $2$ and $0.01$, so the hand can barely move along the second output direction.
+    solution: Across all length-1 joint movements, the hand's output length ranges from $0.01$ to $2$. These shortest and longest lengths are the singular values, so some movements barely shift the hand while others move it much farther.
   - id: eig-low-rank-basics
     dimension: conceptual
     type: mc
