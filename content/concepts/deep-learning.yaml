@@ -131,7 +131,7 @@ concepts:
     est_minutes: 30
     goal_weight: 2
     dimensions: [conceptual]
-    prereqs: [{ id: backpropagation }]
+    prereqs: [{ id: backpropagation }, { id: gradient-descent }]
     objectives:
       - {
           text: "Explain vanishing/exploding activations and what LayerNorm does",
@@ -145,7 +145,8 @@ concepts:
     est_minutes: 30
     goal_weight: 3
     dimensions: [transfer, implementation]
-    prereqs: [{ id: sgd-minibatch }, { id: overfitting }]
+    prereqs:
+      [{ id: sgd-minibatch }, { id: overfitting }, { id: pytorch-basics }, { id: regularization }]
     objectives:
       - { text: "Diagnose a failing training run from its symptoms", dimension: transfer }
     status: authored

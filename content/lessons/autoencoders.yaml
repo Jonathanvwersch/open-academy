@@ -105,7 +105,7 @@ knowledge_points:
   - id: ae-reconstruction
     title: "Measure how good the copy is"
     tldr: |
-      - An autoencoder needs no labels, because the right answer for each image is the image itself.
+      - An autoencoder learns to copy each training image.
       - We score a copy by squaring each pixel's miss and adding them up, so misses can't cancel out.
       - Training makes that error small, and a narrow middle stops the network just passing pixels through, so it has to find patterns.
     explain: |
@@ -113,7 +113,7 @@ knowledge_points:
 
       In the last step we chose the weights by hand. A real network finds its own by **training**: it changes its weights and biases in small steps, over and over, so that one error number gets smaller. This lesson only needs that number.
 
-      For an autoencoder, it measures how far the reconstruction $\hat x$ is from the input $x$. Many networks learn from examples a person has labelled with the right answer, such as "cat". An autoencoder's right answer is the input itself, so a pile of unlabelled photos is enough.
+      For an autoencoder, it measures how far the reconstruction $\hat x$ is from the input $x$. A **label** is the answer someone attaches to a training input, such as "cat" for a photo of a cat. An autoencoder's right answer is the input itself, so a pile of unlabelled photos is enough.
 
       ### Measuring a bad copy
 

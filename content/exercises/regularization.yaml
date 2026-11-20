@@ -6,7 +6,7 @@ exercises:
     role: core
     difficulty: 3
     est_minutes: 3
-    prompt: "Two image-classifier runs use the same data split, starting weights and mini-batch order. Run A uses weight decay $0$ and dropout $0$, with best validation loss $0.54$. Run B uses weight decay $0.1$ and dropout $0.25$, with best validation loss $0.48$. Which run would you keep? Explain how weight decay and dropout affect training."
+    prompt: "Two image-classifier runs use the same data split and starting weights. Run A uses weight decay $0$ and dropout $0$, with best validation loss $0.54$. Run B uses weight decay $0.1$ and dropout $0.25$, with best validation loss $0.48$. Which run would you keep? Explain how weight decay and dropout affect training."
     rubric:
       - id: choice
         criterion: Keep run B because its best validation loss, $0.48$, is lower than $0.54$.

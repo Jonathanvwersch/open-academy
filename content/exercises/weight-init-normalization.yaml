@@ -228,6 +228,28 @@ exercises:
         correct: false
         feedback: Large readings do not explain the repeated shrinking of slopes across layers.
         category: incorrect_reasoning
+  - id: wip-chain-weight-update
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A four-layer network takes input $1$. Each layer multiplies its input by its own weight,
+      with weights $1$, $0.5$, $0.5$ and $0.5$ in order. The loss slope for the last output is $4$.
+      What is the first layer's weight after one gradient descent update with learning rate $0.2$?
+    solution: Passing back through the last three layers gives the first output's slope
+      $4(0.5)^3=0.5$, and multiplying by the input $1$ gives the first weight's slope $0.5$.
+      The update leaves the first weight at $1-0.2(0.5)=0.9$.
+    answer: 0.9
+    tolerance:
+      abs: 0.000001
+    common_wrong:
+      - answer: 0.5
+        category: math_error
+        feedback: Multiply the weight's slope by the learning rate before subtracting.
+      - answer: 1.1
+        category: math_error
+        feedback: Subtract the learning rate times the slope to move downhill.
   - id: wi-init-scale-basics
     dimension: conceptual
     type: mc
@@ -346,9 +368,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt:
-      A neuron has 400 inputs of typical size 1 and random weights of typical size 0.1. With no
-      activation function, what is the typical size of its score?
+    prompt: A neuron has 400 inputs of typical size 1. Its weights are chosen independently and
+      each is equally likely to be $+0.1$ or $-0.1$. What is the typical size of its score?
     solution: The score's average square is $400\times0.1^2=4$. Its typical size is $\sqrt4=2$.
     answer: 2
     tolerance:
@@ -397,10 +418,9 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt:
-      Each neuron in each of 5 layers has 100 inputs and random weights of typical size 0.2. There
-      is no activation function. Starting from input typical size 1, what is the typical size after
-      all 5 layers?
+    prompt: Each neuron in each of 5 layers has 100 inputs. All weights are chosen independently
+      and each is equally likely to be $+0.2$ or $-0.2$. There are no biases or activation
+      functions. Starting from input typical size 1, what is the typical size after all 5 layers?
     solution: Each layer multiplies typical size by $\sqrt{100\times0.2^2}=2$. Five layers give $2^5=32$.
     answer: 32
     tolerance:
