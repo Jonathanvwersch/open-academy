@@ -1403,7 +1403,7 @@ test('asking the tutor does not block a correct answer from completing the step'
 
   run = await answerAndReload(page, true);
   expect(run.points[0]).toMatchObject({ status: 'passed', streak: 2 });
-  expect(run.lastAnsweredProblem.result.assisted).toBe(true);
+  expect(run.lastAnsweredProblem.result).not.toHaveProperty('assisted');
   await expect(page.getByTestId('lesson-problem').getByRole('status')).toContainText('Correct');
   await expect(page.getByText(/doesn't count|without help|with help/)).toHaveCount(0);
   await expect(page.getByText('Step complete', { exact: true })).toBeVisible();
@@ -1415,7 +1415,6 @@ test('asking the tutor does not block a correct answer from completing the step'
   run = await nextProblemAndReload(page);
   run = await answerAndReload(page, true);
   expect(run.points[0]).toMatchObject({ status: 'passed', streak: 2 });
-  expect(run.lastAnsweredProblem.result.assisted).toBe(false);
   expect(run.points[1]).toMatchObject({ status: 'active', streak: 1 });
 });
 

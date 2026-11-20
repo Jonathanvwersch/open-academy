@@ -469,7 +469,7 @@ test('basics counts toward the two-correct streak and the XP award', async () =>
   expect(events[0]).toMatchObject({ kind: 'knowledge_point', amount: 10 });
 });
 
-test('correct answers with tutor help advance practice while assistance stays question-specific', async () => {
+test('asking the tutor never lowers credit or progress on a lesson answer', async () => {
   let run = (await (await startRun()).json()).run;
   let pending = run.pending;
   const firstAnswer = await answerProblem(
@@ -497,19 +497,19 @@ test('correct answers with tutor help advance practice while assistance stays qu
   );
   expect(assistedResponse.status).toBe(200);
   const assistedBody = await assistedResponse.json();
-  expect(assistedBody.assisted).toBe(true);
+  expect(assistedBody).not.toHaveProperty('assisted');
   expect(assistedBody.state.points[0]).toMatchObject({ status: 'passed', streak: 2 });
-  expect(assistedBody.state.lastAnsweredProblem.result.assisted).toBe(true);
+  expect(assistedBody.state.lastAnsweredProblem.result).not.toHaveProperty('assisted');
   const [assistedProblem] = await db
     .select()
     .from(lessonProblems)
     .where(eq(lessonProblems.id, pending.id));
-  expect(assistedProblem?.assisted).toBe(true);
+  expect(assistedProblem?.assisted).toBe(false);
   const [assistedAttempt] = await db
     .select()
     .from(attempts)
     .where(eq(attempts.id, assistedProblem?.attemptId ?? ''));
-  expect(assistedAttempt).toMatchObject({ hintsUsed: 1, credit: 0.7 });
+  expect(assistedAttempt).toMatchObject({ hintsUsed: 0, credit: 1 });
 
   run = (await (await startRun()).json()).run;
   pending = run.pending;
@@ -521,7 +521,6 @@ test('correct answers with tutor help advance practice while assistance stays qu
   );
   expect(unassistedResponse.status).toBe(200);
   const unassistedBody = await unassistedResponse.json();
-  expect(unassistedBody.assisted).toBe(false);
   expect(unassistedBody.state.points[0]).toMatchObject({ status: 'passed', streak: 2 });
   expect(unassistedBody.state.points[1]).toMatchObject({ status: 'active', streak: 1 });
   const [unassistedProblem] = await db
