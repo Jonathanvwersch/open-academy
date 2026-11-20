@@ -278,3 +278,436 @@ terms:
       match: ['\bG_t\s*=\s*r_\{t\+1\}'],
       introduced_by: [policies-returns],
     }
+  - {
+      id: log-product-rule,
+      label: "Log product, quotient and reciprocal rules",
+      match:
+        [
+          '\\ln\s*\(?\s*[a-z]\s*\\?(cdot)?\s*[a-z]\s*\)?\s*=\s*\\ln',
+          '\\ln\s*\\frac',
+          '\\ln\s*\(ab\)\s*=\s*\\ln\s*a\s*\+\s*\\ln\s*b',
+          "(?:logs?|logarithms?) turns? products into sums",
+          '\b(?:natural[- ]log reciprocal rule|reciprocal rule for logs?)\b',
+          '\b(?:natural[- ]log quotient rule|quotient rule for logs?)\b',
+        ],
+      introduced_by: [derivatives],
+    }
+  - {
+      id: log-change-of-base,
+      label: "Change of log base",
+      match:
+        [
+          '\\ln\s*2\s*\)?\s*(\\cdot)?\s*\\log_2',
+          "change (of )?(the )?base",
+          '\\ln\s*2\s*(?:\\cdot|\\times)\s*\\log_2\b',
+        ],
+      introduced_by: [derivatives],
+    }
+  - {
+      id: leibniz-derivative,
+      label: "df/dx notation",
+      match: ['\\frac\{d[a-z]*\}\{d[a-z]\}', '\bd[fy]/d[xt]\b'],
+      introduced_by: [derivatives],
+    }
+  - {
+      id: stationary-point,
+      label: "Solve f'(x)=0 for a top or bottom",
+      match: ["f'\\(x\\)\\s*=\\s*0", "set(ting)? the (derivative|slope) to (zero|0)"],
+      introduced_by: [derivatives],
+    }
+  - {
+      id: zero-gradient-extremum,
+      label: "Zero gradient at a minimum or maximum",
+      match: ["gradient is (the )?zero( vector)?", '\\nabla\s*f\s*=\s*(\\mathbf\{0\}|0)'],
+      introduced_by: [gradients],
+    }
+  - {
+      id: independent-product-rule,
+      label: "P(A and B)=P(A)P(B)",
+      match:
+        [
+          'P\s*\(\s*A\s*(?:\\text\{\s*and\s*\}|and)\s*B\s*\)\s*=\s*P\s*\(\s*A\s*\)\s*P\s*\(\s*B\s*\)',
+          "multiply (the )?independent (chances|probabilities)",
+        ],
+      introduced_by: [probability-basics],
+    }
+  - {
+      id: det-pivot-rule,
+      label: "Determinant from pivots and row swaps",
+      match: ['\(-1\)\^\{?\\?(text\{)?swaps', "product of (the )?pivots"],
+      introduced_by: [determinants],
+    }
+  - {
+      id: row-operations,
+      label: "Row operations (row addition, row swap)",
+      match: ['\brow (swap|addition|operation)s?\b', 'R_\d\s*\\(leftarrow|leftrightarrow)'],
+      introduced_by: [determinants, inverses-linear-systems],
+    }
+  - { id: pivot, label: "Pivot", match: ['\bpivots?\b'], introduced_by: [determinants, rank-span] }
+  - {
+      id: matrix-distributes,
+      label: "A(x+y)=Ax+Ay",
+      match: ['A\(x\s*\+\s*y\)\s*=\s*Ax\s*\+\s*Ay'],
+      introduced_by: [rank-span],
+    }
+  - {
+      id: matrix-shape-notation,
+      label: "Matrix shape notation R^{m×n}",
+      match: ['\\mathbb\{R\}\^\{\s*\w+\s*\\times'],
+      introduced_by: [matrices],
+    }
+  - {
+      id: numpy-array-sum,
+      label: "a.sum() / np.sum",
+      match: ['\.sum\(\s*\)', '\bnp\.sum\s*\('],
+      introduced_by: [matrices],
+    }
+  - {
+      id: ln-exp-inverse,
+      label: "Natural log and exponential inverses",
+      match: ['\be\^\{\s*\\ln[^{}]+\}\s*=', '\\ln\s*e\^(?:\{[^{}]+\}|\w)\s*='],
+      introduced_by: [derivatives],
+    }
+  - {
+      id: mse-batch-gradient,
+      label: "Batch MSE weight gradient",
+      match:
+        [
+          '\\frac\{2\s*X\^\{?\\top\}?\s*r\}\{n\}',
+          '\b2\s*\*\s*X\.T\s*@\s*r\s*/\s*(?:len\(\s*y\s*\)|n\b)',
+        ],
+      introduced_by: [gradient-descent],
+    }
+  - {
+      id: prediction-residual-vector,
+      label: "Prediction residual vector",
+      match: ['\bresidual vector\b', '\br\s*=\s*Xw\s*-\s*y\b'],
+      introduced_by: [gradient-descent],
+    }
+  - {
+      id: shifted-square-slope,
+      label: "Slope of a shifted square",
+      match:
+        [
+          '\b(?:shifted[- ]square slope|slope of a shifted square)\b',
+          'L\(w\)\s*=\s*\(w\s*-\s*\d+\)\s*\^\s*2',
+        ],
+      introduced_by: [gradient-descent],
+    }
+  - {
+      id: multiclass-recall,
+      label: "Per-class recall",
+      match: ['\b(?:multiclass|per[- ]class) recall\b', '\bclass[''’]s recall\b'],
+      introduced_by: [evaluation-metrics],
+    }
+  - {
+      id: linear-argument-order,
+      label: "Linear(inputs, outputs) argument order",
+      match:
+        ['\bLinear\s*\(\s*(?:inputs?|in_features|\d+)\s*,\s*(?:outputs?|out_features|\d+)\s*\)'],
+      introduced_by: [pytorch-basics],
+    }
+  - {
+      id: column-mean-axis-zero,
+      label: "Column averages with .mean(axis=0)",
+      match: ['\.mean\s*\(\s*axis\s*=\s*0\s*\)', '\.sum\(axis=0\)` adds down each column'],
+      introduced_by: [backpropagation],
+    }
+  - {
+      id: flat-activation-no-update,
+      label: "Flat activation gives no weight update",
+      match:
+        [
+          '\bflat activation\b[^.!?\n]{0,100}\b(?:weight|update|loss)\b',
+          '\bactivation''s slope\b[^.!?\n]{0,100}\b(?:loss|update)\b',
+          '\bactivation is flat\b[^.\n]{0,100}\bweight\b',
+        ],
+      introduced_by: [activation-functions],
+    }
+  - {
+      id: finite-difference-rounding,
+      label: "Rounding error with tiny finite-difference nudges",
+      match: ['\b(?:tiny|very small) nudges?\b[^.!?\n]{0,100}\brounding\b'],
+      introduced_by: [backpropagation],
+    }
+  - {
+      id: independent-weight-draws,
+      label: "Independent weight draws",
+      match:
+        [
+          '\bindependent\s+(?:random\s+)?weights?\b',
+          '\bweights?\s+(?:are|were)\s+(?:chosen|drawn|sampled)\s+\*{0,2}independently\*{0,2}\b',
+        ],
+      introduced_by: [weight-init-normalization],
+    }
+  - {
+      id: cross-term-cancellation-in-average,
+      label: "Cross terms cancel on average",
+      match:
+        [
+          '\bcross[- ]terms?\s+(?:cancels?\s+on\s+average|averages?\s+to\s+\$?(?:0|zero)\b|cancellation\b)',
+        ],
+      introduced_by: [weight-init-normalization],
+    }
+  - {
+      id: gradient-descent-weight-update,
+      label: "Subtract learning rate times slope",
+      match:
+        [
+          '\bsubtract(?:s|ing)?\s+(?:the\s+)?learning\s+rate\s+times\s+the\s+(?:loss[''’]s\s+)?(?:slope|gradient)\b',
+          'w_\{\\text\{new\}\}&=w-\\eta',
+        ],
+      introduced_by: [gradient-descent],
+    }
+  - {
+      id: probability-weighted-average,
+      label: "Average weighted by outcome probability",
+      match: ['\b(?:multiply|weight)\s+each\s+(?:outcome|value)\s+by\s+its\s+probability\b'],
+      introduced_by: [probability-basics, regularization],
+    }
+  - {
+      id: neural-network-unit,
+      label: "Neural-network unit",
+      match:
+        [
+          '\b(?:neural[- ]network|hidden[- ]layer)\s+units?\b',
+          '\blayers?\s+of\s+(?:simple\s+)?(?:units|neurons)\b',
+          '\bartificial neurons?\b',
+          '\bartificial \*\*neuron\*\*',
+          '\bgroup of neurons\b',
+          '\*\*unit\*\* computes one number from its inputs\b',
+        ],
+      introduced_by: [perceptron, mlp-forward-pass, regularization],
+    }
+  - {
+      id: dropout-output-rescaling,
+      label: "Rescale the kept output during dropout",
+      match:
+        [
+          '\binverted\s+dropout\b',
+          '\bdropout\s+scales?\s+(?:up\s+)?the\s+(?:kept|retained)\s+outputs?\b',
+        ],
+      introduced_by: [regularization],
+    }
+  - {
+      id: model-checkpoint,
+      label: "Saved training checkpoint",
+      match:
+        [
+          '\b(?:model|training|validation)\s+checkpoints?\b',
+          '\bcheckpoint\s+selection\b',
+          '\bwhich\s+checkpoint\s+would\s+you\s+keep\b',
+          '\b(model|training) checkpoints?\b',
+          '\bsaved copy is called a \*\*checkpoint\*\*',
+          '\bsaves \*\*checkpoints\*\*',
+        ],
+      introduced_by: [overfitting, pretraining],
+    }
+  - {
+      id: pytorch-optimizer-calls,
+      label: "PyTorch optimizer reset and update",
+      match: ['\boptimizer\.(?:zero_grad|step)\(\s*\)'],
+      introduced_by: [pytorch-basics],
+    }
+  - {
+      id: pytorch-backward-call,
+      label: "PyTorch loss.backward()",
+      match: ['\bloss\.backward\(\s*\)'],
+      introduced_by: [autodiff, pytorch-basics],
+    }
+  - {
+      id: pytorch-model-mode,
+      label: "PyTorch training and evaluation mode",
+      match: ['\bmodel\.(?:train|eval)\(\s*\)'],
+      introduced_by: [pytorch-basics],
+    }
+  - {
+      id: pytorch-no-grad,
+      label: "PyTorch torch.no_grad()",
+      match: ['\btorch\.no_grad\(\s*\)'],
+      introduced_by: [pytorch-basics],
+    }
+  - {
+      id: training-label,
+      label: "Training label",
+      match:
+        [
+          '\b(?:training|class)\s+labels?\b',
+          '\bunlabell?ed\s+(?:photos?|images?|examples?)\b',
+          '\blabel from a fixed list\b',
+        ],
+      introduced_by: [supervised-learning, autoencoders],
+    }
+  - {
+      id: bpe-overlapping-pairs,
+      label: "BPE replacements that share a token",
+      match:
+        [
+          '\b(?:BPE|tokenizer)\b[^\n.!?]{0,70}\b(?:non[- ]overlapping|overlapping) (?:token )?pairs?\b',
+          '\b(?:apply the merge|replay the merges)\b[^\n.!?]{0,80}\bleft to right\b',
+        ],
+      introduced_by: [tokenization],
+    }
+  - {
+      id: reshape-versus-transpose,
+      label: "Reshaping and transposing array axes",
+      match:
+        [
+          '\breshape\b[^\n!?]{0,90}\btranspose\b|\btranspose\b[^\n!?]{0,90}\breshape\b',
+          '\.reshape\([^)\n]*\)\.transpose\(',
+        ],
+      introduced_by: [images-as-tensors, multi-head-attention],
+    }
+  - {
+      id: backprop-local-slope,
+      label: "Multiply an arriving loss slope by the local derivative",
+      match:
+        ['\b(?:arriving|incoming) (?:loss )?slope\b[^.\n]{0,85}\blocal (?:slope|derivative)\b'],
+      introduced_by: [backpropagation],
+    }
+  - {
+      id: layernorm-gain-shift,
+      label: "Learned gain and shift in LayerNorm",
+      match: ['\bLayerNorm\b[^.!?\n]{0,135}\bgains?\b[^.!?\n]{0,60}\bshifts?\b'],
+      introduced_by: [weight-init-normalization],
+    }
+  - {
+      id: softmax-subtract-max,
+      label: "Subtract the row maximum before softmax",
+      match:
+        [
+          '\bsubtract(?:s|ed|ing)? (?:the )?row max(?:imum)?\b',
+          '\bsoftmax\b[^\n!?]{0,100}\bsubtract(?:s|ed|ing)? (?:the )?(?:max(?:imum)?|largest score)\b',
+          '\bnp\.exp\(\s*\w+\s*-\s*\w+\.max\(\s*axis\s*=',
+        ],
+      introduced_by: [transformer-block],
+    }
+  - {
+      id: tied-embedding-weights,
+      label: "Weight tying between embeddings and output scores",
+      match: ['\bweight[- ]tying\b|\btied (?:input and output )?embeddings\b'],
+      introduced_by: [transformer-block],
+    }
+  - {
+      id: shifted-next-token-targets,
+      label: "Shifted targets for next-token prediction",
+      match:
+        [
+          '\bshifted next[- ](?:token|word) targets?\b|\bnext[- ](?:token|word) targets? (?:is|are) shifted\b',
+          '\btargets?\b[^\n.!?]{0,65}\bshifted (?:left|right) by one\b',
+          '\$?T\$?\s+inputs give \$?T\$?\s+scored guesses with a following token\b',
+        ],
+      introduced_by: [causal-masking],
+    }
+  - {
+      id: numpy-where,
+      label: "Elementwise selection with NumPy where",
+      match: ['\bnp\.where\s*\('],
+      introduced_by: [causal-masking],
+    }
+  - {
+      id: numpy-zero-over-zero,
+      label: "NumPy NaN from zero divided by zero",
+      match: ['\b(?:NumPy|np)\b[^.\n]{0,65}\bnan\b[^.\n]{0,40}\b0\s*/\s*0\b'],
+      introduced_by: [causal-masking],
+    }
+  - {
+      id: uniform-token-sampling,
+      label: "Uniform draws over next-token probability intervals",
+      match:
+        [
+          '\buniform draw\b[^.\n]{0,100}\b(?:sampling|intervals?|next[- ]token)\b',
+          '\brandom\.random\s*\(\s*\)[^.\n]{0,100}\buniform(?:ly)?\b',
+        ],
+      introduced_by: [autoregressive-lm],
+    }
+  - {
+      id: greedy-lowest-id-tie-break,
+      label: "Greedy decoding ties go to the lowest vocabulary ID",
+      match: ['\blowest vocabulary id\b|\bgreedy (?:decoding )?tie[- ]break(?:er|ing)?\b'],
+      introduced_by: [autoregressive-lm],
+    }
+  - {
+      id: held-out-test-text,
+      label: "Held-out test text",
+      match: ['\bheld[- ]out test text\b', '\btest text is held out\b'],
+      introduced_by: [pretraining],
+    }
+  - {
+      id: success-rate-se,
+      label: "Standard error of a success rate",
+      match:
+        [
+          '\\sqrt\{?\s*\\frac\{\\hat p\(1-\\hat p\)\}',
+          '\\sqrt\{\\hat p\(1-\\hat p\)/n\}',
+          '\bstandard errors?\b',
+        ],
+      introduced_by: [descriptive-statistics],
+    }
+  - {
+      id: gpu-thread-group,
+      label: "GPU threads and thread groups",
+      match: ['\bgroups? of threads\b', '\bthread blocks?\b'],
+      introduced_by: [fast-attention],
+    }
+  - {
+      id: endless-geometric-series,
+      label: "Endless geometric series sum",
+      match:
+        [
+          "endless geometric series",
+          '1\s*/\s*\(\s*1\s*-\s*\\gamma\s*\)',
+          '\\frac\s*\{1\}\s*\{1-\\gamma\}',
+        ],
+      introduced_by: [policies-returns],
+    }
+  - {
+      id: policy-log-derivative-trick,
+      label: "Policy log-derivative trick",
+      match: ['\blog-derivative trick\b', '\\nabla_\{?\\theta\}?\s*\\ln\s*\\pi'],
+      introduced_by: [policy-gradients],
+    }
+  - {
+      id: chain-rule-idea,
+      label: "the chain rule",
+      match: ['\bchain rule\b'],
+      introduced_by: [chain-rule],
+    }
+  - {
+      id: backpropagation-idea,
+      label: "backpropagation",
+      match: ['\bbackprop(?:agation|agate|agates|agating|agated)?\b'],
+      introduced_by: [backpropagation],
+    }
+  - { id: dropout, label: "dropout", match: ['\bdropout\b'], introduced_by: [regularization] }
+  - {
+      id: layernorm,
+      label: "LayerNorm",
+      match: ['\bLayerNorm\b', '\blayer normali[sz]ation\b'],
+      introduced_by: [weight-init-normalization],
+    }
+  - { id: kv-cache-idea, label: "KV cache", match: ['\bKV[- ]cach'], introduced_by: [kv-cache] }
+  - {
+      id: variance,
+      label: "variance",
+      match: ['\bvariance\b'],
+      introduced_by: [descriptive-statistics],
+    }
+  - {
+      id: standard-error,
+      label: "standard error",
+      match: ['\bstandard errors?\b'],
+      introduced_by: [descriptive-statistics],
+    }
+  - {
+      id: augmented-matrix,
+      label: "augmented matrix [A|b]",
+      match: ["augmented matri(x|ces)", '\[A\s*\\mid\s*b\]'],
+      introduced_by: [inverses-linear-systems],
+    }
+  - {
+      id: back-substitution,
+      label: "back-substitution",
+      match: ["back[- ]substitut"],
+      introduced_by: [inverses-linear-systems],
+    }

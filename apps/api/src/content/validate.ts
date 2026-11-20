@@ -1315,6 +1315,15 @@ function validateNotationUsage(data: ContentSourceData, issues: ContentIssue[]) 
       if (introducedBy.has(concept.id) || [...introducedBy].some((id) => ancestors.has(id))) {
         continue;
       }
+      const hardPath = new Set([concept.id, ...ancestors]);
+      const softPrerequisites = new Set(
+        [...hardPath].flatMap((id) =>
+          (concepts.get(id)?.value.prereqs ?? [])
+            .filter(({ strength }) => strength === 'soft')
+            .map(({ id: prerequisiteId }) => prerequisiteId),
+        ),
+      );
+      const softIntroducer = term.introduced_by.find((id) => softPrerequisites.has(id));
       const ownedText: Array<{ file: string; id: string; text: string }> = [];
       const lesson = lessons.get(concept.id);
       for (const block of lesson?.value.blocks ?? []) {
@@ -1349,7 +1358,9 @@ function validateNotationUsage(data: ContentSourceData, issues: ContentIssue[]) 
         const message =
           term.introduced_by.length === 0
             ? `uses ${term.label}, but no topic teaches it yet; near "${snippet}". Add the topic that teaches it to introduced_by in notation.yaml`
-            : `uses ${term.label} but none of ${term.introduced_by.join(', ')} is a hard prerequisite; near "${snippet}". Add one of them as a prerequisite`;
+            : softIntroducer
+              ? `uses ${term.label}, which ${softIntroducer} teaches, but ${softIntroducer} is only a soft prerequisite; near "${snippet}". Make it a hard prerequisite`
+              : `uses ${term.label} but none of ${term.introduced_by.join(', ')} is a hard prerequisite; near "${snippet}". Add one of them as a prerequisite`;
         addIssue(issues, match.file, match.id, message);
       }
     }
