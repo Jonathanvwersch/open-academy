@@ -7,7 +7,7 @@ exercises:
     difficulty: 3
     est_minutes: 4
     prompt: |
-      A character decoder's loss on fixed training windows falls from $3.3$ to $1.1$. Its generated text still contains mistakes. Explain what the lower training loss says about predictions after the true training prefixes, and why mistakes can build up when the model generates text from its own sampled characters.
+      A character decoder predicts the next character in a sequence. A training window is a contiguous chunk of text used as one input, and the same fixed windows are reused for comparison. Its loss falls from $3.3$ to $1.1$, but its generated text still contains mistakes. Explain what the lower training loss says about predictions after the true training prefixes, and why mistakes can build up when the model generates text from its own sampled characters.
     rubric:
       - id: training
         criterion: Explains that lower training cross-entropy means higher probability on the observed next characters given their true prefixes.

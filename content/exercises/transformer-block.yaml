@@ -726,7 +726,7 @@ exercises:
       print(sum(w.size for w in p.values()))
     answer: 148
     tolerance: { abs: 0.000001 }
-    solution: The two matrices each hold $64$ numbers, and the bias vectors hold $16$ and $4$, so the printed total is $148$.
+    solution: "`np.zeros(s)` makes an array filled with zero whose shape is the tuple `s`. The two matrices each hold $64$ numbers, and the bias vectors hold $16$ and $4$, so the printed total is $148$."
   - id: tbp-stack-robot
     dimension: transfer
     type: numeric

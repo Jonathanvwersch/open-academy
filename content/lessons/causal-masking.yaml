@@ -278,6 +278,8 @@ knowledge_points:
       # [0.13, 0.37, 0.37, 0.13]
       ```
 
+      `row.tolist()` converts each NumPy row to an ordinary Python list for printing.
+
       Every number above the diagonal is $0$, and each row adds up to 1. The last row, for "on", has nothing blocked, so its weights are the softmax of all four of its scores.
     problems:
       - cm-code-basics
