@@ -112,6 +112,13 @@ describe('buildTutorInput', () => {
     expect(prompt).toContain(
       '14. The learner may send more than one message before you reply, for example to correct or steer a question while you were still answering.',
     );
+    expect(prompt).toContain(
+      '15. Arithmetic is never the skill being practised. Once the learner has stated a correct method for the current problem',
+    );
+    expect(prompt).toContain('Never send them to a calculator, a search bar or code instead.');
+    expect(prompt).toContain(
+      '16. If a rule stops you from doing what the learner asked, say so plainly in your first reply',
+    );
     expect(tutorPromptVersion('tutor-system', tutorContent)).toBe(
       createHash('sha256').update(prompt).digest('hex').slice(0, 12),
     );
