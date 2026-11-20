@@ -4,7 +4,7 @@ objective: |
   **Goal:** spot the risks in a reward before training: tell a sparse reward from a shaped one, add progress bonuses that can't change which behaviour is best, and find the loopholes an agent could use to earn reward without doing the task.
 recap:
   - concept: mdp
-    text: "A Markov decision process (MDP) describes states, actions, next states and rewards $r_{t+1}$, which score each action. Its discount factor $\\gamma$ gives the next reward full weight and multiplies each later reward by one more $\\gamma$."
+    text: "An MDP describes states, actions, transitions and rewards $r_{t+1}$. Discount $\\gamma$ weights each later reward by another $\\gamma$. From probability basics, multiply independent events' chances to find the chance they all happen."
 where_this_fits: |
   ### What is reward design?
 
@@ -50,7 +50,7 @@ knowledge_points:
 
       A reward like this is **sparse**: it is zero almost everywhere and nonzero only at a few rare moments, such as reaching the goal. It's easy to write, and it says exactly what we want.
 
-      The trouble is finding that first reward. Until the robot reaches cell 4, every reward it has seen is $0$, so left and right look equally good. Suppose left and right are equally likely. Reaching the end in the fewest moves requires all rights. Multiply their chances:
+      The trouble is finding that first reward. Until the robot reaches cell 4, every reward it has seen is $0$, so left and right look equally good. Suppose left and right are equally likely, with each choice independent. Reaching the end in the fewest moves requires all rights. As in probability basics, multiply their chances:
       $$
       \begin{aligned}
       \text{four cells}&:(1/2)^3=1/8 &&\text{three rights in a row}\\
@@ -224,7 +224,7 @@ knowledge_points:
 
       The agent did exactly what it was trained to do, earn as much reward as it can. The problem is the reward.
 
-      It happens in real systems. In 2016, OpenAI trained an agent on the boat-racing game CoastRunners, which gives points for hitting targets. The agent scored more by circling and hitting the same targets again and again than by finishing the race. A chatbot's language model can be trained like the robot, with its reward given by a **reward model**, a second model trained to score replies the way people would. The language model can learn replies the reward model rates highly but people don't actually prefer.
+      It happens in real systems. In 2016, OpenAI trained an agent on the boat-racing game CoastRunners, which gives points for hitting targets. The agent scored more by circling and hitting the same targets again and again than by finishing the race. A chatbot's **language model**, a program that writes replies, can be trained like the robot, with its reward given by a **reward model**, a second model trained to score replies the way people would. The language model can learn replies the reward model rates highly but people don't actually prefer.
 
       ### Asking how a reward could be gamed
 
