@@ -262,14 +262,15 @@ knowledge_points:
       - A weak penalty can leave overfitting, while a strong one can cause underfitting.
       - Train with several strengths and compare their validation errors.
       - Keep the strength with the lowest validation error and save the test data for the final check.
+      - Dropout turns off random parts of a network during training so it learns to rely on many parts.
     explain: |
       ### Too little, too much
 
-      The penalty strength $\lambda$ is a **hyperparameter**, a setting that training doesn't learn, so we choose it ourselves. Too small a $\lambda$ changes little, and the model can still copy its training examples' quirks. Too large a $\lambda$ pushes every weight close to $0$, so the model can't follow even the real pattern and underfits.
+      The penalty strength $\lambda$ is a **hyperparameter**, a setting we choose before training. With too small a $\lambda$, the model can still copy quirks in the training data. Too large a $\lambda$ pushes weights close to $0$, so the model underfits.
 
       ### Choosing it with validation error
 
-      We choose $\lambda$ the way the overfitting lesson chose between models. We train once for each of several values of $\lambda$, measure each trained model's error on the validation examples, and keep the $\lambda$ with the lowest validation error. We rarely know even roughly how big $\lambda$ should be, so we space the tries by factors of ten, such as $0.01$, $0.1$, $1$ and $10$. The test examples stay aside until the very end, for one final score.
+      We train a model for each of several values of $\lambda$ and keep the value with the lowest validation error. We rarely know how big $\lambda$ should be, so we try values spaced by factors of ten, such as $0.01$, $0.1$, $1$ and $10$. We use the test examples once, for a final score.
 
       Be careful not to choose $\lambda$ by training loss. It is always lowest at $\lambda=0$, because the penalty only worsens the training fit.
 
@@ -281,7 +282,9 @@ knowledge_points:
 
       Penalties aren't the only way to regularize. Training usually starts from small weights, so stopping early, as in the overfitting lesson, also regularizes. It keeps the weights from growing far enough to copy the quirks.
 
-      Neural networks have layers of simple **units**, each passing a number to the next layer. **Dropout** sets each unit's output to $0$ with some probability during training. It scales up the outputs it keeps to preserve their average. With probability $0.5$ and output $3$:
+      We can also change how numbers pass through a neural network during training. A **unit** computes one number from its inputs, and a **layer** is a group of units that pass their outputs to the next group. **Dropout** sets each unit's output to $0$ with some probability during training.
+
+      If a unit would output $x$ and is kept with probability $p$, dropout scales the kept output to $x/p$ to preserve the average. When $x=3$ and $p=0.5$, the possible outputs are $0$ and $6$. To find the average, multiply each outcome by its probability and add the results.
       $$
       \begin{aligned}
       \text{kept output}&=3/0.5=6 &&\text{compensate for keeping half}\\
