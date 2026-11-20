@@ -233,4 +233,4 @@ summary: |
   - MAE averages absolute errors, while RMSE is $\sqrt{\text{MSE}}$. Both error scores use the units of the thing predicted, such as thousands of pounds, but RMSE emphasises large misses more.
   - Choose metrics to reflect costly mistakes before model selection, and report the chosen model's scores on an untouched test set.
 
-  **Next:** Averages, spread and confidence intervals show how much scores change from one set of examples to another, and whether a difference in scores is convincing.
+  **Next:** The deep learning course starts with the perceptron, a model that answers yes-or-no questions with a weighted sum of its inputs.
