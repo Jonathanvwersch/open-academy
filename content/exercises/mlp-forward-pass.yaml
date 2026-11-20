@@ -22,15 +22,15 @@ exercises:
         }
       - {
           id: c,
-          text: "It compares predictions with targets to measure the model's prediction error.",
+          text: "It compares the model's final predictions with the target answers.",
           correct: false,
-          feedback: "That is the role of a loss function.",
+          feedback: "A layer transforms inputs; this comparison happens after the forward pass.",
         }
       - {
           id: d,
-          text: "It updates each weight by subtracting the loss gradient after a training step.",
+          text: "It changes each weight according to how that change affects prediction error.",
           correct: false,
-          feedback: "That is a gradient-descent update.",
+          feedback: "A layer computes scores and activations; changing weights is a separate training step.",
         }
     solution: "Each neuron uses its own weights and bias to form a score from the shared inputs. Applying the activation to each score gives the layer outputs."
   - id: mlp-two-layers-basics
@@ -49,13 +49,13 @@ exercises:
         }
       - {
           id: b,
-          text: "Propagating loss derivatives backward through the network to calculate each weight's gradient.",
+          text: "Using only the last layer, since hidden layers do not produce values of their own.",
           correct: false,
-          feedback: "A later topic shows how to work these slopes out layer by layer.",
+          feedback: "Each layer produces values that become the next layer's inputs.",
         }
       - {
           id: c,
-          text: "Updating each layer's weights repeatedly until the final test loss reaches zero.",
+          text: "Changing each layer's weights repeatedly until its outputs match the target answers.",
           correct: false,
           feedback: "A forward pass calculates values and does not update weights.",
         }

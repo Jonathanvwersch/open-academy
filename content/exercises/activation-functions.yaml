@@ -22,9 +22,9 @@ exercises:
         }
       - {
           id: c,
-          text: "A nearest-neighbour rule, since each layer selects examples close to the current input.",
+          text: "A rule that uses the closest training example, since each layer checks nearby examples.",
           correct: false,
-          feedback: "Nearest-neighbour prediction compares stored examples instead of composing layer rules.",
+          feedback: "These layers combine inputs with weights; they do not search through stored examples.",
         }
       - {
           id: d,
@@ -43,9 +43,9 @@ exercises:
     options:
       - {
           id: a,
-          text: "A rate that measures how the loss changes when one adjustable model weight changes.",
+          text: "A rate that measures how a model's prediction-error score changes when one weight changes.",
           correct: false,
-          feedback: "That rate is a loss derivative for a parameter, not a transformation of a neuron's score.",
+          feedback: "That rate tracks prediction error, while an activation transforms a neuron's weighted score.",
         }
       - {
           id: b,
@@ -61,9 +61,9 @@ exercises:
         }
       - {
           id: d,
-          text: "A non-negative score that measures the difference between a prediction and its target.",
+          text: "A non-negative score for how far a prediction is from its target.",
           correct: false,
-          feedback: "That score is a loss; an activation transforms a neuron's weighted score.",
+          feedback: "That score measures prediction error; an activation transforms a neuron's weighted score.",
         }
     solution: "An activation function transforms a neuron's weighted score before it is passed to the next layer."
   - id: act-slopes-basics
@@ -76,9 +76,9 @@ exercises:
     options:
       - {
           id: a,
-          text: "The rate at which loss changes when one model weight changes.",
+          text: "The rate at which a model's prediction-error score changes when one weight changes.",
           correct: false,
-          feedback: "That is a parameter's loss derivative, not the activation's output rate.",
+          feedback: "That tracks prediction error, while an activation slope tracks its output change.",
         }
       - {
           id: b,
@@ -114,22 +114,24 @@ exercises:
     role: diagnostic
     difficulty: 2
     est_minutes: 2
-    prompt: "A network has three fully connected layers with **no** activation functions between them. What class of functions can it represent?"
+    prompt: "A fully connected layer uses every input to compute each output, then adds a bias. A network stacks three such layers with no activation functions between them. What kind of input-output rule can it represent?"
     options:
-      - {
-          id: a,
-          text: "Exactly the affine (linear + bias) functions, the same as a single layer",
-          correct: true,
-        }
+      - { id: a, text: "A weighted sum plus a bias, the same form as one layer", correct: true }
       - {
           id: b,
-          text: "Any continuous function, given enough units",
+          text: "Any input-output rule with no jumps, given enough neurons",
           correct: false,
           category: misunderstood_definition,
-          feedback: "Universal approximation needs a nonlinearity. Composed affine maps are affine.",
+          feedback: "A curve with bends needs an activation between weighted-sum layers.",
         }
-      - { id: c, text: "Polynomials of degree 3", correct: false, category: incorrect_reasoning }
-    solution: "$W_3(W_2(W_1x+b_1)+b_2)+b_3 = Wx + b$ for some $W, b$."
+      - {
+          id: c,
+          text: "A curved rule such as $y=x^3$, because the network has three layers",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "The number of layers does not set the power of $x$; each layer only changes weights and biases.",
+        }
+    solution: "With one input, the layers give $w_3(w_2(w_1x+b_1)+b_2)+b_3=wx+b$ for some weight $w$ and bias $b$. With many inputs, composing layers without an activation still gives one weighted sum plus a bias."
   - id: act-sigmoid-deriv
     dimension: math
     type: numeric
@@ -555,35 +557,35 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 1
-    prompt: "An email classifier should output how likely an email is to be spam. Near a score of zero, why would a sigmoid output help training adjust a weight feeding it, compared with a step output at a small positive score?"
+    prompt: "An email classifier should output how likely an email is to be spam. During training, a score measures how far its prediction is from the known answer. Near a neuron's input score of zero, why does a sigmoid let this score change when a feeding weight changes, compared with a step output?"
     options:
       - {
           id: a,
-          text: "Sigmoid gives values between zero and one and has a slope there, so the loss can respond to the weight through it.",
+          text: "Sigmoid gives values between zero and one and has a slope there, so changing a feeding weight can change the prediction-error score.",
           correct: true,
         }
       - {
           id: b,
-          text: "Sigmoid gives values between zero and one and has zero slope there, so the loss responds more strongly to the weight.",
+          text: "Sigmoid gives values between zero and one and has zero slope there, so a weight change affects the score more strongly.",
           correct: false,
           category: incorrect_reasoning,
-          feedback: "Near zero the sigmoid rises. A zero activation slope would block the loss response through that path.",
+          feedback: "Near zero the sigmoid rises. A zero activation slope would block score changes through that path.",
         }
       - {
           id: c,
-          text: "The step gives zero or one and has a large slope at positive scores, so it passes a stronger loss response to the weight.",
+          text: "The step gives zero or one and has a large slope at positive scores, so a weight change affects the score more strongly.",
           correct: false,
           category: recall_failure,
-          feedback: "The step is flat at positive scores. Its zero slope blocks the loss response to a weight feeding it along that path.",
+          feedback: "The step is flat at positive scores. Its zero slope blocks score changes along that path.",
         }
       - {
           id: d,
           text: "The step gives zero or one and its zero slope forces a large weight update whenever the classifier makes a mistake.",
           correct: false,
           category: incomplete_explanation,
-          feedback: "A zero slope gives no update from that path, even when the prediction is wrong.",
+          feedback: "A zero slope gives no training signal from that path, even when the prediction is wrong.",
         }
-    solution: "Sigmoid's range suits a likelihood, and near zero its curve rises, so a weight feeding it can affect the loss through that path. The step is flat at a small positive score, so its zero slope gives no weight update from that path."
+    solution: "Sigmoid's range fits an output that represents how likely the email is to be spam. Near zero its curve rises, so a feeding weight can change the prediction-error score. The step is flat at a small positive score, so its zero slope gives no training signal through that path."
   - id: actp-tanh-range
     dimension: conceptual
     type: mc

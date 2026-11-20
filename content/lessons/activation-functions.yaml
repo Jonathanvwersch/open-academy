@@ -146,7 +146,7 @@ knowledge_points:
 
       The perceptron's step bends a stack of layers, but it's flat everywhere except at its jump at $z=0$.
 
-      Training changes each weight by an amount set by how much the loss responds to it. A nudge changes an output by about the slope times the nudge, so the response through an activation is scaled by the activation's slope. Where the activation is flat, that slope is near zero, so the weight gets almost no update along that path. The step's slope is $0$ wherever it has one, so it gives no update. We want functions that bend and keep a slope training can use.
+      A prediction-error score measures how far a model's prediction is from its target, and training tries to reduce it. When a weight changes, the score changes through the activation's slope. Where the activation is flat, that slope is near zero, so the score barely changes along that path. The step's slope is $0$ wherever it has one, so that path gives no training signal. We want functions that bend and keep a slope training can use.
 
       ### Three curves
 
