@@ -17,11 +17,11 @@ exercises:
         weight: 0.5
         required: true
       - id: dropout
-        criterion: Explain that a dropout rate of $0.25$ switches off each unit's output on 25% of training steps.
+        criterion: Explain that because units are switched off at random, the model cannot rely on any one unit and spreads what it learns across units.
         weight: 0.5
         required: true
-    exemplar: "I would keep run B because $0.48$ is the lower validation loss. Weight decay shrinks weights, making predictions change more gently. Its dropout rate switches off each unit's output on 25% of training steps, so the model spreads what it learns across units instead of relying on any one. Both methods can reduce overfitting."
-    solution: "Keep run B by its lower validation loss. Weight decay shrinks weights, and its dropout rate switches off each unit's output on 25% of training steps."
+    exemplar: "I would keep run B because $0.48$ is the lower validation loss. Weight decay shrinks weights, making predictions change more gently. Dropout switches off units at random, so the model cannot rely on any one unit and spreads what it learns across units. Both methods can reduce overfitting."
+    solution: "Keep run B by its lower validation loss. Weight decay shrinks weights, while random dropout prevents the model from relying on one unit and encourages it to spread what it learns across units."
   - id: rg-penalty-basics
     dimension: conceptual
     type: mc
