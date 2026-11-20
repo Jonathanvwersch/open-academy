@@ -16,6 +16,7 @@ knowledge_points:
     title: "Multiply a matrix by a vector"
     tldr: |
       - A matrix is a grid that can hold one example in each row.
+      - Its shape gives the number of rows and columns.
       - Multiplying it by a vector takes one dot product per row.
       - The result gives one answer for every row.
     explain: |
@@ -23,7 +24,7 @@ knowledge_points:
 
       In the dot product lesson, a model priced a house from its measurements. Each house has three measurements, always in the same order: its area in tens of square metres (so 12 means 120 m²), its number of bedrooms, and its age in years. The weights are $w=(25,10,-1)$, in thousands of pounds, so each ten square metres adds £25,000, each bedroom adds £10,000 and each year of age takes away £1,000.
 
-      Now take two houses, $(12,3,20)$ and $(8,2,5)$. We write each house as a row, one under the other, and stand the weights beside them as a column. In the picture, each blue row is laid against the orange weights entry by entry and gives one green price, 310 for house 1 and 215 for house 2.
+      Now take two houses, $(12,3,20)$ and $(8,2,5)$. Each house makes a row beside the column of weights. In the picture, each blue row is paired with the orange weights entry by entry, giving green prices of 310 and 215.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 235" aria-label="House rows (12, 3, 20) and (8, 2, 5) are each dotted with weights (25, 10, minus 1) to give prices 310 and 215" font-family="ui-sans-serif, system-ui, sans-serif">
@@ -58,11 +59,15 @@ knowledge_points:
 
       A **matrix** is a rectangular grid of numbers. Each number in it is an **entry**. Entries running across make a **row**, and entries running down make a **column**. A matrix's size is its **shape**, written rows $\times$ columns, so our grid of houses is a $2\times3$ matrix. We'll call it $X$, since matrices usually get capital letters.
 
+      $X\in\mathbb{R}^{m\times n}$ says $X$ is an $m\times n$ matrix of numbers.
+
+      In NumPy, `a.sum()` adds every entry of the array `a`, the same as `np.sum(a)`.
+
       To multiply a matrix $A$ by a vector $x$, we take the dot product of each row of $A$ with $x$, and stack the answers in the same order as the rows, where $\vdots$ means and so on:
 
       $$Ax=\begin{bmatrix}(\text{row 1 of }A)\cdot x\\(\text{row 2 of }A)\cdot x\\\vdots\end{bmatrix}$$
 
-      So $Xw$ is a list of two prices, one for each house, worked out in one multiplication.
+      So $Xw$ gives two prices, one per house.
 
       ### How many answers come out
 

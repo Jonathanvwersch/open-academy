@@ -5,14 +5,12 @@ objective: |
 recap:
   - concept: matrices
     text: "A matrix times a vector dots each row with the vector. The transpose $A^\\top$ swaps rows and columns. A vector's squared length is its dot product with itself; perpendicular vectors have dot product $0$."
-  - concept: rank-span
-    text: "Rank counts a matrix's independent columns. An $m\\times k$ matrix times a $k\\times n$ matrix has rank at most $k$."
   - concept: orthogonality-projections
-    text: "Vectors are orthogonal when their dot product is $0$. A square matrix $Q$ with orthonormal columns has $Q^\\top Q=I$, so $Q^{-1}=Q^\\top$, and it keeps lengths and angles."
+    text: "Column vectors use $x^\\top y$ for dot products; $(AB)^\\top=B^\\top A^\\top$. Orthonormal columns make square $Q$ an orthogonal matrix with $Q^\\top Q=I$; diagonal matrices have zeros outside the main diagonal; products regroup as $(AB)x=A(Bx)$ and distribute as $A(x+y)=Ax+Ay$."
 where_this_fits: |
   ### What are eigenvectors and the SVD?
 
-  An eigenvector of a matrix is a direction that the matrix only stretches. An arrow can get longer, shorter, reverse direction or shrink to zero. The singular value decomposition, or SVD, works for every matrix. In two dimensions, its three moves are a turn (sometimes with a mirror flip), a stretch along the axes and another turn.
+  An eigenvector of a matrix is a direction that the matrix only stretches. A vector can get longer, shorter, reverse direction or shrink to zero. The singular value decomposition, or SVD, works for every matrix. In two dimensions, its three moves are a turn (sometimes with a mirror flip), a stretch along the axes and another turn.
 
   This is useful because a grid of numbers is hard to read, while a few stretches are easy to read. When some stretches are small, dropping them gives a close copy stored in fewer numbers. We'll measure how close it is by how much the outputs change. This helps compress matrices and makes updating trained language models cheaper.
 knowledge_points:
