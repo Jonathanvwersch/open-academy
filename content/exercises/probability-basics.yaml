@@ -1,5 +1,17 @@
 concept: probability-basics
 exercises:
+  - id: pb-independent-joint
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "Two independent sensors each try to detect an obstacle. The first detects it with probability 0.8 and the second with probability 0.6. What is the probability that both detect it? Give a decimal."
+    answer: 0.48
+    tolerance: { abs: 0.001 }
+    hints:
+      ["Knowing that one sensor detected the obstacle leaves the other sensor's chance unchanged."]
+    solution: "Independence lets us multiply the chances: $0.8\\times0.6=0.48$."
   - id: pb-events-basics
     dimension: conceptual
     type: mc

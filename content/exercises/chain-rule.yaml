@@ -112,21 +112,21 @@ exercises:
     role: diagnostic
     difficulty: 2
     est_minutes: 2
-    prompt: "Differentiate $f(x) = \\sin(x^2)$."
-    answer: "2*x*cos(x^2)"
+    prompt: "Differentiate $f(x) = e^{x^2}$. Use `exp(...)` and `*` for multiplication."
+    answer: "2*x*exp(x^2)"
     variables: { x: [-2, 2] }
     common_wrong:
       - {
-          answer: "cos(x^2)",
+          answer: "exp(x^2)",
           category: misunderstood_definition,
           feedback: "Multiply by the inner derivative, $2x$.",
         }
       - {
-          answer: "cos(2*x)",
+          answer: "exp(2*x)",
           category: misunderstood_definition,
-          feedback: "The outer derivative is evaluated at $x^2$, not at its derivative $2x$. Keep $\\cos(x^2)$ and multiply by $2x$.",
+          feedback: "Evaluate the outer derivative at the inner value $x^2$, then multiply by $2x$.",
         }
-    solution: "$\\cos(x^2)\\cdot 2x$."
+    solution: "The outer exponential keeps its value $e^{x^2}$. Multiply by the inner derivative $2x$ to get $2x e^{x^2}$."
   - id: cr-exp
     dimension: math
     type: expression

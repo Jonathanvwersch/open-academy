@@ -215,12 +215,7 @@ concepts:
     est_minutes: 30
     goal_weight: 2
     dimensions: [conceptual, math]
-    prereqs:
-      [
-        { id: probability-basics },
-        { id: gaussian-distribution, strength: soft },
-        { id: derivatives },
-      ]
+    prereqs: [{ id: probability-basics }, { id: gaussian-distribution }, { id: derivatives }]
     objectives:
       - { text: "Derive MSE as Gaussian maximum likelihood", dimension: math }
     projects: [gaussian-mle]
