@@ -555,6 +555,23 @@ exercises:
           feedback: Adding a half point each step forever still gives no finite total at full weight.,
         }
     solution: With a factor below one, each later weight is multiplied by the factor again, making the total finite for this constant-reward example.
+  - id: pr-discount-patrol-total
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: "A robot patrols forever, earning $+2$ after each action. Its discount factor is $0.8$. What is its discounted return from the start?"
+    answer: 10
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - answer: 5
+        category: math_error
+        feedback: "That sums the weights. Each reward is 2, so multiply the weight sum by 2."
+      - answer: 2.5
+        category: misapplied_technique
+        feedback: "The denominator is one minus the discount factor."
+    solution: "The endless weights sum to $1/(1-0.8)=5$. Multiplying by the reward gives $2\\times5=10$."
   - id: pr-discount-new
     dimension: math
     type: numeric

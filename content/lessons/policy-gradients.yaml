@@ -6,7 +6,11 @@ recap:
   - concept: gradient-descent
     text: "Gradient descent lowers a loss by stepping the parameters against its gradient again and again, $w_{\\text{new}}=w-\\eta\\,\\nabla L$, where $w$ holds the parameters. The learning rate $\\eta$ is a small positive number that sets the size of each step."
   - concept: policies-returns
-    text: "A policy $\\pi(a\\mid s)$ gives the chance of action $a$ in state $s$. Return $G_t$ adds rewards from $r_{t+1}$ onward, weighting later rewards by discount factor $\\gamma$."
+    text: "Policy $\\pi(a\\mid s)$ gives the chance of action $a$ in state $s$. Return $G_t$ adds discounted rewards. Independent chances multiply, as in probability basics. For $0\\leq\\gamma<1$, the weights sum to $1+\\gamma+\\gamma^2+\\dots=1/(1-\\gamma)$."
+  - concept: chain-rule
+    text: "The chain rule multiplies the slopes along a calculation. Since $\\ln x$ has slope $1/x$, $\\nabla_\\theta\\ln f(\\theta)=\\nabla_\\theta f(\\theta)/f(\\theta)$ for positive $f$."
+  - concept: maximum-likelihood
+    text: "The log of a product is the sum of the logs: $\\ln(ab)=\\ln a+\\ln b$ for positive $a,b$. This turns a sequence's probability product into a sum of log probabilities."
 where_this_fits: |
   ### What is a policy gradient method?
 
@@ -38,7 +42,7 @@ knowledge_points:
 
       $$J(\theta)=E[G_0],$$
 
-      where $E$ stands for expected value. This is the average of $G_0$ over many episodes played with $\pi_\theta$. The picture shows $J$ for every $\theta$. On the left the robot almost never goes right, so its discounted $-1$ rewards add up to nearly $-1/(1-0.9)=-10$. On the right, it rises towards $6.2$, the return of going straight right.
+      where $E$ stands for expected value. This averages $G_0$ over many episodes played with $\pi_\theta$. The picture shows $J$ for every $\theta$. On the left the robot rarely goes right or reaches the goal, so its run of $-1$ rewards is very long. Its discounted total approaches the endless sum $-1/(1-0.9)=-10$ from policies and returns. On the right, it rises towards $6.2$, the return of going straight right.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 380" aria-label="The score J of theta, the expected return, plotted for theta from minus 4 to 4. The curve rises from about minus 10 on the left towards 6.2 on the right, shown as a dashed line. At theta equals 0 the score is about minus 1.42, and an orange arrow climbs the curve to the right, because raising theta raises J">
@@ -65,11 +69,11 @@ knowledge_points:
 
       ### Climbing the score
 
-      We want $J$ as large as possible, so we turn gradient descent around and step along the gradient. This is **gradient ascent**:
+      We want $J$ as large as possible, so we turn gradient descent around and step along the gradient. This is **gradient ascent**. For our one-number parameter $\theta$, $\nabla_\theta$ means take the slope with respect to $\theta$:
 
       $$\theta_{\text{new}}=\theta+\eta\,\nabla_\theta J(\theta).$$
 
-      Here $\eta$ is the learning rate, which reinforcement-learning books often write as $\alpha$. Our $\theta$ is one number, so $\nabla_\theta J$ is just the slope of $J$.
+      Here $\eta$ is the learning rate, which reinforcement-learning books often write as $\alpha$.
 
       But $J$ depends on which episodes happen, and that depends on the world's rules. We know the corridor's rules, which lets us check our answers, but a real robot in a real building isn't told them, so it can't write $J$ as a formula and differentiate it. All it can do is play episodes. The next step shows how to get the slope from them.
 
@@ -79,7 +83,7 @@ knowledge_points:
       1. **Find the policy's probabilities.** We put $\theta=0$ into the formula, using $e^0=1$.
          $$\pi_0(\text{right}\mid s)=\frac{1}{1+1}=0.5,\qquad\pi_0(\text{left}\mid s)=0.5.$$
 
-      2. **Find how likely right, right, right is.** The policy picks each action on its own and the moves always succeed, so we multiply the three chances.
+      2. **Find how likely right, right, right is.** The policy picks each action on its own and the moves always succeed, so we multiply the three chances, using the independent-events rule from probability basics.
          $$0.5\times0.5\times0.5=0.125.$$
 
       3. **Find its return.** The first two moves give $-1$ each and the third reaches cell 4, so the rewards are $-1$, $-1$ and $+10$.
@@ -131,7 +135,7 @@ knowledge_points:
 
       ### The log-derivative trick
 
-      The natural log $\ln x$ has slope $1/x$. So if a small change in $\theta$ moves $\pi$ by some amount, $\ln\pi$ moves by about that amount divided by $\pi$. That gives the **log-derivative trick**:
+      The natural log $\ln x$ has slope $1/x$. The chain-rule lesson tells us to multiply this by the slope of $\pi$, giving $\nabla_\theta\ln\pi=(\nabla_\theta\pi)/\pi$. Rearranging gives the **log-derivative trick**:
 
       $$\nabla_\theta\pi_\theta(a)=\pi_\theta(a)\,\nabla_\theta\ln\pi_\theta(a).$$
 
@@ -220,14 +224,14 @@ knowledge_points:
 
       ### The world drops out
 
-      The episode ends at step $T$, so the last action is $a_{T-1}$. Taking $\ln$ turns products into sums. The world's terms don't depend on $\theta$:
+      The episode ends at step $T$, so the last action is $a_{T-1}$. As in maximum likelihood, $\ln(ab)=\ln a+\ln b$ turns products into sums. The world's terms don't depend on $\theta$:
       $$
       \begin{aligned}
       \ln P(\tau)&=\sum_{t=0}^{T-1}\big[\ln\pi_\theta(a_t\mid s_t)+\ln p(s_{t+1}\mid s_t,a_t)\big] &&\text{take the log}\\
       \nabla_\theta\ln P(\tau)&=\sum_{t=0}^{T-1}\nabla_\theta\ln\pi_\theta(a_t\mid s_t) &&\text{world terms have zero slope}
       \end{aligned}
       $$
-      Repeat the slot-machine argument with episodes in place of arms:
+      Repeat the slot-machine argument with episodes in place of arms. $\sum_\tau$ means add the term for every possible episode $\tau$:
       $$
       \begin{aligned}
       J&=\sum_\tau G_0\,P(\tau) &&\text{weight each episode's return}\\
@@ -348,7 +352,7 @@ knowledge_points:
 
       ### Why the average stays the same
 
-      The part we subtracted averages to zero. Use the trick backwards:
+      The part we subtracted averages to zero. $\sum_a$ means add the term for every action $a$. Use the trick backwards:
       $$
       \begin{aligned}
       E\big[b\,\nabla_\theta\ln\pi_\theta(a)\big]&=b\sum_a\pi_\theta(a)\,\nabla_\theta\ln\pi_\theta(a) &&\text{write the average as a sum}\\

@@ -91,7 +91,13 @@ concepts:
       est_minutes: 40,
       goal_weight: 3,
       dimensions: [conceptual, math],
-      prereqs: [{ id: policies-returns }, { id: gradient-descent }],
+      prereqs:
+        [
+          { id: policies-returns },
+          { id: gradient-descent },
+          { id: chain-rule },
+          { id: maximum-likelihood },
+        ],
       objectives: [{ text: "Derive the REINFORCE estimator", dimension: math }],
       status: authored,
     }

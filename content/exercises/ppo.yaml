@@ -618,7 +618,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: 'A language model is tuned with a policy gradient method. When it wrote a reply, it picked one token with probability $0.02$. After a few gradient steps the current model gives that token probability $0.05$. The token''s advantage estimate is $0.5$. What is its surrogate term $\rho_t\hat A_t$, with no clipping?'
+    prompt: 'A language model picks one word piece (a token) at a time, so each pick is an action with a probability. It is tuned with a policy gradient method. When it wrote a reply, it picked one token with probability $0.02$. After a few gradient steps the current model gives that token probability $0.05$. The token''s advantage estimate is $0.5$. What is its surrogate term $\rho_t\hat A_t$, with no clipping?'
     answer: 1.25
     tolerance: { abs: 0.001 }
     common_wrong:
@@ -833,7 +833,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "A language model is tuned with PPO from human feedback, with clip range $c=0.2$. When it wrote a reply, it picked one token with probability $0.3$. After a few passes the current model gives that token probability $0.45$. The token's advantage estimate is $1$. What is its term in the clipped objective?"
+    prompt: "A language model picks one word piece (a token) at a time, so each pick is an action with a probability. It is tuned with PPO using rewards based on people's ratings of replies, with clip range $c=0.2$. When it wrote a reply, it picked one token with probability $0.3$. After a few passes the current model gives that token probability $0.45$. The token's advantage estimate is $1$. What is its term in the clipped objective?"
     answer: 1.2
     tolerance: { abs: 0.001 }
     common_wrong:

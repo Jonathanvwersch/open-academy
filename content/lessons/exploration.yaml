@@ -173,7 +173,7 @@ knowledge_points:
 
       ### How spread out a policy is
 
-      The **entropy** of a policy in a state is a number that says how spread out its action probabilities are. It's largest when every action is equally likely, and it's $0$ when one action has probability $1$. For two actions the largest it can be is about $0.69$, the natural log of $2$. It's worked out from the probabilities with natural logs, but here we only need its values. The chart shows three policies over two actions, with their entropies rounded to two decimal places.
+      The **entropy** of a policy in a state is a number that says how spread out its action probabilities are. It's largest when every action is equally likely, and it's $0$ when one action has probability $1$. For two actions the largest it can be is about $0.69$. Here we only need its values. The chart shows three policies over two actions, with their entropies rounded to two decimal places.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" aria-label="Three policies over two actions A and B, drawn as blue probability bars. Probabilities 0.5 and 0.5 have entropy 0.69, the largest. Probabilities 0.9 and 0.1 have entropy 0.33. Probabilities 0.99 and 0.01 have entropy 0.06, close to 0">
