@@ -1355,7 +1355,7 @@ function validateNotationUsage(data: ContentSourceData, issues: ContentIssue[]) 
       }
     }
 
-    for (const { value: concept, file } of data.concepts) {
+    for (const { value: concept } of data.concepts) {
       const path = conceptPaths.get(concept.id);
       if (!path || [...introducedBy].some((id) => path.hardPath.has(id))) continue;
       const softPrerequisites = path.softPrerequisites;
