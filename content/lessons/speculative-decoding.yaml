@@ -7,6 +7,8 @@ recap:
     text: "Prefill processes all prompt tokens in one pass, while decode produces one token per pass, and each new token depends on the tokens before it."
   - concept: arithmetic-intensity
     text: "Arithmetic intensity is FLOPs per byte moved. Decoding one token has low intensity, so the GPU waits on memory, and processing several tokens in one pass reuses each weight read for more FLOPs."
+  - concept: kv-cache
+    text: "A KV cache stores the keys and values of every token the model has processed, so each pass only processes new tokens. A newly chosen token enters the cache only when it's fed back in on a later pass."
 where_this_fits: |
   ### What is speculative decoding?
 
@@ -24,19 +26,19 @@ knowledge_points:
     explain: |
       ### Waiting for the next token
 
-      In the Prefill and decode lesson, we saw that prefill processes prompt tokens together, while decode waits for each token before producing the next. Suppose a **draft** model guesses the next $k$ tokens and a larger **target** model checks them. Could checking guesses together reduce that waiting?
+      In the Prefill and decode lesson, we saw that decode waits for each token before producing the next. Suppose a **draft** model guesses the next $k$ tokens and a larger **target** model checks them together. Could that reduce the waiting?
 
-      In the Memory-bound vs compute-bound lesson, we saw that arithmetic intensity measures FLOPs per byte moved. A FLOP is one floating-point operation, and FLOPs is the plural count. At batch size one, decode does little maths with each weight it reads, so waiting for memory limits its speed.
+      In the Memory-bound vs compute-bound lesson, we saw that decode at batch size one does little maths with each weight it reads, so waiting for memory limits its speed.
 
       ### Checking a short guess
 
-      Our chat assistant serves Llama 3 8B on one H100 SXM, with 16 GB of 16-bit weights. Suppose a 0.8-billion-parameter draft has 1.6 GB of weights. They share a tokenizer and vocabulary, so tokens mean the same thing to both. The target's probabilities pick its top token, which we compare with the guess.
+      Our chat assistant serves Llama 3 8B on one H100 SXM, with 16 GB of 16-bit weights. Suppose a 0.8-billion-parameter draft has 1.6 GB of weights. They share a tokenizer and vocabulary, so tokens mean the same thing to both.
 
-      Both models use **greedy decoding** here, choosing their most probable token. The $k$ draft passes run one after the other, and then the target checks. The target stores the keys and values attention computed for earlier tokens, so it only processes new positions in the sequence.
+      Both models use **greedy decoding** here, choosing their most probable token. The $k$ draft passes run one after the other, and then the target checks. The target keeps a KV cache, which ends just before the last token of the text, because the previous pass chose that token and it hasn't been fed back in. So the check processes that token plus the $k$ guesses.
 
-      At the last token already in the text, the target predicts the first guess. At each draft position, it predicts the next token. Its last prediction is a **bonus token**, an extra output if every guess passes. These are $k+1$ predictions. The causal mask hides later tokens, so each check uses only preceding text. We keep matches until the first mismatch, then use the target's correction and discard later guesses because their prefix is wrong.
+      At the last token of the text, the target predicts the first guess. At each draft position, it predicts the next token. Its last prediction is a **bonus token**, an extra output if every guess passes. These are $k+1$ predictions. The causal mask hides later tokens, so each check uses only preceding text. We keep matches until the first mismatch, then use the target's correction and discard later guesses because their prefix is wrong. Afterwards, the cache keeps entries for the last text token and the kept guesses. The correction or bonus enters next round.
 
-      After "The capital of France is", suppose the draft guesses "Paris . It is". Words and punctuation represent tokens here.
+      Suppose the reply so far ends "The capital of France is", and the target chose "is" on its previous pass. The draft guesses "Paris . It is". Words and punctuation represent tokens here.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 230" aria-label="Four draft tokens Paris, period, It, is. Target choices Paris, period, The, is. The first two match; the third fails. The fourth is discarded even though it matches. Output is Paris, period, The.">
@@ -49,9 +51,9 @@ knowledge_points:
       </g></svg>
       ```
 
-      The third fails, so output ends with "The". The target's later "is" used the wrong prefix ending in "It", so we ignore it. No bonus appears here because a guess failed.
+      The third fails, so the output ends with the target's "The". Its later "is" followed the wrong prefix, so we ignore it, and no bonus appears.
 
-      For readers who've met top-k sampling, which keeps the $k$ most probable tokens, its $k$ is unrelated to draft length.
+      If you've met top-k sampling, its $k$ is unrelated to draft length.
 
       ### Sharing the weight read
 
@@ -89,6 +91,8 @@ knowledge_points:
         sdp-round-time,
         sdp-intensity-limit,
         sdp-tokenizer,
+        sdp-check-positions,
+        sdp-cache-after-round,
       ]
   - id: sd-expected-speed
     title: Work out the expected speed-up
