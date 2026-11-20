@@ -6,7 +6,7 @@ exercises:
     role: core
     difficulty: 3
     est_minutes: 3
-    prompt: "Two image-classifier runs use the same data split and starting weights. Run A uses weight decay $0$ and dropout $0$, with best validation loss $0.54$. Run B uses weight decay $0.1$ and dropout $0.25$, with best validation loss $0.48$. Which run would you keep? Explain how weight decay and dropout affect training."
+    prompt: "Two models that assign images to categories use the same data split and starting weights. Run A uses weight decay $0$ and dropout rate $0$, with best validation loss $0.54$. Run B uses weight decay $0.1$ and dropout rate $0.25$, which switches off each unit's output on 25% of training steps, with best validation loss $0.48$. Which run would you keep? Explain how weight decay and dropout affect training."
     rubric:
       - id: choice
         criterion: Keep run B because its best validation loss, $0.48$, is lower than $0.54$.
@@ -17,11 +17,11 @@ exercises:
         weight: 0.5
         required: true
       - id: dropout
-        criterion: Explain that dropout randomly sets unit outputs to $0$ during training.
+        criterion: Explain that a dropout rate of $0.25$ switches off each unit's output on 25% of training steps.
         weight: 0.5
         required: true
-    exemplar: "I would keep run B because $0.48$ is the lower validation loss. Weight decay shrinks weights, making predictions change more gently. Dropout randomly sets unit outputs to $0$ during training, so the network spreads what it learns across units instead of relying on any one. Both methods can reduce overfitting."
-    solution: "Keep run B by its lower validation loss. Weight decay shrinks weights, and dropout randomly sets unit outputs to $0$ during training."
+    exemplar: "I would keep run B because $0.48$ is the lower validation loss. Weight decay shrinks weights, making predictions change more gently. Its dropout rate switches off each unit's output on 25% of training steps, so the model spreads what it learns across units instead of relying on any one. Both methods can reduce overfitting."
+    solution: "Keep run B by its lower validation loss. Weight decay shrinks weights, and its dropout rate switches off each unit's output on 25% of training steps."
   - id: rg-penalty-basics
     dimension: conceptual
     type: mc
@@ -559,14 +559,14 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 1
-    prompt: During training, dropout sets each unit's output to $0$ with probability $0.5$ on every step. Why does this help the network do better on new examples?
+    prompt: During training, dropout sets each unit's output to $0$ on half of the training steps, chosen at random. Why can this help the model do better on new examples?
     options:
       - id: a
         text: It shrinks every weight by a fixed fraction on each step.
         correct: false
         feedback: That is weight decay; dropout leaves the weights alone and switches off unit outputs.
       - id: b
-        text: The network can't rely on any one unit, so it spreads what it learns across many.
+        text: The model can't rely on any one unit, so it spreads what it learns across many.
         correct: true
         feedback: Any unit may vanish on a step, so no single unit can carry a quirk of the training examples on its own.
       - id: c
@@ -574,7 +574,7 @@ exercises:
         correct: false
         feedback: Every training example is still used; dropout switches off unit outputs, not examples.
       - id: d
-        text: It stays on when the trained network makes predictions.
+        text: It stays on when the trained model makes predictions.
         correct: false
         feedback: Dropout is switched off when the trained network makes predictions; it only acts during training.
     solution: With units switched off at random, the network can't depend on any one of them, so it spreads what it learns across many units instead of letting a few copy the training examples' quirks.
@@ -609,7 +609,7 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: A robot learns to predict whether a grasp will succeed from $20$ practice grasps. With $\lambda=0$, its training error is $1\%$ but its validation error is $30\%$. What should you try?
+    prompt: A robot predicts whether each grasp will succeed. It gets 1 of every 100 training grasps wrong and 30 of every 100 validation grasps wrong when $\lambda=0$. What should you try?
     options:
       - id: a
         text: Train with several larger values of $\lambda$ and compare their validation errors.
@@ -960,10 +960,10 @@ exercises:
     knowledge_point: rg-strength
     difficulty: 1
     est_minutes: 0.5
-    prompt: "During dropout, a unit would output $x$ and is kept with probability $p$. Write the scaled output when it is kept. Use $0<p<1$."
+    prompt: "During dropout, a unit would output $x$ and stays on with chance $p$. Write the scaled output when it is kept. Use $0<p<1$."
     answer: "x/p"
     variables: { "x": [0.5, 10], "p": [0.1, 0.9] }
-    solution: "Divide a kept output by its probability of being kept so its average is preserved."
+    solution: "Divide a kept output by its chance of being kept so its average is preserved."
   - id: rg-recall-l1-say
     dimension: conceptual
     type: explain

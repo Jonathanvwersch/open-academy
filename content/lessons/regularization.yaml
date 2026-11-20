@@ -13,7 +13,7 @@ where_this_fits: |
 
   The overfitting lesson fixed overfitting by switching to a less flexible model. Regularization keeps the flexible model and holds its weights back instead, by an amount we choose.
 
-  Our running example has one weight, $\hat y=wx$, and one training example, $x=1$ with target $y=3$. Noise pushed that target too high, so in step 3 a smaller weight will do better on new examples.
+  Our running example has one weight, $\hat y=wx$, and one training example, $x=1$ with target $y=3$. That target is unusually high compared with the broader pattern, so in step 3 a smaller weight will do better on new examples.
 knowledge_points:
   - id: rg-penalty
     title: "Add a penalty for large weights"
@@ -213,7 +213,7 @@ knowledge_points:
 
       The weight stops moving where the two pulls balance. At $w=2$, the data slope is $-2$ and the penalty slope is $+2$, so the update leaves it there. That is the lowest point of the total loss from step 1.
 
-      Be careful when you set weight decay in code. Some training libraries' gradient-descent optimizers, such as PyTorch's `SGD`, take a setting $d$ and use the update $(1-\eta d)\,w$, so to get our $\lambda$ you set $d=2\lambda$.
+      Some libraries offer a weight-shrink setting $d$ that changes each update to $(1-\eta d)\,w$. This matches our $\lambda$ when $d=2\lambda$.
     worked: |
       Training often starts from a small weight, so let's run three updates on our example from $w=0$, with $\eta=0.1$ and $\lambda=0.5$. The update is $w_{\text{new}}=0.9w-0.1\times2(w-3)$.
 
@@ -282,9 +282,9 @@ knowledge_points:
 
       Penalties aren't the only way to regularize. Training usually starts from small weights, so stopping early, as in the overfitting lesson, also regularizes. It keeps the weights from growing far enough to copy the quirks.
 
-      We can also change how numbers pass through a neural network during training. A **unit** computes one number from its inputs, and a **layer** is a group of units that pass their outputs to the next group. **Dropout** sets each unit's output to $0$ with some probability during training.
+      We can also change how numbers pass through a model made of layers of units during training. A **unit** computes one number from its inputs, and a **layer** is a group of units that pass their outputs to the next group. **Dropout** sets each unit's output to $0$ on some randomly chosen training steps.
 
-      If a unit would output $x$ and is kept with probability $p$, dropout scales the kept output to $x/p$ to preserve the average. When $x=3$ and $p=0.5$, the possible outputs are $0$ and $6$. To find the average, multiply each outcome by its probability and add the results.
+      If a unit would output $x$ and stays on with chance $p$, dropout scales the kept output to $x/p$ to preserve the average. When $x=3$ and $p=0.5$, the possible outputs are $0$ and $6$, each equally likely. Their average is $3$.
       $$
       \begin{aligned}
       \text{kept output}&=3/0.5=6 &&\text{compensate for keeping half}\\
@@ -293,7 +293,7 @@ knowledge_points:
       $$
       The network can't rely on any one unit, so it spreads what it learns across many. Dropout is switched off when the trained network makes predictions.
     worked: |
-      Let's choose $\lambda$ for our example. Say the true pattern is $y=2x$ and only our training target picked up noise, so a fair validation example is $x=2$, $y=4$. There the prediction is $2w$, and its squared error is $(2w-4)^2$. Real validation examples are noisy too, but we've kept this one clean. We also try $\lambda=0$, $0.5$, $2$ and $5$ instead of factors of ten, so the numbers stay small.
+      Let's choose $\lambda$ for our example. Say the true pattern is $y=2x$ and our training target differs from that pattern, so a fair validation example is $x=2$, $y=4$. There the prediction is $2w$, and its squared error is $(2w-4)^2$. Real validation examples can differ from a pattern too, but we've kept this one clean. We also try $\lambda=0$, $0.5$, $2$ and $5$ instead of factors of ten, so the numbers stay small.
 
       1. **Find the trained weight.** Training finds the lowest point of the total loss, which step 1 found at $w=3/(1+\lambda)$. For $\lambda=2$, that is
          $$w=\frac{3}{1+2}=1.$$
@@ -314,7 +314,7 @@ knowledge_points:
       | $2$ | $1$ | $4$ | $4$ |
       | $5$ | $0.5$ | $6.25$ | $9$ |
 
-      With $\lambda=0$, the training loss is $0$ but the validation loss is $4$, because the model has copied the noise in its one training example. As $\lambda$ grows, the training loss keeps rising, but the validation loss first falls and then rises again. With $\lambda=2$, the training loss is high too, a sign of underfitting. We keep $\lambda=0.5$, the value with the lowest validation loss. It reaches exactly $0$ only because our validation example is clean.
+      With $\lambda=0$, the training loss is $0$ but the validation loss is $4$, because the model has copied the unusual target in its one training example. As $\lambda$ grows, the training loss keeps rising, but the validation loss first falls and then rises again. With $\lambda=2$, the training loss is high too, a sign of underfitting. We keep $\lambda=0.5$, the value with the lowest validation loss. It reaches exactly $0$ only because our validation example follows the pattern exactly.
     problems:
       - rg-strength-basics
       - rgp-strength-self-explain

@@ -648,11 +648,12 @@ exercises:
     est_minutes: 2
     prompt:
       A robot autoencoder uses a short latent vector and a sum of squared pixel errors. It rebuilds
-      a large tabletop accurately but often loses a tiny screw. Which explanation fits that objective?
+      a large tabletop accurately but often loses a tiny screw. Which explanation fits this training goal?
     options:
       - id: a
-        text: The many tabletop pixels can dominate total error, so limited latent capacity favours
-          their patterns.
+        text:
+          The many tabletop pixels can dominate total error, so the short code has room for fewer
+          patterns and favours the broad tabletop.
         correct: true
         feedback: A few wrong screw pixels can add little to an error summed over the entire frame.
       - id: b
@@ -670,7 +671,7 @@ exercises:
           The training target is the input image; missing screw pixels count, but may contribute
           little to the total.
     solution:
-      The objective sums errors over pixels, so a few missing screw pixels can matter less than
+      Training adds the errors over all pixels, so a few missing screw pixels can matter less than
       small improvements over a large tabletop. A short latent vector can favour those broad patterns
       while losing small details.
   - id: aep-sum-difference

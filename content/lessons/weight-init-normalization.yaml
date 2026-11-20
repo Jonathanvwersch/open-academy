@@ -308,7 +308,7 @@ knowledge_points:
          $$\mu=\frac{4+8+10+12+16}{5}=\frac{50}{5}=10$$
       2. **Subtract the mean.** This centres the outputs on $0$.
          $$-6,\ -2,\ 0,\ 2,\ 6$$
-      3. **Find the standard deviation.** We square the differences, average them and take the square root. Normalization divides by all $5$ outputs, not by one less as a sample standard deviation does.
+      3. **Find the standard deviation.** We square the differences, average them and take the square root. Normalization divides by all $5$ outputs, not by one less as a small-sample estimate does.
          $$s=\sqrt{\frac{36+4+0+4+36}{5}}=\sqrt{16}=4$$
       4. **Divide by it.** This makes the typical size $1$.
          $$\hat h=-1.5,\ -0.5,\ 0,\ 0.5,\ 1.5$$
@@ -389,7 +389,7 @@ knowledge_points:
            $$s=(b-a)/2.$$
         4. **Divide by it.** Both outputs lose their original sizes.
            $$((a-\mu)/s,(b-\mu)/s)=(-1,1).$$
-      - A trained network often runs on one example, with no batch to average over. So during training, BatchNorm keeps a running average of each neuron's mean and of its squared standard deviation across batches. Afterwards it uses those saved values, and the network behaves a little differently than it did in training.
+      - A trained network often runs on one example, with no batch to average over. During training, BatchNorm saves each neuron's mean and squared standard deviation, updating those values after every batch. Afterwards it uses the saved values, and the network behaves a little differently than it did in training.
 
       LayerNorm needs only the example itself, so it works the same in training and afterwards, with any batch size. That suits a network that often runs on one input at a time, such as a robot's controller reading its sensors.
     worked: |
