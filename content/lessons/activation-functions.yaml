@@ -137,14 +137,16 @@ knowledge_points:
   - id: act-relu-sigmoid-tanh
     title: "Three common activation functions"
     tldr: |
-      - The step is flat almost everywhere, so training can't tell which way to move a weight.
+      - A flat activation gives weights feeding it almost no update through that path.
       - So we use functions that bend and still have a slope training can follow.
       - ReLU keeps positive scores and turns negative scores into zero.
       - Sigmoid squeezes any score to between zero and one, and tanh squeezes it to between minus one and one.
     explain: |
       ### Why not use the step?
 
-      The perceptron's step is an activation function, and it does bend a stack of layers. But it's flat everywhere except at $z=0$, where it jumps. In the derivatives lesson, we saw that a nudge changes the output by about the slope times the nudge. The step's slope is $0$ wherever it has one, so nudging a score, or a weight behind it, changes nothing, and training can't tell which way to move. So we want functions that bend and still have a slope that training can use.
+      The perceptron's step bends stacked layers, but it's flat except at its jump at $z=0$. A small nudge changes the output by about the slope times the nudge.
+
+      Training changes a weight by an amount set by how much the loss responds to it. For a weight feeding an activation, the activation's slope multiplies into that response along this path. Where the activation is flat, with slope near zero, the loss barely responds and the weight gets almost no update from that path. The step's slope is zero wherever it has one, so this path gives no update. We want functions that bend and still have a slope training can use.
 
       ### Three curves
 
@@ -184,7 +186,7 @@ knowledge_points:
 
       $$\tanh(z)=\frac{e^{z}-e^{-z}}{e^{z}+e^{-z}}$$
 
-      ReLU, short for rectified linear unit, is the $\max(0,u)$ from the first step. The sigmoid is written $\sigma$, the Greek letter sigma, and $e\approx2.718$ is the number from the derivatives lesson. Because $e^{-z}$ is always positive, the bottom of the sigmoid's fraction is more than $1$, so $\sigma(z)$ stays between $0$ and $1$. Tanh is short for hyperbolic tangent. ReLU has no upper limit, while the sigmoid and tanh level off at both ends.
+      ReLU means rectified linear unit. The sigmoid is written $\sigma$, the Greek letter sigma, and $e\approx2.718$ comes from derivatives. Since $e^{-z}$ is positive, the sigmoid's denominator exceeds $1$, keeping its output between $0$ and $1$. Tanh means hyperbolic tangent. ReLU has no upper limit; sigmoid and tanh level off at both ends.
 
       Be careful not to treat the sigmoid as the step under another name. The step jumps from $0$ to $1$ at $z=0$, while the sigmoid changes smoothly, so a score of $0$ gives $0.5$ and a score of $1$ gives about $0.73$.
 

@@ -555,35 +555,35 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 1
-    prompt: "Why choose sigmoid rather than ReLU or a step rule for an output meant to express how likely an email is to be spam?"
+    prompt: "An email classifier should output how likely an email is to be spam. Near a score of zero, why would a sigmoid output help training adjust a weight feeding it, compared with a step output at a small positive score?"
     options:
       - {
           id: a,
-          text: "It can return values such as 0.2 or 0.8, while ReLU can exceed 1 and a step rule only gives yes/no",
+          text: "Sigmoid gives values between zero and one and has a slope there, so the loss can respond to the weight through it.",
           correct: true,
         }
       - {
           id: b,
-          text: "ReLU also stays between 0 and 1 because it removes negative scores",
+          text: "Sigmoid gives values between zero and one and has zero slope there, so the loss responds more strongly to the weight.",
           correct: false,
           category: incorrect_reasoning,
-          feedback: "ReLU has no upper limit, so it could output 7, which can't be a likelihood.",
+          feedback: "Near zero the sigmoid rises. A zero activation slope would block the loss response through that path.",
         }
       - {
           id: c,
-          text: "Sigmoid turns every positive score into exactly 1 and every negative score into 0",
+          text: "The step gives zero or one and has a large slope at positive scores, so it passes a stronger loss response to the weight.",
           correct: false,
           category: recall_failure,
-          feedback: "That describes the step rule. Sigmoid gives intermediate values, such as 0.5 at a score of 0.",
+          feedback: "The step is flat at positive scores. Its zero slope blocks the loss response to a weight feeding it along that path.",
         }
       - {
           id: d,
-          text: "Using sigmoid alone guarantees that 0.8 means exactly 80 percent of such emails are spam",
+          text: "The step gives zero or one and its zero slope forces a large weight update whenever the classifier makes a mistake.",
           correct: false,
           category: incomplete_explanation,
-          feedback: "Sigmoid sets the output range, not its accuracy. Matching predicted likelihoods to data still depends on the model's weights.",
+          feedback: "A zero slope gives no update from that path, even when the prediction is wrong.",
         }
-    solution: "Sigmoid maps any score into the range between 0 and 1 while keeping differences between scores. ReLU can output 7, while the step rule only gives 0 or 1. Sigmoid's range suits an output meaning how likely an email is to be spam, but does not itself guarantee that the model is accurate."
+    solution: "Sigmoid's range suits a likelihood, and near zero its curve rises, so a weight feeding it can affect the loss through that path. The step is flat at a small positive score, so its zero slope gives no weight update from that path."
   - id: actp-tanh-range
     dimension: conceptual
     type: mc

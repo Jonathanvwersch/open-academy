@@ -116,7 +116,7 @@ exercises:
     role: diagnostic
     difficulty: 2
     est_minutes: 2
-    prompt: "How many learnable parameters does `Linear(100, 32) → ReLU → Linear(32, 10)` have (weights and biases)?"
+    prompt: "`Linear(inputs, outputs)` takes the input count first and the output count second. How many learnable parameters does `Linear(100, 32) → ReLU → Linear(32, 10)` have (weights and biases)?"
     answer: 3562
     tolerance: { abs: 0.5 }
     common_wrong:
@@ -132,7 +132,7 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 2
-    prompt: "Each example is an image with 3 color channels and 32 by 32 pixels. If each image is flattened into one long list of numbers before a layer receives it, how many numbers are in the list for one image?"
+    prompt: "Each example is an image with 32 by 32 pixels. Each pixel stores three numbers, one per color channel. If each image is flattened into one long list of numbers before a layer receives it, how many numbers are in the list for one image?"
     options:
       - { id: a, text: "3072", correct: true }
       - {
@@ -181,7 +181,7 @@ exercises:
       X = np.array([[1., -1.], [2., 0.]])
       W1 = np.array([[1., 2.], [0., 1.]])   # shape (in, out)
       h = np.maximum(0, X @ W1)
-      print(h.sum())
+      print(h.sum())  # h.sum() adds all entries of h
     answer: 8
     tolerance: { abs: 0.001 }
     hints: ["Compute `X @ W1` one row at a time: row $i$ of `X` dotted with each column of `W1`."]
@@ -867,7 +867,7 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 2
-    prompt: "Why does a linear classifier on the two input features score lower than the network with a ReLU hidden layer?"
+    prompt: "Two classes of points in two input features form two interleaved crescents. Why does a linear classifier on these features score lower than a network with a ReLU hidden layer?"
     options:
       - {
           id: a,
