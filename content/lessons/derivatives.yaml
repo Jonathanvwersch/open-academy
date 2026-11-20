@@ -5,9 +5,9 @@ objective: |
 where_this_fits: |
   ### What is a derivative?
 
-  A derivative measures how fast a function's output is changing at one particular input. On a graph, it's how steep the curve is at a single point, which we call the slope there.
+  A derivative is a function's slope at one input. It measures how fast the output is changing there.
 
-  Why do we need a new idea for that? Comparing two outputs only gives the average rate of change between two inputs, the way distance divided by time gives a car's average speed over a trip. A speedometer shows something different, the speed right now, and the derivative is how we work that out. Machine learning needs the same thing. A model improves by nudging its adjustable numbers, and the derivative tells it whether a small nudge makes its error bigger or smaller, and by how much.
+  Comparing two outputs gives an average rate of change, like a car's average speed over a trip. A speedometer gives speed now; a derivative gives the slope at one input. In machine learning, it tells whether a small nudge to a model's numbers makes its error larger or smaller, and by how much.
 final: der-explain
 knowledge_points:
   - id: der-speed-at-instant
