@@ -213,21 +213,21 @@ knowledge_points:
       - mhap-output-matrix-size
       - mhap-joint-readings
   - id: mha-shapes
-    title: "Follow the shapes for a whole sentence"
+    title: "Track rows and columns through attention"
     tldr: |
-      - Matrix products compute attention for every token at once.
-      - Each head compares every token with every other token, then mixes their values.
-      - Adding heads adds no learned numbers, but each head needs its own grid of attention weights, which gets large for long inputs.
+      - Matrix products make queries, keys and values for every token at once.
+      - Split each token's entries into heads, then put each head's entries for all tokens together.
+      - Each head needs its own grid of attention weights, which gets large for long inputs.
     explain: |
       ### All tokens at once
 
-      In code, a model works out every token's output at once with matrix products, and tracking each matrix's shape is the quickest way to check such code.
+      Matrix products let the model work out every token's output at once.
 
-      Stack the $T$ embeddings as rows of $X$, with shape $T\times d$. Follow head $i$ through these products to check that the sizes fit:
+      Stack the $T$ embeddings as rows of $X$, with shape $T\times d$. When two matrices have matching inner sizes, their product has the first matrix's row count and the second matrix's column count. Follow head $i$ through the products.
 
-      1. **Make queries.** Row $t$ is $q^{(i)}_t$. Keys $K^{(i)}$ and values $V^{(i)}$ have the same shape.
+      1. **Make queries.** Each row holds one token's query. Keys $K^{(i)}$ and values $V^{(i)}$ have the same shape.
          $$Q^{(i)}=XW_Q^{(i)}:\quad(T\times d)(d\times d_k)=T\times d_k$$
-      2. **Transpose keys.** Rows become columns.
+      2. **Transpose keys.** Turn each key row into a column so each query can score all the keys.
          $$K^{(i)\top}:\quad d_k\times T$$
       3. **Score token pairs.** Row $t$ compares token $t$ with every token; scaling keeps the shape.
          $$Q^{(i)}K^{(i)\top}/\sqrt{d_k}:\quad(T\times d_k)(d_k\times T)=T\times T$$
@@ -295,8 +295,12 @@ knowledge_points:
 
       ### What more heads cost
 
-      More heads give more sets of attention weights, but each head is narrower. A head of width 1 turns each token into a single number, so its scores can compare tokens on only that one number. Each head also has its own $T\times T$ attention weights, so there are $h\times T\times T$ to compute and store, which grows quickly for long inputs.
+      More heads give narrower queries and keys. A head of width 1 compares tokens using a single number from each. Every head still needs $T\times T$ attention weights, so $h$ heads need $h\times T\times T$ weights. This grows quickly for long inputs.
     worked: |
+      First try two tokens and two heads of width one. The query rows are `[1, 2]` for token 1 and `[3, 4]` for token 2. Columns show which head each number belongs to.
+
+      In NumPy, a Python library for arrays, **reshape** fills rows in order by default. Asking for two rows still leaves `[1, 2]` together, even if our code labels that row "head 1". To give each head a row, **transpose** swaps rows and columns. Head 1 then gets `[1, 3]` and head 2 gets `[2, 4]`. Both layouts are two by two, so shape alone misses the mix-up.
+
       Let's track the shapes for "the cat sat", with $T=3$ tokens, embeddings of width $d=4$ and $h=2$ heads of width $d_k=2$, and then check them in code.
 
       1. **Stack the embeddings.** One row per token, one column per embedding entry.

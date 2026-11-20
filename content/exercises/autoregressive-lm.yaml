@@ -527,28 +527,28 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: A chatbot uses greedy decoding. Two users type exactly the same prompt. What do they get back, and why?
+    prompt: A chatbot uses greedy decoding. Two users send the same prompt to the same model with the same stopping rule. For the first choice, vocabulary IDs 3 and 7 tie for the highest probability. What happens in the two runs?
     options:
       - id: a
-        text: The same text, because each step takes the top token and no step involves chance.
+        text: Both start with ID 3 and get the same text.
         correct: true
-        feedback: The same prefix gives the same distribution, so the same top token, at every step.
+        feedback: "The tie rule picks the lower ID. Each new prefix stays the same in the two runs."
       - id: b
-        text: Different texts, because each step draws a random number to pick the token.
+        text: Each chooses randomly between IDs 3 and 7 and may get different text.
         correct: false
         category: misunderstood_definition
-        feedback: Random draws are sampling; greedy always takes the most probable token.
+        feedback: "Greedy decoding handles a tie with a fixed rule, so both runs make the same choice."
       - id: c
-        text: The same first word, then different words, because later prefixes are new.
+        text: Both start with ID 3 and get different text after that.
         correct: false
         category: incorrect_reasoning
         feedback: The later prefixes are also identical, since both runs chose the same words so far.
       - id: d
-        text: Nothing useful, because greedy decoding works only during training.
+        text: Both start with ID 7 and get the same text.
         correct: false
         category: incorrect_reasoning
-        feedback: Greedy decoding is a way to write text after training.
-    solution: Greedy decoding has no randomness, so the same prompt gives the same distribution, the same top token, and the same text every time.
+        feedback: "The two runs agree, but the lower tied ID is 3."
+    solution: "The first tie goes to ID 3, the lower ID. Both runs now have the same longer prefix and keep making the same choices until they stop."
   - id: alm-gen-code
     dimension: implementation
     type: code_read
@@ -617,6 +617,23 @@ exercises:
         category: misunderstood_definition
         feedback: Each new token needs the one before it, so each takes its own run.
     solution: It must write $12-5=7$ new tokens, and each needs a run because it depends on the token chosen before it.
+  - id: alm-gen-uniform-intervals
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: "A model samples one token for a music track. Tokens for drum sounds occupy $0.1\\le u<0.4$ and $0.7\\le u<0.9$ on the sampling line. The other intervals belong to other instruments. What is the probability that a uniform draw picks a drum sound? Give a decimal."
+    answer: 0.5
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - answer: 0.8
+        category: incorrect_reasoning
+        feedback: The gap from $0.4$ to $0.7$ belongs to other instruments.
+      - answer: 0.3
+        category: incorrect_reasoning
+        feedback: That counts only the first drum interval. A draw can land in either one.
+    solution: "A uniform draw hits each interval with probability equal to its length. The two drum intervals are disjoint, so their probabilities add to $(0.4-0.1)+(0.9-0.7)=0.5$."
   - id: alm-explain-final
     dimension: conceptual
     type: explain

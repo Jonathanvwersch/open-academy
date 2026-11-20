@@ -75,7 +75,7 @@ concepts:
         [
           { id: multi-head-attention },
           { id: positional-encoding },
-          { id: weight-init-normalization, strength: soft },
+          { id: weight-init-normalization },
           { id: mlp-forward-pass },
         ],
       objectives:
