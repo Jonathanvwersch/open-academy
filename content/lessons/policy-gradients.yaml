@@ -6,7 +6,7 @@ recap:
   - concept: gradient-descent
     text: "Gradient descent lowers a loss by stepping the parameters against its gradient again and again, $w_{\\text{new}}=w-\\eta\\,\\nabla L$, where $w$ holds the parameters. The learning rate $\\eta$ is a small positive number that sets the size of each step."
   - concept: policies-returns
-    text: "Policy $\\pi(a\\mid s)$ gives action chances. Independent chances multiply, as in probability basics. Return $G_t$ adds discounted rewards. For $0\\leq\\gamma<1$, $1+\\gamma+\\gamma^2+\\dots=1/(1-\\gamma)$, so $-1$ forever at $\\gamma=0.9$ returns $-10$."
+    text: "Policy $\\pi(a\\mid s)$ gives the chance of action $a$ in state $s$. Return $G_t$ adds discounted rewards. Independent chances multiply, as in probability basics. For $0\\leq\\gamma<1$, the weights sum to $1+\\gamma+\\gamma^2+\\dots=1/(1-\\gamma)$."
   - concept: chain-rule
     text: "The chain rule multiplies the slopes along a calculation. Since $\\ln x$ has slope $1/x$, $\\nabla_\\theta\\ln f(\\theta)=\\nabla_\\theta f(\\theta)/f(\\theta)$ for positive $f$."
   - concept: maximum-likelihood

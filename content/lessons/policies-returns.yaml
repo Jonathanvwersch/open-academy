@@ -212,9 +212,17 @@ knowledge_points:
       $$
       Both trips can occur under this policy. Judging it requires their chances too.
 
-      We use $\gamma=1$ only for finite episodes here. A robot patrolling forever for $+1$ per step has an ever-growing total at $\gamma=1$. For $0\leq\gamma<1$, the endless geometric series of weights has sum
+      We use $\gamma=1$ only for finite episodes here. A robot patrolling forever for $+1$ per step has an ever-growing total at $\gamma=1$. Its weights form a **geometric series**: each term is the one before times $\gamma$. For $0\leq\gamma<1$, call its total $S$:
 
-      $$1+\gamma+\gamma^2+\dots=\frac{1}{1-\gamma}.$$
+      $$
+      \begin{aligned}
+      S&=1+\gamma+\gamma^2+\dots &&\text{name the sum}\\
+      &=1+\gamma(1+\gamma+\dots) &&\text{factor out }\gamma\\
+      &=1+\gamma S &&\text{the same sum remains}\\
+      (1-\gamma)S&=1 &&\text{subtract }\gamma S\\
+      S&=\frac{1}{1-\gamma} &&\text{divide by }1-\gamma
+      \end{aligned}
+      $$
 
       The patrol's return at $\gamma=0.9$ is $1/(1-0.9)=10$. Earning $-1$ each step instead gives $-10$.
     worked: |

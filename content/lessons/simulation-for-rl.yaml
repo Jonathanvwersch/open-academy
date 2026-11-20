@@ -4,7 +4,7 @@ objective: |
   **Goal:** write the loop that lets an agent practise in a simulated environment, using reset and step to run episodes that end by termination or a time limit, explain why many copies run at once, and say why a policy trained in simulation can fail on a real robot.
 recap:
   - concept: mdp
-    text: "An MDP describes states $s$, actions $a$, next-state chances $p(s'\\mid s,a)$ and rewards $r_{t+1}$. From probability basics, independent chances multiply. Add the chances of distinct sequences that give the same result."
+    text: "A Markov decision process (MDP) describes states $s$, actions $a$, next-state chances $p(s'\\mid s,a)$ and rewards $r_{t+1}$. From probability basics, independent chances multiply. Add the chances of distinct sequences that give the same result."
 where_this_fits: |
   ### What is a simulation environment?
 

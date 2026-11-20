@@ -4,7 +4,7 @@ objective: |
   **Goal:** spot the risks in a reward before training: tell a sparse reward from a shaped one, add progress bonuses that can't change which behaviour is best, and find the loopholes an agent could use to earn reward without doing the task.
 recap:
   - concept: mdp
-    text: "An MDP describes states, actions, transitions and rewards $r_{t+1}$. Discount $\\gamma$ weights each later reward by another $\\gamma$. From probability basics, multiply independent events' chances to find the chance they all happen."
+    text: "A Markov decision process (MDP) describes states, actions, transitions and rewards $r_{t+1}$. Discount $\\gamma$ weights each later reward by another $\\gamma$. From probability basics, multiply independent events' chances to find the chance they all happen."
 where_this_fits: |
   ### What is reward design?
 

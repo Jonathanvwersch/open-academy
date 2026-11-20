@@ -4,7 +4,7 @@ objective: |
   **Goal:** say what the state value $V^\pi(s)$ and the action value $Q^\pi(s,a)$ measure, and apply one Bellman backup, for a given policy and for the best policy, to work out a state's value from the values of the states that come after it.
 recap:
   - concept: policies-returns
-    text: "Return adds discounted rewards. Policy $\\pi(a\\mid s)$ gives action chances; $\\pi(s)$ gives a deterministic choice. For $0\\leq\\gamma<1$, endless weights sum to $1+\\gamma+\\gamma^2+\\dots=1/(1-\\gamma)$, so $-1$ forever at $\\gamma=0.9$ returns $-10$."
+    text: "Return $G_t$ adds rewards from $r_{t+1}$ onward, discounting later rewards by $\\gamma$. Policy $\\pi(a\\mid s)$ gives action chances; $\\pi(s)$ gives a deterministic choice. For $0\\leq\\gamma<1$, the weights sum to $1+\\gamma+\\gamma^2+\\dots=1/(1-\\gamma)$."
 where_this_fits: |
   ### What is a value function?
 
