@@ -308,7 +308,7 @@ knowledge_points:
          $$\mu=\frac{4+8+10+12+16}{5}=\frac{50}{5}=10$$
       2. **Subtract the mean.** This centres the outputs on $0$.
          $$-6,\ -2,\ 0,\ 2,\ 6$$
-      3. **Find the standard deviation.** We square the differences, average them and take the square root. Normalization divides by all $5$ outputs, not by one less as a small-sample estimate does.
+      3. **Find the standard deviation.** We square the differences, average them and take the square root. Normalization divides by all $5$ outputs. A small-sample estimate would divide by one less.
          $$s=\sqrt{\frac{36+4+0+4+36}{5}}=\sqrt{16}=4$$
       4. **Divide by it.** This makes the typical size $1$.
          $$\hat h=-1.5,\ -0.5,\ 0,\ 0.5,\ 1.5$$

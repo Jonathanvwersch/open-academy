@@ -1192,11 +1192,9 @@ test('passing and retaking a quiz awards quiz XP only once and enables review', 
 });
 
 test('an all-correct quiz credits hard prerequisites and leaves soft prerequisites alone', async () => {
-  const hardCards = await Promise.all(
-    ['linear-regression', 'gradient-descent', 'probability-basics'].map(createDuePrerequisiteCard),
-  );
-  const softCard = await createDuePrerequisiteCard('what-is-ml');
-  const { result, items } = await submitQuizForConcept('logistic-regression');
+  const hardCards = await Promise.all(['dot-product'].map(createDuePrerequisiteCard));
+  const softCard = await createDuePrerequisiteCard('linear-regression');
+  const { result, items } = await submitQuizForConcept('perceptron');
 
   expect(items.length).toBeGreaterThan(0);
   expect(result.run.quiz.last.passed).toBe(true);
@@ -1231,7 +1229,7 @@ test('an all-correct quiz credits hard prerequisites and leaves soft prerequisit
 
 test('a passed quiz with a Hard dimension does not credit hard prerequisites', async () => {
   const hardCards = await Promise.all(
-    ['linear-regression', 'gradient-descent'].map(createDuePrerequisiteCard),
+    ['linear-regression', 'gradient-descent', 'probability-basics'].map(createDuePrerequisiteCard),
   );
   const { result, items } = await submitQuizForConcept('logistic-regression', 0);
 

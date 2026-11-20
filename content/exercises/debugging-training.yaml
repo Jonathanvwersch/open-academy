@@ -490,7 +490,7 @@ exercises:
       - id: b
         text: Training loss and validation loss on different examples.
         correct: false
-        feedback: That comparison checks performance on new examples, not a slope calculation.
+        feedback: That comparison checks performance on new examples. The question asks how to check the code's slope calculation.
         category: incorrect_reasoning
       - id: c
         text: Two learning rates with all weights changed at once.
