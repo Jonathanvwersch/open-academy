@@ -80,15 +80,136 @@ describe('academy CLI', () => {
     expect(noArguments.stdout).toBe(rootHelp.stdout);
     const helpLines = rootHelp.stdout.trim().split('\n');
     expect(helpLines[0]).toBe('Usage:');
-    expect(helpLines.slice(1)).toHaveLength(8);
+    expect(helpLines.slice(1)).toHaveLength(9);
     expect(helpLines.slice(1).every((line) => line.startsWith('  '))).toBe(true);
     expect(rootHelp.stdout).toContain('--pack');
     expect(rootHelp.stdout).toContain('--requires');
     expect(rootHelp.stdout).toContain('--course <id> --unit <n>');
     expect(rootHelp.stdout).toContain('sources add');
+    expect(rootHelp.stdout).toContain('academy prereqs <topic-id>');
     expect(run(['new', 'topic', '--help']).stdout).toContain('academy new topic');
+    expect(run(['prereqs', '--help']).stdout).toContain('academy prereqs <topic-id>');
     expect(run(['sources', 'add', '--help']).stdout).toContain('academy sources add');
   });
+
+  it('prints hard prerequisite lessons first and keeps soft links untaught', () => {
+    const parent = temporaryDirectory();
+    try {
+      const pack = join(parent, 'pack');
+      cpSync(join(root, 'tests/fixtures/content'), pack, { recursive: true });
+
+      const conceptFile = join(pack, 'concepts/ml.yaml');
+      const conceptData = parse(readFileSync(conceptFile, 'utf8')) as {
+        concepts: Array<{
+          id: string;
+          prereqs: Array<{ id: string; strength?: 'hard' | 'soft' }>;
+        }>;
+      };
+      const topic = conceptData.concepts.find(({ id }) => id === 'gradient-descent');
+      if (!topic) throw new Error('Missing gradient-descent fixture topic');
+      topic.prereqs.push({ id: 'matrix-products', strength: 'hard' });
+      writeFileSync(conceptFile, stringify(conceptData));
+
+      const courseFile = join(pack, 'courses/fixture-course.yaml');
+      const courseData = parse(readFileSync(courseFile, 'utf8')) as {
+        units: Array<{ concepts: string[] }>;
+      };
+      const optimizationUnit = courseData.units.find(({ concepts }) =>
+        concepts.includes('gradient-descent'),
+      );
+      if (!optimizationUnit) throw new Error('Missing optimization fixture unit');
+      const matrixProductsIndex = optimizationUnit.concepts.indexOf('matrix-products');
+      if (matrixProductsIndex < 0) throw new Error('Missing matrix-products fixture topic');
+      optimizationUnit.concepts.splice(matrixProductsIndex, 1);
+      const gradientDescentIndex = optimizationUnit.concepts.indexOf('gradient-descent');
+      optimizationUnit.concepts.splice(gradientDescentIndex, 0, 'matrix-products');
+      writeFileSync(courseFile, stringify(courseData));
+
+      const supervisedLessonFile = join(pack, 'lessons/supervised-learning.yaml');
+      const supervisedLesson = parse(readFileSync(supervisedLessonFile, 'utf8')) as {
+        knowledge_points: Array<{ id: string; explain: string }>;
+      };
+      const supervisedStep = supervisedLesson.knowledge_points.find(
+        ({ id }) => id === 'sl-inputs-targets',
+      );
+      if (!supervisedStep) throw new Error('Missing supervised-learning fixture step');
+      supervisedStep.explain +=
+        '\n\nA known-answer example pairs an input with its correct target.';
+      writeFileSync(supervisedLessonFile, stringify(supervisedLesson));
+
+      const notationFile = join(pack, 'notation.yaml');
+      const notation = parse(readFileSync(notationFile, 'utf8')) as {
+        terms: Array<{
+          id: string;
+          label: string;
+          match: string[];
+          introduced_by: string[];
+        }>;
+      };
+      notation.terms.push(
+        {
+          id: 'vector-coordinate-list',
+          label: 'ordered coordinate list',
+          match: ['A vector is an ordered list of coordinates'],
+          introduced_by: ['vectors'],
+        },
+        {
+          id: 'known-answer-examples',
+          label: 'known-answer examples',
+          match: ['A known-answer example pairs an input with its correct target'],
+          introduced_by: ['supervised-learning'],
+        },
+      );
+      writeFileSync(notationFile, stringify(notation));
+
+      const result = runFromPack(['prereqs', 'gradient-descent'], pack);
+      expect(result.status, result.stderr).toBe(0);
+      expect(result.stdout).toContain(
+        '# What a learner starting Gradient descent (gradient-descent) has been taught',
+      );
+      const requiredSection = result.stdout.slice(
+        result.stdout.indexOf('## Required topics'),
+        result.stdout.indexOf('## Notation and ideas already taught'),
+      );
+      const prerequisiteOrder = [
+        '### Vectors (vectors)',
+        '### Derivatives (derivatives)',
+        '### Linear algebra for ML (linear-algebra)',
+        '### Linear models (linear-models)',
+        '### Gradients (gradients)',
+        '### Loss functions (loss-functions)',
+        '### Matrix products (matrix-products)',
+      ];
+      expect(prerequisiteOrder.every((title) => requiredSection.includes(title))).toBe(true);
+      expect(prerequisiteOrder.map((title) => requiredSection.indexOf(title))).toEqual(
+        [...prerequisiteOrder.map((title) => requiredSection.indexOf(title))].sort(
+          (left, right) => left - right,
+        ),
+      );
+      expect(requiredSection).toContain(
+        '- **Vector magnitude**: A vector is an ordered list of coordinates, and its magnitude is its length.',
+      );
+      expect(requiredSection).toContain('A graph node reserved for a later lesson.');
+      expect(requiredSection).toContain('(no lesson yet)');
+      expect(requiredSection).not.toContain('Supervised learning');
+      expect(result.stdout).toContain('- ordered coordinate list (introduced by vectors)');
+
+      const softSection = result.stdout.slice(
+        result.stdout.indexOf('## Soft links'),
+        result.stdout.indexOf('## Not yet taught at this point'),
+      );
+      expect(softSection).toContain('- Supervised learning (supervised-learning)');
+      expect(result.stdout).toContain(
+        '- known-answer examples (introduced by supervised-learning)',
+      );
+
+      const unknown = runFromPack(['prereqs', 'unknown-topic'], pack);
+      expect(unknown.status).toBe(1);
+      expect(unknown.stderr).toContain('unknown-topic');
+    } finally {
+      rmSync(parent, { recursive: true, force: true });
+    }
+  }, 30_000);
 
   it('prints help and exits unsuccessfully for unknown commands and subcommands', () => {
     for (const args of [
@@ -183,6 +304,12 @@ describe('academy CLI', () => {
       for (const file of transformedFiles) {
         expect(readFileSync(join(pack, file), 'utf8')).not.toMatch(/content\/|docs\/|pnpm |apps\//);
       }
+      const packWriteLesson = readFileSync(
+        join(pack, '.agents/skills/write-lesson/SKILL.md'),
+        'utf8',
+      );
+      expect(packWriteLesson).toContain('academy prereqs <concept-id>');
+      expect(packWriteLesson).not.toContain('pnpm academy prereqs');
       const yamlTemplateCopies = [
         ['content/lessons/gradient-descent.yaml', templateFiles[3]],
         ['content/exercises/gradient-descent.yaml', templateFiles[4]],

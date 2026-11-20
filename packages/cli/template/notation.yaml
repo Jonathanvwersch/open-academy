@@ -1,4 +1,6 @@
-# Symbols a lesson may only use once a topic has taught them. When a topic teaches one, add its id to introduced_by. A term with an empty introduced_by can't be used yet.
+# Lists symbols, terms and ideas (rules, formulas, named methods, code calls) a lesson must teach before use.
+# Example idea: { id: chain-rule, label: "the chain rule", match: ['chain rule'], introduced_by: [chain-rule] }
+# When a topic teaches one, add its id to introduced_by. A term with an empty introduced_by can't be used yet.
 avoid: []
 terms:
   - id: real-space

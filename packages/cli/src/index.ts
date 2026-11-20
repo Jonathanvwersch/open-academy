@@ -32,9 +32,10 @@ const options = {
 } as const;
 
 const helpText: Record<string, string> = {
-  root: 'academy init <dir> --title <title> | check [dir] | dev [dir] | new <topic|lesson|course> ... | sources <add|list> ...',
+  root: 'academy init <dir> --title <title> | check [dir] | prereqs <topic-id> | dev [dir] | new <topic|lesson|course> ... | sources <add|list> ...',
   init: 'academy init <dir> --title <subject title>',
   check: 'academy check [dir] [--pack <dir>]',
+  prereqs: 'academy prereqs <topic-id> [--pack <dir>]',
   dev: 'academy dev [dir] [--pack <dir>]',
   'new topic':
     'academy new topic <id> --title <title> [--domain <id>] [--requires a,b] [--course <id> --unit <n>] [--pack <dir>]',
@@ -70,6 +71,7 @@ export function packSkillText(text: string): string {
       'Every lesson in `content/lessons/` has been rewritten with this skill. `content/lessons/gradient-descent.yaml` is the reference lesson.',
       '`.agents/skills/write-lesson/reference/lesson.yaml` is the reference lesson.',
     )
+    .replaceAll('pnpm academy prereqs', 'academy prereqs')
     .replaceAll('pnpm content:check', 'academy check')
     .replaceAll('pnpm dev', 'academy dev')
     .replaceAll(
@@ -353,6 +355,198 @@ function requirePack(directory: string): void {
 async function loadPack(directory: string) {
   requirePack(directory);
   return loadContent(directory);
+}
+
+function curriculumOrder(content: Awaited<ReturnType<typeof loadContent>>): Map<string, number> {
+  const order = new Map<string, number>();
+  let position = 0;
+  for (const courseId of content.curriculum?.courses ?? content.courses.map(({ id }) => id)) {
+    const course = content.coursesById.get(courseId);
+    for (const unit of course?.units ?? []) {
+      for (const conceptId of unit.concepts) {
+        if (!order.has(conceptId)) order.set(conceptId, position++);
+      }
+    }
+  }
+  for (const concept of content.concepts) {
+    if (!order.has(concept.id)) order.set(concept.id, position++);
+  }
+  return order;
+}
+
+function hardPrerequisiteClosure(
+  content: Awaited<ReturnType<typeof loadContent>>,
+  topicId: string,
+): Set<string> {
+  const required = new Set<string>();
+  const visit = (conceptId: string) => {
+    for (const prerequisite of content.conceptsById.get(conceptId)?.prereqs ?? []) {
+      if (prerequisite.strength !== 'hard' || required.has(prerequisite.id)) continue;
+      required.add(prerequisite.id);
+      visit(prerequisite.id);
+    }
+  };
+  visit(topicId);
+  required.delete(topicId);
+  return required;
+}
+
+function orderedHardPrerequisites(
+  content: Awaited<ReturnType<typeof loadContent>>,
+  required: Set<string>,
+  order: Map<string, number>,
+): string[] {
+  const compare = (left: string, right: string) =>
+    (order.get(left) ?? Number.MAX_SAFE_INTEGER) - (order.get(right) ?? Number.MAX_SAFE_INTEGER) ||
+    left.localeCompare(right);
+  const remainingPrerequisites = new Map<string, number>();
+  const dependents = new Map<string, string[]>();
+  for (const conceptId of required) {
+    const prerequisites = new Set(
+      (content.conceptsById.get(conceptId)?.prereqs ?? [])
+        .filter(({ strength }) => strength === 'hard')
+        .map(({ id }) => id)
+        .filter((id) => required.has(id)),
+    );
+    remainingPrerequisites.set(conceptId, prerequisites.size);
+    for (const prerequisiteId of prerequisites) {
+      const children = dependents.get(prerequisiteId) ?? [];
+      children.push(conceptId);
+      dependents.set(prerequisiteId, children);
+    }
+  }
+
+  const ready = [...required].filter((id) => remainingPrerequisites.get(id) === 0).sort(compare);
+  const ordered: string[] = [];
+  while (ready.length > 0) {
+    const conceptId = ready.shift();
+    if (!conceptId) continue;
+    ordered.push(conceptId);
+    for (const dependent of dependents.get(conceptId) ?? []) {
+      const remaining = (remainingPrerequisites.get(dependent) ?? 0) - 1;
+      remainingPrerequisites.set(dependent, remaining);
+      if (remaining === 0) {
+        ready.push(dependent);
+        ready.sort(compare);
+      }
+    }
+  }
+  if (ordered.length !== required.size) {
+    fail('Cannot order hard prerequisites because they contain a cycle.');
+  }
+  return ordered;
+}
+
+function firstExplainParagraph(explain: string): string {
+  const paragraphs = explain
+    .split(/\n\s*\n/)
+    .map((paragraph) =>
+      paragraph
+        .split(/\r?\n/)
+        .filter((line) => !/^\s{0,3}#{1,6}\s/.test(line))
+        .join(' ')
+        .replace(/\s+/g, ' ')
+        .trim(),
+    )
+    .filter((paragraph) => paragraph && !/^(?:```|~~~)/.test(paragraph));
+  return paragraphs[0] ?? '';
+}
+
+function stepSummary(step: { tldr?: string; explain: string }): string {
+  const bullets = step.tldr
+    ?.split(/\r?\n/)
+    .map((line) => line.replace(/^\s*[-*+]\s*/, '').trim())
+    .filter(Boolean);
+  return bullets?.length ? bullets.join(' ') : firstExplainParagraph(step.explain);
+}
+
+function lessonSummaryLines(lesson: Awaited<ReturnType<typeof loadContent>>['lessons'][number]) {
+  if (lesson.knowledge_points?.length) {
+    return lesson.knowledge_points.map((step) => `- **${step.title}**: ${stepSummary(step)}`);
+  }
+  return lesson.blocks.flatMap((block) => {
+    if (!('md' in block) || !block.md) return [];
+    const title = block.md.match(/^\s{0,3}#{1,6}\s+(.+)$/m)?.[1]?.trim() ?? block.kind;
+    const summary = firstExplainParagraph(block.md);
+    return summary ? [`- **${title}**: ${summary}`] : [];
+  });
+}
+
+type NotationTerm = { label: string; introduced_by: string[] };
+
+function notationTerms(directory: string): NotationTerm[] {
+  const file = join(directory, 'notation.yaml');
+  if (!existsSync(file)) return [];
+  const parsed = parse(readFileSync(file, 'utf8')) as { terms?: NotationTerm[] } | undefined;
+  return parsed?.terms ?? [];
+}
+
+async function printPrerequisites(topicId: string, directory: string) {
+  requirePack(directory);
+  const { content } = await loadContentReport(directory);
+  const topic = content.conceptsById.get(topicId);
+  if (!topic) fail(`Unknown topic "${topicId}".`);
+
+  const required = hardPrerequisiteClosure(content, topicId);
+  const order = curriculumOrder(content);
+  const requiredIds = orderedHardPrerequisites(content, required, order);
+  const compare = (left: string, right: string) =>
+    (order.get(left) ?? Number.MAX_SAFE_INTEGER) - (order.get(right) ?? Number.MAX_SAFE_INTEGER) ||
+    left.localeCompare(right);
+  const requiredTopics = requiredIds.map((id) => {
+    const concept = content.conceptsById.get(id);
+    if (!concept) return '';
+    const lines = [`### ${concept.title} (${id})`, concept.description];
+    const lesson = content.lessonsByConcept.get(id);
+    if (!lesson) {
+      lines.push('(no lesson yet)');
+    } else {
+      lines.push(...lessonSummaryLines(lesson));
+    }
+    return lines.join('\n');
+  });
+  const terms = notationTerms(directory);
+  const taughtTerms = terms.flatMap((term) => {
+    const introducers = term.introduced_by.filter((id) => required.has(id));
+    return introducers.length ? [`- ${term.label} (introduced by ${introducers.join(', ')})`] : [];
+  });
+  const softLinkIds = new Set(
+    [topicId, ...requiredIds].flatMap((id) =>
+      (content.conceptsById.get(id)?.prereqs ?? [])
+        .filter(
+          ({ strength, id: prerequisiteId }) =>
+            strength === 'soft' && !required.has(prerequisiteId),
+        )
+        .map(({ id }) => id),
+    ),
+  );
+  const softLinks = [...softLinkIds].sort(compare).flatMap((id) => {
+    const concept = content.conceptsById.get(id);
+    return concept ? [`- ${concept.title} (${id})`] : [];
+  });
+  const notYetTaught = terms.flatMap((term) => {
+    if (term.introduced_by.some((id) => required.has(id) || id === topicId)) return [];
+    const introducers = term.introduced_by.filter((id) => id !== topicId);
+    return [
+      `- ${term.label} (introduced by ${introducers.length ? introducers.join(', ') : 'no topic yet'})`,
+    ];
+  });
+
+  console.log(
+    [
+      `# What a learner starting ${topic.title} (${topicId}) has been taught`,
+      [
+        '## Required topics (hard prerequisites, direct or through a chain), prerequisites first',
+        ...requiredTopics,
+      ].join('\n\n'),
+      ['## Notation and ideas already taught', ...taughtTerms].join('\n'),
+      [
+        '## Soft links (helpful background, NOT guaranteed; anything only taught here counts as untaught)',
+        ...softLinks,
+      ].join('\n'),
+      ['## Not yet taught at this point', ...notYetTaught].join('\n'),
+    ].join('\n\n'),
+  );
 }
 
 async function check(directory: string): Promise<number> {
@@ -793,6 +987,17 @@ async function main() {
   const args = process.argv.slice(2);
   if (args.length === 0 || args[0] === '--help' || args[0] === '-h') return showHelp();
   const command = args.shift();
+  if (command === 'prereqs') {
+    const parsed = parseOptions(args);
+    if (parsed.values.help) return showHelp(command);
+    const [topicId] = parsed.positionals;
+    if (!topicId) {
+      showHelp(command);
+      process.exitCode = 1;
+      return;
+    }
+    return printPrerequisites(topicId, packPath([], parsed.values.pack));
+  }
   if (command === 'new' || command === 'sources') {
     const subcommand = args.shift();
     const validSubcommands = command === 'new' ? ['topic', 'lesson', 'course'] : ['add', 'list'];

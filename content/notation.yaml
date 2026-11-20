@@ -1,7 +1,6 @@
-# Symbols and terms that must be taught before a lesson or exercise uses them.
-# A concept may use a term only if it is one of `introduced_by`, or one of them is a
-# hard prerequisite ancestor. `match` entries are JavaScript regexes (case-insensitive)
-# applied to lesson Markdown and to all exercise text.
+# Lists symbols, terms and ideas (rules, formulas, named methods, code calls) to teach before use.
+# Example idea: { id: chain-rule, label: "the chain rule", match: ['chain rule'], introduced_by: [chain-rule] }
+# `match` entries are case-insensitive JavaScript regexes applied to lessons and all exercise text.
 avoid:
   - pattern: '\b[Ll][Rr]\b'
     use: 'write "learning rate" or $\eta$'

@@ -29,7 +29,7 @@ For each topic, write one line listing every idea, term and symbol its lesson wi
 
 Then go the other way. For each `requires` entry, name what the lesson actually uses from it. If nothing, remove it: every hard link keeps the topic locked until that topic is done.
 
-New symbols and terms go in `notation.yaml`, with `introduced_by` set to the topic that teaches them, so `academy check` catches any lesson that uses one too early. A new pack starts with common maths notation (Σ, ℝⁿ, ∂, limits and so on) whose `introduced_by` is empty. Fill it in when a topic teaches one.
+New symbols, terms and reusable ideas such as rules, formulas, named methods and code calls go in `notation.yaml`, with `introduced_by` set to the topic that teaches them. `academy check` then catches lessons that use them too early. A new pack starts with common maths notation (Σ, ℝⁿ, ∂, limits and so on) whose `introduced_by` is empty. Fill it in when a topic teaches one.
 
 ## 4. Group into units
 - 3-8 topics per unit, in an order where every prerequisite comes first.
@@ -45,3 +45,11 @@ Then run `academy check` and fix every issue. Read its warnings too. They flag a
 
 ## 6. Show the plan
 Before writing lessons, show the learner the units and topics in a short list and ask if anything is missing or already known.
+
+## 7. Prerequisite check
+
+After each topic's lesson and exercise file are written, run this check in a new subagent or separate agent session that has seen neither the plan nor any earlier round. Never use the app's own API keys, such as `OPENAI_API_KEY` or the learner's tutor key, to run a reviewer. If you have no way to start a separate agent, stop and tell whoever gave you the task instead of reviewing the lesson yourself. Give the reviewer the output of `academy prereqs <concept-id>`, the full lesson text and every exercise in the lesson's exercise file, including all roles and recall questions. Use this prompt verbatim:
+
+> Below is everything a learner has been taught before this topic, then the lesson and all of its questions. Go through each step, then each question. List every word, symbol, rule, formula, code call or fact the learner needs that is neither in the "taught" list nor explained earlier in this lesson. School maths (arithmetic, basic algebra, functions and graphs, powers, fractions) and basic Python count as known. Anything taught only under "Soft links" counts as not taught. For each item, quote where it is used, say whether it blocks the learner or only slows them, and say where it is taught if you know (another topic, a soft link only, or nowhere). Don't list anything the lesson teaches before using it. Don't suggest rewrites and don't praise.
+
+Fix each item by teaching it in the lesson, adding a hard prerequisite with its recap line, or rewording the question. If an item is an idea a later lesson could also use without teaching it, such as a rule, formula, code call or named method, add a term for it to `notation.yaml` with this concept in `introduced_by`. This lets `academy check` catch later lessons that use it too early.
