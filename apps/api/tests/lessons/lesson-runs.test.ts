@@ -1193,9 +1193,9 @@ test('passing and retaking a quiz awards quiz XP only once and enables review', 
 
 test('an all-correct quiz credits hard prerequisites and leaves soft prerequisites alone', async () => {
   const hardCards = await Promise.all(
-    ['linear-regression', 'gradient-descent'].map(createDuePrerequisiteCard),
+    ['linear-regression', 'gradient-descent', 'probability-basics'].map(createDuePrerequisiteCard),
   );
-  const softCard = await createDuePrerequisiteCard('probability-basics');
+  const softCard = await createDuePrerequisiteCard('what-is-ml');
   const { result, items } = await submitQuizForConcept('logistic-regression');
 
   expect(items.length).toBeGreaterThan(0);

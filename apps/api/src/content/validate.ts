@@ -1248,6 +1248,64 @@ function validateNotationUsage(data: ContentSourceData, issues: ContentIssue[]) 
   if (!notation) return;
   const concepts = new Map(data.concepts.map(({ value, file }) => [value.id, { value, file }]));
   const lessons = new Map(data.lessons.map(({ value, file }) => [value.concept, { value, file }]));
+  const lessonTexts = new Map(
+    data.lessons.map(({ value }) => [
+      value.concept,
+      [
+        ...value.blocks.map((block) => ('md' in block ? (block.md ?? '') : '')),
+        ...(value.knowledge_points ?? []).flatMap((point) => [
+          point.title,
+          point.explain,
+          point.worked,
+        ]),
+      ].join('\n'),
+    ]),
+  );
+  const exercisesByConcept = new Map<string, typeof data.exercises>();
+  for (const exercise of data.exercises) {
+    const owned = exercisesByConcept.get(exercise.concept) ?? [];
+    owned.push(exercise);
+    exercisesByConcept.set(exercise.concept, owned);
+  }
+  const searchableText = new Map(
+    data.concepts.map(({ value: concept, file }) => {
+      const lesson = lessons.get(concept.id);
+      const entries: Array<{ file: string; id: string; text: string }> = [];
+      for (const block of lesson?.value.blocks ?? []) {
+        if ('md' in block && block.md) {
+          entries.push({ file: lesson?.file ?? file, id: concept.id, text: block.md });
+        }
+      }
+      for (const point of lesson?.value.knowledge_points ?? []) {
+        for (const text of [point.title, point.explain, point.worked]) {
+          entries.push({ file: lesson?.file ?? file, id: point.id, text });
+        }
+      }
+      for (const exercise of exercisesByConcept.get(concept.id) ?? []) {
+        for (const text of stringValues(exercise.value)) {
+          entries.push({
+            file: exercise.file,
+            id: exercise.value.id,
+            text: text.replace(/\{\{=.*?\}\}/g, ''),
+          });
+        }
+      }
+      return [concept.id, entries] as const;
+    }),
+  );
+  const conceptPaths = new Map(
+    data.concepts.map(({ value: concept }) => {
+      const hardPath = new Set([concept.id, ...hardAncestors(concept.id, concepts)]);
+      const softPrerequisites = new Set(
+        [...hardPath].flatMap((id) =>
+          (concepts.get(id)?.value.prereqs ?? [])
+            .filter(({ strength }) => strength === 'soft')
+            .map(({ id: prerequisiteId }) => prerequisiteId),
+        ),
+      );
+      return [concept.id, { hardPath, softPrerequisites }] as const;
+    }),
+  );
   const seenTerms = new Set<string>();
 
   for (const term of notation.value.terms) {
@@ -1255,46 +1313,6 @@ function validateNotationUsage(data: ContentSourceData, issues: ContentIssue[]) 
       addIssue(issues, notation.file, term.id, 'duplicate notation term id');
     }
     seenTerms.add(term.id);
-
-    const introducedBy = new Set(term.introduced_by);
-    for (const conceptId of introducedBy) {
-      const concept = concepts.get(conceptId);
-      if (!concept) {
-        addIssue(
-          issues,
-          notation.file,
-          term.id,
-          `introducer references unknown concept "${conceptId}"`,
-        );
-        continue;
-      }
-      const lesson = lessons.get(conceptId);
-      if (concept.value.status === 'authored' && lesson) {
-        const lessonText = [
-          ...lesson.value.blocks.map((block) => ('md' in block ? (block.md ?? '') : '')),
-          ...(lesson.value.knowledge_points ?? []).flatMap((point) => [
-            point.title,
-            point.explain,
-            point.worked,
-          ]),
-        ].join('\n');
-        const teachesTerm = term.match.some((source) => {
-          try {
-            return new RegExp(source, 'i').test(lessonText);
-          } catch {
-            return false;
-          }
-        });
-        if (!teachesTerm) {
-          addIssue(
-            issues,
-            lesson.file,
-            conceptId,
-            `introducing lesson does not teach ${term.label}`,
-          );
-        }
-      }
-    }
 
     const patterns: Array<{ source: string; regex: RegExp }> = [];
     for (const source of term.match) {
@@ -1310,49 +1328,50 @@ function validateNotationUsage(data: ContentSourceData, issues: ContentIssue[]) 
       }
     }
 
-    for (const { value: concept, file } of data.concepts) {
-      const ancestors = hardAncestors(concept.id, concepts);
-      if (introducedBy.has(concept.id) || [...introducedBy].some((id) => ancestors.has(id))) {
+    const introducedBy = new Set(term.introduced_by);
+    for (const conceptId of introducedBy) {
+      const concept = concepts.get(conceptId);
+      if (!concept) {
+        addIssue(
+          issues,
+          notation.file,
+          term.id,
+          `introducer references unknown concept "${conceptId}"`,
+        );
         continue;
       }
-      const hardPath = new Set([concept.id, ...ancestors]);
-      const softPrerequisites = new Set(
-        [...hardPath].flatMap((id) =>
-          (concepts.get(id)?.value.prereqs ?? [])
-            .filter(({ strength }) => strength === 'soft')
-            .map(({ id: prerequisiteId }) => prerequisiteId),
-        ),
-      );
+      const lesson = lessons.get(conceptId);
+      if (concept.value.status === 'authored' && lesson) {
+        const lessonText = lessonTexts.get(conceptId) ?? '';
+        const teachesTerm = patterns.some(({ regex }) => regex.test(lessonText));
+        if (!teachesTerm) {
+          addIssue(
+            issues,
+            lesson.file,
+            conceptId,
+            `introducing lesson does not teach ${term.label}`,
+          );
+        }
+      }
+    }
+
+    for (const { value: concept, file } of data.concepts) {
+      const path = conceptPaths.get(concept.id);
+      if (!path || [...introducedBy].some((id) => path.hardPath.has(id))) continue;
+      const softPrerequisites = path.softPrerequisites;
       const softIntroducer = term.introduced_by.find((id) => softPrerequisites.has(id));
-      const ownedText: Array<{ file: string; id: string; text: string }> = [];
-      const lesson = lessons.get(concept.id);
-      for (const block of lesson?.value.blocks ?? []) {
-        if ('md' in block && block.md) {
-          ownedText.push({ file: lesson?.file ?? file, id: concept.id, text: block.md });
-        }
-      }
-      for (const point of lesson?.value.knowledge_points ?? []) {
-        for (const text of [point.title, point.explain, point.worked]) {
-          ownedText.push({ file: lesson?.file ?? file, id: point.id, text });
-        }
-      }
-      for (const exercise of data.exercises) {
-        if (exercise.concept === concept.id) {
-          for (const text of stringValues(exercise.value)) {
-            ownedText.push({
-              file: exercise.file,
-              id: exercise.value.id,
-              text: text.replace(/\{\{=.*?\}\}/g, ''),
-            });
+      const ownedText = searchableText.get(concept.id) ?? [];
+      let match: ((typeof ownedText)[number] & { found: RegExpExecArray }) | undefined;
+      for (const entry of ownedText) {
+        for (const { regex } of patterns) {
+          const found = regex.exec(entry.text);
+          if (found?.index !== undefined) {
+            match = { ...entry, found };
+            break;
           }
         }
+        if (match) break;
       }
-      const match = ownedText.flatMap((entry) =>
-        patterns.flatMap(({ regex }) => {
-          const found = regex.exec(entry.text);
-          return found?.index === undefined ? [] : [{ ...entry, found }];
-        }),
-      )[0];
       if (match?.found.index !== undefined) {
         const snippet = snippetAround(match.text, match.found.index, match.found[0].length);
         const message =
