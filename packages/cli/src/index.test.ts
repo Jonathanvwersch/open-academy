@@ -355,6 +355,69 @@ describe('academy CLI', () => {
     }
   }, 30_000);
 
+  it('prints prerequisite guidance for a draft with untaught notation', () => {
+    const parent = temporaryDirectory();
+    try {
+      const pack = join(parent, 'pack');
+      cpSync(join(root, 'tests/fixtures/content'), pack, { recursive: true });
+      const notationFile = join(pack, 'notation.yaml');
+      const notation = parse(readFileSync(notationFile, 'utf8')) as {
+        terms: Array<{ id: string; label: string; match: string[]; introduced_by: string[] }>;
+      };
+      notation.terms.push({
+        id: 'draft-only-term',
+        label: 'draft-only term',
+        match: ['draft-only-marker'],
+        introduced_by: ['vectors'],
+      });
+      writeFileSync(notationFile, stringify(notation));
+      const lessonFile = join(pack, 'lessons/derivatives.yaml');
+      const lesson = parse(readFileSync(lessonFile, 'utf8')) as {
+        knowledge_points: Array<{ explain: string }>;
+      };
+      const firstStep = lesson.knowledge_points[0];
+      if (!firstStep) throw new Error('Missing derivatives fixture step');
+      firstStep.explain += '\n\nThis draft uses draft-only-marker.';
+      writeFileSync(lessonFile, stringify(lesson));
+
+      expect(run(['check', pack]).status).not.toBe(0);
+      const result = run(['prereqs', 'derivatives', '--pack', pack]);
+      expect(result.status).toBe(0);
+      expect(result.stdout).toContain('derivatives');
+      expect(result.stderr).toMatch(
+        /Note: content has \d+ check errors \(run academy check\)\. Showing prerequisites anyway\./,
+      );
+    } finally {
+      rmSync(parent, { recursive: true, force: true });
+    }
+  });
+
+  it('skips missing prerequisite ids in prerequisite guidance', () => {
+    const parent = temporaryDirectory();
+    try {
+      const pack = join(parent, 'pack');
+      cpSync(join(root, 'tests/fixtures/content'), pack, { recursive: true });
+      const conceptFile = join(pack, 'concepts/math.yaml');
+      const concepts = parse(readFileSync(conceptFile, 'utf8')) as {
+        concepts: Array<{
+          id: string;
+          prereqs: Array<{ id: string; strength?: 'hard' | 'soft' }>;
+        }>;
+      };
+      const topic = concepts.concepts.find(({ id }) => id === 'derivatives');
+      if (!topic) throw new Error('Missing derivatives fixture topic');
+      topic.prereqs.push({ id: 'missing-prerequisite', strength: 'hard' });
+      writeFileSync(conceptFile, stringify(concepts));
+
+      const result = run(['prereqs', 'derivatives', '--pack', pack]);
+      expect(result.status).toBe(0);
+      expect(result.stdout).toContain('derivatives');
+      expect(result.stderr).toContain('Note: content has');
+    } finally {
+      rmSync(parent, { recursive: true, force: true });
+    }
+  });
+
   it('explains how to teach notation before using it in a lesson', () => {
     const parent = temporaryDirectory();
     try {

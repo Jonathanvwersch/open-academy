@@ -65,6 +65,12 @@ export async function loadContent(
   return buildContentIndex(await loadContentData(directory));
 }
 
+export async function loadContentUnchecked(
+  directory = process.env.CONTENT_DIR ?? 'content',
+): Promise<ContentIndex> {
+  return buildContentIndex(await loadContentData(directory, { validate: false }));
+}
+
 export async function loadContentReport(
   directory = process.env.CONTENT_DIR ?? 'content',
 ): Promise<{ content: ContentIndex; warnings: ContentIssue[] }> {
@@ -73,7 +79,10 @@ export async function loadContentReport(
   return { content, warnings: contentWarnings(data, content) };
 }
 
-async function loadContentData(directory: string): Promise<ContentSourceData> {
+async function loadContentData(
+  directory: string,
+  { validate = true }: { validate?: boolean } = {},
+): Promise<ContentSourceData> {
   const root = resolveContentDirectory(directory);
   const data: ContentSourceData = {
     concepts: [],
@@ -247,9 +256,11 @@ async function loadContentData(directory: string): Promise<ContentSourceData> {
     }
   }
 
-  issues.push(...validateContent(data));
-  if (issues.length > 0) {
-    throw new ContentValidationError(issues);
+  if (validate) {
+    issues.push(...validateContent(data));
+    if (issues.length > 0) {
+      throw new ContentValidationError(issues);
+    }
   }
   return data;
 }

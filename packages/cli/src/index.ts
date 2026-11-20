@@ -14,7 +14,12 @@ import {
 import { basename, dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual, parseArgs } from 'node:util';
-import { ContentValidationError, loadContent, loadContentReport } from '@academy/api/content';
+import {
+  ContentValidationError,
+  loadContent,
+  loadContentReport,
+  loadContentUnchecked,
+} from '@academy/api/content';
 import { isMap, isSeq, parse, parseDocument, stringify } from 'yaml';
 
 const cliRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -379,9 +384,17 @@ function hardPrerequisiteClosure(
   topicId: string,
 ): Set<string> {
   const required = new Set<string>();
+  const visited = new Set<string>();
   const visit = (conceptId: string) => {
+    if (visited.has(conceptId)) return;
+    visited.add(conceptId);
     for (const prerequisite of content.conceptsById.get(conceptId)?.prereqs ?? []) {
-      if (prerequisite.strength !== 'hard' || required.has(prerequisite.id)) continue;
+      if (
+        prerequisite.strength !== 'hard' ||
+        !content.conceptsById.has(prerequisite.id) ||
+        required.has(prerequisite.id)
+      )
+        continue;
       required.add(prerequisite.id);
       visit(prerequisite.id);
     }
@@ -434,6 +447,7 @@ function orderedHardPrerequisites(
   if (ordered.length !== required.size) {
     fail('Cannot order hard prerequisites because they contain a cycle.');
   }
+  ordered.push(...[...required].filter((id) => !ordered.includes(id)).sort(compare));
   return ordered;
 }
 
@@ -483,7 +497,15 @@ function notationTerms(directory: string): NotationTerm[] {
 
 async function printPrerequisites(topicId: string, directory: string) {
   requirePack(directory);
-  const { content } = await loadContentReport(directory);
+  const content = await loadContentUnchecked(directory);
+  try {
+    await loadContent(directory);
+  } catch (error) {
+    if (!(error instanceof ContentValidationError)) throw error;
+    process.stderr.write(
+      `Note: content has ${error.issues.length} check errors (run academy check). Showing prerequisites anyway.\n`,
+    );
+  }
   const topic = content.conceptsById.get(topicId);
   if (!topic) fail(`Unknown topic "${topicId}".`);
 
