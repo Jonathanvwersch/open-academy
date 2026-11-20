@@ -428,6 +428,11 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
     result.correct > 0 &&
     result.correct < 1 &&
     attemptNo < 2;
+  const retryAllowed =
+    attemptNo < 2 &&
+    ((body.data.mode === 'practice' && result.correct === 0) ||
+      ((body.data.mode === 'practice' || body.data.mode === 'review') && followUp));
+  const answerWithheld = retryAllowed;
   const now = request.now();
   const attemptId = crypto.randomUUID();
   const gradedBy = result.graded_by ?? 'deterministic';
@@ -490,7 +495,7 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
       status: result.status,
       ...('yourAnswer' in result ? { yourAnswer: result.yourAnswer } : {}),
       ...('rubric' in result ? { rubric: rubricForFeedback ?? result.rubric } : {}),
-      ...(exercise.type === 'explain' && !followUp
+      ...(exercise.type === 'explain' && !answerWithheld
         ? {
             exemplar: exercise.exemplar,
             ...(exercise.solution ? { solution: exercise.solution } : {}),
@@ -854,10 +859,6 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
       }
     }
   }
-  const retryAllowed =
-    attemptNo < 2 &&
-    ((body.data.mode === 'practice' && result.correct === 0) ||
-      ((body.data.mode === 'practice' || body.data.mode === 'review') && followUp));
   const answerOptions = answerOptionsFor(exercise, body.data.answer, !retryAllowed);
   let activityCompleted = false;
   if (activityRow && activity && !retryAllowed) {
@@ -923,7 +924,7 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
     });
   }
   const resultForResponse: Record<string, unknown> = { ...result };
-  if (followUp) {
+  if (answerWithheld) {
     delete resultForResponse.exemplar;
     delete resultForResponse.solution;
   }
@@ -938,12 +939,12 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
     activityCompleted,
     ...(followUp ? { followUp: true } : {}),
     ...(answerOptions ? { answerOptions } : {}),
-    ...(!retryAllowed && !followUp && exercise.type !== 'explain' && exercise.solution
+    ...(!answerWithheld && exercise.type !== 'explain' && exercise.solution
       ? { solution: exercise.solution }
       : {}),
     ...(exercise.type === 'explain'
       ? {
-          ...(!followUp
+          ...(!answerWithheld
             ? {
                 exemplar: exercise.exemplar,
                 ...(exercise.solution ? { solution: exercise.solution } : {}),

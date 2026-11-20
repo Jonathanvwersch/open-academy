@@ -410,7 +410,15 @@ test('explain tutor feedback shows rubric and model answer, and survives reload'
   await expect(page.getByRole('checkbox')).toHaveCount(0);
   await expect(page.getByLabel('Your answer')).toBeVisible();
   await page.getByLabel('Your answer').fill('Inputs go in and a target comes out.');
+  const firstAttemptResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'POST' &&
+      new URL(response.url()).pathname === '/api/attempts',
+  );
   await page.getByRole('button', { name: 'Submit answer' }).click();
+  const firstBody = await (await firstAttemptResponse).json();
+  expect(firstBody).not.toHaveProperty('exemplar');
+  expect(firstBody).not.toHaveProperty('solution');
   await expect(page.getByText('Almost', { exact: true })).toBeVisible();
   await expect(page.getByText('Model answer', { exact: true })).toHaveCount(0);
   await expect(page.getByLabel('Your answer')).toHaveValue('Inputs go in and a target comes out.');
@@ -436,7 +444,14 @@ test('explain tutor feedback shows rubric and model answer, and survives reload'
   await page
     .getByLabel('Your answer')
     .fill('Inputs go in and a target comes out; loss measures error.');
+  const secondAttemptResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'POST' &&
+      new URL(response.url()).pathname === '/api/attempts',
+  );
   await page.getByRole('button', { name: 'Submit again' }).click();
+  const secondBody = await (await secondAttemptResponse).json();
+  expect(secondBody).toMatchObject({ retryAllowed: false, exemplar: expect.any(String) });
   await expect(page.getByText('Partly correct', { exact: true })).toBeVisible();
   await expect(page.getByText('Model answer', { exact: true })).toBeVisible();
   await expect(page.getByText('Predict delivery time in minutes', { exact: false })).toBeVisible();

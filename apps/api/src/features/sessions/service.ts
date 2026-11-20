@@ -494,9 +494,10 @@ export async function getSessionsById(deps: FeatureServices, request: FeatureReq
               const answer = attempt.answer;
               const followUp = feedback.followUp === true;
               const retryAllowed = attemptAllowsRetry(attempt);
+              const answerWithheld = retryAllowed;
               const exercise = index.exercisesById.get(attempt.exerciseId);
               const answerOptions = exercise
-                ? answerOptionsFor(exercise, answer, !retryAllowed)
+                ? answerOptionsFor(exercise, answer, !answerWithheld)
                 : undefined;
               return {
                 exerciseId: attempt.exerciseId,
@@ -508,8 +509,9 @@ export async function getSessionsById(deps: FeatureServices, request: FeatureReq
                 ...(answerOptions ? { answerOptions } : {}),
                 feedback: feedback.message ?? '',
                 rubric: feedback.rubric,
-                exemplar: feedback.exemplar,
-                solution: feedback.solution,
+                ...(!answerWithheld
+                  ? { exemplar: feedback.exemplar, solution: feedback.solution }
+                  : {}),
                 yourAnswer:
                   (typeof feedback.yourAnswer === 'string' && feedback.yourAnswer) ||
                   (typeof answer === 'object' &&
