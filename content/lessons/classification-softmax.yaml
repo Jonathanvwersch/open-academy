@@ -141,7 +141,9 @@ knowledge_points:
     explain: |
       ### The loss looks at the true class
 
-      Now that the model gives probabilities, we need to score them against what the object really was. In the information theory lesson, a labelled example's loss was the surprise of the class that actually happened, which we wrote as $\log_2(1/q_{\text{actual}})$. We'll use the same idea with the natural log, $\ln$, as logistic regression did. That only changes the unit. One bit equals $\ln2\approx0.69$ natural-log units, so every loss is about $0.69$ times its value in bits. Flipping a fraction flips the sign of its log, $\ln(1/p)=-\ln p$, so we write the loss with a minus sign, using $p$ for the probability.
+      Now that the model gives probabilities, we need to score them against what the object really was. In information theory we measured this surprise in bits, with $\log_2(1/p)$, where $p$ is the probability the model gave to the true class. We'll use the same natural-log units as logistic regression.
+
+      Changing the log base as in the derivatives lesson gives $\ln(1/p)=\ln 2\cdot\log_2(1/p)$, so the natural-log loss is about $0.69$ times the loss in bits. The reciprocal rule from that lesson lets us write $\ln(1/p)$ as $-\ln p$.
 
       **Multiclass cross-entropy**, often called categorical cross-entropy, is the loss we get by taking the natural log of the probability the model gave to the true class and putting a minus sign in front:
 
@@ -149,7 +151,7 @@ knowledge_points:
 
       Here $p_{\text{true}}$ is the softmax probability of the class the object really is. Averaging $L$ over many labelled examples gives the cross-entropy from the information theory lesson, measured with $\ln$. With two classes, it's the binary cross-entropy from logistic regression.
 
-      ### Three possible answers for the same scores
+      ### Three possible true classes
 
       The red curve shows the loss against the probability given to the true class. With our scores 2, 1 and 0, the loss depends on what the object really was:
 
@@ -192,16 +194,16 @@ knowledge_points:
       2. **Take minus the natural log.** The log of a probability below 1 is negative, so the minus sign makes the loss positive.
          $$L=-\ln0.245\approx1.41$$
 
-      3. **See why the losses are 1 apart.** The ball's probability is $e^1/11.11$. Two log rules let us separate the shared total from the class's score.
+      3. **See why the losses are 1 apart.** The exact total $T$ is $e^2+e^1+e^0$, about $11.11$, so the ball's probability is $e^1/T$. Using the log rules from the derivatives lesson, we can separate the shared total from the class's score.
          $$\begin{aligned}
-         L&=-\ln\frac{e^1}{11.11} &&\text{use the true class probability}\\
-         &=\ln\frac{11.11}{e^1} &&\text{flip the fraction to remove the minus}\\
-         &=\ln11.11-\ln e^1 &&\text{split the log of a division}\\
-         &=\ln11.11-1 &&\text{natural log undoes the exponential}\\
-         &\approx2.41-1=1.41 &&\text{evaluate the shared total}
+         L&=-\ln\frac{e^1}{T} &&\text{use the true class probability}\\
+         &=\ln\frac{T}{e^1} &&\text{flip the fraction to remove the minus}\\
+         &=\ln T-\ln e^1 &&\text{split the log of a division}\\
+         &=\ln T-1 &&\text{natural log undoes the exponential}\\
+         &\approx2.41-1=1.41 &&\text{use }\ln T\approx\ln11.11\approx2.41
          \end{aligned}$$
 
-      Every class shares the same $\ln11.11$, so a score 1 lower always means a loss 1 higher. The ball's loss of $1.41$ is much bigger than a cup's $0.41$, because the model gave the ball only about a quarter of its probability.
+      Every class shares the same $\ln T$, so a score 1 lower always means a loss 1 higher. The ball's loss of $1.41$ is much bigger than a cup's $0.41$, because the model gave the ball only about a quarter of its probability.
     problems:
       [
         sm-ce-basics,

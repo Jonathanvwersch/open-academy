@@ -907,8 +907,9 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 2
-    prompt: "Complete the gradient for MSE with predictions `y_hat = X @ w` (`X`: `(n, d)`, `y`: `(n,)`)."
+    prompt: "The rows of `X` hold the inputs for `n` examples, and `y` holds their targets. For predictions `X @ w`, complete the line that gives the slope of mean squared error for each weight."
     code: |
+      n = len(y)
       r = X @ w - y
       dw = ____
       w = w - lr * dw
@@ -921,8 +922,8 @@ exercises:
       - (2 / len(y)) * X.T @ r
       - 2 * X.T @ r / X.shape[0]
     hints:
-      - $\nabla_w \frac1n\|Xw - y\|^2 = \frac2n X^\top(Xw - y)$.
-    solution: "`dw = 2 * X.T @ r / len(y)`. The shape check: `X.T` is `(d, n)` and `r` is `(n,)`, so `dw` is `(d,)`."
+      - Each weight uses one input column. Its slope is twice that column's dot product with the errors, divided by the number of examples.
+    solution: "`dw = 2 * X.T @ r / len(y)`. Transposing `X` lets the matrix product take one dot product per input column, and dividing by `len(y)` averages over the examples."
   - id: gd-explain-lr
     dimension: conceptual
     type: explain
@@ -952,28 +953,28 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 2
-    prompt: In your lab, you trained with learning rate $\eta = 0.01$ and it converged smoothly. **Before running it**, predict what happens with $\eta$ 10× larger, then 100× larger (the lab data has feature variance ≈ 1).
+    prompt: A one-weight model has training loss $L(w)=4w^2$. Starting from $w=5$, it converges with learning rate $0.01$. What happens if you start at the same weight and raise the rate to $0.1$ or $1$?
     options:
       - id: a
-        text: "10×: converges faster, maybe with a slight zigzag; 100×: likely diverges, with the loss growing"
+        text: "At $0.1$ it converges faster. At $1$ the loss grows."
         correct: true
-        feedback: With unit-variance features the stability limit is near $\eta\approx1$, so 0.1 is safe and 1.0 sits at the edge.
+        feedback: At $0.1$ each step leaves a fifth of the distance to zero. At $1$ each step takes it seven times as far away.
       - id: b
-        text: "10×: converges about 10 times faster; 100×: converges about 100 times faster"
+        text: "At $0.1$ it converges faster. At $1$ it converges faster still."
         correct: false
         category: incorrect_reasoning
-        feedback: Larger rates only speed things up below the stability limit; beyond it the steps overshoot.
+        feedback: At $1$ the step overshoots and lands farther from zero, so the loss grows.
       - id: c
-        text: "10×: diverges, with the loss growing; 100×: diverges even faster"
+        text: "At $0.1$ the loss grows. At $1$ it grows faster."
         correct: false
         category: incorrect_reasoning
-        feedback: 0.1 is well below the limit of about 1 for unit-variance features, so it still converges.
+        feedback: At $0.1$, the first step goes from $5$ to $1$, which lowers the loss. Each later step also shrinks the weight.
       - id: d
-        text: "10×: converges more slowly, since bigger steps overshoot; 100×: stops moving"
+        text: "At $0.1$ it converges more slowly. At $1$ the weight stays at $5$."
         correct: false
         category: incorrect_reasoning
-        feedback: Below the limit a larger rate takes bigger useful steps, and far above it the loss grows rather than freezing.
-    solution: With unit-variance features, MSE curvature is about 2, so the stability limit is around $\eta \approx 1$. Then 0.1 is fast and safe, while 1.0 sits right at the edge and typically oscillates or diverges once noise and correlated features are included. Check this against your experiment.
+        feedback: At $0.1$ the steps move closer to zero faster. At $1$ even the first step takes the weight far from $5$, all the way to $-35$.
+    solution: The slope is $8w$, so a step multiplies $w$ by $1-8\eta$. That multiplier is $0.92$ at the original rate, $0.2$ at $0.1$ and $-7$ at $1$, so the steps shrink the distance faster at $0.1$ and grow it at $1$.
   - id: lab-linreg-explain-divergence
     dimension: transfer
     type: explain
@@ -1000,28 +1001,28 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 2
-    prompt: In the lab your train MSE is 0.24 and validation MSE is 0.27, with noise variance 0.25. What does this tell you?
+    prompt: "You start a lab run with mean squared error 0.27. After one update it's 0.24 on the same training examples. What do the two numbers tell you about those predictions?"
     options:
       - id: a
-        text: It is close to the noise floor and generalises well; the small gap is normal
+        text: The average squared error fell, and at least one prediction is still off.
         correct: true
-        feedback: No model can beat the noise variance of 0.25 on new data, and 0.27 is close to it.
+        feedback: The loss fell. It would be zero if every prediction matched its target.
       - id: b
-        text: It fits new data badly, because the validation MSE is higher than the train MSE
+        text: Every prediction's squared error fell by 0.03.
         correct: false
         category: incorrect_reasoning
-        feedback: Validation MSE is almost always a little higher; a model that fits new data badly shows a large gap, and 0.03 is small.
+        feedback: The drop of 0.03 belongs to the average. Individual errors can change by different amounts.
       - id: c
-        text: It is underfitting, because both errors are well above zero and need more features
+        text: Every prediction now matches its target.
         correct: false
         category: incorrect_reasoning
-        feedback: With noise variance 0.25, an MSE near 0.25 is the best any model can do.
+        feedback: If every prediction matched, every squared error would be zero and so would their average.
       - id: d
-        text: Its predictions are worse than guessing, because 0.27 is above the noise variance
+        text: Every prediction is now above its target.
         correct: false
         category: misunderstood_definition
-        feedback: The noise variance is the lowest MSE possible on new data, so being just above it is good.
-    solution: With noise variance 0.25, no model can do much better than MSE ≈ 0.25 on new data.
+        feedback: Squaring makes both positive and negative errors positive, so the average gives no direction.
+    solution: The average squared error is lower after the update. Since that average is still positive, at least one squared error is above zero.
   - id: gd-explain-training
     dimension: conceptual
     type: explain
