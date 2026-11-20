@@ -123,7 +123,7 @@ exercises:
       w = np.array([0.5, -1.0])
       b = 2.0
       y_hat = X @ w + b
-      print(y_hat.sum())
+      print(np.sum(y_hat))
     answer: 0
     tolerance: { abs: 0.001 }
     solution: "The first row gives $1\\times0.5+2\\times(-1)+2=0.5$. The second gives $3\\times0.5+4\\times(-1)+2=-0.5$. The program adds these predictions and prints $0.0$."
@@ -689,7 +689,7 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt:
+    prompt: |
       A delivery robot predicts trip times in minutes for three trips at once. Each row of `X1` is
       (kilometres, parcels, 1), and the last weight in `w1` carries the bias.
 
@@ -699,7 +699,7 @@ exercises:
       times = X1 @ w1
       ```
 
-      What is `times.sum()`, the total predicted time for the three trips, in minutes?
+      What is `np.sum(times)`, the total predicted time for the three trips, in minutes?
     answer: 24
     tolerance:
       abs: 0.001

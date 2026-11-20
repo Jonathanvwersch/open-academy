@@ -81,6 +81,7 @@ knowledge_points:
     tldr: |
       - Precision is the share of flagged parts that are actually faulty.
       - Recall is the share of faulty parts the camera flags.
+      - With several classes, read across each class's row to find its recall.
       - Which one matters more depends on which mistake costs more, a missed fault or a false alarm.
     explain: |
       ### Of the flagged parts, how many were faulty?
@@ -100,6 +101,8 @@ knowledge_points:
       $$\text{recall}=\frac{\text{TP}}{\text{TP}+\text{FN}}.$$
 
       Both fractions have the caught faults, TP, on top.
+
+      With more than two classes, a class's recall is the correctly predicted count in its row divided by the whole row total. Suppose the camera labels parts as Scratch, Dent or Fine. Among eight scratched parts, it predicts Scratch six times, Dent once and Fine once, so recall for Scratch is $6/(6+1+1)=0.75$.
 
       ### Two comparison cameras
 
@@ -141,6 +144,7 @@ knowledge_points:
         evm-swapped-denominator,
         evm-no-flags,
         evm-spam,
+        evm-recall-three-classes,
       ]
   - id: evm-numbers
     title: Score predicted prices

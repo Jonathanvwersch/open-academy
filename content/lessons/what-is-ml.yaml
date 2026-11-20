@@ -1,7 +1,7 @@
 concept: what-is-ml
 version: 3
 objective: |
-  **Goal:** explain what machine learning is and how it differs from writing a rule by hand, name the pieces a computer needs to learn a rule by itself (a model with weights, a loss and training), and see how Week 1 builds those pieces and how the same pieces later teach a robot.
+  **Goal:** explain what machine learning is and how it differs from writing a rule by hand, name the pieces a computer needs to learn a rule by itself (a model with weights, a loss and training), and see how Machine Learning Foundations builds those pieces and how the same pieces can teach a robot.
 where_this_fits: |
   ### What is machine learning?
 
@@ -96,7 +96,7 @@ knowledge_points:
       5. **Check the third sale.** The 100 m² house sold for 300.
          $$3\times100=300$$
 
-      All three predictions now match their sale prices, so $w=3$ is the learned weight. Here we chose each new value by eye, and the rest of Week 1 shows how a computer works out both which way to change a weight and by how much.
+      All three predictions now match their sale prices, so $w=3$ is the learned weight. Here we chose each new value by eye. Later in this course, Machine Learning Foundations, we'll see how a computer decides which way to change a weight and by how much.
     problems:
       - ml-what-it-is-basics
       - ml-fit-self-explain
@@ -142,7 +142,7 @@ knowledge_points:
       For that, it must know which way to move each weight. A **derivative** measures how much one number changes when you nudge another, so it shows how the loss responds to each weight. **Gradient descent** uses it to nudge every weight so the loss falls, over and over. A **matrix**, a grid of numbers with one row per house, lets it make every prediction at once, and finally we test the trained model on houses it never saw.
 
       ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 470" aria-label="The seven steps of the house-price model, each taught by a Week 1 lesson, from numbers and the weighted sum through matrices, loss, derivatives and gradient descent to test houses">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 470" aria-label="The seven steps of the house-price model in Machine Learning Foundations, from numbers and the weighted sum through matrices, loss, derivatives and gradient descent to test houses">
         <defs>
           <marker id="ml2-arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker>
         </defs>
@@ -186,7 +186,7 @@ knowledge_points:
       </svg>
       ```
 
-      Each box in the diagram is one of these pieces and one Week 1 lesson, which is why the maths lessons aren't a detour before the machine learning but are how it works.
+      Each box in the diagram is a piece you'll meet in Machine Learning Foundations. Each piece helps the computer make, score or improve its predictions.
     worked: |
       Let's follow the 120 m² house through the model and score the result. Its weights are £25k per ten square metres, £10k per bedroom and −£1k per year of age, which we write as $(25,10,-1)$, and it sold for £330k. We've simply picked these weights for now, because finding good ones is the job of training.
 
@@ -230,9 +230,9 @@ knowledge_points:
     explain: |
       ### From house prices to a robot arm
 
-      This course ends with robots that learn tasks such as picking up a cup by looking through a camera. So why start with house prices?
+      What does a robot learning to pick up a cup have in common with a house-price model?
 
-      Because a robot's problem has the same pieces. A camera image is numbers too, one brightness for each tiny dot, or pixel. The diagram compares house prices with a robot learning to pick up a cup from recordings of a person steering it. The inputs and outputs change, but there's still a model with weights, a loss and a target, which is the movement the person made.
+      Both problems have the same pieces. A camera image is numbers too, one brightness for each tiny dot, or pixel. The diagram compares house prices with a robot learning to pick up a cup from recordings of a person steering it. The inputs and outputs change, but there's still a model with weights, a loss and a target, which is the movement the person made.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" aria-label="The house-price problem and a robot learning to pick up a cup, side by side: each has an input, a model with weights, an output, a target and a loss">
@@ -246,9 +246,9 @@ knowledge_points:
           <text x="392" y="69">camera image, joint angles</text>
           <rect x="12" y="94" width="616" height="40" rx="8" fill="#171717" fill-opacity="0" stroke="#d4d4d4"/>
           <text x="24" y="119" font-weight="700">Model</text>
-          <text x="140" y="119">weighted sum (Week 1)</text>
+          <text x="140" y="119">weighted sum</text>
           <path d="M352 114 H380" stroke="#737373" stroke-width="2"/>
-          <text x="392" y="119">neural network (Week 3)</text>
+          <text x="392" y="119">neural network</text>
           <rect x="12" y="144" width="616" height="40" rx="8" fill="#171717" fill-opacity="0" stroke="#d4d4d4"/>
           <text x="24" y="169" font-weight="700">Output</text>
           <text x="140" y="169">a predicted price</text>
@@ -272,7 +272,7 @@ knowledge_points:
 
       ### Three ways to learn
 
-      What changes across the course is what tells the model how well it did. There are three ways:
+      What tells the model how well it did depends on how we train it. Here are three ways to learn:
 
       - **Supervised learning** uses examples with known answers, as with house prices.
       - **Imitation learning** treats a person's recorded demonstrations as the answers, and then uses the supervised cycle.
@@ -280,17 +280,16 @@ knowledge_points:
 
       Be careful not to think robots need a completely different kind of learning. Their models still predict, get scored and change their weights, so we learn that cycle first on house prices, where we can check it by hand.
 
-      ### Where each week fits
+      ### What each course covers
 
-      | Weeks | What's new | Learns from |
-      | --- | --- | --- |
-      | 1 | the cycle, on house prices | known sale prices |
-      | 2–3 | neural networks, models built from many weighted sums | known answers |
-      | 4 | transformers, the models behind chatbots like ChatGPT | the next word in a text |
-      | 5–6 | how robots move and sense | no learning |
-      | 7 | imitation learning | demonstrations |
-      | 8 | reinforcement learning | rewards |
-      | 9–12 | vision, language and projects | all of these |
+      | Course | What you'll work with |
+      | --- | --- |
+      | Machine Learning Foundations | Train and check a model that predicts house prices. |
+      | Deep Learning | Build neural networks, models made from many weighted sums. |
+      | Transformers and LLMs | See how large language models (LLMs) built with transformers learn to predict the next piece of text. |
+      | LLM Inference | See how a trained language model generates text faster. |
+      | Reinforcement Learning | Train a model by trial and error using rewards. |
+      | Mathematics for Machine Learning | Study the maths behind predictions, loss and probability. |
     worked: |
       Let's go through one moment of the cup task. A person used a joystick to steer a robot arm to pick up a cup 200 times, and every moment was recorded. We'll take one moment and look only at the elbow joint.
 
@@ -298,14 +297,14 @@ knowledge_points:
 
       2. **Name the target.** The answer to copy is what the person did at that moment, which was to turn the elbow by 10° (degrees).
 
-      3. **Predict.** The policy is a neural network, a bigger model built from many weighted sums, which Week 3 teaches. It outputs an elbow turn of 6°.
+      3. **Predict.** The policy is a neural network, the kind of model you'll build in Deep Learning. It outputs an elbow turn of 6°.
 
       4. **Measure the miss.** As with house prices, we subtract the target from the prediction.
          $$6-10=-4$$
 
       5. **Train.** The policy's output was 4° too little. Training changes the network's weights to shrink misses like this one across all the recorded moments.
 
-      Copying demonstrations with this supervised cycle is called **behavioral cloning**, and Week 12 teaches it.
+      Copying demonstrations with this supervised cycle is called **behavioral cloning**.
     problems:
       - ml-to-robots-basics
       - ml-robot-self-explain
@@ -317,6 +316,6 @@ final: ml-explain
 summary: |
   - Machine learning means a computer fits a rule, called a model, to examples instead of a person writing the rule, and learning means choosing the model's weights.
   - The house model predicts with a weighted sum, $w_1x_1+w_2x_2+w_3x_3$, a loss scores how far its predictions are from the targets, and training changes the weights again and again to make the loss smaller.
-  - Week 1 builds these pieces one lesson at a time, and the same cycle of predict, score and change the weights later trains a robot's policy. Only the inputs, the outputs and the score change, and the score can be a loss to shrink or a reward to grow.
+  - Machine Learning Foundations builds these pieces one lesson at a time. The same cycle of predicting, scoring and changing the weights can train a robot's policy, with a loss to shrink or a reward to grow.
 
-  **Next:** The supervised learning lesson looks carefully at each part of a learning problem (inputs, target, model and loss), and each later Week 1 lesson then builds one of those parts.
+  **Next:** The supervised learning lesson looks at the inputs, target, model and loss in a learning problem.
