@@ -4,7 +4,7 @@ objective: |
   **Goal:** compute entropy and cross-entropy for small distributions and explain why cross-entropy is the loss for classification.
 recap:
   - concept: probability-basics
-    text: A distribution lists outcome probabilities between 0 and 1, adding to 1. An expected value is a probability-weighted average. Independent events are events where knowing one happened does not change the chance of the other.
+    text: A distribution lists outcome probabilities between 0 and 1, adding to 1. An expected value is a probability-weighted average. Independent events are events where knowing one happened does not change the chance of the other. Independent chances multiply.
 where_this_fits: |
   ### What does information theory measure?
 

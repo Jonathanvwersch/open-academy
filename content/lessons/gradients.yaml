@@ -156,6 +156,7 @@ knowledge_points:
       - We compare directions using moves of equal length.
       - The slope is largest along the gradient and smallest in the opposite direction.
       - So the opposite of the gradient is the steepest way down from here, though it may not point straight at the bottom.
+      - At a smooth minimum or maximum inside the input region, the gradient is the zero vector.
     explain: |-
       ### Compare walks of equal length
 
@@ -184,6 +185,8 @@ knowledge_points:
       | Opposite the gradient | $180^\circ$ | $-5$ |
 
       So the gradient points steepest uphill, and the negative gradient points steepest downhill, where the cosine reaches its smallest value, $-1$. For a nonzero gradient, divide the negative gradient by its length to get a downhill unit direction.
+
+      At smooth interior minima and maxima, the gradient is zero: otherwise $-\nabla f$ leads downhill and $\nabla f$ uphill.
 
       ### Downhill is not always toward the bottom
 

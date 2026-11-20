@@ -6,7 +6,7 @@ recap:
   - concept: probability-basics
     text: A distribution describes a random variable's chances. Its expected value $E[X]$ is its
       long-run average. Probabilities add to 1; independent events give no information about each
-      other.
+      other. Multiply independent events' chances to find the chance of both happening.
 where_this_fits: |
   ### What is a Gaussian distribution?
 

@@ -251,6 +251,7 @@ knowledge_points:
       - New information rules out some possible outcomes.
       - A conditional probability counts only the outcomes still possible.
       - If that new information leaves the chance unchanged, the two events are independent.
+      - Multiply independent events' chances to find the chance of both happening.
     explain: |
       ### Ruling out faces
 
@@ -311,6 +312,24 @@ knowledge_points:
          $$\begin{aligned}20-10&=10 &&\text{sales outside }B\\9-7&=2 &&\text{above-asking sales outside }B\\P(A\mid\text{not }B)&\approx\frac{2}{10}=0.2 &&\text{divide within that group}\end{aligned}$$
 
       So the chance of selling above asking rises from $0.45$ to $0.7$ when a house has at least two offers, and falls to $0.2$ when it doesn't. In this data, the two events are clearly not independent.
+
+      ### The chance of both events
+
+      In the die picture, let $A$ mean even and $B$ mean at least 4. Half the faces are in the orange box, and two thirds of those are even. Multiplying these fractions gives the share of all faces in both events. For any events with $P(B)>0$:
+      $$P(A\text{ and }B)=P(B)\,P(A\mid B).$$
+
+      Independence means $P(A\mid B)=P(A)$, so substitution gives:
+      $$P(A\text{ and }B)=P(B)\,P(A)=P(A)\,P(B).$$
+
+      For a numerical example of independence, let $A$ mean even and $B$ mean at most 4 on the same fair die.
+
+      1. **Find each chance.** Three faces are even and four are at most 4.
+         $$P(A)=\frac12,\qquad P(B)=\frac23.$$
+
+      2. **Multiply the independent chances.** We already checked that knowing $B$ leaves the chance of even unchanged.
+         $$P(A\text{ and }B)=\frac12\times\frac23=\frac13.$$
+
+      Faces 2 and 4 meet both conditions, confirming the answer is two of six faces.
     problems:
       - pb-conditional-basics
       - pb-conditional-why
@@ -318,6 +337,7 @@ knowledge_points:
       - pb-reverse-conditional
       - pb-conditional-template
       - pb-independence-check
+      - pb-independent-joint
 final: probability-basics-explain
 summary: |
   - An event is a set of outcomes. Its probability $P(A)$ is between 0 and 1, it can be estimated by the fraction of past cases in the event, and its complement has probability $P(\text{not }A)=1-P(A)$.

@@ -8,13 +8,13 @@ recap:
     text: A probability is a number from 0 to 1 saying how likely an event is. Two events are
       independent when one happening tells us nothing about whether the other happens.
   - concept: gaussian-distribution
-    text: A Gaussian with mean $\mu$ and standard deviation $\sigma$ has the bell-shaped density
-      $f(x)=\frac{1}{\sigma\sqrt{2\pi}}e^{-(x-\mu)^2/(2\sigma^2)}$, highest at $\mu$. Height times a
-      small width gives the chance of a reading in that narrow interval.
+    text:
+      A Gaussian density $f(x)=\frac{1}{\sigma\sqrt{2\pi}}e^{-(x-\mu)^2/(2\sigma^2)}$ describes how likely readings near $x$ are.
+      Its mean $\mu$ is its centre; standard deviation $\sigma$ measures spread. Density times a small width approximates the chance of a reading in that interval.
   - concept: derivatives
-    text: A derivative gives a curve's slope, 0 at a smooth hill's top or valley's bottom. By the
-      power rule, $x^n$ has slope $nx^{n-1}$. $\ln x$, the power of $e\approx2.718$ giving $x$,
-      exists for $x>0$ with slope $1/x$.
+    text:
+      A derivative gives a curve's slope. Solve $f'(x)=0$ for smooth interior tops; check slopes.
+      By the power rule, $x^n$ has slope $nx^{n-1}$. $\ln x$, the power of $e\approx2.718$ giving $x$, exists for $x>0$ with slope $1/x$.
 where_this_fits: |
   ### What is maximum likelihood?
 
@@ -188,6 +188,8 @@ knowledge_points:
          $$\mu=\frac{98+101+104}{3}=101$$
 
       The same steps work for any readings: the maximum likelihood centre for Gaussian readings is their mean.
+
+      A fit usually scores the readings it was fitted on higher than fresh, held-out readings, because $\mu$ and $\sigma$ were chosen to suit those readings.
     problems:
       - mle-centre-basics
       - mle-centre-why
