@@ -257,6 +257,8 @@ knowledge_points:
 
       Here is the same calculation in NumPy, the Python library for grids of numbers, loaded under the short name `np`. We write the scores with `np.array`. `S.shape` gives the grid's size as (rows, columns), and Python counts from 0, so `S.shape[0]` is the number of rows, $T$. To build the mask, we start from a $T\times T$ grid full of $-\infty$ with `np.full((T, T), -np.inf)`. Then `np.triu(..., k=1)` keeps only the part above the diagonal and sets everything else to $0$. The name "triu" stands for the upper triangle. The `k=1` makes the triangle start one place above the diagonal, so the diagonal stays allowed. After that we add `S + M`, raise $e$ to each number with `np.exp`, and divide each row by its total. `A.sum(axis=1, keepdims=True)` adds along each row and keeps the totals as a column, one per row, so each row is divided by its own total. The loop at the end prints each row rounded to 2 decimals.
 
+      `np.where(M == 0, S, -np.inf)` keeps each score in `S` where `M` is zero and puts negative infinity in blocked cells.
+
       ```python
       import numpy as np
       S = np.array([[1, 0, 2, 1],

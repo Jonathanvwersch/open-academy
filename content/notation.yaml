@@ -401,13 +401,6 @@ terms:
       introduced_by: [evaluation-metrics],
     }
   - {
-      id: linear-argument-order,
-      label: "Linear(inputs, outputs) argument order",
-      match:
-        ['\bLinear\s*\(\s*(?:inputs?|in_features|\d+)\s*,\s*(?:outputs?|out_features|\d+)\s*\)'],
-      introduced_by: [pytorch-basics],
-    }
-  - {
       id: column-mean-axis-zero,
       label: "Column averages with .mean(axis=0)",
       match: ['\.mean\s*\(\s*axis\s*=\s*0\s*\)', '\.sum\(axis=0\)` adds down each column'],
@@ -603,13 +596,7 @@ terms:
       id: numpy-where,
       label: "Elementwise selection with NumPy where",
       match: ['\bnp\.where\s*\('],
-      introduced_by: [causal-masking],
-    }
-  - {
-      id: numpy-zero-over-zero,
-      label: "NumPy NaN from zero divided by zero",
-      match: ['\b(?:NumPy|np)\b[^.\n]{0,65}\bnan\b[^.\n]{0,40}\b0\s*/\s*0\b'],
-      introduced_by: [causal-masking],
+      introduced_by: [backpropagation, causal-masking],
     }
   - {
       id: uniform-token-sampling,
@@ -691,7 +678,7 @@ terms:
       id: variance,
       label: "variance",
       match: ['\bvariance\b'],
-      introduced_by: [descriptive-statistics],
+      introduced_by: [descriptive-statistics, ppo, transformer-block],
     }
   - {
       id: standard-error,

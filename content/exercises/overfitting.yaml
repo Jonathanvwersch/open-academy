@@ -366,12 +366,12 @@ exercises:
     est_minutes: 2
     prompt:
       A flexible house-price curve changes shape dramatically when fitted to a different sample of six training
-      sales from the same market. Which idea describes that sensitivity?
+      sales from the same market. Which description fits that sensitivity?
     options:
       - id: a
-        text: High variance
+        text: "Its predictions depend strongly on the training sample."
         correct: true
-        feedback: Large changes across training samples indicate high variance.
+        feedback: Large changes across training samples mean predictions depend strongly on the sample.
       - id: b
         text: High bias
         correct: false
@@ -385,8 +385,8 @@ exercises:
         correct: false
         feedback: Sensitivity alone does not show accurate held-out predictions.
     solution:
-      Variance describes how much the fitted model changes when we pick different training houses. Large changes
-      suggest high variance.
+      The fitted model's shape and predictions change with the selected training houses. This sensitivity can make
+      its predictions unreliable on new houses.
   - id: ovfp-gap-choice
     dimension: transfer
     type: numeric
@@ -453,9 +453,9 @@ exercises:
         correct: true
         feedback: The rigid shape repeatedly misses the same pattern.
       - id: b
-        text: High variance
+        text: Predictions depend strongly on the training sample
         correct: false
-        feedback: High variance would show large changes across training samples.
+        feedback: Large changes across training samples would show strong dependence on the selected houses.
       - id: c
         text: Overfitting
         correct: false
@@ -777,12 +777,12 @@ exercises:
     knowledge_point: ovf-error-gap
     difficulty: 1
     est_minutes: 0.5
-    prompt: "Which description captures high variance?"
+    prompt: "Which description captures a model whose predictions depend strongly on its training sample?"
     options:
       - id: a
         text: "Predictions change a lot when the training sample changes."
         correct: true
-        feedback: "High variance means the fitted model changes a lot with a different selection of training houses."
+        feedback: "This describes a model whose fitted shape changes with the selected training houses."
       - id: b
         text: "The model systematically misses bends in its training data."
         correct: false
@@ -790,8 +790,8 @@ exercises:
       - id: c
         text: "Both errors stay low and meet the users’ target."
         correct: false
-        feedback: "Low errors on both sets suggest a useful fit. To check variance, refit on a different sample and see how much predictions change."
-    solution: "High variance means the fitted model changes a lot with a different selection of training houses."
+        feedback: "Low errors on both sets suggest a useful fit. To check how strongly predictions depend on the sample, refit on a different set of houses and compare them."
+    solution: "The fitted model changes with the selected training houses, so its predictions depend on the sample."
   - id: ovf-recall-gap-formula
     dimension: math
     type: expression

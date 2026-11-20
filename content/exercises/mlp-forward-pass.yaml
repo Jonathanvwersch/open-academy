@@ -51,7 +51,7 @@ exercises:
           id: b,
           text: "Propagating loss derivatives backward through the network to calculate each weight's gradient.",
           correct: false,
-          feedback: "That is backpropagation.",
+          feedback: "A later topic shows how to work these slopes out layer by layer.",
         }
       - {
           id: c,

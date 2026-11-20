@@ -273,6 +273,7 @@ knowledge_points:
       ```
 
       It prints `[[10.]] [6.]`, then `[[6] [0]]`: only the positive score lets the $6$ through.
+      `np.where(z > 0, g, 0)` keeps each entry of `g` where `z` is positive and puts $0$ everywhere else.
     problems:
       [
         bp-arrays-basics,

@@ -203,7 +203,7 @@ concepts:
     est_minutes: 20
     goal_weight: 1
     dimensions: [conceptual, math]
-    prereqs: [{ id: probability-basics }]
+    prereqs: [{ id: probability-basics }, { id: descriptive-statistics }]
     objectives:
       - { text: "Relate mean and variance to the normal density", dimension: math }
     projects: [gaussian-mle]
@@ -227,7 +227,7 @@ concepts:
     est_minutes: 30
     goal_weight: 2
     dimensions: [conceptual, math]
-    prereqs: [{ id: probability-basics }]
+    prereqs: [{ id: probability-basics }, { id: derivatives }]
     objectives:
       - { text: "Compute entropy and cross-entropy for a small distribution", dimension: math }
       - { text: "Explain why cross-entropy is the loss for classification", dimension: conceptual }

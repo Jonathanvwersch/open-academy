@@ -82,7 +82,7 @@ knowledge_points:
 
       ### Room for more than the weights
 
-      Fitting the weights is not enough to serve a model. The GPU also needs memory for each layer's results while it works. Each conversation also keeps numbers about its earlier tokens, called its KV cache, which grows as it gets longer. A later lesson measures it. So a model that only just fits can serve very few conversations.
+      Fitting the weights is not enough to serve a model. The GPU also needs memory for each layer's results while it works. Each conversation keeps numbers about its earlier tokens in GPU memory for later steps. These numbers grow as the conversation gets longer. A later lesson measures how much memory they use. So a model that only just fits can serve very few conversations.
     worked: |
       Let's work out how much memory Llama 3 8B's weights take at FP32, FP16 and INT8, and how much of the H100's 80 GB each one leaves.
 
@@ -274,7 +274,7 @@ knowledge_points:
 
       ### Limitations
 
-      These speeds are upper limits. Each conversation also reads its own KV cache, and starting each kernel takes a little time, so real systems decode more slowly.
+      These speeds are upper limits. Each conversation also reads its stored data about earlier tokens, and starting each kernel takes a little time, so real systems decode more slowly.
     worked: |
       Let's work out how fast Llama 3 8B at BF16 decodes on an H100 when 8 conversations decode together. We'll count only the weights as memory traffic, and use 3.35 TB/s and 1,000 TFLOP/s.
 
@@ -308,4 +308,4 @@ summary: |
   - The chip's fast SRAM holds only about a tenth of a gigabyte, so the weights stay in HBM, and every number must come from HBM at up to the memory bandwidth (about 3.35 TB/s on an H100).
   - Decoding reads every weight for each token but does only about 2 FLOPs per parameter, so one conversation's speed is at most memory bandwidth divided by weight bytes, about 209 tokens/s for Llama 3 8B at BF16. A batch of $B$ shares each read, so total tokens/s grows about $B$ times until the maths catches up.
 
-  **Next:** The KV cache lesson measures each conversation's working memory and adds it to the memory reads of every decode step.
+  **Next:** The next lesson measures each conversation's working memory and adds it to every decode step's memory reads.

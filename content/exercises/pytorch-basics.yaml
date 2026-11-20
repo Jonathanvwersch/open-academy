@@ -761,7 +761,7 @@ exercises:
     difficulty: 2
     est_minutes: 1
     prompt: |
-      `model` is a PyTorch model with dropout and starts in training mode. `x` holds inputs, `y` holds targets, and `loss_fn` measures loss. If the `model.eval()` line were left out, what would happen during the indented loss calculation?
+      `model` is a PyTorch model with a layer whose behavior differs between training and evaluation, and it starts in training mode. `x` holds inputs, `y` holds targets, and `loss_fn` measures loss. If the `model.eval()` line were left out, what would happen during the indented loss calculation?
 
       ```python
       model.eval()
@@ -771,22 +771,22 @@ exercises:
       ```
     options:
       - id: a
-        text: "Dropout is off; calculation recording is on."
+        text: "The layer uses evaluation behavior; calculation recording is on."
         correct: false
-        feedback: "This swaps the two controls. `train()` enables dropout, while `no_grad()` pauses recording calculations for slopes."
+        feedback: "This swaps the controls. `model.eval()` selects evaluation behavior, while `no_grad()` pauses recording calculations for slopes."
       - id: b
-        text: "Dropout is on; calculation recording is off."
+        text: "The layer uses training behavior; calculation recording is off."
         correct: true
         feedback: "Without the `model.eval()` call, the model stays in training mode during the loss calculation. `torch.no_grad()` pauses recording calculations for slopes."
       - id: c
-        text: "Dropout is off; calculation recording is off."
+        text: "The layer uses evaluation behavior; calculation recording is off."
         correct: false
-        feedback: "`torch.no_grad()` pauses calculation recording. Turning dropout off requires `model.eval()`."
+        feedback: "`torch.no_grad()` pauses calculation recording. Selecting evaluation behavior requires `model.eval()`."
       - id: d
-        text: "Dropout is on; calculation recording is on."
+        text: "The layer uses training behavior; calculation recording is on."
         correct: false
-        feedback: "Training mode keeps dropout active, but `torch.no_grad()` still pauses calculation recording."
-    solution: "Leaving out `model.eval()` keeps dropout active during the loss calculation. `torch.no_grad()` still stops recording the calculations needed to find slopes."
+        feedback: "Training mode keeps the layer's training behavior active, while `torch.no_grad()` pauses calculation recording."
+    solution: "Leaving out `model.eval()` keeps the layer in its training behavior during the loss calculation. `torch.no_grad()` still stops recording the calculations needed to find slopes."
   - id: ptb-recall-tensor-say
     dimension: conceptual
     type: explain
@@ -998,18 +998,18 @@ exercises:
     knowledge_point: ptb-training-loop
     difficulty: 1
     est_minutes: 0.5
-    prompt: "A PyTorch model has dropout and starts in training mode with gradient recording enabled. You call only `model.eval()` before measuring its loss. What happens during that measurement?"
+    prompt: "A PyTorch model has a layer whose behavior differs between training and evaluation and starts in training mode with gradient recording enabled. You call only `model.eval()` before measuring its loss. What happens during that measurement?"
     options:
       - id: a
-        text: "Dropout stays on and recording stops."
+        text: "The layer keeps its training behavior and recording stops."
         correct: false
-        feedback: "Stopping recording is the job of `torch.no_grad()`. Evaluation mode turns dropout off."
+        feedback: "Stopping recording is the job of `torch.no_grad()`. Evaluation mode selects the layer's evaluation behavior."
       - id: b
-        text: "Dropout turns off and recording stops."
+        text: "The layer uses evaluation behavior and recording stops."
         correct: false
-        feedback: "Evaluation mode turns dropout off. Use `torch.no_grad()` as well to stop recording."
+        feedback: "Evaluation mode selects the layer's evaluation behavior. Use `torch.no_grad()` as well to stop recording."
       - id: c
-        text: "Dropout turns off and recording stays on."
+        text: "The layer uses evaluation behavior and recording stays on."
         correct: true
         feedback: "Evaluation mode changes the model's settings. It leaves gradient recording enabled."
-    solution: "`model.eval()` disables dropout during evaluation. A `torch.no_grad()` block separately stops gradient recording."
+    solution: "`model.eval()` selects evaluation behavior. A `torch.no_grad()` block separately stops gradient recording."

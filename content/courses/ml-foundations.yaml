@@ -31,10 +31,10 @@ units:
       - generative-vs-discriminative
     concepts:
       - probability-basics
+      - descriptive-statistics
       - gaussian-distribution
       - maximum-likelihood
       - logistic-regression
       - information-theory
       - classification-softmax
       - evaluation-metrics
-      - descriptive-statistics
