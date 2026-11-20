@@ -125,7 +125,7 @@ concepts:
       est_minutes: 30,
       goal_weight: 3,
       dimensions: [conceptual, math, implementation],
-      prereqs: [{ id: gpu-inference-basics }],
+      prereqs: [{ id: gpu-inference-basics }, { id: descriptive-statistics }],
       objectives:
         [
           {
@@ -152,7 +152,7 @@ concepts:
       est_minutes: 25,
       goal_weight: 2,
       dimensions: [conceptual, math],
-      prereqs: [{ id: prefill-decode }, { id: arithmetic-intensity }],
+      prereqs: [{ id: prefill-decode }, { id: arithmetic-intensity }, { id: kv-cache }],
       objectives:
         [
           {

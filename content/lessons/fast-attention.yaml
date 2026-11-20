@@ -142,9 +142,9 @@ knowledge_points:
 
       ### Working in blocks
 
-      But on-chip memory is small. An H100 SXM has 132 compute units, called streaming multiprocessors or SMs. Each has $233{,}472$ bytes of its own on-chip shared memory, and each group of threads a kernel runs there can use at most $232{,}448$ bytes of it. Our head's $K$ alone is $256{,}000$ bytes, so it doesn't fit.
+      But on-chip memory is small. An H100 SXM has 132 compute units, called streaming multiprocessors or SMs, and each has $233{,}472$ bytes of its own on-chip shared memory. A kernel splits its work among many **threads**, small sequences of instructions that each do one part. The GPU runs the threads in groups. Each group runs on one SM, and its threads share data through that SM's shared memory. One group can use at most $232{,}448$ bytes of it. Our head's $K$ alone is $256{,}000$ bytes, so it doesn't fit.
 
-      So the kernel works in blocks of, say, 128 rows. It gives each block of queries to an SM, which loads that block once. Then the SM brings in $K$ and $V$ one block at a time, computes the scores between its queries and that key block, uses the scores to update a running output, then throws the scores away. The next step shows how that update works. After the last key block, it writes its rows of $O$. The key and value blocks, the running output and the $128\times128$ table of scores for the current blocks are each about the size of a query block:
+      So the kernel works in blocks of, say, 128 rows. It gives each block of queries to one group of threads, whose SM loads that block once. Then the SM brings in $K$ and $V$ one block at a time, computes the scores between its queries and that key block, uses the scores to update a running output, then throws the scores away. The next step shows how that update works. After the last key block, it writes its rows of $O$. The key and value blocks, the running output and the $128\times128$ table of scores for the current blocks are each about the size of a query block:
 
       $$
       \begin{aligned}

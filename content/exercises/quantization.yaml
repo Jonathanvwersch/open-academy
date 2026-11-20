@@ -86,7 +86,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "A model's weights take {{=g}} GB at 16 bits. It is quantised to INT8 and served on an H100 with 3.35 TB/s of bandwidth, one request at a time. Counting only the reading of the weights, what is the shortest possible time per decoded token, in milliseconds? Give 2 significant figures."
+    prompt: "A model's weights take {{=g}} GB at 16 bits. It is quantised to INT8 and served on an H100 with 3.35 TB/s of bandwidth, one request at a time. Counting only the reading of the weights, what is the shortest possible time per decoded token, in milliseconds? Give 2 significant figures, counting from the first digit that isn't zero. For example, 0.06231 ms becomes 0.062 ms."
     params:
       g:
         min: 4
@@ -243,7 +243,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "The largest weight in a matrix, by size, is {{=m}}. What INT8 scale $s$ should the matrix use? Give 4 significant figures."
+    prompt: "The largest weight in a matrix, by size, is {{=m}}. What INT8 scale $s$ should the matrix use? Give 4 significant figures, counting from the first digit that isn't zero. For example, 0.0123468 becomes 0.01235."
     params:
       m:
         min: 1
@@ -621,7 +621,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "A model's average cross-entropy loss on held-out text is {{=L}}, using natural logs. What is its perplexity? Give 3 significant figures."
+    prompt: "A model's average cross-entropy loss on held-out text is {{=L}}, using natural logs. What is its perplexity? Give 3 significant figures. For example, 12.364 becomes 12.4."
     params:
       L:
         min: 1.5
@@ -745,6 +745,33 @@ exercises:
         category: incomplete_explanation
         feedback: That is the new perplexity. Divide it by the old perplexity, $e^2$, to get the factor.
     solution: 'The factor is $e^{ {{= 2 + d }} }/e^{2}=e^{ {{=d}} }\approx{{= round(exp(d), 3) }}$.'
+  - id: qzp-quality-luck-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "A 16-bit model solves {{= 80 * m^2 }} of {{= 100 * m^2 }} maths word problems. Its INT4 version solves {{= (80 - d) * m^2 }} of the same problems. Luck alone typically moves a success rate by one standard error. How many standard errors of the 16-bit model's success rate is the drop? Give 1 decimal place."
+    params:
+      m:
+        min: 1
+        max: 4
+        step: 1
+      d:
+        min: 2
+        max: 8
+        step: 2
+    answer_expr: d * m / 4
+    tolerance:
+      abs: 0.05
+    common_wrong:
+      - answer_expr: d * m / 8
+        category: misapplied_technique
+        feedback: That divides the drop by two standard errors. Divide it by one standard error.
+      - answer_expr: 25 * d * m
+        category: math_error
+        feedback: The drop is in percentage points, so write the standard error in percentage points too before dividing.
+    solution: 'The 16-bit rate is $0.8$, so $\mathrm{SE}=\sqrt{0.8(0.2)/ {{= 100 * m^2 }} }\approx{{= round(4 / m, 2) }}$ percentage points. The drop is {{=d}} points, which is ${{=d}}/{{= round(4 / m, 2) }}\approx{{= d * m / 4 }}$ standard errors.'
   - id: qz-explain
     dimension: conceptual
     type: explain

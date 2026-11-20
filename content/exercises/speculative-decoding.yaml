@@ -192,6 +192,59 @@ exercises:
           feedback: Vocabulary compatibility says nothing about the number of model layers or weights.,
         }
     solution: Verification compares probabilities for the exact proposed tokens. Different token meanings would make that comparison invalid.
+  - id: sdp-check-positions
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: "A target model with a KV cache has written a {{=n}}-token reply so far, and it chose the last of those tokens on its previous pass. A draft model now proposes {{=k}} guesses. How many positions does the target process in its check pass?"
+    params:
+      n: { min: 20, max: 60, step: 10 }
+      k: { min: 2, max: 6, step: 1 }
+    answer_expr: k + 1
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer_expr: k,
+          category: misunderstood_definition,
+          feedback: "The last token of the reply isn't in the cache yet. A chosen token only enters the cache when it's fed back in, so the check processes it too.",
+        }
+      - {
+          answer_expr: n + k,
+          category: recall_failure,
+          feedback: "The cache already holds the keys and values for the earlier tokens, so the target doesn't process them again.",
+        }
+    solution: "The cache holds the first {{= n - 1 }} tokens. The check processes the last token of the reply plus the {{=k}} guesses, which is {{= k + 1 }} positions."
+  - id: sdp-cache-after-round
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: "A target model's KV cache holds the first {{=n}} tokens of a reply. Token {{= n + 1 }} was chosen on the previous pass. A draft proposes 4 guesses. The target accepts the first {{=a}} and replaces the next guess with its own token. How many tokens' keys and values should the cache hold when the round ends?"
+    params:
+      n: { min: 30, max: 60, step: 5 }
+      a: { min: 1, max: 3, step: 1 }
+    answer_expr: n + 1 + a
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer_expr: n + 2 + a,
+          category: misunderstood_definition,
+          feedback: "The correction was only predicted in this pass. It enters the cache next round, when it's fed in.",
+        }
+      - {
+          answer_expr: n + 5,
+          category: incorrect_reasoning,
+          feedback: "Rejected guesses aren't part of the reply, so their entries are dropped.",
+        }
+      - {
+          answer_expr: n + a,
+          category: recall_failure,
+          feedback: "The check also processed token {{= n + 1 }}, so its keys and values are now in the cache.",
+        }
+    solution: "The check processed token {{= n + 1 }} and the 4 guesses. The cache keeps token {{= n + 1 }} and the {{=a}} accepted guesses, giving {{= n + 1 + a }} entries. The correction enters next round."
   - id: sd-speed-basics
     dimension: conceptual
     type: mc
