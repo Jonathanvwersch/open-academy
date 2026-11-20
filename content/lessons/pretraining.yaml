@@ -7,6 +7,8 @@ recap:
     text: "A language model predicts each token from the ones before it, $p(x_{t+1}\\mid x_1,\\dots,x_t)$, and adds the cross-entropy loss $-\\ln p$ of the true next token at every position."
   - concept: tokenization
     text: "A token is a short piece of text, such as a word or part of one, and a tokenizer splits text into tokens."
+  - concept: backpropagation
+    text: "Backpropagation passes slopes backwards layer by layer using the chain rule. Each weight gets its own loss slope, and the layer also passes a slope to the preceding layer."
 where_this_fits: |
   ### What is pretraining?
 
@@ -109,7 +111,7 @@ knowledge_points:
 
       Once we have the data, how much computing does training take? We measure it in **floating-point operations**, or FLOPs. Floating-point numbers are numbers with a decimal point, the kind the weights are stored as, and one FLOP is a single addition or multiplication of two of them.
 
-      Almost every parameter is a matrix weight. As in the matrices lesson, using each weight multiplies it by one number and adds the product to a total. Training also finds slopes working backwards. At each weight, one multiply-and-add finds its slope and another passes a slope to the preceding layer. Count this work per parameter per token:
+      Almost every parameter is a matrix weight. As in the matrices lesson, using each weight multiplies it by one number and adds the product to a total. Backpropagation uses the chain rule to find slopes working backwards. At each weight, one multiply-and-add finds its own loss slope and another passes a slope to the preceding layer, so earlier weights can get their slopes too. Count this work per parameter per token:
       $$
       \begin{aligned}
       \text{forward FLOPs}&=1+1=2 &&\text{multiply, then add}\\
@@ -155,6 +157,7 @@ knowledge_points:
     problems:
       - pt-training-compute-basics
       - ptp-compute-self-explain
+      - ptp-backward-cost
       - ptp-double-tokens
       - ptp-compute-template
       - ptp-forward-only
@@ -171,6 +174,8 @@ knowledge_points:
       ### Loss against compute
 
       What does more compute buy, and can we know before paying for it?
+
+      Held-out test text is kept out of training and used to measure loss or pick a saved version of the weights, called a checkpoint; leaking it into training inflates evaluation scores.
 
       In 2020, Kaplan and colleagues at OpenAI found a pattern across many language models. As long as neither model size nor data holds it back, loss on unseen test text falls smoothly as compute grows. Every tenfold compute increase multiplies loss by about the same factor. The picture starts at loss $4$ and uses factor $0.9$, close to their measurements. Apply it once per tenfold step:
       $$

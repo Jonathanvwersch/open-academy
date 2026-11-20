@@ -185,7 +185,7 @@ knowledge_points:
 
       “Aux” means auxiliary, or extra. A **gradient** tells how much the loss changes when a weight is nudged. Gradient descent uses it to adjust weights. The fraction $f_i$ comes from counting chosen tokens. Tiny weight changes leave that count unchanged until a token switches experts, giving zero gradient.
 
-      But $P_i$ moves with the weights. In $f_iP_i$, lowering $P_i$ reduces the penalty more when $f_i$ is large. Its gradient pushes the most-used experts' scores down, so later tokens can choose others. This spreads work.
+      But $P_i$ moves with the weights. In $f_iP_i$, lowering $P_i$ reduces the penalty more when $f_i$ is large. The penalty's slope passes back through the batch average and the softmax to the router's scores and weights $W_R$. Its gradient pushes the most-used experts' scores down, so later tokens can choose others. This spreads work.
 
       We use probabilities before selection. Afterward, unchosen experts have weight 0 regardless of score. Nudging their scores leaves those weights unchanged, so they give zero gradient for adjusting those scores.
 

@@ -310,6 +310,27 @@ exercises:
         category: incorrect_reasoning
         feedback: "The loss adds very little. The $6$ comes from the weights: $2$ FLOPs forward and about $4$ for the slopes."
     solution: "Multiplying a matrix by a vector multiplies each weight by a number and adds the result, $2$ FLOPs. Working out the slopes needs each weight's own slope and the slope it passes back, about $4$ more, so $6$ per parameter per token."
+  - id: ptp-backward-cost
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A team estimates training cost for a multilayer language model as $4PD$ FLOPs: $2PD$ for the forward pass and $2PD$ for finding each weight's own loss slope. Which additional work explains the usual $6PD$ estimate?"
+    options:
+      - id: a
+        text: Passing loss slopes to preceding layers, so their weights can get their own slopes.
+        correct: true
+        feedback: Backpropagation must pass slopes backwards through the layers as well as find each weight's own slope.
+      - id: b
+        text: Repeating the forward pass, because each weight's slope needs a second prediction.
+        correct: false
+        feedback: Each preceding layer needs a slope for its output, which it combines with its own local slopes using the chain rule.
+      - id: c
+        text: Computing each weight's slope again, because every weight needs two separate loss slopes.
+        correct: false
+        feedback: Each weight needs one loss slope. The other backward calculation passes slopes to the preceding layer.
+    solution: Backpropagation passes loss slopes from each layer to the preceding one using the chain rule. Leaving out that work undercounts training compute, even if the estimate includes finding each weight's own slope.
   - id: ptp-double-tokens
     dimension: conceptual
     type: mc

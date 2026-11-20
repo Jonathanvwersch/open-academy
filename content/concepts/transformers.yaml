@@ -136,7 +136,7 @@ concepts:
       est_minutes: 25,
       goal_weight: 2,
       dimensions: [conceptual],
-      prereqs: [{ id: autoregressive-lm }, { id: tokenization }],
+      prereqs: [{ id: autoregressive-lm }, { id: tokenization }, { id: backpropagation }],
       objectives:
         [{ text: "Describe the stages of an LLM training pipeline", dimension: conceptual }],
       status: authored,
