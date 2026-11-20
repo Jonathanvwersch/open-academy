@@ -9,11 +9,11 @@ recap:
 where_this_fits: |
   ### What is regularization?
 
-  Regularization is any change to training that stops a model from fitting its training examples too closely, so that it does better on new examples. A model's **weights** are the numbers it learns that say how strongly each input affects its prediction. The most common kind of regularization adds a **penalty** to the loss, an amount that grows with the weights.
+  Regularization changes training to stop a model fitting its examples too closely and improve performance on new examples. A model's **weights** are the numbers it learns to set how strongly each input affects its prediction. A common form adds a **penalty** to the loss that grows with the weights.
 
-  The overfitting lesson fixed overfitting by switching to a less flexible model. Regularization keeps the flexible model and holds its weights back instead, by an amount we choose.
+  The overfitting lesson fixed overfitting by switching to a less flexible model. Regularization keeps a flexible model and holds its weights back by a chosen amount.
 
-  Our running example has one weight, $\hat y=wx$, and one training example, $x=1$ with target $y=3$. That target is unusually high compared with the broader pattern, so in step 3 a smaller weight will do better on new examples.
+  Our example has one weight, $\hat y=wx$, and one training example, $x=1$ with target $y=3$. That target is unusually high compared with the broader pattern, so a smaller weight will do better on new examples.
 knowledge_points:
   - id: rg-penalty
     title: "Add a penalty for large weights"
@@ -288,7 +288,7 @@ knowledge_points:
       $$
       \begin{aligned}
       \text{kept output}&=3/0.5=6 &&\text{compensate for keeping half}\\
-      \text{average output}&=0.5(0)+0.5(6)=3 &&\text{weight both possible outcomes}
+      \text{average output}&=0.5(0)+0.5(6)=3 &&\text{weight each outcome by its probability}
       \end{aligned}
       $$
       The network can't rely on any one unit, so it spreads what it learns across many. Dropout is switched off when the trained network makes predictions.

@@ -137,7 +137,7 @@ knowledge_points:
   - id: act-relu-sigmoid-tanh
     title: "Three common activation functions"
     tldr: |
-      - A flat activation stops training from updating the weights feeding it.
+      - A flat activation gives no weight update to the weights feeding it.
       - So we use functions that bend and still have a slope training can follow.
       - ReLU keeps positive scores and turns negative scores into zero.
       - Sigmoid squeezes any score to between zero and one, and tanh squeezes it to between minus one and one.
