@@ -219,7 +219,7 @@ knowledge_points:
     explain: |
       ### Watch predictions change during training
 
-      The finished fits showed that following training prices too closely can hurt validation predictions. Now we'll watch a model get to that point so we can stop before it happens. The upper plot follows a new run that trains the wiggly curve on more houses from our sales collection. Training adjusts its weights a little during each pass through the training houses. These adjustable numbers control its predictions. Early adjustments can produce a smooth shape. Later adjustments can pull different parts towards individual training prices. One full pass is an **epoch**, and we can save a copy of the model's weights after each epoch. Each saved copy is called a **checkpoint**.
+      The finished fits showed that following training prices too closely can hurt validation predictions. To see when that starts, the upper plot follows the wiggly model as it trains over many passes on a larger set of house sales. Each pass changes its **weights**, the adjustable numbers that control its predictions. Early updates can fit the broad pattern, while later ones can pull parts of the curve towards individual prices. One full pass is an **epoch**. We can save a copy of the model's weights after each epoch. Each saved copy is called a **checkpoint**.
 
       A **learning curve** shows how error changes during training. In both plots, the horizontal axis counts completed epochs and zero means before training. Throughout this step, errors are in thousands of dollars. Blue is training error and green is validation error.
 

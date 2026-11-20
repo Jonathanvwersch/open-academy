@@ -13,7 +13,7 @@ recap:
       Low training error with much higher or rising validation error suggests overfitting. A flexible
       model can follow its training examples so closely that it copies them.
   - concept: pytorch-basics
-    text: "Start with `optimizer.zero_grad()`, then compute the loss, find slopes with `loss.backward()` and update with `optimizer.step()`. For validation, `model.eval()` selects evaluation mode, and `torch.no_grad()` pauses slope recording. `model.train()` restores training mode."
+    text: "Clear stored slopes with `optimizer.zero_grad()`, compute the loss, find new slopes with `loss.backward()` and update with `optimizer.step()`. For validation, `model.eval()` selects evaluation mode, and `torch.no_grad()` pauses slope recording. `model.train()` restores training mode."
   - concept: regularization
     text: "Dropout randomly sets some units' outputs to zero during training. It is switched off for evaluation."
 where_this_fits: |-

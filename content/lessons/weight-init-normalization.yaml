@@ -12,7 +12,7 @@ where_this_fits: |
 
   Initialization is how we choose a network's weights before training starts. Normalization is an extra step inside the network that rescales a layer's outputs so they stay about the same size. Both stop the numbers in a deep network from growing or shrinking out of control.
 
-  Why does that matter? Every layer multiplies the numbers passing through it, so a small factor repeated over many layers becomes huge. If each layer doubles its input, ten layers make it about a thousand times bigger. Backpropagation multiplies the slopes in the same way, so training either barely changes the first layers' weights or takes wild steps. Well-sized starting weights stop each layer from growing or shrinking the numbers, and normalization keeps it that way during training.
+  Why does that matter? Every layer multiplies the numbers passing through it. If each layer doubles its input, ten layers make it about a thousand times bigger. Backpropagation multiplies the slopes in the same way. A tiny slope barely moves a weight, while a huge slope can move it too far in one update. Well-sized starting weights stop each layer from growing or shrinking the numbers, and normalization keeps it that way during training.
 knowledge_points:
   - id: wi-depth-chain
     title: "Follow a number through many layers"
@@ -141,11 +141,11 @@ knowledge_points:
     explain: |
       ### Many inputs at once
 
-      A neuron multiplies each input by its own weight and adds the results to get its **score**, before any ReLU. With identical starting weights, neurons can compute the same output, get the same slopes and stay identical as they train. Random weights give neurons different starting points.
+      A neuron multiplies each input by its own weight and adds the results to get its **score**, before any ReLU. Neurons that start with identical weights can stay identical as they train and learn only one pattern between them. Random weights give them different starting points.
 
       We'll measure a list of numbers by its **typical size**, found by squaring the numbers, averaging the squares and taking the square root. Numbers that are all $1$ or $-1$ have typical size $1$.
 
-      Let's take a neuron with two inputs, both $1$. Each weight is equally likely to be $+1$ or $-1$, and the choices are **independent**, meaning either first sign leaves the two possible second signs equally likely.
+      Let's take a neuron with two inputs, both $1$. The two weights are chosen **independently**, like separate coin tosses, so the second weight has the same chance of being $+1$ or $-1$ whichever sign came first.
 
       | Weights | Score | Score squared |
       | --- | --- | --- |
@@ -166,7 +166,7 @@ knowledge_points:
 
       ### The rule for the starting size
 
-      With $n$ inputs of typical size $1$, choose independent random weights so each value is as likely as its negative. Write $a$ for the weights' typical size. Each term $w_ix_i$ has average square $a^2x_i^2$. The input squares add up to $n$, and the cross terms cancel on average, so the score's average square is $na^2$. To keep the score's typical size at $1$:
+      With $n$ inputs of typical size $1$, choose each weight independently, with positive and negative values of each size equally likely. If $a$ is the weights' typical size, $w_ix_i$ has average square $a^2x_i^2$. The input squares add up to $n$, and each pair of weights gives the same cross-term cancellation as in the two-input case. To keep the score's typical size at $1$:
       $$
       \begin{aligned}
       n a^2&=1 &&\text{add }n\text{ contributions}\\
