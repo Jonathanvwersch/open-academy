@@ -173,22 +173,23 @@ exercises:
     type: mc
     role: practice
     difficulty: 1
+    target_seconds: 30
     est_minutes: 2
-    prompt: In the worked example, why subtract twice $x_2+2x_3=10$ from $2x_2+5x_3=24$?
+    prompt: Why subtract augmented row $(0,2,1\mid8)$ from row $(0,2,5\mid24)$ when solving for $x_1,x_2,x_3$?
     options:
       - id: a
         text: It makes both right-hand sides zero.
         correct: false
-        feedback: The resulting right-hand side is 24-20=4.
+        feedback: The resulting right-hand side is $24-8=16$.
       - id: b
         text: It removes $x_2$ and leaves an equation for $x_3$.
         correct: true
-        feedback: The $2x_2$ terms cancel.
+        feedback: The $2x_2$ terms cancel, leaving $4x_3=16$.
       - id: c
         text: It removes $x_3$ and leaves an equation for $x_2$.
         correct: false
-        feedback: The $x_3$ terms become $5x_3-4x_3=x_3$.
-    solution: The subtraction gives $x_3=4$, which can be put back into the other equations.
+        feedback: The $x_3$ terms become $5x_3-x_3=4x_3$.
+    solution: The subtraction gives augmented row $(0,0,4\mid16)$, so $x_3=4$. Put this value back into the earlier rows to find the other unknowns.
     lesson_only: true
   - id: inv-el-write-matrix
     dimension: conceptual
@@ -275,6 +276,44 @@ exercises:
       Subtract twice the first result to get $x_3=5$.
     tolerance:
       abs: 0.000001
+  - id: inv-el-augmented-three
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt: The augmented matrix for unknowns $x_1,x_2,x_3$ is $\left[\begin{array}{ccc|c}0&1&1&7\\1&1&1&9\\2&3&5&33\end{array}\right]$. What is $x_2$ in its solution?
+    answer: 3
+    tolerance: { abs: 0.000001 }
+    common_wrong:
+      - answer: 4
+        category: incorrect_reasoning
+        feedback: That is $x_3$. Put it into the equation $x_2+x_3=7$ to find $x_2$.
+      - answer: 7
+        category: incorrect_reasoning
+        feedback: The first total includes both $x_2$ and $x_3$. Eliminate and back-substitute to separate them.
+    solution: Swap rows 1 and 2, subtract twice row 1 from row 3, then subtract row 2 from row 3 to get $(0,0,2\mid8)$. Thus $x_3=4$, and row 2 gives $x_2=7-4=3$.
+  - id: inv-el-swap-needed
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: During elimination for $x_1,x_2,x_3$, the augmented matrix is $\left[\begin{array}{ccc|c}1&1&0&5\\0&0&2&8\\0&3&1&10\end{array}\right]$. Which next operation puts a nonzero second pivot on the diagonal while preserving the solution?
+    options:
+      - id: swap-whole-rows
+        text: Swap the whole second and third rows, including their totals.
+        correct: true
+        feedback: The third row supplies the second-column pivot 3. Moving its total with it keeps the same equation.
+      - id: swap-left-block
+        text: Swap the second and third rows of the left block, keeping the totals fixed.
+        correct: false
+        feedback: This attaches 8 to the wrong left side and 10 to the other one, changing both equations.
+      - id: replace-zero
+        text: Replace the zero in row 2, column 2 by 1, keeping every other entry.
+        correct: false
+        feedback: Changing one number changes the equation. A row operation must act on a whole equation.
+    solution: Row 2 has zero in the second pivot position, and row 3 has 3 there. Swapping both complete augmented rows keeps every equation intact and supplies the pivot.
   - id: inv-el-fertiliser
     dimension: math
     type: numeric
@@ -705,17 +744,18 @@ exercises:
     knowledge_point: inv-elimination
     difficulty: 1
     est_minutes: 1
-    prompt: In one or two sentences, how does elimination remove an unknown, and why does that keep the solution unchanged?
+    prompt: In one or two sentences, what does $[A\mid b]$ store for a linear system, and why must a row addition act on both sides of its bar?
     rubric:
       - id: meaning
-        criterion: Explain that elimination subtracts a multiple of one equation from another.
+        criterion: Explain that the augmented matrix keeps each equation's numbers multiplying unknowns beside its right-hand side.
         weight: 1
         required: true
       - id: rule
-        criterion: Explain that subtracting equal amounts from both sides keeps the solution unchanged.
+        criterion: Explain that applying a row addition to both the numbers and the total performs the same arithmetic on both sides of the equation, preserving its solutions.
         weight: 1
         required: true
-    exemplar: Subtract a suitable multiple of one equation from another to cancel an unknown. Equal amounts are subtracted from both sides, so the same solution still satisfies the equations.
+    exemplar: Each row of $[A\mid b]$ holds the numbers multiplying the unknowns and the total of one equation. A row addition updates both parts so it performs the same arithmetic on both sides of the equation and preserves the solutions.
+    solution: The bar separates the left side's numbers from the right-hand side, and both belong to the same equation.
   - id: inv-recall-elimination-contrast
     dimension: conceptual
     type: mc

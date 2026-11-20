@@ -4,7 +4,7 @@ objective: |
   **Goal:** find and check the inverse of a $2\times2$ matrix, solve a small linear system $Ax=b$ by elimination, use the transpose rules including $(AB)^\top=B^\top A^\top$ to recognise symmetric matrices, and solve systems in NumPy with `np.linalg.solve`.
 recap:
   - concept: determinants
-    text: 'An inverse undoes a matrix, recovering each input from its output. A $2\times2$ matrix $A=\begin{bmatrix}a&b\\c&d\end{bmatrix}$ has an inverse exactly when its determinant, $\det(A)=ad-bc$, is not zero.'
+    text: "A nonzero determinant allows an inverse. Row additions preserve the determinant; row swaps reverse its sign. Use these row operations to clear entries below pivots, then multiply the triangular diagonal entries and account for swaps."
 where_this_fits: |
   ### What is a matrix inverse?
 
@@ -25,7 +25,7 @@ knowledge_points:
 
       To find the matrix that undoes another, we first need a matrix that leaves everything alone.
 
-      The **identity matrix**, written $I$, has 1s down its **main diagonal**, from the top left to the bottom right, and 0s everywhere else:
+      The **identity matrix**, written $I$, has 1s down its main diagonal and 0s everywhere else:
 
       $$I=\begin{bmatrix}1&0\\0&1\end{bmatrix}$$
 
@@ -132,105 +132,80 @@ knowledge_points:
   - id: inv-elimination
     title: "Solve equations by removing unknowns"
     tldr: |
-      - Several equations can describe the same unknown numbers.
-      - Subtracting multiples of equations removes unknowns one at a time.
-      - Once one value is known, put it back to find the others.
-      - If the same quantities must have different totals, there is no solution.
+      - Store each equation's numbers and total together in one row.
+      - Swap whole rows when needed, then subtract row multiples to remove unknowns.
+      - Solve from the bottom row upwards, putting each known value back into earlier rows.
+      - A false equation means there is no shared solution.
     explain: |
-      ### Equations as one matrix product
+      ### Keep each equation in one row
 
-      Let's answer the café question from the start. Each order gives one equation. Two coffees and a tea cost £8, and one coffee and one tea cost £5. If we call the price of a coffee $x_1$ and of a tea $x_2$, in pounds, then
+      The café orders give several equations for the same prices. A **linear system** is a set of equations in which each unknown is multiplied by a number and the results are added. Write it $Ax=b$: $A$ holds those numbers, $x$ lists the unknowns and $b$ lists the totals. When $A$ is invertible, $x=A^{-1}b$.
 
-      $$\begin{aligned}2x_1+x_2&=8\\x_1+x_2&=5\end{aligned}$$
+      To organise elimination, put the totals beside the matrix. This **augmented matrix**, written $[A\mid b]$, has one row per equation. The vertical bar separates the numbers multiplying unknowns from the right-hand side. Keep the unknowns in the same column order. With three unknowns, a row $(2,2,0\mid10)$ means $2x_1+2x_2+0x_3=10$.
 
-      Each left side is a row of counts dotted with the prices $x=(x_1,x_2)$, so the two equations are one matrix product:
-
-      $$\begin{bmatrix}2&1\\1&1\end{bmatrix}\begin{bmatrix}x_1\\x_2\end{bmatrix}=\begin{bmatrix}8\\5\end{bmatrix}$$
-
-      A **linear system** is a set of equations like these. Each unknown is multiplied by a number and the results are added. We write it $Ax=b$: $A$ holds those numbers, $x$ lists the unknowns, and $b$ lists the right-hand sides. This is the $A$ from step 1, with $b=(8,5)$. We already found $x=A^{-1}b=(3,2)$: £3 for coffee and £2 for tea.
-
-      Each equation on its own is a straight line of points $(x_1,x_2)$. In the picture, the blue line is the first equation and the orange line is the second. The answer is the green point where they cross, $(3,2)$.
+      The blue block holds $A$ and the orange column holds $b$. Each horizontal row keeps an equation's numbers and total together.
 
       ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 380" aria-label="The blue line 2 x1 plus x2 equals 8 runs from (0, 8) to (4, 0). The orange line x1 plus x2 equals 5 runs from (0, 5) to (5, 0). They cross at the green point (3, 2), the solution." font-family="ui-sans-serif, system-ui, sans-serif">
-      <g font-size="16" fill="#171717">
-      <path d="M40 330 H360 M60 350 V60" stroke="#d4d4d4"/>
-      <path d="M60 90 L180 330" stroke="#3b82f6" stroke-width="3"/>
-      <path d="M60 180 L210 330" stroke="#f59e0b" stroke-width="3"/>
-      <circle cx="150" cy="270" r="6" fill="#10b981"/>
-      <text x="164" y="266" fill="#10b981">(3, 2)</text>
-      <text x="72" y="80" fill="#3b82f6">2x₁ + x₂ = 8</text>
-      <text x="196" y="300" fill="#f59e0b">x₁ + x₂ = 5</text>
-      <text x="346" y="352">x₁</text><text x="30" y="70">x₂</text>
-      <g font-size="13" fill="#737373"><text x="176" y="348">4</text><text x="206" y="348">5</text><text x="44" y="95">8</text><text x="44" y="185">5</text></g>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 200" aria-label="An augmented matrix with blue coefficient rows (0,2,1), (2,2,0), (4,6,5) and an orange totals column (8,10,44). A vertical bar separates the coefficient matrix A from b. Every horizontal row represents one equation." font-family="ui-sans-serif, system-ui, sans-serif">
+      <rect x="80" y="45" width="210" height="120" fill="#3b82f6" fill-opacity="0.12"/>
+      <rect x="310" y="45" width="70" height="120" fill="#f59e0b" fill-opacity="0.15"/>
+      <path d="M70 40 H60 V170 H70 M390 40 H400 V170 H390 M300 45 V165" fill="#ffffff" fill-opacity="0" stroke="#171717" stroke-width="2"/>
+      <g font-size="16" text-anchor="middle" fill="#171717">
+      <text x="185" y="28" fill="#3b82f6">A: numbers multiplying unknowns</text><text x="345" y="28" fill="#f59e0b">b: totals</text>
+      <text x="115" y="73">0</text><text x="185" y="73">2</text><text x="255" y="73">1</text><text x="345" y="73">8</text>
+      <text x="115" y="113">2</text><text x="185" y="113">2</text><text x="255" y="113">0</text><text x="345" y="113">10</text>
+      <text x="115" y="153">4</text><text x="185" y="153">6</text><text x="255" y="153">5</text><text x="345" y="153">44</text>
       </g></svg>
       ```
 
-      ### Removing one unknown at a time
+      ### Clear below the pivots
 
-      For bigger systems, we have no inverse formula here. **Elimination** finds $x$ without computing $A^{-1}$. It subtracts a multiple of one equation from another to remove an unknown. Both sides of a true equation are equal. Subtracting equal amounts from both sides keeps the solution unchanged. For a system with one solution, we repeat until one equation has a single unknown. We solve it, then put that value back into the others.
+      **Elimination** subtracts multiples of equations to remove unknowns. Use the row additions and row swaps from determinants on the entire augmented row, including its total. A row addition performs the same arithmetic on both sides of an equation. Keeping the other equation lets us undo the addition, so the solution set stays the same. A row swap only reorders equations.
 
-      Here we remove $x_2$, then put the coffee price back into the second equation:
-      $$
-      \begin{aligned}
-      (2x_1+x_2)-(x_1+x_2)&=8-5 &&\text{subtract the second equation}\\
-      x_1&=3 &&\text{collect the remaining terms}\\
-      3+x_2&=5 &&\text{put }x_1\text{ back}\\
-      x_2&=2 &&\text{subtract }3
-      \end{aligned}
-      $$
-      A coffee costs £3 and a tea £2.
+      If the next pivot position is zero, swap in a row with a nonzero entry there. Clear below each pivot until $A$ is upper triangular. Solve the last equation first, then put its value into the row above. Continuing upwards is **back-substitution**.
 
-      Sometimes every unknown vanishes. Suppose a careless till gives $2x_1+2x_2=8$ and $x_1+x_2=5$. Their matrix has rows $(2,2)$ and $(1,1)$, with determinant zero:
+      Be careful to update the totals too. Changing only $A$ changes the equations.
+
+      ### Recognise a contradiction
+
+      Some systems have no shared solution. For $2x_1+2x_2=8$ and $x_1+x_2=5$, subtract twice the second equation from the first:
       $$
       \begin{aligned}
       (2x_1+2x_2)-2(x_1+x_2)&=8-2\times5 &&\text{subtract twice the second equation}\\
       0&=-2 &&\text{cancel the unknowns}
       \end{aligned}
       $$
-      That's false, so no prices fit both orders. Divide the original first equation by 2:
-      $$x_1+x_2=4.$$
-      The same left side must equal both 4 and 5. The lines are parallel and never cross.
+      In augmented form, the resulting row is $(0,0\mid-2)$. It states a false equality, so no input satisfies both equations.
     worked: |
-      Let's add juice to the café menu and solve for three prices from three orders. One coffee, one tea and one juice cost £9. One coffee, two teas and three juices cost £19. One coffee, three teas and six juices cost £33. With $x_3$ for the price of a juice:
+      Let's solve for three unknowns, keeping every right-hand side with its equation:
 
-      $$\begin{aligned}x_1+x_2+x_3&=9\\x_1+2x_2+3x_3&=19\\x_1+3x_2+6x_3&=33\end{aligned}$$
+      $$\begin{aligned}2x_2+x_3&=8\\2x_1+2x_2&=10\\4x_1+6x_2+5x_3&=44\end{aligned}$$
 
-      1. **Remove $x_1$ from the second equation.** Both equations start with one $x_1$, so subtracting the first equation from the second removes it.
-         $$x_2+2x_3=10$$
+      1. **Build the augmented matrix.** Use column order $x_1,x_2,x_3$, putting zero where an unknown is absent.
+         $$[A\mid b]=\left[\begin{array}{ccc|c}0&2&1&8\\2&2&0&10\\4&6&5&44\end{array}\right]$$
 
-      2. **Remove $x_1$ from the third equation.** Subtracting the first equation from the third does the same.
-         $$2x_2+5x_3=24$$
+      2. **Swap in a first pivot.** The top-left entry is zero, so exchange the first two whole rows.
+         $$R_1\leftrightarrow R_2:\qquad\left[\begin{array}{ccc|c}2&2&0&10\\0&2&1&8\\4&6&5&44\end{array}\right]$$
 
-      3. **Remove $x_2$.** The last two results now have only $x_2$ and $x_3$. Subtracting twice the result of step 1 from the result of step 2 leaves one unknown.
-         $$
-         \begin{aligned}
-         (2x_2+5x_3)-2(x_2+2x_3)&=24-2\times10 &&\text{subtract twice the earlier equation}\\
-         (2x_2-2x_2)+(5x_3-4x_3)&=24-20 &&\text{expand the subtraction}\\
-         x_3&=4 &&\text{collect the remaining terms}
-         \end{aligned}
-         $$
+      3. **Clear below the first pivot.** Subtract twice row 1 from row 3, including $44-2\times10$ in the totals column.
+         $$R_3\leftarrow R_3-2R_1:\qquad\left[\begin{array}{ccc|c}2&2&0&10\\0&2&1&8\\0&2&5&24\end{array}\right]$$
 
-      4. **Put the values back.** Use $x_3=4$ in the two-unknown equation, then use both known prices in the first order.
-         $$
-         \begin{aligned}
-         x_2+2\times4&=10 &&\text{put the juice price back}\\
-         x_2&=10-8 &&\text{subtract the juice cost}\\
-         &=2 &&\text{find the tea price}\\
-         x_1&=9-2-4 &&\text{remove tea and juice from the first order}\\
-         &=3 &&\text{find the coffee price}
-         \end{aligned}
-         $$
+      4. **Clear below the second pivot.** Subtract row 2 from row 3. The left block is now upper triangular.
+         $$R_3\leftarrow R_3-R_2:\qquad\left[\begin{array}{ccc|c}2&2&0&10\\0&2&1&8\\0&0&4&16\end{array}\right]$$
 
-      5. **Check the third order.** Put the three prices into its total.
-         $$
-         \begin{aligned}
-         3+3\times2+6\times4&=3+6+24 &&\text{multiply each price by its count}\\
-         &=33 &&\text{add the costs}
-         \end{aligned}
-         $$
+      5. **Solve the bottom equation.** Read the last row as an equation for $x_3$.
+         $$\begin{aligned}4x_3&=16 &&\text{read row 3}\\x_3&=4 &&\text{divide by }4\end{aligned}$$
 
-      So a coffee costs £3, a tea £2 and a juice £4, and the third order checks out.
+      6. **Substitute into row 2.** Use the known value of $x_3$.
+         $$\begin{aligned}2x_2+4&=8 &&\text{put }x_3=4\text{ into row 2}\\2x_2&=4 &&\text{subtract }4\\x_2&=2 &&\text{divide by }2\end{aligned}$$
+
+      7. **Substitute into row 1.** Use the known value of $x_2$.
+         $$\begin{aligned}2x_1+2\times2&=10 &&\text{put }x_2=2\text{ into row 1}\\2x_1&=6 &&\text{subtract }4\\x_1&=3 &&\text{divide by }2\end{aligned}$$
+
+      8. **Check the original equations.** Multiply the original matrix by the solution vector.
+         $$\begin{bmatrix}0&2&1\\2&2&0\\4&6&5\end{bmatrix}\begin{bmatrix}3\\2\\4\end{bmatrix}=\begin{bmatrix}8\\10\\44\end{bmatrix}$$
+
+      The solution is $(3,2,4)$. The row swap and additions kept all three equations satisfied.
     problems:
       - inv-elimination-basics
       - inv-el-self-explain
@@ -239,6 +214,8 @@ knowledge_points:
       - inv-el-inverse-route
       - inv-el-no-solution
       - inv-el-three-unknowns
+      - inv-el-augmented-three
+      - inv-el-swap-needed
       - inv-el-fertiliser
   - id: inv-transpose
     title: "Swap a matrix's rows and columns"
@@ -391,7 +368,7 @@ knowledge_points:
 
       Be careful not to read that error as a bug in NumPy. It's telling you the equations don't pin down one answer, just as elimination did when every unknown vanished.
     worked: |
-      Let's solve the three-price café system from the elimination step in NumPy. By hand, elimination gave a coffee at £3, a tea at £2 and a juice at £4:
+      Let's solve a café pricing system in NumPy. One coffee, one tea and one juice cost £9; one coffee, two teas and three juices cost £19; one coffee, three teas and six juices cost £33. The unknowns are the three drink prices:
 
       $$\begin{bmatrix}1&1&1\\1&2&3\\1&3&6\end{bmatrix}\begin{bmatrix}x_1\\x_2\\x_3\end{bmatrix}=\begin{bmatrix}9\\19\\33\end{bmatrix}$$
 
@@ -424,7 +401,7 @@ knowledge_points:
           print(error)                          # Singular matrix
       ```
 
-      The code finds the same prices as elimination by hand, and it refuses the singular system.
+      The code finds prices of £3, £2 and £4, and it refuses the singular system.
     problems:
       - inv-numpy-basics
       - inv-np-self-explain
@@ -436,7 +413,7 @@ knowledge_points:
 final: inv-explain-solve
 summary: |
   - The identity matrix $I$ has 1s on its main diagonal and 0s elsewhere, so $AI=IA=A$. The inverse $A^{-1}$ undoes $A$, so $AA^{-1}=A^{-1}A=I$, and for a $2\times2$ matrix $A^{-1}=\frac{1}{ad-bc}\begin{bmatrix}d&-b\\-c&a\end{bmatrix}$ when $ad-bc\neq0$. The inverse of a product reverses the order, $(AB)^{-1}=B^{-1}A^{-1}$.
-  - A linear system can be written $Ax=b$. Elimination solves it by subtracting multiples of equations to remove one unknown at a time, and when $A$ is invertible the answer is $x=A^{-1}b$.
+  - A linear system can be written $Ax=b$. Its augmented matrix $[A\mid b]$ keeps each total beside its equation. Elimination uses whole-row swaps and additions, then back-substitution finds the unknowns; when $A$ is invertible the answer is $x=A^{-1}b$.
   - The transpose swaps rows and columns, $(A^\top)_{ij}=A_{ji}$. The dot product is $x^\top y$, and a product's transpose reverses the order, $(AB)^\top=B^\top A^\top$. A symmetric matrix has $A^\top=A$, and $A^\top A$ is always symmetric.
   - In NumPy, `np.linalg.solve(A, b)` solves $Ax=b$. It is preferred to `np.linalg.inv(A) @ b` because it does less arithmetic and is usually at least as accurate.
 
