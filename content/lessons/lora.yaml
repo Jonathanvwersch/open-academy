@@ -239,7 +239,7 @@ knowledge_points:
       \frac{\partial(BAx)_i}{\partial a_j}&=b_ix_j &&\text{slope when }a_j\text{ changes}
       \end{aligned}
       $$
-      Let $L$ be the loss. The chain rule combines these slopes with the loss's slope for each output entry:
+      Let $L$ be the loss. As in backpropagation, the chain rule combines these slopes with the loss's slope for each output entry. The slope for $A$ has to pass back through $B$, so each path includes an entry of $B$:
       $$
       \begin{aligned}
       \frac{\partial L}{\partial b_i}&=\frac{\partial L}{\partial(BAx)_i}(Ax) &&\text{follow the path through entry }i\\
