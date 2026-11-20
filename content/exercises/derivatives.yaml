@@ -35,14 +35,14 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: 'A sensor reports $y=\log_2 x$ for a positive reading $x$. Write $e^{\ln x}+\ln x$ using only $x$, $y$ and constants, with no logarithm of $x$. Use `log(...)` for natural logarithms and `*` for multiplication.'
-    answer: "x+log(2)*y"
-    variables: { x: [0.5, 4], y: [-1, 2] }
+    prompt: 'A sensor reports $y=\log_2 x$ for a positive reading $x$. Write $e^{\ln x}+\ln x$ using only $y$ and constants. Use `log(...)` for natural logarithms, `^` for powers and `*` for multiplication.'
+    answer: "2^y+log(2)*y"
+    variables: { y: [-1, 2] }
     hints:
       [
         "Undo the natural logarithm in the exponential, then change the base of the remaining logarithm.",
       ]
-    solution: 'The inverse rule gives $e^{\ln x}=x$. Changing base gives $\ln x=(\ln2)y$, so the result is $x+(\ln2)y$.'
+    solution: 'The inverse rule gives $e^{\ln x}=x=2^y$; change of base gives $\ln x=(\ln2)y$; the result is $2^y+(\ln2)y$.'
   - id: lab-gc-central-slope
     dimension: math
     type: numeric

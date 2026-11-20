@@ -211,3 +211,21 @@ test('normalizes stored natural-log expressions before grading', () => {
     correct: 1,
   });
 });
+
+test('grades the y-only derp-log-base answer and equivalent expressions', async () => {
+  const content = await loadContent('content');
+  const logarithmExercise = content.exercises.find((item) => item.id === 'derp-log-base');
+  if (logarithmExercise?.type !== 'expression') {
+    throw new Error('Expected derp-log-base to be an expression exercise');
+  }
+
+  for (const answer of ['2^y+log(2)*y', 'exp(y*log(2))+y*log(2)', '2^y + y*log(2)']) {
+    expect(gradeExpression(logarithmExercise, answer), answer).toMatchObject({
+      status: 'graded',
+      correct: 1,
+    });
+  }
+  expect(gradeExpression(logarithmExercise, 'x+log(2)*y')).toMatchObject({
+    status: 'invalid',
+  });
+});
