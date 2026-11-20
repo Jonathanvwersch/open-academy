@@ -104,7 +104,7 @@ exercises:
       - id: b
         text: The first house has zero chance of selling, since its score is zero.
         correct: false
-        feedback: A zero score becomes probability 0.5 under the sigmoid.
+        feedback: A zero score becomes a 0.5 chance after conversion to a probability.
       - id: c
         text: The second house has a negative chance of selling, so the model is broken.
         correct: false

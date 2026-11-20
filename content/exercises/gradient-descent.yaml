@@ -851,7 +851,7 @@ exercises:
     role: transfer
     difficulty: 3
     est_minutes: 3
-    prompt: While training a small layered model, its error goes 2.30 → 1.90 → 3.10 → 8.70 → 41.2 → not a number over five steps. What is the most likely cause, and what is the first fix to try?
+    prompt: A small neural network with several processing stages, called layers, is being trained. Its error goes 2.30 → 1.90 → 3.10 → 8.70 → 41.2, then the computer reports `nan`, its marker for a calculation that no longer produces a usable number. What is the most likely cause, and what is the first fix to try?
     options:
       - id: a
         text: The learning rate is too high, so steps overshoot and grow; cut it, for example to a tenth
@@ -872,7 +872,7 @@ exercises:
         correct: false
         category: incorrect_reasoning
         feedback: A single bad example can't make the error multiply step after step; that pattern comes from steps that are too large.
-    solution: A loss that decreases once and then grows geometrically is the signature of $|1 - 2a\eta| > 1$ in the steepest direction. Lower the learning rate, and check the input scaling.
+    solution: Error that falls once and then grows rapidly indicates update steps that are too large, so reduce the learning rate first. Then rescale input measurements to similar numeric ranges so a large-valued feature does not dominate the slopes.
   - id: gd-curve-slow
     dimension: transfer
     type: mc

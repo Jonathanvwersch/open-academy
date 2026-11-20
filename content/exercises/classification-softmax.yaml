@@ -20,7 +20,7 @@ exercises:
         text: They reverse the order of the three classes.
         correct: false
         feedback: Subtracting a common value preserves the score order.
-    solution: Each exponential gains the same factor, which cancels in the ratio. The shifted scores avoid overflow while preserving the probabilities.
+    solution: Each exponential gains the same factor, which cancels in the ratio. Subtracting the largest score keeps the exponentials within the computer's usable number range, avoiding overflow while preserving the probabilities.
   - id: sm-softmax-basics
     dimension: conceptual
     type: mc
@@ -45,7 +45,7 @@ exercises:
           id: c,
           text: "One certain class and two impossible classes.",
           correct: false,
-          feedback: "Softmax gives probabilities, not a one-hot decision.",
+          feedback: "Softmax gives probabilities for every class; a separate choice can mark one class as selected and the others as unselected.",
         }
     solution: Softmax divides positive e-powers by their shared total, so all probabilities are positive and add up to one.
   - id: sm-softmax-reason
@@ -201,7 +201,7 @@ exercises:
       - id: d
         text: "1"
         correct: false
-        feedback: The one-hot label identifies ball; its predicted probability goes inside the logarithm.
+        feedback: The label says ball is the observed class, so use the model's probability for ball inside the logarithm.
     solution:
       Cross-entropy takes the negative natural log of the true class's probability, so use the ball probability
       0.24.

@@ -368,7 +368,7 @@ exercises:
         correct: false
         category: misunderstood_definition
         feedback: "Training houses are reused many times during training."
-    solution: "Unseen houses show whether the model works beyond the sales it trained on, the way it must for a house that comes up for sale tomorrow."
+    solution: "A model can fit the training houses closely by using details unique to those examples, so its training error can look low while its predictions for new houses remain poor. Testing houses it never saw checks whether it learned a pattern that carries over."
   - id: ml-to-robots-basics
     dimension: conceptual
     type: mc
