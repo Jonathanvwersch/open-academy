@@ -599,7 +599,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "A team wants the compute-optimal training split described by the Chinchilla rule of thumb. Its model has ${{= a }}$ billion parameters. How many billion training tokens should it budget?"
+    prompt: "A team wants the training split expected to give the lowest loss for a fixed amount of processor work, following the Chinchilla rule of thumb. Its model has ${{= a }}$ billion parameters. How many billion training tokens should it budget?"
     params:
       a:
         min: 1
@@ -680,7 +680,7 @@ exercises:
         text: The extra tokens let the lab minimise training compute for the same target loss.
         correct: false
         category: incorrect_reasoning
-        feedback: The compute-optimal split already aims for the best loss per training budget. Overtraining trades extra training for cheaper deployment.
+        feedback: The rule describes the best split for a fixed training budget. More training costs extra now, while a smaller model costs less each time it answers a user.
       - id: c
         text: Once the model has enough data, additional training tokens cost no more FLOPs.
         correct: false
@@ -910,10 +910,10 @@ exercises:
         category: incorrect_reasoning
         feedback: Next-token prediction can learn the answers from ordinary text without separate correctness labels.
       - id: d
-        text: The score is reliable if the evaluation uses a different chat format from the pages.
+        text: The score is reliable if the test uses a different message layout from the web pages.
         correct: false
         category: incorrect_reasoning
-        feedback: Changing the format does not remove knowledge of test answers acquired during training.
+        feedback: Changing the page or message layout does not remove knowledge of test answers acquired during training.
     solution: Evaluation only tells us about new questions if the model never trained on the test. Here the test was in the pretraining data, so a high score may come from memorised answers.
   - id: ptp-robot-pipeline
     dimension: transfer

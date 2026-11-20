@@ -53,7 +53,7 @@ exercises:
           correct: false,
           feedback: "Equal weights arise here because the selected scores are equal; unequal scores would give unequal weights.",
         }
-    solution: Both chosen experts have the same score and hence the same probability. Renormalizing these two equal values makes each one half.
+    solution: Both chosen experts have the same score and probability. Dividing each by their combined probability makes each new weight one half.
   - id: moe-route-weight
     type: numeric
     dimension: math
@@ -273,9 +273,9 @@ exercises:
           id: c,
           text: "P averages the two expert output vectors after routing.",
           correct: false,
-          feedback: "Expert outputs are representations, not the router probabilities used in this loss.",
+          feedback: "The expert outputs are the values the selected experts produce; this loss uses router probabilities.",
         }
-    solution: P is the mean of the original probability vectors across the batch. Hard assignments are recorded separately in f, so the calculation retains the router's confidence information.
+    solution: P is the mean of the original probability vectors across the batch. The fraction of tokens assigned to each expert is recorded separately in f, so the calculation retains the router's confidence information.
   - id: moe-balance-penalty
     type: numeric
     dimension: math
@@ -320,7 +320,7 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: Two routers for a robot have the same total and active parameter counts. Router A sends almost everything to one device; B spreads work evenly. Which prediction about their running times is justified?
+    prompt: Two routers for a robot have the same total and active parameter counts. Router A sends almost everything to one GPU; B spreads work evenly. Which prediction about their running times is justified?
     options:
       - {
           id: a,
@@ -329,13 +329,13 @@ exercises:
         }
       - {
           id: b,
-          text: "Their times should match because equal active counts imply equal device utilisation.",
+          text: "Their times should match because equal active counts mean equal use of each GPU.",
           correct: false,
-          feedback: "Equal active counts can still leave one device overloaded while others wait.",
+          feedback: "Equal active counts can still leave one GPU overloaded while the others wait.",
         }
       - {
           id: c,
-          text: "B must be faster because equal device loads make communication cost negligible.",
+          text: "B must be faster because equal GPU loads make communication cost negligible.",
           correct: false,
           feedback: "Balanced devices may still exchange token vectors; equal work does not remove communication.",
         }
@@ -429,7 +429,7 @@ exercises:
     knowledge_point: "moe-count"
     difficulty: 1
     est_minutes: 1
-    prompt: "What do total parameters and active parameters per token each count in an MoE layer?"
+    prompt: "What do total parameters and active parameters per token each count in a mixture-of-experts (MoE) layer?"
     rubric:
       - id: "definition"
         criterion: "Explain that total parameters count the router and all experts."

@@ -6,10 +6,10 @@ exercises:
     role: core
     difficulty: 3
     est_minutes: 2
-    prompt: A base model answers 0 of 8 held-out uppercase-echo prompts exactly. Its fine-tuned version answers all 8 exactly under the same generation and scoring rules. The prompts were excluded from all training. Which claim does this result support?
+    prompt: A base model is given 8 test prompts that ask it to repeat text in uppercase, and produces an exact match on 0. Its fine-tuned version matches all 8 exactly using the same rule, where every character must match. The prompts were excluded from all training. Which claim does this result support?
     options:
       - id: a
-        text: The fine-tuned version improved exact match on this fixed echo benchmark.
+        text: The fine-tuned version repeated uppercase text correctly more often on these same 8 test prompts.
         correct: true
       - id: b
         text: The fine-tuned version improved factual accuracy across language tasks.
@@ -19,7 +19,7 @@ exercises:
         text: The fine-tuned version will answer every new echo prompt exactly.
         correct: false
         feedback: Eight held-out prompts provide a small sample. They cannot establish perfect performance on every future prompt.
-    solution: The comparison supports an improvement on the stated held-out benchmark. Its small size and narrow task limit the claims we can make about other prompts and abilities.
+    solution: The comparison supports better performance on these 8 uppercase-repeat prompts. Their small number and narrow task do not show performance on unrelated requests.
   - id: lev-benchmark-basics
     dimension: conceptual
     type: mc
@@ -53,7 +53,7 @@ exercises:
       - id: a
         text: The fresh score proves training exposure caused exactly the whole difference.
         correct: false
-        feedback: The groups can differ in difficulty too; the comparison does not isolate a causal effect.
+        feedback: The groups can differ in difficulty too, so the score gap does not prove that training exposure caused it.
       - id: b
         text: The fresh score separates six new questions from four already seen in training.
         correct: true
@@ -115,11 +115,11 @@ exercises:
       - id: b
         text: The remaining score is a guarantee that every question is new to the model.
         correct: false
-        feedback: The search may miss paraphrases, close copies or inaccessible training data.
+        feedback: The search may miss questions written in different words, close copies or inaccessible training data.
       - id: c
         text: The remaining score is clean if all remaining questions use different wording from training.
         correct: false
-        feedback: Rewording can leave the same questions and answers recognisable. Different wording does not rule out contamination.
+        feedback: Changing the wording can leave the same questions and answers recognizable, so it does not rule out contamination.
     solution: Removing known copies reduces a known source of contamination, but does not certify that all remaining material is unseen. Report how exposure was checked and what remains unknown.
   - id: lev-clean-design
     dimension: transfer
@@ -138,9 +138,9 @@ exercises:
         correct: true
         feedback: A separate untouched set better tests the chosen model on requests not used to guide changes.
       - id: c
-        text: Paraphrase the public questions after the changes, then use those paraphrases as the final unseen test.
+        text: Rewrite the public questions in different words after the changes, then use them as the final unseen test.
         correct: false
-        feedback: Paraphrases retain content already used to guide development. They are not an independent test of new requests.
+        feedback: Rewritten questions still use content already seen during development, so they do not form an independent test.
     solution: Keep development questions separate from the final test and avoid choosing model changes from final-test results. Fresh, representative questions reduce known exposure and task-coverage problems, though no finite set proves universal ability.
   - id: lev-domain-limit
     dimension: transfer
@@ -155,7 +155,7 @@ exercises:
         correct: false
         feedback: Different text tasks can require very different abilities and checks.
       - id: b
-        text: Check that the reading questions mention robots, then reuse their score for deployment.
+        text: Check that the reading questions mention robots, then use their score to decide whether it can write robot-control code.
         correct: false
         feedback: Shared subject matter does not make reading comprehension a test of code-writing ability or control errors.
       - id: c
@@ -423,7 +423,7 @@ exercises:
       - id: a
         text: Hide names, randomise one display per prompt, and treat randomisation as a check of each pair's order sensitivity.
         correct: false
-        feedback: Randomisation can reduce aggregate confounding, but one display cannot reveal whether that pair's judgment changes when swapped.
+        feedback: Randomising only the displayed order balances overall positions, but it cannot reveal whether this pair gets a different judgment when swapped.
       - id: b
         text: Hide names, fix the rubric, judge both orders, and count both mapped votes as independent prompt outcomes.
         correct: false

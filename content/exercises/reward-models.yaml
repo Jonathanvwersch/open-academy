@@ -463,7 +463,7 @@ exercises:
           correct: false,
           feedback: "The slopes are $p-1$ and $1-p$ for every pair, whichever order the model has.",
         }
-    solution: 'Only $r_w-r_l$ enters the loss, so $\partial L/\partial r_w=p-1$ and $\partial L/\partial r_l=1-p$ are always equal and opposite. Here $p\approx0.269$, giving $\mp0.731$.'
+    solution: 'Only $r_w-r_l$ enters the loss, so $\partial L/\partial r_w=p-1$ and $\partial L/\partial r_l=1-p$ are always equal and opposite. Here $p\approx0.269$, giving slopes of about $-0.731$ and $+0.731$.'
   - id: rmp-loss-equal
     dimension: math
     type: numeric
