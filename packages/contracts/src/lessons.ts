@@ -101,7 +101,6 @@ export interface LessonRunPayload {
       exercise: ClientExercise;
       result: {
         correct: number | null;
-        assisted: boolean;
         attemptNo: number;
         feedback: string;
         solution: string;
@@ -148,7 +147,6 @@ export interface LessonRunPayload {
 }
 
 export interface LessonRunAnswerPayload {
-  assisted: boolean;
   correct: number;
   feedback: string;
   solution: string;

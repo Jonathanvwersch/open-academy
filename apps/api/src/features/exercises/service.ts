@@ -8,13 +8,7 @@ import { z } from 'zod';
 import { serializedOptionOrder, serializeExercise } from '../../content/serialize.js';
 import { isTemplate } from '../../content/templates.js';
 import type { ContentIndex, IndexedExercise } from '../../content/types.js';
-import {
-  attempts,
-  reviewCards,
-  reviewLogs,
-  sessionActivities,
-  tutorMessages,
-} from '../../db/schema.js';
+import { attempts, reviewCards, reviewLogs, sessionActivities } from '../../db/schema.js';
 import { updateActivityAndAdvance } from '../../learning/activity-completion.js';
 import { answerOptionsFor } from '../../learning/answer-options.js';
 import { isDueToday, reviewActivityRating, scheduleReview } from '../../learning/fsrs.js';
@@ -436,36 +430,12 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
   const now = request.now();
   const attemptId = crypto.randomUUID();
   const gradedBy = result.graded_by ?? 'deterministic';
-  const hintCount = await hintsSincePreviousAttempt(
+  const hintsUsed = await hintsSincePreviousAttempt(
     db,
     request.userId,
     exercise.id,
     body.data.activityId,
   );
-  let previousAttempt: (typeof previousAttempts)[number] | undefined;
-  for (const attempt of previousAttempts) {
-    if (!previousAttempt || attempt.createdAt > previousAttempt.createdAt) {
-      previousAttempt = attempt;
-    }
-  }
-  let tutorAssisted = false;
-  if (body.data.activityId) {
-    const [message] = await db
-      .select({ id: tutorMessages.id })
-      .from(tutorMessages)
-      .where(
-        and(
-          eq(tutorMessages.userId, request.userId),
-          eq(tutorMessages.activityId, body.data.activityId),
-          eq(tutorMessages.exerciseId, exercise.id),
-          eq(tutorMessages.role, 'user'),
-          ...(previousAttempt ? [gt(tutorMessages.createdAt, previousAttempt.createdAt)] : []),
-        ),
-      )
-      .limit(1);
-    tutorAssisted = Boolean(message);
-  }
-  const hintsUsed = Math.max(hintCount, tutorAssisted ? 1 : 0);
   const credit = calculateCredit({
     correct: result.correct,
     hintsUsed,

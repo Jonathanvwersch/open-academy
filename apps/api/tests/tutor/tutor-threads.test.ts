@@ -399,7 +399,17 @@ test('adopting an earlier question links it to the exercise for assistance track
     }),
   });
   expect(answerResponse.status).toBe(200);
-  expect(await answerResponse.json()).toMatchObject({ assisted: true });
+  const answerBody = await answerResponse.json();
+  expect(answerBody).not.toHaveProperty('assisted');
+  const [answeredProblem] = await db
+    .select()
+    .from(lessonProblems)
+    .where(eq(lessonProblems.id, pending.id));
+  const [answeredAttempt] = await db
+    .select()
+    .from(attempts)
+    .where(eq(attempts.id, answeredProblem?.attemptId ?? ''));
+  expect(answeredAttempt).toMatchObject({ hintsUsed: 0, credit: 1 });
 });
 
 test('does not save a stale reply after a newer learner message and keeps unanswered history', async () => {

@@ -1658,7 +1658,7 @@ test('unscoped hints lower credit and restart after the previous attempt', async
   expect(await nextHint.json()).toMatchObject({ level: 1 });
 });
 
-test('session practice counts only tutor messages newer than the previous attempt', async () => {
+test('asking the tutor never lowers session practice credit', async () => {
   await resetLearner();
   const exercise = content.exercisesById.get('vectors-magnitude');
   if (exercise?.type !== 'numeric' || !('answer' in exercise)) {
@@ -1701,26 +1701,6 @@ test('session practice counts only tutor messages newer than the previous attemp
       createdAt: new Date(createdAt),
     });
   };
-  const addPreviousAttempt = async (activityId: string, sessionId: string, createdAt: string) => {
-    await db.insert(attempts).values({
-      userId,
-      sessionId,
-      activityId,
-      exerciseId: exercise.id,
-      exerciseVersion: exercise.contentVersion,
-      conceptId: exercise.concept,
-      dimension: exercise.dimension,
-      mode: 'practice',
-      answer: exercise.answer,
-      correct: 0,
-      credit: 0,
-      hintsUsed: 0,
-      attemptNo: 1,
-      gradedBy: 'deterministic',
-      feedback: {},
-      createdAt: new Date(createdAt),
-    });
-  };
   const answer = async (activityId: string, at: string) =>
     app.request('/api/attempts', {
       method: 'POST',
@@ -1733,31 +1713,14 @@ test('session practice counts only tutor messages newer than the previous attemp
       }),
     });
 
-  const first = await createPracticeActivity();
-  await addTutorMessage(first.activity.id, '2026-01-01T12:00:00.001Z');
-  const firstResponse = await answer(first.activity.id, '2026-01-01T12:00:01.000Z');
-  expect(firstResponse.status).toBe(200);
-  expect(await firstResponse.json()).toMatchObject({ hintsUsed: 1 });
-
-  const stale = await createPracticeActivity();
-  await addTutorMessage(stale.activity.id, '2026-01-01T12:00:00.001Z');
-  await addPreviousAttempt(stale.activity.id, stale.session.id, '2026-01-01T12:00:00.002Z');
-  const staleResponse = await answer(stale.activity.id, '2026-01-01T12:00:01.000Z');
-  expect(staleResponse.status).toBe(200);
-  expect(await staleResponse.json()).toMatchObject({ hintsUsed: 0 });
-
-  const recent = await createPracticeActivity();
-  await addPreviousAttempt(recent.activity.id, recent.session.id, '2026-01-01T12:00:00.001Z');
-  await addTutorMessage(recent.activity.id, '2026-01-01T12:00:00.002Z');
-  const recentResponse = await answer(recent.activity.id, '2026-01-01T12:00:01.000Z');
-  expect(recentResponse.status).toBe(200);
-  const recentBody = await recentResponse.json();
-  expect(recentBody.hintsUsed).toBeGreaterThanOrEqual(1);
-  const [recentAttempt] = await db
-    .select()
-    .from(attempts)
-    .where(eq(attempts.id, recentBody.attemptId));
-  expect(recentAttempt?.hintsUsed).toBeGreaterThanOrEqual(1);
+  const { activity } = await createPracticeActivity();
+  await addTutorMessage(activity.id, '2026-01-01T12:00:00.001Z');
+  const response = await answer(activity.id, '2026-01-01T12:00:01.000Z');
+  expect(response.status).toBe(200);
+  const body = await response.json();
+  expect(body).toMatchObject({ hintsUsed: 0, credit: 1 });
+  const [saved] = await db.select().from(attempts).where(eq(attempts.id, body.attemptId));
+  expect(saved).toMatchObject({ hintsUsed: 0, credit: 1 });
 });
 
 test('tutor hints without authored hints reduce credit; explicit solution reveal is final', async () => {
