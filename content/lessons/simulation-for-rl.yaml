@@ -229,11 +229,11 @@ knowledge_points:
     explain: |
       ### Why one copy is slow
 
-      Training takes millions of steps, but one simulator leaves most processor cores idle. Running episodes together gives varied situations because policies often pick actions at random.
+      Training takes millions of steps, but one simulator can leave most processor cores idle. A core is one part of a processor that runs instructions. Running episodes together gives varied situations because policies often pick actions at random.
 
       ### Many corridors side by side
 
-      A **vectorised environment** runs $N$ copies side by side. Each active copy gets one action per call. Gymnasium's `AsyncVectorEnv` runs copies in separate processes. Reset returns $N$ start states; step returns a next state, reward, terminated flag and truncated flag for each copy.
+      A **vectorised environment** runs $N$ copies side by side. Each active copy gets one action per call. A process is a running program that the computer can schedule on a core. Gymnasium's `AsyncVectorEnv` runs each copy in a separate process, allowing the computer to work on copies at the same time. Reset returns $N$ start states; step returns a next state, reward, terminated flag and truncated flag for each copy.
 
       The loop still chooses actions and calls step repeatedly, but it checks the ending flags separately for each copy. A finished copy restarts while the others carry on.
 

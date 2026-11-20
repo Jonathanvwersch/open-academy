@@ -781,17 +781,17 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: A policy is trained with domain randomisation, with the floor friction drawn between 0.6 and 0.9 at every reset. The real floor's friction is 0.3. What should you expect on the real floor?
+    prompt: A policy is trained with domain randomisation, with floor friction, how much the floor resists sliding, drawn between 0.6 and 0.9 at every reset. The real floor's friction is 0.3. What should you expect on the real floor?
     options:
       - id: a
         text: It may still fail, because 0.3 lies outside the range the policy trained on.
         correct: true
-        feedback: Choose a range that covers plausible real-world conditions. Outside the training range, transfer is uncertain.
+        feedback: Choose a range that covers plausible real-world conditions. The real floor has less grip than any training floor, so its behaviour is uncertain.
       - id: b
         text: It will work, because domain randomisation makes a policy work on any floor.
         correct: false
         category: incorrect_reasoning
-        feedback: The policy only saw frictions from 0.6 to 0.9. A much more slippery floor is new to it.
+        feedback: The policy only saw friction values from 0.6 to 0.9. The real floor is more slippery, so it is new to the policy.
       - id: c
         text: It will do exactly as well as a policy trained at friction 0.3.
         correct: false
