@@ -42,7 +42,7 @@ knowledge_points:
 
       $$J(\theta)=E[G_0],$$
 
-      where $E$ stands for expected value. This is the average of $G_0$ over many episodes played with $\pi_\theta$. The picture shows $J$ for every $\theta$. On the left the robot almost never goes right, so its discounted $-1$ rewards add up to nearly $-1/(1-0.9)=-10$. On the right, it rises towards $6.2$, the return of going straight right.
+      where $E$ stands for expected value. This averages $G_0$ over many episodes played with $\pi_\theta$. The picture shows $J$ for every $\theta$. On the left the robot rarely goes right or reaches the goal, so its run of $-1$ rewards is very long. Its discounted total approaches the endless sum $-1/(1-0.9)=-10$ from policies and returns. On the right, it rises towards $6.2$, the return of going straight right.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 380" aria-label="The score J of theta, the expected return, plotted for theta from minus 4 to 4. The curve rises from about minus 10 on the left towards 6.2 on the right, shown as a dashed line. At theta equals 0 the score is about minus 1.42, and an orange arrow climbs the curve to the right, because raising theta raises J">

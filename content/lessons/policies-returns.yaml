@@ -218,7 +218,7 @@ knowledge_points:
       \begin{aligned}
       S&=1+\gamma+\gamma^2+\dots &&\text{name the sum}\\
       &=1+\gamma(1+\gamma+\dots) &&\text{factor out }\gamma\\
-      &=1+\gamma S &&\text{the same sum remains}\\
+      &=1+\gamma S &&\text{the bracket is }S\text{ again}\\
       (1-\gamma)S&=1 &&\text{subtract }\gamma S\\
       S&=\frac{1}{1-\gamma} &&\text{divide by }1-\gamma
       \end{aligned}
