@@ -6,7 +6,7 @@ recap:
   - concept: causal-masking
     text: "A causal mask makes the vector at each position depend only on the tokens up to it."
   - concept: transformer-block
-    text: "A transformer turns each token into a vector."
+    text: "The transformer blocks give a final vector for each input position. The output layer turns that vector into one score per vocabulary entry."
   - concept: classification-softmax
     text: "Softmax turns one score per class into probabilities that are positive and add up to 1, $p_k=e^{z_k}/(e^{z_1}+\\dots+e^{z_K})$. The multiclass cross-entropy loss is $L=-\\ln p_{\\text{true}}$, minus the log of the true class's probability."
 where_this_fits: |
@@ -28,7 +28,7 @@ knowledge_points:
 
       Let's use the sentence "the cat sat on the mat". To keep the numbers small, we'll treat each word as one token, so the vocabulary is just the five words the, cat, sat, on and mat (the appears twice in the sentence), and its size is $N=5$. So here "word" and "token" mean the same thing. Real models use tens of thousands to a few hundred thousand smaller tokens, often parts of words.
 
-      A transformer turns each token into a vector, and because of the causal mask, the vector at position $t$ has seen only the tokens $x_1,\dots,x_t$, where $x_t$ is the token at position $t$. To make a prediction, a final layer on top of the transformer multiplies that vector by a weight matrix to get one score for each of the $N$ tokens. They are the softmax's classes, so its $K$ is $N$ here. Softmax then turns the scores into probabilities. Suppose that after "the cat" the final layer gives a score of $1$ for sat and $0$ for each of the other four words. The blue bars show the probabilities this gives.
+      A transformer turns each token into a vector, and because of the causal mask, the vector at position $t$ has seen only the tokens $x_1,\dots,x_t$, where $x_t$ is the token at position $t$. The output layer multiplies that vector by a weight matrix to give each of the $N$ tokens a score. Softmax turns those $N$ scores into next-token probabilities. Suppose that after "the cat" the output layer gives a score of $1$ for sat and $0$ for each of the other four words. The blue bars show the probabilities this gives.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" aria-label="The prefix the cat goes into the model, which gives a probability for each of the five words that could come next. The blue bars are 0.15 for the, 0.15 for cat, 0.40 for sat, 0.15 for on and 0.15 for mat, which add up to 1">
@@ -209,20 +209,20 @@ knowledge_points:
     title: "Write new text one word at a time"
     tldr: |
       - To write, predict a next token, choose one and add it to the text.
-      - We can always choose the most likely token or draw randomly using the probabilities.
+      - Choose the most likely token, breaking ties by lowest vocabulary ID, or draw using the probabilities.
       - Repeating this writes a continuation, with every choice becoming part of the next input.
     explain: |
       ### Writing one token at a time
 
-      Once trained, the same model can write. We give it a prompt, such as "the cat sat", run it, and read the next-token distribution at the last position. We choose a token from it, add it to the end and run the model again on the longer text. We repeat until the text reaches a length limit, or until the model chooses a special end-of-text token. This extra vocabulary entry ends every training text, so the model learns when to stop. This loop is called **autoregressive generation**.
+      Give the model a prompt like "the cat sat". Choose a token from the last position's probabilities, add it to the prompt and run the model again. This is **autoregressive generation**. Stop at the length limit or when the model chooses the special token it learned to use at the end of a text.
 
       Suppose that after "the cat sat" the model gives these probabilities: $0.2$ for the, $0.1$ for cat, $0.1$ for sat, $0.5$ for on and $0.1$ for mat. Which word should we choose?
 
       ### Taking the top word or drawing at random
 
-      **Greedy decoding** always takes the most probable token, which here is on. It's simple, but the same prompt always gives the same text, so we can't ask for several different answers. It can also get stuck repeating a phrase, if writing it makes the same phrase the most likely continuation again.
+      **Greedy decoding** always takes the most probable token, which here is on. When tokens tie for the highest probability, choose the tied token with the lowest vocabulary ID. With the same model, prompt and stopping rule, that fixed choice gives the same text every time. Greedy decoding can get stuck repeating a phrase if writing it makes that phrase the most likely continuation again.
 
-      **Sampling** draws the next token at random, giving each token a chance equal to its probability. Picture the probabilities laid end to end along a line from 0 to 1. We pick a random number $u$ between 0 and 1 and take the token whose stretch it lands in.
+      **Sampling** draws the next token at random, giving each token a chance equal to its probability. Picture the probabilities laid end to end along a line from 0 to 1. We take a **uniform draw** $u$ from $0\le u<1$, which means intervals of equal length have equal chances. An interval of length $0.5$ covers half the line, so it gets half the draws on average. We choose the token whose stretch contains $u$.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 230" aria-label="A line from 0 to 1 split into stretches whose lengths are the next-word probabilities after the cat sat: the from 0 to 0.2, cat from 0.2 to 0.3, sat from 0.3 to 0.4, on from 0.4 to 0.9 and mat from 0.9 to 1. An orange marker at u equals 0.35 lands in the stretch for sat, and another at u equals 0.72 lands in the stretch for on">
@@ -259,9 +259,9 @@ knowledge_points:
 
       ### Where generation goes wrong
 
-      When the model writes, everything after the prompt is made of its own choices. Sometimes sampling picks a word that doesn't fit. That word stays in the text, and every later prediction is made from a prefix that contains it. With teacher forcing, training only showed the model real text, so it may predict badly after an odd word, and one bad word can lead to more.
+      With teacher forcing, the model trained on real text. When it writes, a poorly chosen word stays in the text it reads. Later predictions can build on that mistake and introduce more.
 
-      Generation is also slow, because writing needs a new run for each token, using the token the last run chose, while training scored every position in one run.
+      During training, we already have all the inputs and can score the guesses in one run. When writing, each guess uses the token chosen on the last run, so each new token needs another run.
     worked: |
       Let's write two more words after "the cat sat" by sampling, with the random numbers $u=0.72$ and then $u=0.30$.
 
@@ -279,7 +279,7 @@ knowledge_points:
 
       The text is now "the cat sat on the". Sampling picks this pair of words with chance $0.5\times0.6=0.3$, so other tries would often write something else.
 
-      Here are both draws in Python. `probs2` holds the new probabilities after "the cat sat on". `def` defines a function called `sample`, and `zip` pairs each word with its probability. The function walks along the words, adding each probability to `total` with `+=`, and returns the first word whose stretch ends above `u`. The function's last line, `return words[-1]`, returns the last word in the list, since `-1` counts from the end. It's a safety net, because sums of decimals on a computer can come out a hair below 1. In real use, `u` comes from `random.random()` in Python's `random` module, which gives a random number from 0 up to 1.
+      Here are both draws in Python. `probs2` holds the new probabilities after "the cat sat on". `def` defines a function called `sample`, and `zip` pairs each word with its probability. The function walks along the words, adding each probability to `total` with `+=`, and returns the first word whose stretch ends above `u`. The function's last line, `return words[-1]`, returns the last word in the list, since `-1` counts from the end. It's a safety net, because sums of decimals on a computer can come out a hair below 1. In real use, `random.random()` in Python's `random` module draws `u` uniformly from 0 up to 1.
 
       ```python
       words = ["the", "cat", "sat", "on", "mat"]
@@ -307,6 +307,7 @@ knowledge_points:
       - alm-gen-code
       - alm-gen-drift
       - alm-gen-robot
+      - alm-gen-uniform-intervals
 final: alm-explain-final
 summary: |
   - An autoregressive language model gives, at every position, a next-token distribution $p(x_{t+1}\mid x_1,\dots,x_t)$: a softmax over one score for each token in the vocabulary.
