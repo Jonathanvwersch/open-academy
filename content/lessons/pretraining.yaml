@@ -175,9 +175,9 @@ knowledge_points:
 
       What does more compute buy, and can we know before paying for it?
 
-      Held-out test text is kept out of training and used to measure loss or pick a saved version of the weights, called a checkpoint; leaking it into training inflates evaluation scores.
+      In 2020, Kaplan and colleagues at OpenAI found a pattern across many language models. As long as neither model size nor data holds it back, loss on unseen test text falls smoothly as compute grows. This test text is held out: it is kept out of training. Labs measure loss on it and use it to pick a checkpoint, a saved copy of the weights. If test text leaks into training, the model has already seen it, so its score looks better than it really is.
 
-      In 2020, Kaplan and colleagues at OpenAI found a pattern across many language models. As long as neither model size nor data holds it back, loss on unseen test text falls smoothly as compute grows. Every tenfold compute increase multiplies loss by about the same factor. The picture starts at loss $4$ and uses factor $0.9$, close to their measurements. Apply it once per tenfold step:
+      Every tenfold compute increase multiplies loss by about the same factor. The picture starts at loss $4$ and uses factor $0.9$, close to their measurements. Apply it once per tenfold step:
       $$
       \begin{aligned}
       4\times0.9&=3.6 &&\text{first tenfold increase}\\
@@ -217,7 +217,7 @@ knowledge_points:
 
       $$L=L_0\times0.9^{k},$$
 
-      where $L_0$ is the loss of a starting run and $k$ is how many tenfold steps of compute we add. Scaling laws are useful for planning. A lab can train a few small models, draw a line through their points, and extend it to predict the loss of a far bigger run.
+      where $L_0$ is the starting loss and $k$ counts tenfold compute increases. To plan a bigger run, a lab trains small models and extends a line through their points to predict its loss.
 
       ### Splitting the budget
 
