@@ -186,6 +186,8 @@ knowledge_points:
       print(round((x - x_hat).abs().max().item(), 4))
       ```
 
+      `.tolist()` converts the tensor to an ordinary Python list so its integer values print in a readable form.
+
       It prints:
 
       ```text
