@@ -9,9 +9,10 @@ import { attempts, sessionActivities, studySessions, users } from '../../src/db/
 import { FakeProvider } from '../../src/features/tutor/provider.js';
 
 const db = createDb(env.TEST_DATABASE_URL);
-const userId = '00000000-0000-4000-8000-000000000001';
+const userId = '00000000-0000-4000-8000-000000000234';
 const now = '2026-01-01T12:00:00.000Z';
 let content: ContentIndex;
+const userCreatedAt = new Date('1900-01-01T00:00:00.000Z');
 
 beforeAll(async () => {
   content = await loadContent('tests/fixtures/content');
@@ -23,10 +24,15 @@ beforeAll(async () => {
       timezone: 'UTC',
       startDate: '2026-01-01',
       prefs: { scheduleMinutes: 60 },
+      createdAt: userCreatedAt,
     })
     .onConflictDoUpdate({
       target: users.id,
-      set: { displayName: 'Explain retry test learner', timezone: 'UTC' },
+      set: {
+        displayName: 'Explain retry test learner',
+        timezone: 'UTC',
+        createdAt: userCreatedAt,
+      },
     });
 });
 
