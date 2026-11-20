@@ -640,16 +640,16 @@ exercises:
     role: core
     difficulty: 3
     est_minutes: 5
-    prompt: "For independent measured readings, explain what a parameter guess's likelihood is, how maximum likelihood chooses a guess, and why Gaussian noise with fixed standard deviation $\\sigma$ leads to minimising MSE."
+    prompt: "For independent measured readings, explain what the likelihood of a guess for the model's unknown numbers is, how maximum likelihood chooses a guess, and why Gaussian noise with fixed standard deviation $\\sigma$ leads to minimising MSE."
     rubric:
       - id: likelihood
         criterion:
-          Define likelihood for independent measured readings as the product of their density heights under the
-          parameter guess.
+          Define likelihood for independent measured readings as the product of their density heights for the
+          guessed model numbers.
         weight: 1
         required: true
       - id: estimate
-        criterion: Explain choosing the parameter guess with the largest likelihood.
+        criterion: Explain choosing the guess for the model's unknown numbers with the largest likelihood.
         weight: 1
         required: true
       - id: mse
@@ -658,8 +658,8 @@ exercises:
           so maximising it minimises MSE.
         weight: 1
         required: true
-    exemplar: "For independent measured readings, likelihood multiplies their density heights under the parameter guess. Maximum likelihood chooses the guess making that product largest. With Gaussian noise of fixed $\\sigma$, log-likelihood is a constant minus the sum of squared errors over $2\\sigma^2$, so maximising it minimises MSE."
-    solution: "For independent measured readings, likelihood multiplies their density heights under the parameter guess. Maximum likelihood chooses the guess making that product largest. With Gaussian noise of fixed $\\sigma$, log-likelihood is a constant minus the sum of squared errors over $2\\sigma^2$, so maximising it minimises MSE."
+    exemplar: "For independent measured readings, likelihood multiplies their density heights for the guessed model numbers. Maximum likelihood chooses the guess making that product largest. With Gaussian noise of fixed $\\sigma$, log-likelihood is a constant minus the sum of squared errors over $2\\sigma^2$, so maximising it minimises MSE."
+    solution: "For independent measured readings, likelihood multiplies their density heights for the guessed model numbers. Maximum likelihood chooses the guess making that product largest. With Gaussian noise of fixed $\\sigma$, log-likelihood is a constant minus the sum of squared errors over $2\\sigma^2$, so maximising it minimises MSE."
   - id: lab-gauss-front-factor
     dimension: transfer
     type: mc

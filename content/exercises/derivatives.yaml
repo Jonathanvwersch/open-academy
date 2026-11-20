@@ -301,7 +301,7 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 4
-    prompt: "A model has loss $L(w)=4w^2-24w+36$. Find its derivative, evaluate it at $w=2$, and explain what a small positive change in $w$ near $2$ does to the loss."
+    prompt: "A model's prediction-error score is $L(w)=4w^2-24w+36$. Find its derivative, evaluate it at $w=2$, and explain what a small positive change in $w$ near $2$ does to the score."
     rubric:
       - id: derivative
         criterion: Differentiate to obtain $L'(w)=8w-24$.
@@ -312,10 +312,10 @@ exercises:
         weight: 1
         required: true
       - id: r3
-        criterion: Explain that a small positive change in $w$ near $2$ lowers loss by about $8$ times that change.
+        criterion: Explain that a small positive change in $w$ near $2$ lowers the score by about $8$ times that change.
         weight: 1
         required: true
-    exemplar: "Differentiating gives $L'(w)=8w-24$. At $w=2$, this is $-8$. A small positive change in $w$ near $2$ therefore lowers the loss by about $8$ times that change."
+    exemplar: "Differentiating gives $L'(w)=8w-24$. At $w=2$, this is $-8$. A small positive change in $w$ near $2$ therefore lowers the score by about $8$ times that change."
   - id: derp-meaning
     dimension: conceptual
     type: mc

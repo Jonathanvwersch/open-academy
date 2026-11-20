@@ -292,10 +292,13 @@ knowledge_points:
       | Rule | Check |
       | --- | --- |
       | $\ln(ab)=\ln a+\ln b$ | $\ln(e\cdot e^2)=3=1+2$ |
+      | $\ln(a^k)=k\ln a$ | $\ln(e^2)=2=2\ln e$ |
       | $\ln(a/b)=\ln a-\ln b$ | $\ln(e^3/e)=2=3-1$ |
       | $\ln(1/a)=-\ln a$ | $\ln(1/e^2)=-2$ |
       | $e^{\ln x}=x$ | $e^{\ln 3}=3$ |
       | $\ln(e^a)=a$ | $\ln(e^2)=2$ |
+
+      A power $a^k$ is $k$ copies of $a$ multiplied together, so its logarithm is a sum of $k$ copies of $\ln a$.
 
       The last rule holds for every real $a$. To change from base two to natural logarithms, start from the definition of $\log_2 x$:
       $$\begin{aligned}x&=2^{\log_2 x} &&\text{definition}\\\ln x&=(\ln2)\log_2 x &&\text{take natural logs}\end{aligned}$$

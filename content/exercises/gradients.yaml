@@ -210,7 +210,7 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 4
-    prompt: 'Using $f(x,y)=x^2+2y^2$ at $P=(1.5,1)$, or a hill of your own, explain in your own words: what the gradient at a point tells you, how you get the slope in any chosen direction from it, and why gradient descent steps along $-\nabla f$.'
+    prompt: 'Using $f(x,y)=x^2+2y^2$ at $P=(1.5,1)$, or a hill of your own, explain in your own words: what the gradient at a point tells you, how you get the slope in any chosen direction from it, and why a small step along $-\nabla f$ lowers the function fastest.'
     rubric:
       - {
           id: what-gradient,
@@ -230,7 +230,7 @@ exercises:
           weight: 1,
           required: true,
         }
-    exemplar: "The gradient at a point collects the partial derivatives, here $(3, 4)$. As an arrow it points in the direction where $f$ rises fastest, and its length, $5$, is that fastest slope. To get the slope in any other direction, take a unit vector $u$ for that direction and compute $\\nabla f\\cdot u$: for $u=(0.6, 0.8)$ it is $5$, for $(0.8, -0.6)$ it is $0$, and for $(-0.6, -0.8)$ it is $-5$. Because $\\nabla f\\cdot u = \\|\\nabla f\\|\\cos\\theta$, the slope is most negative when $u$ points opposite the gradient, so stepping along $-\\nabla f$ lowers $f$ fastest for a small step, which is what gradient descent does."
+    exemplar: "The gradient at a point collects the partial derivatives, here $(3, 4)$. It is a vector pointing in the direction where $f$ rises fastest, and its length, $5$, is that fastest slope. To get the slope in any other direction, take a unit vector $u$ for that direction and compute $\\nabla f\\cdot u$: for $u=(0.6, 0.8)$ it is $5$, for $(0.8, -0.6)$ it is $0$, and for $(-0.6, -0.8)$ it is $-5$. Because $\\nabla f\\cdot u = \\|\\nabla f\\|\\cos\\theta$, the slope is most negative when $u$ points opposite the gradient, so a small step along $-\\nabla f$ lowers $f$ fastest."
   - id: gradp-why-vector
     lesson_only: true
     dimension: conceptual
