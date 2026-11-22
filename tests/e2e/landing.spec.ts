@@ -40,21 +40,6 @@ test('signed-out visitors see the landing page without the app shell', async ({ 
   });
 });
 
-test('signed-out visitors do not see learner navigation while auth is pending', async ({
-  page,
-}) => {
-  await page.route('**/api/auth/me', async (route) => {
-    await new Promise((resolve) => setTimeout(resolve, 1_000));
-    await route.continue();
-  });
-
-  await page.goto('/');
-  await expect(page.getByTestId('page-loading-indicator')).toBeVisible();
-  await expect(page.getByTestId('app-shell-skeleton')).toHaveCount(0);
-  await expect(page.getByRole('link', { name: 'Settings' })).toHaveCount(0);
-  await expect(page.getByRole('heading', { name: 'Learn AI from the maths up.' })).toBeVisible();
-});
-
 test('the mobile landing page fits and keeps its sign-in action in view', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');

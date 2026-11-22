@@ -417,18 +417,6 @@ export function useCapturePageLayout() {
   return ref;
 }
 
-export function PageLoadingIndicator() {
-  return (
-    <div className="flex items-center justify-center" data-testid="page-loading-indicator">
-      <Loader2
-        className="size-4 animate-spin text-muted-foreground motion-reduce:animate-none"
-        aria-hidden="true"
-      />
-      <span className="sr-only">Loading</span>
-    </div>
-  );
-}
-
 export function PageLayoutSkeleton({ fallback }: { fallback?: ReactNode } = {}) {
   const ref = useRef<HTMLDivElement>(null);
   const path = useRouterState({ select: (state) => state.location.href });
@@ -458,7 +446,13 @@ export function PageLayoutSkeleton({ fallback }: { fallback?: ReactNode } = {}) 
       ) : fallback ? (
         fallback
       ) : (
-        <PageLoadingIndicator />
+        <div className="flex items-center justify-center" data-testid="page-loading-indicator">
+          <Loader2
+            className="size-4 animate-spin text-muted-foreground motion-reduce:animate-none"
+            aria-hidden="true"
+          />
+          <span className="sr-only">Loading</span>
+        </div>
       )}
     </div>
   );
