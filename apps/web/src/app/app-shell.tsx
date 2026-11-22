@@ -1,3 +1,4 @@
+import type { AuthPayload } from '@academy/contracts/auth';
 import type { CourseCatalogPayload } from '@academy/contracts/course';
 import { useQuery } from '@tanstack/react-query';
 import { Link, Outlet, useRouterState } from '@tanstack/react-router';
@@ -525,10 +526,8 @@ function AppToaster() {
 
 export function RootLayout() {
   const { data: me } = useQuery(authQueryOptions());
-  const contentRef = useCapturePageLayout();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
-  const { sidebarOpen, updateSidebarOpen } = useAppSidebarOpenState();
-  if (pathname === '/login') {
+  if (pathname === '/login' || (pathname === '/' && me?.authRequired && !me.authenticated)) {
     return (
       <>
         <Outlet />
@@ -536,6 +535,12 @@ export function RootLayout() {
       </>
     );
   }
+  return <ApplicationShell me={me} pathname={pathname} />;
+}
+
+function ApplicationShell({ me, pathname }: { me: AuthPayload | undefined; pathname: string }) {
+  const contentRef = useCapturePageLayout();
+  const { sidebarOpen, updateSidebarOpen } = useAppSidebarOpenState();
   const isPaperReader = pathname.startsWith('/papers/');
   return (
     <TooltipProvider>

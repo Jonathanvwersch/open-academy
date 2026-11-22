@@ -11,7 +11,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
   beforeLoad: async ({ context, location }) => {
     if (location.pathname === '/login') return { auth: undefined };
     const auth = await context.queryClient.ensureQueryData(authQueryOptions());
-    if (auth.authRequired && !auth.authenticated && location.pathname !== '/login') {
+    if (auth.authRequired && !auth.authenticated && location.pathname !== '/') {
       throw redirect({
         to: '/login',
         search: { redirect: `${location.pathname}${location.searchStr}` },

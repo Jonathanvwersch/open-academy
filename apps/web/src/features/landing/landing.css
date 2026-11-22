@@ -1,0 +1,77 @@
+.landing {
+  --landing-deep: #3c4939;
+  --landing-ink: #2b3127;
+  --landing-muted: #5f6656;
+  --landing-bone: #f4f1e8;
+  --landing-ivory: #fffdf7;
+  --landing-shell: #e3e6cf;
+  --landing-border: #d8d3c2;
+  --landing-subline: #c9cfbb;
+  --landing-tagline: #a9b394;
+  --landing-footer-border: #dcd6c4;
+  --landing-button-text: var(--landing-ink);
+}
+
+.landing-sticker {
+  box-shadow: 4px 4px 0 var(--landing-ink);
+}
+
+.landing-course-trail {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2rem;
+  margin-top: 3rem;
+  padding-left: 1.75rem;
+}
+
+.landing-course-trail::before {
+  position: absolute;
+  inset-block: 0.5rem;
+  left: 0.4375rem;
+  width: 3px;
+  background: var(--landing-shell);
+  content: "";
+}
+
+.landing-course-step {
+  position: relative;
+  min-width: 0;
+}
+
+.landing-course-marker {
+  position: absolute;
+  top: 0.125rem;
+  left: -1.8125rem;
+  width: 1.25rem;
+  height: 1.25rem;
+  border: 3px solid var(--landing-deep);
+  border-radius: 50%;
+  background: var(--landing-ivory);
+}
+
+.landing-course-marker[data-first="true"] {
+  background: var(--landing-deep);
+}
+
+@media (min-width: 1024px) {
+  .landing-course-trail {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 1.5rem;
+    border-top: 3px solid var(--landing-shell);
+    padding: 0;
+  }
+
+  .landing-course-trail::before {
+    display: none;
+  }
+
+  .landing-course-step {
+    padding-top: 2rem;
+  }
+
+  .landing-course-marker {
+    top: -0.75rem;
+    left: 0;
+  }
+}
