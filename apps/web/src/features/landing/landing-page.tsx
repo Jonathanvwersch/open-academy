@@ -104,7 +104,7 @@ export function LandingPage() {
           <div className="mx-auto grid max-w-[1440px] grid-cols-1 items-center gap-12 px-6 pb-16 pt-10 sm:px-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,560px)] lg:gap-[min(5.56vw,80px)] lg:px-20 lg:pb-24 lg:pt-16">
             <div className="flex flex-col items-start gap-6 lg:gap-7">
               <h1
-                className="max-w-[640px] text-[48px] leading-[1.02] font-medium tracking-[-0.03em] text-wrap-balance sm:text-[64px] lg:text-[clamp(64px,6.1vw,88px)]"
+                className="max-w-[640px] text-[48px] leading-[1.02] font-medium tracking-[-0.03em] text-balance sm:text-[64px] lg:text-[clamp(64px,6.1vw,88px)]"
                 id="landing-title"
               >
                 Learn AI from the maths up.
@@ -117,19 +117,19 @@ export function LandingPage() {
             </div>
             <div className="landing-hero-visual relative mx-auto flex aspect-square w-[min(90vw,420px)] items-center justify-center rounded-full bg-(--landing-shell) lg:w-[min(40vw,560px)]">
               <AcademyMascot decorative className="w-[82%]" />
-              <div className="landing-sticker absolute left-0 top-[12%] flex max-w-[90%] rotate-[-5deg] flex-col gap-1 rounded-2xl border border-(--landing-border) bg-(--landing-ivory) px-5 py-4 text-(--landing-ink) lg:-left-6 lg:top-[13%]">
-                <span className="font-heading text-[22px] leading-[1.25] font-semibold">
+              <div className="landing-sticker absolute -left-2 top-[4%] flex max-w-[75%] rotate-[-5deg] flex-col gap-0.5 rounded-2xl border border-(--landing-border) bg-(--landing-ivory) px-4 py-3 sm:gap-1 sm:px-5 sm:py-4 text-(--landing-ink) lg:-left-6 lg:top-[13%]">
+                <span className="font-heading text-lg leading-6 font-semibold sm:text-[22px] sm:leading-7">
                   18-day streak
                 </span>
-                <span className="text-[15px] leading-6 text-(--landing-muted)">
+                <span className="text-[13px] leading-5 text-(--landing-muted) sm:text-[15px] sm:leading-6">
                   Earn XP today to keep it going.
                 </span>
               </div>
-              <div className="landing-sticker absolute right-0 bottom-[12%] flex max-w-[94%] rotate-[4deg] flex-col gap-1 rounded-2xl border border-(--landing-border) bg-(--landing-ivory) px-5 py-4 text-(--landing-ink) lg:-right-2 lg:bottom-[16%]">
+              <div className="landing-sticker absolute -right-2 bottom-[2%] flex max-w-[80%] rotate-[4deg] flex-col gap-0.5 rounded-2xl border border-(--landing-border) bg-(--landing-ivory) px-4 py-3 sm:gap-1 sm:px-5 sm:py-4 text-(--landing-ink) lg:-right-2 lg:bottom-[16%]">
                 <span className="text-[13px] leading-5 font-semibold text-(--landing-muted)">
                   Review due today
                 </span>
-                <span className="font-heading text-xl leading-6 text-wrap-balance">
+                <span className="font-heading text-base leading-5 text-balance sm:text-xl sm:leading-6">
                   Vectors, Determinants, Maximum likelihood
                 </span>
               </div>
@@ -144,7 +144,7 @@ export function LandingPage() {
         >
           <div className="flex max-w-[820px] flex-col gap-3">
             <h2
-              className="text-[40px] leading-[1.08] font-medium tracking-[-0.02em] text-wrap-balance sm:text-[48px] lg:text-[52px]"
+              className="text-[40px] leading-[1.08] font-medium tracking-[-0.02em] text-balance sm:text-[48px] lg:text-[52px]"
               id="how-it-works-heading"
             >
               Lessons, questions, a tutor and reviews in one place.
@@ -183,7 +183,7 @@ export function LandingPage() {
         >
           <div className="mx-auto max-w-[1440px] px-6 sm:px-8 lg:px-20">
             <h2
-              className="max-w-[760px] text-[40px] leading-[1.08] font-medium tracking-[-0.02em] text-wrap-balance sm:text-[48px] lg:text-[52px]"
+              className="max-w-[760px] text-[40px] leading-[1.08] font-medium tracking-[-0.02em] text-balance sm:text-[48px] lg:text-[52px]"
               id="courses-heading"
             >
               One trail, six courses. Each topic opens when you are ready for it.
@@ -210,7 +210,7 @@ export function LandingPage() {
           <div className="mx-auto flex max-w-[1440px] flex-col items-start gap-8 px-6 py-16 sm:px-8 lg:flex-row lg:items-center lg:gap-12 lg:px-20 lg:py-24">
             <AcademyMascot decorative className="w-[160px] shrink-0 sm:w-[200px]" />
             <h2
-              className="max-w-[960px] text-[40px] leading-[1.08] font-medium tracking-[-0.02em] text-wrap-balance sm:text-[48px] lg:max-w-[860px] lg:text-[56px]"
+              className="max-w-[960px] text-[40px] leading-[1.08] font-medium tracking-[-0.02em] text-balance sm:text-[48px] lg:max-w-[860px] lg:text-[56px]"
               id="reviews-heading"
             >
               Reviews come back just before you would forget.{' '}
@@ -225,7 +225,7 @@ export function LandingPage() {
         >
           <div className="flex max-w-[900px] flex-col gap-3">
             <h2
-              className="text-[40px] leading-[1.08] font-medium tracking-[-0.02em] text-wrap-balance sm:text-[44px] lg:text-[48px]"
+              className="text-[40px] leading-[1.08] font-medium tracking-[-0.02em] text-balance sm:text-[44px] lg:text-[48px]"
               id="start-heading"
             >
               Start with vectors. Finish with LLMs.

@@ -75,3 +75,7 @@
     left: 0;
   }
 }
+
+html:has(.landing) {
+  scrollbar-gutter: auto;
+}
