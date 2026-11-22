@@ -8,13 +8,22 @@ export function gradeText(exercise: TextLikeExercise, answer: unknown): GradeRes
   if (typeof answer !== 'string') {
     return graded(0, 'Enter a text response.');
   }
-  const normalizedAnswer = normalizeText(answer);
-  if (exercise.accept.some((accepted) => normalizeText(accepted) === normalizedAnswer)) {
+  const candidates = [answer];
+  const withoutTrailingPunctuation = answer.replace(/[\s.!。]+$/u, '');
+  if (withoutTrailingPunctuation !== answer) {
+    candidates.push(withoutTrailingPunctuation);
+  }
+  if (
+    candidates.some((candidate) =>
+      exercise.accept.some((accepted) => normalizeText(accepted) === normalizeText(candidate)),
+    )
+  ) {
     return graded(1, 'Correct.');
   }
   if (exercise.regex) {
     try {
-      if (new RegExp(exercise.regex, 'i').test(answer)) {
+      const pattern = new RegExp(exercise.regex, 'i');
+      if (candidates.some((candidate) => pattern.test(candidate))) {
         return graded(1, 'Correct.');
       }
     } catch {
