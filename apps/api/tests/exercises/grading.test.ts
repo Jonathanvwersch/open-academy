@@ -261,6 +261,9 @@ test('text accepts normalized answers and regular-expression matches', async () 
   expect(await gradeExercise(exercise, '  ORTHOGONAL  ')).toMatchObject({ correct: 1 });
   expect(await gradeExercise(exercise, 'unrelated')).toMatchObject({ correct: 0 });
   expect(
+    await gradeExercise({ ...exercise, accept: ['orthogonal'], regex: undefined }, 'ORTHOGONAL.'),
+  ).toMatchObject({ correct: 1 });
+  expect(
     await gradeExercise(
       {
         ...exercise,
@@ -270,6 +273,20 @@ test('text accepts normalized answers and regular-expression matches', async () 
       'H( p, q )',
     ),
   ).toMatchObject({ correct: 1 });
+});
+
+test('text answers for the vector addition exercise ignore trailing sentence punctuation', async () => {
+  const realContent = await loadContent('content');
+  const exercise = required(
+    realContent.exercisesById.get('vec-recall-points-moves-formula'),
+    'vector addition text exercise',
+  );
+  if (exercise.type !== 'text') throw new Error('Expected a text exercise');
+
+  for (const answer of ['(a₁ + b₁, a₂ + b₂).', '(a1+b1, a2+b2)!']) {
+    expect(await gradeExercise(exercise, answer), answer).toMatchObject({ correct: 1 });
+  }
+  expect(await gradeExercise(exercise, '(a₁ − b₁, a₂ − b₂).')).toMatchObject({ correct: 0 });
 });
 
 test('code reading delegates to numeric grading', async () => {
