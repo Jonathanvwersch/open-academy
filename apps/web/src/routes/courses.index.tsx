@@ -4,10 +4,12 @@ import { PublicCoursesPage } from '@/features/landing/public-courses-page.js';
 import { RouteLoadError } from '../components/route-error.js';
 import { PageSkeleton } from '../components/skeletons.js';
 import { coursesQueryOptions } from '../features/course/queries.js';
+import { hostRole } from '../lib/site-origins.js';
 
 export const Route = createFileRoute('/courses/')({
   pendingComponent: PageSkeleton,
   loader: ({ context }) => {
+    if (hostRole() === 'site') return;
     if (context.auth?.authRequired && !context.auth.authenticated) return;
     return context.queryClient.ensureQueryData(coursesQueryOptions());
   },
@@ -22,5 +24,6 @@ export const Route = createFileRoute('/courses/')({
 
 function CoursesIndexPage() {
   const { auth } = Route.useRouteContext();
+  if (hostRole() === 'site') return <PublicCoursesPage />;
   return auth?.authRequired && !auth.authenticated ? <PublicCoursesPage /> : <CoursesPage />;
 }

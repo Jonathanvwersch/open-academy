@@ -131,6 +131,18 @@ function saveLayout(key: string, layout: Layout) {
 const blocks =
   '[data-slot=button], input:not([type=hidden]), textarea, select, [data-slot=badge], [data-slot=progress], [role=radio], [role=checkbox], [role=img], pre, img, canvas, svg, .katex';
 
+export function PageLoadingIndicator() {
+  return (
+    <div className="flex items-center justify-center" data-testid="page-loading-indicator">
+      <Loader2
+        className="size-4 animate-spin text-muted-foreground motion-reduce:animate-none"
+        aria-hidden="true"
+      />
+      <span className="sr-only">Loading</span>
+    </div>
+  );
+}
+
 export function measureLayout(element: HTMLElement): Layout {
   const bounds = element.getBoundingClientRect();
   const style = getComputedStyle(element);
@@ -446,13 +458,7 @@ export function PageLayoutSkeleton({ fallback }: { fallback?: ReactNode } = {}) 
       ) : fallback ? (
         fallback
       ) : (
-        <div className="flex items-center justify-center" data-testid="page-loading-indicator">
-          <Loader2
-            className="size-4 animate-spin text-muted-foreground motion-reduce:animate-none"
-            aria-hidden="true"
-          />
-          <span className="sr-only">Loading</span>
-        </div>
+        <PageLoadingIndicator />
       )}
     </div>
   );

@@ -24,6 +24,8 @@ Migrations run automatically, so there's no separate database step.
 3. Set `ACADEMY_PASSWORD`, and `OPENAI_API_KEY` if you want the tutor.
 4. Deploy. The build runs the migrations, so the database has to be reachable at build time. If Neon gives you a direct (unpooled) connection string as well, set it as `DATABASE_URL_UNPOOLED`, and migrations will use it.
 
+For a split-domain build, set `VITE_SITE_ORIGIN=https://openacademy.dev` and `VITE_APP_ORIGIN=https://app.openacademy.dev`.
+
 To use your own course pack, commit the pack folder to your copy of the repository and set `CONTENT_DIR` to its path, for example `packs/organic-chemistry`. The pack is bundled at build time, so push to redeploy after editing it.
 
 ## Public demo

@@ -8,7 +8,11 @@ import { Toaster } from 'sonner';
 import { BrandLockup } from '../components/brand-lockup.js';
 import { isLayout, LayoutShapeLayer } from '../components/layout-shapes.js';
 import type { Layout } from '../components/page-layout-skeleton.js';
-import { measureLayout, useCapturePageLayout } from '../components/page-layout-skeleton.js';
+import {
+  measureLayout,
+  PageLoadingIndicator,
+  useCapturePageLayout,
+} from '../components/page-layout-skeleton.js';
 import { PageSkeleton } from '../components/skeletons.js';
 import {
   Sidebar,
@@ -34,8 +38,10 @@ import { coursesQueryOptions } from '../features/course/queries.js';
 import { isPublicPath, normalizePath, PUBLIC_PATHS } from '../features/landing/public-paths.js';
 import { reviewsQueryOptions } from '../features/reviews/queries.js';
 import { TutorContextProvider } from '../features/tutor/tutor-sidebar.js';
+import { hasAppShellHint } from '../lib/app-shell-hint.js';
 import { readBrowserStorage, writeBrowserStorage } from '../lib/browser-storage.js';
 import { useCurrentCourseId } from '../lib/current-course.js';
+import { hostRole } from '../lib/site-origins.js';
 
 const SIDEBAR_STORAGE_KEY = 'academy.app-sidebar.open';
 const SIDEBAR_COURSE_GROUPS_KEY = 'academy.sidebar-course-groups';
@@ -511,6 +517,15 @@ export function AppShellSkeleton() {
   );
 }
 
+export function RootPending() {
+  if (hostRole() !== 'site' && hasAppShellHint()) return <AppShellSkeleton />;
+  return (
+    <div data-page-frame className="flex min-h-dvh w-full flex-col items-center justify-center">
+      <PageLoadingIndicator />
+    </div>
+  );
+}
+
 function AppToaster() {
   return (
     <Toaster
@@ -526,11 +541,13 @@ function AppToaster() {
 }
 
 export function RootLayout() {
-  const { data: me } = useQuery(authQueryOptions());
+  const role = hostRole();
+  const { data: me } = useQuery({ ...authQueryOptions(), enabled: role !== 'site' });
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const normalizedPath = normalizePath(pathname);
   const isSignedOutPublicPath = isPublicPath(pathname) && me?.authRequired && !me.authenticated;
   if (
+    role === 'site' ||
     normalizedPath === '/login' ||
     normalizedPath === PUBLIC_PATHS.howItWorks ||
     isSignedOutPublicPath

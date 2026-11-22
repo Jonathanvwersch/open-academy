@@ -3,6 +3,7 @@ import { Link, useRouterState } from '@tanstack/react-router';
 import { useEffect } from 'react';
 import { Button } from '@/components/ui/button.js';
 import { Logo } from '@/components/ui/logo.js';
+import { appUrl, hostRole } from '@/lib/site-origins.js';
 import { authQueryOptions } from '../auth/queries.js';
 import { PUBLIC_PATHS } from './public-paths.js';
 
@@ -34,8 +35,9 @@ export function SignInLink({
   tone: 'light' | 'dark';
   className?: string;
 }) {
-  const { data: auth } = useQuery(authQueryOptions());
-  const isPasswordless = auth?.authRequired === false;
+  const role = hostRole();
+  const { data: auth } = useQuery({ ...authQueryOptions(), enabled: role === 'combined' });
+  const isPasswordless = role === 'combined' && auth?.authRequired === false;
   const toneClasses =
     tone === 'light'
       ? 'bg-(--landing-bone) text-(--landing-button-text) hover:bg-(--landing-ivory) focus-visible:border-(--landing-shell) focus-visible:ring-(--landing-bone) focus-visible:ring-offset-(--landing-deep)'
@@ -46,9 +48,13 @@ export function SignInLink({
       asChild
       className={`h-12 rounded-full px-6 text-base font-semibold ${toneClasses} ${className}`}
     >
-      <Link to={isPasswordless ? '/' : '/login'}>
-        {isPasswordless ? 'Start learning' : 'Sign in'}
-      </Link>
+      {role === 'site' ? (
+        <a href={appUrl('/login')}>Sign in</a>
+      ) : (
+        <Link to={isPasswordless ? '/' : '/login'}>
+          {isPasswordless ? 'Start learning' : 'Sign in'}
+        </Link>
+      )}
     </Button>
   );
 }

@@ -196,6 +196,7 @@ test('course skeleton replays visible decorative icons', async ({ page }) => {
 });
 
 test('root auth pending renders the app-shell skeleton', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('academy.shell-hint', '1'));
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.route('**/api/auth/me', async (route) => {
     await new Promise((resolve) => setTimeout(resolve, 1800));
@@ -220,6 +221,36 @@ test('root auth pending renders the app-shell skeleton', async ({ page }) => {
   await expectCenteredPageLoader(page);
   await page.screenshot({ path: 'test-results/sidebar-app-shell-skeleton-desktop.png' });
   await expect(shell).toBeHidden();
+});
+
+test('signed-out root auth pending shows the centered loader without app navigation', async ({
+  page,
+}) => {
+  await page.addInitScript(() => localStorage.removeItem('academy.shell-hint'));
+  await page.setViewportSize({ width: 1440, height: 900 });
+  let releaseAuth: () => void = () => {};
+  const authGate = new Promise<void>((resolve) => {
+    releaseAuth = resolve;
+  });
+  let authRequestStarted = false;
+  await page.route('**/api/auth/me', async (route) => {
+    authRequestStarted = true;
+    await authGate;
+    await route.fulfill({
+      json: { authenticated: false, authRequired: true, demo: null },
+    });
+  });
+
+  await page.goto('/');
+  try {
+    await expect.poll(() => authRequestStarted).toBe(true);
+    await expect(page.getByTestId('app-shell-skeleton')).toHaveCount(0);
+    await expect(page.getByRole('navigation', { name: 'Main navigation' })).toHaveCount(0);
+    await expectCenteredPageLoader(page);
+  } finally {
+    releaseAuth();
+  }
+  await expect(page.getByRole('heading', { name: 'Learn AI from the maths up.' })).toBeVisible();
 });
 
 test('settings edits stay accessible and the save spinner keeps its geometry', async ({ page }) => {
@@ -311,6 +342,7 @@ test('first visits wait for real layout data without inventing placeholder cards
 test('first-visit loaders stay centered on mobile during auth and page loading', async ({
   page,
 }) => {
+  await page.addInitScript(() => localStorage.setItem('academy.shell-hint', '1'));
   await page.setViewportSize({ width: 390, height: 844 });
   let releaseAuth: () => void = () => {};
   let releasePage: () => void = () => {};
