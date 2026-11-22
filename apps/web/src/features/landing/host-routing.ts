@@ -59,7 +59,9 @@ export function resolveHostRoute({
   if (!auth) return { type: 'auth' };
 
   if (role === 'app' && normalizedPath === '/login') {
-    return auth.authenticated ? { type: 'redirect', to: '/' } : { type: 'render', auth };
+    return auth.authenticated || !auth.authRequired
+      ? { type: 'redirect', to: '/' }
+      : { type: 'render', auth };
   }
 
   if (auth.authRequired && !auth.authenticated && (role === 'app' || !isPublicPath(pathname))) {

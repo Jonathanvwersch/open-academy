@@ -85,6 +85,16 @@ describe('resolveHostRoute', () => {
     });
   });
 
+  it('redirects passwordless app visitors away from login', () => {
+    expect(
+      resolve({
+        role: 'app',
+        pathname: '/login',
+        auth: { authRequired: false, authenticated: false },
+      }),
+    ).toEqual({ type: 'redirect', to: '/' });
+  });
+
   it('redirects signed-in app users away from login', () => {
     expect(
       resolve({
