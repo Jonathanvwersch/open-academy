@@ -10,7 +10,7 @@ const steps = [
   {
     title: 'Start where you are',
     description:
-      'Each course opens with a short placement check. Topics you already know are marked done, and you start at the first one you need.',
+      'Each course offers a short placement check. Topics you already know are marked done, so you start at the first one you need. New to the subject? Start from the beginning instead.',
     image: placementScreenshot,
     alt: 'Course page with the placement check',
   },
