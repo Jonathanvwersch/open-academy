@@ -10,7 +10,7 @@ export async function apiFetch(input: RequestInfo | URL, init?: RequestInit): Pr
   if (
     response.status === 401 &&
     typeof window !== 'undefined' &&
-    window.location.pathname !== '/login' &&
+    window.location.pathname.replace(/\/$/, '') !== '/login' &&
     !redirectingToLogin
   ) {
     redirectingToLogin = true;
