@@ -74,6 +74,13 @@ test('signed-out visitors can navigate to the public courses and how it works pa
     'aria-current',
     'page',
   );
+
+  await page.goto('/courses/');
+  await expect(
+    page.getByRole('heading', { name: 'Six courses, from vectors to LLMs' }),
+  ).toBeVisible();
+  await page.goto('/how-it-works/');
+  await expect(page.getByRole('heading', { name: 'How Open Academy works' })).toBeVisible();
 });
 
 test('signed-out visitors are redirected from course detail pages', async ({ page }) => {

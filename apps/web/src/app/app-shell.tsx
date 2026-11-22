@@ -31,7 +31,7 @@ import { Skeleton } from '../components/ui/skeleton.js';
 import { TooltipProvider } from '../components/ui/tooltip.js';
 import { authQueryOptions } from '../features/auth/queries.js';
 import { coursesQueryOptions } from '../features/course/queries.js';
-import { PUBLIC_PATHS } from '../features/landing/public-paths.js';
+import { isPublicPath, normalizePath, PUBLIC_PATHS } from '../features/landing/public-paths.js';
 import { reviewsQueryOptions } from '../features/reviews/queries.js';
 import { TutorContextProvider } from '../features/tutor/tutor-sidebar.js';
 import { readBrowserStorage, writeBrowserStorage } from '../lib/browser-storage.js';
@@ -528,9 +528,13 @@ function AppToaster() {
 export function RootLayout() {
   const { data: me } = useQuery(authQueryOptions());
   const pathname = useRouterState({ select: (state) => state.location.pathname });
-  const isPublicPath = Object.values(PUBLIC_PATHS).some((path) => path === pathname);
-  const isSignedOutPublicPath = isPublicPath && me?.authRequired && !me.authenticated;
-  if (pathname === '/login' || pathname === PUBLIC_PATHS.howItWorks || isSignedOutPublicPath) {
+  const normalizedPath = normalizePath(pathname);
+  const isSignedOutPublicPath = isPublicPath(pathname) && me?.authRequired && !me.authenticated;
+  if (
+    normalizedPath === '/login' ||
+    normalizedPath === PUBLIC_PATHS.howItWorks ||
+    isSignedOutPublicPath
+  ) {
     return (
       <>
         <Outlet />
