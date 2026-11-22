@@ -1,5 +1,5 @@
 import type { QueryClient } from '@tanstack/react-query';
-import { createRootRouteWithContext, isRedirect, redirect } from '@tanstack/react-router';
+import { createRootRouteWithContext, redirect } from '@tanstack/react-router';
 import { RootLayout, RootPending } from '@/app/app-shell.js';
 import { appUrl, hostRole, siteUrl } from '@/lib/site-origins.js';
 import { authQueryOptions } from '../features/auth/queries.js';
@@ -26,13 +26,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
       decision = resolveHostRoute({ ...routeInput, auth });
     }
     if (decision.type === 'redirect' && 'href' in decision) {
-      try {
-        throw redirect({ href: decision.href, reloadDocument: true });
-      } catch (error) {
-        if (isRedirect(error)) throw error;
-        window.location.replace(decision.href);
-        return { auth: undefined };
-      }
+      throw redirect({ href: decision.href, reloadDocument: true });
     }
     if (decision.type === 'redirect') {
       throw redirect({
