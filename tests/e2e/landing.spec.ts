@@ -67,6 +67,11 @@ test('the mobile landing page fits and keeps its sign-in action in view', async 
     path: `${screenshotDir}/landing-mobile.png`,
     fullPage: true,
   });
+
+  await page.setViewportSize({ width: 320, height: 640 });
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: 'Learn AI from the maths up.' })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(320);
 });
 
 test('signing in from the landing page opens the signed-in Home page', async ({ page }) => {

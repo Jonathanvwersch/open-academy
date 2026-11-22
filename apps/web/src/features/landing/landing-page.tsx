@@ -99,7 +99,7 @@ export function LandingPage() {
       <main id="main-content">
         <section
           aria-labelledby="landing-title"
-          className="bg-(--landing-deep) text-(--landing-bone)"
+          className="overflow-x-clip bg-(--landing-deep) text-(--landing-bone)"
         >
           <div className="mx-auto grid max-w-[1440px] grid-cols-1 items-center gap-12 px-6 pb-16 pt-10 sm:px-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,560px)] lg:gap-[min(5.56vw,80px)] lg:px-20 lg:pb-24 lg:pt-16">
             <div className="flex flex-col items-start gap-6 lg:gap-7">
