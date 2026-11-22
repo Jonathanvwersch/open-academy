@@ -1,9 +1,20 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link, useRouterState } from '@tanstack/react-router';
+import { useEffect } from 'react';
 import { Button } from '@/components/ui/button.js';
 import { Logo } from '@/components/ui/logo.js';
 import { authQueryOptions } from '../auth/queries.js';
 import { PUBLIC_PATHS } from './public-paths.js';
+
+export function useDocumentTitle(title: string) {
+  useEffect(() => {
+    const previousTitle = document.title;
+    document.title = title;
+    return () => {
+      document.title = previousTitle;
+    };
+  }, [title]);
+}
 
 export function SkipLink() {
   return (

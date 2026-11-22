@@ -1,5 +1,4 @@
 import { Link } from '@tanstack/react-router';
-import { useEffect } from 'react';
 import { AcademyMascot } from '@/components/academy-mascot.js';
 import courseScreenshot from './assets/landing-course.webp';
 import homeScreenshot from './assets/landing-home.webp';
@@ -11,6 +10,7 @@ import {
   LandingHeader,
   SignInLink,
   SkipLink,
+  useDocumentTitle,
 } from './landing-chrome.js';
 import { PUBLIC_PATHS } from './public-paths.js';
 import './landing.css';
@@ -40,9 +40,7 @@ const features = [
 ];
 
 export function LandingPage() {
-  useEffect(() => {
-    document.title = 'Open Academy';
-  }, []);
+  useDocumentTitle('Open Academy');
 
   return (
     <div className="landing min-h-screen bg-(--landing-bone) text-(--landing-ink) antialiased">

@@ -1,9 +1,14 @@
-import { useEffect } from 'react';
 import homeScreenshot from './assets/landing-home.webp';
 import lessonScreenshot from './assets/landing-lesson.webp';
 import placementScreenshot from './assets/landing-placement.webp';
 import tutorScreenshot from './assets/landing-tutor.webp';
-import { LandingFinalCta, LandingFooter, LandingHeader, SkipLink } from './landing-chrome.js';
+import {
+  LandingFinalCta,
+  LandingFooter,
+  LandingHeader,
+  SkipLink,
+  useDocumentTitle,
+} from './landing-chrome.js';
 import './landing.css';
 
 const steps = [
@@ -38,9 +43,7 @@ const steps = [
 ];
 
 export function HowItWorksPage() {
-  useEffect(() => {
-    document.title = 'How it works · Open Academy';
-  }, []);
+  useDocumentTitle('How it works · Open Academy');
 
   return (
     <div className="landing min-h-screen bg-(--landing-bone) text-(--landing-ink) antialiased">

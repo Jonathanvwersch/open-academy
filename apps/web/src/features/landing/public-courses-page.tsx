@@ -1,12 +1,15 @@
-import { useEffect } from 'react';
 import { publicCourses } from './courses-data.js';
-import { LandingFinalCta, LandingFooter, LandingHeader, SkipLink } from './landing-chrome.js';
+import {
+  LandingFinalCta,
+  LandingFooter,
+  LandingHeader,
+  SkipLink,
+  useDocumentTitle,
+} from './landing-chrome.js';
 import './landing.css';
 
 export function PublicCoursesPage() {
-  useEffect(() => {
-    document.title = 'Courses · Open Academy';
-  }, []);
+  useDocumentTitle('Courses · Open Academy');
 
   return (
     <div className="landing min-h-screen bg-(--landing-bone) text-(--landing-ink) antialiased">
