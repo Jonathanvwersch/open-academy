@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CourseRouteImport } from './routes/course'
 import { Route as CoursesRouteImport } from './routes/courses'
+import { Route as HowItWorksRouteImport } from './routes/how-it-works'
 import { Route as LabRouteImport } from './routes/lab'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as MapRouteImport } from './routes/map'
@@ -41,6 +42,11 @@ const CourseRoute = CourseRouteImport.update({
 const CoursesRoute = CoursesRouteImport.update({
   id: '/courses',
   path: '/courses',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HowItWorksRoute = HowItWorksRouteImport.update({
+  id: '/how-it-works',
+  path: '/how-it-works',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LabRoute = LabRouteImport.update({
@@ -123,6 +129,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/course': typeof CourseRoute
   '/courses': typeof CoursesRouteWithChildren
+  '/how-it-works': typeof HowItWorksRoute
   '/lab': typeof LabRoute
   '/login': typeof LoginRoute
   '/map': typeof MapRoute
@@ -142,6 +149,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/course': typeof CourseRoute
+  '/how-it-works': typeof HowItWorksRoute
   '/lab': typeof LabRoute
   '/login': typeof LoginRoute
   '/map': typeof MapRoute
@@ -162,6 +170,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/course': typeof CourseRoute
   '/courses': typeof CoursesRouteWithChildren
+  '/how-it-works': typeof HowItWorksRoute
   '/lab': typeof LabRoute
   '/login': typeof LoginRoute
   '/map': typeof MapRoute
@@ -184,6 +193,7 @@ export interface FileRouteTypes {
     | '/'
     | '/course'
     | '/courses'
+    | '/how-it-works'
     | '/lab'
     | '/login'
     | '/map'
@@ -203,6 +213,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/course'
+    | '/how-it-works'
     | '/lab'
     | '/login'
     | '/map'
@@ -222,6 +233,7 @@ export interface FileRouteTypes {
     | '/'
     | '/course'
     | '/courses'
+    | '/how-it-works'
     | '/lab'
     | '/login'
     | '/map'
@@ -243,6 +255,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CourseRoute: typeof CourseRoute
   CoursesRoute: typeof CoursesRouteWithChildren
+  HowItWorksRoute: typeof HowItWorksRoute
   LabRoute: typeof LabRoute
   LoginRoute: typeof LoginRoute
   MapRoute: typeof MapRoute
@@ -277,6 +290,13 @@ declare module '@tanstack/react-router' {
       path: '/courses'
       fullPath: '/courses'
       preLoaderRoute: typeof CoursesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/how-it-works': {
+      id: '/how-it-works'
+      path: '/how-it-works'
+      fullPath: '/how-it-works'
+      preLoaderRoute: typeof HowItWorksRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/lab': {
@@ -418,6 +438,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CourseRoute: CourseRoute,
   CoursesRoute: CoursesRouteWithChildren,
+  HowItWorksRoute: HowItWorksRoute,
   LabRoute: LabRoute,
   LoginRoute: LoginRoute,
   MapRoute: MapRoute,

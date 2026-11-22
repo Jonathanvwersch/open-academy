@@ -1,10 +1,18 @@
 import { Link } from '@tanstack/react-router';
+import { useEffect } from 'react';
 import { AcademyMascot } from '@/components/academy-mascot.js';
-import { Button } from '@/components/ui/button.js';
-import { Logo } from '@/components/ui/logo.js';
 import courseScreenshot from './assets/landing-course.webp';
 import homeScreenshot from './assets/landing-home.webp';
 import lessonScreenshot from './assets/landing-lesson.webp';
+import { publicCourses } from './courses-data.js';
+import {
+  LandingFinalCta,
+  LandingFooter,
+  LandingHeader,
+  SignInLink,
+  SkipLink,
+} from './landing-chrome.js';
+import { PUBLIC_PATHS } from './public-paths.js';
 import './landing.css';
 
 const features = [
@@ -31,70 +39,15 @@ const features = [
   },
 ];
 
-const courses = [
-  'Mathematics for Machine Learning',
-  'Machine Learning Foundations',
-  'Deep Learning',
-  'Transformers and LLMs',
-  'LLM Inference',
-  'Reinforcement Learning',
-];
-
-function SignInLink({ tone, className = '' }: { tone: 'light' | 'dark'; className?: string }) {
-  const toneClasses =
-    tone === 'light'
-      ? 'bg-(--landing-bone) text-(--landing-button-text) hover:bg-(--landing-ivory) focus-visible:border-(--landing-shell) focus-visible:ring-(--landing-bone) focus-visible:ring-offset-(--landing-deep)'
-      : 'bg-(--landing-deep) text-(--landing-bone) hover:bg-(--landing-ink) focus-visible:border-(--landing-deep) focus-visible:ring-(--landing-deep) focus-visible:ring-offset-(--landing-bone)';
-
-  return (
-    <Button
-      asChild
-      className={`h-12 rounded-full px-6 text-base font-semibold ${toneClasses} ${className}`}
-    >
-      <Link to="/login">Sign in</Link>
-    </Button>
-  );
-}
-
 export function LandingPage() {
+  useEffect(() => {
+    document.title = 'Open Academy';
+  }, []);
+
   return (
     <div className="landing min-h-screen bg-(--landing-bone) text-(--landing-ink) antialiased">
-      <a
-        className="sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:not-sr-only focus:rounded-full focus:bg-(--landing-ivory) focus:px-4 focus:py-3 focus:text-(--landing-ink) focus-visible:ring-2 focus-visible:ring-(--landing-deep)"
-        href="#main-content"
-      >
-        Skip to content
-      </a>
-      <header className="bg-(--landing-deep) text-(--landing-bone)">
-        <div className="mx-auto flex max-w-[1440px] items-center justify-between px-6 py-5 sm:py-6 lg:px-20 lg:py-7">
-          <Link
-            to="/"
-            aria-label="Open Academy home"
-            className="inline-flex shrink-0 items-center gap-3 rounded-sm font-heading text-2xl font-medium tracking-tight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--landing-bone) focus-visible:ring-offset-2 focus-visible:ring-offset-(--landing-deep)"
-          >
-            <Logo className="h-[27px] w-[30px] shrink-0" />
-            <span>Open Academy</span>
-          </Link>
-          <nav aria-label="Main" className="flex items-center gap-3 sm:gap-5 lg:gap-9">
-            <a
-              className="hidden rounded-sm text-base text-(--landing-subline) transition-colors hover:text-(--landing-bone) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--landing-bone) focus-visible:ring-offset-2 focus-visible:ring-offset-(--landing-deep) sm:inline-flex"
-              href="#courses"
-            >
-              Courses
-            </a>
-            <a
-              className="hidden rounded-sm text-base text-(--landing-subline) transition-colors hover:text-(--landing-bone) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--landing-bone) focus-visible:ring-offset-2 focus-visible:ring-offset-(--landing-deep) sm:inline-flex"
-              href="#how-it-works"
-            >
-              How it works
-            </a>
-            <SignInLink
-              tone="light"
-              className="h-10 px-[18px] text-base focus-visible:ring-offset-2"
-            />
-          </nav>
-        </div>
-      </header>
+      <SkipLink />
+      <LandingHeader />
 
       <main id="main-content">
         <section
@@ -174,6 +127,12 @@ export function LandingPage() {
               </article>
             ))}
           </div>
+          <Link
+            className="mt-8 inline-flex text-base font-semibold text-(--landing-deep) underline underline-offset-4 hover:text-(--landing-ink) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--landing-deep) focus-visible:ring-offset-2"
+            to={PUBLIC_PATHS.howItWorks}
+          >
+            See how it works
+          </Link>
         </section>
 
         <section
@@ -189,17 +148,25 @@ export function LandingPage() {
               One trail, six courses. Each topic opens when you are ready for it.
             </h2>
             <ol className="landing-course-trail">
-              {courses.map((course, index) => (
-                <li className="landing-course-step" key={course}>
+              {publicCourses.map((course, index) => (
+                <li className="landing-course-step" key={course.id}>
                   <span
                     aria-hidden="true"
                     className="landing-course-marker"
                     data-first={index === 0 ? 'true' : 'false'}
                   />
-                  <h3 className="font-heading text-[22px] leading-[1.22] font-medium">{course}</h3>
+                  <h3 className="font-heading text-[22px] leading-[1.22] font-medium">
+                    {course.title}
+                  </h3>
                 </li>
               ))}
             </ol>
+            <Link
+              className="mt-8 inline-flex text-base font-semibold text-(--landing-deep) underline underline-offset-4 hover:text-(--landing-ink) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--landing-deep) focus-visible:ring-offset-2"
+              to={PUBLIC_PATHS.courses}
+            >
+              See what each course covers
+            </Link>
           </div>
         </section>
 
@@ -219,42 +186,9 @@ export function LandingPage() {
           </div>
         </section>
 
-        <section
-          aria-labelledby="start-heading"
-          className="mx-auto flex max-w-[1440px] flex-col items-start gap-8 px-6 py-16 sm:px-8 lg:flex-row lg:items-center lg:justify-between lg:gap-12 lg:px-20 lg:py-24"
-        >
-          <div className="flex max-w-[900px] flex-col gap-3">
-            <h2
-              className="text-[40px] leading-[1.08] font-medium tracking-[-0.02em] text-balance sm:text-[44px] lg:text-[48px]"
-              id="start-heading"
-            >
-              Start with vectors. Finish with LLMs.
-            </h2>
-            <p className="text-[18px] leading-[1.5] text-(--landing-muted) text-pretty sm:text-[19px]">
-              Six courses that build on each other. Open Academy is open source, so you can also run
-              it yourself.
-            </p>
-          </div>
-          <SignInLink tone="dark" className="shrink-0 px-6" />
-        </section>
+        <LandingFinalCta />
       </main>
-
-      <footer className="border-t border-(--landing-footer-border)">
-        <div className="mx-auto flex max-w-[1440px] items-center justify-between gap-4 px-6 py-6 sm:px-8 lg:px-20 lg:py-8">
-          <div className="flex items-center gap-2.5 text-[15px] leading-6 text-(--landing-muted)">
-            <Logo className="h-[18px] w-5 shrink-0 text-(--landing-deep)" />
-            <span>© 2026 Open Academy</span>
-          </div>
-          <a
-            className="rounded-sm text-[15px] leading-6 text-(--landing-muted) transition-colors hover:text-(--landing-deep) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--landing-deep) focus-visible:ring-offset-2 focus-visible:ring-offset-(--landing-bone)"
-            href="https://github.com/Jonathanvwersch/open-academy"
-            rel="noreferrer"
-            target="_blank"
-          >
-            GitHub
-          </a>
-        </div>
-      </footer>
+      <LandingFooter />
     </div>
   );
 }
