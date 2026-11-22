@@ -88,6 +88,22 @@ test('signed-out visitors are redirected from course detail pages', async ({ pag
   await expect(page).toHaveURL(/\/login\?redirect=%2Fcourses%2Fmaths-for-ml$/);
 });
 
+test('passwordless visitors see Start learning actions', async ({ page }) => {
+  await page.route('**/api/auth/me', async (route) => {
+    await route.fulfill({
+      json: { authenticated: false, authRequired: false, demo: null },
+    });
+  });
+  await page.goto('/how-it-works');
+  await expect(page.getByRole('heading', { name: 'How Open Academy works' })).toBeVisible();
+
+  const startLearningLinks = page.getByRole('link', { name: 'Start learning', exact: true });
+  await expect(startLearningLinks).toHaveCount(2);
+  for (let index = 0; index < 2; index += 1) {
+    await expect(startLearningLinks.nth(index)).toHaveAttribute('href', '/');
+  }
+});
+
 test('signed-in visitors keep the app catalogue and can open the public how it works page', async ({
   page,
 }) => {
