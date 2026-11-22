@@ -1,6 +1,6 @@
 import type { AuthPayload } from '@academy/contracts/auth';
 import type { CourseCatalogPayload } from '@academy/contracts/course';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, Outlet, useRouterState } from '@tanstack/react-router';
 import { Activity, BookOpen, House, ListOrdered, RotateCcw, Settings } from 'lucide-react';
 import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
@@ -8,7 +8,11 @@ import { Toaster } from 'sonner';
 import { BrandLockup } from '../components/brand-lockup.js';
 import { isLayout, LayoutShapeLayer } from '../components/layout-shapes.js';
 import type { Layout } from '../components/page-layout-skeleton.js';
-import { measureLayout, useCapturePageLayout } from '../components/page-layout-skeleton.js';
+import {
+  measureLayout,
+  PageLoadingIndicator,
+  useCapturePageLayout,
+} from '../components/page-layout-skeleton.js';
 import { PageSkeleton } from '../components/skeletons.js';
 import {
   Sidebar,
@@ -485,6 +489,19 @@ function MobileAppHeader() {
 }
 
 export function AppShellSkeleton() {
+  const queryClient = useQueryClient();
+  const auth = queryClient.getQueryData<AuthPayload>(authQueryOptions().queryKey);
+  if (!auth || (auth.authRequired && !auth.authenticated)) {
+    return (
+      <div className="flex min-h-dvh items-center justify-center">
+        <PageLoadingIndicator />
+      </div>
+    );
+  }
+  return <AppShellSkeletonLayout />;
+}
+
+function AppShellSkeletonLayout() {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const isPaperReader = pathname.startsWith('/papers/');
   const { sidebarOpen, updateSidebarOpen } = useAppSidebarOpenState();
