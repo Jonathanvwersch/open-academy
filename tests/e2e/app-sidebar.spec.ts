@@ -306,6 +306,7 @@ test('mobile sidebar replays captured course geometry after closing and reopenin
 test('auth-pending shell shows the real sidebar without shifting navigation', async ({
   page,
 }, testInfo) => {
+  await page.addInitScript(() => localStorage.setItem('academy.shell-hint', '1'));
   await page.setViewportSize({ width: 1440, height: 900 });
   let releaseAuth: () => void = () => {};
   const authGate = new Promise<void>((resolve) => {
@@ -398,6 +399,7 @@ test('auth-pending shell shows the real sidebar without shifting navigation', as
 test('mobile auth-pending shell uses the real header and navigation', async ({
   page,
 }, testInfo) => {
+  await page.addInitScript(() => localStorage.setItem('academy.shell-hint', '1'));
   await page.setViewportSize({ width: 390, height: 844 });
   let releaseAuth: () => void = () => {};
   const authGate = new Promise<void>((resolve) => {

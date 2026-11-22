@@ -12,6 +12,7 @@ export const publicFeatureModules = {
     'features/course/use-switch-course.ts',
     'features/course/queries.ts',
     'features/auth/queries.ts',
+    'features/landing/host-routing.ts',
     'features/landing/public-paths.ts',
     'features/map/queries.ts',
     'features/reviews/queries.ts',

@@ -1,27 +1,48 @@
 import type { QueryClient } from '@tanstack/react-query';
-import { createRootRouteWithContext, redirect } from '@tanstack/react-router';
-import { AppShellSkeleton, RootLayout } from '@/app/app-shell.js';
+import { createRootRouteWithContext, isRedirect, redirect } from '@tanstack/react-router';
+import { RootLayout, RootPending } from '@/app/app-shell.js';
+import { appUrl, hostRole, siteUrl } from '@/lib/site-origins.js';
 import { authQueryOptions } from '../features/auth/queries.js';
-import { isPublicPath, normalizePath, PUBLIC_PATHS } from '../features/landing/public-paths.js';
+import { resolveHostRoute } from '../features/landing/host-routing.js';
+import { setAppShellHint } from '../lib/app-shell-hint.js';
 
 interface RouterContext {
   queryClient: QueryClient;
 }
 export const Route = createRootRouteWithContext<RouterContext>()({
-  pendingComponent: AppShellSkeleton,
+  pendingComponent: RootPending,
   beforeLoad: async ({ context, location }) => {
-    const pathname = normalizePath(location.pathname);
-    if (pathname === '/login' || pathname === PUBLIC_PATHS.howItWorks) {
-      return { auth: undefined };
+    const routeInput = {
+      role: hostRole(),
+      pathname: location.pathname,
+      search: location.searchStr,
+      appUrl,
+      siteUrl,
+    };
+    let decision = resolveHostRoute(routeInput);
+    if (decision.type === 'auth') {
+      const auth = await context.queryClient.ensureQueryData(authQueryOptions());
+      setAppShellHint(!auth.authRequired || auth.authenticated);
+      decision = resolveHostRoute({ ...routeInput, auth });
     }
-    const auth = await context.queryClient.ensureQueryData(authQueryOptions());
-    if (auth.authRequired && !auth.authenticated && !isPublicPath(location.pathname)) {
+    if (decision.type === 'redirect' && 'href' in decision) {
+      try {
+        throw redirect({ href: decision.href, reloadDocument: true });
+      } catch (error) {
+        if (isRedirect(error)) throw error;
+        window.location.replace(decision.href);
+        return { auth: undefined };
+      }
+    }
+    if (decision.type === 'redirect') {
       throw redirect({
-        to: '/login',
-        search: { redirect: `${location.pathname}${location.searchStr}` },
+        to: decision.to,
+        ...(decision.search ? { search: decision.search } : {}),
       });
     }
-    return { auth };
+    if (decision.type === 'auth')
+      throw new Error('Host route did not resolve after authentication');
+    return { auth: decision.auth };
   },
   component: RootLayout,
 });

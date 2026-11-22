@@ -17,6 +17,7 @@ import {
 } from '../../components/ui/card.js';
 import { Input } from '../../components/ui/input.js';
 import { Label } from '../../components/ui/label.js';
+import { setAppShellHint } from '../../lib/app-shell-hint.js';
 import { courseQueryKeyRoot, learnQueryOptions } from '../course/queries.js';
 import { studyMapQueryOptions } from '../map/queries.js';
 import { todayQueryOptions } from '../sessions/queries.js';
@@ -71,6 +72,7 @@ export function SettingsPage() {
         setAuthError('Could not log out.');
         return;
       }
+      setAppShellHint(false);
       window.location.replace('/login');
     } catch {
       setAuthError('Could not log out. Check your connection and try again.');
