@@ -55,3 +55,14 @@ test('password login remembers the session and logout requires login again', asy
   await page.goto('/course');
   await expect(page).toHaveURL(/\/login\?redirect=%2Fcourse$/);
 });
+
+test('wrong password on /login/ stays on the login page', async ({ page }) => {
+  await page.goto('/login/');
+  await expect(page).toHaveURL(/\/login\/$/);
+
+  await page.getByLabel('Password').fill('wrong-password');
+  await page.getByRole('button', { name: 'Log in' }).click();
+
+  await expect(page.getByRole('alert')).toContainText('Wrong password');
+  await expect(page).toHaveURL(/\/login\/$/);
+});

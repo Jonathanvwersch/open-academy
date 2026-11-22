@@ -11,6 +11,8 @@ export const publicFeatureModules = {
     'features/tutor/tutor-sidebar.tsx',
     'features/course/use-switch-course.ts',
     'features/course/queries.ts',
+    'features/auth/queries.ts',
+    'features/landing/public-paths.ts',
     'features/map/queries.ts',
     'features/reviews/queries.ts',
   ]),
