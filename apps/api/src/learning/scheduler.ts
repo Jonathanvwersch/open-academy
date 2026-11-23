@@ -982,6 +982,9 @@ export function mixReviewActivities(selected: Candidate[], content: ContentIndex
     const firstReview = group[0]?.candidate;
     if (!firstReview) continue;
     const reviews = group.map(({ candidate }) => candidate);
+    const remediationReason = reviews.find(({ activity }) =>
+      activity.reason.summary.includes(' before retrying '),
+    )?.activity.reason.summary;
     const titles = reviews.map(
       ({ activity }) =>
         content.conceptsById.get(activity.conceptId ?? '')?.title ?? activity.conceptId ?? '',
@@ -1006,7 +1009,7 @@ export function mixReviewActivities(selected: Candidate[], content: ContentIndex
             ...firstReason.terms,
             review: Math.max(...reviews.map((review) => review.activity.reason.terms.review)),
           },
-          summary: `Mixed review: ${titles.join(', ')}.`,
+          summary: remediationReason ?? `Mixed review: ${titles.join(', ')}.`,
         },
       },
       score: Math.max(...reviews.map((review) => review.score)),

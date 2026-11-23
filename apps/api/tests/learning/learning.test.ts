@@ -1727,6 +1727,29 @@ test('three due topics from two courses become one interleaved mixed review', ()
   });
 });
 
+test('mixed reviews keep the first remediation reason summary', () => {
+  const reviews = [
+    reviewCandidate('vectors', 'fixture-course', 9),
+    reviewCandidate('derivatives', 'fixture-course', 8),
+    reviewCandidate('switching-topic', 'fixture-course', 7),
+  ];
+  const firstRemedialReview = reviews[1];
+  const secondRemedialReview = reviews[2];
+  if (!firstRemedialReview || !secondRemedialReview) {
+    throw new Error('Expected three mixed-review candidates');
+  }
+  firstRemedialReview.activity.reason.summary =
+    'Review Derivatives before retrying Gradient descent';
+  secondRemedialReview.activity.reason.summary =
+    'Review Switching topic before retrying Gradient descent';
+
+  const [mixed] = mixReviewActivities(reviews, content);
+
+  expect(mixed?.activity.reason.summary).toBe(
+    'Review Derivatives before retrying Gradient descent',
+  );
+});
+
 test('one selected due topic stays a single-topic review', () => {
   const onlyReview = reviewCandidate('vectors', 'fixture-course', 4);
   const [result] = mixReviewActivities([onlyReview], content);
