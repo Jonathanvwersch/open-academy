@@ -101,7 +101,7 @@ concepts:
             dimension: conceptual,
           },
         ],
-      status: stub,
+      status: authored,
     }
   - {
       id: rl-verifiable-rewards,
