@@ -13,6 +13,7 @@ where_this_fits: |
   In minibatch training, one batch may ask us to undo the previous batch's move. Remembering recent directions can soften those reversals. A model can also have several parameters with very different slope sizes. One learning rate can then make some moves too large and others too small. Adam uses each parameter's gradient history to adjust its moves, so we don't have to choose a separate learning rate for each parameter. We'll build these ideas into Adam's rule.
 knowledge_points:
   - id: mad-remember-slopes
+    key_prereqs: [gradient-descent]
     title: "Remember recent slopes"
     tldr: |
       - One batch can ask us to reverse the previous batch's move.
@@ -89,6 +90,7 @@ knowledge_points:
       - mad-memory-update-template
       - mad-memory-robot
   - id: mad-scale-moves
+    key_prereqs: []
     title: "Adjust how far each parameter moves"
     tldr: |
       - Different parameters can have very different slope sizes.
@@ -170,6 +172,7 @@ knowledge_points:
       - mad-denominator-template
       - mad-scale-new-model
   - id: mad-correct-start
+    key_prereqs: [sgd-minibatch]
     title: "Fix averages that start at zero"
     tldr: |
       - Averages that start at zero come out too small for the first few updates.
@@ -265,6 +268,7 @@ knowledge_points:
       - mad-correction-two-memories
       - mad-correction-changing
   - id: mad-combine-update
+    key_prereqs: [gradient-descent]
     title: "Combine the pieces into Adam"
     tldr: |
       - Adam combines remembered slopes, separate size estimates and correction for a zero start.

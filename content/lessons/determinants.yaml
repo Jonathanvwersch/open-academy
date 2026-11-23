@@ -14,6 +14,7 @@ where_this_fits: |
 
 knowledge_points:
   - id: det-area-orientation
+    key_prereqs: [matrices]
     title: "Measure changes to a square"
     tldr: |
       - A matrix can stretch or flip a square into a new shape.
@@ -97,6 +98,7 @@ knowledge_points:
       - det-area-half-turn
       - det-area-camera-region
   - id: det-two-by-two
+    key_prereqs: [matrices]
     title: "Calculate a determinant"
     tldr: |
       - For two rows and two columns, start with the top-left entry times the bottom-right entry.
@@ -209,6 +211,7 @@ knowledge_points:
       - det-calculate-rectangular
       - det-calculate-robot-region
   - id: det-zero-collapse
+    key_prereqs: [matrices, vectors]
     title: "Check whether information is lost"
     tldr: |
       - A matrix can flatten a square into a line or a point.
@@ -309,6 +312,7 @@ knowledge_points:
       - det-zero-negative-inverse
       - det-zero-robot-inputs
   - id: det-pivots
+    key_prereqs: [vectors, matrices]
     title: "Find determinants with row moves"
     tldr: |
       - Adding a multiple of one row to another keeps the determinant unchanged.

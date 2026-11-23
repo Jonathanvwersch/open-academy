@@ -19,6 +19,7 @@ where_this_fits: |
   We'll follow a chat assistant using Llama 3 8B, a language model with about 8 billion parameters, on one NVIDIA H100 SXM GPU. Its weights take about 16 GB within the GPU's 80 GB. We'll update a cache, count its memory and reuse matching prompt beginnings.
 knowledge_points:
   - id: kvc-reuse
+    key_prereqs: [prefill-decode, attention, causal-masking]
     title: Reuse earlier keys and values
 
     tldr: |
@@ -113,6 +114,7 @@ knowledge_points:
       - kvc-loop-complete
       - kvc-edit-history
   - id: kvc-heads
+    key_prereqs: [multi-head-attention]
     title: Share keys and values between heads
 
     tldr: |
@@ -180,6 +182,7 @@ knowledge_points:
       - kvc-sharing-mistake
       - kvc-heads-new-model
   - id: kvc-memory
+    key_prereqs: [gpu-inference-basics, multi-head-attention]
     title: Work out the cache's memory
 
     tldr: |
@@ -244,6 +247,7 @@ knowledge_points:
       - kvc-memory-mistake
       - kvc-budget-new-model
   - id: kvc-prefix
+    key_prereqs: [causal-masking, prefill-decode]
     title: Reuse the start of a prompt
 
     tldr: |

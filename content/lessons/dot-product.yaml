@@ -13,6 +13,7 @@ where_this_fits: |
   It's useful because so much of machine learning is adding up weighted inputs. A model that predicts a house's price multiplies each measurement by its own weight and adds the results, and that total is a dot product. The same number also tells us how closely two vectors point the same way, which is how a robot can check that it's heading towards its goal. In the vectors lesson, we added, scaled and measured vectors, but none of those turns two vectors into one number. That's what this lesson builds.
 knowledge_points:
   - id: dot-weighted-total
+    key_prereqs: [vectors]
     title: "Multiply matching numbers and add"
     tldr: |
       - Two vectors can hold matching lists, such as answer counts and points per answer.
@@ -132,6 +133,7 @@ knowledge_points:
       - dotp-quiz-backwards
       - dotp-order
   - id: dot-arrow-alignment
+    key_prereqs: [vectors]
     title: "How the dot product measures direction"
     tldr: |
       - A vector's shadow shows how far it points along another vector's line.
@@ -268,6 +270,7 @@ knowledge_points:
       - dotp-reverse
       - dotp-corridor
   - id: dot-direction-only
+    key_prereqs: [vectors]
     title: "Compare directions, ignoring length"
     tldr: |
       - A dot product depends on vector lengths as well as their directions.

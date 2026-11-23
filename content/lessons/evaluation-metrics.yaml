@@ -12,6 +12,7 @@ where_this_fits: |
   Imagine a camera that checks factory parts and says faulty or fine. It is a **classifier**, a model that predicts a category. Missing a faulty part may be worse than wrongly calling a fine part faulty. We'll measure how many warnings are right, called precision, and how many faults get caught, called recall. For number predictions like prices, we'll instead measure average error sizes.
 knowledge_points:
   - id: evm-count
+    key_prereqs: [supervised-learning]
     title: Count right and wrong answers
 
     tldr: |
@@ -76,6 +77,7 @@ knowledge_points:
         evm-rare-class,
       ]
   - id: evm-catch
+    key_prereqs: [supervised-learning]
     title: Measure caught faults and false alarms
 
     tldr: |
@@ -147,6 +149,7 @@ knowledge_points:
         evm-recall-three-classes,
       ]
   - id: evm-numbers
+    key_prereqs: [loss-functions]
     title: Score predicted prices
 
     tldr: |

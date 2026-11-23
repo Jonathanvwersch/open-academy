@@ -15,6 +15,7 @@ where_this_fits: |
   Why do we need it? A model works by doing arithmetic, but an ID is only a label, so arithmetic on IDs means nothing. An embedding gives each token numbers that the model adjusts as it learns, so tokens used in similar ways tend to get vectors pointing in similar directions.
 knowledge_points:
   - id: emb-lookup-table
+    key_prereqs: [tokenization, matrices]
     title: "Look up a vector for each token"
     tldr: |
       - A token number tells the model which piece of text it has.
@@ -92,6 +93,7 @@ knowledge_points:
       - embp-lookup-template
       - embp-vocab-growth
   - id: emb-onehot-product
+    key_prereqs: [matrices, dot-product]
     title: "Write the lookup as a multiplication"
     tldr: |
       - We can pick out a token's row with a vector of zeros that has a single one in that token's place.
@@ -186,6 +188,7 @@ knowledge_points:
       - embp-why-index
       - embp-onehot-matrix
   - id: emb-learned-similar
+    key_prereqs: [dot-product, vectors]
     title: "How a model learns the table"
     tldr: |
       - Training adjusts the table so the model gets better at predicting text.

@@ -17,6 +17,7 @@ where_this_fits: |
   Time to first token (TTFT) is the wait from sending a request to its first output token. Inter-token latency (ITL) is the gap between consecutive output tokens. A steady ITL of 0.02 seconds gives 50 tokens/s.
 knowledge_points:
   - id: pd-request-phases
+    key_prereqs: [autoregressive-lm, inference-metrics]
     title: Process the prompt, then generate
 
     tldr: |
@@ -88,6 +89,7 @@ knowledge_points:
       - pd-phases-mistake
       - pd-phases-new-setting
   - id: pd-temperature
+    key_prereqs: [classification-softmax, autoregressive-lm]
     title: Make token choices more or less random
 
     tldr: |
@@ -222,6 +224,7 @@ knowledge_points:
       - pd-temp-code
       - pd-temp-new-setting
   - id: pd-top-k
+    key_prereqs: [probability-basics, autoregressive-lm]
     title: Keep a fixed count of likely tokens
 
     tldr: |
@@ -316,6 +319,7 @@ knowledge_points:
       - pd-topk-code
       - pd-topk-new-setting
   - id: pd-top-p
+    key_prereqs: [probability-basics]
     title: Choose how much probability to keep
 
     tldr: |

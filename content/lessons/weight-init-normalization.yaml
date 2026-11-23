@@ -15,6 +15,7 @@ where_this_fits: |
   Why does that matter? Every layer multiplies the numbers passing through it. If each layer doubles its input, ten layers make it about a thousand times bigger. Backpropagation multiplies the slopes in the same way. A tiny slope barely moves a weight, while a huge slope can move it too far in one update. Well-sized starting weights stop each layer from growing or shrinking the numbers, and normalization keeps it that way during training.
 knowledge_points:
   - id: wi-depth-chain
+    key_prereqs: [backpropagation, mlp-forward-pass, gradient-descent]
     title: "Follow a number through many layers"
     tldr: |
       - Each layer multiplies the number it receives by a weight.
@@ -132,6 +133,7 @@ knowledge_points:
       - wip-chain-robot
       - wip-chain-weight-update
   - id: wi-init-scale
+    key_prereqs: [dot-product, activation-functions]
     title: "Pick the size of starting weights"
     tldr: |
       - A neuron adds up its inputs, each times a random starting weight.
@@ -215,6 +217,7 @@ knowledge_points:
       - wip-init-five-layers
       - wip-init-robot
   - id: wi-layer-norm
+    key_prereqs: []
     title: "Rescale one example's layer outputs"
     tldr: |
       - As training changes the weights, a layer's outputs can grow, shrink or drift together.
@@ -324,6 +327,7 @@ knowledge_points:
       - wip-ln-gain-shift
       - wip-ln-robot
   - id: wi-batch-norm
+    key_prereqs: [mlp-forward-pass]
     title: "Rescale across a batch instead"
     tldr: |
       - Batch normalization does the same rescaling for each neuron, across a batch of examples.

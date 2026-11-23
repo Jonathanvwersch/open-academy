@@ -12,6 +12,7 @@ where_this_fits: |
   Comparing training and validation error helps us spot overfitting, but even a low validation error can mislead us if the validation houses are unlike the ones we'll really price. **Held-out** examples are kept out of training and used for validation or testing. These held-out houses should look like the houses we'll really price. This lesson explains two assumptions that make their scores useful.
 knowledge_points:
   - id: gen-unseen-houses
+    key_prereqs: [train-test-split, loss-functions]
     title: Judge predictions on new houses
     tldr: |
       - We score the chosen model once on test houses it has never seen.
@@ -68,6 +69,7 @@ knowledge_points:
     problems:
       [gen-basics, gen-average-reason, gen-average-template, gen-identical, gen-robot-evidence]
   - id: gen-changed-source
+    key_prereqs: [train-test-split, loss-functions]
     title: Notice when new houses differ
     tldr: |
       - A test score describes the kinds of houses the model was tested on.
@@ -125,6 +127,7 @@ knowledge_points:
     problems:
       [gen-shift-basics, gen-fixed-reason, gen-shift-template, gen-large-houses, gen-lighting]
   - id: gen-related-records
+    key_prereqs: [train-test-split]
     title: Keep related examples together
     tldr: |
       - If one sale appears twice, one copy can land in training and the other in testing.

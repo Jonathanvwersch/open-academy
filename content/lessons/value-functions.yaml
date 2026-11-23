@@ -13,6 +13,7 @@ where_this_fits: |
   The big reward is often many steps away. A value turns all that future reward into one number, so an agent can compare states and actions and pick the better one. The Bellman equations link each state's value to the next state's value, so we can find values without listing whole paths.
 knowledge_points:
   - id: vf-state-value
+    key_prereqs: [policies-returns, probability-basics, mdp]
     title: "Measure how good each state is"
     tldr: |
       - A state's value is the return we expect if the robot starts there and follows its policy.
@@ -112,6 +113,7 @@ knowledge_points:
       - vfp-discount-first-reward
       - vfp-game-two-outcomes
   - id: vf-action-value
+    key_prereqs: [policies-returns, mdp, probability-basics]
     title: "Measure how good each move is"
     tldr: |
       - An action value scores one move: make it, then go back to following the policy.
@@ -200,6 +202,7 @@ knowledge_points:
       - vfp-q-left-forever
       - vfp-arm-three-actions
   - id: vf-bellman-expectation
+    key_prereqs: [probability-basics, policies-returns, mdp]
     title: "Get a state's value from the next state"
     tldr: |
       - A state's value is the next reward plus the discounted value of the state it leads to.
@@ -286,6 +289,7 @@ knowledge_points:
       - vfp-goal-value-mistake
       - vfp-arm-retry-backup
   - id: vf-bellman-optimality
+    key_prereqs: [policies-returns, mdp]
     title: "Find the most reward the robot can get"
     tldr: |
       - A state's best value is the most return any policy can collect from it.

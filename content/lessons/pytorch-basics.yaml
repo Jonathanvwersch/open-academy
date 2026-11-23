@@ -15,6 +15,7 @@ where_this_fits: |
   Why do we need it? Autodiff finds the slopes, but a training program must also hold the data and track and update every weight and bias. With thousands of parameters, PyTorch's ready-made pieces do that bookkeeping for us.
 knowledge_points:
   - id: ptb-tensors
+    key_prereqs: [matrices]
     title: "Store data in tensors"
     tldr: |
       - PyTorch stores numbers in arrays called tensors.
@@ -97,6 +98,7 @@ knowledge_points:
         ptb-tensor-transfer,
       ]
   - id: ptb-linear
+    key_prereqs: [linear-regression, autodiff]
     title: "Build a linear model"
     tldr: |
       - Training has to know which numbers, the weights and bias, it is allowed to change.
@@ -166,6 +168,7 @@ knowledge_points:
         ptb-linear-transfer,
       ]
   - id: ptb-loss-optimizer
+    key_prereqs: [gradient-descent, loss-functions, autodiff]
     title: "Measure the loss and update once"
     tldr: |
       - A loss function scores how far predictions are from their targets.
@@ -272,6 +275,7 @@ knowledge_points:
         ptb-loss-transfer,
       ]
   - id: ptb-training-loop
+    key_prereqs: [gradient-descent, autodiff, loss-functions]
     title: "Repeat the update in a loop"
     tldr: |
       - Each update changes the parameters, so the next pass needs fresh predictions and slopes.

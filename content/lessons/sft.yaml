@@ -12,6 +12,7 @@ where_this_fits: |
   SFT pairs requests with example answers called demonstrations. These show the content, style and format we want the assistant to produce.
 knowledge_points:
   - id: sft-example-responses
+    key_prereqs: [autoregressive-lm, supervised-learning]
     title: Learn from example responses
     tldr: |
       - Give the pretrained model requests paired with the answers we want.
@@ -78,6 +79,7 @@ knowledge_points:
       - sft-bad-demonstration
       - sft-new-task
   - id: sft-response-loss
+    key_prereqs: [autoregressive-lm]
     title: Calculate the loss on responses
     tldr: |
       - Keep the prompt available so the model can use it to predict the answer.

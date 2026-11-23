@@ -15,6 +15,7 @@ where_this_fits: |
   Why does the choice matter? Training makes this score as small as it can, so the loss decides what a good model is. Earlier we squared each error so that opposite misses couldn't cancel. Keeping only each error's size works too, but the two rules disagree about large misses, so they can train different models. Here we'll compute both, see how each reacts to a big miss, and find the best prediction under each for a model that always predicts one number.
 knowledge_points:
   - id: loss-measure-misses
+    key_prereqs: [supervised-learning, derivatives]
     title: "Turn many errors into one score"
 
     tldr: |
@@ -112,6 +113,7 @@ knowledge_points:
       - lossp-repeat
       - lossp-mae-backwards
   - id: loss-large-errors
+    key_prereqs: [derivatives]
     title: "See how each loss treats a big miss"
 
     tldr: |
@@ -198,6 +200,7 @@ knowledge_points:
       - lossp-corner
       - lossp-sensor
   - id: loss-constant-choice
+    key_prereqs: [derivatives]
     title: "Best single number to predict"
 
     tldr: |

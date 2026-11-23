@@ -13,6 +13,7 @@ where_this_fits: |
   Why do we need to spell this out? "Make the predictions close to the real prices" is something a person understands, but a computer can't act on it. It has to be told exactly what goes in, what should come out, which numbers it may change, and how to score a guess. This lesson builds that exact setup, and every model in the course is trained inside it.
 knowledge_points:
   - id: sl-inputs-targets
+    key_prereqs: []
     title: "Name the inputs, target and model"
 
     tldr: |
@@ -93,6 +94,7 @@ knowledge_points:
       - slp-predict
       - slp-input-target
   - id: sl-measuring-error
+    key_prereqs: []
     title: "Score one prediction"
 
     tldr: |
@@ -179,6 +181,7 @@ knowledge_points:
       - slp-why-square-not-absolute
       - slp-recover-prediction
   - id: sl-training-loss
+    key_prereqs: []
     title: "Choose the best weight and bias"
 
     tldr: |
@@ -283,6 +286,7 @@ knowledge_points:
       - slp-why-average
       - slp-recover-loss
   - id: sl-new-data-targets
+    key_prereqs: []
     title: "Test on new houses, and target types"
 
     tldr: |

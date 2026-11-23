@@ -15,6 +15,7 @@ where_this_fits: |
   We'll also learn rules for the transpose, the matrix with rows and columns swapped. We'll need them later in the course to fit lines to data.
 knowledge_points:
   - id: inv-identity-inverse
+    key_prereqs: [determinants, matrices]
     title: "Undo a matrix with its inverse"
     tldr: |
       - The identity matrix leaves every vector unchanged.
@@ -130,6 +131,7 @@ knowledge_points:
       - inv-ii-product-order
       - inv-ii-colour-filter
   - id: inv-elimination
+    key_prereqs: [determinants, matrices]
     title: "Solve equations by removing unknowns"
     tldr: |
       - Store each equation's numbers and total together in one row.
@@ -218,6 +220,7 @@ knowledge_points:
       - inv-el-swap-needed
       - inv-el-fertiliser
   - id: inv-transpose
+    key_prereqs: [matrices, dot-product]
     title: "Swap a matrix's rows and columns"
     tldr: |
       - Transposing a matrix swaps its rows and columns.
@@ -338,6 +341,7 @@ knowledge_points:
       - inv-tr-gram-template
       - inv-tr-ratings
   - id: inv-numpy
+    key_prereqs: [matrices, determinants]
     title: "Solve a system in NumPy"
     tldr: |
       - When there is one answer, NumPy can solve a system with as many equations as unknowns.

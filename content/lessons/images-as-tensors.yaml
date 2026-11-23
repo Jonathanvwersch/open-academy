@@ -13,6 +13,7 @@ where_this_fits: |
   A model can only read numbers, so every photo has to become a tensor before the model sees it. But different tools stack the grids in different orders, and models expect pixel values on a particular scale. If we get the order wrong, the code often runs without any error, and the model just sees scrambled pixels.
 knowledge_points:
   - id: iat-pixels-grid
+    key_prereqs: [matrices]
     title: Turn a picture into numbers
     tldr: |
       - A grayscale image is a grid of numbers, one per pixel, from 0 for black to 255 for white.
@@ -113,6 +114,7 @@ knowledge_points:
         iat-depth-grid,
       ]
   - id: iat-channels-layout
+    key_prereqs: [matrices]
     title: Stack the colour channels
     tldr: |
       - A colour pixel has three numbers, for red, green and blue, and each is called a channel.
@@ -225,6 +227,7 @@ knowledge_points:
         iat-depth-layout,
       ]
   - id: iat-normalization
+    key_prereqs: [matrices]
     title: Rescale pixels for a model
     tldr: |
       - Pixel values from 0 to 255 are too big for most models, so we first divide them by 255.

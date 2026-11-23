@@ -15,6 +15,7 @@ where_this_fits: |
   With one weighted sum, the prediction changes at a fixed rate as an input grows. ReLU between layers lets that rate change for different inputs. We will calculate a prediction, first for one example and then for a batch, using matrix products and activations. We will also count the weights and biases, which are the numbers training must learn. Adding examples does not add more of them.
 knowledge_points:
   - id: mlp-layer-of-neurons
+    key_prereqs: [matrices, activation-functions, perceptron]
     title: "Compute several neurons together"
     tldr: |
       - Several neurons can read the same inputs with different weights and biases.
@@ -85,6 +86,7 @@ knowledge_points:
       - mlpp-unit-score-template
       - mlpp-robot-layer
   - id: mlp-two-layers
+    key_prereqs: [activation-functions, matrices]
     title: "Run the layers in order"
     tldr: |
       - One layer's outputs become the next layer's inputs.
@@ -169,6 +171,7 @@ knowledge_points:
       - mlpp-why-no-sigmoid-output
       - mlpp-robot-forward
   - id: mlp-shapes
+    key_prereqs: [matrices]
     title: "Keep one row per example"
     tldr: |
       - A batch stacks several examples as rows, and every example uses the same weights.

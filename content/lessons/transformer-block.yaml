@@ -17,6 +17,7 @@ where_this_fits: |
   A transformer block updates each token's vector. Attention gathers information from other tokens, and an MLP processes each token separately. Shortcuts and normalization help a model learn when it stacks many of these blocks.
 knowledge_points:
   - id: tb-residual
+    key_prereqs: [chain-rule, weight-init-normalization, vectors]
     title: "Add a layer's output to its input"
     tldr: |
       - Learning sends slopes backwards through every layer, and multiplying many small slopes makes them shrink toward zero.
@@ -106,6 +107,7 @@ knowledge_points:
       - tbp-residual-skip-myth
       - tbp-residual-robot
   - id: tb-two-sublayers
+    key_prereqs: [attention, mlp-forward-pass, activation-functions]
     title: "Run attention, then an MLP"
     tldr: |
       - Attention lets tokens gather information from one another.
@@ -208,6 +210,7 @@ knowledge_points:
       - tbp-sublayers-hidden-width
       - tbp-sublayers-robot
   - id: tb-pre-norm
+    key_prereqs: [weight-init-normalization, vectors]
     title: "Rescale each sublayer's input"
     tldr: |
       - Repeated additions can make a token's numbers grow large.
@@ -320,6 +323,7 @@ knowledge_points:
       - tbp-prenorm-post-vs-pre
       - tbp-prenorm-gain-shift-residual
   - id: tb-stack
+    key_prereqs: [mlp-forward-pass, multi-head-attention, weight-init-normalization]
     title: "Stack blocks and count their weights"
     tldr: |
       - Every block keeps the number of tokens and the width of their vectors unchanged.

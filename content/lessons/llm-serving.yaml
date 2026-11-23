@@ -17,6 +17,7 @@ where_this_fits: |
   A GPU that answers one user at a time leaves most of its power unused, because making one token for one user takes about as long as making one token each for dozens of users. Our example is a chat assistant serving Llama 3 8B on one NVIDIA H100 SXM GPU. We'll see how engines keep that GPU busy, how to spread the work over several GPUs, and how to stop long prompts slowing replies.
 knowledge_points:
   - id: lsv-batching
+    key_prereqs: [inference-metrics, gpu-inference-basics]
     title: "Make many replies at once"
 
     tldr: |
@@ -140,6 +141,7 @@ knowledge_points:
       - lsv-batching-busy-share
       - lsv-batching-speech
   - id: lsv-paging
+    key_prereqs: [kv-cache]
     title: "Store the KV cache in small blocks"
 
     tldr: |
@@ -289,6 +291,7 @@ knowledge_points:
       - lsv-paging-smaller-cache
       - lsv-paging-other-model
   - id: lsv-parallel
+    key_prereqs: [gpu-inference-basics, mixture-of-experts, matrices]
     title: "Spread the work over several GPUs"
 
     tldr: |
@@ -399,6 +402,7 @@ knowledge_points:
       - lsv-parallel-expert-gpus
       - lsv-parallel-big-model
   - id: lsv-prefill
+    key_prereqs: [inference-metrics, arithmetic-intensity, kv-cache]
     title: "Stop long prompts from stalling replies"
 
     tldr: |

@@ -14,6 +14,7 @@ where_this_fits: |
   We need fresh requests to check whether this training improved its answers. We'll score test questions and compare pairs of answers. Then we'll ask another language model to rate those answers and check its decisions. We'll report the questions used, the score and how the judging decisions were checked.
 knowledge_points:
   - id: lev-clean-benchmarks
+    key_prereqs: [train-test-split, evaluation-metrics]
     title: Keep test answers out of training
     tldr: |
       - A test should show how the model does on questions it has never seen.
@@ -74,6 +75,7 @@ knowledge_points:
       - lev-clean-design
       - lev-domain-limit
   - id: lev-pairwise-scores
+    key_prereqs: [evaluation-metrics]
     title: Compare two answers to each request
     tldr: |
       - Two models can give different reasonable answers to the same request.
@@ -131,6 +133,7 @@ knowledge_points:
       - lev-opponent
       - lev-report-counts
   - id: lev-judge-bias
+    key_prereqs: []
     title: Check a model that rates answers
     tldr: |
       - A language model can judge answers using written criteria, but its choices can be biased.

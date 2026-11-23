@@ -13,6 +13,7 @@ where_this_fits: |
   That's why it needs care. Training makes the agent repeat what earned more reward. If the reward comes too rarely, the agent may never find out what earns it. If we add extra rewards to help, it may find a way to collect them without doing the task.
 knowledge_points:
   - id: rd-sparse
+    key_prereqs: [mdp, probability-basics]
     title: "Reward only at the goal"
     tldr: |
       - A sparse reward pays only at the goal, so it is easy to write and clear about what we want.
@@ -85,6 +86,7 @@ knowledge_points:
       - rdp-sparse-ranking-mistake
       - rdp-sparse-chess
   - id: rd-shaping
+    key_prereqs: [mdp]
     title: "Add rewards that guide the way"
     tldr: |
       - Reward shaping adds rewards along the way, so the agent can tell which moves make progress.
@@ -177,6 +179,7 @@ knowledge_points:
       - rdp-shaping-mistake
       - rdp-shaping-arm
   - id: rd-hacking
+    key_prereqs: [mdp]
     title: "When the robot finds a loophole"
     tldr: |
       - An agent finds the easiest way to earn reward, even if that skips the task.

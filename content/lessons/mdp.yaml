@@ -13,6 +13,7 @@ where_this_fits: |
   An MDP helps us describe a robot's commands and movement, define what counts as progress and predict the consequences of choices. Probability lets us describe the uncertain outcomes of one action. An MDP connects choices and outcomes over a whole **run**, meaning one attempt at the task. It also includes a rule for how much later rewards count.
 knowledge_points:
   - id: mdp-task
+    key_prereqs: []
     title: Describe a robot's task
     tldr: |
       - At each time step, the robot picks an action and gets a score called a reward.
@@ -81,6 +82,7 @@ knowledge_points:
       - mdpp-terminal-mistake
       - mdpp-coasting-state
   - id: mdp-transitions
+    key_prereqs: [probability-basics]
     title: Describe uncertain moves
     tldr: |
       - With an unreliable motor, one command can lead to more than one outcome.
@@ -159,6 +161,7 @@ knowledge_points:
       - mdpp-row-mistake
       - mdpp-delivery-template
   - id: mdp-discount
+    key_prereqs: []
     title: Weight later rewards
     tldr: |
       - Rewards can arrive several steps after a choice.

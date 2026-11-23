@@ -19,6 +19,7 @@ where_this_fits: |
   Why is this useful? Gradient descent needs a formula to take the slope of, but a policy's average return depends on a world whose rules the agent doesn't know. This lesson estimates that slope from played episodes. The method, REINFORCE, leads on to PPO, a method used to fine-tune chat models.
 knowledge_points:
   - id: pg-score
+    key_prereqs: [probability-basics, gradient-descent, policies-returns]
     title: "Score a policy by its average return"
     tldr: |
       - We score a policy by its average return over many episodes.
@@ -114,6 +115,7 @@ knowledge_points:
       - pgp-why-no-formula
       - pgp-grasp-score
   - id: pg-log-trick
+    key_prereqs: [chain-rule, probability-basics]
     title: "Estimate the slope by trying actions"
     tldr: |
       - We need the score's slope, but the agent can only try actions.
@@ -208,6 +210,7 @@ knowledge_points:
       - pgp-why-trick
       - pgp-reply-estimate
   - id: pg-reinforce
+    key_prereqs: [maximum-likelihood, gradient-descent, mdp]
     title: "Learn from whole episodes"
     tldr: |
       - An episode's chance is the policy's chance for each action times the world's chance for each move.
@@ -299,6 +302,7 @@ knowledge_points:
       - pgp-slippery
       - pgp-clumsy-action
   - id: pg-baseline
+    key_prereqs: [probability-basics, policies-returns, gradient-descent]
     title: "Compare each return with a typical one"
     tldr: |
       - Single estimates can be far off, even when their average is right.

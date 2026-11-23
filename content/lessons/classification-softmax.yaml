@@ -15,6 +15,7 @@ where_this_fits: |
   Why? Logistic regression answers yes-or-no questions, but many questions have more answers, such as whether the object in a robot's gripper is a cup, a ball or a box. The information theory lesson scored probabilities with cross-entropy but never said where they come from. A model's scores can be any numbers, so we need a way to turn several scores into one set of probabilities, and then a loss and a training step that work with them.
 knowledge_points:
   - id: sm-softmax
+    key_prereqs: [probability-basics, derivatives]
     title: Turn scores into probabilities
 
     tldr: |
@@ -132,6 +133,7 @@ knowledge_points:
         sm-softmax-transfer,
       ]
   - id: sm-cross-entropy
+    key_prereqs: [information-theory, derivatives]
     title: Measure how wrong the probabilities are
 
     tldr: |
@@ -215,6 +217,7 @@ knowledge_points:
         sm-ce-transfer,
       ]
   - id: sm-gradient
+    key_prereqs: [logistic-regression, gradient-descent, probability-basics]
     title: Adjust the scores to lower the loss
 
     tldr: |

@@ -12,6 +12,7 @@ where_this_fits: |
   We'll use a model that predicts a house's price from its size. From all the sales we know about, we put six houses in training and two in validation. We also set aside test houses for one final score. Comparing training and validation errors helps us see whether the model misses the pattern or follows individual houses too closely.
 knowledge_points:
   - id: ovf-flexibility
+    key_prereqs: [train-test-split, loss-functions]
     title: "Straight lines, smooth curves and wiggly curves"
     tldr: |
       - A model's flexibility is how far its curve can bend to follow the data.
@@ -127,6 +128,7 @@ knowledge_points:
         ovfp-validation-choice,
       ]
   - id: ovf-error-gap
+    key_prereqs: [train-test-split]
     title: "Compare training and validation errors"
     tldr: |
       - High training error means the model misses the pattern, which is underfitting.
@@ -211,6 +213,7 @@ knowledge_points:
         ovf-bias,
       ]
   - id: ovf-learning-curves
+    key_prereqs: [train-test-split]
     title: "Choose when to stop training"
     tldr: |
       - A learning curve shows the training and validation errors after each pass through the training data.

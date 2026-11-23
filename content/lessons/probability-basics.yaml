@@ -10,6 +10,7 @@ where_this_fits: |
   We need it because so much of what we'd like to predict can't be known in advance. Before a house is sold, nobody knows for sure whether it will go for more than its asking price, or how many buyers will make an offer. Probability lets us say how likely each possibility is, sum up a whole range of possible numbers with one average, and change our answer when we learn something new. Machine learning models use this language whenever they're unsure, which is most of the time.
 knowledge_points:
   - id: pb-events
+    key_prereqs: []
     title: Measure how likely something is
     tldr: |
       - An event is a set of possible outcomes, such as rolling at least five.
@@ -91,6 +92,7 @@ knowledge_points:
       - pb-complement-template
       - pb-robot-grasp-failures
   - id: pb-distributions
+    key_prereqs: []
     title: List the chance of each possible number
     tldr: |
       - A random variable is a number decided by chance.
@@ -169,6 +171,7 @@ knowledge_points:
       - pb-distribution-template
       - pb-valid-distribution
   - id: pb-expectation
+    key_prereqs: []
     title: Average the results over many tries
     tldr: |
       - Over many tries, more likely values appear more often.
@@ -246,6 +249,7 @@ knowledge_points:
       - pb-expectation-template
       - pb-robot-expected-reward
   - id: pb-conditional
+    key_prereqs: []
     title: Update a chance with new information
     tldr: |
       - New information rules out some possible outcomes.

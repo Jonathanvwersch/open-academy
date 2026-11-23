@@ -13,6 +13,7 @@ where_this_fits: |
   It's useful because a single score can mislead. Suppose a new price model gets a validation error of 400. That might be a big step forward, or worse than a model we already had. Longer training or trying more learning rates can improve the score. Random choices can also favour one attempt. Careful experiments help us separate these effects.
 knowledge_points:
   - id: ed-baseline
+    key_prereqs: [train-test-split, loss-functions]
     title: "Compare with reference models"
 
     tldr: |
@@ -83,6 +84,7 @@ knowledge_points:
       - edp-weak-baseline
       - edp-robot-baseline
   - id: ed-one-change
+    key_prereqs: [train-test-split]
     title: "Change one thing at a time"
 
     tldr: |
@@ -144,6 +146,7 @@ knowledge_points:
       - edp-extra-tuning
       - edp-robot-control
   - id: ed-ablation
+    key_prereqs: [train-test-split, loss-functions]
     title: "Remove an input and compare"
 
     tldr: |
@@ -222,6 +225,7 @@ knowledge_points:
       - edp-rise-near-zero
       - edp-switch-off-step
   - id: ed-seeds
+    key_prereqs: [train-test-split]
     title: "Repeat with different random choices"
 
     tldr: |

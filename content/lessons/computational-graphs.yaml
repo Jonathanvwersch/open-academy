@@ -13,6 +13,7 @@ where_this_fits: |
   The chain rule tells us how to combine rates of change, but a formula can hide the steps between an input and the output. If one input is used in two operations, changing it can affect the output in two ways. Drawing both connections helps us find the output's derivative without missing either effect.
 knowledge_points:
   - id: cg-drawing-graphs
+    key_prereqs: []
     title: Draw and evaluate the graph
     tldr: |
       - A calculation can be split into small operations.
@@ -87,6 +88,7 @@ knowledge_points:
       - cgp-shared-input
       - cgp-robot-forward
   - id: cg-local-derivatives
+    key_prereqs: [partial-derivatives, derivatives]
     title: Measure how each operation responds
     tldr: |
       - Each operation has its own rate of change for each input.
@@ -178,6 +180,7 @@ knowledge_points:
       - cgp-square-template
       - cgp-robot-subtract
   - id: cg-chaining-paths
+    key_prereqs: [chain-rule, partial-derivatives]
     title: Combine changes through the whole calculation
     tldr: |
       - An input can affect the output through several paths of operations.

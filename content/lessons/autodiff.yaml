@@ -13,6 +13,7 @@ where_this_fits: |
   Why do we need it? In the backpropagation lesson, we found loss slopes by hand, writing out a backward step for every operation. That works for a small network, but real models have millions of weights, and they change every time we try a new idea. Rewriting the backward steps each time would be slow and full of mistakes. In PyTorch, a Python library for machine learning, one line, `loss.backward()`, does all of that work, and this lesson explains what happens inside it.
 knowledge_points:
   - id: ad-recording
+    key_prereqs: [computational-graphs]
     title: "Record each step of a calculation"
     tldr: |
       - Software can record each operation while a calculation runs.
@@ -71,6 +72,7 @@ knowledge_points:
         ad-record-robot,
       ]
   - id: ad-reverse
+    key_prereqs: [backpropagation, computational-graphs]
     title: "Work out slopes from the end backwards"
     tldr: |
       - The backward pass starts at the loss and visits recorded operations in reverse order.
@@ -156,6 +158,7 @@ knowledge_points:
         ad-reverse-robot,
       ]
   - id: ad-modes
+    key_prereqs: [partial-derivatives, backpropagation]
     title: "Forward or backward: which is faster"
     tldr: |
       - The chain rule can carry slopes forward from the inputs or backward from the output.

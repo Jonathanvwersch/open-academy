@@ -17,6 +17,7 @@ where_this_fits: |
   In the phrase "the cat", looking up "cat" alone cannot tell a model that "the" came before it. Attention lets cat's new vector include information from "the", so a model predicting the next word can use both. We'll call each token that supplies information a source.
 knowledge_points:
   - id: attn-score-matches
+    key_prereqs: [dot-product]
     title: Score each source of information
     tldr: |
       - Each token makes a query vector describing what information it needs.
@@ -90,6 +91,7 @@ knowledge_points:
       - attn-score-cosine
       - attn-score-transfer
   - id: attn-make-weights
+    key_prereqs: [classification-softmax]
     title: Turn scores into mixing weights
     tldr: |
       - Each source now has a score, but scores can be any size, even negative.
@@ -156,6 +158,7 @@ knowledge_points:
       - attn-weight-confusion
       - attn-weight-transfer
   - id: attn-mix-values
+    key_prereqs: [vectors, classification-softmax, dot-product]
     title: Mix information using the weights
     tldr: |
       - Each source has a value vector containing information to pass along.

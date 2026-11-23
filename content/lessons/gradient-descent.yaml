@@ -17,6 +17,7 @@ where_this_fits: |
   Why do we need it? For a simple curve, or a small linear model, algebra can find the lowest point, and we'll practise on those because they're easy to check. But most models have thousands of weights and no such formula. What we can always work out is the gradient where we're standing, and in the gradients lesson we saw that its opposite points downhill. Gradient descent turns that one fact into a way of reaching the bottom.
 knowledge_points:
   - id: gd-downhill-update
+    key_prereqs: [gradients, vectors, partial-derivatives]
     title: "Take one step downhill"
 
     tldr: |
@@ -110,6 +111,7 @@ knowledge_points:
       - gdp-zero
       - gdp-robot-step
   - id: gd-step-size
+    key_prereqs: [derivatives]
     title: "Choose how big each step is"
 
     tldr: |
@@ -250,6 +252,7 @@ knowledge_points:
       - gdp-threshold
       - gdp-drone-rate
   - id: gd-price-gradients
+    key_prereqs: [loss-functions, linear-regression, partial-derivatives]
     title: "Work out which way to move each weight"
 
     tldr: |
@@ -364,6 +367,7 @@ knowledge_points:
       - gdp-feature-factor
       - gdp-backwards-error
   - id: gd-training-loop
+    key_prereqs: [gradients, loss-functions, linear-regression]
     title: "Repeat until the loss stops falling"
 
     tldr: |

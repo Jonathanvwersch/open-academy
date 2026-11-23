@@ -15,6 +15,7 @@ where_this_fits: |
   Why is it useful? A language model's own replies can still be unhelpful, and to improve them we need to know which of its replies people prefer. Asking a person about every reply is far too slow. A reward model gives that judgement straight away, as a number. Later lessons train the language model to write replies that get high rewards.
 knowledge_points:
   - id: rm-comparisons
+    key_prereqs: []
     title: "Ask people which answer is better"
     tldr: |
       - People may use number scales differently while agreeing on which answer is better.
@@ -114,6 +115,7 @@ knowledge_points:
       - rmp-how-much-better
       - rmp-robot-pour
   - id: rm-bradley-terry
+    key_prereqs: [logistic-regression, probability-basics]
     title: "Predict which response a person picks"
     tldr: |
       - The reward model gives each response a number.
@@ -202,6 +204,7 @@ knowledge_points:
       - rmp-match-raters
       - rmp-robot-grasp
   - id: rm-preference-loss
+    key_prereqs: [logistic-regression, chain-rule, gradient-descent]
     title: "Train the reward model on comparisons"
     tldr: |
       - Training should make people's chosen response more likely to win the comparison.
