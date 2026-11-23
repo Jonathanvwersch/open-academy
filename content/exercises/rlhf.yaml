@@ -1,0 +1,1094 @@
+concept: rlhf
+exercises:
+  - id: rlhf-rl-terms-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: When a language model is trained with RLHF, what is one action?
+    options:
+      - id: a
+        text: The next token the model writes.
+        correct: true
+        feedback: The model picks one token at a time, so each token is one action.
+      - id: b
+        text: The whole prompt the model is given.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The prompt is part of the state that the model reads before it acts.
+      - id: c
+        text: The score the reward model gives the reply.
+        correct: false
+        category: incorrect_reasoning
+        feedback: That score is the reward, which comes after the actions.
+      - id: d
+        text: One update to the model's weights.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Weight updates are how training changes the policy. The actions are what the policy picks while writing.
+    solution: The state is the prompt plus the tokens so far, and an action is the next token.
+  - id: rlhf1-worked-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: In the worked example, why could we add the log-probabilities $\ln0.5+\ln0.8+\ln0.9$ instead of taking $\ln0.36$?
+    options:
+      - id: a
+        text: The log of a product equals the sum of the logs.
+        correct: true
+        feedback: The reply's probability is a product, so its log is the sum of the token logs.
+      - id: b
+        text: The three tokens are chosen independently of each other.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Each token's probability depends on the tokens before it. The sum works because of the log rule.
+      - id: c
+        text: The reward model adds up one score per token.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The reward model gives one score for the finished reply. The sum is about the policy's probabilities.
+      - id: d
+        text: Rounding makes the two answers agree by chance.
+        correct: false
+        category: incorrect_reasoning
+        feedback: They agree exactly before rounding, because $\ln(abc)=\ln a+\ln b+\ln c$.
+    solution: The reply's probability is $0.5\times0.8\times0.9$, and the log of a product is the sum of the logs.
+  - id: rlhf1-state
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: 'A model is answering the prompt "Translate to French: cat" and has written the token `chat` so far. In RLHF terms, what is the state when it picks its next token?'
+    options:
+      - id: a
+        text: The prompt plus the token `chat`.
+        correct: true
+        feedback: "The state is everything the model reads: the prompt and the tokens written so far."
+      - id: b
+        text: Only the token `chat`.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The model also reads the prompt, so the prompt is part of the state.
+      - id: c
+        text: Only the prompt.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The tokens already written are part of the state too, because the next token depends on them.
+      - id: d
+        text: The next token the model will pick.
+        correct: false
+        category: incorrect_reasoning
+        feedback: That is the action, which the model picks from the state.
+    solution: 'The state is the prompt plus the tokens so far, here "Translate to French: cat" followed by `chat`.'
+  - id: rlhf1-token-rewards
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: A reply has $5$ tokens, and the reward model scores the finished reply $1.8$. What reward does the reward model contribute to each token, in order, before the KL adjustment?
+    options:
+      - id: a
+        text: $0,0,0,0,1.8$
+        correct: true
+        feedback: The reward model judges the whole reply, so only the last token gets its score.
+      - id: b
+        text: $0.36,0.36,0.36,0.36,0.36$
+        correct: false
+        category: math_error
+        feedback: Splitting the score evenly is a choice the reward model does not make. It scores the finished reply once.
+      - id: c
+        text: $1.8,1.8,1.8,1.8,1.8$
+        correct: false
+        category: incorrect_reasoning
+        feedback: That would count the score five times. The reply is scored once, at the end.
+      - id: d
+        text: $1.8,0,0,0,0$
+        correct: false
+        category: incorrect_reasoning
+        feedback: The score can only be given once the reply is finished, so it goes to the last token.
+    solution: Before the KL adjustment, the reward model contributes $0$ to every token except the last one, which gets its score of $1.8$.
+  - id: rlhf1-logprob-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A policy writes a three-token reply. The tokens get probabilities ${{=a}}$, ${{=b}}$ and $0.8$. What is the natural log of the reply's probability? Give two decimals.
+    params:
+      a:
+        min: 0.2
+        max: 0.9
+        step: 0.1
+      b:
+        min: 0.5
+        max: 0.9
+        step: 0.1
+    answer_expr: log(a*b*0.8)
+    tolerance:
+      abs: 0.016
+    common_wrong:
+      - answer_expr: a*b*0.8
+        category: math_error
+        feedback: That is the probability itself. Take its natural log.
+      - answer_expr: log(a)+log(b)
+        category: math_error
+        feedback: Include all three tokens, including the one with probability $0.8$.
+    solution: The reply's probability is ${{=a}}\times{{=b}}\times0.8={{=a*b*0.8}}$, and its natural log is $\ln{{=a*b*0.8}}\approx{{=log(a*b*0.8)}}$. You can also add the three token logs and round the sum at the end.
+  - id: rlhf1-which-trained
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: During the reinforcement-learning stage of RLHF, which of these two models has its weights changed, the policy or the reward model?
+    options:
+      - id: a
+        text: Only the policy's weights $\theta$.
+        correct: true
+        feedback: PPO trains the policy. The reward model only scores replies and stays fixed.
+      - id: b
+        text: Only the reward model's weights $\phi$.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The reward model was trained before this stage. Here it only scores the policy's replies.
+      - id: c
+        text: Both the policy's and the reward model's weights.
+        correct: false
+        category: incorrect_reasoning
+        feedback: In RLHF the reward model stays fixed while the policy learns.
+      - id: d
+        text: "Neither: the model only collects scores."
+        correct: false
+        category: incorrect_reasoning
+        feedback: The scores are used by PPO to update the policy, so its weights change.
+    solution: The policy $\pi_\theta$ is the model being trained. The reward model $r_\phi$ stays fixed and only scores replies.
+  - id: rlhf1-discounted-return
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A three-token reply gets rewards $0$, $0$ and $2$, where the $2$ is the reward model's score for the finished reply. With a discount $\gamma=0.9$, what is the return from the first token?
+    answer: 1.62
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer: 2
+        category: math_error
+        feedback: That uses no discount. The reward arrives two steps later, so multiply it by $\gamma^2$.
+      - answer: 1.8
+        category: math_error
+        feedback: The reward arrives two steps after the first token, so it is discounted twice.
+    solution: $G_0=0+0.9\times0+0.9^2\times2=0.81\times2=1.62$.
+  - id: rlhf1-recall-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: rlhf-rl-terms
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, how does RLHF describe a language model writing a reply in reinforcement-learning terms?
+    rubric:
+      - id: r1
+        criterion: State that the state is the prompt plus the tokens so far and an action is the next token.
+        weight: 1
+        required: true
+      - id: r2
+        criterion: State that before the KL adjustment, only the last token gets a contribution from the reward model, which is its score for the finished reply.
+        weight: 1
+        required: true
+    exemplar: The state is the prompt plus the tokens written so far, and an action is the next token, picked by the model as the policy. Before the KL adjustment, only the last token gets a contribution from the reward model, which is its score for the finished reply.
+  - id: rlhf1-recall-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: rlhf-rl-terms
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: In RLHF, which model writes the replies and is updated by PPO?
+    options:
+      - id: a
+        text: The policy, which is the language model being trained.
+        correct: true
+        feedback: The policy picks each next token and PPO changes its weights.
+      - id: b
+        text: The reward model.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The reward model scores finished replies and stays fixed.
+      - id: c
+        text: The prompt.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The prompt is the start of the state. It's given, and nothing writes or trains it.
+      - id: d
+        text: The critic.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The critic estimates values for computing advantages. It does not write replies.
+    solution: The policy $\pi_\theta$ writes replies and is the model PPO trains.
+  - id: rlhf1-recall-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: rlhf-rl-terms
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: A reply has three tokens with probabilities $a$, $b$ and $c$. Write the natural log of the reply's probability. Type `log(...)` for the natural log and `*` for multiplication.
+    answer: log(a)+log(b)+log(c)
+    variables:
+      a:
+        - 0.05
+        - 1
+      b:
+        - 0.05
+        - 1
+      c:
+        - 0.05
+        - 1
+    solution: The reply's probability is $abc$, so its log is $\ln a+\ln b+\ln c$.
+  - id: rlhf-kl-reward-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What is the reference model in RLHF?
+    options:
+      - id: a
+        text: A frozen copy of the SFT model that the policy started from.
+        correct: true
+        feedback: Its weights are frozen throughout the reinforcement-learning stage, so it shows how likely each reply was before RL.
+      - id: b
+        text: The reward model that scores each finished reply.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The reward model gives $r_\phi$. The reference model gives probabilities for the penalty.
+      - id: c
+        text: The policy from before the latest batch.
+        correct: false
+        category: incorrect_reasoning
+        feedback: That is PPO's old policy, which is replaced after every batch. The reference stays fixed.
+      - id: d
+        text: A copy of the policy updated after each PPO pass using human-written answers.
+        correct: false
+        category: incorrect_reasoning
+        feedback: PPO does not update the reference model. It stays fixed as a starting point for comparing probabilities.
+    solution: The reference model $\pi_{\text{ref}}$ is a frozen copy of the SFT model. The penalty compares the policy's probabilities with its probabilities.
+  - id: rlhf2-worked-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: In the worked example, why did the reply "Red." end up with a KL-penalised reward of $1.1$, above its reward model score of $1$?
+    options:
+      - id: a
+        text: Its log ratio is negative, so subtracting $\beta$ times it adds reward.
+        correct: true
+        feedback: The policy made "Red." less likely than the reference did, so $-0.1\times(-1)=+0.1$.
+      - id: b
+        text: The coefficient $\beta$ is negative for replies the policy dislikes.
+        correct: false
+        category: incorrect_reasoning
+        feedback: $\beta=0.1$ for every reply. The sign comes from the log ratio.
+      - id: c
+        text: The reward model adds a bonus to low-scoring replies.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The reward model gave $1$. The change comes from the penalty term.
+      - id: d
+        text: The penalty only applies to the higher-scoring reply.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The same formula applies to every reply. Here the penalty term is negative.
+    solution: The log ratio is $-4-(-3)=-1$, so $R=1-0.1\times(-1)=1.1$.
+  - id: rlhf2-same-probability
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: The policy and the reference model give a reply exactly the same probability. What is the reply's KL-penalised reward?
+    options:
+      - id: a
+        text: Exactly the reward model's score $r_\phi(x,y)$.
+        correct: true
+        feedback: The ratio is $1$ and $\ln1=0$, so there is no penalty.
+      - id: b
+        text: $r_\phi(x,y)-\beta$
+        correct: false
+        category: math_error
+        feedback: The ratio of equal probabilities is $1$, and the penalty is $\beta\ln1=0$.
+      - id: c
+        text: $0$
+        correct: false
+        category: incorrect_reasoning
+        feedback: The penalty is $0$, but the reward model's score is still there.
+      - id: d
+        text: $r_\phi(x,y)-\beta\ln2$
+        correct: false
+        category: math_error
+        feedback: Equal probabilities give a ratio of $1$, so the log is $0$.
+    solution: With equal probabilities, $\ln\frac{\pi_\theta}{\pi_{\text{ref}}}=\ln1=0$, so $R=r_\phi(x,y)$.
+  - id: rlhf2-penalty-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A reward model scores a reply ${{=r}}$. The policy's log-probability of the reply is ${{=lp}}$, the reference model's is ${{=lq}}$, and $\beta={{=beta}}$. What is the KL-penalised reward?
+    params:
+      r:
+        min: 1
+        max: 3
+        step: 0.5
+      lp:
+        min: -3
+        max: -1
+        step: 0.5
+      lq:
+        min: -6
+        max: -4
+        step: 1
+      beta:
+        min: 0.1
+        max: 0.3
+        step: 0.1
+    constraints:
+      - abs(r - beta*(lp - lq) - beta) > 0.001
+    answer_expr: r - beta*(lp - lq)
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer_expr: r + beta*(lp - lq)
+        category: math_error
+        feedback: 'Subtract the penalty: $R=r_\phi-\beta(\ln\pi_\theta-\ln\pi_{\text{ref}})$.'
+      - answer_expr: r - (lp - lq)
+        category: math_error
+        feedback: Multiply the log ratio by $\beta$ before subtracting it.
+    solution: The log ratio is ${{=lp}}-({{=lq}})={{=lp-lq}}$. The penalty is ${{=beta}}\times{{=lp-lq}}={{=beta*(lp-lq)}}$, so $R={{=r}}-{{=beta*(lp-lq)}}={{=r-beta*(lp-lq)}}$.
+  - id: rlhf2-large-beta
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: A team raises $\beta$ from $0.01$ to $1$ in the KL-penalised reward and keeps everything else the same. What should they expect?
+    options:
+      - id: a
+        text: The policy stays closer to the SFT model and gains less reward model score.
+        correct: true
+        feedback: A larger $\beta$ makes drifting cost more, so the policy changes less.
+      - id: b
+        text: The policy drifts further from the SFT model.
+        correct: false
+        category: incorrect_reasoning
+        feedback: A larger $\beta$ makes the penalty for drifting larger, so the policy drifts less.
+      - id: c
+        text: The reward model gives higher scores to every reply.
+        correct: false
+        category: incorrect_reasoning
+        feedback: $\beta$ only scales the penalty. The reward model's scores do not change.
+      - id: d
+        text: Nothing changes, because $\beta$ only rescales the reward.
+        correct: false
+        category: incorrect_reasoning
+        feedback: $\beta$ scales the penalty alone, so it changes the balance between score and drift.
+    solution: A larger $\beta$ puts more weight on staying close to the reference and less on the reward model's score.
+  - id: rlhf2-why-penalty
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: Why does RLHF subtract a KL penalty instead of maximising the reward model's score alone?
+    options:
+      - id: a
+        text: The policy could drift to text the reward model overrates and lose what SFT taught.
+        correct: true
+        feedback: The reward model can get people's preferences wrong. Chasing its score alone can make overrated replies more likely.
+      - id: b
+        text: The reward model cannot score replies the SFT model did not write.
+        correct: false
+        category: incorrect_reasoning
+        feedback: It can score any reply. It is just less reliable on very different text.
+      - id: c
+        text: PPO only works when some rewards are negative.
+        correct: false
+        category: incorrect_reasoning
+        feedback: PPO does not require negative rewards. The penalty is there to limit drift.
+      - id: d
+        text: The penalty helps the reward model learn faster.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The reward model stays fixed during RL. The penalty affects only the policy.
+    solution: Chasing the score alone can push the policy towards replies the reward model overrates, and the policy can lose what SFT taught it. The KL penalty limits that drift.
+  - id: rlhf2-compare-replies
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: With $\beta=0.2$, reply A has reward model score $3$, policy log-probability $-2$ and reference log-probability $-6$. Reply B has score $2.5$, policy log-probability $-3$ and reference log-probability $-3.5$. What is A's KL-penalised reward minus B's?
+    answer: -0.2
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer: 0.5
+        category: math_error
+        feedback: That compares the reward model scores only. Subtract each reply's penalty first.
+      - answer: 0.2
+        category: math_error
+        feedback: "Check the order: compute $R_A-R_B$."
+    solution: $R_A=3-0.2\times4=2.2$ and $R_B=2.5-0.2\times0.5=2.4$, so $R_A-R_B=-0.2$. B wins, though A has the higher score.
+  - id: rlhf2-robot
+    dimension: transfer
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A robot arm's policy is trained with reinforcement learning from a learned reward, using the same KL-penalised reward with a reference policy trained on demonstrations. One action has learned reward $0.5$, log-probability $-0.2$ under the policy and $-1.2$ under the reference policy, and $\beta=0.3$. What is its penalised reward?
+    answer: 0.2
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer: 0.8
+        category: math_error
+        feedback: The policy made this action more likely, so the penalty is subtracted.
+      - answer: -0.5
+        category: math_error
+        feedback: Multiply the log ratio by $\beta=0.3$ before subtracting it.
+    solution: The log ratio is $-0.2-(-1.2)=1$, so the penalised reward is $0.5-0.3\times1=0.2$.
+  - id: rlhf2-recall-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: rlhf-kl-reward
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, what is the KL-penalised reward in RLHF, and why is the penalty there?
+    rubric:
+      - id: r1
+        criterion: State that it is the reward model's score minus $\beta$ times the log ratio of the policy's and reference model's probabilities of the reply.
+        weight: 1
+        required: true
+      - id: r2
+        criterion: Explain that the penalty limits drift from the SFT model towards text the reward model overrates.
+        weight: 1
+        required: true
+    exemplar: It is the reward model's score minus beta times the log of the policy's probability of the reply over the reference model's. The penalty limits drift from the SFT model towards text the reward model scores too highly.
+  - id: rlhf2-recall-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: rlhf-kl-reward
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: In RLHF, which model has frozen weights throughout the reinforcement-learning stage and supplies probabilities for the KL penalty?
+    options:
+      - id: a
+        text: The reference model.
+        correct: true
+        feedback: It is a frozen copy of the SFT model.
+      - id: b
+        text: PPO's old policy $\pi_{\theta_\text{old}}$.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The old policy is replaced after every batch.
+      - id: c
+        text: The reward model.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The reward model stays fixed during PPO and gives each reply a score. The reference model supplies the probabilities for the KL penalty.
+      - id: d
+        text: The critic.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The critic is trained alongside the policy to estimate values.
+    solution: The reference model $\pi_{\text{ref}}$ never changes and supplies the probabilities in the penalty.
+  - id: rlhf2-recall-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: rlhf-kl-reward
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: A reply has reward model score $r$. The policy gives it probability $u$ and the reference model gives it probability $v$. Write its KL-penalised reward with coefficient $\beta$. Type `beta`, `log(...)` for the natural log and `*` for multiplication.
+    answer: r-beta*log(u/v)
+    variables:
+      r:
+        - -3
+        - 3
+      beta:
+        - 0.01
+        - 1
+      u:
+        - 0.01
+        - 1
+      v:
+        - 0.01
+        - 1
+    solution: '$R=r-\beta\ln\frac{u}{v}$: the score minus $\beta$ times the log ratio of the policy''s and reference''s probabilities.'
+  - id: rlhf-kl-average-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: Averaged over the replies the policy writes, what does the log ratio $\ln\frac{\pi_\theta(y\mid x)}{\pi_{\text{ref}}(y\mid x)}$ equal?
+    options:
+      - id: a
+        text: $\mathrm{KL}(\pi_\theta\Vert\pi_{\text{ref}})$
+        correct: true
+        feedback: The replies come from the policy, so the policy is the actual distribution, on the left.
+      - id: b
+        text: $\mathrm{KL}(\pi_{\text{ref}}\Vert\pi_\theta)$
+        correct: false
+        category: incorrect_reasoning
+        feedback: That would average over replies from the reference. The replies come from the policy.
+      - id: c
+        text: The cross-entropy $H(\pi_\theta,\pi_{\text{ref}})$
+        correct: false
+        category: incorrect_reasoning
+        feedback: The average log ratio is cross-entropy minus the policy's entropy.
+      - id: d
+        text: The policy's entropy $H(\pi_\theta)$
+        correct: false
+        category: incorrect_reasoning
+        feedback: Entropy uses only the policy's probabilities. The log ratio also uses the reference's.
+    solution: Weighting $\ln\frac{p_i}{q_i}$ by the policy's probabilities $p_i$ gives $\mathrm{KL}(\pi_\theta\Vert\pi_{\text{ref}})$.
+  - id: rlhf3-worked-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: In the worked example, why were the two log ratios weighted by $0.9$ and $0.1$ instead of $0.6$ and $0.4$?
+    options:
+      - id: a
+        text: The replies are written by the policy, so the policy's probabilities say how often each one appears.
+        correct: true
+        feedback: The average is over the policy's own replies, which gives $\mathrm{KL}(\pi_\theta\Vert\pi_{\text{ref}})$.
+      - id: b
+        text: The reference model's probabilities are only used for the entropy.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The reference probabilities appear inside the log ratios. The weights come from the policy.
+      - id: c
+        text: Larger probabilities always go in front of the logs.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The weights are the probabilities of whichever model writes the replies, here the policy.
+      - id: d
+        text: Either set works, because KL gives the same value both ways round.
+        correct: false
+        category: incorrect_reasoning
+        feedback: To compute KL from the reference to the policy, weight by the reference and take log ratios with the reference in the numerator.
+    solution: The policy writes the replies, so it is the actual distribution, and its probabilities $0.9$ and $0.1$ are the weights.
+  - id: rlhf3-negative-sample
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: During RLHF, one sampled reply has log ratio $\ln\frac{\pi_\theta(y\mid x)}{\pi_{\text{ref}}(y\mid x)}=-0.4$. What does this tell you about $\mathrm{KL}(\pi_\theta\Vert\pi_{\text{ref}})$?
+    options:
+      - id: a
+        text: The true KL is positive, but this sample does not determine its value.
+        correct: true
+        feedback: The policies differ on this reply, so they cannot have zero KL. The value is the average over the policy's full reply distribution.
+      - id: b
+        text: The KL divergence is $-0.4$.
+        correct: false
+        category: incorrect_reasoning
+        feedback: This is one log ratio. The true KL is the probability-weighted average over all replies under the policy.
+      - id: c
+        text: The KL divergence is negative, so the policy is closer than possible.
+        correct: false
+        category: incorrect_reasoning
+        feedback: KL is never negative. A single negative estimate does not change that.
+      - id: d
+        text: The policy matches the reference model exactly.
+        correct: false
+        category: incorrect_reasoning
+        feedback: A matching policy gives log ratio $0$ for every reply.
+    solution: This negative log ratio proves the probabilities differ on this reply, so the true KL is strictly positive. Its value depends on the full distribution of replies.
+  - id: rlhf3-kl-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt: A prompt has two possible replies. The policy writes them with probabilities ${{=p}}$ and ${{=1-p}}$, and the reference model gives them ${{=q}}$ and ${{=1-q}}$. What is $\mathrm{KL}(\pi_\theta\Vert\pi_{\text{ref}})$ in nats? Give three decimals.
+    params:
+      p:
+        min: 0.5
+        max: 0.6
+        step: 0.02
+      q:
+        min: 0.1
+        max: 0.3
+        step: 0.05
+    answer_expr: p*log(p/q) + (1-p)*log((1-p)/(1-q))
+    tolerance:
+      abs: 0.002
+    common_wrong:
+      - answer_expr: q*log(q/p) + (1-q)*log((1-q)/(1-p))
+        category: math_error
+        feedback: That is $\mathrm{KL}(\pi_{\text{ref}}\Vert\pi_\theta)$. The replies come from the policy, so weight by its probabilities.
+      - answer_expr: log(p/q) + log((1-p)/(1-q))
+        category: math_error
+        feedback: Weight each log ratio by the policy's probability of that reply.
+    solution: $\mathrm{KL}={{=p}}\ln\frac{ {{=p}} }{ {{=q}} }+{{=1-p}}\ln\frac{ {{=1-p}} }{ {{=1-q}} }\approx{{=p*log(p/q)+(1-p)*log((1-p)/(1-q))}}$ nats.
+  - id: rlhf3-zero-penalty
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: With $\beta=0.1$, when is the average KL penalty for a prompt exactly zero?
+    options:
+      - id: a
+        text: When the policy gives every reply the same probability as the reference model.
+        correct: true
+        feedback: Then every log ratio is $0$, and KL is zero only in this case.
+      - id: b
+        text: Whenever the policy always writes the highest-scoring reply.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Always writing the highest-scoring reply gives zero KL only if the reference also assigns that reply probability $1$.
+      - id: c
+        text: When the reward model scores every reply $0$.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The penalty does not depend on the reward model's scores.
+      - id: d
+        text: Whenever the policy's probabilities add up to $1$.
+        correct: false
+        category: incorrect_reasoning
+        feedback: They always add up to $1$. The penalty depends on how they compare with the reference's.
+    solution: $\mathrm{KL}(\pi_\theta\Vert\pi_{\text{ref}})=0$ only when the two distributions are the same.
+  - id: rlhf3-compare-policies
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: Two policies are trained on the same prompts with $\beta=0.2$. Averaged over those prompts, policy A gets a reward model score of $2.4$ and $\mathrm{KL}(\pi_\theta\Vert\pi_{\text{ref}})=3$ nats. Policy B gets an average score of $2.0$ with a KL of $0.5$ nats. What is B's RLHF objective minus A's?
+    answer: 0.1
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer: -0.4
+        category: math_error
+        feedback: That compares the scores only. Subtract $\beta$ times each KL first.
+      - answer: -0.1
+        category: math_error
+        feedback: "Check the order: compute B's objective minus A's."
+    solution: 'A: $2.4-0.2\times3=1.8$. B: $2.0-0.2\times0.5=1.9$. So B''s objective is higher by $0.1$, even with the lower score.'
+  - id: rlhf3-robot-grasp
+    dimension: transfer
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: A robot picks one of two grips. Its new policy picks each with probability $0.5$. The reference policy it started from picks them with probabilities $0.25$ and $0.75$. What is $\mathrm{KL}(\text{new}\Vert\text{reference})$ in nats? Give three decimals.
+    answer: 0.144
+    tolerance:
+      abs: 0.002
+    common_wrong:
+      - answer: 0.131
+        category: math_error
+        feedback: That is the KL the other way round. The new policy's probabilities are the weights.
+      - answer: 0.288
+        category: math_error
+        feedback: Weight each log ratio by the new policy's probability, $0.5$.
+    solution: $0.5\ln\frac{0.5}{0.25}+0.5\ln\frac{0.5}{0.75}\approx0.347-0.203=0.144$ nats.
+  - id: rlhf3-recall-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: rlhf-kl-average
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, what does the log ratio $\ln\frac{\pi_\theta(y\mid x)}{\pi_{\text{ref}}(y\mid x)}$ average to over the policy's replies, and why is that useful?
+    rubric:
+      - id: r1
+        criterion: State that it averages to $\mathrm{KL}(\pi_\theta\Vert\pi_{\text{ref}})$, with the policy first.
+        weight: 1
+        required: true
+      - id: r2
+        criterion: Explain that this average is never negative and is zero only when the policy matches the reference, so it measures drift.
+        weight: 1
+        required: true
+    exemplar: Averaged over the replies the policy writes, the log ratio is the KL divergence from the policy to the reference. It is never negative and is zero only when they match, so the average penalty measures how far the policy has drifted.
+  - id: rlhf3-recall-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: rlhf-kl-average
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: Replies are sampled from the policy and scored with the reference model's probabilities. Which quantity is the extra average surprise this gives?
+    options:
+      - id: a
+        text: $\mathrm{KL}(\pi_\theta\Vert\pi_{\text{ref}})$
+        correct: true
+        feedback: The policy is the actual distribution and the reference is the forecast.
+      - id: b
+        text: $\mathrm{KL}(\pi_{\text{ref}}\Vert\pi_\theta)$
+        correct: false
+        category: incorrect_reasoning
+        feedback: That has the order swapped, as if replies came from the reference.
+      - id: c
+        text: $H(\pi_\theta)$
+        correct: false
+        category: incorrect_reasoning
+        feedback: Entropy is the surprise under the policy's own probabilities. The extra surprise is KL.
+      - id: d
+        text: One reply's log ratio
+        correct: false
+        category: incorrect_reasoning
+        feedback: A single log ratio is one sample. The average over replies is the KL.
+    solution: The extra average surprise from forecasting with $\pi_{\text{ref}}$ when replies follow $\pi_\theta$ is $\mathrm{KL}(\pi_\theta\Vert\pi_{\text{ref}})$.
+  - id: rlhf3-recall-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: rlhf-kl-average
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: A policy writes reply 1 with probability $p$ and reply 2 with probability $1-p$. The reference model gives them $q$ and $1-q$. Write $\mathrm{KL}(\pi_\theta\Vert\pi_{\text{ref}})$ in nats. Type `log(...)` for the natural log and `*` for multiplication.
+    answer: p*log(p/q)+(1-p)*log((1-p)/(1-q))
+    variables:
+      p:
+        - 0.05
+        - 0.95
+      q:
+        - 0.05
+        - 0.95
+    solution: 'Weight each log ratio by the policy''s probability: $p\ln\frac pq+(1-p)\ln\frac{1-p}{1-q}$.'
+  - id: rlhf-pipeline-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: In a simple first pass through RLHF, in what order do the three training stages run?
+    options:
+      - id: a
+        text: Supervised fine-tuning, then the reward model, then reinforcement learning.
+        correct: true
+        feedback: In this first pass, the reward model learns from rankings of SFT replies, and RL needs both models.
+      - id: b
+        text: The reward model, then supervised fine-tuning, then reinforcement learning.
+        correct: false
+        category: incorrect_reasoning
+        feedback: In this first pass, the replies people rank come from the SFT model, so SFT comes first.
+      - id: c
+        text: Supervised fine-tuning, then reinforcement learning, then the reward model.
+        correct: false
+        category: incorrect_reasoning
+        feedback: RL needs the reward model to score replies, so the reward model comes before RL.
+      - id: d
+        text: Reinforcement learning, then supervised fine-tuning, then the reward model.
+        correct: false
+        category: incorrect_reasoning
+        feedback: RL starts from the SFT model and uses the reward model, so it comes last.
+    solution: In this first pass, SFT gives the starting policy and the reference. The reward model learns from rankings of SFT replies, and then PPO trains the policy.
+  - id: rlhf4-worked-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: In the worked example, why did the token rewards add up to $2.3$, the same as the whole-reply KL-penalised reward?
+    options:
+      - id: a
+        text: The token log ratios add up to the reply's log ratio, and the score is added once.
+        correct: true
+        feedback: The log of the reply's probability is the sum of its token logs, so $1+0.3+0.7=2$.
+      - id: b
+        text: $\beta$ was chosen so that the two calculations would match.
+        correct: false
+        category: incorrect_reasoning
+        feedback: They match for any $\beta$, because the log ratios add up.
+      - id: c
+        text: The reward model gave each token a share of $2.5$.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Only the last token got the score $2.5$.
+      - id: d
+        text: The numbers were picked to match, and usually they differ.
+        correct: false
+        category: incorrect_reasoning
+        feedback: They always match, because a reply's log-probability is the sum of its tokens' log-probabilities.
+    solution: Each token gets $-\beta$ times its log ratio, and the token log ratios sum to the reply's log ratio, $2$. Adding $2.5$ once gives $2.5-0.2=2.3$.
+  - id: rlhf4-stage-people
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: Which stage of the RLHF pipeline needs people to compare or rank the model's replies?
+    options:
+      - id: a
+        text: Training the reward model.
+        correct: true
+        feedback: The reward model learns from preference pairs that people chose.
+      - id: b
+        text: Supervised fine-tuning.
+        correct: false
+        category: incorrect_reasoning
+        feedback: In SFT, people write example replies. They do not compare replies.
+      - id: c
+        text: Reinforcement learning with PPO.
+        correct: false
+        category: incorrect_reasoning
+        feedback: In this stage the reward model scores the replies, so no new comparisons are needed.
+      - id: d
+        text: All three stages equally.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Comparisons are used only to train the reward model.
+    solution: People rank replies in stage 2, and the reward model is trained on those rankings.
+  - id: rlhf4-token-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A two-token reply gets reward model score ${{=r}}$, and $\beta=0.1$. The first token has log-probability $-0.5$ under the policy and $-1$ under the reference model. The second token has ${{=lp}}$ under the policy and ${{=lq}}$ under the reference. Using one penalty per token, what reward does the second token get?
+    params:
+      r:
+        min: 1
+        max: 3
+        step: 1
+      lp:
+        min: -0.8
+        max: -0.2
+        step: 0.2
+      lq:
+        min: -2
+        max: -1
+        step: 0.5
+    answer_expr: r - 0.1*(lp - lq)
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer_expr: r
+        category: math_error
+        feedback: Subtract the second token's own penalty, $0.1$ times its log ratio.
+      - answer_expr: r - 0.1*(-0.5 + lp + 1 - lq)
+        category: math_error
+        feedback: That puts the whole reply's penalty on the second token. The first token pays its own share.
+    solution: 'The second token''s log ratio is ${{=lp}}-({{=lq}})={{=lp-lq}}$, so its penalty is $0.1\times{{=lp-lq}}={{=0.1*(lp-lq)}}$. It is the last token, so it also gets the score: ${{=r}}-{{=0.1*(lp-lq)}}={{=r-0.1*(lp-lq)}}$.'
+  - id: rlhf4-clipped-token
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: In stage 3 of RLHF, PPO uses clip range $c=0.2$. The policy that wrote a batch gave one token probability $0.4$. After a few updates, the policy gives it $0.6$. The token's advantage is $2$. What is this token's term in the clipped objective?
+    answer: 2.4
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer: 3
+        category: math_error
+        feedback: That is the unclipped term. PPO takes the smaller of the unclipped and clipped terms.
+      - answer: 1.2
+        category: math_error
+        feedback: Multiply the clipped ratio by the advantage, $2$.
+    solution: The ratio is $0.6/0.4=1.5$, clipped to $1.2$. The term is $\min(1.5\times2,\ 1.2\times2)=2.4$.
+  - id: rlhf4-ref-vs-old
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: During the PPO stage of RLHF, which of these is replaced after every batch, and which stays fixed?
+    options:
+      - id: a
+        text: The old policy is replaced after every batch, and the reference model stays fixed.
+        correct: true
+        feedback: The old policy is the one that wrote the current batch. The reference is the frozen SFT copy.
+      - id: b
+        text: The reference model is replaced after every batch, and the old policy stays fixed.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The reference is the frozen SFT model. It is the old policy that moves forward each batch.
+      - id: c
+        text: Both stay fixed for the whole of training.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The old policy becomes the new policy after each batch.
+      - id: d
+        text: Both are replaced after every batch.
+        correct: false
+        category: incorrect_reasoning
+        feedback: If the reference moved, the penalty would stop keeping the policy near the SFT model.
+    solution: $\pi_{\theta_\text{old}}$ is the policy that wrote the batch and moves on each round. $\pi_{\text{ref}}$ never changes.
+  - id: rlhf4-reward-model-loss
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A rater preferred reply A to reply B. The reward model scored A $0$ and B $2$. What Bradley–Terry loss does this pair contribute? Give two decimals.
+    answer: 2.13
+    tolerance:
+      abs: 0.006
+    common_wrong:
+      - answer: 0.12
+        category: math_error
+        feedback: That is $\sigma(-2)$, the probability. The loss is minus its log.
+      - answer: 0.13
+        category: math_error
+        feedback: The preferred reply is A, so use $r_w-r_l=0-2=-2$.
+    solution: $r_w-r_l=0-2=-2$, $\sigma(-2)=\frac1{1+e^{2}}\approx0.119$, and $-\ln0.119\approx2.13$. The loss is large because the reward model ranks the pair the wrong way round.
+  - id: rlhf4-robot-towels
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A team wants a robot to fold towels the way people like. They have recordings of people steering the robot to fold towels, with the action taken at each moment, and people can watch two robot attempts and say which is better. Which plan follows the RLHF recipe?
+    options:
+      - id: a
+        text: Train a policy on the recordings, train a reward model on the comparisons, then run PPO on its score minus a KL penalty to the first policy.
+        correct: true
+        feedback: That is SFT, then a reward model, then RL with a penalty for drifting.
+      - id: b
+        text: Train a reward model on the recordings, then run PPO, then use the comparisons to check the result.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The reward model learns from comparisons. The demonstrations train the starting policy.
+      - id: c
+        text: Skip the recordings and run PPO on people's comparisons directly, with no reward model.
+        correct: false
+        category: incorrect_reasoning
+        feedback: RLHF trains a reward model so that every attempt can be scored without asking people.
+      - id: d
+        text: Train a policy on the recordings and stop there.
+        correct: false
+        category: incorrect_reasoning
+        feedback: That is only the first stage. It never uses the comparisons.
+    solution: "The three stages carry over: copy the demonstrations, learn a reward model from comparisons, then optimise the KL-penalised reward with PPO."
+  - id: rlhf4-recall-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: rlhf-pipeline
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, what are the three stages of RLHF in order, and what does the last stage optimise?
+    rubric:
+      - id: r1
+        criterion: "State the order: supervised fine-tuning, then training a reward model on people's comparisons, then reinforcement learning."
+        weight: 1
+        required: true
+      - id: r2
+        criterion: State that the last stage uses PPO to optimise the reward model's score minus a KL penalty to the SFT model.
+        weight: 1
+        required: true
+    exemplar: First supervised fine-tuning on replies people wrote, then a reward model trained on people's rankings, then reinforcement learning. The last stage uses PPO on the reward model's score minus a KL penalty that keeps the policy near the SFT model.
+  - id: rlhf4-recall-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: rlhf-pipeline
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: Which stage of RLHF trains on replies that people wrote themselves?
+    options:
+      - id: a
+        text: Supervised fine-tuning.
+        correct: true
+        feedback: SFT copies example replies people wrote.
+      - id: b
+        text: Training the reward model.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The reward model learns from people's rankings of model replies.
+      - id: c
+        text: Reinforcement learning with PPO.
+        correct: false
+        category: incorrect_reasoning
+        feedback: PPO trains on replies the policy writes itself.
+    solution: SFT learns from human-written replies, the reward model from rankings, and PPO from the policy's own replies.
+  - id: rlhf4-recall-contrast-old
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: rlhf-pipeline
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: In the PPO stage of RLHF, what is $\pi_{\theta_\text{old}}$?
+    options:
+      - id: a
+        text: The policy that wrote the current batch of replies.
+        correct: true
+        feedback: PPO compares new probabilities with this policy's for clipping.
+      - id: b
+        text: The frozen copy of the SFT model.
+        correct: false
+        category: incorrect_reasoning
+        feedback: That is the reference model $\pi_{\text{ref}}$.
+      - id: c
+        text: The reward model.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The reward model gives scores $r_\phi$.
+      - id: d
+        text: The policy at the end of training.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The old policy is defined by which policy generated the current batch. The final policy is defined by when training finishes, even if its weights match those of the old policy.
+    solution: $\pi_{\theta_\text{old}}$ is the policy that wrote the batch. The ratio in $L^{\text{CLIP}}$ compares the current policy with it.
+  - id: rlhf4-recall-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: rlhf-pipeline
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: A finished reply gets reward model score $r$. Its last token has log-probability $u$ under the policy that wrote the batch and $v$ under the frozen reference. With KL coefficient $\beta$, write the adjusted reward for just the last token. Use `beta` for $\beta$ and `*` for multiplication.
+    answer: r-beta*(u-v)
+    variables:
+      r: [-2, 4]
+      beta: [0.01, 0.5]
+      u: [-4, -0.1]
+      v: [-6, -0.2]
+    solution: The final token gets the reward model's score and pays only its own penalty, so its reward is $r-\beta(u-v)$.
+  - id: rlhf-explain-training
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 2
+    est_minutes: 4
+    prompt: 'Explain how RLHF trains a language model: what scores a finished reply, why a KL penalty is subtracted from that score, and what the coefficient $\beta$ controls.'
+    rubric:
+      - id: r1
+        criterion: State that a reward model scores each finished reply.
+        weight: 1
+        required: true
+      - id: r2
+        criterion: Explain that the penalty limits drift from the SFT model towards text the reward model overrates.
+        weight: 1
+        required: true
+      - id: r3
+        criterion: Explain that a larger $\beta$ keeps the policy closer to the SFT model and a smaller one lets it chase the reward model's score.
+        weight: 1
+        required: true
+    exemplar: The policy writes a reply token by token, and the reward model scores the finished reply. From that score we subtract beta times the log of the policy's probability of the reply over the reference model's, where the reference is a frozen copy of the SFT model. The penalty limits drift towards text the reward model overrates. A larger beta keeps the policy closer to the SFT model, and a smaller beta lets it chase the score. PPO maximises this reward.
