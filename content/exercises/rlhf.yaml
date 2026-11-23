@@ -91,7 +91,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 1
-    prompt: A reply has $5$ tokens, and the reward model scores the finished reply $1.8$. What rewards do the five tokens get, in order?
+    prompt: A reply has $5$ tokens, and the reward model scores the finished reply $1.8$. What reward does the reward model contribute to each token, in order, before the KL adjustment?
     options:
       - id: a
         text: $0,0,0,0,1.8$
@@ -112,7 +112,7 @@ exercises:
         correct: false
         category: incorrect_reasoning
         feedback: The score can only be given once the reply is finished, so it goes to the last token.
-    solution: Every token gets reward $0$ except the last one, which gets the reward model's score $1.8$.
+    solution: Before the KL adjustment, the reward model contributes $0$ to every token except the last one, which gets its score of $1.8$.
   - id: rlhf1-logprob-template
     dimension: math
     type: numeric
@@ -200,10 +200,10 @@ exercises:
         weight: 1
         required: true
       - id: r2
-        criterion: State that the reward is the reward model's score of the finished reply, given at the end.
+        criterion: State that before the KL adjustment, only the last token gets a contribution from the reward model, which is its score for the finished reply.
         weight: 1
         required: true
-    exemplar: The state is the prompt plus the tokens written so far, and an action is the next token, picked by the model as the policy. The reward model scores the finished reply, and that score is the reward at the end.
+    exemplar: The state is the prompt plus the tokens written so far, and an action is the next token, picked by the model as the policy. Before the KL adjustment, only the last token gets a contribution from the reward model, which is its score for the finished reply.
   - id: rlhf1-recall-contrast
     dimension: conceptual
     type: mc
@@ -264,7 +264,7 @@ exercises:
       - id: a
         text: A frozen copy of the SFT model that the policy started from.
         correct: true
-        feedback: It is never trained, so it shows how likely each reply was before RL.
+        feedback: Its weights are frozen throughout the reinforcement-learning stage, so it shows how likely each reply was before RL.
       - id: b
         text: The reward model that scores each finished reply.
         correct: false
@@ -276,10 +276,10 @@ exercises:
         category: incorrect_reasoning
         feedback: That is PPO's old policy, which is replaced after every batch. The reference stays fixed.
       - id: d
-        text: A model trained on reference answers people wrote.
+        text: A copy of the policy updated after each PPO pass using human-written answers.
         correct: false
         category: incorrect_reasoning
-        feedback: '"Reference" here means the fixed starting point for comparing probabilities.'
+        feedback: PPO does not update the reference model. It stays fixed as a starting point for comparing probabilities.
     solution: The reference model $\pi_{\text{ref}}$ is a frozen copy of the SFT model. The penalty compares the policy's probabilities with its probabilities.
   - id: rlhf2-worked-self-explain
     lesson_only: true
@@ -362,6 +362,8 @@ exercises:
         min: 0.1
         max: 0.3
         step: 0.1
+    constraints:
+      - abs(r - beta*(lp - lq) - beta) > 0.001
     answer_expr: r - beta*(lp - lq)
     tolerance:
       abs: 0.001
@@ -410,9 +412,9 @@ exercises:
     prompt: Why does RLHF subtract a KL penalty instead of maximising the reward model's score alone?
     options:
       - id: a
-        text: The policy would drift to text the reward model overrates and lose what SFT taught.
+        text: The policy could drift to text the reward model overrates and lose what SFT taught.
         correct: true
-        feedback: The reward model is only a rough copy of people's judgement, so chasing it alone finds its mistakes.
+        feedback: The reward model can get people's preferences wrong. Chasing its score alone can make overrated replies more likely.
       - id: b
         text: The reward model cannot score replies the SFT model did not write.
         correct: false
@@ -422,13 +424,13 @@ exercises:
         text: PPO only works when some rewards are negative.
         correct: false
         category: incorrect_reasoning
-        feedback: PPO works with any rewards. The penalty is there to limit drift.
+        feedback: PPO does not require negative rewards. The penalty is there to limit drift.
       - id: d
         text: The penalty helps the reward model learn faster.
         correct: false
         category: incorrect_reasoning
         feedback: The reward model stays fixed during RL. The penalty affects only the policy.
-    solution: Without the penalty, the policy drifts towards replies the reward model scores too highly and loses the behaviour SFT taught it.
+    solution: Chasing the score alone can push the policy towards replies the reward model overrates, and the policy can lose what SFT taught it. The KL penalty limits that drift.
   - id: rlhf2-compare-replies
     dimension: math
     type: numeric
@@ -479,10 +481,10 @@ exercises:
         weight: 1
         required: true
       - id: r2
-        criterion: Explain that the penalty stops the policy drifting from the SFT model towards text the reward model overrates.
+        criterion: Explain that the penalty limits drift from the SFT model towards text the reward model overrates.
         weight: 1
         required: true
-    exemplar: It is the reward model's score minus beta times the log of the policy's probability of the reply over the reference model's. The penalty keeps the policy near the SFT model so it does not drift towards text the reward model scores too highly.
+    exemplar: It is the reward model's score minus beta times the log of the policy's probability of the reply over the reference model's. The penalty limits drift from the SFT model towards text the reward model scores too highly.
   - id: rlhf2-recall-contrast
     dimension: conceptual
     type: mc
@@ -490,7 +492,7 @@ exercises:
     knowledge_point: rlhf-kl-reward
     difficulty: 1
     est_minutes: 0.5
-    prompt: In RLHF, which model stays the same for the whole of training and is used only to compare probabilities?
+    prompt: In RLHF, which model has frozen weights throughout the reinforcement-learning stage and supplies probabilities for the KL penalty?
     options:
       - id: a
         text: The reference model.
@@ -590,7 +592,7 @@ exercises:
         text: Either set works, because KL gives the same value both ways round.
         correct: false
         category: incorrect_reasoning
-        feedback: Swapping the order changes KL. With the other weights the answer is $\mathrm{KL}(\pi_{\text{ref}}\Vert\pi_\theta)$.
+        feedback: To compute KL from the reference to the policy, weight by the reference and take log ratios with the reference in the numerator.
     solution: The policy writes the replies, so it is the actual distribution, and its probabilities $0.9$ and $0.1$ are the weights.
   - id: rlhf3-negative-sample
     dimension: conceptual
@@ -601,14 +603,14 @@ exercises:
     prompt: During RLHF, one sampled reply has log ratio $\ln\frac{\pi_\theta(y\mid x)}{\pi_{\text{ref}}(y\mid x)}=-0.4$. What does this tell you about $\mathrm{KL}(\pi_\theta\Vert\pi_{\text{ref}})$?
     options:
       - id: a
-        text: Nothing much. One sample can be negative, while the average over the policy's replies is never negative.
+        text: The true KL is positive, but this sample does not determine its value.
         correct: true
-        feedback: Each log ratio is one noisy estimate of the KL, and only the average must be at least $0$.
+        feedback: The policies differ on this reply, so they cannot have zero KL. The value is the average over the policy's full reply distribution.
       - id: b
         text: The KL divergence is $-0.4$.
         correct: false
         category: incorrect_reasoning
-        feedback: One reply gives one estimate. The KL is the average over all the policy's replies.
+        feedback: This is one log ratio. The true KL is the probability-weighted average over all replies under the policy.
       - id: c
         text: The KL divergence is negative, so the policy is closer than possible.
         correct: false
@@ -619,7 +621,7 @@ exercises:
         correct: false
         category: incorrect_reasoning
         feedback: A matching policy gives log ratio $0$ for every reply.
-    solution: Single log ratios can be negative, but their average, the KL divergence, is never negative.
+    solution: This negative log ratio proves the probabilities differ on this reply, so the true KL is strictly positive. Its value depends on the full distribution of replies.
   - id: rlhf3-kl-template
     dimension: math
     type: numeric
@@ -660,10 +662,10 @@ exercises:
         correct: true
         feedback: Then every log ratio is $0$, and KL is zero only in this case.
       - id: b
-        text: When the policy always writes the reply with the highest score.
+        text: Whenever the policy always writes the highest-scoring reply.
         correct: false
         category: incorrect_reasoning
-        feedback: That policy is usually far from the reference, so its KL is large.
+        feedback: Always writing the highest-scoring reply gives zero KL only if the reference also assigns that reply probability $1$.
       - id: c
         text: When the reward model scores every reply $0$.
         correct: false
@@ -781,17 +783,17 @@ exercises:
     role: basics
     difficulty: 1
     est_minutes: 1
-    prompt: In what order are the three training stages of RLHF usually run?
+    prompt: In a simple first pass through RLHF, in what order do the three training stages run?
     options:
       - id: a
         text: Supervised fine-tuning, then the reward model, then reinforcement learning.
         correct: true
-        feedback: The reward model learns from rankings of the SFT model's replies, and RL needs both.
+        feedback: In this first pass, the reward model learns from rankings of SFT replies, and RL needs both models.
       - id: b
         text: The reward model, then supervised fine-tuning, then reinforcement learning.
         correct: false
         category: incorrect_reasoning
-        feedback: The reward model is trained on rankings of the SFT model's replies, so SFT comes first.
+        feedback: In this first pass, the replies people rank come from the SFT model, so SFT comes first.
       - id: c
         text: Supervised fine-tuning, then reinforcement learning, then the reward model.
         correct: false
@@ -802,7 +804,7 @@ exercises:
         correct: false
         category: incorrect_reasoning
         feedback: RL starts from the SFT model and uses the reward model, so it comes last.
-    solution: SFT gives the starting policy and the reference, the reward model learns from rankings of its replies, and then PPO trains the policy.
+    solution: In this first pass, SFT gives the starting policy and the reference. The reward model learns from rankings of SFT replies, and then PPO trains the policy.
   - id: rlhf4-worked-self-explain
     lesson_only: true
     dimension: conceptual
@@ -943,7 +945,7 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: In stage 2 of RLHF, a person preferred reply A to reply B. The reward model currently gives $r_A=0$ and $r_B=2$. What is the Bradley–Terry loss $-\ln\sigma(r_w-r_l)$ for this pair, where $r_w$ is the chosen reply's score, $r_l$ the rejected reply's, and $\sigma(z)=\frac1{1+e^{-z}}$? Give two decimals.
+    prompt: A rater preferred reply A to reply B. The reward model scored A $0$ and B $2$. What Bradley–Terry loss does this pair contribute? Give two decimals.
     answer: 2.13
     tolerance:
       abs: 0.006
@@ -1024,11 +1026,6 @@ exercises:
         correct: false
         category: incorrect_reasoning
         feedback: PPO trains on replies the policy writes itself.
-      - id: d
-        text: None of them.
-        correct: false
-        category: incorrect_reasoning
-        feedback: SFT trains on human-written replies.
     solution: SFT learns from human-written replies, the reward model from rankings, and PPO from the policy's own replies.
   - id: rlhf4-recall-contrast-old
     dimension: conceptual
@@ -1057,8 +1054,23 @@ exercises:
         text: The policy at the end of training.
         correct: false
         category: incorrect_reasoning
-        feedback: The old policy is replaced each round, so it is never the final policy.
+        feedback: The old policy is defined by which policy generated the current batch. The final policy is defined by when training finishes, even if its weights match those of the old policy.
     solution: $\pi_{\theta_\text{old}}$ is the policy that wrote the batch. The ratio in $L^{\text{CLIP}}$ compares the current policy with it.
+  - id: rlhf4-recall-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: rlhf-pipeline
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: A finished reply gets reward model score $r$. Its last token has log-probability $u$ under the policy that wrote the batch and $v$ under the frozen reference. With KL coefficient $\beta$, write the adjusted reward for just the last token. Use `beta` for $\beta$ and `*` for multiplication.
+    answer: r-beta*(u-v)
+    variables:
+      r: [-2, 4]
+      beta: [0.01, 0.5]
+      u: [-4, -0.1]
+      v: [-6, -0.2]
+    solution: The final token gets the reward model's score and pays only its own penalty, so its reward is $r-\beta(u-v)$.
   - id: rlhf-explain-training
     dimension: conceptual
     type: explain
@@ -1068,15 +1080,15 @@ exercises:
     prompt: 'Explain how RLHF trains a language model: what scores a finished reply, why a KL penalty is subtracted from that score, and what the coefficient $\beta$ controls.'
     rubric:
       - id: r1
-        criterion: State that the reward is the reward model's score of the finished reply minus $\beta$ times the log ratio of the policy's and reference model's probabilities.
+        criterion: State that a reward model scores each finished reply.
         weight: 1
         required: true
       - id: r2
-        criterion: Explain that the penalty keeps the policy close to the SFT model, so it does not drift towards text the reward model overrates.
+        criterion: Explain that the penalty limits drift from the SFT model towards text the reward model overrates.
         weight: 1
         required: true
       - id: r3
         criterion: Explain that a larger $\beta$ keeps the policy closer to the SFT model and a smaller one lets it chase the reward model's score.
         weight: 1
         required: true
-    exemplar: The policy writes a reply token by token, and the reward model scores the finished reply. From that score we subtract beta times the log of the policy's probability of the reply over the reference model's, where the reference is a frozen copy of the SFT model. The penalty stops the policy drifting towards text the reward model overrates. A larger beta keeps it closer to the SFT model, and a smaller beta lets it chase the score. PPO maximises this reward.
+    exemplar: The policy writes a reply token by token, and the reward model scores the finished reply. From that score we subtract beta times the log of the policy's probability of the reply over the reference model's, where the reference is a frozen copy of the SFT model. The penalty limits drift towards text the reward model overrates. A larger beta keeps the policy closer to the SFT model, and a smaller beta lets it chase the score. PPO maximises this reward.
