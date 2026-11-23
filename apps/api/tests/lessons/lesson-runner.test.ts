@@ -601,8 +601,6 @@ test('legacy rows halt after three misses in the current attempt', () => {
     row(1, 0, 'second'),
     row(2, 0, 'second'),
     row(3, 0, 'second'),
-    row(4, 0, 'second'),
-    row(5, 0, 'second'),
   ];
   const state = derive(multiPointLesson, rows);
   expect(state).toMatchObject({

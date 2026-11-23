@@ -1785,15 +1785,20 @@ test('three misses pause a lesson until the next local day, then eligible retry 
   await expect(page.getByLabel('Your answer')).toHaveCount(0);
   await expect(page.locator('[data-problem-id]')).toHaveCount(0);
 
-  const [session] = await db
-    .select({ userId: studySessions.userId })
-    .from(studySessions)
-    .where(eq(studySessions.id, sessionId));
-  if (!session) throw new Error('Missing test session');
-  await db
-    .update(lessonRuns)
-    .set({ retryAfter: new Date('2025-12-31T00:00:00.000Z') })
-    .where(and(eq(lessonRuns.userId, session.userId), eq(lessonRuns.conceptId, conceptId)));
+  const db = createDb(env.TEST_DATABASE_URL);
+  try {
+    const [session] = await db
+      .select({ userId: studySessions.userId })
+      .from(studySessions)
+      .where(eq(studySessions.id, sessionId));
+    if (!session) throw new Error('Missing test session');
+    await db
+      .update(lessonRuns)
+      .set({ retryAfter: new Date('2025-12-31T00:00:00.000Z') })
+      .where(and(eq(lessonRuns.userId, session.userId), eq(lessonRuns.conceptId, conceptId)));
+  } finally {
+    await db.$client.end();
+  }
 
   await page.reload();
   await expect(page.getByTestId('lesson-problem')).toBeVisible();
