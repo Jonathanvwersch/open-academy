@@ -233,6 +233,7 @@ function planWithRetryAndFreshTopics(
     courseId?: string;
     freshTopicIds?: string[];
     retryConceptId?: string;
+    retryAfter?: Date;
     index?: ContentIndex;
     confusablePairs?: Array<[string, string]>;
   } = {},
@@ -273,7 +274,7 @@ function planWithRetryAndFreshTopics(
     {
       conceptId: retryConceptId,
       status: 'needs_retry',
-      retryAfter: new Date(now.getTime() - 1_000),
+      retryAfter: options.retryAfter ?? new Date(now.getTime() - 1_000),
     },
   ];
   return planSession(state, planContent, now, budget);
@@ -1413,6 +1414,57 @@ test('retry-eligible lessons do not exceed the two-fresh-lesson cap', () => {
   expect(learned).toHaveLength(2);
   expect(learned).toEqual(expect.arrayContaining(freshTopicIds));
   expect(learned).not.toContain('vectors');
+});
+
+test('a retry one day overdue waits behind two fresh lessons', () => {
+  const freshTopicIds = ['probability-basics', 'derivatives'];
+  const lessonMinutes = [
+    required(courseContent.conceptsById.get('vectors'), 'vectors').est_minutes,
+    ...freshTopicIds.map(
+      (conceptId) => required(courseContent.conceptsById.get(conceptId), conceptId).est_minutes,
+    ),
+  ];
+
+  const learned = planWithRetryAndFreshTopics(
+    lessonMinutes.reduce((sum, minutes) => sum + minutes),
+    {
+      freshTopicIds,
+      retryAfter: new Date(now.getTime() - 24 * 60 * 60 * 1_000),
+    },
+  )
+    .activities.filter((activity) => activity.kind === 'learn')
+    .map((activity) => activity.conceptId);
+
+  expect(learned).toHaveLength(2);
+  expect(learned).toEqual(expect.arrayContaining(freshTopicIds));
+  expect(learned).not.toContain('vectors');
+});
+
+test('a retry two days overdue is selected before fresh lessons but respects the cap', () => {
+  const freshTopicIds = ['probability-basics', 'derivatives'];
+  const lessonMinutes = [
+    required(courseContent.conceptsById.get('vectors'), 'vectors').est_minutes,
+    ...freshTopicIds.map(
+      (conceptId) => required(courseContent.conceptsById.get(conceptId), conceptId).est_minutes,
+    ),
+  ];
+
+  const learned = planWithRetryAndFreshTopics(
+    lessonMinutes.reduce((sum, minutes) => sum + minutes),
+    {
+      freshTopicIds,
+      retryAfter: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1_000),
+    },
+  )
+    .activities.filter((activity) => activity.kind === 'learn')
+    .map((activity) => activity.conceptId);
+  const freshLearnCount = learned.filter((conceptId) =>
+    freshTopicIds.includes(conceptId ?? ''),
+  ).length;
+
+  expect(learned).toHaveLength(2);
+  expect(learned).toContain('vectors');
+  expect(freshLearnCount).toBe(1);
 });
 
 test('a confusable retry is skipped when the fresh topic is selected', () => {

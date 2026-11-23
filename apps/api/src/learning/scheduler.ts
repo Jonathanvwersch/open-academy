@@ -52,6 +52,8 @@ export const SCHEDULER_CONFIG = {
   consolidationMinutes: 5,
 } as const;
 
+const RETRY_OVERDUE_DAYS = 2;
+
 export interface PriorityTerms {
   goal: number;
   week_fit: number;
@@ -230,6 +232,13 @@ function lessonRetryEligible(state: SchedulerState, conceptId: string, now: Date
         flag.conceptId === conceptId && (flag.status === undefined || flag.status === 'open'),
     )
   );
+}
+
+function lessonRetryOverdue(state: SchedulerState, conceptId: string, now: Date): boolean {
+  const run = state.lessonRuns?.find((candidate) => candidate.conceptId === conceptId);
+  if (!run?.retryAfter || !lessonRetryEligible(state, conceptId, now)) return false;
+  const retryAfter = typeof run.retryAfter === 'string' ? new Date(run.retryAfter) : run.retryAfter;
+  return now.getTime() - retryAfter.getTime() >= RETRY_OVERDUE_DAYS * 24 * 60 * 60 * 1_000;
 }
 
 export function isLearnableConcept(concept: IndexedConcept, content: ContentIndex): boolean {
@@ -678,6 +687,11 @@ function packWeekday(
       .filter((run) => lessonRetryEligible(state, run.conceptId, now))
       .map((run) => run.conceptId),
   );
+  const overdueRetryLessonConcepts = new Set(
+    [...retryEligibleLessonConcepts].filter((conceptId) =>
+      lessonRetryOverdue(state, conceptId, now),
+    ),
+  );
   const unfinishedLessonConcepts = new Set([
     ...resumedLessonConcepts,
     ...retryEligibleLessonConcepts,
@@ -706,7 +720,8 @@ function packWeekday(
       (entry) =>
         entry.activity.kind === 'learn' &&
         entry.activity.conceptId &&
-        resumedLessonConcepts.has(entry.activity.conceptId),
+        (resumedLessonConcepts.has(entry.activity.conceptId) ||
+          overdueRetryLessonConcepts.has(entry.activity.conceptId)),
     )
     .sort(compareLearnCandidates)) {
     if (newConceptCount >= SCHEDULER_CONFIG.weekday.maxNewConcepts) break;
@@ -879,7 +894,8 @@ function packWeekday(
       (entry) =>
         entry.activity.kind === 'learn' &&
         entry.activity.conceptId &&
-        retryEligibleLessonConcepts.has(entry.activity.conceptId),
+        retryEligibleLessonConcepts.has(entry.activity.conceptId) &&
+        !overdueRetryLessonConcepts.has(entry.activity.conceptId),
     )
     .sort(compareLearnCandidates)) {
     if (newConceptCount >= SCHEDULER_CONFIG.weekday.maxNewConcepts) break;
