@@ -70,19 +70,6 @@ function groupReviewExercisesByConcept(exerciseIds: string[], index: ContentInde
   return [...groups].map(([topicId, exerciseIds]) => ({ topicId, exerciseIds }));
 }
 
-export function firstCompletesActivityConcept(
-  exerciseIds: string[],
-  previouslyAttemptedExerciseIds: string[],
-  attemptedExerciseIds: string[],
-) {
-  const previouslyAttempted = new Set(previouslyAttemptedExerciseIds);
-  const attempted = new Set(attemptedExerciseIds);
-  return (
-    exerciseIds.every((exerciseId) => attempted.has(exerciseId)) &&
-    !exerciseIds.every((exerciseId) => previouslyAttempted.has(exerciseId))
-  );
-}
-
 export async function getExercisesById(deps: FeatureServices, request: FeatureRequest) {
   const { content } = deps;
   const exercise = (await content()).exercisesById.get(request.params.id);
@@ -606,38 +593,27 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
             const conceptExerciseIds = activity.exerciseIds.filter(
               (exerciseId) => index.exercisesById.get(exerciseId)?.concept === card.conceptId,
             );
-            const conceptAttempts = await db
-              .select({ id: attempts.id, exerciseId: attempts.exerciseId })
-              .from(attempts)
+            const expectedReviewLogCount = new Set(
+              conceptExerciseIds.flatMap((exerciseId) => {
+                const dimension = index.exercisesById.get(exerciseId)?.dimension;
+                return dimension ? [dimension] : [];
+              }),
+            ).size;
+            const conceptReviewLogs = await db
+              .select({ rating: reviewLogs.rating })
+              .from(reviewLogs)
+              .innerJoin(attempts, eq(reviewLogs.attemptId, attempts.id))
+              .innerJoin(reviewCards, eq(reviewLogs.cardId, reviewCards.id))
               .where(
                 and(
                   eq(attempts.activityId, body.data.activityId),
-                  inArray(attempts.exerciseId, conceptExerciseIds),
+                  eq(reviewCards.conceptId, card.conceptId),
                 ),
               );
-            const attemptedExerciseIds = conceptAttempts.map((attempt) => attempt.exerciseId);
-            const previouslyAttemptedExerciseIds = conceptAttempts
-              .filter((attempt) => attempt.id !== attemptId)
-              .map((attempt) => attempt.exerciseId);
             if (
               !implicitCreditAppliedConceptIds.has(card.conceptId) &&
-              firstCompletesActivityConcept(
-                conceptExerciseIds,
-                previouslyAttemptedExerciseIds,
-                attemptedExerciseIds,
-              )
+              conceptReviewLogs.length === expectedReviewLogCount
             ) {
-              const conceptReviewLogs = await db
-                .select({ rating: reviewLogs.rating })
-                .from(reviewLogs)
-                .innerJoin(attempts, eq(reviewLogs.attemptId, attempts.id))
-                .innerJoin(reviewCards, eq(reviewLogs.cardId, reviewCards.id))
-                .where(
-                  and(
-                    eq(attempts.activityId, body.data.activityId),
-                    eq(reviewCards.conceptId, card.conceptId),
-                  ),
-                );
               const ratings = conceptReviewLogs.map(({ rating }) => Number(rating));
               if (ratings.length > 0) {
                 await applyImplicitRepetitions(db, {

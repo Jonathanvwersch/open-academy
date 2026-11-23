@@ -24,7 +24,6 @@ import {
   users,
   xpEvents,
 } from '../../src/db/schema.js';
-import { firstCompletesActivityConcept } from '../../src/features/exercises/service.js';
 import { FakeProvider } from '../../src/features/tutor/provider.js';
 import { answerOptionsFor } from '../../src/learning/answer-options.js';
 import { buildEncompassingIndex } from '../../src/learning/encompassing.js';
@@ -44,20 +43,6 @@ let app: ReturnType<typeof createApp>;
 let noTutorApp: ReturnType<typeof createApp>;
 let content: ContentIndex;
 let fullContent: ContentIndex;
-
-test('a retry of the final review exercise does not complete the concept again', () => {
-  const exerciseIds = ['first-exercise', 'last-exercise'];
-  expect(
-    firstCompletesActivityConcept(
-      exerciseIds,
-      ['first-exercise'],
-      ['first-exercise', 'last-exercise'],
-    ),
-  ).toBe(true);
-  expect(
-    firstCompletesActivityConcept(exerciseIds, exerciseIds, ['first-exercise', 'last-exercise']),
-  ).toBe(false);
-});
 
 beforeAll(async () => {
   content = await loadContent('tests/fixtures/content');
@@ -2350,6 +2335,125 @@ test('partial explain answers get one follow-up before the exemplar and activity
   });
   expect(thirdResponse.status).toBe(409);
   expect(await thirdResponse.json()).toMatchObject({ error: 'No retries remain.' });
+});
+
+test('a follow-up on the final review exercise applies implicit credit once at final grading', async () => {
+  await resetLearner();
+  const exercise = content.exercisesById.get('derivatives-explain');
+  if (exercise?.type !== 'explain') throw new Error('Missing derivatives explain exercise');
+  const dueAt = new Date('2025-12-31T00:00:00.000Z');
+  const currentCard = await createReviewCard(
+    exercise.concept,
+    exercise.dimension,
+    dueAt,
+    learnedReviewFsrs(dueAt),
+  );
+  const prerequisiteCard = await createReviewCard(
+    'vectors',
+    'conceptual',
+    dueAt,
+    learnedReviewFsrs(dueAt),
+  );
+  const [session] = await db
+    .insert(studySessions)
+    .values({ userId, plannedMinutes: 15, status: 'active', kind: 'weekday' })
+    .returning();
+  if (!session) throw new Error('Could not create a review session fixture');
+  const [activity] = await db
+    .insert(sessionActivities)
+    .values({
+      sessionId: session.id,
+      idx: 0,
+      kind: 'review',
+      conceptId: exercise.concept,
+      exerciseIds: [exercise.id],
+      plannedMinutes: 5,
+      status: 'in_progress',
+    })
+    .returning();
+  if (!activity) throw new Error('Could not create a review activity fixture');
+  const partialApp = createApp({
+    db,
+    content,
+    tutorProvider: new FakeProvider(undefined, {
+      criteria: [
+        { id: 'local-rate', judgement: 'partial', evidence: 'Mentions change.' },
+        { id: 'tangent-slope', judgement: 'missing', evidence: null },
+      ],
+      feedback_md: 'Add the tangent-slope connection.',
+    }),
+  });
+  const completeApp = createApp({
+    db,
+    content,
+    tutorProvider: new FakeProvider(undefined, {
+      criteria: exercise.rubric.map(({ id }) => ({
+        id,
+        judgement: 'met' as const,
+        evidence: 'Both criteria are addressed.',
+      })),
+      feedback_md: 'Complete explanation.',
+    }),
+  });
+  const submit = (targetApp: ReturnType<typeof createApp>, answer: string) =>
+    targetApp.request('/api/attempts', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'X-Now': now },
+      body: JSON.stringify({
+        exerciseId: exercise.id,
+        activityId: activity.id,
+        answer: { text: answer },
+        mode: 'review',
+      }),
+    });
+
+  const followUpResponse = await submit(partialApp, 'A change occurs at the point.');
+  expect(followUpResponse.status).toBe(200);
+  expect(await followUpResponse.json()).toMatchObject({
+    followUp: true,
+    retryAllowed: true,
+    activityCompleted: false,
+  });
+  const [prerequisiteAfterFollowUp] = await db
+    .select()
+    .from(reviewCards)
+    .where(eq(reviewCards.id, prerequisiteCard.id));
+  expect(prerequisiteAfterFollowUp?.dueAt).toEqual(dueAt);
+  expect(
+    await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, currentCard.id)),
+  ).toHaveLength(0);
+
+  const finalResponse = await submit(completeApp, 'It is the tangent slope.');
+  expect(finalResponse.status).toBe(200);
+  expect(await finalResponse.json()).toMatchObject({
+    attemptNo: 2,
+    retryAllowed: false,
+    activityCompleted: true,
+  });
+  const [prerequisiteAfterFinal] = await db
+    .select()
+    .from(reviewCards)
+    .where(eq(reviewCards.id, prerequisiteCard.id));
+  if (!prerequisiteAfterFinal) throw new Error('Could not reload the prerequisite review card');
+  expect(prerequisiteAfterFinal.dueAt.getTime()).toBeGreaterThan(dueAt.getTime());
+  const implicitCreditDueAt = prerequisiteAfterFinal.dueAt;
+  expect(
+    await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, currentCard.id)),
+  ).toHaveLength(1);
+  expect(
+    await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, prerequisiteCard.id)),
+  ).toHaveLength(0);
+
+  const replay = await submit(completeApp, 'A replay after completion.');
+  expect(replay.status).toBe(409);
+  const [prerequisiteAfterReplay] = await db
+    .select()
+    .from(reviewCards)
+    .where(eq(reviewCards.id, prerequisiteCard.id));
+  expect(prerequisiteAfterReplay?.dueAt).toEqual(implicitCreditDueAt);
+  expect(
+    await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, currentCard.id)),
+  ).toHaveLength(1);
 });
 
 test('review mode partial explain answers get one retry before card rating and completion', async () => {
