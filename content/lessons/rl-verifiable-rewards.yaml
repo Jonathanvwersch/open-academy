@@ -8,33 +8,37 @@ recap:
   - concept: policy-gradients
     text: "A policy-gradient update makes an action more likely when its return $G$ beats a baseline $b$, and less likely when it falls short. A baseline that doesn't depend on the action keeps the average update the same."
   - concept: rlhf
-    text: "In RLHF, the policy $\\pi_\\theta$ writes a reply $y$ to a prompt $x$ token by token, a learned reward model scores it $r_\\phi(x,y)$, and PPO trains the policy with a KL penalty towards the reference model $\\pi_{\\text{ref}}$."
+    text: "RLHF uses policy parameters $\\theta$ and reward-model parameters $\\phi$. PPO uses reward $r_\\phi(x,y)-\\beta\\log\\frac{\\pi_\\theta(y\\mid x)}{\\pi_{\\text{ref}}(y\\mid x)}$. The log ratio is the policy log-probability minus the reference log-probability. The KL coefficient $\\beta\\ge0$ controls penalty strength."
 where_this_fits: |
   ### What is RL with verifiable rewards?
 
-  Reinforcement learning with verifiable rewards trains a language model on problems whose answers a program can check, such as maths questions with a known final answer or coding tasks with tests. The program's check gives the reward, so no learned reward model is needed.
+  Reinforcement learning with verifiable rewards trains a language model on problems whose answers a program can check, such as maths or code with tests. The check supplies the reward, so no learned reward model is needed.
 
-  Why is this useful? In RLHF, the reward model learned people's preferences from limited replies, and it can be wrong about text it hasn't seen. A program that compares a final answer with the known one has no learned weights, so the policy can't gain reward by writing text a reward model happens to overrate. This lesson builds such a program in Python, then uses GRPO, a method that scores each answer against other answers to the same prompt.
+  A learned reward model can overrate unfamiliar replies. A program that checks known answers has no learned weights to mislead. We will write a checker in Python, then use GRPO, an RL method used with checker rewards. GRPO gets its baseline from a group of answers to the same prompt, so it needs no critic either.
 knowledge_points:
   - id: rlvr-checker
     title: "Let a program check the answer"
     tldr: |
       - Some problems have answers a program can check, like a maths question with a known answer or code with tests.
       - The program gives a reward of 1 when the check passes and 0 when it fails.
-      - The reward comes from the check, so we don't need a learned reward model, but the check has to be a good one.
+      - A good check passes correct replies and fails wrong ones. It supplies the reward without a learned reward model.
     explain: |
       ### Problems with a known answer
 
-      In the RLHF lesson, a reward model read a prompt $x$ and a reply $y$ and gave a learned score $r_\phi(x,y)$. But some prompts have a right answer that we already know. Take this prompt: "Tom has 3 bags with 4 apples in each. How many apples does he have? End with a line that says Answer: and then the number." The right answer, the **reference answer**, is 12. A short program can read the model's reply, find the line that starts with `Answer:` and compare what follows with 12.
+      Some prompts have a right answer that we already know. Take this prompt: "Tom has 3 bags with 4 apples in each. How many apples does he have? End with a line that says Answer: and then the number." The **reference answer** is 12. A program can find the reply's `Answer:` line and compare what follows with 12.
 
       A **verifiable reward** is a reward computed by a program that checks the reply against a reference answer or a set of tests. The program is called a **checker**, or a verifier. The usual reward is $1$ when the check passes and $0$ when it fails:
 
       $$r(x,y)=\begin{cases}1&\text{if the check passes,}\\0&\text{if it fails.}\end{cases}$$
 
+      The check compares reply $y$ with the reference answer for prompt $x$.
+
       There are two common kinds of check.
 
       - **Maths with a known final answer.** The checker finds the final answer in the reply and compares it with the reference answer.
       - **Code with tests.** The checker runs the program the model wrote on test inputs, and the reward is $1$ if every test gives the expected output.
+
+      This checker ignores a final full stop, so `Answer: 12.` also matches 12.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 250" aria-label="Four replies to the apples prompt, whose reference answer is 12. A checker reads each reply's final answer. Reply 1 ends Answer: 12 and gets reward 1. Reply 2 ends Answer: 7 and gets reward 0. Reply 3 ends Answer: 12. and gets reward 1. Reply 4 says There are 12 apples in total, with no Answer line, and gets reward 0">
@@ -55,7 +59,7 @@ knowledge_points:
 
       ### Why no reward model is needed
 
-      The rest works as in RLHF. The policy $\pi_\theta$ writes the reply token by token, and the reward arrives when the reply is finished. Only the source of the reward changes. Nobody has to compare replies and no reward model has to be trained, and a correct final answer gets $1$ every time.
+      The rest works as in RLHF. The policy $\pi_\theta$ writes the reply token by token, and the reward arrives when the reply is finished. Only the source of the reward changes. Nobody has to compare replies. No reward model has to be trained. A recognised correct final answer gets $1$ every time.
 
       ### Limitations
 
@@ -66,9 +70,12 @@ knowledge_points:
       Let's score the four replies in the picture by hand, as the checker would. The reference answer is 12.
 
       1. **Find each final answer.** We look for the last line that starts with `Answer:` and keep what comes after it. Reply 4 has no such line, so it has no final answer.
-         $$12,\qquad7,\qquad12.,\qquad\text{none}$$
+         - Reply 1: `12`
+         - Reply 2: `7`
+         - Reply 3: `12.` (with a full stop)
+         - Reply 4: no final answer
 
-      2. **Tidy each answer.** A full stop at the end doesn't change the answer, so the checker removes it, and reply 3's "12." becomes "12".
+      2. **Remove final full stops.** The checker removes every full stop at the end. Reply 3's "12." becomes "12".
          $$12,\qquad7,\qquad12,\qquad\text{none}$$
 
       3. **Compare each answer with 12.** A match gives reward $1$. Anything else, including no answer, gives $0$.
@@ -87,14 +94,14 @@ knowledge_points:
     title: "Write the reward function in Python"
     tldr: |
       - A reward function takes the model's reply and the reference answer and gives back a number.
-      - It finds the final answer, tidies it, and returns 1.0 if it matches the reference and 0.0 otherwise.
+      - It finds the final answer and removes spaces and final full stops. A match earns 1.0; anything else earns 0.0.
       - Every rule in it decides which replies earn reward, so it should be strict about the answer and forgiving about harmless differences.
     explain: |
       ### Finding the final answer
 
       In the last step, we scored four replies to the apples prompt by hand. Now we write that checker as a Python function, called the **reward function**. It takes the reply and the reference answer, and it gives back the reward.
 
-      The function does two jobs. First it finds the final answer. Our prompt asked the model to finish with a line that starts `Answer:`, so the function reads the reply's lines from the bottom up and stops at the first line that starts that way. It keeps the text after `Answer:` and removes spaces at either end and any full stop at the end. If no line starts with `Answer:`, there is no final answer, and the function gives back `None`, Python's value for "nothing here".
+      The function does two jobs. First it finds the final answer. It reads the reply's lines from the bottom up and stops at a line starting with `Answer:`. It keeps the text after `Answer:` and removes spaces at either end and every full stop at the end. If no line starts that way, it returns `None`, Python's value for "nothing here".
 
       ### Comparing with the reference
 
@@ -104,12 +111,12 @@ knowledge_points:
 
       Every rule in a reward function decides which replies earn reward, and the policy is trained to earn it. So it's worth thinking about each rule.
 
-      - **Too strict.** Comparing text means "12.0" doesn't match "12", so a correct reply gets $0$. Turning both into numbers before comparing would fix that.
+      - **Too strict.** Comparing text means "12.0" doesn't match "12", so a correct reply gets $0$. We keep text comparison here because our references are whole numbers written plainly. A real numerical checker would turn both into numbers before comparing them.
       - **Too forgiving.** A checker that gave $1$ whenever "12" appeared anywhere in the reply would pay for "Answer: 7 or 12 or 20". The policy could then learn to list several numbers instead of solving the problem.
 
       A good reward function is strict about the answer itself and forgiving about harmless differences such as spaces and a full stop.
 
-      Be careful with the order of the search. A reply can mention `Answer:` more than once, for example while it checks its working. Reading from the bottom up means the last `Answer:` line is the one that counts.
+      We take the last `Answer:` line because the model writes its final answer last. Earlier `Answer:` lines can be drafts while it checks its working. Reading from the bottom up finds the final one first.
     worked: |
       Let's write the reward function and run it on the four replies to the apples prompt, whose reference answer is `"12"`.
 
@@ -117,7 +124,9 @@ knowledge_points:
 
       2. **Find the answer line.** `line.startswith("Answer:")` is `True` when the line begins with those characters. `line[len("Answer:"):]` keeps everything after them, and `.strip().rstrip(".")` removes spaces from both ends and full stops from the right-hand end.
 
-      3. **Compare and return the reward.** The reward function compares the result with the reference and returns `1.0` or `0.0`. In the reply strings, `\n` is a line break.
+      3. **Compare and return the reward.** The reward function compares the result with the reference and returns `1.0` or `0.0`.
+
+      The reply strings below use `\n` for a line break. The list comprehension `[reward(reply, "12") for reply in replies]` calls `reward` on each reply and collects the results into a list.
 
       ```python
       def final_answer(text):
@@ -133,13 +142,13 @@ knowledge_points:
           return 0.0
 
 
-      answers = [
+      replies = [
           "3 bags of 4 apples is 3 * 4 = 12.\nAnswer: 12",
           "3 + 4 = 7.\nAnswer: 7",
           "Each bag holds 4, so there are 12.\nAnswer: 12.",
           "There are 12 apples in total.",
       ]
-      print([reward(a, "12") for a in answers])
+      print([reward(reply, "12") for reply in replies])
       # prints: [1.0, 0.0, 1.0, 0.0]
       ```
 
@@ -154,7 +163,7 @@ knowledge_points:
       - rlvr2-reward-to-r
       - rlvr2-tests-code
   - id: rlvr-group-advantage
-    title: "Compare answers to the same prompt"
+    title: "Score each answer against its group"
     tldr: |
       - The policy writes several answers to one prompt, and the checker scores each one.
       - An answer's advantage is its reward minus the group's mean, divided by the group's standard deviation.
@@ -162,12 +171,12 @@ knowledge_points:
     explain: |
       ### A baseline from the group
 
-      A reward of $1$ or $0$ tells us whether an answer passed, but the update needs to know whether an answer did better or worse than usual. In the policy gradients lesson, we got that by subtracting a baseline $b$ from each return. PPO in RLHF gets it from a critic, a second network trained to estimate values.
+      The policy-gradient update needs to know whether an answer did better or worse than usual. We previously subtracted a baseline $b$ from each return. PPO in RLHF gets its baseline from a critic, a second network trained to estimate values.
 
-      **GRPO**, group relative policy optimisation, gets it more simply. For each prompt, the policy writes a **group** of $G$ answers, and the checker scores each one. The group's mean reward is the baseline. For the apples prompt, our four replies got rewards $1,0,1,0$, so the mean is $0.5$. The two correct replies beat it and the two wrong ones fall short.
+      **GRPO**, group relative policy optimisation, uses the group's mean reward as its baseline. For each prompt, the policy writes a **group** of $G$ answers, and the checker scores them. Here $G$ is the group size. This differs from the return $G$ in policy gradients. Our apples replies earned $1,0,1,0$, with mean $0.5$.
 
       ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 270" aria-label="Rewards for four replies to the apples prompt, 1, 0, 1 and 0, with an orange dashed line at the mean 0.5. Each bar runs from the mean to the reply's reward. Replies 1 and 3 have green bars rising from 0.5 to 1 and advantage 1. Replies 2 and 4 have red bars falling from 0.5 to 0 and advantage minus 1. The standard deviation is 0.5, so each bar is one standard deviation long">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 270" aria-label="Rewards for four replies, 1, 0, 1 and 0. The orange dashed line marks the mean 0.5. Green bars for replies 1 and 3 rise from 0.5 to 1, a distance of 0.5. Red bars for replies 2 and 4 fall from 0.5 to 0, a distance of minus 0.5">
       <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
       <path d="M90 200 H600" stroke="#d4d4d4" stroke-width="1.5"/>
       <path d="M90 60 H600" stroke="#d4d4d4" stroke-width="1.5"/>
@@ -180,8 +189,8 @@ knowledge_points:
       <rect x="485" y="130" width="60" height="70" fill="#ef4444"/>
       <path d="M90 130 H600" stroke="#f59e0b" stroke-width="2" stroke-dasharray="6 5"/>
       <text x="155" y="225" text-anchor="middle">reply 1</text><text x="275" y="225" text-anchor="middle">reply 2</text><text x="395" y="225" text-anchor="middle">reply 3</text><text x="515" y="225" text-anchor="middle">reply 4</text>
-      <text x="155" y="250" text-anchor="middle" fill="#10b981">A = 1</text><text x="275" y="250" text-anchor="middle" fill="#ef4444">A = −1</text><text x="395" y="250" text-anchor="middle" fill="#10b981">A = 1</text><text x="515" y="250" text-anchor="middle" fill="#ef4444">A = −1</text>
-      <text x="345" y="30" text-anchor="middle" fill="#737373">each bar is one standard deviation, 0.5, long</text>
+      <text x="155" y="250" text-anchor="middle" fill="#10b981">+0.5</text><text x="275" y="250" text-anchor="middle" fill="#ef4444">−0.5</text><text x="395" y="250" text-anchor="middle" fill="#10b981">+0.5</text><text x="515" y="250" text-anchor="middle" fill="#ef4444">−0.5</text>
+      <text x="345" y="30" text-anchor="middle" fill="#737373">distance from the mean reward</text>
       </g>
       </svg>
       ```
@@ -192,13 +201,13 @@ knowledge_points:
 
       $$A_i=\frac{r_i-\operatorname{mean}(r)}{\operatorname{std}(r)}.$$
 
-      Here $r=(r_1,\dots,r_G)$ are the group's rewards, and $\operatorname{mean}(r)$ is their average. As in the statistics lesson, $\operatorname{std}(r)$ averages the squared distances from the mean, dividing by $G$, then takes the square root. This lesson always divides by $G$. Some implementations divide by $G-1$, which changes the numbers slightly. Dividing by the standard deviation puts every prompt's advantages on a similar scale.
+      Here $r=(r_1,\dots,r_G)$ are the rewards. To find $\operatorname{std}(r)$, average the squared distances from the mean and take the square root. Dividing by $G$ gives the **population standard deviation**, used throughout this lesson. Dividing by $G-1$ gives the **sample standard deviation**. Scaling the advantages this way gives each prompt's reward-driven update a similar size, whatever its reward scale.
 
       ### Three groups side by side
 
       - Rewards $1,0,1,0$ have mean $0.5$ and standard deviation $0.5$, so the advantages are $1,-1,1,-1$.
       - Rewards $1,0,0,0,0$ have mean $0.2$ and standard deviation $0.4$. The one correct answer gets $2$, and each wrong one gets $-0.5$. A rare success gets a big push.
-      - Rewards $1,1,1,1$ have mean $1$, so every $r_i-\operatorname{mean}(r)$ is $0$ and the standard deviation is $0$ too. Every advantage is $0$, and this prompt teaches nothing this round. Implementations add a small constant to the denominator so they never divide by $0$, and the advantages stay $0$.
+      - Rewards $1,1,1,1$ have mean $1$ and standard deviation $0$. Every advantage is $0$, so this prompt teaches nothing from its rewards in this update. Implementations add a small constant to the denominator to avoid division by $0$.
     worked: |
       Let's compute the group-relative advantages for the four replies to the apples prompt, whose rewards are $r=(1,0,1,0)$, so $G=4$.
 
@@ -229,27 +238,29 @@ knowledge_points:
     tldr: |
       - Every token in an answer gets that answer's advantage.
       - GRPO puts these advantages into PPO's clipped objective, so correct answers become more likely and wrong ones less likely.
-      - It needs no critic and no reward model, and some reasoning models were trained this way.
+      - It needs no critic or reward model. Some models trained to write out their working learned this way.
     explain: |
       ### One advantage for every token
 
-      We now have one advantage $A_i$ for each answer in a group. How does that change the policy? In the RLHF lesson, each token of a reply was an action. A verifiable reward arrives once, for the whole answer, so GRPO gives every token of answer $i$ the same advantage $A_i$. The tokens of a correct answer are pushed up and the tokens of a wrong answer are pushed down.
+      Each token of a reply is an action. The checker rewards the whole answer, so GRPO gives every token of answer $i$ the same advantage $A_i$. Positive advantages raise those tokens' probabilities. Negative advantages lower them.
 
       ### Using PPO's clipped objective
 
-      In PPO, the probability ratio $\rho_t$ is a token's probability under the policy being trained, divided by its probability under the old policy that wrote the batch. GRPO uses the same clipped term, with $A_i$ in place of an advantage from a critic:
+      A **batch** contains the groups for several prompts used in one update. The ratio $\rho_t$ is a token's current probability divided by its probability under the old policy that wrote the batch. GRPO uses PPO's clipped term:
 
       $$\min\big(\rho_t A_i,\ \text{clip}(\rho_t,1-c,1+c)\,A_i\big).$$
 
-      Here $c$ is the clip range, such as $0.2$. GRPO averages this term over the tokens of every answer in the batch and climbs it with a few passes of gradient ascent. Like RLHF, it also keeps a KL penalty towards the reference model, so the policy stays close to where it started. Compared with PPO in RLHF, there is no critic to train, and with a checker there is no reward model to run either.
+      Here $c$ is the clip range. The `clip` function leaves ratios between $1-c$ and $1+c$ unchanged. It sets smaller ratios to $1-c$ and larger ones to $1+c$.
+
+      GRPO averages the clipped terms over tokens and answers. It subtracts a separate term: $\beta$ times an estimate of the KL divergence from the reference model. This penalty keeps the policy close to its SFT starting model. The checker reward stays unchanged. GRPO uses a few passes of gradient ascent to increase this objective. There is no critic to train and no reward model to run.
 
       ### Starting from an SFT model
 
-      A group teaches something only when some answers pass and some fail. If the policy never writes a correct final answer, every reward is $0$ and every advantage is $0$. So training usually starts from an SFT model, which already answers in the expected format and solves some of the problems. For the same reason, prompts that every answer passes or every answer fails give no update.
+      As above, equal rewards give zero advantages. The clipped term then gives no push from the rewards, though the KL term can still move the policy. Training usually starts from an SFT model so some answers follow the format and pass the check.
 
       ### Reasoning models
 
-      DeepSeek-R1-Zero, a reasoning model published in 2025, was trained with GRPO straight from a pretrained model, with no SFT first. Its rewards were computed by rules: checking maths answers, running code on tests, and checking the format of the reply. Its replies grew longer during training as it worked through problems in more steps.
+      A **reasoning model** is trained to write out its working step by step before its final answer. DeepSeek-R1-Zero, published in 2025, used GRPO without SFT first. Its pretrained model already solved some problems, so its groups had both passes and fails. It used answer checks and a **format reward**, a reward for laying out a reply in a required form, such as working inside set tags followed by the answer. Its replies grew longer during training.
     worked: |
       Let's work out the clipped terms for two tokens from the apples group, with clip range $c=0.2$. Reply 1 has advantage $A_1=1$ and reply 2 has $A_2=-1$.
 
@@ -265,7 +276,7 @@ knowledge_points:
       4. **Find its clipped term.** The ratio is clipped to $0.8$, and with $A_2=-1$ we keep the smaller of $-0.7$ and $-0.8$.
          $$\min(0.7\times(-1),\ 0.8\times(-1))=-0.8$$
 
-      Both terms are capped. The correct token gets no more credit for rising past $1.2$ times its old probability, and the wrong token gets no more credit for falling below $0.8$ times its old probability.
+      Above ratio $1.2$, the positive term stays at $1.2$, so it gives no more push to raise that token's probability. Below ratio $0.8$, the negative term stays at $-0.8$ whatever the ratio, so it gives no more push to lower that token's probability. Other objective terms can still change either probability.
     problems:
       - rlvr-grpo-update-basics
       - rlvr4-worked-self-explain
@@ -279,7 +290,7 @@ final: rlvr-explain-training
 summary: |
   - A verifiable reward comes from a program, the checker, that compares a reply's final answer with a reference answer or runs code on tests. It gives $1$ when the check passes and $0$ when it fails, so no learned reward model is needed.
   - A reward function finds the final answer, tidies harmless differences such as spaces and a full stop, and compares it with the reference. Each of its rules decides which replies earn reward.
-  - GRPO writes a group of $G$ answers to each prompt and gives answer $i$ the advantage $A_i=\frac{r_i-\operatorname{mean}(r)}{\operatorname{std}(r)}$, with the standard deviation dividing by $G$. If every answer gets the same reward, every advantage is $0$.
+  - The policy writes a group of $G$ answers to each prompt. GRPO gives answer $i$ the advantage $A_i=\frac{r_i-\operatorname{mean}(r)}{\operatorname{std}(r)}$. The standard deviation averages squared distances from the mean over all $G$ answers before taking the square root. Equal rewards give zero advantages and no push from the rewards.
   - Every token of answer $i$ gets $A_i$ in PPO's clipped objective, with a KL penalty towards the reference model. GRPO needs no critic, and training usually starts from an SFT model so that some answers pass.
 
   **Next:** The reward hacking lesson shows how a policy can exploit flaws in a reward, whether it comes from a reward model or a checker.

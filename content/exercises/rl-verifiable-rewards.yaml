@@ -503,7 +503,7 @@ exercises:
           "feedback": "Divide the distance from the mean by the population standard deviation.",
         },
       ]
-    solution: "The mean is $5/8=0.625$ and the standard deviation is $\\sqrt{0.625(0.375)}$. The advantage is $0.375/\\sqrt{0.234375}\\approx0.77$."
+    solution: "The mean is $5/8=0.625$. Averaging squared distances gives variance $[5(0.375)^2+3(0.625)^2]/8=0.234375$. The advantage is $0.375/\\sqrt{0.234375}\\approx0.77$."
     target_seconds: 30
   - id: "rlvr3-binary-template"
     dimension: "math"
@@ -527,7 +527,7 @@ exercises:
           "feedback": "Population standard deviation divides squared distances by G.",
         },
       ]
-    solution: "The mean is ${{=k/G}}$ and the population standard deviation is $\\sqrt{({{=k/G}})(1-{{=k/G}})}$. The correct answer has advantage ${{=(1-k/G)/sqrt((k/G)*(1-k/G))}}$ before rounding."
+    solution: "The mean is ${{=k/G}}$. Averaging squared distances gives variance $[{{=k}}(1-{{=k/G}})^2+{{=G-k}}({{=k/G}})^2]/{{=G}}={{=(k/G)*(1-k/G)}}$. Dividing $1-{{=k/G}}$ by the square root of this variance gives advantage ${{=(1-k/G)/sqrt((k/G)*(1-k/G))}}$ before rounding."
     params: { "G": { "min": 5, "max": 10, "step": 1 }, "k": { "min": 1, "max": 4, "step": 1 } }
     constraints: ["G != 2*k", "G != k^3+k", "G != 5*k"]
   - id: "rlvr3-all-same"
@@ -541,7 +541,7 @@ exercises:
       [
         {
           "id": "a",
-          "text": "All advantages are 0, so the prompt gives no update.",
+          "text": "All advantages are 0, so the rewards give no push.",
           "correct": true,
           "feedback": "Each reward equals the group mean.",
         },
@@ -567,7 +567,7 @@ exercises:
           "feedback": "GRPO computes advantages from group rewards without a critic.",
         },
       ]
-    solution: "Every reward equals the mean 0, so every advantage is 0. This prompt supplies no update."
+    solution: "Every reward equals the mean 0, so every advantage is 0. The rewards give no push through the clipped term, though the KL term can still move the policy."
   - id: "rlvr3-wrong-std"
     dimension: "conceptual"
     type: "mc"
@@ -828,7 +828,7 @@ exercises:
           "feedback": "The reference model supplies the KL comparison.",
         },
       ]
-    solution: "If all checks fail, all group advantages are 0 and the prompts give no update. An SFT model can already follow the format and solve some problems."
+    solution: "If all checks fail, all group advantages are 0 and the rewards give no push through the clipped term. The KL term can still move the policy. An SFT model can already follow the format and solve some problems."
   - id: "rlvr4-kl-reason"
     dimension: "conceptual"
     type: "mc"
@@ -1133,7 +1133,7 @@ exercises:
           "id": "a",
           "text": "The group-relative advantage.",
           "correct": true,
-          "feedback": "This standardises the reward within its group.",
+          "feedback": "This subtracts the group mean and divides by the group standard deviation.",
         },
         {
           "id": "b",
@@ -1157,7 +1157,7 @@ exercises:
           "feedback": "That depends on policy and reference probabilities.",
         },
       ]
-    solution: "The group-relative advantage standardises each reward using the group's mean and standard deviation."
+    solution: "The group-relative advantage subtracts the group's mean reward from each reward and divides by the group's standard deviation."
     knowledge_point: "rlvr-group-advantage"
     target_seconds: 30
   - id: "rlvr3-recall-formula"
