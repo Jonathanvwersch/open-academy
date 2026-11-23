@@ -340,7 +340,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 3
-    prompt: For a preference pair, the policy gives the chosen reply log-probability ${{=pw}}$ and the rejected reply ${{=pl}}$. The reference model gives them ${{=qw}}$ and ${{=ql}}$, and $\beta={{=beta}}$. What is the DPO loss, using natural logs? Give three decimals.
+    prompt: For a preference pair, the policy gives the chosen reply log-probability ${{=pw}}$ and the rejected reply ${{=pl}}$. The reference model gives them ${{=qw}}$ and ${{=ql}}$, and $\beta={{=beta}}$. What is the DPO loss, using natural logs? Round only at the end and give three decimals.
     params:
       pw:
         min: -10
@@ -376,7 +376,7 @@ exercises:
       - answer_expr: 1/(1 + exp(-beta*((pw - qw) - (pl - ql))))
         category: math_error
         feedback: That is $\sigma(z)$. The loss is $-\ln\sigma(z)$.
-    solution: The chosen log ratio is ${{=pw}}-({{=qw}})={{=pw-qw}}$ and the rejected one is ${{=pl}}-({{=ql}})={{=pl-ql}}$, so $z={{=beta}}\times({{=(pw-qw)-(pl-ql)}})={{=round(beta*((pw-qw)-(pl-ql)),2)}}$. Then $\sigma(z)\approx{{=round(1/(1+exp(-beta*((pw-qw)-(pl-ql)))),4)}}$ and the loss is $-\ln\sigma(z)\approx{{=round(log(1+exp(-beta*((pw-qw)-(pl-ql)))),3)}}$.
+    solution: The chosen log ratio is ${{=pw}}-({{=qw}})={{=pw-qw}}$ and the rejected one is ${{=pl}}-({{=ql}})={{=pl-ql}}$, so $z={{=beta}}\times({{=(pw-qw)-(pl-ql)}})={{=round(beta*((pw-qw)-(pl-ql)),2)}}$. Use $-\ln\sigma(z)=\ln(1+e^{-z})$ with $1+e^{-z}\approx{{=round(1+exp(-beta*((pw-qw)-(pl-ql))),5)}}$, giving loss ${{=round(log(1+exp(-beta*((pw-qw)-(pl-ql)))),3)}}$.
   - id: dpo2-dropped-reference
     dimension: conceptual
     type: mc
@@ -398,7 +398,7 @@ exercises:
         text: The loss is exactly $\ln2$, because $\beta=0.1$ is small.
         correct: false
         category: incorrect_reasoning
-        feedback: The loss is $\ln2$ only when $z=0$. A small $\beta$ shrinks $z$ but doesn't make it $0$ here.
+        feedback: The loss is $\ln2$ only when $z=0$. Here $z$ stays nonzero after multiplication by the small $\beta$.
       - id: d
         text: The loss can't be found without a reward model's scores.
         correct: false
@@ -429,10 +429,10 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: A robot arm's policy is trained with DPO on people's choices between pairs of grasp motions. For one pair, the policy's log-probability of the chosen motion minus the reference's is $3$, and for the rejected motion it is $-2$. With $\beta=0.1$, what is the DPO loss? Give three decimals.
+    prompt: A robot arm's policy is trained with DPO on people's choices between pairs of grasp motions. For one pair, the policy's log-probability of the chosen motion minus the reference's is $3$, and for the rejected motion it is $-2$. With $\beta=0.1$, what is the DPO loss? Round only at the end and give three decimals.
     answer: 0.474
     tolerance:
-      abs: 0.001
+      abs: 0.002
     common_wrong:
       - answer: 0.622
         category: math_error
@@ -440,7 +440,7 @@ exercises:
       - answer: 0.007
         category: math_error
         feedback: Multiply the gap $3-(-2)=5$ by $\beta=0.1$ before applying the sigmoid.
-    solution: The gap is $z=0.1\times(3-(-2))=0.5$. Then $\sigma(0.5)\approx0.622$, and the loss is $-\ln0.622\approx0.474$.
+    solution: The gap is $z=0.1\times(3-(-2))=0.5$. Then $\sigma(0.5)\approx0.6225$, and the loss is $-\ln0.6225\approx0.474$.
   - id: dpo2-recall-say
     dimension: conceptual
     type: explain
@@ -495,7 +495,7 @@ exercises:
     knowledge_point: dpo-loss
     difficulty: 1
     est_minutes: 0.5
-    prompt: In a preference pair, the policy's log-probabilities of the chosen and rejected replies are $a$ and $c$, and the reference's are $b$ and $d$. The coefficient is $k$. Write the DPO loss, with the sigmoid written out as $\sigma(z)=1/(1+e^{-z})$. Type `log(...)` for the natural log, `exp(...)` for $e$ to a power and `*` for multiplication.
+    prompt: In a preference pair, the policy's log-probabilities of the chosen and rejected replies are $a$ and $c$, and the reference's are $b$ and $d$. The coefficient is $k$. Write the DPO loss. Write the sigmoid out using `exp(...)`, since `sigmoid(...)` isn't accepted. Use $\sigma(z)=1/(1+e^{-z})$. Type `log(...)` for the natural log, `exp(...)` for $e$ to a power and `*` for multiplication.
     answer: -log(1/(1+exp(-k*((a-b)-(c-d)))))
     variables:
       a:
@@ -871,7 +871,7 @@ exercises:
         text: The reference's log-probabilities cancel in the DPO loss.
         correct: false
         category: incorrect_reasoning
-        feedback: They don't cancel. They shift each reply's log ratio, and they differ between replies.
+        feedback: Each reference log-probability shifts its reply's log ratio. These shifts differ between replies and remain in the loss.
       - id: c
         text: The policy writes the same replies every round.
         correct: false
@@ -906,10 +906,10 @@ exercises:
         category: incorrect_reasoning
         feedback: The reference is a frozen copy of the SFT model, so it doesn't change.
       - id: d
-        text: The fixed preference pairs don't cover the new replies.
+        text: PPO is updating the reward model along with the policy.
         correct: false
         category: incorrect_reasoning
-        feedback: RLHF scores every new reply with the reward model. The trouble is that the scores are wrong.
+        feedback: The reward model stays frozen during PPO updates. PPO updates the policy using the reward model's scores.
     solution: A rising score with falling quality means the policy is getting high scores for text people don't like. The reward model overrates those replies, and the KL penalty only limits the drift.
   - id: dpo4-kl-template
     dimension: math
@@ -963,7 +963,7 @@ exercises:
         text: RLHF with PPO, which can't go wrong while a KL penalty is used.
         correct: false
         category: incorrect_reasoning
-        feedback: The penalty limits drift but doesn't remove it, and PPO needs new replies anyway.
+        feedback: Drift can continue under a KL penalty. PPO also needs new replies every round.
     solution: With fixed pairs and no loop of writing and scoring, DPO fits. Its loss checks only the pairs, so the team should read the replies the trained model writes.
   - id: dpo4-recall-say
     dimension: conceptual

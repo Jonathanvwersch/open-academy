@@ -25,7 +25,7 @@ knowledge_points:
       $$J(\pi)=\sum_y\pi(y\mid x)\,r(x,y)-\beta\,\mathrm{KL}(\pi\Vert\pi_{\text{ref}}).$$
       The sum runs over every reply $y$, and $r(x,y)$ is the reply's reward, for example the reward model's score $r_\phi(x,y)$. We write $\pi$ for any policy we might pick. The KL term averages RLHF's log-ratio penalty over the replies $\pi$ writes. We write it $\mathrm{KL}(\pi\Vert\pi_{\text{ref}})$, the KL from $\pi$ to the reference.
       $$\mathrm{KL}(\pi\Vert\pi_{\text{ref}})=\sum_y\pi(y\mid x)\ln\frac{\pi(y\mid x)}{\pi_{\text{ref}}(y\mid x)}.$$
-      Each log ratio is weighted by the probability that $\pi$ gives it. This lesson uses natural logs, so KL is in nats, the natural-log unit, in place of the bits that base-2 logs give. PPO climbs towards the best policy one update at a time. DPO starts from a useful fact. For this goal, we can write the best policy down directly. Step 2 turns that formula into a loss.
+      Each log ratio is weighted by the probability that $\pi$ gives it. This lesson uses natural logs, so KL is measured in nats. PPO climbs towards the best policy one update at a time. DPO starts from a useful fact. For this goal, we can write the best policy down directly. Step 2 turns that formula into a loss.
 
       ### Boost each reply by its reward
 
@@ -107,6 +107,7 @@ knowledge_points:
       - dpo1-equal-rewards
       - dpo1-goal-value
       - dpo1-robot-grasp
+      - dpo4-kl-template
   - id: dpo-loss
     title: "Write the loss for one preference pair"
     tldr: |
@@ -244,8 +245,8 @@ knowledge_points:
       DPO and RLHF start from the same things. Both use an SFT model, a set of preference pairs, a frozen reference model and a value of $\beta$. After that they do different work.
 
       ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" aria-label="Two training processes. RLHF: preference pairs train a reward model, then a loop where the policy writes replies, the reward model scores them, and PPO updates the policy, which writes again. DPO: fixed preference pairs go straight into the DPO loss, and gradient descent updates the policy">
-      <defs><marker id="dpo-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#525252"/></marker></defs>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 350" aria-label="Two training processes. RLHF: preference pairs train a reward model, then a loop where the policy writes replies, the reward model scores them, and PPO updates the policy, which writes again. DPO: fixed preference pairs and the frozen reference feed the DPO loss, and gradient descent updates the policy">
+      <defs><marker id="dpo-arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#525252"/></marker></defs>
       <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
       <text x="20" y="30" font-weight="600">RLHF</text>
       <rect x="20" y="45" width="130" height="50" rx="8" fill="#f5f5f5" stroke="#a3a3a3"/>
@@ -262,13 +263,13 @@ knowledge_points:
       <text x="555" y="84" text-anchor="middle">scores them</text>
       <rect x="415" y="125" width="130" height="40" rx="8" fill="#dbeafe" stroke="#3b82f6"/>
       <text x="480" y="150" text-anchor="middle">PPO update</text>
-      <path d="M150 70 H178" stroke="#525252" stroke-width="2" marker-end="url(#dpo-arrow)"/>
-      <path d="M310 70 H338" stroke="#525252" stroke-width="2" marker-end="url(#dpo-arrow)"/>
-      <path d="M470 70 H488" stroke="#525252" stroke-width="2" marker-end="url(#dpo-arrow)"/>
+      <path d="M150 70 H180" stroke="#525252" stroke-width="2" marker-end="url(#dpo-arrow)"/>
+      <path d="M310 70 H340" stroke="#525252" stroke-width="2" marker-end="url(#dpo-arrow)"/>
+      <path d="M470 70 H490" stroke="#525252" stroke-width="2" marker-end="url(#dpo-arrow)"/>
       <path d="M555 95 V146" stroke="#525252" stroke-width="2"/>
-      <path d="M555 145 H547" stroke="#525252" stroke-width="2" marker-end="url(#dpo-arrow)"/>
+      <path d="M555 145 H545" stroke="#525252" stroke-width="2" marker-end="url(#dpo-arrow)"/>
       <path d="M415 145 H404" stroke="#525252" stroke-width="2"/>
-      <path d="M405 146 V97" stroke="#525252" stroke-width="2" marker-end="url(#dpo-arrow)"/>
+      <path d="M405 146 V95" stroke="#525252" stroke-width="2" marker-end="url(#dpo-arrow)"/>
       <text x="350" y="150" fill="#525252">repeat</text>
       <text x="20" y="210" font-weight="600">DPO</text>
       <rect x="20" y="225" width="130" height="50" rx="8" fill="#f5f5f5" stroke="#a3a3a3"/>
@@ -280,8 +281,11 @@ knowledge_points:
       <rect x="340" y="225" width="130" height="50" rx="8" fill="#dbeafe" stroke="#3b82f6"/>
       <text x="405" y="246" text-anchor="middle">gradient descent</text>
       <text x="405" y="264" text-anchor="middle">on the policy</text>
-      <path d="M150 250 H178" stroke="#525252" stroke-width="2" marker-end="url(#dpo-arrow)"/>
-      <path d="M310 250 H338" stroke="#525252" stroke-width="2" marker-end="url(#dpo-arrow)"/>
+      <rect x="180" y="300" width="130" height="35" rx="8" fill="#f5f5f5" stroke="#a3a3a3"/>
+      <text x="245" y="322" text-anchor="middle">frozen reference</text>
+      <path d="M245 300 V275" stroke="#525252" stroke-width="2" marker-end="url(#dpo-arrow)"/>
+      <path d="M150 250 H180" stroke="#525252" stroke-width="2" marker-end="url(#dpo-arrow)"/>
+      <path d="M310 250 H340" stroke="#525252" stroke-width="2" marker-end="url(#dpo-arrow)"/>
       </g>
       </svg>
       ```
@@ -297,7 +301,7 @@ knowledge_points:
 
       ### Where RLHF can go wrong
 
-      The reward model learned from a limited set of replies and can score new ones wrongly. The policy keeps writing new replies, so chasing their scores can lead it to text the reward model overrates, such as long or repetitive replies. The KL penalty limits this drift but doesn't remove it.
+      The reward model learned from a limited set of replies and can score new ones wrongly. The policy keeps writing new replies, so chasing their scores can lead it to text the reward model overrates, such as long or repetitive replies. Drift can continue under the KL penalty.
 
       ### Where DPO can go wrong
 
@@ -324,7 +328,6 @@ knowledge_points:
       - dpo4-models-in-training
       - dpo4-reference-once
       - dpo4-rlhf-failure
-      - dpo4-kl-template
       - dpo4-choose-method
 final: dpo-explain-training
 summary: |
