@@ -111,11 +111,8 @@ export function deriveLessonState<Row extends LessonProblemRow>(
         break;
       }
       if (problem.correct !== null && problem.correct < 1) misses += 1;
-      if (misses >= LESSON_HALT_MISSES) {
-        halted = { pointId: point.id, index };
-        break;
-      }
     }
+    if (!passedOn && misses >= LESSON_HALT_MISSES) halted = { pointId: point.id, index };
     const status: KnowledgePointStatus = blocked ? 'locked' : passedOn ? 'passed' : 'active';
     const effectivePassedOn = status === 'passed' ? passedOn : undefined;
     pointStates.push({

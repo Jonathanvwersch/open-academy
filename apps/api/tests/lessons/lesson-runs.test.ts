@@ -380,6 +380,59 @@ test('legacy in-progress run with a halted first step restarts at attempt two', 
   ).toHaveLength(0);
 });
 
+test('legacy quiz run keeps passed steps after three misses and a pass', async () => {
+  const fixture = [...content.lessonsByConcept.entries()].find(
+    ([, lesson]) =>
+      lesson.knowledge_points?.length &&
+      lesson.knowledge_points.every((point) => point.problems.length > 0),
+  );
+  if (!fixture) throw new Error('No lesson with knowledge-point problems was found');
+  const [runConceptId, lesson] = fixture;
+  const knowledgePoints = lesson.knowledge_points ?? [];
+  const firstPoint = knowledgePoints[0];
+  if (!firstPoint?.problems.length) throw new Error('Missing first lesson point');
+  const [legacyRun] = await db
+    .insert(lessonRuns)
+    .values({ userId, conceptId: runConceptId, status: 'quiz', attempt: 1 })
+    .returning();
+  if (!legacyRun) throw new Error('Could not create the legacy quiz run');
+  const servedAt = new Date(headers['X-Now']);
+  const rows = knowledgePoints.flatMap((point, pointIndex) => {
+    const count = point.id === firstPoint.id ? 5 : 2;
+    return Array.from({ length: count }, (_, position) => {
+      const exerciseId = point.problems[position % point.problems.length];
+      if (!exerciseId) throw new Error(`Missing exercise for ${point.id}`);
+      const exercise = content.exercisesById.get(exerciseId);
+      if (!exercise) throw new Error(`Missing fixture exercise ${exerciseId}`);
+      const correct = point.id !== firstPoint.id || position >= 3 ? 1 : 0;
+      return {
+        runId: legacyRun.id,
+        knowledgePointId: point.id,
+        round: 1,
+        position: pointIndex * 10 + position,
+        exerciseId,
+        seed: isTemplate(exercise) ? position + 1 : null,
+        servedAt: new Date(servedAt.getTime() + position * 1_000),
+        answeredAt: new Date(servedAt.getTime() + (position + 1) * 1_000),
+        correct,
+      };
+    });
+  });
+  await db.insert(lessonProblems).values(rows);
+
+  const started = await startRun(undefined, runConceptId);
+  expect(started.status).toBe(200);
+  const run = (await started.json()).run;
+  expect(run.status).toBe('quiz');
+  expect(run.points[0]).toMatchObject({ status: 'passed', round: 1 });
+  expect(run.halted).toBeUndefined();
+  const [storedRun] = await db
+    .select()
+    .from(lessonRuns)
+    .where(and(eq(lessonRuns.userId, userId), eq(lessonRuns.conceptId, runConceptId)));
+  expect(storedRun).toMatchObject({ attempt: 1, status: 'quiz' });
+});
+
 test('a halt after forward progress does not open remediation flags', async () => {
   const runConceptId = [...content.lessonsByConcept.keys()].find((id) => {
     const lesson = content.lessonsByConcept.get(id);
