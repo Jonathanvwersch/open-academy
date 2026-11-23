@@ -124,7 +124,7 @@ exercises:
     role: "practice"
     difficulty: 2
     est_minutes: 1
-    prompt: "A code task gives reward 1 only when every test passes. A program passes 4 of 5 tests. What reward does it earn?"
+    prompt: "A code-with-tests checker gives reward 1 or 0. It runs a model's program on five test inputs. The expected outputs are 1, 4, 9, 16 and 25, and the program returns 1, 4, 9, 16 and 20. What reward does the checker give?"
     answer: 0
     tolerance: { "abs": 0.006 }
     common_wrong:
@@ -132,10 +132,10 @@ exercises:
         {
           "answer": 0.8,
           "category": "math_error",
-          "feedback": "The fraction passed is 0.8. The reward requires every test to pass.",
+          "feedback": "4 of 5 tests pass, a fraction of 0.8. The reward is 1 only when every test gives the expected output.",
         },
       ]
-    solution: "One test fails, so the all-tests checker gives reward 0."
+    solution: "The last test expects 25 but gets 20. The reward is 1 only when every test gives the expected output, so it is 0."
   - id: "rlvr1-format-zero"
     dimension: "conceptual"
     type: "mc"
@@ -200,38 +200,38 @@ exercises:
     role: "practice"
     difficulty: 3
     est_minutes: 2
-    prompt: "A robot puts a cup on a shelf. A camera program checks the final position and gives 1 or 0. What makes this a verifiable reward?"
+    prompt: "A robot policy is trained to put a cup on a shelf. Which reward signal is a verifiable reward?"
     options:
       [
         {
           "id": "a",
-          "text": "A program checks the outcome directly against the task goal.",
+          "text": "A camera program gives 1 if the cup ends on the shelf and 0 otherwise.",
           "correct": true,
-          "feedback": "The final position can be checked by a program.",
+          "feedback": "A program checks the outcome against the task goal, so this reward is verifiable.",
         },
         {
           "id": "b",
-          "text": "A learned reward model predicts people's preferred cup position.",
+          "text": "A learned reward model scores how much people would like the arm's motion.",
           "correct": false,
           "category": "incorrect_reasoning",
-          "feedback": "No learned reward model supplies this score.",
+          "feedback": "A learned reward model predicts preferences. It does not check the goal.",
         },
         {
           "id": "c",
-          "text": "A person watches every attempt and gives a fresh rating.",
+          "text": "A person watches every attempt and rates how smooth it looked.",
           "correct": false,
           "category": "incorrect_reasoning",
-          "feedback": "The camera program supplies the reward.",
+          "feedback": "A human rating is a judgement. A program does not compute it.",
         },
         {
           "id": "d",
-          "text": "A KL penalty measures how far the arm moved from its start.",
+          "text": "A KL penalty measures how far the policy moved from its reference.",
           "correct": false,
           "category": "incorrect_reasoning",
-          "feedback": "A KL penalty controls policy drift and does not check the cup position.",
+          "feedback": "A KL penalty limits policy drift and does not check where the cup ends.",
         },
       ]
-    solution: "The camera program checks whether the cup reached the shelf. Its outcome check supplies the reward."
+    solution: "Only the camera program checks the outcome against the goal and gives 1 or 0, so it is the verifiable reward."
   - id: "rlvr-reward-code-basics"
     dimension: "conceptual"
     type: "mc"
@@ -282,7 +282,7 @@ exercises:
       [
         {
           "id": "a",
-          "text": 'The call to .rstrip(".") removes the final full stop.',
+          "text": 'The call to .rstrip(". ") removes the final full stop.',
           "correct": true,
           "feedback": 'This leaves "12" for the comparison.',
         },
@@ -318,8 +318,9 @@ exercises:
     difficulty: 2
     est_minutes: 1
     prompt: "What does this Python code print?"
-    code: "def final_answer(text):\n    for line in reversed(text.strip().splitlines()):\n        if line.startswith(\"Answer:\"):\n            return line[len(\"Answer:\"):].strip().rstrip(\".\")\n    return None\n\n\ndef reward(text, reference):\n    if final_answer(text) == reference:\n        return 1.0\n    return 0.0\n\nprint(reward(\"3 * 4 = 12\\nanswer: 12\", \"12\"))"
-    accept: ["0.0", "0", "0.00"]
+    code: "def final_answer(text):\n    for line in reversed(text.strip().splitlines()):\n        if line.startswith(\"Answer:\"):\n            return line[len(\"Answer:\"):].strip().rstrip(\". \")\n    return None\n\n\ndef reward(text, reference):\n    if final_answer(text) == reference:\n        return 1.0\n    return 0.0\n\nprint(reward(\"3 * 4 = 12\\nanswer: 12\", \"12\"))"
+    answer: 0
+    tolerance: { "abs": 0 }
     solution: 'The lowercase `answer:` fails the case-sensitive `startswith("Answer:")` check. No final answer is found, so the output is 0.0.'
   - id: "rlvr2-code-complete"
     dimension: "implementation"
@@ -328,7 +329,7 @@ exercises:
     difficulty: 2
     est_minutes: 1
     prompt: "Fill the blank so the function recognises a line beginning with `Answer:`."
-    code: "def final_answer(text):\n    for line in reversed(text.strip().splitlines()):\n        if line.____(\"Answer:\"):\n            return line[len(\"Answer:\"):].strip().rstrip(\".\")\n    return None"
+    code: "def final_answer(text):\n    for line in reversed(text.strip().splitlines()):\n        if line.____(\"Answer:\"):\n            return line[len(\"Answer:\"):].strip().rstrip(\". \")\n    return None"
     accept: ["startswith"]
     solution: "`startswith` checks the beginning of the line. This selects lines with the required `Answer:` prefix."
   - id: "rlvr2-anywhere"
@@ -376,8 +377,9 @@ exercises:
     difficulty: 2
     est_minutes: 1
     prompt: "What does this Python code print?"
-    code: "def final_answer(text):\n    for line in reversed(text.strip().splitlines()):\n        if line.startswith(\"Answer:\"):\n            return line[len(\"Answer:\"):].strip().rstrip(\".\")\n    return None\n\n\ndef reward(text, reference):\n    if final_answer(text) == reference:\n        return 1.0\n    return 0.0\n\nprint(reward(\"Answer: 3\\nLet me check that.\\nAnswer: 4\", \"4\"))"
-    accept: ["1.0", "1", "1.00"]
+    code: "def final_answer(text):\n    for line in reversed(text.strip().splitlines()):\n        if line.startswith(\"Answer:\"):\n            return line[len(\"Answer:\"):].strip().rstrip(\". \")\n    return None\n\n\ndef reward(text, reference):\n    if final_answer(text) == reference:\n        return 1.0\n    return 0.0\n\nprint(reward(\"Answer: 3\\nLet me check that.\\nAnswer: 4\", \"4\"))"
+    answer: 1
+    tolerance: { "abs": 0 }
     solution: 'The reversed search finds the last `Answer:` line first. Its extracted answer is "4", so the output is 1.0.'
   - id: "rlvr2-reward-to-r"
     dimension: "math"
@@ -385,7 +387,7 @@ exercises:
     role: "practice"
     difficulty: 3
     est_minutes: 2
-    prompt: "The Python functions below score the reply `\"3 * 4 = 12\\nAnswer: 12.\"` against reference `\"12\"`. The policy log-probability is $-1.5$, the reference log-probability is $-2.5$, and $\\beta=0.2$. If we plugged the checker reward into RLHF's KL-penalised reward, what would the adjusted reward be?\n\n```python\ndef final_answer(text):\n    for line in reversed(text.strip().splitlines()):\n        if line.startswith(\"Answer:\"):\n            return line[len(\"Answer:\"):].strip().rstrip(\".\")\n    return None\n\n\ndef reward(text, reference):\n    if final_answer(text) == reference:\n        return 1.0\n    return 0.0\n```"
+    prompt: "The Python functions below score the reply `\"3 * 4 = 12\\nAnswer: 12.\"` against reference `\"12\"`. The policy log-probability is $-1.5$, the reference log-probability is $-2.5$, and $\\beta=0.2$. If we plugged the checker reward into RLHF's KL-penalised reward, what would the adjusted reward be?\n\n```python\ndef final_answer(text):\n    for line in reversed(text.strip().splitlines()):\n        if line.startswith(\"Answer:\"):\n            return line[len(\"Answer:\"):].strip().rstrip(\". \")\n    return None\n\n\ndef reward(text, reference):\n    if final_answer(text) == reference:\n        return 1.0\n    return 0.0\n```"
     answer: 0.8
     tolerance: { "abs": 0.006 }
     common_wrong:
@@ -405,7 +407,8 @@ exercises:
     est_minutes: 2
     prompt: "What does this Python code print?"
     code: "def square(n):\n    return n * 2\n\ndef all_pass():\n    tests = [(0, 0), (2, 4), (3, 9)]\n    passed = 0\n    for x, expected in tests:\n        if square(x) == expected:\n            passed += 1\n    if passed == len(tests):\n        return 1.0\n    return 0.0\n\nprint(all_pass())"
-    accept: ["0.0", "0", "0.00"]
+    answer: 0
+    tolerance: { "abs": 0 }
     solution: "The third test expects 9 but gets 6, so the reward is 0.0. With only the first two tests, this wrong function would have earned 1.0."
   - id: "rlvr-group-advantage-basics"
     dimension: "conceptual"
@@ -527,7 +530,7 @@ exercises:
           "feedback": "Population standard deviation divides squared distances by G.",
         },
       ]
-    solution: "The mean is ${{=k/G}}$. Averaging squared distances gives variance $[{{=k}}(1-{{=k/G}})^2+{{=G-k}}({{=k/G}})^2]/{{=G}}={{=(k/G)*(1-k/G)}}$. Dividing $1-{{=k/G}}$ by the square root of this variance gives advantage ${{=(1-k/G)/sqrt((k/G)*(1-k/G))}}$ before rounding."
+    solution: "The mean is $\\frac{ {{=k}} }{ {{=G}} }$, so a correct answer is $1-\\frac{ {{=k}} }{ {{=G}} }=\\frac{ {{=G-k}} }{ {{=G}} }$ above it. Averaging squared distances gives variance $\\frac{ {{=k}}({{=G-k}})^2+{{=G-k}}({{=k}})^2}{ {{=G}}^3}=\\frac{ {{=k*(G-k)}} }{ {{=G*G}} }$. The advantage is $\\frac{ {{=G-k}} }{ {{=G}} }\\div\\sqrt{\\frac{ {{=k*(G-k)}} }{ {{=G*G}} }}=\\sqrt{\\frac{ {{=G-k}} }{ {{=k}} }}$. To 2 decimal places, this is ${{=round((1-k/G)/sqrt((k/G)*(1-k/G)),2)}}$."
     params: { "G": { "min": 5, "max": 10, "step": 1 }, "k": { "min": 1, "max": 4, "step": 1 } }
     constraints: ["G != 2*k", "G != k^3+k", "G != 5*k"]
   - id: "rlvr3-all-same"
@@ -648,7 +651,7 @@ exercises:
     role: "basics"
     difficulty: 1
     est_minutes: 1
-    prompt: "Which advantage does GRPO give to each token of answer $i$?"
+    prompt: "A checker scores only the finished answer. Which advantage does GRPO give to each token of answer $i$?"
     options:
       [
         {
@@ -727,7 +730,7 @@ exercises:
     role: "practice"
     difficulty: 1
     est_minutes: 1
-    prompt: "A 30-token answer has GRPO advantage -0.5. What advantage does its 10th token get?"
+    prompt: "A checker scores only the finished answer. A 30-token answer has GRPO advantage -0.5. What advantage does its 10th token get?"
     answer: -0.5
     tolerance: { "abs": 0.006 }
     common_wrong:
@@ -797,7 +800,7 @@ exercises:
     role: "practice"
     difficulty: 2
     est_minutes: 1
-    prompt: "A policy never gives a correct final answer on a set of hard prompts. Why does this make an SFT starting model useful?"
+    prompt: "In GRPO training, the only reward is 1 for a passing answer check and 0 otherwise. A policy never gives a correct final answer on a set of hard prompts. Why does this make an SFT starting model useful?"
     options:
       [
         {
@@ -840,9 +843,9 @@ exercises:
       [
         {
           "id": "a",
-          "text": "It keeps the policy close to its SFT starting model.",
+          "text": "It limits how far the policy drifts from the reference model.",
           "correct": true,
-          "feedback": "The reference is a frozen copy of the starting model.",
+          "feedback": "The penalty grows as the policy moves away from the reference.",
         },
         {
           "id": "b",
@@ -866,7 +869,7 @@ exercises:
           "feedback": "Old probabilities still define the clipped ratio.",
         },
       ]
-    solution: "The KL penalty limits drift from the reference model. That reference is the frozen SFT starting model."
+    solution: "The KL penalty limits drift from the reference model. An SFT starting model is one common choice of reference."
   - id: "rlvr4-robot-task"
     dimension: "math"
     type: "numeric"
@@ -956,7 +959,7 @@ exercises:
     role: "recall"
     difficulty: 1
     est_minutes: 0.5
-    prompt: "For a code task scored by an all-tests checker, when is the reward 1?"
+    prompt: "A checker scores a code task by running the program on test inputs and giving reward 1 or 0. When is the reward 1?"
     options:
       [
         {
@@ -1061,38 +1064,38 @@ exercises:
     role: "recall"
     difficulty: 1
     est_minutes: 0.5
-    prompt: "A checker searches reply lines from bottom to top and stops at an Answer: line. If there are two such lines, which counts?"
+    prompt: "A reply has the line `Answer: 3`, then some checking of the working, then a later line `Answer: 4`. Which line should a final-answer checker use?"
     options:
       [
         {
           "id": "a",
           "text": "The last Answer: line.",
           "correct": true,
-          "feedback": "The reversed search reaches it first.",
+          "feedback": "The model writes its final answer last, and a bottom-up search reaches it first.",
         },
         {
           "id": "b",
           "text": "The first Answer: line.",
           "correct": false,
           "category": "incorrect_reasoning",
-          "feedback": "That would require searching top to bottom.",
+          "feedback": "An earlier Answer: line can be a draft written before the model checked its working.",
         },
         {
           "id": "c",
           "text": "Both lines must match the reference.",
           "correct": false,
           "category": "incorrect_reasoning",
-          "feedback": "The search stops when it finds one.",
+          "feedback": "Only the final answer is compared with the reference.",
         },
         {
           "id": "d",
           "text": "Neither line can be used.",
           "correct": false,
           "category": "incorrect_reasoning",
-          "feedback": "Having two lines does not prevent extraction.",
+          "feedback": "The checker can still use the last Answer: line.",
         },
       ]
-    solution: "A bottom-up search takes the last Answer: line."
+    solution: "The last Answer: line holds the final answer, and a bottom-up search finds it first."
     knowledge_point: "rlvr-reward-code"
     target_seconds: 30
   - id: "rlvr3-recall-explain"
@@ -1177,7 +1180,7 @@ exercises:
     role: "recall"
     difficulty: 1
     est_minutes: 1
-    prompt: "How does GRPO use group advantages to update the policy?"
+    prompt: "When a checker scores only the finished answer, how does GRPO use group advantages to update the policy?"
     knowledge_point: "rlvr-grpo-update"
     rubric:
       [
@@ -1189,13 +1192,13 @@ exercises:
         },
         {
           "id": "r2",
-          "criterion": "Explain that GRPO puts these advantages into the clipped objective and climbs it to raise better answers and lower worse ones.",
+          "criterion": "Explain that GRPO puts these advantages into the clipped objective and climbs it, so each token's term pushes up tokens of better answers and pushes down tokens of worse ones.",
           "weight": 1,
           "required": true,
         },
       ]
-    exemplar: "Every token gets its answer's advantage. GRPO uses those advantages in PPO's clipped objective and climbs it, making better answers more likely and worse answers less likely."
-    solution: "Every token gets its answer's advantage. GRPO uses those advantages in PPO's clipped objective and climbs it, making better answers more likely and worse answers less likely."
+    exemplar: "Every token gets its answer's advantage. GRPO uses those advantages in PPO's clipped objective and climbs it, so each token's term pushes tokens of better answers up and tokens of worse answers down, combined with the KL term."
+    solution: "Every token gets its answer's advantage. GRPO uses those advantages in PPO's clipped objective and climbs it, so each token's term pushes tokens of better answers up and tokens of worse answers down, combined with the KL term."
   - id: "rlvr4-recall-contrast"
     dimension: "conceptual"
     type: "mc"
