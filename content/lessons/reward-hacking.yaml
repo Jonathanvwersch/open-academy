@@ -154,8 +154,8 @@ knowledge_points:
   - id: rh-signs
     title: "Spot reward hacking in curves and replies"
     tldr: |
-      - The reward model's score can't show hacking on its own, so we also track a rating the policy isn't trained on.
-      - The clearest sign is the score rising while ratings fall, from people or from a stronger language model asked to judge.
+      - The reward model's score can't show hacking alone, so we also track ratings the policy isn't trained on.
+      - The clearest sign is the score rising while ratings fall, from people or a stronger language model acting as judge.
       - Reading replies shows what the policy found, such as padding, repetition, flattery, or code that passes only its exact tests.
     explain: |
       ### A rating the policy isn't trained on
