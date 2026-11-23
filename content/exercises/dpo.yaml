@@ -240,13 +240,10 @@ exercises:
     knowledge_point: dpo-best-policy
     difficulty: 1
     est_minutes: 0.5
-    prompt: A prompt has two replies, A and B, with reference probabilities $a$ and $b$ and rewards $u$ and $v$. The KL coefficient is $k$. Write the best policy's probability of A. Type `exp(...)` for $e$ to a power and `*` for multiplication.
-    answer: a*exp(u/k)/(a*exp(u/k)+b*exp(v/k))
+    prompt: A prompt has two replies, A and B, with reference probabilities $a$ and $1-a$ and rewards $u$ and $v$. The KL coefficient is $k$. Write the best policy's probability of A. Type `exp(...)` for $e$ to a power and `*` for multiplication.
+    answer: a*exp(u/k)/(a*exp(u/k)+(1-a)*exp(v/k))
     variables:
       a:
-        - 0.1
-        - 0.9
-      b:
         - 0.1
         - 0.9
       u:
@@ -258,7 +255,7 @@ exercises:
       k:
         - 0.2
         - 2
-    solution: Boost each reply, $ae^{u/k}$ and $be^{v/k}$, then divide A's by their total.
+    solution: Boost each reply, $ae^{u/k}$ and $(1-a)e^{v/k}$, then divide A's by their total.
   - id: dpo-loss-basics
     dimension: conceptual
     type: mc
