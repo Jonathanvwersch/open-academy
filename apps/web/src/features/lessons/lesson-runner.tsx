@@ -233,7 +233,8 @@ export function LessonRunner({
     if (
       (!state ||
         state.needsProgressSync ||
-        (state.status === 'in_progress' && state.halted !== undefined)) &&
+        (state.status === 'in_progress' && state.halted !== undefined) ||
+        (state.status === 'needs_retry' && state.retry?.ready === true)) &&
       starting.current !== startAttempt
     ) {
       starting.current = startAttempt;
@@ -543,7 +544,7 @@ export function LessonRunner({
       </section>
     );
 
-  if (state.status === 'needs_retry') {
+  if (state.status === 'needs_retry' && state.retry?.ready !== true) {
     const retryAfter = state.retry?.after ? Date.parse(state.retry.after) : Number.NaN;
     const reviewTitles =
       retryAfter > Date.now() ? [] : (state.retry?.reviewFirst.map(({ title }) => title) ?? []);

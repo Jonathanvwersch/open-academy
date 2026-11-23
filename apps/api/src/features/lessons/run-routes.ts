@@ -34,6 +34,7 @@ import {
 import { gradeExercise } from '../../learning/grading/index.js';
 import { MULTIPLE_CHOICE_FALLBACK_FEEDBACK } from '../../learning/grading/multiple-choice.js';
 import { QUIZ_PASS_MARK, scoreLessonQuiz, selectQuizItems } from '../../learning/lesson-quiz.js';
+import { isLessonRetryReady } from '../../learning/lesson-retry.js';
 import {
   deriveLessonState,
   selectNextProblem,
@@ -126,6 +127,7 @@ export function registerLessonRunRoutes(
     run: typeof lessonRuns.$inferSelect,
   ) => {
     const userId = context.get('userId');
+    const now = deps.requestNow(context);
     const rows = await deps.db
       .select()
       .from(lessonProblems)
@@ -347,6 +349,7 @@ export function registerLessonRunRoutes(
         ? {
             retry: {
               after: run.retryAfter?.toISOString() ?? null,
+              ready: isLessonRetryReady(run.retryAfter, retryFlags.length > 0, now),
               reviewFirst: reviewFirstIds.map((id) => ({
                 id,
                 title: index.conceptsById.get(id)?.title ?? id,
@@ -500,7 +503,7 @@ export function registerLessonRunRoutes(
         existing.attempt,
       );
       if (existing.status === 'needs_retry') {
-        if (existing.retryAfter && now < existing.retryAfter) {
+        if (!isLessonRetryReady(existing.retryAfter, false, now)) {
           return { kind: 'retry_tomorrow' as const };
         }
         const openFlags = await tx
@@ -516,7 +519,7 @@ export function registerLessonRunRoutes(
         const reviewFirstIds = [
           ...new Set(openFlags.map((flag) => flag.targetPrereqId ?? conceptId)),
         ];
-        if (reviewFirstIds.length > 0) {
+        if (!isLessonRetryReady(existing.retryAfter, openFlags.length > 0, now)) {
           return {
             kind: 'review_first' as const,
             titles: reviewFirstIds.map((id) => resolved.index.conceptsById.get(id)?.title ?? id),

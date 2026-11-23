@@ -1,7 +1,7 @@
 import { mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { expect, type Page, test } from '@playwright/test';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { env } from '../../apps/api/src/config.js';
 import { createDb } from '../../apps/api/src/db/client.js';
 import {
@@ -1762,8 +1762,10 @@ test('a legacy v1 learn activity resumes through the KP runner and final questio
   expect(continued.lastAttempt.exerciseId).toBe('vectors-fixture-final');
 });
 
-test('three misses pause a lesson until the next local day', async ({ page }) => {
-  await createSession(page);
+test('three misses pause a lesson until the next local day, then eligible retry starts at step one', async ({
+  page,
+}) => {
+  const sessionId = await createSession(page);
   let run = await currentRun(page);
   for (let answerIndex = 0; answerIndex < 3; answerIndex += 1) {
     run = await answerAndReload(page, false);
@@ -1782,6 +1784,21 @@ test('three misses pause a lesson until the next local day', async ({ page }) =>
   await expect(page.getByText('It comes back tomorrow.')).toBeVisible();
   await expect(page.getByLabel('Your answer')).toHaveCount(0);
   await expect(page.locator('[data-problem-id]')).toHaveCount(0);
+
+  const [session] = await db
+    .select({ userId: studySessions.userId })
+    .from(studySessions)
+    .where(eq(studySessions.id, sessionId));
+  if (!session) throw new Error('Missing test session');
+  await db
+    .update(lessonRuns)
+    .set({ retryAfter: new Date('2025-12-31T00:00:00.000Z') })
+    .where(and(eq(lessonRuns.userId, session.userId), eq(lessonRuns.conceptId, conceptId)));
+
+  await page.reload();
+  await expect(page.getByTestId('lesson-problem')).toBeVisible();
+  await expect(page.getByText('This lesson is paused.')).toHaveCount(0);
+  await expect.poll(async () => (await currentRun(page)).points[0].round).toBe(2);
 });
 
 test('lesson quiz results are hidden until submit, resume after reload, and allow review after passing', async ({
