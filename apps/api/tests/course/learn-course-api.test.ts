@@ -2038,14 +2038,18 @@ test('Home hides an active PCA project until all hard prerequisite ancestors are
     .values({ userId, plannedMinutes: 60, status: 'active' })
     .returning();
   if (!session) throw new Error('Could not create active PCA project session');
-  await db.insert(sessionActivities).values({
-    sessionId: session.id,
-    idx: 0,
-    kind: 'lab',
-    projectId: 'pca-numpy',
-    plannedMinutes: 60,
-    status: 'planned',
-  });
+  const [labActivity] = await db
+    .insert(sessionActivities)
+    .values({
+      sessionId: session.id,
+      idx: 0,
+      kind: 'lab',
+      projectId: 'pca-numpy',
+      plannedMinutes: 60,
+      status: 'planned',
+    })
+    .returning();
+  if (!labActivity) throw new Error('Could not create active PCA lab activity');
   await db.insert(mastery).values(completedMasteryRows(directPrerequisites));
 
   const beforeAncestorsResponse = await get('/learn');
@@ -2084,13 +2088,37 @@ test('Home hides an active PCA project until all hard prerequisite ancestors are
 
   const afterRestartSessionResponse = await get(`/sessions/${session.id}`);
   const afterRestartSession = (await afterRestartSessionResponse.json()) as {
-    activities: Array<{ kind: string; projectId?: string }>;
+    activities: Array<{ id: string; kind: string; projectId?: string; status: string }>;
   };
   expect(
     afterRestartSession.activities.some(
-      (activity) => activity.kind === 'lab' && activity.projectId === 'pca-numpy',
+      (activity) =>
+        activity.id === labActivity.id &&
+        activity.kind === 'lab' &&
+        activity.projectId === 'pca-numpy' &&
+        activity.status === 'skipped',
     ),
-  ).toBe(false);
+  ).toBe(true);
+
+  await db
+    .update(sessionActivities)
+    .set({ status: 'planned' })
+    .where(eq(sessionActivities.id, labActivity.id));
+  const plannedSessionResponse = await get(`/sessions/${session.id}`);
+  const plannedSession = (await plannedSessionResponse.json()) as {
+    activities: Array<{ id: string }>;
+  };
+  expect(plannedSession.activities.some((activity) => activity.id === labActivity.id)).toBe(false);
+
+  await db
+    .update(sessionActivities)
+    .set({ status: 'completed' })
+    .where(eq(sessionActivities.id, labActivity.id));
+  const completedSessionResponse = await get(`/sessions/${session.id}`);
+  const completedSession = (await completedSessionResponse.json()) as {
+    activities: Array<{ id: string }>;
+  };
+  expect(completedSession.activities.some((activity) => activity.id === labActivity.id)).toBe(true);
 });
 
 test('PCA course row stays unavailable until hard prerequisite ancestors are complete', async () => {

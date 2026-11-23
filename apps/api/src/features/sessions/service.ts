@@ -460,7 +460,8 @@ export async function getSessionsById(deps: FeatureServices, request: FeatureReq
     session?.activities.filter(
       (activity) =>
         sessionActivityIsInContent(index, activity) &&
-        labActivityReady(activity, masteryByKey, runRows, index),
+        ((activity.status !== 'planned' && activity.status !== 'in_progress') ||
+          labActivityReady(activity, masteryByKey, runRows, index)),
     ) ?? [];
   const activityIds = activities.map((activity) => activity.id);
   const activityAttempts = activityIds.length
