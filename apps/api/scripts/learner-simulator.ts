@@ -1722,6 +1722,11 @@ async function auditCompressionPlan(
       .filter((card) => isDueToday(card.dueAt, now, state.timezone ?? 'UTC'))
       .map((card) => card.conceptId),
   );
+  const remediationConceptIds = new Set(
+    state.remediationFlags.flatMap((flag) =>
+      flag.status !== 'resolved' && flag.targetPrereqId ? [flag.targetPrereqId] : [],
+    ),
+  );
   const reviewConceptIds = new Set(
     activities
       .filter((activity) => activity.kind === 'review')
@@ -1749,7 +1754,10 @@ async function auditCompressionPlan(
   const coverageByTask = new Map(
     [...new Set(taskConceptIds)].map((conceptId) => [
       conceptId,
-      dueTopicsCoveredBy(conceptId, state, content, now),
+      new Set([
+        ...dueTopicsCoveredBy(conceptId, state, content, now),
+        ...(reviewConceptIds.has(conceptId) && dueConceptIds.has(conceptId) ? [conceptId] : []),
+      ]),
     ]),
   );
   let coveredSkips = 0;
@@ -1758,7 +1766,20 @@ async function auditCompressionPlan(
       .filter(([conceptId, covered]) => conceptId !== dueConceptId && covered.has(dueConceptId))
       .map(([conceptId]) => conceptId);
     if (reviewConceptIds.has(dueConceptId)) {
-      if (coveringConceptIds.length > 0) {
+      const dueReviewTopics = [
+        dueConceptId,
+        ...dueTopicsCoveredBy(dueConceptId, state, content, now),
+      ];
+      const reviewIsRedundant = dueReviewTopics.every((reviewTopicId) =>
+        [...coverageByTask].some(
+          ([conceptId, covered]) => conceptId !== dueConceptId && covered.has(reviewTopicId),
+        ),
+      );
+      if (
+        !remediationConceptIds.has(dueConceptId) &&
+        reviewIsRedundant &&
+        coveringConceptIds.length > 0
+      ) {
         addViolation(runtime, day, 'P12', dueConceptId, [], {
           courseId,
           conceptId: dueConceptId,

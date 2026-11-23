@@ -78,6 +78,7 @@ test('gap learner reviews logistic regression before completing the affected les
     courseIds: ['maths-for-ml', 'ml-foundations'],
   });
   const gap = report.profiles[0];
+  expect(gap?.violationCounts.P12).toBe(0);
   expect(gap?.remediation.totals.noProgressHalts).toBeGreaterThanOrEqual(1);
   expect(
     gap?.remediation.flagsOpened.some((event) => event.prerequisiteId === 'logistic-regression'),

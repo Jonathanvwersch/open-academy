@@ -1895,6 +1895,95 @@ test('a Good-credited lesson covers its due prerequisite, which is due again if 
   expect(remediationTrace.find((item) => item.conceptId === 'vectors')?.result).not.toBe('covered');
 });
 
+test('a due covering review replaces an overdue review that it covers', () => {
+  const state = studyState(['maths-for-ml'], courseContent);
+  state.activeCourseId = 'maths-for-ml';
+  const reviewedAt = new Date('2025-12-01T12:00:00.000Z');
+  const overdueAt = new Date('2026-01-12T00:00:00.000Z');
+  const fsrsCard = {
+    ...scheduleReview(newReviewCard(reviewedAt), reviewedAt, Rating.Good, 'UTC', false).card,
+    state: State.Review,
+    stability: 12,
+    due: overdueAt,
+  };
+  state.cards = [
+    {
+      conceptId: 'dot-product',
+      dimension: 'math',
+      dueAt: overdueAt.toISOString(),
+      retrievability: 0.5,
+      fsrs: fsrsCard,
+    },
+    {
+      conceptId: 'matrices',
+      dimension: 'math',
+      dueAt: now.toISOString(),
+      retrievability: 0.7,
+    },
+  ];
+  const excludedLearnConcepts = new Set(courseContent.concepts.map((concept) => concept.id));
+
+  expect(dueTopicsCoveredBy('matrices', state, courseContent, now)).toContain('dot-product');
+  const plan = planSession(state, courseContent, now, 200, 'weekday', excludedLearnConcepts);
+
+  expect(plannedReviewTopics(plan, courseContent)).toEqual(['matrices']);
+  expect(explainReviewSelection(state, courseContent, now, 200)).toContainEqual(
+    expect.objectContaining({
+      conceptId: 'dot-product',
+      result: 'covered',
+      coveringConceptId: 'matrices',
+    }),
+  );
+});
+
+test('a covered remediation review remains selected', () => {
+  const schedulerContent = schedulerContentWithTopics(
+    { 'fixture-course': ['linear-models'] },
+    content,
+  );
+  const state = studyState(['fixture-course'], schedulerContent);
+  const reviewedAt = new Date('2025-12-01T12:00:00.000Z');
+  const dueAt = new Date('2026-01-14T00:00:00.000Z');
+  const fsrsCard = {
+    ...scheduleReview(newReviewCard(reviewedAt), reviewedAt, Rating.Good, 'UTC', false).card,
+    state: State.Review,
+    stability: 12,
+    due: dueAt,
+  };
+  state.cards = [
+    {
+      conceptId: 'vectors',
+      dimension: 'math',
+      dueAt: dueAt.toISOString(),
+      retrievability: 0.5,
+      fsrs: fsrsCard,
+    },
+    {
+      conceptId: 'linear-models',
+      dimension: 'math',
+      dueAt: dueAt.toISOString(),
+      retrievability: 0.5,
+      fsrs: fsrsCard,
+    },
+  ];
+  state.remediationFlags = [
+    { conceptId: 'linear-models', targetPrereqId: 'vectors', status: 'open' },
+  ];
+  state.lessonRuns = [{ conceptId: 'linear-models', status: 'needs_retry' }];
+  const excludedLearnConcepts = new Set(schedulerContent.concepts.map((concept) => concept.id));
+
+  const plan = planSession(state, schedulerContent, now, 120, 'weekday', excludedLearnConcepts);
+  const reviewTopics = plannedReviewTopics(plan, schedulerContent);
+
+  expect(reviewTopics).toEqual(expect.arrayContaining(['vectors', 'linear-models']));
+  expect(reviewTopics).toHaveLength(2);
+  expect(
+    explainReviewSelection(state, schedulerContent, now, 120).find(
+      (result) => result.conceptId === 'vectors',
+    )?.result,
+  ).not.toBe('covered');
+});
+
 test('fractional positive credit leaves a due-today card uncovered when it remains due today', () => {
   const concepts = content.concepts.map((concept) =>
     concept.id === 'linear-models'
