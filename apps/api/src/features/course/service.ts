@@ -27,6 +27,7 @@ import {
   courseFoundations,
   masteryKey,
   prerequisiteMet,
+  projectReady,
 } from '../../learning/prerequisites.js';
 import {
   currentLearnerUnit,
@@ -546,6 +547,9 @@ function buildUnits(
   placedOutConcepts: ReadonlySet<string>,
 ) {
   const topicState = courseTopicState(index, masteryRecords, runs, placedOutConcepts);
+  const masteryByKey = new Map(
+    masteryRecords.map((record) => [masteryKey(record.conceptId, record.dimension), record]),
+  );
   const runsByConcept = new Map(runs.map((run) => [run.conceptId, run]));
   const outlineConcepts = [
     ...new Set(index.courses.flatMap((entry) => entry.units.flatMap((unit) => unit.concepts))),
@@ -564,7 +568,7 @@ function buildUnits(
         ? {
             id: project.id,
             title: project.title,
-            available: project.status === 'authored' && project.tests.length > 0,
+            available: projectReady(project, masteryByKey, runs, index),
             status: projectStatuses.get(project.id) ?? 'not_started',
           }
         : null,

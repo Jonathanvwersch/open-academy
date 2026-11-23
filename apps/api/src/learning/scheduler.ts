@@ -16,6 +16,7 @@ import {
   courseUnitPositions,
   masteryKey,
   prerequisiteMet,
+  projectReady,
 } from './prerequisites.js';
 import type { SessionKind } from './session-budget.js';
 import type { MasteryRecord } from './types.js';
@@ -1565,8 +1566,12 @@ function optionalProjectAndPaperActivities(
     });
     remainingMinutes -= paperMinutes;
   }
-  const availableProjects = content.projects.filter(
-    (project) => project.status === 'authored' && project.tests.length > 0,
+  const masteryByKey = new Map(
+    state.mastery.map((record) => [masteryKey(record.conceptId, record.dimension), record]),
+  );
+  const lessonRuns = state.lessonRuns ?? [];
+  const availableProjects = content.projects.filter((project) =>
+    projectReady(project, masteryByKey, lessonRuns, content),
   );
   const courseProjectIds = courseContext.course.units
     .slice(0, courseContext.currentUnit)
