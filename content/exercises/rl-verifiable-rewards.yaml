@@ -615,7 +615,7 @@ exercises:
     role: "practice"
     difficulty: 3
     est_minutes: 2
-    prompt: "A GRPO group has rewards $1,0,0,0,0$. For the correct answer, replace the return minus the baseline, $(G-b)$, in the policy-gradient update with its group-relative advantage. Starting at $\\theta=0$, take one update with learning rate $0.1$ and log-probability slope $0.5$. What is the new $\\theta$?"
+    prompt: "A GRPO group has rewards $1,0,0,0,0$. Use the population standard deviation. For the correct answer, replace the return minus the baseline, $(G-b)$, in the policy-gradient update with its group-relative advantage. Starting at $\\theta=0$, take one update with learning rate $0.1$ and log-probability slope $0.5$. What is the new $\\theta$?"
     answer: 0.1
     tolerance: { "abs": 0.006 }
     common_wrong:
