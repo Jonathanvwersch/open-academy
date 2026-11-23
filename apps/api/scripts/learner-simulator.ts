@@ -1109,6 +1109,7 @@ async function completeQuizWarmup(
   runId: string,
 ) {
   const missedPointIds = await missedQuizPointIds(db, runId);
+  let answerOffsetSeconds = 0;
   for (const pointId of missedPointIds) {
     for (let practiceNo = 0; practiceNo < 4; practiceNo += 1) {
       const result = await api.call('POST', `/lessons/${conceptId}/run/practice`, now, {
@@ -1120,11 +1121,12 @@ async function completeQuizWarmup(
       const run = object(object(result.data).run);
       const pending = object(run.pendingPracticeProblem);
       if (!text(pending.id)) break;
+      answerOffsetSeconds += 1;
       await answerLessonProblem(
         api,
         content,
         runtime,
-        now,
+        new Date(now.getTime() + answerOffsetSeconds * 1_000),
         day,
         conceptId,
         activityId,
