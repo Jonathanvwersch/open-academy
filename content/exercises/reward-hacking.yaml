@@ -1081,7 +1081,7 @@ exercises:
         weight: 1
         required: true
       - id: r3
-        criterion: Give a defence, such as the KL penalty, early stopping at the checkpoint with the best held-out rating, a better or ensembled reward model, or reading replies.
+        criterion: Give a defence, such as the KL penalty, early stopping at the checkpoint with the best held-out rating, a better reward model or a reward model ensemble, or reading replies.
         weight: 1
         required: true
     exemplar: The reward model is only a proxy for what people want, and it learned from replies like the SFT model's. As PPO pushes the policy further from those replies, the reward model's errors grow, and the policy finds replies it overrates, so the score rises while true quality falls. One sign is the reward model's score rising while people's ratings of held-out replies fall, often with replies getting longer and more repetitive. A KL penalty keeps the policy close to the SFT model, and early stopping keeps the checkpoint with the best held-out rating.
