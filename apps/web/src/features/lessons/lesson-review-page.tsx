@@ -22,7 +22,7 @@ import { RestartTopicDialog } from './restart-topic-dialog.js';
 const Route = getRouteApi('/lessons/$conceptId');
 export function LessonReviewPage() {
   const { conceptId } = Route.useParams();
-  const { from } = Route.useSearch();
+  const { from, step } = Route.useSearch();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const reviewQuery = useSuspenseQuery(lessonReviewQueryOptions(conceptId));
@@ -57,6 +57,10 @@ export function LessonReviewPage() {
     });
     return () => tutorSidebar.clearContext();
   }, [conceptId, conceptTitle, tutorSidebar]);
+  useEffect(() => {
+    if (!step) return;
+    document.getElementById(step)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [step]);
   const openQuiz = async () => {
     setStartingQuiz(true);
     setQuizStartError('');
@@ -194,7 +198,7 @@ export function LessonReviewPage() {
             />
           ) : null}
           {lesson.knowledge_points.map((point, index) => (
-            <article key={point.id} className="space-y-4">
+            <article id={point.id} key={point.id} className="space-y-4">
               <h2 className="text-xl font-semibold">
                 {index + 1}. {point.title}
               </h2>

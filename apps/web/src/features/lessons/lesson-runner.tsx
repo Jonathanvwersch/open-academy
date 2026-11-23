@@ -538,6 +538,22 @@ export function LessonRunner({
       </section>
     );
 
+  if (state.status === 'needs_retry') {
+    const retryAfter = state.retry?.after ? Date.parse(state.retry.after) : Number.NaN;
+    const reviewTitles =
+      retryAfter > Date.now() ? [] : (state.retry?.reviewFirst.map(({ title }) => title) ?? []);
+    return (
+      <section className="space-y-2">
+        <p>This lesson is paused.</p>
+        <p>
+          {reviewTitles.length
+            ? `It comes back after a review of ${reviewTitles.join(' and ')}.`
+            : 'It comes back tomorrow.'}
+        </p>
+      </section>
+    );
+  }
+
   const pointStatus = state.points.find((item) => item.id === displayedPoint?.id);
   const shownProblem = practiceMode
     ? practiceProblem

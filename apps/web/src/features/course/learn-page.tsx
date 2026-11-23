@@ -247,6 +247,9 @@ export function LearnPage() {
                               {task.reviewTopics.map((topic) => topic.title).join(', ')}
                             </p>
                           ) : null}
+                          {task.reason ? (
+                            <p className="text-sm text-muted-foreground">{task.reason}</p>
+                          ) : null}
                         </div>
                         {task.activityKind !== 'paper' ? (
                           <span className="shrink-0 text-sm font-medium text-muted-foreground">

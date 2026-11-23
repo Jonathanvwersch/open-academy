@@ -1,3 +1,4 @@
+import { Link } from '@tanstack/react-router';
 import { Info } from 'lucide-react';
 import { Markdown } from '../../components/markdown.js';
 import { Alert, AlertDescription, AlertTitle } from '../../components/ui/alert.js';
@@ -97,6 +98,21 @@ export function FeedbackPanel({
         : partial
           ? 'border-amber-300 bg-amber-50 text-amber-950'
           : 'border-red-300 bg-red-50 text-red-950';
+  const rawStep = result.step;
+  const step =
+    typeof rawStep === 'object' && rawStep !== null
+      ? (rawStep as { conceptId?: unknown; pointId?: unknown; title?: unknown })
+      : undefined;
+  const reRead =
+    typeof step?.conceptId === 'string' &&
+    typeof step.pointId === 'string' &&
+    typeof step.title === 'string'
+      ? {
+          conceptId: step.conceptId,
+          pointId: step.pointId,
+          title: step.title,
+        }
+      : undefined;
   return (
     <Alert role="status" className={`${statusClass} text-base leading-7`}>
       {title ? <AlertTitle>{title}</AlertTitle> : null}
@@ -104,6 +120,16 @@ export function FeedbackPanel({
         <AlertDescription className="mt-1 text-base leading-7 text-inherit">
           <Markdown>{feedback}</Markdown>
         </AlertDescription>
+      ) : null}
+      {!correct && reRead ? (
+        <Link
+          to="/lessons/$conceptId"
+          params={{ conceptId: reRead.conceptId }}
+          search={{ from: undefined, step: reRead.pointId }}
+          className="mt-2 inline-block underline underline-offset-4"
+        >
+          Re-read: {reRead.title}
+        </Link>
       ) : null}
       {correct && slowTargetSeconds !== undefined ? (
         <p className="mt-2 text-sm leading-5">
