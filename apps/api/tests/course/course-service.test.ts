@@ -25,7 +25,11 @@ function topicStateFor(
     placedOut: false,
     missingPrereqs: concept.prereqs
       .filter((prerequisite) => prerequisite.strength === 'hard')
-      .map((prerequisite) => ({ ...prerequisite, done: false })),
+      .map((prerequisite) => ({
+        id: prerequisite.id,
+        strength: 'hard' as const,
+        done: false,
+      })),
   });
 }
 

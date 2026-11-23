@@ -23,9 +23,9 @@ import { recordLessonViewed } from '../../learning/mastery.js';
 import {
   activeCourseFor,
   compareOutlinePosition,
+  createPrerequisiteChecker,
   learnActivitiesWithUnmetPrerequisites,
   masteryKey,
-  prerequisiteMet,
 } from '../../learning/prerequisites.js';
 import { attemptAllowsRetry } from '../../learning/retry.js';
 import {
@@ -252,17 +252,25 @@ export async function postSessions(deps: FeatureServices, request: FeatureReques
     const masteryByKey = new Map(
       state.mastery.map((record) => [masteryKey(record.conceptId, record.dimension), record]),
     );
-    const unmetPrerequisite = focusConcept.prereqs
-      .filter((prerequisite) => prerequisite.strength === 'hard')
-      .slice()
-      .sort((left, right) => compareOutlinePosition(left.id, right.id, index, state.activeCourseId))
-      .find(
-        (prerequisite) =>
-          !prerequisiteMet(prerequisite.id, masteryByKey, state.lessonRuns ?? [], index),
-      );
-    if (unmetPrerequisite) {
-      const prerequisiteTitle =
-        index.conceptsById.get(unmetPrerequisite.id)?.title ?? unmetPrerequisite.id;
+    const prerequisiteChecker = createPrerequisiteChecker(
+      masteryByKey,
+      state.lessonRuns ?? [],
+      index,
+    );
+    const missingPrerequisiteId = prerequisiteChecker
+      .missingFrontier(focusConcept.id)
+      .sort((left, right) => compareOutlinePosition(left, right, index, state.activeCourseId))[0];
+    if (!prerequisiteChecker.chainReady(focusConcept.id)) {
+      const firstMissingId =
+        missingPrerequisiteId ??
+        focusConcept.prereqs
+          .filter((prerequisite) => prerequisite.strength === 'hard')
+          .map((prerequisite) => prerequisite.id)
+          .sort((left, right) =>
+            compareOutlinePosition(left, right, index, state.activeCourseId),
+          )[0] ??
+        focusConcept.id;
+      const prerequisiteTitle = index.conceptsById.get(firstMissingId)?.title ?? firstMissingId;
       return serviceResult({ error: `Finish ${prerequisiteTitle} first` }, 409);
     }
     state.inProgressConceptId = body.data.focusConceptId;

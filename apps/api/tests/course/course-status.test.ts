@@ -25,37 +25,44 @@ describe('course mastery and status', () => {
     expect(topicIsComplete('in_progress', ['assisted', 'independent'])).toBe(false);
   });
 
-  test('locks only unstarted topics with an incomplete hard prerequisite', () => {
+  test('locks incomplete topics when their hard-prerequisite chain is unready', () => {
     expect(
       topicStatus({
         dimensionStates: ['not_assessed'],
-        prerequisites: [{ strength: 'hard', done: false }],
+        chainReady: false,
       }),
     ).toBe('locked');
     expect(
       topicStatus({
         dimensionStates: ['introduced'],
-        prerequisites: [{ strength: 'hard', done: false }],
+        chainReady: false,
       }),
-    ).toBe('in_progress');
+    ).toBe('locked');
     expect(
       topicStatus({
-        dimensionStates: ['not_assessed'],
-        prerequisites: [{ strength: 'soft', done: false }],
+        lessonRunStatus: 'in_progress',
+        dimensionStates: ['introduced'],
+        chainReady: false,
       }),
-    ).toBe('not_started');
+    ).toBe('locked');
     expect(
       topicStatus({
         dimensionStates: ['assisted'],
-        prerequisites: [{ strength: 'hard', done: false }],
+        chainReady: false,
       }),
     ).toBe('complete');
     expect(
       topicStatus({
         lessonRunStatus: 'quiz',
         dimensionStates: ['assisted'],
-        prerequisites: [{ strength: 'hard', done: false }],
+        chainReady: true,
       }),
     ).toBe('quiz');
+    expect(
+      topicStatus({
+        dimensionStates: ['not_assessed'],
+        chainReady: true,
+      }),
+    ).toBe('not_started');
   });
 });

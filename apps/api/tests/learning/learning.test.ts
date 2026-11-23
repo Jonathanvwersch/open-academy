@@ -19,6 +19,8 @@ import {
 import {
   compareOutlinePosition,
   courseFoundationIds,
+  createPrerequisiteChecker,
+  learnActivitiesWithUnmetPrerequisites,
   masteryKey,
   outlinePosition,
   prerequisiteMet,
@@ -36,7 +38,7 @@ import {
   SCHEDULER_CONFIG,
 } from '../../src/learning/scheduler.js';
 import { initialMastery } from '../../src/learning/types.js';
-import { withStubConcept } from '../content-test-utils.js';
+import { hardPrerequisiteAncestors, withStubConcept } from '../content-test-utils.js';
 
 const now = new Date('2026-01-14T12:00:00.000Z');
 let content: ContentIndex;
@@ -224,6 +226,170 @@ function studyState(courseIds: string[], index: ContentIndex = courseContent): S
     mastery: mastery.filter((record) => !courseConceptIds.has(record.conceptId)),
   };
 }
+
+test('prerequisite checker follows hard ancestors and reports the missing frontier', () => {
+  const concepts = [
+    { id: 'a', status: 'authored', dimensions: ['conceptual'], prereqs: [] },
+    {
+      id: 'b',
+      status: 'authored',
+      dimensions: ['conceptual'],
+      prereqs: [{ id: 'a', strength: 'hard' }],
+    },
+    {
+      id: 'c',
+      status: 'authored',
+      dimensions: ['conceptual'],
+      prereqs: [{ id: 'b', strength: 'hard' }],
+    },
+  ];
+  const syntheticContent = {
+    conceptsById: new Map(concepts.map((concept) => [concept.id, concept])),
+  } as unknown as ContentIndex;
+  const checker = createPrerequisiteChecker(
+    new Map(),
+    [{ conceptId: 'b', status: 'completed' }],
+    syntheticContent,
+  );
+
+  expect(checker.met('b')).toBe(true);
+  expect(checker.chainReady('b')).toBe(false);
+  expect(checker.chainReady('c')).toBe(false);
+  expect(checker.missingFrontier('c')).toEqual(['a']);
+  expect(
+    learnActivitiesWithUnmetPrerequisites(
+      [{ id: 'planned-c', kind: 'learn', status: 'planned', conceptId: 'c' }],
+      new Map(),
+      [{ conceptId: 'b', status: 'completed' }],
+      syntheticContent,
+    ),
+  ).toEqual(['planned-c']);
+});
+
+test('prerequisite checker guards cycles and ignores soft prerequisites', () => {
+  const cyclicContent = {
+    conceptsById: new Map([
+      [
+        'a',
+        {
+          id: 'a',
+          status: 'authored',
+          dimensions: ['conceptual'],
+          prereqs: [{ id: 'b', strength: 'hard' }],
+        },
+      ],
+      [
+        'b',
+        {
+          id: 'b',
+          status: 'authored',
+          dimensions: ['conceptual'],
+          prereqs: [{ id: 'a', strength: 'hard' }],
+        },
+      ],
+    ]),
+  } as unknown as ContentIndex;
+  const cyclicChecker = createPrerequisiteChecker(new Map(), [], cyclicContent);
+  expect(cyclicChecker.chainReady('a')).toBe(false);
+  expect(cyclicChecker.missingFrontier('a')).toEqual([]);
+
+  const softContent = {
+    conceptsById: new Map([
+      [
+        'a',
+        {
+          id: 'a',
+          status: 'authored',
+          dimensions: ['conceptual'],
+          prereqs: [],
+        },
+      ],
+      [
+        'b',
+        {
+          id: 'b',
+          status: 'authored',
+          dimensions: ['conceptual'],
+          prereqs: [{ id: 'a', strength: 'soft' }],
+        },
+      ],
+    ]),
+  } as unknown as ContentIndex;
+  const softChecker = createPrerequisiteChecker(new Map(), [], softContent);
+  expect(softChecker.chainReady('b')).toBe(true);
+  expect(softChecker.missingFrontier('b')).toEqual([]);
+});
+
+test('scheduler gates descendant and continuing lesson candidates on their full hard chain', () => {
+  const descendantId = 'lora';
+  const course = required(
+    courseContent.coursesById.get('transformers-llms'),
+    'Transformers and LLMs course',
+  );
+  const courseConceptIds = course.units.flatMap((unit) => unit.concepts);
+  const descendantPosition = courseConceptIds.indexOf(descendantId);
+  expect(descendantPosition).toBeGreaterThanOrEqual(0);
+  const descendantAncestors = hardPrerequisiteAncestors(courseContent, descendantId);
+  expect(descendantAncestors.has('orthogonality-projections')).toBe(true);
+  const completedDescendantIds = new Set([
+    ...descendantAncestors,
+    ...courseConceptIds.slice(0, descendantPosition),
+  ]);
+  completedDescendantIds.delete('orthogonality-projections');
+  const descendantState: SchedulerState = {
+    ...emptyState(),
+    activeCourseId: course.id,
+    studyCourseIds: [course.id],
+    lessonRuns: [...completedDescendantIds].map((conceptId) => ({
+      conceptId,
+      status: 'completed' as const,
+    })),
+  };
+  const descendantPlan = planSession(descendantState, courseContent, now, 60, 'weekday');
+  expect(
+    descendantPlan.activities.some(
+      (activity) =>
+        activity.conceptId === descendantId &&
+        (activity.kind === 'learn' || activity.kind === 'practice'),
+    ),
+  ).toBe(false);
+
+  const placementCourse = required(
+    courseContent.coursesById.get('transformers-llms'),
+    'Transformers and LLMs course',
+  );
+  const placementCourseConceptIds = placementCourse.units.flatMap((unit) => unit.concepts);
+  const placementTargetPosition = placementCourseConceptIds.indexOf(descendantId);
+  const completedEigenIds = new Set([
+    ...hardPrerequisiteAncestors(courseContent, descendantId),
+    ...placementCourseConceptIds.slice(0, placementTargetPosition),
+  ]);
+  completedEigenIds.delete('orthogonality-projections');
+  completedEigenIds.delete('eigen-svd');
+  const eigenConcept = required(courseContent.conceptsById.get('eigen-svd'), 'eigen-svd');
+  const placementState: SchedulerState = {
+    ...emptyState(),
+    activeCourseId: placementCourse.id,
+    studyCourseIds: [placementCourse.id],
+    inProgressConceptId: 'eigen-svd',
+    lessonRuns: [...completedEigenIds].map((conceptId) => ({
+      conceptId,
+      status: 'completed' as const,
+    })),
+    mastery: eigenConcept.dimensions.map((dimension) => ({
+      ...initialMastery('eigen-svd', dimension),
+      state: 'introduced' as const,
+    })),
+  };
+  const placementPlan = planSession(placementState, courseContent, now, 60, 'weekday');
+  expect(
+    placementPlan.activities.some(
+      (activity) =>
+        activity.conceptId === 'eigen-svd' &&
+        (activity.kind === 'learn' || activity.kind === 'practice'),
+    ),
+  ).toBe(false);
+});
 
 function completedProjectPrerequisiteRuns(projectId: string) {
   const prerequisiteIds = new Set<string>();
@@ -844,6 +1010,10 @@ test('weekday planning prefers a different unit when another unlocked topic is a
     ['loss-functions'],
   ]);
   const state = studyState(['fixture-course'], index);
+  state.lessonRuns = [...hardPrerequisiteAncestors(index, 'loss-functions')].map((conceptId) => ({
+    conceptId,
+    status: 'completed' as const,
+  }));
 
   const plan = planSession(state, index, now, 120);
   const course = required(index.coursesById.get('fixture-course'), 'fixture course');
@@ -2852,7 +3022,12 @@ test('a later AI course gets new learning when an earlier course is blocked on M
     concepts,
     conceptsById: new Map(concepts.map((concept) => [concept.id, concept])),
   };
-  const plan = planSession(studyState(courseIds, schedulerContent), schedulerContent, now, 200);
+  const state = studyState(courseIds, schedulerContent);
+  state.lessonRuns = [...hardPrerequisiteAncestors(schedulerContent, laterId)].map((conceptId) => ({
+    conceptId,
+    status: 'completed' as const,
+  }));
+  const plan = planSession(state, schedulerContent, now, 200);
   const learned = plan.activities
     .filter((activity) => activity.kind === 'learn')
     .map((activity) => activity.conceptId);

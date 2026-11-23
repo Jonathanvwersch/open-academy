@@ -2130,7 +2130,12 @@ test('lesson quiz results are hidden until submit, resume after reload, and allo
   );
   expect(completeResponse).toBe(200);
   await page.reload();
-  await expect(page.getByRole('status')).toHaveText('Supervised learning complete.');
+  await expect(page.getByRole('heading', { name: 'Session complete' })).toBeVisible();
+  const lessonRun = await page.evaluate(async (id) => {
+    const response = await fetch(`/api/lessons/${id}/run`);
+    return (await response.json()).run;
+  }, conceptId);
+  expect(lessonRun.status).toBe('quiz');
   const endResponse = await page.evaluate(async (id) => {
     const response = await fetch(`/api/sessions/${id}/end`, { method: 'POST' });
     return response.status;

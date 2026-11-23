@@ -36,6 +36,76 @@ export function prerequisiteMet(
   });
 }
 
+export function createPrerequisiteChecker(
+  masteryByKey: ReadonlyMap<string, Pick<MasteryRecord, 'state' | 'inferred'>>,
+  lessonRuns: readonly LessonRun[],
+  content: ContentIndex,
+) {
+  const metResults = new Map<string, boolean>();
+  const chainResults = new Map<string, boolean>();
+  const checkingChains = new Set<string>();
+  const frontierResults = new Map<string, string[]>();
+
+  const met = (conceptId: string): boolean => {
+    const cached = metResults.get(conceptId);
+    if (cached !== undefined) return cached;
+    const result = prerequisiteMet(conceptId, masteryByKey, lessonRuns, content);
+    metResults.set(conceptId, result);
+    return result;
+  };
+
+  const chainReady = (conceptId: string): boolean => {
+    const cached = chainResults.get(conceptId);
+    if (cached !== undefined) return cached;
+    if (checkingChains.has(conceptId)) {
+      chainResults.set(conceptId, false);
+      return false;
+    }
+
+    const concept = content.conceptsById.get(conceptId);
+    if (!concept) {
+      chainResults.set(conceptId, false);
+      return false;
+    }
+
+    checkingChains.add(conceptId);
+    const result = concept.prereqs
+      .filter((prerequisite) => prerequisite.strength === 'hard')
+      .every((prerequisite) => met(prerequisite.id) && chainReady(prerequisite.id));
+    checkingChains.delete(conceptId);
+    chainResults.set(conceptId, result);
+    return result;
+  };
+
+  const missingFrontier = (conceptId: string): string[] => {
+    const cached = frontierResults.get(conceptId);
+    if (cached) return [...cached];
+
+    const frontier = new Set<string>();
+    const visited = new Set<string>();
+    const visit = (currentId: string) => {
+      const concept = content.conceptsById.get(currentId);
+      if (!concept) return;
+      for (const prerequisite of concept.prereqs) {
+        if (prerequisite.strength !== 'hard' || visited.has(prerequisite.id)) continue;
+        visited.add(prerequisite.id);
+        if (!met(prerequisite.id) && chainReady(prerequisite.id)) {
+          frontier.add(prerequisite.id);
+        } else {
+          visit(prerequisite.id);
+        }
+      }
+    };
+
+    visit(conceptId);
+    const result = [...frontier];
+    frontierResults.set(conceptId, result);
+    return [...result];
+  };
+
+  return { met, chainReady, missingFrontier };
+}
+
 export function projectReady(
   project: IndexedProject | undefined,
   masteryByKey: ReadonlyMap<string, Pick<MasteryRecord, 'state' | 'inferred'>>,
@@ -44,20 +114,10 @@ export function projectReady(
 ): boolean {
   if (project?.status !== 'authored' || project.tests.length === 0) return false;
 
-  const checked = new Set<string>();
-  const prerequisitesMet = (conceptId: string): boolean => {
-    if (!prerequisiteMet(conceptId, masteryByKey, lessonRuns, content)) return false;
-    if (checked.has(conceptId)) return true;
-    checked.add(conceptId);
-    return (
-      content.conceptsById
-        .get(conceptId)
-        ?.prereqs.filter((prerequisite) => prerequisite.strength === 'hard')
-        .every((prerequisite) => prerequisitesMet(prerequisite.id)) ?? true
-    );
-  };
-
-  return project.prereqs.every(prerequisitesMet);
+  const checker = createPrerequisiteChecker(masteryByKey, lessonRuns, content);
+  return project.prereqs.every(
+    (conceptId) => checker.met(conceptId) && checker.chainReady(conceptId),
+  );
 }
 
 export function learnActivitiesWithUnmetPrerequisites(
@@ -71,6 +131,7 @@ export function learnActivitiesWithUnmetPrerequisites(
   lessonRuns: readonly LessonRun[],
   content: ContentIndex,
 ): string[] {
+  const checker = createPrerequisiteChecker(masteryByKey, lessonRuns, content);
   return activities
     .filter((activity) => {
       if (
@@ -80,14 +141,7 @@ export function learnActivitiesWithUnmetPrerequisites(
       ) {
         return false;
       }
-      const concept = content.conceptsById.get(activity.conceptId);
-      return (
-        concept?.prereqs.some(
-          (prerequisite) =>
-            prerequisite.strength === 'hard' &&
-            !prerequisiteMet(prerequisite.id, masteryByKey, lessonRuns, content),
-        ) ?? false
-      );
+      return !checker.chainReady(activity.conceptId);
     })
     .map(({ id }) => id);
 }

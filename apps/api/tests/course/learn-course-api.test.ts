@@ -29,9 +29,12 @@ import {
   xpEvents,
 } from '../../src/db/schema.js';
 import { newReviewCard } from '../../src/learning/fsrs.js';
-import { courseFoundationIds, prerequisiteMet } from '../../src/learning/prerequisites.js';
+import {
+  courseFoundationIds,
+  createPrerequisiteChecker,
+} from '../../src/learning/prerequisites.js';
 import type { MasteryRecord } from '../../src/learning/types.js';
-import { withStubConcept } from '../content-test-utils.js';
+import { hardPrerequisiteAncestors, withStubConcept } from '../content-test-utils.js';
 
 const db = createDb(env.TEST_DATABASE_URL);
 const userId = '00000000-0000-4000-8000-000000000092';
@@ -108,6 +111,27 @@ function completedMasteryRows(conceptIds: readonly string[]) {
       })) ?? []
     );
   });
+}
+
+async function activateCourse(courseId: string) {
+  await db.insert(courseEnrollments).values({
+    userId,
+    courseId,
+    status: 'active',
+    startMethod: 'beginning',
+  });
+  await db.update(users).set({ activeCourseId: courseId }).where(eq(users.id, userId));
+}
+
+async function completeHardAncestors(conceptId: string, except: readonly string[] = []) {
+  const completedIds = [...hardPrerequisiteAncestors(content, conceptId)].filter(
+    (id) => !except.includes(id),
+  );
+  if (completedIds.length) {
+    await db
+      .insert(lessonRuns)
+      .values(completedIds.map((id) => ({ userId, conceptId: id, status: 'completed' as const })));
+  }
 }
 
 async function put(path: string, body: unknown) {
@@ -555,6 +579,14 @@ test('restarting a prerequisite skips planned and in-progress dependent activiti
       { userId, conceptId: prerequisiteId, status: 'completed' },
       { userId, conceptId: 'matrices', status: 'completed' },
       { userId, conceptId: dependentId, status: 'in_progress' },
+      ...[...hardPrerequisiteAncestors(content, assistedDependent.id)]
+        .filter(
+          (conceptId) =>
+            ![prerequisiteId, 'matrices', dependentId, assistedPrerequisiteConcept.id].includes(
+              conceptId,
+            ),
+        )
+        .map((conceptId) => ({ userId, conceptId, status: 'completed' as const })),
     ])
     .returning();
   const dependentRun = runs.find((run) => run.conceptId === dependentId);
@@ -1172,15 +1204,10 @@ test('planned Learn tasks and Course numbering are read-only', async () => {
     conceptId: string;
     status: 'in_progress' | 'needs_retry' | 'completed';
   }> = [];
+  const prerequisiteChecker = createPrerequisiteChecker(masteryByKey, lessonRuns, content);
   for (const topic of course.units.flatMap((unit) => unit.topics)) {
     const concept = content.conceptsById.get(topic.conceptId);
-    const locked = Boolean(
-      concept?.prereqs.some(
-        (prerequisite) =>
-          prerequisite.strength === 'hard' &&
-          !prerequisiteMet(prerequisite.id, masteryByKey, lessonRuns, content),
-      ),
-    );
+    const locked = Boolean(concept && !prerequisiteChecker.chainReady(concept.id));
     expect(topic.status === 'locked').toBe(locked);
   }
   expect(await rowCounts()).toEqual(before);
@@ -1257,13 +1284,14 @@ test('lesson choices exclude locked, completed and stub concepts and retain the 
   for (const conceptId of outlineIds) {
     const concept = content.conceptsById.get(conceptId);
     const lesson = content.lessonsByConcept.get(conceptId);
+    const ancestors = hardPrerequisiteAncestors(content, conceptId);
     if (
       concept?.status !== 'authored' ||
       !lesson?.knowledge_points?.length ||
-      concept.prereqs.some((prerequisite) =>
-        targets.some((target) => target.id === prerequisite.id),
-      ) ||
-      targets.some((target) => target.prereqs.some((prerequisite) => prerequisite.id === conceptId))
+      targets.some(
+        (target) =>
+          ancestors.has(target.id) || hardPrerequisiteAncestors(content, target.id).has(conceptId),
+      )
     ) {
       continue;
     }
@@ -1813,6 +1841,121 @@ test('a focused session replaces the default new lesson and rejects locked conce
   });
   expect(locked.status).toBe(409);
   expect(await locked.json()).toEqual({ error: 'Finish Vectors and vector operations first' });
+});
+
+test('transitive hard ancestors lock descendant topics, choices, and focused starts', async () => {
+  const targetConceptId = 'lora';
+  const targetCourseId = 'transformers-llms';
+  const ancestors = hardPrerequisiteAncestors(content, targetConceptId);
+  expect(ancestors.has('eigen-svd')).toBe(true);
+  expect(ancestors.has('orthogonality-projections')).toBe(true);
+  await activateCourse(targetCourseId);
+  await completeHardAncestors(targetConceptId, ['orthogonality-projections']);
+
+  const mathsResponse = await get('/course?course=maths-for-ml');
+  expect(mathsResponse.status).toBe(200);
+  const maths = (await mathsResponse.json()) as {
+    units: Array<{ topics: Array<{ conceptId: string; status: string }> }>;
+  };
+  expect(
+    maths.units.flatMap((unit) => unit.topics).find((topic) => topic.conceptId === 'eigen-svd')
+      ?.status,
+  ).toBe('complete');
+
+  const targetCourseResponse = await get(`/course?course=${targetCourseId}`);
+  expect(targetCourseResponse.status).toBe(200);
+  const targetCourse = (await targetCourseResponse.json()) as {
+    units: Array<{
+      topics: Array<{ conceptId: string; status: string; needs?: Array<{ id: string }> }>;
+    }>;
+  };
+  const loraTopic = targetCourse.units
+    .flatMap((unit) => unit.topics)
+    .find((topic) => topic.conceptId === targetConceptId);
+  expect(loraTopic?.status).toBe('locked');
+  expect(loraTopic?.needs).toEqual(
+    expect.arrayContaining([expect.objectContaining({ id: 'orthogonality-projections' })]),
+  );
+
+  const learnResponse = await get('/learn');
+  const learn = (await learnResponse.json()) as {
+    choices: Array<{ conceptId: string }>;
+  };
+  expect(learn.choices.map((choice) => choice.conceptId)).not.toContain(targetConceptId);
+
+  const focused = await app.request('/api/sessions', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'X-Now': '2026-01-07T12:00:00.000Z' },
+    body: JSON.stringify({ focusConceptId: targetConceptId }),
+  });
+  expect(focused.status).toBe(409);
+  const missingPrerequisiteTitle = content.conceptsById.get('orthogonality-projections')?.title;
+  expect(await focused.json()).toEqual({ error: `Finish ${missingPrerequisiteTitle} first` });
+});
+
+test('introduced eigen-svd mastery stays locked when an ancestor is not complete', async () => {
+  await activateCourse('maths-for-ml');
+  await completeHardAncestors('eigen-svd', ['orthogonality-projections']);
+  const eigenSvd = content.conceptsById.get('eigen-svd');
+  if (!eigenSvd) throw new Error('Expected eigen-svd in real content');
+  await db.insert(mastery).values(
+    eigenSvd.dimensions.map((dimension) => ({
+      userId,
+      conceptId: eigenSvd.id,
+      dimension,
+      state: 'introduced' as const,
+    })),
+  );
+
+  const courseResponse = await get('/course?course=maths-for-ml');
+  const course = (await courseResponse.json()) as {
+    units: Array<{ topics: Array<{ conceptId: string; status: string }> }>;
+  };
+  expect(
+    course.units.flatMap((unit) => unit.topics).find((topic) => topic.conceptId === 'eigen-svd')
+      ?.status,
+  ).toBe('locked');
+});
+
+test('a started descendant locks and its planned learn activity is skipped when its chain is reset', async () => {
+  const targetConceptId = 'lora';
+  await activateCourse('transformers-llms');
+  await completeHardAncestors(targetConceptId);
+  await db.insert(lessonRuns).values({
+    userId,
+    conceptId: targetConceptId,
+    status: 'in_progress',
+  });
+  const [session] = await db
+    .insert(studySessions)
+    .values({ userId, plannedMinutes: 60, status: 'active' })
+    .returning();
+  if (!session) throw new Error('Could not create transitive prerequisite session');
+  await db.insert(sessionActivities).values({
+    sessionId: session.id,
+    idx: 0,
+    kind: 'learn',
+    conceptId: targetConceptId,
+    plannedMinutes: 20,
+    status: 'planned',
+  });
+
+  const restart = await post('/concepts/orthogonality-projections/restart', {});
+  expect(restart.status).toBe(200);
+  const activities = await db
+    .select()
+    .from(sessionActivities)
+    .where(eq(sessionActivities.sessionId, session.id));
+  expect(activities[0]?.status).toBe('skipped');
+
+  const courseResponse = await get('/course?course=transformers-llms');
+  const course = (await courseResponse.json()) as {
+    units: Array<{ topics: Array<{ conceptId: string; status: string }> }>;
+  };
+  expect(
+    course.units.flatMap((unit) => unit.topics).find((topic) => topic.conceptId === targetConceptId)
+      ?.status,
+  ).toBe('locked');
 });
 
 test('Home hides an active PCA project until all hard prerequisite ancestors are complete', async () => {

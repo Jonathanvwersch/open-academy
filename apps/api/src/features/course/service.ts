@@ -25,8 +25,8 @@ import {
   compareOutlinePosition,
   courseFoundationIds,
   courseFoundations,
+  createPrerequisiteChecker,
   masteryKey,
-  prerequisiteMet,
   projectReady,
 } from '../../learning/prerequisites.js';
 import {
@@ -144,6 +144,7 @@ export async function restartTopic(input: {
         { state: record.state, inferred: record.inferred },
       ]),
     );
+    const prerequisiteChecker = createPrerequisiteChecker(masteryByKey, runRows, input.content);
     const activitiesToSkip = dependentActivities
       .filter((activity) => {
         if (
@@ -156,14 +157,8 @@ export async function restartTopic(input: {
           return true;
         }
         if (!activity.conceptId) return false;
-        const concept = input.content.conceptsById.get(activity.conceptId);
-        return (
-          concept?.prereqs.some(
-            (prerequisite) =>
-              prerequisite.strength === 'hard' &&
-              !prerequisiteMet(prerequisite.id, masteryByKey, runRows, input.content),
-          ) ?? false
-        );
+        if (!input.content.conceptsById.has(activity.conceptId)) return false;
+        return !prerequisiteChecker.chainReady(activity.conceptId);
       })
       .map((activity) => activity.id);
     if (activitiesToSkip.length) {
@@ -401,24 +396,27 @@ export function courseTopicState(
     masteryRecords.map((record) => [masteryKey(record.conceptId, record.dimension), record]),
   );
   const runsByConcept = new Map(runs.map((run) => [run.conceptId, run]));
+  const prerequisiteChecker = createPrerequisiteChecker(masteryByKey, runs, index);
   return (concept: IndexedConcept) => {
     const dimensionStates = concept.dimensions.map(
       (dimension) => masteryByKey.get(masteryKey(concept.id, dimension))?.state ?? 'not_assessed',
     );
     const runStatus = runsByConcept.get(concept.id)?.status;
-    const prerequisites = concept.prereqs.map((prerequisite) => ({
-      ...prerequisite,
-      done: prerequisiteMet(prerequisite.id, masteryByKey, runs, index),
-    }));
-    const status = topicStatus({ lessonRunStatus: runStatus, dimensionStates, prerequisites });
+    const status = topicStatus({
+      lessonRunStatus: runStatus,
+      dimensionStates,
+      chainReady: prerequisiteChecker.chainReady(concept.id),
+    });
     return {
       status,
       dimensionStates,
       placedOut:
         status === 'complete' && runStatus === undefined && placedOutConcepts.has(concept.id),
-      missingPrereqs: prerequisites.filter(
-        (prerequisite) => prerequisite.strength === 'hard' && !prerequisite.done,
-      ),
+      missingPrereqs: prerequisiteChecker.missingFrontier(concept.id).map((id) => ({
+        id,
+        strength: 'hard' as const,
+        done: false,
+      })),
     };
   };
 }
