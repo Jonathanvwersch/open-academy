@@ -234,6 +234,7 @@ function planWithRetryAndFreshTopics(
     freshTopicIds?: string[];
     retryConceptId?: string;
     retryAfter?: Date;
+    inProgressConceptId?: string;
     index?: ContentIndex;
     confusablePairs?: Array<[string, string]>;
   } = {},
@@ -276,6 +277,9 @@ function planWithRetryAndFreshTopics(
       status: 'needs_retry',
       retryAfter: options.retryAfter ?? new Date(now.getTime() - 1_000),
     },
+    ...(options.inProgressConceptId
+      ? [{ conceptId: options.inProgressConceptId, status: 'in_progress' as const }]
+      : []),
   ];
   return planSession(state, planContent, now, budget);
 }
@@ -1485,6 +1489,27 @@ test('a confusable retry is skipped when the fresh topic is selected', () => {
     .map((activity) => activity.conceptId);
 
   expect(learned).toEqual([freshTopicId]);
+});
+
+test('an overdue retry confusable with an in-progress resume is not offered', () => {
+  const retryConceptId = 'vectors';
+  const inProgressConceptId = 'supervised-learning';
+  const budget =
+    required(content.conceptsById.get(retryConceptId), retryConceptId).est_minutes +
+    required(content.conceptsById.get(inProgressConceptId), inProgressConceptId).est_minutes;
+  const learned = planWithRetryAndFreshTopics(budget, {
+    courseId: 'fixture-course',
+    freshTopicIds: [inProgressConceptId],
+    retryConceptId,
+    retryAfter: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1_000),
+    inProgressConceptId,
+    index: content,
+    confusablePairs: [[retryConceptId, inProgressConceptId]],
+  })
+    .activities.filter((activity) => activity.kind === 'learn')
+    .map((activity) => activity.conceptId);
+
+  expect(learned).toEqual([inProgressConceptId]);
 });
 
 test('weekday plans avoid duplicate concepts, cap activities, and never add empty fillers', () => {
