@@ -1,0 +1,1066 @@
+concept: dpo
+exercises:
+  - id: dpo-best-policy-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: For one prompt, RLHF's goal is the average reward of the policy's replies minus $\beta$ times the KL divergence from the reference model. What does the best policy for this goal do to each reply's reference probability?
+    options:
+      - id: a
+        text: Multiplies it by $e^{r/\beta}$, then rescales so the probabilities add up to 1.
+        correct: true
+        feedback: Replies with a higher reward get a bigger boost, and dividing by the total keeps it a probability.
+      - id: b
+        text: Replaces it with the reply's reward, then rescales so they add up to 1.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The reference probability stays in the formula. The reward only sets the size of its boost.
+      - id: c
+        text: Keeps it the same, because the KL penalty stops the policy moving.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The penalty limits how far the policy moves. When rewards differ, the best policy differs from the reference.
+      - id: d
+        text: Moves all of it to the reply with the highest reward.
+        correct: false
+        category: incorrect_reasoning
+        feedback: That would make the average reward highest, but the KL penalty makes the best policy share probability.
+    solution: The best policy is $\pi^*(y\mid x)=\frac{1}{Z(x)}\pi_{\text{ref}}(y\mid x)e^{r(x,y)/\beta}$, where $Z(x)$ is the total of the boosted numbers.
+  - id: dpo1-worked-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: In the worked example, why do we divide $3.695$ and $1.359$ by $5.054$?
+    options:
+      - id: a
+        text: So the two probabilities add up to 1.
+        correct: true
+        feedback: $5.054$ is $Z(x)$, the total of the boosted numbers, so dividing by it makes them a probability distribution.
+      - id: b
+        text: To undo the boost from multiplying by $e^{r/\beta}$.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Both numbers are divided by the same total, so "Blue." keeps its bigger share. The boost stays.
+      - id: c
+        text: Because $5.054$ is the KL divergence from the reference.
+        correct: false
+        category: incorrect_reasoning
+        feedback: $5.054$ is the total of the boosted numbers. The KL divergence appears in the goal $J$.
+      - id: d
+        text: To turn the rewards into log-probabilities.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The results, $0.731$ and $0.269$, are probabilities. Dividing only rescales the boosted numbers.
+    solution: The boosted numbers $3.695$ and $1.359$ don't add up to 1. Dividing each by their total $Z(x)=5.054$ makes them add up to 1.
+  - id: dpo1-large-beta
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: For RLHF's goal, the best policy gives each reply its reference probability times $e^{r/\beta}$, divided by the total over all replies. What happens to the best policy as $\beta$ gets very large?
+    options:
+      - id: a
+        text: It gets close to the reference model.
+        correct: true
+        feedback: $r/\beta$ shrinks towards $0$, so every boost $e^{r/\beta}$ gets close to $1$.
+      - id: b
+        text: It puts nearly all probability on the highest-reward reply.
+        correct: false
+        category: incorrect_reasoning
+        feedback: That happens as $\beta$ gets very small, when the boosts differ hugely.
+      - id: c
+        text: It gives every reply the same probability.
+        correct: false
+        category: incorrect_reasoning
+        feedback: With boosts near $1$ it keeps the reference's probabilities, and those needn't be equal.
+      - id: d
+        text: It stops depending on the reference model.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The reference probability is in every term. A large $\beta$ makes the policy stick to it more.
+    solution: A large $\beta$ makes $e^{r/\beta}\approx1$ for every reply, so the best policy is close to the reference. A large $\beta$ is a strong KL penalty.
+  - id: dpo1-best-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt: For one prompt, a reference model gives reply A probability ${{=a}}$ and reply B probability ${{=1-a}}$. A's reward is ${{=ra}}$, B's reward is ${{=rb}}$, and $\beta={{=beta}}$. For RLHF's goal of a high average reward with a KL penalty, what probability does the best policy give A? Give two decimals.
+    params:
+      a:
+        min: 0.2
+        max: 0.8
+        step: 0.2
+      ra:
+        min: 1
+        max: 3
+        step: 1
+      rb:
+        min: 0
+        max: 2
+        step: 1
+      beta:
+        min: 0.5
+        max: 2
+        step: 0.5
+    constraints:
+      - ra != rb
+      - abs(a*exp(ra/beta)/(a*exp(ra/beta)+(1-a)*exp(rb/beta)) - exp(ra/beta)/(exp(ra/beta)+exp(rb/beta))) > 0.02
+      - a*exp(ra/beta)/(a*exp(ra/beta)+(1-a)*exp(rb/beta)) < 0.99
+      - a*exp(ra/beta)/(a*exp(ra/beta)+(1-a)*exp(rb/beta)) > 0.01
+    answer_expr: a*exp(ra/beta)/(a*exp(ra/beta)+(1-a)*exp(rb/beta))
+    tolerance:
+      abs: 0.006
+    common_wrong:
+      - answer_expr: exp(ra/beta)/(exp(ra/beta)+exp(rb/beta))
+        category: math_error
+        feedback: Start from each reply's reference probability before boosting it.
+    solution: A's boosted number is ${{=a}}e^{ {{=ra/beta}} }\approx{{=round(a*exp(ra/beta),3)}}$ and B's is ${{=1-a}}e^{ {{=rb/beta}} }\approx{{=round((1-a)*exp(rb/beta),3)}}$. Dividing A's by their total gives $\approx{{=round(a*exp(ra/beta)/(a*exp(ra/beta)+(1-a)*exp(rb/beta)),2)}}$.
+  - id: dpo1-equal-rewards
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: For RLHF's goal of a high average reward with a KL penalty, a learner says that if every reply to a prompt has the same reward, the best policy gives every reply the same probability. What is right?
+    options:
+      - id: a
+        text: The best policy equals the reference, because every reply gets the same boost.
+        correct: true
+        feedback: Equal boosts keep the reference's proportions, and dividing by the total brings them back to the reference probabilities.
+      - id: b
+        text: The learner is right, because no reply's reward stands out.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Each reply still starts from its reference probability, and those needn't be equal.
+      - id: c
+        text: The best policy isn't defined, because the total $Z(x)$ is zero.
+        correct: false
+        category: incorrect_reasoning
+        feedback: $Z(x)$ adds up positive numbers, a probability times $e^{r/\beta}$, so it is above zero.
+      - id: d
+        text: The best policy puts all probability on the reference's most likely reply.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Equal boosts change no reply's share, so the probabilities stay where the reference has them.
+    solution: With the same reward $r$ for every reply, $\pi_{\text{ref}}(y\mid x)e^{r/\beta}$ is each reference probability times the same constant $e^{r/\beta}$. Dividing by the total gives back $\pi_{\text{ref}}$.
+  - id: dpo1-goal-value
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: A prompt has two replies with rewards $2$ and $1$. The reference model gives each probability $0.5$, and $\beta=1$. A policy gives the first reply $0.8$ and the second $0.2$. What is $J=\text{average reward}-\beta\,\mathrm{KL}(\pi\Vert\pi_{\text{ref}})$ for this policy, in nats? Give three decimals.
+    answer: 1.607
+    tolerance:
+      abs: 0.002
+    common_wrong:
+      - answer: 1.8
+        category: math_error
+        feedback: That is only the average reward. Subtract $\beta$ times the KL divergence.
+      - answer: 1.993
+        category: math_error
+        feedback: Subtract the KL penalty instead of adding it.
+    solution: The average reward is $0.8\times2+0.2\times1=1.8$. The KL divergence is $0.8\ln\frac{0.8}{0.5}+0.2\ln\frac{0.2}{0.5}\approx0.376-0.183=0.193$, so $J\approx1.8-0.193=1.607$. That's just below the best value $\ln(0.5e^2+0.5e)\approx1.620$.
+  - id: dpo1-robot-grasp
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: A robot arm's reference policy picks grasp 1 with probability $0.6$ and grasp 2 with probability $0.4$. Grasp 1 has reward $0$ and grasp 2 has reward $1$, and $\beta=0.5$. For the goal of a high average reward with a KL penalty against the reference, what probability does the best policy give grasp 2? Give two decimals.
+    answer: 0.83
+    tolerance:
+      abs: 0.006
+    common_wrong:
+      - answer: 0.88
+        category: math_error
+        feedback: Start from the reference probabilities $0.6$ and $0.4$ before boosting.
+      - answer: 0.64
+        category: math_error
+        feedback: Divide each reward by $\beta=0.5$ before taking $e$ to that power.
+    solution: The boosted numbers are $0.6e^{0}=0.6$ and $0.4e^{1/0.5}=0.4e^2\approx2.956$. Grasp 2 gets $2.956/(0.6+2.956)\approx0.83$.
+  - id: dpo1-recall-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: dpo-best-policy
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, what is the best policy for RLHF's goal of a high average reward with a KL penalty against a reference model?
+    rubric:
+      - id: r1
+        criterion: State that each reply's reference probability is multiplied by $e^{r/\beta}$, so higher-reward replies get a bigger boost.
+        weight: 1
+        required: true
+      - id: r2
+        criterion: State that the boosted numbers are divided by their total so the probabilities add up to 1.
+        weight: 1
+        required: true
+    exemplar: The best policy takes each reply's reference probability and multiplies it by e to the power reward over beta, so higher-reward replies get a bigger boost. Then it divides by the total of these boosted numbers, so the probabilities add up to 1.
+  - id: dpo1-recall-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: dpo-best-policy
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: In the best policy $\pi^*(y\mid x)=\frac{1}{Z(x)}\pi_{\text{ref}}(y\mid x)e^{r(x,y)/\beta}$, what does dividing by $Z(x)$ do?
+    options:
+      - id: a
+        text: Makes the probabilities over all replies add up to 1.
+        correct: true
+        feedback: $Z(x)$ is the total of the boosted numbers.
+      - id: b
+        text: Sets how strongly the rewards boost each reply.
+        correct: false
+        category: incorrect_reasoning
+        feedback: That is $\beta$, inside $e^{r/\beta}$.
+      - id: c
+        text: Measures how far the policy has moved from the reference.
+        correct: false
+        category: incorrect_reasoning
+        feedback: That is the KL divergence, which appears in the goal.
+      - id: d
+        text: Scores each reply the way a reward model would.
+        correct: false
+        category: incorrect_reasoning
+        feedback: $Z(x)$ is one number for the whole prompt, the same for every reply.
+    solution: $Z(x)=\sum_y\pi_{\text{ref}}(y\mid x)e^{r(x,y)/\beta}$ is the total of the boosted numbers, so dividing by it makes them a probability distribution.
+  - id: dpo1-recall-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: dpo-best-policy
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: A prompt has two replies, A and B, with reference probabilities $a$ and $1-a$ and rewards $u$ and $v$. The KL coefficient is $k$. Write the best policy's probability of A. Type `exp(...)` for $e$ to a power and `*` for multiplication.
+    answer: a*exp(u/k)/(a*exp(u/k)+(1-a)*exp(v/k))
+    variables:
+      a:
+        - 0.1
+        - 0.9
+      u:
+        - -2
+        - 2
+      v:
+        - -2
+        - 2
+      k:
+        - 0.2
+        - 2
+    solution: Boost each reply, $ae^{u/k}$ and $(1-a)e^{v/k}$, then divide A's by their total.
+  - id: dpo-loss-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: In DPO, what is the implicit reward of a reply $y$ to a prompt $x$?
+    options:
+      - id: a
+        text: $\beta\ln\frac{\pi_\theta(y\mid x)}{\pi_{\text{ref}}(y\mid x)}$, from the policy and the reference.
+        correct: true
+        feedback: It's $\beta$ times the log of the policy's probability over the reference's.
+      - id: b
+        text: $r_\phi(x,y)$, the score from a trained reward model.
+        correct: false
+        category: incorrect_reasoning
+        feedback: DPO has no separate reward model. The policy and the reference give the reward.
+      - id: c
+        text: $\ln\pi_\theta(y\mid x)$, the policy's log-probability alone.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The implicit reward also subtracts the reference's log-probability and multiplies by $\beta$.
+      - id: d
+        text: $\beta\,\mathrm{KL}(\pi_\theta\Vert\pi_{\text{ref}})$, the KL penalty.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The KL divergence averages over all replies, so it gives one number per prompt.
+    solution: Turning the best-policy formula around gives $r=\beta\ln\frac{\pi^*}{\pi_{\text{ref}}}+\beta\ln Z(x)$. DPO uses the first part with the policy being trained, and the second part cancels between two replies.
+  - id: dpo2-worked-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: In the worked example, why did we never need $Z(x)$ to compute the loss for the two poems?
+    options:
+      - id: a
+        text: Both poems answer the same prompt, so $\beta\ln Z(x)$ cancels in the gap.
+        correct: true
+        feedback: Each reward has the same $\beta\ln Z(x)$, so it drops out of the difference.
+      - id: b
+        text: $Z(x)$ is always equal to 1 for a language model.
+        correct: false
+        category: incorrect_reasoning
+        feedback: $Z(x)$ is the total of the boosted numbers, which isn't 1 in general. It cancels.
+      - id: c
+        text: The reference log-probabilities already include $Z(x)$.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The reference model knows nothing about rewards. $Z(x)$ drops out because both replies share it.
+      - id: d
+        text: With $\beta=0.5$, the term $\beta\ln Z(x)$ is small enough to ignore.
+        correct: false
+        category: incorrect_reasoning
+        feedback: It cancels exactly for any $\beta$, because the loss uses only the difference of the two rewards.
+    solution: The loss uses only $r_w-r_l$. Both rewards contain the same $\beta\ln Z(x)$ for the poem prompt, so it cancels.
+  - id: dpo2-start-loss
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: DPO training starts with the policy equal to the reference model. What is the DPO loss for any preference pair at that point? Give three decimals.
+    answer: 0.693
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer: 0.5
+        category: math_error
+        feedback: $\sigma(0)=0.5$ is the chance, and the loss is $-\ln$ of it.
+      - answer: 0
+        category: incorrect_reasoning
+        feedback: A gap of $0$ means no preference yet, and the loss is $-\ln\sigma(0)$, which isn't $0$.
+    solution: Every log ratio is $0$, so $z=0$, $\sigma(0)=0.5$, and the loss is $-\ln0.5=\ln2\approx0.693$.
+  - id: dpo2-loss-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt: For a preference pair, the policy gives the chosen reply log-probability ${{=pw}}$ and the rejected reply ${{=pl}}$. The reference model gives them ${{=qw}}$ and ${{=ql}}$, and $\beta={{=beta}}$. What is the DPO loss, using natural logs? Round only at the end and give three decimals.
+    params:
+      pw:
+        min: -10
+        max: -6
+        step: 1
+      qw:
+        min: -10
+        max: -6
+        step: 1
+      pl:
+        min: -12
+        max: -8
+        step: 1
+      ql:
+        min: -12
+        max: -8
+        step: 1
+      beta:
+        min: 0.1
+        max: 0.5
+        step: 0.2
+    constraints:
+      - (pw - qw) - (pl - ql) != 0
+      - abs(log(1 + exp(-beta*((pw - qw) - (pl - ql)))) - log(1 + exp(-beta*(pw - pl)))) > 0.01
+      - abs(log(1 + exp(-beta*((pw - qw) - (pl - ql)))) - 1/(1 + exp(-beta*((pw - qw) - (pl - ql))))) > 0.01
+    answer_expr: log(1 + exp(-beta*((pw - qw) - (pl - ql))))
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer_expr: log(1 + exp(-beta*(pw - pl)))
+        category: math_error
+        feedback: Subtract each reference log-probability from the policy's before taking the gap.
+      - answer_expr: 1/(1 + exp(-beta*((pw - qw) - (pl - ql))))
+        category: math_error
+        feedback: That is $\sigma(z)$. The loss is $-\ln\sigma(z)$.
+    solution: The chosen log ratio is ${{=pw}}-({{=qw}})={{=pw-qw}}$ and the rejected one is ${{=pl}}-({{=ql}})={{=pl-ql}}$, so $z={{=beta}}\times({{=(pw-qw)-(pl-ql)}})={{=round(beta*((pw-qw)-(pl-ql)),2)}}$. Use $-\ln\sigma(z)=\ln(1+e^{-z})$ with $1+e^{-z}\approx{{=round(1+exp(-beta*((pw-qw)-(pl-ql))),5)}}$, giving loss ${{=round(log(1+exp(-beta*((pw-qw)-(pl-ql)))),3)}}$.
+  - id: dpo2-dropped-reference
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: For a preference pair, the policy gives the chosen reply log-probability $-30$ and the rejected reply $-20$. The reference model gives them $-33$ and $-19$, and $\beta=0.1$. A learner says the policy ranks this pair the wrong way round, so its DPO loss is above $\ln2$. What is right?
+    options:
+      - id: a
+        text: The loss is below $\ln2$, because the gap is $z=0.1\times(3-(-1))=0.4$.
+        correct: true
+        feedback: Compared with the reference, the chosen reply went up by 3 and the rejected one went down by 1.
+      - id: b
+        text: The learner is right, because $z=0.1\times(-30-(-20))=-1$.
+        correct: false
+        category: incorrect_reasoning
+        feedback: That drops the reference. DPO compares each reply's log-probability with the reference's.
+      - id: c
+        text: The loss is exactly $\ln2$, because $\beta=0.1$ is small.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The loss is $\ln2$ only when $z=0$. Here $z$ stays nonzero after multiplication by the small $\beta$.
+      - id: d
+        text: The loss can't be found without a reward model's scores.
+        correct: false
+        category: incorrect_reasoning
+        feedback: DPO needs only the policy's and the reference's log-probabilities.
+    solution: The log ratios are $-30-(-33)=3$ and $-20-(-19)=-1$, so $z=0.4$ and the loss is $-\ln\sigma(0.4)\approx0.513$, below $\ln2\approx0.693$.
+  - id: dpo2-implicit-preference
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: After DPO training with $\beta=0.25$, a policy gives reply A log-probability $-5$ and reply B $-10$ for a prompt. The reference model gives A $-9$ and B $-6$. Using the policy's implicit rewards in the Bradley–Terry model, what is the probability that A is preferred to B? Give two decimals.
+    answer: 0.88
+    tolerance:
+      abs: 0.006
+    common_wrong:
+      - answer: 0.78
+        category: math_error
+        feedback: Subtract the reference's log-probability from each before multiplying by $\beta$.
+      - answer: 0.13
+        category: math_error
+        feedback: That is the loss $-\ln\sigma(2)$. The Bradley–Terry probability is $\sigma$ of the implicit reward of A minus the implicit reward of B.
+    solution: A's implicit reward is $0.25\times(-5-(-9))=1$ and B's is $0.25\times(-10-(-6))=-1$. The Bradley–Terry probability is $\sigma(1-(-1))=\sigma(2)\approx0.88$.
+  - id: dpo2-robot-grasp
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A robot arm's policy is trained with DPO on people's choices between pairs of grasp motions. For one pair, the policy's log-probability of the chosen motion minus the reference's is $3$, and for the rejected motion it is $-2$. With $\beta=0.1$, what is the DPO loss? Round only at the end and give three decimals.
+    answer: 0.474
+    tolerance:
+      abs: 0.002
+    common_wrong:
+      - answer: 0.622
+        category: math_error
+        feedback: That is $\sigma(0.5)$. The loss is $-\ln\sigma(z)$.
+      - answer: 0.007
+        category: math_error
+        feedback: Multiply the gap $3-(-2)=5$ by $\beta=0.1$ before applying the sigmoid.
+    solution: The gap is $z=0.1\times(3-(-2))=0.5$. Then $\sigma(0.5)\approx0.6225$, and the loss is $-\ln0.6225\approx0.474$.
+  - id: dpo2-recall-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: dpo-loss
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, how does DPO get its loss from the Bradley–Terry loss used to train reward models?
+    rubric:
+      - id: r1
+        criterion: State that each reward is replaced by the implicit reward, $\beta$ times the log of the policy's probability over the reference's.
+        weight: 1
+        required: true
+      - id: r2
+        criterion: State that the loss is minus the log of the sigmoid of the chosen reply's implicit reward minus the rejected reply's.
+        weight: 1
+        required: true
+    exemplar: DPO replaces each reward in the Bradley–Terry loss with the implicit reward, beta times the log of the policy's probability over the reference's. The loss is minus the log of the sigmoid of the chosen reply's implicit reward minus the rejected reply's.
+  - id: dpo2-recall-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: dpo-loss
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: Which of these is the DPO loss for one preference pair, with chosen reply $y_w$ and rejected reply $y_l$?
+    options:
+      - id: a
+        text: $-\ln\sigma\big(\beta[(\ln\pi_\theta(y_w)-\ln\pi_{\text{ref}}(y_w))-(\ln\pi_\theta(y_l)-\ln\pi_{\text{ref}}(y_l))]\big)$
+        correct: true
+        feedback: It's the Bradley–Terry loss with the implicit rewards in place of reward model scores.
+      - id: b
+        text: $-\ln\sigma(r_w-r_l)$, with $r_w$ and $r_l$ from a reward model
+        correct: false
+        category: incorrect_reasoning
+        feedback: That is the loss that trains a reward model. DPO has no reward model.
+      - id: c
+        text: $r_\phi(x,y)-\beta\big(\ln\pi_\theta(y)-\ln\pi_{\text{ref}}(y)\big)$, for one reply
+        correct: false
+        category: incorrect_reasoning
+        feedback: That is RLHF's KL-penalised reward, which PPO makes high.
+      - id: d
+        text: $-\ln\sigma\big(\beta[\ln\pi_\theta(y_w)-\ln\pi_\theta(y_l)]\big)$, from the policy alone
+        correct: false
+        category: incorrect_reasoning
+        feedback: The DPO loss subtracts the reference's log-probability from each reply's.
+    solution: The DPO loss is $-\ln\sigma(z)$, where $z$ is $\beta$ times the chosen reply's log ratio against the reference minus the rejected reply's. Every log-probability is given the prompt $x$.
+  - id: dpo2-recall-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: dpo-loss
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: In a preference pair, the policy's log-probabilities of the chosen and rejected replies are $a$ and $c$, and the reference's are $b$ and $d$. The coefficient is $k$. Write the DPO loss. Write the sigmoid out using `exp(...)`, since `sigmoid(...)` isn't accepted. Use $\sigma(z)=1/(1+e^{-z})$. Type `log(...)` for the natural log, `exp(...)` for $e$ to a power and `*` for multiplication.
+    answer: -log(1/(1+exp(-k*((a-b)-(c-d)))))
+    variables:
+      a:
+        - -12
+        - -1
+      b:
+        - -12
+        - -1
+      c:
+        - -12
+        - -1
+      d:
+        - -12
+        - -1
+      k:
+        - 0.05
+        - 1
+    solution: The gap is $z=k\big((a-b)-(c-d)\big)$, and the loss is $-\ln\sigma(z)$.
+  - id: dpo-gradient-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What does one gradient descent step on the DPO loss for a preference pair do to the policy?
+    options:
+      - id: a
+        text: Pushes the chosen reply's log-probability up and the rejected reply's down, widening the gap between them.
+        correct: true
+        feedback: The slope is $-\beta(1-p)$ for the chosen reply and $\beta(1-p)$ for the rejected one, and descent moves against the slope. Because both replies share the same weights, both log-probabilities can still fall while the gap grows.
+      - id: b
+        text: Raises the log-probabilities of both replies in the pair.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The rejected reply's slope is positive, so a descent step lowers its log-probability.
+      - id: c
+        text: Lowers the reference model's log-probability of the rejected reply.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The reference model is frozen. Only the policy's weights are trained.
+      - id: d
+        text: Raises the chosen reply's log-probability and leaves the rejected one alone.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The rejected reply gets a push of the same size in the opposite direction.
+    solution: Lowering $-\ln\sigma(z)$ widens the gap $z$. The gradient pushes the chosen reply's log-probability up and the rejected reply's down, but because both replies share the same weights, both log-probabilities can still fall while the gap grows.
+  - id: dpo3-worked-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: In the worked example, why is the push about $0.134$ when it was $0.25$ at the start of training?
+    options:
+      - id: a
+        text: The policy already ranks the pair the right way round, so $1-p$ is smaller.
+        correct: true
+        feedback: With $z=1$, $p\approx0.731$, so $1-p\approx0.269$ instead of $0.5$.
+      - id: b
+        text: $\beta$ got smaller during training.
+        correct: false
+        category: incorrect_reasoning
+        feedback: $\beta=0.5$ stays the same. The push shrinks because $p$ grew.
+      - id: c
+        text: The reference model moved closer to the policy.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The reference model is frozen, so it never moves.
+      - id: d
+        text: The rejected reply's negative log ratio cancels part of the push.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Both replies get pushes of the same size, $\beta(1-p)$. The log ratios matter only through $z$.
+    solution: The push is $\beta(1-p)$. At the start $p=0.5$, giving $0.25$. With $z=1$, $p\approx0.731$, giving $0.5\times0.269\approx0.134$.
+  - id: dpo3-reference-slope
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: Why does gradient descent on the DPO loss change the policy's log-probabilities and not the reference model's?
+    options:
+      - id: a
+        text: The reference model is frozen, so its weights are never trained.
+        correct: true
+        feedback: It is a fixed copy of the SFT model that the policy is compared against.
+      - id: b
+        text: The reference's log-probabilities don't appear in the DPO loss.
+        correct: false
+        category: incorrect_reasoning
+        feedback: They do. Each reply's log ratio subtracts the reference's log-probability.
+      - id: c
+        text: The reference's log-probabilities cancel between the two replies.
+        correct: false
+        category: incorrect_reasoning
+        feedback: They are usually different for the two replies, so they don't cancel. It's $\beta\ln Z(x)$ that cancels.
+      - id: d
+        text: The reference model is the reward model, which is trained separately.
+        correct: false
+        category: incorrect_reasoning
+        feedback: DPO has no reward model. The reference is a frozen copy of the SFT model.
+    solution: Only the policy's weights $\theta$ are trained. The reference stays a frozen copy of the SFT model, so its log-probabilities never change.
+  - id: dpo3-push-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt: In DPO with $\beta={{=beta}}$, a preference pair has chosen-reply log ratio ${{=a}}$ and rejected-reply log ratio ${{=b}}$, each the policy's log-probability minus the reference's. What is the slope of the DPO loss with respect to the policy's log-probability of the chosen reply? Give three decimals.
+    params:
+      a:
+        min: -2
+        max: 2
+        step: 1
+      b:
+        min: -2
+        max: 2
+        step: 1
+      beta:
+        min: 0.2
+        max: 0.6
+        step: 0.2
+    constraints:
+      - a != b
+      - mod(round(1000*beta*(1 - 1/(1 + exp(-beta*(a - b))))), 10) != 0
+    answer_expr: -beta*(1 - 1/(1 + exp(-beta*(a - b))))
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer_expr: beta*(1 - 1/(1 + exp(-beta*(a - b))))
+        category: math_error
+        feedback: Check the sign. Raising the chosen reply's log-probability lowers the loss, so the slope is negative.
+      - answer_expr: -beta/(1 + exp(-beta*(a - b)))
+        category: math_error
+        feedback: The slope uses $1-\sigma(z)$. You used $\sigma(z)$.
+    solution: The gap is $z={{=beta}}\times({{=a}}-({{=b}}))={{=round(beta*(a-b),2)}}$, so $\sigma(z)\approx{{=round(1/(1+exp(-beta*(a-b))),4)}}$. The slope is $-\beta(1-\sigma(z))\approx{{=round(-beta*(1-1/(1+exp(-beta*(a-b)))),3)}}$.
+  - id: dpo3-both-fall
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: During DPO training with $\beta=0.5$, a preference pair's chosen-reply log ratio (policy minus reference) goes from $0$ to $-2$, and its rejected-reply log ratio goes from $0$ to $-4$. What happened?
+    options:
+      - id: a
+        text: The loss fell, and the chosen reply is now less likely than under the reference.
+        correct: true
+        feedback: The gap went from $0$ to $0.5\times2=1$, so the loss fell from $0.693$ to $0.313$, while the chosen log ratio is negative.
+      - id: b
+        text: The loss rose, because both replies became less likely.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The loss sees only the gap $z$, which went up from $0$ to $1$.
+      - id: c
+        text: The loss fell, and the chosen reply is now more likely than under the reference.
+        correct: false
+        category: incorrect_reasoning
+        feedback: A log ratio of $-2$ means the policy gives the chosen reply less probability than the reference does.
+      - id: d
+        text: The loss stayed the same, because both log ratios fell.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The rejected log ratio fell further, so the gap grew and the loss fell.
+    solution: $z=0.5\times(-2-(-4))=1$, so the loss is $-\ln\sigma(1)\approx0.313$, down from $\ln2$. A lower loss means a bigger gap. The chosen reply can still lose probability.
+  - id: dpo3-which-pair
+    dimension: math
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: During DPO training with $\beta=0.1$, pair P has gap $z=-1$ and pair Q has gap $z=3$, where $z$ is $\beta$ times the chosen reply's log ratio minus the rejected reply's. Which pair's chosen reply gets the bigger push from gradient descent?
+    options:
+      - id: a
+        text: P, by about 15 times, because P is ranked the wrong way round.
+        correct: true
+        feedback: P's push is $0.1\times(1-\sigma(-1))\approx0.073$ and Q's is $0.1\times(1-\sigma(3))\approx0.0047$.
+      - id: b
+        text: Q, because a bigger gap gives a bigger slope.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The push is $\beta(1-\sigma(z))$, which shrinks as $z$ grows.
+      - id: c
+        text: Neither, because both pairs have the same $\beta$.
+        correct: false
+        category: incorrect_reasoning
+        feedback: $\beta$ is the same, but $1-\sigma(z)$ is very different for $z=-1$ and $z=3$.
+      - id: d
+        text: P, by about 3 times, the ratio of the two gaps' sizes.
+        correct: false
+        category: math_error
+        feedback: The push depends on $1-\sigma(z)$, which isn't proportional to $z$. Compute both.
+    solution: $1-\sigma(-1)\approx0.731$ and $1-\sigma(3)\approx0.047$, so P's push is about $15$ times Q's. Pairs ranked the wrong way move the policy most.
+  - id: dpo3-robot-slope
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: A robot arm's grasp policy is trained with DPO and $\beta=0.2$. For one pair of grasp motions, the chosen motion's log ratio (policy minus reference) is $1$ and the rejected motion's is $-4$. What is the slope of the DPO loss with respect to the policy's log-probability of the rejected motion? Give three decimals.
+    answer: 0.054
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer: -0.054
+        category: math_error
+        feedback: Check the sign. Raising the rejected motion's log-probability raises the loss, so the slope is positive.
+      - answer: 0.146
+        category: math_error
+        feedback: The slope uses $1-\sigma(z)$. You used $\sigma(z)$.
+    solution: The gap is $z=0.2\times(1-(-4))=1$ and $\sigma(1)\approx0.731$. By the chain rule the slope is $(\sigma(z)-1)\times(-\beta)=0.2\times0.269\approx0.054$.
+  - id: dpo3-recall-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: dpo-gradient
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, which way does lowering the DPO loss push the two replies in a preference pair, and when is the push strongest?
+    rubric:
+      - id: r1
+        criterion: State that it raises the chosen reply's log-probability and lowers the rejected reply's.
+        weight: 1
+        required: true
+      - id: r2
+        criterion: State that the push is strongest when the policy ranks the pair the wrong way round, and fades as it ranks it right.
+        weight: 1
+        required: true
+    exemplar: Lowering the DPO loss raises the policy's log-probability of the chosen reply and lowers that of the rejected reply, both by beta times one minus the sigmoid of the gap. The push is strongest when the policy ranks the pair the wrong way round, and it fades as the policy gets the pair right.
+  - id: dpo3-recall-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: dpo-gradient
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: When the DPO loss on a preference pair falls, what must have happened?
+    options:
+      - id: a
+        text: The gap between the chosen and rejected log ratios grew.
+        correct: true
+        feedback: The loss is $-\ln\sigma(z)$, which falls only when $z$ grows.
+      - id: b
+        text: The chosen reply became more likely than under the reference.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Both replies can lose probability, as long as the rejected one loses more.
+      - id: c
+        text: The rejected reply's probability fell to zero.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The loss falls whenever the gap grows, a little or a lot.
+      - id: d
+        text: The policy moved closer to the reference model.
+        correct: false
+        category: incorrect_reasoning
+        feedback: A bigger gap usually means the policy moved further from the reference.
+    solution: The DPO loss depends only on the gap $z$, so a lower loss means a bigger gap. It says nothing on its own about whether the chosen reply got more likely.
+  - id: dpo3-recall-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: dpo-gradient
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: In DPO, let $p=\sigma(z)$ for a preference pair, and let the coefficient be $k$. Write the slope of the DPO loss with respect to the policy's log-probability of the chosen reply. Type `*` for multiplication.
+    answer: -k*(1-p)
+    variables:
+      k:
+        - 0.05
+        - 1
+      p:
+        - 0.01
+        - 0.99
+    solution: The slope of $-\ln\sigma(z)$ with respect to $z$ is $p-1$, and $z$ changes by $k$ per unit of the chosen log-probability, so the slope is $-k(1-p)$.
+  - id: dpo-vs-rlhf-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: Which of these does RLHF with PPO use during training that DPO does without?
+    options:
+      - id: a
+        text: A reward model that scores new replies the policy writes.
+        correct: true
+        feedback: DPO trains on fixed preference pairs, so it needs no reward model and no new replies.
+      - id: b
+        text: A frozen reference model to compare the policy with.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Both use a frozen copy of the SFT model. DPO's loss compares log-probabilities with it.
+      - id: c
+        text: A set of preference pairs from people's comparisons.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Both use them. RLHF trains its reward model on them, and DPO trains the policy on them.
+      - id: d
+        text: A coefficient $\beta$ that sets how close to stay to the reference.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Both have $\beta$. DPO's loss comes from the same goal with the same KL penalty.
+    solution: RLHF trains a reward model and then has PPO update the policy on its scores for new replies. DPO has neither the reward model nor the loop of writing and scoring.
+  - id: dpo4-worked-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: In the worked example, why did the DPO loss fall even though the third reply $y_3$ took most of the probability?
+    options:
+      - id: a
+        text: The loss looks only at the gap between $y_w$ and $y_l$, and $y_3$ is in no pair.
+        correct: true
+        feedback: Nothing in the loss checks $y_3$, so probability can move there freely.
+      - id: b
+        text: DPO counts any reply outside the pairs as chosen.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Replies outside the pairs don't appear in the loss at all.
+      - id: c
+        text: With $\beta=1$ the loss ignores the reference model.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The log ratios $\ln\frac{0.2}{0.4}$ and $\ln\frac{0.1}{0.4}$ still use the reference.
+      - id: d
+        text: The reference gave $y_3$ a low probability, so the loss rewards raising it.
+        correct: false
+        category: incorrect_reasoning
+        feedback: $y_3$ never enters the loss, whatever the reference gives it.
+    solution: The loss depends only on $z$, from the log ratios of $y_w$ and $y_l$. The rejected reply fell more than the chosen one, so $z$ rose to $\ln2$ and the loss fell, while nothing checked $y_3$.
+  - id: dpo4-models-in-training
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: Which models does DPO use during training?
+    options:
+      - id: a
+        text: The policy being trained and a frozen reference model.
+        correct: true
+        feedback: The loss needs only their log-probabilities of the chosen and rejected replies.
+      - id: b
+        text: The policy, a reference model, a reward model and a critic.
+        correct: false
+        category: incorrect_reasoning
+        feedback: That's RLHF with PPO. DPO has no reward model and no critic.
+      - id: c
+        text: The policy being trained, with nothing else.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Every log ratio in the loss subtracts the reference's log-probability.
+      - id: d
+        text: A reward model and a frozen reference model.
+        correct: false
+        category: incorrect_reasoning
+        feedback: DPO trains the policy directly. Its implicit reward takes the reward model's place.
+    solution: DPO's loss uses the policy's and the reference's log-probabilities of each chosen and rejected reply, so those are the only two models.
+  - id: dpo4-reference-once
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: Why can DPO compute the reference model's log-probabilities once, before training starts?
+    options:
+      - id: a
+        text: The reference is frozen and the preference pairs are fixed.
+        correct: true
+        feedback: The same model reads the same replies, so the numbers never change.
+      - id: b
+        text: The reference's log-probabilities cancel in the DPO loss.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Each reference log-probability shifts its reply's log ratio. These shifts differ between replies and remain in the loss.
+      - id: c
+        text: The policy writes the same replies every round.
+        correct: false
+        category: incorrect_reasoning
+        feedback: In DPO the policy writes no replies during training. That loop is part of RLHF.
+      - id: d
+        text: The reference stays equal to the policy during training.
+        correct: false
+        category: incorrect_reasoning
+        feedback: They are equal only at the start. The policy changes and the reference stays fixed.
+    solution: The reference model never changes, and DPO uses only the fixed pairs, so each reference log-probability can be computed once and stored.
+  - id: dpo4-rlhf-failure
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: During RLHF with PPO, the reward model's average score for the policy's new replies keeps rising. People reading the replies say they are getting longer and more repetitive. What is the most likely cause?
+    options:
+      - id: a
+        text: The policy has found replies that the reward model overrates.
+        correct: true
+        feedback: The reward model learned from a limited set of replies, and the policy is chasing its mistakes.
+      - id: b
+        text: $\beta$ is too large, so the policy stays too close to the SFT model.
+        correct: false
+        category: incorrect_reasoning
+        feedback: A large $\beta$ limits drift. Drifting towards overrated text suggests the penalty is too weak.
+      - id: c
+        text: The reference model is being updated along with the policy.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The reference is a frozen copy of the SFT model, so it doesn't change.
+      - id: d
+        text: PPO is updating the reward model along with the policy.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The reward model stays frozen during PPO updates. PPO updates the policy using the reward model's scores.
+    solution: A rising score with falling quality means the policy is getting high scores for text people don't like. The reward model overrates those replies, and the KL penalty only limits the drift.
+  - id: dpo4-kl-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: To see how far a trained policy has moved from the reference model, we compare the two on a prompt with two possible replies. The reference gives them probabilities ${{=q}}$ and ${{=1-q}}$, and after training the policy gives them ${{=p}}$ and ${{=1-p}}$. What is $\mathrm{KL}(\pi_\theta\Vert\pi_{\text{ref}})$ in nats? Give three decimals.
+    params:
+      p:
+        min: 0.1
+        max: 0.9
+        step: 0.2
+      q:
+        min: 0.2
+        max: 0.8
+        step: 0.2
+    constraints:
+      - abs(p*log(p/q) + (1-p)*log((1-p)/(1-q)) - (q*log(q/p) + (1-q)*log((1-q)/(1-p)))) > 0.005
+    answer_expr: p*log(p/q) + (1-p)*log((1-p)/(1-q))
+    tolerance:
+      abs: 0.002
+    common_wrong:
+      - answer_expr: q*log(q/p) + (1-q)*log((1-q)/(1-p))
+        category: math_error
+        feedback: That is $\mathrm{KL}(\pi_{\text{ref}}\Vert\pi_\theta)$. Weight each log ratio by the policy's probabilities.
+    solution: $\mathrm{KL}={{=p}}\ln\frac{ {{=p}} }{ {{=q}} }+{{=1-p}}\ln\frac{ {{=1-p}} }{ {{=1-q}} }\approx{{=round(p*log(p/q)+(1-p)*log((1-p)/(1-q)),3)}}$ nats.
+  - id: dpo4-choose-method
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A team is tuning the language model of a home robot assistant. They have 10,000 fixed preference pairs and no time to have the model write and score new replies during training. Which method fits, and what should they watch for?
+    options:
+      - id: a
+        text: DPO, watching for probability moving to replies no pair covers.
+        correct: true
+        feedback: DPO needs only the fixed pairs, and nothing checks the new replies its policy starts to favour.
+      - id: b
+        text: RLHF with PPO, watching for the reward model's mistakes.
+        correct: false
+        category: incorrect_reasoning
+        feedback: PPO needs the policy to write new replies every round, which the team can't do.
+      - id: c
+        text: DPO, watching for the policy chasing the reward model's mistakes.
+        correct: false
+        category: incorrect_reasoning
+        feedback: DPO has no reward model to chase. Its risk is replies outside the fixed pairs.
+      - id: d
+        text: RLHF with PPO, which can't go wrong while a KL penalty is used.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Drift can continue under a KL penalty. PPO also needs new replies every round.
+    solution: With fixed pairs and no loop of writing and scoring, DPO fits. Its loss checks only the pairs, so the team should read the replies the trained model writes.
+  - id: dpo4-recall-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: dpo-vs-rlhf
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, what does DPO do without that RLHF with PPO needs?
+    rubric:
+      - id: r1
+        criterion: State that DPO needs no separate reward model.
+        weight: 1
+        required: true
+      - id: r2
+        criterion: State that DPO has no loop of the policy writing new replies to be scored, and learns only from fixed preference pairs.
+        weight: 1
+        required: true
+    exemplar: DPO needs no separate reward model, because the policy's implicit reward takes its place. It also has no loop of writing and scoring new replies, and learns only from a fixed set of preference pairs.
+  - id: dpo4-recall-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: dpo-vs-rlhf
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: Which of these is a way DPO can go wrong?
+    options:
+      - id: a
+        text: Probability moves to replies that no preference pair covers.
+        correct: true
+        feedback: DPO learns only from the fixed pairs, so nothing checks those replies.
+      - id: b
+        text: The policy chases a reward model's mistakes on new replies.
+        correct: false
+        category: incorrect_reasoning
+        feedback: That is a risk for RLHF. DPO has no reward model.
+      - id: c
+        text: The critic's value estimates are too far off.
+        correct: false
+        category: incorrect_reasoning
+        feedback: PPO uses a critic. DPO has none.
+      - id: d
+        text: The reference model drifts away from the SFT model.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The reference is frozen in both methods.
+    solution: DPO's loss only asks the chosen reply to beat the rejected one, so probability can move to replies outside the data, and nothing checks them.
+  - id: dpo4-recall-contrast-rlhf
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: dpo-vs-rlhf
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: Which of these is a way RLHF with PPO can go wrong?
+    options:
+      - id: a
+        text: The policy drifts towards text the reward model overrates.
+        correct: true
+        feedback: The reward model can score new replies wrongly, and the KL penalty only limits the drift.
+      - id: b
+        text: The loss falls while the chosen replies in fixed pairs lose probability.
+        correct: false
+        category: incorrect_reasoning
+        feedback: That can happen in DPO, whose loss sees only the gap between chosen and rejected replies.
+      - id: c
+        text: The reference model's log-probabilities change during training.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The reference is a frozen copy of the SFT model.
+      - id: d
+        text: The best-policy normaliser $Z(x)$ has to be computed for every reply.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Neither method computes $Z(x)$. PPO uses the reward model's scores instead.
+    solution: RLHF's policy is scored by a learned reward model, so it can drift towards replies that the reward model overrates.
+  - id: dpo-explain-training
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 2
+    est_minutes: 4
+    prompt: "Explain how DPO trains a language model on a preference pair: what its loss compares, which way lowering it pushes each reply, and what DPO does without compared with RLHF."
+    rubric:
+      - id: r1
+        criterion: State that the loss compares each reply's policy log-probability with the reference's, and takes $-\ln\sigma$ of $\beta$ times the chosen reply's log ratio minus the rejected reply's.
+        weight: 1
+        required: true
+      - id: r2
+        criterion: State that lowering the loss raises the chosen reply's log-probability and lowers the rejected reply's, relative to the reference.
+        weight: 1
+        required: true
+      - id: r3
+        criterion: State that DPO needs no separate reward model and no loop of writing and scoring new replies, and learns only from fixed preference pairs.
+        weight: 1
+        required: true
+      - id: r4
+        criterion: Mention that the push is largest when the policy ranks the pair the wrong way round.
+        weight: 0.5
+        required: false
+    exemplar: For each reply in the pair, DPO takes the policy's log-probability minus the frozen reference's. The loss is minus the log of the sigmoid of beta times the chosen reply's log ratio minus the rejected reply's. Lowering it with gradient descent raises the chosen reply's log-probability and lowers the rejected reply's, relative to the reference, and the push is largest when the policy ranks the pair the wrong way round. Unlike RLHF, DPO needs no separate reward model and no loop of writing and scoring new replies. It learns only from the fixed preference pairs.

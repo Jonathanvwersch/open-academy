@@ -36,6 +36,7 @@ import {
   SCHEDULER_CONFIG,
 } from '../../src/learning/scheduler.js';
 import { initialMastery } from '../../src/learning/types.js';
+import { withStubConcept } from '../content-test-utils.js';
 
 const now = new Date('2026-01-14T12:00:00.000Z');
 let content: ContentIndex;
@@ -1004,8 +1005,9 @@ test('a completed KP lesson satisfies a prerequisite despite introduced mastery'
 
 test('stub concepts never satisfy a prerequisite', async () => {
   const fullContent = await loadContent();
-  const stub = fullContent.concepts.find((concept) => concept.status === 'stub');
-  if (!stub) throw new Error('Expected a stub concept');
+  const source = required(fullContent.concepts[0], 'concept to mark as a stub');
+  const contentWithStub = withStubConcept(fullContent, source.id);
+  const stub = required(contentWithStub.conceptsById.get(source.id), 'stub concept');
   const masteryByKey = new Map([
     [
       masteryKey(stub.id, stub.dimensions[0] ?? 'conceptual'),
@@ -1018,7 +1020,7 @@ test('stub concepts never satisfy a prerequisite', async () => {
       stub.id,
       masteryByKey,
       [{ conceptId: stub.id, status: 'completed' }],
-      fullContent,
+      contentWithStub,
     ),
   ).toBe(false);
 });
@@ -1168,7 +1170,8 @@ test('Knowledgeable user skips mastered prerequisites', () => {
 });
 
 test('Scheduler never assigns lessons or practice to stub concepts', () => {
-  const stub = required(content.conceptsById.get('matrix-products'), 'stub concept');
+  const contentWithStub = withStubConcept(content, 'matrix-products');
+  const stub = required(contentWithStub.conceptsById.get('matrix-products'), 'stub concept');
   const coreExercise = required(
     content.exercisesByConcept.get('vectors')?.find((exercise) => exercise.role === 'core'),
     'core exercise',
@@ -1178,11 +1181,11 @@ test('Scheduler never assigns lessons or practice to stub concepts', () => {
     id: 'matrix-products-core',
     concept: stub.id,
   };
-  const stubContent = {
-    ...content,
-    exercises: [...content.exercises, stubExercise],
-    exercisesByConcept: new Map(content.exercisesByConcept).set(stub.id, [stubExercise]),
-    exercisesById: new Map(content.exercisesById).set(stubExercise.id, stubExercise),
+  const schedulerContent = {
+    ...contentWithStub,
+    exercises: [...contentWithStub.exercises, stubExercise],
+    exercisesByConcept: new Map(contentWithStub.exercisesByConcept).set(stub.id, [stubExercise]),
+    exercisesById: new Map(contentWithStub.exercisesById).set(stubExercise.id, stubExercise),
   };
   const state = emptyState();
   const prerequisite = required(content.conceptsById.get('linear-algebra'), 'stub prerequisite');
@@ -1192,7 +1195,7 @@ test('Scheduler never assigns lessons or practice to stub concepts', () => {
   }));
   state.inProgressConceptId = stub.id;
 
-  const plan = planSession(state, stubContent, now, 60);
+  const plan = planSession(state, schedulerContent, now, 60);
 
   expect(
     plan.activities.some(
@@ -2397,10 +2400,10 @@ test('paper read state does not change the current learner unit', () => {
 test('an uncompleted trailing stub does not hold back the current learner unit', () => {
   const sourceStub = courseContent.conceptsById.get('experimental-design');
   const defaultCourse = courseContent.coursesById.get('ml-foundations');
-  if (!defaultCourse || !sourceStub) throw new Error('Expected course and stub fixture');
+  if (!defaultCourse || !sourceStub) throw new Error('Expected course and source concept');
 
   const stubId = 'unit-one-fixture-stub';
-  const stub = { ...sourceStub, id: stubId, prereqs: [] };
+  const stub = { ...sourceStub, id: stubId, prereqs: [], status: 'stub' as const };
   const courseWithStub = {
     ...defaultCourse,
     units: defaultCourse.units.map((unit, index) =>

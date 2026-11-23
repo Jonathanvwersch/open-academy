@@ -79,7 +79,7 @@ concepts:
           },
           { text: "Compute the KL-penalised reward for a generated response", dimension: math },
         ],
-      status: stub,
+      status: authored,
     }
   - {
       id: dpo,
@@ -101,7 +101,7 @@ concepts:
             dimension: conceptual,
           },
         ],
-      status: stub,
+      status: authored,
     }
   - {
       id: rl-verifiable-rewards,
@@ -128,7 +128,7 @@ concepts:
           },
         ],
       projects: [llm-post-training],
-      status: stub,
+      status: authored,
     }
   - {
       id: reward-hacking,
@@ -150,7 +150,7 @@ concepts:
             dimension: transfer,
           },
         ],
-      status: stub,
+      status: authored,
     }
   - {
       id: llm-evaluation,

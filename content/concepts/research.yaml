@@ -10,5 +10,5 @@ concepts:
       dimensions: [conceptual, transfer],
       prereqs: [{ id: train-test-split }],
       objectives: [{ text: "Design an ablation", dimension: transfer }],
-      status: stub,
+      status: authored,
     }

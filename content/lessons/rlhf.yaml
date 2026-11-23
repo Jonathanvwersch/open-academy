@@ -1,0 +1,293 @@
+concept: rlhf
+version: 1
+objective: |
+  **Goal:** describe RLHF in reinforcement-learning terms (state, action, policy and reward for a language model) and compute the KL-penalised reward that PPO maximises for a generated reply.
+recap:
+  - concept: reward-models
+    text: 'A reward model reads a prompt and a response and gives one score, higher for responses people prefer. It is trained with the Bradley–Terry loss $-\ln\sigma(r_w-r_l)$, where $r_w$ scores the chosen reply and $r_l$ the rejected one.'
+  - concept: ppo
+    text: 'PPO improves a policy using batches from the old policy $\pi_{\theta_\text{old}}$. A critic estimates values used to compute advantages. The clipped objective $L^{\text{CLIP}}$ caps the improvement credited to each term.'
+  - concept: information-theory
+    text: 'KL divergence $\mathrm{KL}(p\Vert q)=H(p,q)-H(p)$, cross-entropy minus entropy, is the extra average surprise when outcomes follow $p$ but we forecast with $q$. It is zero when $q=p$, never negative, and can change if we swap them.'
+where_this_fits: |
+  ### What is RLHF?
+
+  RLHF, reinforcement learning from human feedback, is a way of training a language model with reinforcement learning using scores learned from people's preferences. The model writes replies, a reward model scores them, and PPO trains the model on those scores adjusted by a penalty.
+
+  Supervised fine-tuning needs people to write good example replies. Ranking lets people give feedback by choosing between replies the model already wrote. A reward model learns from those choices, so the language model can learn from its scores on new replies it writes. The penalty limits drift from the starting model because the reward model can get people's preferences wrong.
+knowledge_points:
+  - id: rlhf-rl-terms
+    title: "Treat writing a reply as reinforcement learning"
+    tldr: |
+      - A language model writes a reply one token at a time, so each token is a choice.
+      - The prompt plus the tokens so far is the state, and the next token is the action.
+      - The model is the policy, and the reward model scores the finished reply.
+    explain: |
+      ### Writing a reply, one token at a time
+
+      In the PPO lesson, a robot in a corridor looked at its state, picked an action and got rewards, and its policy gave the probability of each action. A language model writing a reply does the same kind of thing. It reads the prompt, picks one token, adds it to the text and picks again, until it picks the end marker `<end>`.
+
+      So the words from the PPO lesson carry over.
+
+      - The **state** $s_t$ is the prompt plus the tokens written so far.
+      - The **action** $a_t$ is the next token.
+      - The **policy** is the language model itself. It gives $\pi_\theta(a_t\mid s_t)$, the probability of each possible next token, where $\theta$ holds the model's weights.
+      - An **episode** is one whole reply, from its first token to `<end>`. The prompt is given, so it's part of the first state and isn't an action.
+
+      ### The reward comes at the end
+
+      We write the prompt as $x$ and the finished reply as $y$. The reward model reads both and gives one number, $r_\phi(x,y)$, where $\phi$ holds its trained weights. Before the KL adjustment we'll add in the next step, the reward model contributes $0$ to each action except the last one, the `<end>` token, which gets $r_\phi(x,y)$. With no discount ($\gamma=1$), these contributions add up to the reward model's score.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 250" aria-label="Reward model contributions before the KL adjustment for the reply Blue. to the prompt Name a colour. State s0 is the prompt, and the action a0 is the token Blue, with reward 0. State s1 is the prompt plus Blue, and the action a1 is the full stop, with reward 0. State s2 is the prompt plus Blue., and the action a2 is the end marker, which gets the reward model score r_phi = 2.5">
+      <defs><marker id="rlhf1-blue" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#3b82f6"/></marker></defs>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <text x="20" y="28" fill="#737373">state</text><text x="330" y="28" fill="#737373">action</text><text x="490" y="28" fill="#737373">before adjustment</text>
+      <rect x="20" y="45" width="250" height="40" rx="6" fill-opacity="0" stroke="#737373" stroke-width="1.5"/><text x="32" y="70">s₀: Name a colour.</text>
+      <path d="M272 65 L322 65" stroke="#3b82f6" stroke-width="2.5" marker-end="url(#rlhf1-blue)"/>
+      <text x="330" y="70" fill="#3b82f6">a₀ = Blue</text>
+      <text x="490" y="70" fill="#737373">reward 0</text>
+      <rect x="20" y="110" width="250" height="40" rx="6" fill-opacity="0" stroke="#737373" stroke-width="1.5"/><text x="32" y="135">s₁: Name a colour. Blue</text>
+      <path d="M272 130 L322 130" stroke="#3b82f6" stroke-width="2.5" marker-end="url(#rlhf1-blue)"/>
+      <text x="330" y="135" fill="#3b82f6">a₁ = .</text>
+      <text x="490" y="135" fill="#737373">reward 0</text>
+      <rect x="20" y="175" width="250" height="40" rx="6" fill-opacity="0" stroke="#737373" stroke-width="1.5"/><text x="32" y="200">s₂: Name a colour. Blue.</text>
+      <path d="M272 195 L322 195" stroke="#3b82f6" stroke-width="2.5" marker-end="url(#rlhf1-blue)"/>
+      <text x="330" y="200" fill="#3b82f6">a₂ = &lt;end&gt;</text>
+      <text x="490" y="200" fill="#10b981">reward r<tspan baseline-shift="sub" font-size="13">φ</tspan> = 2.5</text>
+      </g>
+      </svg>
+      ```
+
+      The picture shows the prompt "Name a colour." and the reply "Blue." written as three actions. The reward model contributes its score $r_\phi=2.5$ only at the last action.
+
+      ### The probability of a whole reply
+
+      In the language modelling lesson, we multiplied next-token probabilities to get the chance of a longer piece of text. So the policy's probability of the whole reply, $\pi_\theta(y\mid x)$, is the product of its token probabilities. Taking logs turns the product into a sum, so the **log-probability** of a reply is the sum of its tokens' log-probabilities. We use natural logs, $\ln$, throughout.
+
+      Be careful not to think of the reward model as the policy. The reward model only scores replies. The policy is the model that writes them, and it's the one RLHF trains.
+    worked: |
+      Let's find the log-probability of the reply "Blue." to the prompt "Name a colour.". We'll need it for the penalty in the next step. We'll also find the reply's return. The reply is the three tokens `Blue`, `.` and `<end>`, and the policy gives them probabilities $0.5$, $0.8$ and $0.9$.
+
+      1. **Multiply the token probabilities.** Each probability is for one token given the state before it, so the reply's probability is their product.
+         $$\pi_\theta(y\mid x)=0.5\times0.8\times0.9=0.36.$$
+
+      2. **Take the log of the product.** We round to two decimals.
+         $$\ln\pi_\theta(y\mid x)=\ln0.36\approx-1.02.$$
+
+      3. **Add the token log-probabilities.** The log of a product equals the sum of the exact logs. Here the rounded logs also add to $-1.02$. In other examples, rounding each log first can shift the last digit.
+         $$\begin{aligned}&\ln0.5+\ln0.8+\ln0.9\\&\approx-0.69-0.22-0.11\\&=-1.02.\end{aligned}$$
+
+      4. **Add up the rewards before the KL adjustment.** The first two tokens get $0$ and the last gets the reward model's score, $2.5$. With $\gamma=1$, the return from the first token is their sum.
+         $$G_0=0+0+2.5=2.5.$$
+
+      Real replies often have hundreds of tokens, and the product of their probabilities gets tiny, which is why models work with sums of log-probabilities.
+    problems:
+      - rlhf-rl-terms-basics
+      - rlhf1-worked-self-explain
+      - rlhf1-state
+      - rlhf1-token-rewards
+      - rlhf1-logprob-template
+      - rlhf1-which-trained
+      - rlhf1-discounted-return
+  - id: rlhf-kl-reward
+    title: "Keep the model close to where it started"
+    tldr: |
+      - Chasing the reward model's score alone can push the policy towards replies that the reward model overrates.
+      - So we keep a frozen copy of the starting model and adjust each reply's reward by how much more or less likely the trained model makes it.
+      - A number we choose sets how strong that penalty is.
+    explain: |
+      ### Why the score alone isn't enough
+
+      We could run PPO with the reward model's score as the reward. But the reward model learned from a limited set of replies and can be wrong about very different text. Chasing the score alone can push the policy towards replies the reward model overrates, such as long or repetitive replies. The policy can then lose the fluent, helpful style it learned from supervised fine-tuning (SFT). The penalty limits that drift.
+
+      ### A penalty for drifting
+
+      We keep a copy of the SFT model and freeze its weights throughout the reinforcement-learning stage. This is the **reference model**, and we write its probabilities as $\pi_{\text{ref}}$. For each reply the policy writes, we ask both models how likely it is. The **KL-penalised reward** is
+
+      $$R(x,y)=r_\phi(x,y)-\beta\ln\frac{\pi_\theta(y\mid x)}{\pi_{\text{ref}}(y\mid x)}.$$
+
+      The log ratio is the policy's log-probability of the reply minus the reference's. It's positive when the policy has made the reply more likely than the reference did, and then the reward drops. We choose the number $\beta\ge0$, called the **KL coefficient**. The next step shows why it has that name.
+
+      ### What β trades off
+
+      The number $\beta$ trades a higher score against staying close to the SFT model. Take one reply with $r_\phi=2.5$, where the policy's log-probability is $-1$ and the reference's is $-3$, so the log ratio is $2$.
+
+      | $\beta$ | penalty $2\beta$ | $R$ after the penalty |
+      | --- | --- | --- |
+      | $0$ | $0$ | $2.5$ |
+      | $0.1$ | $0.2$ | $2.3$ |
+      | $0.5$ | $1$ | $1.5$ |
+      | $2$ | $4$ | $-1.5$ |
+
+      With $\beta=0$ there is no penalty. PPO clipping caps how much improvement each term of the objective gets credit for. Other terms can still move the same action's probability farther. A small $\beta$ charges little for drifting, so the policy has more room to chase the score. A larger $\beta$ puts more weight on staying close to the SFT model.
+
+      Be careful not to mix up the reference model with PPO's old policy $\pi_{\theta_\text{old}}$. The old policy is replaced after each batch's PPO passes, while the reference stays fixed throughout the reinforcement-learning stage.
+    worked: |
+      Let's work out the KL-penalised reward for the reply "Blue." to the prompt "Name a colour.", after some RL training. These are the numbers from the $\beta=0.1$ row of the table. The reward model gives $r_\phi=2.5$, the policy's log-probability is $\ln\pi_\theta(y\mid x)=-1$, the reference's is $\ln\pi_{\text{ref}}(y\mid x)=-3$, and $\beta=0.1$.
+
+      1. **Find the log ratio.** The log of a ratio is the difference of the logs.
+         $$\ln\frac{\pi_\theta(y\mid x)}{\pi_{\text{ref}}(y\mid x)}=-1-(-3)=2.$$
+
+      2. **Multiply the log ratio by $\beta$.** This is the penalty.
+         $$\beta\times2=0.1\times2=0.2.$$
+
+      3. **Subtract the penalty from the score.** The reply loses a little reward for having become more likely.
+         $$R=2.5-0.2=2.3.$$
+
+      4. **Try a reply the policy has made less likely.** Say another reply to the same prompt, "Red.", has $r_\phi=1$, a policy log-probability of $-4$ and a reference log-probability of $-3$. Its log ratio is $-4-(-3)=-1$, so subtracting the penalty adds reward.
+         $$R=1-0.1\times(-1)=1.1.$$
+
+      The policy pays for making "Blue." more likely than the reference did, and gains a little for making "Red." less likely. The next step shows why the penalty still comes out positive on average.
+    problems:
+      - rlhf-kl-reward-basics
+      - rlhf2-worked-self-explain
+      - rlhf2-same-probability
+      - rlhf2-penalty-template
+      - rlhf2-large-beta
+      - rlhf2-why-penalty
+      - rlhf2-compare-replies
+      - rlhf2-robot
+  - id: rlhf-kl-average
+    title: "Link the penalty to KL divergence"
+    tldr: |
+      - One reply's log ratio can be positive or negative.
+      - Averaged over the replies the policy writes, the log ratio equals the KL divergence from the policy to the reference model.
+      - So RLHF raises the average score while paying for that KL divergence, which is never negative.
+    explain: |
+      ### Averaging the log ratio
+
+      In the last step, one reply's log ratio was $2$ and another's was $-1$, so a single penalty can even add reward. What happens on average, over all the replies the policy writes?
+
+      Let's take the simplest case. Suppose the prompt "Name a colour." has only two possible replies, "Blue." and "Red.". The reference model gives each one probability $0.5$. After some training, the policy writes "Blue." with probability $0.8$ and "Red." with probability $0.2$. Take the log of each ratio, multiply it by the reply's probability under the policy, then add the results.
+      $$
+      \begin{aligned}
+      &0.8\ln\frac{0.8}{0.5}+0.2\ln\frac{0.2}{0.5}\\
+      &\approx0.8\times0.470+0.2\times(-0.916)\\
+      &\approx0.193
+      \end{aligned}
+      $$
+      The negative log ratio of "Red." gets weight only $0.2$, so the positive log ratio of "Blue." wins.
+
+      ### It's the KL divergence
+
+      In the information theory lesson, KL divergence was cross-entropy minus entropy. Let's write it with actual probabilities $p_i$, forecast probabilities $q_i$ and natural logs. We write out both averages and combine the logs.
+      $$
+      \begin{aligned}
+      \mathrm{KL}(p\Vert q)&=H(p,q)-H(p)\\
+      &=\sum_i p_i\ln\frac1{q_i}-\sum_i p_i\ln\frac1{p_i}\\
+      &=\sum_i p_i\ln\frac{p_i}{q_i}
+      \end{aligned}
+      $$
+      That's exactly our average, with the policy as $p$, the reference as $q$, and each $i$ one possible reply to the prompt. So the average penalty is $\beta\,\mathrm{KL}(\pi_\theta\Vert\pi_{\text{ref}})$. The KL is never negative, and it's zero only when the policy matches the reference. For each prompt $x$, RLHF pushes up
+
+      $$\text{average of }r_\phi(x,y)\;-\;\beta\,\mathrm{KL}(\pi_\theta\Vert\pi_{\text{ref}}).$$
+
+      Here the average of $r_\phi(x,y)$ is over the replies $y$ the policy writes to $x$, and the KL compares the two models' probabilities for replies to $x$. With natural logs, KL comes out in nats, and one nat is about $1.44$ bits.
+
+      ### Estimating it from samples
+
+      A real prompt has far too many possible replies to list. So we let the policy write several replies to the prompt, token by token, and compute each one's log ratio. Each log ratio is a noisy estimate of the KL. Some are negative, but their average gets close to the true KL as we sample more.
+
+      Be careful with the order. The replies come from the policy, so the policy goes on the left, $\mathrm{KL}(\pi_\theta\Vert\pi_{\text{ref}})$. Swapping them gives a different number. In our example, $\mathrm{KL}(\pi_{\text{ref}}\Vert\pi_\theta)=0.5\ln\frac{0.5}{0.8}+0.5\ln\frac{0.5}{0.2}\approx0.223$.
+    worked: |
+      Let's find the average penalty for a prompt with two possible replies, A and B. The policy writes them with probabilities $0.9$ and $0.1$, the reference model gives them $0.6$ and $0.4$, and $\beta=0.1$. We keep the exact values in the calculator and round at the end.
+
+      1. **Find each reply's log ratio.** Divide the policy's probability by the reference's, then take the log.
+         $$\begin{aligned}\ln\frac{0.9}{0.6}&=\ln1.5\approx0.405,\\\ln\frac{0.1}{0.4}&=\ln0.25\approx-1.386.\end{aligned}$$
+
+      2. **Average them with the policy's probabilities.** The replies come from the policy, so its probabilities are the weights.
+         $$\begin{aligned}\mathrm{KL}(\pi_\theta\Vert\pi_{\text{ref}})&\approx0.9\times0.405\\&\quad+0.1\times(-1.386)\\&\approx0.226.\end{aligned}$$
+
+      3. **Check the KL with cross-entropy minus entropy.** The cross-entropy is $0.9\ln\frac1{0.6}+0.1\ln\frac1{0.4}\approx0.551$, and the policy's entropy is $0.9\ln\frac1{0.9}+0.1\ln\frac1{0.1}\approx0.325$.
+         $$0.551-0.325=0.226.$$
+
+      4. **Multiply the KL by $\beta$.** This is the average penalty taken off the reward for this prompt.
+         $$\beta\,\mathrm{KL}\approx0.1\times0.226\approx0.023.$$
+
+      Both ways give a KL of about $0.226$ nats, and the average penalty is about $0.023$, even though reply B's own log ratio is negative.
+    problems:
+      - rlhf-kl-average-basics
+      - rlhf3-worked-self-explain
+      - rlhf3-negative-sample
+      - rlhf3-kl-template
+      - rlhf3-zero-penalty
+      - rlhf3-compare-policies
+      - rlhf3-robot-grasp
+  - id: rlhf-pipeline
+    title: "Put the three training stages together"
+    tldr: |
+      - First, supervised fine-tuning teaches the model to reply from examples people wrote.
+      - Second, people compare the model's replies, and a reward model learns from those comparisons.
+      - Third, PPO trains the model on the reward model's score minus the penalty for drifting from the SFT model.
+    explain: |
+      ### Three stages
+
+      Here's a simple first pass through RLHF. Start with a pretrained language model and run these three stages in order.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 170" aria-label="A simple first pass through the three stages of RLHF, shown from left to right. Stage 1, supervised fine-tuning, learns from example replies people wrote and gives the SFT model, whose frozen copy is the reference model. Stage 2, the reward model, learns r_phi from people's rankings of the SFT model's replies. Stage 3, reinforcement learning, trains the policy with PPO on the reward model's score minus the KL penalty">
+      <defs><marker id="rlhf4-muted" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker></defs>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <rect x="10" y="20" width="190" height="50" rx="8" fill-opacity="0" stroke="#737373" stroke-width="1.5"/><text x="105" y="50" text-anchor="middle">1. Supervised fine-tuning</text>
+      <rect x="225" y="20" width="190" height="50" rx="8" fill-opacity="0" stroke="#737373" stroke-width="1.5"/><text x="320" y="50" text-anchor="middle">2. Reward model</text>
+      <rect x="440" y="20" width="190" height="50" rx="8" fill-opacity="0" stroke="#737373" stroke-width="1.5"/><text x="535" y="50" text-anchor="middle">3. RL with PPO</text>
+      <path d="M201 45 L222 45" stroke="#737373" stroke-width="2" marker-end="url(#rlhf4-muted)"/>
+      <path d="M416 45 L437 45" stroke="#737373" stroke-width="2" marker-end="url(#rlhf4-muted)"/>
+      <text x="105" y="98" text-anchor="middle" fill="#737373">from replies people wrote</text>
+      <text x="105" y="120" text-anchor="middle">gives the SFT model</text>
+      <text x="105" y="142" text-anchor="middle" fill="#3b82f6">frozen copy: π<tspan baseline-shift="sub" font-size="13">ref</tspan></text>
+      <text x="320" y="98" text-anchor="middle" fill="#737373">from people's rankings</text>
+      <text x="320" y="120" text-anchor="middle" fill="#10b981">gives r<tspan baseline-shift="sub" font-size="13">φ</tspan></text>
+      <text x="535" y="98" text-anchor="middle" fill="#737373">score minus KL penalty</text>
+      <text x="535" y="120" text-anchor="middle">trains the policy π<tspan baseline-shift="sub" font-size="13">θ</tspan></text>
+      </g>
+      </svg>
+      ```
+
+      1. **Supervised fine-tuning.** People write example replies to prompts, and we train the pretrained model on them. The result is the SFT model, and a frozen copy of it becomes the reference model.
+      2. **Reward model.** For this first pass, use replies from the SFT model. People rank them, and we train a reward model $r_\phi$ on those preference pairs with the Bradley–Terry loss. It can then score new replies without people.
+      3. **Reinforcement learning.** The policy starts as a second copy of the SFT model, so at first it matches the reference and the penalty is zero. It writes replies, the reward model scores them, and PPO trains the policy on the KL-penalised reward.
+
+      ### Running PPO on replies
+
+      In stage 3, one round goes like this. We pick a batch of prompts, and the policy writes a reply to each. The policy that wrote the batch is $\pi_{\theta_\text{old}}$. We score each reply with $r_\phi$, and we store each token's log-probability under $\pi_{\theta_\text{old}}$ and under the reference. These give each token a reward, as below. Then, as in the PPO lesson, a critic learns to estimate values from these rewards, we compute advantages, and we take several passes of gradient ascent on the clipped objective $L^{\text{CLIP}}$.
+
+      The log-probability of a reply is a sum over its tokens, so the penalty splits into one piece per token. Many implementations give each token the reward $-\beta\big(\ln\pi_{\theta_\text{old}}(a_t\mid s_t)-\ln\pi_{\text{ref}}(a_t\mid s_t)\big)$ and add $r_\phi(x,y)$ to the last token's reward. These rewards are computed once, when the batch is written, and stay fixed during the PPO passes. They add up to the KL-penalised reward of the whole reply, and PPO computes returns and advantages from them as usual.
+
+      ### InstructGPT
+
+      [InstructGPT](https://arxiv.org/abs/2203.02155) is a standard example. It started from GPT-3 and used PPO with a per-token KL penalty against the SFT model. Most comparison replies came from SFT models, and some came from policies trained with PPO. On the authors' prompt distribution, raters preferred replies from the 1.3-billion-parameter InstructGPT model to those from the 175-billion-parameter GPT-3 model.
+    worked: |
+      Let's split the KL-penalised reward of the reply "Blue." into token rewards. The reward model gives $r_\phi=2.5$, and we use $\beta=0.1$. For the tokens `Blue`, `.` and `<end>`, the policy that wrote the reply gave log-probabilities $-0.5$, $-0.2$ and $-0.3$, and the reference's are $-1.5$, $-0.5$ and $-1$.
+
+      1. **Find each token's log ratio.** Subtract the reference's log-probability from the policy's.
+         $$\begin{aligned}-0.5-(-1.5)&=1,\\-0.2-(-0.5)&=0.3,\\-0.3-(-1)&=0.7.\end{aligned}$$
+
+      2. **Turn them into token rewards.** Multiply each by $\beta=0.1$ and change the sign.
+         $$-0.1,\qquad-0.03,\qquad-0.07.$$
+
+      3. **Add the score to the last token.** Only the last token gets the reward model's score.
+         $$-0.07+2.5=2.43.$$
+
+      4. **Add up the token rewards.** With $\gamma=1$, the return from the first token is the sum.
+         $$G_0=-0.1-0.03+2.43=2.3.$$
+
+      That's the same $2.3$ as the whole-reply worked example in "Keep the model close to where it started", because the token log ratios add up to the reply's log ratio, $1+0.3+0.7=2$.
+    problems:
+      - rlhf-pipeline-basics
+      - rlhf4-worked-self-explain
+      - rlhf4-stage-people
+      - rlhf4-token-template
+      - rlhf4-clipped-token
+      - rlhf4-ref-vs-old
+      - rlhf4-reward-model-loss
+      - rlhf4-robot-towels
+final: rlhf-explain-training
+summary: |
+  - In RLHF, the state is the prompt plus the tokens so far, the action is the next token, the policy $\pi_\theta$ is the language model, and the reward model gives the finished reply its score $r_\phi(x,y)$.
+  - The KL-penalised reward is $R(x,y)=r_\phi(x,y)-\beta\ln\frac{\pi_\theta(y\mid x)}{\pi_{\text{ref}}(y\mid x)}$, where $\pi_{\text{ref}}$ gives the probabilities of a frozen copy of the SFT model. The penalty limits the policy's drift towards text the reward model overrates.
+  - Averaged over the policy's replies, the penalty is $\beta\,\mathrm{KL}(\pi_\theta\Vert\pi_{\text{ref}})$. A larger $\beta$ keeps the policy closer to the SFT model, and a smaller one lets it chase the score.
+  - The RLHF recipe has three stages. Supervised fine-tuning comes first, then a reward model is trained on people's comparisons, and then PPO trains the policy on the KL-penalised reward.
+
+  **Next:** Direct preference optimisation (DPO) learns from the same preference pairs without a separate reward model, and without the loop of writing, scoring and updating.
