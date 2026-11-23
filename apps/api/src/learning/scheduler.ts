@@ -903,6 +903,9 @@ function packWeekday(
       left.index - right.index,
   )) {
     const candidate = detail.candidate;
+    if (!candidate.remediation && !dueConceptIds.has(candidate.activity.conceptId ?? '')) {
+      continue;
+    }
     const fitsReviewCap =
       candidate.remediation ||
       detail.overdue ||

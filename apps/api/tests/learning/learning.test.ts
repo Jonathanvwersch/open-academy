@@ -3834,6 +3834,45 @@ test('due reviews use at most 30% of a normal budget', () => {
   expect(reviewMinutes).toBeLessThanOrEqual(Math.floor(budget * 0.3));
 });
 
+test('non-due review candidates do not reserve the fresh-lesson budget', () => {
+  const vectors = required(courseContent.conceptsById.get('vectors'), 'vectors concept');
+  const concepts = courseContent.concepts.map((concept) =>
+    concept.id === 'vectors' ? { ...concept, est_minutes: 20 } : concept,
+  );
+  const index: ContentIndex = {
+    ...courseContent,
+    concepts,
+    conceptsById: new Map(concepts.map((concept) => [concept.id, concept])),
+  };
+  const state = studyState(['maths-for-ml'], index);
+  state.activeCourseId = 'maths-for-ml';
+  state.studyCourseIds = ['maths-for-ml'];
+  const reviewedAt = new Date('2025-12-01T12:00:00.000Z');
+  const futureDueAt = new Date('2026-02-01T00:00:00.000Z');
+  state.cards = [
+    {
+      conceptId: vectors.id,
+      dimension: 'math',
+      dueAt: futureDueAt.toISOString(),
+      fsrs: {
+        ...scheduleReview(newReviewCard(reviewedAt), reviewedAt, Rating.Good, 'UTC', false).card,
+        state: State.Review,
+        due: futureDueAt,
+      },
+    },
+  ];
+
+  const plan = planSession(state, index, now, 20);
+
+  expect(plan.activities).toContainEqual(
+    expect.objectContaining({
+      kind: 'learn',
+      conceptId: 'vectors',
+      plannedMinutes: 20,
+    }),
+  );
+});
+
 test('review urgency selects an overdue off-path topic when the cap fits one review', () => {
   const fixture = reviewQueueFixture(2, 1, 6);
   const inUnit = required(fixture.topicIds[0], 'in-unit review topic');
