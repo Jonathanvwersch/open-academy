@@ -841,9 +841,39 @@ function validateKnowledgePointContent(data: ContentSourceData, issues: ContentI
   const authoredLessons = new Set(data.lessons.map(({ value }) => value.concept));
   const knowledgePointIds = new Set<string>();
   const references = new Map<string, number>();
+  const hardAncestorsFor = (conceptId: string) => {
+    const ancestors = new Set<string>();
+    const visited = new Set<string>();
+    const visit = (id: string) => {
+      if (visited.has(id)) return;
+      visited.add(id);
+      for (const prerequisite of concepts.get(id)?.prereqs ?? []) {
+        if (prerequisite.strength !== 'hard') continue;
+        ancestors.add(prerequisite.id);
+        visit(prerequisite.id);
+      }
+    };
+    visit(conceptId);
+    return ancestors;
+  };
 
   for (const { value: lesson, file } of data.lessons) {
     if (lesson.knowledge_points) {
+      const hardAncestors = hardAncestorsFor(lesson.concept);
+      for (const point of lesson.knowledge_points) {
+        for (const prerequisiteId of point.key_prereqs ?? []) {
+          if (!concepts.has(prerequisiteId)) {
+            addIssue(issues, file, point.id, `key prerequisite "${prerequisiteId}" does not exist`);
+          } else if (!hardAncestors.has(prerequisiteId)) {
+            addIssue(
+              issues,
+              file,
+              point.id,
+              `key prerequisite "${prerequisiteId}" is not a transitive hard ancestor of "${lesson.concept}"`,
+            );
+          }
+        }
+      }
       if (lesson.recap) {
         const prerequisites = concepts.get(lesson.concept)?.prereqs ?? [];
         const prerequisiteIds = new Set(prerequisites.map(({ id }) => id));
