@@ -164,6 +164,35 @@ test('Home offers a remediation review with its reason instead of the retrying l
   ).toBe(false);
 });
 
+test('Home choices hide a retry until its retry time is eligible', async () => {
+  await activateCourse('ml-foundations');
+  await completeHardAncestors('gradient-descent');
+  const [run] = await db
+    .insert(lessonRuns)
+    .values({
+      userId,
+      conceptId: 'gradient-descent',
+      status: 'needs_retry',
+      retryAfter: new Date('2026-01-08T00:00:00.000Z'),
+    })
+    .returning();
+  if (!run) throw new Error('Could not create retry lesson run');
+
+  const paused = await (await get('/learn')).json();
+  expect(paused.choices.map((choice: { conceptId: string }) => choice.conceptId)).not.toContain(
+    'gradient-descent',
+  );
+
+  await db
+    .update(lessonRuns)
+    .set({ retryAfter: new Date('2026-01-07T00:00:00.000Z') })
+    .where(eq(lessonRuns.id, run.id));
+  const ready = await (await get('/learn')).json();
+  expect(ready.choices.map((choice: { conceptId: string }) => choice.conceptId)).toContain(
+    'gradient-descent',
+  );
+});
+
 test('a focused session cannot start a needs-retry lesson before retryAfter', async () => {
   const courseId = content.curriculum?.default_course;
   if (!courseId) throw new Error('Missing default course');

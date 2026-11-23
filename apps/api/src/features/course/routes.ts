@@ -32,6 +32,7 @@ import {
   projectCourseFinishes,
 } from '../../learning/finish-projection.js';
 import { isDueToday } from '../../learning/fsrs.js';
+import { isLessonRetryReady } from '../../learning/lesson-retry.js';
 import { deriveLessonState } from '../../learning/lesson-runner.js';
 import {
   activeCourseFor,
@@ -514,6 +515,8 @@ export function registerLearnCourseRoutes(
         }),
       ]),
     );
+    const choiceSchedulerState = activeSessionId ? undefined : await loadSchedulerState();
+    const openRemediationFlags = choiceSchedulerState?.remediationFlags ?? [];
     const eligibleChoices = activeSessionId
       ? []
       : outlineConceptIds.flatMap((conceptId) => {
@@ -529,6 +532,15 @@ export function registerLearnCourseRoutes(
             return [];
           }
           const run = runsByConcept.get(conceptId);
+          const hasOpenFlags = openRemediationFlags
+            .filter((flag) => flag.conceptId === conceptId)
+            .some((flag) => flag.status === undefined || flag.status === 'open');
+          if (
+            run?.status === 'needs_retry' &&
+            !isLessonRetryReady(run.retryAfter, hasOpenFlags, now)
+          ) {
+            return [];
+          }
           const lessonState = lesson.knowledge_points?.length
             ? run
               ? deriveLessonState(
