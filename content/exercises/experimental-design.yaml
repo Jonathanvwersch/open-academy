@@ -10,7 +10,7 @@ exercises:
     prompt: What is a baseline when testing a new model?
     options:
       - id: a
-        text: A reference model trained and scored the same way, for comparison with the new model.
+        text: A reference model fitted on the same training data and scored on the same validation data.
         correct: true
         feedback: Its score gives the new score a reference point.
       - id: b
@@ -31,7 +31,7 @@ exercises:
         category: incorrect_reasoning
         feedback: A baseline is an actual reference model, rather than an unknown best possible score.
     solution:
-      A baseline is a reference model trained and scored in the same way as the new model. We
+      A baseline is a reference model fitted on the same training data and scored on the same validation data. We
       usually compare with a simple model and the previous best.
   - id: edp-baseline-self-explain
     dimension: conceptual
@@ -265,18 +265,20 @@ exercises:
     rubric:
       - id: r1
         criterion:
-          Explain that a baseline is a reference model trained and scored in the same way as the
-          new model.
+          Explain that a baseline is a reference model fitted on the same training data and scored
+          on the same validation data as the new model.
         weight: 1
         required: true
       - id: r2
         criterion: Name the simplest sensible model and the previous best as the two usual baselines.
         weight: 1
         required: true
-    exemplar: A baseline is a reference model trained and scored in the same way as a new model. We
+    exemplar:
+      A baseline is a reference model fitted on the same training data and scored on the same validation data as a new model. We
       usually use the simplest sensible model, such as predicting the mean training value, and the
       previous best.
-    solution: A baseline is a reference model trained and scored in the same way as a new model. We
+    solution:
+      A baseline is a reference model fitted on the same training data and scored on the same validation data as a new model. We
       usually use the simplest sensible model, such as predicting the mean training value, and the
       previous best.
   - id: edp-recall-baseline-contrast
@@ -286,9 +288,8 @@ exercises:
     difficulty: 1
     est_minutes: 0.5
     target_seconds: 30
-    prompt:
-      Which is a model trained and scored the same way as a new model, so the score gap shows what
-      the new model adds?
+    prompt: Which is a reference model fitted on the same training data and scored on the same
+      validation data as a new model?
     knowledge_point: ed-baseline
     options:
       - id: a
@@ -376,7 +377,7 @@ exercises:
         category: incorrect_reasoning
         feedback: Both runs are still scored on the same validation sales.
       - id: b
-        text: It makes the inputs the only difference, so the fair gap of 100 measures their effect.
+        text: It leaves inputs as the only planned change, so the gap of 100 estimates their effect.
         correct: true
         feedback: The same training length and tuning effort remove the other differences.
       - id: c
@@ -390,7 +391,7 @@ exercises:
         category: incorrect_reasoning
         feedback: The fair comparison gives 100; unequal training accounted for the other 50.
     solution:
-      Matching the 2,000 steps and 5 learning rates leaves the inputs as the only difference.
+      Matching the 2,000 steps and 5 learning rates leaves the inputs as the only planned change.
       The resulting error gap is 500 minus 400 = 100.
   - id: edp-fair-run
     dimension: conceptual
@@ -525,7 +526,8 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: A team tries 20 learning rates for a new model and keeps the default for its baseline.
+    prompt:
+      A team tries 20 learning rates for a new model and keeps the first learning rate it tried for its baseline.
       Validation errors are 380 and 400. What should they do before crediting the new idea?
     options:
       - id: a
@@ -548,7 +550,7 @@ exercises:
         feedback: The comparison currently mixes the idea with extra tuning effort.
       - id: d
         text:
-          Keep the baseline default and try more rates for the new model; a larger search confirms the
+          Keep the baseline's first rate and try more rates for the new model; a larger search confirms the
           idea.
         correct: false
         category: incorrect_reasoning
@@ -691,10 +693,10 @@ exercises:
     prompt: What is an ablation of a model?
     options:
       - id: a
-        text: Run the full model several times with new seeds and measure the spread of its results.
+        text: Train the full model longer with all its inputs and measure its validation error again.
         correct: false
         category: incorrect_reasoning
-        feedback: Seed runs measure variation from random choices.
+        feedback: Longer training leaves every part in place, so it does not test removing a part.
       - id: b
         text: Replace the full model with a simple predictor and compare their validation errors.
         correct: false
@@ -702,8 +704,8 @@ exercises:
         feedback: That is a baseline comparison rather than removing one part.
       - id: c
         text:
-          Remove or switch off one part, keep other choices fixed and measure how much worse the result
-          gets.
+          Remove or switch off one part, keep other choices fixed and measure how its validation error
+          changes.
         correct: true
         feedback: This isolates what the removed part contributes.
       - id: d
@@ -731,7 +733,7 @@ exercises:
         category: incorrect_reasoning
         feedback: Validation sales choose the rates; test sales stay set aside.
       - id: b
-        text: The removed input is then the only difference, so its removal causes the rise in error.
+        text: The removed input is the only planned change, so the gap estimates its effect under these settings.
         correct: true
         feedback: Keeping the settings fixed isolates the removed input.
       - id: c
@@ -745,8 +747,8 @@ exercises:
         category: incorrect_reasoning
         feedback: Each ablation removes just one input in a separate run.
     solution:
-      Each run changes only one input. Keeping the split, steps and tuning fixed lets its rise
-      in validation error measure that input’s contribution.
+      Each comparison changes only one input. Matching the split, steps and tuning lets the gap
+      estimate that input’s contribution. Later comparisons check variation from random choices.
   - id: edp-rise-template
     dimension: conceptual
     type: numeric
@@ -892,38 +894,39 @@ exercises:
     difficulty: 3
     est_minutes: 2
     prompt:
-      A robot box-slide model fills missing sensor readings with the training average, uses box
-      weight as an input and trains for 3,000 steps. Which run tests whether the fill step helps?
+      A robot box-slide model uses box weight as an input. It trains for 2,000 steps on one set of
+      recorded pushes, then for 1,000 more on a second set. Which comparison tests whether training
+      on the second set helps?
     options:
       - id: a
         text:
-          Keep filling and box weight in place; compare the full model with a mean predictor trained and
-          scored on the same data.
+          Keep both training steps and box weight; compare with a mean predictor fitted on the same
+          training pushes and scored on the same validation pushes.
         correct: false
         category: incorrect_reasoning
-        feedback: That is a baseline comparison and leaves the fill step in place.
+        feedback: This is a baseline comparison and leaves the second training step in place.
       - id: b
         text:
-          Switch off filling and drop rows with missing readings; keep other settings fixed and compare
-          validation error with the full model.
+          Skip training on the second set; keep box weight, the first training run and the validation
+          pushes fixed, then compare errors with the full model.
         correct: true
-        feedback: This removes the preparation step while leaving the other model choices fixed.
+        feedback: This removes the second training step while keeping the other choices fixed.
       - id: c
-        text:
-          Switch off filling and drop rows with missing readings; also remove box weight and compare
-          validation error with the full model.
+        text: Skip training on the second set and remove box weight; keep the first training run and
+          validation pushes fixed, then compare errors with the full model.
         correct: false
         category: incorrect_reasoning
-        feedback: Removing weight changes a second part, so its effect mixes with switching off filling.
+        feedback: Removing box weight changes a second part, so the gap mixes two effects.
       - id: d
         text:
-          Fill missing readings with the average over training and test data; keep other settings fixed
-          and compare validation error with the full model.
+          Keep both training steps and box weight; score on the second training set and compare that
+          error with the full model's validation error.
         correct: false
         category: incorrect_reasoning
-        feedback: This changes the fill rule and leaks test information instead of switching the step off.
-    solution: Switch off the fill step and train without it, dropping rows that lack readings. Keep
-      other settings fixed and compare validation error with the full model.
+        feedback: This changes the scoring data and leaves the second training step in place.
+    solution:
+      Train without the second step. Keep box weight, the first training run and the validation
+      pushes fixed, then compare with the full model on those validation pushes.
   - id: edp-recall-ablation-say
     dimension: conceptual
     type: explain
@@ -1064,8 +1067,8 @@ exercises:
         feedback: A small positive mean gap can come from the run’s random choices.
       - id: c
         text:
-          The 35 exceeds both spreads, 20 and 30, and wins every seed; 5 is below the spreads and age
-          flips on one seed.
+          Keeping bedrooms wins every seed, with gap 35 above spreads 20 and 30. Removing age wins
+          once, with gap 5 below both spreads.
         correct: true
         feedback:
           The bedrooms result is larger than the spread and consistent; the age result is small and

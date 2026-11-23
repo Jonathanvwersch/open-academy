@@ -10,10 +10,10 @@ where_this_fits: |
 
   Experimental design is how we plan the training runs that test a change to a model, so that their results tell us whether the change really helped. It decides what we compare against, what we keep fixed, which parts we take out to test them, and how many times we repeat each run.
 
-  It's useful because a single score can mislead. Suppose a new price model gets a validation error of 400. That might be a big step forward, or worse than a model we already had. Longer training, extra tuning or a lucky run can also make a change look better than it is. Careful experiments tell us which parts of a model help, and by how much.
+  It's useful because a single score can mislead. Suppose a new price model gets a validation error of 400. That might be a big step forward, or worse than a model we already had. Longer training or trying more learning rates can improve the score. Random choices can also favour one attempt. Careful experiments help us separate these effects.
 knowledge_points:
   - id: ed-baseline
-    title: "Compare with a simple baseline"
+    title: "Compare with reference models"
 
     tldr: |
       - A score on its own doesn't say whether a model is any good.
@@ -23,17 +23,17 @@ knowledge_points:
     explain: |
       ### A score needs something to compare with
 
-      In the training and evaluation splits lesson, we scored house-price models by their validation error, the average squared error on sales kept out of training. Throughout this lesson we'll use one invented example. We have 1,000 past sales, split into 700 training, 150 validation and 150 test sales, with prices in thousands of pounds.
+      In the training and evaluation splits lesson, we scored house-price models by their validation error, the average squared error on the validation sales. Throughout this lesson we'll use one invented example. We have 1,000 past sales, split into 700 training, 150 validation and 150 test sales, with prices in thousands of pounds.
 
-      We build a new model, which we'll call **model N**. It's a line model that uses four inputs: a house's size, its number of bedrooms, its age and its distance to the station. Its validation error is 400. Is that good?
+      We build a new model, which we'll call **model N**. It's a linear regression model that uses four inputs: a house's size, its number of bedrooms, its age and its distance to the station. Its validation error is 400. Is that good?
 
-      We can't tell yet. If a model that ignores the houses altogether also scores about 400, then N has learned almost nothing. So before we believe any result, we need something to compare it with.
+      We can't tell yet. If a model that ignores the houses altogether also scores about 400, N has no clear advantage over it on these sales. We need something to compare N with.
 
       ### Two baselines
 
-      A **baseline** is a reference model that we train and score in the same way as the new one, so that the gap between their scores shows what the new model adds. We usually use two kinds.
+      A **baseline** is a reference model fitted on the same training data and scored on the same validation data as the new model. It gives the new score a comparison. We usually use two kinds.
 
-      - **The simplest sensible model.** In the loss functions lesson, we saw that the simplest model predicts the same number every time, and that under squared error the best such number is the mean. So this baseline predicts the mean training price for every house.
+      - **The simplest sensible model.** In the loss functions lesson, we saw that the best constant prediction under squared error is the mean. This baseline predicts the mean training price for every house. Fitting it takes one mean calculation.
       - **The previous best.** This is the best model that we, or others, already have for the task. Here it's a line model that uses only a house's size.
 
       ```svg
@@ -54,25 +54,25 @@ knowledge_points:
       </svg>
       ```
 
-      The mean baseline scores 2500, the size-only line scores 500 and N scores 400. Beating the mean baseline shows that N has learned something from its inputs. But the size-only line had already done that, so the real question is whether N beats 500. It does, by 100.
+      N beats both references on these validation sales. Its gap from the previous best is 100. The next steps check whether unequal training or random choices could explain a gap.
 
       Be careful not to compare a new model only with a weak baseline. A model can beat the mean predictor by a wide margin and still be worse than the model we already had.
     worked: |
-      Let's see where a mean baseline's error comes from, using a tiny made-up set of sales, and then measure how much model N improves on the previous best.
+      First we'll use separate toy sales to show how a mean baseline gets an error score. These are separate from the 1,000 sales above. Then we'll return to the earlier scores on the full validation set.
 
-      1. **Find the mean training price.** The mean baseline predicts this one number for every house. Say three training sales sold for 300, 400 and 500.
-         $$\frac{300+400+500}{3}=400$$
+      1. **Find the mean training price.** The toy baseline predicts one price for every house. Say three training sales sold for 100, 200 and 300.
+         $$\frac{100+200+300}{3}=200$$
 
-      2. **Score the baseline on the validation sales.** Say two validation sales sold for 350 and 450. Each error is the prediction minus the price, so the errors are $400-350=50$ and $400-450=-50$.
-         $$\frac{50^2+(-50)^2}{2}=\frac{2500+2500}{2}=2500$$
+      2. **Score the baseline on the toy validation sales.** Say two validation sales sold for 170 and 230. Predicting 200 gives errors of 30 and -30. Their average squared error is:
+         $$\frac{30^2+(-30)^2}{2}=900$$
 
-      3. **Compare N with the previous best.** On the same validation sales, N scores 400 and the size-only line scores 500.
+      3. **Compare N with the previous best.** Return to the full set of 150 validation sales. N's earlier score was 400 and the size-only line's was 500. We reuse those scores here.
          $$500-400=100$$
 
-      4. **Give the improvement as a share of the previous best's error.** This makes it easier to compare with results on other tasks.
+      4. **Give the improvement as a share of the previous best's error.** This tells us what fraction of that reference error was removed.
          $$\frac{100}{500}=0.2=20\%$$
 
-      So N lowers the previous best's validation error by 100, or 20%. It is 2100 lower than the mean baseline, but that bigger number says less, because beating the mean predictor is the least we expect from a model that uses the inputs.
+      On the full validation set, N lowers the previous best's error by 100, or 20%.
     problems:
       - ed-baseline-basics
       - edp-baseline-self-explain
@@ -93,7 +93,9 @@ knowledge_points:
     explain: |
       ### Several changes at once
 
-      In the last step, we found that model N beats the size-only line by 100. A colleague had first reported a gap of 150. When we looked at their runs, the two models differed in more than their inputs. Here "steps" counts gradient descent steps, "rates tried" counts the learning rates tried, and "error" is validation error.
+      We found a gap of 100 between N and our size-only line. A colleague compared N with an earlier version of that line and reported 150. Their comparison changed more than the inputs.
+
+      Each row reports a model's best validation error after trying learning rates. "Steps" is the training length for each try. A row with 5 rates means five separate training runs, followed by choosing the rate with the lowest validation error.
 
       | Run | Steps | Rates tried | Error |
       | --- | --- | --- | --- |
@@ -101,37 +103,37 @@ knowledge_points:
       | model N | 2,000 | 5 | 400 |
       | our size-only line | 2,000 | 5 | 500 |
 
-      The colleague stopped their size-only line after 200 steps and kept the first learning rate they tried. Model N trained for 2,000 steps and used the best of 5 learning rates. So their gap of 150 mixes three changes, and we can't tell how much of it came from the new inputs.
+      The colleague gave the line 200 steps and kept the first rate tried. Each of N's five tries got 2,000 steps. The gap mixes new inputs, longer training and more tuning.
 
       ### Keep everything else the same
 
-      A **controlled experiment** changes only the thing being tested and keeps every other choice the same, so any change in the result comes from that one difference. The choices we hold fixed are called **controlled variables**. When we compare models, they include:
+      A **controlled experiment** changes one thing while keeping other choices fixed. This helps us separate its effect. The choices held fixed are **controlled variables**. Here they include:
 
       - the same training, validation and test sales;
-      - the same number of training steps, or the same rule for when to stop;
-      - the same tuning effort, such as the same number of learning rates tried.
+      - the same number of training steps;
+      - the same five learning-rate values tried for each model.
 
-      Our size-only line got the same 2,000 steps and 5 learning rates as N, and it scored 500. So the fair previous best is 500.
+      Each model picks its own best rate by validation error. Our rerun of the size-only line scored 500 with these settings. This is the reference for comparing inputs. We check random variation in step 4.
 
       ### Tune on validation, test once
 
-      As in the training and evaluation splits lesson, each model's hyperparameters are chosen by validation error, here with the same number of tries for every model. The test set is used once, on the final model, after every comparison is finished. If we used it to choose between versions, its score would come out too good, just like a validation score.
+      As in the training and evaluation splits lesson, validation error chooses hyperparameters. Trying more settings gives more chances to fit quirks of these validation sales. That is useful for choosing settings, but the chosen score can be too optimistic about new sales. Save the test set for one final score after all choices.
 
-      Be careful not to give the new model more tuning than the baseline. More tries at the learning rate can lower any model's error, which makes the new idea look better than it is.
+      Be careful not to give the new model more tuning. A lower best validation score could come from the extra tries.
     worked: |
-      Let's work out how much of the colleague's gap of 150 came from N's new inputs, using the three runs in the table.
+      Let's separate the colleague's gap of 150 using the three rows in the table.
 
       1. **List what differs between the colleague's two runs.** The inputs differ, and so do the training steps, 200 against 2,000, and the learning rates tried, 1 against 5.
 
-      2. **Rerun the size-only line with N's training settings.** It now trains for 2,000 steps with the best of 5 learning rates, so the inputs are the only difference. It scores 500.
+      2. **Rerun the size-only line with N's training settings.** Train it for 2,000 steps at each of the same five rates. Choose its best rate by validation error. It scores 500.
 
-      3. **Find the gap that comes from the new inputs.**
+      3. **Find the gap with matched training settings.**
          $$500-400=100$$
 
-      4. **Find the part that came from the unequal training.**
+      4. **Find the change from matching training and tuning.**
          $$550-500=50$$
 
-      So 100 of the reported 150 comes from N's new inputs, and the other 50 came from training the old model for less time with less tuning.
+      Matching training and tuning reduces the gap by 50. These rows do not separate the effects of training length and tuning. The remaining gap of 100 is evidence for the new inputs, which we still need to check across repeated runs.
     problems:
       - ed-one-change-basics
       - edp-one-change-self-explain
@@ -142,7 +144,7 @@ knowledge_points:
       - edp-extra-tuning
       - edp-robot-control
   - id: ed-ablation
-    title: "Remove one part to test it"
+    title: "Remove an input and compare"
 
     tldr: |
       - Model N adds three inputs to the size-only line.
@@ -152,22 +154,22 @@ knowledge_points:
     explain: |
       ### Which part helps?
 
-      Model N adds three inputs to the size-only line: bedrooms, age and distance to the station. Together they lower the validation error from 500 to 400. But does each input help, or does one of them do all the work? An input that adds nothing still has to be collected for every house, so we'd like to know which ones we could drop.
+      Model N adds three inputs to the size-only line: bedrooms, age and distance to the station. Together they lower the validation error from 500 to 400. Does each input help? An input that adds nothing still has to be collected, so we'd like to know which ones we could drop. The **full model** is N with all four inputs, including size.
 
       ### Remove one part at a time
 
-      An **ablation** is an experiment that removes or switches off one part of a method, keeps everything else the same and measures how much worse the result gets. A part can be an input, like bedrooms, or a step in how we prepare the data or train, such as filling in missing house sizes. Switching off a step means training without it.
+      An **ablation** removes or switches off one part of a method and measures the change in its score. A part can be an input or a training step. We train again with that part removed. The remaining weights are fitted again and can change.
 
       To design an ablation:
 
       1. List the parts of the method. For N, these are its three added inputs.
-      2. Plan one run for each part, with only that part removed. Everything else stays as in the full model, including the split, the training steps and the tuning.
-      3. Score each run on the validation set and compare it with the full model.
+      2. Remove one added input. Keep size and the other two inputs. Keep the split and training length fixed.
+      3. Try the same five rates for each model. Let each choose its own best rate on validation data, then compare errors.
 
       For an error, a worse result is a higher one, so we measure the rise:
       $$\text{rise}=\text{error without the part}-\text{error of the full model}$$
 
-      A big rise means the model relies heavily on that part. A rise near zero means the part may not help at all.
+      A big rise suggests the part helps. A rise near zero suggests little benefit. A negative rise means removing it lowered the error.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 200" aria-label="Ablation of model N, whose full validation error is 400. Removing bedrooms gives 435, a rise of 35. Removing age gives 405, a rise of 5. Removing distance to the station gives 420, a rise of 20. The bedrooms bar is the longest.">
@@ -188,7 +190,7 @@ knowledge_points:
       </svg>
       ```
 
-      Removing bedrooms raises the error the most, by 35, so bedrooms helps the most. Removing age raises it by only 5.
+      Removing the bedrooms input gives the biggest rise, 35. Removing age gives 5. These are effects with the other inputs present. They need not add to 100 because inputs can help with some of the same predictions. The next step checks random variation.
 
       Be careful to remove only one part in each run. If we removed bedrooms and age together, the rise would mix both effects, which is the same problem as the colleague's comparison.
     worked: |
@@ -196,15 +198,20 @@ knowledge_points:
 
       1. **List the parts.** N adds bedrooms, age and distance to the station to the size-only line.
 
-      2. **Plan three runs.** Each run removes one of those inputs and keeps the other two. All three use the same split, 2,000 steps and the best of 5 learning rates, just like the full model.
+      2. **Plan three comparisons.** Each smaller model keeps size and two of the three added inputs. Use the same split and train for 2,000 steps at each of the same five rates. Each model chooses its own best rate on validation data.
 
-      3. **Find each rise.** The full model's validation error is 400, and the runs without bedrooms, age and distance score 435, 405 and 420.
-         $$435-400=35,\qquad 405-400=5,\qquad 420-400=20$$
+      3. **Find each rise.** Subtract the full model's 400 from each error.
+
+         | Removed input | Error | Rise |
+         | --- | --- | --- |
+         | bedrooms | 435 | 35 |
+         | age | 405 | 5 |
+         | distance | 420 | 20 |
 
       4. **Rank the parts.** The bigger the rise, the more that input helps.
-         $$\text{bedrooms }(35)>\text{distance }(20)>\text{age }(5)$$
+         Bedrooms has a rise of 35, distance 20 and age 5.
 
-      So bedrooms helps the most and age the least. But a rise of 5 is small, and we've only trained each model once. Could one lucky or unlucky run produce a gap that size? The next step answers that.
+      The bedrooms input helps most in this comparison, with the other inputs present. We have only one selected result per model. Could random choices produce a gap of 5? The next step checks that.
     problems:
       - ed-ablation-basics
       - edp-ablation-self-explain
@@ -215,26 +222,32 @@ knowledge_points:
       - edp-rise-near-zero
       - edp-switch-off-step
   - id: ed-seeds
-    title: "Repeat each run several times"
+    title: "Repeat with different random choices"
 
     tldr: |
       - Training makes some random choices, so the same run can score a little differently each time.
       - A random seed is a number that fixes those choices.
       - We run each model with several seeds and look at how much its scores spread.
-      - We believe a gap between two models only when it is clearly bigger than that spread.
+      - A gap larger than both models' spreads, with consistent wins, is stronger evidence.
     explain: |
       ### The same run, a different score
 
-      Some choices in training are random. In the training and evaluation splits lesson, the held-out sales were picked at random, and gradient descent often starts from randomly chosen weights. A computer makes these choices from a starting number called a **random seed**. The same seed gives the same choices every time, so a run can be repeated exactly. A different seed gives different choices, and so a slightly different score.
+      Some choices in training are random. The held-out sales were picked at random in the training and evaluation splits lesson. Starting weights can also be chosen at random. A **random seed** is a starting number that fixes these choices. Repeating the same model and settings with the same seed repeats those choices. Different seeds give different choices and scores.
 
-      In our example, the 150 test sales stay fixed and set aside. The seed decides which of the other 850 sales go into training and which into validation, and the weights gradient descent starts from.
+      Keep the 150 test sales aside. Each seed splits the other 850 sales into training and validation sets and chooses starting weights. Within a seed, every model uses the same split and tuning effort. Across seeds, both the split and starting weights change.
 
-      ### Gap against spread
+      ### Compare averages and variation
 
-      We trained the full model N and two of its ablations with three seeds each, using the same three seeds for every model.
+      We repeat N and two ablations with three matching seeds. Three keeps the example short. We focus on age and bedrooms to compare a small gap with a larger one. Each table row matches results from one seed.
+
+      | Seed | N | No age | No bedrooms |
+      | --- | --- | --- | --- |
+      | 1 | 400 | 405 | 435 |
+      | 2 | 390 | 385 | 420 |
+      | 3 | 410 | 425 | 450 |
 
       ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 290" aria-label="Validation errors over three seeds. Full model N: 400, 390 and 410, mean 400. Without age: 405, 385 and 425, mean 405. Without bedrooms: 435, 420 and 450, mean 435. The full model and the model without age overlap a lot. The model without bedrooms sits to the right of every full-model result.">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 290" aria-label="Validation errors over three seeds. Each model lists seeds 1, 2 and 3 in that order. Full model N: 400, 390 and 410, mean 400. Without age: 405, 385 and 425, mean 405. Without bedrooms: 435, 420 and 450, mean 435. Dot positions show validation error. Use the accompanying seed table to match results. The full model and the model without age overlap a lot. The model without bedrooms sits to the right of every full-model result.">
       <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
       <text x="10" y="65">full model N</text>
       <path d="M172.5 60 H237.5" stroke="#f59e0b" stroke-width="2"/>
@@ -268,26 +281,44 @@ knowledge_points:
       </svg>
       ```
 
-      The **spread** of a model's results is its largest result minus its smallest. For the full model it's $410-390=20$. Removing age raises the mean error by only 5, which is much smaller than that spread, and on the second seed the model without age even does better. So the rise of 5 could easily be luck. Removing bedrooms raises the mean by 35, which is more than the spread of either model, and that model is worse on every seed. That gap we can believe.
+      The dots show scores. Use the table to match seeds. A model's **spread** is its largest score minus its smallest. For N it is $410-390=20$.
 
-      This gives a rough rule. Run each model with several seeds, the same seeds for each. Believe a gap between their mean results only when it is clearly larger than the spread of either model's results, and when one model wins on all or nearly all of the seeds. Otherwise, run more seeds or report that there is no clear difference.
+      Removing age raises the mean by 5, below both models' spreads, and improves the score on seed 2. Removing bedrooms raises the mean by 35, above both models' spreads, and worsens every seed.
+
+      For a rough, cautious check, calculate each model's spread separately. Call a gap clear under this check only when it exceeds both spreads and one model wins on all or nearly all seeds. This can miss small, consistent gains. If unclear, try more seeds or report no clear difference.
 
       Be careful not to report the best seed. The luckiest of several runs makes a model look better than a typical run of it would be.
     worked: |
-      Let's check both ablation gaps against the spread, using the three seeds from the picture.
+      Let's check both ablations using the seed table.
 
-      1. **Average each model over its seeds.** The full model, the model without age and the model without bedrooms have these means.
-         $$\frac{400+390+410}{3}=400,\qquad\frac{405+385+425}{3}=405,\qquad\frac{435+420+450}{3}=435$$
+      1. **Average N over its seeds.**
+         $$\frac{400+390+410}{3}=400$$
 
-      2. **Find each model's spread.** Take the largest result minus the smallest.
-         $$410-390=20,\qquad 425-385=40,\qquad 450-420=30$$
+      2. **Average the model without age.**
+         $$\frac{405+385+425}{3}=405$$
 
-      3. **Find each gap from the full model.** We subtract the full model's mean.
-         $$405-400=5,\qquad 435-400=35$$
+      3. **Average the model without bedrooms.**
+         $$\frac{435+420+450}{3}=435$$
 
-      4. **Compare each gap with the spreads, and check seed by seed.** The gap of 5 is smaller than both spreads involved, 20 and 40, and seed by seed the model without age is worse by 5, better by 5 and worse by 15. The gap of 35 is bigger than both spreads involved, 20 and 30, and the model without bedrooms is worse on every seed, by 35, 30 and 40.
+      4. **Find each spread.** Subtract the smallest score from the largest.
 
-      So bedrooms clearly helps, while with three seeds we can't tell the effect of age apart from luck. When we've finished all of these comparisons on the validation set, we choose the final model and score it once on the 150 test sales.
+         | Model | Calculation | Spread |
+         | --- | --- | --- |
+         | N | 410 - 390 | 20 |
+         | No age | 425 - 385 | 40 |
+         | No bedrooms | 450 - 420 | 30 |
+
+      5. **Compare each mean with N's mean.** The age gap is 405 - 400 = 5. The bedrooms gap is 435 - 400 = 35. Compare 5 with spreads 20 and 40, and 35 with spreads 20 and 30.
+
+      6. **Check matching seeds.** Subtract N's score in each row.
+
+         | Seed | No age minus N | No bedrooms minus N |
+         | --- | --- | --- |
+         | 1 | 5 | 35 |
+         | 2 | -5 | 30 |
+         | 3 | 15 | 40 |
+
+      Keeping bedrooms wins on all three seeds. Removing age wins on one and loses on two, so its effect is unclear. We still need repeated comparisons with the size-only baseline and the distance ablation before choosing the final model. After choosing, score it once on the 150 test sales.
     problems:
       - ed-seeds-basics
       - edp-seeds-self-explain
@@ -299,9 +330,9 @@ knowledge_points:
       - edp-robot-seeds
 final: ed-explain
 summary: |
-  - A baseline is a reference model trained and scored in the same way as a new model. Compare with both the simplest sensible model, such as predicting the mean, and the previous best, and count only a win over the previous best as an improvement.
+  - A baseline is a reference model fitted on the same training data and scored on the same validation data as a new model. Compare with the simplest sensible model and the previous best. Count a win over the previous best as an improvement to check further.
   - A controlled experiment changes only the thing being tested. Keep the data split, the training length and the tuning effort the same, choose hyperparameters on the validation set and score the final model once on the test set.
   - An ablation removes one part of a method at a time, keeps everything else the same and measures the rise in error: $\text{rise}=\text{error without the part}-\text{error of the full model}$.
-  - A random seed fixes a run's random choices. Run each model with the same several seeds, and believe a gap between mean results only when it is clearly bigger than the spread across seeds and one model wins on nearly every seed.
+  - A random seed fixes a run's random choices. Compare models on matching seeds. Calculate each model's spread separately. A mean gap larger than both spreads, with consistent wins, is stronger evidence of an improvement.
 
-  **Next:** Images as tensors shows how a picture becomes a grid of numbers that a network can read.
+  **Next:** Images as tensors shows how a picture becomes a grid of numbers. This gives us new inputs whose effects we can test with these comparisons.
