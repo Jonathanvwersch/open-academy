@@ -1072,16 +1072,19 @@ function packWeekday(
         ).length,
       }))
       .sort((left, right) => {
-        if (right.newlyCovered !== left.newlyCovered) return right.newlyCovered - left.newlyCovered;
+        const remediationOrder =
+          Number(right.candidate.remediation === true) -
+          Number(left.candidate.remediation === true);
+        if (remediationOrder !== 0) return remediationOrder;
+        if (left.overdue !== right.overdue) return left.overdue ? -1 : 1;
         if (left.overdue && right.overdue) {
           return (
-            Number(right.candidate.remediation === true) -
-              Number(left.candidate.remediation === true) ||
             (left.earliestDueAt ?? Infinity) - (right.earliestDueAt ?? Infinity) ||
             (left.currentRetrievability ?? Infinity) - (right.currentRetrievability ?? Infinity) ||
             left.index - right.index
           );
         }
+        if (right.newlyCovered !== left.newlyCovered) return right.newlyCovered - left.newlyCovered;
         return byUrgency(left, right);
       });
     const next = ranked[0];

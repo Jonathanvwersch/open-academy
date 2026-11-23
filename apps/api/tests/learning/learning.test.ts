@@ -3931,6 +3931,69 @@ test('review urgency selects an overdue off-path topic when the cap fits one rev
   );
 });
 
+test('an overdue review outranks a higher-scoring non-overdue review when only one fits', () => {
+  const fixture = reviewQueueFixture(2, 1, 2);
+  const highScoring = required(fixture.topicIds[0], 'high-scoring review topic');
+  const overdue = required(fixture.topicIds[1], 'overdue review topic');
+  const exercises = fixture.index.exercises.map((exercise) =>
+    exercise.concept === overdue ? { ...exercise, est_minutes: 6 } : exercise,
+  );
+  const index: ContentIndex = {
+    ...fixture.index,
+    exercises,
+    exercisesById: new Map(exercises.map((exercise) => [exercise.id, exercise])),
+    exercisesByConcept: new Map(
+      [...fixture.index.exercisesByConcept].map(([conceptId, conceptExercises]) => [
+        conceptId,
+        conceptId === overdue
+          ? conceptExercises.map((exercise) => ({ ...exercise, est_minutes: 6 }))
+          : conceptExercises,
+      ]),
+    ),
+  };
+  const state = emptyState();
+  state.activeCourseId = 'fixture-course';
+  state.studyCourseIds = ['fixture-course'];
+  state.mastery = fixture.topicIds.map((conceptId) => ({
+    ...initialMastery(conceptId, 'math'),
+    state: 'independent' as const,
+  }));
+  state.cards = [
+    { conceptId: highScoring, dimension: 'math', dueAt: now.toISOString(), retrievability: 0.1 },
+    {
+      conceptId: overdue,
+      dimension: 'math',
+      dueAt: new Date(now.getTime() - 3 * 86_400_000).toISOString(),
+      retrievability: 0.6,
+    },
+  ];
+  const candidateScore = (conceptId: string) => {
+    const plan = planSession(
+      { ...state, cards: state.cards.filter((card) => card.conceptId === conceptId) },
+      index,
+      now,
+      20,
+    );
+    const activity = plan.activities.find((candidate) => candidate.kind === 'review');
+    if (!activity) throw new Error(`Expected a review for ${conceptId}`);
+    const weighted = Object.entries(activity.reason.terms).reduce(
+      (total, [term, value]) =>
+        total + value * SCHEDULER_CONFIG.weights[term as keyof typeof SCHEDULER_CONFIG.weights],
+      0,
+    );
+    return { activity, score: weighted / Math.sqrt(activity.plannedMinutes) };
+  };
+  const highScoringReview = candidateScore(highScoring);
+  const overdueReview = candidateScore(overdue);
+
+  const plan = planSession(state, index, now, 20);
+
+  expect(highScoringReview.score).toBeGreaterThan(overdueReview.score);
+  expect(highScoringReview.activity.plannedMinutes).toBe(6);
+  expect(overdueReview.activity.plannedMinutes).toBe(18);
+  expect(plannedReviewTopics(plan, index)).toEqual([overdue]);
+});
+
 test('two-day-overdue reviews bypass a full cap before new lessons are planned', () => {
   const fixture = reviewQueueFixture(3, 0, 4);
   const oldest = required(fixture.topicIds[0], 'oldest review topic');
