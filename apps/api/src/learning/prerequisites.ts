@@ -120,6 +120,23 @@ export function projectReady(
   );
 }
 
+export function labActivityReady(
+  activity: { kind: string; projectId?: string | null },
+  masteryByKey: ReadonlyMap<string, Pick<MasteryRecord, 'state' | 'inferred'>>,
+  lessonRuns: readonly LessonRun[],
+  content: ContentIndex,
+): boolean {
+  return (
+    activity.kind !== 'lab' ||
+    projectReady(
+      activity.projectId ? content.projectsById.get(activity.projectId) : undefined,
+      masteryByKey,
+      lessonRuns,
+      content,
+    )
+  );
+}
+
 export function learnActivitiesWithUnmetPrerequisites(
   activities: readonly {
     id: string;

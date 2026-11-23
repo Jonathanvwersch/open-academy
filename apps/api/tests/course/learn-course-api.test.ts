@@ -1995,6 +1995,35 @@ test('Home hides an active PCA project until all hard prerequisite ancestors are
     tasks: Array<{ title: string }>;
   };
   expect(afterAncestors.tasks.some((task) => task.title === 'PCA from scratch')).toBe(true);
+
+  const beforeRestartSessionResponse = await get(`/sessions/${session.id}`);
+  const beforeRestartSession = (await beforeRestartSessionResponse.json()) as {
+    activities: Array<{ kind: string; projectId?: string }>;
+  };
+  expect(
+    beforeRestartSession.activities.some(
+      (activity) => activity.kind === 'lab' && activity.projectId === 'pca-numpy',
+    ),
+  ).toBe(true);
+
+  const restart = await post('/concepts/orthogonality-projections/restart', {});
+  expect(restart.status).toBe(200);
+
+  const afterRestartHomeResponse = await get('/learn');
+  const afterRestartHome = (await afterRestartHomeResponse.json()) as {
+    tasks: Array<{ title: string }>;
+  };
+  expect(afterRestartHome.tasks.some((task) => task.title === 'PCA from scratch')).toBe(false);
+
+  const afterRestartSessionResponse = await get(`/sessions/${session.id}`);
+  const afterRestartSession = (await afterRestartSessionResponse.json()) as {
+    activities: Array<{ kind: string; projectId?: string }>;
+  };
+  expect(
+    afterRestartSession.activities.some(
+      (activity) => activity.kind === 'lab' && activity.projectId === 'pca-numpy',
+    ),
+  ).toBe(false);
 });
 
 test('PCA course row stays unavailable until hard prerequisite ancestors are complete', async () => {

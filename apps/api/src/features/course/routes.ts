@@ -36,6 +36,7 @@ import {
   activeCourseFor,
   courseFoundationIds,
   createPrerequisiteChecker,
+  labActivityReady,
   learnActivitiesWithUnmetPrerequisites,
   masteryKey,
   projectReady,
@@ -404,14 +405,6 @@ export function registerLearnCourseRoutes(
     );
     const lessonRunState = runRows.map(({ conceptId, status }) => ({ conceptId, status }));
     const prerequisiteChecker = createPrerequisiteChecker(masteryByKey, lessonRunState, index);
-    const projectActivityIsReady = (activity: { kind: string; projectId?: string | null }) =>
-      activity.kind !== 'lab' ||
-      projectReady(
-        activity.projectId ? index.projectsById.get(activity.projectId) : undefined,
-        masteryByKey,
-        lessonRunState,
-        index,
-      );
     const blockedActivities =
       activeSession?.status === 'active'
         ? learnActivitiesWithUnmetPrerequisites(
@@ -439,7 +432,7 @@ export function registerLearnCourseRoutes(
         (activity) =>
           (activity.status === 'planned' || activity.status === 'in_progress') &&
           sessionActivityIsInContent(index, activity) &&
-          projectActivityIsReady(activity),
+          labActivityReady(activity, masteryByKey, lessonRunState, index),
       ) ?? [];
     const inProgressReviewActivityIds = activeActivities
       .filter((activity) => activity.kind === 'review' && activity.status === 'in_progress')

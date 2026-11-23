@@ -5,6 +5,8 @@ import type { Database } from '../../db/client.js';
 import { LearnerRepository } from '../../db/repository.js';
 import {
   attempts,
+  lessonRuns,
+  mastery,
   masteryEvents,
   sessionActivities,
   studySessions,
@@ -24,6 +26,7 @@ import {
   activeCourseFor,
   compareOutlinePosition,
   createPrerequisiteChecker,
+  labActivityReady,
   learnActivitiesWithUnmetPrerequisites,
   masteryKey,
 } from '../../learning/prerequisites.js';
@@ -432,8 +435,33 @@ export async function getSessionsById(deps: FeatureServices, request: FeatureReq
   const repo = request.repo;
   const session = await repo.session(request.params.id);
   const index = await content();
+  const [masteryRows, runRows] = await Promise.all([
+    db
+      .select({
+        conceptId: mastery.conceptId,
+        dimension: mastery.dimension,
+        state: mastery.state,
+        inferred: mastery.inferred,
+      })
+      .from(mastery)
+      .where(eq(mastery.userId, request.userId)),
+    db
+      .select({ conceptId: lessonRuns.conceptId, status: lessonRuns.status })
+      .from(lessonRuns)
+      .where(eq(lessonRuns.userId, request.userId)),
+  ]);
+  const masteryByKey = new Map(
+    masteryRows.map((record) => [
+      masteryKey(record.conceptId, record.dimension),
+      { state: record.state, inferred: record.inferred },
+    ]),
+  );
   const activities =
-    session?.activities.filter((activity) => sessionActivityIsInContent(index, activity)) ?? [];
+    session?.activities.filter(
+      (activity) =>
+        sessionActivityIsInContent(index, activity) &&
+        labActivityReady(activity, masteryByKey, runRows, index),
+    ) ?? [];
   const activityIds = activities.map((activity) => activity.id);
   const activityAttempts = activityIds.length
     ? await db
