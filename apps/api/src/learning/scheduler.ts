@@ -1,3 +1,5 @@
+import type { Card } from 'ts-fsrs';
+import { Rating, State } from 'ts-fsrs';
 import { orderCourseIdsBySubject } from '../content/course-order.js';
 import { subjectForCourse } from '../content/index.js';
 import { isTemplate } from '../content/templates.js';
@@ -7,7 +9,9 @@ import type {
   IndexedCourse,
   IndexedExercise,
 } from '../content/types.js';
-import { isDueToday } from './fsrs.js';
+import { buildEncompassingIndex } from './encompassing.js';
+import { isDueToday, retrievability, startOfNextCalendarDay } from './fsrs.js';
+import { implicitRepetition } from './implicit-repetition.js';
 import {
   activeCourseFor,
   compareOutlinePosition,
@@ -91,6 +95,7 @@ export interface SchedulerState {
     conceptId: string;
     dimension: MasteryRecord['dimension'];
     dueAt: string;
+    fsrs?: Card;
     retrievability?: number;
   }>;
   reviewedTodayConceptIds: string[];
@@ -144,6 +149,7 @@ export interface Candidate {
 export type ReviewSelectionResult =
   | 'selected'
   | 'selected:overdue'
+  | 'covered'
   | 'not_candidate:reviewedToday'
   | 'not_candidate:stub'
   | 'not_candidate:focusFilter'
@@ -159,6 +165,7 @@ export type ReviewSelectionResult =
 export interface ReviewSelectionExplanation {
   conceptId: string;
   result: ReviewSelectionResult;
+  coveringConceptId?: string;
   exerciseIds: string[];
   exerciseDimensions: string[];
   reviewMinutes: number;
@@ -170,6 +177,7 @@ export interface ReviewSelectionExplanation {
 
 type ReviewSelectionTrace = {
   results: Map<string, ReviewSelectionResult>;
+  coveringConceptIds: Map<string, string>;
   exerciseIds: Map<string, string[]>;
   metrics: Map<
     string,
@@ -430,6 +438,7 @@ export function explainReviewSelection(
 ): ReviewSelectionExplanation[] {
   const trace: ReviewSelectionTrace = {
     results: new Map(),
+    coveringConceptIds: new Map(),
     exerciseIds: new Map(),
     metrics: new Map(),
   };
@@ -452,6 +461,9 @@ export function explainReviewSelection(
   return conceptIds.map((conceptId) => ({
     conceptId,
     result: trace.results.get(conceptId) ?? 'rejected:other',
+    ...(trace.coveringConceptIds.has(conceptId)
+      ? { coveringConceptId: trace.coveringConceptIds.get(conceptId) }
+      : {}),
     exerciseIds: trace.exerciseIds.get(conceptId) ?? [],
     exerciseDimensions: [
       ...new Set(
@@ -571,6 +583,69 @@ function shiftLocalDateKey(localDate: string, days: number) {
   return date.toISOString().slice(0, 10);
 }
 
+export function dueTopicsCoveredBy(
+  taskConceptId: string,
+  state: SchedulerState,
+  content: ContentIndex,
+  now: Date,
+): Set<string> {
+  const weights = buildEncompassingIndex(content);
+  const timezone = state.timezone ?? 'UTC';
+  const nextLocalDay = startOfNextCalendarDay(now, timezone);
+  const dueCardsByConcept = new Map<string, SchedulerState['cards']>();
+  for (const card of state.cards) {
+    if (!isDueToday(card.dueAt, now, timezone)) continue;
+    const dueCards = dueCardsByConcept.get(card.conceptId) ?? [];
+    dueCards.push(card);
+    dueCardsByConcept.set(card.conceptId, dueCards);
+  }
+
+  const covered = new Set<string>();
+  for (const [dueConceptId, dueCards] of dueCardsByConcept) {
+    if (dueConceptId === taskConceptId) continue;
+    const weight = weights.weight(taskConceptId, dueConceptId);
+    if (weight <= 0) continue;
+    if (
+      dueCards.every((card) => {
+        if (!card.fsrs) return false;
+        const result = implicitRepetition(
+          { fsrs: card.fsrs, dueAt: new Date(card.dueAt) },
+          {
+            weight,
+            rating: Rating.Good,
+            now,
+            timeZone: timezone,
+            enableFuzz: process.env.NODE_ENV !== 'test',
+          },
+        );
+        return result !== undefined && result.dueAt >= nextLocalDay;
+      })
+    ) {
+      covered.add(dueConceptId);
+    }
+  }
+  return covered;
+}
+
+export function learnLookAheadScore(
+  conceptId: string,
+  state: SchedulerState,
+  content: ContentIndex,
+  now: Date,
+): number {
+  const weights = buildEncompassingIndex(content);
+  return state.cards.reduce((total, card) => {
+    if (!card.fsrs || card.fsrs.state === State.New || card.conceptId === conceptId) {
+      return total;
+    }
+    return (
+      total +
+      weights.weight(conceptId, card.conceptId) *
+        (1 - retrievability(card.fsrs, now, process.env.NODE_ENV !== 'test'))
+    );
+  }, 0);
+}
+
 function packWeekday(
   state: SchedulerState,
   content: ContentIndex,
@@ -605,6 +680,7 @@ function packWeekday(
   let newConceptCount = 0;
   const selectedConcepts = new Set<string>();
   const selectedLearnConcepts = new Set<string>();
+  let learnBudget = budget;
   const plannedActivityCount = (items: Candidate[]) => mixReviewActivities(items, content).length;
   const addRejectionReason = (candidate: Candidate) => {
     const reviewAlongsideLesson =
@@ -638,15 +714,18 @@ function packWeekday(
     conceptId: string,
     result: ReviewSelectionResult,
     candidate?: Candidate,
+    coveringConceptId?: string,
   ) => {
     if (!reviewSelectionTrace) return;
     reviewSelectionTrace.results.set(conceptId, result);
+    if (coveringConceptId) {
+      reviewSelectionTrace.coveringConceptIds.set(conceptId, coveringConceptId);
+    }
     if (candidate) {
       reviewSelectionTrace.exerciseIds.set(conceptId, candidate.activity.exerciseIds);
     }
     reviewSelectionTrace.metrics.set(conceptId, metrics());
   };
-  const canAdd = (candidate: Candidate) => addRejectionReason(candidate) === undefined;
   const add = (candidate: Candidate) => {
     if (addRejectionReason(candidate)) return false;
     selected.push(candidate);
@@ -657,8 +736,32 @@ function packWeekday(
     }
     return true;
   };
+  const canAdd = (candidate: Candidate) => addRejectionReason(candidate) === undefined;
   const timezone = state.timezone ?? 'UTC';
   const localToday = localDateKey(now, timezone);
+  const dueConceptIds = new Set(
+    state.cards
+      .filter((card) => isDueToday(card.dueAt, now, timezone))
+      .map((card) => card.conceptId),
+  );
+  const dueTopicsByTaskConcept = new Map<string, Set<string>>();
+  const coveredByTaskConcept = (conceptId: string) => {
+    let covered = dueTopicsByTaskConcept.get(conceptId);
+    if (!covered) {
+      covered = dueTopicsCoveredBy(conceptId, state, content, now);
+      dueTopicsByTaskConcept.set(conceptId, covered);
+    }
+    return covered;
+  };
+  const learnLookAheadScores = new Map<string, number>();
+  const lookAheadScore = (conceptId: string) => {
+    let score = learnLookAheadScores.get(conceptId);
+    if (score === undefined) {
+      score = learnLookAheadScore(conceptId, state, content, now);
+      learnLookAheadScores.set(conceptId, score);
+    }
+    return score;
+  };
   const lessonConceptsStartedToday = new Set(
     (state.lessonRuns ?? []).flatMap((run) => {
       if (!run.startedAt) return [];
@@ -677,7 +780,11 @@ function packWeekday(
     return false;
   };
   const canSelectLearn = (candidate: Candidate) =>
-    canAdd(candidate) && !interferesWithLearn(candidate);
+    canAdd(candidate) &&
+    usedMinutes + candidate.adjustedMinutes <= learnBudget &&
+    !interferesWithLearn(candidate);
+  const canSelectFreshLearn = (candidate: Candidate) =>
+    canSelectLearn(candidate) && !dueConceptIds.has(candidate.activity.conceptId ?? '');
   const resumedLessonConcepts = new Set(
     (state.lessonRuns ?? [])
       .filter((run) => run.status === 'in_progress' || run.status === 'quiz')
@@ -712,12 +819,26 @@ function packWeekday(
       content,
       left.courseId ?? state.activeCourseId,
     );
-    return (
+    const existingOrder =
       (courseOrder.get(left.courseId ?? '') ?? Infinity) -
         (courseOrder.get(right.courseId ?? '') ?? Infinity) ||
       outlineOrder ||
-      right.score - left.score
-    );
+      right.score - left.score;
+    if (existingOrder !== 0) return existingOrder;
+    const leftConceptId = left.activity.conceptId ?? '';
+    const rightConceptId = right.activity.conceptId ?? '';
+    const leftFresh =
+      left.newConcept &&
+      !resumedLessonConcepts.has(leftConceptId) &&
+      !retryEligibleLessonConcepts.has(leftConceptId);
+    const rightFresh =
+      right.newConcept &&
+      !resumedLessonConcepts.has(rightConceptId) &&
+      !retryEligibleLessonConcepts.has(rightConceptId);
+    if (leftFresh && rightFresh) {
+      return lookAheadScore(rightConceptId) - lookAheadScore(leftConceptId);
+    }
+    return 0;
   };
   for (const candidate of candidates
     .filter(
@@ -770,68 +891,28 @@ function packWeekday(
             localDateKey(new Date(earliestDueAt), timezone) <= shiftLocalDateKey(localToday, -2)),
       };
     });
-  const byUrgency = (
-    left: (typeof reviewCandidateDetails)[number],
-    right: (typeof reviewCandidateDetails)[number],
-  ) =>
-    right.candidate.activity.reason.terms.review - left.candidate.activity.reason.terms.review ||
-    right.candidate.score - left.candidate.score ||
-    left.index - right.index;
-  const overdueCandidates = reviewCandidateDetails
-    .filter((entry) => entry.overdue)
-    .sort(
-      (left, right) =>
-        Number(right.candidate.remediation === true) -
-          Number(left.candidate.remediation === true) ||
-        (left.earliestDueAt ?? Infinity) - (right.earliestDueAt ?? Infinity) ||
-        (left.currentRetrievability ?? Infinity) - (right.currentRetrievability ?? Infinity) ||
-        left.index - right.index,
-    );
-  const overdueCandidateIndexes = new Set(overdueCandidates.map(({ index }) => index));
-  for (const { candidate } of overdueCandidates) {
-    const conceptId = candidate.activity.conceptId;
-    if (!conceptId) continue;
-    const rejectionReason = addRejectionReason(candidate);
-    if (rejectionReason) {
-      recordReviewResult(conceptId, `rejected:${rejectionReason}`, candidate);
-      continue;
-    }
-    add(candidate);
-    reviewMinutes += candidate.adjustedMinutes;
-    recordReviewResult(conceptId, 'selected:overdue', candidate);
-  }
-  const reviewCandidatesByUrgency = [...reviewCandidateDetails].sort(byUrgency);
-  for (const { candidate, index } of reviewCandidatesByUrgency) {
-    if (overdueCandidateIndexes.has(index)) continue;
-    const conceptId = candidate.activity.conceptId;
-    if (!conceptId) continue;
-    if (!candidate.remediation && reviewMinutes + candidate.adjustedMinutes > reviewCap) {
-      recordReviewResult(conceptId, 'rejected:reviewMinuteCap', candidate);
-      continue;
-    }
-    const rejectionReason = addRejectionReason(candidate);
-    if (rejectionReason) {
-      recordReviewResult(conceptId, `rejected:${rejectionReason}`, candidate);
-      continue;
-    }
-    add(candidate);
-    reviewMinutes += candidate.adjustedMinutes;
-    recordReviewResult(conceptId, 'selected', candidate);
-  }
-  if (!selected.some((candidate) => candidate.activity.kind === 'review')) {
-    const fallbackReview = reviewCandidatesByUrgency.find(({ candidate }) =>
-      canAdd(candidate),
-    )?.candidate;
-    if (fallbackReview) {
-      add(fallbackReview);
-      reviewMinutes += fallbackReview.adjustedMinutes;
-      if (fallbackReview.activity.conceptId)
-        recordReviewResult(fallbackReview.activity.conceptId, 'selected', fallbackReview);
-    }
-  }
   const learnCandidates = candidates
     .filter((candidate) => candidate.activity.kind === 'learn')
     .filter((candidate) => !unfinishedLessonConcepts.has(candidate.activity.conceptId ?? ''));
+  let reservedReviewMinutes = 0;
+  let reservedMinutes = 0;
+  for (const detail of [...reviewCandidateDetails].sort(
+    (left, right) =>
+      right.candidate.activity.reason.terms.review - left.candidate.activity.reason.terms.review ||
+      right.candidate.score - left.candidate.score ||
+      left.index - right.index,
+  )) {
+    const candidate = detail.candidate;
+    const fitsReviewCap =
+      candidate.remediation ||
+      detail.overdue ||
+      reservedReviewMinutes + candidate.adjustedMinutes <= reviewCap;
+    if (fitsReviewCap && reservedMinutes + candidate.adjustedMinutes <= budget) {
+      reservedReviewMinutes += candidate.adjustedMinutes;
+      reservedMinutes += candidate.adjustedMinutes;
+    }
+  }
+  learnBudget = Math.max(0, budget - reservedMinutes);
   const candidatesByCourse = new Map<string, Candidate[]>();
   for (const candidate of learnCandidates) {
     if (!candidate.courseId) continue;
@@ -841,7 +922,7 @@ function packWeekday(
   }
   for (const group of candidatesByCourse.values()) group.sort(compareLearnCandidates);
   const eligibleCandidatesForCourse = (course: SchedulerCourseContext) =>
-    (candidatesByCourse.get(course.course.id) ?? []).filter(canSelectLearn);
+    (candidatesByCourse.get(course.course.id) ?? []).filter(canSelectFreshLearn);
   const coursesBySubject = groupSchedulerCoursesBySubject(courseContexts, content);
   const subjectOrder = new Map(
     (content.curriculum?.subjects ?? []).map((subject, position) => [subject.id, position]),
@@ -914,11 +995,186 @@ function packWeekday(
     if (canSelectLearn(candidate) && add(candidate)) newConceptCount += 1;
   }
 
+  const byUrgency = (
+    left: (typeof reviewCandidateDetails)[number],
+    right: (typeof reviewCandidateDetails)[number],
+  ) =>
+    right.candidate.activity.reason.terms.review - left.candidate.activity.reason.terms.review ||
+    right.candidate.score - left.candidate.score ||
+    left.index - right.index;
+  const coveredBy = new Map<string, string>();
+  for (const candidate of selected) {
+    const taskConceptId = candidate.activity.conceptId;
+    if (candidate.activity.kind !== 'learn' || !taskConceptId) continue;
+    for (const dueConceptId of coveredByTaskConcept(taskConceptId)) {
+      if (!coveredBy.has(dueConceptId)) coveredBy.set(dueConceptId, taskConceptId);
+    }
+  }
+
+  const allReviewDetails = [...reviewCandidateDetails];
+  const knownReviewConcepts = new Set(
+    allReviewDetails.map(({ candidate }) => candidate.activity.conceptId),
+  );
+  for (const candidate of candidates) {
+    const conceptId = candidate.activity.conceptId;
+    if (
+      candidate.activity.kind !== 'review' ||
+      candidate.remediation ||
+      !conceptId ||
+      dueConceptIds.has(conceptId) ||
+      knownReviewConcepts.has(conceptId)
+    ) {
+      continue;
+    }
+    const covered = coveredByTaskConcept(conceptId);
+    if ([...covered].filter((dueId) => !coveredBy.has(dueId)).length < 2) continue;
+    allReviewDetails.push({
+      candidate,
+      index: allReviewDetails.length + reviewCandidateDetails.length,
+      earliestDueAt: undefined,
+      currentRetrievability: undefined,
+      overdue: false,
+    });
+    knownReviewConcepts.add(conceptId);
+  }
+
+  for (const dueConceptId of dueConceptIds) {
+    const coveringConceptId = coveredBy.get(dueConceptId);
+    const dueCandidate = reviewCandidateDetails.find(
+      ({ candidate }) => candidate.activity.conceptId === dueConceptId,
+    )?.candidate;
+    if (coveringConceptId && dueCandidate && !dueCandidate.remediation) {
+      recordReviewResult(dueConceptId, 'covered', dueCandidate, coveringConceptId);
+    }
+  }
+
+  const uncoveredDueConcepts = new Set([...dueConceptIds].filter((id) => !coveredBy.has(id)));
+  const reviewCoverage = (candidate: Candidate) => {
+    const conceptId = candidate.activity.conceptId;
+    if (!conceptId) return new Set<string>();
+    const covered = new Set(coveredByTaskConcept(conceptId));
+    if (dueConceptIds.has(conceptId)) covered.add(conceptId);
+    return covered;
+  };
+  const candidatesToSelect = [...allReviewDetails];
+  while (candidatesToSelect.length > 0) {
+    const ranked = candidatesToSelect
+      .map((entry) => ({
+        ...entry,
+        newlyCovered: [...reviewCoverage(entry.candidate)].filter((id) =>
+          uncoveredDueConcepts.has(id),
+        ).length,
+      }))
+      .sort((left, right) => {
+        if (right.newlyCovered !== left.newlyCovered) return right.newlyCovered - left.newlyCovered;
+        if (left.overdue && right.overdue) {
+          return (
+            Number(right.candidate.remediation === true) -
+              Number(left.candidate.remediation === true) ||
+            (left.earliestDueAt ?? Infinity) - (right.earliestDueAt ?? Infinity) ||
+            (left.currentRetrievability ?? Infinity) - (right.currentRetrievability ?? Infinity) ||
+            left.index - right.index
+          );
+        }
+        return byUrgency(left, right);
+      });
+    const next = ranked[0];
+    if (!next) break;
+    const candidate = next.candidate;
+    const conceptId = candidate.activity.conceptId;
+    const candidateIndex = candidatesToSelect.findIndex((entry) => entry.candidate === candidate);
+    if (candidateIndex >= 0) candidatesToSelect.splice(candidateIndex, 1);
+    if (!conceptId) continue;
+    const covering = coveredBy.get(conceptId);
+    if (covering && !candidate.remediation) {
+      recordReviewResult(conceptId, 'covered', candidate, covering);
+      continue;
+    }
+    if (candidate.remediation) {
+      const rejectionReason = addRejectionReason(candidate);
+      if (rejectionReason) {
+        recordReviewResult(conceptId, `rejected:${rejectionReason}`, candidate);
+        continue;
+      }
+      if (add(candidate)) {
+        reviewMinutes += candidate.adjustedMinutes;
+        recordReviewResult(conceptId, next.overdue ? 'selected:overdue' : 'selected', candidate);
+        for (const dueId of reviewCoverage(candidate)) {
+          uncoveredDueConcepts.delete(dueId);
+          coveredBy.set(dueId, conceptId);
+        }
+      }
+      continue;
+    }
+    if (next.newlyCovered < 1) {
+      recordReviewResult(conceptId, 'rejected:other', candidate);
+      continue;
+    }
+    if (reviewMinutes + candidate.adjustedMinutes > reviewCap && !next.overdue) {
+      recordReviewResult(conceptId, 'rejected:reviewMinuteCap', candidate);
+      continue;
+    }
+    const rejectionReason = addRejectionReason(candidate);
+    if (rejectionReason) {
+      recordReviewResult(conceptId, `rejected:${rejectionReason}`, candidate);
+      continue;
+    }
+    if (add(candidate)) {
+      reviewMinutes += candidate.adjustedMinutes;
+      recordReviewResult(conceptId, next.overdue ? 'selected:overdue' : 'selected', candidate);
+      for (const dueId of reviewCoverage(candidate)) {
+        uncoveredDueConcepts.delete(dueId);
+        coveredBy.set(dueId, conceptId);
+      }
+    }
+  }
+
+  if (!selected.some((candidate) => candidate.activity.kind === 'review')) {
+    const fallbackReview = [...reviewCandidateDetails]
+      .filter(
+        ({ candidate }) =>
+          candidate.activity.conceptId &&
+          dueConceptIds.has(candidate.activity.conceptId) &&
+          uncoveredDueConcepts.has(candidate.activity.conceptId),
+      )
+      .sort(byUrgency)
+      .find(({ candidate }) => canAdd(candidate))?.candidate;
+    if (fallbackReview && add(fallbackReview)) {
+      reviewMinutes += fallbackReview.adjustedMinutes;
+      for (const dueId of reviewCoverage(fallbackReview)) {
+        uncoveredDueConcepts.delete(dueId);
+        if (fallbackReview.activity.conceptId) {
+          coveredBy.set(dueId, fallbackReview.activity.conceptId);
+        }
+      }
+      if (fallbackReview.activity.conceptId) {
+        recordReviewResult(fallbackReview.activity.conceptId, 'selected', fallbackReview);
+      }
+    }
+  }
+
   const otherCandidates = candidates
     .filter((candidate) => !['review', 'learn'].includes(candidate.activity.kind))
     .sort((left, right) => right.score - left.score);
   for (const candidate of otherCandidates) add(candidate);
 
+  selected.sort((left, right) => {
+    const priority = (candidate: Candidate) => {
+      const conceptId = candidate.activity.conceptId ?? '';
+      if (
+        candidate.activity.kind === 'learn' &&
+        (resumedLessonConcepts.has(conceptId) || overdueRetryLessonConcepts.has(conceptId))
+      ) {
+        return 0;
+      }
+      if (candidate.activity.kind === 'review') return 1;
+      if (candidate.activity.kind === 'learn' && retryEligibleLessonConcepts.has(conceptId)) {
+        return 3;
+      }
+      return candidate.activity.kind === 'learn' ? 2 : 4;
+    };
+    return priority(left) - priority(right);
+  });
   const mixedReviewCandidates = mixReviewActivities(selected, content);
   const optionalActivities = optionalProjectAndPaperActivities(
     state,
@@ -1216,6 +1472,34 @@ function generateCandidates(
       recentIds,
       candidates,
       reviewSelectionTrace,
+    );
+    if (candidate) candidates.push(candidate);
+  }
+  const cardsByConcept = new Map<string, SchedulerState['cards']>();
+  for (const card of state.cards) {
+    const conceptCards = cardsByConcept.get(card.conceptId) ?? [];
+    conceptCards.push(card);
+    cardsByConcept.set(card.conceptId, conceptCards);
+  }
+  for (const [conceptId, conceptCards] of cardsByConcept) {
+    if (
+      dueCardsByConcept.has(conceptId) ||
+      state.reviewedTodayConceptIds.includes(conceptId) ||
+      (focusSubjectId && !newConceptIds.has(conceptId)) ||
+      !conceptCards.some((card) => card.fsrs && card.fsrs.state !== State.New)
+    ) {
+      continue;
+    }
+    const candidate = buildReviewCandidateForConcept(
+      state,
+      content,
+      now,
+      conceptId,
+      conceptCards,
+      courseContexts,
+      masteryByKey,
+      recentIds,
+      candidates,
     );
     if (candidate) candidates.push(candidate);
   }

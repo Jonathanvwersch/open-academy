@@ -30,8 +30,10 @@ import type { Candidate, PlannedActivity, SchedulerState } from '../../src/learn
 import {
   buildReviewActivityForConcept,
   currentLearnerUnit,
+  dueTopicsCoveredBy,
   explainReviewSelection,
   interleaveReviewExercises,
+  learnLookAheadScore,
   mixReviewActivities,
   planSession,
   replan,
@@ -710,7 +712,7 @@ test('mastery introduces attempts, requires distinct independent items, and reta
     base,
     {
       conceptId: 'vectors',
-      dimension: 'math',
+      dimension: 'math' as const,
       attemptId: 'a1',
       exerciseId: 'vectors-magnitude',
       correct: 1,
@@ -1717,7 +1719,15 @@ test.each([
 
 test('remediation reviews outrank competing due reviews when the budget fits one', () => {
   const state = studyState(['fixture-course']);
+  const course = required(content.coursesById.get('fixture-course'), 'fixture-course');
   state.lessonRuns = [
+    ...course.units.flatMap((unit) => unit.concepts),
+    ...courseFoundationIds(content, 'fixture-course'),
+  ]
+    .filter((conceptId) => conceptId !== 'gradient-descent')
+    .map((conceptId) => ({ conceptId, status: 'completed' as const }));
+  state.lessonRuns = [
+    ...state.lessonRuns,
     {
       conceptId: 'gradient-descent',
       status: 'needs_retry',
@@ -1725,7 +1735,7 @@ test('remediation reviews outrank competing due reviews when the budget fits one
     },
   ];
   state.remediationFlags = [{ conceptId: 'gradient-descent', targetPrereqId: 'gradients' }];
-  state.cards = ['gradients', 'vectors'].map((conceptId) => {
+  state.cards = ['gradients', 'supervised-learning'].map((conceptId) => {
     const dimension = required(content.conceptsById.get(conceptId), conceptId).dimensions[0];
     if (!dimension) throw new Error(`Missing ${conceptId} dimension`);
     return {
@@ -1752,7 +1762,7 @@ test('remediation reviews outrank competing due reviews when the budget fits one
     }
   }
   const remediationMinutes = minutesByConcept.get('gradients') ?? 0;
-  const competingMinutes = minutesByConcept.get('vectors') ?? 0;
+  const competingMinutes = minutesByConcept.get('supervised-learning') ?? 0;
   const oneReviewBudget = Math.max(remediationMinutes, competingMinutes);
   expect(remediationMinutes).toBeGreaterThan(0);
   expect(competingMinutes).toBeGreaterThan(0);
@@ -1820,6 +1830,208 @@ test('Overdue reviews are scheduled', () => {
   expect(review).toBeDefined();
   expect(review?.reason.summary).toContain('Due since 13 Jan 2026');
   expect(review?.reason.summary).toContain('~70% recall');
+});
+
+test('a Good-credited lesson covers its due prerequisite, which is due again if uncompleted', () => {
+  const schedulerContent = schedulerContentWithTopics(
+    { 'fixture-course': ['linear-models'] },
+    content,
+  );
+  const state = studyState(['fixture-course'], schedulerContent);
+  const reviewedAt = new Date('2025-12-01T12:00:00.000Z');
+  const dueAt = new Date('2026-01-14T00:00:00.000Z');
+  const fsrsCard = {
+    ...scheduleReview(newReviewCard(reviewedAt), reviewedAt, Rating.Good, 'UTC', false).card,
+    state: State.Review,
+    stability: 12,
+    due: dueAt,
+  };
+  state.cards = [
+    {
+      conceptId: 'vectors',
+      dimension: 'math',
+      dueAt: dueAt.toISOString(),
+      retrievability: 0.5,
+      fsrs: fsrsCard,
+    },
+  ];
+
+  expect(dueTopicsCoveredBy('linear-models', state, schedulerContent, now)).toContain('vectors');
+  const explanations = explainReviewSelection(state, schedulerContent, now, 60);
+  expect(explanations).toContainEqual(
+    expect.objectContaining({
+      conceptId: 'vectors',
+      result: 'covered',
+      coveringConceptId: 'linear-models',
+    }),
+  );
+  const tomorrow = new Date('2026-01-15T12:00:00.000Z');
+  const nextDayPlan = planSession(
+    state,
+    schedulerContent,
+    tomorrow,
+    60,
+    'weekday',
+    new Set(['linear-models']),
+  );
+  expect(
+    nextDayPlan.activities.some(
+      (activity) =>
+        activity.kind === 'review' &&
+        activity.exerciseIds.some(
+          (exerciseId) => schedulerContent.exercisesById.get(exerciseId)?.concept === 'vectors',
+        ),
+    ),
+  ).toBe(true);
+
+  const remediationState = {
+    ...state,
+    remediationFlags: [
+      { conceptId: 'linear-models', targetPrereqId: 'vectors', status: 'open' as const },
+    ],
+    lessonRuns: [{ conceptId: 'linear-models', status: 'needs_retry' as const }],
+  };
+  const remediationTrace = explainReviewSelection(remediationState, schedulerContent, now, 60);
+  expect(remediationTrace.find((item) => item.conceptId === 'vectors')?.result).not.toBe('covered');
+});
+
+test('fractional positive credit leaves a due-today card uncovered when it remains due today', () => {
+  const concepts = content.concepts.map((concept) =>
+    concept.id === 'linear-models'
+      ? { ...concept, encompassings: [{ id: 'vectors', weight: 0.01 }] }
+      : concept,
+  );
+  const index: ContentIndex = {
+    ...content,
+    concepts,
+    conceptsById: new Map(concepts.map((concept) => [concept.id, concept])),
+  };
+  const state = studyState(['fixture-course'], index);
+  const reviewedAt = new Date('2026-01-14T12:00:00.000Z');
+  const dueAt = new Date('2026-01-14T12:00:00.000Z');
+  const fsrsCard = {
+    ...scheduleReview(newReviewCard(reviewedAt), reviewedAt, Rating.Good, 'UTC', false).card,
+    state: State.Review,
+    stability: 12,
+    due: dueAt,
+  };
+  state.cards = [
+    {
+      conceptId: 'vectors',
+      dimension: 'math',
+      dueAt: dueAt.toISOString(),
+      fsrs: fsrsCard,
+    },
+  ];
+
+  expect(dueTopicsCoveredBy('linear-models', state, index, now)).not.toContain('vectors');
+});
+
+test('a not-due advanced review replaces two due ancestor reviews', () => {
+  const advanced = courseContent.concepts.find(
+    (concept) => concept.prereqs.filter((item) => item.strength === 'hard').length >= 2,
+  );
+  if (!advanced) throw new Error('Expected a concept with two hard prerequisites');
+  const dueConceptIds = advanced.prereqs
+    .filter((item) => item.strength === 'hard')
+    .slice(0, 2)
+    .map((item) => item.id);
+  const concepts = courseContent.concepts.map((concept) =>
+    concept.id === advanced.id
+      ? {
+          ...concept,
+          encompassings: dueConceptIds.map((id) => ({ id, weight: 1 })),
+        }
+      : concept,
+  );
+  const indexedContent: ContentIndex = {
+    ...courseContent,
+    concepts,
+    conceptsById: new Map(concepts.map((concept) => [concept.id, concept])),
+  };
+  const schedulerContent = schedulerContentWithTopics(
+    { 'maths-for-ml': [advanced.id] },
+    indexedContent,
+  );
+  const state = studyState(['maths-for-ml'], schedulerContent);
+  const reviewedAt = new Date('2025-12-01T12:00:00.000Z');
+  const dueAt = new Date('2026-01-14T00:00:00.000Z');
+  const fsrsForDue = {
+    ...scheduleReview(newReviewCard(reviewedAt), reviewedAt, Rating.Good, 'UTC', false).card,
+    state: State.Review,
+    stability: 12,
+    due: dueAt,
+  };
+  state.cards = [
+    ...dueConceptIds.map((conceptId) => ({
+      conceptId,
+      dimension: 'math' as const,
+      dueAt: dueAt.toISOString(),
+      retrievability: 0.5,
+      fsrs: fsrsForDue,
+    })),
+    {
+      conceptId: advanced.id,
+      dimension: 'math' as const,
+      dueAt: '2026-02-01T00:00:00.000Z',
+      retrievability: 0.9,
+      fsrs: {
+        ...fsrsForDue,
+        due: new Date('2026-02-01T00:00:00.000Z'),
+      },
+    },
+  ];
+  const excluded = new Set([advanced.id, ...courseFoundationIds(schedulerContent, 'maths-for-ml')]);
+  const plan = planSession(state, schedulerContent, now, 60, 'weekday', excluded);
+  const reviewedConceptIds = new Set(
+    plan.activities
+      .filter((activity) => activity.kind === 'review')
+      .flatMap((activity) =>
+        activity.exerciseIds.flatMap((exerciseId) => {
+          const conceptId = schedulerContent.exercisesById.get(exerciseId)?.concept;
+          return conceptId ? [conceptId] : [];
+        }),
+      ),
+  );
+  expect(reviewedConceptIds.has(advanced.id)).toBe(true);
+  for (const dueConceptId of dueConceptIds) {
+    expect(reviewedConceptIds.has(dueConceptId)).toBe(false);
+  }
+});
+
+test('lesson look-ahead favors coverage of a weaker ancestor', () => {
+  const concepts = content.concepts.map((concept) =>
+    concept.id === 'linear-models'
+      ? { ...concept, encompassings: [{ id: 'vectors', weight: 1 }] }
+      : concept,
+  );
+  const index: ContentIndex = {
+    ...content,
+    concepts,
+    conceptsById: new Map(concepts.map((concept) => [concept.id, concept])),
+  };
+  const reviewedAt = new Date('2025-12-01T12:00:00.000Z');
+  const fsrsCard = {
+    ...scheduleReview(newReviewCard(reviewedAt), reviewedAt, Rating.Good, 'UTC', false).card,
+    state: State.Review,
+    stability: 12,
+    due: new Date('2026-02-01T00:00:00.000Z'),
+  };
+  const state = {
+    ...emptyState(),
+    cards: [
+      {
+        conceptId: 'vectors',
+        dimension: 'math' as const,
+        dueAt: '2026-02-01T00:00:00.000Z',
+        retrievability: 0.1,
+        fsrs: fsrsCard,
+      },
+    ],
+  };
+  expect(learnLookAheadScore('linear-models', state, index, now)).toBeGreaterThan(
+    learnLookAheadScore('supervised-learning', state, index, now),
+  );
 });
 
 test('three due topics from two courses become one interleaved mixed review', () => {
@@ -3923,7 +4135,7 @@ test('two-day overdue guarantees prevent longer deferrals under a 1.67x cap load
   expect(longestDeferral).toBeLessThanOrEqual(2);
 });
 
-test('planner schedules one due review when the budget is 10 minutes', () => {
+test('planner schedules an uncovered due review within the full budget despite the review cap', () => {
   const state = emptyState();
   state.cards = [
     {
@@ -3936,4 +4148,22 @@ test('planner schedules one due review when the budget is 10 minutes', () => {
   const plan = planSession(state, content, now, 10);
 
   expect(plan.activities.filter((activity) => activity.kind === 'review')).toHaveLength(1);
+});
+
+test('final plan keeps due reviews before newly selected lessons', () => {
+  const state = studyState(['fixture-course'], content);
+  state.cards = [
+    {
+      conceptId: 'gradients',
+      dimension: 'math',
+      dueAt: now.toISOString(),
+    },
+  ];
+
+  const plan = planSession(state, content, now, 60);
+  const reviewIndex = plan.activities.findIndex((activity) => activity.kind === 'review');
+  const learnIndex = plan.activities.findIndex((activity) => activity.kind === 'learn');
+
+  expect(reviewIndex).toBeGreaterThanOrEqual(0);
+  expect(learnIndex).toBeGreaterThan(reviewIndex);
 });

@@ -326,6 +326,7 @@ export class LearnerRepository {
         conceptId: card.conceptId,
         dimension: card.dimension as Dimension,
         dueAt: card.dueAt.toISOString(),
+        fsrs: card.fsrs as Card,
         retrievability: retrievability(card.fsrs as Card, now, process.env.NODE_ENV !== 'test'),
       })),
       reviewedTodayConceptIds: [
