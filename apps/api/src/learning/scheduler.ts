@@ -748,7 +748,10 @@ function packWeekday(
   const coveredByTaskConcept = (conceptId: string) => {
     let covered = dueTopicsByTaskConcept.get(conceptId);
     if (!covered) {
-      covered = dueTopicsCoveredBy(conceptId, state, content, now);
+      covered =
+        state.inProgressConceptId && state.inProgressConceptId !== conceptId
+          ? new Set()
+          : dueTopicsCoveredBy(conceptId, state, content, now);
       dueTopicsByTaskConcept.set(conceptId, covered);
     }
     return covered;
@@ -903,6 +906,9 @@ function packWeekday(
       left.index - right.index,
   )) {
     const candidate = detail.candidate;
+    if (!candidate.remediation && !dueConceptIds.has(candidate.activity.conceptId ?? '')) {
+      continue;
+    }
     const fitsReviewCap =
       candidate.remediation ||
       detail.overdue ||
@@ -1066,16 +1072,19 @@ function packWeekday(
         ).length,
       }))
       .sort((left, right) => {
-        if (right.newlyCovered !== left.newlyCovered) return right.newlyCovered - left.newlyCovered;
+        const remediationOrder =
+          Number(right.candidate.remediation === true) -
+          Number(left.candidate.remediation === true);
+        if (remediationOrder !== 0) return remediationOrder;
+        if (left.overdue !== right.overdue) return left.overdue ? -1 : 1;
         if (left.overdue && right.overdue) {
           return (
-            Number(right.candidate.remediation === true) -
-              Number(left.candidate.remediation === true) ||
             (left.earliestDueAt ?? Infinity) - (right.earliestDueAt ?? Infinity) ||
             (left.currentRetrievability ?? Infinity) - (right.currentRetrievability ?? Infinity) ||
             left.index - right.index
           );
         }
+        if (right.newlyCovered !== left.newlyCovered) return right.newlyCovered - left.newlyCovered;
         return byUrgency(left, right);
       });
     const next = ranked[0];

@@ -3834,6 +3834,45 @@ test('due reviews use at most 30% of a normal budget', () => {
   expect(reviewMinutes).toBeLessThanOrEqual(Math.floor(budget * 0.3));
 });
 
+test('non-due review candidates do not reserve the fresh-lesson budget', () => {
+  const vectors = required(courseContent.conceptsById.get('vectors'), 'vectors concept');
+  const concepts = courseContent.concepts.map((concept) =>
+    concept.id === 'vectors' ? { ...concept, est_minutes: 20 } : concept,
+  );
+  const index: ContentIndex = {
+    ...courseContent,
+    concepts,
+    conceptsById: new Map(concepts.map((concept) => [concept.id, concept])),
+  };
+  const state = studyState(['maths-for-ml'], index);
+  state.activeCourseId = 'maths-for-ml';
+  state.studyCourseIds = ['maths-for-ml'];
+  const reviewedAt = new Date('2025-12-01T12:00:00.000Z');
+  const futureDueAt = new Date('2026-02-01T00:00:00.000Z');
+  state.cards = [
+    {
+      conceptId: vectors.id,
+      dimension: 'math',
+      dueAt: futureDueAt.toISOString(),
+      fsrs: {
+        ...scheduleReview(newReviewCard(reviewedAt), reviewedAt, Rating.Good, 'UTC', false).card,
+        state: State.Review,
+        due: futureDueAt,
+      },
+    },
+  ];
+
+  const plan = planSession(state, index, now, 20);
+
+  expect(plan.activities).toContainEqual(
+    expect.objectContaining({
+      kind: 'learn',
+      conceptId: 'vectors',
+      plannedMinutes: 20,
+    }),
+  );
+});
+
 test('review urgency selects an overdue off-path topic when the cap fits one review', () => {
   const fixture = reviewQueueFixture(2, 1, 6);
   const inUnit = required(fixture.topicIds[0], 'in-unit review topic');
@@ -3890,6 +3929,69 @@ test('review urgency selects an overdue off-path topic when the cap fits one rev
   expect(offPathReview?.reason.terms.review).toBeGreaterThan(
     inUnitReview?.reason.terms.review ?? 0,
   );
+});
+
+test('an overdue review outranks a higher-scoring non-overdue review when only one fits', () => {
+  const fixture = reviewQueueFixture(2, 1, 2);
+  const highScoring = required(fixture.topicIds[0], 'high-scoring review topic');
+  const overdue = required(fixture.topicIds[1], 'overdue review topic');
+  const exercises = fixture.index.exercises.map((exercise) =>
+    exercise.concept === overdue ? { ...exercise, est_minutes: 6 } : exercise,
+  );
+  const index: ContentIndex = {
+    ...fixture.index,
+    exercises,
+    exercisesById: new Map(exercises.map((exercise) => [exercise.id, exercise])),
+    exercisesByConcept: new Map(
+      [...fixture.index.exercisesByConcept].map(([conceptId, conceptExercises]) => [
+        conceptId,
+        conceptId === overdue
+          ? conceptExercises.map((exercise) => ({ ...exercise, est_minutes: 6 }))
+          : conceptExercises,
+      ]),
+    ),
+  };
+  const state = emptyState();
+  state.activeCourseId = 'fixture-course';
+  state.studyCourseIds = ['fixture-course'];
+  state.mastery = fixture.topicIds.map((conceptId) => ({
+    ...initialMastery(conceptId, 'math'),
+    state: 'independent' as const,
+  }));
+  state.cards = [
+    { conceptId: highScoring, dimension: 'math', dueAt: now.toISOString(), retrievability: 0.1 },
+    {
+      conceptId: overdue,
+      dimension: 'math',
+      dueAt: new Date(now.getTime() - 3 * 86_400_000).toISOString(),
+      retrievability: 0.6,
+    },
+  ];
+  const candidateScore = (conceptId: string) => {
+    const plan = planSession(
+      { ...state, cards: state.cards.filter((card) => card.conceptId === conceptId) },
+      index,
+      now,
+      20,
+    );
+    const activity = plan.activities.find((candidate) => candidate.kind === 'review');
+    if (!activity) throw new Error(`Expected a review for ${conceptId}`);
+    const weighted = Object.entries(activity.reason.terms).reduce(
+      (total, [term, value]) =>
+        total + value * SCHEDULER_CONFIG.weights[term as keyof typeof SCHEDULER_CONFIG.weights],
+      0,
+    );
+    return { activity, score: weighted / Math.sqrt(activity.plannedMinutes) };
+  };
+  const highScoringReview = candidateScore(highScoring);
+  const overdueReview = candidateScore(overdue);
+
+  const plan = planSession(state, index, now, 20);
+
+  expect(highScoringReview.score).toBeGreaterThan(overdueReview.score);
+  expect(highScoringReview.activity.plannedMinutes).toBe(6);
+  expect(overdueReview.activity.plannedMinutes).toBe(18);
+  expect(plannedReviewTopics(plan, index)).toEqual([overdue]);
 });
 
 test('two-day-overdue reviews bypass a full cap before new lessons are planned', () => {

@@ -24,7 +24,6 @@ import {
   users,
   xpEvents,
 } from '../../src/db/schema.js';
-import { firstCompletesActivityConcept } from '../../src/features/exercises/service.js';
 import { FakeProvider } from '../../src/features/tutor/provider.js';
 import { answerOptionsFor } from '../../src/learning/answer-options.js';
 import { buildEncompassingIndex } from '../../src/learning/encompassing.js';
@@ -43,23 +42,11 @@ const now = '2026-01-01T12:00:00.000Z';
 let app: ReturnType<typeof createApp>;
 let noTutorApp: ReturnType<typeof createApp>;
 let content: ContentIndex;
-
-test('a retry of the final review exercise does not complete the concept again', () => {
-  const exerciseIds = ['first-exercise', 'last-exercise'];
-  expect(
-    firstCompletesActivityConcept(
-      exerciseIds,
-      ['first-exercise'],
-      ['first-exercise', 'last-exercise'],
-    ),
-  ).toBe(true);
-  expect(
-    firstCompletesActivityConcept(exerciseIds, exerciseIds, ['first-exercise', 'last-exercise']),
-  ).toBe(false);
-});
+let fullContent: ContentIndex;
 
 beforeAll(async () => {
   content = await loadContent('tests/fixtures/content');
+  fullContent = await loadContent('content');
   app = createApp({ db, content, tutorProvider: new FakeProvider() });
   noTutorApp = createApp({ db, content, tutorProvider: null });
   await db.delete(users);
@@ -711,6 +698,114 @@ test('Today compresses a due review when same-day learning covers its topic', as
       'UTC',
     ),
   ).toBe(true);
+});
+
+test('focus mode keeps due reviews covered only by a removed lesson', async () => {
+  const courses = fullContent.courses.map((course) =>
+    course.id === 'maths-for-ml'
+      ? {
+          ...course,
+          units: course.units.map((unit, index) => ({
+            ...unit,
+            concepts: index === 0 ? ['vectors', 'dot-product', 'derivatives'] : [],
+          })),
+        }
+      : course,
+  );
+  const focusContent: ContentIndex = {
+    ...fullContent,
+    courses,
+    coursesById: new Map(courses.map((course) => [course.id, course])),
+  };
+  const focusApp = createApp({
+    db,
+    content: focusContent,
+    tutorProvider: new FakeProvider(),
+  });
+  const seedFocusScenario = async () => {
+    await resetLearner();
+    await db.insert(courseEnrollments).values({
+      userId,
+      courseId: 'maths-for-ml',
+      status: 'active',
+      startMethod: 'beginning',
+    });
+    const completedPrerequisites = new Set<string>();
+    const addHardPrerequisites = (conceptId: string) => {
+      for (const prerequisite of focusContent.conceptsById.get(conceptId)?.prereqs ?? []) {
+        if (prerequisite.strength !== 'hard' || completedPrerequisites.has(prerequisite.id)) {
+          continue;
+        }
+        completedPrerequisites.add(prerequisite.id);
+        addHardPrerequisites(prerequisite.id);
+      }
+    };
+    addHardPrerequisites('dot-product');
+    addHardPrerequisites('derivatives');
+    for (const concept of focusContent.concepts) {
+      if (concept.id !== 'dot-product' && concept.id !== 'derivatives') {
+        completedPrerequisites.add(concept.id);
+      }
+    }
+    if (completedPrerequisites.size > 0) {
+      await db.insert(lessonRuns).values(
+        [...completedPrerequisites].map((conceptId) => ({
+          userId,
+          conceptId,
+          status: 'completed' as const,
+          startedAt: new Date(now),
+        })),
+      );
+    }
+    const dueAt = new Date('2025-12-31T00:00:00.000Z');
+    await createReviewCard('vectors', 'math', dueAt, learnedReviewFsrs(dueAt));
+  };
+  const hasVectorsReview = (activities: Array<{ kind: string; exerciseIds: string[] }>) =>
+    activities.some(
+      (activity) =>
+        activity.kind === 'review' &&
+        activity.exerciseIds.some(
+          (exerciseId) => focusContent.exercisesById.get(exerciseId)?.concept === 'vectors',
+        ),
+    );
+
+  await seedFocusScenario();
+  const unfocusedResponse = await focusApp.request('/api/sessions', {
+    method: 'POST',
+    headers: headersAt(now),
+    body: JSON.stringify({ budgetMinutes: 240 }),
+  });
+  expect(unfocusedResponse.status).toBe(201);
+  const unfocusedSession = await unfocusedResponse.json();
+  expect(
+    unfocusedSession.activities.some(
+      (activity: { kind: string; conceptId?: string }) =>
+        activity.kind === 'learn' && activity.conceptId === 'dot-product',
+    ),
+  ).toBe(true);
+  expect(hasVectorsReview(unfocusedSession.activities)).toBe(false);
+
+  await seedFocusScenario();
+  const focusedResponse = await focusApp.request('/api/sessions', {
+    method: 'POST',
+    headers: headersAt(now),
+    body: JSON.stringify({ budgetMinutes: 240, focusConceptId: 'derivatives' }),
+  });
+  expect(focusedResponse.status).toBe(201);
+  const focusedSession = await focusedResponse.json();
+  expect(
+    focusedSession.activities.some(
+      (activity: { kind: string; conceptId?: string }) =>
+        activity.kind === 'learn' && activity.conceptId === 'derivatives',
+    ),
+  ).toBe(true);
+  expect(
+    focusedSession.activities.some(
+      (activity: { kind: string; conceptId?: string }) =>
+        activity.kind === 'learn' && activity.conceptId === 'dot-product',
+    ),
+  ).toBe(false);
+  expect(hasVectorsReview(focusedSession.activities)).toBe(true);
 });
 
 test('practice answers expose selected options and reveal correct ids only after retries end', async () => {
@@ -2240,6 +2335,125 @@ test('partial explain answers get one follow-up before the exemplar and activity
   });
   expect(thirdResponse.status).toBe(409);
   expect(await thirdResponse.json()).toMatchObject({ error: 'No retries remain.' });
+});
+
+test('a follow-up on the final review exercise applies implicit credit once at final grading', async () => {
+  await resetLearner();
+  const exercise = content.exercisesById.get('derivatives-explain');
+  if (exercise?.type !== 'explain') throw new Error('Missing derivatives explain exercise');
+  const dueAt = new Date('2025-12-31T00:00:00.000Z');
+  const currentCard = await createReviewCard(
+    exercise.concept,
+    exercise.dimension,
+    dueAt,
+    learnedReviewFsrs(dueAt),
+  );
+  const prerequisiteCard = await createReviewCard(
+    'vectors',
+    'conceptual',
+    dueAt,
+    learnedReviewFsrs(dueAt),
+  );
+  const [session] = await db
+    .insert(studySessions)
+    .values({ userId, plannedMinutes: 15, status: 'active', kind: 'weekday' })
+    .returning();
+  if (!session) throw new Error('Could not create a review session fixture');
+  const [activity] = await db
+    .insert(sessionActivities)
+    .values({
+      sessionId: session.id,
+      idx: 0,
+      kind: 'review',
+      conceptId: exercise.concept,
+      exerciseIds: [exercise.id],
+      plannedMinutes: 5,
+      status: 'in_progress',
+    })
+    .returning();
+  if (!activity) throw new Error('Could not create a review activity fixture');
+  const partialApp = createApp({
+    db,
+    content,
+    tutorProvider: new FakeProvider(undefined, {
+      criteria: [
+        { id: 'local-rate', judgement: 'partial', evidence: 'Mentions change.' },
+        { id: 'tangent-slope', judgement: 'missing', evidence: null },
+      ],
+      feedback_md: 'Add the tangent-slope connection.',
+    }),
+  });
+  const completeApp = createApp({
+    db,
+    content,
+    tutorProvider: new FakeProvider(undefined, {
+      criteria: exercise.rubric.map(({ id }) => ({
+        id,
+        judgement: 'met' as const,
+        evidence: 'Both criteria are addressed.',
+      })),
+      feedback_md: 'Complete explanation.',
+    }),
+  });
+  const submit = (targetApp: ReturnType<typeof createApp>, answer: string) =>
+    targetApp.request('/api/attempts', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'X-Now': now },
+      body: JSON.stringify({
+        exerciseId: exercise.id,
+        activityId: activity.id,
+        answer: { text: answer },
+        mode: 'review',
+      }),
+    });
+
+  const followUpResponse = await submit(partialApp, 'A change occurs at the point.');
+  expect(followUpResponse.status).toBe(200);
+  expect(await followUpResponse.json()).toMatchObject({
+    followUp: true,
+    retryAllowed: true,
+    activityCompleted: false,
+  });
+  const [prerequisiteAfterFollowUp] = await db
+    .select()
+    .from(reviewCards)
+    .where(eq(reviewCards.id, prerequisiteCard.id));
+  expect(prerequisiteAfterFollowUp?.dueAt).toEqual(dueAt);
+  expect(
+    await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, currentCard.id)),
+  ).toHaveLength(0);
+
+  const finalResponse = await submit(completeApp, 'It is the tangent slope.');
+  expect(finalResponse.status).toBe(200);
+  expect(await finalResponse.json()).toMatchObject({
+    attemptNo: 2,
+    retryAllowed: false,
+    activityCompleted: true,
+  });
+  const [prerequisiteAfterFinal] = await db
+    .select()
+    .from(reviewCards)
+    .where(eq(reviewCards.id, prerequisiteCard.id));
+  if (!prerequisiteAfterFinal) throw new Error('Could not reload the prerequisite review card');
+  expect(prerequisiteAfterFinal.dueAt.getTime()).toBeGreaterThan(dueAt.getTime());
+  const implicitCreditDueAt = prerequisiteAfterFinal.dueAt;
+  expect(
+    await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, currentCard.id)),
+  ).toHaveLength(1);
+  expect(
+    await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, prerequisiteCard.id)),
+  ).toHaveLength(0);
+
+  const replay = await submit(completeApp, 'A replay after completion.');
+  expect(replay.status).toBe(409);
+  const [prerequisiteAfterReplay] = await db
+    .select()
+    .from(reviewCards)
+    .where(eq(reviewCards.id, prerequisiteCard.id));
+  expect(prerequisiteAfterReplay?.dueAt).toEqual(implicitCreditDueAt);
+  expect(
+    await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, currentCard.id)),
+  ).toHaveLength(1);
 });
 
 test('review mode partial explain answers get one retry before card rating and completion', async () => {
