@@ -264,6 +264,14 @@ test('prerequisite checker follows hard ancestors and reports the missing fronti
       syntheticContent,
     ),
   ).toEqual(['planned-c']);
+  expect(
+    learnActivitiesWithUnmetPrerequisites(
+      [{ id: 'planned-removed', kind: 'learn', status: 'planned', conceptId: 'removed' }],
+      new Map(),
+      [],
+      syntheticContent,
+    ),
+  ).toEqual([]);
 });
 
 test('prerequisite checker guards cycles and ignores soft prerequisites', () => {

@@ -158,6 +158,7 @@ export function learnActivitiesWithUnmetPrerequisites(
       ) {
         return false;
       }
+      if (!content.conceptsById.has(activity.conceptId)) return false;
       return !checker.chainReady(activity.conceptId);
     })
     .map(({ id }) => id);
