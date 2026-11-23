@@ -64,8 +64,8 @@ async function startRun(activityId?: string, runConceptId = conceptId, requestHe
   });
 }
 
-async function getRun() {
-  return app.request(`/api/lessons/${conceptId}/run`, { headers });
+async function getRun(runConceptId = conceptId) {
+  return app.request(`/api/lessons/${runConceptId}/run`, { headers });
 }
 
 test('full lesson review carries its rendered checks and the same derived run status', async () => {
@@ -293,6 +293,91 @@ test('retry starts attempt two at step one and opens key prerequisite flags afte
   expect(error.error).toMatch(/^Review .+ first\.$/);
   for (const prerequisite of run.retry.reviewFirst)
     expect(error.error).toContain(prerequisite.title);
+});
+
+test('legacy in-progress run with a halted first step restarts at attempt two', async () => {
+  const fixture = [...content.lessonsByConcept.entries()].find(([, lesson]) =>
+    Boolean(
+      lesson.knowledge_points?.[0]?.problems.length &&
+        lesson.knowledge_points[0].problems.length >= 3,
+    ),
+  );
+  if (!fixture) throw new Error('No lesson with three first-step problems was found');
+  const [runConceptId, lesson] = fixture;
+  const point = lesson.knowledge_points?.[0];
+  if (!point) throw new Error('Missing first lesson point');
+  const [legacyRun] = await db
+    .insert(lessonRuns)
+    .values({ userId, conceptId: runConceptId, status: 'in_progress' })
+    .returning();
+  if (!legacyRun) throw new Error('Could not create the legacy lesson run');
+  const servedAt = new Date(headers['X-Now']);
+  await db.insert(lessonProblems).values(
+    point.problems.slice(0, 3).map((exerciseId, position) => {
+      const exercise = content.exercisesById.get(exerciseId);
+      if (!exercise) throw new Error(`Missing fixture exercise ${exerciseId}`);
+      return {
+        runId: legacyRun.id,
+        knowledgePointId: point.id,
+        round: 1,
+        position,
+        exerciseId,
+        seed: isTemplate(exercise) ? position + 1 : null,
+        servedAt: new Date(servedAt.getTime() + position * 1_000),
+        answeredAt: new Date(servedAt.getTime() + (position + 1) * 1_000),
+        correct: 0,
+      };
+    }),
+  );
+
+  const existing = await (await getRun(runConceptId)).json();
+  expect(existing.run).toMatchObject({
+    status: 'in_progress',
+    halted: { pointId: point.id },
+  });
+
+  const started = await startRun(undefined, runConceptId);
+  expect(started.status).toBe(200);
+  const run = (await started.json()).run;
+  expect(run.status).toBe('in_progress');
+  expect(run.currentPointId).toBe(point.id);
+  expect(run.pending.round).toBe(2);
+
+  const answered = await answerProblem(
+    run.pending.id,
+    correctAnswer(run.pending.exerciseId, run.pending.seed),
+    undefined,
+    headers,
+    runConceptId,
+  );
+  expect(answered.status).toBe(200);
+  expect((await answered.json()).state.lastAnsweredProblem).toMatchObject({
+    round: 2,
+    correct: 1,
+  });
+  const [recoveredRun] = await db
+    .select()
+    .from(lessonRuns)
+    .where(and(eq(lessonRuns.userId, userId), eq(lessonRuns.conceptId, runConceptId)));
+  expect(recoveredRun).toMatchObject({
+    attempt: 2,
+    status: 'in_progress',
+    haltedAt: null,
+    retryAfter: null,
+    haltCount: 0,
+  });
+  expect(
+    await db
+      .select()
+      .from(remediationFlags)
+      .where(
+        and(
+          eq(remediationFlags.userId, userId),
+          eq(remediationFlags.conceptId, runConceptId),
+          eq(remediationFlags.status, 'open'),
+        ),
+      ),
+  ).toHaveLength(0);
 });
 
 test('a halt after forward progress does not open remediation flags', async () => {

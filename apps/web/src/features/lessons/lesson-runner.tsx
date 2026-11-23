@@ -230,7 +230,12 @@ export function LessonRunner({
   );
 
   useEffect(() => {
-    if ((!state || state.needsProgressSync) && starting.current !== startAttempt) {
+    if (
+      (!state ||
+        state.needsProgressSync ||
+        (state.status === 'in_progress' && state.halted !== undefined)) &&
+      starting.current !== startAttempt
+    ) {
       starting.current = startAttempt;
       setBusy(true);
       void apiFetch(`/api/lessons/${encodeURIComponent(conceptId)}/run`, {

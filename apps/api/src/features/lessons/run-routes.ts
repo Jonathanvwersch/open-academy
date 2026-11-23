@@ -540,6 +540,26 @@ export function registerLessonRunRoutes(
           existing.quizPassedAt,
           existing.attempt,
         );
+      } else if (state.halted) {
+        [existing] = await tx
+          .update(lessonRuns)
+          .set({
+            attempt: existing.attempt + 1,
+            status: 'in_progress',
+            haltedAt: null,
+            retryAfter: null,
+            updatedAt: now,
+            completedAt: null,
+          })
+          .where(eq(lessonRuns.id, existing.id))
+          .returning();
+        state = deriveLessonState(
+          resolved.lesson,
+          problems,
+          resolved.index.exercisesById,
+          existing.quizPassedAt,
+          existing.attempt,
+        );
       }
       // Repair completion earned under the old tutor-exclusion rule only on an explicit write.
       // Unique source keys retain historical awards and make repeated recovery safe.
