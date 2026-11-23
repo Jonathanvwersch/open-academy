@@ -705,3 +705,40 @@ terms:
       match: ['\bgroup-relative advantage'],
       introduced_by: [rl-verifiable-rewards],
     }
+  - {
+      id: reward-over-optimisation,
+      label: "reward over-optimisation",
+      match: ["over-?optimi[sz]"],
+      introduced_by: [reward-hacking],
+    }
+  - { id: sycophancy, label: "sycophancy", match: ["sycophan"], introduced_by: [reward-hacking] }
+  - {
+      id: reward-model-ensemble,
+      label: "reward model ensemble",
+      match: ["reward[- ]model ensembl", "ensembled reward model"],
+      introduced_by: [reward-hacking],
+    }
+  - {
+      id: goodharts-law,
+      label: "Goodhart's law",
+      match: ["goodhart"],
+      introduced_by: [reward-hacking],
+    }
+  - {
+      id: proxy-reward,
+      label: "proxy reward",
+      match: ['\bproxy[- ]reward\b'],
+      introduced_by: [reward-hacking],
+    }
+  - {
+      id: best-of-n-sampling,
+      label: "best-of-n sampling",
+      match: ['\bbest[- ]of[- ](?:\$n\$|n\b)'],
+      introduced_by: [reward-hacking],
+    }
+  - {
+      id: stronger-judge,
+      label: "stronger judge",
+      match: ['\bstronger[- ]judge\b'],
+      introduced_by: [reward-hacking],
+    }
