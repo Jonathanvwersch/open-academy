@@ -1999,6 +1999,88 @@ test('a not-due advanced review replaces two due ancestor reviews', () => {
   }
 });
 
+test('focus mode keeps coverage from a selected not-due review', () => {
+  const advanced = courseContent.concepts.find(
+    (concept) => concept.prereqs.filter((item) => item.strength === 'hard').length >= 2,
+  );
+  if (!advanced) throw new Error('Expected a concept with two hard prerequisites');
+  const dueConceptIds = advanced.prereqs
+    .filter((item) => item.strength === 'hard')
+    .slice(0, 2)
+    .map((item) => item.id);
+  const focusedConceptId = courseContent.concepts.find(
+    (concept) => concept.id !== advanced.id && !dueConceptIds.includes(concept.id),
+  )?.id;
+  if (!focusedConceptId) throw new Error('Expected an unrelated focus concept');
+  const concepts = courseContent.concepts.map((concept) =>
+    concept.id === advanced.id
+      ? {
+          ...concept,
+          encompassings: dueConceptIds.map((id) => ({ id, weight: 1 })),
+        }
+      : concept,
+  );
+  const indexedContent: ContentIndex = {
+    ...courseContent,
+    concepts,
+    conceptsById: new Map(concepts.map((concept) => [concept.id, concept])),
+  };
+  const schedulerContent = schedulerContentWithTopics(
+    { 'maths-for-ml': [advanced.id] },
+    indexedContent,
+  );
+  const state = studyState(['maths-for-ml'], schedulerContent);
+  state.inProgressConceptId = focusedConceptId;
+  const reviewedAt = new Date('2025-12-01T12:00:00.000Z');
+  const dueAt = new Date('2026-01-14T00:00:00.000Z');
+  const fsrsForDue = {
+    ...scheduleReview(newReviewCard(reviewedAt), reviewedAt, Rating.Good, 'UTC', false).card,
+    state: State.Review,
+    stability: 12,
+    due: dueAt,
+  };
+  state.cards = [
+    ...dueConceptIds.map((conceptId) => ({
+      conceptId,
+      dimension: 'math' as const,
+      dueAt: dueAt.toISOString(),
+      retrievability: 0.5,
+      fsrs: fsrsForDue,
+    })),
+    {
+      conceptId: advanced.id,
+      dimension: 'math' as const,
+      dueAt: '2026-02-01T00:00:00.000Z',
+      retrievability: 0.9,
+      fsrs: {
+        ...fsrsForDue,
+        due: new Date('2026-02-01T00:00:00.000Z'),
+      },
+    },
+  ];
+  const excluded = new Set([
+    advanced.id,
+    focusedConceptId,
+    ...courseFoundationIds(schedulerContent, 'maths-for-ml'),
+  ]);
+  const plan = planSession(state, schedulerContent, now, 60, 'weekday', excluded);
+  const reviewedConceptIds = new Set(
+    plan.activities
+      .filter((activity) => activity.kind === 'review')
+      .flatMap((activity) =>
+        activity.exerciseIds.flatMap((exerciseId) => {
+          const conceptId = schedulerContent.exercisesById.get(exerciseId)?.concept;
+          return conceptId ? [conceptId] : [];
+        }),
+      ),
+  );
+
+  expect(reviewedConceptIds.has(advanced.id)).toBe(true);
+  for (const dueConceptId of dueConceptIds) {
+    expect(reviewedConceptIds.has(dueConceptId)).toBe(false);
+  }
+});
+
 test('lesson look-ahead favors coverage of a weaker ancestor', () => {
   const concepts = content.concepts.map((concept) =>
     concept.id === 'linear-models'
