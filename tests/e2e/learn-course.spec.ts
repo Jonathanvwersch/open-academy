@@ -587,6 +587,7 @@ test('failed project uploads update the Course status without a reload', async (
 });
 
 test('lab activities show project progress and finish without awarding XP', async ({ page }) => {
+  await markProjectPrerequisitesDone(db, userId, 'linreg-numpy');
   const [session] = await db
     .insert(studySessions)
     .values({
@@ -756,7 +757,7 @@ test('stub projects have no lab link or results form', async ({ page }) => {
   });
 
   await page.goto(`/session/${session.id}`);
-  await expect(page.getByRole('heading', { name: 'Optimization playground' }).last()).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Optimization playground' })).toHaveCount(0);
   await expect(page.getByRole('link', { name: 'Open project' })).toHaveCount(0);
 
   await page.goto('/projects/optimization-project');
