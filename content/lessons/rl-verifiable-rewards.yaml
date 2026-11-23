@@ -8,7 +8,7 @@ recap:
   - concept: policy-gradients
     text: "A policy-gradient update makes an action more likely when its return $G$ beats a baseline $b$, and less likely when it falls short. A baseline that doesn't depend on the action keeps the average update the same."
   - concept: rlhf
-    text: "In RLHF, $\\theta$ are the policy's parameters and $\\phi$ are the reward model's parameters. The reward PPO maximised was $r_\\phi(x,y)-\\beta\\log\\frac{\\pi_\\theta(y\\mid x)}{\\pi_{\\text{ref}}(y\\mid x)}$. Here $\\beta$ sets how strongly the KL penalty pulls the policy towards the reference model."
+    text: "In RLHF, $\\theta$ are the policy's parameters and $\\phi$ are the reward model's parameters. The reward PPO maximised was $r_\\phi(x,y)-\\beta\\ln\\frac{\\pi_\\theta(y\\mid x)}{\\pi_{\\text{ref}}(y\\mid x)}$. Here $\\beta$ sets how strongly the KL penalty pulls the policy towards the reference model."
 where_this_fits: |
   ### What is RL with verifiable rewards?
 
@@ -258,11 +258,11 @@ knowledge_points:
 
       ### Starting from an SFT model
 
-      Equal rewards give zero advantages, so the clipped term gives no push from the rewards. The KL term can still move the policy. If every answer fails, the rewards teach nothing. Training usually starts from an SFT model because it already follows the format and passes some checks.
+      Equal rewards give zero advantages, so the clipped term gives no push from the rewards. The KL term can still move the policy. If every answer fails, the rewards teach nothing. Training often starts from an SFT model because it already follows the format and passes some checks.
 
       ### Reasoning models
 
-      A **reasoning model** is trained to write out its working step by step before its final answer. DeepSeek-R1-Zero is a large language model from the company DeepSeek. It was an exception to the usual SFT start. It used GRPO from a large pretrained model with no SFT. That model already passed some checks, giving groups both passes and fails. It used answer checks like ours and a **format reward** for laying out the reply in a required form. For example, working goes between special markers such as `<think>` and `</think>`, followed by the answer.
+      A **reasoning model** is trained to write out its working step by step before its final answer. DeepSeek-R1-Zero is a large language model from the company DeepSeek. It used GRPO directly on a large pretrained base model, with no SFT. That model already passed some checks, giving groups both passes and fails. It used answer checks like ours and a **format reward** for laying out the reply in a required form. For example, working goes between special markers such as `<think>` and `</think>`, followed by the answer.
     worked: |
       Let's work out the clipped terms for two tokens from the apples group, with clip range $c=0.2$. Reply 1 has advantage $A_1=1$ and reply 2 has $A_2=-1$.
 
@@ -293,6 +293,6 @@ summary: |
   - A verifiable reward comes from a program, the checker, that compares a reply's final answer with a reference answer or runs code on tests. It gives $1$ when the check passes and $0$ when it fails, so no learned reward model is needed.
   - A reward function finds the final answer, tidies harmless differences such as spaces and a full stop, and compares it with the reference. Each of its rules decides which replies earn reward.
   - The policy writes a group of $G$ answers to each prompt. GRPO gives answer $i$ the advantage $A_i=\frac{r_i-\operatorname{mean}(r)}{\operatorname{std}(r)}$. The standard deviation averages squared distances from the mean over all $G$ answers before taking the square root. Equal rewards give zero advantages and no push from the rewards.
-  - Every token of answer $i$ gets $A_i$ in PPO's clipped objective, with a KL penalty towards the reference model. GRPO needs no critic, and training usually starts from an SFT model so that some answers pass.
+  - Every token of answer $i$ gets $A_i$ in PPO's clipped objective, with a KL penalty towards the reference model. GRPO needs no critic, and training often starts from an SFT model so that some answers pass.
 
   **Next:** The reward hacking lesson shows how a policy can exploit flaws in a reward, whether it comes from a reward model or a checker.

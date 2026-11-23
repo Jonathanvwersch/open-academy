@@ -180,7 +180,7 @@ exercises:
     role: "practice"
     difficulty: 3
     est_minutes: 2
-    prompt: "A reply passes a checker. Its policy log-probability is ${{=lp}}$ and its reference log-probability is ${{=lq}}$. With $\\beta=0.1$, what is RLHF's KL-penalised reward?"
+    prompt: "A reply passes a checker. Its policy log-probability is ${{=lp}}$ and its reference log-probability is ${{=lq}}$. If we plugged the checker reward into RLHF's KL-penalised reward with $\\beta=0.1$, what would the adjusted reward be?"
     answer_expr: "1-0.1*(lp-lq)"
     tolerance: { "abs": 0.006 }
     common_wrong:
@@ -319,7 +319,7 @@ exercises:
     est_minutes: 1
     prompt: "What does this Python code print?"
     code: "def final_answer(text):\n    for line in reversed(text.strip().splitlines()):\n        if line.startswith(\"Answer:\"):\n            return line[len(\"Answer:\"):].strip().rstrip(\".\")\n    return None\n\n\ndef reward(text, reference):\n    if final_answer(text) == reference:\n        return 1.0\n    return 0.0\n\nprint(reward(\"3 * 4 = 12\\nanswer: 12\", \"12\"))"
-    accept: ["0.0"]
+    accept: ["0.0", "0", "0.00"]
     solution: 'The lowercase `answer:` fails the case-sensitive `startswith("Answer:")` check. No final answer is found, so the output is 0.0.'
   - id: "rlvr2-code-complete"
     dimension: "implementation"
@@ -377,7 +377,7 @@ exercises:
     est_minutes: 1
     prompt: "What does this Python code print?"
     code: "def final_answer(text):\n    for line in reversed(text.strip().splitlines()):\n        if line.startswith(\"Answer:\"):\n            return line[len(\"Answer:\"):].strip().rstrip(\".\")\n    return None\n\n\ndef reward(text, reference):\n    if final_answer(text) == reference:\n        return 1.0\n    return 0.0\n\nprint(reward(\"Answer: 3\\nLet me check that.\\nAnswer: 4\", \"4\"))"
-    accept: ["1.0"]
+    accept: ["1.0", "1", "1.00"]
     solution: 'The reversed search finds the last `Answer:` line first. Its extracted answer is "4", so the output is 1.0.'
   - id: "rlvr2-reward-to-r"
     dimension: "math"
@@ -385,7 +385,7 @@ exercises:
     role: "practice"
     difficulty: 3
     est_minutes: 2
-    prompt: "The Python functions below score the reply `\"3 * 4 = 12\\nAnswer: 12.\"` against reference `\"12\"`. The policy log-probability is $-1.5$, the reference log-probability is $-2.5$, and $\\beta=0.2$. What is RLHF's KL-penalised reward?\n\n```python\ndef final_answer(text):\n    for line in reversed(text.strip().splitlines()):\n        if line.startswith(\"Answer:\"):\n            return line[len(\"Answer:\"):].strip().rstrip(\".\")\n    return None\n\n\ndef reward(text, reference):\n    if final_answer(text) == reference:\n        return 1.0\n    return 0.0\n```"
+    prompt: "The Python functions below score the reply `\"3 * 4 = 12\\nAnswer: 12.\"` against reference `\"12\"`. The policy log-probability is $-1.5$, the reference log-probability is $-2.5$, and $\\beta=0.2$. If we plugged the checker reward into RLHF's KL-penalised reward, what would the adjusted reward be?\n\n```python\ndef final_answer(text):\n    for line in reversed(text.strip().splitlines()):\n        if line.startswith(\"Answer:\"):\n            return line[len(\"Answer:\"):].strip().rstrip(\".\")\n    return None\n\n\ndef reward(text, reference):\n    if final_answer(text) == reference:\n        return 1.0\n    return 0.0\n```"
     answer: 0.8
     tolerance: { "abs": 0.006 }
     common_wrong:
@@ -404,8 +404,8 @@ exercises:
     difficulty: 3
     est_minutes: 2
     prompt: "What does this Python code print?"
-    code: "def square(n):\n    return n * 2\n\ntests = [(0, 0), (2, 4), (3, 9)]\npassed = 0\nfor x, expected in tests:\n    if square(x) == expected:\n        passed += 1\nprint(1.0 if passed == len(tests) else 0.0)"
-    accept: ["0.0"]
+    code: "def square(n):\n    return n * 2\n\ndef all_pass():\n    tests = [(0, 0), (2, 4), (3, 9)]\n    passed = 0\n    for x, expected in tests:\n        if square(x) == expected:\n            passed += 1\n    if passed == len(tests):\n        return 1.0\n    return 0.0\n\nprint(all_pass())"
+    accept: ["0.0", "0", "0.00"]
     solution: "The third test expects 9 but gets 6, so the reward is 0.0. With only the first two tests, this wrong function would have earned 1.0."
   - id: "rlvr-group-advantage-basics"
     dimension: "conceptual"
@@ -612,7 +612,7 @@ exercises:
     role: "practice"
     difficulty: 3
     est_minutes: 2
-    prompt: "A GRPO group has rewards $1,0,0,0,0$. For the correct answer, replace $G-b$ in the policy-gradient update with its group-relative advantage. Starting at $\\theta=0$, take one update with learning rate $0.1$ and log-probability slope $0.5$. What is the new $\\theta$?"
+    prompt: "A GRPO group has rewards $1,0,0,0,0$. For the correct answer, replace the return minus the baseline, $(G-b)$, in the policy-gradient update with its group-relative advantage. Starting at $\\theta=0$, take one update with learning rate $0.1$ and log-probability slope $0.5$. What is the new $\\theta$?"
     answer: 0.1
     tolerance: { "abs": 0.006 }
     common_wrong:
@@ -1242,7 +1242,7 @@ exercises:
     role: "recall"
     difficulty: 1
     est_minutes: 0.5
-    prompt: "Why does RL with verifiable rewards usually start from an SFT model?"
+    prompt: "Why is an SFT model a useful starting point for RL with verifiable rewards?"
     options:
       [
         {
