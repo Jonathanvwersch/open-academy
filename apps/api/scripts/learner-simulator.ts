@@ -10,10 +10,11 @@ import {
   lessonQuizItems,
   lessonRuns,
   mastery,
+  remediationFlags,
   reviewCards,
   users,
 } from '../src/db/schema.js';
-import { masteryKey, prerequisiteMet } from '../src/learning/prerequisites.js';
+import { keyPrereqsForPoint, masteryKey, prerequisiteMet } from '../src/learning/prerequisites.js';
 import type { MasteryState } from '../src/learning/types.js';
 import { localDateKey } from '../src/learning/xp.js';
 import { answerFor, exerciseFor, wrongAnswerFor } from './learner-simulation-support.js';
@@ -25,10 +26,11 @@ export const simulationProfiles = [
   'forgetful',
   'placement',
   'graph-change',
+  'gap',
 ] as const;
 
 export type SimulationProfile = (typeof simulationProfiles)[number];
-export type InvariantId = 'P1' | 'P2' | 'P3' | 'P4' | 'P5' | 'P6' | 'P7';
+export type InvariantId = 'P1' | 'P2' | 'P3' | 'P4' | 'P5' | 'P6' | 'P7' | 'P8' | 'P9' | 'P10';
 
 export interface SimulationViolation {
   profile: SimulationProfile;
@@ -131,7 +133,10 @@ interface LearnerProgress {
   lessonRuns: Array<{
     conceptId: string;
     status: 'in_progress' | 'needs_retry' | 'quiz' | 'completed';
+    retryAfter?: Date | null;
+    haltedAt?: Date | null;
   }>;
+  remediationFlags: Array<{ conceptId: string; targetPrereqId: string }>;
   placedOut: Set<string>;
 }
 
@@ -146,6 +151,14 @@ interface ProfileRuntime {
   choiceStartability: Map<string, boolean>;
   answered: number;
   wrongAnswers: number;
+  weakPrereqs: string[];
+  completedRemedialReviews: Set<string>;
+  lastHaltedPointIndex: Map<string, number>;
+  noProgressHalts: Map<
+    string,
+    { day: number; targetPrereqIds: string[]; reviewed: boolean; violationReported?: boolean }
+  >;
+  staleRetryReported: Set<string>;
 }
 
 const graphRemovedConcepts = new Set([
@@ -155,7 +168,7 @@ const graphRemovedConcepts = new Set([
 ]);
 const graphCourseId = 'maths-for-ml';
 const graphMilestoneConceptId = 'eigen-svd';
-const invariants: InvariantId[] = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7'];
+const invariants: InvariantId[] = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P8', 'P9', 'P10'];
 
 function object(value: unknown): Record<string, unknown> {
   return value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
@@ -390,7 +403,7 @@ function hardAncestorClosure(
 }
 
 async function readProgress(db: Database, userId: string): Promise<LearnerProgress> {
-  const [masteryRows, runs, placements] = await Promise.all([
+  const [masteryRows, runs, placements, flags] = await Promise.all([
     db.select().from(mastery).where(eq(mastery.userId, userId)),
     db.select().from(lessonRuns).where(eq(lessonRuns.userId, userId)),
     db
@@ -403,6 +416,10 @@ async function readProgress(db: Database, userId: string): Promise<LearnerProgre
           eq(diagnosticRuns.status, 'completed'),
         ),
       ),
+    db
+      .select()
+      .from(remediationFlags)
+      .where(and(eq(remediationFlags.userId, userId), eq(remediationFlags.status, 'open'))),
   ]);
   const placedOut = new Set<string>();
   for (const run of placements) {
@@ -418,7 +435,17 @@ async function readProgress(db: Database, userId: string): Promise<LearnerProgre
         { state: record.state, inferred: record.inferred },
       ]),
     ),
-    lessonRuns: runs.map(({ conceptId, status }) => ({ conceptId, status })),
+    lessonRuns: runs.map(({ conceptId, status, retryAfter, haltedAt }) => ({
+      conceptId,
+      status,
+      retryAfter,
+      haltedAt,
+    })),
+    remediationFlags: flags.flatMap((flag) =>
+      flag.targetPrereqId
+        ? [{ conceptId: flag.conceptId, targetPrereqId: flag.targetPrereqId }]
+        : [],
+    ),
     placedOut,
   };
 }
@@ -587,6 +614,35 @@ async function auditHome(
   const taskLessons = learn.tasks
     .filter((task) => task.conceptId && ['Lesson', 'Practice', 'Quiz'].includes(task.label))
     .map((task) => task.conceptId as string);
+  for (const conceptId of new Set([...plannedLessons, ...taskLessons])) {
+    const run = progress.lessonRuns.find((candidate) => candidate.conceptId === conceptId);
+    const hasOpenFlag = progress.remediationFlags.some((flag) => flag.conceptId === conceptId);
+    const retryTooSoon = Boolean(run?.retryAfter && run.retryAfter > now);
+    if (run?.status === 'needs_retry' && (retryTooSoon || hasOpenFlag)) {
+      addViolation(runtime, day, 'P8', conceptId, [], {
+        ...(courseId ? { courseId } : {}),
+        conceptId,
+        details: retryTooSoon
+          ? 'needs_retry lesson offered before retry_after'
+          : 'needs_retry lesson offered with open remediation flags',
+      });
+    }
+  }
+  for (const run of progress.lessonRuns) {
+    if (
+      run.status === 'needs_retry' &&
+      run.haltedAt &&
+      now.getTime() - run.haltedAt.getTime() > 7 * 86_400_000 &&
+      !runtime.staleRetryReported.has(run.conceptId)
+    ) {
+      runtime.staleRetryReported.add(run.conceptId);
+      addViolation(runtime, day, 'P10', run.conceptId, [], {
+        ...(courseId ? { courseId } : {}),
+        conceptId: run.conceptId,
+        details: 'lesson remained needs_retry for more than seven days',
+      });
+    }
+  }
   checkLessonReadiness(
     runtime,
     day,
@@ -665,6 +721,10 @@ function profileAccuracy(
     return Math.max(0.4, 0.95 * 0.97 ** daysSince);
   }
   return 0.85;
+}
+
+function weakPrereqsForProfile(profile: SimulationProfile): string[] {
+  return profile === 'gap' ? ['logistic-regression'] : [];
 }
 
 function answerForProfile(
@@ -841,7 +901,15 @@ async function answerLessonProblem(
   const exerciseId = text(pending.exerciseId) ?? text(object(pending.exercise).id);
   if (!problemId || !exerciseId) throw new Error(`Missing lesson problem for ${conceptId}`);
   const problemConceptId = content.exercisesById.get(exerciseId)?.concept ?? conceptId;
-  const intendedCorrect = wantsCorrect(runtime, problemConceptId, day);
+  const pointId = text(pending.knowledgePointId);
+  const weakPoint = Boolean(
+    pointId &&
+      keyPrereqsForPoint(content, conceptId, pointId).some(
+        (prereqId) =>
+          runtime.weakPrereqs.includes(prereqId) && !runtime.completedRemedialReviews.has(prereqId),
+      ),
+  );
+  const intendedCorrect = !weakPoint && wantsCorrect(runtime, problemConceptId, day);
   const answer = answerForProfile(content, exerciseId, numeric(pending.seed), intendedCorrect);
   const response = await api.call('POST', `${runPath}/answer`, now, {
     problemId,
@@ -856,7 +924,25 @@ async function answerLessonProblem(
   }
   const result = object(response.data);
   recordOutcome(runtime, problemConceptId, day, numeric(result.correct, intendedCorrect ? 1 : 0));
-  return object(result.run);
+  const run = object(result.state);
+  if (run.status === 'needs_retry') {
+    const halted = object(run.halted);
+    const haltedPointId = text(halted.pointId);
+    const haltedIndex = numeric(halted.index, -1);
+    const previousIndex = runtime.lastHaltedPointIndex.get(conceptId);
+    const targetPrereqIds = haltedPointId
+      ? keyPrereqsForPoint(content, conceptId, haltedPointId)
+      : [];
+    if (previousIndex !== undefined && haltedIndex <= previousIndex && targetPrereqIds.length > 0) {
+      runtime.noProgressHalts.set(conceptId, {
+        day,
+        targetPrereqIds,
+        reviewed: false,
+      });
+    }
+    runtime.lastHaltedPointIndex.set(conceptId, haltedIndex);
+  }
+  return run;
 }
 
 async function finishLessonSteps(
@@ -873,7 +959,7 @@ async function finishLessonSteps(
   let run = object(started.run);
   for (let turn = 0; turn < 300; turn += 1) {
     const status = text(run.status);
-    if (status === 'quiz' || status === 'completed') return run;
+    if (status === 'quiz' || status === 'completed' || status === 'needs_retry') return run;
     let pending = object(run.pendingProblem ?? run.pendingPracticeProblem);
     if (!text(pending.id)) {
       const refreshed = await api.call('POST', runPath, now, { activityId });
@@ -1201,6 +1287,14 @@ async function processActivity(
       if (pendingExerciseIds.length === 0) break;
     }
     await completeActivity(api, now, sessionId, activity);
+    for (const exerciseId of attemptedExerciseIds) {
+      const prereqId = content.exercisesById.get(exerciseId)?.concept;
+      if (!prereqId) continue;
+      runtime.completedRemedialReviews.add(prereqId);
+      for (const halt of runtime.noProgressHalts.values()) {
+        if (halt.targetPrereqIds.includes(prereqId)) halt.reviewed = true;
+      }
+    }
     return { lessons: 0, reviews: 1, reviewAttempts };
   }
   if (activity.projectId) {
@@ -1397,6 +1491,11 @@ async function simulateProfile(
     choiceStartability: new Map(),
     answered: 0,
     wrongAnswers: 0,
+    weakPrereqs: weakPrereqsForProfile(profile),
+    completedRemedialReviews: new Set(),
+    lastHaltedPointIndex: new Map(),
+    noProgressHalts: new Map(),
+    staleRetryReported: new Set(),
   };
   let activeContent = initialContent;
   let currentCourseId: string | undefined;
@@ -1548,6 +1647,17 @@ async function simulateProfile(
       const pageAfter = await fetchCoursePage(api, now, courseId);
       daily.newTopicsCompleted = newTopicsCompleted(pageBefore, pageAfter);
       report.dailyStats.push(daily);
+
+      for (const [conceptId, halt] of runtime.noProgressHalts) {
+        if (day > halt.day + 1 && !halt.reviewed && !halt.violationReported) {
+          halt.violationReported = true;
+          addViolation(runtime, day, 'P9', conceptId, halt.targetPrereqIds, {
+            courseId,
+            conceptId,
+            details: 'no-progress halt lacked a key-prerequisite review within one day',
+          });
+        }
+      }
 
       const afterStudyCatalog = await fetchCourseCatalog(api, now);
       const currentCourse = courseRows(afterStudyCatalog).find((course) => course.id === courseId);

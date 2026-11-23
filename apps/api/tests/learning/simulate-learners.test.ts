@@ -5,7 +5,7 @@ import { loadContent } from '../../src/content/load.js';
 import { createDb } from '../../src/db/client.js';
 
 const db = createDb(env.TEST_DATABASE_URL);
-const invariants: InvariantId[] = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7'];
+const invariants: InvariantId[] = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P8', 'P9', 'P10'];
 
 afterAll(async () => {
   await db.$client.end();
