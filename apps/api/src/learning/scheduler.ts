@@ -882,7 +882,8 @@ function packWeekday(
         retryEligibleLessonConcepts.has(entry.activity.conceptId),
     )
     .sort(compareLearnCandidates)) {
-    add(candidate);
+    if (newConceptCount >= SCHEDULER_CONFIG.weekday.maxNewConcepts) break;
+    if (canSelectLearn(candidate) && add(candidate)) newConceptCount += 1;
   }
 
   const otherCandidates = candidates

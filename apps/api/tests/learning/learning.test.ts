@@ -227,25 +227,40 @@ function studyState(courseIds: string[], index: ContentIndex = courseContent): S
   };
 }
 
-function planWithRetryAndOptionalFreshTopic(budget: number, includeFreshTopic: boolean) {
-  const courseId = 'maths-for-ml';
-  const freshTopicId = 'probability-basics';
+function planWithRetryAndFreshTopics(
+  budget: number,
+  options: {
+    courseId?: string;
+    freshTopicIds?: string[];
+    retryConceptId?: string;
+    index?: ContentIndex;
+    confusablePairs?: Array<[string, string]>;
+  } = {},
+) {
+  const courseId = options.courseId ?? 'maths-for-ml';
+  const freshTopicIds = options.freshTopicIds ?? ['probability-basics'];
+  const retryConceptId = options.retryConceptId ?? 'vectors';
+  const index = options.index ?? courseContent;
   const topicsContent = schedulerContentWithTopics(
-    { [courseId]: ['vectors', ...(includeFreshTopic ? [freshTopicId] : [])] },
-    courseContent,
+    { [courseId]: [retryConceptId, ...freshTopicIds] },
+    index,
   );
-  const state = studyState([courseId], topicsContent);
-  const course = required(topicsContent.coursesById.get(courseId), courseId);
+  const planContent =
+    options.confusablePairs && options.confusablePairs.length > 0
+      ? schedulerContentWithConfusables(topicsContent, options.confusablePairs)
+      : topicsContent;
+  const state = studyState([courseId], planContent);
+  const course = required(planContent.coursesById.get(courseId), courseId);
   const candidateConceptIds = new Set([
     ...course.units.flatMap((unit) => unit.concepts),
-    ...courseFoundationIds(topicsContent, courseId),
+    ...courseFoundationIds(planContent, courseId),
   ]);
   const masteryByKey = new Map(
     state.mastery.map((record) => [masteryKey(record.conceptId, record.dimension), record]),
   );
   for (const conceptId of candidateConceptIds) {
-    if (includeFreshTopic && conceptId === freshTopicId) continue;
-    const concept = topicsContent.conceptsById.get(conceptId);
+    if (freshTopicIds.includes(conceptId)) continue;
+    const concept = planContent.conceptsById.get(conceptId);
     for (const dimension of concept?.dimensions ?? []) {
       masteryByKey.set(masteryKey(conceptId, dimension), {
         ...initialMastery(conceptId, dimension),
@@ -256,12 +271,12 @@ function planWithRetryAndOptionalFreshTopic(budget: number, includeFreshTopic: b
   state.mastery = [...masteryByKey.values()];
   state.lessonRuns = [
     {
-      conceptId: 'vectors',
+      conceptId: retryConceptId,
       status: 'needs_retry',
       retryAfter: new Date(now.getTime() - 1_000),
     },
   ];
-  return planSession(state, topicsContent, now, budget);
+  return planSession(state, planContent, now, budget);
 }
 
 test('prerequisite checker follows hard ancestors and reports the missing frontier', () => {
@@ -1345,7 +1360,7 @@ test('fresh lessons outrank retry-eligible lessons when only one lesson fits the
   const oneLessonBudget = Math.max(retryMinutes, freshMinutes);
   expect(retryMinutes + freshMinutes).toBeGreaterThan(oneLessonBudget);
 
-  const learned = planWithRetryAndOptionalFreshTopic(oneLessonBudget, true)
+  const learned = planWithRetryAndFreshTopics(oneLessonBudget)
     .activities.filter((activity) => activity.kind === 'learn')
     .map((activity) => activity.conceptId);
 
@@ -1359,7 +1374,7 @@ test('fresh and retry-eligible lessons are both selected when the budget fits tw
     'probability-basics',
   ).est_minutes;
 
-  const learned = planWithRetryAndOptionalFreshTopic(retryMinutes + freshMinutes, true)
+  const learned = planWithRetryAndFreshTopics(retryMinutes + freshMinutes)
     .activities.filter((activity) => activity.kind === 'learn')
     .map((activity) => activity.conceptId);
 
@@ -1370,11 +1385,54 @@ test('fresh and retry-eligible lessons are both selected when the budget fits tw
 test('retry-eligible lessons are offered when no fresh topic is ready', () => {
   const retryMinutes = required(courseContent.conceptsById.get('vectors'), 'vectors').est_minutes;
 
-  const learned = planWithRetryAndOptionalFreshTopic(retryMinutes, false)
+  const learned = planWithRetryAndFreshTopics(retryMinutes, { freshTopicIds: [] })
     .activities.filter((activity) => activity.kind === 'learn')
     .map((activity) => activity.conceptId);
 
   expect(learned).toEqual(['vectors']);
+});
+
+test('retry-eligible lessons do not exceed the two-fresh-lesson cap', () => {
+  const freshTopicIds = ['probability-basics', 'derivatives'];
+  const lessonMinutes = [
+    required(courseContent.conceptsById.get('vectors'), 'vectors').est_minutes,
+    ...freshTopicIds.map(
+      (conceptId) => required(courseContent.conceptsById.get(conceptId), conceptId).est_minutes,
+    ),
+  ];
+
+  const learned = planWithRetryAndFreshTopics(
+    lessonMinutes.reduce((sum, minutes) => sum + minutes),
+    {
+      freshTopicIds,
+    },
+  )
+    .activities.filter((activity) => activity.kind === 'learn')
+    .map((activity) => activity.conceptId);
+
+  expect(learned).toHaveLength(2);
+  expect(learned).toEqual(expect.arrayContaining(freshTopicIds));
+  expect(learned).not.toContain('vectors');
+});
+
+test('a confusable retry is skipped when the fresh topic is selected', () => {
+  const freshTopicId = 'supervised-learning';
+  const retryConceptId = 'vectors';
+  const budget =
+    required(content.conceptsById.get(freshTopicId), freshTopicId).est_minutes +
+    required(content.conceptsById.get(retryConceptId), retryConceptId).est_minutes;
+
+  const learned = planWithRetryAndFreshTopics(budget, {
+    courseId: 'fixture-course',
+    freshTopicIds: [freshTopicId],
+    retryConceptId,
+    index: content,
+    confusablePairs: [[retryConceptId, freshTopicId]],
+  })
+    .activities.filter((activity) => activity.kind === 'learn')
+    .map((activity) => activity.conceptId);
+
+  expect(learned).toEqual([freshTopicId]);
 });
 
 test('weekday plans avoid duplicate concepts, cap activities, and never add empty fillers', () => {
