@@ -9,6 +9,7 @@ export const Route = createFileRoute('/lessons/$conceptId')({
   pendingComponent: LessonReviewSkeleton,
   validateSearch: (search: Record<string, unknown>) => ({
     from: typeof search.from === 'string' ? search.from : undefined,
+    step: typeof search.step === 'string' ? search.step : undefined,
   }),
   loader: async ({ context, params }) => {
     const payload = await context.queryClient.ensureQueryData(

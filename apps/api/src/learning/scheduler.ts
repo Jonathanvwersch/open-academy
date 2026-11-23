@@ -52,6 +52,8 @@ export const SCHEDULER_CONFIG = {
   consolidationMinutes: 5,
 } as const;
 
+const RETRY_OVERDUE_DAYS = 2;
+
 export interface PriorityTerms {
   goal: number;
   week_fit: number;
@@ -107,7 +109,7 @@ export interface SchedulerState {
   }>;
   remediationFlags: Array<{
     conceptId: string;
-    targetPrereqId?: string;
+    targetPrereqId?: string | null;
     status?: 'open' | 'resolved';
   }>;
   projectProgress: Array<{ projectId: string; status: string }>;
@@ -121,6 +123,7 @@ export interface SchedulerState {
     conceptId: string;
     status: 'in_progress' | 'needs_retry' | 'quiz' | 'completed';
     startedAt?: string | Date;
+    retryAfter?: string | Date | null;
   }>;
 }
 
@@ -134,6 +137,7 @@ export interface Candidate {
   score: number;
   adjustedMinutes: number;
   newConcept: boolean;
+  remediation?: boolean;
   courseId?: string;
 }
 
@@ -216,6 +220,26 @@ function hasCoreExercise(
     (exercise) =>
       exercise.dimension === dimension && (exercise.role === 'core' || exercise.role === 'check'),
   );
+}
+
+function lessonRetryEligible(state: SchedulerState, conceptId: string, now: Date): boolean {
+  const run = state.lessonRuns?.find((candidate) => candidate.conceptId === conceptId);
+  if (run?.status !== 'needs_retry' || !run.retryAfter) return false;
+  const retryAfter = typeof run.retryAfter === 'string' ? new Date(run.retryAfter) : run.retryAfter;
+  return (
+    retryAfter <= now &&
+    !(state.remediationFlags ?? []).some(
+      (flag) =>
+        flag.conceptId === conceptId && (flag.status === undefined || flag.status === 'open'),
+    )
+  );
+}
+
+function lessonRetryOverdue(state: SchedulerState, conceptId: string, now: Date): boolean {
+  const run = state.lessonRuns?.find((candidate) => candidate.conceptId === conceptId);
+  if (!run?.retryAfter || !lessonRetryEligible(state, conceptId, now)) return false;
+  const retryAfter = typeof run.retryAfter === 'string' ? new Date(run.retryAfter) : run.retryAfter;
+  return now.getTime() - retryAfter.getTime() >= RETRY_OVERDUE_DAYS * 24 * 60 * 60 * 1_000;
 }
 
 export function isLearnableConcept(concept: IndexedConcept, content: ContentIndex): boolean {
@@ -654,20 +678,34 @@ function packWeekday(
   };
   const canSelectLearn = (candidate: Candidate) =>
     canAdd(candidate) && !interferesWithLearn(candidate);
-  const unfinishedLessonConcepts = new Set(
+  const resumedLessonConcepts = new Set(
     (state.lessonRuns ?? [])
-      .filter(
-        (run) =>
-          run.status === 'in_progress' || run.status === 'needs_retry' || run.status === 'quiz',
-      )
+      .filter((run) => run.status === 'in_progress' || run.status === 'quiz')
       .map((run) => run.conceptId),
   );
+  const retryEligibleLessonConcepts = new Set(
+    (state.lessonRuns ?? [])
+      .filter((run) => lessonRetryEligible(state, run.conceptId, now))
+      .map((run) => run.conceptId),
+  );
+  const overdueRetryLessonConcepts = new Set(
+    [...retryEligibleLessonConcepts].filter((conceptId) =>
+      lessonRetryOverdue(state, conceptId, now),
+    ),
+  );
+  const unfinishedLessonConcepts = new Set([
+    ...resumedLessonConcepts,
+    ...retryEligibleLessonConcepts,
+  ]);
   const courseContexts = schedulerCourseContexts(state, content);
   const courseOrder = new Map(courseContexts.map((course, index) => [course.course.id, index]));
   const compareLearnCandidates = (left: Candidate, right: Candidate) => {
     const leftInProgress = left.activity.conceptId === state.inProgressConceptId;
     const rightInProgress = right.activity.conceptId === state.inProgressConceptId;
     if (leftInProgress !== rightInProgress) return leftInProgress ? -1 : 1;
+    const leftResumed = resumedLessonConcepts.has(left.activity.conceptId ?? '');
+    const rightResumed = resumedLessonConcepts.has(right.activity.conceptId ?? '');
+    if (leftResumed !== rightResumed) return leftResumed ? -1 : 1;
     const outlineOrder = compareOutlinePosition(
       left.activity.conceptId ?? '',
       right.activity.conceptId ?? '',
@@ -686,11 +724,17 @@ function packWeekday(
       (entry) =>
         entry.activity.kind === 'learn' &&
         entry.activity.conceptId &&
-        unfinishedLessonConcepts.has(entry.activity.conceptId),
+        (resumedLessonConcepts.has(entry.activity.conceptId) ||
+          overdueRetryLessonConcepts.has(entry.activity.conceptId)),
     )
     .sort(compareLearnCandidates)) {
     if (newConceptCount >= SCHEDULER_CONFIG.weekday.maxNewConcepts) break;
-    if (add(candidate)) newConceptCount += 1;
+    const conceptId = candidate.activity.conceptId;
+    const added =
+      conceptId && overdueRetryLessonConcepts.has(conceptId)
+        ? canSelectLearn(candidate) && add(candidate)
+        : add(candidate);
+    if (added) newConceptCount += 1;
   }
   const reviewCandidateDetails = candidates
     .map((candidate, index) => ({ candidate, index }))
@@ -721,8 +765,9 @@ function packWeekday(
         earliestDueAt,
         currentRetrievability,
         overdue:
-          earliestDueAt !== undefined &&
-          localDateKey(new Date(earliestDueAt), timezone) <= shiftLocalDateKey(localToday, -2),
+          entry.candidate.remediation === true ||
+          (earliestDueAt !== undefined &&
+            localDateKey(new Date(earliestDueAt), timezone) <= shiftLocalDateKey(localToday, -2)),
       };
     });
   const byUrgency = (
@@ -736,6 +781,8 @@ function packWeekday(
     .filter((entry) => entry.overdue)
     .sort(
       (left, right) =>
+        Number(right.candidate.remediation === true) -
+          Number(left.candidate.remediation === true) ||
         (left.earliestDueAt ?? Infinity) - (right.earliestDueAt ?? Infinity) ||
         (left.currentRetrievability ?? Infinity) - (right.currentRetrievability ?? Infinity) ||
         left.index - right.index,
@@ -758,7 +805,7 @@ function packWeekday(
     if (overdueCandidateIndexes.has(index)) continue;
     const conceptId = candidate.activity.conceptId;
     if (!conceptId) continue;
-    if (reviewMinutes + candidate.adjustedMinutes > reviewCap) {
+    if (!candidate.remediation && reviewMinutes + candidate.adjustedMinutes > reviewCap) {
       recordReviewResult(conceptId, 'rejected:reviewMinuteCap', candidate);
       continue;
     }
@@ -854,6 +901,19 @@ function packWeekday(
     nextCandidates.splice(nextCandidates.indexOf(candidate), 1);
   }
 
+  for (const candidate of candidates
+    .filter(
+      (entry) =>
+        entry.activity.kind === 'learn' &&
+        entry.activity.conceptId &&
+        retryEligibleLessonConcepts.has(entry.activity.conceptId) &&
+        !overdueRetryLessonConcepts.has(entry.activity.conceptId),
+    )
+    .sort(compareLearnCandidates)) {
+    if (newConceptCount >= SCHEDULER_CONFIG.weekday.maxNewConcepts) break;
+    if (canSelectLearn(candidate) && add(candidate)) newConceptCount += 1;
+  }
+
   const otherCandidates = candidates
     .filter((candidate) => !['review', 'learn'].includes(candidate.activity.kind))
     .sort((left, right) => right.score - left.score);
@@ -934,6 +994,9 @@ export function mixReviewActivities(selected: Candidate[], content: ContentIndex
     const firstReview = group[0]?.candidate;
     if (!firstReview) continue;
     const reviews = group.map(({ candidate }) => candidate);
+    const remediationReason = reviews.find(({ activity }) =>
+      activity.reason.summary.includes(' before retrying '),
+    )?.activity.reason.summary;
     const titles = reviews.map(
       ({ activity }) =>
         content.conceptsById.get(activity.conceptId ?? '')?.title ?? activity.conceptId ?? '',
@@ -958,7 +1021,7 @@ export function mixReviewActivities(selected: Candidate[], content: ContentIndex
             ...firstReason.terms,
             review: Math.max(...reviews.map((review) => review.activity.reason.terms.review)),
           },
-          summary: `Mixed review: ${titles.join(', ')}.`,
+          summary: remediationReason ?? `Mixed review: ${titles.join(', ')}.`,
         },
       },
       score: Math.max(...reviews.map((review) => review.score)),
@@ -1066,13 +1129,16 @@ function generateCandidates(
       prereqsReady &&
       states.some((record) => record?.state === 'introduced' || record?.state === 'assisted');
     const hasKnowledgePointLesson = hasKnowledgePointLessonContent(concept.id, content);
-    const lessonRunStatus = state.lessonRuns?.find((run) => run.conceptId === concept.id)?.status;
+    const lessonRun = state.lessonRuns?.find((run) => run.conceptId === concept.id);
+    const lessonRunStatus = lessonRun?.status;
+    const retryEligible = lessonRetryEligible(state, concept.id, now);
+    if (lessonRunStatus === 'needs_retry' && !retryEligible) continue;
     const shouldResumeLesson =
       newConceptIds.has(concept.id) &&
       hasKnowledgePointLesson &&
       prereqsReady &&
       (lessonRunStatus === 'in_progress' ||
-        lessonRunStatus === 'needs_retry' ||
+        (lessonRunStatus === 'needs_retry' && retryEligible) ||
         lessonRunStatus === 'quiz');
     const completedKnowledgePointLesson =
       hasKnowledgePointLesson && lessonRunStatus === 'completed';
@@ -1152,6 +1218,54 @@ function generateCandidates(
       reviewSelectionTrace,
     );
     if (candidate) candidates.push(candidate);
+  }
+  const remediationByPrereq = new Map<string, string[]>();
+  for (const flag of state.remediationFlags ?? []) {
+    if (
+      flag.status === 'resolved' ||
+      !flag.targetPrereqId ||
+      !content.conceptsById.has(flag.targetPrereqId)
+    ) {
+      continue;
+    }
+    const lessonConceptIds = remediationByPrereq.get(flag.targetPrereqId) ?? [];
+    lessonConceptIds.push(flag.conceptId);
+    remediationByPrereq.set(flag.targetPrereqId, lessonConceptIds);
+  }
+  for (const [prereqId, lessonConceptIds] of remediationByPrereq) {
+    const prereq = content.conceptsById.get(prereqId);
+    if (!prereq || prereq.status === 'stub') continue;
+    const cardsForPrereq = state.cards.filter((card) => card.conceptId === prereqId);
+    const dueCards = cardsForPrereq.length
+      ? cardsForPrereq.map((card) => ({ ...card, dueAt: now.toISOString() }))
+      : prereq.dimensions.map((dimension) => ({
+          conceptId: prereqId,
+          dimension,
+          dueAt: now.toISOString(),
+          retrievability: 0,
+        }));
+    const remedialState = { ...state, focusSubjectId: undefined };
+    const activity = buildReviewActivityForConcept(remedialState, content, now, prereqId, dueCards);
+    if (!activity) continue;
+    const retryingConcept = content.conceptsById.get(lessonConceptIds[0] ?? '');
+    activity.reason.summary = `Review ${prereq.title} before retrying ${retryingConcept?.title ?? lessonConceptIds[0] ?? 'the lesson'}`;
+    activity.reason.terms.review += 1000;
+    candidates.splice(
+      0,
+      candidates.length,
+      ...candidates.filter(
+        (candidate) =>
+          candidate.activity.kind !== 'review' || candidate.activity.conceptId !== prereqId,
+      ),
+    );
+    candidates.push({
+      activity,
+      score: scoreTerms(activity.reason.terms, activity.plannedMinutes),
+      adjustedMinutes: activity.plannedMinutes,
+      newConcept: false,
+      remediation: true,
+      courseId: activity.reason.courseId,
+    });
   }
   return candidates;
 }

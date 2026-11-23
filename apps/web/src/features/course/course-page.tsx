@@ -34,6 +34,12 @@ function foundationSourceLabel(courseTitles: string[], hasMore: boolean): string
   return `${titles.slice(0, -1).join(', ')}, and ${titles.at(-1)}`;
 }
 
+function retryStatusLine(retry: NonNullable<CourseTopic['retry']>) {
+  const retryAfter = retry.after ? Date.parse(retry.after) : Number.NaN;
+  const titles = retryAfter > Date.now() ? [] : retry.reviewFirst.map(({ title }) => title);
+  return `This lesson is paused. ${titles.length ? `It comes back after a review of ${titles.join(' and ')}.` : 'It comes back tomorrow.'}`;
+}
+
 function QueueStatusLine({
   queue,
   hasStartableTopics,
@@ -283,7 +289,11 @@ export function CoursePage() {
                                 <div className="flex flex-wrap items-center gap-2">
                                   {topic.hasLesson ? (
                                     <>
-                                      {topic.status === 'locked' ? (
+                                      {topic.retry ? (
+                                        <span className="text-xs text-muted-foreground">
+                                          {retryStatusLine(topic.retry)}
+                                        </span>
+                                      ) : topic.status === 'locked' ? (
                                         <span className="text-xs text-muted-foreground">
                                           {topic.needs?.some(
                                             (prerequisite) => prerequisite.quiz,
@@ -391,7 +401,7 @@ export function CoursePage() {
                               <Link
                                 to="/lessons/$conceptId"
                                 params={{ conceptId: topic.conceptId }}
-                                search={{ from: undefined }}
+                                search={{ from: undefined, step: undefined }}
                                 className={`group ${rowClassName} hover:bg-muted/60`}
                               >
                                 {row}
@@ -546,7 +556,11 @@ function TopicRows({ topics }: { topics: CourseTopic[] }) {
               >
                 {topic.title}
               </span>
-              {topic.status === 'locked' ? (
+              {topic.retry ? (
+                <span className="text-xs text-muted-foreground">
+                  {retryStatusLine(topic.retry)}
+                </span>
+              ) : topic.status === 'locked' ? (
                 <span className="text-xs text-muted-foreground">
                   Needs {topic.needs?.map((prerequisite) => prerequisite.title).join(', ')}
                 </span>
@@ -576,7 +590,7 @@ function TopicRows({ topics }: { topics: CourseTopic[] }) {
               <Link
                 to="/lessons/$conceptId"
                 params={{ conceptId: topic.conceptId }}
-                search={{ from: undefined }}
+                search={{ from: undefined, step: undefined }}
                 className={`group ${className} hover:bg-muted/60`}
               >
                 {row}

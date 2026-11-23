@@ -126,6 +126,29 @@ describe('contentWarnings', () => {
     });
   });
 
+  it('warns when a step omits key_prereqs but accepts an explicit empty list', () => {
+    const untagged = pointLesson();
+    const tagged = pointLesson();
+    const taggedPoint = tagged.value.knowledge_points?.[0];
+    if (!taggedPoint) throw new Error('Missing tagged point fixture');
+    taggedPoint.key_prereqs = [];
+
+    expect(
+      warningsFor(
+        contentData([topic('one')], [course('course', 'Course', [['one']])], undefined, [untagged]),
+      ),
+    ).toContainEqual({
+      file: 'lessons/one.yaml',
+      id: 'one-step',
+      message: 'step has no key_prereqs',
+    });
+    expect(
+      warningsFor(
+        contentData([topic('one')], [course('course', 'Course', [['one']])], undefined, [tagged]),
+      ).some(({ message }) => message === 'step has no key_prereqs'),
+    ).toBe(false);
+  });
+
   it('warns once about topics with no prerequisites after the opening of a course', () => {
     const warnings = warningsFor(
       contentData(

@@ -15,6 +15,7 @@ import {
   lessonQuizAttempts,
   lessonQuizItems,
   lessonRuns,
+  remediationFlags,
   reviewCards,
   reviewLogs,
   sessionActivities,
@@ -24,10 +25,16 @@ import type { ApiEnv } from '../../http/context.js';
 import { updateActivityAndAdvance } from '../../learning/activity-completion.js';
 import { answerDisplay, answerText } from '../../learning/answer-display.js';
 import { answerOptionsFor } from '../../learning/answer-options.js';
-import { isSlowCorrectAnswer, newReviewCard, scheduleReview } from '../../learning/fsrs.js';
+import {
+  isSlowCorrectAnswer,
+  newReviewCard,
+  scheduleReview,
+  startOfNextCalendarDay,
+} from '../../learning/fsrs.js';
 import { gradeExercise } from '../../learning/grading/index.js';
 import { MULTIPLE_CHOICE_FALLBACK_FEEDBACK } from '../../learning/grading/multiple-choice.js';
 import { QUIZ_PASS_MARK, scoreLessonQuiz, selectQuizItems } from '../../learning/lesson-quiz.js';
+import { isLessonRetryReady } from '../../learning/lesson-retry.js';
 import {
   deriveLessonState,
   selectNextProblem,
@@ -35,6 +42,7 @@ import {
 } from '../../learning/lesson-runner.js';
 import { calculateCredit } from '../../learning/mastery.js';
 import { creditHardPrerequisites } from '../../learning/mastery-service.js';
+import { keyPrereqsForPoint } from '../../learning/prerequisites.js';
 import { resolveLessonCourse } from './course-context.js';
 
 type LessonContext = Context<ApiEnv>;
@@ -119,12 +127,19 @@ export function registerLessonRunRoutes(
     run: typeof lessonRuns.$inferSelect,
   ) => {
     const userId = context.get('userId');
+    const now = deps.requestNow(context);
     const rows = await deps.db
       .select()
       .from(lessonProblems)
       .where(eq(lessonProblems.runId, run.id))
       .orderBy(lessonProblems.servedAt, lessonProblems.position);
-    const derived = deriveLessonState(lesson, rows, index.exercisesById, run.quizPassedAt);
+    const derived = deriveLessonState(
+      lesson,
+      rows,
+      index.exercisesById,
+      run.quizPassedAt,
+      run.attempt,
+    );
     const point = lesson.knowledge_points?.find((item) => item.id === derived.currentPointId);
     const buildInstance = (exercise: IndexedExercise, seed: number | null) => {
       if (!isTemplate(exercise)) return exercise;
@@ -310,10 +325,39 @@ export function registerLessonRunRoutes(
       bestPassed: Boolean(run.quizPassedAt || quizAttempts.some((attempt) => attempt.passed)),
       xpAwarded: quizXpAwarded,
     };
+    const retryFlags =
+      run.status === 'needs_retry'
+        ? await deps.db
+            .select({ targetPrereqId: remediationFlags.targetPrereqId })
+            .from(remediationFlags)
+            .where(
+              and(
+                eq(remediationFlags.userId, userId),
+                eq(remediationFlags.conceptId, run.conceptId),
+                eq(remediationFlags.status, 'open'),
+              ),
+            )
+        : [];
+    const reviewFirstIds = [
+      ...new Set(retryFlags.map((flag) => flag.targetPrereqId ?? run.conceptId)),
+    ];
     return {
       id: run.id,
       ...(needsProgressSync ? { needsProgressSync: true } : {}),
-      status: derived.status,
+      status: run.status === 'needs_retry' ? 'needs_retry' : derived.status,
+      ...(run.status === 'needs_retry'
+        ? {
+            retry: {
+              after: run.retryAfter?.toISOString() ?? null,
+              ready: isLessonRetryReady(run.retryAfter, retryFlags.length > 0, now),
+              reviewFirst: reviewFirstIds.map((id) => ({
+                id,
+                title: index.conceptsById.get(id)?.title ?? id,
+              })),
+            },
+          }
+        : {}),
+      ...(derived.halted ? { halted: derived.halted } : {}),
       where_this_fits: lesson.where_this_fits,
       prerequisites: getLessonPrerequisites(index, lesson.concept),
       points: derived.points.map((point) => ({
@@ -451,12 +495,75 @@ export function registerLessonRunRoutes(
         .from(lessonProblems)
         .where(eq(lessonProblems.runId, existing.id))
         .orderBy(lessonProblems.servedAt, lessonProblems.position);
-      const state = deriveLessonState(
+      let state = deriveLessonState(
         resolved.lesson,
         problems,
         resolved.index.exercisesById,
         existing.quizPassedAt,
+        existing.attempt,
       );
+      if (existing.status === 'needs_retry') {
+        if (!isLessonRetryReady(existing.retryAfter, false, now)) {
+          return { kind: 'retry_tomorrow' as const };
+        }
+        const openFlags = await tx
+          .select({ targetPrereqId: remediationFlags.targetPrereqId })
+          .from(remediationFlags)
+          .where(
+            and(
+              eq(remediationFlags.userId, userId),
+              eq(remediationFlags.conceptId, conceptId),
+              eq(remediationFlags.status, 'open'),
+            ),
+          );
+        const reviewFirstIds = [
+          ...new Set(openFlags.map((flag) => flag.targetPrereqId ?? conceptId)),
+        ];
+        if (!isLessonRetryReady(existing.retryAfter, openFlags.length > 0, now)) {
+          return {
+            kind: 'review_first' as const,
+            titles: reviewFirstIds.map((id) => resolved.index.conceptsById.get(id)?.title ?? id),
+          };
+        }
+        [existing] = await tx
+          .update(lessonRuns)
+          .set({
+            attempt: existing.attempt + 1,
+            status: 'in_progress',
+            retryAfter: null,
+            updatedAt: now,
+            completedAt: null,
+          })
+          .where(eq(lessonRuns.id, existing.id))
+          .returning();
+        state = deriveLessonState(
+          resolved.lesson,
+          problems,
+          resolved.index.exercisesById,
+          existing.quizPassedAt,
+          existing.attempt,
+        );
+      } else if (state.halted) {
+        [existing] = await tx
+          .update(lessonRuns)
+          .set({
+            attempt: existing.attempt + 1,
+            status: 'in_progress',
+            haltedAt: null,
+            retryAfter: null,
+            updatedAt: now,
+            completedAt: null,
+          })
+          .where(eq(lessonRuns.id, existing.id))
+          .returning();
+        state = deriveLessonState(
+          resolved.lesson,
+          problems,
+          resolved.index.exercisesById,
+          existing.quizPassedAt,
+          existing.attempt,
+        );
+      }
       // Repair completion earned under the old tutor-exclusion rule only on an explicit write.
       // Unique source keys retain historical awards and make repeated recovery safe.
       const passedPoints = state.points.filter((point) => point.status === 'passed');
@@ -488,7 +595,7 @@ export function registerLessonRunRoutes(
             .where(eq(lessonRuns.id, existing.id))
             .returning();
         }
-        return existing;
+        return { kind: 'ready' as const, run: existing };
       }
       if (existing.status !== 'in_progress') {
         [existing] = await tx
@@ -497,12 +604,14 @@ export function registerLessonRunRoutes(
           .where(eq(lessonRuns.id, existing.id))
           .returning();
       }
-      const round = state.points.find((point) => point.id === state.currentPointId)?.round ?? 1;
-      if (state.pending || !state.currentPointId) return existing;
+      const round = existing.attempt;
+      if (state.pending || !state.currentPointId) {
+        return { kind: 'ready' as const, run: existing };
+      }
       const point = resolved.lesson.knowledge_points?.find(
         (item) => item.id === state.currentPointId,
       );
-      if (!point) return existing;
+      if (!point) return { kind: 'ready' as const, run: existing };
       const pointRows = problems
         .filter((problem) => problem.knowledgePointId === point.id && problem.round === round)
         .filter((problem) => !problem.practiceOnly)
@@ -523,7 +632,7 @@ export function registerLessonRunRoutes(
         Math.floor(Math.random() * 0x80000000),
         usedSeeds,
       );
-      if (!selection) return existing;
+      if (!selection) return { kind: 'ready' as const, run: existing };
       await tx.insert(lessonProblems).values({
         runId: existing.id,
         knowledgePointId: point.id,
@@ -533,8 +642,14 @@ export function registerLessonRunRoutes(
         seed: selection.seed,
         servedAt: now,
       });
-      return existing;
+      return { kind: 'ready' as const, run: existing };
     });
+    if (run.kind === 'retry_tomorrow') {
+      return context.json({ error: 'This lesson comes back tomorrow.' }, 409);
+    }
+    if (run.kind === 'review_first') {
+      return context.json({ error: `Review ${run.titles.join(' and ')} first.` }, 409);
+    }
     return context.json({
       course: await resolveLessonCourse(
         deps.db,
@@ -544,7 +659,7 @@ export function registerLessonRunRoutes(
         conceptId,
         body.data.activityId,
       ),
-      run: await runState(context, resolved.lesson, resolved.index, run),
+      run: await runState(context, resolved.lesson, resolved.index, run.run),
     });
   });
 
@@ -581,6 +696,7 @@ export function registerLessonRunRoutes(
         problems,
         resolved.index.exercisesById,
         run.quizPassedAt,
+        run.attempt,
       );
       const pointState = state.points.find((item) => item.id === body.data.pointId);
       if (pointState?.status !== 'passed') return { kind: 'not_passed' as const, run };
@@ -735,6 +851,7 @@ export function registerLessonRunRoutes(
         allProblems,
         resolved.index.exercisesById,
         joined.run.quizPassedAt,
+        joined.run.attempt,
       );
       const pendingPractice = allProblems.find(
         (problem) => problem.practiceOnly && problem.answeredAt === null,
@@ -744,13 +861,17 @@ export function registerLessonRunRoutes(
           stateBeforeAnswer.points.find((point) => point.id === joined.problem.knowledgePointId)
             ?.status === 'passed'
         : stateBeforeAnswer.pending?.id === joined.problem.id &&
-          stateBeforeAnswer.status === 'in_progress';
+          stateBeforeAnswer.status === 'in_progress' &&
+          !stateBeforeAnswer.halted;
       if (!expectedPending) {
         return { kind: 'conflict' as const, runId: joined.run.id };
       }
       const indexed = resolved.index.exercisesById.get(joined.problem.exerciseId);
       if (!indexed) return { kind: 'not_found' as const };
-      if (joined.run.status === 'completed' && !joined.problem.practiceOnly) {
+      if (
+        joined.run.status === 'needs_retry' ||
+        (joined.run.status === 'completed' && !joined.problem.practiceOnly)
+      ) {
         return { kind: 'conflict' as const, runId: joined.run.id };
       }
       const exercise =
@@ -827,12 +948,14 @@ export function registerLessonRunRoutes(
         problems.filter((item) => item.id !== joined.problem.id),
         resolved.index.exercisesById,
         joined.run.quizPassedAt,
+        joined.run.attempt,
       );
       const state = deriveLessonState(
         resolved.lesson,
         problems,
         resolved.index.exercisesById,
         joined.run.quizPassedAt,
+        joined.run.attempt,
       );
       const point = state.points.find((item) => item.id === joined.problem.knowledgePointId);
       let xpAwarded = 0;
@@ -856,14 +979,64 @@ export function registerLessonRunRoutes(
           .onConflictDoNothing();
       }
       if (!joined.problem.practiceOnly) {
-        await tx
-          .update(lessonRuns)
-          .set({
-            status: state.status,
-            updatedAt: now,
-            completedAt: state.status === 'completed' ? now : null,
-          })
-          .where(eq(lessonRuns.id, joined.run.id));
+        const halted = state.halted;
+        if (!previous.halted && halted !== undefined) {
+          const haltedAt = now;
+          const retryAfter = startOfNextCalendarDay(now, context.get('timeZone'));
+          if (joined.run.haltedPointIndex !== null && halted.index <= joined.run.haltedPointIndex) {
+            const keyPrereqIds = keyPrereqsForPoint(resolved.index, conceptId, halted.pointId);
+            const openFlags = keyPrereqIds.length
+              ? await tx
+                  .select({ targetPrereqId: remediationFlags.targetPrereqId })
+                  .from(remediationFlags)
+                  .where(
+                    and(
+                      eq(remediationFlags.userId, userId),
+                      eq(remediationFlags.conceptId, conceptId),
+                      eq(remediationFlags.status, 'open'),
+                      inArray(remediationFlags.targetPrereqId, keyPrereqIds),
+                    ),
+                  )
+              : [];
+            const alreadyOpen = new Set(
+              openFlags.flatMap((flag) => (flag.targetPrereqId ? [flag.targetPrereqId] : [])),
+            );
+            const flagsToInsert = keyPrereqIds
+              .filter((targetPrereqId) => !alreadyOpen.has(targetPrereqId))
+              .map((targetPrereqId) => ({
+                userId,
+                conceptId,
+                targetPrereqId,
+                openedByAttemptId: attemptId,
+                status: 'open' as const,
+                createdAt: now,
+              }));
+            if (flagsToInsert.length > 0) {
+              await tx.insert(remediationFlags).values(flagsToInsert);
+            }
+          }
+          await tx
+            .update(lessonRuns)
+            .set({
+              status: 'needs_retry',
+              haltedAt,
+              retryAfter,
+              haltedPointIndex: halted.index,
+              haltCount: joined.run.haltCount + 1,
+              updatedAt: now,
+              completedAt: null,
+            })
+            .where(eq(lessonRuns.id, joined.run.id));
+        } else {
+          await tx
+            .update(lessonRuns)
+            .set({
+              status: state.status,
+              updatedAt: now,
+              completedAt: state.status === 'completed' ? now : null,
+            })
+            .where(eq(lessonRuns.id, joined.run.id));
+        }
       }
       return {
         kind: 'answered' as const,
@@ -937,6 +1110,7 @@ export function registerLessonRunRoutes(
         problems,
         resolved.index.exercisesById,
         run.quizPassedAt,
+        run.attempt,
       );
       if (state.status === 'in_progress') return { kind: 'steps_incomplete' as const, run };
       const previousAttempts = await tx
@@ -1107,6 +1281,7 @@ export function registerLessonRunRoutes(
         problems,
         resolved.index.exercisesById,
         joined.run.quizPassedAt,
+        joined.run.attempt,
       );
       if (runState.status === 'in_progress') {
         return { kind: 'conflict' as const, runId: joined.run.id };

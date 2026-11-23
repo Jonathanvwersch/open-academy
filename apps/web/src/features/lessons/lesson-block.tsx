@@ -48,7 +48,7 @@ export function LessonBlock({
                       className="cursor-pointer underline"
                       to="/lessons/$conceptId"
                       params={{ conceptId: prerequisite.id }}
-                      search={{ from: undefined }}
+                      search={{ from: undefined, step: undefined }}
                     >
                       {prerequisite.title}
                     </Link>
@@ -71,7 +71,7 @@ export function LessonBlock({
                     className="cursor-pointer underline"
                     to="/lessons/$conceptId"
                     params={{ conceptId: prerequisite.id }}
-                    search={{ from: undefined }}
+                    search={{ from: undefined, step: undefined }}
                   >
                     {prerequisite.title}
                   </Link>

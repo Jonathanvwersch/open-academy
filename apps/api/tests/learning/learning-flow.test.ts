@@ -740,6 +740,67 @@ test('repeated failures no longer insert remediation flags', async () => {
   ).toHaveLength(0);
 });
 
+test('review answers include the lesson step for re-reading', async () => {
+  await resetLearner();
+  const { index, recallExercises } = contentWithRecallExercises();
+  const exercise = recallExercises[0];
+  if (exercise?.type !== 'mc') throw new Error('Missing recall exercise');
+  const lesson = index.lessonsByConcept.get('vectors');
+  const point = lesson?.knowledge_points?.find(
+    (candidate) => candidate.id === exercise.knowledge_point,
+  );
+  if (!point) throw new Error('Missing recall knowledge point');
+  const activity = await createReviewActivity('vectors', exercise.id);
+  const wrongOption = exercise.options.find((option) => !option.correct);
+  if (!wrongOption) throw new Error('Missing incorrect recall option');
+  const recallApp = createApp({ db, content: index, tutorProvider: new FakeProvider() });
+  const response = await recallApp.request('/api/attempts', {
+    method: 'POST',
+    headers: headersAt(now),
+    body: JSON.stringify({
+      exerciseId: exercise.id,
+      activityId: activity.id,
+      answer: wrongOption.id,
+      mode: 'review',
+    }),
+  });
+  expect(response.status).toBe(200);
+  expect((await response.json()).step).toEqual({
+    conceptId: 'vectors',
+    pointId: point.id,
+    title: point.title,
+  });
+});
+
+test('completing a review resolves open remediation flags for its topics', async () => {
+  await resetLearner();
+  const exercise = content.exercisesByConcept
+    .get('vectors')
+    ?.find(
+      (candidate) =>
+        candidate.type === 'mc' &&
+        !candidate.multi &&
+        !candidate.lesson_only &&
+        !isTemplate(candidate),
+    );
+  if (!exercise) throw new Error('Missing vectors review exercise');
+  if (exercise.type !== 'mc') throw new Error('Expected a multiple-choice vectors exercise');
+  const wrongOption = exercise.options.find((option) => !option.correct);
+  if (!wrongOption) throw new Error('Missing incorrect vectors option');
+  await db.insert(remediationFlags).values({
+    userId,
+    conceptId: 'gradient-descent',
+    targetPrereqId: 'vectors',
+  });
+  const activity = await createReviewActivity('vectors', exercise.id);
+  const response = await submitReviewExercise(exercise.id, activity.id, wrongOption.id);
+  expect(response).toMatchObject({ activityCompleted: true, correct: 0 });
+  const flags = await db.select().from(remediationFlags).where(eq(remediationFlags.userId, userId));
+  expect(flags).toHaveLength(1);
+  expect(flags[0]).toMatchObject({ status: 'resolved', targetPrereqId: 'vectors' });
+  expect(flags[0]?.resolvedAt).toBeInstanceOf(Date);
+});
+
 test('a review activity schedules its card once after all three answers', async () => {
   await resetLearner();
   const exercises = (content.exercisesByConcept.get('vectors') ?? [])

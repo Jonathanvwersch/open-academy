@@ -17,6 +17,20 @@ export function masteryKey(conceptId: string, dimension: string): string {
   return `${conceptId}:${dimension}`;
 }
 
+export function keyPrereqsForPoint(
+  content: ContentIndex,
+  conceptId: string,
+  pointId: string,
+): string[] {
+  const point = content.lessonsByConcept
+    .get(conceptId)
+    ?.knowledge_points?.find((candidate) => candidate.id === pointId);
+  if (point?.key_prereqs !== undefined) return [...point.key_prereqs];
+  return (content.conceptsById.get(conceptId)?.prereqs ?? [])
+    .filter((prerequisite) => prerequisite.strength === 'hard')
+    .map(({ id }) => id);
+}
+
 export function prerequisiteMet(
   prereqId: string,
   masteryByKey: ReadonlyMap<string, Pick<MasteryRecord, 'state' | 'inferred'>>,

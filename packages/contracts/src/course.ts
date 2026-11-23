@@ -82,6 +82,7 @@ export interface LearnPayload {
     label: 'Lesson' | 'Review' | 'Practice' | 'Project' | 'Quiz';
     conceptId?: string;
     reviewTopics?: Array<{ conceptId: string; title: string }>;
+    reason?: string;
     title: string;
     xp: number;
     prerequisites: Array<{ id: string; title: string; done: boolean }>;
@@ -159,6 +160,10 @@ export interface CourseTopic {
   title: string;
   hasLesson: boolean;
   status: 'locked' | 'not_started' | 'in_progress' | 'quiz' | 'complete';
+  retry?: {
+    after: string | null;
+    reviewFirst: Array<{ id: string; title: string }>;
+  };
   placedOut: boolean;
   mastery: 'Not started' | 'Attempted' | 'Familiar' | 'Proficient' | 'Mastered';
   needs?: Array<{ id: string; title: string; quiz?: boolean }>;

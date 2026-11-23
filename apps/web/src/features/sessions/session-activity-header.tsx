@@ -37,7 +37,7 @@ export function SessionActivityHeader({
             <Link
               to="/lessons/$conceptId"
               params={{ conceptId: lessonLink.conceptId }}
-              search={{ from: lessonLink.from }}
+              search={{ from: lessonLink.from, step: undefined }}
             >
               View full lesson
             </Link>

@@ -15,6 +15,7 @@ import {
   lessonQuizItems,
   lessonRuns,
   mastery,
+  remediationFlags,
   reviewCards,
   reviewLogs,
   sessionActivities,
@@ -40,6 +41,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
+  app = createApp({ db, content, tutorProvider: new FakeProvider() });
   await db.delete(users);
   await db.insert(users).values({
     id: userId,
@@ -54,16 +56,16 @@ afterAll(async () => {
   await db.$client.end();
 });
 
-async function startRun(activityId?: string, runConceptId = conceptId) {
+async function startRun(activityId?: string, runConceptId = conceptId, requestHeaders = headers) {
   return app.request(`/api/lessons/${runConceptId}/run`, {
     method: 'POST',
-    headers,
+    headers: requestHeaders,
     body: JSON.stringify(activityId ? { activityId } : {}),
   });
 }
 
-async function getRun() {
-  return app.request(`/api/lessons/${conceptId}/run`, { headers });
+async function getRun(runConceptId = conceptId) {
+  return app.request(`/api/lessons/${runConceptId}/run`, { headers });
 }
 
 test('full lesson review carries its rendered checks and the same derived run status', async () => {
@@ -88,6 +90,56 @@ test('full lesson review carries its rendered checks and the same derived run st
     expect(review.checks[id]).not.toHaveProperty('solution');
     expect(review.checks[id]).not.toHaveProperty('answer');
   }
+});
+
+test('lesson review derives run status from the current retry attempt', async () => {
+  const fixture = [...content.lessonsByConcept.entries()].find(
+    ([, lesson]) =>
+      lesson.knowledge_points?.length &&
+      lesson.knowledge_points.every((point) => point.problems.length > 0),
+  );
+  if (!fixture) throw new Error('No lesson with knowledge-point problems was found');
+  const [runConceptId, lesson] = fixture;
+  const knowledgePoints = lesson.knowledge_points ?? [];
+  const [firstPoint] = knowledgePoints;
+  if (!firstPoint) throw new Error('Missing first lesson point');
+  const [run] = await db
+    .insert(lessonRuns)
+    .values({ userId, conceptId: runConceptId, status: 'in_progress', attempt: 2 })
+    .returning();
+  if (!run) throw new Error('Could not create retry lesson run');
+  const servedAt = new Date(headers['X-Now']);
+  const rows = [
+    ...firstPoint.problems.slice(0, 3).map((exerciseId, position) => ({
+      runId: run.id,
+      knowledgePointId: firstPoint.id,
+      round: 1,
+      position,
+      exerciseId,
+      answeredAt: new Date(servedAt.getTime() + (position + 1) * 1_000),
+      correct: 0,
+    })),
+    ...knowledgePoints.flatMap((point) =>
+      point.problems.slice(0, 2).map((exerciseId, position) => ({
+        runId: run.id,
+        knowledgePointId: point.id,
+        round: 2,
+        position,
+        exerciseId,
+        answeredAt: new Date(servedAt.getTime() + (position + 4) * 1_000),
+        correct: 1,
+      })),
+    ),
+  ].map((row) => ({
+    ...row,
+    seed: null,
+    servedAt,
+  }));
+  await db.insert(lessonProblems).values(rows);
+
+  const response = await app.request(`/api/lessons/${runConceptId}/review`, { headers });
+  expect(response.status).toBe(200);
+  expect((await response.json()).runStatus).toBe('quiz');
 });
 
 test('locked started topics can restart while locked untouched topics cannot', async () => {
@@ -188,6 +240,329 @@ async function answerProblem(
     body: JSON.stringify({ problemId, answer, ...(activityId ? { activityId } : {}) }),
   });
 }
+
+function withPointKeyPrereqs(
+  source: ContentIndex,
+  runConceptId: string,
+  pointId: string,
+  keyPrereqIds: string[],
+): ContentIndex {
+  const lesson = source.lessonsByConcept.get(runConceptId);
+  if (!lesson?.knowledge_points) throw new Error(`Missing lesson points for ${runConceptId}`);
+  const updatedLesson = {
+    ...lesson,
+    knowledge_points: lesson.knowledge_points.map((point) =>
+      point.id === pointId ? { ...point, key_prereqs: keyPrereqIds } : point,
+    ),
+  };
+  return {
+    ...source,
+    lessonsByConcept: new Map(source.lessonsByConcept).set(runConceptId, updatedLesson),
+  };
+}
+
+test('retry starts attempt two at step one and opens key prerequisite flags after no progress', async () => {
+  const runConceptId = [...content.lessonsByConcept.keys()].find((id) => {
+    const concept = content.conceptsById.get(id);
+    return (
+      Boolean(content.lessonsByConcept.get(id)?.knowledge_points?.length) &&
+      concept?.prereqs.some((prerequisite) => prerequisite.strength === 'hard')
+    );
+  });
+  if (!runConceptId) throw new Error('No lesson with a hard prerequisite was found');
+  const lesson = content.lessonsByConcept.get(runConceptId);
+  const firstPoint = lesson?.knowledge_points?.[0];
+  const keyPrereqIds =
+    content.conceptsById
+      .get(runConceptId)
+      ?.prereqs.filter((prerequisite) => prerequisite.strength === 'hard')
+      .map(({ id }) => id) ?? [];
+  if (!firstPoint || keyPrereqIds.length === 0) throw new Error('Missing lesson fixture');
+  app = createApp({
+    db,
+    content: withPointKeyPrereqs(content, runConceptId, firstPoint.id, keyPrereqIds),
+    tutorProvider: new FakeProvider(),
+  });
+
+  let run = (await (await startRun(undefined, runConceptId)).json()).run;
+  const missPoint = async () => {
+    for (let count = 0; count < 3; count += 1) {
+      const pending = run.pending;
+      expect(pending).toBeTruthy();
+      const response = await answerProblem(
+        pending.id,
+        wrongAnswer(pending.exerciseId, pending.seed),
+        undefined,
+        headers,
+        runConceptId,
+      );
+      expect(response.status).toBe(200);
+      run = (await response.json()).state;
+      if (count < 2) {
+        run = (await (await startRun(undefined, runConceptId)).json()).run;
+      }
+    }
+  };
+  await missPoint();
+  expect(run.status).toBe('needs_retry');
+
+  const afterRetry = { ...headers, 'X-Now': '2026-01-02T01:00:00.000Z' };
+  const restartedResponse = await startRun(undefined, runConceptId, afterRetry);
+  expect(restartedResponse.status).toBe(200);
+  run = (await restartedResponse.json()).run;
+  expect(run.status).toBe('in_progress');
+  expect(run.currentPointId).toBe(firstPoint.id);
+  expect(run.points[0].round).toBe(2);
+
+  for (let count = 0; count < 3; count += 1) {
+    const pending = run.pending;
+    const response = await answerProblem(
+      pending.id,
+      wrongAnswer(pending.exerciseId, pending.seed),
+      undefined,
+      afterRetry,
+      runConceptId,
+    );
+    expect(response.status).toBe(200);
+    run = (await response.json()).state;
+    if (count < 2) run = (await (await startRun(undefined, runConceptId, afterRetry)).json()).run;
+  }
+  expect(run.status).toBe('needs_retry');
+  expect((run.retry.reviewFirst as Array<{ id: string }>).map(({ id }) => id).sort()).toEqual(
+    keyPrereqIds.sort(),
+  );
+  const flags = await db
+    .select()
+    .from(remediationFlags)
+    .where(and(eq(remediationFlags.userId, userId), eq(remediationFlags.status, 'open')));
+  expect(flags.map((flag) => flag.targetPrereqId).sort()).toEqual(keyPrereqIds.sort());
+  const afterSecondRetryDate = { ...afterRetry, 'X-Now': '2026-01-03T01:00:00.000Z' };
+  const blockedByReviews = await startRun(undefined, runConceptId, afterSecondRetryDate);
+  expect(blockedByReviews.status).toBe(409);
+  const error = await blockedByReviews.json();
+  expect(error.error).toMatch(/^Review .+ first\.$/);
+  for (const prerequisite of run.retry.reviewFirst)
+    expect(error.error).toContain(prerequisite.title);
+});
+
+test('legacy in-progress run with a halted first step restarts at attempt two', async () => {
+  const fixture = [...content.lessonsByConcept.entries()].find(([, lesson]) =>
+    Boolean(
+      lesson.knowledge_points?.[0]?.problems.length &&
+        lesson.knowledge_points[0].problems.length >= 3,
+    ),
+  );
+  if (!fixture) throw new Error('No lesson with three first-step problems was found');
+  const [runConceptId, lesson] = fixture;
+  const point = lesson.knowledge_points?.[0];
+  if (!point) throw new Error('Missing first lesson point');
+  const [legacyRun] = await db
+    .insert(lessonRuns)
+    .values({ userId, conceptId: runConceptId, status: 'in_progress' })
+    .returning();
+  if (!legacyRun) throw new Error('Could not create the legacy lesson run');
+  const servedAt = new Date(headers['X-Now']);
+  await db.insert(lessonProblems).values(
+    point.problems.slice(0, 3).map((exerciseId, position) => {
+      const exercise = content.exercisesById.get(exerciseId);
+      if (!exercise) throw new Error(`Missing fixture exercise ${exerciseId}`);
+      return {
+        runId: legacyRun.id,
+        knowledgePointId: point.id,
+        round: 1,
+        position,
+        exerciseId,
+        seed: isTemplate(exercise) ? position + 1 : null,
+        servedAt: new Date(servedAt.getTime() + position * 1_000),
+        answeredAt: new Date(servedAt.getTime() + (position + 1) * 1_000),
+        correct: 0,
+      };
+    }),
+  );
+
+  const existing = await (await getRun(runConceptId)).json();
+  expect(existing.run).toMatchObject({
+    status: 'in_progress',
+    halted: { pointId: point.id },
+  });
+
+  const started = await startRun(undefined, runConceptId);
+  expect(started.status).toBe(200);
+  const run = (await started.json()).run;
+  expect(run.status).toBe('in_progress');
+  expect(run.currentPointId).toBe(point.id);
+  expect(run.pending.round).toBe(2);
+
+  const answered = await answerProblem(
+    run.pending.id,
+    correctAnswer(run.pending.exerciseId, run.pending.seed),
+    undefined,
+    headers,
+    runConceptId,
+  );
+  expect(answered.status).toBe(200);
+  expect((await answered.json()).state.lastAnsweredProblem).toMatchObject({
+    round: 2,
+    correct: 1,
+  });
+  const [recoveredRun] = await db
+    .select()
+    .from(lessonRuns)
+    .where(and(eq(lessonRuns.userId, userId), eq(lessonRuns.conceptId, runConceptId)));
+  expect(recoveredRun).toMatchObject({
+    attempt: 2,
+    status: 'in_progress',
+    haltedAt: null,
+    retryAfter: null,
+    haltCount: 0,
+  });
+  expect(
+    await db
+      .select()
+      .from(remediationFlags)
+      .where(
+        and(
+          eq(remediationFlags.userId, userId),
+          eq(remediationFlags.conceptId, runConceptId),
+          eq(remediationFlags.status, 'open'),
+        ),
+      ),
+  ).toHaveLength(0);
+});
+
+test('legacy quiz run keeps passed steps after three misses and a pass', async () => {
+  const fixture = [...content.lessonsByConcept.entries()].find(
+    ([, lesson]) =>
+      lesson.knowledge_points?.length &&
+      lesson.knowledge_points.every((point) => point.problems.length > 0),
+  );
+  if (!fixture) throw new Error('No lesson with knowledge-point problems was found');
+  const [runConceptId, lesson] = fixture;
+  const knowledgePoints = lesson.knowledge_points ?? [];
+  const firstPoint = knowledgePoints[0];
+  if (!firstPoint?.problems.length) throw new Error('Missing first lesson point');
+  const [legacyRun] = await db
+    .insert(lessonRuns)
+    .values({ userId, conceptId: runConceptId, status: 'quiz', attempt: 1 })
+    .returning();
+  if (!legacyRun) throw new Error('Could not create the legacy quiz run');
+  const servedAt = new Date(headers['X-Now']);
+  const rows = knowledgePoints.flatMap((point, pointIndex) => {
+    const count = point.id === firstPoint.id ? 5 : 2;
+    return Array.from({ length: count }, (_, position) => {
+      const exerciseId = point.problems[position % point.problems.length];
+      if (!exerciseId) throw new Error(`Missing exercise for ${point.id}`);
+      const exercise = content.exercisesById.get(exerciseId);
+      if (!exercise) throw new Error(`Missing fixture exercise ${exerciseId}`);
+      const correct = point.id !== firstPoint.id || position >= 3 ? 1 : 0;
+      return {
+        runId: legacyRun.id,
+        knowledgePointId: point.id,
+        round: 1,
+        position: pointIndex * 10 + position,
+        exerciseId,
+        seed: isTemplate(exercise) ? position + 1 : null,
+        servedAt: new Date(servedAt.getTime() + position * 1_000),
+        answeredAt: new Date(servedAt.getTime() + (position + 1) * 1_000),
+        correct,
+      };
+    });
+  });
+  await db.insert(lessonProblems).values(rows);
+
+  const started = await startRun(undefined, runConceptId);
+  expect(started.status).toBe(200);
+  const run = (await started.json()).run;
+  expect(run.status).toBe('quiz');
+  expect(run.points[0]).toMatchObject({ status: 'passed', round: 1 });
+  expect(run.halted).toBeUndefined();
+  const [storedRun] = await db
+    .select()
+    .from(lessonRuns)
+    .where(and(eq(lessonRuns.userId, userId), eq(lessonRuns.conceptId, runConceptId)));
+  expect(storedRun).toMatchObject({ attempt: 1, status: 'quiz' });
+});
+
+test('a halt after forward progress does not open remediation flags', async () => {
+  const runConceptId = [...content.lessonsByConcept.keys()].find((id) => {
+    const lesson = content.lessonsByConcept.get(id);
+    return (
+      Boolean(lesson?.knowledge_points && lesson.knowledge_points.length > 1) &&
+      content.conceptsById.get(id)?.prereqs.some((prerequisite) => prerequisite.strength === 'hard')
+    );
+  });
+  if (!runConceptId) throw new Error('No multi-step lesson with a hard prerequisite was found');
+  const lesson = content.lessonsByConcept.get(runConceptId);
+  const firstPoint = lesson?.knowledge_points?.[0];
+  const secondPoint = lesson?.knowledge_points?.[1];
+  const keyPrereqIds =
+    content.conceptsById
+      .get(runConceptId)
+      ?.prereqs.filter((prerequisite) => prerequisite.strength === 'hard')
+      .map(({ id }) => id) ?? [];
+  if (!firstPoint || !secondPoint || keyPrereqIds.length === 0) {
+    throw new Error('Missing multi-step lesson fixture');
+  }
+  let taggedContent = withPointKeyPrereqs(content, runConceptId, firstPoint.id, keyPrereqIds);
+  taggedContent = withPointKeyPrereqs(taggedContent, runConceptId, secondPoint.id, keyPrereqIds);
+  app = createApp({ db, content: taggedContent, tutorProvider: new FakeProvider() });
+
+  let run = (await (await startRun(undefined, runConceptId)).json()).run;
+  for (let count = 0; count < 3; count += 1) {
+    const pending = run.pending;
+    const response = await answerProblem(
+      pending.id,
+      wrongAnswer(pending.exerciseId, pending.seed),
+      undefined,
+      headers,
+      runConceptId,
+    );
+    run = (await response.json()).state;
+    if (count < 2) run = (await (await startRun(undefined, runConceptId)).json()).run;
+  }
+  expect(run.status).toBe('needs_retry');
+  expect(run.halted.index).toBe(0);
+
+  const afterRetry = { ...headers, 'X-Now': '2026-01-02T01:00:00.000Z' };
+  run = (await (await startRun(undefined, runConceptId, afterRetry)).json()).run;
+  while (run.currentPointId === firstPoint.id) {
+    if (!run.pending)
+      run = (await (await startRun(undefined, runConceptId, afterRetry)).json()).run;
+    const pending = run.pending;
+    const response = await answerProblem(
+      pending.id,
+      correctAnswer(pending.exerciseId, pending.seed),
+      undefined,
+      afterRetry,
+      runConceptId,
+    );
+    run = (await response.json()).state;
+  }
+  expect(run.currentPointId).toBe(secondPoint.id);
+
+  for (let count = 0; count < 3; count += 1) {
+    if (!run.pending)
+      run = (await (await startRun(undefined, runConceptId, afterRetry)).json()).run;
+    const pending = run.pending;
+    const response = await answerProblem(
+      pending.id,
+      wrongAnswer(pending.exerciseId, pending.seed),
+      undefined,
+      afterRetry,
+      runConceptId,
+    );
+    run = (await response.json()).state;
+    if (count < 2) run = (await (await startRun(undefined, runConceptId, afterRetry)).json()).run;
+  }
+  expect(run.status).toBe('needs_retry');
+  expect(run.halted.index).toBe(1);
+  expect(
+    await db
+      .select()
+      .from(remediationFlags)
+      .where(and(eq(remediationFlags.userId, userId), eq(remediationFlags.status, 'open'))),
+  ).toHaveLength(0);
+});
 
 async function startQuiz(activityId?: string, runConceptId = conceptId) {
   return app.request(`/api/lessons/${runConceptId}/quiz/start`, {
@@ -317,6 +692,16 @@ async function submitQuizForConcept(runConceptId: string, wrongItemIndex = -1) {
   expect(submitted.status).toBe(200);
   return { result: await submitted.json(), items };
 }
+
+test('quiz misses do not halt a lesson run', async () => {
+  await submitQuizForConcept(conceptId, 0);
+  const [run] = await db
+    .select()
+    .from(lessonRuns)
+    .where(and(eq(lessonRuns.userId, userId), eq(lessonRuns.conceptId, conceptId)));
+  expect(run?.haltedAt).toBeNull();
+  expect(run?.haltCount).toBe(0);
+});
 
 async function activityFixture() {
   const [session] = await db
@@ -613,15 +998,22 @@ test('double-submit returns 409 and records just one attempt', async () => {
 
 async function pendingTemplate() {
   let run = (await (await startRun()).json()).run;
-  for (let count = 0; count < 5; count += 1) {
+  for (let count = 0; count < 20; count += 1) {
     const pending = run.pending;
+    if (!pending) throw new Error('No template was served before the lesson ended');
     const exercise = content.exercisesById.get(pending.exerciseId);
     if (exercise && isTemplate(exercise)) return { run, pending, exercise };
-    const result = await answerProblem(pending.id, wrongAnswer(pending.exerciseId, pending.seed));
+    const answer =
+      count % 2 === 0
+        ? wrongAnswer(pending.exerciseId, pending.seed)
+        : correctAnswer(pending.exerciseId, pending.seed);
+    const result = await answerProblem(pending.id, answer);
     run = (await result.json()).state;
     if (run.status === 'needs_retry')
       throw new Error('Template was not served before the point failed');
-    if (!run.pending && count < 4) run = (await (await startRun()).json()).run;
+    if (!run.pending && run.status !== 'quiz' && count < 19) {
+      run = (await (await startRun()).json()).run;
+    }
   }
   throw new Error('No template was served in the first knowledge point');
 }
@@ -654,10 +1046,10 @@ test('a template is graded with its stored seed and rejects another seed answer'
   expect((await rejected.json()).correct).toBe(0);
 });
 
-test('five misses keep the step active and leave the session activity open', async () => {
+test('three misses pause the lesson until the next local day and leave the activity open', async () => {
   const activities = await activityFixture();
   let run = (await (await startRun(activities.learn.id)).json()).run;
-  for (let count = 0; count < 5; count += 1) {
+  for (let count = 0; count < 3; count += 1) {
     const pending = run.pending;
     const result = await answerProblem(
       pending.id,
@@ -668,16 +1060,12 @@ test('five misses keep the step active and leave the session activity open', asy
     const body = await result.json();
     run = body.state;
     expect(run.lastAnsweredProblem.id).toBe(pending.id);
-    run = (await (await startRun(activities.learn.id)).json()).run;
+    if (count < 2) run = (await (await startRun(activities.learn.id)).json()).run;
   }
-  expect(run.status).toBe('in_progress');
-  expect(run.points[0]).toMatchObject({
-    id: 'sl-inputs-targets',
-    status: 'active',
-    round: 1,
-    answered: 5,
-  });
-  expect(run.pending).toBeTruthy();
+  expect(run.status).toBe('needs_retry');
+  expect(run.halted).toMatchObject({ pointId: 'sl-inputs-targets', index: 0 });
+  expect(run.retry.after).toBe('2026-01-02T00:00:00.000Z');
+  expect(run.pending).toBeFalsy();
   const [completedActivity] = await db
     .select()
     .from(sessionActivities)
@@ -688,10 +1076,9 @@ test('five misses keep the step active and leave the session activity open', asy
     .where(eq(sessionActivities.id, activities.next.id));
   expect(completedActivity?.status).toBe('in_progress');
   expect(startedActivity?.status).not.toBe('in_progress');
-  const resumed = (await (await startRun(activities.learn.id)).json()).run;
-  expect(resumed.currentPointId).toBe('sl-inputs-targets');
-  expect(resumed.points[0]).toMatchObject({ status: 'active', round: 1, answered: 5 });
-  expect(resumed.pending.round).toBe(1);
+  const tooSoon = await startRun(activities.learn.id);
+  expect(tooSoon.status).toBe(409);
+  expect(await tooSoon.json()).toEqual({ error: 'This lesson comes back tomorrow.' });
 });
 
 test('finishing all points awards the XP sum and GET matches each POST state', async () => {

@@ -123,6 +123,98 @@ async function activateCourse(courseId: string) {
   await db.update(users).set({ activeCourseId: courseId }).where(eq(users.id, userId));
 }
 
+test('Home offers a remediation review with its reason instead of the retrying lesson', async () => {
+  await activateCourse('ml-foundations');
+  await completeHardAncestors('gradient-descent');
+  await db.insert(lessonRuns).values({
+    userId,
+    conceptId: 'gradient-descent',
+    status: 'needs_retry',
+    haltedAt: new Date('2026-01-06T12:00:00.000Z'),
+    retryAfter: new Date('2026-01-07T00:00:00.000Z'),
+    haltedPointIndex: 0,
+    haltCount: 1,
+  });
+  await db.insert(remediationFlags).values({
+    userId,
+    conceptId: 'gradient-descent',
+    targetPrereqId: 'gradients',
+  });
+
+  const response = await get('/learn');
+  expect(response.status).toBe(200);
+  const payload = await response.json();
+  const prerequisiteTitle = content.conceptsById.get('gradients')?.title;
+  const lessonTitle = content.conceptsById.get('gradient-descent')?.title;
+  if (!prerequisiteTitle || !lessonTitle) throw new Error('Missing remediation test concepts');
+  expect(payload.tasks).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        activityKind: 'review',
+        conceptId: 'gradients',
+        reason: `Review ${prerequisiteTitle} before retrying ${lessonTitle}`,
+      }),
+    ]),
+  );
+  expect(
+    payload.tasks.some(
+      (task: { activityKind: string; conceptId?: string }) =>
+        task.activityKind === 'learn' && task.conceptId === 'gradient-descent',
+    ),
+  ).toBe(false);
+});
+
+test('Home choices hide a retry until its retry time is eligible', async () => {
+  await activateCourse('ml-foundations');
+  await completeHardAncestors('gradient-descent');
+  const [run] = await db
+    .insert(lessonRuns)
+    .values({
+      userId,
+      conceptId: 'gradient-descent',
+      status: 'needs_retry',
+      retryAfter: new Date('2026-01-08T00:00:00.000Z'),
+    })
+    .returning();
+  if (!run) throw new Error('Could not create retry lesson run');
+
+  const paused = await (await get('/learn')).json();
+  expect(paused.choices.map((choice: { conceptId: string }) => choice.conceptId)).not.toContain(
+    'gradient-descent',
+  );
+
+  await db
+    .update(lessonRuns)
+    .set({ retryAfter: new Date('2026-01-07T00:00:00.000Z') })
+    .where(eq(lessonRuns.id, run.id));
+  const ready = await (await get('/learn')).json();
+  expect(ready.choices.map((choice: { conceptId: string }) => choice.conceptId)).toContain(
+    'gradient-descent',
+  );
+});
+
+test('a focused session cannot start a needs-retry lesson before retryAfter', async () => {
+  const courseId = content.curriculum?.default_course;
+  if (!courseId) throw new Error('Missing default course');
+  await activateCourse(courseId);
+  await db.insert(lessonRuns).values({
+    userId,
+    conceptId: 'vectors',
+    status: 'needs_retry',
+    haltedAt: new Date('2026-01-07T11:00:00.000Z'),
+    retryAfter: new Date('2026-01-08T00:00:00.000Z'),
+    haltedPointIndex: 0,
+    haltCount: 1,
+  });
+  const response = await app.request('/api/sessions', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'X-Now': '2026-01-07T12:00:00.000Z' },
+    body: JSON.stringify({ budgetMinutes: 60, focusConceptId: 'vectors' }),
+  });
+  expect(response.status).toBe(409);
+  expect(await response.json()).toEqual({ error: 'This lesson comes back tomorrow.' });
+});
+
 async function completeHardAncestors(conceptId: string, except: readonly string[] = []) {
   const completedIds = [...hardPrerequisiteAncestors(content, conceptId)].filter(
     (id) => !except.includes(id),

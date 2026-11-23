@@ -230,7 +230,13 @@ export function LessonRunner({
   );
 
   useEffect(() => {
-    if ((!state || state.needsProgressSync) && starting.current !== startAttempt) {
+    if (
+      (!state ||
+        state.needsProgressSync ||
+        (state.status === 'in_progress' && state.halted !== undefined) ||
+        (state.status === 'needs_retry' && state.retry?.ready === true)) &&
+      starting.current !== startAttempt
+    ) {
       starting.current = startAttempt;
       setBusy(true);
       void apiFetch(`/api/lessons/${encodeURIComponent(conceptId)}/run`, {
@@ -537,6 +543,22 @@ export function LessonRunner({
         )}
       </section>
     );
+
+  if (state.status === 'needs_retry' && state.retry?.ready !== true) {
+    const retryAfter = state.retry?.after ? Date.parse(state.retry.after) : Number.NaN;
+    const reviewTitles =
+      retryAfter > Date.now() ? [] : (state.retry?.reviewFirst.map(({ title }) => title) ?? []);
+    return (
+      <section className="space-y-2">
+        <p>This lesson is paused.</p>
+        <p>
+          {reviewTitles.length
+            ? `It comes back after a review of ${reviewTitles.join(' and ')}.`
+            : 'It comes back tomorrow.'}
+        </p>
+      </section>
+    );
+  }
 
   const pointStatus = state.points.find((item) => item.id === displayedPoint?.id);
   const shownProblem = practiceMode

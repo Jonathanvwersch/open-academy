@@ -146,6 +146,13 @@ export function contentWarnings(data: ContentSourceData, content: ContentIndex):
 
   for (const { value: lesson, file } of data.lessons) {
     for (const point of lesson.knowledge_points ?? []) {
+      if (!Object.hasOwn(point, 'key_prereqs')) {
+        warnings.push({
+          file,
+          id: point.id,
+          message: 'step has no key_prereqs',
+        });
+      }
       if (!point.tldr) {
         warnings.push({
           file,

@@ -259,6 +259,7 @@ const KnowledgePointSchema = z
     explain: z.string(),
     worked: z.string(),
     problems: z.array(IdSchema),
+    key_prereqs: z.array(IdSchema).max(3).optional(),
   })
   .strict();
 

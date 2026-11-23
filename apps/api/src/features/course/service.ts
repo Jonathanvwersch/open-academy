@@ -395,6 +395,7 @@ export function courseTopicState(
   masteryRecords: MasteryRecords,
   runs: RunRecords,
   placedOutConcepts: ReadonlySet<string>,
+  remediationFlags: SchedulerState['remediationFlags'] = [],
 ) {
   const masteryByKey = new Map(
     masteryRecords.map((record) => [masteryKey(record.conceptId, record.dimension), record]),
@@ -405,7 +406,8 @@ export function courseTopicState(
     const dimensionStates = concept.dimensions.map(
       (dimension) => masteryByKey.get(masteryKey(concept.id, dimension))?.state ?? 'not_assessed',
     );
-    const runStatus = runsByConcept.get(concept.id)?.status;
+    const run = runsByConcept.get(concept.id);
+    const runStatus = run?.status;
     const status = topicStatus({
       lessonRunStatus: runStatus,
       dimensionStates,
@@ -413,6 +415,27 @@ export function courseTopicState(
     });
     return {
       status,
+      ...(runStatus === 'needs_retry'
+        ? {
+            retry: {
+              after: run?.retryAfter?.toISOString() ?? null,
+              reviewFirst: [
+                ...new Set(
+                  remediationFlags
+                    .filter(
+                      (flag) =>
+                        flag.conceptId === concept.id &&
+                        (flag.status === undefined || flag.status === 'open'),
+                    )
+                    .map((flag) => flag.targetPrereqId ?? concept.id),
+                ),
+              ].map((id) => ({
+                id,
+                title: index.conceptsById.get(id)?.title ?? id,
+              })),
+            },
+          }
+        : {}),
       dimensionStates,
       placedOut:
         status === 'complete' && runStatus === undefined && placedOutConcepts.has(concept.id),
@@ -547,8 +570,15 @@ function buildUnits(
   paperStatuses: PaperStatuses,
   projectStatuses: ProjectStatuses,
   placedOutConcepts: ReadonlySet<string>,
+  remediationFlags: SchedulerState['remediationFlags'],
 ) {
-  const topicState = courseTopicState(index, masteryRecords, runs, placedOutConcepts);
+  const topicState = courseTopicState(
+    index,
+    masteryRecords,
+    runs,
+    placedOutConcepts,
+    remediationFlags,
+  );
   const masteryByKey = new Map(
     masteryRecords.map((record) => [masteryKey(record.conceptId, record.dimension), record]),
   );
@@ -605,7 +635,7 @@ function buildUnits(
             leadsToMore: 0,
           };
         }
-        const { status, dimensionStates, placedOut, missingPrereqs } = topicState(concept);
+        const { status, dimensionStates, placedOut, missingPrereqs, retry } = topicState(concept);
         const needs = missingPrereqs
           .sort((left, right) => compareOutlinePosition(left.id, right.id, index, course.id))
           .map((prerequisite) => ({
@@ -628,6 +658,7 @@ function buildUnits(
           title: concept.title,
           hasLesson: index.lessonsByConcept.has(concept.id),
           status,
+          ...(retry ? { retry } : {}),
           mastery: masteryLabel(lowestMasteryState(dimensionStates)),
           placedOut,
           buildsOn,
@@ -657,6 +688,7 @@ export function buildCoursePayload(
     needed: false,
     placementRunId: null,
   },
+  remediationFlags: SchedulerState['remediationFlags'] = [],
 ) {
   const activeCourse = activeCourseFor(index, activeCourseId);
   const resolvedCourseId = activeCourse?.id;
@@ -669,6 +701,7 @@ export function buildCoursePayload(
         paperStatuses,
         projectStatuses,
         placedOutConcepts,
+        remediationFlags,
       )
     : [];
   const done = (topic: { status: string }) => topic.status === 'complete';
@@ -681,6 +714,7 @@ export function buildCoursePayload(
       paperStatuses,
       projectStatuses,
       placedOutConcepts,
+      remediationFlags,
     ).flatMap((unit) => unit.topics);
     return {
       id: course.id,
@@ -692,7 +726,13 @@ export function buildCoursePayload(
       started: startedCourseIds.has(course.id),
     };
   });
-  const topicState = courseTopicState(index, masteryRecords, runs, placedOutConcepts);
+  const topicState = courseTopicState(
+    index,
+    masteryRecords,
+    runs,
+    placedOutConcepts,
+    remediationFlags,
+  );
   const foundations = activeCourse
     ? courseFoundations(index, resolvedCourseId)
         .filter((concept) => topicState(concept).status !== 'complete')
@@ -707,6 +747,7 @@ export function buildCoursePayload(
                 paperStatuses,
                 projectStatuses,
                 placedOutConcepts,
+                remediationFlags,
               )
                 .flatMap((unit) => unit.topics)
                 .filter((topic) => topic.conceptId === concept.id)

@@ -1,7 +1,7 @@
 import { mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { expect, type Page, test } from '@playwright/test';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { env } from '../../apps/api/src/config.js';
 import { createDb } from '../../apps/api/src/db/client.js';
 import {
@@ -394,7 +394,9 @@ async function answerAndReload(page: Page, correct: boolean, runConceptId = conc
   const body = await response.json();
   expect(response.status()).toBe(200);
   await page.reload();
-  if (body.state.status === 'in_progress') {
+  if (body.state.status === 'needs_retry') {
+    await expect(page.getByText('This lesson is paused.')).toBeVisible();
+  } else if (body.state.status === 'in_progress') {
     await expect(page.getByTestId('lesson-problem').getByRole('status')).toContainText(
       correct ? 'Correct' : 'Not quite',
     );
@@ -1760,12 +1762,12 @@ test('a legacy v1 learn activity resumes through the KP runner and final questio
   expect(continued.lastAttempt.exerciseId).toBe('vectors-fixture-final');
 });
 
-test('a knowledge point keeps serving questions after five misses in the same round', async ({
+test('three misses pause a lesson until the next local day, then eligible retry starts at step one', async ({
   page,
 }) => {
-  await createSession(page);
+  const sessionId = await createSession(page);
   let run = await currentRun(page);
-  for (let answerIndex = 0; answerIndex < 6; answerIndex += 1) {
+  for (let answerIndex = 0; answerIndex < 3; answerIndex += 1) {
     run = await answerAndReload(page, false);
     if (answerIndex === 0) {
       expect(run.points[0]).toMatchObject({ status: 'active', answered: 1, streak: 0 });
@@ -1775,15 +1777,33 @@ test('a knowledge point keeps serving questions after five misses in the same ro
       await expect(page.getByText('Correct answer:')).toHaveCount(0);
       await page.screenshot({ path: `${screenshotDir}/wrong-answer.png`, fullPage: true });
     }
-    if (answerIndex < 5) run = await nextProblemAndReload(page);
+    if (answerIndex < 2) run = await nextProblemAndReload(page);
   }
-  expect(run.status).toBe('in_progress');
-  expect(run.points[0]).toMatchObject({ status: 'active', round: 1, answered: 6 });
-  await expect(page.getByText('Try again later')).toHaveCount(0);
-  run = await nextProblemAndReload(page);
-  expect(run.pendingProblem).toMatchObject({ round: 1, position: 7 });
-  expect(run.points[0]).toMatchObject({ status: 'active', round: 1, answered: 6 });
-  await expect(page.getByText('Question 7', { exact: true })).toBeVisible();
+  expect(run.status).toBe('needs_retry');
+  await expect(page.getByText('This lesson is paused.')).toBeVisible();
+  await expect(page.getByText('It comes back tomorrow.')).toBeVisible();
+  await expect(page.getByLabel('Your answer')).toHaveCount(0);
+  await expect(page.locator('[data-problem-id]')).toHaveCount(0);
+
+  const db = createDb(env.TEST_DATABASE_URL);
+  try {
+    const [session] = await db
+      .select({ userId: studySessions.userId })
+      .from(studySessions)
+      .where(eq(studySessions.id, sessionId));
+    if (!session) throw new Error('Missing test session');
+    await db
+      .update(lessonRuns)
+      .set({ retryAfter: new Date('2025-12-31T00:00:00.000Z') })
+      .where(and(eq(lessonRuns.userId, session.userId), eq(lessonRuns.conceptId, conceptId)));
+  } finally {
+    await db.$client.end();
+  }
+
+  await page.reload();
+  await expect(page.getByTestId('lesson-problem')).toBeVisible();
+  await expect(page.getByText('This lesson is paused.')).toHaveCount(0);
+  await expect.poll(async () => (await currentRun(page)).points[0].round).toBe(2);
 });
 
 test('lesson quiz results are hidden until submit, resume after reload, and allow review after passing', async ({

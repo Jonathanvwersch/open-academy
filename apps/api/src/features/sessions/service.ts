@@ -21,6 +21,7 @@ import {
 import { buildCourseStartState, needsCourseChoice } from '../../learning/course-start.js';
 import { topicIsComplete } from '../../learning/course-status.js';
 import { initialLearnProgress } from '../../learning/initial-learn-progress.js';
+import { isLessonRetryReady } from '../../learning/lesson-retry.js';
 import { recordLessonViewed } from '../../learning/mastery.js';
 import {
   activeCourseFor,
@@ -253,6 +254,30 @@ export async function postSessions(deps: FeatureServices, request: FeatureReques
     if (focusConcept.status === 'stub') {
       return serviceResult({ error: 'Concept is not yet authored' }, 409);
     }
+    const retryRun = state.lessonRuns?.find(
+      (run) => run.conceptId === focusConcept.id && run.status === 'needs_retry',
+    );
+    if (retryRun) {
+      const retryAfter = retryRun.retryAfter ? new Date(retryRun.retryAfter) : undefined;
+      if (!isLessonRetryReady(retryAfter, false, now)) {
+        return serviceResult({ error: 'This lesson comes back tomorrow.' }, 409);
+      }
+      const reviewFirstIds = [
+        ...new Set(
+          state.remediationFlags
+            .filter(
+              (flag) =>
+                flag.conceptId === focusConcept.id &&
+                (flag.status === undefined || flag.status === 'open'),
+            )
+            .map((flag) => flag.targetPrereqId ?? focusConcept.id),
+        ),
+      ];
+      if (!isLessonRetryReady(retryAfter, reviewFirstIds.length > 0, now)) {
+        const titles = reviewFirstIds.map((id) => index.conceptsById.get(id)?.title ?? id);
+        return serviceResult({ error: `Review ${titles.join(' and ')} first.` }, 409);
+      }
+    }
     const masteryByKey = new Map(
       state.mastery.map((record) => [masteryKey(record.conceptId, record.dimension), record]),
     );
@@ -285,7 +310,18 @@ export async function postSessions(deps: FeatureServices, request: FeatureReques
       (state.lessonRuns ?? [])
         .filter(
           (run) =>
-            run.status === 'in_progress' || run.status === 'needs_retry' || run.status === 'quiz',
+            run.status === 'in_progress' ||
+            run.status === 'quiz' ||
+            (run.status === 'needs_retry' &&
+              isLessonRetryReady(
+                run.retryAfter,
+                state.remediationFlags.some(
+                  (flag) =>
+                    flag.conceptId === run.conceptId &&
+                    (flag.status === undefined || flag.status === 'open'),
+                ),
+                now,
+              )),
         )
         .map((run) => run.conceptId),
     );

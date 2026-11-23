@@ -13,6 +13,7 @@ import {
 import { serializeExercise } from '../../src/content/serialize.js';
 import type { ContentIndex, ContentSourceData } from '../../src/content/types.js';
 import { validateContent } from '../../src/content/validate.js';
+import { keyPrereqsForPoint } from '../../src/learning/prerequisites.js';
 
 function required<T>(value: T | undefined, label: string): T {
   if (value === undefined) {
@@ -2063,6 +2064,95 @@ test('knowledge-point style rules count prose, math spans, and fenced code corre
   expect(
     issues.some((issue) => issue.id === valid.id && issue.message.includes('explain has')),
   ).toBe(false);
+});
+
+test('key prerequisites must be existing transitive hard ancestors', async () => {
+  const valid = await notationFixture();
+  const lessonEntry = valid.lessons.find(({ value }) =>
+    valid.concepts
+      .find(({ value: concept }) => concept.id === value.concept)
+      ?.value.prereqs.some(({ strength }) => strength === 'hard'),
+  );
+  const concept = lessonEntry
+    ? valid.concepts.find(({ value }) => value.id === lessonEntry.value.concept)
+    : undefined;
+  const point = lessonEntry?.value.knowledge_points?.[0];
+  if (!lessonEntry || !concept || !point) throw new Error('Missing prerequisite lesson fixture');
+
+  const hardAncestors = new Set<string>();
+  const visit = (id: string) => {
+    const current = valid.concepts.find(({ value }) => value.id === id)?.value;
+    for (const prerequisite of current?.prereqs ?? []) {
+      if (prerequisite.strength !== 'hard' || hardAncestors.has(prerequisite.id)) continue;
+      hardAncestors.add(prerequisite.id);
+      visit(prerequisite.id);
+    }
+  };
+  visit(concept.value.id);
+  const nonAncestor = valid.concepts.find(
+    ({ value }) =>
+      value.id !== concept.value.id &&
+      !hardAncestors.has(value.id) &&
+      !concept.value.prereqs.some(({ id }) => id === value.id),
+  );
+  if (!nonAncestor) throw new Error('Missing non-ancestor concept fixture');
+
+  const invalid = structuredClone(valid);
+  const invalidPoint = invalid.lessons.find(
+    ({ value }) => value.concept === lessonEntry.value.concept,
+  )?.value.knowledge_points?.[0];
+  if (!invalidPoint) throw new Error('Missing invalid prerequisite step');
+  invalidPoint.key_prereqs = [nonAncestor.value.id];
+  expect(validateContent(invalid)).toContainEqual(
+    expect.objectContaining({
+      id: invalidPoint.id,
+      message: `key prerequisite "${nonAncestor.value.id}" is not a transitive hard ancestor of "${lessonEntry.value.concept}"`,
+    }),
+  );
+
+  const softOnly = structuredClone(valid);
+  const softLesson = softOnly.lessons.find(
+    ({ value }) => value.concept === lessonEntry.value.concept,
+  );
+  const softConcept = softOnly.concepts.find(({ value }) => value.id === lessonEntry.value.concept);
+  const softPoint = softLesson?.value.knowledge_points?.[0];
+  const softPrerequisite = softOnly.concepts.find(
+    ({ value }) =>
+      value.id === nonAncestor.value.id &&
+      !softConcept?.value.prereqs.some(({ id }) => id === value.id),
+  );
+  if (!softConcept || !softPoint || !softPrerequisite) {
+    throw new Error('Missing soft-only prerequisite fixture');
+  }
+  softConcept.value.prereqs.push({ id: softPrerequisite.value.id, strength: 'soft' });
+  softPoint.key_prereqs = [softPrerequisite.value.id];
+  expect(validateContent(softOnly)).toContainEqual(
+    expect.objectContaining({
+      id: softPoint.id,
+      message: `key prerequisite "${softPrerequisite.value.id}" is not a transitive hard ancestor of "${lessonEntry.value.concept}"`,
+    }),
+  );
+});
+
+test('key prerequisite tags override the direct-hard-prerequisite fallback', async () => {
+  const data = await notationFixture();
+  const lesson = data.lessons.find(({ value }) =>
+    data.concepts
+      .find(({ value: concept }) => concept.id === value.concept)
+      ?.value.prereqs.some(({ strength }) => strength === 'hard'),
+  );
+  const point = lesson?.value.knowledge_points?.[0];
+  if (!lesson || !point) throw new Error('Missing tagged lesson fixture');
+  const directHard = data.concepts
+    .find(({ value }) => value.id === lesson.value.concept)
+    ?.value.prereqs.filter(({ strength }) => strength === 'hard')
+    .map(({ id }) => id);
+  if (!directHard?.length) throw new Error('Missing direct hard prerequisite fixture');
+
+  const fallback = buildContentIndex(data);
+  expect(keyPrereqsForPoint(fallback, lesson.value.concept, point.id)).toEqual(directHard);
+  point.key_prereqs = [];
+  expect(keyPrereqsForPoint(buildContentIndex(data), lesson.value.concept, point.id)).toEqual([]);
 });
 
 test('every knowledge point requires a lesson-only self-explanation question', async () => {

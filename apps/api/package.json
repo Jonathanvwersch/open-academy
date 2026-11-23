@@ -13,6 +13,7 @@
     "db:seed": "tsx scripts/seed.ts",
     "db:reset": "tsx scripts/db-reset.ts",
     "content:check": "tsx src/content/check.ts",
+    "simulate": "tsx scripts/simulate-learners.ts",
     "vercel:migrate": "tsx scripts/vercel-migrate.ts"
   },
   "exports": {

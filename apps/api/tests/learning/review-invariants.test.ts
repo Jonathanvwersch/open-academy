@@ -1,6 +1,10 @@
 import { and, eq, inArray } from 'drizzle-orm';
 import { Rating } from 'ts-fsrs';
 import { afterAll, beforeAll, expect, vi, it as vitestIt } from 'vitest';
+import {
+  answerFor as answerForExercise,
+  seededWrongAnswerFor as seededWrongAnswerForExercise,
+} from '../../scripts/learner-simulation-support.js';
 import { createApp } from '../../src/app.js';
 import { env } from '../../src/config.js';
 import { subjectForCourse } from '../../src/content/index.js';
@@ -1313,29 +1317,11 @@ async function addReviewCard(
 }
 
 function answerFor(exerciseId: string) {
-  const indexed = content.exercisesById.get(exerciseId);
-  if (!indexed) throw new Error(`Unknown exercise ${exerciseId}`);
-  const exercise = isTemplate(indexed) ? instantiateExercise(indexed, 0).exercise : indexed;
-  if (exercise.type === 'explain' && 'exemplar' in exercise) {
-    return { text: exercise.exemplar };
-  }
-  if (exercise.type === 'mc') {
-    const correct = exercise.options.filter((option) => option.correct).map((option) => option.id);
-    return exercise.multi ? correct : correct[0];
-  }
-  if ('answer' in exercise) return exercise.answer;
-  if ('accept' in exercise) return exercise.accept[0];
-  return { text: 'A correct explanation.' };
+  return answerForExercise(content, exerciseId);
 }
 
 function seededWrongAnswerFor(exerciseId: string) {
-  const indexed = content.exercisesById.get(exerciseId);
-  if (!indexed) throw new Error(`Unknown exercise ${exerciseId}`);
-  const exercise = isTemplate(indexed) ? instantiateExercise(indexed, 0).exercise : indexed;
-  if (exercise.type !== 'mc') return answerFor(exerciseId);
-  const incorrect = exercise.options.find((option) => !option.correct);
-  if (!incorrect) return answerFor(exerciseId);
-  return exercise.multi ? [incorrect.id] : incorrect.id;
+  return seededWrongAnswerForExercise(content, exerciseId);
 }
 
 function shouldSeedWrongReviewAnswer(exerciseId: string, now: Date) {

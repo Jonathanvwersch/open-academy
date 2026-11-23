@@ -13,6 +13,7 @@ import {
   masteryEvents,
   paperProgress,
   projectProgress,
+  remediationFlags,
   sessionActivities,
   studySessions,
   xpEvents,
@@ -31,6 +32,7 @@ import {
   projectCourseFinishes,
 } from '../../learning/finish-projection.js';
 import { isDueToday } from '../../learning/fsrs.js';
+import { isLessonRetryReady } from '../../learning/lesson-retry.js';
 import { deriveLessonState } from '../../learning/lesson-runner.js';
 import {
   activeCourseFor,
@@ -461,7 +463,13 @@ export function registerLearnCourseRoutes(
       const lessonState =
         activity.kind === 'learn' && lesson?.knowledge_points?.length
           ? run
-            ? deriveLessonState(lesson, problemsByRun.get(run.id) ?? [], index.exercisesById)
+            ? deriveLessonState(
+                lesson,
+                problemsByRun.get(run.id) ?? [],
+                index.exercisesById,
+                run.quizPassedAt,
+                run.attempt,
+              )
             : {
                 points: lesson.knowledge_points.map(() => ({ status: 'active' })),
               }
@@ -473,11 +481,15 @@ export function registerLearnCourseRoutes(
       }));
       const projectId = 'projectId' in activity ? activity.projectId : undefined;
       const project = projectId ? index.projectsById.get(projectId) : undefined;
+      const reasonSummary = (activity.reason as { summary?: string }).summary;
       return {
         id: 'id' in activity ? activity.id : `planned-${taskIndex}`,
         activityKind: activity.kind,
         label: activityLabel(activity.kind),
         ...(conceptId ? { conceptId } : {}),
+        ...(activity.kind === 'review' && reasonSummary?.includes(' before retrying ')
+          ? { reason: reasonSummary }
+          : {}),
         title:
           reviewTopics.length > 1
             ? 'Mixed review'
@@ -503,6 +515,8 @@ export function registerLearnCourseRoutes(
         }),
       ]),
     );
+    const choiceSchedulerState = activeSessionId ? undefined : await loadSchedulerState();
+    const openRemediationFlags = choiceSchedulerState?.remediationFlags ?? [];
     const eligibleChoices = activeSessionId
       ? []
       : outlineConceptIds.flatMap((conceptId) => {
@@ -518,9 +532,24 @@ export function registerLearnCourseRoutes(
             return [];
           }
           const run = runsByConcept.get(conceptId);
+          const hasOpenFlags = openRemediationFlags
+            .filter((flag) => flag.conceptId === conceptId)
+            .some((flag) => flag.status === undefined || flag.status === 'open');
+          if (
+            run?.status === 'needs_retry' &&
+            !isLessonRetryReady(run.retryAfter, hasOpenFlags, now)
+          ) {
+            return [];
+          }
           const lessonState = lesson.knowledge_points?.length
             ? run
-              ? deriveLessonState(lesson, problemsByRun.get(run.id) ?? [], index.exercisesById)
+              ? deriveLessonState(
+                  lesson,
+                  problemsByRun.get(run.id) ?? [],
+                  index.exercisesById,
+                  run.quizPassedAt,
+                  run.attempt,
+                )
               : { points: lesson.knowledge_points.map(() => ({ status: 'active' })) }
             : undefined;
           return [
@@ -590,6 +619,9 @@ export function registerLearnCourseRoutes(
       };
     });
 
+    const courseRemediationFlags = runRows.some((run) => run.status === 'needs_retry')
+      ? await repo.openFlags()
+      : [];
     const coursePayload = buildCoursePayload(
       index,
       currentCourseId,
@@ -600,6 +632,7 @@ export function registerLearnCourseRoutes(
       placedOutConcepts,
       startState.startedCourseIds,
       startState.courseStart,
+      courseRemediationFlags,
     );
     await completePayloadCourses(repo, coursePayload, now);
     const topics = coursePayload.units.flatMap((unit) => unit.topics);
@@ -1053,6 +1086,9 @@ export function registerLearnCourseRoutes(
         ? requestedCourseId
         : storedActiveCourseId;
     const runs = runsRaw.filter((run) => index.conceptsById.has(run.conceptId));
+    const openRemediationFlags = runs.some((run) => run.status === 'needs_retry')
+      ? await repo.openFlags()
+      : [];
     const projectRows = projectRowsRaw.filter((project) =>
       index.projectsById.has(project.projectId),
     );
@@ -1081,6 +1117,7 @@ export function registerLearnCourseRoutes(
       placedOutConcepts,
       startState.startedCourseIds,
       startState.courseStart,
+      openRemediationFlags,
     );
     await completePayloadCourses(repo, payload, deps.requestNow(context));
     return context.json(payload);
@@ -1191,6 +1228,7 @@ async function loadCourseSnapshot(
     enrollments,
     placementRuns,
     completedPlacementRuns,
+    openRemediationFlags,
   ] = await Promise.all([
     repo.masteryRecords(),
     repo.activeCourseId(),
@@ -1212,6 +1250,10 @@ async function loadCourseSnapshot(
           eq(diagnosticRuns.status, 'completed'),
         ),
       ),
+    db
+      .select()
+      .from(remediationFlags)
+      .where(and(eq(remediationFlags.userId, userId), eq(remediationFlags.status, 'open'))),
   ]);
   const mastery = filterMasteryRecordsForContent(index, masteryRows);
   const runs = runsRaw.filter((run) => index.conceptsById.has(run.conceptId));
@@ -1234,6 +1276,7 @@ async function loadCourseSnapshot(
     enrollments,
     placementRuns,
     placedOutConcepts,
+    openRemediationFlags,
     buildPayload(courseId: string | null | undefined) {
       const startState = buildCourseStartState({
         content: index,
@@ -1255,6 +1298,7 @@ async function loadCourseSnapshot(
           placedOutConcepts,
           startState.startedCourseIds,
           startState.courseStart,
+          openRemediationFlags,
         ),
       };
     },
