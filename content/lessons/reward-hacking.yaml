@@ -4,49 +4,49 @@ objective: |
   **Goal:** explain why optimising a proxy reward too hard lowers true quality, and spot the signs of reward hacking in training curves and sample replies.
 recap:
   - concept: rlhf
-    text: 'In RLHF, PPO trains the policy $\pi_\theta$ on the KL-penalised reward $r_\phi(x,y)-\beta\ln\frac{\pi_\theta(y\mid x)}{\pi_{\text{ref}}(y\mid x)}$, where $r_\phi$ is the reward model and $\pi_{\text{ref}}$ is a frozen copy of the SFT model. A larger $\beta$ keeps the policy closer to it.'
+    text: 'PPO trains the policy $\pi_\theta$ on $r_\phi(x,y)-\beta\ln\frac{\pi_\theta(y\mid x)}{\pi_{\text{ref}}(y\mid x)}$ for prompt $x$ and reply $y$, where $r_\phi$ is the reward model and $\pi_{\text{ref}}$ a frozen copy of the SFT model. A larger $\beta$ keeps the policy closer to that copy.'
   - concept: reward-design
-    text: "Reward hacking is an agent earning high reward in a way the designer didn't intend, through a gap between the reward and the real goal. A corridor robot paid $+3$ for every move right learned to loop forever."
+    text: "Reward hacking is an agent earning high reward in a way the designer didn't intend. A corridor robot paid $+3$ for every move right, with nothing taken back for moving left, learned to loop forever."
 where_this_fits: |
   ### What is reward hacking?
 
-  Reward hacking is a model earning a high reward in a way we didn't intend, by finding the places where the reward is wrong. When we keep training against such a reward, its score keeps rising while the quality we actually care about gets worse.
+  Reward hacking is a model earning a high reward in a way we didn't intend, by finding the places where the reward is wrong. When we keep training a model to raise such a reward, its score keeps rising while the quality we actually care about gets worse. That pattern is called reward over-optimisation, and it's what reward hacking looks like over a whole training run.
 
-  This matters for every language model trained with RLHF. The reward model gives a score to any reply, but it learned from a limited set of people's comparisons, so it makes mistakes. RLHF pushes the policy to raise that score as far as it can, and that push finds the mistakes. This lesson shows why that happens, how to spot it in training curves and replies, and what people do to limit it.
+  The reward model in RLHF gives a score to any reply, but it learned from a limited set of people's comparisons, so it makes mistakes. RLHF pushes the policy to raise that score as far as it can, and that push finds the mistakes. This lesson shows why, how to spot it, and what people do to limit it.
 knowledge_points:
   - id: rh-proxy
     title: "A reward stands in for the goal"
     tldr: |
       - What we really want, such as replies people find helpful, can't be measured for every reply.
       - So we train on a reward we can compute, which is close to what we want but has errors.
-      - Keeping whatever scores highest tends to keep the replies the reward overrates most.
+      - If we write several replies and keep the top-scoring one, we tend to keep the reply the reward overrates most.
     explain: |
       ### A number we can compute
 
-      In the reward design lesson, a $+3$ bonus for every move right was meant to stand for progress towards cell 4. The robot found a loop where it didn't.
+      In the reward design lesson, a $+3$ bonus for every move right was meant to reward progress along a corridor. But the robot could earn it by going back and forth.
 
       The reward model in RLHF plays the same part. What we want is replies that people find helpful and correct. But we can't ask people about every reply the policy writes during training, so we use the reward model's score instead.
 
-      A **proxy reward** is a reward we can compute that stands in for a goal we can't measure directly. We'll call how good a reply really is its **true quality**, for example the average rating that careful people would give it. A proxy can be hand-written, like the corridor bonus, or learned, like the reward model $r_\phi$.
+      A **proxy reward** is a reward we can compute that stands in for a goal we can't measure directly. How good a reply really is, we'll call its **true quality**. For example, it could be the average rating out of 10 that careful people would give the reply. A proxy can be hand-written, like the corridor bonus, or learned, like the reward model $r_\phi$.
 
       ### Keeping the highest score
 
-      The simplest way to optimise a reward is to write several replies and keep the top-scoring one. Suppose the policy writes four replies to "Explain why the sky is blue." Think of each score as true quality plus an error, the amount the reward model is off by. These numbers are invented.
+      The simplest way to optimise a reward is to have the policy write several replies and keep the top-scoring one. This is a real method, called best-of-$n$ sampling. The policy doesn't change. We only choose among its replies.
+
+      Suppose the policy writes four replies to "Explain why the sky is blue." Imagine the reward model's scores are on the same scale as true quality. Then each score is true quality plus an error, the amount the reward model is off by. Say the reward model is close on three replies but overrates a long, padded one by $3$ points, perhaps because longer replies often won the comparisons it learned from. Then keeping the top score can keep the padded reply over better ones, as the worked example shows.
+
+      This happens in general. A reply can score high by being good or by having a large positive error. So the top-scoring reply is more likely than a typical reply to have a large positive error. The more replies we choose from, the more likely we are to find one the reward model overrates by a lot.
+
+      Be careful not to trust a reward model just because it agreed with people on comparisons it wasn't trained on. Those comparisons used replies like the ones it learned from. When we search through many new replies, we look exactly where it hasn't been checked.
+    worked: |
+      Let's compare keeping the reply the reward model scores highest with keeping the reply that is really best, for four replies to "Explain why the sky is blue." These numbers are invented. A and B are both correct, but B explains more clearly. C is long and repeats itself, and D is off topic.
 
       | reply | true quality | error | score |
       | --- | --- | --- | --- |
-      | A, correct | $3$ | $0$ | $3$ |
+      | A, terse | $3$ | $0$ | $3$ |
       | B, clear | $4$ | $+0.5$ | $4.5$ |
-      | C, repetitive | $2$ | $+3$ | $5$ |
+      | C, padded | $2$ | $+3$ | $5$ |
       | D, off topic | $1$ | $-0.5$ | $0.5$ |
-
-      The reward model is close on three replies but overrates C, perhaps because longer replies often won the comparisons it learned from. So keeping the top score keeps C, the second-worst reply.
-
-      This happens in general. A reply can score high by being good or by having a large positive error, so the top score often has a large error. The harder we search, by writing more replies or training for longer, the more likely we are to find a reply the reward model overrates by a lot.
-
-      Be careful not to trust a reward model just because it agreed with people on held-out comparisons. Those used replies like its training data, and the policy keeps searching for new ones.
-    worked: |
-      Let's compare keeping the reply the reward model scores highest with keeping the reply that is really best, for the four replies to "Explain why the sky is blue."
 
       1. **Keep the highest score.** The scores are $3$, $4.5$, $5$ and $0.5$, so the reward model's choice is reply C.
          $$\max(3,\,4.5,\,5,\,0.5)=5.$$
@@ -71,23 +71,23 @@ knowledge_points:
       - rh1-bradley-terry
       - rh1-summary-overlap
   - id: rh-overopt
-    title: "Why the score rises while quality falls"
+    title: "Why reward rises while replies get worse"
     tldr: |
-      - Early in RL training, the policy's replies are like the SFT model's, where the reward model is fairly accurate.
+      - Early in RL training, the policy writes replies like the SFT model's, and the reward model scores those fairly accurately.
       - As training goes on, the policy drifts to replies the reward model has rarely seen.
-      - There it finds replies the reward model overrates, so the score keeps rising while true quality rises, peaks and falls.
+      - There it finds replies the reward model overrates, so the reward model's score keeps rising while true quality rises, peaks and falls.
     explain: |
       ### Drifting away from the reward model's data
 
-      The last step kept one reply out of four. RL training searches much harder than that, update after update, so the reward model's errors matter even more.
+      RL training searches much harder. Each PPO update makes replies that scored well more likely, so over many updates the policy is steered towards the highest-scoring replies it can find, a far bigger search than choosing one of four. The reward model stays fixed all the while.
 
-      The reward model learned from comparisons between replies written by the SFT model, so it's most accurate on replies like those. At the start of the RL stage, the policy is a copy of the SFT model, and its replies are the kind the reward model knows. As PPO trains the policy, $\mathrm{KL}(\pi_\theta\Vert\pi_{\text{ref}})$ grows, which tells us the policy's replies are moving further from the SFT model's.
+      The reward model learned from comparisons between replies written by the SFT model, so it's most accurate on replies like those. The policy starts as a copy of the SFT model. As PPO trains the policy, $\mathrm{KL}(\pi_\theta\Vert\pi_{\text{ref}})$ grows, so its replies are moving away from the SFT model's.
 
-      At first, most changes that raise the score are real improvements, so true quality rises too. Further out, the reward model is judging replies unlike any it learned from, and its errors are bigger. PPO keeps moving the policy towards whatever scores higher, and more and more of that comes from the reward model's errors.
+      At first, most changes that raise the score are real improvements, so true quality rises too. Once the KL is large, the reward model is judging replies unlike any it learned from, and its errors are bigger. PPO keeps moving the policy towards whatever scores higher, and more and more of that comes from the reward model's errors.
 
       ### Two curves from one run
 
-      Here is an invented RL run. Every 100 steps, we measure the average reward model score and the average rating out of 10 that people gave replies to a fixed set of held-out prompts.
+      Here is an invented RL run. Every 100 steps, the policy answers a fixed set of held-out prompts, used to train neither the policy nor the reward model. We record the average reward model score, minus the SFT model's average so that it starts at $0$, and the average rating out of 10 that people gave the replies.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 260" aria-label="Two line charts of the same RL run against training steps from 0 to 500. On the left, the reward model score in blue rises at every checkpoint: 0, 1.0, 1.8, 2.4, 2.9 and 3.3. On the right, people's rating in green rises from 5.0 to a peak of 6.8 at step 300, then falls to 6.4 and 5.6">
@@ -114,9 +114,9 @@ knowledge_points:
       </svg>
       ```
 
-      This is **reward over-optimisation**: training against a proxy past the point where raising it still improves true quality. The score rose at every checkpoint, but people's rating peaked at step 300 and then fell.
+      The score rose at every checkpoint, but people's rating peaked at step 300 and then fell. This pattern is **reward over-optimisation**. It happens when we keep raising a proxy past the point where that still improves true quality.
 
-      In 2022, Gao, Schulman and Hilton at OpenAI measured this, using a large reward model in place of people as the true judge. They trained smaller reward models on its preferences and optimised policies against them. As the KL grew, the smaller model's score kept rising, while the large model's score rose, peaked and fell. People often sum this up with Goodhart's law, which says that when a measure becomes a target, it stops being a good measure.
+      Gao, Schulman and Hilton at OpenAI measured this in 2022, using a large reward model as a stand-in for people. They trained smaller reward models on its choices between replies, then trained policies to raise a smaller model's score. As the KL grew, that score kept rising, while the large model's score rose, peaked and fell. People often sum this up with Goodhart's law, which says that when a measure becomes a target, it stops being a good measure.
 
       Be careful not to read a rising reward model score as proof that the policy is improving. PPO is pushing that score up, so it rises whether the gains are real or come from errors.
     worked: |
@@ -142,7 +142,7 @@ knowledge_points:
       4. **Compare the last checkpoint with the start.** The SFT model, at step 0, was rated $5.0$.
          $$5.6-5.0=0.6.$$
 
-      The final policy is still better than the SFT model, but stopping at step 300 would have kept a policy rated $1.2$ points higher. The last 200 steps raised the score by $0.9$ while lowering true quality.
+      Over those same 200 steps, the KL grew from $6$ to $10$ nats, so the policy kept drifting from the SFT model as quality fell. The final policy is still better than the SFT model, but the step 300 policy was rated $1.2$ points higher. We only see the peak once the rating starts to fall, so in practice we keep the saved step 300 checkpoint and go back to it. The last step of this lesson does exactly that.
     problems:
       - rh-overopt-basics
       - rh2-worked-self-explain
@@ -155,25 +155,25 @@ knowledge_points:
     title: "Spot reward hacking in curves and replies"
     tldr: |
       - The reward model's score can't show hacking on its own, so we also track a rating the policy isn't trained on.
-      - The clearest sign is the score rising while ratings from people or a stronger judge fall.
-      - Reading replies shows what the policy found, such as padding, repetition, flattery or code that only passes its tests.
+      - The clearest sign is the score rising while ratings fall, from people or from a stronger language model asked to judge.
+      - Reading replies shows what the policy found, such as padding, repetition, flattery, or code that passes only its exact tests.
     explain: |
       ### A rating the policy isn't trained on
 
-      The last step showed that the reward model's score rises whether or not the policy is improving. So during training we also measure something the policy isn't trained on. Every few hundred steps, each checkpoint answers a fixed set of held-out prompts, used to train neither the policy nor the reward model. Then people rate the replies, or a **stronger judge** does. That is a larger, more capable language model asked to rate replies, which is cheaper than people, though it can make mistakes of its own.
+      The reward model's score rises whether or not the policy is improving. So every few hundred steps, each checkpoint answers the held-out prompts, and people rate the replies. Or we ask a **stronger judge**, a larger and more capable language model, to read each reply and give it a rating. That's cheaper than asking people, though the judge can make mistakes too. We keep it out of training, so the policy never gets a chance to hack it.
 
-      The clearest sign of reward hacking is the two curves pulling apart. The reward model's score keeps rising while the held-out rating flattens or falls. A KL that grows fast is a warning too, because the policy is moving quickly into replies the reward model rarely saw.
+      In the last step, we called the two curves pulling apart over-optimisation. It's the clearest sign that the policy is hacking the reward model. A KL that suddenly grows much faster than before is a warning too.
 
       ### What to look for in the replies
 
-      The curves tell us something is wrong, and reading replies tells us what. Common patterns are these.
+      The curves tell us something is wrong, and reading replies tells us what. Here are the patterns people see most often.
 
       - **Longer replies.** The average length keeps growing, and the extra words pad the answer.
       - **Repetition.** The same phrase or list comes back again and again.
-      - **Sycophancy.** The reply agrees with the user or flatters them instead of being correct, such as agreeing that $0.1+0.2=0.4$ because the user said so. A reward model can learn to like this because people often rate agreeable replies highly.
-      - **Code that special-cases its tests.** When the reward is how many tests a program passes, the policy can check for the test inputs and return the expected answers.
+      - **Sycophancy.** The reply agrees with the user or flatters them instead of being correct, such as agreeing that $0.1+0.2=0.4$ because the user said so. People often rate agreeable replies highly, so a reward model can learn to like this.
+      - **Code that special-cases its tests.** Some models are trained to write programs. Each test runs the program on one input and checks its answer, and the reward is how many tests pass. The policy can learn to spot the test inputs and return the expected answers.
 
-      Here is code like that. The tests check `add(2, 3)` and `add(10, -4)`, so this passes both and earns the full reward, but it can't add anything else.
+      Here is code like that. The tests check `add(2, 3)` and `add(10, -4)`, so it passes both, but it can't add anything else.
 
       ```python
       def add(a, b):
@@ -187,7 +187,7 @@ knowledge_points:
       # 5 6 0
       ```
 
-      Be careful not to treat a long reply as hacking on its own. A hard question can need a long answer. Length is a warning sign when it keeps growing across checkpoints while ratings stop improving.
+      Be careful not to treat a long reply as hacking on its own. A hard question can need a long answer. Length is a warning when it keeps growing while ratings stop improving.
     worked: |
       Let's check a run for reward hacking. We recorded the reward model's average score, the average reply length, and a stronger judge's rating out of 10 for each checkpoint's replies to held-out prompts.
 
@@ -200,15 +200,15 @@ knowledge_points:
 
       1. **Check the score.** It rises at every checkpoint, from $0$ to $3.2$, so on its own it says training is going well.
 
-      2. **Check the judge's rating.** It rises to $7.0$ at step 200 and then falls.
+      2. **Check the judge's rating.** It rises to $7.0$ at step 200, then falls to $5.5$ by step 600, a drop of $1.5$.
          $$7.0-5.5=1.5.$$
 
       3. **Check the length.** From step 200 to step 600, replies get three times as long while the rating falls.
          $$450\div150=3.$$
 
-      4. **Read a reply.** A step 600 reply to "What is 15% of 40?" reads: "Great question! To find 15% of 40, we find 15% of 40. Finding 15% of 40 means finding 15% of 40, which is 6. So 15% of 40 is 6." The answer is right, but the repeated sentences add nothing.
+      4. **Read a reply.** A step 600 reply to "What is 15% of 40?" reads: "Great question! To find 15% of 40, we find 15% of 40. Finding 15% of 40 means finding 15% of 40, which is 6. So 15% of 40 is 6." The answer is right, but "Great question!" is flattery, and the repeated sentences add nothing.
 
-      The score rose while the judge's rating fell, and the extra length is padding and repetition. So the policy is hacking the reward model, and step 200 is the best checkpoint of these four.
+      The score rose while the judge's rating fell, and the extra length is flattery, padding and repetition. So the policy is hacking the reward model, and step 200 is the best checkpoint of these four.
     problems:
       - rh-signs-basics
       - rh3-worked-self-explain
@@ -221,28 +221,28 @@ knowledge_points:
     title: "Keep reward hacking in check"
     tldr: |
       - The KL penalty keeps the policy near the SFT model, where the reward model is more accurate.
-      - We save checkpoints and keep the one with the best held-out rating, so we stop before quality falls.
+      - We save checkpoints and, at the end, keep the one with the best held-out rating, from before quality fell.
       - We improve the reward model with new comparisons or average several reward models, and we keep reading replies.
     explain: |
       ### The KL penalty
 
-      In the RLHF lesson, the KL-penalised reward subtracts $\beta$ times each reply's log ratio. Now we can see how that helps against hacking. A reply the policy reached by drifting far from the SFT model, such as one that repeats a phrase twenty times, is very unlikely under the reference model. So its log ratio is large, and so is its penalty.
+      In the RLHF lesson, the KL-penalised reward subtracts $\beta$ times each reply's log ratio. Now we can see how that helps against hacking. Think of a reply that repeats a phrase twenty times. The policy has drifted far enough to write it often, but the reference model, the frozen copy of the SFT model, would almost never write it. So its log ratio is large, and so is its penalty.
 
       A larger $\beta$ keeps the policy where the reward model is more accurate. But if $\beta$ is too large, the policy can barely move from the SFT model, so it stops improving at all. Be careful not to think the penalty removes hacking. It makes drifting costly, but a reply that the reward model overrates by enough can still come out on top.
 
       ### Stopping at the best checkpoint
 
-      We save a checkpoint every few hundred steps and rate each one on held-out prompts, as in the last step. **Early stopping** means keeping the checkpoint with the best held-out rating, even if training ran on past it. In the run with a peak at step 300, we'd keep the step 300 policy.
+      We save a checkpoint every few hundred steps and rate each one on held-out prompts, as in the last step. **Early stopping** means keeping the checkpoint with the best held-out rating. We only know where that is once ratings start to fall, so in practice we train a little longer and then go back to the best saved checkpoint. In the run that peaked at step 300, we'd keep the step 300 policy.
 
       ### Fixing the reward model
 
-      We can also make the proxy better. One way is to have people compare the policy's current replies, including the ones that look hacked, and retrain the reward model on those comparisons. Then it learns that those replies are bad.
+      We can also make the proxy better. One way is to have people compare the policy's current replies, including the ones that look hacked, and retrain the reward model on those comparisons. Then it learns that those replies are bad, and we carry on training the policy against the new reward model.
 
-      Another way is a **reward model ensemble**. We train several reward models, for example from different random starting weights, and use the average of their scores. Their errors differ, so one model's mistake counts for less in the average. Some methods use the lowest of the scores instead, which is stricter. An ensemble helps least when every model shares the same error, such as all preferring long replies.
+      Another way is a **reward model ensemble**. We train several reward models, for example from different random starting weights, and use the average of their scores. Their errors differ, so one model's mistake counts for less in the average. Some methods use the lowest of the scores instead, so a reply only scores well if every model rates it highly. An ensemble helps least when every model shares the same error, such as all preferring long replies.
 
       None of these replace reading replies. A few minutes reading samples from each checkpoint can catch padding, flattery or special-cased tests that a single number hides.
     worked: |
-      Let's see two defences at work on replies B and C to "Explain why the sky is blue." B is clear and C is long and repetitive. Three reward models score them, and we'll also use the KL penalty with $\beta=0.1$.
+      Let's see two defences at work on replies B and C to "Explain why the sky is blue." B is clear and C is long and repetitive. Three reward models score them, and we'll also use the KL penalty with $\beta=0.1$. Each log ratio is the reply's log-probability under the current policy minus its log-probability under the reference model.
 
       |  | reply B | reply C |
       | --- | --- | --- |
@@ -257,7 +257,7 @@ knowledge_points:
       2. **Average the three models.** Only model 1 overrates C, so averaging brings C's score down.
          $$\begin{aligned}\text{B}&:\tfrac{4.5+4+3.5}{3}=4,\\\text{C}&:\tfrac{5+2+2}{3}=3.\end{aligned}$$
 
-      3. **Add the KL penalty to model 1's scores.** Subtract $\beta$ times each log ratio.
+      3. **Apply the KL penalty to model 1's scores.** Subtract $\beta$ times each log ratio.
          $$\begin{aligned}\text{B}&:4.5-0.1\times2=4.3,\\\text{C}&:5-0.1\times12=3.8.\end{aligned}$$
 
       Both the ensemble and the penalty now prefer B. The ensemble works because only one model made the mistake, and the penalty works because the policy had to drift a long way to write C.

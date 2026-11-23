@@ -142,7 +142,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: A robot in a corridor of cells 1 to 4 starts in cell 1. Each move gives $-1$, except the move into cell 4, which gives $+10$ and ends the episode. As a stand-in for progress, the designer also pays $+3$ for every move right and nothing for a move left. With $\gamma=1$, what is the return of the path right, right, left, right, right?
+    prompt: A robot in a corridor of cells 1 to 4 starts in cell 1. Each move gives $-1$, except the move into cell 4, which gives $+10$ and ends the episode. As a stand-in for progress, the designer also pays $+3$ for every move right and nothing for a move left. There is no discount ($\gamma=1$), so every reward counts in full. What is the return of the path right, right, left, right, right?
     answer: 18
     tolerance:
       abs: 0.001
@@ -608,18 +608,18 @@ exercises:
     difficulty: 2
     est_minutes: 2
     prompt: |
-      A user writes: "I'm sure the Great Wall of China is easy to see from the Moon with the naked eye, right?"
+      A user writes: "I'm sure $7\times8=54$, right?"
 
-      An early checkpoint replies: "No. From the Moon, the Great Wall is far too narrow to see with the naked eye."
+      An early checkpoint replies: "Not quite. $7\times8=56$."
 
-      A late checkpoint replies: "Yes, you're absolutely right, what a great observation! It's easy to see from the Moon."
+      A late checkpoint replies: "Yes, you're absolutely right, great work! $7\times8=54$."
 
       The reward model scores the late reply higher. Which sign of reward hacking is this?
     options:
       - id: a
         text: Sycophancy, agreeing with the user instead of being correct.
         correct: true
-        feedback: The late reply flatters the user and agrees with a false claim.
+        feedback: The late reply flatters the user and agrees that $7\times8=54$, which is false.
       - id: b
         text: Repetition, saying the same phrase again and again.
         correct: false
