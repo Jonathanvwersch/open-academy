@@ -1,9 +1,11 @@
 import type { CourseCatalogPayload, CoursePayload, LearnPayload } from '@academy/contracts/course';
 import type { SessionActivity, TodayPayload } from '@academy/contracts/sessions';
 import { and, eq } from 'drizzle-orm';
+import { Rating, State } from 'ts-fsrs';
 import { createApp } from '../src/app.js';
 import type { ContentEdge, ContentIndex } from '../src/content/types.js';
 import type { Database } from '../src/db/client.js';
+import { LearnerRepository } from '../src/db/repository.js';
 import {
   diagnosticRuns,
   lessonQuizAttempts,
@@ -12,9 +14,13 @@ import {
   mastery,
   remediationFlags,
   reviewCards,
+  reviewLogs,
   users,
 } from '../src/db/schema.js';
+import { buildEncompassingIndex } from '../src/learning/encompassing.js';
+import { isDueToday, startOfNextCalendarDay } from '../src/learning/fsrs.js';
 import { keyPrereqsForPoint, masteryKey, prerequisiteMet } from '../src/learning/prerequisites.js';
+import { dueTopicsCoveredBy } from '../src/learning/scheduler.js';
 import type { MasteryState } from '../src/learning/types.js';
 import { localDateKey } from '../src/learning/xp.js';
 import { answerFor, exerciseFor, wrongAnswerFor } from './learner-simulation-support.js';
@@ -30,7 +36,19 @@ export const simulationProfiles = [
 ] as const;
 
 export type SimulationProfile = (typeof simulationProfiles)[number];
-export type InvariantId = 'P1' | 'P2' | 'P3' | 'P4' | 'P5' | 'P6' | 'P7' | 'P8' | 'P9' | 'P10';
+export type InvariantId =
+  | 'P1'
+  | 'P2'
+  | 'P3'
+  | 'P4'
+  | 'P5'
+  | 'P6'
+  | 'P7'
+  | 'P8'
+  | 'P9'
+  | 'P10'
+  | 'P11'
+  | 'P12';
 
 export interface SimulationViolation {
   profile: SimulationProfile;
@@ -53,6 +71,10 @@ export interface DailySimulationStats {
   lessons: number;
   reviews: number;
   reviewAttempts: number;
+  explicitReviews: number;
+  positiveImplicitCredits: number;
+  negativeImplicitCredits: number;
+  coveredSkips: number;
   newTopicsCompleted: number;
   offers: SimulatedSessionOffer[];
   courseTopics: DailyCourseTopicState[];
@@ -162,6 +184,10 @@ export interface ProfileSimulationReport {
     lessonsPerDayMax: number;
     reviewsPerDayMean: number;
     reviewsPerDayMax: number;
+    explicitReviews: number;
+    positiveImplicitCredits: number;
+    negativeImplicitCredits: number;
+    coveredSkips: number;
     answers: number;
     wrongAnswers: number;
     wrongPercent: number;
@@ -229,6 +255,7 @@ interface ProfileRuntime {
   remedialReviewEvents: RemedialReviewEvent[];
   retryEvents: LessonRetryEvent[];
   postRetryCompletionEvents: LessonRetryEvent[];
+  checkedReviewLogIds: Set<string>;
   openFlagKeys: Set<string>;
   awaitingRetryStart: Set<string>;
   retriedConcepts: Set<string>;
@@ -247,7 +274,20 @@ const graphRemovedConcepts = new Set([
 ]);
 const graphCourseId = 'maths-for-ml';
 const graphMilestoneConceptId = 'eigen-svd';
-const invariants: InvariantId[] = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P8', 'P9', 'P10'];
+const invariants: InvariantId[] = [
+  'P1',
+  'P2',
+  'P3',
+  'P4',
+  'P5',
+  'P6',
+  'P7',
+  'P8',
+  'P9',
+  'P10',
+  'P11',
+  'P12',
+];
 
 function object(value: unknown): Record<string, unknown> {
   return value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
@@ -1467,6 +1507,101 @@ async function processActivity(
   return { lessons: 0, reviews: 0, reviewAttempts };
 }
 
+async function processActivityWithMetrics(
+  api: SimulatedApi,
+  db: Database,
+  content: ContentIndex,
+  runtime: ProfileRuntime,
+  now: Date,
+  timeZone: string,
+  day: number,
+  courseId: string,
+  sessionId: string,
+  activity: SimActivity,
+) {
+  const userId = api.userId ?? '';
+  const tracksCards = activity.kind === 'learn' || activity.kind === 'review';
+  const beforeCards = tracksCards
+    ? await db.select().from(reviewCards).where(eq(reviewCards.userId, userId))
+    : [];
+  const result = await processActivity(
+    api,
+    db,
+    content,
+    runtime,
+    now,
+    day,
+    courseId,
+    sessionId,
+    activity,
+  );
+  const afterCards = tracksCards
+    ? await db.select().from(reviewCards).where(eq(reviewCards.userId, userId))
+    : [];
+  const beforeById = new Map(beforeCards.map((card) => [card.id, card]));
+  const nextLocalDay = startOfNextCalendarDay(now, timeZone);
+  let positiveImplicitCredits = 0;
+  let negativeImplicitCredits = 0;
+  for (const card of afterCards) {
+    const previous = beforeById.get(card.id);
+    if (!previous) continue;
+    if (
+      (previous.lastReviewAt?.getTime() ?? null) !== (card.lastReviewAt?.getTime() ?? null) ||
+      previous.dueAt.getTime() === card.dueAt.getTime() ||
+      card.dueAt.getTime() === now.getTime()
+    ) {
+      continue;
+    }
+    if (card.dueAt > previous.dueAt) positiveImplicitCredits += 1;
+    if (card.dueAt < previous.dueAt && card.dueAt >= nextLocalDay) {
+      negativeImplicitCredits += 1;
+    }
+  }
+
+  let explicitReviews = 0;
+  if (activity.kind === 'review') {
+    const logs = await db
+      .select({
+        id: reviewLogs.id,
+        rating: reviewLogs.rating,
+        conceptId: reviewCards.conceptId,
+      })
+      .from(reviewLogs)
+      .innerJoin(reviewCards, eq(reviewLogs.cardId, reviewCards.id))
+      .where(and(eq(reviewCards.userId, userId), eq(reviewLogs.createdAt, now)));
+    const newLogs = logs.filter((log) => !runtime.checkedReviewLogIds.has(log.id));
+    for (const log of newLogs) runtime.checkedReviewLogIds.add(log.id);
+    explicitReviews = newLogs.length;
+
+    const encompassing = buildEncompassingIndex(content);
+    const nextDay = startOfNextCalendarDay(now, timeZone);
+    for (const log of newLogs.filter(({ rating }) => rating === String(Rating.Again))) {
+      for (const [descendantId, weight] of encompassing.descendants(log.conceptId)) {
+        if (weight !== 1) continue;
+        const lateCards = afterCards.filter(
+          (card) =>
+            card.conceptId === descendantId &&
+            (card.fsrs as { state: number }).state !== State.New &&
+            card.dueAt > nextDay,
+        );
+        if (lateCards.length > 0) {
+          addViolation(runtime, day, 'P11', descendantId, [], {
+            courseId,
+            conceptId: descendantId,
+            details: `Again on ${log.conceptId} left a weight-1 descendant due after the next local day`,
+          });
+        }
+      }
+    }
+  }
+  return {
+    ...result,
+    explicitReviews,
+    positiveImplicitCredits,
+    negativeImplicitCredits,
+  };
+}
+
 function isCourseComplete(course: CourseCatalogPayload['subjects'][number]['courses'][number]) {
   return (
     course.status === 'completed' ||
@@ -1571,6 +1706,72 @@ function getViolationCounts(violations: SimulationViolation[]): Record<Invariant
   ) as Record<InvariantId, number>;
 }
 
+async function auditCompressionPlan(
+  db: Database,
+  runtime: ProfileRuntime,
+  userId: string,
+  content: ContentIndex,
+  now: Date,
+  day: number,
+  courseId: string,
+  activities: SimActivity[],
+): Promise<number> {
+  const state = await new LearnerRepository(db, userId).schedulerState(now, content);
+  const dueConceptIds = new Set(
+    state.cards
+      .filter((card) => isDueToday(card.dueAt, now, state.timezone ?? 'UTC'))
+      .map((card) => card.conceptId),
+  );
+  const reviewConceptIds = new Set(
+    activities
+      .filter((activity) => activity.kind === 'review')
+      .flatMap((activity) => [
+        ...(activity.conceptId ? [activity.conceptId] : []),
+        ...(activity.exerciseIds ?? []).flatMap((exerciseId) => {
+          const conceptId = content.exercisesById.get(exerciseId)?.concept;
+          return conceptId ? [conceptId] : [];
+        }),
+      ]),
+  );
+  const taskConceptIds = activities.flatMap((activity) =>
+    activity.kind === 'learn' || activity.kind === 'review'
+      ? [
+          ...new Set([
+            ...(activity.conceptId ? [activity.conceptId] : []),
+            ...(activity.exerciseIds ?? []).flatMap((exerciseId) => {
+              const conceptId = content.exercisesById.get(exerciseId)?.concept;
+              return conceptId ? [conceptId] : [];
+            }),
+          ]),
+        ]
+      : [],
+  );
+  const coverageByTask = new Map(
+    [...new Set(taskConceptIds)].map((conceptId) => [
+      conceptId,
+      dueTopicsCoveredBy(conceptId, state, content, now),
+    ]),
+  );
+  let coveredSkips = 0;
+  for (const dueConceptId of dueConceptIds) {
+    const coveringConceptIds = [...coverageByTask]
+      .filter(([conceptId, covered]) => conceptId !== dueConceptId && covered.has(dueConceptId))
+      .map(([conceptId]) => conceptId);
+    if (reviewConceptIds.has(dueConceptId)) {
+      if (coveringConceptIds.length > 0) {
+        addViolation(runtime, day, 'P12', dueConceptId, [], {
+          courseId,
+          conceptId: dueConceptId,
+          details: `explicit review was planned with covering task ${coveringConceptIds[0]}`,
+        });
+      }
+    } else if (coveringConceptIds.length > 0) {
+      coveredSkips += 1;
+    }
+  }
+  return coveredSkips;
+}
+
 function summarizeDailyStats(stats: DailySimulationStats[]) {
   const mean = (values: number[]) =>
     values.length === 0 ? 0 : values.reduce((sum, value) => sum + value, 0) / values.length;
@@ -1579,6 +1780,10 @@ function summarizeDailyStats(stats: DailySimulationStats[]) {
     lessonsPerDayMax: Math.max(0, ...stats.map((item) => item.lessons)),
     reviewsPerDayMean: mean(stats.map((item) => item.reviews)),
     reviewsPerDayMax: Math.max(0, ...stats.map((item) => item.reviews)),
+    explicitReviews: stats.reduce((total, item) => total + item.explicitReviews, 0),
+    positiveImplicitCredits: stats.reduce((total, item) => total + item.positiveImplicitCredits, 0),
+    negativeImplicitCredits: stats.reduce((total, item) => total + item.negativeImplicitCredits, 0),
+    coveredSkips: stats.reduce((total, item) => total + item.coveredSkips, 0),
   };
 }
 
@@ -1694,6 +1899,10 @@ async function simulateProfile(
       reviewsPerDayMean: 0,
       reviewsPerDayMax: 0,
       answers: 0,
+      explicitReviews: 0,
+      positiveImplicitCredits: 0,
+      negativeImplicitCredits: 0,
+      coveredSkips: 0,
       wrongAnswers: 0,
       wrongPercent: 0,
     },
@@ -1725,6 +1934,7 @@ async function simulateProfile(
     completedAfterRetryConcepts: new Set(),
     noProgressHalts: new Map(),
     staleRetryReported: new Set(),
+    checkedReviewLogIds: new Set(),
   };
   let activeContent = initialContent;
   let currentCourseId: string | undefined;
@@ -1802,6 +2012,10 @@ async function simulateProfile(
         lessons: 0,
         reviews: 0,
         reviewAttempts: 0,
+        explicitReviews: 0,
+        positiveImplicitCredits: 0,
+        negativeImplicitCredits: 0,
+        coveredSkips: 0,
         newTopicsCompleted: 0,
         offers: [],
         courseTopics: coursePageTopics(pageBefore).map((topic) => ({
@@ -1825,15 +2039,26 @@ async function simulateProfile(
           const parsed = object(activity) as unknown as SimActivity;
           return parsed.kind === 'paper' && paperId ? { ...parsed, paperId } : parsed;
         });
+        daily.coveredSkips += await auditCompressionPlan(
+          db,
+          runtime,
+          userId,
+          activeContent,
+          now,
+          day,
+          courseId,
+          activities,
+        );
         daily.offers.push(...activities.map(sessionOffer));
         auditSession(runtime, day, courseId, activities, progress, activeContent);
         for (const activity of activities) {
-          const result = await processActivity(
+          const result = await processActivityWithMetrics(
             api,
             db,
             activeContent,
             runtime,
             now,
+            timeZone,
             day,
             courseId,
             sessionId,
@@ -1842,6 +2067,9 @@ async function simulateProfile(
           daily.lessons += result.lessons;
           daily.reviews += result.reviews;
           daily.reviewAttempts += result.reviewAttempts;
+          daily.explicitReviews += result.explicitReviews;
+          daily.positiveImplicitCredits += result.positiveImplicitCredits;
+          daily.negativeImplicitCredits += result.negativeImplicitCredits;
         }
         await api.require('POST', `/sessions/${sessionId}/end`, now);
       }
@@ -1862,15 +2090,26 @@ async function simulateProfile(
           const focusedActivities = list(focusedSession.activities).map(
             (activity) => object(activity) as unknown as SimActivity,
           );
+          daily.coveredSkips += await auditCompressionPlan(
+            db,
+            runtime,
+            userId,
+            activeContent,
+            now,
+            day,
+            courseId,
+            focusedActivities,
+          );
           daily.offers.push(...focusedActivities.map(sessionOffer));
           auditSession(runtime, day, courseId, focusedActivities, progress, activeContent);
           for (const activity of focusedActivities) {
-            const result = await processActivity(
+            const result = await processActivityWithMetrics(
               api,
               db,
               activeContent,
               runtime,
               now,
+              timeZone,
               day,
               courseId,
               focusedSessionId,
@@ -1879,6 +2118,9 @@ async function simulateProfile(
             daily.lessons += result.lessons;
             daily.reviews += result.reviews;
             daily.reviewAttempts += result.reviewAttempts;
+            daily.explicitReviews += result.explicitReviews;
+            daily.positiveImplicitCredits += result.positiveImplicitCredits;
+            daily.negativeImplicitCredits += result.negativeImplicitCredits;
           }
           await api.require('POST', `/sessions/${focusedSessionId}/end`, now);
         }
@@ -2037,11 +2279,11 @@ export function renderMarkdownReport(report: LearnerSimulationReport): string {
     '',
     '## Summary',
     '',
-    '| Profile | Courses finished | Days simulated | Lessons/day mean / max | Reviews/day mean / max | Wrong |',
-    '| --- | ---: | ---: | ---: | ---: | ---: |',
+    '| Profile | Courses finished | Days simulated | Lessons/day mean / max | Reviews/day mean / max | Explicit reviews | Implicit + / − | Covered skips | Wrong |',
+    '| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |',
     ...report.profiles.map(
       (profile) =>
-        `| ${profile.profile} | ${profile.courses.filter((course) => course.finishedDay !== null).length}/${profile.courses.length} | ${profile.daysSimulated} | ${profile.totals.lessonsPerDayMean.toFixed(2)} / ${profile.totals.lessonsPerDayMax} | ${profile.totals.reviewsPerDayMean.toFixed(2)} / ${profile.totals.reviewsPerDayMax} | ${profile.totals.wrongPercent.toFixed(1)}% |`,
+        `| ${profile.profile} | ${profile.courses.filter((course) => course.finishedDay !== null).length}/${profile.courses.length} | ${profile.daysSimulated} | ${profile.totals.lessonsPerDayMean.toFixed(2)} / ${profile.totals.lessonsPerDayMax} | ${profile.totals.reviewsPerDayMean.toFixed(2)} / ${profile.totals.reviewsPerDayMax} | ${profile.totals.explicitReviews} | ${profile.totals.positiveImplicitCredits} / ${profile.totals.negativeImplicitCredits} | ${profile.totals.coveredSkips} | ${profile.totals.wrongPercent.toFixed(1)}% |`,
     ),
     '',
   ];
