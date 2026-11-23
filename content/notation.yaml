@@ -698,3 +698,10 @@ terms:
       match: ["back[- ]substitut"],
       introduced_by: [inverses-linear-systems],
     }
+  - { id: grpo, label: "GRPO", match: ['\bGRPO\b'], introduced_by: [rl-verifiable-rewards] }
+  - {
+      id: group-relative-advantage,
+      label: "group-relative advantage",
+      match: ['\bgroup-relative advantage'],
+      introduced_by: [rl-verifiable-rewards],
+    }
