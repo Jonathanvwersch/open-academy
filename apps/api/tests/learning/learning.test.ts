@@ -2573,6 +2573,11 @@ test('scheduler skips an unavailable current project and falls back to the lates
 });
 
 test('scheduler omits labs when no available project has verifier tests', () => {
+  const state = {
+    ...emptyState(),
+    currentProjectId: 'linreg-numpy',
+    lessonRuns: completedProjectPrerequisiteRuns('linreg-numpy'),
+  };
   const projects = content.projects.map((project) =>
     project.id === 'linreg-numpy' ? { ...project, tests: [] } : project,
   );
@@ -2581,8 +2586,15 @@ test('scheduler omits labs when no available project has verifier tests', () => 
     projects,
     projectsById: new Map(projects.map((project) => [project.id, project])),
   };
-  const plan = planSession(emptyState(), testlessContent, now, 300);
-  expect(plan.activities.some((activity) => activity.kind === 'lab')).toBe(false);
+  const testlessPlan = planSession(state, testlessContent, now, 300);
+  expect(testlessPlan.activities.some((activity) => activity.kind === 'lab')).toBe(false);
+
+  const readyPlan = planSession(state, content, now, 300);
+  expect(
+    readyPlan.activities.some(
+      (activity) => activity.kind === 'lab' && activity.projectId === 'linreg-numpy',
+    ),
+  ).toBe(true);
 });
 
 test('PCA project waits for all hard ancestors of its direct prerequisites', () => {
@@ -2626,11 +2638,19 @@ test('PCA project waits for all hard ancestors of its direct prerequisites', () 
 test('a completed project does not add practice filler', () => {
   const state = emptyState();
   state.currentProjectId = 'linreg-numpy';
+  state.lessonRuns = completedProjectPrerequisiteRuns('linreg-numpy');
   state.projectProgress = [{ projectId: 'linreg-numpy', status: 'completed' }];
   const plan = planSession(state, content, now, 300);
   expect(plan.activities.some((activity) => activity.kind === 'lab')).toBe(false);
   expect(plan.activities.some((activity) => activity.kind === 'practice')).toBe(false);
   expect(plan.activities.some((activity) => activity.kind === 'remediate')).toBe(false);
+
+  const inProgressPlan = planSession({ ...state, projectProgress: [] }, content, now, 300);
+  expect(
+    inProgressPlan.activities.some(
+      (activity) => activity.kind === 'lab' && activity.projectId === 'linreg-numpy',
+    ),
+  ).toBe(true);
 });
 
 test('fresh learners start in unit 1', () => {
