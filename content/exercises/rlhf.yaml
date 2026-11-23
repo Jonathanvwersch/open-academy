@@ -139,7 +139,7 @@ exercises:
       - answer_expr: log(a)+log(b)
         category: math_error
         feedback: Include all three tokens, including the one with probability $0.8$.
-    solution: The reply's probability is ${{=a}}\times{{=b}}\times0.8={{=a*b*0.8}}$, and its natural log is $\ln{{=a*b*0.8}}\approx{{=log(a*b*0.8)}}$. You can also add the three token logs and round the sum at the end.
+    solution: The reply's probability is ${{=a}}\times{{=b}}\times0.8={{=a*b*0.8}}$, and its natural log is $\ln{{=a*b*0.8}}\approx{{=round(log(a*b*0.8),2)}}$. You can also add the three token logs and round the sum at the end.
   - id: rlhf1-which-trained
     dimension: conceptual
     type: mc
@@ -364,6 +364,7 @@ exercises:
         step: 0.1
     constraints:
       - abs(r - beta*(lp - lq) - beta) > 0.001
+      - abs(r - beta*(lp - lq)) > 0.001
     answer_expr: r - beta*(lp - lq)
     tolerance:
       abs: 0.001
@@ -648,7 +649,7 @@ exercises:
       - answer_expr: log(p/q) + log((1-p)/(1-q))
         category: math_error
         feedback: Weight each log ratio by the policy's probability of that reply.
-    solution: $\mathrm{KL}={{=p}}\ln\frac{ {{=p}} }{ {{=q}} }+{{=1-p}}\ln\frac{ {{=1-p}} }{ {{=1-q}} }\approx{{=p*log(p/q)+(1-p)*log((1-p)/(1-q))}}$ nats.
+    solution: $\mathrm{KL}={{=p}}\ln\frac{ {{=p}} }{ {{=q}} }+{{=1-p}}\ln\frac{ {{=1-p}} }{ {{=1-q}} }\approx{{=round(p*log(p/q)+(1-p)*log((1-p)/(1-q)),3)}}$ nats.
   - id: rlhf3-zero-penalty
     dimension: conceptual
     type: mc

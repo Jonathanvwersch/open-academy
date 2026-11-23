@@ -105,7 +105,7 @@ knowledge_points:
 
       ### Comparing with the reference
 
-      Second, it compares the final answer with the reference answer as text. We now write the reference as the string `"12"`. If they are equal, the reward is `1.0`. Anything else, including `None`, gives `0.0`. The function never asks whether the working was sensible. It only looks at the final answer.
+      Second, it compares the final answer with the reference answer as text. We now write the reference as the string `"12"`. If they are equal, the reward is `1.0`. Anything else, including `None`, gives `0.0`. It checks only the final answer.
 
       ### Deciding what counts as the same answer
 
@@ -122,7 +122,7 @@ knowledge_points:
 
       1. **Split the reply into lines.** `text.strip()` removes spaces and line breaks from both ends of the text, and `.splitlines()` turns it into a list with one item per line. `reversed(...)` goes through that list from the last line to the first.
 
-      2. **Find the answer line.** `line.startswith("Answer:")` is `True` when the line begins with those characters. The line must begin with `Answer:` itself, so a line that starts with a space does not count. The slice `line[len("Answer:"):]` keeps the characters after `"Answer:"`. Then `.strip()` removes spaces from both ends, and `.rstrip(". ")` removes every full stop and space at the right-hand end, so `12 .` becomes `12`.
+      2. **Find the answer line.** `line.startswith("Answer:")` is `True` when the line begins with those characters. The line must begin with `Answer:` itself. The slice `line[len("Answer:"):]` keeps the characters after `"Answer:"`. Then `.strip()` removes spaces from both ends, and `.rstrip(". ")` removes every full stop and space at the right-hand end, so `12 .` becomes `12`.
 
       3. **Compare and return the reward.** The reward function compares the result with the reference and returns `1.0` or `0.0`.
 
@@ -254,7 +254,7 @@ knowledge_points:
 
       Here $c$ is the clip range. The `clip` function leaves ratios between $1-c$ and $1+c$ unchanged. It sets smaller ratios to $1-c$ and larger ones to $1+c$.
 
-      GRPO averages the clipped terms over tokens and answers. GRPO also subtracts $\beta$ times an estimate of the KL divergence from the reference model, computed from the policy's and reference model's probabilities of the sampled tokens. In RLHF the penalty was subtracted from the reward. GRPO subtracts it from the objective instead, so the checker reward stays $0$ or $1$. Gradient ascent increases this objective. The group mean replaces the critic, and because the checker supplies the reward, there is no reward model to run.
+      GRPO averages the clipped terms over tokens and answers. It estimates the KL divergence from the reference model using the policy's and reference model's probabilities of the sampled tokens. GRPO subtracts $\beta$ times the KL divergence from its objective as a separate term. The checker reward stays $0$ or $1$. Gradient ascent increases this objective. The group mean replaces the critic, and because the checker supplies the reward, there is no reward model to run.
 
       ### Starting from an SFT model
 

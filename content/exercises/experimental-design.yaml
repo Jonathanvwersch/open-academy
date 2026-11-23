@@ -17,9 +17,7 @@ exercises:
         text: The new model's first version, before any of its settings have been tuned.
         correct: false
         category: incorrect_reasoning
-        feedback:
-          That is one kind of reference model. A baseline is defined by being fitted and scored on
-          the same data as the new model.
+        feedback: An untuned first version is just an earlier version of the new model. A baseline is a separate reference model fitted and scored on the same data.
       - id: c
         text: The test error reported after the final version of the model has been chosen.
         correct: false
@@ -180,6 +178,9 @@ exercises:
       - answer: 25
         category: math_error
         feedback: Dividing by 200 uses the new error. Divide the reduction by the previous best's error.
+      - answer: 0.2
+        category: math_error
+        feedback: That is the fraction; multiply by 100 for the percentage.
     solution:
       The reduction is 250 minus 200 = 50. As a percentage of the previous best error, this is
       100 times 50/250 = 20%.
@@ -1043,8 +1044,7 @@ exercises:
           different choices.
         correct: true
         feedback: The starting number fixes the random choices used in the run.
-    solution: A random seed is a starting number that fixes the run’s random choices. The same seed
-      allows an exact repeat, while a different one gives different choices.
+    solution: A random seed is a starting number that fixes the run’s random choices. The same seed repeats the run’s random choices, while a different one gives different choices.
   - id: edp-seeds-self-explain
     dimension: conceptual
     type: mc
