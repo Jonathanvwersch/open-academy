@@ -92,6 +92,56 @@ test('full lesson review carries its rendered checks and the same derived run st
   }
 });
 
+test('lesson review derives run status from the current retry attempt', async () => {
+  const fixture = [...content.lessonsByConcept.entries()].find(
+    ([, lesson]) =>
+      lesson.knowledge_points?.length &&
+      lesson.knowledge_points.every((point) => point.problems.length > 0),
+  );
+  if (!fixture) throw new Error('No lesson with knowledge-point problems was found');
+  const [runConceptId, lesson] = fixture;
+  const knowledgePoints = lesson.knowledge_points ?? [];
+  const [firstPoint] = knowledgePoints;
+  if (!firstPoint) throw new Error('Missing first lesson point');
+  const [run] = await db
+    .insert(lessonRuns)
+    .values({ userId, conceptId: runConceptId, status: 'in_progress', attempt: 2 })
+    .returning();
+  if (!run) throw new Error('Could not create retry lesson run');
+  const servedAt = new Date(headers['X-Now']);
+  const rows = [
+    ...firstPoint.problems.slice(0, 3).map((exerciseId, position) => ({
+      runId: run.id,
+      knowledgePointId: firstPoint.id,
+      round: 1,
+      position,
+      exerciseId,
+      answeredAt: new Date(servedAt.getTime() + (position + 1) * 1_000),
+      correct: 0,
+    })),
+    ...knowledgePoints.flatMap((point) =>
+      point.problems.slice(0, 2).map((exerciseId, position) => ({
+        runId: run.id,
+        knowledgePointId: point.id,
+        round: 2,
+        position,
+        exerciseId,
+        answeredAt: new Date(servedAt.getTime() + (position + 4) * 1_000),
+        correct: 1,
+      })),
+    ),
+  ].map((row) => ({
+    ...row,
+    seed: null,
+    servedAt,
+  }));
+  await db.insert(lessonProblems).values(rows);
+
+  const response = await app.request(`/api/lessons/${runConceptId}/review`, { headers });
+  expect(response.status).toBe(200);
+  expect((await response.json()).runStatus).toBe('quiz');
+});
+
 test('locked started topics can restart while locked untouched topics cannot', async () => {
   const topicId = 'eigen-svd';
   const untouched = await app.request(`/api/lessons/${topicId}/review`, { headers });

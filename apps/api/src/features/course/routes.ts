@@ -462,7 +462,13 @@ export function registerLearnCourseRoutes(
       const lessonState =
         activity.kind === 'learn' && lesson?.knowledge_points?.length
           ? run
-            ? deriveLessonState(lesson, problemsByRun.get(run.id) ?? [], index.exercisesById)
+            ? deriveLessonState(
+                lesson,
+                problemsByRun.get(run.id) ?? [],
+                index.exercisesById,
+                run.quizPassedAt,
+                run.attempt,
+              )
             : {
                 points: lesson.knowledge_points.map(() => ({ status: 'active' })),
               }
@@ -525,7 +531,13 @@ export function registerLearnCourseRoutes(
           const run = runsByConcept.get(conceptId);
           const lessonState = lesson.knowledge_points?.length
             ? run
-              ? deriveLessonState(lesson, problemsByRun.get(run.id) ?? [], index.exercisesById)
+              ? deriveLessonState(
+                  lesson,
+                  problemsByRun.get(run.id) ?? [],
+                  index.exercisesById,
+                  run.quizPassedAt,
+                  run.attempt,
+                )
               : { points: lesson.knowledge_points.map(() => ({ status: 'active' })) }
             : undefined;
           return [
