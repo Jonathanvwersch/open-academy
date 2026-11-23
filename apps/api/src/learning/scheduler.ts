@@ -107,7 +107,7 @@ export interface SchedulerState {
   }>;
   remediationFlags: Array<{
     conceptId: string;
-    targetPrereqId?: string;
+    targetPrereqId?: string | null;
     status?: 'open' | 'resolved';
   }>;
   projectProgress: Array<{ projectId: string; status: string }>;
@@ -121,6 +121,7 @@ export interface SchedulerState {
     conceptId: string;
     status: 'in_progress' | 'needs_retry' | 'quiz' | 'completed';
     startedAt?: string | Date;
+    retryAfter?: string | Date | null;
   }>;
 }
 
@@ -215,6 +216,19 @@ function hasCoreExercise(
   return (content.exercisesByConcept.get(conceptId) ?? []).some(
     (exercise) =>
       exercise.dimension === dimension && (exercise.role === 'core' || exercise.role === 'check'),
+  );
+}
+
+function lessonRetryEligible(state: SchedulerState, conceptId: string, now: Date): boolean {
+  const run = state.lessonRuns?.find((candidate) => candidate.conceptId === conceptId);
+  if (run?.status !== 'needs_retry' || !run.retryAfter) return false;
+  const retryAfter = typeof run.retryAfter === 'string' ? new Date(run.retryAfter) : run.retryAfter;
+  return (
+    retryAfter <= now &&
+    !(state.remediationFlags ?? []).some(
+      (flag) =>
+        flag.conceptId === conceptId && (flag.status === undefined || flag.status === 'open'),
+    )
   );
 }
 
@@ -658,7 +672,9 @@ function packWeekday(
     (state.lessonRuns ?? [])
       .filter(
         (run) =>
-          run.status === 'in_progress' || run.status === 'needs_retry' || run.status === 'quiz',
+          run.status === 'in_progress' ||
+          run.status === 'quiz' ||
+          lessonRetryEligible(state, run.conceptId, now),
       )
       .map((run) => run.conceptId),
   );
@@ -1066,13 +1082,16 @@ function generateCandidates(
       prereqsReady &&
       states.some((record) => record?.state === 'introduced' || record?.state === 'assisted');
     const hasKnowledgePointLesson = hasKnowledgePointLessonContent(concept.id, content);
-    const lessonRunStatus = state.lessonRuns?.find((run) => run.conceptId === concept.id)?.status;
+    const lessonRun = state.lessonRuns?.find((run) => run.conceptId === concept.id);
+    const lessonRunStatus = lessonRun?.status;
+    const retryEligible = lessonRetryEligible(state, concept.id, now);
+    if (lessonRunStatus === 'needs_retry' && !retryEligible) continue;
     const shouldResumeLesson =
       newConceptIds.has(concept.id) &&
       hasKnowledgePointLesson &&
       prereqsReady &&
       (lessonRunStatus === 'in_progress' ||
-        lessonRunStatus === 'needs_retry' ||
+        (lessonRunStatus === 'needs_retry' && retryEligible) ||
         lessonRunStatus === 'quiz');
     const completedKnowledgePointLesson =
       hasKnowledgePointLesson && lessonRunStatus === 'completed';
@@ -1152,6 +1171,53 @@ function generateCandidates(
       reviewSelectionTrace,
     );
     if (candidate) candidates.push(candidate);
+  }
+  const remediationByPrereq = new Map<string, string[]>();
+  for (const flag of state.remediationFlags ?? []) {
+    if (
+      flag.status === 'resolved' ||
+      !flag.targetPrereqId ||
+      !content.conceptsById.has(flag.targetPrereqId)
+    ) {
+      continue;
+    }
+    const lessonConceptIds = remediationByPrereq.get(flag.targetPrereqId) ?? [];
+    lessonConceptIds.push(flag.conceptId);
+    remediationByPrereq.set(flag.targetPrereqId, lessonConceptIds);
+  }
+  for (const [prereqId, lessonConceptIds] of remediationByPrereq) {
+    const prereq = content.conceptsById.get(prereqId);
+    if (!prereq || prereq.status === 'stub') continue;
+    const cardsForPrereq = state.cards.filter((card) => card.conceptId === prereqId);
+    const dueCards = cardsForPrereq.length
+      ? cardsForPrereq.map((card) => ({ ...card, dueAt: now.toISOString() }))
+      : prereq.dimensions.map((dimension) => ({
+          conceptId: prereqId,
+          dimension,
+          dueAt: now.toISOString(),
+          retrievability: 0,
+        }));
+    const remedialState = { ...state, focusSubjectId: undefined };
+    const activity = buildReviewActivityForConcept(remedialState, content, now, prereqId, dueCards);
+    if (!activity) continue;
+    const retryingConcept = content.conceptsById.get(lessonConceptIds[0] ?? '');
+    activity.reason.summary = `Review ${prereq.title} before retrying ${retryingConcept?.title ?? lessonConceptIds[0] ?? 'the lesson'}`;
+    activity.reason.terms.review += 1000;
+    candidates.splice(
+      0,
+      candidates.length,
+      ...candidates.filter(
+        (candidate) =>
+          candidate.activity.kind !== 'review' || candidate.activity.conceptId !== prereqId,
+      ),
+    );
+    candidates.push({
+      activity,
+      score: scoreTerms(activity.reason.terms, activity.plannedMinutes),
+      adjustedMinutes: activity.plannedMinutes,
+      newConcept: false,
+      courseId: activity.reason.courseId,
+    });
   }
   return candidates;
 }

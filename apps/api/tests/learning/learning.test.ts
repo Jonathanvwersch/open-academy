@@ -1275,7 +1275,13 @@ test('unfinished knowledge-point lessons are prioritized regardless of mastery, 
   for (const status of ['in_progress', 'needs_retry', 'quiz'] as const) {
     const state = {
       ...base,
-      lessonRuns: [{ conceptId: concept.id, status }],
+      lessonRuns: [
+        {
+          conceptId: concept.id,
+          status,
+          ...(status === 'needs_retry' ? { retryAfter: new Date(now.getTime() - 1_000) } : {}),
+        },
+      ],
     };
     expect(
       planSession(state, content, now, 60).activities.find(
@@ -1411,14 +1417,58 @@ test.each([
   { sessionKind: 'saturday' as const, budget: 300 },
   { sessionKind: 'sunday' as const, budget: 60 },
 ])(
-  'open remediation flags do not schedule remediation on $sessionKind',
+  'open remediation flags schedule the prerequisite review and hold the lesson on $sessionKind',
   ({ sessionKind, budget }) => {
     const state = emptyState();
+    const prerequisiteRuns = [...hardPrerequisiteAncestors(content, 'gradient-descent')].map(
+      (conceptId) => ({ conceptId, status: 'completed' as const }),
+    );
+    state.lessonRuns = [
+      ...prerequisiteRuns,
+      {
+        conceptId: 'gradient-descent',
+        status: 'needs_retry',
+        retryAfter: new Date(now.getTime() - 1_000),
+      },
+    ];
     state.remediationFlags = [{ conceptId: 'gradient-descent', targetPrereqId: 'gradients' }];
     const plan = planSession(state, content, now, budget, sessionKind);
-    expect(plan.activities.some((activity) => activity.kind === 'remediate')).toBe(false);
+    const review = plan.activities.find(
+      (activity) => activity.kind === 'review' && activity.conceptId === 'gradients',
+    );
+    expect(review?.reason.summary).toBe(
+      `Review ${content.conceptsById.get('gradients')?.title} before retrying ${content.conceptsById.get('gradient-descent')?.title}`,
+    );
+    expect(
+      plan.activities.some(
+        (activity) => activity.kind === 'learn' && activity.conceptId === 'gradient-descent',
+      ),
+    ).toBe(false);
+
+    state.remediationFlags = [];
+    expect(
+      planSession(state, content, now, budget, sessionKind).activities.some(
+        (activity) => activity.kind === 'learn' && activity.conceptId === 'gradient-descent',
+      ),
+    ).toBe(true);
   },
 );
+
+test('a needs-retry lesson before retryAfter is not a candidate', () => {
+  const state = emptyState();
+  state.lessonRuns = [
+    {
+      conceptId: 'supervised-learning',
+      status: 'needs_retry',
+      retryAfter: new Date(now.getTime() + 60_000),
+    },
+  ];
+  expect(
+    planSession(state, content, now, 60).activities.some(
+      (activity) => activity.conceptId === 'supervised-learning',
+    ),
+  ).toBe(false);
+});
 
 test('Independent success outranks hinted success', () => {
   const independent = calculateCredit({

@@ -8,7 +8,13 @@ import { z } from 'zod';
 import { serializedOptionOrder, serializeExercise } from '../../content/serialize.js';
 import { isTemplate } from '../../content/templates.js';
 import type { ContentIndex, IndexedExercise } from '../../content/types.js';
-import { attempts, reviewCards, reviewLogs, sessionActivities } from '../../db/schema.js';
+import {
+  attempts,
+  remediationFlags,
+  reviewCards,
+  reviewLogs,
+  sessionActivities,
+} from '../../db/schema.js';
 import { updateActivityAndAdvance } from '../../learning/activity-completion.js';
 import { answerOptionsFor } from '../../learning/answer-options.js';
 import { isDueToday, reviewActivityRating, scheduleReview } from '../../learning/fsrs.js';
@@ -892,7 +898,43 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
           index.lessonsByConcept.get(activity.conceptId)?.knowledge_points?.length,
       ),
     });
+    if (completed && activity.kind === 'review') {
+      const reviewedConceptIds = [
+        ...new Set(
+          exerciseIds.flatMap((exerciseId) => {
+            const reviewedExercise = index.exercisesById.get(exerciseId);
+            return reviewedExercise ? [reviewedExercise.concept] : [];
+          }),
+        ),
+      ];
+      if (reviewedConceptIds.length > 0) {
+        await db
+          .update(remediationFlags)
+          .set({ status: 'resolved', resolvedAt: now })
+          .where(
+            and(
+              eq(remediationFlags.userId, request.userId),
+              eq(remediationFlags.status, 'open'),
+              inArray(remediationFlags.targetPrereqId, reviewedConceptIds),
+            ),
+          );
+      }
+    }
   }
+  const step =
+    activity?.kind === 'review' || activity?.kind === 'practice'
+      ? (() => {
+          const lesson = index.lessonsByConcept.get(exercise.concept);
+          const pointId =
+            exercise.role === 'recall'
+              ? exercise.knowledge_point
+              : lesson?.knowledge_points?.find((point) => point.problems.includes(exercise.id))?.id;
+          const point = lesson?.knowledge_points?.find((candidate) => candidate.id === pointId);
+          return point
+            ? { conceptId: exercise.concept, pointId: point.id, title: point.title }
+            : undefined;
+        })()
+      : undefined;
   const resultForResponse: Record<string, unknown> = { ...result };
   if (answerWithheld) {
     delete resultForResponse.exemplar;
@@ -907,6 +949,7 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
     mastery: masteryResult,
     retryAllowed,
     activityCompleted,
+    ...(step ? { step } : {}),
     ...(followUp ? { followUp: true } : {}),
     ...(answerOptions ? { answerOptions } : {}),
     ...(!answerWithheld && exercise.type !== 'explain' && exercise.solution

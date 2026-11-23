@@ -36,6 +36,7 @@ export interface AttemptResponse extends Record<string, unknown> {
   followUp?: boolean;
   rubric?: RubricFeedbackItem[];
   retryAllowed?: boolean;
+  step?: { conceptId: string; pointId: string; title: string };
   exemplar?: string;
   solution?: string;
   status?: string;

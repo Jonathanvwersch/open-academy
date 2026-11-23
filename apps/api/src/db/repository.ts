@@ -244,6 +244,7 @@ export class LearnerRepository {
             conceptId: lessonRuns.conceptId,
             status: lessonRuns.status,
             startedAt: lessonRuns.startedAt,
+            retryAfter: lessonRuns.retryAfter,
           })
           .from(lessonRuns)
           .where(eq(lessonRuns.userId, this.userId)),
@@ -367,6 +368,7 @@ export class LearnerRepository {
         conceptId: run.conceptId,
         status: run.status,
         startedAt: run.startedAt,
+        retryAfter: run.retryAfter ?? undefined,
       })),
       startDate: user?.startDate || localDateKey(now, user?.timezone ?? 'UTC'),
     };
