@@ -1180,6 +1180,52 @@ function packWeekday(
     .sort((left, right) => right.score - left.score);
   for (const candidate of otherCandidates) add(candidate);
 
+  let removedCoveredReview = true;
+  while (removedCoveredReview) {
+    removedCoveredReview = false;
+    for (const candidate of [...selected]) {
+      if (
+        candidate.activity.kind !== 'review' ||
+        candidate.remediation ||
+        !candidate.activity.conceptId
+      ) {
+        continue;
+      }
+      const dueTopics = reviewCoverage(candidate);
+      if (dueTopics.size === 0) continue;
+      const otherTasks = selected.filter((other) => other !== candidate);
+      const coveringConceptByDueTopic = new Map<string, string>();
+      for (const dueConceptId of dueTopics) {
+        const coveringTask = otherTasks.find((other) => {
+          const taskConceptId = other.activity.conceptId;
+          if (!taskConceptId) return false;
+          if (other.activity.kind === 'learn') {
+            return (
+              learnTaskCanCoverDueReviews(taskConceptId) &&
+              coveredByTaskConcept(taskConceptId).has(dueConceptId)
+            );
+          }
+          return other.activity.kind === 'review' && reviewCoverage(other).has(dueConceptId);
+        });
+        if (coveringTask?.activity.conceptId) {
+          coveringConceptByDueTopic.set(dueConceptId, coveringTask.activity.conceptId);
+        }
+      }
+      if (coveringConceptByDueTopic.size !== dueTopics.size) continue;
+      const candidateIndex = selected.indexOf(candidate);
+      if (candidateIndex < 0) continue;
+      selected.splice(candidateIndex, 1);
+      usedMinutes -= candidate.adjustedMinutes;
+      reviewMinutes -= candidate.adjustedMinutes;
+      const coveringConceptId =
+        coveringConceptByDueTopic.get(candidate.activity.conceptId) ??
+        coveringConceptByDueTopic.values().next().value;
+      recordReviewResult(candidate.activity.conceptId, 'covered', candidate, coveringConceptId);
+      removedCoveredReview = true;
+      break;
+    }
+  }
+
   selected.sort((left, right) => {
     const priority = (candidate: Candidate) => {
       const conceptId = candidate.activity.conceptId ?? '';

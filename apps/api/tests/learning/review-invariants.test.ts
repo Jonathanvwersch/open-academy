@@ -135,6 +135,7 @@ type AuditContext = {
   active: Record<string, any> | null;
   reviews: Record<string, any>;
   selection?: PlannerSelection;
+  coverageResults?: PlannerSelection['results'];
 };
 
 type PlannerSelection = {
@@ -182,6 +183,37 @@ function activityTopics(activity: Record<string, any>) {
 
 function todayActivities(payload: Record<string, any>) {
   return payload.plan?.activities ?? payload.activities ?? [];
+}
+
+function selectedTaskCoverage(
+  results: PlannerSelection['results'] | undefined,
+  activities: Array<Record<string, any>>,
+) {
+  const plannedTopics = new Set(
+    activities.flatMap((activity) => [
+      ...(typeof activity.conceptId === 'string' ? [activity.conceptId] : []),
+      ...activityTopics(activity),
+    ]),
+  );
+  const coveredConceptIds = new Set<string>();
+  const coveringConceptIds = new Set<string>();
+  const planningResults = activities.flatMap((activity) =>
+    typeof activity.id === 'string'
+      ? (activityPlanningEvidence.get(activity.id)?.results ?? [])
+      : [],
+  );
+  for (const result of [...(results ?? []), ...planningResults]) {
+    if (
+      result.result !== 'covered' ||
+      !result.coveringConceptId ||
+      !plannedTopics.has(result.coveringConceptId)
+    ) {
+      continue;
+    }
+    coveredConceptIds.add(result.conceptId);
+    coveringConceptIds.add(result.coveringConceptId);
+  }
+  return { coveredConceptIds, coveringConceptIds };
 }
 
 function atLocalNoon(day: string) {
@@ -439,10 +471,22 @@ async function focusedConceptIds() {
   );
 }
 
-async function checkI3({ now, today, active, selection }: AuditContext): Promise<string[]> {
+async function checkI3({
+  now,
+  today,
+  active,
+  selection,
+  coverageResults,
+}: AuditContext): Promise<string[]> {
   const planned = todayActivities(today)
     .filter((activity: Record<string, any>) => activity.kind === 'review')
     .flatMap((activity: Record<string, any>) => activity.exerciseIds ?? []);
+  const selectedCoverage = selectedTaskCoverage(coverageResults, [
+    ...todayActivities(today),
+    ...(active?.activities ?? []).filter((activity: Record<string, any>) =>
+      ['planned', 'in_progress'].includes(activity.status),
+    ),
+  ]);
   const cards = await db.select().from(reviewCards).where(eq(reviewCards.userId, userId));
   const todayLogs = await db
     .select({
@@ -474,17 +518,16 @@ async function checkI3({ now, today, active, selection }: AuditContext): Promise
       })
     )
       return [];
-    const plannerResult = selection?.results.find(
-      (result) => result.conceptId === card.conceptId,
-    )?.result;
+    const plannerResult = selection?.results.find((result) => result.conceptId === card.conceptId);
+    if (selectedCoverage.coveredConceptIds.has(card.conceptId)) return [];
     if (
-      plannerResult === 'not_candidate:reviewedToday' &&
+      plannerResult?.result === 'not_candidate:reviewedToday' &&
       hasReviewLogForConceptToday(card.conceptId, now, todayLogs)
     )
       return [];
     if (gradedToday.has(card.conceptId)) return [];
     if (
-      plannerResult === 'rejected:reviewMinuteCap' &&
+      plannerResult?.result === 'rejected:reviewMinuteCap' &&
       selection &&
       !isReviewTopicOverdueByCardDueAt(card.conceptId, cards, now) &&
       reviewMinuteCapIsActuallyBinding(selection, card.conceptId, now)
@@ -585,7 +628,8 @@ async function checkI4(): Promise<string[]> {
         const attemptsForExercise = activityAttempts
           .filter((attempt) => attempt.exerciseId === id)
           .sort((a, b) => b.attemptNo - a.attemptNo);
-        const final = attemptsForExercise[0]!;
+        const final = attemptsForExercise[0];
+        if (!final) throw new Error(`Missing attempt for ${id} in activity ${activity.id}`);
         return {
           correct: final.correct,
           hintsUsed: attemptsForExercise.reduce((sum, attempt) => sum + attempt.hintsUsed, 0),
@@ -654,7 +698,13 @@ async function checkI5(_now: Date): Promise<string[]> {
   return failures;
 }
 
-async function checkI6({ now, today, active, selection }: AuditContext): Promise<string[]> {
+async function checkI6({
+  now,
+  today,
+  active,
+  selection,
+  coverageResults,
+}: AuditContext): Promise<string[]> {
   const openReviews = await db
     .select()
     .from(sessionActivities)
@@ -668,6 +718,12 @@ async function checkI6({ now, today, active, selection }: AuditContext): Promise
   ]
     .filter((activity: Record<string, any>) => activity.kind === 'review')
     .flatMap((activity: Record<string, any>) => activityTopics(activity));
+  const selectedCoverage = selectedTaskCoverage(coverageResults, [
+    ...todayActivities(today),
+    ...(active?.activities ?? []).filter((activity: Record<string, any>) =>
+      ['planned', 'in_progress'].includes(activity.status),
+    ),
+  ]);
   const allAttempts = await db.select().from(attempts).where(eq(attempts.userId, userId));
   const logs = await db
     .select()
@@ -696,22 +752,26 @@ async function checkI6({ now, today, active, selection }: AuditContext): Promise
               ),
           ),
       );
-      if (!dueUngraded || planned.includes(conceptId)) return [];
+      if (
+        !dueUngraded ||
+        planned.includes(conceptId) ||
+        selectedCoverage.coveredConceptIds.has(conceptId)
+      )
+        return [];
       const dueCards = cards.filter(
         (card) => card.conceptId === conceptId && isDueToday(card.dueAt, now, timezone),
       );
-      const plannerResult = selection?.results.find(
-        (result) => result.conceptId === conceptId,
-      )?.result;
+      const plannerResult = selection?.results.find((result) => result.conceptId === conceptId);
       const hasConceptReviewLogToday = logs.some(
         ({ review_cards: logCard, review_logs: log }) =>
           logCard.conceptId === conceptId &&
           localDateKey(log.createdAt, timezone) === localDateKey(now, timezone),
       );
-      if (plannerResult === 'not_candidate:reviewedToday' && hasConceptReviewLogToday) return [];
+      if (plannerResult?.result === 'not_candidate:reviewedToday' && hasConceptReviewLogToday)
+        return [];
       if (hasConceptReviewLogToday) return [];
       if (
-        plannerResult === 'rejected:reviewMinuteCap' &&
+        plannerResult?.result === 'rejected:reviewMinuteCap' &&
         selection &&
         !isReviewTopicOverdueByCardDueAt(conceptId, cards, now) &&
         reviewMinuteCapIsActuallyBinding(selection, conceptId, now)
@@ -759,7 +819,13 @@ async function checkI6({ now, today, active, selection }: AuditContext): Promise
   });
 }
 
-async function checkI7({ now, today, active, reviews }: AuditContext): Promise<string[]> {
+async function checkI7({
+  now,
+  today,
+  active,
+  reviews,
+  coverageResults,
+}: AuditContext): Promise<string[]> {
   const learn = (await readApi('/learn', now)) as {
     tasks?: {
       activityKind?: string;
@@ -796,6 +862,13 @@ async function checkI7({ now, today, active, reviews }: AuditContext): Promise<s
       .map((topic: Record<string, any>) => topic.conceptId as string),
   );
   const homeTopics = new Set<string>(home);
+  const selectedCoverage = selectedTaskCoverage(coverageResults, [
+    ...todayActivities(today),
+    ...(active?.activities ?? []).filter((activity: Record<string, any>) =>
+      ['planned', 'in_progress'].includes(activity.status),
+    ),
+    ...home.map((conceptId) => ({ conceptId })),
+  ]);
   const activeReviewTopics = new Set(
     (active?.activities ?? [])
       .filter(
@@ -830,14 +903,19 @@ async function checkI7({ now, today, active, reviews }: AuditContext): Promise<s
           })),
       }));
   for (const conceptId of homeTopics) {
-    if (dueTodayTopics.has(conceptId) || activeReviewTopics.has(conceptId)) continue;
+    if (
+      dueTodayTopics.has(conceptId) ||
+      activeReviewTopics.has(conceptId) ||
+      selectedCoverage.coveringConceptIds.has(conceptId)
+    )
+      continue;
     failures.push(
       `I7(a) Home topic ${conceptId} is neither due today nor in an active review; card history=${JSON.stringify(cardHistory(conceptId))}`,
     );
   }
   if (!budgetNoteShown) {
     for (const conceptId of reviewsDueTopics) {
-      if (homeTopics.has(conceptId)) continue;
+      if (homeTopics.has(conceptId) || selectedCoverage.coveredConceptIds.has(conceptId)) continue;
       failures.push(
         `I7(b) Reviews due topic ${conceptId} is not on Home and the budget note is not shown; card history=${JSON.stringify(cardHistory(conceptId))}`,
       );
@@ -899,12 +977,20 @@ async function auditAll(now: Date, label: string) {
     readApi('/reviews', now),
   ]);
   const selection = realDataAuditMode ? await plannerSelectionForAudit(now, today) : undefined;
+  const coverageResults = selection?.results ?? (await plannerSelectionAt(now, today)).results;
   currentPlanActivityIds = new Set(
     [...todayActivities(today), ...(active?.activities ?? [])]
       .map((activity: Record<string, any>) => activity.id)
       .filter((id: unknown): id is string => typeof id === 'string'),
   );
-  const context = { now, today, active, reviews, ...(selection ? { selection } : {}) };
+  const context = {
+    now,
+    today,
+    active,
+    reviews,
+    coverageResults,
+    ...(selection ? { selection } : {}),
+  };
   const findings = new Map<string, string[]>();
   for (let index = 0; index < checkers.length; index += 1) {
     const name = checkerNames[index]!;
@@ -2419,19 +2505,48 @@ vitestIt('classifies findings as legacy only when every identifier predates the 
   expect(isLegacyFinding(`old ${preRunId} and new ${runCreatedId}`, preRunIds)).toBe(false);
 });
 
+vitestIt('recognizes coverage only when the covering task is planned', () => {
+  const result: PlannerSelection['results'][number] = {
+    conceptId: 'vectors',
+    result: 'covered',
+    coveringConceptId: 'linear-models',
+    exerciseIds: [],
+    exerciseDimensions: [],
+    reviewMinutes: 1,
+    reviewCap: 30,
+    usedMinutes: 1,
+    budget: 40,
+    plannedActivityCount: 1,
+  };
+
+  const planned = selectedTaskCoverage(
+    [result],
+    [{ kind: 'review', conceptId: 'linear-models', exerciseIds: [] }],
+  );
+  expect([...planned.coveredConceptIds]).toEqual(['vectors']);
+  expect([...planned.coveringConceptIds]).toEqual(['linear-models']);
+
+  const absent = selectedTaskCoverage(
+    [result],
+    [{ kind: 'review', conceptId: 'gradient-descent', exerciseIds: [] }],
+  );
+  expect([...absent.coveredConceptIds]).toEqual([]);
+  expect([...absent.coveringConceptIds]).toEqual([]);
+});
+
 // I1: session replan can schedule an already-covered topic again.
 it('I1 review scheduling invariant', () => assertInvariant('I1'));
 // I2: completing a review does not reliably keep its topics out of Home.
 it('I2 review scheduling invariant', () => assertInvariant('I2'));
-// I3: due cards with eligible exercises can be omitted from the plan.
+// I3: due cards with eligible exercises can be omitted unless a selected task covers them.
 it('I3 review scheduling invariant', () => assertInvariant('I3'));
 // I4: completed activities can leave covered cards ungraded.
 it('I4 review scheduling invariant', () => assertInvariant('I4'));
 // I5: double-Again can move a graded prerequisite card before tomorrow.
 it('I5 review scheduling invariant', () => assertInvariant('I5'));
-// I6: partial answers can disappear when another session starts.
+// I6: partial answers can disappear unless their due cards are covered by a selected task.
 it('I6 review scheduling invariant', () => assertInvariant('I6'));
-// I7: Home topics must be due or active, and Reviews due topics need Home or the budget note.
+// I7: Home topics must be due, active, or a selected coverer; due Reviews need Home, coverage, or the budget note.
 it('I7 review scheduling invariant', () => assertInvariant('I7'));
 // I8: mixed reviews can repeat a topic before switching to another.
 it('I8 review scheduling invariant', () => assertInvariant('I8'));
