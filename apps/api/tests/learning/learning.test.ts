@@ -1475,13 +1475,12 @@ test('a retry two days overdue is selected before fresh lessons but respects the
 
 test('a focused overdue retry wins when the budget fits one lesson', () => {
   const retryConceptId = 'vectors';
-  const inProgressConceptId = 'supervised-learning';
+  const inProgressConceptId = 'probability-basics';
   const budget = Math.max(
-    required(content.conceptsById.get(retryConceptId), retryConceptId).est_minutes,
-    required(content.conceptsById.get(inProgressConceptId), inProgressConceptId).est_minutes,
+    required(courseContent.conceptsById.get(retryConceptId), retryConceptId).est_minutes,
+    required(courseContent.conceptsById.get(inProgressConceptId), inProgressConceptId).est_minutes,
   );
   const plan = planWithRetryAndFreshTopics(budget, {
-    courseId: 'fixture-course',
     freshTopicIds: [inProgressConceptId],
     retryConceptId,
     retryAfter: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1_000),
