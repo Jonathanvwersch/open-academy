@@ -19,6 +19,8 @@ import {
 import {
   compareOutlinePosition,
   courseFoundationIds,
+  createPrerequisiteChecker,
+  learnActivitiesWithUnmetPrerequisites,
   masteryKey,
   outlinePosition,
   prerequisiteMet,
@@ -36,7 +38,7 @@ import {
   SCHEDULER_CONFIG,
 } from '../../src/learning/scheduler.js';
 import { initialMastery } from '../../src/learning/types.js';
-import { withStubConcept } from '../content-test-utils.js';
+import { hardPrerequisiteAncestors, withStubConcept } from '../content-test-utils.js';
 
 const now = new Date('2026-01-14T12:00:00.000Z');
 let content: ContentIndex;
@@ -223,6 +225,200 @@ function studyState(courseIds: string[], index: ContentIndex = courseContent): S
     studyCourseIds: courseIds,
     mastery: mastery.filter((record) => !courseConceptIds.has(record.conceptId)),
   };
+}
+
+test('prerequisite checker follows hard ancestors and reports the missing frontier', () => {
+  const concepts = [
+    { id: 'a', status: 'authored', dimensions: ['conceptual'], prereqs: [] },
+    {
+      id: 'b',
+      status: 'authored',
+      dimensions: ['conceptual'],
+      prereqs: [{ id: 'a', strength: 'hard' }],
+    },
+    {
+      id: 'c',
+      status: 'authored',
+      dimensions: ['conceptual'],
+      prereqs: [{ id: 'b', strength: 'hard' }],
+    },
+  ];
+  const syntheticContent = {
+    conceptsById: new Map(concepts.map((concept) => [concept.id, concept])),
+  } as unknown as ContentIndex;
+  const checker = createPrerequisiteChecker(
+    new Map(),
+    [{ conceptId: 'b', status: 'completed' }],
+    syntheticContent,
+  );
+
+  expect(checker.met('b')).toBe(true);
+  expect(checker.chainReady('b')).toBe(false);
+  expect(checker.chainReady('c')).toBe(false);
+  expect(checker.missingFrontier('c')).toEqual(['a']);
+  expect(
+    learnActivitiesWithUnmetPrerequisites(
+      [
+        { id: 'planned-c', kind: 'learn', status: 'planned', conceptId: 'c' },
+        { id: 'planned-practice-c', kind: 'practice', status: 'planned', conceptId: 'c' },
+      ],
+      new Map(),
+      [{ conceptId: 'b', status: 'completed' }],
+      syntheticContent,
+    ),
+  ).toEqual(['planned-c', 'planned-practice-c']);
+  expect(
+    learnActivitiesWithUnmetPrerequisites(
+      [{ id: 'planned-removed', kind: 'learn', status: 'planned', conceptId: 'removed' }],
+      new Map(),
+      [],
+      syntheticContent,
+    ),
+  ).toEqual([]);
+});
+
+test('prerequisite checker guards cycles and ignores soft prerequisites', () => {
+  const cyclicContent = {
+    conceptsById: new Map([
+      [
+        'a',
+        {
+          id: 'a',
+          status: 'authored',
+          dimensions: ['conceptual'],
+          prereqs: [{ id: 'b', strength: 'hard' }],
+        },
+      ],
+      [
+        'b',
+        {
+          id: 'b',
+          status: 'authored',
+          dimensions: ['conceptual'],
+          prereqs: [{ id: 'a', strength: 'hard' }],
+        },
+      ],
+    ]),
+  } as unknown as ContentIndex;
+  const cyclicChecker = createPrerequisiteChecker(new Map(), [], cyclicContent);
+  expect(cyclicChecker.chainReady('a')).toBe(false);
+  expect(cyclicChecker.missingFrontier('a')).toEqual([]);
+
+  const softContent = {
+    conceptsById: new Map([
+      [
+        'a',
+        {
+          id: 'a',
+          status: 'authored',
+          dimensions: ['conceptual'],
+          prereqs: [],
+        },
+      ],
+      [
+        'b',
+        {
+          id: 'b',
+          status: 'authored',
+          dimensions: ['conceptual'],
+          prereqs: [{ id: 'a', strength: 'soft' }],
+        },
+      ],
+    ]),
+  } as unknown as ContentIndex;
+  const softChecker = createPrerequisiteChecker(new Map(), [], softContent);
+  expect(softChecker.chainReady('b')).toBe(true);
+  expect(softChecker.missingFrontier('b')).toEqual([]);
+});
+
+test('scheduler gates descendant and continuing lesson candidates on their full hard chain', () => {
+  const descendantId = 'lora';
+  const course = required(
+    courseContent.coursesById.get('transformers-llms'),
+    'Transformers and LLMs course',
+  );
+  const courseConceptIds = course.units.flatMap((unit) => unit.concepts);
+  const descendantPosition = courseConceptIds.indexOf(descendantId);
+  expect(descendantPosition).toBeGreaterThanOrEqual(0);
+  const descendantAncestors = hardPrerequisiteAncestors(courseContent, descendantId);
+  expect(descendantAncestors.has('orthogonality-projections')).toBe(true);
+  const completedDescendantIds = new Set([
+    ...descendantAncestors,
+    ...courseConceptIds.slice(0, descendantPosition),
+  ]);
+  completedDescendantIds.delete('orthogonality-projections');
+  const descendantState: SchedulerState = {
+    ...emptyState(),
+    activeCourseId: course.id,
+    studyCourseIds: [course.id],
+    lessonRuns: [...completedDescendantIds].map((conceptId) => ({
+      conceptId,
+      status: 'completed' as const,
+    })),
+  };
+  const descendantPlan = planSession(descendantState, courseContent, now, 60, 'weekday');
+  expect(
+    descendantPlan.activities.some(
+      (activity) =>
+        activity.conceptId === descendantId &&
+        (activity.kind === 'learn' || activity.kind === 'practice'),
+    ),
+  ).toBe(false);
+
+  const placementCourse = required(
+    courseContent.coursesById.get('transformers-llms'),
+    'Transformers and LLMs course',
+  );
+  const placementCourseConceptIds = placementCourse.units.flatMap((unit) => unit.concepts);
+  const placementTargetPosition = placementCourseConceptIds.indexOf(descendantId);
+  const completedEigenIds = new Set([
+    ...hardPrerequisiteAncestors(courseContent, descendantId),
+    ...placementCourseConceptIds.slice(0, placementTargetPosition),
+  ]);
+  completedEigenIds.delete('orthogonality-projections');
+  completedEigenIds.delete('eigen-svd');
+  const eigenConcept = required(courseContent.conceptsById.get('eigen-svd'), 'eigen-svd');
+  const placementState: SchedulerState = {
+    ...emptyState(),
+    activeCourseId: placementCourse.id,
+    studyCourseIds: [placementCourse.id],
+    inProgressConceptId: 'eigen-svd',
+    lessonRuns: [...completedEigenIds].map((conceptId) => ({
+      conceptId,
+      status: 'completed' as const,
+    })),
+    mastery: eigenConcept.dimensions.map((dimension) => ({
+      ...initialMastery('eigen-svd', dimension),
+      state: 'introduced' as const,
+    })),
+  };
+  const placementPlan = planSession(placementState, courseContent, now, 60, 'weekday');
+  expect(
+    placementPlan.activities.some(
+      (activity) =>
+        activity.conceptId === 'eigen-svd' &&
+        (activity.kind === 'learn' || activity.kind === 'practice'),
+    ),
+  ).toBe(false);
+});
+
+function completedProjectPrerequisiteRuns(projectId: string) {
+  const prerequisiteIds = new Set<string>();
+  const visit = (conceptId: string) => {
+    if (prerequisiteIds.has(conceptId)) return;
+    prerequisiteIds.add(conceptId);
+    const concept = content.conceptsById.get(conceptId);
+    for (const prerequisite of concept?.prereqs ?? []) {
+      if (prerequisite.strength === 'hard') visit(prerequisite.id);
+    }
+  };
+  for (const prerequisiteId of content.projectsById.get(projectId)?.prereqs ?? []) {
+    visit(prerequisiteId);
+  }
+  return [...prerequisiteIds].map((conceptId) => ({
+    conceptId,
+    status: 'completed' as const,
+  }));
 }
 
 function reviewQueueFixture(
@@ -825,6 +1021,10 @@ test('weekday planning prefers a different unit when another unlocked topic is a
     ['loss-functions'],
   ]);
   const state = studyState(['fixture-course'], index);
+  state.lessonRuns = [...hardPrerequisiteAncestors(index, 'loss-functions')].map((conceptId) => ({
+    conceptId,
+    status: 'completed' as const,
+  }));
 
   const plan = planSession(state, index, now, 120);
   const course = required(index.coursesById.get('fixture-course'), 'fixture course');
@@ -2337,7 +2537,11 @@ test('Exercise assignment avoids items seen within seven days', () => {
 });
 
 test('planner schedules optional paper and project after reviews and lessons', () => {
-  const plan = planSession(emptyState(), content, now, 200);
+  const state = {
+    ...emptyState(),
+    lessonRuns: completedProjectPrerequisiteRuns('linreg-numpy'),
+  };
+  const plan = planSession(state, content, now, 200);
   const paperIndex = plan.activities.findIndex((activity) => activity.kind === 'paper');
   const labIndex = plan.activities.findIndex((activity) => activity.kind === 'lab');
   const requiredIndexes = plan.activities.flatMap((activity, index) =>
@@ -2352,13 +2556,31 @@ test('planner schedules optional paper and project after reviews and lessons', (
 });
 
 test('scheduler skips an unavailable current project and falls back to the latest available project', () => {
-  const plan = planSession(emptyState(), content, now, 300);
+  const fixtureCourse = required(content.coursesById.get('fixture-course'), 'fixture course');
+  const completedConceptIds = new Set([
+    ...(fixtureCourse.units[0]?.concepts ?? []),
+    ...completedProjectPrerequisiteRuns('linreg-numpy').map((run) => run.conceptId),
+  ]);
+  const state = {
+    ...emptyState(),
+    currentProjectId: 'optimization-project',
+    lessonRuns: [...completedConceptIds].map((conceptId) => ({
+      conceptId,
+      status: 'completed' as const,
+    })),
+  };
+  const plan = planSession(state, content, now, 300);
   expect(plan.activities.find((activity) => activity.kind === 'lab')?.projectId).toBe(
     'linreg-numpy',
   );
 });
 
 test('scheduler omits labs when no available project has verifier tests', () => {
+  const state = {
+    ...emptyState(),
+    currentProjectId: 'linreg-numpy',
+    lessonRuns: completedProjectPrerequisiteRuns('linreg-numpy'),
+  };
   const projects = content.projects.map((project) =>
     project.id === 'linreg-numpy' ? { ...project, tests: [] } : project,
   );
@@ -2367,18 +2589,71 @@ test('scheduler omits labs when no available project has verifier tests', () => 
     projects,
     projectsById: new Map(projects.map((project) => [project.id, project])),
   };
-  const plan = planSession(emptyState(), testlessContent, now, 300);
-  expect(plan.activities.some((activity) => activity.kind === 'lab')).toBe(false);
+  const testlessPlan = planSession(state, testlessContent, now, 300);
+  expect(testlessPlan.activities.some((activity) => activity.kind === 'lab')).toBe(false);
+
+  const readyPlan = planSession(state, content, now, 300);
+  expect(
+    readyPlan.activities.some(
+      (activity) => activity.kind === 'lab' && activity.projectId === 'linreg-numpy',
+    ),
+  ).toBe(true);
+});
+
+test('PCA project waits for all hard ancestors of its direct prerequisites', () => {
+  const directPrerequisites = ['vectors', 'dot-product', 'matrices', 'eigen-svd'];
+  const hardAncestors = [
+    'determinants',
+    'inverses-linear-systems',
+    'rank-span',
+    'orthogonality-projections',
+  ];
+  const completedRuns = (conceptIds: string[]) =>
+    conceptIds.map((conceptId) => ({ conceptId, status: 'completed' as const }));
+  const state = {
+    ...emptyState(),
+    activeCourseId: 'maths-for-ml',
+    studyCourseIds: ['maths-for-ml'],
+    currentProjectId: 'pca-numpy',
+    lessonRuns: completedRuns(directPrerequisites),
+  };
+
+  const beforeAncestors = planSession(state, courseContent, now, 300);
+  expect(
+    beforeAncestors.activities.some(
+      (activity) => activity.kind === 'lab' && activity.projectId === 'pca-numpy',
+    ),
+  ).toBe(false);
+
+  const afterAncestors = planSession(
+    { ...state, lessonRuns: completedRuns([...directPrerequisites, ...hardAncestors]) },
+    courseContent,
+    now,
+    300,
+  );
+  expect(
+    afterAncestors.activities.some(
+      (activity) => activity.kind === 'lab' && activity.projectId === 'pca-numpy',
+    ),
+  ).toBe(true);
 });
 
 test('a completed project does not add practice filler', () => {
   const state = emptyState();
   state.currentProjectId = 'linreg-numpy';
+  state.lessonRuns = completedProjectPrerequisiteRuns('linreg-numpy');
   state.projectProgress = [{ projectId: 'linreg-numpy', status: 'completed' }];
   const plan = planSession(state, content, now, 300);
   expect(plan.activities.some((activity) => activity.kind === 'lab')).toBe(false);
   expect(plan.activities.some((activity) => activity.kind === 'practice')).toBe(false);
   expect(plan.activities.some((activity) => activity.kind === 'remediate')).toBe(false);
+
+  const inProgressPlan = planSession({ ...state, projectProgress: [] }, content, now, 300);
+  expect(
+    inProgressPlan.activities.some(
+      (activity) => activity.kind === 'lab' && activity.projectId === 'linreg-numpy',
+    ),
+  ).toBe(true);
 });
 
 test('fresh learners start in unit 1', () => {
@@ -2778,7 +3053,12 @@ test('a later AI course gets new learning when an earlier course is blocked on M
     concepts,
     conceptsById: new Map(concepts.map((concept) => [concept.id, concept])),
   };
-  const plan = planSession(studyState(courseIds, schedulerContent), schedulerContent, now, 200);
+  const state = studyState(courseIds, schedulerContent);
+  state.lessonRuns = [...hardPrerequisiteAncestors(schedulerContent, laterId)].map((conceptId) => ({
+    conceptId,
+    status: 'completed' as const,
+  }));
+  const plan = planSession(state, schedulerContent, now, 200);
   const learned = plan.activities
     .filter((activity) => activity.kind === 'learn')
     .map((activity) => activity.conceptId);
@@ -2906,7 +3186,10 @@ test.each(['weekday', 'saturday', 'sunday'] as const)(
 );
 
 test('planner caps optional paper time and uses the remaining time for a project', () => {
-  const state = emptyState();
+  const state = {
+    ...emptyState(),
+    lessonRuns: completedProjectPrerequisiteRuns('linreg-numpy'),
+  };
   const plan = planSession(state, content, now, 200);
   const paper = plan.activities.find((activity) => activity.kind === 'paper');
   expect(paper?.plannedMinutes).toBe(90);

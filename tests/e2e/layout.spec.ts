@@ -443,6 +443,14 @@ test('resuming shows the current question without later lessons and prefetches i
     plannedMinutes: 10,
     status: 'planned',
   });
+  await db.insert(sessionActivities).values({
+    sessionId: session.id,
+    idx: 98,
+    kind: 'review',
+    exerciseIds: [],
+    plannedMinutes: 5,
+    status: 'planned',
+  });
   const requests: string[] = [];
   page.on('request', (request) => requests.push(new URL(request.url()).pathname));
   await page.route('**/api/lessons/vectors*', (route) => route.abort());

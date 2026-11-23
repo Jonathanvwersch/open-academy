@@ -5,6 +5,8 @@ import type { Database } from '../../db/client.js';
 import { LearnerRepository } from '../../db/repository.js';
 import {
   attempts,
+  lessonRuns,
+  mastery,
   masteryEvents,
   sessionActivities,
   studySessions,
@@ -23,9 +25,10 @@ import { recordLessonViewed } from '../../learning/mastery.js';
 import {
   activeCourseFor,
   compareOutlinePosition,
+  createPrerequisiteChecker,
+  labActivityReady,
   learnActivitiesWithUnmetPrerequisites,
   masteryKey,
-  prerequisiteMet,
 } from '../../learning/prerequisites.js';
 import { attemptAllowsRetry } from '../../learning/retry.js';
 import {
@@ -252,17 +255,25 @@ export async function postSessions(deps: FeatureServices, request: FeatureReques
     const masteryByKey = new Map(
       state.mastery.map((record) => [masteryKey(record.conceptId, record.dimension), record]),
     );
-    const unmetPrerequisite = focusConcept.prereqs
-      .filter((prerequisite) => prerequisite.strength === 'hard')
-      .slice()
-      .sort((left, right) => compareOutlinePosition(left.id, right.id, index, state.activeCourseId))
-      .find(
-        (prerequisite) =>
-          !prerequisiteMet(prerequisite.id, masteryByKey, state.lessonRuns ?? [], index),
-      );
-    if (unmetPrerequisite) {
-      const prerequisiteTitle =
-        index.conceptsById.get(unmetPrerequisite.id)?.title ?? unmetPrerequisite.id;
+    const prerequisiteChecker = createPrerequisiteChecker(
+      masteryByKey,
+      state.lessonRuns ?? [],
+      index,
+    );
+    const missingPrerequisiteId = prerequisiteChecker
+      .missingFrontier(focusConcept.id)
+      .sort((left, right) => compareOutlinePosition(left, right, index, state.activeCourseId))[0];
+    if (!prerequisiteChecker.chainReady(focusConcept.id)) {
+      const firstMissingId =
+        missingPrerequisiteId ??
+        focusConcept.prereqs
+          .filter((prerequisite) => prerequisite.strength === 'hard')
+          .map((prerequisite) => prerequisite.id)
+          .sort((left, right) =>
+            compareOutlinePosition(left, right, index, state.activeCourseId),
+          )[0] ??
+        focusConcept.id;
+      const prerequisiteTitle = index.conceptsById.get(firstMissingId)?.title ?? firstMissingId;
       return serviceResult({ error: `Finish ${prerequisiteTitle} first` }, 409);
     }
     state.inProgressConceptId = body.data.focusConceptId;
@@ -424,8 +435,34 @@ export async function getSessionsById(deps: FeatureServices, request: FeatureReq
   const repo = request.repo;
   const session = await repo.session(request.params.id);
   const index = await content();
+  const [masteryRows, runRows] = await Promise.all([
+    db
+      .select({
+        conceptId: mastery.conceptId,
+        dimension: mastery.dimension,
+        state: mastery.state,
+        inferred: mastery.inferred,
+      })
+      .from(mastery)
+      .where(eq(mastery.userId, request.userId)),
+    db
+      .select({ conceptId: lessonRuns.conceptId, status: lessonRuns.status })
+      .from(lessonRuns)
+      .where(eq(lessonRuns.userId, request.userId)),
+  ]);
+  const masteryByKey = new Map(
+    masteryRows.map((record) => [
+      masteryKey(record.conceptId, record.dimension),
+      { state: record.state, inferred: record.inferred },
+    ]),
+  );
   const activities =
-    session?.activities.filter((activity) => sessionActivityIsInContent(index, activity)) ?? [];
+    session?.activities.filter(
+      (activity) =>
+        sessionActivityIsInContent(index, activity) &&
+        ((activity.status !== 'planned' && activity.status !== 'in_progress') ||
+          labActivityReady(activity, masteryByKey, runRows, index)),
+    ) ?? [];
   const activityIds = activities.map((activity) => activity.id);
   const activityAttempts = activityIds.length
     ? await db

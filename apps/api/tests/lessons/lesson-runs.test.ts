@@ -90,6 +90,21 @@ test('full lesson review carries its rendered checks and the same derived run st
   }
 });
 
+test('locked started topics can restart while locked untouched topics cannot', async () => {
+  const topicId = 'eigen-svd';
+  const untouched = await app.request(`/api/lessons/${topicId}/review`, { headers });
+  expect((await untouched.json()).canRestart).toBe(false);
+
+  await db.insert(lessonRuns).values({
+    userId,
+    conceptId: topicId,
+    status: 'in_progress',
+  });
+  const started = await app.request(`/api/lessons/${topicId}/review`, { headers });
+  expect(started.status).toBe(200);
+  expect((await started.json()).canRestart).toBe(true);
+});
+
 test('planned session activities persist their course and return it on lesson payloads', async () => {
   const conceptId = 'what-is-ml';
   await db

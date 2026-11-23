@@ -17,7 +17,7 @@ import {
   users,
   xpEvents,
 } from '../../apps/api/src/db/schema.js';
-import { enrollInDefaultCourse } from './course-start.js';
+import { enrollInDefaultCourse, markProjectPrerequisitesDone } from './course-start.js';
 
 const db = createDb(env.TEST_DATABASE_URL);
 const screenshotDir = 'test-results/screenshots/screenshots/learn-course';
@@ -83,6 +83,7 @@ test('Home shows XP and tasks, starts a session, and Course links to lessons and
 }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await markCourseStarted();
+  await markProjectPrerequisitesDone(db, userId, 'linreg-numpy');
   await db.insert(xpEvents).values([
     {
       userId,
@@ -108,7 +109,7 @@ test('Home shows XP and tasks, starts a session, and Course links to lessons and
   await expect(page.getByRole('link', { name: 'Home', exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Next up' })).toBeVisible();
   const lessonTasks = page.locator('li').filter({ has: page.getByText('Lesson', { exact: true }) });
-  await expect(lessonTasks.first()).toContainText('Vectors');
+  await expect(lessonTasks.first()).toContainText('Linear algebra for ML');
   const learn = await page.evaluate(async () => {
     const response = await fetch('/api/learn');
     return response.json();
@@ -152,7 +153,7 @@ test('Home shows XP and tasks, starts a session, and Course links to lessons and
   await expect(page.getByRole('heading', { name: 'Optional reading', exact: true })).toBeVisible();
   await expect(page.getByText('Reading ML papers', { exact: true })).toHaveCount(0);
   await expect(page.getByText('1.1', { exact: true })).toBeVisible();
-  await expect(page.locator('li').filter({ hasText: '1.2' })).toContainText('Needs Vectors');
+  await expect(page.locator('li').filter({ hasText: '1.2' })).toContainText('Complete');
   const weekOneProject = page.getByRole('region', { name: 'Project' }).first();
   await expect(
     weekOneProject.getByRole('link', { name: 'Linear regression in NumPy' }),
@@ -539,6 +540,7 @@ test('project evidence and reflection survive reloading the project page', async
 });
 
 test('failed project uploads update the Course status without a reload', async ({ page }) => {
+  await markProjectPrerequisitesDone(db, userId, 'linreg-numpy');
   await db.insert(projectProgress).values({
     userId,
     projectId: 'linreg-numpy',
@@ -585,6 +587,7 @@ test('failed project uploads update the Course status without a reload', async (
 });
 
 test('lab activities show project progress and finish without awarding XP', async ({ page }) => {
+  await markProjectPrerequisitesDone(db, userId, 'linreg-numpy');
   const [session] = await db
     .insert(studySessions)
     .values({
@@ -754,7 +757,8 @@ test('stub projects have no lab link or results form', async ({ page }) => {
   });
 
   await page.goto(`/session/${session.id}`);
-  await expect(page.getByRole('heading', { name: 'Optimization playground' }).last()).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Session complete' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Optimization playground' })).toHaveCount(0);
   await expect(page.getByRole('link', { name: 'Open project' })).toHaveCount(0);
 
   await page.goto('/projects/optimization-project');
@@ -770,6 +774,7 @@ test('unknown projects show the unavailable route message', async ({ page }) => 
 });
 
 test('available project rows display learner progress', async ({ page }) => {
+  await markProjectPrerequisitesDone(db, userId, 'linreg-numpy');
   await db.insert(projectProgress).values({
     userId,
     projectId: 'linreg-numpy',
@@ -1177,7 +1182,7 @@ test('a fresh started learner sees outline order and prerequisite needs', async 
   const noLessonRow = page.getByRole('listitem').filter({
     has: page.getByText('Matrix products', { exact: true }),
   });
-  await expect(noLessonRow).toContainText('Needs Linear algebra for ML · Lesson coming soon');
+  await expect(noLessonRow).toContainText('Needs Vectors · Lesson coming soon');
   await expect(noLessonRow.getByRole('link')).toHaveCount(0);
   await expect(noLessonRow.locator('p.font-medium')).toHaveClass(/text-muted-foreground/);
   await expect(noLessonRow.locator(':scope > div')).not.toHaveClass(/opacity-60/);
@@ -1190,7 +1195,8 @@ test('a fresh started learner sees outline order and prerequisite needs', async 
   const weekOneProject = projectSections.first();
   await expect(
     weekOneProject.getByRole('link', { name: 'Linear regression in NumPy' }),
-  ).toHaveAttribute('href', '/projects/linreg-numpy');
+  ).toHaveCount(0);
+  await expect(weekOneProject).toContainText('Project coming soon');
   const weekTwoProject = projectSections.nth(1);
   const stubProjectTitle = weekTwoProject
     .locator('.text-muted-foreground')

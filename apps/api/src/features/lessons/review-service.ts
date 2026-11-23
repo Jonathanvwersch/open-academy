@@ -89,7 +89,9 @@ export async function getLessonsByConceptIdReview(deps: FeatureServices, request
   const topicState = courseTopicState(index, masteryRecords, runRows, new Set())(concept);
   return serviceResult({
     course,
-    canRestart: topicState.status !== 'not_started' && topicState.status !== 'locked',
+    canRestart:
+      runRows.some((row) => row.conceptId === conceptId) ||
+      topicState.dimensionStates.some((state) => state !== 'not_assessed'),
     lesson: serializeLesson({
       ...lesson,
       prerequisites: getLessonPrerequisites(index, conceptId),

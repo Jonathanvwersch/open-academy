@@ -35,21 +35,15 @@ export function topicIsComplete(
 export function topicStatus(input: {
   lessonRunStatus?: 'in_progress' | 'needs_retry' | 'quiz' | 'completed';
   dimensionStates: readonly MasteryState[];
-  prerequisites: readonly { strength: 'hard' | 'soft'; done: boolean }[];
+  chainReady: boolean;
 }): CourseTopicStatus {
   if (topicIsComplete(input.lessonRunStatus, input.dimensionStates)) return 'complete';
+
+  if (!input.chainReady) return 'locked';
 
   const started =
     input.lessonRunStatus !== undefined ||
     input.dimensionStates.some((state) => state !== 'not_assessed');
-  if (
-    !started &&
-    input.prerequisites.some(
-      (prerequisite) => prerequisite.strength === 'hard' && !prerequisite.done,
-    )
-  ) {
-    return 'locked';
-  }
   if (input.lessonRunStatus === 'quiz') return 'quiz';
   return started ? 'in_progress' : 'not_started';
 }

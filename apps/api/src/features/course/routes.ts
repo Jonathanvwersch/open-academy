@@ -35,9 +35,10 @@ import { deriveLessonState } from '../../learning/lesson-runner.js';
 import {
   activeCourseFor,
   courseFoundationIds,
+  createPrerequisiteChecker,
+  labActivityReady,
   learnActivitiesWithUnmetPrerequisites,
   masteryKey,
-  prerequisiteMet,
 } from '../../learning/prerequisites.js';
 import { reviewTopicsForActivity } from '../../learning/review-topics.js';
 import type {
@@ -402,6 +403,7 @@ export function registerLearnCourseRoutes(
       mastery.map((record) => [masteryKey(record.conceptId, record.dimension), record]),
     );
     const lessonRunState = runRows.map(({ conceptId, status }) => ({ conceptId, status }));
+    const prerequisiteChecker = createPrerequisiteChecker(masteryByKey, lessonRunState, index);
     const blockedActivities =
       activeSession?.status === 'active'
         ? learnActivitiesWithUnmetPrerequisites(
@@ -428,7 +430,8 @@ export function registerLearnCourseRoutes(
       activeSession?.activities.filter(
         (activity) =>
           (activity.status === 'planned' || activity.status === 'in_progress') &&
-          sessionActivityIsInContent(index, activity),
+          sessionActivityIsInContent(index, activity) &&
+          labActivityReady(activity, masteryByKey, lessonRunState, index),
       ) ?? [];
     const inProgressReviewActivityIds = activeActivities
       .filter((activity) => activity.kind === 'review' && activity.status === 'in_progress')
@@ -510,11 +513,7 @@ export function registerLearnCourseRoutes(
             !lesson ||
             concept.status === 'stub' ||
             completedConcept(conceptId) ||
-            !concept.prereqs
-              .filter((prerequisite) => prerequisite.strength === 'hard')
-              .every((prerequisite) =>
-                prerequisiteMet(prerequisite.id, masteryByKey, lessonRunState, index),
-              )
+            !prerequisiteChecker.chainReady(conceptId)
           ) {
             return [];
           }

@@ -4,7 +4,7 @@ import { and, eq } from 'drizzle-orm';
 import { env } from '../../apps/api/src/config.js';
 import { createDb } from '../../apps/api/src/db/client.js';
 import { lessonRuns, users } from '../../apps/api/src/db/schema.js';
-import { enrollInDefaultCourse } from './course-start.js';
+import { enrollInDefaultCourse, markHardPrerequisiteAncestorsDone } from './course-start.js';
 
 const db = createDb(env.TEST_DATABASE_URL);
 const screenshotDir = 'test-results/screenshots/shots/lesson-quiz';
@@ -87,14 +87,7 @@ test('full lesson shows recap facts and opens a prerequisite lesson', async ({ p
 test('session lesson shows recap facts and opens a prerequisite lesson', async ({ page }) => {
   requireRepositoryContent();
   await page.setViewportSize({ width: 1280, height: 900 });
-  await db.insert(lessonRuns).values(
-    ['gradients', 'loss-functions', 'linear-regression'].map((conceptId) => ({
-      userId,
-      conceptId,
-      status: 'completed' as const,
-      completedAt: new Date(),
-    })),
-  );
+  await markHardPrerequisiteAncestorsDone(db, userId, ['gradient-descent']);
   await page.goto('/');
   const response = await page.evaluate(async () => {
     const result = await fetch('/api/sessions', {
@@ -122,6 +115,12 @@ test('course shows an unpassed quiz and locks a dependent lesson', async ({ page
   requireRepositoryContent();
   await page.setViewportSize({ width: 1280, height: 900 });
   const completedAt = new Date();
+  await markHardPrerequisiteAncestorsDone(
+    db,
+    userId,
+    ['linear-regression'],
+    ['supervised-learning', 'dot-product', 'matrices'],
+  );
   await db.insert(lessonRuns).values([
     { userId, conceptId: 'supervised-learning', status: 'quiz' },
     {

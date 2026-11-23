@@ -14,8 +14,10 @@ import {
   courseConceptIds,
   courseFoundationIds,
   courseUnitPositions,
+  createPrerequisiteChecker,
   masteryKey,
   prerequisiteMet,
+  projectReady,
 } from './prerequisites.js';
 import type { SessionKind } from './session-budget.js';
 import type { MasteryRecord } from './types.js';
@@ -1036,6 +1038,11 @@ function generateCandidates(
   const masteryByKey = new Map(
     state.mastery.map((record) => [masteryKey(record.conceptId, record.dimension), record]),
   );
+  const prerequisiteChecker = createPrerequisiteChecker(
+    masteryByKey,
+    state.lessonRuns ?? [],
+    content,
+  );
   const recentIds = new Set(
     state.recentAttempts
       .filter((attempt) => daysSince(attempt.createdAt, now) < SCHEDULER_CONFIG.repeatWindowDays)
@@ -1048,11 +1055,7 @@ function generateCandidates(
     const states = concept.dimensions.map((dimension) =>
       masteryByKey.get(masteryKey(concept.id, dimension)),
     );
-    const prereqsReady = concept.prereqs
-      .filter((prerequisite) => prerequisite.strength === 'hard')
-      .every((prerequisite) =>
-        prerequisiteMet(prerequisite.id, masteryByKey, state.lessonRuns ?? [], content),
-      );
+    const prereqsReady = prerequisiteChecker.chainReady(concept.id);
     const allNotAssessed = states.every((record) => !record || record.state === 'not_assessed');
     const isNew =
       newConceptIds.has(concept.id) &&
@@ -1060,6 +1063,7 @@ function generateCandidates(
       (allNotAssessed || states.some((record) => record?.state === 'introduced'));
     const isContinuing =
       newConceptIds.has(concept.id) &&
+      prereqsReady &&
       states.some((record) => record?.state === 'introduced' || record?.state === 'assisted');
     const hasKnowledgePointLesson = hasKnowledgePointLessonContent(concept.id, content);
     const lessonRunStatus = state.lessonRuns?.find((run) => run.conceptId === concept.id)?.status;
@@ -1565,8 +1569,12 @@ function optionalProjectAndPaperActivities(
     });
     remainingMinutes -= paperMinutes;
   }
-  const availableProjects = content.projects.filter(
-    (project) => project.status === 'authored' && project.tests.length > 0,
+  const masteryByKey = new Map(
+    state.mastery.map((record) => [masteryKey(record.conceptId, record.dimension), record]),
+  );
+  const lessonRuns = state.lessonRuns ?? [];
+  const availableProjects = content.projects.filter((project) =>
+    projectReady(project, masteryByKey, lessonRuns, content),
   );
   const courseProjectIds = courseContext.course.units
     .slice(0, courseContext.currentUnit)

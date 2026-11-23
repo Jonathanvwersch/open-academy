@@ -1,6 +1,9 @@
 import { eq } from 'drizzle-orm';
+import { loadContent } from '../../apps/api/src/content/load.js';
 import type { Database } from '../../apps/api/src/db/client.js';
-import { courseEnrollments, users } from '../../apps/api/src/db/schema.js';
+import { courseEnrollments, lessonRuns, users } from '../../apps/api/src/db/schema.js';
+
+let contentPromise: ReturnType<typeof loadContent> | undefined;
 
 export async function enrollInDefaultCourse(db: Database, userId: string) {
   const courseId =
@@ -12,4 +15,70 @@ export async function enrollInDefaultCourse(db: Database, userId: string) {
     status: 'active',
     startMethod: 'beginning',
   });
+}
+
+export async function markProjectPrerequisitesDone(
+  db: Database,
+  userId: string,
+  projectId: string,
+) {
+  const directory = process.env.PLAYWRIGHT_CONTENT_DIR ?? 'tests/fixtures/content';
+  if (!contentPromise) contentPromise = loadContent(directory);
+  const content = await contentPromise;
+  const project = content.projectsById.get(projectId);
+  if (!project) throw new Error(`Missing project ${projectId}`);
+
+  const done = new Set<string>();
+  const visit = (conceptId: string) => {
+    if (done.has(conceptId)) return;
+    done.add(conceptId);
+    const concept = content.conceptsById.get(conceptId);
+    if (!concept) throw new Error(`Missing project prerequisite ${conceptId}`);
+    for (const prerequisite of concept.prereqs) {
+      if (prerequisite.strength === 'hard') visit(prerequisite.id);
+    }
+  };
+  for (const prerequisiteId of project.prereqs) visit(prerequisiteId);
+
+  await db.insert(lessonRuns).values(
+    [...done].map((conceptId) => ({
+      userId,
+      conceptId,
+      status: 'completed' as const,
+    })),
+  );
+}
+
+export async function markHardPrerequisiteAncestorsDone(
+  db: Database,
+  userId: string,
+  conceptIds: string[],
+  excludedConceptIds: string[] = [],
+) {
+  const directory = process.env.PLAYWRIGHT_CONTENT_DIR ?? 'tests/fixtures/content';
+  if (!contentPromise) contentPromise = loadContent(directory);
+  const content = await contentPromise;
+  const excluded = new Set(excludedConceptIds);
+  const ancestors = new Set<string>();
+  const visited = new Set<string>();
+  const visit = (conceptId: string) => {
+    if (visited.has(conceptId)) return;
+    visited.add(conceptId);
+    const concept = content.conceptsById.get(conceptId);
+    if (!concept) throw new Error(`Missing prerequisite concept ${conceptId}`);
+    for (const prerequisite of concept.prereqs) {
+      if (prerequisite.strength !== 'hard') continue;
+      if (!excluded.has(prerequisite.id)) ancestors.add(prerequisite.id);
+      visit(prerequisite.id);
+    }
+  };
+  for (const conceptId of conceptIds) visit(conceptId);
+  if (ancestors.size === 0) return;
+  await db.insert(lessonRuns).values(
+    [...ancestors].map((conceptId) => ({
+      userId,
+      conceptId,
+      status: 'completed' as const,
+    })),
+  );
 }
