@@ -158,12 +158,12 @@ knowledge_points:
 
       ### Remove one part at a time
 
-      An **ablation** removes or switches off one part of a method and measures the change in its score. A part can be an input or a training step. We train again with that part removed. The remaining weights are fitted again and can change.
+      An **ablation** removes or switches off one part of a method and measures the change in its score. A part can be an input or a training stage, such as a second round of training on extra data. We train again with that part removed. The remaining weights are fitted again and can change.
 
       To design an ablation:
 
       1. List the parts of the method. For N, these are its three added inputs.
-      2. Remove one added input. Keep size and the other two inputs. Keep the split and training length fixed.
+      2. Remove one added input. Keep size and the other two inputs. Keep the split and training length fixed. If the removed part is a training stage, training gets shorter, so keep the other stages unchanged.
       3. Try the same five rates for each model. Let each choose its own best rate on validation data, then compare errors.
 
       For an error, a worse result is a higher one, so we measure the rise:

@@ -18,18 +18,18 @@ exercises:
         correct: false
         category: incorrect_reasoning
         feedback:
-          An untuned version is one possible comparison, but a baseline is any suitable reference
-          model.
+          That is one kind of reference model. A baseline is defined by being fitted and scored on
+          the same data as the new model.
       - id: c
         text: The test error reported after the final version of the model has been chosen.
         correct: false
         category: incorrect_reasoning
-        feedback: A test error is a score; a baseline is a model.
+        feedback: This is a score for the chosen model. A baseline is a second model, fitted and scored on the same data, that the new model is compared with.
       - id: d
         text: The lowest error that any possible model could achieve on these data.
         correct: false
         category: incorrect_reasoning
-        feedback: A baseline is an actual reference model, rather than an unknown best possible score.
+        feedback: The best possible error is unknown. A baseline is a real model that we fit and score on the same data as the new model.
     solution:
       A baseline is a reference model fitted on the same training data and scored on the same validation data. We
       usually compare with a simple model and the previous best.
@@ -94,7 +94,7 @@ exercises:
         text: Compare with the new model's own error on the sales used for training.
         correct: false
         category: incorrect_reasoning
-        feedback: Training error measures fit to training sales, rather than improvement over another model.
+        feedback: Training error measures fit to the training sales. It says nothing about how the new model compares with another model on validation sales.
     solution:
       Score the previous best on the same validation sales and compare its error with 300. This
       tests whether the new model improves on the existing result.
@@ -118,6 +118,9 @@ exercises:
         step: 10
     answer_expr: 2.5*d^2
     common_wrong:
+      - answer_expr: -d/2
+        category: math_error
+        feedback: This averages the signed errors. Square each error before averaging.
       - answer_expr: d/2
         category: math_error
         feedback: This averages the signed errors. Square each error before averaging.
@@ -171,7 +174,7 @@ exercises:
     difficulty: 2
     est_minutes: 2
     prompt: A previous best model has validation error 250 and a new model has error 200 on the same
-      sales. By what percentage is the error lower? Give a percentage.
+      sales. By what percentage is the error lower? Give the percentage without the % sign.
     answer: 20
     common_wrong:
       - answer: 25
@@ -236,7 +239,7 @@ exercises:
           reference models.
         correct: false
         category: incorrect_reasoning
-        feedback: These are two scores for one model, rather than two baseline models.
+        feedback: Both are scores of the new model itself. A baseline is a separate model scored on the same held-out pushes.
       - id: c
         text:
           Predict the mean distance of training pushes and use the best existing model; score the mean
@@ -701,7 +704,7 @@ exercises:
         text: Replace the full model with a simple predictor and compare their validation errors.
         correct: false
         category: incorrect_reasoning
-        feedback: That is a baseline comparison rather than removing one part.
+        feedback: Replacing the whole model is a baseline comparison. An ablation removes one part and keeps the rest.
       - id: c
         text:
           Remove or switch off one part, keep other choices fixed and measure how its validation error
@@ -740,7 +743,7 @@ exercises:
         text: Each smaller model then gets extra training effort, which makes the full model easier to beat.
         correct: false
         category: incorrect_reasoning
-        feedback: The settings match the full model rather than adding effort.
+        feedback: Each smaller model gets the same steps and rates as the full model, so none gets extra effort.
       - id: d
         text: The three missing inputs then count as one change, so one run measures all their effects.
         correct: false
@@ -894,38 +897,39 @@ exercises:
     difficulty: 3
     est_minutes: 2
     prompt:
-      A robot box-slide model uses box weight as an input. It trains for 2,000 steps on one set of
-      recorded pushes, then for 1,000 more on a second set. Which comparison tests whether training
-      on the second set helps?
+      A robot box-slide model uses box weight as an input. It is trained in two stages, first for
+      2,000 steps on one set of recorded pushes, then for 1,000 more steps on a second set. Which comparison tests
+      whether the second training stage helps?
     options:
       - id: a
         text:
-          Keep both training steps and box weight; compare with a mean predictor fitted on the same
+          Keep both training stages and box weight; compare with a mean predictor fitted on the same
           training pushes and scored on the same validation pushes.
         correct: false
         category: incorrect_reasoning
-        feedback: This is a baseline comparison and leaves the second training step in place.
+        feedback: This is a baseline comparison and leaves the second training stage in place.
       - id: b
         text:
-          Skip training on the second set; keep box weight, the first training run and the validation
+          Skip training on the second set; keep box weight, the first training stage and the validation
           pushes fixed, then compare errors with the full model.
         correct: true
-        feedback: This removes the second training step while keeping the other choices fixed.
+        feedback: This removes the second training stage while keeping the other choices fixed.
       - id: c
-        text: Skip training on the second set and remove box weight; keep the first training run and
+        text:
+          Skip training on the second set and remove box weight; keep the first training stage and
           validation pushes fixed, then compare errors with the full model.
         correct: false
         category: incorrect_reasoning
         feedback: Removing box weight changes a second part, so the gap mixes two effects.
       - id: d
         text:
-          Keep both training steps and box weight; score on the second training set and compare that
+          Keep both training stages and box weight; score on the second training set and compare that
           error with the full model's validation error.
         correct: false
         category: incorrect_reasoning
-        feedback: This changes the scoring data and leaves the second training step in place.
+        feedback: This changes the scoring data and leaves the second training stage in place.
     solution:
-      Train without the second step. Keep box weight, the first training run and the validation
+      Train without the second stage, which also shortens training to 2,000 steps. Keep box weight, the first training stage and the validation
       pushes fixed, then compare with the full model on those validation pushes.
   - id: edp-recall-ablation-say
     dimension: conceptual
@@ -1019,7 +1023,7 @@ exercises:
           choices.
         correct: false
         category: incorrect_reasoning
-        feedback: The seed fixes random choices, rather than a target error.
+        feedback: The seed fixes random choices such as the starting weights. The final error still depends on the model, its settings and the data.
       - id: b
         text:
           It selects the lowest-error model, so repeated seeds always find a better model than the
@@ -1328,7 +1332,7 @@ exercises:
         text: How much its validation error differs from its test error.
         correct: false
         category: incorrect_reasoning
-        feedback: That compares two data sets, rather than repeated seeds of the same model.
+        feedback: That compares the validation and test sets. Seed spread compares repeated runs of one model with different seeds.
       - id: b
         text: How much its score changes from random choices alone.
         correct: true
@@ -1342,7 +1346,7 @@ exercises:
         text: How much its mean score improves on the baseline’s mean score.
         correct: false
         category: incorrect_reasoning
-        feedback: That is the gap between models, rather than the spread within one model.
+        feedback: That is the gap between two models. Seed spread is the largest minus smallest score across one model's seeds.
     solution: Seed spread measures how much one model’s score varies with its random choices.
   - id: edp-recall-seeds-formula
     dimension: math
