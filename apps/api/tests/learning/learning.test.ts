@@ -227,6 +227,43 @@ function studyState(courseIds: string[], index: ContentIndex = courseContent): S
   };
 }
 
+function planWithRetryAndOptionalFreshTopic(budget: number, includeFreshTopic: boolean) {
+  const courseId = 'maths-for-ml';
+  const freshTopicId = 'probability-basics';
+  const topicsContent = schedulerContentWithTopics(
+    { [courseId]: ['vectors', ...(includeFreshTopic ? [freshTopicId] : [])] },
+    courseContent,
+  );
+  const state = studyState([courseId], topicsContent);
+  const course = required(topicsContent.coursesById.get(courseId), courseId);
+  const candidateConceptIds = new Set([
+    ...course.units.flatMap((unit) => unit.concepts),
+    ...courseFoundationIds(topicsContent, courseId),
+  ]);
+  const masteryByKey = new Map(
+    state.mastery.map((record) => [masteryKey(record.conceptId, record.dimension), record]),
+  );
+  for (const conceptId of candidateConceptIds) {
+    if (includeFreshTopic && conceptId === freshTopicId) continue;
+    const concept = topicsContent.conceptsById.get(conceptId);
+    for (const dimension of concept?.dimensions ?? []) {
+      masteryByKey.set(masteryKey(conceptId, dimension), {
+        ...initialMastery(conceptId, dimension),
+        state: 'retained',
+      });
+    }
+  }
+  state.mastery = [...masteryByKey.values()];
+  state.lessonRuns = [
+    {
+      conceptId: 'vectors',
+      status: 'needs_retry',
+      retryAfter: new Date(now.getTime() - 1_000),
+    },
+  ];
+  return planSession(state, topicsContent, now, budget);
+}
+
 test('prerequisite checker follows hard ancestors and reports the missing frontier', () => {
   const concepts = [
     { id: 'a', status: 'authored', dimensions: ['conceptual'], prereqs: [] },
@@ -1299,6 +1336,47 @@ test('unfinished knowledge-point lessons are prioritized regardless of mastery, 
   ).not.toBe('learn');
 });
 
+test('fresh lessons outrank retry-eligible lessons when only one lesson fits the budget', () => {
+  const retryMinutes = required(courseContent.conceptsById.get('vectors'), 'vectors').est_minutes;
+  const freshMinutes = required(
+    courseContent.conceptsById.get('probability-basics'),
+    'probability-basics',
+  ).est_minutes;
+  const oneLessonBudget = Math.max(retryMinutes, freshMinutes);
+  expect(retryMinutes + freshMinutes).toBeGreaterThan(oneLessonBudget);
+
+  const learned = planWithRetryAndOptionalFreshTopic(oneLessonBudget, true)
+    .activities.filter((activity) => activity.kind === 'learn')
+    .map((activity) => activity.conceptId);
+
+  expect(learned).toEqual(['probability-basics']);
+});
+
+test('fresh and retry-eligible lessons are both selected when the budget fits two', () => {
+  const retryMinutes = required(courseContent.conceptsById.get('vectors'), 'vectors').est_minutes;
+  const freshMinutes = required(
+    courseContent.conceptsById.get('probability-basics'),
+    'probability-basics',
+  ).est_minutes;
+
+  const learned = planWithRetryAndOptionalFreshTopic(retryMinutes + freshMinutes, true)
+    .activities.filter((activity) => activity.kind === 'learn')
+    .map((activity) => activity.conceptId);
+
+  expect(learned).toHaveLength(2);
+  expect(learned).toEqual(expect.arrayContaining(['probability-basics', 'vectors']));
+});
+
+test('retry-eligible lessons are offered when no fresh topic is ready', () => {
+  const retryMinutes = required(courseContent.conceptsById.get('vectors'), 'vectors').est_minutes;
+
+  const learned = planWithRetryAndOptionalFreshTopic(retryMinutes, false)
+    .activities.filter((activity) => activity.kind === 'learn')
+    .map((activity) => activity.conceptId);
+
+  expect(learned).toEqual(['vectors']);
+});
+
 test('weekday plans avoid duplicate concepts, cap activities, and never add empty fillers', () => {
   const state = emptyState();
   state.cards = [{ conceptId: 'vectors', dimension: 'math', dueAt: '2026-01-14T11:00:00.000Z' }];
@@ -1420,6 +1498,20 @@ test.each([
   'open remediation flags schedule the prerequisite review and hold the lesson on $sessionKind',
   ({ sessionKind, budget }) => {
     const state = emptyState();
+    const course = required(content.coursesById.get('fixture-course'), 'fixture course');
+    const courseConceptIds = new Set([
+      ...course.units.flatMap((unit) => unit.concepts),
+      ...courseFoundationIds(content, course.id),
+    ]);
+    state.mastery = [...courseConceptIds].flatMap((conceptId) => {
+      const concept = content.conceptsById.get(conceptId);
+      return (
+        concept?.dimensions.map((dimension) => ({
+          ...initialMastery(conceptId, dimension),
+          state: 'retained' as const,
+        })) ?? []
+      );
+    });
     const prerequisiteRuns = [...hardPrerequisiteAncestors(content, 'gradient-descent')].map(
       (conceptId) => ({ conceptId, status: 'completed' as const }),
     );

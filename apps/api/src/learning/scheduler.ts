@@ -668,16 +668,20 @@ function packWeekday(
   };
   const canSelectLearn = (candidate: Candidate) =>
     canAdd(candidate) && !interferesWithLearn(candidate);
-  const unfinishedLessonConcepts = new Set(
+  const resumedLessonConcepts = new Set(
     (state.lessonRuns ?? [])
-      .filter(
-        (run) =>
-          run.status === 'in_progress' ||
-          run.status === 'quiz' ||
-          lessonRetryEligible(state, run.conceptId, now),
-      )
+      .filter((run) => run.status === 'in_progress' || run.status === 'quiz')
       .map((run) => run.conceptId),
   );
+  const retryEligibleLessonConcepts = new Set(
+    (state.lessonRuns ?? [])
+      .filter((run) => lessonRetryEligible(state, run.conceptId, now))
+      .map((run) => run.conceptId),
+  );
+  const unfinishedLessonConcepts = new Set([
+    ...resumedLessonConcepts,
+    ...retryEligibleLessonConcepts,
+  ]);
   const courseContexts = schedulerCourseContexts(state, content);
   const courseOrder = new Map(courseContexts.map((course, index) => [course.course.id, index]));
   const compareLearnCandidates = (left: Candidate, right: Candidate) => {
@@ -702,7 +706,7 @@ function packWeekday(
       (entry) =>
         entry.activity.kind === 'learn' &&
         entry.activity.conceptId &&
-        unfinishedLessonConcepts.has(entry.activity.conceptId),
+        resumedLessonConcepts.has(entry.activity.conceptId),
     )
     .sort(compareLearnCandidates)) {
     if (newConceptCount >= SCHEDULER_CONFIG.weekday.maxNewConcepts) break;
@@ -868,6 +872,17 @@ function packWeekday(
       (selectedLearnMinutesBySubject.get(nextSubject) ?? 0) + candidate.activity.plannedMinutes,
     );
     nextCandidates.splice(nextCandidates.indexOf(candidate), 1);
+  }
+
+  for (const candidate of candidates
+    .filter(
+      (entry) =>
+        entry.activity.kind === 'learn' &&
+        entry.activity.conceptId &&
+        retryEligibleLessonConcepts.has(entry.activity.conceptId),
+    )
+    .sort(compareLearnCandidates)) {
+    add(candidate);
   }
 
   const otherCandidates = candidates
