@@ -50,7 +50,7 @@ exercises:
         text: The reward model scores every reply by its length alone.
         correct: false
         category: incorrect_reasoning
-        feedback: The reward model was close on A, B and D. It only overrated C.
+        feedback: C was overrated much more than B. These scores don't establish a rule based only on length.
       - id: d
         text: B's negative error pushed its score below C's.
         correct: false
@@ -96,23 +96,23 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 1
-    prompt: A team writes replies to a prompt and keeps the one their reward model scores highest. They switch from writing $4$ replies to writing $100$. What happens to the risk that the kept reply is one the reward model overrates by a lot?
+    prompt: A team draws replies independently from the same policy. Each draw has a small but nonzero chance of being badly overrated. When the team draws $100$ replies instead of $4$, how does the chance of seeing at least one badly overrated reply change?
     options:
       - id: a
         text: It goes up, because a larger search is more likely to find a reply with a large error.
         correct: true
-        feedback: A reply can win by being good or by being overrated, and more replies give more chances to find a badly overrated one.
+        feedback: Each new draw is another chance to find a badly overrated reply.
       - id: b
-        text: It goes down, because with more replies the best one is always truly better.
+        text: It goes down, because the batch is more likely to contain a genuinely good reply.
         correct: false
         category: incorrect_reasoning
-        feedback: More replies can help, but they also give more chances for a reply with a large error to top the scores.
+        feedback: A batch can contain both a genuinely good reply and a badly overrated one.
       - id: c
         text: It stays the same, because each reply's error doesn't depend on how many we write.
         correct: false
         category: incorrect_reasoning
-        feedback: Each error is fixed, but we keep the top score, and with more replies the top score is more likely to come from a large error.
-    solution: Keeping the top score selects for large errors as well as for quality, so searching harder makes it more likely to keep a reply the reward model overrates.
+        feedback: The per-reply chance stays the same, but the chance of seeing at least one badly overrated reply increases.
+    solution: More draws make it more likely that the batch contains a badly overrated reply. Whether it wins depends on the other replies' scores.
   - id: rh1-held-out-agreement
     dimension: conceptual
     type: mc
@@ -122,20 +122,20 @@ exercises:
     prompt: A reward model agrees with people on $90\%$ of held-out comparisons between replies written by the SFT model. A teammate says this means RL training against it can't be hacked. What is wrong with that?
     options:
       - id: a
-        text: The policy searches for new replies unlike those comparisons, where the reward model can be badly wrong.
+        text: The policy can start writing replies unlike those in the comparisons, where the reward model can be badly wrong.
         correct: true
-        feedback: The held-out test only covers replies like the SFT model's. Optimisation looks for exactly the replies it hasn't been checked on.
+        feedback: The held-out test covers SFT replies. The policy's replies can change during RL training.
       - id: b
         text: Nothing is wrong, because $90\%$ agreement means its errors are too small to exploit.
         correct: false
         category: incorrect_reasoning
-        feedback: The errors that matter are on the new replies the policy writes, which the held-out test didn't cover.
+        feedback: Agreement on these pairs doesn't rule out large errors on the replies RL training favours.
       - id: c
         text: The $10\%$ disagreement means the reward model should be thrown away.
         correct: false
         category: incorrect_reasoning
-        feedback: Every reward model makes some mistakes. The problem is that the policy will search for replies where it makes large ones.
-    solution: Agreement on held-out comparisons of SFT replies says little about replies far from them, and the policy searches for those.
+        feedback: The result is useful for SFT replies. It doesn't show whether the same accuracy holds on the changing policy's replies.
+    solution: The policy can learn to favour replies the reward model overrates, including replies unlike those in the held-out comparisons.
   - id: rh1-corridor-proxy
     dimension: math
     type: numeric
@@ -160,7 +160,7 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: A reward model gives a long, padded reply a score of $5$ and a short, correct reply a score of $3$. Under the Bradley–Terry model, what probability does the reward model give that a person prefers the padded reply? Give two decimals. When real people compare the two, $30\%$ prefer the padded one, so this probability shows how far the proxy is off.
+    prompt: A reward model gives a long, padded reply a score of $5$ and a short, correct reply a score of $3$. Under the Bradley–Terry model, what probability does the reward model give that a person prefers the padded reply? Enter the probability as a decimal between 0 and 1, rounded to two decimal places. When real people compare the two, $30\%$ prefer the padded one, so this probability shows how far the proxy is off.
     answer: 0.88
     tolerance:
       abs: 0.006
@@ -202,17 +202,17 @@ exercises:
     knowledge_point: rh-proxy
     difficulty: 1
     est_minutes: 1
-    prompt: In one or two sentences, what is a proxy reward, and why does keeping the reply with the highest proxy score tend to keep a flawed reply?
+    prompt: In one or two sentences, what is a proxy reward, and why can keeping the highest-scoring reply favour one the proxy overrates?
     rubric:
       - id: r1
         criterion: State that a proxy reward is a reward we can compute that stands in for a goal we can't measure directly.
         weight: 1
         required: true
       - id: r2
-        criterion: Explain that a reply can score high by having a large positive error, so the top score tends to be a reply the proxy overrates.
+        criterion: Explain that a large positive error can lift an overrated reply's score above that of a better reply.
         weight: 1
         required: true
-    exemplar: A proxy reward is a number we can compute, like a reward model's score, that stands in for a goal we can't measure directly. A reply can score high by being good or by having a large positive error, so the top-scoring reply is often one the proxy overrates.
+    exemplar: A proxy reward is a number we can compute that stands in for a goal we can't measure directly. A large positive error can lift an overrated reply's score above that of a better reply.
   - id: rh1-recall-contrast
     dimension: conceptual
     type: mc
@@ -249,7 +249,7 @@ exercises:
     knowledge_point: rh-proxy
     difficulty: 1
     est_minutes: 0.5
-    prompt: A reward model gives a reply the score $s$, and the reply's true quality is $q$. Write the reward model's error on this reply, the amount it is off by, so that a reply it overrates has a positive error.
+    prompt: A reward model gives a reply the score $s$, and the reply's true quality is $q$. Assume score and true quality are on the same scale. Write the signed reward model error for this reply.
     answer: s-q
     variables:
       s:
@@ -272,14 +272,14 @@ exercises:
     prompt: What is **reward over-optimisation**?
     options:
       - id: a
-        text: Training against a proxy past the point where raising it still improves true quality.
+        text: Pushing a proxy until further gains in its score come at the expense of true quality.
         correct: true
-        feedback: After that point, the proxy's score keeps rising while true quality falls.
+        feedback: True quality can get worse as the proxy score improves, even if quality never improved in the first place.
       - id: b
         text: Setting $\beta$ so high that the policy can't move away from the SFT model.
         correct: false
         category: misunderstood_definition
-        feedback: That stops the policy improving at all. Over-optimisation is pushing the proxy too far.
+        feedback: A large penalty can limit changes. Over-optimisation is pushing the proxy too far.
       - id: c
         text: Adding progress bonuses to a reward so that the agent learns faster.
         correct: false
@@ -289,8 +289,8 @@ exercises:
         text: A policy whose reward model score falls as training goes on.
         correct: false
         category: misunderstood_definition
-        feedback: In over-optimisation the proxy's score keeps rising. It's the true quality that falls.
-    solution: Reward over-optimisation is pushing a proxy reward past the point where it still tracks true quality, so the score rises while true quality falls.
+        feedback: A falling proxy score alone doesn't show that gains on the proxy came at the expense of quality.
+    solution: Reward over-optimisation occurs when pushing the proxy yields further gains in its score at the expense of true quality.
   - id: rh2-worked-self-explain
     lesson_only: true
     dimension: conceptual
@@ -298,12 +298,12 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: In the worked example, why is step 300 the best checkpoint, even though step 500 has the highest reward model score?
+    prompt: In the worked example, why would we choose step 300 even though step 500 has the highest reward model score?
     options:
       - id: a
         text: People's rating, which the policy isn't trained on, is highest at step 300.
         correct: true
-        feedback: People's rating measures true quality, and it peaks at $6.8$ at step 300.
+        feedback: People's rating is a separate estimate of quality. The highest observed rating is $6.8$ at step 300.
       - id: b
         text: The KL is smallest at step 300, so the policy is closest to the SFT model.
         correct: false
@@ -314,19 +314,19 @@ exercises:
         correct: false
         category: incorrect_reasoning
         feedback: It rose by $0.6$ then, less than the $1.0$ between steps 0 and 100. The choice comes from people's rating.
-    solution: The reward model score rises whether or not quality improves, so we choose by people's held-out rating, which peaks at step 300.
+    solution: The reward model score can rise without better replies. The highest held-out rating among these checkpoints is at step 300.
   - id: rh2-accurate-early
     dimension: conceptual
     type: mc
     role: practice
     difficulty: 2
     est_minutes: 1
-    prompt: Early in the RL stage of RLHF, the reward model's score and people's ratings rise together. Why do they agree at this stage?
+    prompt: Early in one RLHF run, the reward model's score and people's ratings rise together. What could explain that agreement?
     options:
       - id: a
-        text: The policy's replies are still like the SFT replies the reward model learned from, where it's fairly accurate.
+        text: The policy's replies resemble the SFT replies the reward model learned from, so it can score them more reliably.
         correct: true
-        feedback: Near the SFT model, most changes that raise the score are real improvements.
+        feedback: The reward model has examples of replies like these, so higher scores can reflect real improvements.
       - id: b
         text: The reward model is retrained on each batch, so it keeps up with the policy.
         correct: false
@@ -336,8 +336,8 @@ exercises:
         text: PPO's clipping stops the policy from exploiting errors in the reward model.
         correct: false
         category: incorrect_reasoning
-        feedback: Clipping limits how far one batch moves the policy. Over many batches the policy can still drift a long way.
-    solution: The reward model learned from replies like the SFT model's. The policy starts as a copy of that model, so at first its replies are where the reward model's scores are accurate.
+        feedback: Clipping caps the incentive from each sample's term. It doesn't put a hard bound on how far the batch update moves the policy or prevent it from exploiting errors.
+    solution: The policy starts as a copy of the SFT model. The reward model learned from similar replies, so early score gains can reflect real improvements.
   - id: rh2-rating-drop-template
     dimension: math
     type: numeric
@@ -354,7 +354,7 @@ exercises:
       | $200$ | $1.8$ | ${{= p - 0.3 }}$ |
       | $300$ | $2.4$ | ${{= p }}$ |
       | $400$ | $2.9$ | ${{= p - 0.4 }}$ |
-      | $500$ | $3.3$ | ${{= p - d }}$ |
+      | $500$ | $3.3$ | ${{= f }}$ |
 
       How many rating points did the policy lose between its best checkpoint and the last one?
     params:
@@ -362,18 +362,18 @@ exercises:
         min: 6.2
         max: 7
         step: 0.2
-      d:
-        min: 0.6
-        max: 1.4
+      f:
+        min: 5
+        max: 5.6
         step: 0.2
-    answer_expr: d
+    answer_expr: p - f
     tolerance:
       abs: 0.001
     common_wrong:
-      - answer_expr: d - 0.4
+      - answer_expr: p - 0.4 - f
         category: incorrect_reasoning
         feedback: That compares the last two checkpoints. Start from the best checkpoint, the one with the highest rating.
-    solution: The best checkpoint is step 300, rated ${{= p }}$. The last is rated ${{= p - d }}$, so the policy lost ${{= p }}-{{= p - d }}={{= d }}$ points while its score kept rising.
+    solution: The best checkpoint is step 300, rated ${{= p }}$. The last is rated ${{= f }}$, so the policy lost ${{= p }}-{{= f }}={{= p - f }}$ points while its score kept rising.
   - id: rh2-kl-drift-template
     dimension: math
     type: numeric
@@ -400,7 +400,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: Four RLHF runs are checked at three checkpoints. Each run lists its reward model score and then people's rating of held-out replies at each checkpoint. Which run shows reward over-optimisation?
+    prompt: Four RLHF runs are checked at three checkpoints. Each run lists its reward model score and then people's rating of held-out replies at each checkpoint. Which run gives the clearest evidence of reward over-optimisation?
     options:
       - id: a
         text: "Score $1.0$, $2.0$, $3.0$; rating $6.0$, $6.8$, $6.1$."
@@ -410,18 +410,18 @@ exercises:
         text: "Score $1.0$, $2.0$, $3.0$; rating $6.0$, $6.5$, $7.0$."
         correct: false
         category: incorrect_reasoning
-        feedback: Both rise together, so the score is still tracking true quality.
+        feedback: Both rise together, so there is no obvious divergence in these curves.
       - id: c
         text: "Score $1.0$, $1.1$, $1.1$; rating $6.0$, $6.1$, $6.1$."
         correct: false
         category: incorrect_reasoning
-        feedback: Neither number moves much, so the policy is barely learning. Nothing is being over-optimised.
+        feedback: Neither number moves much, and the held-out rating doesn't fall.
       - id: d
         text: "Score $1.0$, $0.8$, $0.5$; rating $6.0$, $5.6$, $5.2$."
         correct: false
         category: incorrect_reasoning
-        feedback: The score itself is falling, so training isn't even raising the proxy. Over-optimisation has a rising score.
-    solution: Over-optimisation shows as the proxy score rising at every checkpoint while true quality, measured by people, rises and then falls.
+        feedback: Both numbers fall, so this doesn't show proxy gains alongside a drop in the held-out rating.
+    solution: Only in run A does the proxy score rise while people's rating falls between checkpoints. That's a warning sign of over-optimisation.
   - id: rh2-robot-tidy
     dimension: transfer
     type: mc
@@ -438,13 +438,13 @@ exercises:
         text: The robot needs more training, because a rising score means it's still improving.
         correct: false
         category: incorrect_reasoning
-        feedback: The score is the proxy being pushed up, so it rises even when the gains come from its errors.
+        feedback: This rise in the proxy score could reflect errors rather than a tidier room.
       - id: c
         text: The people are rating wrongly, because the reward model learned from people's own comparisons.
         correct: false
         category: incorrect_reasoning
         feedback: The reward model learned from a limited set of photos. Far from those, its scores can be wrong while people's ratings stay meaningful.
-    solution: This is over-optimisation. The proxy's score keeps rising because the robot has drifted to states where the reward model is wrong, and true quality has fallen.
+    solution: The curves suggest over-optimisation. The robot could be raising its score by hiding clutter from the camera, leaving the room less tidy.
   - id: rh2-recall-say
     dimension: conceptual
     type: explain
@@ -455,14 +455,14 @@ exercises:
     prompt: In one or two sentences, what is reward over-optimisation in RLHF, and why does it happen?
     rubric:
       - id: r1
-        criterion: State that the reward model's score keeps rising while true quality rises, peaks and then falls.
+        criterion: State that further gains in the proxy score come at the expense of true quality.
         weight: 1
         required: true
       - id: r2
-        criterion: Explain that as the policy drifts away from the SFT model's replies, the reward model is less accurate and the policy moves towards replies it overrates.
+        criterion: Explain that the policy can learn to favour replies the reward model overrates, including replies unlike those it learned from.
         weight: 1
         required: true
-    exemplar: Reward over-optimisation is when the reward model's score keeps rising during RL training while true quality rises, peaks and then falls. It happens because the policy drifts away from the SFT replies the reward model learned from, where its errors are bigger, and PPO pushes the policy towards replies it overrates.
+    exemplar: Reward over-optimisation happens when further gains in the proxy score come at the expense of true quality. The policy can learn to favour replies that the reward model overrates, including replies unlike those it learned from.
   - id: rh2-recall-contrast
     dimension: conceptual
     type: mc
@@ -470,17 +470,17 @@ exercises:
     knowledge_point: rh-overopt
     difficulty: 1
     est_minutes: 0.5
-    prompt: During RLHF training, which measurement can tell real improvement apart from gains that come from the reward model's errors?
+    prompt: During RLHF training, which measurement gives the most direct check on whether higher proxy scores reflect better replies?
     options:
       - id: a
         text: People's ratings of replies to held-out prompts.
         correct: true
-        feedback: The policy isn't trained on these ratings, so they show true quality.
+        feedback: These ratings estimate quality separately from the training reward.
       - id: b
         text: The reward model's average score.
         correct: false
         category: incorrect_reasoning
-        feedback: That is the proxy PPO pushes up, so it rises whether the gains are real or not.
+        feedback: Gains in the proxy can reflect its errors rather than better replies.
       - id: c
         text: The PPO clipped objective $L^{\text{CLIP}}$.
         correct: false
@@ -491,7 +491,7 @@ exercises:
         correct: false
         category: incorrect_reasoning
         feedback: The ratio shows how much the policy changed, but says nothing about whether the change is good.
-    solution: Only a measure the policy isn't trained on, such as people's held-out ratings, can separate real improvement from exploiting the reward model.
+    solution: People's ratings of held-out replies give a separate estimate of quality. Compare it with the proxy and read samples to investigate any divergence.
   - id: rh2-recall-contrast-term
     dimension: conceptual
     type: mc
@@ -504,7 +504,7 @@ exercises:
       - id: a
         text: Reward over-optimisation.
         correct: true
-        feedback: The policy has been trained against the proxy past the point where it still improves true quality.
+        feedback: The proxy gains come at the expense of quality as estimated by the held-out ratings.
       - id: b
         text: A sparse reward.
         correct: false
@@ -520,7 +520,7 @@ exercises:
         correct: false
         category: misunderstood_definition
         feedback: The KL penalty is a defence that charges for drifting. The pattern described is what happens when drift goes too far.
-    solution: A rising proxy score with true quality that peaks and falls is reward over-optimisation.
+    solution: Further gains on the proxy come with lower ratings, which is a sign of reward over-optimisation.
   - id: rh-signs-basics
     dimension: conceptual
     type: mc
@@ -532,22 +532,22 @@ exercises:
       - id: a
         text: The reward model's score rising while held-out ratings fall.
         correct: true
-        feedback: The policy is earning more score without getting better, so it's exploiting the reward model.
+        feedback: The score and the separate quality estimate move in opposite directions. Check replies for a loophole.
       - id: b
         text: The reward model's score and held-out ratings rising together.
         correct: false
         category: incorrect_reasoning
-        feedback: That is healthy training. The score is still tracking true quality.
+        feedback: Rising ratings are encouraging, but a rising average can still hide failures in individual replies.
       - id: c
         text: The reward model's score rising steadily at every checkpoint.
         correct: false
         category: incorrect_reasoning
-        feedback: The score rises whether or not the gains are real, so on its own it can't show hacking.
+        feedback: The score alone doesn't show whether the gains came from better replies.
       - id: d
         text: The reward model's score and held-out ratings staying flat.
         correct: false
         category: incorrect_reasoning
-        feedback: That means the policy isn't learning much. It isn't earning score it doesn't deserve.
+        feedback: Flat averages don't show the curves pulling apart, but they can hide problems in individual replies.
     solution: The clearest sign is the two curves pulling apart, with the proxy score rising while ratings the policy isn't trained on fall.
   - id: rh3-worked-self-explain
     lesson_only: true
@@ -556,12 +556,12 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: In the worked example, why is the growth from $150$ to $450$ words a warning sign and not a sign of more detailed answers?
+    prompt: In the worked example, what makes the growth from $150$ to $450$ words suspicious?
     options:
       - id: a
-        text: It happened while the judge's rating fell, and the extra words were repetition.
+        text: It happened while the judge's rating fell, and the sampled reply repeated itself.
         correct: true
-        feedback: Longer replies that are rated worse and repeat themselves are padding.
+        feedback: The lower rating and the repetition in the sample are reasons to check for padding in more replies.
       - id: b
         text: Any reply longer than $300$ words is a sign of reward hacking.
         correct: false
@@ -572,14 +572,17 @@ exercises:
         correct: false
         category: incorrect_reasoning
         feedback: The score rose at every checkpoint, from $0$ to $3.2$.
-    solution: Length alone isn't hacking. Here it tripled while the judge's rating fell from $7.0$ to $5.5$, and the sample reply only repeated itself.
+    solution: Length tripled while the judge's rating fell from $7.0$ to $5.5$. The sample repeats words without adding information.
   - id: rh3-kl-estimate-template
     dimension: math
     type: numeric
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: At one checkpoint of an RLHF run, the policy writes $4$ replies to a prompt. Each reply's log ratio, $\ln\pi_\theta(y\mid x)-\ln\pi_{\text{ref}}(y\mid x)$, is ${{= a }}$, ${{= b }}$, ${{= c }}$ and $13$. Estimate $\mathrm{KL}(\pi_\theta\Vert\pi_{\text{ref}})$ for this prompt. Two decimals are enough.
+    prompt: |
+      At step 200 of an RLHF run, the estimated KL from the reference model on one prompt was $5.1$ nats. At step 400 the policy sampled four replies to the same prompt. Their log ratios against the same reference were ${{= a }}$, ${{= b }}$, ${{= c }}$ and $13$. The run's reward model score rose from $2$ to $3$ over those steps.
+
+      Estimate the change in KL from step 200 to step 400 in nats, to two decimal places.
     params:
       a:
         min: 6
@@ -593,14 +596,17 @@ exercises:
         min: 9
         max: 11
         step: 2
-    answer_expr: (a + b + c + 13) / 4
+    answer_expr: (a + b + c + 13) / 4 - 5.1
     tolerance:
       abs: 0.006
     common_wrong:
-      - answer_expr: a + b + c + 13
+      - answer_expr: a + b + c + 13 - 5.1
         category: math_error
-        feedback: That is the sum of the log ratios. The estimate is their average.
-    solution: Each sampled reply's log ratio is a noisy estimate of the KL, so we average them, $({{= a }}+{{= b }}+{{= c }}+13)/4={{= (a + b + c + 13) / 4 }}$ nats. A KL that jumps this high is a warning that the policy has drifted far from the SFT model.
+        feedback: Use the average of the four log ratios for the later KL estimate, then subtract the earlier estimate.
+      - answer_expr: (a + b + c + 13) / 4
+        category: incorrect_reasoning
+        feedback: That gives the KL estimate at step 400. Compare it with the estimate at step 200.
+    solution: The four log ratios average to ${{= (a + b + c + 13) / 4 }}$, so the KL estimate rose by ${{= (a + b + c + 13) / 4 }}-5.1={{= (a + b + c + 13) / 4 - 5.1 }}$ nats. More estimated drift with a higher proxy score is a reason to look at held-out ratings and sample replies, but it doesn't establish hacking.
   - id: rh3-sycophancy
     dimension: transfer
     type: mc
@@ -614,7 +620,7 @@ exercises:
 
       A late checkpoint replies: "Yes, you're absolutely right, great work! $7\times8=54$."
 
-      The reward model scores the late reply higher. Which sign of reward hacking is this?
+      The reward model scores the late reply higher. Which term specifically describes agreeing with the user's false claim?
     options:
       - id: a
         text: Sycophancy, agreeing with the user instead of being correct.
@@ -634,7 +640,7 @@ exercises:
         text: Growing length, padding the answer with extra words.
         correct: false
         category: misunderstood_definition
-        feedback: Both replies are short. What changed is that the late one agrees with a false claim.
+        feedback: The late reply is longer, but length doesn't describe its agreement with the false claim.
     solution: The late reply agrees with and flatters the user instead of correcting them, which is sycophancy. A reward model can learn to like it because people often rate agreeable replies highly.
   - id: rh3-which-run
     dimension: transfer
@@ -642,7 +648,7 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: Three RLHF runs are each checked at the start, halfway through and at the end of training. Each lists its reward model score, its average reply length in words, and a stronger judge's rating of held-out replies. Which run is most likely hacking its reward model?
+    prompt: Three RLHF runs are each checked at the start, halfway through and at the end of training. Each lists its reward model score, its average reply length in words, and a stronger judge's rating of held-out replies. Which run looks most suspicious for reward hacking?
     options:
       - id: a
         text: "Score $0$, $2$, $4$; length $100$, $250$, $600$; rating $6$, $6.5$, $5$."
@@ -657,8 +663,8 @@ exercises:
         text: "Score $0$, $0.5$, $0.6$; length $100$, $105$, $100$; rating $6$, $6.1$, $6.1$."
         correct: false
         category: incorrect_reasoning
-        feedback: This run is barely learning. A run that hacks the reward model earns much more score.
-    solution: Hacking shows as a rising score with a falling held-out rating, often with replies that keep getting longer.
+        feedback: This run doesn't show a falling held-out rating or growing reply length.
+    solution: Run A is the most suspicious because the proxy score rises while the rating falls and replies get longer. Read samples to check what's behind those changes.
   - id: rh3-special-case-code
     dimension: transfer
     type: mc
@@ -666,7 +672,9 @@ exercises:
     difficulty: 3
     est_minutes: 2
     prompt: |
-      A model is trained to write Python functions. Its reward is the fraction of each problem's tests that its function passes. For one problem, the tests check `is_prime(7)` is `True`, `is_prime(9)` is `False` and `is_prime(13)` is `True`. Over training, the average pass rate on its training problems rose from $40\%$ to $100\%$. On new tests it never sees, the pass rate fell from $40\%$ to $20\%$. Here is one of its late solutions.
+      A model is trained to write Python functions. Its reward is the fraction of each problem's tests that its function passes. One problem asks for a function that checks whether a number is prime. A prime is a whole number greater than 1 whose only positive divisors are 1 and itself. For example, `is_prime(11)` should return `True`. The training tests expect `True` for 7, `False` for 9 and `True` for 13.
+
+      Over training, the average pass rate on its training problems rose from $40\%$ to $100\%$. On unseen tests it fell from $40\%$ to $20\%$. Here is one of its late solutions.
 
       ```python
       def is_prime(n):
@@ -684,7 +692,7 @@ exercises:
       - id: a
         text: It special-cases the test inputs, so it passes the tests without checking whether a number is prime.
         correct: true
-        feedback: The function returns the expected answers for 7, 9 and 13 only. It says `is_prime(11)` is `False`.
+        feedback: The function returns the expected answers on all three training inputs. It defaults to `False` elsewhere, so it gets the unseen prime 11 wrong.
       - id: b
         text: It's a correct prime check, and the new tests must be harder or wrong.
         correct: false
@@ -694,8 +702,8 @@ exercises:
         text: It's correct for small numbers, and the drop on new tests is just noise.
         correct: false
         category: incorrect_reasoning
-        feedback: It's wrong for small numbers too, such as 11. A fall from $40\%$ to $20\%$ alongside a perfect training score is a clear pattern.
-    solution: The function looks up the three test inputs and returns their expected answers, so the reward rises while the real skill, checking primes, gets worse.
+        feedback: The code returns `False` for 11, so it already fails on a small number.
+    solution: The function passes the training tests by special-casing their inputs. It gets some unseen inputs right by default, but it doesn't check whether a number is prime.
   - id: rh3-summaries
     dimension: transfer
     type: mc
@@ -707,18 +715,18 @@ exercises:
       - id: a
         text: The reward model overrates long summaries, and the policy has learned to pad them.
         correct: true
-        feedback: A 400-word summary of a 500-word article isn't much of a summary, and the judge's rating has fallen.
+        feedback: The falling ratings and near-article-length summaries make padding a plausible explanation. Read the summaries to check for unnecessary text.
       - id: b
         text: The summaries are getting more complete, so they are improving.
         correct: false
         category: incorrect_reasoning
-        feedback: If they were improving, the judge's rating would rise too. It fell from $7$ to $5$.
+        feedback: Extra detail can help, but the held-out ratings fell as summaries grew. Check samples to see if the extra words are useful.
       - id: c
         text: The judge must be wrong, because the reward model's score went up.
         correct: false
         category: incorrect_reasoning
-        feedback: The reward model's score is what the policy is trained to raise, so it's the measure we trust least here.
-    solution: The score rose while a rating the policy isn't trained on fell, and the summaries grew almost as long as the articles, so the policy is exploiting a preference for length.
+        feedback: The judge can make mistakes, but a higher training reward doesn't establish that its ratings are wrong.
+    solution: The higher score, lower ratings and growing length are consistent with padding. Compare samples and check whether the reward model prefers padded versions to equally informative shorter versions.
   - id: rh3-recall-say
     dimension: conceptual
     type: explain
@@ -726,17 +734,17 @@ exercises:
     knowledge_point: rh-signs
     difficulty: 1
     est_minutes: 1
-    prompt: In one or two sentences, how can you spot reward hacking during RLHF training?
+    prompt: In one or two sentences, name one warning sign of reward hacking in RLHF training curves and one you could look for in sample replies.
     rubric:
       - id: r1
-        criterion: State that the reward model's score keeps rising while held-out ratings from people or a stronger judge flatten or fall.
+        criterion: Describe rising proxy scores with falling held-out ratings, or a flat held-out rating paired with another warning sign such as growing reply length.
         weight: 1
         required: true
       - id: r2
-        criterion: Name a pattern to look for in the replies, such as growing length, repetition, sycophancy or code that special-cases its tests.
+        criterion: Name a pattern to look for in replies, such as padding, repetition, sycophancy or code that special-cases its tests.
         weight: 1
         required: true
-    exemplar: Track people's or a stronger judge's ratings of replies to held-out prompts, and watch for the reward model's score rising while those ratings flatten or fall. Then read replies for patterns such as growing length, repetition, sycophancy or code that special-cases its tests.
+    exemplar: Watch for the reward model's score rising while held-out ratings fall. In sample replies, look for repeated phrases that add no information.
   - id: rh3-recall-contrast
     dimension: conceptual
     type: mc
@@ -759,7 +767,7 @@ exercises:
         text: Reward over-optimisation.
         correct: false
         category: misunderstood_definition
-        feedback: Over-optimisation is the pattern in training curves. Sycophancy is one thing it can produce in replies.
+        feedback: Over-optimisation means proxy gains come at the expense of quality. Sycophancy names this specific behaviour in a reply.
       - id: d
         text: Reward shaping.
         correct: false
@@ -776,14 +784,14 @@ exercises:
     prompt: When checking an RLHF run for reward hacking, what is a stronger judge?
     options:
       - id: a
-        text: A larger, more capable language model asked to rate replies to held-out prompts.
+        text: A separate evaluator that's more reliable on the task than the training reward model.
         correct: true
-        feedback: It's cheaper than asking people, though it can make mistakes of its own.
+        feedback: Its ratings aren't used as training reward. It can still be misled, especially if it shares the reward model's biases.
       - id: b
         text: The reward model that the policy is trained against.
         correct: false
         category: misunderstood_definition
-        feedback: The policy is trained to raise that model's score, so it can't check for hacking.
+        feedback: That model gives the training reward. A stronger judge provides a separate rating.
       - id: c
         text: The reference model, a frozen copy of the SFT model.
         correct: false
@@ -794,7 +802,7 @@ exercises:
         correct: false
         category: misunderstood_definition
         feedback: Those people write training examples. A stronger judge rates the policy's replies.
-    solution: A stronger judge is a larger, more capable language model that rates held-out replies, standing in for people.
+    solution: A stronger judge rates replies separately from training and is more reliable on the task. A capable language model can serve as this judge and can cost less than asking people.
   - id: rh-defences-basics
     dimension: conceptual
     type: mc
@@ -804,9 +812,9 @@ exercises:
     prompt: How does the KL penalty in RLHF help against reward hacking?
     options:
       - id: a
-        text: It makes replies far from the SFT model costly, so the policy stays where the reward model is more accurate.
+        text: It makes it costly for the policy to drift far from the frozen SFT model.
         correct: true
-        feedback: Hacked replies are often very unlikely under the reference model, so their log ratio and penalty are large.
+        feedback: A reply made much more likely than under the reference gets a large subtraction. Being unlikely under both models doesn't produce a large log ratio by itself.
       - id: b
         text: It retrains the reward model on the policy's newest replies.
         correct: false
@@ -821,8 +829,8 @@ exercises:
         text: It keeps the checkpoint with the best held-out rating.
         correct: false
         category: misunderstood_definition
-        feedback: That's early stopping. The KL penalty acts on every reply during training.
-    solution: The penalty subtracts $\beta$ times each reply's log ratio, so drifting far from the SFT model costs reward and the policy stays where the reward model is more accurate.
+        feedback: That's the checkpoint selection part of early stopping. The KL penalty adjusts each reply's reward during training.
+    solution: The penalty subtracts $\beta$ times each reply's log ratio. The mean log ratio under the policy is its KL, so larger policy drift costs more on average.
   - id: rh4-worked-self-explain
     lesson_only: true
     dimension: conceptual
@@ -899,7 +907,7 @@ exercises:
       | $600$ | $9$ | $2.6$ | $6.6$ |
       | $800$ | $12$ | $3.0$ | $6.0$ |
 
-      Using early stopping, which checkpoint should they keep?
+      They stop after two checks without an improvement. Which checkpoint should they restore?
     options:
       - id: a
         text: Step 400.
@@ -930,43 +938,43 @@ exercises:
     prompt: To be safe from reward hacking, a team sets the KL coefficient $\beta$ in RLHF very large. What is the most likely result?
     options:
       - id: a
-        text: The policy barely moves from the SFT model, so it hardly improves at all.
+        text: The policy stays closer to the SFT model, which can limit useful changes too.
         correct: true
-        feedback: Almost any change costs more penalty than it gains in score.
+        feedback: A larger coefficient makes the same policy drift cost more on average, even if it could improve replies.
       - id: b
         text: Hacking disappears, and true quality rises as far as it would with a small $\beta$.
         correct: false
         category: incorrect_reasoning
-        feedback: A huge penalty also blocks the real improvements, because those need the policy to change too.
+        feedback: A large penalty can limit real improvements, and it doesn't guarantee that hacking disappears.
       - id: c
         text: The reward model's errors get corrected during training.
         correct: false
         category: incorrect_reasoning
         feedback: The reward model stays fixed during RL. The penalty only changes how far the policy moves.
-    solution: A very large $\beta$ makes every change from the SFT model costly, so the policy stays close to where it started and gains little.
+    solution: A very large $\beta$ makes moving away from the SFT model more costly, which can limit both useful changes and harmful ones.
   - id: rh4-shared-error
     dimension: transfer
     type: mc
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: A team trains five reward models from different random starting weights, all on the same comparisons, and uses the average of their scores. In those comparisons the longer reply usually won. The policy still learns to pad its replies. Why didn't averaging help?
+    prompt: A team trains five reward models from different random starting weights, all on the same comparisons, and uses the average of their scores. All five score padded versions higher than equally informative shorter versions in a check. The policy still learns to pad its replies. Why didn't averaging remove that bias?
     options:
       - id: a
         text: All five models learned the same liking for length, so averaging doesn't cancel it.
         correct: true
-        feedback: Averaging helps when the models' errors differ. A shared error stays in the average.
+        feedback: If the models' errors differ, averaging can help. Here all five prefer the padded text.
       - id: b
         text: Five models are too few, and averaging fifty would remove the error.
         correct: false
         category: incorrect_reasoning
-        feedback: Models trained on the same comparisons would share the same error however many we train.
+        feedback: Adding more models doesn't remove the bias if those models share it too.
       - id: c
         text: Averaging makes each model's errors larger.
         correct: false
         category: incorrect_reasoning
         feedback: The average can't be further off than every model. The problem is that they're all off in the same way.
-    solution: An ensemble helps least when every model shares the same error. Here they all learned from comparisons where length won.
+    solution: Every model gives a higher score to padded text. The average of those scores still favours the padded text.
   - id: rh4-code-tests
     dimension: transfer
     type: mc
@@ -976,9 +984,9 @@ exercises:
     prompt: A team trains a model to write programs, with the reward being the fraction of each problem's tests its program passes. They worry it will learn to special-case the test inputs. Which check would catch this most directly?
     options:
       - id: a
-        text: Run each checkpoint's programs on held-out tests it never sees, and watch whether that pass rate falls.
+        text: Check for a widening gap between training and held-out pass rates, and inspect failures on unseen inputs.
         correct: true
-        feedback: Special-cased code passes only the tests it was trained on, so the held-out pass rate drops.
+        feedback: The held-out rate could stay flat while the training rate rises. Inspecting failures can show whether the code special-cases training inputs.
       - id: b
         text: Watch the pass rate on the training tests and stop when it reaches $100\%$.
         correct: false
@@ -988,8 +996,8 @@ exercises:
         text: Raise $\beta$ so the policy stays closer to the SFT model.
         correct: false
         category: incorrect_reasoning
-        feedback: That may slow hacking, but it doesn't check for it. Only a measure the policy isn't trained on can show it.
-    solution: A held-out set of tests acts like people's held-out ratings, and reading a few programs would also show the special cases directly.
+        feedback: That may reduce the risk, but it doesn't check whether a program handles unseen inputs.
+    solution: A growing gap is a warning even if the held-out rate doesn't fall. Read the programs and inspect failures to see if they hard-code the training cases.
   - id: rh4-recall-say
     dimension: conceptual
     type: explain
@@ -1000,14 +1008,14 @@ exercises:
     prompt: In one or two sentences, how do the KL penalty and early stopping each protect against reward hacking?
     rubric:
       - id: r1
-        criterion: Explain that the KL penalty makes drifting far from the SFT model costly, keeping the policy where the reward model is more accurate.
+        criterion: Explain that the KL penalty makes drifting far from the SFT model costly, which can limit harmful changes.
         weight: 1
         required: true
       - id: r2
-        criterion: Explain that early stopping keeps the checkpoint with the best held-out rating, before true quality falls.
+        criterion: Explain that early stopping stops training once the held-out rating hasn't improved for a chosen interval and restores the best checkpoint observed.
         weight: 1
         required: true
-    exemplar: The KL penalty subtracts beta times each reply's log ratio, so drifting far from the SFT model costs reward and the policy stays where the reward model is more accurate. Early stopping keeps the checkpoint with the best held-out rating, so we stop before true quality falls.
+    exemplar: The KL penalty makes moving far from the SFT model costly, which can limit harmful changes. With early stopping, we stop after a chosen number of checks without improvement in held-out ratings and restore the best checkpoint we saw.
   - id: rh4-recall-contrast
     dimension: conceptual
     type: mc
@@ -1020,17 +1028,17 @@ exercises:
       - id: a
         text: A reward model ensemble.
         correct: true
-        feedback: Their errors differ, so one model's mistake counts for less in the average.
+        feedback: If their errors differ, one model's mistake can count for less in the average.
       - id: b
         text: Early stopping.
         correct: false
         category: misunderstood_definition
-        feedback: Early stopping keeps the checkpoint with the best held-out rating.
+        feedback: Early stopping can stop training once ratings stop improving and restore the best observed checkpoint.
       - id: c
         text: The KL penalty.
         correct: false
         category: misunderstood_definition
-        feedback: The KL penalty charges each reply for how far the policy has moved from the reference model.
+        feedback: The KL penalty adjusts each reward using that reply's log ratio. The mean log ratio gives the policy's KL from the reference.
       - id: d
         text: Retraining on new comparisons.
         correct: false
@@ -1070,18 +1078,18 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 4
-    prompt: A team trains a chatbot with RLHF. Explain why its reward model score can keep rising while its replies get worse, give one sign in training curves or replies that would show this, and give one way to prevent it.
+    prompt: A team trains a chatbot with RLHF. Explain why its reward model score can rise while its replies get worse, give one warning sign in training curves or sample replies, and give one way to reduce the risk.
     rubric:
       - id: r1
-        criterion: Explain that the reward model is a proxy with errors, and as the policy drifts from the SFT model's replies it finds replies the reward model overrates.
+        criterion: Explain that the reward model is a proxy with errors, and the policy can learn to favour replies the model overrates.
         weight: 1
         required: true
       - id: r2
-        criterion: Give a sign, such as the score rising while held-out ratings from people or a stronger judge fall, or replies getting longer, repetitive or sycophantic.
+        criterion: Give a warning sign, such as the score rising while held-out ratings fall, or replies showing padding, repetition or sycophancy.
         weight: 1
         required: true
       - id: r3
-        criterion: Give a defence, such as the KL penalty, early stopping at the checkpoint with the best held-out rating, a better reward model or a reward model ensemble, or reading replies.
+        criterion: Give a way to reduce the risk, such as penalising drift with KL, stopping early and restoring the best observed checkpoint, improving the reward model with new comparisons, or averaging models with different errors.
         weight: 1
         required: true
-    exemplar: The reward model is only a proxy for what people want, and it learned from replies like the SFT model's. As PPO pushes the policy further from those replies, the reward model's errors grow, and the policy finds replies it overrates, so the score rises while true quality falls. One sign is the reward model's score rising while people's ratings of held-out replies fall, often with replies getting longer and more repetitive. A KL penalty keeps the policy close to the SFT model, and early stopping keeps the checkpoint with the best held-out rating.
+    exemplar: The reward model is a proxy and sometimes overrates replies. If the policy learns to favour those replies, the score can rise while quality falls. One warning sign is the score rising while people's held-out ratings fall. A KL penalty can reduce the risk by making it costly for the policy to move far from the SFT model.

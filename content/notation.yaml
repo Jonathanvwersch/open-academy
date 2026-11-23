@@ -717,3 +717,21 @@ terms:
       match: ["goodhart"],
       introduced_by: [reward-hacking],
     }
+  - {
+      id: proxy-reward,
+      label: "proxy reward",
+      match: ['\bproxy[- ]reward\b'],
+      introduced_by: [reward-hacking],
+    }
+  - {
+      id: best-of-n-sampling,
+      label: "best-of-n sampling",
+      match: ['\bbest[- ]of[- ](?:\$n\$|n\b)'],
+      introduced_by: [reward-hacking],
+    }
+  - {
+      id: stronger-judge,
+      label: "stronger judge",
+      match: ['\bstronger[- ]judge\b'],
+      introduced_by: [reward-hacking],
+    }
