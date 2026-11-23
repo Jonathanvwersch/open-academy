@@ -17,6 +17,7 @@ where_this_fits: |
   It helps describe measurement noise, the difference between a reading and the true distance. A table lists a die's chances, but measurements can fall anywhere along a number line. A smooth curve describes their chances using a centre and spread, helping us estimate how often readings will be unusually far away.
 knowledge_points:
   - id: gauss-centre-spread
+    key_prereqs: [descriptive-statistics]
     title: Find the centre and spread
     tldr: |
       - The mean is the average and gives the centre of the readings.
@@ -72,6 +73,7 @@ knowledge_points:
       - gauss-shift
       - gauss-scale
   - id: gauss-bell-area
+    key_prereqs: [probability-basics, descriptive-statistics]
     title: Read chances from a bell
     tldr: |
       - A smooth curve describes chances for measurements along a number line.
@@ -129,6 +131,7 @@ knowledge_points:
       - gauss-tail
       - gauss-range-transfer
   - id: gauss-density-formula
+    key_prereqs: [descriptive-statistics, probability-basics]
     title: Calculate the bell's height
     tldr: |
       - We measure each reading's distance from the centre in standard deviations.
@@ -197,6 +200,7 @@ knowledge_points:
       - gauss-tall
       - gauss-width-transfer
   - id: gauss-small-effects
+    key_prereqs: [probability-basics]
     title: See why sums form a bell
     tldr: |
       - Adding several random contributions makes middle totals easier to reach than extreme ones.

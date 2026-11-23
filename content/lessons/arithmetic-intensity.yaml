@@ -16,6 +16,7 @@ where_this_fits: |
   Recall that prefill processes the prompt's tokens together. A sequence is one prompt and the response being generated for it. Decode adds one token to each sequence, then repeats, because each new token depends on earlier tokens. We'll compare their calculation per byte moved.
 knowledge_points:
   - id: ai-count-work-bytes
+    key_prereqs: [matrices]
     title: Count calculations and bytes
 
     tldr: |
@@ -84,6 +85,7 @@ knowledge_points:
       - aip-reread
       - aip-image-product
   - id: ai-speed-limits
+    key_prereqs: []
     title: Compare memory and calculation speeds
 
     tldr: |
@@ -151,6 +153,7 @@ knowledge_points:
       - aip-measured-rate
       - aip-robot-roof
   - id: ai-weight-reuse
+    key_prereqs: [matrices, prefill-decode, inference-metrics]
     title: Reuse weights for more tokens
 
     tldr: |

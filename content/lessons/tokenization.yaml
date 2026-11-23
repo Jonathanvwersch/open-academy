@@ -10,6 +10,7 @@ where_this_fits: |
   Why does it matter how we cut? A model can only do arithmetic on numbers, so the text must become numbers somehow. Giving every whole word its own number loses any word that wasn't in the list, and giving every letter a number makes the text very long. This lesson builds the method most language models use, byte-pair encoding, which learns pieces bigger than letters and smaller than rare words from example text.
 knowledge_points:
   - id: tok-text-to-ids
+    key_prereqs: []
     title: "Turn text into a list of numbers"
     tldr: |
       - A model needs text to become numbers before it can use it.
@@ -104,6 +105,7 @@ knowledge_points:
       - tok-ids-unknown
       - tok-ids-robot
   - id: tok-bpe-merges
+    key_prereqs: []
     title: "Merge pairs of tokens"
     tldr: |
       - Start with letters and count which neighbouring pairs appear most often in example text.
@@ -240,6 +242,7 @@ knowledge_points:
       - tok-bpe-two-merges
       - tok-bpe-overlapping-pair-count
   - id: tok-bpe-encode
+    key_prereqs: []
     title: "Split new text with the learned merges"
     tldr: |
       - Once training ends, the vocabulary and merge order stay fixed.

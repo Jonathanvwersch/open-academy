@@ -13,6 +13,7 @@ where_this_fits: |
   Why is that useful? RLHF first trains a reward model, then runs PPO, where the policy writes replies, the reward model scores them and the policy is updated, round after round. That loop is slow and has many parts to get right. DPO trains on a fixed set of preference pairs with gradient descent, like ordinary supervised training.
 knowledge_points:
   - id: dpo-best-policy
+    key_prereqs: [rlhf, information-theory, probability-basics]
     title: "Find the best policy for RLHF's goal"
     tldr: |
       - RLHF wants replies with a high reward that stay close to the reference model.
@@ -109,6 +110,7 @@ knowledge_points:
       - dpo1-robot-grasp
       - dpo4-kl-template
   - id: dpo-loss
+    key_prereqs: [reward-models, rlhf]
     title: "Write the loss for one preference pair"
     tldr: |
       - Turn the best-policy formula around, and a policy gives every reply a reward.
@@ -175,6 +177,7 @@ knowledge_points:
       - dpo2-implicit-preference
       - dpo2-robot-grasp
   - id: dpo-gradient
+    key_prereqs: [reward-models, chain-rule, gradient-descent]
     title: "See how training changes each reply"
     tldr: |
       - Lowering the DPO loss raises the chosen reply's log-probability and lowers the rejected reply's.
@@ -234,6 +237,7 @@ knowledge_points:
       - dpo3-which-pair
       - dpo3-robot-slope
   - id: dpo-vs-rlhf
+    key_prereqs: [rlhf, reward-models]
     title: "Compare DPO with RLHF"
     tldr: |
       - RLHF trains a reward model, then repeats a loop of writing replies, scoring them and updating the policy with PPO.

@@ -17,6 +17,7 @@ where_this_fits: |
   As GPUs for inference showed, a GPU keeps its data in a large main memory, HBM, which is slower to reach than its small on-chip memory. And as Memory-bound vs compute-bound showed, an operation doing fewer FLOPs per byte moved than the GPU's ops:byte ratio spends its time waiting on memory. Attention on a long prompt makes a score for every pair of tokens, and moving those scores through HBM makes it slow.
 knowledge_points:
   - id: fa-standard-traffic
+    key_prereqs: [attention, arithmetic-intensity, gpu-inference-basics]
     title: "Count the bytes attention moves"
 
     tldr: |
@@ -114,6 +115,7 @@ knowledge_points:
       - fa-std-limit
       - fa-std-transfer
   - id: fa-fused-kernel
+    key_prereqs: [gpu-inference-basics, arithmetic-intensity, attention]
     title: "Do all of attention in one kernel"
 
     tldr: |
@@ -215,6 +217,7 @@ knowledge_points:
       - fa-fused-short
       - fa-fused-transfer
   - id: fa-online-softmax
+    key_prereqs: [attention, classification-softmax]
     title: "Compute softmax one block of keys at a time"
 
     tldr: |
@@ -298,6 +301,7 @@ knowledge_points:
       - fa-online-direct
       - fa-online-transfer
   - id: fa-running-max
+    key_prereqs: [prefill-decode, gpu-inference-basics]
     title: "Stop the exponentials from getting too big"
 
     tldr: |

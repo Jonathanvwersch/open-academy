@@ -13,6 +13,7 @@ where_this_fits: |
   “Stochastic” means random, referring to how we choose examples. With a million training examples, a group of a hundred lets us update after checking a hundred instead of waiting for a million. The tradeoff is that those examples may disagree with the rest, so their direction is less reliable. We'll keep the gradient-descent update and change which examples supply its slope.
 knowledge_points:
   - id: sgm-average-slopes
+    key_prereqs: [gradient-descent, loss-functions, gradients]
     title: "Average a few examples' slopes"
     tldr: |
       - A small group of examples can supply the slopes for one update.
@@ -100,6 +101,7 @@ knowledge_points:
       - sgm-update-template
       - sgm-two-parameters
   - id: sgm-count-passes
+    key_prereqs: [gradient-descent]
     title: "Repeat updates across the whole dataset"
     tldr: |
       - Each batch updates the parameters before the next batch is used.
@@ -175,6 +177,7 @@ knowledge_points:
       - sgm-fresh-slope
       - sgm-shuffle-application
   - id: sgm-choose-size
+    key_prereqs: [loss-functions, gradient-descent]
     title: "Choose how many examples to use"
     tldr: |
       - A small batch's average slope can point a different way from the whole dataset's slope.

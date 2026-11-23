@@ -17,6 +17,7 @@ where_this_fits: |
   Text needs no labels, because each next token is its own answer, and predicting it well teaches the model grammar, facts and patterns of reasoning. This lesson follows a model from raw text to an assistant and estimates what pretraining costs.
 knowledge_points:
   - id: pt-training-data
+    key_prereqs: [autoregressive-lm, tokenization]
     title: "Prepare text for training"
     tldr: |
       - Training starts with text gathered from many sources.
@@ -101,6 +102,7 @@ knowledge_points:
       - ptp-filter-spam
       - ptp-robot-logs
   - id: pt-training-compute
+    key_prereqs: [backpropagation, matrices]
     title: "Estimate the cost of a training run"
     tldr: |
       - Training does about six arithmetic steps for every parameter, for every token it reads.
@@ -165,6 +167,7 @@ knowledge_points:
       - ptp-compare-runs
       - ptp-robot-compute
   - id: pt-scaling-laws
+    key_prereqs: []
     title: "Predict the loss of a bigger training run"
     tldr: |
       - Bigger training runs tend to lower prediction loss in a fairly regular way.
@@ -254,6 +257,7 @@ knowledge_points:
       - ptp-why-overtrain
       - ptp-scaling-limits
   - id: pt-training-pipeline
+    key_prereqs: [autoregressive-lm, supervised-learning]
     title: "Follow a model from raw text to assistant"
     tldr: |
       - Pretraining gives a model broad practice at continuing text.

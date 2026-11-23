@@ -17,6 +17,7 @@ where_this_fits: |
   We'll compare forecasts with actual probabilities describing how often each weather happens over many days. We'll compute entropy, the average surprise from actual probabilities, and cross-entropy, which weights forecast surprises by actual probabilities. Cross-entropy scores errors as a loss. We train the model by changing its calculation to lower this loss. The difference from entropy, KL divergence, measures the extra surprise from wrong forecasts.
 knowledge_points:
   - id: it-surprise
+    key_prereqs: [derivatives, probability-basics]
     title: Measure how surprising an outcome is
     tldr: |
       - Rare outcomes surprise us more than likely ones when they happen.
@@ -85,6 +86,7 @@ knowledge_points:
         it-surprise-robot,
       ]
   - id: it-entropy
+    key_prereqs: [probability-basics, derivatives]
     title: Find the average surprise
     tldr: |
       - Each possible outcome has a surprise score.
@@ -157,6 +159,7 @@ knowledge_points:
         it-entropy-sensor,
       ]
   - id: it-cross-entropy
+    key_prereqs: [probability-basics, derivatives]
     title: Score the app's forecasts
     tldr: |
       - A forecast receives a larger penalty when it gives less probability to what actually happens.
@@ -213,6 +216,7 @@ knowledge_points:
         it-cross-confidence,
       ]
   - id: it-kl
+    key_prereqs: [probability-basics, derivatives]
     title: Measure the cost of wrong forecasts
     tldr: |
       - Even a perfect forecast leaves some surprise, and that average is the entropy.

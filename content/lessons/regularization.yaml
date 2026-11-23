@@ -16,6 +16,7 @@ where_this_fits: |
   Our example has one weight, $\hat y=wx$, and one training example, $x=1$ with target $y=3$. That target is unusually high compared with the broader pattern, so a smaller weight will do better on new examples.
 knowledge_points:
   - id: rg-penalty
+    key_prereqs: [loss-functions, derivatives, vectors]
     title: "Add a penalty for large weights"
     tldr: |
       - Large weights let a prediction jump between almost identical inputs, which is how a model copies quirks.
@@ -142,6 +143,7 @@ knowledge_points:
       - rgp-lambda-back
       - rgp-robot-huge
   - id: rg-weight-decay
+    key_prereqs: [gradient-descent, loss-functions]
     title: "Shrink every weight on each update"
     tldr: |
       - In gradient descent, the penalty adds a pull towards zero to every update.
@@ -257,6 +259,7 @@ knowledge_points:
       - rgp-settle
       - rgp-decay-setting
   - id: rg-strength
+    key_prereqs: [train-test-split, overfitting, loss-functions]
     title: "Choose how strong the penalty is"
     tldr: |
       - A weak penalty can leave overfitting, while a strong one can cause underfitting.
@@ -326,6 +329,7 @@ knowledge_points:
       - rgp-still-falling
       - rgp-robot-strength
   - id: rg-l1
+    key_prereqs: [derivatives, loss-functions, gradient-descent]
     title: "Penalize weights by their absolute size"
     tldr: |
       - Penalizing squared weights removes a fraction of each weight on every update.

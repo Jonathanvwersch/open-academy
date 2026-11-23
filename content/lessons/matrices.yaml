@@ -13,6 +13,7 @@ where_this_fits: |
   That's useful because a model is almost never used on just one example. To check a house-price model, we compare its predictions with the real prices of every house we know about, which can mean thousands of dot products. Some models also make several predictions for each house, such as a sale price and a monthly rent. In the dot product lesson, we made one prediction at a time. A matrix lets us write all of them as a single multiplication, and one line of code can then work them all out.
 knowledge_points:
   - id: mat-rows-shapes
+    key_prereqs: [dot-product]
     title: "Multiply a matrix by a vector"
     tldr: |
       - A matrix is a grid that can hold one example in each row.
@@ -115,6 +116,7 @@ knowledge_points:
       - matp-vector-template
       - matp-recover-weight-template
   - id: mat-matrix-products
+    key_prereqs: [dot-product]
     title: "Multiply two matrices"
     tldr: |
       - Put each set of prediction weights in its own column of a second matrix.
@@ -221,6 +223,7 @@ knowledge_points:
       - matp-batch-shape
       - matp-recover-factor-entry
   - id: mat-batches-transpose
+    key_prereqs: [dot-product, vectors]
     title: "Multiply matrices in NumPy"
     tldr: |
       - NumPy provides Python tools for grids of numbers.

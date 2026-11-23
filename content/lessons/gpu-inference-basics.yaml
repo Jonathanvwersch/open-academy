@@ -17,6 +17,7 @@ where_this_fits: |
   In the lesson on arithmetic intensity, we learned that an operation's arithmetic intensity $I$ is the FLOPs it does per byte it moves to or from GPU memory. When $I$ is below the GPU's ops:byte ratio (peak FLOP/s ÷ memory bandwidth, about 300 for an H100), the operation is memory-bound.
 knowledge_points:
   - id: gib-model-memory
+    key_prereqs: [arithmetic-intensity]
     title: "Work out how much memory a model needs"
 
     tldr: |
@@ -125,6 +126,7 @@ knowledge_points:
       - gibp-leftover-template
       - gibp-robot-memory
   - id: gib-memory-hierarchy
+    key_prereqs: [inference-metrics, arithmetic-intensity]
     title: "See where the GPU keeps its data"
 
     tldr: |
@@ -200,6 +202,7 @@ knowledge_points:
       - gibp-reuse-interpret
       - gibp-laptop-read
   - id: gib-decode-bound
+    key_prereqs: [arithmetic-intensity, inference-metrics]
     title: "Find the top speed of decoding"
 
     tldr: |

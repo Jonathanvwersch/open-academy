@@ -15,6 +15,7 @@ where_this_fits: |
   Language models predict the next token: the token following the text so far. More parameters can help represent learned patterns. Running only a few experts lets us store more parameters while limiting each token's calculations.
 knowledge_points:
   - id: moe-choose
+    key_prereqs: [classification-softmax, vectors, matrices]
     title: Choose experts for each token
     tldr: |
       - A layer can hold several small neural networks, called experts.
@@ -83,6 +84,7 @@ knowledge_points:
     problems:
       [moe-route-basics, moe-route-why-half, moe-route-weight, moe-route-all, moe-route-output]
   - id: moe-count
+    key_prereqs: [mlp-forward-pass, matrices]
     title: Count parameters stored and used
     tldr: |
       - All experts need storage even when only a few run for one token.
@@ -153,6 +155,7 @@ knowledge_points:
         moe-count-memory,
       ]
   - id: moe-balance
+    key_prereqs: [classification-softmax]
     title: Avoid overloading one expert
     tldr: |
       - If most tokens choose one expert, other experts sit idle and processing can slow down.

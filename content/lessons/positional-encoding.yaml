@@ -13,6 +13,7 @@ where_this_fits: |
   We'll follow a rearranged token's output, then encode positions by adding vectors to embeddings or rotating queries and keys.
 knowledge_points:
   - id: pe-reordering
+    key_prereqs: [attention, embeddings]
     title: Follow a reordered token's output
     tldr: |
       - Ordinary attention applies the same rules at every position.
@@ -67,6 +68,7 @@ knowledge_points:
       - pe-order-three
       - pe-order-position-rule
   - id: pe-add-position
+    key_prereqs: [vectors, embeddings]
     title: Add a vector for each position
     tldr: |
       - Give each position a vector and add it to the token's embedding.
@@ -147,6 +149,7 @@ knowledge_points:
       - pe-add-waves
       - pe-add-collision
   - id: pe-rotate-position
+    key_prereqs: [dot-product, attention]
     title: Rotate queries and keys by position
     tldr: |
       - Position can also change the queries and keys used for comparisons.

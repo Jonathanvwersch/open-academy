@@ -24,6 +24,7 @@ where_this_fits: |-
   Bad settings, such as a learning rate that is too large, can look just like bugs, so changing things at random is hard to learn from. We will read the loss curve, then run two quick tests: train on a tiny batch where we know zero loss is possible, and check slopes by nudging a weight.
 knowledge_points:
   - id: dbt-loss-curves
+    key_prereqs: [gradient-descent, loss-functions, sgd-minibatch]
     title: Read what the loss curve shows
     tldr: |
       - A loss curve plots the loss after each training update.
@@ -118,6 +119,7 @@ knowledge_points:
       - dbt-noise
       - dbt-floor-template
   - id: dbt-tiny-batch
+    key_prereqs: [sgd-minibatch, gradient-descent, loss-functions]
     title: Train on two examples first
     tldr: |
       - Before a full run, train on two examples that the model can fit exactly.
@@ -197,6 +199,7 @@ knowledge_points:
       - dbt-tiny-drone
       - dbt-tiny-generalise
   - id: dbt-grad-check
+    key_prereqs: [partial-derivatives, loss-functions, pytorch-basics]
     title: Check a slope by nudging a weight
     tldr: |
       - A wrong slope can still make the loss fall, so a falling loss can't prove the slope code is right.
@@ -286,6 +289,7 @@ knowledge_points:
       - dbt-bias-debug
       - dbt-check-dropout
   - id: dbt-symptoms
+    key_prereqs: [gradient-descent, overfitting, loss-functions]
     title: Match a symptom to its cause
     tldr: |
       - Run the cheap checks first: read the curve, fit a tiny batch and check the slopes.

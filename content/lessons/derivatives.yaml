@@ -11,6 +11,7 @@ where_this_fits: |
 final: der-explain
 knowledge_points:
   - id: der-speed-at-instant
+    key_prereqs: []
     title: "Find the slope at one point"
     tldr: |
       - Comparing two positions tells us the average speed between them.
@@ -108,6 +109,7 @@ knowledge_points:
       - derp-nudge-backwards
       - derp-big-nudge
   - id: der-power-rule
+    key_prereqs: []
     title: "Find slopes of powers and sums"
     tldr: |
       - To find the slope of a power of x, bring the power down in front and lower the power by one.
@@ -214,6 +216,7 @@ knowledge_points:
       - derp-flat-slope
       - derp-top-bottom-signs
   - id: der-exp-log
+    key_prereqs: []
     title: "Find slopes of exponentials and logarithms"
     tldr: |
       - An exponential puts the input in the power of a fixed number.
@@ -316,6 +319,7 @@ knowledge_points:
       - derp-log-combine
       - derp-log-base
   - id: der-product-quotient
+    key_prereqs: []
     title: "Find slopes of products and fractions"
     tldr: |
       - When two changing quantities are multiplied, either one's change affects the result.

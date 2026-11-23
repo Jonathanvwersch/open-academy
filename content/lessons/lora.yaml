@@ -15,6 +15,7 @@ where_this_fits: |
   For a model with billions of weights, full fine-tuning needs a gradient for each one and a whole new copy of the model for every task. The change fine-tuning needs is usually close to low rank.
 knowledge_points:
   - id: lora-frozen-change
+    key_prereqs: [matrices, gradient-descent]
     title: "Keep the weights, train a change"
     tldr: |
       - Fine-tuning normally changes the model's existing weights.
@@ -91,6 +92,7 @@ knowledge_points:
       - lorp-full-change-count
       - lorp-robot-freeze
   - id: lora-two-thin-matrices
+    key_prereqs: [rank-span, matrices]
     title: "Build the change from two thin matrices"
     tldr: |
       - A full change has as many entries as the original weight matrix.
@@ -164,6 +166,7 @@ knowledge_points:
       - lorp-rows-multiple
       - lorp-rank-shape-robot
   - id: lora-count-savings
+    key_prereqs: [matrices, eigen-svd]
     title: "Count the numbers LoRA trains"
     tldr: |
       - Only the entries in the two thin matrices need training.
@@ -222,6 +225,7 @@ knowledge_points:
       - lorp-why-low-rank
       - lorp-raise-rank
   - id: lora-merge
+    key_prereqs: [matrices, backpropagation]
     title: "Start B at zero, then merge"
     tldr: |
       - Start one small matrix at zero so the model initially behaves exactly as before.

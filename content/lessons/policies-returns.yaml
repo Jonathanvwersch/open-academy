@@ -13,6 +13,7 @@ where_this_fits: |
   Useful rewards can arrive several steps after a choice, so the return scores the rewards still to come. The discount factor controls how much each later reward counts.
 knowledge_points:
   - id: pr-choose-actions
+    key_prereqs: [probability-basics, mdp]
     title: Choose actions in each state
     tldr: |
       - A policy is the robot's rule for which action to take in each state.
@@ -79,6 +80,7 @@ knowledge_points:
       - pr-policy-deterministic
       - pr-policy-new
   - id: pr-add-rewards
+    key_prereqs: [mdp]
     title: Add the rewards from a trip
     tldr: |
       - A return is a score for the rewards still to come on a trip.
@@ -159,6 +161,7 @@ knowledge_points:
       - pr-return-interpret
       - pr-return-new
   - id: pr-weight-delay
+    key_prereqs: [mdp]
     title: Choose how much delay matters
     tldr: |
       - The discount factor sets how much a reward counts for each step it is delayed.

@@ -10,6 +10,7 @@ where_this_fits: |
   Why is that useful? Some tasks have a rule we can write down, like turning metres into centimetres. But nobody can write the exact rule that prices a house from its details, or that turns a camera image into the movement a robot arm should make. What we often do have is lots of examples, such as past house sales. Machine learning turns those examples into a rule.
 knowledge_points:
   - id: ml-what-it-is
+    key_prereqs: []
     title: "Learn a rule from examples"
 
     tldr: |
@@ -106,6 +107,7 @@ knowledge_points:
       - ml-adjust-direction
       - ml-fit-weight
   - id: ml-house-model
+    key_prereqs: []
     title: "What a computer needs to learn"
 
     tldr: |
@@ -221,6 +223,7 @@ knowledge_points:
       - ml-why-derivatives
       - ml-why-new-houses
   - id: ml-to-robots
+    key_prereqs: []
     title: "Teach a robot the same way"
 
     tldr: |

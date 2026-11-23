@@ -23,6 +23,7 @@ where_this_fits: |
   Models have numbers we must fill in from data, such as a coin's chance of heads. Probability says how likely data is once those numbers are known, but not how to choose them. Maximum likelihood works for any kind of data. Training a model means adjusting its numbers to make a **loss**, a score of how badly its predictions fit, as small as possible. Maximum likelihood explains where the usual loss for predicting numbers, the mean squared error, comes from when the random errors in the data are Gaussian.
 knowledge_points:
   - id: mle-score-guess
+    key_prereqs: [probability-basics, derivatives]
     title: Score a guess for a coin's chance of heads
     tldr: |
       - Different guesses for a coin's chance of heads make the observed flips more or less likely.
@@ -78,6 +79,7 @@ knowledge_points:
       - mle-htt-peak
       - mle-gripper
   - id: mle-logs
+    key_prereqs: [derivatives, probability-basics]
     title: Swap a product of chances for a sum of logs
     tldr: |
       - Multiplying many small probabilities can produce numbers a computer cannot store accurately.
@@ -140,6 +142,7 @@ knowledge_points:
       - mle-underflow
       - mle-log-ratio
   - id: mle-gauss-centre
+    key_prereqs: [gaussian-distribution, derivatives, descriptive-statistics]
     title: Fit a bell curve's centre to readings
     tldr: |
       - We compare possible centres by how high their Gaussian curves are at the readings.
@@ -199,6 +202,7 @@ knowledge_points:
       - mle-centre-sigma
       - mle-centre-gap
   - id: mle-mse
+    key_prereqs: [gaussian-distribution]
     title: Turn likelihood into mean squared error
     tldr: |
       - A prediction model gives each reading its own predicted centre.

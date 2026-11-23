@@ -17,6 +17,7 @@ where_this_fits: |
   This can make a chat assistant answer faster. Ordinary decoding waits for each new token before starting the next expensive model pass. Checking several guesses together lets us get more tokens from each target pass. We'll follow an assistant serving Llama 3 8B on one NVIDIA H100 SXM, a data-centre GPU whose memory bandwidth and maths rate set our timings, and work out when drafting pays for itself.
 knowledge_points:
   - id: sd-draft-check
+    key_prereqs: [kv-cache, arithmetic-intensity, tokenization]
     title: Draft tokens, then check them together
 
     tldr: |
@@ -95,6 +96,7 @@ knowledge_points:
         sdp-cache-after-round,
       ]
   - id: sd-expected-speed
+    key_prereqs: [probability-basics, prefill-decode, arithmetic-intensity]
     title: Work out the expected speed-up
 
     tldr: |
@@ -172,6 +174,7 @@ knowledge_points:
         sdp-speech-budget,
       ]
   - id: sd-exact-sampling
+    key_prereqs: [probability-basics, prefill-decode]
     title: Match the target's probabilities when sampling
 
     tldr: |
@@ -254,6 +257,7 @@ knowledge_points:
         sdp-worse-draft,
       ]
   - id: sd-guess-sources
+    key_prereqs: [autoregressive-lm]
     title: Other ways to make the guesses
 
     tldr: |

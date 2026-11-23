@@ -13,6 +13,7 @@ where_this_fits: |
   Why do we need them? A reply can feel slow because it takes long to start or because it then trickles in, and these have different causes and fixes. Users care about their own wait, while whoever pays for the computer chips that run the model cares about how many users they serve. Serving more users at once can improve throughput while making replies slower, so we need numbers for both sides.
 knowledge_points:
   - id: infm-one-request
+    key_prereqs: []
     title: "Measure the wait for one reply"
 
     tldr: |
@@ -103,6 +104,7 @@ knowledge_points:
       - infm-two-assistants
       - infm-autocomplete
   - id: infm-percentiles
+    key_prereqs: []
     title: "Describe the waits of many users"
 
     tldr: |
@@ -177,6 +179,7 @@ knowledge_points:
       - infm-mean-vs-tail
       - infm-robot-p99
   - id: infm-batching
+    key_prereqs: [autoregressive-lm]
     title: "Serve many users at the same time"
 
     tldr: |

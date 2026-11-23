@@ -15,6 +15,7 @@ where_this_fits: |
   Why do we need it? Our derivative rules work on one formula at a time. But in machine learning, a model predicts from numbers called weights, and a loss scores how wrong they are. A weight rarely affects the loss directly. Changing it changes the prediction, which changes the error, which changes the loss. For a real model, one formula for all that is hopeless. The chain rule follows the steps one at a time, and it's how every neural network learns.
 knowledge_points:
   - id: cr-rates-multiply
+    key_prereqs: [derivatives]
     title: "Multiply the rates along a chain"
     tldr: |
       - In a chain of calculations, each step passes its change to the next.
@@ -95,6 +96,7 @@ knowledge_points:
       - crp-rate-product
       - crp-three-steps
   - id: cr-nested-formulas
+    key_prereqs: [derivatives]
     title: "Differentiate a formula inside a formula"
     tldr: |
       - A formula inside another formula is a chain of two steps.
@@ -186,6 +188,7 @@ knowledge_points:
       - crp-diff-log
       - crp-root-slope
   - id: cr-two-routes
+    key_prereqs: [partial-derivatives, derivatives]
     title: "When one input feeds two values"
     tldr: |
       - One input can affect the output through several routes.

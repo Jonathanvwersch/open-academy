@@ -15,6 +15,7 @@ where_this_fits: |
   Why is it useful? Recall that a model's weights fill its number of parameters times the bytes per number in memory, and decoding reads every weight from GPU memory for each new token. So fewer bytes per weight means a smaller model that also generates faster. The price is a small rounding error in every number, and we have to check that the model's answers survive it.
 knowledge_points:
   - id: qz-memory-speed
+    key_prereqs: [gpu-inference-basics, arithmetic-intensity]
     title: "Count the memory and time that fewer bits save"
 
     tldr: |
@@ -98,6 +99,7 @@ knowledge_points:
       - qzp-fit-gpu
       - qzp-upper-bound
   - id: qz-int8-scale
+    key_prereqs: []
     title: "Turn numbers into 8-bit integers"
 
     tldr: |
@@ -218,6 +220,7 @@ knowledge_points:
       - qzp-outlier-effect
       - qzp-code-bug
   - id: qz-formats
+    key_prereqs: [arithmetic-intensity, gpu-inference-basics, prefill-decode]
     title: "Choose what to quantise and how"
 
     tldr: |
@@ -342,6 +345,7 @@ knowledge_points:
       - qzp-calibration
       - qzp-weight-only-mistake
   - id: qz-quality
+    key_prereqs: [descriptive-statistics, autoregressive-lm, supervised-learning]
     title: "Check whether the quantised model got worse"
 
     tldr: |

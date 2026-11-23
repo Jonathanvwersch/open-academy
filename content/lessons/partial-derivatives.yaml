@@ -13,6 +13,7 @@ where_this_fits: |
   Why do we need them? The derivative handles a function of one input, but most functions in machine learning have many. A machine-learning model is a formula that makes predictions, and its error depends on every adjustable number in it at once, and to improve the model we need to know how the error responds to each of those numbers on its own. Partial derivatives give us exactly that, one slope per input, worked out with the derivative rules we already know.
 knowledge_points:
   - id: pd-hold-fixed
+    key_prereqs: [derivatives]
     title: "Change one input at a time"
     tldr: |
       - A function with several inputs can rise differently in each direction.
@@ -120,6 +121,7 @@ knowledge_points:
       - pdp-nudge-check
       - pdp-flat-weight
   - id: pd-compute
+    key_prereqs: [derivatives]
     title: "Work out a partial derivative"
     tldr: |
       - To find one input's slope, treat every other input as a fixed number.
@@ -206,6 +208,7 @@ knowledge_points:
       - pdp-exp-log
       - pdp-product
   - id: pd-many-inputs
+    key_prereqs: [derivatives]
     title: "Find the slopes of a model's error"
     tldr: |
       - A prediction model has adjustable numbers, and training changes them to reduce its error.

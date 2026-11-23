@@ -15,6 +15,7 @@ where_this_fits: |
   The reward model in RLHF gives a score to any reply, but it learned from a limited set of people's comparisons, so it makes mistakes. RLHF trades off higher scores against staying close to the starting policy. The push for higher scores can still find those mistakes.
 knowledge_points:
   - id: rh-proxy
+    key_prereqs: [reward-design, reward-models, probability-basics]
     title: "A reward stands in for the goal"
     tldr: |
       - What we really want, such as replies people find helpful, can't be measured for every reply.
@@ -71,6 +72,7 @@ knowledge_points:
       - rh1-bradley-terry
       - rh1-summary-overlap
   - id: rh-overopt
+    key_prereqs: [rlhf, reward-design, reward-models]
     title: "Why reward rises while replies get worse"
     tldr: |
       - The policy starts by writing replies like the ones used to train the reward model.
@@ -154,6 +156,7 @@ knowledge_points:
       - rh2-kl-drift-template
       - rh2-robot-tidy
   - id: rh-signs
+    key_prereqs: [reward-design, rlhf, supervised-learning]
     title: "Spot reward hacking in curves and replies"
     tldr: |
       - The reward model's score can't show hacking alone, so we also track ratings the policy isn't trained on.
@@ -222,6 +225,7 @@ knowledge_points:
       - rh3-special-case-code
       - rh3-summaries
   - id: rh-defences
+    key_prereqs: [rlhf, reward-models, supervised-learning]
     title: "Keep reward hacking in check"
     tldr: |
       - The KL penalty makes it costly for the policy to move far from the SFT model.

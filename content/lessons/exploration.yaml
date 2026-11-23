@@ -14,6 +14,7 @@ where_this_fits: |
 
 knowledge_points:
   - id: xpl-greedy-trap
+    key_prereqs: [probability-basics]
     title: "Why only taking the best-looking action fails"
     tldr: |
       - An agent learns about an action by trying it and recording its rewards.
@@ -80,6 +81,7 @@ knowledge_points:
       - xpl-trap-cost
       - xpl-trap-robot-grip
   - id: xpl-epsilon-greedy
+    key_prereqs: [probability-basics, policies-returns]
     title: "Pick a random action some of the time"
     tldr: |
       - Epsilon-greedy usually takes the best-looking action, but now and then picks one at random.
@@ -161,6 +163,7 @@ knowledge_points:
       - xpl-eps-schedule
       - xpl-eps-headlines
   - id: xpl-entropy-bonus
+    key_prereqs: [policies-returns, probability-basics]
     title: "Keep a policy's choices spread out"
     tldr: |
       - Some agents learn their action probabilities directly, and they can pile all the probability on one action too early.

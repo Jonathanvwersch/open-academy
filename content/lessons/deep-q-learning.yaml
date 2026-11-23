@@ -17,6 +17,7 @@ where_this_fits: |
   A table needs a row for every state, and it learns nothing about a state until the agent visits it. A video game can show more screens than any table could hold. A network reads any screen as pixel values and tends to give similar screens similar values. But a network trained the obvious way is unstable, because it learns from its own changing guesses. So we'll also learn the two fixes in DeepMind's DQN (deep Q-network). Its first paper, in 2013, used experience replay, and the 2015 version added a target network.
 knowledge_points:
   - id: dqn-q-network
+    key_prereqs: [q-learning, loss-functions, exploration]
     title: "Replace the table with a network"
     tldr: |
       - A Q-network is a neural network that reads a state and gives a value for each action.
@@ -114,6 +115,7 @@ knowledge_points:
       - dqnq-unseen-state
       - dqnq-all-actions
   - id: dqn-replay
+    key_prereqs: [q-learning, loss-functions]
     title: "Train on a store of past moves"
     tldr: |
       - Moves in a row look alike, so training on each move as it happens can undo what earlier moves taught.
@@ -207,6 +209,7 @@ knowledge_points:
       - dqnr-old-moves
       - dqnr-robot-camera
   - id: dqn-target-network
+    key_prereqs: [q-learning, gradient-descent]
     title: "Use a frozen network copy for targets"
     tldr: |
       - The network computes its own targets, so a training step can move the target too.
@@ -316,6 +319,7 @@ knowledge_points:
       - dqnt-copy-rarely
       - dqnt-drone-values
   - id: dqn-training-loop
+    key_prereqs: [q-learning, pytorch-basics, exploration]
     title: "Put the whole training loop together"
     tldr: |
       - Each pass of the DQN loop picks a move, stores it and trains on a random handful of stored moves.

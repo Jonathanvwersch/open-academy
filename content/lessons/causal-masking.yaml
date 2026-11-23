@@ -14,6 +14,7 @@ where_this_fits: |
 
 knowledge_points:
   - id: cm-hide-future
+    key_prereqs: [attention]
     title: "Hide the words that come later"
     tldr: |
       - Predicting the next token should use only the tokens already known.
@@ -117,6 +118,7 @@ knowledge_points:
       - cm-hide-copy
       - cm-hide-which-task
   - id: cm-mask-scores
+    key_prereqs: [classification-softmax, attention]
     title: "Give later words zero weight"
     tldr: |
       - A blocked token needs exactly zero attention weight.
@@ -217,6 +219,7 @@ knowledge_points:
       - cm-zero-output
       - cm-zero-after-softmax
   - id: cm-mask-code
+    key_prereqs: [matrices, classification-softmax, attention]
     title: "Build the mask in code"
     tldr: |
       - Build one grid that blocks every position above the diagonal.

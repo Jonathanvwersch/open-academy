@@ -15,6 +15,7 @@ where_this_fits: |
   In "the cat sat", "sat" needs both "cat" and its own meaning. One head splitting its attention weights between them blurs both values. Two heads can each favour one.
 knowledge_points:
   - id: mha-heads
+    key_prereqs: [attention, matrices, dot-product]
     title: "Run attention heads side by side"
     tldr: |
       - One attention mixture can blur information from different tokens.
@@ -118,6 +119,7 @@ knowledge_points:
       - mhap-two-key-output
       - mhap-robot-heads
   - id: mha-combine
+    key_prereqs: [matrices, dot-product]
     title: "Join the heads into one output"
     tldr: |
       - Each head gives a token its own output vector.
@@ -213,6 +215,7 @@ knowledge_points:
       - mhap-output-matrix-size
       - mhap-joint-readings
   - id: mha-shapes
+    key_prereqs: [matrices, attention]
     title: "Track rows and columns through attention"
     tldr: |
       - Matrix products make queries, keys and values for every token at once.

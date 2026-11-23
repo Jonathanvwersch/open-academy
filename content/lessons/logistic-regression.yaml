@@ -17,6 +17,7 @@ where_this_fits: |
   Why do we need it? Many useful questions have two answers: will this house sell within a month, is this email spam, is the robot's path blocked? Linear regression predicts an amount, and an amount such as $-3$ or $7$ can't be a probability. So we need a new last step for the model, a new loss that checks a probability against what happened, and a training step that uses them.
 knowledge_points:
   - id: lr-classification
+    key_prereqs: [linear-regression, probability-basics, supervised-learning]
     title: "Predict a yes-or-no answer"
 
     tldr: |
@@ -100,6 +101,7 @@ knowledge_points:
       - lr-classification-confusion
       - lr-classification-transfer
   - id: lr-sigmoid
+    key_prereqs: [derivatives, probability-basics]
     title: "Turn a score into a probability"
 
     tldr: |
@@ -183,6 +185,7 @@ knowledge_points:
       - lr-sigmoid-confusion
       - lr-sigmoid-transfer
   - id: lr-binary-cross-entropy
+    key_prereqs: [probability-basics, derivatives, loss-functions]
     title: "Measure how wrong a probability is"
 
     tldr: |
@@ -271,6 +274,7 @@ knowledge_points:
       - lr-bce-transfer
       - lr-bce-squared-error
   - id: lr-gradient
+    key_prereqs: [gradient-descent, linear-regression, partial-derivatives]
     title: "Update the weight and bias"
 
     tldr: |

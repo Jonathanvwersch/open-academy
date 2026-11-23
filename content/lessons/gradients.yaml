@@ -17,6 +17,7 @@ where_this_fits: |-
   A house-price model is a prediction rule that adds a base price to a price per square metre times the area. Those two adjustable numbers are its parameters. If it predicts £190,000 for a £200,000 sale, training means adjusting the parameters to shrink that error. A loss function measures the error with one number. Its inputs are the parameters, and its partial derivatives describe changing one at a time. The gradient helps us change both together. We'll practise on a simple landscape, treating its height as the number we want to reduce.
 knowledge_points:
   - id: grad-vector-of-partials
+    key_prereqs: [partial-derivatives, vectors]
     title: Collect one slope per input
     tldr: |
       - Each input has its own slope when the others stay fixed.
@@ -73,6 +74,7 @@ knowledge_points:
       - gradp-flat-point
       - gradp-robot-gradient
   - id: grad-points-uphill
+    key_prereqs: [dot-product, vectors, partial-derivatives]
     title: Find the slope in a chosen direction
     tldr: |
       - A chosen direction can change several inputs together.
@@ -151,6 +153,7 @@ knowledge_points:
       - gradp-target-drop
       - gradp-robot-direction
   - id: grad-steepest-descent
+    key_prereqs: [dot-product, vectors, partial-derivatives]
     title: Choose the steepest way downhill
     tldr: |
       - We compare directions using moves of equal length.

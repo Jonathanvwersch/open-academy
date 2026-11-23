@@ -17,6 +17,7 @@ where_this_fits: |
   A learned reward model can overrate unfamiliar replies. We can instead use a program that checks the final answer against a known correct answer. We will write this checker in Python, then use GRPO, an RL method used with checker rewards. GRPO gets its baseline from a group of answers to the same prompt, so it needs no critic either.
 knowledge_points:
   - id: rlvr-checker
+    key_prereqs: [rlhf]
     title: "Let a program check the answer"
     tldr: |
       - Some problems have answers a program can check, like a maths question with a known answer or code with tests.
@@ -91,6 +92,7 @@ knowledge_points:
       - rlvr1-kl-checker
       - rlvr1-robot
   - id: rlvr-reward-code
+    key_prereqs: [rlhf]
     title: "Write the reward function in Python"
     tldr: |
       - A reward function takes the model's reply and the reference answer and gives back a number.
@@ -163,6 +165,7 @@ knowledge_points:
       - rlvr2-reward-to-r
       - rlvr2-tests-code
   - id: rlvr-group-advantage
+    key_prereqs: [descriptive-statistics, policy-gradients]
     title: "Compare several answers to one prompt"
     tldr: |
       - The policy writes several answers to one prompt, and the checker scores each one.
@@ -236,6 +239,7 @@ knowledge_points:
       - rlvr3-reinforce-step
       - rlvr3-code-fractions
   - id: rlvr-grpo-update
+    key_prereqs: [ppo, rlhf, descriptive-statistics]
     title: "Train the model on the advantages"
     tldr: |
       - When only the finished answer is scored, every token in an answer gets that answer's advantage.

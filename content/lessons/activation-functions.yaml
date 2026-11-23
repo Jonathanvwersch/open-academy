@@ -16,6 +16,7 @@ where_this_fits: |
 final: act-explain-layers
 knowledge_points:
   - id: act-stacking-stays-straight
+    key_prereqs: [perceptron]
     title: "Why stacked layers stay straight"
     tldr: |
       - A layer multiplies its inputs by weights, adds them up and adds a bias.
@@ -135,6 +136,7 @@ knowledge_points:
       - actp-equal-steps
       - actp-robot-linear
   - id: act-relu-sigmoid-tanh
+    key_prereqs: [perceptron, derivatives]
     title: "Three common activation functions"
     tldr: |
       - A flat activation gives no weight update to the weights feeding it.
@@ -223,6 +225,7 @@ knowledge_points:
       - actp-relu-bend
       - actp-why-sigmoid-output
   - id: act-slopes
+    key_prereqs: [derivatives]
     title: "How steep each activation is"
     tldr: |
       - An activation's slope tells how much its output changes after a small change in score.

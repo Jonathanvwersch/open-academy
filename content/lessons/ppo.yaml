@@ -14,6 +14,7 @@ where_this_fits: |
 
 knowledge_points:
   - id: ppo-advantage
+    key_prereqs: [value-functions, policy-gradients]
     title: "Score each action by how much better it did than usual"
     tldr: |
       - A critic is a second model that predicts the return from each state.
@@ -91,6 +92,7 @@ knowledge_points:
       - ppoa-why-baseline
       - ppoa-robot-arm
   - id: ppo-gae
+    key_prereqs: [value-functions, policies-returns]
     title: "Look several steps ahead"
     tldr: |
       - We can judge a move by its next reward plus the critic's guess, or by all the real rewards after it.
@@ -186,6 +188,7 @@ knowledge_points:
       - ppog-bigger-lambda
       - ppog-noisy-critic
   - id: ppo-ratio
+    key_prereqs: [policy-gradients, policies-returns]
     title: "Compare the new policy with the old"
     tldr: |
       - Collecting experience is slow, so we want to learn from the same batch several times.
@@ -273,6 +276,7 @@ knowledge_points:
       - ppor-reuse-risk
       - ppor-llm-token
   - id: ppo-clip
+    key_prereqs: [policy-gradients, policies-returns]
     title: "Cap how far one update can go"
     tldr: |
       - PPO stops rewarding a change once an action's probability has moved more than a set amount, usually 20 percent, from its old value.

@@ -10,6 +10,7 @@ where_this_fits: |
   Why do we need it? Lots of things can't be described by one number. A delivery robot's position needs a distance east and a distance north, and a house needs its area, its number of bedrooms and its age. A vector keeps those numbers together and in order, so we always know which is which. A machine-learning model is a program that learns to make predictions from examples, and it reads each example as a vector. So in this lesson, we'll learn to write vectors, add them, stretch them and measure how long they are.
 knowledge_points:
   - id: vec-points-moves
+    key_prereqs: []
     title: "Write a move as numbers"
     tldr: |
       - A vector is an ordered list of numbers, such as distances east and north.
@@ -103,6 +104,7 @@ knowledge_points:
       - vecp-new-moves
       - vecp-missing-move
   - id: vec-change-move
+    key_prereqs: []
     title: "Multiply a vector by a number"
     tldr: |
       - Multiplying every component by the same number scales a vector.
@@ -227,6 +229,7 @@ knowledge_points:
       - vecp-subtract
       - vecp-find-scalar
   - id: vec-length-distance
+    key_prereqs: []
     title: "Measure length and distance"
     tldr: |
       - A vector's length is its straight-line distance from start to end.

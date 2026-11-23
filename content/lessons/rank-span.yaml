@@ -13,6 +13,7 @@ where_this_fits: |
   Why do we need them? In the lesson on inverses and linear systems, we wrote equations as $Ax=b$ and solved them. A $2\times2$ matrix with a nonzero determinant always gives one answer. But what if the determinant is zero, or the matrix isn't square? Span and rank tell us whether $Ax=b$ has one solution, none or infinitely many. They also explain why a tall, narrow matrix times a short, wide one can be stored with far fewer numbers than the product.
 knowledge_points:
   - id: rsp-span
+    key_prereqs: [vectors, inverses-linear-systems]
     title: "Build vectors from other vectors"
     tldr: |
       - Scaling vectors and adding them lets us build new vectors.
@@ -115,6 +116,7 @@ knowledge_points:
       - rspp-span-line
       - rspp-led-mix
   - id: rsp-independence-rank
+    key_prereqs: [inverses-linear-systems, vectors]
     title: "Test independence and find rank"
     tldr: |
       - Some vectors can be built from the others, so they add no new direction.
@@ -188,6 +190,7 @@ knowledge_points:
       - rspp-too-many
       - rspp-duplicate-feature
   - id: rsp-solutions
+    key_prereqs: [inverses-linear-systems, matrices]
     title: "Tell how many solutions a system has"
     tldr: |
       - A matrix times a vector combines the matrix's columns.
@@ -325,6 +328,7 @@ knowledge_points:
       - rspp-not-invertible
       - rspp-robot-arm
   - id: rsp-low-rank
+    key_prereqs: [matrices, vectors, inverses-linear-systems]
     title: "Store a big matrix as two small ones"
     tldr: |
       - Multiplying one column by one row makes a matrix whose columns lie along one line.

@@ -17,6 +17,7 @@ where_this_fits: |
   Supervised fine-tuning needs people to write good example replies. Ranking lets people give feedback by choosing between replies the model already wrote. A reward model learns from those choices, so the language model can learn from its scores on new replies it writes. The penalty limits drift from the starting model because the reward model can get people's preferences wrong.
 knowledge_points:
   - id: rlhf-rl-terms
+    key_prereqs: [mdp, autoregressive-lm, policies-returns]
     title: "Treat writing a reply as reinforcement learning"
     tldr: |
       - A language model writes a reply one token at a time, so each token is a choice.
@@ -91,6 +92,7 @@ knowledge_points:
       - rlhf1-which-trained
       - rlhf1-discounted-return
   - id: rlhf-kl-reward
+    key_prereqs: [reward-models, sft]
     title: "Keep the model close to where it started"
     tldr: |
       - Chasing the reward model's score alone can push the policy towards replies that the reward model overrates.
@@ -149,6 +151,7 @@ knowledge_points:
       - rlhf2-compare-replies
       - rlhf2-robot
   - id: rlhf-kl-average
+    key_prereqs: [information-theory, probability-basics]
     title: "Link the penalty to KL divergence"
     tldr: |
       - One reply's log ratio can be positive or negative.
@@ -215,6 +218,7 @@ knowledge_points:
       - rlhf3-compare-policies
       - rlhf3-robot-grasp
   - id: rlhf-pipeline
+    key_prereqs: [ppo, reward-models, sft]
     title: "Put the three training stages together"
     tldr: |
       - First, supervised fine-tuning teaches the model to reply from examples people wrote.

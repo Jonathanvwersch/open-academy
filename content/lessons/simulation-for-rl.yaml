@@ -13,6 +13,7 @@ where_this_fits: |
   It's useful because a reinforcement-learning agent learns by trial and error, over thousands of tries. Real robots are slow, wear out and break. A simulator runs fast, restarts instantly and runs many copies at once. We'll write the loop that drives a simulator, run copies of it and see what fails on real robots.
 knowledge_points:
   - id: sim-reset-step
+    key_prereqs: [mdp, probability-basics]
     title: "Start the task and take one step"
     tldr: |
       - A simulation environment is a program that plays the world for the agent.
@@ -105,6 +106,7 @@ knowledge_points:
       - sim-slip-template
       - sim-game-step
   - id: sim-interaction-loop
+    key_prereqs: [mdp]
     title: "Write the loop that runs an episode"
     tldr: |
       - To run an episode, we call reset once, then keep letting the policy pick an action and calling step.
@@ -221,6 +223,7 @@ knowledge_points:
       - sim-why-two-flags
       - sim-drone-hover
   - id: sim-vector-envs
+    key_prereqs: [mdp]
     title: "Run many copies of the simulator at once"
     tldr: |
       - Running many simulator copies together collects more experience per second.
@@ -315,6 +318,7 @@ knowledge_points:
       - sim-why-vector
       - sim-walker-fall
   - id: sim-to-real
+    key_prereqs: [probability-basics, mdp]
     title: "Move from the simulator to a real robot"
     tldr: |
       - No simulator matches the real world exactly, so a policy that scores best in simulation can fail on a real robot.

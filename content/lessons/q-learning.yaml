@@ -13,6 +13,7 @@ where_this_fits: |
   Why is that useful? We can only work these values out by hand if we know where each action leads, and a robot in a new place doesn't. Q-learning learns them from experience, and then the biggest value marks the best action.
 knowledge_points:
   - id: ql-q-table
+    key_prereqs: [value-functions, mdp]
     title: "Score every move in every cell"
     tldr: |
       - Q-learning keeps a table with one number for each move in each state.
@@ -100,6 +101,7 @@ knowledge_points:
       - qlp-reward-vs-value
       - qlp-aisle-choice
   - id: ql-update-rule
+    key_prereqs: [value-functions, mdp]
     title: "Update one value after each move"
     tldr: |
       - After each move, the robot sees the reward and the state it lands in.
@@ -192,6 +194,7 @@ knowledge_points:
       - qlp-rate-one
       - qlp-delivery-path
   - id: ql-explore
+    key_prereqs: [probability-basics, value-functions, policies-returns]
     title: "Try other moves now and then"
     tldr: |
       - Always picking the move that looks best can get stuck on a bad early guess.
@@ -284,6 +287,7 @@ knowledge_points:
       - qlp-off-policy-meaning
       - qlp-vacuum-deploy
   - id: ql-full-run
+    key_prereqs: [value-functions, mdp]
     title: "Run Q-learning on the corridor"
     tldr: |
       - Q-learning repeats three things: pick a move, see what happens, and update that move's value.

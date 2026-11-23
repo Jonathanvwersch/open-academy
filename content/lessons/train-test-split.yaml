@@ -15,6 +15,7 @@ where_this_fits: |
   Training makes a model's error small on the examples it learns from. But we want good predictions for new examples, such as houses that haven't sold yet, and a model can fit its training examples closely and still do badly on new ones. Training error can't tell these apart. We'll see how to set examples aside, use them to choose between models, and stop them leaking into training.
 knowledge_points:
   - id: tts-why-hold-out
+    key_prereqs: [supervised-learning, loss-functions]
     title: "Test on houses the model hasn't seen"
 
     tldr: |
@@ -113,6 +114,7 @@ knowledge_points:
       - ttsp-pick-model
       - ttsp-robot-heldout
   - id: tts-three-splits
+    key_prereqs: [supervised-learning]
     title: "Split the data into three sets"
 
     tldr: |
@@ -177,6 +179,7 @@ knowledge_points:
       - ttsp-why-separate-test
       - ttsp-swap-after-test
   - id: tts-hyperparameters
+    key_prereqs: [gradient-descent, linear-regression]
     title: "Choose the settings training can't learn"
 
     tldr: |
@@ -258,6 +261,7 @@ knowledge_points:
       - ttsp-why-not-train-choose
       - ttsp-why-best-of-many
   - id: tts-leakage
+    key_prereqs: [supervised-learning, loss-functions]
     title: "Keep test data out of training"
 
     tldr: |

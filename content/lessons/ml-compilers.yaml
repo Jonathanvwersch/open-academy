@@ -17,6 +17,7 @@ where_this_fits: |
   Why do we need one? PyTorch normally dispatches operations as Python reaches them. Separate kernels on large tensors can spend most of their time moving intermediate results through GPU memory. A compiler can merge steps, choose cheaper calculations within its numerical rules, and time kernel versions to find the fastest on one GPU. Examples include XLA, TVM, tinygrad, Luminal and PyTorch's `torch.compile`.
 knowledge_points:
   - id: mlc-record-graph
+    key_prereqs: [computational-graphs, classification-softmax, fast-attention]
     title: "Turn the model into a graph"
 
     tldr: |
@@ -98,6 +99,7 @@ knowledge_points:
       - mlcp-what-graph-shows
       - mlcp-new-op
   - id: mlc-fuse-elementwise
+    key_prereqs: [fast-attention, arithmetic-intensity, gpu-inference-basics]
     title: "Merge a chain of small operations"
 
     tldr: |
@@ -210,6 +212,7 @@ knowledge_points:
       - mlcp-kernel-count
       - mlcp-robot-camera
   - id: mlc-egraph
+    key_prereqs: [computational-graphs, matrices]
     title: "Search for a cheaper equal calculation"
 
     tldr: |
@@ -313,6 +316,7 @@ knowledge_points:
       - mlcp-saturation-stop
       - mlcp-attention-scale-template
   - id: mlc-autotune
+    key_prereqs: [gpu-inference-basics, fast-attention]
     title: "Tune each kernel for one GPU"
 
     tldr: |

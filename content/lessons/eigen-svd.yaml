@@ -15,6 +15,7 @@ where_this_fits: |
   This is useful because a grid of numbers is hard to read, while a few stretches are easy to read. When some stretches are small, dropping them gives a close copy stored in fewer numbers. We'll measure how close it is by how much the outputs change. This helps compress matrices and makes updating trained language models cheaper.
 knowledge_points:
   - id: eig-stretch-directions
+    key_prereqs: [matrices, vectors]
     title: "Find directions a matrix only stretches"
 
     tldr: |
@@ -88,6 +89,7 @@ knowledge_points:
       - eigp-not-eigenvector
       - eigp-check-pair
   - id: eig-find-eigenvalues
+    key_prereqs: [determinants, inverses-linear-systems, matrices]
     title: "Find how much each direction stretches"
 
     tldr: |
@@ -220,6 +222,7 @@ knowledge_points:
       - eigp-no-eigenvalues
       - eigp-population-growth
   - id: eig-svd-three-moves
+    key_prereqs: [orthogonality-projections, matrices, vectors]
     title: "Split any matrix into turn, stretch, turn"
 
     tldr: |
@@ -343,6 +346,7 @@ knowledge_points:
       - eigp-svd-no-eigen
       - eigp-robot-arm
   - id: eig-low-rank
+    key_prereqs: [rank-span, orthogonality-projections]
     title: "Approximate a matrix with fewer numbers"
 
     tldr: |

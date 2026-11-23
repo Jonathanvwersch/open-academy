@@ -16,6 +16,7 @@ where_this_fits: |
   We'll calculate output shapes, handle colour channels and count parameters. Then we'll shrink grids by keeping the largest nearby values, called pooling, and trace how much of the image each output depends on.
 knowledge_points:
   - id: conv-slide
+    key_prereqs: [dot-product, images-as-tensors, activation-functions]
     title: Slide a small grid of weights
     tldr: |
       - A filter is a small grid of weights that responds to a pattern, such as an edge.
@@ -145,6 +146,7 @@ knowledge_points:
         conv-code-patch,
       ]
   - id: conv-size
+    key_prereqs: [images-as-tensors]
     title: Work out the output size
     tldr: |
       - The output has one cell for each place the filter fits inside the image.
@@ -290,6 +292,7 @@ knowledge_points:
         conv-width-template,
       ]
   - id: conv-channels
+    key_prereqs: [images-as-tensors, mlp-forward-pass]
     title: Use filters on a colour image
     tldr: |
       - On a colour image, a filter has weights for every colour channel and adds them all into one score.
@@ -428,6 +431,7 @@ knowledge_points:
         conv-shape-fixed,
       ]
   - id: conv-pool
+    key_prereqs: [images-as-tensors, mlp-forward-pass]
     title: Stack layers and shrink their maps
     tldr: |
       - Stacking layers lets each output depend on a larger region of the original image.

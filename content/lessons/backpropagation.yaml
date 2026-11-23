@@ -19,6 +19,7 @@ where_this_fits: |
   We need it because training lowers the loss by changing every parameter, and to know which way to change each one, it needs that parameter's slope. In the computational graphs lesson, we found one slope by multiplying local derivatives along paths. But different parameters' paths share their last stretch, the part nearest the loss. Handling one parameter at a time redoes that stretch for each of a network's millions of parameters. Backpropagation works out each shared piece once.
 knowledge_points:
   - id: bp-why-backprop
+    key_prereqs: [computational-graphs, loss-functions]
     title: "Work backwards from the loss"
     tldr: |
       - Several parameters can affect the loss through the same prediction.
@@ -97,6 +98,7 @@ knowledge_points:
         bp-reuse-robot,
       ]
   - id: bp-by-hand
+    key_prereqs: [activation-functions, computational-graphs, loss-functions]
     title: "Work backwards through a small network"
     tldr: |
       - Each backward step multiplies an arriving loss slope by a local derivative.
@@ -192,6 +194,7 @@ knowledge_points:
         bp-hand-robot,
       ]
   - id: bp-arrays
+    key_prereqs: [matrices, loss-functions, mlp-forward-pass]
     title: "Find the slopes for a whole batch"
     tldr: |
       - Every example in a batch uses the same weights and biases.
@@ -284,6 +287,7 @@ knowledge_points:
         bp-array-robot,
       ]
   - id: bp-checking
+    key_prereqs: [derivatives]
     title: "Check a slope by nudging a weight"
     tldr: |
       - We can check a loss slope by changing one weight and measuring the loss again.

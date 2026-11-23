@@ -19,6 +19,7 @@ where_this_fits: |
   In the dot product lesson, we turned measurements and weights into one total, and in the matrices lesson we did many dot products at once. What this lesson adds is the bias, what each weight tells us, and how to predict for a whole dataset in one line of code.
 knowledge_points:
   - id: lr-add-contributions
+    key_prereqs: [dot-product]
     title: "Make one prediction"
 
     tldr: |
@@ -98,6 +99,7 @@ knowledge_points:
       - lrp-order
       - lrp-new-task
   - id: lr-interpret-weights
+    key_prereqs: [dot-product]
     title: "Read the weights and the bias"
 
     tldr: |
@@ -211,6 +213,7 @@ knowledge_points:
       - lrp-robot-change
       - lrp-straight-line
   - id: lr-batch-predictions
+    key_prereqs: [matrices, dot-product]
     title: "Predict every example at once"
 
     tldr: |

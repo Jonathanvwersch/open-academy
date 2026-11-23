@@ -15,6 +15,7 @@ where_this_fits: |
   An updated robot holds an object on 9 of 10 grasps, against 7 of 10 before. Is it better or lucky? Results change from test to test, and these tools tell us by how much. We'll start with grasp times because spread is easiest to see in times, then count successes as numbers.
 knowledge_points:
   - id: ds-centre-spread
+    key_prereqs: []
     title: Find the average and spread
     tldr: |
       - The mean adds the results and divides by how many there are.
@@ -90,6 +91,7 @@ knowledge_points:
         ds-latency-spread,
       ]
   - id: ds-average-wobble
+    key_prereqs: [probability-basics]
     title: How sure is an average?
     tldr: |
       - Repeating an experiment gives slightly different averages.
@@ -175,6 +177,7 @@ knowledge_points:
     problems:
       [ds-se-basics, ds-se-why, ds-mean-se-template, ds-interval-template, ds-fourfold, ds-coverage]
   - id: ds-success-uncertainty
+    key_prereqs: [probability-basics]
     title: How sure is a success rate?
     tldr: |
       - A success rate is the average when successes count as one and failures as zero.
@@ -227,6 +230,7 @@ knowledge_points:
         ds-new-setting,
       ]
   - id: ds-compare-rates
+    key_prereqs: [probability-basics]
     title: Tell if two success rates differ
     tldr: |
       - Subtracting the original success rate from the updated rate estimates the improvement.
