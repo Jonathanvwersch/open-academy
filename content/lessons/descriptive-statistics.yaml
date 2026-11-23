@@ -91,7 +91,7 @@ knowledge_points:
         ds-latency-spread,
       ]
   - id: ds-average-wobble
-    key_prereqs: []
+    key_prereqs: [probability-basics]
     title: How sure is an average?
     tldr: |
       - Repeating an experiment gives slightly different averages.
