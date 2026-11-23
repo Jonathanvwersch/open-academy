@@ -128,7 +128,7 @@ concepts:
           },
         ],
       projects: [llm-post-training],
-      status: stub,
+      status: authored,
     }
   - {
       id: reward-hacking,

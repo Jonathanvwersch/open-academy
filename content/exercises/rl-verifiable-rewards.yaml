@@ -1,0 +1,1311 @@
+concept: rl-verifiable-rewards
+exercises:
+  - id: "rlvr-checker-basics"
+    dimension: "conceptual"
+    type: "mc"
+    role: "basics"
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What is a verifiable reward?"
+    options:
+      [
+        {
+          "id": "a",
+          "text": "A reward from a program checking a reply against an answer or tests.",
+          "correct": true,
+          "feedback": "A checker compares the outcome with a known answer or test results.",
+        },
+        {
+          "id": "b",
+          "text": "A score from a reward model trained on people's comparisons.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "That describes a learned reward model's score.",
+        },
+        {
+          "id": "c",
+          "text": "A rating from a person who reads and judges each finished reply.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "That requires a person to score each reply.",
+        },
+        {
+          "id": "d",
+          "text": "A KL penalty for the policy drifting from the reference model.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "The KL penalty controls drift from the reference model.",
+        },
+      ]
+    solution: "A verifiable reward comes from a program that checks the reply against a reference answer or tests."
+    target_seconds: 30
+  - id: "rlvr1-worked-self-explain"
+    dimension: "conceptual"
+    type: "mc"
+    role: "practice"
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In the worked example, why does reply 4 earn 0 even though it says 12 apples?"
+    options:
+      [
+        {
+          "id": "a",
+          "text": "It has no Answer: line for the checker to read.",
+          "correct": true,
+          "feedback": "The checker cannot extract a final answer.",
+        },
+        {
+          "id": "b",
+          "text": "It gives 12, which is the wrong total.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "There are 3 bags of 4 apples, so 12 is correct.",
+        },
+        {
+          "id": "c",
+          "text": "It has a full stop that makes the check fail.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "The checker removes a final full stop.",
+        },
+        {
+          "id": "d",
+          "text": "It receives a low score from the reward model.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "These replies are scored by a program.",
+        },
+      ]
+    solution: "Reply 4 has no `Answer:` line, so the checker finds no final answer."
+    lesson_only: true
+    target_seconds: 30
+  - id: "rlvr1-which-checkable"
+    dimension: "conceptual"
+    type: "mc"
+    role: "practice"
+    difficulty: 1
+    est_minutes: 1
+    prompt: "Which prompt suits a checker with a reference answer?"
+    options:
+      [
+        {
+          "id": "a",
+          "text": "Find 7 * 8 and end with an Answer: line.",
+          "correct": true,
+          "feedback": "The reference answer is 56.",
+        },
+        {
+          "id": "b",
+          "text": "Write a poem about a quiet autumn evening.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "There is no single reference poem.",
+        },
+        {
+          "id": "c",
+          "text": "Write a polite summary of a tense meeting.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "Politeness needs a judgement of quality.",
+        },
+        {
+          "id": "d",
+          "text": "Give helpful advice about choosing a career.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "Helpful advice has no single reference answer.",
+        },
+      ]
+    solution: "A maths question with a known answer lets a program compare the final answer with the reference."
+    target_seconds: 30
+  - id: "rlvr1-code-tests"
+    dimension: "math"
+    type: "numeric"
+    role: "practice"
+    difficulty: 2
+    est_minutes: 1
+    prompt: "A code-with-tests checker gives reward 1 or 0. It runs a model's program on five test inputs. The expected outputs are 1, 4, 9, 16 and 25, and the program returns 1, 4, 9, 16 and 20. What reward does the checker give?"
+    answer: 0
+    tolerance: { "abs": 0.006 }
+    common_wrong:
+      [
+        {
+          "answer": 0.8,
+          "category": "math_error",
+          "feedback": "4 of 5 tests pass, a fraction of 0.8. The reward is 1 only when every test gives the expected output.",
+        },
+      ]
+    solution: "The last test expects 25 but gets 20. The reward is 1 only when every test gives the expected output, so it is 0."
+  - id: "rlvr1-format-zero"
+    dimension: "conceptual"
+    type: "mc"
+    role: "practice"
+    difficulty: 2
+    est_minutes: 1
+    prompt: "A reply gets reward 0. A learner concludes that its maths must be wrong. What is the error?"
+    options:
+      [
+        {
+          "id": "a",
+          "text": "The check can fail when the final answer cannot be found.",
+          "correct": true,
+          "feedback": "A missing Answer: line can cause a correct total to earn 0.",
+        },
+        {
+          "id": "b",
+          "text": "The checker gives 0 whenever the final answer is correct.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "A recognised correct final answer earns 1.",
+        },
+        {
+          "id": "c",
+          "text": "The reward measures how many tokens the reply contains.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "The checker compares the final answer with the reference.",
+        },
+        {
+          "id": "d",
+          "text": "The reward always reports a human judgement of the working.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "A program computes this reward.",
+        },
+      ]
+    solution: "Reward 0 means the check failed. A correct total can fail if its final answer is missing from the expected format."
+  - id: "rlvr1-kl-checker"
+    dimension: "math"
+    type: "numeric"
+    role: "practice"
+    difficulty: 3
+    est_minutes: 2
+    prompt: "A reply passes a checker. Its policy log-probability is ${{=lp}}$ and its reference log-probability is ${{=lq}}$. If we plugged the checker reward into RLHF's KL-penalised reward with $\\beta=0.1$, what would the adjusted reward be?"
+    answer_expr: "1-0.1*(lp-lq)"
+    tolerance: { "abs": 0.006 }
+    common_wrong:
+      [
+        {
+          "answer_expr": "1+0.1*(lp-lq)",
+          "category": "math_error",
+          "feedback": "The KL term is subtracted from the checker reward.",
+        },
+      ]
+    solution: "The checker gives $r=1$. The adjusted reward is $1-0.1({{=lp}}-({{=lq}}))={{=1-0.1*(lp-lq)}}$."
+    params:
+      { "lp": { "min": -3, "max": -1, "step": 0.5 }, "lq": { "min": -6, "max": -4, "step": 1 } }
+  - id: "rlvr1-robot"
+    dimension: "conceptual"
+    type: "mc"
+    role: "practice"
+    difficulty: 3
+    est_minutes: 2
+    prompt: "A robot policy is trained to put a cup on a shelf. Which reward signal is a verifiable reward?"
+    options:
+      [
+        {
+          "id": "a",
+          "text": "A camera program gives 1 if the cup ends on the shelf and 0 otherwise.",
+          "correct": true,
+          "feedback": "A program checks the outcome against the task goal, so this reward is verifiable.",
+        },
+        {
+          "id": "b",
+          "text": "A learned reward model scores how much people would like the arm's motion.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "A learned reward model predicts preferences. It does not check the goal.",
+        },
+        {
+          "id": "c",
+          "text": "A person watches every attempt and rates how smooth it looked.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "A human rating is a judgement. A program does not compute it.",
+        },
+        {
+          "id": "d",
+          "text": "A KL penalty measures how far the policy moved from its reference.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "A KL penalty limits policy drift and does not check where the cup ends.",
+        },
+      ]
+    solution: "Only the camera program checks the outcome against the goal and gives 1 or 0, so it is the verifiable reward."
+  - id: "rlvr-reward-code-basics"
+    dimension: "conceptual"
+    type: "mc"
+    role: "basics"
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What does a final-answer reward function do?"
+    options:
+      [
+        {
+          "id": "a",
+          "text": "Finds the final answer, compares it with the reference, and returns 1.0 or 0.0.",
+          "correct": true,
+          "feedback": "It extracts and checks the final answer.",
+        },
+        {
+          "id": "b",
+          "text": "Reads the working, rates every reasoning step, and averages the ratings.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "This checker only compares the final answer.",
+        },
+        {
+          "id": "c",
+          "text": "Sends the reply to a learned reward model and returns its predicted score.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "A checker computes the reward without a learned reward model.",
+        },
+        {
+          "id": "d",
+          "text": "Counts the tokens, divides by a length target, and returns that fraction.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "Reply length is not the answer check.",
+        },
+      ]
+    solution: "The function finds and tidies the final answer, compares it with the reference, and returns 1.0 or 0.0."
+    target_seconds: 30
+  - id: "rlvr2-worked-self-explain"
+    dimension: "conceptual"
+    type: "mc"
+    role: "practice"
+    difficulty: 1
+    est_minutes: 1
+    prompt: 'In the worked example, why does "Answer: 12." earn 1.0?'
+    options:
+      [
+        {
+          "id": "a",
+          "text": 'The call to .rstrip(". ") removes the final full stop.',
+          "correct": true,
+          "feedback": 'This leaves "12" for the comparison.',
+        },
+        {
+          "id": "b",
+          "text": "The comparison treats every string containing 12 as equal.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "The extracted string must exactly match the reference.",
+        },
+        {
+          "id": "c",
+          "text": "The function converts the answer to a floating-point number.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "The function compares strings.",
+        },
+        {
+          "id": "d",
+          "text": "The function ignores the extracted answer and scores the working.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "Only the extracted answer is compared.",
+        },
+      ]
+    solution: 'The function removes the final full stop, so "12." becomes "12" and matches the reference.'
+    lesson_only: true
+    target_seconds: 30
+  - id: "rlvr2-code-read"
+    dimension: "implementation"
+    type: "code_read"
+    role: "practice"
+    difficulty: 2
+    est_minutes: 1
+    prompt: "What does this Python code print?"
+    code: "def final_answer(text):\n    for line in reversed(text.strip().splitlines()):\n        if line.startswith(\"Answer:\"):\n            return line[len(\"Answer:\"):].strip().rstrip(\". \")\n    return None\n\n\ndef reward(text, reference):\n    if final_answer(text) == reference:\n        return 1.0\n    return 0.0\n\nprint(reward(\"3 * 4 = 12\\nanswer: 12\", \"12\"))"
+    answer: 0
+    tolerance: { "abs": 0 }
+    solution: 'The lowercase `answer:` fails the case-sensitive `startswith("Answer:")` check. No final answer is found, so the output is 0.0.'
+  - id: "rlvr2-code-complete"
+    dimension: "implementation"
+    type: "code_complete"
+    role: "practice"
+    difficulty: 2
+    est_minutes: 1
+    prompt: "Fill the blank so the function recognises a line beginning with `Answer:`."
+    code: "def final_answer(text):\n    for line in reversed(text.strip().splitlines()):\n        if line.____(\"Answer:\"):\n            return line[len(\"Answer:\"):].strip().rstrip(\". \")\n    return None"
+    accept: ["startswith"]
+    solution: "`startswith` checks the beginning of the line. This selects lines with the required `Answer:` prefix."
+  - id: "rlvr2-anywhere"
+    dimension: "conceptual"
+    type: "mc"
+    role: "practice"
+    difficulty: 2
+    est_minutes: 1
+    prompt: 'A checker gives 1 whenever the reference string "12" appears anywhere in a reply. What can go wrong?'
+    options:
+      [
+        {
+          "id": "a",
+          "text": "The policy can list several numbers and earn reward without solving.",
+          "correct": true,
+          "feedback": "A list containing 12 would pass this weak check.",
+        },
+        {
+          "id": "b",
+          "text": "The policy must give a fully correct explanation to earn reward.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "The check never inspects the explanation.",
+        },
+        {
+          "id": "c",
+          "text": "The policy must place its final answer on a separate labelled line.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "This check accepts 12 anywhere in the text.",
+        },
+        {
+          "id": "d",
+          "text": "The policy can only earn reward by passing every code test.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "This checker searches text and runs no tests.",
+        },
+      ]
+    solution: "A reply can include a list of guesses containing 12. The weak checker rewards that reply even if it never solves the problem."
+  - id: "rlvr2-last-line"
+    dimension: "implementation"
+    type: "code_read"
+    role: "practice"
+    difficulty: 2
+    est_minutes: 1
+    prompt: "What does this Python code print?"
+    code: "def final_answer(text):\n    for line in reversed(text.strip().splitlines()):\n        if line.startswith(\"Answer:\"):\n            return line[len(\"Answer:\"):].strip().rstrip(\". \")\n    return None\n\n\ndef reward(text, reference):\n    if final_answer(text) == reference:\n        return 1.0\n    return 0.0\n\nprint(reward(\"Answer: 3\\nLet me check that.\\nAnswer: 4\", \"4\"))"
+    answer: 1
+    tolerance: { "abs": 0 }
+    solution: 'The reversed search finds the last `Answer:` line first. Its extracted answer is "4", so the output is 1.0.'
+  - id: "rlvr2-reward-to-r"
+    dimension: "math"
+    type: "numeric"
+    role: "practice"
+    difficulty: 3
+    est_minutes: 2
+    prompt: "The Python functions below score the reply `\"3 * 4 = 12\\nAnswer: 12.\"` against reference `\"12\"`. The policy log-probability is $-1.5$, the reference log-probability is $-2.5$, and $\\beta=0.2$. If we plugged the checker reward into RLHF's KL-penalised reward, what would the adjusted reward be?\n\n```python\ndef final_answer(text):\n    for line in reversed(text.strip().splitlines()):\n        if line.startswith(\"Answer:\"):\n            return line[len(\"Answer:\"):].strip().rstrip(\". \")\n    return None\n\n\ndef reward(text, reference):\n    if final_answer(text) == reference:\n        return 1.0\n    return 0.0\n```"
+    answer: 0.8
+    tolerance: { "abs": 0.006 }
+    common_wrong:
+      [
+        {
+          "answer": -0.2,
+          "category": "math_error",
+          "feedback": "The full stop is removed before comparison, so the checker reward is 1.",
+        },
+      ]
+    solution: "The full stop is removed, giving checker reward 1. The adjusted reward is $1-0.2(-1.5-(-2.5))=0.8$."
+  - id: "rlvr2-tests-code"
+    dimension: "implementation"
+    type: "code_read"
+    role: "practice"
+    difficulty: 3
+    est_minutes: 2
+    prompt: "What does this Python code print?"
+    code: "def square(n):\n    return n * 2\n\ndef all_pass():\n    tests = [(0, 0), (2, 4), (3, 9)]\n    passed = 0\n    for x, expected in tests:\n        if square(x) == expected:\n            passed += 1\n    if passed == len(tests):\n        return 1.0\n    return 0.0\n\nprint(all_pass())"
+    answer: 0
+    tolerance: { "abs": 0 }
+    solution: "The third test expects 9 but gets 6, so the reward is 0.0. With only the first two tests, this wrong function would have earned 1.0."
+  - id: "rlvr-group-advantage-basics"
+    dimension: "conceptual"
+    type: "mc"
+    role: "basics"
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In GRPO, what is subtracted from each reward before scaling it?"
+    options:
+      [
+        {
+          "id": "a",
+          "text": "The group's mean reward.",
+          "correct": true,
+          "feedback": "The group mean supplies the baseline.",
+        },
+        {
+          "id": "b",
+          "text": "The critic's predicted value.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "GRPO obtains its baseline from the sampled group.",
+        },
+        {
+          "id": "c",
+          "text": "The reference model's log-probability.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "That log-probability belongs to the KL penalty.",
+        },
+        {
+          "id": "d",
+          "text": "The fixed baseline 0.5 for every group.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "The baseline changes with the group's rewards.",
+        },
+      ]
+    solution: "GRPO subtracts the group's mean reward, then divides by the group's standard deviation."
+    target_seconds: 30
+  - id: "rlvr3-worked-self-explain"
+    dimension: "conceptual"
+    type: "mc"
+    role: "practice"
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In the worked example, why is the sum of squared distances divided by 4 before taking its square root?"
+    options:
+      [
+        {
+          "id": "a",
+          "text": "The population standard deviation divides by the group size G=4.",
+          "correct": true,
+          "feedback": "All four answers are included in this population calculation.",
+        },
+        {
+          "id": "b",
+          "text": "The sample standard deviation always divides by exactly 4.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "A sample calculation would divide by G-1.",
+        },
+        {
+          "id": "c",
+          "text": "There are four correct answers in the sampled group.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "Only two of the four answers are correct.",
+        },
+        {
+          "id": "d",
+          "text": "The mean reward must be divided by 4 a second time.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "This division averages squared distances from the mean.",
+        },
+      ]
+    solution: "The example uses population standard deviation. It averages the squared distances over all G=4 answers."
+    lesson_only: true
+    target_seconds: 30
+  - id: "rlvr3-mean-baseline"
+    dimension: "math"
+    type: "numeric"
+    role: "practice"
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A GRPO group has rewards $1,0,0,1,1,1,0,1$. Find the advantage of a correct answer to 2 decimal places. Use population standard deviation and round only at the end."
+    answer: 0.77
+    tolerance: { "abs": 0.006 }
+    common_wrong:
+      [
+        {
+          "answer": 0.375,
+          "category": "math_error",
+          "feedback": "Divide the distance from the mean by the population standard deviation.",
+        },
+      ]
+    solution: "The mean is $5/8=0.625$. Averaging squared distances gives variance $[5(0.375)^2+3(0.625)^2]/8=0.234375$. The advantage is $0.375/\\sqrt{0.234375}\\approx0.77$."
+    target_seconds: 30
+  - id: "rlvr3-binary-template"
+    dimension: "math"
+    type: "numeric"
+    role: "practice"
+    difficulty: 2
+    est_minutes: 1
+    prompt: "A GRPO group contains ${{=G}}$ answers. Exactly ${{=k}}$ get reward 1 and the rest get 0. Find the advantage of a correct answer to 2 decimal places. Use population standard deviation and round only at the end."
+    answer_expr: "(1-k/G)/sqrt((k/G)*(1-k/G))"
+    tolerance: { "abs": 0.006 }
+    common_wrong:
+      [
+        {
+          "answer_expr": "1-k/G",
+          "category": "math_error",
+          "feedback": "Divide by the population standard deviation as well.",
+        },
+        {
+          "answer_expr": "(1-k/G)/sqrt((k/G)*(1-k/G)*G/(G-1))",
+          "category": "math_error",
+          "feedback": "Population standard deviation divides squared distances by G.",
+        },
+      ]
+    solution: "The mean is $\\frac{ {{=k}} }{ {{=G}} }$, so a correct answer is $1-\\frac{ {{=k}} }{ {{=G}} }=\\frac{ {{=G-k}} }{ {{=G}} }$ above it. Averaging squared distances gives variance $\\frac{ {{=k}}({{=G-k}})^2+{{=G-k}}({{=k}})^2}{ {{=G}}^3}=\\frac{ {{=k*(G-k)}} }{ {{=G*G}} }$. The advantage is $\\frac{ {{=G-k}} }{ {{=G}} }\\div\\sqrt{\\frac{ {{=k*(G-k)}} }{ {{=G*G}} }}=\\sqrt{\\frac{ {{=G-k}} }{ {{=k}} }}$. To 2 decimal places, this is ${{=round((1-k/G)/sqrt((k/G)*(1-k/G)),2)}}$."
+    params: { "G": { "min": 5, "max": 10, "step": 1 }, "k": { "min": 1, "max": 4, "step": 1 } }
+    constraints: ["G != 2*k", "G != k^3+k", "G != 5*k"]
+  - id: "rlvr3-all-same"
+    dimension: "conceptual"
+    type: "mc"
+    role: "practice"
+    difficulty: 2
+    est_minutes: 1
+    prompt: "All six answers in a GRPO group earn reward 0. What does this prompt contribute this round?"
+    options:
+      [
+        {
+          "id": "a",
+          "text": "All advantages are 0, so the rewards give no push.",
+          "correct": true,
+          "feedback": "Each reward equals the group mean.",
+        },
+        {
+          "id": "b",
+          "text": "All advantages are -1, so every answer is pushed down.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "There is no distance from the group mean.",
+        },
+        {
+          "id": "c",
+          "text": "All advantages are 1, so every answer is pushed up.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "No answer beats the group mean.",
+        },
+        {
+          "id": "d",
+          "text": "The critic assigns a different advantage to each answer.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "GRPO computes advantages from group rewards without a critic.",
+        },
+      ]
+    solution: "Every reward equals the mean 0, so every advantage is 0. The rewards give no push through the clipped term, though the KL term can still move the policy."
+  - id: "rlvr3-wrong-std"
+    dimension: "conceptual"
+    type: "mc"
+    role: "practice"
+    difficulty: 2
+    est_minutes: 1
+    prompt: "For rewards $(1,0,1,0)$, a learner computes the standard deviation as $\\sqrt{0.25+0.25+0.25+0.25}=1$ and gets advantages $\\pm0.5$. What went wrong?"
+    options:
+      [
+        {
+          "id": "a",
+          "text": "The squared distances must be divided by G before the square root.",
+          "correct": true,
+          "feedback": "Their average is 0.25, giving standard deviation 0.5.",
+        },
+        {
+          "id": "b",
+          "text": "The reward mean must be added to each reward before squaring.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "Distances are found by subtracting the mean.",
+        },
+        {
+          "id": "c",
+          "text": "The square root must be taken before summing the distances.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "Standard deviation takes the square root after averaging squared distances.",
+        },
+        {
+          "id": "d",
+          "text": "The advantages must be multiplied by the mean reward.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "Advantages divide distances by the standard deviation.",
+        },
+      ]
+    solution: "The learner omitted division by G=4. The standard deviation is $\\sqrt{1/4}=0.5$, giving advantages $\\pm1$."
+  - id: "rlvr3-reinforce-step"
+    dimension: "math"
+    type: "numeric"
+    role: "practice"
+    difficulty: 3
+    est_minutes: 2
+    prompt: "A GRPO group has rewards $1,0,0,0,0$. For the correct answer, replace the return minus the baseline, $(G-b)$, in the policy-gradient update with its group-relative advantage. Starting at $\\theta=0$, take one update with learning rate $0.1$ and log-probability slope $0.5$. What is the new $\\theta$?"
+    answer: 0.1
+    tolerance: { "abs": 0.006 }
+    common_wrong:
+      [
+        {
+          "answer": 0.05,
+          "category": "math_error",
+          "feedback": "Use the group-relative advantage 2 in place of the reward 1.",
+        },
+      ]
+    solution: "The group mean is 0.2 and population standard deviation is 0.4, giving advantage 2. The update gives $0+0.1\\times2\\times0.5=0.1$."
+  - id: "rlvr3-code-fractions"
+    dimension: "math"
+    type: "numeric"
+    role: "practice"
+    difficulty: 3
+    est_minutes: 2
+    prompt: "A grader gives four answers points $2,4,4,6$. Find the group-relative advantage of the answer earning 6 to 2 decimal places. Use population standard deviation and round only at the end."
+    answer: 1.41
+    tolerance: { "abs": 0.006 }
+    common_wrong:
+      [
+        {
+          "answer": 2,
+          "category": "math_error",
+          "feedback": "Scale the distance 2 by the population standard deviation.",
+        },
+      ]
+    solution: "The mean is 4 and the population variance is $(4+0+0+4)/4=2$. The advantage is $(6-4)/\\sqrt2\\approx1.41$."
+  - id: "rlvr-grpo-update-basics"
+    dimension: "conceptual"
+    type: "mc"
+    role: "basics"
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A checker scores only the finished answer. Which advantage does GRPO give to each token of answer $i$?"
+    options:
+      [
+        {
+          "id": "a",
+          "text": "The advantage $A_i$ of the whole answer.",
+          "correct": true,
+          "feedback": "All tokens in one answer share its advantage.",
+        },
+        {
+          "id": "b",
+          "text": "The reward divided by the answer's token count.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "GRPO assigns the answer advantage to every token.",
+        },
+        {
+          "id": "c",
+          "text": "The critic value predicted for that token.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "GRPO uses the group rewards without a critic.",
+        },
+        {
+          "id": "d",
+          "text": "The reference log-probability of that token.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "Reference probabilities enter the KL penalty.",
+        },
+      ]
+    solution: "Every token of answer $i$ gets that answer's group-relative advantage $A_i$."
+    target_seconds: 30
+  - id: "rlvr4-worked-self-explain"
+    dimension: "conceptual"
+    type: "mc"
+    role: "practice"
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In the worked example, why is the token `7` term -0.8?"
+    options:
+      [
+        {
+          "id": "a",
+          "text": "The ratio clips to 0.8 and min keeps -0.8 over -0.7.",
+          "correct": true,
+          "feedback": "Multiplying by advantage -1 makes the clipped term smaller.",
+        },
+        {
+          "id": "b",
+          "text": "The ratio clips to 1.2 and the advantage becomes positive.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "Clipping changes the ratio and leaves the advantage unchanged.",
+        },
+        {
+          "id": "c",
+          "text": "The ratio stays at 0.7 and min keeps the larger term.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "The objective keeps the smaller of the two terms.",
+        },
+        {
+          "id": "d",
+          "text": "The answer reward is directly subtracted from the ratio.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "The term multiplies a ratio by the advantage.",
+        },
+      ]
+    solution: "The ratio 0.7 clips to 0.8. With advantage -1, the minimum of -0.7 and -0.8 is -0.8."
+    lesson_only: true
+    target_seconds: 30
+  - id: "rlvr4-token-advantage"
+    dimension: "math"
+    type: "numeric"
+    role: "practice"
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A checker scores only the finished answer. A 30-token answer has GRPO advantage -0.5. What advantage does its 10th token get?"
+    answer: -0.5
+    tolerance: { "abs": 0.006 }
+    common_wrong:
+      [
+        {
+          "answer": -0.016666666666666666,
+          "category": "math_error",
+          "feedback": "The answer advantage is assigned unchanged to every token.",
+        },
+      ]
+    solution: "Every token receives the whole answer advantage, so token 10 gets -0.5."
+    target_seconds: 30
+  - id: "rlvr4-clip-template"
+    dimension: "math"
+    type: "numeric"
+    role: "practice"
+    difficulty: 2
+    est_minutes: 1
+    prompt: "A token had old probability $0.5$ and now has probability ${{=p}}$. Its answer advantage is ${{=A}}$. With clip range $c=0.2$, what is its term in the GRPO clipped objective?"
+    answer_expr: "min((p/0.5)*A,min(max(p/0.5,0.8),1.2)*A)"
+    tolerance: { "abs": 0.006 }
+    solution: "The ratio is ${{=p/0.5}}$ and its clipped value is ${{=min(max(p/0.5,0.8),1.2)}}$. The smaller weighted term is ${{=min((p/0.5)*A,min(max(p/0.5,0.8),1.2)*A)}}$."
+    params:
+      { "p": { "min": 0.15, "max": 0.75, "step": 0.1 }, "A": { "min": -1, "max": 1, "step": 2 } }
+    constraints: ["p != 0.25"]
+  - id: "rlvr4-no-critic"
+    dimension: "conceptual"
+    type: "mc"
+    role: "practice"
+    difficulty: 2
+    est_minutes: 1
+    prompt: "Compared with PPO in RLHF, what does GRPO with a checker leave out?"
+    options:
+      [
+        {
+          "id": "a",
+          "text": "The critic and the learned reward model.",
+          "correct": true,
+          "feedback": "The group supplies the baseline and the checker supplies the reward.",
+        },
+        {
+          "id": "b",
+          "text": "The frozen reference model and its KL penalty.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "GRPO still keeps a KL penalty towards the reference.",
+        },
+        {
+          "id": "c",
+          "text": "The old policy's token probabilities for the batch.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "The clipped objective still uses old probabilities.",
+        },
+        {
+          "id": "d",
+          "text": "The clipped objective and its probability ratios.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "GRPO uses the same clipped term as PPO.",
+        },
+      ]
+    solution: "GRPO gets its baseline from the group, so it needs no critic. A checker supplies rewards without a learned reward model."
+  - id: "rlvr4-never-correct"
+    dimension: "conceptual"
+    type: "mc"
+    role: "practice"
+    difficulty: 2
+    est_minutes: 1
+    prompt: "In GRPO training, the only reward is 1 for a passing answer check and 0 otherwise. A policy never gives a correct final answer on a set of hard prompts. Why does this make an SFT starting model useful?"
+    options:
+      [
+        {
+          "id": "a",
+          "text": "All rewards and advantages are 0; SFT can supply some passing answers.",
+          "correct": true,
+          "feedback": "Mixed successes and failures provide a group learning signal.",
+        },
+        {
+          "id": "b",
+          "text": "All advantages are -1; SFT makes every advantage positive.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "Equal rewards give zero advantages.",
+        },
+        {
+          "id": "c",
+          "text": "All rewards are 1; SFT lowers rewards to a useful range.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "Failed checks give 0.",
+        },
+        {
+          "id": "d",
+          "text": "The reference model becomes a critic; SFT removes that critic.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "The reference model supplies the KL comparison.",
+        },
+      ]
+    solution: "If all checks fail, all group advantages are 0 and the rewards give no push through the clipped term. The KL term can still move the policy. An SFT model can already follow the format and solve some problems."
+  - id: "rlvr4-kl-reason"
+    dimension: "conceptual"
+    type: "mc"
+    role: "practice"
+    difficulty: 3
+    est_minutes: 2
+    prompt: "Why does GRPO keep a KL penalty towards the reference model?"
+    options:
+      [
+        {
+          "id": "a",
+          "text": "It limits how far the policy drifts from the reference model.",
+          "correct": true,
+          "feedback": "The penalty grows as the policy moves away from the reference.",
+        },
+        {
+          "id": "b",
+          "text": "It replaces the checker with a learned score of correctness.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "The checker still supplies the reward.",
+        },
+        {
+          "id": "c",
+          "text": "It makes all sampled answers have the same advantage.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "The advantages depend on the group rewards.",
+        },
+        {
+          "id": "d",
+          "text": "It changes the old policy probabilities to remove clipping.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "Old probabilities still define the clipped ratio.",
+        },
+      ]
+    solution: "The KL penalty limits drift from the reference model. An SFT starting model is one common choice of reference."
+  - id: "rlvr4-robot-task"
+    dimension: "math"
+    type: "numeric"
+    role: "practice"
+    difficulty: 3
+    est_minutes: 2
+    prompt: "A robot tries the same task four times. A sensor gives rewards $1,1,1,0$. Find the failed attempt's group-relative advantage to 2 decimal places. Use population standard deviation and round only at the end."
+    answer: -1.73
+    tolerance: { "abs": 0.006 }
+    common_wrong:
+      [
+        {
+          "answer": -0.75,
+          "category": "math_error",
+          "feedback": "Divide the distance from the mean by the population standard deviation.",
+        },
+      ]
+    solution: "The mean is 0.75 and population standard deviation is $\\sqrt{0.1875}$. The failed attempt gets $(0-0.75)/\\sqrt{0.1875}\\approx-1.73$."
+  - id: "rlvr1-recall-explain"
+    dimension: "conceptual"
+    type: "explain"
+    role: "recall"
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What is a verifiable reward, and why does it need no learned reward model?"
+    knowledge_point: "rlvr-checker"
+    rubric:
+      [
+        {
+          "id": "r1",
+          "criterion": "State that a program checks the reply against a reference answer or tests.",
+          "weight": 1,
+          "required": true,
+        },
+        {
+          "id": "r2",
+          "criterion": "Explain that the program directly supplies the reward, so no reward model needs training.",
+          "weight": 1,
+          "required": true,
+        },
+      ]
+    exemplar: "A program checks the reply against a known answer or tests. Its check directly supplies the reward, so no learned reward model is needed."
+    solution: "A program checks the reply against a known answer or tests. Its check directly supplies the reward, so no learned reward model is needed."
+  - id: "rlvr1-recall-contrast"
+    dimension: "conceptual"
+    type: "mc"
+    role: "recall"
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Which reward is computed by a program checking a reply against a reference answer?"
+    options:
+      [
+        {
+          "id": "a",
+          "text": "A verifiable reward.",
+          "correct": true,
+          "feedback": "A checker compares the answer with the reference.",
+        },
+        {
+          "id": "b",
+          "text": "A reward model score.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "This is a learned score based on people's comparisons.",
+        },
+        {
+          "id": "c",
+          "text": "A KL penalty.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "This measures drift from the reference policy.",
+        },
+        {
+          "id": "d",
+          "text": "A group-relative advantage.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "This compares a reward with other rewards in the group.",
+        },
+      ]
+    solution: "A verifiable reward is computed directly by a checker."
+    knowledge_point: "rlvr-checker"
+    target_seconds: 30
+  - id: "rlvr1-recall-contrast-tests"
+    dimension: "conceptual"
+    type: "mc"
+    role: "recall"
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A checker scores a code task by running the program on test inputs and giving reward 1 or 0. When is the reward 1?"
+    options:
+      [
+        {
+          "id": "a",
+          "text": "When every test passes.",
+          "correct": true,
+          "feedback": "All expected outputs must match.",
+        },
+        {
+          "id": "b",
+          "text": "When at least one test passes.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "One passing test leaves possible failures.",
+        },
+        {
+          "id": "c",
+          "text": "When the reward model approves.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "A checker supplies this reward.",
+        },
+        {
+          "id": "d",
+          "text": "When the code runs without error.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "It must also produce the expected outputs.",
+        },
+      ]
+    solution: "The reward is 1 only when every test gives the expected output."
+    knowledge_point: "rlvr-checker"
+    target_seconds: 30
+  - id: "rlvr2-recall-explain"
+    dimension: "conceptual"
+    type: "explain"
+    role: "recall"
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What are the two main jobs of a final-answer reward function?"
+    knowledge_point: "rlvr-reward-code"
+    rubric:
+      [
+        {
+          "id": "r1",
+          "criterion": "State that it finds and tidies the final answer in the reply.",
+          "weight": 1,
+          "required": true,
+        },
+        {
+          "id": "r2",
+          "criterion": "State that it compares the extracted answer with the reference and returns a numerical reward.",
+          "weight": 1,
+          "required": true,
+        },
+      ]
+    exemplar: "It finds the final answer and tidies harmless differences. It compares the result with the reference and returns 1.0 for a match or 0.0 otherwise."
+    solution: "It finds the final answer and tidies harmless differences. It compares the result with the reference and returns 1.0 for a match or 0.0 otherwise."
+  - id: "rlvr2-recall-contrast"
+    dimension: "conceptual"
+    type: "mc"
+    role: "recall"
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: 'An exact-text checker gives "12.0" reward 0 when the reference is "12". What limitation does this show?'
+    options:
+      [
+        {
+          "id": "a",
+          "text": "The checker can be too strict about harmless formatting.",
+          "correct": true,
+          "feedback": "The two strings name the same number.",
+        },
+        {
+          "id": "b",
+          "text": "The checker can be too forgiving about incorrect numbers.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "It rejected an equivalent number.",
+        },
+        {
+          "id": "c",
+          "text": "The checker always recognises equivalent numerical answers.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "This string comparison misses that equivalence.",
+        },
+        {
+          "id": "d",
+          "text": "The checker is giving a separate reward for reply format.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "This is a failed comparison of answer strings.",
+        },
+      ]
+    solution: "Exact string comparison can reject equivalent numbers such as 12.0 and 12."
+    knowledge_point: "rlvr-reward-code"
+    target_seconds: 30
+  - id: "rlvr2-recall-contrast-order"
+    dimension: "conceptual"
+    type: "mc"
+    role: "recall"
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "A reply has the line `Answer: 3`, then some checking of the working, then a later line `Answer: 4`. Which line should a final-answer checker use?"
+    options:
+      [
+        {
+          "id": "a",
+          "text": "The last Answer: line.",
+          "correct": true,
+          "feedback": "The model writes its final answer last, and a bottom-up search reaches it first.",
+        },
+        {
+          "id": "b",
+          "text": "The first Answer: line.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "An earlier Answer: line can be a draft written before the model checked its working.",
+        },
+        {
+          "id": "c",
+          "text": "Both lines must match the reference.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "Only the final answer is compared with the reference.",
+        },
+        {
+          "id": "d",
+          "text": "Neither line can be used.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "The checker can still use the last Answer: line.",
+        },
+      ]
+    solution: "The last Answer: line holds the final answer, and a bottom-up search finds it first."
+    knowledge_point: "rlvr-reward-code"
+    target_seconds: 30
+  - id: "rlvr3-recall-explain"
+    dimension: "conceptual"
+    type: "explain"
+    role: "recall"
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What does a group-relative advantage measure, and how is it computed?"
+    knowledge_point: "rlvr-group-advantage"
+    rubric:
+      [
+        {
+          "id": "r1",
+          "criterion": "Explain that it measures how an answer did relative to other answers to the same prompt.",
+          "weight": 1,
+          "required": true,
+        },
+        {
+          "id": "r2",
+          "criterion": "State that it subtracts the group mean reward and divides by the group standard deviation.",
+          "weight": 1,
+          "required": true,
+        },
+      ]
+    exemplar: "It measures how an answer's reward compares with the group for the same prompt. Subtract the group's mean reward and divide by its standard deviation."
+    solution: "It measures how an answer's reward compares with the group for the same prompt. Subtract the group's mean reward and divide by its standard deviation."
+  - id: "rlvr3-recall-contrast"
+    dimension: "conceptual"
+    type: "mc"
+    role: "recall"
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Which quantity is a reward minus the group mean, divided by the group standard deviation?"
+    options:
+      [
+        {
+          "id": "a",
+          "text": "The group-relative advantage.",
+          "correct": true,
+          "feedback": "This subtracts the group mean and divides by the group standard deviation.",
+        },
+        {
+          "id": "b",
+          "text": "The PPO critic advantage.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "A critic estimates values instead of using the group mean.",
+        },
+        {
+          "id": "c",
+          "text": "The baseline b.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "The baseline is subtracted before the scaling.",
+        },
+        {
+          "id": "d",
+          "text": "The KL penalty.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "That depends on policy and reference probabilities.",
+        },
+      ]
+    solution: "The group-relative advantage subtracts the group's mean reward from each reward and divides by the group's standard deviation."
+    knowledge_point: "rlvr-group-advantage"
+    target_seconds: 30
+  - id: "rlvr3-recall-formula"
+    dimension: "math"
+    type: "expression"
+    role: "recall"
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "An answer has reward $r$. Its group has mean reward $m$ and standard deviation $s>0$. Write its group-relative advantage. Type `*` for multiplication."
+    knowledge_point: "rlvr-group-advantage"
+    answer: "(r-m)/s"
+    variables: { "r": [0, 1], "m": [0.1, 0.9], "s": [0.1, 1] }
+    solution: "Subtract the mean from the reward and divide by the standard deviation: $(r-m)/s$."
+  - id: "rlvr4-recall-explain"
+    dimension: "conceptual"
+    type: "explain"
+    role: "recall"
+    difficulty: 1
+    est_minutes: 1
+    prompt: "When a checker scores only the finished answer, how does GRPO use group advantages to update the policy?"
+    knowledge_point: "rlvr-grpo-update"
+    rubric:
+      [
+        {
+          "id": "r1",
+          "criterion": "State that every token of an answer receives the same answer advantage.",
+          "weight": 1,
+          "required": true,
+        },
+        {
+          "id": "r2",
+          "criterion": "Explain that GRPO puts these advantages into the clipped objective and climbs it, so each token's term pushes up tokens of better answers and pushes down tokens of worse ones.",
+          "weight": 1,
+          "required": true,
+        },
+      ]
+    exemplar: "Every token gets its answer's advantage. GRPO uses those advantages in PPO's clipped objective and climbs it, so each token's term pushes tokens of better answers up and tokens of worse answers down, combined with the KL term."
+    solution: "Every token gets its answer's advantage. GRPO uses those advantages in PPO's clipped objective and climbs it, so each token's term pushes tokens of better answers up and tokens of worse answers down, combined with the KL term."
+  - id: "rlvr4-recall-contrast"
+    dimension: "conceptual"
+    type: "mc"
+    role: "recall"
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "What baseline does GRPO use in place of a critic?"
+    options:
+      [
+        {
+          "id": "a",
+          "text": "The group's mean reward.",
+          "correct": true,
+          "feedback": "The sampled group supplies the baseline.",
+        },
+        {
+          "id": "b",
+          "text": "The frozen reference model.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "The reference supplies the KL comparison.",
+        },
+        {
+          "id": "c",
+          "text": "The learned reward model.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "A checker can supply rewards without this model.",
+        },
+        {
+          "id": "d",
+          "text": "The old policy for the batch.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "The old policy supplies probabilities for the ratio.",
+        },
+      ]
+    solution: "GRPO uses the group's mean reward as its baseline."
+    knowledge_point: "rlvr-grpo-update"
+    target_seconds: 30
+  - id: "rlvr4-recall-contrast-start"
+    dimension: "conceptual"
+    type: "mc"
+    role: "recall"
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "Why is an SFT model a useful starting point for RL with verifiable rewards?"
+    options:
+      [
+        {
+          "id": "a",
+          "text": "It already follows the format and gives some passing answers.",
+          "correct": true,
+          "feedback": "Some successes and failures allow nonzero group advantages.",
+        },
+        {
+          "id": "b",
+          "text": "It removes the need to check the sampled answers.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "The checker is still required.",
+        },
+        {
+          "id": "c",
+          "text": "It makes the KL penalty large at the start of training.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "The reference begins as the same SFT model.",
+        },
+        {
+          "id": "d",
+          "text": "It guarantees that every group advantage equals 1.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "Advantages depend on rewards within each group.",
+        },
+      ]
+    solution: "An SFT model already follows the answer format and solves some prompts. Mixed rewards give a learning signal."
+    knowledge_point: "rlvr-grpo-update"
+    target_seconds: 30
+  - id: "rlvr-explain-training"
+    dimension: "conceptual"
+    type: "explain"
+    role: "core"
+    difficulty: 2
+    est_minutes: 4
+    prompt: "Explain how RL with verifiable rewards trains a language model: where the reward comes from, how GRPO turns a group's rewards into advantages, and why no learned reward model is needed."
+    rubric:
+      [
+        {
+          "id": "r1",
+          "criterion": "State that a program checks final answers against a reference answer or runs code on tests to give rewards.",
+          "weight": 1,
+          "required": true,
+        },
+        {
+          "id": "r2",
+          "criterion": "Explain that GRPO subtracts the group mean reward from each reward and divides by the population standard deviation.",
+          "weight": 1,
+          "required": true,
+        },
+        {
+          "id": "r3",
+          "criterion": "Explain that the checker supplies rewards directly, so a learned reward model is unnecessary.",
+          "weight": 1,
+          "required": true,
+        },
+      ]
+    exemplar: "The policy writes a group of answers to each prompt. A checker compares final answers with the reference or runs code tests to give rewards. GRPO subtracts the group mean from each reward and divides by the population standard deviation. Every token gets its answer's advantage in the clipped update. The checker supplies rewards directly, so no learned reward model is needed."
+    solution: "A checker compares final answers with the reference or runs code tests, supplying rewards directly without a learned reward model. GRPO subtracts the group mean from each reward and divides by the population standard deviation. Every token gets its answer's advantage in the clipped update."
