@@ -665,6 +665,7 @@ export function validateContent(data: ContentSourceData): ContentIssue[] {
     validateCourses(data, issues, concepts, projects);
   }
 
+  validateEncompassings(data, issues);
   validateKnowledgePointContent(data, issues);
   validateNotationUsage(data, issues);
   findCycles(data, issues);
@@ -829,6 +830,35 @@ function validateCourses(
   for (const { value, file } of data.papers) {
     if (!assignedPapers.has(value.id))
       addIssue(issues, file, value.id, 'paper is not assigned to a course unit');
+  }
+}
+
+function validateEncompassings(data: ContentSourceData, issues: ContentIssue[]) {
+  const concepts = new Map(data.concepts.map((entry) => [entry.value.id, entry]));
+  for (const { value, file } of data.concepts) {
+    const ancestors = hardAncestors(value.id, concepts);
+    const seen = new Set<string>();
+    for (const encompassing of value.encompassings ?? []) {
+      if (seen.has(encompassing.id)) {
+        addIssue(issues, file, value.id, `duplicate encompassing id "${encompassing.id}"`);
+      }
+      seen.add(encompassing.id);
+      if (!concepts.has(encompassing.id)) {
+        addIssue(
+          issues,
+          file,
+          value.id,
+          `encompassing concept "${encompassing.id}" does not exist`,
+        );
+      } else if (!ancestors.has(encompassing.id)) {
+        addIssue(
+          issues,
+          file,
+          value.id,
+          `encompassing "${encompassing.id}" is not a transitive hard ancestor of "${value.id}"`,
+        );
+      }
+    }
   }
 }
 

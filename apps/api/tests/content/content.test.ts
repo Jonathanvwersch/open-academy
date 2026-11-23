@@ -4,6 +4,7 @@ import { expect, test } from 'vitest';
 import { buildContentIndex, subjectForCourse } from '../../src/content/index.js';
 import { loadContent } from '../../src/content/load.js';
 import {
+  ConceptSchema,
   CurriculumSchema,
   ExerciseSchema,
   LessonSchema,
@@ -2153,6 +2154,85 @@ test('key prerequisite tags override the direct-hard-prerequisite fallback', asy
   expect(keyPrereqsForPoint(fallback, lesson.value.concept, point.id)).toEqual(directHard);
   point.key_prereqs = [];
   expect(keyPrereqsForPoint(buildContentIndex(data), lesson.value.concept, point.id)).toEqual([]);
+});
+
+test('encompassings must be unique transitive hard ancestors', async () => {
+  const valid = await notationFixture();
+  const lesson = valid.lessons.find(({ value }) =>
+    valid.concepts
+      .find(({ value: concept }) => concept.id === value.concept)
+      ?.value.prereqs.some(({ strength }) => strength === 'hard'),
+  );
+  const concept = lesson
+    ? valid.concepts.find(({ value }) => value.id === lesson.value.concept)
+    : undefined;
+  const hardPrerequisite = concept?.value.prereqs.find(({ strength }) => strength === 'hard')?.id;
+  if (!lesson || !concept || !hardPrerequisite) {
+    throw new Error('Missing hard prerequisite concept fixture');
+  }
+  const hardAncestors = new Set<string>();
+  const visit = (id: string) => {
+    const current = valid.concepts.find(({ value }) => value.id === id)?.value;
+    for (const prerequisite of current?.prereqs ?? []) {
+      if (prerequisite.strength !== 'hard' || hardAncestors.has(prerequisite.id)) continue;
+      hardAncestors.add(prerequisite.id);
+      visit(prerequisite.id);
+    }
+  };
+  visit(concept.value.id);
+  const nonAncestor = valid.concepts.find(
+    ({ value }) =>
+      value.id !== concept.value.id &&
+      !hardAncestors.has(value.id) &&
+      !concept.value.prereqs.some(({ id }) => id === value.id),
+  );
+  if (!nonAncestor) throw new Error('Missing non-ancestor concept fixture');
+
+  expect(
+    ConceptSchema.safeParse({
+      ...concept.value,
+      encompassings: [{ id: hardPrerequisite, weight: 1.01 }],
+    }).success,
+  ).toBe(false);
+
+  const duplicate = structuredClone(valid);
+  const duplicateConcept = duplicate.concepts.find(({ value }) => value.id === concept.value.id);
+  if (!duplicateConcept) throw new Error('Missing duplicate encompassing fixture');
+  duplicateConcept.value.encompassings = [
+    { id: hardPrerequisite, weight: 0.5 },
+    { id: hardPrerequisite, weight: 0.6 },
+  ];
+  expect(validateContent(duplicate)).toContainEqual(
+    expect.objectContaining({
+      id: concept.value.id,
+      message: `duplicate encompassing id "${hardPrerequisite}"`,
+    }),
+  );
+
+  const invalidAncestor = structuredClone(valid);
+  const invalidAncestorConcept = invalidAncestor.concepts.find(
+    ({ value }) => value.id === concept.value.id,
+  );
+  if (!invalidAncestorConcept) throw new Error('Missing invalid encompassing fixture');
+  invalidAncestorConcept.value.encompassings = [{ id: nonAncestor.value.id, weight: 0.5 }];
+  expect(validateContent(invalidAncestor)).toContainEqual(
+    expect.objectContaining({
+      id: concept.value.id,
+      message: `encompassing "${nonAncestor.value.id}" is not a transitive hard ancestor of "${concept.value.id}"`,
+    }),
+  );
+
+  const softOnly = structuredClone(valid);
+  const softConcept = softOnly.concepts.find(({ value }) => value.id === concept.value.id);
+  if (!softConcept) throw new Error('Missing soft-only encompassing fixture');
+  softConcept.value.prereqs.push({ id: nonAncestor.value.id, strength: 'soft' });
+  softConcept.value.encompassings = [{ id: nonAncestor.value.id, weight: 0.5 }];
+  expect(validateContent(softOnly)).toContainEqual(
+    expect.objectContaining({
+      id: concept.value.id,
+      message: `encompassing "${nonAncestor.value.id}" is not a transitive hard ancestor of "${concept.value.id}"`,
+    }),
+  );
 });
 
 test('every knowledge point requires a lesson-only self-explanation question', async () => {

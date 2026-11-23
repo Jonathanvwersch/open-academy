@@ -54,9 +54,33 @@ export function contentWarnings(data: ContentSourceData, content: ContentIndex):
 
   const warnings: ContentIssue[] = [];
   const warnedConcepts = new Set<string>();
+  const keyPrereqsByConcept = new Map<string, Set<string>>();
+  for (const { value: lesson } of data.lessons) {
+    for (const point of lesson.knowledge_points ?? []) {
+      const keyPrereqs = keyPrereqsByConcept.get(lesson.concept) ?? new Set<string>();
+      for (const prerequisiteId of point.key_prereqs ?? []) keyPrereqs.add(prerequisiteId);
+      keyPrereqsByConcept.set(lesson.concept, keyPrereqs);
+    }
+  }
   const unitOpeningTopicIds = new Set(
     data.courses.flatMap(({ value }) => value.units.flatMap((unit) => unit.concepts.slice(0, 1))),
   );
+
+  for (const { value, file } of data.concepts) {
+    const requiredIds = new Set([
+      ...hardPrerequisiteIds(value),
+      ...(keyPrereqsByConcept.get(value.id) ?? []),
+    ]);
+    const explicitIds = new Set((value.encompassings ?? []).map(({ id }) => id));
+    for (const prerequisiteId of requiredIds) {
+      if (explicitIds.has(prerequisiteId)) continue;
+      warnings.push({
+        file,
+        id: value.id,
+        message: `has no encompassing weight for ${prerequisiteId}`,
+      });
+    }
+  }
 
   for (const courseId of orderedCourseIds) {
     const course = courses.get(courseId);

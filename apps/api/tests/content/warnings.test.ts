@@ -149,6 +149,47 @@ describe('contentWarnings', () => {
     ).toBe(false);
   });
 
+  it('warns once for each missing direct or key prerequisite encompassing weight', () => {
+    const lesson = pointLesson();
+    lesson.value.concept = 'advanced';
+    const point = lesson.value.knowledge_points?.[0];
+    if (!point) throw new Error('Missing key-prerequisite lesson fixture');
+    point.key_prereqs = ['base'];
+    point.tldr = 'A concise summary.';
+    const warnings = warningsFor(
+      contentData(
+        [
+          topic('base'),
+          topic('direct', [{ id: 'base', strength: 'hard' }]),
+          topic('advanced', [{ id: 'direct', strength: 'hard' }]),
+        ],
+        [course('course', 'Course', [['base', 'direct', 'advanced']])],
+        undefined,
+        [lesson],
+      ),
+    );
+
+    expect(
+      warnings.filter(({ message }) => message.startsWith('has no encompassing weight for')),
+    ).toEqual([
+      {
+        file: 'concepts/main.yaml',
+        id: 'direct',
+        message: 'has no encompassing weight for base',
+      },
+      {
+        file: 'concepts/main.yaml',
+        id: 'advanced',
+        message: 'has no encompassing weight for direct',
+      },
+      {
+        file: 'concepts/main.yaml',
+        id: 'advanced',
+        message: 'has no encompassing weight for base',
+      },
+    ]);
+  });
+
   it('warns once about topics with no prerequisites after the opening of a course', () => {
     const warnings = warningsFor(
       contentData(

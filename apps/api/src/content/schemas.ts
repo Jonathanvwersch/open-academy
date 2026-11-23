@@ -139,6 +139,16 @@ export const ConceptSchema = z
           .strict(),
       )
       .default([]),
+    encompassings: z
+      .array(
+        z
+          .object({
+            id: IdSchema,
+            weight: z.number().min(0).max(1),
+          })
+          .strict(),
+      )
+      .optional(),
     confused_with: z.array(IdSchema).optional(),
     related: z.array(IdSchema).default([]),
     objectives: z
