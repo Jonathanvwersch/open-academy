@@ -685,6 +685,55 @@ test('restarting a prerequisite skips planned and in-progress dependent activiti
   ]);
 });
 
+test('restarting an indirect ancestor keeps a completed descendant review planned', async () => {
+  const descendantId = 'eigen-svd';
+  const descendant = content.conceptsById.get(descendantId);
+  if (!descendant) throw new Error('Expected eigen-svd');
+  const hardAncestors = hardPrerequisiteAncestors(content, descendantId);
+  const ancestorId = [...hardAncestors].find(
+    (id) => !descendant.prereqs.some((prerequisite) => prerequisite.id === id),
+  );
+  if (!ancestorId) throw new Error('Expected an indirect hard ancestor for eigen-svd');
+  const exerciseId = [...content.exercisesById.values()].find(
+    (exercise) => exercise.concept === descendantId,
+  )?.id;
+  if (!exerciseId) throw new Error('Expected an eigen-svd exercise');
+
+  await db.insert(lessonRuns).values(
+    [...hardAncestors, descendantId].map((conceptId) => ({
+      userId,
+      conceptId,
+      status: 'completed' as const,
+    })),
+  );
+  const [session] = await db
+    .insert(studySessions)
+    .values({ userId, plannedMinutes: 60, status: 'active' })
+    .returning();
+  if (!session) throw new Error('Could not create descendant review session');
+  const [review] = await db
+    .insert(sessionActivities)
+    .values({
+      sessionId: session.id,
+      idx: 0,
+      kind: 'review',
+      conceptId: descendantId,
+      exerciseIds: [exerciseId],
+      plannedMinutes: 10,
+      status: 'planned',
+    })
+    .returning();
+  if (!review) throw new Error('Could not create descendant review');
+
+  const restart = await post(`/concepts/${ancestorId}/restart`, {});
+  expect(restart.status).toBe(200);
+  const [afterRestart] = await db
+    .select()
+    .from(sessionActivities)
+    .where(eq(sessionActivities.id, review.id));
+  expect(afterRestart?.status).toBe('planned');
+});
+
 test('learners can switch to a listed course', async () => {
   const response = await put('/course/active', { courseId: 'reinforcement-learning' });
   expect(response.status).toBe(200);

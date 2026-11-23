@@ -39,7 +39,6 @@ import {
   labActivityReady,
   learnActivitiesWithUnmetPrerequisites,
   masteryKey,
-  projectReady,
 } from '../../learning/prerequisites.js';
 import { reviewTopicsForActivity } from '../../learning/review-topics.js';
 import type {

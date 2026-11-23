@@ -26,6 +26,7 @@ import {
   courseFoundationIds,
   courseFoundations,
   createPrerequisiteChecker,
+  labActivityReady,
   masteryKey,
   projectReady,
 } from '../../learning/prerequisites.js';
@@ -114,6 +115,7 @@ export async function restartTopic(input: {
         id: sessionActivities.id,
         conceptId: sessionActivities.conceptId,
         kind: sessionActivities.kind,
+        projectId: sessionActivities.projectId,
         exerciseIds: sessionActivities.exerciseIds,
       })
       .from(sessionActivities)
@@ -147,16 +149,16 @@ export async function restartTopic(input: {
     const prerequisiteChecker = createPrerequisiteChecker(masteryByKey, runRows, input.content);
     const activitiesToSkip = dependentActivities
       .filter((activity) => {
-        if (
-          activity.kind === 'review' &&
-          activity.exerciseIds.some(
+        if (activity.kind === 'review') {
+          return activity.exerciseIds.some(
             (exerciseId) =>
               input.content.exercisesById.get(exerciseId)?.concept === input.conceptId,
-          )
-        ) {
-          return true;
+          );
         }
-        if (!activity.conceptId) return false;
+        if (activity.kind === 'lab') {
+          return !labActivityReady(activity, masteryByKey, runRows, input.content);
+        }
+        if (activity.kind !== 'learn' || !activity.conceptId) return false;
         if (!input.content.conceptsById.has(activity.conceptId)) return false;
         return !prerequisiteChecker.chainReady(activity.conceptId);
       })
