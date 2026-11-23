@@ -249,7 +249,7 @@ knowledge_points:
 
       ### Reasoning models
 
-      DeepSeek trained its R1 models in 2025 with GRPO, using rewards computed by rules, such as checking a maths answer or running code on tests, plus a reward for the format of the reply. For DeepSeek-R1-Zero, it ran RL straight from the pretrained model with no SFT, and the replies grew longer during training as the model worked through problems in more steps. DeepSeek-R1 itself first did SFT on a small set of examples.
+      DeepSeek-R1-Zero, a reasoning model published in 2025, was trained with GRPO straight from a pretrained model, with no SFT first. Its rewards were computed by rules: checking maths answers, running code on tests, and checking the format of the reply. Its replies grew longer during training as it worked through problems in more steps.
     worked: |
       Let's work out the clipped terms for two tokens from the apples group, with clip range $c=0.2$. Reply 1 has advantage $A_1=1$ and reply 2 has $A_2=-1$.
 
