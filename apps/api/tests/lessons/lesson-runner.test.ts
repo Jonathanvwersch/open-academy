@@ -88,13 +88,12 @@ test('basics-inclusive streaks match the reference for every right/wrong sequenc
       streak = correct === 1 ? streak + 1 : 0;
       if (streak === 2) return { status: 'passed', answered, streak: 2 };
       if (correct < 1) misses += 1;
-      if (misses === 3) break;
     }
     return {
       status: 'active',
       answered,
       streak,
-      ...(misses === 3 ? { halted: true } : {}),
+      ...(misses >= 3 ? { halted: true } : {}),
     };
   }
 
@@ -195,6 +194,15 @@ test('the third miss halts an active step', () => {
     halted: { pointId: 'kp', index: 0 },
     points: [{ status: 'active', round: 1, answered: 3, streak: 0 }],
   });
+});
+
+test('three misses followed by two correct answers pass without a halt', () => {
+  const state = derive(lesson, [row(1, 0), row(2, 0), row(3, 0), row(4, 1), row(5, 1)]);
+  expect(state).toMatchObject({
+    status: 'quiz',
+    points: [{ status: 'passed', answered: 5, streak: 2 }],
+  });
+  expect(state.halted).toBeUndefined();
 });
 
 test('one miss followed by two correct answers passes without a halt', () => {
@@ -593,8 +601,6 @@ test('legacy rows halt after three misses in the current attempt', () => {
     row(1, 0, 'second'),
     row(2, 0, 'second'),
     row(3, 0, 'second'),
-    row(4, 0, 'second'),
-    row(5, 0, 'second'),
   ];
   const state = derive(multiPointLesson, rows);
   expect(state).toMatchObject({

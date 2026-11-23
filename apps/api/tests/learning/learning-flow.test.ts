@@ -777,25 +777,24 @@ test('completing a review resolves open remediation flags for its topics', async
   const exercise = content.exercisesByConcept
     .get('vectors')
     ?.find(
-      (candidate) => candidate.type === 'mc' && !candidate.lesson_only && !isTemplate(candidate),
+      (candidate) =>
+        candidate.type === 'mc' &&
+        !candidate.multi &&
+        !candidate.lesson_only &&
+        !isTemplate(candidate),
     );
   if (!exercise) throw new Error('Missing vectors review exercise');
+  if (exercise.type !== 'mc') throw new Error('Expected a multiple-choice vectors exercise');
+  const wrongOption = exercise.options.find((option) => !option.correct);
+  if (!wrongOption) throw new Error('Missing incorrect vectors option');
   await db.insert(remediationFlags).values({
     userId,
     conceptId: 'gradient-descent',
     targetPrereqId: 'vectors',
   });
   const activity = await createReviewActivity('vectors', exercise.id);
-  const response = await submitReviewExercise(
-    exercise.id,
-    activity.id,
-    exercise.type === 'mc'
-      ? exercise.multi
-        ? exercise.options.filter((option) => option.correct).map((option) => option.id)
-        : exercise.options.find((option) => option.correct)?.id
-      : 'correct',
-  );
-  expect(response).toMatchObject({ activityCompleted: true, correct: 1 });
+  const response = await submitReviewExercise(exercise.id, activity.id, wrongOption.id);
+  expect(response).toMatchObject({ activityCompleted: true, correct: 0 });
   const flags = await db.select().from(remediationFlags).where(eq(remediationFlags.userId, userId));
   expect(flags).toHaveLength(1);
   expect(flags[0]).toMatchObject({ status: 'resolved', targetPrereqId: 'vectors' });

@@ -53,3 +53,27 @@ test('diligent and graph-change Mathematics for ML runs produce structured repor
     }
   }
 }, 110_000);
+
+test('gap learner reviews logistic regression before completing the affected lesson', async () => {
+  const report = await simulateLearners(db, await loadContent(), {
+    profiles: ['gap'],
+    days: 45,
+    courseIds: ['maths-for-ml', 'ml-foundations'],
+  });
+  const gap = report.profiles[0];
+  expect(gap?.remediation.totals.noProgressHalts).toBeGreaterThanOrEqual(1);
+  expect(
+    gap?.remediation.flagsOpened.some((event) => event.prerequisiteId === 'logistic-regression'),
+  ).toBe(true);
+  const affectedLesson = gap?.remediation.gapTimeline?.find(
+    (timeline) =>
+      timeline.flagsOpened.some((event) => event.prerequisiteId === 'logistic-regression') &&
+      timeline.completionDays.length > 0,
+  );
+  expect(affectedLesson).toBeDefined();
+  const reviewedDay = affectedLesson?.prereqsReviewed.find(
+    (event) => event.prerequisiteId === 'logistic-regression',
+  )?.day;
+  expect(reviewedDay).toBeDefined();
+  expect(reviewedDay).toBeLessThan(affectedLesson?.completionDays[0] ?? 0);
+}, 150_000);

@@ -54,6 +54,75 @@ export interface DailySimulationStats {
   reviews: number;
   reviewAttempts: number;
   newTopicsCompleted: number;
+  offers: SimulatedSessionOffer[];
+  courseTopics: DailyCourseTopicState[];
+}
+
+export interface SimulatedSessionOffer {
+  kind: string;
+  conceptId?: string;
+  projectId?: string;
+  paperId?: string;
+  reviewTopics?: Array<{ conceptId: string; title: string }>;
+}
+
+export interface DailyCourseTopicState {
+  conceptId: string;
+  title: string;
+  status: string;
+  missingPrereqs: Array<{ id: string; title: string }>;
+  retry?: { after: string | null; reviewFirst: Array<{ id: string; title: string }> };
+}
+
+export interface LessonHaltEvent {
+  day: number;
+  conceptId: string;
+  pointId: string;
+  noProgress: boolean;
+}
+
+export interface RemediationFlagEvent {
+  day: number;
+  conceptId: string;
+  prerequisiteId: string;
+}
+
+export interface RemedialReviewEvent {
+  day: number;
+  conceptId: string;
+  prerequisiteId: string;
+}
+
+export interface LessonRetryEvent {
+  day: number;
+  conceptId: string;
+}
+
+export interface GapLessonTimeline {
+  conceptId: string;
+  title: string;
+  haltDays: number[];
+  retryDays: number[];
+  flagsOpened: Array<{ day: number; prerequisiteId: string }>;
+  prereqsReviewed: Array<{ day: number; prerequisiteId: string }>;
+  completionDays: number[];
+}
+
+export interface RemediationSimulationReport {
+  totals: {
+    halts: number;
+    noProgressHalts: number;
+    remediationFlagsOpened: number;
+    remedialReviewsCompleted: number;
+    retriesStarted: number;
+    lessonsCompletedAfterRetry: number;
+  };
+  halts: LessonHaltEvent[];
+  flagsOpened: RemediationFlagEvent[];
+  remedialReviewsCompleted: RemedialReviewEvent[];
+  retriesStarted: LessonRetryEvent[];
+  lessonsCompletedAfterRetry: LessonRetryEvent[];
+  gapTimeline?: GapLessonTimeline[];
 }
 
 export interface CourseSimulationSummary {
@@ -87,6 +156,7 @@ export interface ProfileSimulationReport {
   dailyStats: DailySimulationStats[];
   projectsOffered: SimulatedOffer[];
   papersRecorded: SimulatedPaper[];
+  remediation: RemediationSimulationReport;
   totals: {
     lessonsPerDayMean: number;
     lessonsPerDayMax: number;
@@ -154,6 +224,15 @@ interface ProfileRuntime {
   weakPrereqs: string[];
   completedRemedialReviews: Set<string>;
   lastHaltedPointIndex: Map<string, number>;
+  haltEvents: LessonHaltEvent[];
+  remediationFlagEvents: RemediationFlagEvent[];
+  remedialReviewEvents: RemedialReviewEvent[];
+  retryEvents: LessonRetryEvent[];
+  postRetryCompletionEvents: LessonRetryEvent[];
+  openFlagKeys: Set<string>;
+  awaitingRetryStart: Set<string>;
+  retriedConcepts: Set<string>;
+  completedAfterRetryConcepts: Set<string>;
   noProgressHalts: Map<
     string,
     { day: number; targetPrereqIds: string[]; reviewed: boolean; violationReported?: boolean }
@@ -252,6 +331,16 @@ function courseRows(catalog: CourseCatalogPayload) {
 
 function coursePageTopics(page: CoursePayload) {
   return [...page.foundations, ...page.units.flatMap((unit) => unit.topics)];
+}
+
+function sessionOffer(activity: SimActivity): SimulatedSessionOffer {
+  return {
+    kind: activity.kind,
+    ...(activity.conceptId ? { conceptId: activity.conceptId } : {}),
+    ...(activity.projectId ? { projectId: activity.projectId } : {}),
+    ...(activity.paperId ? { paperId: activity.paperId } : {}),
+    ...(activity.reviewTopics ? { reviewTopics: activity.reviewTopics } : {}),
+  };
 }
 
 function toGraphChangeContent(content: ContentIndex): ContentIndex {
@@ -933,12 +1022,25 @@ async function answerLessonProblem(
     const targetPrereqIds = haltedPointId
       ? keyPrereqsForPoint(content, conceptId, haltedPointId)
       : [];
-    if (previousIndex !== undefined && haltedIndex <= previousIndex && targetPrereqIds.length > 0) {
+    const noProgress = previousIndex !== undefined && haltedIndex <= previousIndex;
+    if (haltedPointId) {
+      runtime.haltEvents.push({ day, conceptId, pointId: haltedPointId, noProgress });
+    }
+    runtime.awaitingRetryStart.add(conceptId);
+    if (noProgress && targetPrereqIds.length > 0) {
       runtime.noProgressHalts.set(conceptId, {
         day,
         targetPrereqIds,
         reviewed: false,
       });
+    }
+    for (const flag of list(object(run.retry).reviewFirst)) {
+      const prerequisiteId = text(object(flag).id);
+      if (!prerequisiteId) continue;
+      const key = `${conceptId}|${prerequisiteId}`;
+      if (runtime.openFlagKeys.has(key)) continue;
+      runtime.openFlagKeys.add(key);
+      runtime.remediationFlagEvents.push({ day, conceptId, prerequisiteId });
     }
     runtime.lastHaltedPointIndex.set(conceptId, haltedIndex);
   }
@@ -957,6 +1059,10 @@ async function finishLessonSteps(
   const runPath = `/lessons/${conceptId}/run`;
   const started = object(await api.require('POST', runPath, now, { activityId }));
   let run = object(started.run);
+  if (runtime.awaitingRetryStart.delete(conceptId)) {
+    runtime.retryEvents.push({ day, conceptId });
+    runtime.retriedConcepts.add(conceptId);
+  }
   for (let turn = 0; turn < 300; turn += 1) {
     const status = text(run.status);
     if (status === 'quiz' || status === 'completed' || status === 'needs_retry') return run;
@@ -1003,6 +1109,7 @@ async function completeQuizWarmup(
   runId: string,
 ) {
   const missedPointIds = await missedQuizPointIds(db, runId);
+  let answerOffsetSeconds = 0;
   for (const pointId of missedPointIds) {
     for (let practiceNo = 0; practiceNo < 4; practiceNo += 1) {
       const result = await api.call('POST', `/lessons/${conceptId}/run/practice`, now, {
@@ -1014,11 +1121,12 @@ async function completeQuizWarmup(
       const run = object(object(result.data).run);
       const pending = object(run.pendingPracticeProblem);
       if (!text(pending.id)) break;
+      answerOffsetSeconds += 1;
       await answerLessonProblem(
         api,
         content,
         runtime,
-        now,
+        new Date(now.getTime() + answerOffsetSeconds * 1_000),
         day,
         conceptId,
         activityId,
@@ -1227,6 +1335,13 @@ async function processActivity(
           lessonViewed: true,
           lessonRunnerContinued: true,
         });
+        if (
+          runtime.retriedConcepts.has(activity.conceptId) &&
+          !runtime.completedAfterRetryConcepts.has(activity.conceptId)
+        ) {
+          runtime.completedAfterRetryConcepts.add(activity.conceptId);
+          runtime.postRetryCompletionEvents.push({ day, conceptId: activity.conceptId });
+        }
       }
     } else {
       for (const exerciseId of exerciseIds) {
@@ -1287,12 +1402,37 @@ async function processActivity(
       if (pendingExerciseIds.length === 0) break;
     }
     await completeActivity(api, now, sessionId, activity);
+    const reviewedPrereqs = new Set<string>();
     for (const exerciseId of attemptedExerciseIds) {
       const prereqId = content.exercisesById.get(exerciseId)?.concept;
-      if (!prereqId) continue;
+      if (!prereqId || reviewedPrereqs.has(prereqId)) continue;
+      reviewedPrereqs.add(prereqId);
+      const flaggedLessons = [
+        ...new Set(
+          progress.remediationFlags
+            .filter((flag) => flag.targetPrereqId === prereqId)
+            .map((flag) => flag.conceptId),
+        ),
+      ];
+      if (flaggedLessons.length === 0) continue;
       runtime.completedRemedialReviews.add(prereqId);
-      for (const halt of runtime.noProgressHalts.values()) {
-        if (halt.targetPrereqIds.includes(prereqId)) halt.reviewed = true;
+      for (const flaggedLessonId of flaggedLessons) {
+        runtime.openFlagKeys.delete(`${flaggedLessonId}|${prereqId}`);
+        runtime.remedialReviewEvents.push({
+          day,
+          conceptId: flaggedLessonId,
+          prerequisiteId: prereqId,
+        });
+      }
+      for (const [flaggedLessonId, halt] of runtime.noProgressHalts) {
+        if (
+          halt.targetPrereqIds.length > 0 &&
+          halt.targetPrereqIds.every(
+            (targetPrereqId) => !runtime.openFlagKeys.has(`${flaggedLessonId}|${targetPrereqId}`),
+          )
+        ) {
+          halt.reviewed = true;
+        }
       }
     }
     return { lessons: 0, reviews: 1, reviewAttempts };
@@ -1442,6 +1582,71 @@ function summarizeDailyStats(stats: DailySimulationStats[]) {
   };
 }
 
+function remediationReport(
+  runtime: ProfileRuntime,
+  content: ContentIndex,
+): RemediationSimulationReport {
+  const report: RemediationSimulationReport = {
+    totals: {
+      halts: runtime.haltEvents.length,
+      noProgressHalts: runtime.haltEvents.filter((event) => event.noProgress).length,
+      remediationFlagsOpened: runtime.remediationFlagEvents.length,
+      remedialReviewsCompleted: new Set(
+        runtime.remedialReviewEvents.map((event) => `${event.day}|${event.prerequisiteId}`),
+      ).size,
+      retriesStarted: runtime.retryEvents.length,
+      lessonsCompletedAfterRetry: runtime.postRetryCompletionEvents.length,
+    },
+    halts: runtime.haltEvents,
+    flagsOpened: runtime.remediationFlagEvents,
+    remedialReviewsCompleted: runtime.remedialReviewEvents,
+    retriesStarted: runtime.retryEvents,
+    lessonsCompletedAfterRetry: runtime.postRetryCompletionEvents,
+  };
+  if (runtime.profile !== 'gap') return report;
+
+  const timelines = new Map<string, GapLessonTimeline>();
+  const timelineFor = (conceptId: string) => {
+    let timeline = timelines.get(conceptId);
+    if (!timeline) {
+      timeline = {
+        conceptId,
+        title: content.conceptsById.get(conceptId)?.title ?? conceptId,
+        haltDays: [],
+        retryDays: [],
+        flagsOpened: [],
+        prereqsReviewed: [],
+        completionDays: [],
+      };
+      timelines.set(conceptId, timeline);
+    }
+    return timeline;
+  };
+  for (const event of runtime.haltEvents) timelineFor(event.conceptId).haltDays.push(event.day);
+  for (const event of runtime.retryEvents) timelineFor(event.conceptId).retryDays.push(event.day);
+  for (const event of runtime.remediationFlagEvents) {
+    timelineFor(event.conceptId).flagsOpened.push({
+      day: event.day,
+      prerequisiteId: event.prerequisiteId,
+    });
+  }
+  for (const event of runtime.remedialReviewEvents) {
+    timelineFor(event.conceptId).prereqsReviewed.push({
+      day: event.day,
+      prerequisiteId: event.prerequisiteId,
+    });
+  }
+  for (const event of runtime.postRetryCompletionEvents) {
+    timelineFor(event.conceptId).completionDays.push(event.day);
+  }
+  report.gapTimeline = [...timelines.values()].sort(
+    (left, right) =>
+      (left.haltDays[0] ?? 0) - (right.haltDays[0] ?? 0) ||
+      left.conceptId.localeCompare(right.conceptId),
+  );
+  return report;
+}
+
 async function simulateProfile(
   db: Database,
   realContent: ContentIndex,
@@ -1468,6 +1673,21 @@ async function simulateProfile(
     dailyStats: [],
     projectsOffered: [],
     papersRecorded: [],
+    remediation: {
+      totals: {
+        halts: 0,
+        noProgressHalts: 0,
+        remediationFlagsOpened: 0,
+        remedialReviewsCompleted: 0,
+        retriesStarted: 0,
+        lessonsCompletedAfterRetry: 0,
+      },
+      halts: [],
+      flagsOpened: [],
+      remedialReviewsCompleted: [],
+      retriesStarted: [],
+      lessonsCompletedAfterRetry: [],
+    },
     totals: {
       lessonsPerDayMean: 0,
       lessonsPerDayMax: 0,
@@ -1494,6 +1714,15 @@ async function simulateProfile(
     weakPrereqs: weakPrereqsForProfile(profile),
     completedRemedialReviews: new Set(),
     lastHaltedPointIndex: new Map(),
+    haltEvents: [],
+    remediationFlagEvents: [],
+    remedialReviewEvents: [],
+    retryEvents: [],
+    postRetryCompletionEvents: [],
+    openFlagKeys: new Set(),
+    awaitingRetryStart: new Set(),
+    retriedConcepts: new Set(),
+    completedAfterRetryConcepts: new Set(),
     noProgressHalts: new Map(),
     staleRetryReported: new Set(),
   };
@@ -1574,6 +1803,14 @@ async function simulateProfile(
         reviews: 0,
         reviewAttempts: 0,
         newTopicsCompleted: 0,
+        offers: [],
+        courseTopics: coursePageTopics(pageBefore).map((topic) => ({
+          conceptId: topic.conceptId,
+          title: topic.title,
+          status: topic.status,
+          missingPrereqs: (topic.needs ?? []).map(({ id, title }) => ({ id, title })),
+          ...(topic.retry ? { retry: topic.retry } : {}),
+        })),
       };
       if (!skip) {
         const session = object(
@@ -1588,6 +1825,7 @@ async function simulateProfile(
           const parsed = object(activity) as unknown as SimActivity;
           return parsed.kind === 'paper' && paperId ? { ...parsed, paperId } : parsed;
         });
+        daily.offers.push(...activities.map(sessionOffer));
         auditSession(runtime, day, courseId, activities, progress, activeContent);
         for (const activity of activities) {
           const result = await processActivity(
@@ -1624,6 +1862,7 @@ async function simulateProfile(
           const focusedActivities = list(focusedSession.activities).map(
             (activity) => object(activity) as unknown as SimActivity,
           );
+          daily.offers.push(...focusedActivities.map(sessionOffer));
           auditSession(runtime, day, courseId, focusedActivities, progress, activeContent);
           for (const activity of focusedActivities) {
             const result = await processActivity(
@@ -1731,6 +1970,7 @@ async function simulateProfile(
       wrongAnswers: runtime.wrongAnswers,
       wrongPercent: runtime.answered === 0 ? 0 : (runtime.wrongAnswers / runtime.answered) * 100,
     };
+    report.remediation = remediationReport(runtime, realContent);
     report.violationCounts = getViolationCounts(report.violations);
     return report;
   } finally {
@@ -1814,6 +2054,11 @@ export function renderMarkdownReport(report: LearnerSimulationReport): string {
     if (profile.graphChangeDay !== undefined) {
       lines.push(`Graph-change content switched on day ${profile.graphChangeDay}.`);
     }
+    const remediation = profile.remediation;
+    const flagList =
+      remediation.flagsOpened
+        .map((event) => `day ${event.day} ${event.conceptId} → ${event.prerequisiteId}`)
+        .join('; ') || 'none';
     lines.push(
       '',
       '| Course | Started day | Finished day | Days to finish |',
@@ -1826,9 +2071,30 @@ export function renderMarkdownReport(report: LearnerSimulationReport): string {
       `Lessons/day: mean ${profile.totals.lessonsPerDayMean.toFixed(2)}, max ${profile.totals.lessonsPerDayMax}.`,
       `Reviews/day: mean ${profile.totals.reviewsPerDayMean.toFixed(2)}, max ${profile.totals.reviewsPerDayMax}.`,
       `Wrong answers: ${profile.totals.wrongAnswers}/${profile.totals.answers} (${profile.totals.wrongPercent.toFixed(1)}%).`,
+      `Remediation: ${remediation.totals.halts} halts (${remediation.totals.noProgressHalts} no-progress); ${remediation.totals.remediationFlagsOpened} flags opened [${flagList}]; ${remediation.totals.remedialReviewsCompleted} remedial reviews completed; ${remediation.totals.retriesStarted} retries started; ${remediation.totals.lessonsCompletedAfterRetry} lessons completed after retry.`,
       '',
-      '### Violations',
-      '',
+    );
+    if (profile.profile === 'gap') {
+      lines.push('### Gap lesson timelines', '');
+      if (remediation.gapTimeline?.length) {
+        for (const timeline of remediation.gapTimeline) {
+          const flags = timeline.flagsOpened
+            .map((event) => `day ${event.day} ${event.prerequisiteId}`)
+            .join(', ');
+          const reviews = timeline.prereqsReviewed
+            .map((event) => `day ${event.day} ${event.prerequisiteId}`)
+            .join(', ');
+          lines.push(
+            `- **${timeline.title}** (\`${timeline.conceptId}\`): halted ${timeline.haltDays.map((day) => `day ${day}`).join(', ') || 'never'}; retried ${timeline.retryDays.map((day) => `day ${day}`).join(', ') || 'never'}; flags opened ${flags || 'none'}; prereqs reviewed ${reviews || 'none'}; completed ${timeline.completionDays.map((day) => `day ${day}`).join(', ') || 'not after a retry'}.`,
+          );
+        }
+      } else {
+        lines.push('No affected lessons halted.', '');
+      }
+      lines.push('');
+    }
+    lines.push('### Violations', '');
+    lines.push(
       '| Invariant | Count |',
       '| --- | ---: |',
       ...invariants.map((invariant) => `| ${invariant} | ${profile.violationCounts[invariant]} |`),
@@ -1842,6 +2108,57 @@ export function renderMarkdownReport(report: LearnerSimulationReport): string {
         continue;
       }
       lines.push(...violations.slice(0, 10).map((violation) => `- ${exampleText(violation)}`), '');
+    }
+    if (profile.profile === 'struggling') {
+      const p5Violations = profile.violations.filter((item) => item.invariant === 'P5');
+      if (p5Violations.length > 0) {
+        lines.push('### P5 daily offers and course state', '');
+        for (const violation of p5Violations) {
+          const firstDay = Math.max(1, violation.day - 6);
+          for (const daily of profile.dailyStats.filter(
+            (item) =>
+              item.day >= firstDay &&
+              item.day <= violation.day &&
+              item.courseId === violation.courseId,
+          )) {
+            const offers =
+              daily.offers
+                .map((offer) => {
+                  const id = offer.conceptId ?? offer.projectId ?? offer.paperId;
+                  const reviewTopics = offer.reviewTopics
+                    ?.map((topic) => topic.conceptId)
+                    .join(', ');
+                  return id
+                    ? `${offer.kind} ${id}`
+                    : reviewTopics
+                      ? `${offer.kind} ${reviewTopics}`
+                      : offer.kind;
+                })
+                .join('; ') || 'no session activities';
+            lines.push(`- Day ${daily.day} (${daily.courseId ?? 'no course'}): ${offers}.`);
+          }
+          const evidence = profile.dailyStats.find((item) => item.day === violation.day);
+          if (evidence) {
+            lines.push(
+              `- Day ${violation.day} topics remaining: ${
+                evidence.courseTopics
+                  .filter((topic) => topic.status !== 'complete')
+                  .map(
+                    (topic) =>
+                      `\`${topic.conceptId}\` (${topic.status}; missingPrereqs: ${topic.missingPrereqs.map((prereq) => prereq.id).join(', ') || 'none'})`,
+                  )
+                  .join('; ') || 'none'
+              }.`,
+            );
+            for (const topic of evidence.courseTopics.filter((item) => item.retry)) {
+              lines.push(
+                `- Day ${violation.day} retry state for \`${topic.conceptId}\`: after ${topic.retry?.after ?? 'no delay'}; review first ${topic.retry?.reviewFirst.map((item) => item.id).join(', ') || 'none'}.`,
+              );
+            }
+          }
+        }
+        lines.push('');
+      }
     }
     lines.push('### Project and paper activity', '');
     lines.push(

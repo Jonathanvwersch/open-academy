@@ -99,7 +99,7 @@ export async function getLessonsByConceptIdReview(deps: FeatureServices, request
     checkAnswers,
     checks,
     runStatus: run
-      ? deriveLessonState(lesson, rows, index.exercisesById, run.quizPassedAt).status
+      ? deriveLessonState(lesson, rows, index.exercisesById, run.quizPassedAt, run.attempt).status
       : null,
     conceptTitle: index.conceptsById.get(conceptId)?.title ?? conceptId,
   });

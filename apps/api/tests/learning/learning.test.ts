@@ -227,6 +227,65 @@ function studyState(courseIds: string[], index: ContentIndex = courseContent): S
   };
 }
 
+function planWithRetryAndFreshTopics(
+  budget: number,
+  options: {
+    courseId?: string;
+    freshTopicIds?: string[];
+    retryConceptId?: string;
+    retryAfter?: Date;
+    inProgressConceptId?: string;
+    focusConceptId?: string;
+    index?: ContentIndex;
+    confusablePairs?: Array<[string, string]>;
+  } = {},
+) {
+  const courseId = options.courseId ?? 'maths-for-ml';
+  const freshTopicIds = options.freshTopicIds ?? ['probability-basics'];
+  const retryConceptId = options.retryConceptId ?? 'vectors';
+  const index = options.index ?? courseContent;
+  const topicsContent = schedulerContentWithTopics(
+    { [courseId]: [retryConceptId, ...freshTopicIds] },
+    index,
+  );
+  const planContent =
+    options.confusablePairs && options.confusablePairs.length > 0
+      ? schedulerContentWithConfusables(topicsContent, options.confusablePairs)
+      : topicsContent;
+  const state = studyState([courseId], planContent);
+  const course = required(planContent.coursesById.get(courseId), courseId);
+  const candidateConceptIds = new Set([
+    ...course.units.flatMap((unit) => unit.concepts),
+    ...courseFoundationIds(planContent, courseId),
+  ]);
+  const masteryByKey = new Map(
+    state.mastery.map((record) => [masteryKey(record.conceptId, record.dimension), record]),
+  );
+  for (const conceptId of candidateConceptIds) {
+    if (freshTopicIds.includes(conceptId)) continue;
+    const concept = planContent.conceptsById.get(conceptId);
+    for (const dimension of concept?.dimensions ?? []) {
+      masteryByKey.set(masteryKey(conceptId, dimension), {
+        ...initialMastery(conceptId, dimension),
+        state: 'retained',
+      });
+    }
+  }
+  state.mastery = [...masteryByKey.values()];
+  state.lessonRuns = [
+    {
+      conceptId: retryConceptId,
+      status: 'needs_retry',
+      retryAfter: options.retryAfter ?? new Date(now.getTime() - 1_000),
+    },
+    ...(options.inProgressConceptId
+      ? [{ conceptId: options.inProgressConceptId, status: 'in_progress' as const }]
+      : []),
+  ];
+  state.inProgressConceptId = options.focusConceptId;
+  return planSession(state, planContent, now, budget);
+}
+
 test('prerequisite checker follows hard ancestors and reports the missing frontier', () => {
   const concepts = [
     { id: 'a', status: 'authored', dimensions: ['conceptual'], prereqs: [] },
@@ -1299,6 +1358,184 @@ test('unfinished knowledge-point lessons are prioritized regardless of mastery, 
   ).not.toBe('learn');
 });
 
+test('fresh lessons outrank retry-eligible lessons when only one lesson fits the budget', () => {
+  const retryMinutes = required(courseContent.conceptsById.get('vectors'), 'vectors').est_minutes;
+  const freshMinutes = required(
+    courseContent.conceptsById.get('probability-basics'),
+    'probability-basics',
+  ).est_minutes;
+  const oneLessonBudget = Math.max(retryMinutes, freshMinutes);
+  expect(retryMinutes + freshMinutes).toBeGreaterThan(oneLessonBudget);
+
+  const learned = planWithRetryAndFreshTopics(oneLessonBudget)
+    .activities.filter((activity) => activity.kind === 'learn')
+    .map((activity) => activity.conceptId);
+
+  expect(learned).toEqual(['probability-basics']);
+});
+
+test('fresh and retry-eligible lessons are both selected when the budget fits two', () => {
+  const retryMinutes = required(courseContent.conceptsById.get('vectors'), 'vectors').est_minutes;
+  const freshMinutes = required(
+    courseContent.conceptsById.get('probability-basics'),
+    'probability-basics',
+  ).est_minutes;
+
+  const learned = planWithRetryAndFreshTopics(retryMinutes + freshMinutes)
+    .activities.filter((activity) => activity.kind === 'learn')
+    .map((activity) => activity.conceptId);
+
+  expect(learned).toHaveLength(2);
+  expect(learned).toEqual(expect.arrayContaining(['probability-basics', 'vectors']));
+});
+
+test('retry-eligible lessons are offered when no fresh topic is ready', () => {
+  const retryMinutes = required(courseContent.conceptsById.get('vectors'), 'vectors').est_minutes;
+
+  const learned = planWithRetryAndFreshTopics(retryMinutes, { freshTopicIds: [] })
+    .activities.filter((activity) => activity.kind === 'learn')
+    .map((activity) => activity.conceptId);
+
+  expect(learned).toEqual(['vectors']);
+});
+
+test('retry-eligible lessons do not exceed the two-fresh-lesson cap', () => {
+  const freshTopicIds = ['probability-basics', 'derivatives'];
+  const lessonMinutes = [
+    required(courseContent.conceptsById.get('vectors'), 'vectors').est_minutes,
+    ...freshTopicIds.map(
+      (conceptId) => required(courseContent.conceptsById.get(conceptId), conceptId).est_minutes,
+    ),
+  ];
+
+  const learned = planWithRetryAndFreshTopics(
+    lessonMinutes.reduce((sum, minutes) => sum + minutes),
+    {
+      freshTopicIds,
+    },
+  )
+    .activities.filter((activity) => activity.kind === 'learn')
+    .map((activity) => activity.conceptId);
+
+  expect(learned).toHaveLength(2);
+  expect(learned).toEqual(expect.arrayContaining(freshTopicIds));
+  expect(learned).not.toContain('vectors');
+});
+
+test('a retry one day overdue waits behind two fresh lessons', () => {
+  const freshTopicIds = ['probability-basics', 'derivatives'];
+  const lessonMinutes = [
+    required(courseContent.conceptsById.get('vectors'), 'vectors').est_minutes,
+    ...freshTopicIds.map(
+      (conceptId) => required(courseContent.conceptsById.get(conceptId), conceptId).est_minutes,
+    ),
+  ];
+
+  const learned = planWithRetryAndFreshTopics(
+    lessonMinutes.reduce((sum, minutes) => sum + minutes),
+    {
+      freshTopicIds,
+      retryAfter: new Date(now.getTime() - 24 * 60 * 60 * 1_000),
+    },
+  )
+    .activities.filter((activity) => activity.kind === 'learn')
+    .map((activity) => activity.conceptId);
+
+  expect(learned).toHaveLength(2);
+  expect(learned).toEqual(expect.arrayContaining(freshTopicIds));
+  expect(learned).not.toContain('vectors');
+});
+
+test('a retry two days overdue is selected before fresh lessons but respects the cap', () => {
+  const freshTopicIds = ['probability-basics', 'derivatives'];
+  const lessonMinutes = [
+    required(courseContent.conceptsById.get('vectors'), 'vectors').est_minutes,
+    ...freshTopicIds.map(
+      (conceptId) => required(courseContent.conceptsById.get(conceptId), conceptId).est_minutes,
+    ),
+  ];
+
+  const learned = planWithRetryAndFreshTopics(
+    lessonMinutes.reduce((sum, minutes) => sum + minutes),
+    {
+      freshTopicIds,
+      retryAfter: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1_000),
+    },
+  )
+    .activities.filter((activity) => activity.kind === 'learn')
+    .map((activity) => activity.conceptId);
+  const freshLearnCount = learned.filter((conceptId) =>
+    freshTopicIds.includes(conceptId ?? ''),
+  ).length;
+
+  expect(learned).toHaveLength(2);
+  expect(learned).toContain('vectors');
+  expect(freshLearnCount).toBe(1);
+});
+
+test('a focused overdue retry wins when the budget fits one lesson', () => {
+  const retryConceptId = 'vectors';
+  const inProgressConceptId = 'probability-basics';
+  const budget = Math.max(
+    required(courseContent.conceptsById.get(retryConceptId), retryConceptId).est_minutes,
+    required(courseContent.conceptsById.get(inProgressConceptId), inProgressConceptId).est_minutes,
+  );
+  const plan = planWithRetryAndFreshTopics(budget, {
+    freshTopicIds: [inProgressConceptId],
+    retryConceptId,
+    retryAfter: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1_000),
+    inProgressConceptId,
+    focusConceptId: retryConceptId,
+  });
+  const learned = plan.activities.filter((activity) => activity.kind === 'learn');
+
+  expect(learned.map((activity) => activity.conceptId)).toContain(retryConceptId);
+  expect(
+    plan.activities.reduce((total, activity) => total + activity.plannedMinutes, 0),
+  ).toBeLessThanOrEqual(budget);
+});
+
+test('a confusable retry is skipped when the fresh topic is selected', () => {
+  const freshTopicId = 'supervised-learning';
+  const retryConceptId = 'vectors';
+  const budget =
+    required(content.conceptsById.get(freshTopicId), freshTopicId).est_minutes +
+    required(content.conceptsById.get(retryConceptId), retryConceptId).est_minutes;
+
+  const learned = planWithRetryAndFreshTopics(budget, {
+    courseId: 'fixture-course',
+    freshTopicIds: [freshTopicId],
+    retryConceptId,
+    index: content,
+    confusablePairs: [[retryConceptId, freshTopicId]],
+  })
+    .activities.filter((activity) => activity.kind === 'learn')
+    .map((activity) => activity.conceptId);
+
+  expect(learned).toEqual([freshTopicId]);
+});
+
+test('an overdue retry confusable with an in-progress resume is not offered', () => {
+  const retryConceptId = 'vectors';
+  const inProgressConceptId = 'supervised-learning';
+  const budget =
+    required(content.conceptsById.get(retryConceptId), retryConceptId).est_minutes +
+    required(content.conceptsById.get(inProgressConceptId), inProgressConceptId).est_minutes;
+  const learned = planWithRetryAndFreshTopics(budget, {
+    courseId: 'fixture-course',
+    freshTopicIds: [inProgressConceptId],
+    retryConceptId,
+    retryAfter: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1_000),
+    inProgressConceptId,
+    index: content,
+    confusablePairs: [[retryConceptId, inProgressConceptId]],
+  })
+    .activities.filter((activity) => activity.kind === 'learn')
+    .map((activity) => activity.conceptId);
+
+  expect(learned).toEqual([inProgressConceptId]);
+});
+
 test('weekday plans avoid duplicate concepts, cap activities, and never add empty fillers', () => {
   const state = emptyState();
   state.cards = [{ conceptId: 'vectors', dimension: 'math', dueAt: '2026-01-14T11:00:00.000Z' }];
@@ -1420,6 +1657,20 @@ test.each([
   'open remediation flags schedule the prerequisite review and hold the lesson on $sessionKind',
   ({ sessionKind, budget }) => {
     const state = emptyState();
+    const course = required(content.coursesById.get('fixture-course'), 'fixture course');
+    const courseConceptIds = new Set([
+      ...course.units.flatMap((unit) => unit.concepts),
+      ...courseFoundationIds(content, course.id),
+    ]);
+    state.mastery = [...courseConceptIds].flatMap((conceptId) => {
+      const concept = content.conceptsById.get(conceptId);
+      return (
+        concept?.dimensions.map((dimension) => ({
+          ...initialMastery(conceptId, dimension),
+          state: 'retained' as const,
+        })) ?? []
+      );
+    });
     const prerequisiteRuns = [...hardPrerequisiteAncestors(content, 'gradient-descent')].map(
       (conceptId) => ({ conceptId, status: 'completed' as const }),
     );
@@ -1432,6 +1683,16 @@ test.each([
       },
     ];
     state.remediationFlags = [{ conceptId: 'gradient-descent', targetPrereqId: 'gradients' }];
+    const prereqDimension = required(content.conceptsById.get('gradients'), 'gradients')
+      .dimensions[0];
+    if (!prereqDimension) throw new Error('Missing gradients dimension');
+    state.cards = [
+      {
+        conceptId: 'gradients',
+        dimension: prereqDimension,
+        dueAt: new Date(now.getTime() + 10 * 24 * 60 * 60 * 1_000).toISOString(),
+      },
+    ];
     const plan = planSession(state, content, now, budget, sessionKind);
     const review = plan.activities.find(
       (activity) => activity.kind === 'review' && activity.conceptId === 'gradients',
@@ -1453,6 +1714,63 @@ test.each([
     ).toBe(true);
   },
 );
+
+test('remediation reviews outrank competing due reviews when the budget fits one', () => {
+  const state = studyState(['fixture-course']);
+  state.lessonRuns = [
+    {
+      conceptId: 'gradient-descent',
+      status: 'needs_retry',
+      retryAfter: new Date(now.getTime() - 1_000),
+    },
+  ];
+  state.remediationFlags = [{ conceptId: 'gradient-descent', targetPrereqId: 'gradients' }];
+  state.cards = ['gradients', 'vectors'].map((conceptId) => {
+    const dimension = required(content.conceptsById.get(conceptId), conceptId).dimensions[0];
+    if (!dimension) throw new Error(`Missing ${conceptId} dimension`);
+    return {
+      conceptId,
+      dimension,
+      dueAt:
+        conceptId === 'gradients'
+          ? new Date(now.getTime() + 10 * 24 * 60 * 60 * 1_000).toISOString()
+          : now.toISOString(),
+    };
+  });
+
+  const generousPlan = planSession(state, content, now, 600);
+  const minutesByConcept = new Map<string, number>();
+  for (const activity of generousPlan.activities) {
+    if (activity.kind !== 'review') continue;
+    for (const exerciseId of activity.exerciseIds) {
+      const exercise = content.exercisesById.get(exerciseId);
+      if (!exercise) continue;
+      minutesByConcept.set(
+        exercise.concept,
+        (minutesByConcept.get(exercise.concept) ?? 0) + exercise.est_minutes,
+      );
+    }
+  }
+  const remediationMinutes = minutesByConcept.get('gradients') ?? 0;
+  const competingMinutes = minutesByConcept.get('vectors') ?? 0;
+  const oneReviewBudget = Math.max(remediationMinutes, competingMinutes);
+  expect(remediationMinutes).toBeGreaterThan(0);
+  expect(competingMinutes).toBeGreaterThan(0);
+  expect(remediationMinutes + competingMinutes).toBeGreaterThan(oneReviewBudget);
+
+  const plan = planSession(state, content, now, oneReviewBudget);
+  const selectedReviewConcepts = new Set(
+    plan.activities
+      .filter((activity) => activity.kind === 'review')
+      .flatMap((activity) =>
+        activity.exerciseIds.flatMap((exerciseId) => {
+          const conceptId = content.exercisesById.get(exerciseId)?.concept;
+          return conceptId ? [conceptId] : [];
+        }),
+      ),
+  );
+  expect(selectedReviewConcepts).toEqual(new Set(['gradients']));
+});
 
 test('a needs-retry lesson before retryAfter is not a candidate', () => {
   const state = emptyState();
@@ -1523,6 +1841,29 @@ test('three due topics from two courses become one interleaved mixed review', ()
       terms: { review: 9 },
     },
   });
+});
+
+test('mixed reviews keep the first remediation reason summary', () => {
+  const reviews = [
+    reviewCandidate('vectors', 'fixture-course', 9),
+    reviewCandidate('derivatives', 'fixture-course', 8),
+    reviewCandidate('switching-topic', 'fixture-course', 7),
+  ];
+  const firstRemedialReview = reviews[1];
+  const secondRemedialReview = reviews[2];
+  if (!firstRemedialReview || !secondRemedialReview) {
+    throw new Error('Expected three mixed-review candidates');
+  }
+  firstRemedialReview.activity.reason.summary =
+    'Review Derivatives before retrying Gradient descent';
+  secondRemedialReview.activity.reason.summary =
+    'Review Switching topic before retrying Gradient descent';
+
+  const [mixed] = mixReviewActivities(reviews, content);
+
+  expect(mixed?.activity.reason.summary).toBe(
+    'Review Derivatives before retrying Gradient descent',
+  );
 });
 
 test('one selected due topic stays a single-topic review', () => {

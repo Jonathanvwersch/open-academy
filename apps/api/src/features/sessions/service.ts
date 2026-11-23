@@ -21,6 +21,7 @@ import {
 import { buildCourseStartState, needsCourseChoice } from '../../learning/course-start.js';
 import { topicIsComplete } from '../../learning/course-status.js';
 import { initialLearnProgress } from '../../learning/initial-learn-progress.js';
+import { isLessonRetryReady } from '../../learning/lesson-retry.js';
 import { recordLessonViewed } from '../../learning/mastery.js';
 import {
   activeCourseFor,
@@ -257,7 +258,7 @@ export async function postSessions(deps: FeatureServices, request: FeatureReques
     );
     if (retryRun) {
       const retryAfter = retryRun.retryAfter ? new Date(retryRun.retryAfter) : undefined;
-      if (retryAfter && now < retryAfter) {
+      if (!isLessonRetryReady(retryAfter, false, now)) {
         return serviceResult({ error: 'This lesson comes back tomorrow.' }, 409);
       }
       const reviewFirstIds = [
@@ -271,7 +272,7 @@ export async function postSessions(deps: FeatureServices, request: FeatureReques
             .map((flag) => flag.targetPrereqId ?? focusConcept.id),
         ),
       ];
-      if (reviewFirstIds.length > 0) {
+      if (!isLessonRetryReady(retryAfter, reviewFirstIds.length > 0, now)) {
         const titles = reviewFirstIds.map((id) => index.conceptsById.get(id)?.title ?? id);
         return serviceResult({ error: `Review ${titles.join(' and ')} first.` }, 409);
       }
@@ -308,7 +309,18 @@ export async function postSessions(deps: FeatureServices, request: FeatureReques
       (state.lessonRuns ?? [])
         .filter(
           (run) =>
-            run.status === 'in_progress' || run.status === 'needs_retry' || run.status === 'quiz',
+            run.status === 'in_progress' ||
+            run.status === 'quiz' ||
+            (run.status === 'needs_retry' &&
+              isLessonRetryReady(
+                run.retryAfter,
+                state.remediationFlags.some(
+                  (flag) =>
+                    flag.conceptId === run.conceptId &&
+                    (flag.status === undefined || flag.status === 'open'),
+                ),
+                now,
+              )),
         )
         .map((run) => run.conceptId),
     );
