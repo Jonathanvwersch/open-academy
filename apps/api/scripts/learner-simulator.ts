@@ -1424,8 +1424,15 @@ async function processActivity(
           prerequisiteId: prereqId,
         });
       }
-      for (const halt of runtime.noProgressHalts.values()) {
-        if (halt.targetPrereqIds.includes(prereqId)) halt.reviewed = true;
+      for (const [flaggedLessonId, halt] of runtime.noProgressHalts) {
+        if (
+          halt.targetPrereqIds.length > 0 &&
+          halt.targetPrereqIds.every(
+            (targetPrereqId) => !runtime.openFlagKeys.has(`${flaggedLessonId}|${targetPrereqId}`),
+          )
+        ) {
+          halt.reviewed = true;
+        }
       }
     }
     return { lessons: 0, reviews: 1, reviewAttempts };
