@@ -523,9 +523,9 @@ exercises:
     prompt: What does one gradient descent step on the DPO loss for a preference pair do to the policy?
     options:
       - id: a
-        text: Raises the chosen reply's log-probability and lowers the rejected reply's.
+        text: Pushes the chosen reply's log-probability up and the rejected reply's down, widening the gap between them.
         correct: true
-        feedback: The slope is $-\beta(1-p)$ for the chosen reply and $\beta(1-p)$ for the rejected one, and descent moves against the slope.
+        feedback: The slope is $-\beta(1-p)$ for the chosen reply and $\beta(1-p)$ for the rejected one, and descent moves against the slope. Because both replies share the same weights, both log-probabilities can still fall while the gap grows.
       - id: b
         text: Raises the log-probabilities of both replies in the pair.
         correct: false
@@ -541,7 +541,7 @@ exercises:
         correct: false
         category: incorrect_reasoning
         feedback: The rejected reply gets a push of the same size in the opposite direction.
-    solution: Lowering $-\ln\sigma(z)$ means raising the gap $z$, so the step raises $\ln\pi_\theta(y_w\mid x)$ and lowers $\ln\pi_\theta(y_l\mid x)$.
+    solution: Lowering $-\ln\sigma(z)$ widens the gap $z$. The gradient pushes the chosen reply's log-probability up and the rejected reply's down, but because both replies share the same weights, both log-probabilities can still fall while the gap grows.
   - id: dpo3-worked-self-explain
     lesson_only: true
     dimension: conceptual
