@@ -8,6 +8,7 @@ import {
   suggestedNextCourses,
 } from '../../src/features/course/service.js';
 import { courseFoundationIds } from '../../src/learning/prerequisites.js';
+import { withStubConcept } from '../content-test-utils.js';
 
 let content: ContentIndex;
 
@@ -46,25 +47,31 @@ function lessonedConceptIds(courseId: string): string[] {
 test('course queue status is null outside the study set and soon for stub-only topics', () => {
   const course = content.coursesById.get('transformers-llms');
   if (!course) throw new Error('Missing Transformers and LLMs course');
-  const lessonedTopics = new Set(lessonedConceptIds(course.id));
+  const stubConceptId = lessonedConceptIds(course.id)[0];
+  if (!stubConceptId) throw new Error('Expected a lessoned topic to mark as a stub');
+  const contentWithStub = withStubConcept(content, stubConceptId);
   const courseWithOnlyStubTopics = {
     ...course,
     units: course.units
       .map((unit) => ({
         ...unit,
-        concepts: unit.concepts.filter((conceptId) => !lessonedTopics.has(conceptId)),
+        concepts: unit.concepts.filter((conceptId) => conceptId === stubConceptId),
       }))
       .filter((unit) => unit.concepts.length > 0),
   };
-  if (!courseWithOnlyStubTopics.units.length) {
-    throw new Error('Missing stub topics in Transformers and LLMs');
-  }
+  if (!courseWithOnlyStubTopics.units.length) throw new Error('Missing stub topic in course copy');
 
   expect(
-    courseQueueStatus(content, courseWithOnlyStubTopics, [], null, topicStateFor()),
+    courseQueueStatus(contentWithStub, courseWithOnlyStubTopics, [], null, topicStateFor()),
   ).toBeNull();
   expect(
-    courseQueueStatus(content, courseWithOnlyStubTopics, [course.id], null, topicStateFor()),
+    courseQueueStatus(
+      contentWithStub,
+      courseWithOnlyStubTopics,
+      [course.id],
+      null,
+      topicStateFor(),
+    ),
   ).toEqual({
     kind: 'soon',
   });

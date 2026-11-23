@@ -31,6 +31,7 @@ import {
 import { newReviewCard } from '../../src/learning/fsrs.js';
 import { courseFoundationIds, prerequisiteMet } from '../../src/learning/prerequisites.js';
 import type { MasteryRecord } from '../../src/learning/types.js';
+import { withStubConcept } from '../content-test-utils.js';
 
 const db = createDb(env.TEST_DATABASE_URL);
 const userId = '00000000-0000-4000-8000-000000000092';
@@ -1218,16 +1219,25 @@ test('lesson choices exclude locked, completed and stub concepts and retain the 
     new Set(content.courses.flatMap((course) => course.units.flatMap((unit) => unit.concepts))),
   );
   const initial = await (await get('/learn')).json();
-  expect(initial.choices.map((choice: { conceptId: string }) => choice.conceptId)).not.toContain(
-    'dot-product',
+  const initialChoiceIds = initial.choices.map((choice: { conceptId: string }) => choice.conceptId);
+  expect(initialChoiceIds).not.toContain('dot-product');
+  const stubConceptId = initialChoiceIds.find((conceptId: string) =>
+    content.lessonsByConcept.has(conceptId),
   );
-  const stubConceptId = outlineIds.find(
-    (conceptId) => content.conceptsById.get(conceptId)?.status === 'stub',
-  );
-  if (!stubConceptId) throw new Error('Expected a stub concept in the course outline');
-  expect(initial.choices.map((choice: { conceptId: string }) => choice.conceptId)).not.toContain(
-    stubConceptId,
-  );
+  if (!stubConceptId) throw new Error('Expected an available lesson to mark as a stub');
+  const stubApp = createApp({
+    db,
+    content: withStubConcept(content, stubConceptId),
+    tutorProvider: null,
+  });
+  const stubbedInitialResponse = await stubApp.request('/api/learn', {
+    headers: { 'X-Now': '2026-01-07T12:00:00.000Z' },
+  });
+  expect(stubbedInitialResponse.status).toBe(200);
+  const stubbedInitial = await stubbedInitialResponse.json();
+  expect(
+    stubbedInitial.choices.map((choice: { conceptId: string }) => choice.conceptId),
+  ).not.toContain(stubConceptId);
 
   const targets: typeof content.concepts = [];
   for (const conceptId of outlineIds) {
