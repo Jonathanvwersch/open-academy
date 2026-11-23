@@ -79,7 +79,7 @@ concepts:
           },
           { text: "Compute the KL-penalised reward for a generated response", dimension: math },
         ],
-      status: stub,
+      status: authored,
     }
   - {
       id: dpo,
