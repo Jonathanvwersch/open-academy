@@ -158,7 +158,9 @@ export async function restartTopic(input: {
         if (activity.kind === 'lab') {
           return !labActivityReady(activity, masteryByKey, runRows, input.content);
         }
-        if (activity.kind !== 'learn' || !activity.conceptId) return false;
+        if ((activity.kind !== 'learn' && activity.kind !== 'practice') || !activity.conceptId) {
+          return false;
+        }
         if (!input.content.conceptsById.has(activity.conceptId)) return false;
         return !prerequisiteChecker.chainReady(activity.conceptId);
       })

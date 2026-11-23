@@ -153,7 +153,7 @@ export function learnActivitiesWithUnmetPrerequisites(
     .filter((activity) => {
       if (
         (activity.status !== 'planned' && activity.status !== 'in_progress') ||
-        activity.kind !== 'learn' ||
+        (activity.kind !== 'learn' && activity.kind !== 'practice') ||
         !activity.conceptId
       ) {
         return false;

@@ -258,12 +258,15 @@ test('prerequisite checker follows hard ancestors and reports the missing fronti
   expect(checker.missingFrontier('c')).toEqual(['a']);
   expect(
     learnActivitiesWithUnmetPrerequisites(
-      [{ id: 'planned-c', kind: 'learn', status: 'planned', conceptId: 'c' }],
+      [
+        { id: 'planned-c', kind: 'learn', status: 'planned', conceptId: 'c' },
+        { id: 'planned-practice-c', kind: 'practice', status: 'planned', conceptId: 'c' },
+      ],
       new Map(),
       [{ conceptId: 'b', status: 'completed' }],
       syntheticContent,
     ),
-  ).toEqual(['planned-c']);
+  ).toEqual(['planned-c', 'planned-practice-c']);
   expect(
     learnActivitiesWithUnmetPrerequisites(
       [{ id: 'planned-removed', kind: 'learn', status: 'planned', conceptId: 'removed' }],

@@ -724,6 +724,19 @@ test('restarting an indirect ancestor keeps a completed descendant review planne
     })
     .returning();
   if (!review) throw new Error('Could not create descendant review');
+  const [practice] = await db
+    .insert(sessionActivities)
+    .values({
+      sessionId: session.id,
+      idx: 1,
+      kind: 'practice',
+      conceptId: descendantId,
+      exerciseIds: [exerciseId],
+      plannedMinutes: 10,
+      status: 'planned',
+    })
+    .returning();
+  if (!practice) throw new Error('Could not create descendant practice');
 
   const restart = await post(`/concepts/${ancestorId}/restart`, {});
   expect(restart.status).toBe(200);
@@ -732,6 +745,11 @@ test('restarting an indirect ancestor keeps a completed descendant review planne
     .from(sessionActivities)
     .where(eq(sessionActivities.id, review.id));
   expect(afterRestart?.status).toBe('planned');
+  const [practiceAfterRestart] = await db
+    .select()
+    .from(sessionActivities)
+    .where(eq(sessionActivities.id, practice.id));
+  expect(practiceAfterRestart?.status).toBe('skipped');
 });
 
 test('learners can switch to a listed course', async () => {
