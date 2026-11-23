@@ -745,18 +745,20 @@ function packWeekday(
       .map((card) => card.conceptId),
   );
   const dueTopicsByTaskConcept = new Map<string, Set<string>>();
+  const hasKeptLessonRun = (conceptId: string) =>
+    state.lessonRuns?.some(
+      (run) =>
+        run.conceptId === conceptId &&
+        (run.status === 'in_progress' || run.status === 'quiz' || run.status === 'needs_retry'),
+    ) ?? false;
+  const learnTaskCanCoverDueReviews = (conceptId: string) =>
+    !state.inProgressConceptId ||
+    state.inProgressConceptId === conceptId ||
+    hasKeptLessonRun(conceptId);
   const coveredByTaskConcept = (conceptId: string) => {
     let covered = dueTopicsByTaskConcept.get(conceptId);
     if (!covered) {
-      const hasKeptRun = state.lessonRuns?.some(
-        (run) =>
-          run.conceptId === conceptId &&
-          (run.status === 'in_progress' || run.status === 'quiz' || run.status === 'needs_retry'),
-      );
-      covered =
-        state.inProgressConceptId && state.inProgressConceptId !== conceptId && !hasKeptRun
-          ? new Set()
-          : dueTopicsCoveredBy(conceptId, state, content, now);
+      covered = dueTopicsCoveredBy(conceptId, state, content, now);
       dueTopicsByTaskConcept.set(conceptId, covered);
     }
     return covered;
@@ -1016,7 +1018,13 @@ function packWeekday(
   const coveredBy = new Map<string, string>();
   for (const candidate of selected) {
     const taskConceptId = candidate.activity.conceptId;
-    if (candidate.activity.kind !== 'learn' || !taskConceptId) continue;
+    if (
+      candidate.activity.kind !== 'learn' ||
+      !taskConceptId ||
+      !learnTaskCanCoverDueReviews(taskConceptId)
+    ) {
+      continue;
+    }
     for (const dueConceptId of coveredByTaskConcept(taskConceptId)) {
       if (!coveredBy.has(dueConceptId)) coveredBy.set(dueConceptId, taskConceptId);
     }
