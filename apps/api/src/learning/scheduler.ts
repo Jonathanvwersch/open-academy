@@ -137,6 +137,7 @@ export interface Candidate {
   score: number;
   adjustedMinutes: number;
   newConcept: boolean;
+  remediation?: boolean;
   courseId?: string;
 }
 
@@ -756,8 +757,9 @@ function packWeekday(
         earliestDueAt,
         currentRetrievability,
         overdue:
-          earliestDueAt !== undefined &&
-          localDateKey(new Date(earliestDueAt), timezone) <= shiftLocalDateKey(localToday, -2),
+          entry.candidate.remediation === true ||
+          (earliestDueAt !== undefined &&
+            localDateKey(new Date(earliestDueAt), timezone) <= shiftLocalDateKey(localToday, -2)),
       };
     });
   const byUrgency = (
@@ -771,6 +773,8 @@ function packWeekday(
     .filter((entry) => entry.overdue)
     .sort(
       (left, right) =>
+        Number(right.candidate.remediation === true) -
+          Number(left.candidate.remediation === true) ||
         (left.earliestDueAt ?? Infinity) - (right.earliestDueAt ?? Infinity) ||
         (left.currentRetrievability ?? Infinity) - (right.currentRetrievability ?? Infinity) ||
         left.index - right.index,
@@ -793,7 +797,7 @@ function packWeekday(
     if (overdueCandidateIndexes.has(index)) continue;
     const conceptId = candidate.activity.conceptId;
     if (!conceptId) continue;
-    if (reviewMinutes + candidate.adjustedMinutes > reviewCap) {
+    if (!candidate.remediation && reviewMinutes + candidate.adjustedMinutes > reviewCap) {
       recordReviewResult(conceptId, 'rejected:reviewMinuteCap', candidate);
       continue;
     }
@@ -1251,6 +1255,7 @@ function generateCandidates(
       score: scoreTerms(activity.reason.terms, activity.plannedMinutes),
       adjustedMinutes: activity.plannedMinutes,
       newConcept: false,
+      remediation: true,
       courseId: activity.reason.courseId,
     });
   }

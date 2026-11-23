@@ -1634,6 +1634,16 @@ test.each([
       },
     ];
     state.remediationFlags = [{ conceptId: 'gradient-descent', targetPrereqId: 'gradients' }];
+    const prereqDimension = required(content.conceptsById.get('gradients'), 'gradients')
+      .dimensions[0];
+    if (!prereqDimension) throw new Error('Missing gradients dimension');
+    state.cards = [
+      {
+        conceptId: 'gradients',
+        dimension: prereqDimension,
+        dueAt: new Date(now.getTime() + 10 * 24 * 60 * 60 * 1_000).toISOString(),
+      },
+    ];
     const plan = planSession(state, content, now, budget, sessionKind);
     const review = plan.activities.find(
       (activity) => activity.kind === 'review' && activity.conceptId === 'gradients',
