@@ -136,6 +136,24 @@ exercises:
         category: incorrect_reasoning
         feedback: Every reward model makes some mistakes. The problem is that the policy will search for replies where it makes large ones.
     solution: Agreement on held-out comparisons of SFT replies says little about replies far from them, and the policy searches for those.
+  - id: rh1-corridor-proxy
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A robot in a corridor of cells 1 to 4 starts in cell 1. Each move gives $-1$, except the move into cell 4, which gives $+10$ and ends the episode. As a stand-in for progress, the designer also pays $+3$ for every move right and nothing for a move left. With $\gamma=1$, what is the return of the path right, right, left, right, right?
+    answer: 18
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer: 17
+        category: incorrect_reasoning
+        feedback: That is the return of the direct path, three moves right. This path has a detour.
+      - answer: 6
+        category: math_error
+        feedback: That leaves out the $+3$ bonuses. Add $+3$ for each of the four moves right.
+    solution: The rewards are $-1+3=2$, $2$, $-1$, $2$ and $10+3=13$, which add up to $18$. The detour earns more than the direct path's $17$, so the bonus is a proxy for progress that pays for going back and forth.
   - id: rh1-bradley-terry
     dimension: math
     type: numeric
@@ -375,7 +393,7 @@ exercises:
       - answer_expr: log(p/0.5)
         category: math_error
         feedback: That is only the first reply's log ratio. Weight each reply's log ratio by its probability under the policy and add them.
-    solution: Weight each log ratio by the policy's probability and add, ${{= p }}\ln\frac{ {{= p }} }{0.5}+{{= 1 - p }}\ln\frac{ {{= 1 - p }} }{0.5}\approx{{= p*log(p/0.5) + (1-p)*log((1-p)/0.5) }}$ nats.
+    solution: Weight each log ratio by the policy's probability and add, ${{= p }}\ln\frac{ {{= p }} }{0.5}+{{= 1 - p }}\ln\frac{ {{= 1 - p }} }{0.5}\approx{{= round(p*log(p/0.5) + (1-p)*log((1-p)/0.5), 2) }}$ nats.
   - id: rh2-which-curves
     dimension: transfer
     type: mc
