@@ -1,5 +1,10 @@
 import { orderCourseIdsBySubject } from '../content/course-order.js';
-import type { ContentIndex, IndexedConcept, IndexedCourse } from '../content/types.js';
+import type {
+  ContentIndex,
+  IndexedConcept,
+  IndexedCourse,
+  IndexedProject,
+} from '../content/types.js';
 import type { MasteryRecord } from './types.js';
 import { masteryRank } from './types.js';
 
@@ -29,6 +34,30 @@ export function prerequisiteMet(
       record?.inferred || masteryRank(record?.state ?? 'not_assessed') >= masteryRank('assisted')
     );
   });
+}
+
+export function projectReady(
+  project: IndexedProject | undefined,
+  masteryByKey: ReadonlyMap<string, Pick<MasteryRecord, 'state' | 'inferred'>>,
+  lessonRuns: readonly LessonRun[],
+  content: ContentIndex,
+): boolean {
+  if (project?.status !== 'authored' || project.tests.length === 0) return false;
+
+  const checked = new Set<string>();
+  const prerequisitesMet = (conceptId: string): boolean => {
+    if (!prerequisiteMet(conceptId, masteryByKey, lessonRuns, content)) return false;
+    if (checked.has(conceptId)) return true;
+    checked.add(conceptId);
+    return (
+      content.conceptsById
+        .get(conceptId)
+        ?.prereqs.filter((prerequisite) => prerequisite.strength === 'hard')
+        .every((prerequisite) => prerequisitesMet(prerequisite.id)) ?? true
+    );
+  };
+
+  return project.prereqs.every(prerequisitesMet);
 }
 
 export function learnActivitiesWithUnmetPrerequisites(

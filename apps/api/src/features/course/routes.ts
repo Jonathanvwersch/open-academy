@@ -38,6 +38,7 @@ import {
   learnActivitiesWithUnmetPrerequisites,
   masteryKey,
   prerequisiteMet,
+  projectReady,
 } from '../../learning/prerequisites.js';
 import { reviewTopicsForActivity } from '../../learning/review-topics.js';
 import type {
@@ -402,6 +403,14 @@ export function registerLearnCourseRoutes(
       mastery.map((record) => [masteryKey(record.conceptId, record.dimension), record]),
     );
     const lessonRunState = runRows.map(({ conceptId, status }) => ({ conceptId, status }));
+    const projectActivityIsReady = (activity: { kind: string; projectId?: string | null }) =>
+      activity.kind !== 'lab' ||
+      projectReady(
+        activity.projectId ? index.projectsById.get(activity.projectId) : undefined,
+        masteryByKey,
+        lessonRunState,
+        index,
+      );
     const blockedActivities =
       activeSession?.status === 'active'
         ? learnActivitiesWithUnmetPrerequisites(
@@ -428,7 +437,8 @@ export function registerLearnCourseRoutes(
       activeSession?.activities.filter(
         (activity) =>
           (activity.status === 'planned' || activity.status === 'in_progress') &&
-          sessionActivityIsInContent(index, activity),
+          sessionActivityIsInContent(index, activity) &&
+          projectActivityIsReady(activity),
       ) ?? [];
     const inProgressReviewActivityIds = activeActivities
       .filter((activity) => activity.kind === 'review' && activity.status === 'in_progress')

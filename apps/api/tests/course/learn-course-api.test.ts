@@ -95,6 +95,20 @@ async function get(path: string) {
   });
 }
 
+function completedMasteryRows(conceptIds: readonly string[]) {
+  return conceptIds.flatMap((conceptId) => {
+    const concept = content.conceptsById.get(conceptId);
+    return (
+      concept?.dimensions.map((dimension) => ({
+        userId,
+        conceptId,
+        dimension,
+        state: 'independent' as const,
+      })) ?? []
+    );
+  });
+}
+
 async function put(path: string, body: unknown) {
   return app.request(`/api${path}`, {
     method: 'PUT',
@@ -1130,7 +1144,7 @@ test('planned Learn tasks and Course numbering are read-only', async () => {
     project: {
       id: 'linreg-numpy',
       title: expect.any(String),
-      available: true,
+      available: false,
       status: 'not_started',
     },
   });
@@ -1791,6 +1805,73 @@ test('a focused session replaces the default new lesson and rejects locked conce
   expect(await locked.json()).toEqual({ error: 'Finish Vectors and vector operations first' });
 });
 
+test('Home hides an active PCA project until all hard prerequisite ancestors are complete', async () => {
+  const directPrerequisites = ['vectors', 'dot-product', 'matrices', 'eigen-svd'];
+  const hardAncestors = [
+    'determinants',
+    'inverses-linear-systems',
+    'rank-span',
+    'orthogonality-projections',
+  ];
+  const [session] = await db
+    .insert(studySessions)
+    .values({ userId, plannedMinutes: 60, status: 'active' })
+    .returning();
+  if (!session) throw new Error('Could not create active PCA project session');
+  await db.insert(sessionActivities).values({
+    sessionId: session.id,
+    idx: 0,
+    kind: 'lab',
+    projectId: 'pca-numpy',
+    plannedMinutes: 60,
+    status: 'planned',
+  });
+  await db.insert(mastery).values(completedMasteryRows(directPrerequisites));
+
+  const beforeAncestorsResponse = await get('/learn');
+  expect(beforeAncestorsResponse.status).toBe(200);
+  const beforeAncestors = (await beforeAncestorsResponse.json()) as {
+    tasks: Array<{ title: string }>;
+  };
+  expect(beforeAncestors.tasks.some((task) => task.title === 'PCA from scratch')).toBe(false);
+
+  await db.insert(mastery).values(completedMasteryRows(hardAncestors));
+  const afterAncestorsResponse = await get('/learn');
+  expect(afterAncestorsResponse.status).toBe(200);
+  const afterAncestors = (await afterAncestorsResponse.json()) as {
+    tasks: Array<{ title: string }>;
+  };
+  expect(afterAncestors.tasks.some((task) => task.title === 'PCA from scratch')).toBe(true);
+});
+
+test('PCA course row stays unavailable until hard prerequisite ancestors are complete', async () => {
+  const directPrerequisites = ['vectors', 'dot-product', 'matrices', 'eigen-svd'];
+  const hardAncestors = [
+    'determinants',
+    'inverses-linear-systems',
+    'rank-span',
+    'orthogonality-projections',
+  ];
+  await db.insert(mastery).values(completedMasteryRows(directPrerequisites));
+
+  const beforeAncestorsResponse = await get('/course?course=maths-for-ml');
+  expect(beforeAncestorsResponse.status).toBe(200);
+  const beforeAncestors = (await beforeAncestorsResponse.json()) as {
+    units: Array<{ project: { id: string; available: boolean } | null }>;
+  };
+  const pcaBefore = beforeAncestors.units.find((unit) => unit.project?.id === 'pca-numpy')?.project;
+  expect(pcaBefore?.available).toBe(false);
+
+  await db.insert(mastery).values(completedMasteryRows(hardAncestors));
+  const afterAncestorsResponse = await get('/course?course=maths-for-ml');
+  expect(afterAncestorsResponse.status).toBe(200);
+  const afterAncestors = (await afterAncestorsResponse.json()) as {
+    units: Array<{ project: { id: string; available: boolean } | null }>;
+  };
+  const pcaAfter = afterAncestors.units.find((unit) => unit.project?.id === 'pca-numpy')?.project;
+  expect(pcaAfter?.available).toBe(true);
+});
+
 test('Course project status reflects the learner project-progress row', async () => {
   await db.insert(projectProgress).values({
     userId,
@@ -1804,7 +1885,7 @@ test('Course project status reflects the learner project-progress row', async ()
   expect(course.currentUnit).toBe(1);
   expect(course.units[0].project).toMatchObject({
     id: 'linreg-numpy',
-    available: true,
+    available: false,
     status: 'in_progress',
   });
 });

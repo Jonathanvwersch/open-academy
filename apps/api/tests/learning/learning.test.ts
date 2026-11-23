@@ -224,6 +224,25 @@ function studyState(courseIds: string[], index: ContentIndex = courseContent): S
   };
 }
 
+function completedProjectPrerequisiteRuns(projectId: string) {
+  const prerequisiteIds = new Set<string>();
+  const visit = (conceptId: string) => {
+    if (prerequisiteIds.has(conceptId)) return;
+    prerequisiteIds.add(conceptId);
+    const concept = content.conceptsById.get(conceptId);
+    for (const prerequisite of concept?.prereqs ?? []) {
+      if (prerequisite.strength === 'hard') visit(prerequisite.id);
+    }
+  };
+  for (const prerequisiteId of content.projectsById.get(projectId)?.prereqs ?? []) {
+    visit(prerequisiteId);
+  }
+  return [...prerequisiteIds].map((conceptId) => ({
+    conceptId,
+    status: 'completed' as const,
+  }));
+}
+
 function reviewQueueFixture(
   topicCount: number,
   inUnitTopicCount: number,
@@ -2334,7 +2353,11 @@ test('Exercise assignment avoids items seen within seven days', () => {
 });
 
 test('planner schedules optional paper and project after reviews and lessons', () => {
-  const plan = planSession(emptyState(), content, now, 200);
+  const state = {
+    ...emptyState(),
+    lessonRuns: completedProjectPrerequisiteRuns('linreg-numpy'),
+  };
+  const plan = planSession(state, content, now, 200);
   const paperIndex = plan.activities.findIndex((activity) => activity.kind === 'paper');
   const labIndex = plan.activities.findIndex((activity) => activity.kind === 'lab');
   const requiredIndexes = plan.activities.flatMap((activity, index) =>
@@ -2349,7 +2372,20 @@ test('planner schedules optional paper and project after reviews and lessons', (
 });
 
 test('scheduler skips an unavailable current project and falls back to the latest available project', () => {
-  const plan = planSession(emptyState(), content, now, 300);
+  const fixtureCourse = required(content.coursesById.get('fixture-course'), 'fixture course');
+  const completedConceptIds = new Set([
+    ...(fixtureCourse.units[0]?.concepts ?? []),
+    ...completedProjectPrerequisiteRuns('linreg-numpy').map((run) => run.conceptId),
+  ]);
+  const state = {
+    ...emptyState(),
+    currentProjectId: 'optimization-project',
+    lessonRuns: [...completedConceptIds].map((conceptId) => ({
+      conceptId,
+      status: 'completed' as const,
+    })),
+  };
+  const plan = planSession(state, content, now, 300);
   expect(plan.activities.find((activity) => activity.kind === 'lab')?.projectId).toBe(
     'linreg-numpy',
   );
@@ -2366,6 +2402,44 @@ test('scheduler omits labs when no available project has verifier tests', () => 
   };
   const plan = planSession(emptyState(), testlessContent, now, 300);
   expect(plan.activities.some((activity) => activity.kind === 'lab')).toBe(false);
+});
+
+test('PCA project waits for all hard ancestors of its direct prerequisites', () => {
+  const directPrerequisites = ['vectors', 'dot-product', 'matrices', 'eigen-svd'];
+  const hardAncestors = [
+    'determinants',
+    'inverses-linear-systems',
+    'rank-span',
+    'orthogonality-projections',
+  ];
+  const completedRuns = (conceptIds: string[]) =>
+    conceptIds.map((conceptId) => ({ conceptId, status: 'completed' as const }));
+  const state = {
+    ...emptyState(),
+    activeCourseId: 'maths-for-ml',
+    studyCourseIds: ['maths-for-ml'],
+    currentProjectId: 'pca-numpy',
+    lessonRuns: completedRuns(directPrerequisites),
+  };
+
+  const beforeAncestors = planSession(state, courseContent, now, 300);
+  expect(
+    beforeAncestors.activities.some(
+      (activity) => activity.kind === 'lab' && activity.projectId === 'pca-numpy',
+    ),
+  ).toBe(false);
+
+  const afterAncestors = planSession(
+    { ...state, lessonRuns: completedRuns([...directPrerequisites, ...hardAncestors]) },
+    courseContent,
+    now,
+    300,
+  );
+  expect(
+    afterAncestors.activities.some(
+      (activity) => activity.kind === 'lab' && activity.projectId === 'pca-numpy',
+    ),
+  ).toBe(true);
 });
 
 test('a completed project does not add practice filler', () => {
@@ -2903,7 +2977,10 @@ test.each(['weekday', 'saturday', 'sunday'] as const)(
 );
 
 test('planner caps optional paper time and uses the remaining time for a project', () => {
-  const state = emptyState();
+  const state = {
+    ...emptyState(),
+    lessonRuns: completedProjectPrerequisiteRuns('linreg-numpy'),
+  };
   const plan = planSession(state, content, now, 200);
   const paper = plan.activities.find((activity) => activity.kind === 'paper');
   expect(paper?.plannedMinutes).toBe(90);
