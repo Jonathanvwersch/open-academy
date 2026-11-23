@@ -1,0 +1,1415 @@
+concept: experimental-design
+exercises:
+  - id: ed-baseline-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    target_seconds: 30
+    prompt: What is a baseline when testing a new model?
+    options:
+      - id: a
+        text: A reference model trained and scored the same way, for comparison with the new model.
+        correct: true
+        feedback: Its score gives the new score a reference point.
+      - id: b
+        text: The new model's first version, before any of its settings have been tuned.
+        correct: false
+        category: incorrect_reasoning
+        feedback:
+          An untuned version is one possible comparison, but a baseline is any suitable reference
+          model.
+      - id: c
+        text: The test error reported after the final version of the model has been chosen.
+        correct: false
+        category: incorrect_reasoning
+        feedback: A test error is a score; a baseline is a model.
+      - id: d
+        text: The lowest error that any possible model could achieve on these data.
+        correct: false
+        category: incorrect_reasoning
+        feedback: A baseline is an actual reference model, rather than an unknown best possible score.
+    solution:
+      A baseline is a reference model trained and scored in the same way as the new model. We
+      usually compare with a simple model and the previous best.
+  - id: edp-baseline-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    target_seconds: 30
+    prompt: Why do we measure N's improvement against the size-only line's 500 rather than the mean
+      baseline's 2500?
+    lesson_only: true
+    options:
+      - id: a
+        text: The mean baseline scored 2500 on training sales, so it cannot be compared with N.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The 2500 is validation error on the same sales.
+      - id: b
+        text: The mean baseline has no validation score, so only the size-only line can be compared.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Both baselines were scored on validation sales.
+      - id: c
+        text: Using a smaller baseline error always makes the percentage improvement larger.
+        correct: false
+        category: incorrect_reasoning
+        feedback: For N, the percentage improvement is 20% against 500 and 84% against 2500.
+      - id: d
+        text: The size-only line is the previous best, so beating it shows N adds something new.
+        correct: true
+        feedback: The previous best has already beaten the simple baseline.
+    solution: The size-only line is the previous best and already beats the mean predictor. N adds
+      something new only if it beats that stronger reference.
+  - id: edp-which-baseline
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    target_seconds: 30
+    prompt:
+      A new house-price model has validation error 300. Which comparison shows whether it improves
+      on what is already available?
+    options:
+      - id: a
+        text: Compare only with a model that always predicts the mean training price.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The mean predictor may be weaker than an existing model.
+      - id: b
+        text: Compare with the previous best model scored on a different set of sales.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Different sales can change the error even if the model is unchanged.
+      - id: c
+        text: Compare with the previous best model scored on the same validation sales.
+        correct: true
+        feedback: The shared sales make the previous best the relevant reference.
+      - id: d
+        text: Compare with the new model's own error on the sales used for training.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Training error measures fit to training sales, rather than improvement over another model.
+    solution:
+      Score the previous best on the same validation sales and compare its error with 300. This
+      tests whether the new model improves on the existing result.
+  - id: edp-mean-baseline-template
+    dimension: conceptual
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: House prices are in thousands of pounds. Training prices are {{=t-100}}, {{=t-50}} and
+      {{=t+150}}. Validation prices are {{=t-d}} and {{=t+2*d}}. A baseline predicts the mean
+      training price for every house. What is its validation error as average squared error?
+    params:
+      t:
+        min: 300
+        max: 500
+        step: 50
+      d:
+        min: 10
+        max: 40
+        step: 10
+    answer_expr: 2.5*d^2
+    common_wrong:
+      - answer_expr: d/2
+        category: math_error
+        feedback: This averages the signed errors. Square each error before averaging.
+      - answer_expr: 5*d^2
+        category: math_error
+        feedback: This is the sum of squared errors. Divide by the two validation sales.
+    solution: The mean training price is ({{=t-100}} + {{=t-50}} + {{=t+150}})/3 = {{=t}}. The
+      validation errors are {{=d}} and ({{=-2*d}}), so their average squared error is ({{=d^2}} +
+      {{=4*d^2}})/2 = {{=2.5*d^2}}.
+    tolerance:
+      abs: 0.000001
+  - id: edp-improvement-template
+    dimension: conceptual
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      On the same validation sales, a house-price mean predictor has error {{=m}}, the previous
+      best model has error {{=p}} and a new model has error {{=n}}. By how much does the new model
+      lower the stronger baseline error?
+    params:
+      m:
+        min: 2000
+        max: 3000
+        step: 500
+      p:
+        min: 450
+        max: 550
+        step: 10
+      n:
+        min: 350
+        max: 440
+        step: 10
+    answer_expr: p-n
+    common_wrong:
+      - answer_expr: m-n
+        category: math_error
+        feedback:
+          This compares with the weaker mean predictor. Use the previous best as the stronger
+          baseline.
+    solution:
+      The previous best has the lower baseline error, {{=p}}. The improvement is {{=p}} minus
+      {{=n}}, which is {{=p-n}}.
+    tolerance:
+      abs: 0.000001
+  - id: edp-percent
+    dimension: conceptual
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A previous best model has validation error 250 and a new model has error 200 on the same
+      sales. By what percentage is the error lower? Give a percentage.
+    answer: 20
+    common_wrong:
+      - answer: 25
+        category: math_error
+        feedback: Dividing by 200 uses the new error. Divide the reduction by the previous best's error.
+    solution:
+      The reduction is 250 minus 200 = 50. As a percentage of the previous best error, this is
+      100 times 50/250 = 20%.
+    tolerance:
+      abs: 0.000001
+  - id: edp-weak-baseline
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      A report calls a new house-price model a big step forward because its validation error 450
+      is 80% lower than a mean predictor's 2250. The previous best scores 420 on the same sales.
+      What is wrong with the conclusion?
+    options:
+      - id: a
+        text: The errors of different models cannot be compared, even when scored on the same sales.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Comparing the same error measure on the same sales is exactly what a baseline is for.
+      - id: b
+        text: The new model is worse than the previous best, so it has not improved the existing result.
+        correct: true
+        feedback: Its error 450 exceeds the previous best error 420.
+      - id: c
+        text: The stated 80% reduction is miscalculated, so the comparison gives the wrong percentage.
+        correct: false
+        category: incorrect_reasoning
+        feedback: "The percentage is right: (2250 minus 450)/2250 = 0.8."
+      - id: d
+        text: The mean predictor should be scored on training sales, so its validation error is irrelevant.
+        correct: false
+        category: incorrect_reasoning
+        feedback: All models need scoring on the same validation sales for this comparison.
+    solution: The 80% reduction against the mean predictor is correct, but 450 is worse than 420. A
+      strong claim needs a win over the previous best.
+  - id: edp-robot-baseline
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt:
+      A robot model predicts how far a pushed box slides. Which pair of baselines gives a useful
+      comparison?
+    options:
+      - id: a
+        text:
+          Predict the mean distance of training pushes and use the best existing slide model; score both
+          on the same held-out pushes.
+        correct: true
+        feedback: These give a simple reference and the previous best on shared held-out data.
+      - id: b
+        text:
+          Use the new model's training error and its held-out error; treat those two scores as the two
+          reference models.
+        correct: false
+        category: incorrect_reasoning
+        feedback: These are two scores for one model, rather than two baseline models.
+      - id: c
+        text:
+          Predict the mean distance of training pushes and use the best existing model; score the mean
+          predictor only on training pushes.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Scoring one baseline on training pushes makes the comparison unfair.
+      - id: d
+        text:
+          Predict the mean distance of training pushes and fit another model on held-out pushes; score
+          both on those held-out pushes.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Fitting a reference on held-out pushes leaks the answers into training.
+    solution:
+      Use the mean training distance and the best existing slide model as references. Score both
+      and the new model on the same held-out pushes.
+  - id: edp-recall-baseline-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, what is a baseline, and which two kinds do we usually use?
+    knowledge_point: ed-baseline
+    rubric:
+      - id: r1
+        criterion:
+          Explain that a baseline is a reference model trained and scored in the same way as the
+          new model.
+        weight: 1
+        required: true
+      - id: r2
+        criterion: Name the simplest sensible model and the previous best as the two usual baselines.
+        weight: 1
+        required: true
+    exemplar: A baseline is a reference model trained and scored in the same way as a new model. We
+      usually use the simplest sensible model, such as predicting the mean training value, and the
+      previous best.
+    solution: A baseline is a reference model trained and scored in the same way as a new model. We
+      usually use the simplest sensible model, such as predicting the mean training value, and the
+      previous best.
+  - id: edp-recall-baseline-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    difficulty: 1
+    est_minutes: 0.5
+    target_seconds: 30
+    prompt:
+      Which is a model trained and scored the same way as a new model, so the score gap shows what
+      the new model adds?
+    knowledge_point: ed-baseline
+    options:
+      - id: a
+        text: An ablation.
+        correct: false
+        category: incorrect_reasoning
+        feedback: An ablation removes or switches off one part to measure its contribution.
+      - id: b
+        text: A validation set.
+        correct: false
+        category: incorrect_reasoning
+        feedback: A validation set is held-out data used to choose models and settings.
+      - id: c
+        text: A random seed.
+        correct: false
+        category: incorrect_reasoning
+        feedback: A random seed fixes a run’s random choices so they can be repeated.
+      - id: d
+        text: A baseline.
+        correct: true
+        feedback: A baseline is the reference model for the comparison.
+    solution: A baseline supplies the reference score for judging what a new model adds.
+  - id: edp-recall-baseline-formula
+    dimension: math
+    type: expression
+    role: recall
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: The baseline error is $b$ and the new model's error is $n$. Write the improvement as a
+      fraction of the baseline error. Type * for multiplication.
+    knowledge_point: ed-baseline
+    answer: (b-n)/b
+    variables:
+      b:
+        - 400
+        - 600
+      n:
+        - 100
+        - 390
+    solution: The error reduction is $b-n$. Dividing it by the baseline error gives $(b-n)/b$.
+  - id: ed-one-change-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    target_seconds: 30
+    prompt: What is a controlled experiment when comparing two models?
+    options:
+      - id: a
+        text: The new model gets longer training and more tuning, while both use the same sales.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Training length and tuning effort can each change the score.
+      - id: b
+        text: The models use different data splits, while their number of training steps stays the same.
+        correct: false
+        category: incorrect_reasoning
+        feedback: A changed split can also change the result.
+      - id: c
+        text: The models differ only in the thing being tested, with all other choices kept the same.
+        correct: true
+        feedback: Holding other choices fixed lets the gap measure the tested change.
+      - id: d
+        text: The models use the same name, while their inputs and training length can both change.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Names do not control the training choices that affect the result.
+    solution: A controlled comparison changes only the thing being tested and keeps other choices fixed.
+  - id: edp-one-change-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    target_seconds: 30
+    prompt:
+      Why rerun the size-only line with 2,000 steps and 5 learning rates before measuring what N's
+      new inputs add?
+    lesson_only: true
+    options:
+      - id: a
+        text: It replaces validation error with training error, so both models can be compared fairly.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Both runs are still scored on the same validation sales.
+      - id: b
+        text: It makes the inputs the only difference, so the fair gap of 100 measures their effect.
+        correct: true
+        feedback: The same training length and tuning effort remove the other differences.
+      - id: c
+        text: It gives the size-only line more tuning than N, so any remaining gap must favour N.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Both models use 2,000 steps and 5 learning rates.
+      - id: d
+        text: It makes the previous gap of 150 entirely due to the inputs, without changing its size.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The fair comparison gives 100; unequal training accounted for the other 50.
+    solution:
+      Matching the 2,000 steps and 5 learning rates leaves the inputs as the only difference.
+      The resulting error gap is 500 minus 400 = 100.
+  - id: edp-fair-run
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    target_seconds: 30
+    prompt:
+      You want to test whether adding a house's age as an input improves a price model. Which run
+      gives a fair comparison with the current model?
+    options:
+      - id: a
+        text: Add age and keep the split, training steps and tuning effort the same.
+        correct: true
+        feedback: Age is then the only changed choice.
+      - id: b
+        text: Add age and train for twice as many steps on the same split.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Longer training could explain the change in score.
+      - id: c
+        text: Add age and use a newly drawn split with the same number of steps.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Changing which sales are held out could explain the gap.
+      - id: d
+        text: Add age and try ten learning rates after trying two for the current model.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Extra tuning gives the new version another advantage.
+    solution: Use the same split, steps and tuning effort, changing only the age input.
+  - id: edp-fair-gain-template
+    dimension: conceptual
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A new model has validation error {{=n}}. An old model trained for fewer steps with less
+      tuning scores {{=s}}. Retraining the old model with the same steps and tuning as the new model
+      gives {{=f}} on the same validation data. How much lower is the new error in a fair
+      comparison?
+    params:
+      n:
+        min: 380
+        max: 420
+        step: 10
+      f:
+        min: 450
+        max: 500
+        step: 10
+      s:
+        min: 520
+        max: 560
+        step: 10
+    constraints:
+      - s > f
+      - f > n
+      - s-f != f-n
+    answer_expr: f-n
+    common_wrong:
+      - answer_expr: s-n
+        category: math_error
+        feedback: This uses the old model with less training and tuning. Use its matched run.
+      - answer_expr: s-f
+        category: math_error
+        feedback:
+          This measures the effect of matching the old training settings. Compare the two matched
+          models.
+    solution: The matched old model scores {{=f}}, so the fair reduction is {{=f}} minus {{=n}} =
+      {{=f-n}}. The larger gap from {{=s}} also includes unequal training.
+    tolerance:
+      abs: 0.000001
+  - id: edp-two-changes
+    dimension: conceptual
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      "Four house-price runs use the same validation sales: the base model scores 600; adding a
+      new input alone scores 560; doubling training steps alone scores 590; making both changes
+      scores 550. How much does the new input lower validation error on its own?"
+    answer: 40
+    common_wrong:
+      - answer: 50
+        category: math_error
+        feedback: This compares the base with both changes at once. Use the run with only the input added.
+      - answer: 10
+        category: math_error
+        feedback: This is the reduction from doubling training steps alone.
+    solution: Compare 600 for the base with 560 for the input-only run. The input alone lowers error by 40.
+    tolerance:
+      abs: 0.000001
+  - id: edp-tune-which-set
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      You try four learning rates for a new model and four for its baseline. Which set picks each
+      rate, and when is the test set used?
+    options:
+      - id: a
+        text: Choose both rates on test data; report the smallest test error found during the search.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Choosing by test error uses the final evaluation data to tune.
+      - id: b
+        text: Choose both rates on training error; use validation and test data only after choosing.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Training error measures fit to training data. Validation data should guide the choices.
+      - id: c
+        text:
+          Choose the new rate on validation data and the baseline rate on test data; compare those
+          scores.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The baseline would be tuned on test data, and the reported scores use different data.
+      - id: d
+        text: Choose both rates on validation data; score the final model once on test data at the end.
+        correct: true
+        feedback: Validation guides both choices, leaving test data for the final score.
+    solution:
+      Choose each model’s learning rate on validation data with the same tuning effort. Score
+      the final chosen model once on the test set.
+  - id: edp-extra-tuning
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A team tries 20 learning rates for a new model and keeps the default for its baseline.
+      Validation errors are 380 and 400. What should they do before crediting the new idea?
+    options:
+      - id: a
+        text: Choose the baseline rate on test data, then compare; the test choice cancels the extra tuning.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Test data must be saved for the final score.
+      - id: b
+        text:
+          Report the gap of 20 as the effect of the new idea; shared validation data makes tuning
+          irrelevant.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Shared validation data does not control unequal tuning effort.
+      - id: c
+        text:
+          Tune both models the same way on validation data, then compare; extra tuning could explain the
+          gap.
+        correct: true
+        feedback: The comparison currently mixes the idea with extra tuning effort.
+      - id: d
+        text:
+          Keep the baseline default and try more rates for the new model; a larger search confirms the
+          idea.
+        correct: false
+        category: incorrect_reasoning
+        feedback: More unequal tuning would make the same problem worse.
+    solution:
+      The gap of 20 could come from the extra learning-rate search. Give both models the same
+      tuning effort on validation data before comparing.
+  - id: edp-robot-control
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt:
+      A robot model predicts box slide distance. A new version adds a camera input and trains on
+      pushes recorded on a different day; the old version uses the old pushes. How should you test
+      the camera input fairly?
+    options:
+      - id: a
+        text:
+          Keep both training days different and train the old version longer, then score on shared
+          held-out pushes.
+        correct: false
+        category: incorrect_reasoning
+        feedback: This adds a training-length difference while leaving the data difference.
+      - id: b
+        text:
+          Train both versions on the same pushes and score on the same held-out pushes, keeping other
+          settings fixed.
+        correct: true
+        feedback: This leaves the camera input as the only difference.
+      - id: c
+        text:
+          Keep the two training days different and score on shared held-out pushes, keeping other
+          settings fixed.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Training data still differs, so the score gap mixes two changes.
+      - id: d
+        text:
+          Train both on shared pushes but score each on pushes from its own day, keeping other settings
+          fixed.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Different evaluation pushes can change the score gap.
+    solution: The training data changed as well as the input. Use the same training pushes, held-out
+      pushes and settings for both versions.
+  - id: edp-recall-control-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, what does a controlled model comparison keep fixed, and why?
+    knowledge_point: ed-one-change
+    rubric:
+      - id: r1
+        criterion: State that the data split, training length and tuning effort stay the same.
+        weight: 1
+        required: true
+      - id: r2
+        criterion: Explain that changing only the tested thing lets the score gap measure that change.
+        weight: 1
+        required: true
+    exemplar: Keep the data split, training length and tuning effort the same. Then the thing being
+      tested is the only difference, so the gap measures its effect.
+    solution: Keep the data split, training length and tuning effort the same. Then the thing being
+      tested is the only difference, so the gap measures its effect.
+  - id: edp-recall-control-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    difficulty: 1
+    est_minutes: 0.5
+    target_seconds: 30
+    prompt:
+      Two model runs differ in both their inputs and training length. What can you conclude from
+      their validation score gap?
+    knowledge_point: ed-one-change
+    options:
+      - id: a
+        text: The gap alone cannot tell which of the two changes caused it.
+        correct: true
+        feedback: Both differences could affect the score.
+      - id: b
+        text: The entire gap measures the effect of changing the inputs alone.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Training length also changed, so its effect is mixed into the gap.
+      - id: c
+        text: The entire gap measures the effect of changing training length alone.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The inputs also changed, so their effect is mixed into the gap.
+      - id: d
+        text: Each change accounts for exactly half of the total score gap.
+        correct: false
+        category: incorrect_reasoning
+        feedback: There is no evidence that the two effects have equal size.
+    solution:
+      Both inputs and training length could explain the gap. A controlled comparison changes one
+      thing at a time.
+  - id: edp-recall-control-contrast-tune
+    dimension: conceptual
+    type: mc
+    role: recall
+    difficulty: 1
+    est_minutes: 0.5
+    target_seconds: 30
+    prompt: In a model comparison, which set should choose each model's learning rate?
+    knowledge_point: ed-one-change
+    options:
+      - id: a
+        text: The test set for each model.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The test set supplies the final score after choices are finished.
+      - id: b
+        text: The training set for each model.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Training fits the weights; validation guides learning-rate choices.
+      - id: c
+        text: Whichever set gives the new model the lowest error.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Choosing a favourable set breaks the shared evaluation and can use test data for tuning.
+      - id: d
+        text: The validation set for each model.
+        correct: true
+        feedback: Validation data guides hyperparameter choices.
+    solution: Use validation data to choose both learning rates with the same tuning effort.
+  - id: ed-ablation-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    target_seconds: 30
+    prompt: What is an ablation of a model?
+    options:
+      - id: a
+        text: Run the full model several times with new seeds and measure the spread of its results.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Seed runs measure variation from random choices.
+      - id: b
+        text: Replace the full model with a simple predictor and compare their validation errors.
+        correct: false
+        category: incorrect_reasoning
+        feedback: That is a baseline comparison rather than removing one part.
+      - id: c
+        text:
+          Remove or switch off one part, keep other choices fixed and measure how much worse the result
+          gets.
+        correct: true
+        feedback: This isolates what the removed part contributes.
+      - id: d
+        text: Add several parts together, keep training fixed and credit the whole gap to each added part.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Changing several parts together mixes their effects.
+    solution:
+      An ablation removes or switches off one part and keeps the rest fixed. Its rise in error
+      measures how much that part helps.
+  - id: edp-ablation-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    target_seconds: 30
+    prompt: Why does each ablation of N keep the same split, 2,000 steps and 5 learning rates as the
+      full model?
+    lesson_only: true
+    options:
+      - id: a
+        text: The test sales then choose each rate, which makes the rises comparable across models.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Validation sales choose the rates; test sales stay set aside.
+      - id: b
+        text: The removed input is then the only difference, so its removal causes the rise in error.
+        correct: true
+        feedback: Keeping the settings fixed isolates the removed input.
+      - id: c
+        text: Each smaller model then gets extra training effort, which makes the full model easier to beat.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The settings match the full model rather than adding effort.
+      - id: d
+        text: The three missing inputs then count as one change, so one run measures all their effects.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Each ablation removes just one input in a separate run.
+    solution:
+      Each run changes only one input. Keeping the split, steps and tuning fixed lets its rise
+      in validation error measure that input’s contribution.
+  - id: edp-rise-template
+    dimension: conceptual
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    target_seconds: 30
+    prompt: A full model has validation error {{=f}}. Removing one part and keeping everything else
+      unchanged gives error {{=f+k}} on the same validation data. By how much does removing the part
+      raise validation error?
+    params:
+      f:
+        min: 300
+        max: 400
+        step: 20
+      k:
+        min: 10
+        max: 60
+        step: 10
+    answer_expr: (f+k)-f
+    solution: "Subtract the full model error from the error after removal: {{=f+k}} minus {{=f}} = {{=k}}."
+    tolerance:
+      abs: 0.000001
+  - id: edp-most-important
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      A full model has validation error 300. With everything else unchanged, removing A gives 360,
+      removing B gives 305 and removing C gives 330. Which part helps the most?
+    options:
+      - id: a
+        text: A, because removing it gives the largest rise in error.
+        correct: true
+        feedback: Removing A raises error by 60, the largest rise.
+      - id: b
+        text: B, because its removal leaves the lowest error of the three.
+        correct: false
+        category: incorrect_reasoning
+        feedback: A low error after removal means the model loses little from removing B.
+      - id: c
+        text: C, because its removal gives the middle error of the three.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The middle rise of 30 is smaller than the rise of 60 for A.
+      - id: d
+        text: B, because removing it changes validation error the least.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The smallest change means B helps least in these runs.
+    solution: The rises are 60 for A, 5 for B and 30 for C. A has the largest rise and therefore helps most.
+  - id: edp-design-ablation
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A model adds three parts P, Q and R to a baseline. Which set of runs measures each part
+      through an ablation of the full model?
+    options:
+      - id: a
+        text: Run three versions, each adding only one part to the baseline with the same settings.
+        correct: false
+        category: incorrect_reasoning
+        feedback: This measures each part alone, a different design from ablating the full model.
+      - id: b
+        text: Run one version with all three parts removed and keep the training settings the same.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Removing all three combines their effects and cannot measure each part separately.
+      - id: c
+        text: Run three versions, each removing one part and giving it more training than the full model.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Extra training changes another choice and can affect the rise.
+      - id: d
+        text: Run three versions, each removing one part while keeping the other two and the same settings.
+        correct: true
+        feedback: Each run isolates the removal of one part from the full model.
+    solution:
+      Use three runs, removing one part at a time from the full model. Keep the other two parts
+      and all settings fixed.
+  - id: edp-ablation-from-errors
+    dimension: conceptual
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt:
+      On four validation sales, a full house-price model has average squared error 400. After one
+      input is removed with everything else unchanged, its errors on those same sales are 20, -20,
+      30 and -10, in thousands of pounds. By how much does removing the input raise average squared
+      error?
+    answer: 50
+    common_wrong:
+      - answer: 1400
+        category: math_error
+        feedback: This subtracts 400 from the sum of squared errors. Divide that sum by four first.
+      - answer: -395
+        category: math_error
+        feedback: This averages signed errors before subtracting 400. Square each error before averaging.
+    solution:
+      The average squared error after removal is (400 + 400 + 900 + 100)/4 = 450. The rise is
+      450 minus 400 = 50.
+    tolerance:
+      abs: 0.000001
+  - id: edp-rise-near-zero
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      Removing an input while keeping everything else fixed raises validation error from 400 to
+      401. What does this suggest?
+    options:
+      - id: a
+        text: Removing the input improved the model, so the full model is worse.
+        correct: false
+        category: incorrect_reasoning
+        feedback: An error of 401 is higher and therefore worse than 400.
+      - id: b
+        text: The experiment failed to produce a result, so it tells us nothing.
+        correct: false
+        category: incorrect_reasoning
+        feedback: A small measured rise is still a result that can guide what to examine.
+      - id: c
+        text: The model barely relies on the input, so it may be safe to drop.
+        correct: true
+        feedback: A rise near zero suggests the part adds little.
+      - id: d
+        text: The input is the most important part, so it must always be kept.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The rise is only 1, which gives little evidence of a large contribution.
+    solution: The rise is only 1. A rise near zero suggests the model relies little on the input.
+  - id: edp-switch-off-step
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt:
+      A robot box-slide model fills missing sensor readings with the training average, uses box
+      weight as an input and trains for 3,000 steps. Which run tests whether the fill step helps?
+    options:
+      - id: a
+        text:
+          Keep filling and box weight in place; compare the full model with a mean predictor trained and
+          scored on the same data.
+        correct: false
+        category: incorrect_reasoning
+        feedback: That is a baseline comparison and leaves the fill step in place.
+      - id: b
+        text:
+          Switch off filling and drop rows with missing readings; keep other settings fixed and compare
+          validation error with the full model.
+        correct: true
+        feedback: This removes the preparation step while leaving the other model choices fixed.
+      - id: c
+        text:
+          Switch off filling and drop rows with missing readings; also remove box weight and compare
+          validation error with the full model.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Removing weight changes a second part, so its effect mixes with switching off filling.
+      - id: d
+        text:
+          Fill missing readings with the average over training and test data; keep other settings fixed
+          and compare validation error with the full model.
+        correct: false
+        category: incorrect_reasoning
+        feedback: This changes the fill rule and leaks test information instead of switching the step off.
+    solution: Switch off the fill step and train without it, dropping rows that lack readings. Keep
+      other settings fixed and compare validation error with the full model.
+  - id: edp-recall-ablation-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    difficulty: 1
+    est_minutes: 1
+    prompt: In one or two sentences, what is an ablation, and what does it measure?
+    knowledge_point: ed-ablation
+    rubric:
+      - id: r1
+        criterion:
+          Explain that an ablation removes or switches off one part while keeping everything else
+          the same.
+        weight: 1
+        required: true
+      - id: r2
+        criterion: Explain that the rise in error measures how much the removed part helps.
+        weight: 1
+        required: true
+    exemplar:
+      An ablation removes or switches off one part and keeps everything else the same. The rise
+      in error shows how much that part helps.
+    solution:
+      An ablation removes or switches off one part and keeps everything else the same. The rise
+      in error shows how much that part helps.
+  - id: edp-recall-ablation-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    difficulty: 1
+    est_minutes: 0.5
+    target_seconds: 30
+    prompt: You remove the age input, retrain with everything else the same and compare validation
+      errors. What is this experiment called?
+    knowledge_point: ed-ablation
+    options:
+      - id: a
+        text: An ablation.
+        correct: true
+        feedback: Removing one part while holding other choices fixed is an ablation.
+      - id: b
+        text: A baseline comparison.
+        correct: false
+        category: incorrect_reasoning
+        feedback:
+          A baseline comparison judges a model against a reference; this experiment specifically
+          removes a part.
+      - id: c
+        text: Hyperparameter tuning.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Tuning chooses settings such as the learning rate using validation results.
+      - id: d
+        text: A seed run.
+        correct: false
+        category: incorrect_reasoning
+        feedback: A seed run changes the random choices while keeping the model’s parts.
+    solution: Removing the age input and holding other choices fixed makes this an ablation.
+  - id: edp-recall-ablation-formula
+    dimension: math
+    type: expression
+    role: recall
+    difficulty: 1
+    est_minutes: 0.5
+    prompt:
+      The full model error is $f$ and the error with one part removed is $a$. Write the rise in
+      error from removing the part. Type * for multiplication.
+    knowledge_point: ed-ablation
+    answer: a-f
+    variables:
+      f:
+        - 100
+        - 500
+      a:
+        - 100
+        - 600
+    solution: Subtract the full model error from the error without the part. The rise is $a-f$.
+  - id: ed-seeds-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    target_seconds: 30
+    prompt: What does a random seed do in training?
+    options:
+      - id: a
+        text:
+          It fixes the final error, so every run reaches exactly that error regardless of the training
+          choices.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The seed fixes random choices, rather than a target error.
+      - id: b
+        text:
+          It selects the lowest-error model, so repeated seeds always find a better model than the
+          previous run.
+        correct: false
+        category: incorrect_reasoning
+        feedback: A seed does not search results or guarantee improvement.
+      - id: c
+        text:
+          It removes the need for held-out data, so training error alone can judge the final model
+          fairly.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Seeds do not replace held-out evaluation.
+      - id: d
+        text: It fixes the random choices, so the same seed repeats a run and a different seed gives
+          different choices.
+        correct: true
+        feedback: The starting number fixes the random choices used in the run.
+    solution: A random seed is a starting number that fixes the run’s random choices. The same seed
+      allows an exact repeat, while a different one gives different choices.
+  - id: edp-seeds-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    target_seconds: 30
+    prompt: Why believe the bedrooms gap of 35 but treat the age gap of 5 as unclear?
+    lesson_only: true
+    options:
+      - id: a
+        text:
+          The bedrooms result comes from the best single seed, while the age result averages all three
+          seeds.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Both gaps compare means over the same three seeds.
+      - id: b
+        text:
+          Any positive mean gap proves a part helps, so both the bedrooms and age results are equally
+          clear.
+        correct: false
+        category: incorrect_reasoning
+        feedback: A small positive mean gap can come from the run’s random choices.
+      - id: c
+        text:
+          The 35 exceeds both spreads, 20 and 30, and wins every seed; 5 is below the spreads and age
+          flips on one seed.
+        correct: true
+        feedback:
+          The bedrooms result is larger than the spread and consistent; the age result is small and
+          changes direction.
+      - id: d
+        text:
+          The 35 is below both spreads, 20 and 30, so it is reliable; the 5 exceeds the spreads and is
+          too large.
+        correct: false
+        category: incorrect_reasoning
+        feedback: 35 exceeds 20 and 30; a gap smaller than the spread is harder to distinguish from luck.
+    solution:
+      The bedrooms gap of 35 exceeds the spreads of 20 and 30 and appears on every seed. The age
+      gap of 5 is below the spreads of 20 and 40 and reverses on the second seed.
+  - id: edp-spread-template
+    dimension: conceptual
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    target_seconds: 30
+    prompt:
+      A model's validation errors on three seeds are {{=b}}, {{=c}} and {{=a}}. What is the spread
+      of these results?
+    params:
+      a:
+        min: 300
+        max: 340
+        step: 10
+      b:
+        min: 350
+        max: 390
+        step: 10
+      c:
+        min: 400
+        max: 440
+        step: 10
+    answer_expr: max(a,b,c)-min(a,b,c)
+    solution:
+      The largest result is {{=c}} and the smallest is {{=a}}. The spread is {{=c}} minus {{=a}}
+      = {{=c-a}}.
+    tolerance:
+      abs: 0.000001
+  - id: edp-gap-template
+    dimension: conceptual
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: On the same three seeds, model A has validation errors {{=x-10}}, {{=x}} and {{=x+10}}.
+      Model B has errors {{=y+5}}, {{=y-15}} and {{=y+10}}. How much higher is B’s mean error than
+      A’s?
+    params:
+      x:
+        min: 300
+        max: 340
+        step: 10
+      y:
+        min: 360
+        max: 400
+        step: 10
+    answer_expr: y-x
+    solution:
+      A’s mean is ({{=x-10}} + {{=x}} + {{=x+10}})/3 = {{=x}}, and B’s is ({{=y+5}} + {{=y-15}}
+      + {{=y+10}})/3 = {{=y}}. B’s mean is {{=y-x}} higher.
+    tolerance:
+      abs: 0.000001
+  - id: edp-believe-gap
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      On the same three seeds, A has validation errors 300, 320 and 340; B has 310, 290 and 330.
+      What do these results support?
+    options:
+      - id: a
+        text:
+          "A clear win for B: its best error is 290, so its mean and spread do not matter for this
+          comparison."
+        correct: false
+        category: incorrect_reasoning
+        feedback: Choosing the best seed highlights luck. Compare the means and spreads over shared seeds.
+      - id: b
+        text:
+          "No clear difference: B’s mean is 10 lower, below both spreads of 40, and B wins only two of
+          three seeds."
+        correct: true
+        feedback: The gap is smaller than the spreads, and A wins the first seed.
+      - id: c
+        text:
+          "A clear win for B: its mean is 10 lower, above both spreads of 40, and B wins only two of
+          three seeds."
+        correct: false
+        category: incorrect_reasoning
+        feedback: 10 is smaller than 40, so the gap does not clearly exceed the spread.
+      - id: d
+        text:
+          "A clear win for A: its error is lower on the first seed, so the remaining two seeds can be
+          ignored."
+        correct: false
+        category: incorrect_reasoning
+        feedback: B wins seeds two and three. One seed does not summarise the repeated comparison.
+    solution:
+      A and B have means 320 and 310 and spreads 40 each. The gap of 10 is below both spreads,
+      and A wins seed 1 while B wins seeds 2 and 3, so there is no clear difference.
+  - id: edp-best-seed
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      A team runs five seeds of a new method and reports its lowest validation error, 350, against
+      one baseline run scoring 360. How should they judge the method?
+    options:
+      - id: a
+        text: Compare means over the same seeds for both models; picking the best seed can report luck.
+        correct: true
+        feedback: A best-of-five result is a favourable draw compared with a single baseline run.
+      - id: b
+        text:
+          Report the improvement of 10 as reliable; running five seeds guarantees the lowest one is
+          typical.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The lowest of five can be much luckier than a typical run.
+      - id: c
+        text:
+          Run more new-method seeds and keep the lowest; the single baseline run is enough for a fair
+          comparison.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Increasing only the new method’s chances of a lucky score keeps the comparison unequal.
+      - id: d
+        text:
+          Choose each model’s seed using test error; this removes luck before reporting validation
+          error.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Using test error to choose a seed spends the test set on selection.
+    solution: The lowest of five runs can be lucky. Run both models on the same seeds, compare their
+      means and check the gap against their spreads.
+  - id: edp-final-test
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: After ablations and seed comparisons on validation data, you choose a final model. What
+      should you do next?
+    options:
+      - id: a
+        text: Try several seeds on the test set and report the one with the lowest error.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Choosing by test error turns test data into selection data.
+      - id: b
+        text: Average its validation and test errors and use that average as the test score.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Validation guided choices, so merging it with test error loses the separate final estimate.
+      - id: c
+        text: Tune the final learning rate on the test set and then report its lowest error.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Test-guided retuning makes the final score too favourable.
+      - id: d
+        text: Score that chosen model once on the test set and report the result.
+        correct: true
+        feedback: The test set now provides the final held-out score.
+    solution:
+      Score the chosen model once on the test set after all choices based on validation data are
+      finished.
+  - id: edp-robot-seeds
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt:
+      "Two robot walking controllers are tested on the same four seeds. Distances walked before
+      falling are A: 50, 52, 48, 50 metres; B: 58, 60, 56, 62 metres. Higher is better. What do the
+      results support?"
+    options:
+      - id: a
+        text:
+          "There is no clear difference: the mean gap is 9 metres, smaller than both spreads of 4 and
+          6."
+        correct: false
+        category: incorrect_reasoning
+        feedback: 9 is larger than both 4 and 6, and B wins all four paired seeds.
+      - id: b
+        text:
+          "There is no clear difference: B has a higher mean, but A wins on at least one of the shared
+          seeds."
+        correct: false
+        category: incorrect_reasoning
+        feedback: B walks farther on every shared seed, by 8, 8, 8 and 12 metres.
+      - id: c
+        text:
+          "B is clearly better: its mean is 9 metres higher, above both spreads of 4 and 6, and it wins
+          every seed."
+        correct: true
+        feedback: A’s mean is 50 and B’s is 59; the gap exceeds both spreads and B always walks farther.
+      - id: d
+        text:
+          "A is clearly better: its mean is 9 metres lower, below both spreads of 4 and 6, and lower
+          distance is preferable."
+        correct: false
+        category: incorrect_reasoning
+        feedback: Higher distance before falling is better in this task.
+    solution:
+      The means are 50 and 59 metres and the spreads are 4 and 6 metres. B’s gap of 9 exceeds
+      both spreads, and B wins all four seeds.
+  - id: edp-recall-seeds-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    difficulty: 1
+    est_minutes: 1
+    prompt:
+      In one or two sentences, what is a random seed, and when should you believe a gap between
+      two models?
+    knowledge_point: ed-seeds
+    rubric:
+      - id: r1
+        criterion:
+          Explain that a random seed is a number fixing the run’s random choices so the run can be
+          repeated.
+        weight: 1
+        required: true
+      - id: r2
+        criterion:
+          Explain that both models use the same several seeds and that a believable mean gap
+          clearly exceeds both spreads with one model winning all or nearly all seeds.
+        weight: 1
+        required: true
+    exemplar: A random seed fixes the random choices so a run can be repeated. Use the same several
+      seeds for both models and believe a mean gap only when it clearly exceeds both spreads and one
+      model wins all or nearly all seeds.
+    solution: A random seed fixes the random choices so a run can be repeated. Use the same several
+      seeds for both models and believe a mean gap only when it clearly exceeds both spreads and one
+      model wins all or nearly all seeds.
+  - id: edp-recall-seeds-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    difficulty: 1
+    est_minutes: 0.5
+    target_seconds: 30
+    prompt: What does the spread of one model's results across seeds measure?
+    knowledge_point: ed-seeds
+    options:
+      - id: a
+        text: How much its validation error differs from its test error.
+        correct: false
+        category: incorrect_reasoning
+        feedback: That compares two data sets, rather than repeated seeds of the same model.
+      - id: b
+        text: How much its score changes from random choices alone.
+        correct: true
+        feedback: The largest minus smallest score measures variation across the run’s random choices.
+      - id: c
+        text: How much one part helps when it is removed from the model.
+        correct: false
+        category: incorrect_reasoning
+        feedback: An ablation rise measures a removed part’s contribution.
+      - id: d
+        text: How much its mean score improves on the baseline’s mean score.
+        correct: false
+        category: incorrect_reasoning
+        feedback: That is the gap between models, rather than the spread within one model.
+    solution: Seed spread measures how much one model’s score varies with its random choices.
+  - id: edp-recall-seeds-formula
+    dimension: math
+    type: expression
+    role: recall
+    difficulty: 1
+    est_minutes: 0.5
+    prompt:
+      Model A scored $p$ and $q$ on two seeds. Model B scored $r$ and $s$ on the same seeds. Write
+      B's mean minus A's mean. Type * for multiplication.
+    knowledge_point: ed-seeds
+    answer: (r+s)/2-(p+q)/2
+    variables:
+      p:
+        - 300
+        - 500
+      q:
+        - 300
+        - 500
+      r:
+        - 300
+        - 500
+      s:
+        - 300
+        - 500
+    solution:
+      Each mean is the sum of its two scores divided by two. Subtracting A’s mean from B’s gives
+      $(r+s)/2-(p+q)/2$.
+  - id: ed-explain
+    dimension: transfer
+    type: explain
+    role: core
+    difficulty: 2
+    est_minutes: 4
+    prompt:
+      You add two new parts to a house-price model, and in one run its validation error falls from
+      500 to 480. In 2–4 sentences, explain what you would compare it with and how to keep that
+      comparison fair, how you would find out what each new part adds, and how you would tell
+      whether a gap is more than luck.
+    rubric:
+      - id: r1
+        criterion:
+          Compare with the previous best and a simple baseline, trained, tuned and scored the same
+          way.
+        weight: 1
+        required: true
+      - id: r2
+        criterion:
+          Explain that an ablation removes one part at a time, keeps everything else the same and
+          measures the rise in validation error.
+        weight: 1
+        required: true
+      - id: r3
+        criterion:
+          Run several seeds, the same for each model, and believe a mean gap only if it clearly
+          exceeds the spread across seeds.
+        weight: 1
+        required: true
+      - id: r4
+        criterion:
+          State that the final model is scored once on the test set after validation comparisons
+          are finished.
+        weight: 1
+    exemplar:
+      I would compare with the previous best and a simple mean predictor, using the same split,
+      training length and validation tuning effort. I would remove each new part separately, keep
+      everything else fixed and measure its rise in validation error. I would run the same several
+      seeds for every model and believe a mean gap only if it clearly exceeds the spreads and one
+      model wins nearly every seed. After choosing on validation data, I would score the final model
+      once on the test set.
+    solution:
+      Use matched baselines, one-part ablations and repeated comparisons on the same seeds. A
+      single reduction from 500 to 480 cannot separate the new parts from unequal training or luck.
