@@ -698,3 +698,27 @@ terms:
       match: ["back[- ]substitut"],
       introduced_by: [inverses-linear-systems],
     }
+  - {
+      id: reward-over-optimisation,
+      label: "reward over-optimisation",
+      match: ['over-?optimi[sz]'],
+      introduced_by: [reward-hacking],
+    }
+  - {
+      id: sycophancy,
+      label: "sycophancy",
+      match: ['sycophan'],
+      introduced_by: [reward-hacking],
+    }
+  - {
+      id: reward-model-ensemble,
+      label: "reward model ensemble",
+      match: ['reward[- ]model ensembl', 'ensembled reward model'],
+      introduced_by: [reward-hacking],
+    }
+  - {
+      id: goodharts-law,
+      label: "Goodhart's law",
+      match: ["goodhart"],
+      introduced_by: [reward-hacking],
+    }
