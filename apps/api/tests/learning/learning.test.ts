@@ -235,6 +235,7 @@ function planWithRetryAndFreshTopics(
     retryConceptId?: string;
     retryAfter?: Date;
     inProgressConceptId?: string;
+    focusConceptId?: string;
     index?: ContentIndex;
     confusablePairs?: Array<[string, string]>;
   } = {},
@@ -281,6 +282,7 @@ function planWithRetryAndFreshTopics(
       ? [{ conceptId: options.inProgressConceptId, status: 'in_progress' as const }]
       : []),
   ];
+  state.inProgressConceptId = options.focusConceptId;
   return planSession(state, planContent, now, budget);
 }
 
@@ -1469,6 +1471,29 @@ test('a retry two days overdue is selected before fresh lessons but respects the
   expect(learned).toHaveLength(2);
   expect(learned).toContain('vectors');
   expect(freshLearnCount).toBe(1);
+});
+
+test('a focused overdue retry wins when the budget fits one lesson', () => {
+  const retryConceptId = 'vectors';
+  const inProgressConceptId = 'supervised-learning';
+  const budget = Math.max(
+    required(content.conceptsById.get(retryConceptId), retryConceptId).est_minutes,
+    required(content.conceptsById.get(inProgressConceptId), inProgressConceptId).est_minutes,
+  );
+  const plan = planWithRetryAndFreshTopics(budget, {
+    courseId: 'fixture-course',
+    freshTopicIds: [inProgressConceptId],
+    retryConceptId,
+    retryAfter: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1_000),
+    inProgressConceptId,
+    focusConceptId: retryConceptId,
+  });
+  const learned = plan.activities.filter((activity) => activity.kind === 'learn');
+
+  expect(learned.map((activity) => activity.conceptId)).toContain(retryConceptId);
+  expect(
+    plan.activities.reduce((total, activity) => total + activity.plannedMinutes, 0),
+  ).toBeLessThanOrEqual(budget);
 });
 
 test('a confusable retry is skipped when the fresh topic is selected', () => {

@@ -700,12 +700,12 @@ function packWeekday(
   const courseContexts = schedulerCourseContexts(state, content);
   const courseOrder = new Map(courseContexts.map((course, index) => [course.course.id, index]));
   const compareLearnCandidates = (left: Candidate, right: Candidate) => {
-    const leftResumed = resumedLessonConcepts.has(left.activity.conceptId ?? '');
-    const rightResumed = resumedLessonConcepts.has(right.activity.conceptId ?? '');
-    if (leftResumed !== rightResumed) return leftResumed ? -1 : 1;
     const leftInProgress = left.activity.conceptId === state.inProgressConceptId;
     const rightInProgress = right.activity.conceptId === state.inProgressConceptId;
     if (leftInProgress !== rightInProgress) return leftInProgress ? -1 : 1;
+    const leftResumed = resumedLessonConcepts.has(left.activity.conceptId ?? '');
+    const rightResumed = resumedLessonConcepts.has(right.activity.conceptId ?? '');
+    if (leftResumed !== rightResumed) return leftResumed ? -1 : 1;
     const outlineOrder = compareOutlinePosition(
       left.activity.conceptId ?? '',
       right.activity.conceptId ?? '',
