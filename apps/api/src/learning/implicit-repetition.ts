@@ -12,7 +12,22 @@ export function implicitRepetition(
     enableFuzz: boolean;
   },
 ): { fsrs: Card; dueAt: Date } | undefined {
-  if (input.weight <= 0 || card.fsrs.state === State.New) return undefined;
+  const rawLastReviewAt: unknown = card.fsrs.last_review;
+  const lastReviewAt =
+    rawLastReviewAt instanceof Date
+      ? rawLastReviewAt.getTime()
+      : typeof rawLastReviewAt === 'string'
+        ? Date.parse(rawLastReviewAt)
+        : typeof rawLastReviewAt === 'number'
+          ? rawLastReviewAt
+          : undefined;
+  if (
+    input.weight <= 0 ||
+    card.fsrs.state === State.New ||
+    (lastReviewAt !== undefined && lastReviewAt > input.now.getTime())
+  ) {
+    return undefined;
+  }
 
   const full = scheduleReview(
     card.fsrs,

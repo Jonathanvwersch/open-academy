@@ -748,8 +748,13 @@ function packWeekday(
   const coveredByTaskConcept = (conceptId: string) => {
     let covered = dueTopicsByTaskConcept.get(conceptId);
     if (!covered) {
+      const hasKeptRun = state.lessonRuns?.some(
+        (run) =>
+          run.conceptId === conceptId &&
+          (run.status === 'in_progress' || run.status === 'quiz' || run.status === 'needs_retry'),
+      );
       covered =
-        state.inProgressConceptId && state.inProgressConceptId !== conceptId
+        state.inProgressConceptId && state.inProgressConceptId !== conceptId && !hasKeptRun
           ? new Set()
           : dueTopicsCoveredBy(conceptId, state, content, now);
       dueTopicsByTaskConcept.set(conceptId, covered);

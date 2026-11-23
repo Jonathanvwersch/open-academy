@@ -700,7 +700,7 @@ test('Today compresses a due review when same-day learning covers its topic', as
   ).toBe(true);
 });
 
-test('focus mode keeps due reviews covered only by a removed lesson', async () => {
+test('focus mode only counts coverage from lessons kept in the session', async () => {
   const courses = fullContent.courses.map((course) =>
     course.id === 'maths-for-ml'
       ? {
@@ -722,7 +722,7 @@ test('focus mode keeps due reviews covered only by a removed lesson', async () =
     content: focusContent,
     tutorProvider: new FakeProvider(),
   });
-  const seedFocusScenario = async () => {
+  const seedFocusScenario = async (dotProductInProgress = false) => {
     await resetLearner();
     await db.insert(courseEnrollments).values({
       userId,
@@ -756,6 +756,14 @@ test('focus mode keeps due reviews covered only by a removed lesson', async () =
           startedAt: new Date(now),
         })),
       );
+    }
+    if (dotProductInProgress) {
+      await db.insert(lessonRuns).values({
+        userId,
+        conceptId: 'dot-product',
+        status: 'in_progress',
+        startedAt: new Date(now),
+      });
     }
     const dueAt = new Date('2025-12-31T00:00:00.000Z');
     await createReviewCard('vectors', 'math', dueAt, learnedReviewFsrs(dueAt));
@@ -806,6 +814,22 @@ test('focus mode keeps due reviews covered only by a removed lesson', async () =
     ),
   ).toBe(false);
   expect(hasVectorsReview(focusedSession.activities)).toBe(true);
+
+  await seedFocusScenario(true);
+  const inProgressFocusResponse = await focusApp.request('/api/sessions', {
+    method: 'POST',
+    headers: headersAt(now),
+    body: JSON.stringify({ budgetMinutes: 240, focusConceptId: 'derivatives' }),
+  });
+  expect(inProgressFocusResponse.status).toBe(201);
+  const inProgressFocusSession = await inProgressFocusResponse.json();
+  expect(
+    inProgressFocusSession.activities.some(
+      (activity: { kind: string; conceptId?: string }) =>
+        activity.kind === 'learn' && activity.conceptId === 'dot-product',
+    ),
+  ).toBe(true);
+  expect(hasVectorsReview(inProgressFocusSession.activities)).toBe(false);
 });
 
 test('practice answers expose selected options and reveal correct ids only after retries end', async () => {

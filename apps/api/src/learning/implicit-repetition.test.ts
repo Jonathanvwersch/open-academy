@@ -142,6 +142,22 @@ describe('implicitRepetition', () => {
     ).toBeUndefined();
   });
 
+  it('skips cards last reviewed after the requested time', () => {
+    const lastReview = new Date(now.getTime() + 2 * 86_400_000);
+    const card = reviewCard(lastReview, new Date(now.getTime() + 3 * 86_400_000));
+    Reflect.set(card.fsrs, 'last_review', lastReview.toISOString());
+
+    expect(
+      implicitRepetition(card, {
+        weight: 0.5,
+        rating: Rating.Good,
+        now,
+        timeZone,
+        enableFuzz: false,
+      }),
+    ).toBeUndefined();
+  });
+
   it('discounts repetitions completed early through FSRS scheduling', () => {
     const early = reviewCard(
       new Date('2026-01-14T12:00:00.000Z'),
