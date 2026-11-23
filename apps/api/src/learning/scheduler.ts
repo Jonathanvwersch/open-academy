@@ -748,7 +748,10 @@ function packWeekday(
   const coveredByTaskConcept = (conceptId: string) => {
     let covered = dueTopicsByTaskConcept.get(conceptId);
     if (!covered) {
-      covered = dueTopicsCoveredBy(conceptId, state, content, now);
+      covered =
+        state.inProgressConceptId && state.inProgressConceptId !== conceptId
+          ? new Set()
+          : dueTopicsCoveredBy(conceptId, state, content, now);
       dueTopicsByTaskConcept.set(conceptId, covered);
     }
     return covered;

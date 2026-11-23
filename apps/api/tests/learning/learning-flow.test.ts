@@ -43,6 +43,7 @@ const now = '2026-01-01T12:00:00.000Z';
 let app: ReturnType<typeof createApp>;
 let noTutorApp: ReturnType<typeof createApp>;
 let content: ContentIndex;
+let fullContent: ContentIndex;
 
 test('a retry of the final review exercise does not complete the concept again', () => {
   const exerciseIds = ['first-exercise', 'last-exercise'];
@@ -60,6 +61,7 @@ test('a retry of the final review exercise does not complete the concept again',
 
 beforeAll(async () => {
   content = await loadContent('tests/fixtures/content');
+  fullContent = await loadContent('content');
   app = createApp({ db, content, tutorProvider: new FakeProvider() });
   noTutorApp = createApp({ db, content, tutorProvider: null });
   await db.delete(users);
@@ -711,6 +713,114 @@ test('Today compresses a due review when same-day learning covers its topic', as
       'UTC',
     ),
   ).toBe(true);
+});
+
+test('focus mode keeps due reviews covered only by a removed lesson', async () => {
+  const courses = fullContent.courses.map((course) =>
+    course.id === 'maths-for-ml'
+      ? {
+          ...course,
+          units: course.units.map((unit, index) => ({
+            ...unit,
+            concepts: index === 0 ? ['vectors', 'dot-product', 'derivatives'] : [],
+          })),
+        }
+      : course,
+  );
+  const focusContent: ContentIndex = {
+    ...fullContent,
+    courses,
+    coursesById: new Map(courses.map((course) => [course.id, course])),
+  };
+  const focusApp = createApp({
+    db,
+    content: focusContent,
+    tutorProvider: new FakeProvider(),
+  });
+  const seedFocusScenario = async () => {
+    await resetLearner();
+    await db.insert(courseEnrollments).values({
+      userId,
+      courseId: 'maths-for-ml',
+      status: 'active',
+      startMethod: 'beginning',
+    });
+    const completedPrerequisites = new Set<string>();
+    const addHardPrerequisites = (conceptId: string) => {
+      for (const prerequisite of focusContent.conceptsById.get(conceptId)?.prereqs ?? []) {
+        if (prerequisite.strength !== 'hard' || completedPrerequisites.has(prerequisite.id)) {
+          continue;
+        }
+        completedPrerequisites.add(prerequisite.id);
+        addHardPrerequisites(prerequisite.id);
+      }
+    };
+    addHardPrerequisites('dot-product');
+    addHardPrerequisites('derivatives');
+    for (const concept of focusContent.concepts) {
+      if (concept.id !== 'dot-product' && concept.id !== 'derivatives') {
+        completedPrerequisites.add(concept.id);
+      }
+    }
+    if (completedPrerequisites.size > 0) {
+      await db.insert(lessonRuns).values(
+        [...completedPrerequisites].map((conceptId) => ({
+          userId,
+          conceptId,
+          status: 'completed' as const,
+          startedAt: new Date(now),
+        })),
+      );
+    }
+    const dueAt = new Date('2025-12-31T00:00:00.000Z');
+    await createReviewCard('vectors', 'math', dueAt, learnedReviewFsrs(dueAt));
+  };
+  const hasVectorsReview = (activities: Array<{ kind: string; exerciseIds: string[] }>) =>
+    activities.some(
+      (activity) =>
+        activity.kind === 'review' &&
+        activity.exerciseIds.some(
+          (exerciseId) => focusContent.exercisesById.get(exerciseId)?.concept === 'vectors',
+        ),
+    );
+
+  await seedFocusScenario();
+  const unfocusedResponse = await focusApp.request('/api/sessions', {
+    method: 'POST',
+    headers: headersAt(now),
+    body: JSON.stringify({ budgetMinutes: 240 }),
+  });
+  expect(unfocusedResponse.status).toBe(201);
+  const unfocusedSession = await unfocusedResponse.json();
+  expect(
+    unfocusedSession.activities.some(
+      (activity: { kind: string; conceptId?: string }) =>
+        activity.kind === 'learn' && activity.conceptId === 'dot-product',
+    ),
+  ).toBe(true);
+  expect(hasVectorsReview(unfocusedSession.activities)).toBe(false);
+
+  await seedFocusScenario();
+  const focusedResponse = await focusApp.request('/api/sessions', {
+    method: 'POST',
+    headers: headersAt(now),
+    body: JSON.stringify({ budgetMinutes: 240, focusConceptId: 'derivatives' }),
+  });
+  expect(focusedResponse.status).toBe(201);
+  const focusedSession = await focusedResponse.json();
+  expect(
+    focusedSession.activities.some(
+      (activity: { kind: string; conceptId?: string }) =>
+        activity.kind === 'learn' && activity.conceptId === 'derivatives',
+    ),
+  ).toBe(true);
+  expect(
+    focusedSession.activities.some(
+      (activity: { kind: string; conceptId?: string }) =>
+        activity.kind === 'learn' && activity.conceptId === 'dot-product',
+    ),
+  ).toBe(false);
+  expect(hasVectorsReview(focusedSession.activities)).toBe(true);
 });
 
 test('practice answers expose selected options and reveal correct ids only after retries end', async () => {
