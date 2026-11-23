@@ -1,0 +1,336 @@
+concept: dpo
+version: 1
+objective: |
+  **Goal:** compute the DPO loss for one preference pair from policy and reference log-probabilities, say which way it pushes each reply, and contrast what DPO and RLHF need and where each can go wrong.
+recap:
+  - concept: rlhf
+    text: 'RLHF trains the policy $\pi_\theta$ with PPO on the KL-penalised reward $r_\phi(x,y)-\beta\ln\frac{\pi_\theta(y\mid x)}{\pi_{\text{ref}}(y\mid x)}$. Here $r_\phi$ is the reward model trained on preference pairs, and $\pi_{\text{ref}}$ is a frozen copy of the SFT model.'
+where_this_fits: |
+  ### What is DPO?
+
+  Direct preference optimisation (DPO) is a way of training a language model straight from preference pairs, with one loss much like the loss that trains a reward model. It aims at the same goal as RLHF, a high reward with a KL penalty, but it uses no separate reward model and no reinforcement learning.
+
+  Why is that useful? RLHF first trains a reward model, then runs PPO, where the policy writes replies, the reward model scores them and the policy is updated, round after round. That loop is slow and has many parts to get right. DPO trains on a fixed set of preference pairs with gradient descent, like ordinary supervised training.
+knowledge_points:
+  - id: dpo-best-policy
+    title: "Find the best policy for RLHF's goal"
+    tldr: |
+      - RLHF wants replies with a high reward that stay close to the reference model.
+      - For each prompt, a formula gives the policy that does this best.
+      - It takes the reference model's probabilities and boosts each reply by its reward.
+    explain: |
+      ### The goal RLHF is chasing
+
+      In RLHF, PPO trains the policy to make the KL-penalised reward high on average. For one prompt $x$ and any policy $\pi$, that average is
+      $$J(\pi)=\sum_y\pi(y\mid x)\,r(x,y)-\beta\,\mathrm{KL}(\pi\Vert\pi_{\text{ref}}).$$
+      The sum runs over every reply $y$, and $r(x,y)$ is the reply's reward. The KL term is the log ratio from RLHF's penalty, averaged over the replies $\pi$ writes:
+      $$\mathrm{KL}(\pi\Vert\pi_{\text{ref}})=\sum_y\pi(y\mid x)\ln\frac{\pi(y\mid x)}{\pi_{\text{ref}}(y\mid x)}.$$
+      The first distribution, $\pi$, gives the weights. With natural logs, KL is measured in nats instead of bits. PPO climbs towards the best policy one update at a time. DPO starts from a useful fact: for this goal, we can write the best policy down directly.
+
+      ### Boost each reply by its reward
+
+      The **best policy**, written $\pi^*$, is the policy that makes $J$ as large as possible:
+      $$\pi^*(y\mid x)=\frac{1}{Z(x)}\,\pi_{\text{ref}}(y\mid x)\,e^{r(x,y)/\beta}.$$
+      Read it from right to left.
+
+      1. Each reply starts with its reference probability.
+      2. We multiply it by $e^{r/\beta}$, so a reply with a higher reward gets a bigger boost.
+      3. We divide by $Z(x)=\sum_y\pi_{\text{ref}}(y\mid x)\,e^{r(x,y)/\beta}$, the total of the boosted numbers, so the probabilities add up to 1.
+
+      A large $\beta$ makes $r/\beta$ small, so every boost is close to 1 and $\pi^*$ stays near the reference.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 330" aria-label="A bar chart of two replies to one prompt. The reference model gives Blue and Red probability 0.5 each. With rewards 2 for Blue and 1 for Red and beta equal to 1, the best policy gives Blue 0.73 and Red 0.27">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <path d="M150 280 H560" stroke="#a3a3a3" stroke-width="2"/>
+      <path d="M150 280 V50" stroke="#d4d4d4" stroke-width="2"/>
+      <path d="M145 280 h10 M145 170 h10 M145 60 h10" stroke="#737373"/>
+      <text x="138" y="285" fill="#737373" text-anchor="end">0</text>
+      <text x="138" y="175" fill="#737373" text-anchor="end">0.5</text>
+      <text x="138" y="65" fill="#737373" text-anchor="end">1</text>
+      <rect x="200" y="170" width="60" height="110" fill="#a3a3a3"/>
+      <rect x="270" y="119.17" width="60" height="160.83" fill="#10b981"/>
+      <rect x="380" y="170" width="60" height="110" fill="#a3a3a3"/>
+      <rect x="450" y="220.83" width="60" height="59.17" fill="#10b981"/>
+      <text x="230" y="162" text-anchor="middle">0.5</text>
+      <text x="300" y="111" text-anchor="middle" fill="#047857">0.73</text>
+      <text x="410" y="162" text-anchor="middle">0.5</text>
+      <text x="480" y="213" text-anchor="middle" fill="#047857">0.27</text>
+      <text x="265" y="302" text-anchor="middle">Blue, reward 2</text>
+      <text x="445" y="302" text-anchor="middle">Red, reward 1</text>
+      <rect x="200" y="20" width="14" height="14" fill="#a3a3a3"/>
+      <text x="220" y="32">reference</text>
+      <rect x="320" y="20" width="14" height="14" fill="#10b981"/>
+      <text x="340" y="32">best policy, β = 1</text>
+      </g>
+      </svg>
+      ```
+
+      ### Why it's the best
+
+      Put the formula for $\pi^*$ into the goal:
+      $$
+      \begin{aligned}
+      J(\pi)&=-\beta\sum_y\pi(y\mid x)\Big[\ln\frac{\pi(y\mid x)}{\pi_{\text{ref}}(y\mid x)}-\frac{r(x,y)}{\beta}\Big] &&\text{one sum, }\beta\text{ outside}\\
+      &=-\beta\sum_y\pi(y\mid x)\ln\frac{\pi(y\mid x)}{Z(x)\,\pi^*(y\mid x)} &&\text{since }\pi_{\text{ref}}e^{r/\beta}=Z\pi^*\\
+      &=-\beta\,\mathrm{KL}(\pi\Vert\pi^*)+\beta\ln Z(x) &&\text{split off }\ln Z
+      \end{aligned}
+      $$
+      $Z(x)$ doesn't depend on $\pi$. A KL is never negative, and it is zero only when the two distributions are equal, here when $\pi=\pi^*$, so $J$ is largest at $\pi=\pi^*$, where it equals $\beta\ln Z(x)$.
+    worked: |
+      Let's find the best policy for the prompt "Name a colour." with two replies. The reference gives "Blue." and "Red." probability $0.5$ each, their rewards are $2$ and $1$, and $\beta=1$.
+
+      1. **Boost each reply.** Multiply each reference probability by $e^{r/\beta}$.
+         $$0.5e^{2}\approx3.695,\qquad0.5e^{1}\approx1.359.$$
+
+      2. **Add the boosted numbers.** Their total is $Z(x)$.
+         $$Z(x)\approx3.695+1.359=5.054.$$
+
+      3. **Divide by the total.** This makes the two probabilities add up to 1.
+         $$\pi^*(\text{Blue})\approx\frac{3.695}{5.054}\approx0.731,$$
+         $$\pi^*(\text{Red})\approx\frac{1.359}{5.054}\approx0.269.$$
+
+      4. **Compare with other policies.** Compute $J=\text{average reward}-\beta\,\mathrm{KL}$ for three policies.
+
+      | Probability of "Blue." | Average reward | KL from the reference | $J$ |
+      | --- | --- | --- | --- |
+      | $0.5$ (the reference) | $1.5$ | $0$ | $1.5$ |
+      | $0.731$ (the best policy) | $1.731$ | $0.111$ | $1.620$ |
+      | $1$ (always "Blue.") | $2$ | $0.693$ | $1.307$ |
+
+      The best policy gives the highest $J$, and $\beta\ln Z(x)=\ln5.054\approx1.620$ matches it. Always writing "Blue." has the highest average reward, but it drifts too far from the reference.
+    problems:
+      - dpo-best-policy-basics
+      - dpo1-worked-self-explain
+      - dpo1-large-beta
+      - dpo1-best-template
+      - dpo1-equal-rewards
+      - dpo1-goal-value
+      - dpo1-robot-grasp
+  - id: dpo-loss
+    title: "Write the loss for one preference pair"
+    tldr: |
+      - Turn the best-policy formula around, and a policy gives every reply a reward.
+      - That reward is β times the log of the policy's probability over the reference's, plus a part that is the same for every reply to the prompt.
+      - Put those rewards into the reward model's loss and the shared part cancels, which gives the DPO loss.
+    explain: |
+      ### Turning the formula around
+
+      In the last step a reward gave us the best policy. DPO runs this the other way. Take logs of both sides of the formula for $\pi^*$, then solve for the reward:
+      $$
+      \begin{aligned}
+      \ln\pi^*(y\mid x)&=\ln\pi_{\text{ref}}(y\mid x)+\frac{r(x,y)}{\beta}-\ln Z(x) &&\text{take logs}\\
+      r(x,y)&=\beta\ln\frac{\pi^*(y\mid x)}{\pi_{\text{ref}}(y\mid x)}+\beta\ln Z(x) &&\text{solve for }r
+      \end{aligned}
+      $$
+      So a policy and the reference together say what reward each reply has, up to $\beta\ln Z(x)$, which is the same for every reply to prompt $x$.
+
+      ### Comparing two replies makes $Z$ cancel
+
+      A reward model is trained on preference pairs. Each pair has a prompt $x$, a chosen reply $y_w$ and a rejected reply $y_l$. With rewards $r_w$ and $r_l$, the Bradley–Terry loss is $-\ln\sigma(r_w-r_l)$, where $\sigma$ is the sigmoid. Only the difference of the two rewards appears, so $\beta\ln Z(x)$ cancels. That matters, because $Z(x)$ sums over every possible reply and we could never compute it.
+
+      DPO treats the policy we're training, $\pi_\theta$, as the best policy for some reward. The **implicit reward** of a reply is $\beta\ln\frac{\pi_\theta(y\mid x)}{\pi_{\text{ref}}(y\mid x)}$. Putting the implicit rewards into the Bradley–Terry loss gives the **DPO loss** for one pair:
+      $$
+      \begin{aligned}
+      z&=\beta\Big[\big(\ln\pi_\theta(y_w\mid x)-\ln\pi_{\text{ref}}(y_w\mid x)\big)\\
+      &\qquad-\big(\ln\pi_\theta(y_l\mid x)-\ln\pi_{\text{ref}}(y_l\mid x)\big)\Big]\\
+      L_{\text{DPO}}&=-\ln\sigma(z)
+      \end{aligned}
+      $$
+      So $z$ is the chosen reply's implicit reward minus the rejected reply's.
+
+      Over a dataset of pairs, we average this loss and lower it with gradient descent on the policy's weights. The reference stays frozen.
+
+      ### Where training starts
+
+      The policy starts as a copy of the SFT model, so it equals the reference. Then every log ratio is $0$, so $z=0$, and every pair has loss $-\ln\sigma(0)=\ln2\approx0.693$.
+
+      Be careful not to drop the reference terms and compare $\ln\pi_\theta(y_w\mid x)$ with $\ln\pi_\theta(y_l\mid x)$ directly. A long reply has a low log-probability under both models, because it adds up more token log-probabilities. Subtracting the reference measures how much training has changed each reply.
+    worked: |
+      Let's compute the DPO loss for one pair. A prompt asks for a short poem. The policy gives the chosen poem $y_w$ log-probability $-8$ and the rejected poem $y_l$ log-probability $-11$. The reference gives them $-9$ and $-10$, and $\beta=0.5$.
+
+      1. **Find the chosen reply's log ratio.** Subtract the reference's log-probability from the policy's.
+         $$-8-(-9)=1.$$
+
+      2. **Find the rejected reply's log ratio.** Do the same for $y_l$.
+         $$-11-(-10)=-1.$$
+
+      3. **Take the gap and multiply by $\beta$.** This is $z$, the gap between the implicit rewards.
+         $$z=0.5\times\big(1-(-1)\big)=1.$$
+
+      4. **Apply the sigmoid.** This is the chance the implicit rewards give that $y_w$ is preferred.
+         $$\sigma(1)=\frac{1}{1+e^{-1}}\approx\frac{1}{1.368}\approx0.731.$$
+
+      5. **Take minus the natural log.** This is the loss for the pair.
+         $$L_{\text{DPO}}=-\ln0.731\approx0.313.$$
+
+      The loss is below the starting value $\ln2\approx0.693$, because the policy already raises the chosen poem and lowers the rejected one compared with the reference.
+    problems:
+      - dpo-loss-basics
+      - dpo2-worked-self-explain
+      - dpo2-start-loss
+      - dpo2-loss-template
+      - dpo2-dropped-reference
+      - dpo2-implicit-preference
+      - dpo2-robot-grasp
+  - id: dpo-gradient
+    title: "See which way the loss pushes"
+    tldr: |
+      - Lowering the DPO loss raises the chosen reply's log-probability and lowers the rejected reply's.
+      - Both pushes have the same size, β times one minus the sigmoid of the gap.
+      - The push is strong when the policy gets the pair wrong and fades as it gets it right.
+    explain: |
+      ### The slope for each reply
+
+      Gradient descent lowers the DPO loss, but what does that do to the two replies? The reference is frozen, so only the policy's two log-probabilities can change. Write $p=\sigma(z)$ for the chance the implicit rewards give that $y_w$ is preferred.
+
+      The slope of $-\ln\sigma(z)$ with respect to $z$ is $p-1$. By the chain rule we multiply it by the slope of $z$ with respect to each log-probability, which is $\beta$ for the chosen reply and $-\beta$ for the rejected one:
+      $$
+      \begin{aligned}
+      \frac{\partial L_{\text{DPO}}}{\partial\ln\pi_\theta(y_w\mid x)}&=(p-1)\,\beta=-\beta(1-p) &&\text{chosen reply}\\
+      \frac{\partial L_{\text{DPO}}}{\partial\ln\pi_\theta(y_l\mid x)}&=(p-1)(-\beta)=\beta(1-p) &&\text{rejected reply}
+      \end{aligned}
+      $$
+      Gradient descent moves against the slope. So it raises the chosen reply's log-probability and lowers the rejected one's, and both pushes have size $\beta(1-p)$. The policy's weights change to make that happen.
+
+      ### Strong when wrong, weak when right
+
+      The push depends on how well the policy already ranks the pair. Here are three pairs with $\beta=0.5$:
+
+      | Gap $z$ | $p=\sigma(z)$ | Push $\beta(1-p)$ |
+      | --- | --- | --- |
+      | $-2$, wrong way round | $0.119$ | $0.440$ |
+      | $0$, no preference yet | $0.5$ | $0.25$ |
+      | $2$, right way round | $0.881$ | $0.060$ |
+
+      Pairs the policy gets wrong move it most. Pairs it already gets right barely move it.
+
+      ### Both replies can fall
+
+      Be careful not to read a falling loss as "the chosen reply got more likely." The loss sees only the gap $z$. Suppose training moves the chosen reply's log ratio from $0$ to $-1$ and the rejected reply's from $0$ to $-3$. With $\beta=0.5$, $z$ goes from $0$ to $0.5\times2=1$, and the loss falls from $0.693$ to $0.313$. Yet the chosen reply is now less likely than under the reference. Both replies share the policy's weights, so this happens in practice.
+    worked: |
+      Let's find the slopes for one pair. A poem pair has chosen log ratio $1$ and rejected log ratio $-1$, and $\beta=0.5$, so $z=0.5\times(1-(-1))=1$.
+
+      1. **Find $p$.** Apply the sigmoid to $z$.
+         $$p=\sigma(1)\approx0.731.$$
+
+      2. **Find the size of the push.** Multiply $1-p$ by $\beta$.
+         $$\beta(1-p)\approx0.5\times0.269\approx0.134.$$
+
+      3. **Give each reply its slope.** The chosen reply's slope is negative, and the rejected reply's is positive.
+         $$\frac{\partial L_{\text{DPO}}}{\partial\ln\pi_\theta(y_w\mid x)}\approx-0.134,\qquad\frac{\partial L_{\text{DPO}}}{\partial\ln\pi_\theta(y_l\mid x)}\approx0.134.$$
+
+      4. **Compare with the start.** At the start, $z=0$ and $p=0.5$.
+         $$\beta(1-p)=0.5\times0.5=0.25.$$
+
+      Gradient descent raises $\ln\pi_\theta(y_w\mid x)$ and lowers $\ln\pi_\theta(y_l\mid x)$. The push of about $0.134$ is about half the starting push, because the policy already ranks this pair the right way round.
+    problems:
+      - dpo-gradient-basics
+      - dpo3-worked-self-explain
+      - dpo3-reference-slope
+      - dpo3-push-template
+      - dpo3-both-fall
+      - dpo3-which-pair
+      - dpo3-robot-slope
+  - id: dpo-vs-rlhf
+    title: "Compare DPO with RLHF"
+    tldr: |
+      - RLHF trains a reward model, then loops: the policy writes replies, they are scored, and PPO updates the policy.
+      - DPO trains on a fixed set of preference pairs with one loss, using only the policy and the reference.
+      - RLHF can chase the reward model's mistakes, and DPO never checks the new replies its policy starts to write.
+    explain: |
+      ### What each one needs
+
+      DPO and RLHF start from the same things: an SFT model, a set of preference pairs, a frozen reference model and a value of $\beta$. After that they do different work.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" aria-label="Two training processes. RLHF: preference pairs train a reward model, then a loop where the policy writes replies, the reward model scores them, and PPO updates the policy, which writes again. DPO: fixed preference pairs go straight into the DPO loss, and gradient descent updates the policy">
+      <defs><marker id="dpo-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#525252"/></marker></defs>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <text x="20" y="30" font-weight="600">RLHF</text>
+      <rect x="20" y="45" width="130" height="50" rx="8" fill="#f5f5f5" stroke="#a3a3a3"/>
+      <text x="85" y="66" text-anchor="middle">preference</text>
+      <text x="85" y="84" text-anchor="middle">pairs</text>
+      <rect x="180" y="45" width="130" height="50" rx="8" fill="#fef3c7" stroke="#d97706"/>
+      <text x="245" y="66" text-anchor="middle">train a</text>
+      <text x="245" y="84" text-anchor="middle">reward model</text>
+      <rect x="340" y="45" width="130" height="50" rx="8" fill="#dbeafe" stroke="#3b82f6"/>
+      <text x="405" y="66" text-anchor="middle">policy writes</text>
+      <text x="405" y="84" text-anchor="middle">new replies</text>
+      <rect x="490" y="45" width="130" height="50" rx="8" fill="#fef3c7" stroke="#d97706"/>
+      <text x="555" y="66" text-anchor="middle">reward model</text>
+      <text x="555" y="84" text-anchor="middle">scores them</text>
+      <rect x="415" y="125" width="130" height="40" rx="8" fill="#dbeafe" stroke="#3b82f6"/>
+      <text x="480" y="150" text-anchor="middle">PPO update</text>
+      <path d="M150 70 H178" stroke="#525252" stroke-width="2" marker-end="url(#dpo-arrow)"/>
+      <path d="M310 70 H338" stroke="#525252" stroke-width="2" marker-end="url(#dpo-arrow)"/>
+      <path d="M470 70 H488" stroke="#525252" stroke-width="2" marker-end="url(#dpo-arrow)"/>
+      <path d="M555 95 V146" stroke="#525252" stroke-width="2"/>
+      <path d="M555 145 H547" stroke="#525252" stroke-width="2" marker-end="url(#dpo-arrow)"/>
+      <path d="M415 145 H404" stroke="#525252" stroke-width="2"/>
+      <path d="M405 146 V97" stroke="#525252" stroke-width="2" marker-end="url(#dpo-arrow)"/>
+      <text x="350" y="150" fill="#525252">repeat</text>
+      <text x="20" y="210" font-weight="600">DPO</text>
+      <rect x="20" y="225" width="130" height="50" rx="8" fill="#f5f5f5" stroke="#a3a3a3"/>
+      <text x="85" y="246" text-anchor="middle">fixed preference</text>
+      <text x="85" y="264" text-anchor="middle">pairs</text>
+      <rect x="180" y="225" width="130" height="50" rx="8" fill="#dcfce7" stroke="#10b981"/>
+      <text x="245" y="246" text-anchor="middle">DPO loss</text>
+      <text x="245" y="264" text-anchor="middle">on each pair</text>
+      <rect x="340" y="225" width="130" height="50" rx="8" fill="#dbeafe" stroke="#3b82f6"/>
+      <text x="405" y="246" text-anchor="middle">gradient descent</text>
+      <text x="405" y="264" text-anchor="middle">on the policy</text>
+      <path d="M150 250 H178" stroke="#525252" stroke-width="2" marker-end="url(#dpo-arrow)"/>
+      <path d="M310 250 H338" stroke="#525252" stroke-width="2" marker-end="url(#dpo-arrow)"/>
+      </g>
+      </svg>
+      ```
+
+      | | RLHF with PPO | DPO |
+      | --- | --- | --- |
+      | Reward model | trained first, then scores every new reply | none, the implicit reward replaces it |
+      | Replies during training | the policy writes new ones every round | none, only the fixed pairs |
+      | Models in training | policy, reference, reward model and critic | policy and reference |
+      | Update | PPO's clipped objective | gradient descent on the DPO loss |
+
+      The reference only reads the fixed pairs, so its log-probabilities can be computed once, before training starts.
+
+      ### Where RLHF can go wrong
+
+      The reward model learned from a limited set of replies and can score new ones wrongly. The policy keeps writing new replies, so chasing their scores can lead it to text the reward model overrates, such as long or repetitive replies. The KL penalty limits this drift but doesn't remove it.
+
+      ### Where DPO can go wrong
+
+      DPO learns only from the fixed pairs. As the policy changes, it puts probability on replies that no pair covers, and nothing checks them. The loss only asks the chosen reply to beat the rejected one, so probability taken from both can move to such replies, good or bad. One fix is to have the current policy write new replies, collect new preference pairs on them, and train again.
+    worked: |
+      Let's see probability move to a reply that no pair covers. A prompt has three possible replies: chosen $y_w$, rejected $y_l$ and a third reply $y_3$ that is in no preference pair. The reference gives them $0.4$, $0.4$ and $0.2$. After DPO training the policy gives them $0.2$, $0.1$ and $0.7$, and $\beta=1$.
+
+      1. **Find the chosen reply's log ratio.** Its probability halved.
+         $$\ln\frac{0.2}{0.4}=\ln0.5\approx-0.693.$$
+
+      2. **Find the rejected reply's log ratio.** Its probability fell to a quarter.
+         $$\ln\frac{0.1}{0.4}=\ln0.25\approx-1.386.$$
+
+      3. **Find the gap $z$.** Multiply the difference of the log ratios by $\beta=1$.
+         $$z\approx-0.693-(-1.386)=0.693=\ln2.$$
+
+      4. **Find the loss.** First apply the sigmoid, then take minus the natural log.
+         $$\sigma(\ln2)=\frac{1}{1+e^{-\ln2}}=\frac{1}{1+0.5}=\frac{2}{3},\qquad L_{\text{DPO}}=-\ln\tfrac{2}{3}=\ln1.5\approx0.405.$$
+
+      The loss fell from $\ln2\approx0.693$ to $0.405$, so DPO counts this as progress. Yet both replies in the pair got less likely, and $y_3$ rose from $0.2$ to $0.7$ though no preference pair says it's good.
+    problems:
+      - dpo-vs-rlhf-basics
+      - dpo4-worked-self-explain
+      - dpo4-models-in-training
+      - dpo4-reference-once
+      - dpo4-rlhf-failure
+      - dpo4-kl-template
+      - dpo4-choose-method
+final: dpo-explain-training
+summary: |
+  - For RLHF's goal of a high reward with a KL penalty, the best policy is $\pi^*(y\mid x)=\frac{1}{Z(x)}\pi_{\text{ref}}(y\mid x)e^{r(x,y)/\beta}$: each reply's reference probability boosted by its reward.
+  - Turned around, a policy gives each reply the implicit reward $\beta\ln\frac{\pi_\theta(y\mid x)}{\pi_{\text{ref}}(y\mid x)}$. Putting it into the Bradley–Terry loss gives the DPO loss $-\ln\sigma(z)$, where $z$ is $\beta$ times the chosen reply's log ratio minus the rejected reply's.
+  - Lowering the loss raises the chosen reply's log-probability and lowers the rejected one's, each by a push of size $\beta(1-\sigma(z))$, which is largest when the policy ranks the pair the wrong way round.
+  - DPO needs only the policy, the frozen reference and a fixed set of preference pairs. It has no reward model and no loop of writing and scoring replies. RLHF can chase its reward model's mistakes, and DPO can move probability to replies that no pair covers.
+
+  **Next:** RL with verifiable rewards trains on problems whose answers a program can check, such as maths with a known final answer, so a checker gives the reward.
