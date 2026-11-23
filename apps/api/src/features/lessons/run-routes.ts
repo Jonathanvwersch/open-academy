@@ -26,8 +26,8 @@ import { updateActivityAndAdvance } from '../../learning/activity-completion.js'
 import { answerDisplay, answerText } from '../../learning/answer-display.js';
 import { answerOptionsFor } from '../../learning/answer-options.js';
 import {
-  isSlowCorrectAnswer,
   newReviewCard,
+  reviewActivityRating,
   scheduleReview,
   startOfNextCalendarDay,
 } from '../../learning/fsrs.js';
@@ -41,7 +41,7 @@ import {
   xpForPassedPoint,
 } from '../../learning/lesson-runner.js';
 import { calculateCredit } from '../../learning/mastery.js';
-import { creditHardPrerequisites } from '../../learning/mastery-service.js';
+import { applyImplicitRepetitions } from '../../learning/mastery-service.js';
 import { keyPrereqsForPoint } from '../../learning/prerequisites.js';
 import { resolveLessonCourse } from './course-context.js';
 
@@ -1486,22 +1486,17 @@ export function registerLessonRunRoutes(
               )
               .for('update')
               .limit(1);
-            const hasSlowCorrectAnswer = dimensionItems.some((item) => {
-              const exercise = resolved.index.exercisesById.get(item.exerciseId);
-              return (
-                exercise !== undefined &&
-                isSlowCorrectAnswer({
+            const rating = reviewActivityRating(
+              dimensionItems.map((item) => {
+                const exercise = resolved.index.exercisesById.get(item.exerciseId);
+                return {
                   correct: item.correct ?? 0,
+                  hintsUsed: 0,
                   durationMs: item.durationMs,
-                  targetSeconds: exercise.target_seconds,
-                })
-              );
-            });
-            const rating =
-              !hasSlowCorrectAnswer &&
-              dimensionItems.every((item) => item.correct !== null && item.correct >= 1)
-                ? Rating.Good
-                : Rating.Hard;
+                  targetSeconds: exercise?.target_seconds,
+                };
+              }),
+            );
             dimensionRatings.set(dimension, rating);
             const scheduled = scheduleReview(
               existingCard ? (existingCard.fsrs as never) : newReviewCard(now),
@@ -1545,14 +1540,16 @@ export function registerLessonRunRoutes(
               });
             }
           }
+          const ratings = [...dimensionRatings.values()];
           if (
             dimensionRatings.size === itemsByDimension.size &&
-            dimensionRatings.size > 0 &&
-            [...dimensionRatings.values()].every((rating) => rating === Rating.Good)
+            ratings.length > 0 &&
+            !ratings.includes(Rating.Again)
           ) {
-            await creditHardPrerequisites(tx, {
+            await applyImplicitRepetitions(tx, {
               userId,
               conceptId,
+              rating: ratings.every((rating) => rating === Rating.Good) ? Rating.Good : Rating.Hard,
               index: resolved.index,
               now,
               timeZone: context.get('timeZone'),

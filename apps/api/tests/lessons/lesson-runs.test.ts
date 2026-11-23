@@ -1,5 +1,5 @@
 import { and, eq, inArray } from 'drizzle-orm';
-import { Rating } from 'ts-fsrs';
+import { Rating, State } from 'ts-fsrs';
 import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest';
 import { createApp } from '../../src/app.js';
 import { env } from '../../src/config.js';
@@ -25,7 +25,7 @@ import {
   xpEvents,
 } from '../../src/db/schema.js';
 import { FakeProvider } from '../../src/features/tutor/provider.js';
-import { newReviewCard } from '../../src/learning/fsrs.js';
+import { newReviewCard, scheduleReview } from '../../src/learning/fsrs.js';
 import { scoreLessonQuiz } from '../../src/learning/lesson-quiz.js';
 
 const db = createDb(env.TEST_DATABASE_URL);
@@ -646,8 +646,12 @@ async function answerQuizAttempt(
 
 async function createDuePrerequisiteCard(prerequisiteConceptId: string) {
   const dueAt = new Date('2025-12-31T12:00:00.000Z');
+  const reviewedAt = new Date('2025-12-01T12:00:00.000Z');
   const fsrs = {
-    ...newReviewCard(new Date(headers['X-Now'])),
+    ...scheduleReview(newReviewCard(reviewedAt), reviewedAt, Rating.Good, 'UTC', false).card,
+    state: State.Review,
+    stability: 12,
+    difficulty: 5,
     due: dueAt,
     reps: 5,
     lapses: 2,
@@ -1628,7 +1632,7 @@ test('an all-correct quiz credits hard prerequisites and leaves soft prerequisit
   );
 });
 
-test('a passed quiz with a Hard dimension does not credit hard prerequisites', async () => {
+test('a passed quiz with a Hard dimension credits hard prerequisites', async () => {
   const hardCards = await Promise.all(
     ['linear-regression', 'gradient-descent', 'probability-basics'].map(createDuePrerequisiteCard),
   );
@@ -1657,18 +1661,84 @@ test('a passed quiz with a Hard dimension does not credit hard prerequisites', a
     .where(eq(reviewLogs.cardId, dimensionCard.id));
   expect(dimensionLog?.rating).toBe(String(Rating.Hard));
   for (const prerequisiteCard of hardCards) {
+    const [updated] = await db
+      .select()
+      .from(reviewCards)
+      .where(eq(reviewCards.id, prerequisiteCard.id));
+    if (!updated) throw new Error('Expected the hard-prerequisite card');
+    expect(updated.dueAt.getTime()).toBeGreaterThan(prerequisiteCard.dueAt.getTime());
+    expect(updated.lastReviewAt).toEqual(prerequisiteCard.lastReviewAt);
+    expect(updated.reps).toBe(prerequisiteCard.reps);
+    expect(updated.lapses).toBe(prerequisiteCard.lapses);
+    expect(
+      await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, prerequisiteCard.id)),
+    ).toHaveLength(0);
+  }
+});
+
+test('a passed quiz with any Again dimension does not credit hard prerequisites', async () => {
+  const runConceptId = 'activation-functions';
+  const prereqs =
+    content.conceptsById
+      .get(runConceptId)
+      ?.prereqs.filter((prereq) => prereq.strength === 'hard') ?? [];
+  const prerequisiteCards = await Promise.all(
+    prereqs.map((prereq) => createDuePrerequisiteCard(prereq.id)),
+  );
+  const run = await finishLessonSteps(undefined, runConceptId);
+  expect(run.status).toBe('quiz');
+  const started = await startQuiz(undefined, runConceptId);
+  expect(started.status).toBe(200);
+  const startedRun = (await started.json()).run;
+  const items = await db
+    .select()
+    .from(lessonQuizItems)
+    .where(eq(lessonQuizItems.quizAttemptId, startedRun.quiz.current.attemptId))
+    .orderBy(lessonQuizItems.position);
+  const byDimension = new Map<string, typeof items>();
+  for (const item of items) {
+    const dimension = content.exercisesById.get(item.exerciseId)?.dimension;
+    if (!dimension) throw new Error(`Missing dimension for ${item.exerciseId}`);
+    byDimension.set(dimension, [...(byDimension.get(dimension) ?? []), item]);
+  }
+  const againDimension = [...byDimension].sort(
+    (left, right) => left[1].length - right[1].length,
+  )[0]?.[0];
+  if (!againDimension) throw new Error('Expected at least one quiz dimension');
+  const [againItem] = byDimension.get(againDimension) ?? [];
+  if (!againItem) throw new Error('Expected an item for the Again-rated dimension');
+  for (const item of items) {
+    const answer =
+      item.id === againItem.id
+        ? wrongAnswer(item.exerciseId, item.seed)
+        : correctAnswer(item.exerciseId, item.seed);
+    const response = await answerQuizItem(item.id, answer, undefined, runConceptId);
+    expect(response.status).toBe(200);
+  }
+  const submitted = await submitQuiz(undefined, runConceptId);
+  expect(submitted.status).toBe(200);
+  const result = await submitted.json();
+  expect(result.run.quiz.last.passed).toBe(true);
+  const [againCard] = await db
+    .select()
+    .from(reviewCards)
+    .where(
+      and(
+        eq(reviewCards.userId, userId),
+        eq(reviewCards.conceptId, runConceptId),
+        eq(reviewCards.dimension, againDimension),
+      ),
+    );
+  if (!againCard) throw new Error('Expected the Again-rated quiz dimension');
+  const [againLog] = await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, againCard.id));
+  expect(againLog?.rating).toBe(String(Rating.Again));
+  for (const prerequisiteCard of prerequisiteCards) {
     const [unchanged] = await db
       .select()
       .from(reviewCards)
       .where(eq(reviewCards.id, prerequisiteCard.id));
-    if (!unchanged) throw new Error('Expected the hard-prerequisite card');
+    if (!unchanged) throw new Error('Expected the prerequisite card');
     expect(unchanged.dueAt).toEqual(prerequisiteCard.dueAt);
-    expect(unchanged.lastReviewAt).toEqual(prerequisiteCard.lastReviewAt);
-    expect(unchanged.reps).toBe(prerequisiteCard.reps);
-    expect(unchanged.lapses).toBe(prerequisiteCard.lapses);
-    expect(
-      await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, prerequisiteCard.id)),
-    ).toHaveLength(0);
   }
 });
 
@@ -1735,7 +1805,7 @@ test('a slow correct lesson quiz answer rates its dimension Hard and stores its 
   }
 });
 
-test('an all-correct quiz with a slow target answer does not credit hard prerequisites', async () => {
+test('an all-correct quiz with a slow target answer credits hard prerequisites as Hard', async () => {
   const hardCards = await Promise.all(
     ['linear-regression', 'gradient-descent'].map(createDuePrerequisiteCard),
   );
@@ -1801,15 +1871,15 @@ test('an all-correct quiz with a slow target answer does not credit hard prerequ
     expect(dimensionLog?.rating).toBe(String(Rating.Hard));
 
     for (const prerequisiteCard of hardCards) {
-      const [unchanged] = await db
+      const [updated] = await db
         .select()
         .from(reviewCards)
         .where(eq(reviewCards.id, prerequisiteCard.id));
-      if (!unchanged) throw new Error('Expected the hard-prerequisite card');
-      expect(unchanged.dueAt).toEqual(prerequisiteCard.dueAt);
-      expect(unchanged.lastReviewAt).toEqual(prerequisiteCard.lastReviewAt);
-      expect(unchanged.reps).toBe(prerequisiteCard.reps);
-      expect(unchanged.lapses).toBe(prerequisiteCard.lapses);
+      if (!updated) throw new Error('Expected the hard-prerequisite card');
+      expect(updated.dueAt.getTime()).toBeGreaterThan(prerequisiteCard.dueAt.getTime());
+      expect(updated.lastReviewAt).toEqual(prerequisiteCard.lastReviewAt);
+      expect(updated.reps).toBe(prerequisiteCard.reps);
+      expect(updated.lapses).toBe(prerequisiteCard.lapses);
       expect(
         await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, prerequisiteCard.id)),
       ).toHaveLength(0);

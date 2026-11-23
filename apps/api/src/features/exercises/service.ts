@@ -21,7 +21,7 @@ import { isDueToday, reviewActivityRating, scheduleReview } from '../../learning
 import { gradeExercise } from '../../learning/grading/index.js';
 import { rubricFeedbackWithScoredFlags } from '../../learning/grading/rubric-score.js';
 import { calculateCredit } from '../../learning/mastery.js';
-import { applyMastery, creditHardPrerequisites } from '../../learning/mastery-service.js';
+import { applyImplicitRepetitions, applyMastery } from '../../learning/mastery-service.js';
 import {
   bringWeakestPrerequisiteCardDueNow,
   canBringPrerequisiteDueNow,
@@ -68,6 +68,19 @@ function groupReviewExercisesByConcept(exerciseIds: string[], index: ContentInde
     groups.set(topicId, topicExerciseIds);
   }
   return [...groups].map(([topicId, exerciseIds]) => ({ topicId, exerciseIds }));
+}
+
+export function firstCompletesActivityConcept(
+  exerciseIds: string[],
+  previouslyAttemptedExerciseIds: string[],
+  attemptedExerciseIds: string[],
+) {
+  const previouslyAttempted = new Set(previouslyAttemptedExerciseIds);
+  const attempted = new Set(attemptedExerciseIds);
+  return (
+    exerciseIds.every((exerciseId) => attempted.has(exerciseId)) &&
+    !exerciseIds.every((exerciseId) => previouslyAttempted.has(exerciseId))
+  );
 }
 
 export async function getExercisesById(deps: FeatureServices, request: FeatureRequest) {
@@ -499,6 +512,7 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
     timeZone: request.timeZone,
   });
   if (body.data.mode === 'review' && !followUp) {
+    const implicitCreditAppliedConceptIds = new Set<string>();
     const [card] = await db
       .select()
       .from(reviewCards)
@@ -589,14 +603,53 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
               fsrsLog: scheduled.log,
               createdAt: now,
             });
-            if (rating === Rating.Good) {
-              await creditHardPrerequisites(db, {
-                userId: request.userId,
-                conceptId: card.conceptId,
-                index,
-                now,
-                timeZone: request.timeZone,
-              });
+            const conceptExerciseIds = activity.exerciseIds.filter(
+              (exerciseId) => index.exercisesById.get(exerciseId)?.concept === card.conceptId,
+            );
+            const conceptAttempts = await db
+              .select({ id: attempts.id, exerciseId: attempts.exerciseId })
+              .from(attempts)
+              .where(
+                and(
+                  eq(attempts.activityId, body.data.activityId),
+                  inArray(attempts.exerciseId, conceptExerciseIds),
+                ),
+              );
+            const attemptedExerciseIds = conceptAttempts.map((attempt) => attempt.exerciseId);
+            const previouslyAttemptedExerciseIds = conceptAttempts
+              .filter((attempt) => attempt.id !== attemptId)
+              .map((attempt) => attempt.exerciseId);
+            if (
+              !implicitCreditAppliedConceptIds.has(card.conceptId) &&
+              firstCompletesActivityConcept(
+                conceptExerciseIds,
+                previouslyAttemptedExerciseIds,
+                attemptedExerciseIds,
+              )
+            ) {
+              const conceptReviewLogs = await db
+                .select({ rating: reviewLogs.rating })
+                .from(reviewLogs)
+                .innerJoin(attempts, eq(reviewLogs.attemptId, attempts.id))
+                .innerJoin(reviewCards, eq(reviewLogs.cardId, reviewCards.id))
+                .where(
+                  and(
+                    eq(attempts.activityId, body.data.activityId),
+                    eq(reviewCards.conceptId, card.conceptId),
+                  ),
+                );
+              const ratings = conceptReviewLogs.map(({ rating }) => Number(rating));
+              if (ratings.length > 0) {
+                await applyImplicitRepetitions(db, {
+                  userId: request.userId,
+                  conceptId: card.conceptId,
+                  rating: Math.min(...ratings) as Rating,
+                  index,
+                  now,
+                  timeZone: request.timeZone,
+                });
+                implicitCreditAppliedConceptIds.add(card.conceptId);
+              }
             }
             if (rating === Rating.Again && previousLog?.rating === String(Rating.Again)) {
               const hardPrerequisiteIds =
