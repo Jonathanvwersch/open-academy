@@ -12,7 +12,8 @@ afterAll(async () => {
 });
 
 test('diligent and graph-change Mathematics for ML runs produce structured reports', async () => {
-  const report = await simulateLearners(db, await loadContent(), {
+  const content = await loadContent();
+  const report = await simulateLearners(db, content, {
     profiles: ['diligent', 'graph-change'],
     days: 45,
     courseIds: ['maths-for-ml'],
@@ -28,6 +29,18 @@ test('diligent and graph-change Mathematics for ML runs produce structured repor
       },
     ],
   });
+  const diligent = report.profiles.find((profile) => profile.profile === 'diligent');
+  const first30Days = diligent?.dailyStats.filter((stats) => stats.day <= 30) ?? [];
+  expect(first30Days.some((stats) => stats.reviews > 0)).toBe(true);
+  expect(
+    first30Days.reduce((total, stats) => total + stats.newTopicsCompleted, 0),
+  ).toBeGreaterThanOrEqual(10);
+  const struggling = await simulateLearners(db, content, {
+    profiles: ['struggling'],
+    days: 12,
+    courseIds: ['maths-for-ml'],
+  });
+  expect(struggling.profiles[0]?.dailyStats.some((stats) => stats.reviews > 0)).toBe(true);
   for (const profile of report.profiles) {
     expect(profile.daysSimulated).toBeLessThanOrEqual(45);
     expect(profile.dailyStats).toEqual(expect.any(Array));

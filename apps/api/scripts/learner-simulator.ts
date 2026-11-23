@@ -39,6 +39,7 @@ export interface SimulationViolation {
   conceptId?: string;
   projectId?: string;
   missingAncestors: string[];
+  startable?: boolean;
   details?: string;
 }
 
@@ -142,6 +143,7 @@ interface ProfileRuntime {
   violationKeys: Set<string>;
   offeredProjectKeys: Set<string>;
   lastPracticed: Map<string, number>;
+  choiceStartability: Map<string, boolean>;
   answered: number;
   wrongAnswers: number;
 }
@@ -446,7 +448,10 @@ function addViolation(
   invariant: InvariantId,
   entityId: string,
   missingAncestors: string[],
-  fields: Pick<SimulationViolation, 'courseId' | 'conceptId' | 'projectId' | 'details'> = {},
+  fields: Pick<
+    SimulationViolation,
+    'courseId' | 'conceptId' | 'projectId' | 'startable' | 'details'
+  > = {},
 ) {
   const key = `${day}|${invariant}|${entityId}|${fields.details ?? ''}`;
   if (runtime.violationKeys.has(key)) return;
@@ -543,7 +548,26 @@ function auditCoursePage(
   }
 }
 
-function auditHome(
+async function choiceIsStartable(
+  api: SimulatedApi,
+  now: Date,
+  sessionKind: TodayPayload['sessionKind'],
+  conceptId: string,
+): Promise<boolean> {
+  const result = await api.call('POST', '/sessions', now, {
+    kind: sessionKind,
+    focusConceptId: conceptId,
+  });
+  if (!result.ok) return false;
+  const sessionId = text(object(result.data).id);
+  if (!sessionId) throw new Error(`Focused session for ${conceptId} returned no id`);
+  await api.require('POST', `/sessions/${sessionId}/end`, now);
+  return true;
+}
+
+async function auditHome(
+  api: SimulatedApi,
+  now: Date,
   runtime: ProfileRuntime,
   day: number,
   courseId: string | undefined,
@@ -563,18 +587,32 @@ function auditHome(
   const taskLessons = learn.tasks
     .filter((task) => task.conceptId && ['Lesson', 'Practice', 'Quiz'].includes(task.label))
     .map((task) => task.conceptId as string);
-  const upcomingLessons = list(object(learn.upNext).upcoming)
-    .map((item) => text(object(item).conceptId))
-    .filter((conceptId): conceptId is string => Boolean(conceptId));
-  const choices = learn.choices.map((choice) => choice.conceptId);
   checkLessonReadiness(
     runtime,
     day,
     courseId,
-    [...plannedLessons, ...taskLessons, ...upcomingLessons, ...choices],
+    [...plannedLessons, ...taskLessons],
     progress,
     content,
   );
+  for (const choice of learn.choices) {
+    const missing = hardAncestorClosure([choice.conceptId], content, false).filter(
+      (ancestorId) => !isDone(ancestorId, progress, content),
+    );
+    if (missing.length === 0) continue;
+    const cacheKey = `${choice.conceptId}|${missing.join(',')}`;
+    let startable = runtime.choiceStartability.get(cacheKey);
+    if (startable === undefined) {
+      startable = await choiceIsStartable(api, now, today.sessionKind, choice.conceptId);
+      runtime.choiceStartability.set(cacheKey, startable);
+    }
+    addViolation(runtime, day, 'P1', choice.conceptId, missing, {
+      ...(courseId ? { courseId } : {}),
+      conceptId: choice.conceptId,
+      startable,
+      details: 'listed as a Home lesson choice',
+    });
+  }
   for (const activity of planActivities) {
     if (activity.projectId) {
       checkProjectReadiness(runtime, day, activity.projectId, courseId, progress, content);
@@ -1125,22 +1163,42 @@ async function processActivity(
   }
   if (activity.kind === 'review') {
     const progress = await readProgress(db, api.userId ?? '');
-    for (const exerciseId of exerciseIds) {
-      const conceptId = content.exercisesById.get(exerciseId)?.concept;
-      if (conceptId) await auditP4(runtime, day, courseId, conceptId, progress, content);
-      await attemptExercise(
-        api,
-        content,
-        runtime,
-        now,
-        day,
-        courseId,
-        sessionId,
-        activity.id,
-        exerciseId,
-        'review',
+    const attemptedExerciseIds = new Set<string>();
+    let pendingExerciseIds = exerciseIds;
+    while (true) {
+      for (const exerciseId of pendingExerciseIds) {
+        if (attemptedExerciseIds.has(exerciseId)) continue;
+        attemptedExerciseIds.add(exerciseId);
+        const conceptId = content.exercisesById.get(exerciseId)?.concept;
+        if (conceptId) await auditP4(runtime, day, courseId, conceptId, progress, content);
+        await attemptExercise(
+          api,
+          content,
+          runtime,
+          now,
+          day,
+          courseId,
+          sessionId,
+          activity.id,
+          exerciseId,
+          'review',
+        );
+        reviewAttempts += 1;
+      }
+      const session = object(await api.require('GET', `/sessions/${sessionId}`, now));
+      const currentActivity = list(session.activities)
+        .map((item) => object(item))
+        .find((item) => item.id === activity.id);
+      if (!currentActivity) {
+        throw new Error(`Review activity ${activity.id} disappeared from session ${sessionId}`);
+      }
+      pendingExerciseIds = list(currentActivity.exerciseIds).filter(
+        (exerciseId): exerciseId is string => typeof exerciseId === 'string',
       );
-      reviewAttempts += 1;
+      pendingExerciseIds = pendingExerciseIds.filter(
+        (exerciseId) => !attemptedExerciseIds.has(exerciseId),
+      );
+      if (pendingExerciseIds.length === 0) break;
     }
     await completeActivity(api, now, sessionId, activity);
     return { lessons: 0, reviews: 1, reviewAttempts };
@@ -1265,7 +1323,7 @@ async function maybeSwitchGraphContent(
     api.require<LearnPayload>('GET', '/learn', now),
     fetchCoursePage(api, now, graphCourseId),
   ]);
-  auditHome(runtime, day, courseId, today, learn, progress, realContent);
+  await auditHome(api, now, runtime, day, courseId, today, learn, progress, realContent);
   auditCoursePage(runtime, day, graphCourseId, page, progress, realContent);
   return realContent;
 }
@@ -1336,6 +1394,7 @@ async function simulateProfile(
     violationKeys: new Set(),
     offeredProjectKeys: new Set(),
     lastPracticed: new Map(),
+    choiceStartability: new Map(),
     answered: 0,
     wrongAnswers: 0,
   };
@@ -1400,7 +1459,7 @@ async function simulateProfile(
       const userId = api.userId;
       if (!userId) throw new Error('Simulation API did not create a learner');
       const progress = await readProgress(db, userId);
-      auditHome(runtime, day, courseId, today, learn, progress, activeContent);
+      await auditHome(api, now, runtime, day, courseId, today, learn, progress, activeContent);
       const pageBefore = await fetchCoursePage(api, now, courseId);
       auditCoursePage(runtime, day, courseId, pageBefore, progress, activeContent);
       for (const unit of pageBefore.units) {
@@ -1448,6 +1507,43 @@ async function simulateProfile(
           daily.reviewAttempts += result.reviewAttempts;
         }
         await api.require('POST', `/sessions/${sessionId}/end`, now);
+      }
+      if (!skip && daily.lessons + daily.reviews === 0) {
+        const refreshedLearn = await api.require<LearnPayload>('GET', '/learn', now);
+        const choice = refreshedLearn.choices[0];
+        if (choice) {
+          const focusedSession = object(
+            await api.require('POST', '/sessions', now, {
+              kind: today.sessionKind,
+              focusConceptId: choice.conceptId,
+            }),
+          );
+          const focusedSessionId = text(focusedSession.id);
+          if (!focusedSessionId) {
+            throw new Error(`Focused session for ${choice.conceptId} returned no id`);
+          }
+          const focusedActivities = list(focusedSession.activities).map(
+            (activity) => object(activity) as unknown as SimActivity,
+          );
+          auditSession(runtime, day, courseId, focusedActivities, progress, activeContent);
+          for (const activity of focusedActivities) {
+            const result = await processActivity(
+              api,
+              db,
+              activeContent,
+              runtime,
+              now,
+              day,
+              courseId,
+              focusedSessionId,
+              activity,
+            );
+            daily.lessons += result.lessons;
+            daily.reviews += result.reviews;
+            daily.reviewAttempts += result.reviewAttempts;
+          }
+          await api.require('POST', `/sessions/${focusedSessionId}/end`, now);
+        }
       }
       const pageAfter = await fetchCoursePage(api, now, courseId);
       daily.newTopicsCompleted = newTopicsCompleted(pageBefore, pageAfter);
@@ -1540,9 +1636,16 @@ export async function simulateLearners(
 ): Promise<LearnerSimulationReport> {
   const startedAt = performance.now();
   const profiles: ProfileSimulationReport[] = [];
-  for (const profile of options.profiles) {
-    options.onProgress?.(`Starting ${profile}`);
-    profiles.push(await simulateProfile(db, content, options, profile));
+  const previousNodeEnv = process.env.NODE_ENV;
+  process.env.NODE_ENV = 'test';
+  try {
+    for (const profile of options.profiles) {
+      options.onProgress?.(`Starting ${profile}`);
+      profiles.push(await simulateProfile(db, content, options, profile));
+    }
+  } finally {
+    if (previousNodeEnv === undefined) delete process.env.NODE_ENV;
+    else process.env.NODE_ENV = previousNodeEnv;
   }
   return {
     generatedAt: new Date().toISOString(),
@@ -1564,9 +1667,13 @@ function exampleText(violation: SimulationViolation): string {
     violation.missingAncestors.length > 0
       ? `; missing ancestors: ${violation.missingAncestors.join(', ')}`
       : '';
+  const startable =
+    violation.startable === undefined
+      ? ''
+      : `; API startable: ${violation.startable ? 'yes' : 'no'}`;
   const context = violation.courseId ? ` in ${violation.courseId}` : '';
   const details = violation.details ? ` (${violation.details})` : '';
-  return `Day ${violation.day}: \`${violation.entityId}\`${context}${missing}${details}`;
+  return `Day ${violation.day}: \`${violation.entityId}\`${context}${missing}${startable}${details}`;
 }
 
 export function renderMarkdownReport(report: LearnerSimulationReport): string {
