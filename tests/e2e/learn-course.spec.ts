@@ -757,6 +757,7 @@ test('stub projects have no lab link or results form', async ({ page }) => {
   });
 
   await page.goto(`/session/${session.id}`);
+  await expect(page.getByRole('heading', { name: 'Session complete' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Optimization playground' })).toHaveCount(0);
   await expect(page.getByRole('link', { name: 'Open project' })).toHaveCount(0);
 
