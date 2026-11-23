@@ -162,8 +162,8 @@ knowledge_points:
       4. **Apply the sigmoid.** This is the chance the implicit rewards give that $y_w$ is preferred.
          $$\sigma(1)=\frac{1}{1+e^{-1}}\approx\frac{1}{1.368}\approx0.731.$$
 
-      5. **Take minus the natural log.** This is the loss for the pair.
-         $$L_{\text{DPO}}=-\ln0.731\approx0.313.$$
+      5. **Take minus the natural log.** This is the loss for the pair. Since $\sigma(1)=1/1.368$, minus its log is the log of the denominator, so we don't need the rounded $0.731$.
+         $$L_{\text{DPO}}=-\ln\frac{1}{1.368}=\ln1.368\approx0.313.$$
 
       The loss is below the starting value $\ln2\approx0.693$, because the policy already raises the chosen poem and lowers the rejected one compared with the reference.
     problems:

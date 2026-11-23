@@ -621,6 +621,7 @@ exercises:
         step: 0.2
     constraints:
       - a != b
+      - mod(round(1000*beta*(1 - 1/(1 + exp(-beta*(a - b))))), 10) != 0
     answer_expr: -beta*(1 - 1/(1 + exp(-beta*(a - b))))
     tolerance:
       abs: 0.001
@@ -917,7 +918,7 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: To see how far DPO training moved a policy, we compare it with the reference model on a prompt with two possible replies. The reference gives them probabilities ${{=q}}$ and ${{=1-q}}$, and after training the policy gives them ${{=p}}$ and ${{=1-p}}$. What is $\mathrm{KL}(\pi_\theta\Vert\pi_{\text{ref}})$ in nats? Give three decimals.
+    prompt: To see how far a trained policy has moved from the reference model, we compare the two on a prompt with two possible replies. The reference gives them probabilities ${{=q}}$ and ${{=1-q}}$, and after training the policy gives them ${{=p}}$ and ${{=1-p}}$. What is $\mathrm{KL}(\pi_\theta\Vert\pi_{\text{ref}})$ in nats? Give three decimals.
     params:
       p:
         min: 0.1
