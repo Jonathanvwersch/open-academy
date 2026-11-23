@@ -75,7 +75,7 @@ knowledge_points:
       2. **Take the log of the product.** We round to two decimals.
          $$\ln\pi_\theta(y\mid x)=\ln0.36\approx-1.02.$$
 
-      3. **Add the token log-probabilities instead.** The log of a product is the sum of the logs, so this gives the same answer.
+      3. **Add the token log-probabilities.** The log of a product equals the sum of the exact logs. Here the rounded logs also add to $-1.02$. In other examples, rounding each log first can shift the last digit.
          $$\begin{aligned}&\ln0.5+\ln0.8+\ln0.9\\&\approx-0.69-0.22-0.11\\&=-1.02.\end{aligned}$$
 
       4. **Add up the rewards.** The first two tokens get $0$ and the last gets the reward model's score, $2.5$. With $\gamma=1$, the return from the first token is their sum.
