@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test';
 import { eq } from 'drizzle-orm';
 import { env } from '../../apps/api/src/config.js';
+import { loadContent } from '../../apps/api/src/content/load.js';
+import { instantiateExercise, isTemplate } from '../../apps/api/src/content/templates.js';
 import { createDb } from '../../apps/api/src/db/client.js';
 import {
   courseEnrollments,
@@ -99,6 +101,28 @@ async function insertReviewCards() {
       lapses: card.lapses,
     });
   }
+}
+
+function correctAnswerForExercise(
+  content: Awaited<ReturnType<typeof loadContent>>,
+  exerciseId: string,
+): unknown {
+  const indexed = content.exercisesById.get(exerciseId);
+  if (!indexed) throw new Error(`Missing exercise ${exerciseId}`);
+  const exercise = isTemplate(indexed) ? instantiateExercise(indexed, 0).exercise : indexed;
+  if (exercise.type === 'mc') {
+    const correct = exercise.options.filter((option) => option.correct).map((option) => option.id);
+    return exercise.multi ? correct : correct[0];
+  }
+  if ('answer' in exercise) return exercise.answer;
+  if ('accept' in exercise) return exercise.accept[0];
+  if (exercise.type === 'explain') {
+    return {
+      text: exercise.exemplar,
+      metCriteria: exercise.rubric.map(({ id }) => id),
+    };
+  }
+  throw new Error(`No test answer for ${exercise.id}`);
 }
 
 test('Reviews page shows due and upcoming topics at desktop and mobile widths', async ({
@@ -230,6 +254,44 @@ test('mixed reviews show their topics on Home and beside each session question',
   await page.getByRole('button', { name: 'Start learning' }).click();
   await expect(page.getByRole('heading', { name: 'Mixed review' })).toBeVisible();
   await expect(page.getByText(/^From:/)).toBeVisible();
+  const sessionId = new URL(page.url()).pathname.split('/').at(-1);
+  if (!sessionId) throw new Error('Could not get the session ID');
+  const activities = await db
+    .select()
+    .from(sessionActivities)
+    .where(eq(sessionActivities.sessionId, sessionId));
+  const reviewActivity = activities.find((activity) => activity.kind === 'review');
+  if (!reviewActivity) throw new Error('Could not find the mixed review activity');
+  const exerciseIds = reviewActivity.exerciseIds;
+  const content = await loadContent('tests/fixtures/content');
+  const remainingAnswers = exerciseIds.slice(0, -1).map((exerciseId) => ({
+    exerciseId,
+    answer: correctAnswerForExercise(content, exerciseId),
+  }));
+  const lastExercise = content.exercisesById.get(exerciseIds.at(-1) ?? '');
+  const lastTopicTitle = lastExercise
+    ? content.conceptsById.get(lastExercise.concept)?.title
+    : undefined;
+  if (!lastTopicTitle) throw new Error('Could not find the last review topic');
+  const answerStatuses = await page.evaluate(
+    async ({ activityId, answers }) => {
+      const statuses: number[] = [];
+      for (const { exerciseId, answer } of answers) {
+        const response = await fetch('/api/attempts', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ exerciseId, activityId, answer, mode: 'review' }),
+        });
+        statuses.push(response.status);
+      }
+      return statuses;
+    },
+    { activityId: reviewActivity.id, answers: remainingAnswers },
+  );
+  expect(answerStatuses).toEqual(remainingAnswers.map(() => 200));
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Mixed review' })).toBeVisible();
+  await expect(page.getByText(`From: ${lastTopicTitle}`)).toBeVisible();
   await page.screenshot({
     path: testInfo.outputPath('session-desktop.png'),
     fullPage: true,

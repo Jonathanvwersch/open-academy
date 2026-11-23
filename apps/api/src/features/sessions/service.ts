@@ -56,6 +56,7 @@ function withReviewTopics<T extends { kind: string; exerciseIds: string[]; statu
   return {
     ...activity,
     reviewTopics: reviewTopicsForActivity(activity, index, attemptedExerciseIds),
+    allReviewTopics: reviewTopicsForActivity(activity, index),
   };
 }
 

@@ -615,8 +615,9 @@ export function SessionPage() {
     );
   }
   const reviewTopics = activity.reviewTopics ?? [];
-  const isMixedReview = activity.kind === 'review' && reviewTopics.length >= 2;
-  const reviewTopicTitles = reviewTopics.map((topic) => topic.title).join(', ');
+  const headerTopics = activity.allReviewTopics ?? reviewTopics;
+  const isMixedReview = activity.kind === 'review' && headerTopics.length >= 2;
+  const reviewTopicTitles = headerTopics.map((topic) => topic.title).join(', ');
   if (showingRequestedCompletedActivity) {
     const title = isMixedReview
       ? 'Mixed review'
@@ -928,7 +929,7 @@ export function SessionPage() {
                 <p className="text-sm text-muted-foreground">
                   From:{' '}
                   {
-                    reviewTopics.find((topic) => topic.conceptId === exerciseQuery.data?.concept)
+                    headerTopics.find((topic) => topic.conceptId === exerciseQuery.data?.concept)
                       ?.title
                   }
                 </p>
