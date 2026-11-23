@@ -2389,6 +2389,83 @@ test('lesson-runner schedules one due review per concept, then reschedules it', 
   ).toBe(false);
 });
 
+test('session details keep all mixed review topics when only one topic remains', async () => {
+  await resetLearner();
+  await enrollDefaultCourse();
+  await db
+    .update(users)
+    .set({ prefs: { scheduleMinutes: 180 } })
+    .where(eq(users.id, userId));
+  const originalDueAt = new Date('2025-12-31T00:00:00.000Z');
+  for (const conceptId of ['vectors', 'linear-models']) {
+    await db.insert(reviewCards).values({
+      userId,
+      conceptId,
+      dimension: 'math',
+      fsrs: newReviewCard(new Date(now)),
+      dueAt: originalDueAt,
+      reps: 1,
+      lapses: 0,
+    });
+  }
+
+  const sessionResponse = await app.request('/api/sessions', {
+    method: 'POST',
+    headers: headersAt(now),
+    body: JSON.stringify({ budgetMinutes: 180 }),
+  });
+  expect(sessionResponse.status).toBe(201);
+  const session = (await sessionResponse.json()) as {
+    id: string;
+    activities: Array<{ id: string; kind: string; exerciseIds: string[] }>;
+  };
+  const activity = session.activities.find((item) => item.kind === 'review');
+  if (!activity) throw new Error('Could not find a mixed review activity');
+  const exerciseConcepts = activity.exerciseIds.map(
+    (exerciseId) => content.exercisesById.get(exerciseId)?.concept,
+  );
+  expect(
+    new Set(exerciseConcepts.filter((concept): concept is string => Boolean(concept))).size,
+  ).toBeGreaterThanOrEqual(2);
+  const lastExerciseId = activity.exerciseIds.at(-1);
+  if (!lastExerciseId) throw new Error('The mixed review has no questions');
+  const lastConceptId = content.exercisesById.get(lastExerciseId)?.concept;
+  if (!lastConceptId) throw new Error(`Missing content for ${lastExerciseId}`);
+
+  for (const exerciseId of activity.exerciseIds.slice(0, -1)) {
+    const response = await app.request('/api/attempts', {
+      method: 'POST',
+      headers: headersAt(now),
+      body: JSON.stringify({
+        exerciseId,
+        activityId: activity.id,
+        answer: correctAnswer(exerciseId, null),
+        mode: 'review',
+      }),
+    });
+    expect(response.status).toBe(200);
+  }
+
+  const sessionDetailsResponse = await app.request(`/api/sessions/${session.id}`, {
+    headers: headersAt(now),
+  });
+  expect(sessionDetailsResponse.status).toBe(200);
+  const sessionDetails = (await sessionDetailsResponse.json()) as {
+    activities: Array<{
+      id: string;
+      reviewTopics?: Array<{ conceptId: string; title: string }>;
+      allReviewTopics?: Array<{ conceptId: string; title: string }>;
+    }>;
+  };
+  const updatedActivity = sessionDetails.activities.find((item) => item.id === activity.id);
+  expect(updatedActivity?.reviewTopics).toHaveLength(1);
+  expect(updatedActivity?.reviewTopics?.map((topic) => topic.conceptId)).toEqual([lastConceptId]);
+  expect(updatedActivity?.allReviewTopics?.map((topic) => topic.conceptId)).toEqual(
+    expect.arrayContaining(['vectors', 'linear-models']),
+  );
+  expect(updatedActivity?.allReviewTopics).toHaveLength(2);
+});
+
 test('mixed review rates and logs each topic after its own questions are answered', async () => {
   await resetLearner();
   const topicExercises = (conceptId: string) =>
