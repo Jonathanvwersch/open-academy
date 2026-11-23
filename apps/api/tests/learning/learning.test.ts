@@ -1715,6 +1715,63 @@ test.each([
   },
 );
 
+test('remediation reviews outrank competing due reviews when the budget fits one', () => {
+  const state = studyState(['fixture-course']);
+  state.lessonRuns = [
+    {
+      conceptId: 'gradient-descent',
+      status: 'needs_retry',
+      retryAfter: new Date(now.getTime() - 1_000),
+    },
+  ];
+  state.remediationFlags = [{ conceptId: 'gradient-descent', targetPrereqId: 'gradients' }];
+  state.cards = ['gradients', 'vectors'].map((conceptId) => {
+    const dimension = required(content.conceptsById.get(conceptId), conceptId).dimensions[0];
+    if (!dimension) throw new Error(`Missing ${conceptId} dimension`);
+    return {
+      conceptId,
+      dimension,
+      dueAt:
+        conceptId === 'gradients'
+          ? new Date(now.getTime() + 10 * 24 * 60 * 60 * 1_000).toISOString()
+          : now.toISOString(),
+    };
+  });
+
+  const generousPlan = planSession(state, content, now, 600);
+  const minutesByConcept = new Map<string, number>();
+  for (const activity of generousPlan.activities) {
+    if (activity.kind !== 'review') continue;
+    for (const exerciseId of activity.exerciseIds) {
+      const exercise = content.exercisesById.get(exerciseId);
+      if (!exercise) continue;
+      minutesByConcept.set(
+        exercise.concept,
+        (minutesByConcept.get(exercise.concept) ?? 0) + exercise.est_minutes,
+      );
+    }
+  }
+  const remediationMinutes = minutesByConcept.get('gradients') ?? 0;
+  const competingMinutes = minutesByConcept.get('vectors') ?? 0;
+  const oneReviewBudget = Math.max(remediationMinutes, competingMinutes);
+  expect(remediationMinutes).toBeGreaterThan(0);
+  expect(competingMinutes).toBeGreaterThan(0);
+  expect(remediationMinutes + competingMinutes).toBeGreaterThan(oneReviewBudget);
+
+  const plan = planSession(state, content, now, oneReviewBudget);
+  const selectedReviewConcepts = new Set(
+    plan.activities
+      .filter((activity) => activity.kind === 'review')
+      .flatMap((activity) =>
+        activity.exerciseIds.flatMap((exerciseId) => {
+          const conceptId = content.exercisesById.get(exerciseId)?.concept;
+          return conceptId ? [conceptId] : [];
+        }),
+      ),
+  );
+  expect(selectedReviewConcepts).toEqual(new Set(['gradients']));
+});
+
 test('a needs-retry lesson before retryAfter is not a candidate', () => {
   const state = emptyState();
   state.lessonRuns = [
