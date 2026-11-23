@@ -65,6 +65,7 @@ function selectionRow(
 function derive(
   lesson: { knowledge_points?: readonly ReturnType<typeof point>[] },
   problems: readonly LessonProblemRow[],
+  attempt = 1,
 ) {
   const exercises = new Map(
     problems.map((problem) => [
@@ -74,19 +75,27 @@ function derive(
       },
     ]),
   );
-  return deriveLessonState(lesson, problems, exercises);
+  return deriveLessonState(lesson, problems, exercises, undefined, attempt);
 }
 
 test('basics-inclusive streaks match the reference for every right/wrong sequence of lengths 1–6', () => {
   function reference(sequence: number[]) {
     let streak = 0;
     let answered = 0;
+    let misses = 0;
     for (const correct of sequence) {
       answered += 1;
       streak = correct === 1 ? streak + 1 : 0;
       if (streak === 2) return { status: 'passed', answered, streak: 2 };
+      if (correct < 1) misses += 1;
+      if (misses === 3) break;
     }
-    return { status: 'active', answered, streak };
+    return {
+      status: 'active',
+      answered,
+      streak,
+      ...(misses === 3 ? { halted: true } : {}),
+    };
   }
 
   for (let length = 1; length <= 6; length += 1) {
@@ -96,9 +105,11 @@ test('basics-inclusive streaks match the reference for every right/wrong sequenc
         lesson,
         sequence.map((correct, index) => row(index + 1, correct)),
       );
-      expect(state.points[0]).toMatchObject(reference(sequence));
-      expect(state.points[0]?.status).toBe(reference(sequence).status);
-      expect(state.status).toBe(reference(sequence).status === 'passed' ? 'quiz' : 'in_progress');
+      const { halted, ...pointExpectation } = reference(sequence);
+      expect(state.points[0]).toMatchObject(pointExpectation);
+      expect(state.points[0]?.status).toBe(pointExpectation.status);
+      expect(state.status).toBe(pointExpectation.status === 'passed' ? 'quiz' : 'in_progress');
+      expect(Boolean(state.halted)).toBe(halted ?? false);
     }
   }
 });
@@ -177,15 +188,45 @@ test('only a score of exactly one contributes to the streak', () => {
   expect(state.points[0]).toMatchObject({ status: 'active', answered: 2, streak: 0 });
 });
 
-test('five or more misses do not fail an active step', () => {
-  const state = derive(
-    lesson,
-    Array.from({ length: 7 }, (_, index) => row(index + 1, 0)),
-  );
+test('the third miss halts an active step', () => {
+  const state = derive(lesson, [row(1, 0), row(2, 0), row(3, 0)]);
   expect(state).toMatchObject({
     status: 'in_progress',
-    points: [{ status: 'active', round: 1, answered: 7, streak: 0 }],
+    halted: { pointId: 'kp', index: 0 },
+    points: [{ status: 'active', round: 1, answered: 3, streak: 0 }],
   });
+});
+
+test('one miss followed by two correct answers passes without a halt', () => {
+  const state = derive(lesson, [row(1, 0), row(2, 1), row(3, 1)]);
+  expect(state).toMatchObject({
+    status: 'quiz',
+    points: [{ status: 'passed', answered: 3, streak: 2 }],
+  });
+  expect(state.halted).toBeUndefined();
+});
+
+test('a new attempt ignores all prior-attempt problem rows', () => {
+  const state = derive(lesson, [row(1, 1, 'kp', 1), row(2, 1, 'kp', 1), row(1, 0, 'kp', 2)], 2);
+  expect(state).toMatchObject({
+    status: 'in_progress',
+    points: [{ status: 'active', round: 2, answered: 1, streak: 0 }],
+  });
+  expect(state.halted).toBeUndefined();
+});
+
+test('practice-only and recall misses never halt a lesson step', () => {
+  const practiceRows = [row(1, 0), row(2, 0), row(3, 0)].map((problem) => ({
+    ...problem,
+    practiceOnly: true,
+  }));
+  expect(derive(lesson, practiceRows).halted).toBeUndefined();
+
+  const recallRows = [row(1, 0), row(2, 0), row(3, 0)];
+  const recallExercises = new Map(
+    recallRows.map((problem) => [problem.exerciseId, { role: 'recall' as const }]),
+  );
+  expect(deriveLessonState(lesson, recallRows, recallExercises).halted).toBeUndefined();
 });
 
 test('last answered uses answer time, then authored point order, round and position', () => {
@@ -195,12 +236,16 @@ test('last answered uses answer time, then authored point order, round and posit
     servedAt: tiedAt,
     answeredAt: tiedAt,
   });
-  const state = derive({ knowledge_points: [point('first', ['a']), point('second', ['b'])] }, [
-    tiedRow('first', 9, 99),
-    tiedRow('second', 1, 1),
-    tiedRow('second', 2, 1),
-    tiedRow('second', 2, 2),
-  ]);
+  const state = derive(
+    { knowledge_points: [point('first', ['a']), point('second', ['b'])] },
+    [
+      tiedRow('first', 9, 99),
+      tiedRow('second', 1, 1),
+      tiedRow('second', 2, 1),
+      tiedRow('second', 2, 2),
+    ],
+    2,
+  );
   expect(state.lastAnswered).toMatchObject({
     knowledgePointId: 'second',
     round: 2,
@@ -537,7 +582,7 @@ test('template fallback follows difficulty and favors the least-served tied temp
   ).toEqual({ exerciseId: 'template-d2-second', seed: 105, position: 5 });
 });
 
-test('a legacy five-answer round continues in place without failing the step', () => {
+test('legacy rows halt after three misses in the current attempt', () => {
   const multiPointLesson = {
     knowledge_points: [point('first', ['a', 'b']), point('second', ['c', 'd'])],
   };
@@ -557,8 +602,9 @@ test('a legacy five-answer round continues in place without failing the step', (
     currentPointId: 'second',
     points: [
       { status: 'passed', round: 1 },
-      { status: 'active', round: 1, answered: 5 },
+      { status: 'active', round: 1, answered: 3 },
     ],
+    halted: { pointId: 'second', index: 1 },
   });
 });
 

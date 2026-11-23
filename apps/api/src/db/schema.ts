@@ -192,6 +192,11 @@ export const lessonRuns = pgTable(
     updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
     completedAt: timestamp('completed_at', { withTimezone: true, mode: 'date' }),
     quizPassedAt: timestamp('quiz_passed_at', { withTimezone: true, mode: 'date' }),
+    attempt: integer('attempt').notNull().default(1),
+    haltedAt: timestamp('halted_at', { withTimezone: true, mode: 'date' }),
+    retryAfter: timestamp('retry_after', { withTimezone: true, mode: 'date' }),
+    haltedPointIndex: integer('halted_point_index'),
+    haltCount: integer('halt_count').notNull().default(0),
   },
   (table) => [
     uniqueIndex('lesson_runs_user_concept_unique').on(table.userId, table.conceptId),

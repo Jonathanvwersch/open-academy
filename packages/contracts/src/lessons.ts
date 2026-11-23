@@ -43,6 +43,11 @@ export interface LessonRunPayload {
     id: string;
     needsProgressSync?: boolean;
     status: 'in_progress' | 'needs_retry' | 'quiz' | 'completed';
+    halted?: { pointId: string; index: number };
+    retry?: {
+      after: string | null;
+      reviewFirst: Array<{ id: string; title: string }>;
+    };
     where_this_fits?: string;
     prerequisites?: LessonPrerequisite[];
     points: Array<{

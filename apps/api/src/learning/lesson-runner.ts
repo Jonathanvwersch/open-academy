@@ -30,9 +30,12 @@ export interface DerivedLessonState<Row extends LessonProblemRow = LessonProblem
   status: LessonRunStatus;
   points: LessonPointState<Row>[];
   currentPointId?: string;
+  halted?: { pointId: string; index: number };
   pending?: Row;
   lastAnswered?: Row;
 }
+
+export const LESSON_HALT_MISSES = 3;
 
 export const XP_BY_PROBLEMS_USED = {
   2: 10,
@@ -74,11 +77,15 @@ export function deriveLessonState<Row extends LessonProblemRow>(
   problems: readonly Row[],
   exercises: ReadonlyMap<string, Pick<Exercise, 'role'>>,
   quizPassedAt?: Date | null,
+  attempt = 1,
 ): DerivedLessonState<Row> {
   const knowledgePoints = lesson.knowledge_points ?? [];
   const currentIds = new Set(knowledgePoints.map((point) => point.id));
   const progressionProblems = problems.filter(
-    (problem) => !problem.practiceOnly && exercises.get(problem.exerciseId)?.role !== 'recall',
+    (problem) =>
+      problem.round === attempt &&
+      !problem.practiceOnly &&
+      exercises.get(problem.exerciseId)?.role !== 'recall',
   );
   const currentProblems = progressionProblems.filter((problem) =>
     currentIds.has(problem.knowledgePointId),
@@ -86,20 +93,26 @@ export function deriveLessonState<Row extends LessonProblemRow>(
   const pointStates: LessonPointState<Row>[] = [];
   let blocked = false;
   let currentPointId: string | undefined;
+  let halted: DerivedLessonState<Row>['halted'];
 
-  for (const point of knowledgePoints) {
+  for (const [index, point] of knowledgePoints.entries()) {
     const rows = currentProblems.filter((problem) => problem.knowledgePointId === point.id);
-    const round = Math.max(1, ...rows.map((problem) => problem.round));
-    const currentRound = orderedRows(rows.filter((problem) => problem.round === round));
+    const currentRound = orderedRows(rows);
     const answered = currentRound.filter((problem) => problem.answeredAt !== null);
     let streak = 0;
     let passedOn: Row | undefined;
     let answeredCount = 0;
+    let misses = 0;
     for (const problem of answered) {
       answeredCount += 1;
       streak = problem.correct === 1 ? streak + 1 : 0;
       if (streak === 2) {
         passedOn = problem;
+        break;
+      }
+      if (problem.correct !== null && problem.correct < 1) misses += 1;
+      if (misses >= LESSON_HALT_MISSES) {
+        halted = { pointId: point.id, index };
         break;
       }
     }
@@ -108,7 +121,7 @@ export function deriveLessonState<Row extends LessonProblemRow>(
     pointStates.push({
       id: point.id,
       status,
-      round,
+      round: attempt,
       answered: status === 'locked' ? 0 : answeredCount,
       streak: status === 'locked' ? 0 : effectivePassedOn ? 2 : streak,
       ...(effectivePassedOn ? { passedOn: effectivePassedOn } : {}),
@@ -123,14 +136,12 @@ export function deriveLessonState<Row extends LessonProblemRow>(
   const currentRows =
     currentState && currentPointId
       ? orderedRows(
-          currentProblems.filter(
-            (problem) =>
-              problem.knowledgePointId === currentPointId && problem.round === currentState.round,
-          ),
+          currentProblems.filter((problem) => problem.knowledgePointId === currentPointId),
         )
       : [];
   const pointOrder = new Map(knowledgePoints.map((point, index) => [point.id, index]));
   const lastAnswered = problems
+    .filter((problem) => problem.round === attempt)
     .filter((problem) => currentIds.has(problem.knowledgePointId))
     .filter((problem) => problem.answeredAt !== null)
     .sort(
@@ -147,7 +158,8 @@ export function deriveLessonState<Row extends LessonProblemRow>(
     status: allPassed ? (quizPassedAt ? 'completed' : 'quiz') : 'in_progress',
     points: pointStates,
     ...(currentPointId ? { currentPointId } : {}),
-    ...(pending ? { pending } : {}),
+    ...(!halted && pending ? { pending } : {}),
+    ...(halted ? { halted } : {}),
     ...(lastAnswered ? { lastAnswered } : {}),
   };
 }

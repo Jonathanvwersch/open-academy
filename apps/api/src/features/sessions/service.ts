@@ -252,6 +252,30 @@ export async function postSessions(deps: FeatureServices, request: FeatureReques
     if (focusConcept.status === 'stub') {
       return serviceResult({ error: 'Concept is not yet authored' }, 409);
     }
+    const retryRun = state.lessonRuns?.find(
+      (run) => run.conceptId === focusConcept.id && run.status === 'needs_retry',
+    );
+    if (retryRun) {
+      const retryAfter = retryRun.retryAfter ? new Date(retryRun.retryAfter) : undefined;
+      if (retryAfter && now < retryAfter) {
+        return serviceResult({ error: 'This lesson comes back tomorrow.' }, 409);
+      }
+      const reviewFirstIds = [
+        ...new Set(
+          state.remediationFlags
+            .filter(
+              (flag) =>
+                flag.conceptId === focusConcept.id &&
+                (flag.status === undefined || flag.status === 'open'),
+            )
+            .map((flag) => flag.targetPrereqId ?? focusConcept.id),
+        ),
+      ];
+      if (reviewFirstIds.length > 0) {
+        const titles = reviewFirstIds.map((id) => index.conceptsById.get(id)?.title ?? id);
+        return serviceResult({ error: `Review ${titles.join(' and ')} first.` }, 409);
+      }
+    }
     const masteryByKey = new Map(
       state.mastery.map((record) => [masteryKey(record.conceptId, record.dimension), record]),
     );

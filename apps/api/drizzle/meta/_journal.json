@@ -120,6 +120,13 @@
       "when": 1794887634880,
       "tag": "0016_thick_betty_ross",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1795452202406,
+      "tag": "0017_bored_jocasta",
+      "breakpoints": true
     }
   ]
 }
