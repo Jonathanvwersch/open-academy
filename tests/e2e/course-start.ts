@@ -48,3 +48,37 @@ export async function markProjectPrerequisitesDone(
     })),
   );
 }
+
+export async function markHardPrerequisiteAncestorsDone(
+  db: Database,
+  userId: string,
+  conceptIds: string[],
+  excludedConceptIds: string[] = [],
+) {
+  const directory = process.env.PLAYWRIGHT_CONTENT_DIR ?? 'tests/fixtures/content';
+  if (!contentPromise) contentPromise = loadContent(directory);
+  const content = await contentPromise;
+  const excluded = new Set(excludedConceptIds);
+  const ancestors = new Set<string>();
+  const visited = new Set<string>();
+  const visit = (conceptId: string) => {
+    if (visited.has(conceptId)) return;
+    visited.add(conceptId);
+    const concept = content.conceptsById.get(conceptId);
+    if (!concept) throw new Error(`Missing prerequisite concept ${conceptId}`);
+    for (const prerequisite of concept.prereqs) {
+      if (prerequisite.strength !== 'hard') continue;
+      if (!excluded.has(prerequisite.id)) ancestors.add(prerequisite.id);
+      visit(prerequisite.id);
+    }
+  };
+  for (const conceptId of conceptIds) visit(conceptId);
+  if (ancestors.size === 0) return;
+  await db.insert(lessonRuns).values(
+    [...ancestors].map((conceptId) => ({
+      userId,
+      conceptId,
+      status: 'completed' as const,
+    })),
+  );
+}
