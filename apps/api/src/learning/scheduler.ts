@@ -584,15 +584,19 @@ function shiftLocalDateKey(localDate: string, days: number) {
   return date.toISOString().slice(0, 10);
 }
 
-export function dueTopicsCoveredBy(
-  taskConceptId: string,
+interface DueTopicCoverageContext {
+  weights: ReturnType<typeof buildEncompassingIndex>;
+  timezone: string;
+  nextLocalDay: Date;
+  dueCardsByConcept: Map<string, SchedulerState['cards']>;
+}
+
+function dueTopicCoverageContext(
   state: SchedulerState,
   content: ContentIndex,
   now: Date,
-): Set<string> {
-  const weights = buildEncompassingIndex(content);
+): DueTopicCoverageContext {
   const timezone = state.timezone ?? 'UTC';
-  const nextLocalDay = startOfNextCalendarDay(now, timezone);
   const dueCardsByConcept = new Map<string, SchedulerState['cards']>();
   for (const card of state.cards) {
     if (!isDueToday(card.dueAt, now, timezone)) continue;
@@ -600,11 +604,23 @@ export function dueTopicsCoveredBy(
     dueCards.push(card);
     dueCardsByConcept.set(card.conceptId, dueCards);
   }
+  return {
+    weights: buildEncompassingIndex(content),
+    timezone,
+    nextLocalDay: startOfNextCalendarDay(now, timezone),
+    dueCardsByConcept,
+  };
+}
 
+function dueTopicsCoveredByWithContext(
+  taskConceptId: string,
+  now: Date,
+  context: DueTopicCoverageContext,
+): Set<string> {
   const covered = new Set<string>();
-  for (const [dueConceptId, dueCards] of dueCardsByConcept) {
+  for (const [dueConceptId, dueCards] of context.dueCardsByConcept) {
     if (dueConceptId === taskConceptId) continue;
-    const weight = weights.weight(taskConceptId, dueConceptId);
+    const weight = context.weights.weight(taskConceptId, dueConceptId);
     if (weight <= 0) continue;
     if (
       dueCards.every((card) => {
@@ -615,17 +631,30 @@ export function dueTopicsCoveredBy(
             weight,
             rating: Rating.Good,
             now,
-            timeZone: timezone,
+            timeZone: context.timezone,
             enableFuzz: process.env.NODE_ENV !== 'test',
           },
         );
-        return result !== undefined && result.dueAt >= nextLocalDay;
+        return result !== undefined && result.dueAt >= context.nextLocalDay;
       })
     ) {
       covered.add(dueConceptId);
     }
   }
   return covered;
+}
+
+export function dueTopicsCoveredBy(
+  taskConceptId: string,
+  state: SchedulerState,
+  content: ContentIndex,
+  now: Date,
+): Set<string> {
+  return dueTopicsCoveredByWithContext(
+    taskConceptId,
+    now,
+    dueTopicCoverageContext(state, content, now),
+  );
 }
 
 export function learnLookAheadScore(
@@ -740,16 +769,13 @@ function packWeekday(
   const canAdd = (candidate: Candidate) => addRejectionReason(candidate) === undefined;
   const timezone = state.timezone ?? 'UTC';
   const localToday = localDateKey(now, timezone);
-  const dueConceptIds = new Set(
-    state.cards
-      .filter((card) => isDueToday(card.dueAt, now, timezone))
-      .map((card) => card.conceptId),
-  );
+  const coverageContext = dueTopicCoverageContext(state, content, now);
+  const dueConceptIds = new Set(coverageContext.dueCardsByConcept.keys());
   const dueTopicsLeftAfterLowCreditReviews = new Map<string, Set<string>>();
   for (const { conceptId, rating } of state.completedReviewRatingsToday ?? []) {
     if (rating >= Rating.Good) continue;
     const dueTopics = dueTopicsLeftAfterLowCreditReviews.get(conceptId) ?? new Set<string>();
-    for (const dueConceptId of dueTopicsCoveredBy(conceptId, state, content, now)) {
+    for (const dueConceptId of dueTopicsCoveredByWithContext(conceptId, now, coverageContext)) {
       dueTopics.add(dueConceptId);
     }
     dueTopicsLeftAfterLowCreditReviews.set(conceptId, dueTopics);
@@ -768,7 +794,7 @@ function packWeekday(
   const coveredByTaskConcept = (conceptId: string) => {
     let covered = dueTopicsByTaskConcept.get(conceptId);
     if (!covered) {
-      covered = dueTopicsCoveredBy(conceptId, state, content, now);
+      covered = dueTopicsCoveredByWithContext(conceptId, now, coverageContext);
       for (const dueConceptId of dueTopicsLeftAfterLowCreditReviews.get(conceptId) ?? []) {
         covered.delete(dueConceptId);
       }
@@ -806,8 +832,6 @@ function packWeekday(
     canAdd(candidate) &&
     usedMinutes + candidate.adjustedMinutes <= learnBudget &&
     !interferesWithLearn(candidate);
-  const canSelectFreshLearn = (candidate: Candidate) =>
-    canSelectLearn(candidate) && !dueConceptIds.has(candidate.activity.conceptId ?? '');
   const resumedLessonConcepts = new Set(
     (state.lessonRuns ?? [])
       .filter((run) => run.status === 'in_progress' || run.status === 'quiz')
@@ -914,11 +938,20 @@ function packWeekday(
             localDateKey(new Date(earliestDueAt), timezone) <= shiftLocalDateKey(localToday, -2)),
       };
     });
+  const byUrgency = (
+    left: (typeof reviewCandidateDetails)[number],
+    right: (typeof reviewCandidateDetails)[number],
+  ) =>
+    right.candidate.activity.reason.terms.review - left.candidate.activity.reason.terms.review ||
+    right.candidate.score - left.candidate.score ||
+    left.index - right.index;
   const learnCandidates = candidates
     .filter((candidate) => candidate.activity.kind === 'learn')
     .filter((candidate) => !unfinishedLessonConcepts.has(candidate.activity.conceptId ?? ''));
   let reservedReviewMinutes = 0;
   let reservedMinutes = 0;
+  let fallbackReservation: Candidate | undefined;
+  let fallbackReservationMinutes = 0;
   for (const detail of [...reviewCandidateDetails].sort(
     (left, right) =>
       right.candidate.activity.reason.terms.review - left.candidate.activity.reason.terms.review ||
@@ -938,7 +971,60 @@ function packWeekday(
       reservedMinutes += candidate.adjustedMinutes;
     }
   }
+  if (reservedReviewMinutes === 0) {
+    fallbackReservation = [...reviewCandidateDetails]
+      .filter(
+        ({ candidate }) =>
+          !candidate.remediation &&
+          candidate.activity.conceptId &&
+          dueConceptIds.has(candidate.activity.conceptId),
+      )
+      .sort(byUrgency)
+      .find(({ candidate }) => reservedMinutes + candidate.adjustedMinutes <= budget)?.candidate;
+    if (fallbackReservation) {
+      fallbackReservationMinutes = fallbackReservation.adjustedMinutes;
+      reservedReviewMinutes += fallbackReservationMinutes;
+      reservedMinutes += fallbackReservationMinutes;
+    }
+  }
   learnBudget = Math.max(0, budget - reservedMinutes);
+  const reviewCoverageForConcept = (conceptId: string | null | undefined) => {
+    if (!conceptId) return new Set<string>();
+    const covered = new Set(coveredByTaskConcept(conceptId));
+    if (dueConceptIds.has(conceptId)) covered.add(conceptId);
+    return covered;
+  };
+  const canSelectWithFallbackReservation = (candidate: Candidate) => {
+    const conceptId = candidate.activity.conceptId;
+    const fallbackConceptId = fallbackReservation?.activity.conceptId;
+    if (
+      candidate.activity.kind !== 'learn' ||
+      !conceptId ||
+      !fallbackConceptId ||
+      fallbackReservationMinutes <= 0
+    ) {
+      return false;
+    }
+    const fallbackCoverage = reviewCoverageForConcept(fallbackConceptId);
+    const lessonCoverage = coveredByTaskConcept(conceptId);
+    return (
+      learnTaskCanCoverDueReviews(conceptId) &&
+      [...fallbackCoverage].every((dueConceptId) => lessonCoverage.has(dueConceptId)) &&
+      usedMinutes + candidate.adjustedMinutes <= learnBudget + fallbackReservationMinutes &&
+      canAdd(candidate) &&
+      !interferesWithLearn(candidate)
+    );
+  };
+  const canSelectFreshLearn = (candidate: Candidate) =>
+    !dueConceptIds.has(candidate.activity.conceptId ?? '') &&
+    (canSelectLearn(candidate) || canSelectWithFallbackReservation(candidate));
+  const releaseFallbackReservation = () => {
+    reservedMinutes -= fallbackReservationMinutes;
+    learnBudget += fallbackReservationMinutes;
+    reservedReviewMinutes = 0;
+    fallbackReservation = undefined;
+    fallbackReservationMinutes = 0;
+  };
   const candidatesByCourse = new Map<string, Candidate[]>();
   for (const candidate of learnCandidates) {
     if (!candidate.courseId) continue;
@@ -999,7 +1085,12 @@ function packWeekday(
         const unit = conceptId ? nextCourse.unitPositions.get(conceptId) : undefined;
         return unit !== undefined && !selectedUnits.has(unit);
       }) ?? eligibleCandidates[0];
-    if (!candidate || !add(candidate)) break;
+    if (!candidate) break;
+    if (!canSelectLearn(candidate)) {
+      if (!canSelectWithFallbackReservation(candidate)) break;
+      releaseFallbackReservation();
+    }
+    if (!canSelectLearn(candidate) || !add(candidate)) break;
     newConceptCount += 1;
     selectedLearnMinutesBySubject.set(
       nextSubject,
@@ -1021,13 +1112,6 @@ function packWeekday(
     if (canSelectLearn(candidate) && add(candidate)) newConceptCount += 1;
   }
 
-  const byUrgency = (
-    left: (typeof reviewCandidateDetails)[number],
-    right: (typeof reviewCandidateDetails)[number],
-  ) =>
-    right.candidate.activity.reason.terms.review - left.candidate.activity.reason.terms.review ||
-    right.candidate.score - left.candidate.score ||
-    left.index - right.index;
   const coveredBy = new Map<string, string>();
   for (const candidate of selected) {
     const taskConceptId = candidate.activity.conceptId;
@@ -1081,13 +1165,8 @@ function packWeekday(
   }
 
   const uncoveredDueConcepts = new Set([...dueConceptIds].filter((id) => !coveredBy.has(id)));
-  const reviewCoverage = (candidate: Candidate) => {
-    const conceptId = candidate.activity.conceptId;
-    if (!conceptId) return new Set<string>();
-    const covered = new Set(coveredByTaskConcept(conceptId));
-    if (dueConceptIds.has(conceptId)) covered.add(conceptId);
-    return covered;
-  };
+  const reviewCoverage = (candidate: Candidate) =>
+    reviewCoverageForConcept(candidate.activity.conceptId);
   const rankReviewDetails = (
     details: typeof reviewCandidateDetails,
     uncovered: ReadonlySet<string>,
@@ -1142,6 +1221,10 @@ function packWeekday(
           coveredBy.set(dueId, conceptId);
         }
       }
+      continue;
+    }
+    if (!dueConceptIds.has(conceptId) && next.newlyCovered < 2) {
+      recordReviewResult(conceptId, 'rejected:other', candidate);
       continue;
     }
     if (next.newlyCovered < 1) {

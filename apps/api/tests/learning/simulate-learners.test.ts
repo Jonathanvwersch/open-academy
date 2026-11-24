@@ -1,5 +1,11 @@
 import { afterAll, expect, test } from 'vitest';
-import { type InvariantId, simulateLearners } from '../../scripts/learner-simulator.js';
+import {
+  attributeActivityLogs,
+  auditP11DescendantCard,
+  type InvariantId,
+  renderMarkdownReport,
+  simulateLearners,
+} from '../../scripts/learner-simulator.js';
 import { env } from '../../src/config.js';
 import { loadContent } from '../../src/content/load.js';
 import { createDb } from '../../src/db/client.js';
@@ -20,8 +26,126 @@ const invariants: InvariantId[] = [
   'P12',
 ];
 
+const p11Weights = {
+  weight: (conceptId: string, ancestorId: string) =>
+    conceptId === 'prerequisite' && ancestorId === 'descendant'
+      ? 0.5
+      : conceptId === 'credit-source' && ancestorId === 'descendant'
+        ? 0.25
+        : 0,
+};
+
+function p11Card(dueAt: string, lastReviewAt: string | null) {
+  return {
+    id: 'descendant-card',
+    dueAt: new Date(dueAt),
+    lastReviewAt: lastReviewAt ? new Date(lastReviewAt) : null,
+    fsrs: { stability: 3, difficulty: 5 },
+  };
+}
+
+function p11Counters() {
+  return { p11CheckedEvents: 0, p11AmbiguousEvents: 0 };
+}
+
 afterAll(async () => {
   await db.$client.end();
+});
+
+test('P11 flags a later due date after an Again with no same-activity credit', () => {
+  const counters = p11Counters();
+  const assessment = auditP11DescendantCard(
+    counters,
+    'descendant',
+    p11Card('2026-01-01T00:00:00.000Z', null),
+    p11Card('2026-01-02T00:00:00.000Z', null),
+    [{ cardId: 'prerequisite-card', conceptId: 'prerequisite', rating: '1' }],
+    p11Weights,
+  );
+
+  expect(assessment).toEqual({ kind: 'checked', fiReChanged: true, violates: true });
+  expect(counters).toEqual({ p11CheckedEvents: 1, p11AmbiguousEvents: 0 });
+});
+
+test('P11 skips a descendant card explicitly reviewed in the same activity', () => {
+  const counters = p11Counters();
+  const assessment = auditP11DescendantCard(
+    counters,
+    'descendant',
+    p11Card('2026-01-01T00:00:00.000Z', '2025-12-31T00:00:00.000Z'),
+    p11Card('2026-01-02T00:00:00.000Z', '2026-01-02T00:00:00.000Z'),
+    [
+      { cardId: 'prerequisite-card', conceptId: 'prerequisite', rating: '1' },
+      { cardId: 'descendant-card', conceptId: 'descendant', rating: '2' },
+    ],
+    p11Weights,
+  );
+
+  expect(assessment).toEqual({ kind: 'explicit' });
+  expect(counters).toEqual({ p11CheckedEvents: 0, p11AmbiguousEvents: 0 });
+});
+
+test('P11 counts positive same-activity credit as ambiguous instead of flagging it', () => {
+  const counters = p11Counters();
+  const assessment = auditP11DescendantCard(
+    counters,
+    'descendant',
+    p11Card('2026-01-01T00:00:00.000Z', null),
+    p11Card('2026-01-02T00:00:00.000Z', null),
+    [
+      { cardId: 'prerequisite-card', conceptId: 'prerequisite', rating: '1' },
+      { cardId: 'credit-source-card', conceptId: 'credit-source', rating: '3' },
+    ],
+    p11Weights,
+  );
+
+  expect(assessment).toEqual({ kind: 'ambiguous' });
+  expect(counters).toEqual({ p11CheckedEvents: 0, p11AmbiguousEvents: 1 });
+});
+
+test('P11 does not treat mixed ratings with an Again as positive credit', () => {
+  const counters = p11Counters();
+  const assessment = auditP11DescendantCard(
+    counters,
+    'descendant',
+    p11Card('2026-01-01T00:00:00.000Z', null),
+    p11Card('2026-01-02T00:00:00.000Z', null),
+    [
+      { cardId: 'prerequisite-card', conceptId: 'prerequisite', rating: '1' },
+      { cardId: 'credit-source-again-card', conceptId: 'credit-source', rating: '1' },
+      { cardId: 'credit-source-good-card', conceptId: 'credit-source', rating: '3' },
+    ],
+    p11Weights,
+  );
+
+  expect(assessment).toEqual({ kind: 'checked', fiReChanged: true, violates: true });
+  expect(counters).toEqual({ p11CheckedEvents: 1, p11AmbiguousEvents: 0 });
+});
+
+test('same-timestamp review logs exclude logs created by the lesson quiz', () => {
+  const timestamp = new Date('2026-01-14T12:00:00.000Z');
+  const quizLog = {
+    id: 'quiz-log',
+    cardId: 'lesson-card',
+    conceptId: 'lesson-concept',
+    rating: '3',
+    createdAt: timestamp,
+  };
+  const reviewLog = {
+    id: 'review-log',
+    cardId: 'review-card',
+    conceptId: 'review-concept',
+    rating: '2',
+    createdAt: timestamp,
+  };
+  const checkedIds = new Set<string>();
+
+  expect(attributeActivityLogs(new Set(), [quizLog], checkedIds)).toEqual([quizLog]);
+  expect(checkedIds).toEqual(new Set(['quiz-log']));
+  expect(attributeActivityLogs(new Set([quizLog.id]), [quizLog, reviewLog], checkedIds)).toEqual([
+    reviewLog,
+  ]);
+  expect(checkedIds).toEqual(new Set(['quiz-log', 'review-log']));
 });
 
 test('diligent and graph-change Mathematics for ML runs produce structured reports', async () => {
@@ -48,6 +172,7 @@ test('diligent and graph-change Mathematics for ML runs produce structured repor
   expect(
     first30Days.reduce((total, stats) => total + stats.newTopicsCompleted, 0),
   ).toBeGreaterThanOrEqual(10);
+  expect(renderMarkdownReport(report)).toContain('P11 ambiguous');
   const struggling = await simulateLearners(db, content, {
     profiles: ['struggling'],
     days: 12,
@@ -65,6 +190,8 @@ test('diligent and graph-change Mathematics for ML runs produce structured repor
     expect(profile.totals.positiveImplicitCredits).toEqual(expect.any(Number));
     expect(profile.totals.negativeImplicitCredits).toEqual(expect.any(Number));
     expect(profile.totals.coveredSkips).toEqual(expect.any(Number));
+    expect(profile.p11CheckedEvents).toEqual(expect.any(Number));
+    expect(profile.p11AmbiguousEvents).toEqual(expect.any(Number));
     for (const invariant of invariants) {
       expect(profile.violationCounts[invariant]).toEqual(expect.any(Number));
     }

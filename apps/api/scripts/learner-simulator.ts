@@ -17,7 +17,7 @@ import {
   reviewLogs,
   users,
 } from '../src/db/schema.js';
-import { buildEncompassingIndex } from '../src/learning/encompassing.js';
+import { buildEncompassingIndex, type EncompassingIndex } from '../src/learning/encompassing.js';
 import { isDueToday, startOfNextCalendarDay } from '../src/learning/fsrs.js';
 import { keyPrereqsForPoint, masteryKey, prerequisiteMet } from '../src/learning/prerequisites.js';
 import { dueTopicsCoveredBy } from '../src/learning/scheduler.js';
@@ -179,6 +179,8 @@ export interface ProfileSimulationReport {
   projectsOffered: SimulatedOffer[];
   papersRecorded: SimulatedPaper[];
   remediation: RemediationSimulationReport;
+  p11CheckedEvents: number;
+  p11AmbiguousEvents: number;
   totals: {
     lessonsPerDayMean: number;
     lessonsPerDayMax: number;
@@ -1507,6 +1509,82 @@ async function processActivity(
   return { lessons: 0, reviews: 0, reviewAttempts };
 }
 
+interface P11CardSnapshot {
+  id: string;
+  dueAt: Date;
+  lastReviewAt: Date | null;
+  fsrs: unknown;
+}
+
+interface P11ActivityLog {
+  cardId: string;
+  conceptId: string;
+  rating: string;
+}
+
+type P11DescendantAssessment =
+  | { kind: 'explicit' }
+  | { kind: 'ambiguous' }
+  | { kind: 'checked'; fiReChanged: boolean; violates: boolean };
+
+export function auditP11DescendantCard(
+  report: Pick<ProfileSimulationReport, 'p11CheckedEvents' | 'p11AmbiguousEvents'>,
+  descendantId: string,
+  previous: P11CardSnapshot,
+  card: P11CardSnapshot,
+  activityLogs: readonly P11ActivityLog[],
+  encompassing: Pick<EncompassingIndex, 'weight'>,
+): P11DescendantAssessment {
+  const lastReviewAtChanged =
+    (previous.lastReviewAt?.getTime() ?? null) !== (card.lastReviewAt?.getTime() ?? null);
+  if (lastReviewAtChanged || activityLogs.some(({ cardId }) => cardId === previous.id)) {
+    return { kind: 'explicit' };
+  }
+
+  const minimumRatingByConcept = new Map<string, number>();
+  for (const { conceptId, rating } of activityLogs) {
+    const numericRating = Number(rating);
+    const currentMinimum = minimumRatingByConcept.get(conceptId);
+    minimumRatingByConcept.set(
+      conceptId,
+      currentMinimum === undefined ? numericRating : Math.min(currentMinimum, numericRating),
+    );
+  }
+  const hasPositiveCredit = [...minimumRatingByConcept].some(
+    ([conceptId, rating]) =>
+      rating >= Rating.Hard && encompassing.weight(conceptId, descendantId) > 0,
+  );
+  if (hasPositiveCredit) {
+    report.p11AmbiguousEvents += 1;
+    return { kind: 'ambiguous' };
+  }
+
+  report.p11CheckedEvents += 1;
+  const previousFsrs = previous.fsrs as { stability: number; difficulty: number };
+  const currentFsrs = card.fsrs as { stability: number; difficulty: number };
+  const fiReChanged =
+    previous.dueAt.getTime() !== card.dueAt.getTime() ||
+    previousFsrs.stability !== currentFsrs.stability ||
+    previousFsrs.difficulty !== currentFsrs.difficulty;
+  const dueAtMovedLater = card.dueAt.getTime() > previous.dueAt.getTime();
+  const dueAtDidNotMoveEarlier = card.dueAt.getTime() >= previous.dueAt.getTime();
+  return {
+    kind: 'checked',
+    fiReChanged,
+    violates: dueAtMovedLater || (fiReChanged && dueAtDidNotMoveEarlier),
+  };
+}
+
+export function attributeActivityLogs<T extends { id: string }>(
+  beforeIds: ReadonlySet<string>,
+  afterLogs: readonly T[],
+  checkedIds: Set<string>,
+): T[] {
+  const newLogs = afterLogs.filter(({ id }) => !beforeIds.has(id) && !checkedIds.has(id));
+  for (const { id } of afterLogs) checkedIds.add(id);
+  return newLogs;
+}
+
 async function processActivityWithMetrics(
   api: SimulatedApi,
   db: Database,
@@ -1521,9 +1599,21 @@ async function processActivityWithMetrics(
 ) {
   const userId = api.userId ?? '';
   const tracksCards = activity.kind === 'learn' || activity.kind === 'review';
+  const readActivityLogs = () =>
+    db
+      .select({
+        id: reviewLogs.id,
+        cardId: reviewLogs.cardId,
+        rating: reviewLogs.rating,
+        conceptId: reviewCards.conceptId,
+      })
+      .from(reviewLogs)
+      .innerJoin(reviewCards, eq(reviewLogs.cardId, reviewCards.id))
+      .where(and(eq(reviewCards.userId, userId), eq(reviewLogs.createdAt, now)));
   const beforeCards = tracksCards
     ? await db.select().from(reviewCards).where(eq(reviewCards.userId, userId))
     : [];
+  const beforeLogIds = new Set(tracksCards ? (await readActivityLogs()).map(({ id }) => id) : []);
   const result = await processActivity(
     api,
     db,
@@ -1538,7 +1628,10 @@ async function processActivityWithMetrics(
   const afterCards = tracksCards
     ? await db.select().from(reviewCards).where(eq(reviewCards.userId, userId))
     : [];
+  const activityLogs = tracksCards ? await readActivityLogs() : [];
+  const newLogs = attributeActivityLogs(beforeLogIds, activityLogs, runtime.checkedReviewLogIds);
   const beforeById = new Map(beforeCards.map((card) => [card.id, card]));
+  const afterById = new Map(afterCards.map((card) => [card.id, card]));
   const nextLocalDay = startOfNextCalendarDay(now, timeZone);
   let positiveImplicitCredits = 0;
   let negativeImplicitCredits = 0;
@@ -1560,35 +1653,35 @@ async function processActivityWithMetrics(
 
   let explicitReviews = 0;
   if (activity.kind === 'review') {
-    const logs = await db
-      .select({
-        id: reviewLogs.id,
-        rating: reviewLogs.rating,
-        conceptId: reviewCards.conceptId,
-      })
-      .from(reviewLogs)
-      .innerJoin(reviewCards, eq(reviewLogs.cardId, reviewCards.id))
-      .where(and(eq(reviewCards.userId, userId), eq(reviewLogs.createdAt, now)));
-    const newLogs = logs.filter((log) => !runtime.checkedReviewLogIds.has(log.id));
-    for (const log of newLogs) runtime.checkedReviewLogIds.add(log.id);
     explicitReviews = newLogs.length;
 
     const encompassing = buildEncompassingIndex(content);
-    const nextDay = startOfNextCalendarDay(now, timeZone);
     for (const log of newLogs.filter(({ rating }) => rating === String(Rating.Again))) {
       for (const [descendantId, weight] of encompassing.descendants(log.conceptId)) {
-        if (weight !== 1) continue;
-        const lateCards = afterCards.filter(
-          (card) =>
-            card.conceptId === descendantId &&
-            (card.fsrs as { state: number }).state !== State.New &&
-            card.dueAt > nextDay,
-        );
-        if (lateCards.length > 0) {
+        if (weight <= 0) continue;
+        for (const previous of beforeCards) {
+          if (
+            previous.conceptId !== descendantId ||
+            !previous.fsrs ||
+            (previous.fsrs as { state: number }).state !== State.Review
+          ) {
+            continue;
+          }
+          const card = afterById.get(previous.id);
+          if (!card) continue;
+          const assessment = auditP11DescendantCard(
+            runtime.report,
+            descendantId,
+            previous,
+            card,
+            newLogs,
+            encompassing,
+          );
+          if (assessment.kind !== 'checked' || !assessment.violates) continue;
           addViolation(runtime, day, 'P11', descendantId, [], {
             courseId,
             conceptId: descendantId,
-            details: `Again on ${log.conceptId} left a weight-1 descendant due after the next local day`,
+            details: `Again on ${log.conceptId} with weight ${weight} changed dueAt from ${previous.dueAt.toISOString()} to ${card.dueAt.toISOString()}${assessment.fiReChanged ? ' after FIRe changed the card' : ''}`,
           });
         }
       }
@@ -1914,6 +2007,8 @@ async function simulateProfile(
       retriesStarted: [],
       lessonsCompletedAfterRetry: [],
     },
+    p11CheckedEvents: 0,
+    p11AmbiguousEvents: 0,
     totals: {
       lessonsPerDayMean: 0,
       lessonsPerDayMax: 0,
@@ -2300,11 +2395,11 @@ export function renderMarkdownReport(report: LearnerSimulationReport): string {
     '',
     '## Summary',
     '',
-    '| Profile | Courses finished | Days simulated | Lessons/day mean / max | Reviews/day mean / max | Explicit reviews | Implicit + / − | Covered skips | Wrong |',
-    '| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |',
+    '| Profile | Courses finished | Days simulated | Lessons/day mean / max | Reviews/day mean / max | Explicit reviews | Implicit + / − | Covered skips | P11 checks | P11 ambiguous | Wrong |',
+    '| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |',
     ...report.profiles.map(
       (profile) =>
-        `| ${profile.profile} | ${profile.courses.filter((course) => course.finishedDay !== null).length}/${profile.courses.length} | ${profile.daysSimulated} | ${profile.totals.lessonsPerDayMean.toFixed(2)} / ${profile.totals.lessonsPerDayMax} | ${profile.totals.reviewsPerDayMean.toFixed(2)} / ${profile.totals.reviewsPerDayMax} | ${profile.totals.explicitReviews} | ${profile.totals.positiveImplicitCredits} / ${profile.totals.negativeImplicitCredits} | ${profile.totals.coveredSkips} | ${profile.totals.wrongPercent.toFixed(1)}% |`,
+        `| ${profile.profile} | ${profile.courses.filter((course) => course.finishedDay !== null).length}/${profile.courses.length} | ${profile.daysSimulated} | ${profile.totals.lessonsPerDayMean.toFixed(2)} / ${profile.totals.lessonsPerDayMax} | ${profile.totals.reviewsPerDayMean.toFixed(2)} / ${profile.totals.reviewsPerDayMax} | ${profile.totals.explicitReviews} | ${profile.totals.positiveImplicitCredits} / ${profile.totals.negativeImplicitCredits} | ${profile.totals.coveredSkips} | ${profile.p11CheckedEvents} | ${profile.p11AmbiguousEvents} | ${profile.totals.wrongPercent.toFixed(1)}% |`,
     ),
     '',
   ];
@@ -2333,6 +2428,8 @@ export function renderMarkdownReport(report: LearnerSimulationReport): string {
       '',
       `Lessons/day: mean ${profile.totals.lessonsPerDayMean.toFixed(2)}, max ${profile.totals.lessonsPerDayMax}.`,
       `Reviews/day: mean ${profile.totals.reviewsPerDayMean.toFixed(2)}, max ${profile.totals.reviewsPerDayMax}.`,
+      `P11 checked events: ${profile.p11CheckedEvents}.`,
+      `P11 ambiguous events: ${profile.p11AmbiguousEvents}.`,
       `Wrong answers: ${profile.totals.wrongAnswers}/${profile.totals.answers} (${profile.totals.wrongPercent.toFixed(1)}%).`,
       `Remediation: ${remediation.totals.halts} halts (${remediation.totals.noProgressHalts} no-progress); ${remediation.totals.remediationFlagsOpened} flags opened [${flagList}]; ${remediation.totals.remedialReviewsCompleted} remedial reviews completed; ${remediation.totals.retriesStarted} retries started; ${remediation.totals.lessonsCompletedAfterRetry} lessons completed after retry.`,
       '',
