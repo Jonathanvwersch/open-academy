@@ -1937,15 +1937,20 @@ test('a due covering review replaces an overdue review that it covers', () => {
 });
 
 test('compression refills a due review after dropping a covered review frees its budget', () => {
-  const fixture = reviewQueueFixture(3, 3, 6);
+  const fixture = reviewQueueFixture(4, 4, 6);
   const coveredReview = required(fixture.topicIds[0], 'covered review topic');
   const coveringReview = required(fixture.topicIds[1], 'covering review topic');
   const refillReview = required(fixture.topicIds[2], 'refill review topic');
-  const concepts = fixture.index.concepts.map((concept) =>
-    concept.id === coveringReview
-      ? { ...concept, encompassings: [{ id: coveredReview, weight: 1 }] }
-      : concept,
-  );
+  const newlyCoveredReview = required(fixture.topicIds[3], 'newly covered review topic');
+  const concepts = fixture.index.concepts.map((concept) => {
+    if (concept.id === coveringReview) {
+      return { ...concept, encompassings: [{ id: coveredReview, weight: 1 }] };
+    }
+    if (concept.id === refillReview) {
+      return { ...concept, encompassings: [{ id: newlyCoveredReview, weight: 1 }] };
+    }
+    return concept;
+  });
   const index: ContentIndex = {
     ...fixture.index,
     concepts,
@@ -1962,6 +1967,7 @@ test('compression refills a due review after dropping a covered review frees its
     new Date(now.getTime() - 5 * 86_400_000),
     new Date(now.getTime() - 4 * 86_400_000),
     new Date(now.getTime() - 3 * 86_400_000),
+    new Date(now.getTime() - 2 * 86_400_000),
   ];
   const reviewedAt = new Date('2025-12-01T12:00:00.000Z');
   state.cards = fixture.topicIds.map((conceptId, index) => ({
@@ -1992,6 +1998,12 @@ test('compression refills a due review after dropping a covered review frees its
   );
   expect(trace.find((result) => result.conceptId === refillReview)?.result).toBe(
     'selected:overdue',
+  );
+  expect(trace.find((result) => result.conceptId === newlyCoveredReview)).toEqual(
+    expect.objectContaining({
+      result: 'covered',
+      coveringConceptId: refillReview,
+    }),
   );
 });
 
