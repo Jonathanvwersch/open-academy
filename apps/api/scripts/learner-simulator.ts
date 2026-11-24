@@ -3888,6 +3888,16 @@ function auditSavedSessionPlan(
     });
   }
   for (const pending of runtime.pendingP18.filter((event) => event.day === day)) {
+    const overdueDays = Math.max(
+      0,
+      ...state.cards
+        .filter((card) => card.conceptId === pending.conceptId)
+        .map(
+          (card) =>
+            localDayOrdinal(now, state.timezone ?? 'UTC') -
+            localDayOrdinal(new Date(card.dueAt), state.timezone ?? 'UTC'),
+        ),
+    );
     const remainsDue = state.cards.some(
       (card) =>
         card.conceptId === pending.conceptId &&
