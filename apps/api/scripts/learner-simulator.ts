@@ -1408,6 +1408,13 @@ function auditReviewPlanInvariants(
     markChecked(runtime, 'P16');
     for (const selected of nonRemediationReviews) {
       const selectedCoverage = activityDueCoverage(selected.activity, state, content, now);
+      const selectedExplanation = explanations.find(
+        (item) => item.conceptId === selected.conceptId,
+      );
+      const selectedReviewMinutes = requireP17ReviewMinutes(
+        selected.conceptId,
+        selectedExplanation?.candidateMinutes,
+      );
       const selectedOverdueDays = Math.max(
         0,
         ...[...selectedCoverage].map((conceptId) => overdueDays(conceptId)),
@@ -1419,7 +1426,7 @@ function auditReviewPlanInvariants(
           reviewMinutes,
           remainingBudgetMinutes,
           remainingReviewCapMinutes,
-          selected.activity.plannedMinutes,
+          selectedReviewMinutes,
         )
       ) {
         addViolation(runtime, day, 'P16', explanation.conceptId, [], {
@@ -1692,21 +1699,6 @@ function auditSession(
   for (const activity of activities) {
     if (activity.kind === 'learn' && activity.conceptId) {
       checkLessonReadiness(runtime, day, courseId, [activity.conceptId], progress, content);
-      const run = progress.lessonRuns.find(
-        (candidate) => candidate.conceptId === activity.conceptId,
-      );
-      if (
-        run &&
-        p10IsStaleRetry(run.status, run.haltedAt, now) &&
-        !runtime.staleRetryReported.has(run.conceptId)
-      ) {
-        runtime.staleRetryReported.add(run.conceptId);
-        addViolation(runtime, day, 'P10', run.conceptId, [], {
-          courseId,
-          conceptId: run.conceptId,
-          details: 'lesson remained needs_retry for more than seven days when the activity started',
-        });
-      }
     }
     if (activity.projectId) {
       checkProjectReadiness(runtime, day, activity.projectId, courseId, progress, content);
@@ -3856,6 +3848,25 @@ async function simulateProfile(
             sessionId,
             activity,
           );
+          if (activity.kind === 'learn' && activity.conceptId) {
+            const startedProgress = await readProgress(db, userId);
+            const run = startedProgress.lessonRuns.find(
+              (candidate) => candidate.conceptId === activity.conceptId,
+            );
+            if (
+              run &&
+              p10IsStaleRetry(run.status, run.haltedAt, now) &&
+              !runtime.staleRetryReported.has(run.conceptId)
+            ) {
+              runtime.staleRetryReported.add(run.conceptId);
+              addViolation(runtime, day, 'P10', run.conceptId, [], {
+                courseId,
+                conceptId: run.conceptId,
+                details:
+                  'lesson remained needs_retry more than seven days after its activity start',
+              });
+            }
+          }
           daily.lessons += result.lessons;
           daily.reviews += result.reviews;
           daily.reviewAttempts += result.reviewAttempts;

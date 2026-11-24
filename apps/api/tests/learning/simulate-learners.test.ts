@@ -238,6 +238,7 @@ test('P10 evaluates stale retries when an activity starts from fresh run state',
   const now = new Date('2026-01-14T12:00:00.000Z');
   expect(p10IsStaleRetry('needs_retry', new Date('2026-01-01T12:00:00.000Z'), now)).toBe(true);
   expect(p10IsStaleRetry('needs_retry', new Date('2026-01-10T12:00:00.000Z'), now)).toBe(false);
+  expect(p10IsStaleRetry('in_progress', new Date('2026-01-01T12:00:00.000Z'), now)).toBe(false);
   expect(p10IsStaleRetry('completed', new Date('2026-01-01T12:00:00.000Z'), now)).toBe(false);
 });
 
@@ -445,6 +446,8 @@ test('P15 applies the lesson quiz rating once and accepts its Again guard', () =
 test('P16 flags a selected review when a dropped review is two days more overdue', () => {
   expect(p16HasOverduePrecedenceViolation(5, 3, 8, 4, 0, 4)).toBe(true);
   expect(p16HasOverduePrecedenceViolation(5, 3, 8, 3, 0, 4)).toBe(false);
+  expect(p16HasOverduePrecedenceViolation(5, 3, 7, 0, 0, 4)).toBe(false);
+  expect(p16HasOverduePrecedenceViolation(5, 3, 7, 0, 0, 6)).toBe(false);
   expect(p16HasOverduePrecedenceViolation(4, 3, 8, 4, 0, 4)).toBe(false);
 });
 
