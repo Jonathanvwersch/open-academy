@@ -41,6 +41,7 @@ import {
   adjustedMinutesForLearnerPace,
   explainReviewSelection,
   explainReviewSelectionForReplan,
+  lessonRetryOverdue,
   type PlannedActivity,
   type ReviewSelectionExplanation,
   SCHEDULER_CONFIG,
@@ -426,7 +427,7 @@ interface ProfileRuntime {
     string,
     { day: number; targetPrereqIds: string[]; reviewed: boolean; violationReported?: boolean }
   >;
-  staleRetryReported: Set<string>;
+  overdueRetryReported: Set<string>;
   activityKeyById: Map<string, string>;
   decisionAttempts: Map<string, number>;
   violationEvidenceContext: SimulationViolationEvidence;
@@ -1052,17 +1053,20 @@ export function p5HasNoWorkWindow(
   return true;
 }
 
-export function p10IsStaleRetry(
-  status: string,
-  haltedAt: Date | null | undefined,
+export function p10MissingOverdueRetryConcepts(
+  state: SchedulerState,
+  eligibleConceptIds: ReadonlySet<string>,
+  plannedConceptIds: ReadonlySet<string>,
   now: Date,
-): boolean {
-  return (
-    status === 'needs_retry' &&
-    haltedAt !== undefined &&
-    haltedAt !== null &&
-    now.getTime() - haltedAt.getTime() > 7 * 86_400_000
-  );
+): string[] {
+  return (state.lessonRuns ?? [])
+    .filter(
+      ({ conceptId }) =>
+        eligibleConceptIds.has(conceptId) &&
+        !plannedConceptIds.has(conceptId) &&
+        lessonRetryOverdue(state, conceptId, now),
+    )
+    .map(({ conceptId }) => conceptId);
 }
 
 export function p6HasFeasibleOverdueReview(
@@ -3759,6 +3763,29 @@ function auditSavedSessionPlan(
   };
   const dayPlans = runtime.planEvidenceByDay.get(day) ?? [];
   runtime.planEvidenceByDay.set(day, [...dayPlans, planEvidence]);
+  if (planLabel === 'home plan') {
+    const eligibleConceptIds = new Set(learn.choices.map(({ conceptId }) => conceptId));
+    const plannedConceptIds = new Set(
+      activities.flatMap((activity) =>
+        activity.kind === 'learn' && activity.conceptId ? [activity.conceptId] : [],
+      ),
+    );
+    for (const conceptId of p10MissingOverdueRetryConcepts(
+      state,
+      eligibleConceptIds,
+      plannedConceptIds,
+      now,
+    )) {
+      if (runtime.overdueRetryReported.has(conceptId)) continue;
+      runtime.overdueRetryReported.add(conceptId);
+      addViolation(runtime, day, 'P10', conceptId, [], {
+        courseId,
+        conceptId,
+        details:
+          'an eligible retry was at least two days past retryAfter and had scheduler priority (scheduler.ts:250-254, 974-985, 1530-1540), but the home plan omitted it',
+      });
+    }
+  }
   markChecked(runtime, 'P13');
   const lessonMinutes = learn.choices.flatMap((choice) => {
     const concept = content.conceptsById.get(choice.conceptId);
@@ -4088,7 +4115,7 @@ async function simulateProfile(
     retriedConcepts: new Set(),
     completedAfterRetryConcepts: new Set(),
     noProgressHalts: new Map(),
-    staleRetryReported: new Set(),
+    overdueRetryReported: new Set(),
     activityKeyById: new Map(),
     decisionAttempts: new Map(),
     checkedReviewLogIds: new Set(),
@@ -4354,25 +4381,6 @@ async function simulateProfile(
             sessionId,
             activity,
           );
-          if (activity.kind === 'learn' && activity.conceptId) {
-            const startedProgress = await readProgress(db, userId);
-            const run = startedProgress.lessonRuns.find(
-              (candidate) => candidate.conceptId === activity.conceptId,
-            );
-            if (
-              run &&
-              p10IsStaleRetry(run.status, run.haltedAt, now) &&
-              !runtime.staleRetryReported.has(run.conceptId)
-            ) {
-              runtime.staleRetryReported.add(run.conceptId);
-              addViolation(runtime, day, 'P10', run.conceptId, [], {
-                courseId,
-                conceptId: run.conceptId,
-                details:
-                  'lesson remained needs_retry more than seven days after its activity start',
-              });
-            }
-          }
           daily.lessons += result.lessons;
           daily.reviews += result.reviews;
           daily.reviewAttempts += result.reviewAttempts;

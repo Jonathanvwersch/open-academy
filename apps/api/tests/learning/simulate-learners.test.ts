@@ -7,7 +7,7 @@ import {
   type InvariantId,
   p5HasNoWorkWindow,
   p6HasFeasibleOverdueReview,
-  p10IsStaleRetry,
+  p10MissingOverdueRetryConcepts,
   p13HasEmptyPlanViolation,
   p14UncoveredDueCards,
   p16HasOverduePrecedenceViolation,
@@ -28,6 +28,7 @@ import { loadContent } from '../../src/content/load.js';
 import { createDb } from '../../src/db/client.js';
 import { newReviewCard, scheduleReview } from '../../src/learning/fsrs.js';
 import { implicitRepetition } from '../../src/learning/implicit-repetition.js';
+import type { SchedulerState } from '../../src/learning/scheduler.js';
 
 const db = createDb(env.TEST_DATABASE_URL);
 const invariants: InvariantId[] = [
@@ -271,12 +272,31 @@ test('P5 requires seven days without lesson, review, or remedial attempts', () =
   expect(p5HasNoWorkWindow(days, 7, new Set([7]))).toBe(false);
 });
 
-test('P10 evaluates stale retries when an activity starts from fresh run state', () => {
+test('P10 flags omitted retries after the scheduler two-day priority threshold', () => {
   const now = new Date('2026-01-14T12:00:00.000Z');
-  expect(p10IsStaleRetry('needs_retry', new Date('2026-01-01T12:00:00.000Z'), now)).toBe(true);
-  expect(p10IsStaleRetry('needs_retry', new Date('2026-01-10T12:00:00.000Z'), now)).toBe(false);
-  expect(p10IsStaleRetry('in_progress', new Date('2026-01-01T12:00:00.000Z'), now)).toBe(false);
-  expect(p10IsStaleRetry('completed', new Date('2026-01-01T12:00:00.000Z'), now)).toBe(false);
+  const state = {
+    lessonRuns: [
+      {
+        conceptId: 'overdue',
+        status: 'needs_retry',
+        retryAfter: new Date('2026-01-12T12:00:00.000Z'),
+      },
+      {
+        conceptId: 'ready',
+        status: 'needs_retry',
+        retryAfter: new Date('2026-01-13T12:00:00.000Z'),
+      },
+      {
+        conceptId: 'blocked',
+        status: 'needs_retry',
+        retryAfter: new Date('2026-01-10T12:00:00.000Z'),
+      },
+    ],
+    remediationFlags: [{ conceptId: 'blocked', status: 'open' }],
+  } as unknown as SchedulerState;
+  const eligible = new Set(['overdue', 'ready', 'blocked']);
+  expect(p10MissingOverdueRetryConcepts(state, eligible, new Set(), now)).toEqual(['overdue']);
+  expect(p10MissingOverdueRetryConcepts(state, eligible, new Set(['overdue']), now)).toEqual([]);
 });
 
 test('scripted scenarios are skipped and reported when their fixture course is filtered out', () => {

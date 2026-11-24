@@ -247,7 +247,7 @@ function lessonRetryEligible(state: SchedulerState, conceptId: string, now: Date
   );
 }
 
-function lessonRetryOverdue(state: SchedulerState, conceptId: string, now: Date): boolean {
+export function lessonRetryOverdue(state: SchedulerState, conceptId: string, now: Date): boolean {
   const run = state.lessonRuns?.find((candidate) => candidate.conceptId === conceptId);
   if (!run?.retryAfter || !lessonRetryEligible(state, conceptId, now)) return false;
   const retryAfter = typeof run.retryAfter === 'string' ? new Date(run.retryAfter) : run.retryAfter;
