@@ -130,3 +130,39 @@ describe('review budget reservation', () => {
       ),
     ).toBe(true);
     expect(fitPlan.activities.some((activity) => activity.kind === 'review')).toBe(true);
+  });
+
+  it('requires an early review to cover two uncovered due topics', () => {
+    const concepts = fixtureContent.concepts.map((concept) =>
+      concept.id === 'linear-models'
+        ? { ...concept, encompassings: [{ id: 'vectors', weight: 1 }] }
+        : concept,
+    );
+    const content = {
+      ...fixtureContent,
+      concepts,
+      conceptsById: new Map(concepts.map((concept) => [concept.id, concept])),
+    };
+    const state = plannerState(content, {
+      activeCourseId: null,
+      studyCourseIds: [],
+      cards: [
+        reviewCard('vectors', now),
+        reviewCard('linear-models', new Date('2026-02-01T00:00:00.000Z')),
+      ],
+    });
+
+    const plan = planSession(state, content, now, 60);
+
+    expect(
+      plan.activities.some(
+        (activity) => activity.kind === 'review' && activity.conceptId === 'vectors',
+      ),
+    ).toBe(true);
+    expect(
+      plan.activities.some(
+        (activity) => activity.kind === 'review' && activity.conceptId === 'linear-models',
+      ),
+    ).toBe(false);
+  });
+});

@@ -1159,6 +1159,10 @@ function packWeekday(
       }
       continue;
     }
+    if (!dueConceptIds.has(conceptId) && next.newlyCovered < 2) {
+      recordReviewResult(conceptId, 'rejected:other', candidate);
+      continue;
+    }
     if (next.newlyCovered < 1) {
       recordReviewResult(conceptId, 'rejected:other', candidate);
       continue;
