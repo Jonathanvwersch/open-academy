@@ -1075,14 +1075,14 @@ function packWeekday(
     if (dueConceptIds.has(conceptId)) covered.add(conceptId);
     return covered;
   };
-  const candidatesToSelect = [...allReviewDetails];
-  while (candidatesToSelect.length > 0) {
-    const ranked = candidatesToSelect
+  const rankReviewDetails = (
+    details: typeof reviewCandidateDetails,
+    uncovered: ReadonlySet<string>,
+  ) =>
+    details
       .map((entry) => ({
         ...entry,
-        newlyCovered: [...reviewCoverage(entry.candidate)].filter((id) =>
-          uncoveredDueConcepts.has(id),
-        ).length,
+        newlyCovered: [...reviewCoverage(entry.candidate)].filter((id) => uncovered.has(id)).length,
       }))
       .sort((left, right) => {
         const remediationOrder =
@@ -1100,6 +1100,9 @@ function packWeekday(
         if (right.newlyCovered !== left.newlyCovered) return right.newlyCovered - left.newlyCovered;
         return byUrgency(left, right);
       });
+  const candidatesToSelect = [...allReviewDetails];
+  while (candidatesToSelect.length > 0) {
+    const ranked = rankReviewDetails(candidatesToSelect, uncoveredDueConcepts);
     const next = ranked[0];
     if (!next) break;
     const candidate = next.candidate;
@@ -1180,9 +1183,18 @@ function packWeekday(
     .sort((left, right) => right.score - left.score);
   for (const candidate of otherCandidates) add(candidate);
 
-  let removedCoveredReview = true;
-  while (removedCoveredReview) {
-    removedCoveredReview = false;
+  const taskCoversDueTopic = (candidate: Candidate, dueConceptId: string) => {
+    const taskConceptId = candidate.activity.conceptId;
+    if (!taskConceptId) return false;
+    if (candidate.activity.kind === 'learn') {
+      return (
+        learnTaskCanCoverDueReviews(taskConceptId) &&
+        coveredByTaskConcept(taskConceptId).has(dueConceptId)
+      );
+    }
+    return candidate.activity.kind === 'review' && reviewCoverage(candidate).has(dueConceptId);
+  };
+  const pruneCoveredReviews = () => {
     for (const candidate of [...selected]) {
       if (
         candidate.activity.kind !== 'review' ||
@@ -1196,17 +1208,7 @@ function packWeekday(
       const otherTasks = selected.filter((other) => other !== candidate);
       const coveringConceptByDueTopic = new Map<string, string>();
       for (const dueConceptId of dueTopics) {
-        const coveringTask = otherTasks.find((other) => {
-          const taskConceptId = other.activity.conceptId;
-          if (!taskConceptId) return false;
-          if (other.activity.kind === 'learn') {
-            return (
-              learnTaskCanCoverDueReviews(taskConceptId) &&
-              coveredByTaskConcept(taskConceptId).has(dueConceptId)
-            );
-          }
-          return other.activity.kind === 'review' && reviewCoverage(other).has(dueConceptId);
-        });
+        const coveringTask = otherTasks.find((other) => taskCoversDueTopic(other, dueConceptId));
         if (coveringTask?.activity.conceptId) {
           coveringConceptByDueTopic.set(dueConceptId, coveringTask.activity.conceptId);
         }
@@ -1221,8 +1223,63 @@ function packWeekday(
         coveringConceptByDueTopic.get(candidate.activity.conceptId) ??
         coveringConceptByDueTopic.values().next().value;
       recordReviewResult(candidate.activity.conceptId, 'covered', candidate, coveringConceptId);
-      removedCoveredReview = true;
-      break;
+      return true;
+    }
+    return false;
+  };
+  const refreshUncoveredDueConcepts = () => {
+    for (const dueConceptId of dueConceptIds) {
+      if (selected.some((candidate) => taskCoversDueTopic(candidate, dueConceptId))) {
+        uncoveredDueConcepts.delete(dueConceptId);
+      } else {
+        uncoveredDueConcepts.add(dueConceptId);
+      }
+    }
+  };
+  const dueReviewCandidates = reviewCandidateDetails.filter(
+    ({ candidate }) =>
+      candidate.activity.conceptId && dueConceptIds.has(candidate.activity.conceptId),
+  );
+  while (pruneCoveredReviews()) {
+    refreshUncoveredDueConcepts();
+    const attempted = new Set<Candidate>();
+    while (true) {
+      const candidatesToRefill = dueReviewCandidates.filter(({ candidate }) => {
+        const conceptId = candidate.activity.conceptId;
+        return (
+          conceptId &&
+          !attempted.has(candidate) &&
+          !selected.includes(candidate) &&
+          uncoveredDueConcepts.has(conceptId) &&
+          !selected.some((other) => taskCoversDueTopic(other, conceptId))
+        );
+      });
+      const next = rankReviewDetails(candidatesToRefill, uncoveredDueConcepts)[0];
+      if (!next) break;
+      const candidate = next.candidate;
+      const conceptId = candidate.activity.conceptId;
+      if (!conceptId) break;
+      attempted.add(candidate);
+      if (
+        !candidate.remediation &&
+        reviewMinutes + candidate.adjustedMinutes > reviewCap &&
+        !next.overdue
+      ) {
+        recordReviewResult(conceptId, 'rejected:reviewMinuteCap', candidate);
+        continue;
+      }
+      const rejectionReason = addRejectionReason(candidate);
+      if (rejectionReason) {
+        recordReviewResult(conceptId, `rejected:${rejectionReason}`, candidate);
+        continue;
+      }
+      if (!add(candidate)) continue;
+      reviewMinutes += candidate.adjustedMinutes;
+      recordReviewResult(conceptId, next.overdue ? 'selected:overdue' : 'selected', candidate);
+      for (const dueId of reviewCoverage(candidate)) {
+        uncoveredDueConcepts.delete(dueId);
+        coveredBy.set(dueId, conceptId);
+      }
     }
   }
 
