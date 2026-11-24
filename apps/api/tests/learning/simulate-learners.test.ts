@@ -1,5 +1,6 @@
 import { afterAll, expect, test } from 'vitest';
 import {
+  attributeActivityLogs,
   auditP11DescendantCard,
   type InvariantId,
   renderMarkdownReport,
@@ -119,6 +120,32 @@ test('P11 does not treat mixed ratings with an Again as positive credit', () => 
 
   expect(assessment).toEqual({ kind: 'checked', fiReChanged: true, violates: true });
   expect(counters).toEqual({ p11CheckedEvents: 1, p11AmbiguousEvents: 0 });
+});
+
+test('same-timestamp review logs exclude logs created by the lesson quiz', () => {
+  const timestamp = new Date('2026-01-14T12:00:00.000Z');
+  const quizLog = {
+    id: 'quiz-log',
+    cardId: 'lesson-card',
+    conceptId: 'lesson-concept',
+    rating: '3',
+    createdAt: timestamp,
+  };
+  const reviewLog = {
+    id: 'review-log',
+    cardId: 'review-card',
+    conceptId: 'review-concept',
+    rating: '2',
+    createdAt: timestamp,
+  };
+  const checkedIds = new Set<string>();
+
+  expect(attributeActivityLogs(new Set(), [quizLog], checkedIds)).toEqual([quizLog]);
+  expect(checkedIds).toEqual(new Set(['quiz-log']));
+  expect(attributeActivityLogs(new Set([quizLog.id]), [quizLog, reviewLog], checkedIds)).toEqual([
+    reviewLog,
+  ]);
+  expect(checkedIds).toEqual(new Set(['quiz-log', 'review-log']));
 });
 
 test('diligent and graph-change Mathematics for ML runs produce structured reports', async () => {

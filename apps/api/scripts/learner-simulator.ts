@@ -1575,6 +1575,16 @@ export function auditP11DescendantCard(
   };
 }
 
+export function attributeActivityLogs<T extends { id: string }>(
+  beforeIds: ReadonlySet<string>,
+  afterLogs: readonly T[],
+  checkedIds: Set<string>,
+): T[] {
+  const newLogs = afterLogs.filter(({ id }) => !beforeIds.has(id) && !checkedIds.has(id));
+  for (const { id } of afterLogs) checkedIds.add(id);
+  return newLogs;
+}
+
 async function processActivityWithMetrics(
   api: SimulatedApi,
   db: Database,
@@ -1619,10 +1629,7 @@ async function processActivityWithMetrics(
     ? await db.select().from(reviewCards).where(eq(reviewCards.userId, userId))
     : [];
   const activityLogs = tracksCards ? await readActivityLogs() : [];
-  const newLogs = activityLogs.filter(
-    ({ id }) => !beforeLogIds.has(id) && !runtime.checkedReviewLogIds.has(id),
-  );
-  for (const { id } of activityLogs) runtime.checkedReviewLogIds.add(id);
+  const newLogs = attributeActivityLogs(beforeLogIds, activityLogs, runtime.checkedReviewLogIds);
   const beforeById = new Map(beforeCards.map((card) => [card.id, card]));
   const afterById = new Map(afterCards.map((card) => [card.id, card]));
   const nextLocalDay = startOfNextCalendarDay(now, timeZone);
