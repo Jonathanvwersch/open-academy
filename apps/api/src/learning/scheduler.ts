@@ -442,7 +442,10 @@ export function explainReviewSelection(
   now: Date,
   budgetMinutes: number,
   excludedReviewConceptIds: ReadonlySet<string> = new Set(),
-  options: { focusConceptId?: string } = {},
+  options: {
+    focusConceptId?: string;
+    excludedLearnConceptIds?: ReadonlySet<string>;
+  } = {},
 ): ReviewSelectionExplanation[] {
   const trace: ReviewSelectionTrace = {
     results: new Map(),
@@ -456,7 +459,7 @@ export function explainReviewSelection(
     content,
     now,
     Math.max(0, budgetMinutes),
-    new Set(),
+    options.excludedLearnConceptIds ?? new Set(),
     excludedReviewConceptIds,
     trace,
     options,
@@ -532,6 +535,7 @@ export function explainReviewSelectionForReplan(
   const inputs = replanInputs(state, content, existingActivities);
   return {
     budget: remainingBudgetMinutes,
+    excludedLearnConceptIds: [...inputs.excludedLearnConceptIds],
     coveredReviewConceptIds: [...inputs.coveredReviewConceptIds],
     usedExerciseIds: [...(inputs.state.usedExerciseIds ?? [])],
     results: explainReviewSelection(
@@ -540,6 +544,7 @@ export function explainReviewSelectionForReplan(
       now,
       remainingBudgetMinutes,
       inputs.coveredReviewConceptIds,
+      { excludedLearnConceptIds: inputs.excludedLearnConceptIds },
     ),
   };
 }

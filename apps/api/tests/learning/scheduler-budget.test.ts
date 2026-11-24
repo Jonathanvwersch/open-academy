@@ -7,6 +7,7 @@ import type { SchedulerState } from '../../src/learning/scheduler.js';
 import {
   dueTopicsCoveredBy,
   explainReviewSelection,
+  explainReviewSelectionForReplan,
   planSession,
   sessionBudget,
 } from '../../src/learning/scheduler.js';
@@ -151,6 +152,34 @@ describe('sessionBudget', () => {
     expect(sessionBudget('saturday', { saturdayMinutes: 240 })).toBe(240);
     expect(sessionBudget('sunday', { sundayMinutes: 75 })).toBe(75);
   });
+});
+
+it('uses completed failed-quiz lessons in the replan explanation exclusions', () => {
+  const state = plannerState(fixtureContent);
+  state.lessonRuns = [
+    {
+      conceptId: 'supervised-learning',
+      status: 'needs_retry',
+      retryAfter: new Date('2026-01-12T12:00:00.000Z'),
+    },
+  ];
+  const failedQuizActivity = {
+    kind: 'learn' as const,
+    conceptId: 'supervised-learning',
+    exerciseIds: [],
+    plannedMinutes: 15,
+    status: 'completed' as const,
+    reason: {
+      terms: { goal: 0, week_fit: 0, project: 0, unlock: 0, gap: 0, review: 0, cost: 0 },
+      summary: 'completed lesson with a failed quiz',
+    },
+  };
+
+  const explained = explainReviewSelectionForReplan(state, fixtureContent, now, 20, [
+    failedQuizActivity,
+  ]);
+
+  expect(explained.excludedLearnConceptIds).toEqual(['supervised-learning']);
 });
 
 describe('review budget reservation', () => {
