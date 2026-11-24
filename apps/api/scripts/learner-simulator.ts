@@ -1541,9 +1541,18 @@ export function auditP11DescendantCard(
     return { kind: 'explicit' };
   }
 
-  const hasPositiveCredit = activityLogs.some(
-    ({ conceptId, rating }) =>
-      Number(rating) > Rating.Again && encompassing.weight(conceptId, descendantId) > 0,
+  const minimumRatingByConcept = new Map<string, number>();
+  for (const { conceptId, rating } of activityLogs) {
+    const numericRating = Number(rating);
+    const currentMinimum = minimumRatingByConcept.get(conceptId);
+    minimumRatingByConcept.set(
+      conceptId,
+      currentMinimum === undefined ? numericRating : Math.min(currentMinimum, numericRating),
+    );
+  }
+  const hasPositiveCredit = [...minimumRatingByConcept].some(
+    ([conceptId, rating]) =>
+      rating >= Rating.Hard && encompassing.weight(conceptId, descendantId) > 0,
   );
   if (hasPositiveCredit) {
     report.p11AmbiguousEvents += 1;

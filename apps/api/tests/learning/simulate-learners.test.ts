@@ -102,6 +102,25 @@ test('P11 counts positive same-activity credit as ambiguous instead of flagging 
   expect(counters).toEqual({ p11CheckedEvents: 0, p11AmbiguousEvents: 1 });
 });
 
+test('P11 does not treat mixed ratings with an Again as positive credit', () => {
+  const counters = p11Counters();
+  const assessment = auditP11DescendantCard(
+    counters,
+    'descendant',
+    p11Card('2026-01-01T00:00:00.000Z', null),
+    p11Card('2026-01-02T00:00:00.000Z', null),
+    [
+      { cardId: 'prerequisite-card', conceptId: 'prerequisite', rating: '1' },
+      { cardId: 'credit-source-again-card', conceptId: 'credit-source', rating: '1' },
+      { cardId: 'credit-source-good-card', conceptId: 'credit-source', rating: '3' },
+    ],
+    p11Weights,
+  );
+
+  expect(assessment).toEqual({ kind: 'checked', fiReChanged: true, violates: true });
+  expect(counters).toEqual({ p11CheckedEvents: 1, p11AmbiguousEvents: 0 });
+});
+
 test('diligent and graph-change Mathematics for ML runs produce structured reports', async () => {
   const content = await loadContent();
   const report = await simulateLearners(db, content, {
