@@ -1,6 +1,7 @@
 import type { CourseCatalogPayload, CoursePayload, LearnPayload } from '@academy/contracts/course';
 import type { SessionActivity, TodayPayload } from '@academy/contracts/sessions';
-import { and, eq } from 'drizzle-orm';
+import { and, asc, desc, eq } from 'drizzle-orm';
+import type { Card } from 'ts-fsrs';
 import { Rating, State } from 'ts-fsrs';
 import { createApp } from '../src/app.js';
 import type { ContentEdge, ContentIndex } from '../src/content/types.js';
@@ -15,12 +16,21 @@ import {
   remediationFlags,
   reviewCards,
   reviewLogs,
+  sessionActivities,
   users,
 } from '../src/db/schema.js';
 import { buildEncompassingIndex, type EncompassingIndex } from '../src/learning/encompassing.js';
 import { isDueToday, startOfNextCalendarDay } from '../src/learning/fsrs.js';
+import { implicitRepetition } from '../src/learning/implicit-repetition.js';
 import { keyPrereqsForPoint, masteryKey, prerequisiteMet } from '../src/learning/prerequisites.js';
-import { dueTopicsCoveredBy } from '../src/learning/scheduler.js';
+import {
+  adjustedMinutesForLearnerPace,
+  explainReviewSelection,
+  explainReviewSelectionForReplan,
+  type PlannedActivity,
+  type ReviewSelectionExplanation,
+  type SchedulerState,
+} from '../src/learning/scheduler.js';
 import type { MasteryState } from '../src/learning/types.js';
 import { localDateKey } from '../src/learning/xp.js';
 import { answerFor, exerciseFor, wrongAnswerFor } from './learner-simulation-support.js';
@@ -48,7 +58,17 @@ export type InvariantId =
   | 'P9'
   | 'P10'
   | 'P11'
-  | 'P12';
+  | 'P12'
+  | 'P13'
+  | 'P14'
+  | 'P15'
+  | 'P16'
+  | 'P17'
+  | 'P18'
+  | 'P19';
+
+type CheckedInvariantId = 'P13' | 'P14' | 'P15' | 'P16' | 'P17' | 'P18' | 'P19';
+type CheckedInvariantCounts = Record<CheckedInvariantId, number>;
 
 export interface SimulationViolation {
   profile: SimulationProfile;
@@ -181,6 +201,7 @@ export interface ProfileSimulationReport {
   remediation: RemediationSimulationReport;
   p11CheckedEvents: number;
   p11AmbiguousEvents: number;
+  checkedCounts: CheckedInvariantCounts;
   totals: {
     lessonsPerDayMean: number;
     lessonsPerDayMax: number;
@@ -221,6 +242,23 @@ interface ApiResult {
   data: unknown;
 }
 
+export interface SimulatedApiFailure {
+  method: string;
+  path: string;
+  status: number;
+  requestBody?: unknown;
+  responseBody: unknown;
+}
+
+export class SimulatedApiFailureError extends Error {
+  constructor(readonly request: SimulatedApiFailure) {
+    super(
+      `${request.method} ${request.path} failed (${request.status}); request=${JSON.stringify(request.requestBody)} response=${JSON.stringify(request.responseBody)}`,
+    );
+    this.name = 'SimulatedApiFailureError';
+  }
+}
+
 interface SimActivity extends SessionActivity {
   projectId?: string;
   paperId?: string;
@@ -241,7 +279,6 @@ interface LearnerProgress {
 interface ProfileRuntime {
   profile: SimulationProfile;
   seed: number;
-  rng: () => number;
   report: ProfileSimulationReport;
   violationKeys: Set<string>;
   offeredProjectKeys: Set<string>;
@@ -258,6 +295,7 @@ interface ProfileRuntime {
   retryEvents: LessonRetryEvent[];
   postRetryCompletionEvents: LessonRetryEvent[];
   checkedReviewLogIds: Set<string>;
+  pendingP18: Array<{ day: number; conceptId: string; sourceConceptId: string }>;
   openFlagKeys: Set<string>;
   awaitingRetryStart: Set<string>;
   retriedConcepts: Set<string>;
@@ -267,6 +305,8 @@ interface ProfileRuntime {
     { day: number; targetPrereqIds: string[]; reviewed: boolean; violationReported?: boolean }
   >;
   staleRetryReported: Set<string>;
+  activityKeyById: Map<string, string>;
+  decisionAttempts: Map<string, number>;
 }
 
 const graphRemovedConcepts = new Set([
@@ -289,7 +329,16 @@ const invariants: InvariantId[] = [
   'P10',
   'P11',
   'P12',
+  'P13',
+  'P14',
+  'P15',
+  'P16',
+  'P17',
+  'P18',
+  'P19',
 ];
+
+const checkedInvariantIds: CheckedInvariantId[] = ['P13', 'P14', 'P15', 'P16', 'P17', 'P18', 'P19'];
 
 function object(value: unknown): Record<string, unknown> {
   return value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
@@ -316,6 +365,24 @@ function seededRandom(seed: number): () => number {
     value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
     return ((value ^ (value >>> 14)) >>> 0) / 4_294_967_296;
   };
+}
+
+function decisionSeed(...parts: Array<string | number>): number {
+  let seed = 2_166_136_261;
+  for (const character of parts.join('\u0000')) {
+    seed = Math.imul(seed ^ character.charCodeAt(0), 16_777_619);
+  }
+  return seed >>> 0;
+}
+
+function decisionRandom(
+  profile: SimulationProfile,
+  day: string | number,
+  activityId: string,
+  exerciseId: string,
+  attempt: number,
+): number {
+  return seededRandom(decisionSeed(profile, day, activityId, exerciseId, attempt))();
 }
 
 function seedFor(profile: SimulationProfile): number {
@@ -438,12 +505,15 @@ class SimulatedApi {
   private app: ReturnType<typeof createApp>;
   private now: Date;
   private cookie: string | undefined;
+  private readonly requestOrdinals = new Map<string, number>();
+  readonly failedRequests: SimulatedApiFailure[] = [];
 
   constructor(
     private readonly db: Database,
     private content: ContentIndex,
     private readonly timeZone: string,
     initialNow: Date,
+    private readonly profile: SimulationProfile,
   ) {
     this.now = initialNow;
     this.app = this.createApp();
@@ -470,26 +540,62 @@ class SimulatedApi {
 
   async call(method: string, path: string, now: Date, body?: unknown): Promise<ApiResult> {
     this.now = now;
+    const stablePath = path.replace(
+      /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi,
+      '<id>',
+    );
+    const stableBody = JSON.stringify(body, (key, value: unknown) =>
+      ['activityId', 'sessionId', 'problemId', 'itemId', 'placementId'].includes(key)
+        ? `<${key}>`
+        : value,
+    );
+    const requestKey = `${localDate(now, this.timeZone)}|${method}|${stablePath}|${stableBody ?? ''}`;
+    const ordinal = this.requestOrdinals.get(requestKey) ?? 0;
+    this.requestOrdinals.set(requestKey, ordinal + 1);
+    const originalRandom = Math.random;
+    const apiSeed = decisionSeed(
+      this.profile,
+      localDate(now, this.timeZone),
+      'api',
+      requestKey,
+      ordinal,
+    );
+    Math.random = seededRandom(apiSeed);
     const headers = new Headers({
       'X-Now': now.toISOString(),
       'X-Time-Zone': this.timeZone,
     });
     if (this.cookie) headers.set('cookie', this.cookie);
     if (body !== undefined) headers.set('content-type', 'application/json');
-    const response = await this.app.request(`http://academy.local/api${path}`, {
-      method,
-      headers,
-      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-    });
-    const setCookie = response.headers.get('set-cookie');
-    if (setCookie) this.cookie = setCookie.split(';', 1)[0];
-    let data: unknown = null;
     try {
-      data = await response.json();
-    } catch {
-      data = null;
+      const response = await this.app.request(`http://academy.local/api${path}`, {
+        method,
+        headers,
+        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      });
+      const setCookie = response.headers.get('set-cookie');
+      if (setCookie) this.cookie = setCookie.split(';', 1)[0];
+      let data: unknown = null;
+      try {
+        data = await response.json();
+      } catch {
+        data = null;
+      }
+      if (response.status >= 500) {
+        const failure: SimulatedApiFailure = {
+          method,
+          path,
+          status: response.status,
+          ...(body === undefined ? {} : { requestBody: body }),
+          responseBody: data,
+        };
+        this.failedRequests.push(failure);
+        throw new SimulatedApiFailureError(failure);
+      }
+      return { ok: response.ok, status: response.status, data };
+    } finally {
+      Math.random = originalRandom;
     }
-    return { ok: response.ok, status: response.status, data };
   }
 
   async require<T>(method: string, path: string, now: Date, body?: unknown): Promise<T> {
@@ -535,8 +641,16 @@ function hardAncestorClosure(
 
 async function readProgress(db: Database, userId: string): Promise<LearnerProgress> {
   const [masteryRows, runs, placements, flags] = await Promise.all([
-    db.select().from(mastery).where(eq(mastery.userId, userId)),
-    db.select().from(lessonRuns).where(eq(lessonRuns.userId, userId)),
+    db
+      .select()
+      .from(mastery)
+      .where(eq(mastery.userId, userId))
+      .orderBy(asc(mastery.conceptId), asc(mastery.dimension)),
+    db
+      .select()
+      .from(lessonRuns)
+      .where(eq(lessonRuns.userId, userId))
+      .orderBy(asc(lessonRuns.conceptId), desc(lessonRuns.startedAt), desc(lessonRuns.id)),
     db
       .select({ state: diagnosticRuns.state })
       .from(diagnosticRuns)
@@ -546,11 +660,17 @@ async function readProgress(db: Database, userId: string): Promise<LearnerProgre
           eq(diagnosticRuns.kind, 'placement'),
           eq(diagnosticRuns.status, 'completed'),
         ),
-      ),
+      )
+      .orderBy(desc(diagnosticRuns.startedAt), desc(diagnosticRuns.id)),
     db
       .select()
       .from(remediationFlags)
-      .where(and(eq(remediationFlags.userId, userId), eq(remediationFlags.status, 'open'))),
+      .where(and(eq(remediationFlags.userId, userId), eq(remediationFlags.status, 'open')))
+      .orderBy(
+        asc(remediationFlags.conceptId),
+        asc(remediationFlags.targetPrereqId),
+        asc(remediationFlags.id),
+      ),
   ]);
   const placedOut = new Set<string>();
   for (const run of placements) {
@@ -622,6 +742,369 @@ function addViolation(
     missingAncestors,
     ...fields,
   });
+}
+
+function markChecked(runtime: ProfileRuntime, invariant: CheckedInvariantId) {
+  runtime.report.checkedCounts[invariant] += 1;
+}
+
+export function p13HasEmptyPlanViolation(
+  activityCount: number,
+  unlockedLessonMinutes: readonly number[],
+  budgetMinutes: number,
+): boolean {
+  return (
+    activityCount === 0 &&
+    unlockedLessonMinutes.some((plannedMinutes) => plannedMinutes <= budgetMinutes)
+  );
+}
+
+export function p14UncoveredDueCards(
+  dueConceptIds: readonly string[],
+  activityCoverage: readonly ReadonlySet<string>[],
+): string[] {
+  const covered = new Set(activityCoverage.flatMap((coverage) => [...coverage]));
+  return dueConceptIds.filter((conceptId) => !covered.has(conceptId));
+}
+
+export function p16HasOverduePrecedenceViolation(
+  droppedReviewOverdueDays: number,
+  selectedReviewOverdueDays: number,
+): boolean {
+  return droppedReviewOverdueDays >= selectedReviewOverdueDays + 2;
+}
+
+export function p17ReviewFitsRemaining(
+  reviewMinutes: number,
+  remainingBudgetMinutes: number,
+  remainingReviewCapMinutes: number,
+): boolean {
+  return reviewMinutes <= remainingBudgetMinutes && reviewMinutes <= remainingReviewCapMinutes;
+}
+
+export function p18HasMissedPickup(
+  remainsDue: boolean,
+  hasReviewLog: boolean,
+  planCoversTopic: boolean,
+): boolean {
+  return remainsDue && !hasReviewLog && !planCoversTopic;
+}
+
+export function p19HasEarlyReviewViolation(
+  ownConceptIsDue: boolean,
+  newlyCoveredDueTopics: number,
+  remediation: boolean,
+): boolean {
+  return !remediation && !ownConceptIsDue && newlyCoveredDueTopics < 2;
+}
+
+interface AuditDueCoverageContext {
+  weights: EncompassingIndex;
+  timezone: string;
+  nextLocalDay: Date;
+  dueCardsByConcept: Map<string, SchedulerState['cards']>;
+}
+
+const auditDueCoverageContexts = new WeakMap<
+  SchedulerState,
+  { content: ContentIndex; nowMs: number; context: AuditDueCoverageContext }
+>();
+
+function dueTopicsCoveredByForAudit(
+  taskConceptId: string,
+  state: SchedulerState,
+  content: ContentIndex,
+  now: Date,
+): Set<string> {
+  let cached = auditDueCoverageContexts.get(state);
+  if (!cached || cached.content !== content || cached.nowMs !== now.getTime()) {
+    const timezone = state.timezone ?? 'UTC';
+    const dueCardsByConcept = new Map<string, SchedulerState['cards']>();
+    for (const card of state.cards) {
+      if (!isDueToday(card.dueAt, now, timezone)) continue;
+      const dueCards = dueCardsByConcept.get(card.conceptId) ?? [];
+      dueCards.push(card);
+      dueCardsByConcept.set(card.conceptId, dueCards);
+    }
+    cached = {
+      content,
+      nowMs: now.getTime(),
+      context: {
+        weights: buildEncompassingIndex(content),
+        timezone,
+        nextLocalDay: startOfNextCalendarDay(now, timezone),
+        dueCardsByConcept,
+      },
+    };
+    auditDueCoverageContexts.set(state, cached);
+  }
+
+  const covered = new Set<string>();
+  for (const [dueConceptId, dueCards] of cached.context.dueCardsByConcept) {
+    if (dueConceptId === taskConceptId) continue;
+    const weight = cached.context.weights.weight(taskConceptId, dueConceptId);
+    if (weight <= 0) continue;
+    if (
+      dueCards.every((card) => {
+        if (!card.fsrs) return false;
+        const update = implicitRepetition(
+          { fsrs: card.fsrs, dueAt: new Date(card.dueAt) },
+          {
+            weight,
+            rating: Rating.Good,
+            now,
+            timeZone: cached.context.timezone,
+            enableFuzz: false,
+          },
+        );
+        return update !== undefined && update.dueAt >= cached.context.nextLocalDay;
+      })
+    ) {
+      covered.add(dueConceptId);
+    }
+  }
+  return covered;
+}
+
+function activityDueCoverage(
+  activity: SimActivity,
+  state: SchedulerState,
+  content: ContentIndex,
+  now: Date,
+): Set<string> {
+  const covered = new Set<string>();
+  if (activity.status === 'completed' || activity.status === 'skipped') return covered;
+  const dueConceptIds = new Set(
+    state.cards
+      .filter((card) => isDueToday(card.dueAt, now, state.timezone ?? 'UTC'))
+      .map((card) => card.conceptId),
+  );
+  const taskConceptIds = new Set([
+    ...(activity.conceptId ? [activity.conceptId] : []),
+    ...(activity.exerciseIds ?? []).flatMap((exerciseId) => {
+      const conceptId = content.exercisesById.get(exerciseId)?.concept;
+      return conceptId ? [conceptId] : [];
+    }),
+  ]);
+  for (const conceptId of taskConceptIds) {
+    for (const dueConceptId of dueTopicsCoveredByForAudit(conceptId, state, content, now)) {
+      covered.add(dueConceptId);
+    }
+    if (activity.kind === 'review' && dueConceptIds.has(conceptId)) covered.add(conceptId);
+  }
+  if (activity.kind === 'review') {
+    for (const topic of activity.reviewTopics ?? []) {
+      if (dueConceptIds.has(topic.conceptId)) covered.add(topic.conceptId);
+    }
+  }
+  for (const topic of activity.reviewTopics ?? []) {
+    if (dueConceptIds.has(topic.conceptId)) covered.add(topic.conceptId);
+  }
+  return covered;
+}
+
+function dueCardKey(card: Pick<SchedulerState['cards'][number], 'conceptId' | 'dimension'>) {
+  return `${card.conceptId}/${card.dimension}`;
+}
+
+function activityDueCardCoverage(
+  activity: SimActivity,
+  state: SchedulerState,
+  content: ContentIndex,
+  now: Date,
+): Set<string> {
+  const covered = new Set<string>();
+  if (activity.status === 'completed' || activity.status === 'skipped') return covered;
+  const dueCards = state.cards.filter((card) =>
+    isDueToday(card.dueAt, now, state.timezone ?? 'UTC'),
+  );
+  const taskConceptIds = new Set([
+    ...(activity.conceptId ? [activity.conceptId] : []),
+    ...(activity.exerciseIds ?? []).flatMap((exerciseId) => {
+      const conceptId = content.exercisesById.get(exerciseId)?.concept;
+      return conceptId ? [conceptId] : [];
+    }),
+  ]);
+  const implicitlyCovered = new Set(
+    [...taskConceptIds].flatMap((conceptId) => [
+      ...dueTopicsCoveredByForAudit(conceptId, state, content, now),
+    ]),
+  );
+  const explicitlyReviewedDimensions = new Set(
+    (activity.exerciseIds ?? []).flatMap((exerciseId) => {
+      const exercise = content.exercisesById.get(exerciseId);
+      return exercise ? [`${exercise.concept}/${exercise.dimension}`] : [];
+    }),
+  );
+  for (const card of dueCards) {
+    if (
+      implicitlyCovered.has(card.conceptId) ||
+      (activity.kind === 'review' &&
+        explicitlyReviewedDimensions.has(`${card.conceptId}/${card.dimension}`))
+    ) {
+      covered.add(dueCardKey(card));
+    }
+  }
+  return covered;
+}
+
+function localDayOrdinal(date: Date, timeZone: string): number {
+  return Date.parse(`${localDateKey(date, timeZone)}T00:00:00.000Z`) / 86_400_000;
+}
+
+function auditReviewPlanInvariants(
+  runtime: ProfileRuntime,
+  day: number,
+  courseId: string,
+  state: SchedulerState,
+  content: ContentIndex,
+  now: Date,
+  budgetMinutes: number,
+  activities: SimActivity[],
+  reviewExplanations?: ReviewSelectionExplanation[],
+  replan = false,
+) {
+  const explanations =
+    reviewExplanations ?? explainReviewSelection(state, content, now, budgetMinutes);
+  const dueConceptIds = new Set(
+    state.cards
+      .filter((card) => isDueToday(card.dueAt, now, state.timezone ?? 'UTC'))
+      .map((card) => card.conceptId),
+  );
+  const openRemediationConceptIds = new Set(
+    state.remediationFlags.flatMap((flag) =>
+      flag.status !== 'resolved' && flag.targetPrereqId ? [flag.targetPrereqId] : [],
+    ),
+  );
+  const reviewConceptIdsForActivity = (activity: SimActivity) => {
+    const reviewTopics = (activity.reviewTopics ?? []).map(({ conceptId }) => conceptId);
+    if (reviewTopics.length > 0) return [...new Set(reviewTopics)];
+    if (activity.conceptId) return [activity.conceptId];
+    return [
+      ...new Set(
+        (activity.exerciseIds ?? []).flatMap((exerciseId) => {
+          const conceptId = content.exercisesById.get(exerciseId)?.concept;
+          return conceptId ? [conceptId] : [];
+        }),
+      ),
+    ];
+  };
+  const unfinished = activities.filter(
+    (activity) => activity.status !== 'completed' && activity.status !== 'skipped',
+  );
+  const coverageByActivity = unfinished.map((activity) =>
+    activityDueCoverage(activity, state, content, now),
+  );
+  const allCovered = new Set(coverageByActivity.flatMap((coverage) => [...coverage]));
+  const nonRemediationReviews = unfinished.flatMap((activity) =>
+    activity.kind === 'review'
+      ? reviewConceptIdsForActivity(activity)
+          .filter((conceptId) => !openRemediationConceptIds.has(conceptId))
+          .map((conceptId) => ({ activity, conceptId }))
+      : [],
+  );
+  const overdueDays = (conceptId: string) =>
+    Math.max(
+      0,
+      ...state.cards
+        .filter(
+          (card) =>
+            card.conceptId === conceptId && isDueToday(card.dueAt, now, state.timezone ?? 'UTC'),
+        )
+        .map((card) =>
+          Math.max(
+            0,
+            localDayOrdinal(now, state.timezone ?? 'UTC') -
+              localDayOrdinal(new Date(card.dueAt), state.timezone ?? 'UTC'),
+          ),
+        ),
+    );
+  const budgetActivities = unfinished.filter(
+    (activity) => !replan || activity.status === 'planned',
+  );
+  const unfinishedMinutes = budgetActivities.reduce(
+    (total, activity) => total + activity.plannedMinutes,
+    0,
+  );
+  const selectedReviewMinutes = budgetActivities
+    .filter((activity) => activity.kind === 'review')
+    .reduce((total, activity) => total + activity.plannedMinutes, 0);
+  const reviewCap = explanations[0]?.reviewCap ?? Math.floor(budgetMinutes * 0.3);
+  const remainingBudgetMinutes = Math.max(0, budgetMinutes - unfinishedMinutes);
+  const remainingReviewCapMinutes = Math.max(0, reviewCap - selectedReviewMinutes);
+
+  for (const explanation of explanations) {
+    if (
+      !dueConceptIds.has(explanation.conceptId) ||
+      (explanation.result !== 'rejected:reviewMinuteCap' &&
+        explanation.result !== 'rejected:budget') ||
+      allCovered.has(explanation.conceptId)
+    ) {
+      continue;
+    }
+    markChecked(runtime, 'P17');
+    if (
+      p17ReviewFitsRemaining(
+        explanation.reviewMinutes,
+        remainingBudgetMinutes,
+        remainingReviewCapMinutes,
+      )
+    ) {
+      addViolation(runtime, day, 'P17', explanation.conceptId, [], {
+        courseId,
+        conceptId: explanation.conceptId,
+        details: `uncovered due review fits the ${remainingBudgetMinutes}-minute remaining budget and ${remainingReviewCapMinutes}-minute review cap`,
+      });
+    }
+
+    if (nonRemediationReviews.length === 0) continue;
+    markChecked(runtime, 'P16');
+    const droppedOverdueDays = overdueDays(explanation.conceptId);
+    for (const selected of nonRemediationReviews) {
+      const selectedCoverage = activityDueCoverage(selected.activity, state, content, now);
+      const selectedOverdueDays = Math.max(
+        0,
+        ...[...selectedCoverage].map((conceptId) => overdueDays(conceptId)),
+      );
+      if (p16HasOverduePrecedenceViolation(droppedOverdueDays, selectedOverdueDays)) {
+        addViolation(runtime, day, 'P16', explanation.conceptId, [], {
+          courseId,
+          conceptId: explanation.conceptId,
+          details: `${explanation.conceptId} was ${droppedOverdueDays} local days overdue while ${selected.conceptId} was selected at ${selectedOverdueDays} days overdue`,
+        });
+      }
+    }
+  }
+
+  const coveredBefore = new Set<string>();
+  for (const activity of unfinished) {
+    const coverage = activityDueCoverage(activity, state, content, now);
+    if (activity.kind === 'review') {
+      for (const conceptId of reviewConceptIdsForActivity(activity)) {
+        markChecked(runtime, 'P19');
+        const topicCoverage = new Set(dueTopicsCoveredByForAudit(conceptId, state, content, now));
+        if (dueConceptIds.has(conceptId)) topicCoverage.add(conceptId);
+        const newlyCovered = [...topicCoverage].filter(
+          (dueConceptId) => !coveredBefore.has(dueConceptId),
+        ).length;
+        if (
+          p19HasEarlyReviewViolation(
+            dueConceptIds.has(conceptId),
+            newlyCovered,
+            openRemediationConceptIds.has(conceptId),
+          )
+        ) {
+          addViolation(runtime, day, 'P19', conceptId, [], {
+            courseId,
+            conceptId,
+            details: `non-due review covered only ${newlyCovered} uncovered due topics`,
+          });
+        }
+        for (const dueConceptId of topicCoverage) coveredBefore.add(dueConceptId);
+      }
+    }
+    for (const conceptId of coverage) coveredBefore.add(conceptId);
+  }
 }
 
 function checkLessonReadiness(
@@ -863,6 +1346,7 @@ function answerForProfile(
   exerciseId: string,
   seed: number,
   correct: boolean,
+  partialExplain = false,
 ): unknown {
   const exercise = exerciseFor(content, exerciseId, seed);
   const answer = correct
@@ -872,12 +1356,29 @@ function answerForProfile(
   const answerObject = object(answer);
   return {
     text: text(answerObject.text) ?? 'A correct explanation.',
-    metCriteria: correct ? exercise.rubric.map((item) => item.id) : [],
+    metCriteria: correct
+      ? exercise.rubric
+          .slice(0, partialExplain ? exercise.rubric.length - 1 : undefined)
+          .map((item) => item.id)
+      : [],
   };
 }
 
-function wantsCorrect(runtime: ProfileRuntime, conceptId: string, day: number): boolean {
-  return runtime.rng() < profileAccuracy(runtime.profile, conceptId, day, runtime.lastPracticed);
+function wantsCorrect(
+  runtime: ProfileRuntime,
+  conceptId: string,
+  day: number,
+  activityId: string,
+  exerciseId: string,
+): boolean {
+  const activityKey =
+    runtime.activityKeyById.get(activityId) ?? `day:${day}|unmapped-activity:${exerciseId}`;
+  const attemptKey = `${activityKey}|${exerciseId}`;
+  const attempt = (runtime.decisionAttempts.get(attemptKey) ?? 0) + 1;
+  runtime.decisionAttempts.set(attemptKey, attempt);
+  const random = decisionRandom(runtime.profile, day, activityKey, exerciseId, attempt);
+  const accuracy = profileAccuracy(runtime.profile, conceptId, day, runtime.lastPracticed);
+  return random < accuracy;
 }
 
 function recordOutcome(runtime: ProfileRuntime, conceptId: string, day: number, correct: number) {
@@ -973,7 +1474,11 @@ async function reviewCardAudit(
   timeZone: string,
   reportedCards: Set<string>,
 ) {
-  const cards = await db.select().from(reviewCards).where(eq(reviewCards.userId, userId));
+  const cards = await db
+    .select()
+    .from(reviewCards)
+    .where(eq(reviewCards.userId, userId))
+    .orderBy(asc(reviewCards.conceptId), asc(reviewCards.dimension), asc(reviewCards.id));
   const today = localDate(now, timeZone);
   for (const card of cards) {
     const dueDate = localDate(card.dueAt, timeZone);
@@ -1000,7 +1505,8 @@ async function missedQuizPointIds(db: Database, runId: string): Promise<string[]
   const items = await db
     .select()
     .from(lessonQuizItems)
-    .where(eq(lessonQuizItems.quizAttemptId, lastAttempt.id));
+    .where(eq(lessonQuizItems.quizAttemptId, lastAttempt.id))
+    .orderBy(asc(lessonQuizItems.position), asc(lessonQuizItems.id));
   return [
     ...new Set(
       items
@@ -1040,7 +1546,8 @@ async function answerLessonProblem(
           runtime.weakPrereqs.includes(prereqId) && !runtime.completedRemedialReviews.has(prereqId),
       ),
   );
-  const intendedCorrect = !weakPoint && wantsCorrect(runtime, problemConceptId, day);
+  const intendedCorrect =
+    !weakPoint && wantsCorrect(runtime, problemConceptId, day, activityId, exerciseId);
   const answer = answerForProfile(content, exerciseId, numeric(pending.seed), intendedCorrect);
   const response = await api.call('POST', `${runPath}/answer`, now, {
     problemId,
@@ -1200,6 +1707,7 @@ async function finishLessonQuiz(
           .select({ id: lessonRuns.id })
           .from(lessonRuns)
           .where(and(eq(lessonRuns.userId, api.userId ?? ''), eq(lessonRuns.conceptId, conceptId)))
+          .orderBy(desc(lessonRuns.updatedAt), desc(lessonRuns.id))
           .limit(1);
         const runId = lessonRun?.id;
         if (runId) {
@@ -1243,7 +1751,7 @@ async function finishLessonQuiz(
       const seed = stored?.seed ?? 0;
       const questionConceptId = content.exercisesById.get(exerciseId)?.concept ?? conceptId;
       await auditP4(runtime, day, courseId, questionConceptId, progress, content);
-      const intendedCorrect = wantsCorrect(runtime, questionConceptId, day);
+      const intendedCorrect = wantsCorrect(runtime, questionConceptId, day, activityId, exerciseId);
       const answer = answerForProfile(content, exerciseId, seed, intendedCorrect);
       const response = await api.call('POST', `${quizPath}/answer`, now, {
         itemId,
@@ -1306,8 +1814,19 @@ async function attemptExercise(
   mode: 'practice' | 'review' | 'assessment',
 ): Promise<number> {
   const conceptId = content.exercisesById.get(exerciseId)?.concept ?? courseId;
-  const intendedCorrect = wantsCorrect(runtime, conceptId, day);
-  const answer = answerForProfile(content, exerciseId, 0, intendedCorrect);
+  const intendedCorrect = wantsCorrect(runtime, conceptId, day, activityId, exerciseId);
+  const exercise = exerciseFor(content, exerciseId, 0);
+  const activityKey =
+    runtime.activityKeyById.get(activityId) ?? `day:${day}|unmapped-activity:${exerciseId}`;
+  const attempt = runtime.decisionAttempts.get(`${activityKey}|${exerciseId}`) ?? 1;
+  const partialExplain =
+    runtime.profile !== 'diligent' &&
+    intendedCorrect &&
+    exercise.type === 'explain' &&
+    exercise.rubric.length >= 2 &&
+    decisionRandom(runtime.profile, day, activityKey, `${exerciseId}:partial-explain`, attempt) <
+      0.3;
+  const answer = answerForProfile(content, exerciseId, 0, intendedCorrect, partialExplain);
   const response = await api.call('POST', '/attempts', now, {
     exerciseId,
     answer,
@@ -1319,8 +1838,27 @@ async function attemptExercise(
   if (!response.ok) {
     throw new Error(`POST /attempts failed (${response.status}): ${JSON.stringify(response.data)}`);
   }
-  const correct = numeric(object(response.data).correct, intendedCorrect ? 1 : 0);
+  const result = object(response.data);
+  const correct = numeric(result.correct, intendedCorrect ? 1 : 0);
   recordOutcome(runtime, conceptId, day, correct);
+  if (partialExplain && result.retryAllowed === true) {
+    const followUp = await api.call('POST', '/attempts', now, {
+      exerciseId,
+      answer: answerForProfile(content, exerciseId, 0, true),
+      mode,
+      sessionId,
+      activityId,
+      durationMs: 5_000,
+    });
+    if (!followUp.ok) {
+      throw new Error(
+        `POST /attempts follow-up failed (${followUp.status}): ${JSON.stringify(followUp.data)}`,
+      );
+    }
+    const followUpCorrect = numeric(object(followUp.data).correct, 1);
+    recordOutcome(runtime, conceptId, day, followUpCorrect);
+    return followUpCorrect;
+  }
   return correct;
 }
 
@@ -1371,6 +1909,7 @@ async function processActivity(
             eq(lessonRuns.conceptId, activity.conceptId),
           ),
         )
+        .orderBy(desc(lessonRuns.updatedAt), desc(lessonRuns.id))
         .limit(1);
       if (finalRun[0]?.status === 'completed') {
         await completeActivity(api, now, sessionId, activity, {
@@ -1575,6 +2114,106 @@ export function auditP11DescendantCard(
   };
 }
 
+interface P15CardSnapshot {
+  id: string;
+  conceptId: string;
+  dueAt: Date;
+  lastReviewAt: Date | null;
+  fsrs: unknown;
+}
+
+export function auditP15ImplicitCredits(
+  beforeCards: readonly P15CardSnapshot[],
+  afterCards: readonly P15CardSnapshot[],
+  activityLogs: readonly P11ActivityLog[],
+  sourceConceptOrder: readonly string[],
+  encompassing: Pick<EncompassingIndex, 'weight' | 'ancestors' | 'descendants'>,
+  now: Date,
+  timeZone: string,
+): { checked: number; violations: string[] } {
+  const logsByConcept = new Map<string, number[]>();
+  for (const log of activityLogs) {
+    const ratings = logsByConcept.get(log.conceptId) ?? [];
+    ratings.push(Number(log.rating));
+    logsByConcept.set(log.conceptId, ratings);
+  }
+  const explicitCardIds = new Set(activityLogs.map((log) => log.cardId));
+  const expectedById = new Map(beforeCards.map((card) => [card.id, card]));
+  const actualById = new Map(afterCards.map((card) => [card.id, card]));
+  const checkedCards = new Set<string>();
+  const positiveSourcesWithAncestors = new Set<string>();
+  const positiveSourcesUpdated = new Set<string>();
+  for (const sourceConceptId of new Set(sourceConceptOrder)) {
+    const ratings = logsByConcept.get(sourceConceptId);
+    if (!ratings?.length) continue;
+    const rating = Math.min(...ratings) as Rating;
+    const positive = rating === Rating.Hard || rating === Rating.Good;
+    const relatedConcepts = positive
+      ? new Set(encompassing.ancestors(sourceConceptId).keys())
+      : rating === Rating.Again
+        ? new Set(encompassing.descendants(sourceConceptId).keys())
+        : new Set<string>();
+    for (const card of beforeCards) {
+      const actual = actualById.get(card.id);
+      if (
+        positive &&
+        encompassing.weight(sourceConceptId, card.conceptId) > 0 &&
+        relatedConcepts.has(card.conceptId) &&
+        !explicitCardIds.has(card.id) &&
+        (actual?.lastReviewAt?.getTime() ?? null) === (card.lastReviewAt?.getTime() ?? null) &&
+        (card.fsrs as Card | null)?.state === State.Review
+      ) {
+        positiveSourcesWithAncestors.add(sourceConceptId);
+      }
+      const weight = encompassing.weight(sourceConceptId, card.conceptId);
+      if (
+        weight <= 0 ||
+        !relatedConcepts.has(card.conceptId) ||
+        explicitCardIds.has(card.id) ||
+        (actual?.lastReviewAt?.getTime() ?? null) !== (card.lastReviewAt?.getTime() ?? null) ||
+        (card.fsrs as Card | null)?.state !== State.Review ||
+        (!positive && rating !== Rating.Again)
+      ) {
+        continue;
+      }
+      const current = expectedById.get(card.id);
+      if (!current) continue;
+      const update = implicitRepetition(
+        { fsrs: current.fsrs as Card, dueAt: current.dueAt },
+        { weight, rating, now, timeZone, enableFuzz: false },
+      );
+      if (!update) continue;
+      expectedById.set(card.id, { ...current, fsrs: update.fsrs, dueAt: update.dueAt });
+      checkedCards.add(card.id);
+      if (positive) positiveSourcesUpdated.add(sourceConceptId);
+    }
+  }
+  const violations: string[] = [];
+  for (const cardId of checkedCards) {
+    const expected = expectedById.get(cardId);
+    const actual = actualById.get(cardId);
+    if (!expected || !actual) {
+      violations.push(`${cardId}: expected implicit update was missing`);
+      continue;
+    }
+    const expectedFsrs = expected.fsrs as Card;
+    const actualFsrs = actual.fsrs as Card;
+    if (
+      expected.dueAt.getTime() !== actual.dueAt.getTime() ||
+      expectedFsrs.stability !== actualFsrs.stability ||
+      expectedFsrs.difficulty !== actualFsrs.difficulty
+    ) {
+      violations.push(`${cardId}: implicit update was applied zero or multiple times`);
+    }
+  }
+  for (const sourceConceptId of positiveSourcesWithAncestors) {
+    if (!positiveSourcesUpdated.has(sourceConceptId)) {
+      violations.push(`${sourceConceptId}: positive credit produced no implicit update`);
+    }
+  }
+  return { checked: activityLogs.length + checkedCards.size, violations };
+}
+
 export function attributeActivityLogs<T extends { id: string }>(
   beforeIds: ReadonlySet<string>,
   afterLogs: readonly T[],
@@ -1609,9 +2248,17 @@ async function processActivityWithMetrics(
       })
       .from(reviewLogs)
       .innerJoin(reviewCards, eq(reviewLogs.cardId, reviewCards.id))
-      .where(and(eq(reviewCards.userId, userId), eq(reviewLogs.createdAt, now)));
+      .where(and(eq(reviewCards.userId, userId), eq(reviewLogs.createdAt, now)))
+      .orderBy(asc(reviewLogs.createdAt), asc(reviewLogs.id));
+  const beforeSchedulerState = tracksCards
+    ? await new LearnerRepository(db, userId).schedulerState(now, content)
+    : undefined;
   const beforeCards = tracksCards
-    ? await db.select().from(reviewCards).where(eq(reviewCards.userId, userId))
+    ? await db
+        .select()
+        .from(reviewCards)
+        .where(eq(reviewCards.userId, userId))
+        .orderBy(asc(reviewCards.conceptId), asc(reviewCards.dimension), asc(reviewCards.id))
     : [];
   const beforeLogIds = new Set(tracksCards ? (await readActivityLogs()).map(({ id }) => id) : []);
   const result = await processActivity(
@@ -1626,12 +2273,100 @@ async function processActivityWithMetrics(
     activity,
   );
   const afterCards = tracksCards
-    ? await db.select().from(reviewCards).where(eq(reviewCards.userId, userId))
+    ? await db
+        .select()
+        .from(reviewCards)
+        .where(eq(reviewCards.userId, userId))
+        .orderBy(asc(reviewCards.conceptId), asc(reviewCards.dimension), asc(reviewCards.id))
     : [];
   const activityLogs = tracksCards ? await readActivityLogs() : [];
   const newLogs = attributeActivityLogs(beforeLogIds, activityLogs, runtime.checkedReviewLogIds);
+  const [savedActivity] =
+    activity.kind === 'review' || activity.kind === 'learn'
+      ? await db
+          .select({ status: sessionActivities.status })
+          .from(sessionActivities)
+          .where(eq(sessionActivities.id, activity.id))
+          .limit(1)
+      : [];
+  const activityCompleted = savedActivity?.status === 'completed';
+  if (newLogs.length > 0) {
+    const loggedConceptIds = new Set(newLogs.map((log) => log.conceptId));
+    runtime.pendingP18 = runtime.pendingP18.filter(
+      (event) => !loggedConceptIds.has(event.conceptId),
+    );
+  }
   const beforeById = new Map(beforeCards.map((card) => [card.id, card]));
   const afterById = new Map(afterCards.map((card) => [card.id, card]));
+  const encompassing = tracksCards ? buildEncompassingIndex(content) : undefined;
+  if (activity.kind === 'review' && activityCompleted && beforeSchedulerState) {
+    const minimumRatingByConcept = new Map<string, number>();
+    for (const log of newLogs) {
+      const rating = Number(log.rating);
+      minimumRatingByConcept.set(
+        log.conceptId,
+        Math.min(minimumRatingByConcept.get(log.conceptId) ?? Infinity, rating),
+      );
+    }
+    for (const [sourceConceptId, rating] of minimumRatingByConcept) {
+      if (rating >= Rating.Good) continue;
+      for (const conceptId of dueTopicsCoveredByForAudit(
+        sourceConceptId,
+        beforeSchedulerState,
+        content,
+        now,
+      )) {
+        if (
+          newLogs.some((log) => log.conceptId === conceptId) ||
+          !afterCards.some(
+            (card) => card.conceptId === conceptId && isDueToday(card.dueAt, now, timeZone),
+          )
+        ) {
+          continue;
+        }
+        if (
+          !runtime.pendingP18.some((event) => event.day === day && event.conceptId === conceptId)
+        ) {
+          runtime.pendingP18.push({ day, conceptId, sourceConceptId });
+        }
+      }
+    }
+  }
+  if (tracksCards && encompassing && activityCompleted) {
+    const exerciseConcepts = (activity.exerciseIds ?? []).flatMap((exerciseId) => {
+      const conceptId = content.exercisesById.get(exerciseId)?.concept;
+      return conceptId ? [conceptId] : [];
+    });
+    const sourceConceptOrder = [
+      ...new Set([
+        ...(activity.conceptId ? [activity.conceptId] : []),
+        ...exerciseConcepts,
+        ...newLogs
+          .map((log) => log.conceptId)
+          .filter(
+            (conceptId) =>
+              conceptId !== activity.conceptId && !exerciseConcepts.includes(conceptId),
+          )
+          .sort(),
+      ]),
+    ];
+    const p15 = auditP15ImplicitCredits(
+      beforeCards,
+      afterCards,
+      newLogs,
+      sourceConceptOrder,
+      encompassing,
+      now,
+      timeZone,
+    );
+    runtime.report.checkedCounts.P15 += p15.checked;
+    for (const detail of p15.violations) {
+      addViolation(runtime, day, 'P15', detail.split(':', 1)[0] ?? 'implicit-credit', [], {
+        courseId,
+        details: detail,
+      });
+    }
+  }
   const nextLocalDay = startOfNextCalendarDay(now, timeZone);
   let positiveImplicitCredits = 0;
   let negativeImplicitCredits = 0;
@@ -1655,7 +2390,7 @@ async function processActivityWithMetrics(
   if (activity.kind === 'review') {
     explicitReviews = newLogs.length;
 
-    const encompassing = buildEncompassingIndex(content);
+    if (!encompassing) throw new Error('Missing encompassing index for review audit');
     for (const log of newLogs.filter(({ rating }) => rating === String(Rating.Again))) {
       for (const [descendantId, weight] of encompassing.descendants(log.conceptId)) {
         if (weight <= 0) continue;
@@ -1774,17 +2509,16 @@ async function maybeSwitchGraphContent(
         eq(lessonRuns.conceptId, graphMilestoneConceptId),
       ),
     )
+    .orderBy(desc(lessonRuns.updatedAt), desc(lessonRuns.id))
     .limit(1);
   if (run?.status !== 'completed') return graphContent;
 
   api.setContent(realContent);
   runtime.report.graphChangeDay = day;
   const progress = await readProgress(db, api.userId ?? '');
-  const [today, learn, page] = await Promise.all([
-    api.require<TodayPayload>('GET', '/today', now),
-    api.require<LearnPayload>('GET', '/learn', now),
-    fetchCoursePage(api, now, graphCourseId),
-  ]);
+  const today = await api.require<TodayPayload>('GET', '/today', now);
+  const learn = await api.require<LearnPayload>('GET', '/learn', now);
+  const page = await fetchCoursePage(api, now, graphCourseId);
   await auditHome(api, now, runtime, day, courseId, today, learn, progress, realContent);
   auditCoursePage(runtime, day, graphCourseId, page, progress, realContent);
   return realContent;
@@ -1848,7 +2582,7 @@ async function auditCompressionPlan(
     [...new Set(taskConceptIds)].map((conceptId) => [
       conceptId,
       new Set([
-        ...dueTopicsCoveredBy(conceptId, state, content, now),
+        ...dueTopicsCoveredByForAudit(conceptId, state, content, now),
         ...(reviewConceptIds.has(conceptId) && dueConceptIds.has(conceptId) ? [conceptId] : []),
       ]),
     ]),
@@ -1861,7 +2595,7 @@ async function auditCompressionPlan(
     if (reviewConceptIds.has(dueConceptId)) {
       const dueReviewTopics = [
         dueConceptId,
-        ...dueTopicsCoveredBy(dueConceptId, state, content, now),
+        ...dueTopicsCoveredByForAudit(dueConceptId, state, content, now),
       ];
       const reviewIsRedundant = dueReviewTopics.every((reviewTopicId) =>
         [...coverageByTask].some(
@@ -1884,6 +2618,111 @@ async function auditCompressionPlan(
     }
   }
   return coveredSkips;
+}
+
+function auditSavedSessionPlan(
+  runtime: ProfileRuntime,
+  day: number,
+  courseId: string,
+  planLabel: string,
+  state: SchedulerState,
+  content: ContentIndex,
+  now: Date,
+  budgetMinutes: number,
+  learn: LearnPayload,
+  activities: SimActivity[],
+  reviewExplanations?: ReviewSelectionExplanation[],
+) {
+  markChecked(runtime, 'P13');
+  const lessonMinutes = learn.choices.flatMap((choice) => {
+    const concept = content.conceptsById.get(choice.conceptId);
+    if (!concept || !content.lessonsByConcept.has(choice.conceptId)) return [];
+    return [adjustedMinutesForLearnerPace(concept.est_minutes, state.actualEstimateRatio)];
+  });
+  const unfinishedActivityCount = activities.filter(
+    (activity) => activity.status !== 'completed' && activity.status !== 'skipped',
+  ).length;
+  if (p13HasEmptyPlanViolation(unfinishedActivityCount, lessonMinutes, budgetMinutes)) {
+    const lesson = learn.choices.find((choice) => {
+      const concept = content.conceptsById.get(choice.conceptId);
+      return (
+        concept !== undefined &&
+        content.lessonsByConcept.has(choice.conceptId) &&
+        adjustedMinutesForLearnerPace(concept.est_minutes, state.actualEstimateRatio) <=
+          budgetMinutes
+      );
+    });
+    addViolation(runtime, day, 'P13', lesson?.conceptId ?? planLabel, [], {
+      courseId,
+      ...(lesson ? { conceptId: lesson.conceptId } : {}),
+      details: `${planLabel} had no activities although an unlocked lesson fit the ${budgetMinutes}-minute budget`,
+    });
+  }
+
+  const dueCards = state.cards.filter((card) =>
+    isDueToday(card.dueAt, now, state.timezone ?? 'UTC'),
+  );
+  for (const _card of dueCards) markChecked(runtime, 'P14');
+  for (const cardId of p14UncoveredDueCards(
+    dueCards.map(dueCardKey),
+    activities.map((activity) => activityDueCardCoverage(activity, state, content, now)),
+  )) {
+    const card = dueCards.find((item) => dueCardKey(item) === cardId);
+    addViolation(runtime, day, 'P14', cardId, [], {
+      courseId,
+      ...(card ? { conceptId: card.conceptId } : {}),
+      details: `${planLabel} did not save an unfinished activity covering the due-today card`,
+    });
+  }
+  for (const pending of runtime.pendingP18.filter((event) => event.day === day)) {
+    markChecked(runtime, 'P18');
+    const remainsDue = state.cards.some(
+      (card) =>
+        card.conceptId === pending.conceptId &&
+        isDueToday(card.dueAt, now, state.timezone ?? 'UTC'),
+    );
+    const coveringActivities = activities.filter(
+      (activity) =>
+        activity.status !== 'completed' &&
+        activity.status !== 'skipped' &&
+        activityDueCoverage(activity, state, content, now).has(pending.conceptId),
+    );
+    const selectedReviewMinutes = activities
+      .filter(
+        (activity) =>
+          activity.kind === 'review' &&
+          activity.status !== 'completed' &&
+          activity.status !== 'skipped' &&
+          (planLabel !== 'replan' || activity.status === 'planned'),
+      )
+      .reduce((total, activity) => total + activity.plannedMinutes, 0);
+    const planCoversTopic = coveringActivities.some(
+      (activity) =>
+        activity.kind !== 'review' || selectedReviewMinutes <= Math.floor(budgetMinutes * 0.3),
+    );
+    if (p18HasMissedPickup(remainsDue, false, planCoversTopic)) {
+      addViolation(runtime, day, 'P18', pending.conceptId, [], {
+        courseId,
+        conceptId: pending.conceptId,
+        details: `${planLabel} omitted due topic after low-credit review of ${pending.sourceConceptId}`,
+      });
+    }
+  }
+  runtime.pendingP18 = runtime.pendingP18.filter((event) => event.day > day);
+  if (planLabel !== 'replan' || reviewExplanations) {
+    auditReviewPlanInvariants(
+      runtime,
+      day,
+      courseId,
+      state,
+      content,
+      now,
+      budgetMinutes,
+      activities,
+      reviewExplanations,
+      planLabel === 'replan',
+    );
+  }
 }
 
 function summarizeDailyStats(stats: DailySimulationStats[]) {
@@ -1975,13 +2814,10 @@ async function simulateProfile(
   const timeZone = options.timeZone ?? 'America/Los_Angeles';
   const startDate = options.startDate ?? '2026-01-01';
   const seed = seedFor(profile);
-  const rng = seededRandom(seed);
-  const originalRandom = Math.random;
-  Math.random = rng;
   const graphContent = toGraphChangeContent(realContent);
   const initialContent = profile === 'graph-change' ? graphContent : realContent;
   const firstNow = localNoon(startDate, timeZone);
-  const api = new SimulatedApi(db, initialContent, timeZone, firstNow);
+  const api = new SimulatedApi(db, initialContent, timeZone, firstNow, profile);
   const report: ProfileSimulationReport = {
     profile,
     seed,
@@ -2009,6 +2845,9 @@ async function simulateProfile(
     },
     p11CheckedEvents: 0,
     p11AmbiguousEvents: 0,
+    checkedCounts: Object.fromEntries(
+      checkedInvariantIds.map((id) => [id, 0]),
+    ) as CheckedInvariantCounts,
     totals: {
       lessonsPerDayMean: 0,
       lessonsPerDayMax: 0,
@@ -2028,7 +2867,6 @@ async function simulateProfile(
   const runtime: ProfileRuntime = {
     profile,
     seed,
-    rng,
     report,
     violationKeys: new Set(),
     offeredProjectKeys: new Set(),
@@ -2050,7 +2888,10 @@ async function simulateProfile(
     completedAfterRetryConcepts: new Set(),
     noProgressHalts: new Map(),
     staleRetryReported: new Set(),
+    activityKeyById: new Map(),
+    decisionAttempts: new Map(),
     checkedReviewLogIds: new Set(),
+    pendingP18: [],
   };
   let activeContent = initialContent;
   let currentCourseId: string | undefined;
@@ -2106,12 +2947,28 @@ async function simulateProfile(
         await api.require('PUT', '/course/active', now, { courseId });
       }
 
-      const [today, learn] = await Promise.all([
-        api.require<TodayPayload>('GET', '/today', now),
-        api.require<LearnPayload>('GET', '/learn', now),
-      ]);
+      const today = await api.require<TodayPayload>('GET', '/today', now);
+      const learn = await api.require<LearnPayload>('GET', '/learn', now);
       const userId = api.userId;
       if (!userId) throw new Error('Simulation API did not create a learner');
+      const budgetChoices: Array<number | undefined> = [10, 20, 30, 45, 60, undefined];
+      const selectedBudget =
+        budgetChoices[
+          Math.floor(
+            decisionRandom(profile, day, 'daily-session', 'budget', 1) * budgetChoices.length,
+          )
+        ];
+      const budgetRequest = selectedBudget === undefined ? {} : { budgetMinutes: selectedBudget };
+      const stateBeforeSession = await new LearnerRepository(db, userId).schedulerState(
+        now,
+        activeContent,
+      );
+      const hadDueReviews = stateBeforeSession.cards.some((card) =>
+        isDueToday(card.dueAt, now, stateBeforeSession.timezone ?? timeZone),
+      );
+      const shouldReplan = decisionRandom(profile, day, 'daily-session', 'replan', 1) < 0.2;
+      const shouldFocusDueReview =
+        hadDueReviews && decisionRandom(profile, day, 'daily-session', 'due-review-focus', 1) < 0.3;
       const progress = await readProgress(db, userId);
       await auditHome(api, now, runtime, day, courseId, today, learn, progress, activeContent);
       const pageBefore = await fetchCoursePage(api, now, courseId);
@@ -2142,19 +2999,39 @@ async function simulateProfile(
           ...(topic.retry ? { retry: topic.retry } : {}),
         })),
       };
+      let ranDueFocus = false;
       if (!skip) {
         const session = object(
-          await api.require('POST', '/sessions', now, { kind: today.sessionKind }),
+          await api.require('POST', '/sessions', now, {
+            kind: today.sessionKind,
+            ...budgetRequest,
+          }),
         );
         const sessionId = text(session.id);
         if (!sessionId) throw new Error('Session start did not return an id');
         const paperId = pageBefore.units
           .find((unit) => unit.unit === pageBefore.currentUnit)
           ?.papers.find((paper) => paper.status !== 'completed')?.id;
-        const activities = list(session.activities).map((activity) => {
+        const activities = list(session.activities).map((activity, index) => {
           const parsed = object(activity) as unknown as SimActivity;
+          runtime.activityKeyById.set(
+            parsed.id,
+            `day:${day}|session:home|activity:${index}|${parsed.kind}|${parsed.conceptId ?? ''}`,
+          );
           return parsed.kind === 'paper' && paperId ? { ...parsed, paperId } : parsed;
         });
+        auditSavedSessionPlan(
+          runtime,
+          day,
+          courseId,
+          'home plan',
+          stateBeforeSession,
+          activeContent,
+          now,
+          selectedBudget ?? today.budgetMinutes,
+          learn,
+          activities,
+        );
         daily.coveredSkips += await auditCompressionPlan(
           db,
           runtime,
@@ -2187,15 +3064,194 @@ async function simulateProfile(
           daily.positiveImplicitCredits += result.positiveImplicitCredits;
           daily.negativeImplicitCredits += result.negativeImplicitCredits;
         }
+        if (shouldReplan) {
+          const stateBeforeReplan = await new LearnerRepository(db, userId).schedulerState(
+            now,
+            activeContent,
+          );
+          const replanLearn = await api.require<LearnPayload>('GET', '/learn', now);
+          const existingActivities = await db
+            .select()
+            .from(sessionActivities)
+            .where(eq(sessionActivities.sessionId, sessionId))
+            .orderBy(asc(sessionActivities.idx));
+          const existingPlannedActivities = existingActivities as unknown as PlannedActivity[];
+          const remainingBudget = Math.max(
+            0,
+            (selectedBudget ?? today.budgetMinutes) -
+              existingActivities
+                .filter(
+                  (activity) =>
+                    activity.status === 'completed' || activity.status === 'in_progress',
+                )
+                .reduce((total, activity) => total + activity.plannedMinutes, 0),
+          );
+          const reviewExplanations = explainReviewSelectionForReplan(
+            stateBeforeReplan,
+            activeContent,
+            now,
+            remainingBudget,
+            existingPlannedActivities,
+          ).results;
+          const replanned = await api.require<{ activities: SessionActivity[] }>(
+            'POST',
+            `/sessions/${sessionId}/replan`,
+            now,
+          );
+          const newActivities = replanned.activities
+            .filter((activity) => activity.status === 'planned')
+            .map((activity, index) => {
+              const parsed = activity as SimActivity;
+              runtime.activityKeyById.set(
+                parsed.id,
+                `day:${day}|session:replan|activity:${index}|${parsed.kind}|${parsed.conceptId ?? ''}`,
+              );
+              return parsed.kind === 'paper' && paperId ? { ...parsed, paperId } : parsed;
+            });
+          auditSavedSessionPlan(
+            runtime,
+            day,
+            courseId,
+            'replan',
+            stateBeforeReplan,
+            activeContent,
+            now,
+            remainingBudget,
+            replanLearn,
+            replanned.activities as SimActivity[],
+            reviewExplanations,
+          );
+          const replanProgress = await readProgress(db, userId);
+          daily.coveredSkips += await auditCompressionPlan(
+            db,
+            runtime,
+            userId,
+            activeContent,
+            now,
+            day,
+            courseId,
+            newActivities,
+          );
+          daily.offers.push(...newActivities.map(sessionOffer));
+          auditSession(runtime, day, courseId, newActivities, replanProgress, activeContent);
+          for (const activity of newActivities) {
+            const result = await processActivityWithMetrics(
+              api,
+              db,
+              activeContent,
+              runtime,
+              now,
+              timeZone,
+              day,
+              courseId,
+              sessionId,
+              activity,
+            );
+            daily.lessons += result.lessons;
+            daily.reviews += result.reviews;
+            daily.reviewAttempts += result.reviewAttempts;
+            daily.explicitReviews += result.explicitReviews;
+            daily.positiveImplicitCredits += result.positiveImplicitCredits;
+            daily.negativeImplicitCredits += result.negativeImplicitCredits;
+          }
+        }
         await api.require('POST', `/sessions/${sessionId}/end`, now);
       }
-      if (!skip && daily.lessons + daily.reviews === 0) {
+      if (!skip && shouldFocusDueReview) {
+        const refreshedLearn = await api.require<LearnPayload>('GET', '/learn', now);
+        const choices = refreshedLearn.choices;
+        if (choices.length > 0) {
+          const choiceIndex = Math.floor(
+            decisionRandom(profile, day, 'daily-session', 'due-review-choice', 1) * choices.length,
+          );
+          const choice = choices[choiceIndex];
+          if (choice) {
+            const stateBeforeFocus = await new LearnerRepository(db, userId).schedulerState(
+              now,
+              activeContent,
+            );
+            stateBeforeFocus.inProgressConceptId = choice.conceptId;
+            const focusedSession = object(
+              await api.require('POST', '/sessions', now, {
+                kind: today.sessionKind,
+                ...budgetRequest,
+                focusConceptId: choice.conceptId,
+              }),
+            );
+            const focusedSessionId = text(focusedSession.id);
+            if (!focusedSessionId) {
+              throw new Error(`Due-review focused session for ${choice.conceptId} returned no id`);
+            }
+            const focusedActivities = list(focusedSession.activities).map((activity, index) => {
+              const parsed = object(activity) as unknown as SimActivity;
+              runtime.activityKeyById.set(
+                parsed.id,
+                `day:${day}|session:due-focus:${choice.conceptId}|activity:${index}|${parsed.kind}|${parsed.conceptId ?? ''}`,
+              );
+              return parsed;
+            });
+            auditSavedSessionPlan(
+              runtime,
+              day,
+              courseId,
+              'due-review focus plan',
+              stateBeforeFocus,
+              activeContent,
+              now,
+              selectedBudget ?? today.budgetMinutes,
+              refreshedLearn,
+              focusedActivities,
+            );
+            daily.coveredSkips += await auditCompressionPlan(
+              db,
+              runtime,
+              userId,
+              activeContent,
+              now,
+              day,
+              courseId,
+              focusedActivities,
+            );
+            daily.offers.push(...focusedActivities.map(sessionOffer));
+            auditSession(runtime, day, courseId, focusedActivities, progress, activeContent);
+            for (const activity of focusedActivities) {
+              const result = await processActivityWithMetrics(
+                api,
+                db,
+                activeContent,
+                runtime,
+                now,
+                timeZone,
+                day,
+                courseId,
+                focusedSessionId,
+                activity,
+              );
+              daily.lessons += result.lessons;
+              daily.reviews += result.reviews;
+              daily.reviewAttempts += result.reviewAttempts;
+              daily.explicitReviews += result.explicitReviews;
+              daily.positiveImplicitCredits += result.positiveImplicitCredits;
+              daily.negativeImplicitCredits += result.negativeImplicitCredits;
+            }
+            await api.require('POST', `/sessions/${focusedSessionId}/end`, now);
+            ranDueFocus = true;
+          }
+        }
+      }
+      if (!skip && !ranDueFocus && daily.lessons + daily.reviews === 0) {
         const refreshedLearn = await api.require<LearnPayload>('GET', '/learn', now);
         const choice = refreshedLearn.choices[0];
         if (choice) {
+          const stateBeforeFocus = await new LearnerRepository(db, userId).schedulerState(
+            now,
+            activeContent,
+          );
+          stateBeforeFocus.inProgressConceptId = choice.conceptId;
           const focusedSession = object(
             await api.require('POST', '/sessions', now, {
               kind: today.sessionKind,
+              ...budgetRequest,
               focusConceptId: choice.conceptId,
             }),
           );
@@ -2203,8 +3259,25 @@ async function simulateProfile(
           if (!focusedSessionId) {
             throw new Error(`Focused session for ${choice.conceptId} returned no id`);
           }
-          const focusedActivities = list(focusedSession.activities).map(
-            (activity) => object(activity) as unknown as SimActivity,
+          const focusedActivities = list(focusedSession.activities).map((activity, index) => {
+            const parsed = object(activity) as unknown as SimActivity;
+            runtime.activityKeyById.set(
+              parsed.id,
+              `day:${day}|session:focus:${choice.conceptId}|activity:${index}|${parsed.kind}|${parsed.conceptId ?? ''}`,
+            );
+            return parsed;
+          });
+          auditSavedSessionPlan(
+            runtime,
+            day,
+            courseId,
+            'empty-day focus plan',
+            stateBeforeFocus,
+            activeContent,
+            now,
+            selectedBudget ?? today.budgetMinutes,
+            refreshedLearn,
+            focusedActivities,
           );
           daily.coveredSkips += await auditCompressionPlan(
             db,
@@ -2333,7 +3406,6 @@ async function simulateProfile(
     return report;
   } finally {
     await api.cleanup();
-    Math.random = originalRandom;
   }
 }
 
@@ -2455,9 +3527,12 @@ export function renderMarkdownReport(report: LearnerSimulationReport): string {
     }
     lines.push('### Violations', '');
     lines.push(
-      '| Invariant | Count |',
-      '| --- | ---: |',
-      ...invariants.map((invariant) => `| ${invariant} | ${profile.violationCounts[invariant]} |`),
+      '| Invariant | Violations | Checked |',
+      '| --- | ---: | ---: |',
+      ...invariants.map(
+        (invariant) =>
+          `| ${invariant} | ${profile.violationCounts[invariant]} | ${checkedInvariantIds.includes(invariant as CheckedInvariantId) ? profile.checkedCounts[invariant as CheckedInvariantId] : '—'} |`,
+      ),
       '',
     );
     for (const invariant of invariants) {
