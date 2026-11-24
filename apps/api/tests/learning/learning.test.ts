@@ -1936,6 +1936,65 @@ test('a due covering review replaces an overdue review that it covers', () => {
   );
 });
 
+test('compression refills a due review after dropping a covered review frees its budget', () => {
+  const fixture = reviewQueueFixture(3, 3, 6);
+  const coveredReview = required(fixture.topicIds[0], 'covered review topic');
+  const coveringReview = required(fixture.topicIds[1], 'covering review topic');
+  const refillReview = required(fixture.topicIds[2], 'refill review topic');
+  const concepts = fixture.index.concepts.map((concept) =>
+    concept.id === coveringReview
+      ? { ...concept, encompassings: [{ id: coveredReview, weight: 1 }] }
+      : concept,
+  );
+  const index: ContentIndex = {
+    ...fixture.index,
+    concepts,
+    conceptsById: new Map(concepts.map((concept) => [concept.id, concept])),
+  };
+  const state = emptyState();
+  state.activeCourseId = 'fixture-course';
+  state.studyCourseIds = ['fixture-course'];
+  state.mastery = fixture.topicIds.map((conceptId) => ({
+    ...initialMastery(conceptId, 'math'),
+    state: 'independent' as const,
+  }));
+  const dueAt = [
+    new Date(now.getTime() - 5 * 86_400_000),
+    new Date(now.getTime() - 4 * 86_400_000),
+    new Date(now.getTime() - 3 * 86_400_000),
+  ];
+  const reviewedAt = new Date('2025-12-01T12:00:00.000Z');
+  state.cards = fixture.topicIds.map((conceptId, index) => ({
+    conceptId,
+    dimension: 'math',
+    dueAt: required(dueAt[index], `${conceptId} due date`).toISOString(),
+    retrievability: 0.5,
+    fsrs: {
+      ...scheduleReview(newReviewCard(reviewedAt), reviewedAt, Rating.Good, 'UTC', false).card,
+      state: State.Review,
+      stability: 12,
+      due: dueAt[index],
+    },
+  }));
+
+  expect(dueTopicsCoveredBy(coveringReview, state, index, now)).toContain(coveredReview);
+  const plan = planSession(state, index, now, 36);
+  const reviewTopics = plannedReviewTopics(plan, index);
+  const trace = explainReviewSelection(state, index, now, 36);
+
+  expect(reviewTopics).toEqual(expect.arrayContaining([coveringReview, refillReview]));
+  expect(reviewTopics).toHaveLength(2);
+  expect(trace.find((result) => result.conceptId === coveredReview)).toEqual(
+    expect.objectContaining({
+      result: 'covered',
+      coveringConceptId: coveringReview,
+    }),
+  );
+  expect(trace.find((result) => result.conceptId === refillReview)?.result).toBe(
+    'selected:overdue',
+  );
+});
+
 test('a covered remediation review remains selected', () => {
   const schedulerContent = schedulerContentWithTopics(
     { 'fixture-course': ['linear-models'] },
