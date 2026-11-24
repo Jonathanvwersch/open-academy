@@ -2490,19 +2490,17 @@ beforeAll(async () => {
     random = (random * 1_664_525 + 1_013_904_223) >>> 0;
     return random / 0x1_0000_0000;
   };
-  for (let dateIndex = 0; dateIndex < 30; dateIndex += 1) {
-    lowCreditPickedUpCardKeys.clear();
-    const nowAtDay = atLocalNoon(day);
-    await step('GET', '/today', nowAtDay);
-    await step('GET', '/reviews', nowAtDay);
-    const { response, data: session } = await step('POST', '/sessions', nowAtDay, {
-      budgetMinutes: 600,
-    });
-    if (!response.ok)
-      throw new Error(`POST /sessions failed ${response.status}: ${JSON.stringify(session)}`);
-    await step('GET', '/sessions/active', nowAtDay);
-    for (const activity of session.activities ?? []) {
+  const simulateActivities = async (
+    sessionId: string,
+    activities: Array<Record<string, any>>,
+    nowAtDay: Date,
+    activatePlannedReviews = false,
+  ) => {
+    for (const activity of activities) {
       if (activity.status === 'completed') continue;
+      if (activatePlannedReviews && activity.kind === 'review') {
+        await activateReviewIfPlanned(sessionId, activity, nowAtDay);
+      }
       for (const exerciseId of activity.exerciseIds ?? []) {
         const exercise = content.exercisesById.get(exerciseId);
         if (!exercise) continue;
@@ -2559,7 +2557,7 @@ beforeAll(async () => {
       if (activity.kind === 'review') continue;
       const progressResult = await step(
         'POST',
-        `/sessions/${session.id}/activities/${activity.id}/progress`,
+        `/sessions/${sessionId}/activities/${activity.id}/progress`,
         nowAtDay,
         { complete: true },
       );
@@ -2569,11 +2567,43 @@ beforeAll(async () => {
         );
       }
     }
+  };
+  for (let dateIndex = 0; dateIndex < 30; dateIndex += 1) {
+    lowCreditPickedUpCardKeys.clear();
+    const nowAtDay = atLocalNoon(day);
+    await step('GET', '/today', nowAtDay);
+    await step('GET', '/reviews', nowAtDay);
+    const { response, data: session } = await step('POST', '/sessions', nowAtDay, {
+      budgetMinutes: 600,
+    });
+    if (!response.ok)
+      throw new Error(`POST /sessions failed ${response.status}: ${JSON.stringify(session)}`);
+    await step('GET', '/sessions/active', nowAtDay);
+    await simulateActivities(session.id, session.activities ?? [], nowAtDay);
     if (dateIndex === 0) {
       const later = (session.activities ?? []).find(
         (activity: Record<string, any>) => activity.status === 'planned',
       );
-      if (later) await step('POST', `/sessions/${session.id}/replan`, nowAtDay, {});
+      if (later) {
+        const { response: replanResponse, data: replanned } = await step(
+          'POST',
+          `/sessions/${session.id}/replan`,
+          nowAtDay,
+          {},
+        );
+        if (!replanResponse.ok)
+          throw new Error(
+            `POST /sessions/${session.id}/replan failed ${replanResponse.status}: ${JSON.stringify(replanned)}`,
+          );
+        await simulateActivities(
+          session.id,
+          (replanned.activities ?? []).filter(
+            (activity: Record<string, any>) => activity.status === 'planned',
+          ),
+          nowAtDay,
+          true,
+        );
+      }
     }
     const endOfDayCards = await db.select().from(reviewCards).where(eq(reviewCards.userId, userId));
     const endOfDayLogs = await db
