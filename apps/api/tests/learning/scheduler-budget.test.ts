@@ -5,6 +5,7 @@ import type { ContentIndex } from '../../src/content/types.js';
 import { newReviewCard, scheduleReview } from '../../src/learning/fsrs.js';
 import type { SchedulerState } from '../../src/learning/scheduler.js';
 import {
+  dueTopicsCoveredBy,
   explainReviewSelection,
   planSession,
   sessionBudget,
@@ -66,7 +67,10 @@ function reviewCard(conceptId: string, dueAt: Date): SchedulerState['cards'][num
   };
 }
 
-function lessonCrowdingContent(coversVectors = false): ContentIndex {
+function lessonCrowdingContent(
+  coversVectors = false,
+  linearModelReviewMinutes?: number,
+): ContentIndex {
   const concepts = fixtureContent.concepts.map((concept) =>
     concept.id === 'supervised-learning'
       ? {
@@ -82,7 +86,11 @@ function lessonCrowdingContent(coversVectors = false): ContentIndex {
   const exercises = fixtureContent.exercises.map((exercise) =>
     exercise.concept === 'vectors' && exercise.dimension === 'math'
       ? { ...exercise, est_minutes: 3 }
-      : exercise,
+      : exercise.concept === 'linear-models' &&
+          exercise.dimension === 'math' &&
+          linearModelReviewMinutes !== undefined
+        ? { ...exercise, est_minutes: linearModelReviewMinutes }
+        : exercise,
   );
   const exercisesById = new Map(exercises.map((exercise) => [exercise.id, exercise]));
   const updateExercises = (items: typeof exercises) =>
@@ -102,6 +110,35 @@ function lessonCrowdingContent(coversVectors = false): ContentIndex {
     exercisesByRole: new Map(
       [...fixtureContent.exercisesByRole].map(([role, items]) => [role, updateExercises(items)]),
     ),
+  };
+}
+
+function mixedFallbackContent(): ContentIndex {
+  const content = lessonCrowdingContent(true, 8);
+  const concepts = content.concepts.map((concept) => {
+    if (concept.id === 'supervised-learning') {
+      return {
+        ...concept,
+        encompassings: (concept.encompassings ?? []).map((link) =>
+          link.id === 'vectors' ? { ...link, weight: 0.02 } : link,
+        ),
+      };
+    }
+    if (concept.id === 'vectors') {
+      return {
+        ...concept,
+        encompassings: [
+          ...(concept.encompassings ?? []).filter(({ id }) => id !== 'linear-models'),
+          { id: 'linear-models', weight: 0.1 },
+        ],
+      };
+    }
+    return concept;
+  });
+  return {
+    ...content,
+    concepts,
+    conceptsById: new Map(concepts.map((concept) => [concept.id, concept])),
   };
 }
 
@@ -167,6 +204,33 @@ describe('review budget reservation', () => {
         coveringConceptId: 'supervised-learning',
       }),
     );
+  });
+
+  it('keeps a fallback review when a lesson covers only one of its due topics', () => {
+    const content = mixedFallbackContent();
+    const vectorsCard = reviewCard('vectors', now);
+    vectorsCard.retrievability = 0.1;
+    const linearModelsCard = reviewCard('linear-models', now);
+    linearModelsCard.retrievability = 0.9;
+    const state = plannerState(content, {
+      freshConceptId: 'supervised-learning',
+      cards: [vectorsCard, linearModelsCard],
+    });
+
+    expect(dueTopicsCoveredBy('supervised-learning', state, content, now)).toEqual(
+      new Set(['vectors']),
+    );
+    expect(dueTopicsCoveredBy('vectors', state, content, now)).toEqual(new Set(['linear-models']));
+
+    const plan = planSession(state, content, now, 20);
+    const review = plan.activities.find((activity) => activity.kind === 'review');
+
+    expect(
+      plan.activities.some(
+        (activity) => activity.kind === 'learn' && activity.conceptId === 'supervised-learning',
+      ),
+    ).toBe(false);
+    expect(review?.conceptId).toBe('vectors');
   });
 
   it('requires an early review to cover two uncovered due topics', () => {

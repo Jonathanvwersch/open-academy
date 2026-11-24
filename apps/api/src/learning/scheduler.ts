@@ -988,6 +988,12 @@ function packWeekday(
     }
   }
   learnBudget = Math.max(0, budget - reservedMinutes);
+  const reviewCoverageForConcept = (conceptId: string | null | undefined) => {
+    if (!conceptId) return new Set<string>();
+    const covered = new Set(coveredByTaskConcept(conceptId));
+    if (dueConceptIds.has(conceptId)) covered.add(conceptId);
+    return covered;
+  };
   const canSelectWithFallbackReservation = (candidate: Candidate) => {
     const conceptId = candidate.activity.conceptId;
     const fallbackConceptId = fallbackReservation?.activity.conceptId;
@@ -999,9 +1005,11 @@ function packWeekday(
     ) {
       return false;
     }
+    const fallbackCoverage = reviewCoverageForConcept(fallbackConceptId);
+    const lessonCoverage = coveredByTaskConcept(conceptId);
     return (
       learnTaskCanCoverDueReviews(conceptId) &&
-      coveredByTaskConcept(conceptId).has(fallbackConceptId) &&
+      [...fallbackCoverage].every((dueConceptId) => lessonCoverage.has(dueConceptId)) &&
       usedMinutes + candidate.adjustedMinutes <= learnBudget + fallbackReservationMinutes &&
       canAdd(candidate) &&
       !interferesWithLearn(candidate)
@@ -1157,13 +1165,8 @@ function packWeekday(
   }
 
   const uncoveredDueConcepts = new Set([...dueConceptIds].filter((id) => !coveredBy.has(id)));
-  const reviewCoverage = (candidate: Candidate) => {
-    const conceptId = candidate.activity.conceptId;
-    if (!conceptId) return new Set<string>();
-    const covered = new Set(coveredByTaskConcept(conceptId));
-    if (dueConceptIds.has(conceptId)) covered.add(conceptId);
-    return covered;
-  };
+  const reviewCoverage = (candidate: Candidate) =>
+    reviewCoverageForConcept(candidate.activity.conceptId);
   const rankReviewDetails = (
     details: typeof reviewCandidateDetails,
     uncovered: ReadonlySet<string>,
