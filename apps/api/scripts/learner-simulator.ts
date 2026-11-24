@@ -4069,7 +4069,24 @@ function exampleText(violation: SimulationViolation): string {
       : `; API startable: ${violation.startable ? 'yes' : 'no'}`;
   const context = violation.courseId ? ` in ${violation.courseId}` : '';
   const details = violation.details ? ` (${violation.details})` : '';
-  return `Day ${violation.day}: \`${violation.entityId}\`${context}${missing}${startable}${details}`;
+  const evidence = violation.evidence;
+  const evidenceText = JSON.stringify({
+    beforeCards: evidence.beforeCards,
+    afterCards: evidence.afterCards,
+    activityLogs: evidence.activityLogs,
+    mastery: evidence.mastery,
+    schedulerExplanations: evidence.schedulerExplanations,
+    budgetMinutes: evidence.budgetMinutes,
+    reviewCapMinutes: evidence.reviewCapMinutes,
+    usedMinutes: evidence.usedMinutes,
+    remainingMinutes: evidence.remainingMinutes,
+    remainingReviewCapMinutes: evidence.remainingReviewCapMinutes,
+    behaviors: evidence.behaviors,
+    planActivities: evidence.planActivities,
+    lessonRuns: evidence.lessonRuns,
+    planHistory: evidence.planHistory,
+  });
+  return `Day ${violation.day}: \`${violation.entityId}\`${context}${missing}${startable}${details}; evidence: ${evidenceText}`;
 }
 
 export function renderMarkdownReport(report: LearnerSimulationReport): string {
@@ -4160,56 +4177,68 @@ export function renderMarkdownReport(report: LearnerSimulationReport): string {
       }
       lines.push(...violations.slice(0, 10).map((violation) => `- ${exampleText(violation)}`), '');
     }
-    if (profile.profile === 'struggling') {
-      const p5Violations = profile.violations.filter((item) => item.invariant === 'P5');
-      if (p5Violations.length > 0) {
-        lines.push('### P5 daily offers and course state', '');
-        for (const violation of p5Violations) {
-          const firstDay = Math.max(1, violation.day - 6);
-          for (const daily of profile.dailyStats.filter(
-            (item) =>
-              item.day >= firstDay &&
-              item.day <= violation.day &&
-              item.courseId === violation.courseId,
-          )) {
-            const offers =
-              daily.offers
-                .map((offer) => {
-                  const id = offer.conceptId ?? offer.projectId ?? offer.paperId;
-                  const reviewTopics = offer.reviewTopics
-                    ?.map((topic) => topic.conceptId)
-                    .join(', ');
-                  return id
-                    ? `${offer.kind} ${id}`
-                    : reviewTopics
-                      ? `${offer.kind} ${reviewTopics}`
-                      : offer.kind;
-                })
-                .join('; ') || 'no session activities';
-            lines.push(`- Day ${daily.day} (${daily.courseId ?? 'no course'}): ${offers}.`);
-          }
-          const evidence = profile.dailyStats.find((item) => item.day === violation.day);
-          if (evidence) {
+    const p5Violations = profile.violations.filter((item) => item.invariant === 'P5');
+    if (p5Violations.length > 0) {
+      lines.push('### P5 daily offers and course state', '');
+      for (const violation of p5Violations) {
+        const firstDay = Math.max(1, violation.day - 6);
+        for (const daily of profile.dailyStats.filter(
+          (item) => item.day >= firstDay && item.day <= violation.day,
+        )) {
+          const offers =
+            daily.offers
+              .map((offer) => {
+                const id = offer.conceptId ?? offer.projectId ?? offer.paperId;
+                const reviewTopics = offer.reviewTopics?.map((topic) => topic.conceptId).join(', ');
+                return id
+                  ? `${offer.kind} ${id}`
+                  : reviewTopics
+                    ? `${offer.kind} ${reviewTopics}`
+                    : offer.kind;
+              })
+              .join('; ') || 'no session activities';
+          lines.push(`- Day ${daily.day} (${daily.courseId ?? 'no course'}): ${offers}.`);
+          for (const plan of daily.plans) {
+            const activities =
+              plan.activities
+                .map(
+                  (activity) =>
+                    `${activity.kind} ${activity.conceptId ?? activity.projectId ?? ''} (${activity.plannedMinutes}m${activity.status ? `, ${activity.status}` : ''})`,
+                )
+                .join('; ') || 'no activities';
             lines.push(
-              `- Day ${violation.day} topics remaining: ${
-                evidence.courseTopics
-                  .filter((topic) => topic.status !== 'complete')
-                  .map(
-                    (topic) =>
-                      `\`${topic.conceptId}\` (${topic.status}; missingPrereqs: ${topic.missingPrereqs.map((prereq) => prereq.id).join(', ') || 'none'})`,
-                  )
-                  .join('; ') || 'none'
-              }.`,
+              `  - ${plan.label} ${plan.path}, effective budget ${plan.budgetMinutes}m, focus ${plan.requestBody.focusConceptId ?? 'none'}: ${activities}.`,
             );
-            for (const topic of evidence.courseTopics.filter((item) => item.retry)) {
-              lines.push(
-                `- Day ${violation.day} retry state for \`${topic.conceptId}\`: after ${topic.retry?.after ?? 'no delay'}; review first ${topic.retry?.reviewFirst.map((item) => item.id).join(', ') || 'none'}.`,
-              );
-            }
+            lines.push(
+              `  - Scheduler: ${plan.schedulerExplanations.map((item) => `${item.conceptId}=${item.result}${item.coveringConceptId ? `:${item.coveringConceptId}` : ''}`).join('; ') || 'no due-review explanations'}.`,
+            );
+            lines.push(`  - Behaviors: ${JSON.stringify(plan.behaviors)}.`);
+          }
+          lines.push(
+            `  - Lesson runs: ${daily.lessonRunStatuses.map((run) => `${run.conceptId}=${run.status}`).join('; ') || 'none'}.`,
+          );
+        }
+        const evidence = profile.dailyStats.find((item) => item.day === violation.day);
+        if (evidence) {
+          lines.push(
+            `- Day ${violation.day} topics remaining: ${
+              evidence.courseTopics
+                .filter((topic) => topic.status !== 'complete')
+                .map(
+                  (topic) =>
+                    `\`${topic.conceptId}\` (${topic.status}; missingPrereqs: ${topic.missingPrereqs.map((prereq) => prereq.id).join(', ') || 'none'})`,
+                )
+                .join('; ') || 'none'
+            }.`,
+          );
+          for (const topic of evidence.courseTopics.filter((item) => item.retry)) {
+            lines.push(
+              `- Day ${violation.day} retry state for \`${topic.conceptId}\`: after ${topic.retry?.after ?? 'no delay'}; review first ${topic.retry?.reviewFirst.map((item) => item.id).join(', ') || 'none'}.`,
+            );
           }
         }
-        lines.push('');
       }
+      lines.push('');
     }
     lines.push('### Project and paper activity', '');
     lines.push(
