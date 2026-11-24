@@ -99,6 +99,7 @@ export interface SchedulerState {
     retrievability?: number;
   }>;
   reviewedTodayConceptIds: string[];
+  completedReviewRatingsToday?: Array<{ conceptId: string; rating: number }>;
   recentAttempts: Array<{
     conceptId: string;
     exerciseId: string;
@@ -744,6 +745,13 @@ function packWeekday(
       .filter((card) => isDueToday(card.dueAt, now, timezone))
       .map((card) => card.conceptId),
   );
+  const dueTopicsLeftAfterLowCreditReviews = new Set<string>();
+  for (const { conceptId, rating } of state.completedReviewRatingsToday ?? []) {
+    if (rating >= Rating.Good) continue;
+    for (const dueConceptId of dueTopicsCoveredBy(conceptId, state, content, now)) {
+      dueTopicsLeftAfterLowCreditReviews.add(dueConceptId);
+    }
+  }
   const dueTopicsByTaskConcept = new Map<string, Set<string>>();
   const hasKeptLessonRun = (conceptId: string) =>
     state.lessonRuns?.some(
@@ -759,6 +767,9 @@ function packWeekday(
     let covered = dueTopicsByTaskConcept.get(conceptId);
     if (!covered) {
       covered = dueTopicsCoveredBy(conceptId, state, content, now);
+      for (const dueConceptId of dueTopicsLeftAfterLowCreditReviews) {
+        covered.delete(dueConceptId);
+      }
       dueTopicsByTaskConcept.set(conceptId, covered);
     }
     return covered;

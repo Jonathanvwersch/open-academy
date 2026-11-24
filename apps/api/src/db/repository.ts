@@ -219,6 +219,7 @@ export class LearnerRepository {
       studyCourseIds,
       recentLearnActivities,
       todayReviewLogs,
+      completedReviewLogsToday,
       recallAttemptRows,
     ] = await Promise.all([
       loaded.mastery ?? this.masteryRecords(),
@@ -278,6 +279,26 @@ export class LearnerRepository {
             lt(reviewLogs.createdAt, startOfNextCalendarDay(now, user?.timezone ?? 'UTC')),
           ),
         ),
+      this.db
+        .select({
+          activityId: attempts.activityId,
+          conceptId: reviewCards.conceptId,
+          rating: reviewLogs.rating,
+          createdAt: reviewLogs.createdAt,
+        })
+        .from(reviewLogs)
+        .innerJoin(reviewCards, eq(reviewLogs.cardId, reviewCards.id))
+        .innerJoin(attempts, eq(reviewLogs.attemptId, attempts.id))
+        .innerJoin(sessionActivities, eq(attempts.activityId, sessionActivities.id))
+        .where(
+          and(
+            eq(reviewCards.userId, this.userId),
+            eq(sessionActivities.kind, 'review'),
+            eq(sessionActivities.status, 'completed'),
+            gte(reviewLogs.createdAt, new Date(now.getTime() - 36 * 60 * 60 * 1000)),
+            lt(reviewLogs.createdAt, startOfNextCalendarDay(now, user?.timezone ?? 'UTC')),
+          ),
+        ),
       recallExerciseIds.length > 0
         ? this.db
             .selectDistinctOn([attempts.exerciseId], {
@@ -310,6 +331,24 @@ export class LearnerRepository {
       recentLearnMinutesByConcept[activity.conceptId] =
         (recentLearnMinutesByConcept[activity.conceptId] ?? 0) + activity.plannedMinutes;
     }
+    const completedReviewRatingsByActivityConcept = new Map<
+      string,
+      { conceptId: string; rating: number }
+    >();
+    for (const log of completedReviewLogsToday) {
+      if (
+        !log.activityId ||
+        localDateKey(log.createdAt, user?.timezone ?? 'UTC') !==
+          localDateKey(now, user?.timezone ?? 'UTC')
+      ) {
+        continue;
+      }
+      const key = `${log.activityId}\u0000${log.conceptId}`;
+      const rating = Number(log.rating);
+      const previous = completedReviewRatingsByActivityConcept.get(key);
+      if (previous) previous.rating = Math.min(previous.rating, rating);
+      else completedReviewRatingsByActivityConcept.set(key, { conceptId: log.conceptId, rating });
+    }
     const focusSubjectId = effectiveFocusSubjectId(
       user?.prefs as { focusSubjectId?: unknown } | undefined,
       studyCourseIds,
@@ -340,6 +379,7 @@ export class LearnerRepository {
             .map((log) => log.conceptId),
         ),
       ],
+      completedReviewRatingsToday: [...completedReviewRatingsByActivityConcept.values()],
       recentAttempts: recentAttempts.map((attempt) => ({
         conceptId: attempt.conceptId,
         exerciseId: attempt.exerciseId,
