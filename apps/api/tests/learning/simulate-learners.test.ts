@@ -15,6 +15,7 @@ import {
   p18HasMissedPickup,
   p18PlanCoversTopic,
   p19HasEarlyReviewViolation,
+  planUsageMinutes,
   renderMarkdownReport,
   requireP17ReviewMinutes,
   reviewFeasible,
@@ -304,6 +305,21 @@ test('P18 counts an over-cap scheduled review when it is at least two days overd
   const review = [{ kind: 'review', status: 'planned' }] as const;
   expect(p18PlanCoversTopic(review, 9, 20, 3, 2)).toBe(true);
   expect(p18PlanCoversTopic(review, 9, 20, 3, 1)).toBe(false);
+});
+
+test('replan budget accounting does not charge preserved in-progress activities twice', () => {
+  const activities = [
+    { kind: 'review', status: 'in_progress', plannedMinutes: 5 },
+    { kind: 'learn', status: 'planned', plannedMinutes: 10 },
+  ] as const;
+  expect(planUsageMinutes(activities, true)).toEqual({
+    usedMinutes: 10,
+    usedReviewMinutes: 0,
+  });
+  expect(planUsageMinutes(activities, false)).toEqual({
+    usedMinutes: 15,
+    usedReviewMinutes: 5,
+  });
 });
 
 test('scripted scenarios are skipped and reported when their fixture course is filtered out', () => {

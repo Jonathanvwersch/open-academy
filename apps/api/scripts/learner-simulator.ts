@@ -1080,6 +1080,24 @@ export function p6HasFeasibleOverdueReview(
   );
 }
 
+export function planUsageMinutes(
+  activities: readonly Pick<SimActivity, 'kind' | 'plannedMinutes' | 'status'>[],
+  replan: boolean,
+): { usedMinutes: number; usedReviewMinutes: number } {
+  const chargeable = activities.filter(
+    (activity) =>
+      activity.status !== 'completed' &&
+      activity.status !== 'skipped' &&
+      !(replan && activity.status === 'in_progress'),
+  );
+  return {
+    usedMinutes: chargeable.reduce((total, activity) => total + activity.plannedMinutes, 0),
+    usedReviewMinutes: chargeable
+      .filter((activity) => activity.kind === 'review')
+      .reduce((total, activity) => total + activity.plannedMinutes, 0),
+  };
+}
+
 export function p18PlanCoversTopic(
   coveringActivities: readonly Pick<SimActivity, 'kind' | 'status'>[],
   selectedReviewMinutes: number,
@@ -3708,16 +3726,10 @@ function auditSavedSessionPlan(
     plannedMinutes: activity.plannedMinutes,
     ...(activity.status ? { status: activity.status } : {}),
   }));
-  const unfinished = activities.filter(
-    (activity) => activity.status !== 'completed' && activity.status !== 'skipped',
-  );
-  const usedMinutes = unfinished.reduce((total, activity) => total + activity.plannedMinutes, 0);
+  const { usedMinutes, usedReviewMinutes } = planUsageMinutes(activities, planLabel === 'replan');
   const reviewCapMinutes =
     explanations[0]?.reviewCap ??
     Math.floor(budgetMinutes * SCHEDULER_CONFIG.weekday.reviewBudgetRatio);
-  const usedReviewMinutes = unfinished
-    .filter((activity) => activity.kind === 'review')
-    .reduce((total, activity) => total + activity.plannedMinutes, 0);
   const focusConceptId = state.inProgressConceptId;
   const planEvidence: SimulationPlanEvidence = {
     label: planLabel,
