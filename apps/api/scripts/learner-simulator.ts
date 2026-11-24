@@ -345,6 +345,7 @@ export interface LearnerSimulationReport {
   dayCap: number;
   runtimeMs: number;
   profiles: ProfileSimulationReport[];
+  skippedProfiles: Array<{ profile: SimulationProfile; reason: string }>;
 }
 
 export interface LearnerSimulationOptions {
@@ -1073,6 +1074,22 @@ export function p6HasFeasibleOverdueReview(
   return (
     overdueDays > 7 && reviewFeasible(reviewMinutes, remainingBudget, remainingCap, overdueDays)
   );
+}
+
+export function scenarioCourseFilterSkipReason(
+  profile: SimulationProfile,
+  courseIds: readonly string[] | undefined,
+  fixtureCourseId: string | undefined,
+): string | undefined {
+  if (
+    !isScriptedScenarioProfile(profile) ||
+    !courseIds ||
+    !fixtureCourseId ||
+    courseIds.includes(fixtureCourseId)
+  ) {
+    return undefined;
+  }
+  return `fixture course ${fixtureCourseId} is not included in --courses`;
 }
 
 function p14ExplanationForCard(
@@ -4756,6 +4773,7 @@ export async function simulateLearners(
 ): Promise<LearnerSimulationReport> {
   const startedAt = performance.now();
   const profiles: ProfileSimulationReport[] = [];
+  const skippedProfiles: LearnerSimulationReport['skippedProfiles'] = [];
   const previousNodeEnv = process.env.NODE_ENV;
   process.env.NODE_ENV = 'test';
   try {
@@ -4764,6 +4782,16 @@ export async function simulateLearners(
       const scenarioProfile = isScriptedScenarioProfile(profile);
       if (scenarioProfile && !options.scenarioContent) {
         throw new Error(`Scripted scenario ${profile} requires fixture content`);
+      }
+      const skipReason = scenarioCourseFilterSkipReason(
+        profile,
+        options.courseIds,
+        options.scenarioContent?.courses[0]?.id,
+      );
+      if (skipReason) {
+        skippedProfiles.push({ profile, reason: skipReason });
+        options.onProgress?.(`Skipping ${profile}: ${skipReason}`);
+        continue;
       }
       const profileContent = scenarioProfile
         ? scriptedScenarioContent(profile, options.scenarioContent ?? content)
@@ -4780,6 +4808,7 @@ export async function simulateLearners(
     dayCap: options.days,
     runtimeMs: Math.round(performance.now() - startedAt),
     profiles,
+    skippedProfiles,
   };
 }
 
@@ -4839,6 +4868,14 @@ export function renderMarkdownReport(report: LearnerSimulationReport): string {
     ),
     '',
   ];
+  if (report.skippedProfiles.length > 0) {
+    lines.push(
+      '## Skipped profiles',
+      '',
+      ...report.skippedProfiles.map(({ profile, reason }) => `- ${profile}: ${reason}.`),
+      '',
+    );
+  }
   for (const profile of report.profiles) {
     lines.push(
       `## ${profile.profile}`,

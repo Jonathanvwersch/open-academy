@@ -19,6 +19,7 @@ import {
   reviewFeasible,
   SimulatedApiFailureError,
   type SimulationProfile,
+  scenarioCourseFilterSkipReason,
   selectedReviewConceptsForAudit,
   simulateLearners,
 } from '../../scripts/learner-simulator.js';
@@ -276,6 +277,16 @@ test('P10 evaluates stale retries when an activity starts from fresh run state',
   expect(p10IsStaleRetry('needs_retry', new Date('2026-01-10T12:00:00.000Z'), now)).toBe(false);
   expect(p10IsStaleRetry('in_progress', new Date('2026-01-01T12:00:00.000Z'), now)).toBe(false);
   expect(p10IsStaleRetry('completed', new Date('2026-01-01T12:00:00.000Z'), now)).toBe(false);
+});
+
+test('scripted scenarios are skipped and reported when their fixture course is filtered out', () => {
+  expect(
+    scenarioCourseFilterSkipReason('scenario-p14-fallback', ['course-a'], 'fixture-course'),
+  ).toBe('fixture course fixture-course is not included in --courses');
+  expect(
+    scenarioCourseFilterSkipReason('scenario-p14-fallback', ['fixture-course'], 'fixture-course'),
+  ).toBeUndefined();
+  expect(scenarioCourseFilterSkipReason('average', ['course-a'], 'fixture-course')).toBeUndefined();
 });
 
 test('P14 checks selected and covered cards while excluding cap- and budget-rejected cards', () => {
