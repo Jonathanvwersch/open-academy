@@ -170,6 +170,7 @@ export interface ReviewSelectionExplanation {
   coveringConceptId?: string;
   exerciseIds: string[];
   exerciseDimensions: string[];
+  candidateMinutes?: number;
   reviewMinutes: number;
   reviewCap: number;
   usedMinutes: number;
@@ -181,6 +182,7 @@ type ReviewSelectionTrace = {
   results: Map<string, ReviewSelectionResult>;
   coveringConceptIds: Map<string, string>;
   exerciseIds: Map<string, string[]>;
+  candidateMinutes: Map<string, number>;
   metrics: Map<
     string,
     Pick<
@@ -440,11 +442,13 @@ export function explainReviewSelection(
   now: Date,
   budgetMinutes: number,
   excludedReviewConceptIds: ReadonlySet<string> = new Set(),
+  options: { focusConceptId?: string } = {},
 ): ReviewSelectionExplanation[] {
   const trace: ReviewSelectionTrace = {
     results: new Map(),
     coveringConceptIds: new Map(),
     exerciseIds: new Map(),
+    candidateMinutes: new Map(),
     metrics: new Map(),
   };
   packWeekday(
@@ -455,14 +459,16 @@ export function explainReviewSelection(
     new Set(),
     excludedReviewConceptIds,
     trace,
+    options,
   );
   const conceptIds = [
-    ...new Set(
-      state.cards
+    ...new Set([
+      ...state.cards
         .filter((card) => isDueToday(card.dueAt, now, state.timezone ?? 'UTC'))
         .map((card) => card.conceptId),
-    ),
-  ];
+      ...trace.results.keys(),
+    ]),
+  ].sort();
   return conceptIds.map((conceptId) => ({
     conceptId,
     result: trace.results.get(conceptId) ?? 'rejected:other',
@@ -470,6 +476,9 @@ export function explainReviewSelection(
       ? { coveringConceptId: trace.coveringConceptIds.get(conceptId) }
       : {}),
     exerciseIds: trace.exerciseIds.get(conceptId) ?? [],
+    ...(trace.candidateMinutes.has(conceptId)
+      ? { candidateMinutes: trace.candidateMinutes.get(conceptId) }
+      : {}),
     exerciseDimensions: [
       ...new Set(
         (trace.exerciseIds.get(conceptId) ?? []).flatMap((exerciseId) => {
@@ -819,6 +828,7 @@ function packWeekday(
     }
     if (candidate) {
       reviewSelectionTrace.exerciseIds.set(conceptId, candidate.activity.exerciseIds);
+      reviewSelectionTrace.candidateMinutes.set(conceptId, candidate.adjustedMinutes);
     }
     reviewSelectionTrace.metrics.set(conceptId, metrics());
   };

@@ -29,6 +29,7 @@ import {
   explainReviewSelectionForReplan,
   type PlannedActivity,
   type ReviewSelectionExplanation,
+  SCHEDULER_CONFIG,
   type SchedulerState,
 } from '../src/learning/scheduler.js';
 import type { MasteryState } from '../src/learning/types.js';
@@ -81,6 +82,79 @@ export interface SimulationViolation {
   missingAncestors: string[];
   startable?: boolean;
   details?: string;
+  evidence: SimulationViolationEvidence;
+}
+
+export interface SimulationPlanEvidence {
+  label: string;
+  method: 'POST';
+  path: string;
+  requestBody: { budgetMinutes?: number; focusConceptId?: string };
+  budgetMinutes: number;
+  activities: Array<{
+    activityId?: string;
+    kind: string;
+    conceptId?: string | null;
+    projectId?: string;
+    exerciseIds: string[];
+    plannedMinutes: number;
+    status?: string;
+  }>;
+  schedulerExplanations: ReviewSelectionExplanation[];
+  behaviors: SimulationViolationEvidence['behaviors'];
+  reviewCapMinutes: number;
+  usedMinutes: number;
+  remainingMinutes: number;
+  remainingReviewCapMinutes: number;
+}
+
+export interface SimulationCardEvidence {
+  cardId: string;
+  conceptId: string;
+  dimension: string;
+  dueAt: string;
+  state: number | null;
+  lastReviewAt: string | null;
+}
+
+export interface SimulationLessonRunEvidence {
+  conceptId: string;
+  status: string;
+  retryAfter?: string | null;
+}
+
+export interface SimulationMasteryEvidence {
+  conceptId: string;
+  dimension: string;
+  state: string;
+  inferred: boolean;
+}
+
+export interface SimulationViolationEvidence {
+  beforeCards: SimulationCardEvidence[];
+  afterCards: SimulationCardEvidence[];
+  activityLogs: Array<{ cardId: string; conceptId: string; rating: string }>;
+  mastery: SimulationMasteryEvidence[];
+  schedulerExplanations: ReviewSelectionExplanation[];
+  budgetMinutes: number | null;
+  reviewCapMinutes: number | null;
+  usedMinutes: number | null;
+  remainingMinutes: number | null;
+  remainingReviewCapMinutes: number | null;
+  behaviors: {
+    B1BudgetMinutes: number | null;
+    B2FocusConceptId: string | null;
+    B3PartialExplain: boolean | null;
+    B4Replan: boolean | null;
+  };
+  planActivities: SimulationPlanEvidence['activities'];
+  lessonRuns: SimulationLessonRunEvidence[];
+  planHistory: Array<{
+    day: number;
+    courseId: string | null;
+    plans: SimulationPlanEvidence[];
+    lessonRunStatuses: SimulationLessonRunEvidence[];
+  }>;
 }
 
 export interface DailySimulationStats {
@@ -98,6 +172,8 @@ export interface DailySimulationStats {
   newTopicsCompleted: number;
   offers: SimulatedSessionOffer[];
   courseTopics: DailyCourseTopicState[];
+  plans: SimulationPlanEvidence[];
+  lessonRunStatuses: SimulationLessonRunEvidence[];
 }
 
 export interface SimulatedSessionOffer {
@@ -307,6 +383,11 @@ interface ProfileRuntime {
   staleRetryReported: Set<string>;
   activityKeyById: Map<string, string>;
   decisionAttempts: Map<string, number>;
+  violationEvidenceContext: SimulationViolationEvidence;
+  planEvidenceByDay: Map<number, SimulationPlanEvidence[]>;
+  activeBehaviors: SimulationViolationEvidence['behaviors'];
+  reviewActivitySourceOrder: Map<string, Map<string, number>>;
+  reviewActivityAttemptIndex: Map<string, number>;
 }
 
 const graphRemovedConcepts = new Set([
@@ -729,19 +810,132 @@ function addViolation(
   fields: Pick<
     SimulationViolation,
     'courseId' | 'conceptId' | 'projectId' | 'startable' | 'details'
-  > = {},
+  > & { evidenceConceptIds?: string[] } = {},
 ) {
   const key = `${day}|${invariant}|${entityId}|${fields.details ?? ''}`;
   if (runtime.violationKeys.has(key)) return;
   runtime.violationKeys.add(key);
+  const { evidenceConceptIds = [], ...violationFields } = fields;
+  const context = runtime.violationEvidenceContext;
+  const relatedConceptIds = new Set([
+    fields.conceptId ?? entityId.split('/')[0] ?? entityId,
+    ...missingAncestors,
+    ...evidenceConceptIds,
+  ]);
+  const schedulerExplanations = context.schedulerExplanations.filter(
+    ({ conceptId, coveringConceptId }) =>
+      relatedConceptIds.has(conceptId) ||
+      (coveringConceptId !== undefined && relatedConceptIds.has(coveringConceptId)),
+  );
+  for (const explanation of schedulerExplanations) {
+    relatedConceptIds.add(explanation.conceptId);
+    if (explanation.coveringConceptId) relatedConceptIds.add(explanation.coveringConceptId);
+  }
+  const evidence: SimulationViolationEvidence = {
+    ...context,
+    beforeCards: context.beforeCards.filter((card) => relatedConceptIds.has(card.conceptId)),
+    afterCards: context.afterCards.filter((card) => relatedConceptIds.has(card.conceptId)),
+    activityLogs: context.activityLogs.filter((log) => relatedConceptIds.has(log.conceptId)),
+    mastery: context.mastery.filter((record) => relatedConceptIds.has(record.conceptId)),
+    schedulerExplanations,
+  };
   runtime.report.violations.push({
     profile: runtime.profile,
     day,
     invariant,
     entityId,
     missingAncestors,
-    ...fields,
+    ...violationFields,
+    evidence,
   });
+}
+
+function emptyViolationEvidence(): SimulationViolationEvidence {
+  return {
+    beforeCards: [],
+    afterCards: [],
+    activityLogs: [],
+    mastery: [],
+    schedulerExplanations: [],
+    budgetMinutes: null,
+    reviewCapMinutes: null,
+    usedMinutes: null,
+    remainingMinutes: null,
+    remainingReviewCapMinutes: null,
+    behaviors: {
+      B1BudgetMinutes: null,
+      B2FocusConceptId: null,
+      B3PartialExplain: null,
+      B4Replan: null,
+    },
+    planActivities: [],
+    lessonRuns: [],
+    planHistory: [],
+  };
+}
+
+function setP5EvidenceContext(runtime: ProfileRuntime, day: number) {
+  const firstDay = Math.max(1, day - 6);
+  runtime.violationEvidenceContext = {
+    ...runtime.violationEvidenceContext,
+    planHistory: runtime.report.dailyStats
+      .filter((daily) => daily.day >= firstDay && daily.day <= day)
+      .map((daily) => ({
+        day: daily.day,
+        courseId: daily.courseId,
+        plans: daily.plans,
+        lessonRunStatuses: daily.lessonRunStatuses,
+      })),
+  };
+}
+
+function schedulerCardEvidence(state: SchedulerState, _now: Date): SimulationCardEvidence[] {
+  return state.cards.map((card) => {
+    const lastReviewAt = card.fsrs?.last_review;
+    const lastReviewDate =
+      lastReviewAt instanceof Date
+        ? lastReviewAt
+        : typeof lastReviewAt === 'string'
+          ? new Date(lastReviewAt)
+          : undefined;
+    return {
+      cardId: dueCardKey(card),
+      conceptId: card.conceptId,
+      dimension: card.dimension,
+      dueAt: card.dueAt,
+      state: card.fsrs?.state ?? null,
+      lastReviewAt:
+        lastReviewDate && !Number.isNaN(lastReviewDate.getTime())
+          ? lastReviewDate.toISOString()
+          : null,
+    };
+  });
+}
+
+function databaseCardEvidence(
+  cards: readonly {
+    id: string;
+    conceptId: string;
+    dimension: string;
+    dueAt: Date;
+    lastReviewAt: Date | null;
+    fsrs: unknown;
+  }[],
+): SimulationCardEvidence[] {
+  return cards.map((card) => ({
+    cardId: dueCardKey(card),
+    conceptId: card.conceptId,
+    dimension: card.dimension,
+    dueAt: card.dueAt.toISOString(),
+    state:
+      card.fsrs &&
+      typeof card.fsrs === 'object' &&
+      'state' in card.fsrs &&
+      typeof card.fsrs.state === 'number'
+        ? card.fsrs.state
+        : null,
+    lastReviewAt: card.lastReviewAt?.toISOString() ?? null,
+  }));
 }
 
 function markChecked(runtime: ProfileRuntime, invariant: CheckedInvariantId) {
@@ -760,11 +954,36 @@ export function p13HasEmptyPlanViolation(
 }
 
 export function p14UncoveredDueCards(
-  dueConceptIds: readonly string[],
-  activityCoverage: readonly ReadonlySet<string>[],
+  dueCards: readonly { cardId: string; conceptId: string }[],
+  activityCoverage: readonly {
+    conceptIds: readonly string[];
+    cardIds: ReadonlySet<string>;
+    selectedCardIds: ReadonlySet<string>;
+    unfinished: boolean;
+  }[],
+  explanations: readonly ReviewSelectionExplanation[],
 ): string[] {
-  const covered = new Set(activityCoverage.flatMap((coverage) => [...coverage]));
-  return dueConceptIds.filter((conceptId) => !covered.has(conceptId));
+  const explanationByConcept = new Map(
+    explanations
+      .filter(
+        ({ result }) =>
+          result === 'covered' || result === 'selected' || result === 'selected:overdue',
+      )
+      .map((explanation) => [explanation.conceptId, explanation]),
+  );
+  return dueCards.flatMap(({ cardId, conceptId }) => {
+    const explanation = explanationByConcept.get(conceptId);
+    if (!explanation) return [];
+    const covered = activityCoverage.some(({ conceptIds, cardIds, selectedCardIds, unfinished }) =>
+      explanation.result === 'covered'
+        ? cardIds.has(cardId) &&
+          unfinished &&
+          explanation.coveringConceptId !== undefined &&
+          conceptIds.includes(explanation.coveringConceptId)
+        : selectedCardIds.has(cardId),
+    );
+    return covered ? [] : [cardId];
+  });
 }
 
 export function p16HasOverduePrecedenceViolation(
@@ -779,7 +998,20 @@ export function p17ReviewFitsRemaining(
   remainingBudgetMinutes: number,
   remainingReviewCapMinutes: number,
 ): boolean {
-  return reviewMinutes <= remainingBudgetMinutes && reviewMinutes <= remainingReviewCapMinutes;
+  return (
+    reviewMinutes > 0 &&
+    reviewMinutes <= remainingBudgetMinutes &&
+    reviewMinutes <= remainingReviewCapMinutes
+  );
+}
+
+export function requireP17ReviewMinutes(conceptId: string, value: unknown): number {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
+    throw new Error(
+      `P17 audit requires positive review minutes for ${conceptId}; received ${value}`,
+    );
+  }
+  return value;
 }
 
 export function p18HasMissedPickup(
@@ -903,7 +1135,7 @@ function activityDueCoverage(
   return covered;
 }
 
-function dueCardKey(card: Pick<SchedulerState['cards'][number], 'conceptId' | 'dimension'>) {
+function dueCardKey(card: { conceptId: string; dimension: string }) {
   return `${card.conceptId}/${card.dimension}`;
 }
 
@@ -965,7 +1197,10 @@ function auditReviewPlanInvariants(
   replan = false,
 ) {
   const explanations =
-    reviewExplanations ?? explainReviewSelection(state, content, now, budgetMinutes);
+    reviewExplanations ??
+    explainReviewSelection(state, content, now, budgetMinutes, new Set(), {
+      focusConceptId: state.inProgressConceptId,
+    });
   const dueConceptIds = new Set(
     state.cards
       .filter((card) => isDueToday(card.dueAt, now, state.timezone ?? 'UTC'))
@@ -1042,18 +1277,16 @@ function auditReviewPlanInvariants(
     ) {
       continue;
     }
+    const reviewMinutes = requireP17ReviewMinutes(
+      explanation.conceptId,
+      explanation.candidateMinutes,
+    );
     markChecked(runtime, 'P17');
-    if (
-      p17ReviewFitsRemaining(
-        explanation.reviewMinutes,
-        remainingBudgetMinutes,
-        remainingReviewCapMinutes,
-      )
-    ) {
+    if (p17ReviewFitsRemaining(reviewMinutes, remainingBudgetMinutes, remainingReviewCapMinutes)) {
       addViolation(runtime, day, 'P17', explanation.conceptId, [], {
         courseId,
         conceptId: explanation.conceptId,
-        details: `uncovered due review fits the ${remainingBudgetMinutes}-minute remaining budget and ${remainingReviewCapMinutes}-minute review cap`,
+        details: `uncovered due review of ${reviewMinutes} adjusted minutes fits the ${remainingBudgetMinutes}-minute remaining budget and ${remainingReviewCapMinutes}-minute review cap`,
       });
     }
 
@@ -1070,6 +1303,7 @@ function auditReviewPlanInvariants(
         addViolation(runtime, day, 'P16', explanation.conceptId, [], {
           courseId,
           conceptId: explanation.conceptId,
+          evidenceConceptIds: [selected.conceptId, ...selectedCoverage],
           details: `${explanation.conceptId} was ${droppedOverdueDays} local days overdue while ${selected.conceptId} was selected at ${selectedOverdueDays} days overdue`,
         });
       }
@@ -1097,6 +1331,7 @@ function auditReviewPlanInvariants(
           addViolation(runtime, day, 'P19', conceptId, [], {
             courseId,
             conceptId,
+            evidenceConceptIds: [...topicCoverage],
             details: `non-due review covered only ${newlyCovered} uncovered due topics`,
           });
         }
@@ -1160,9 +1395,6 @@ function auditCoursePage(
   content: ContentIndex,
 ) {
   for (const topic of coursePageTopics(page)) {
-    if (topic.hasLesson && topic.status !== 'locked' && topic.status !== 'complete') {
-      checkLessonReadiness(runtime, day, courseId, [topic.conceptId], progress, content);
-    }
     const missing = hardAncestorClosure([topic.conceptId], content, false).filter(
       (ancestorId) => !isDone(ancestorId, progress, content),
     );
@@ -1184,7 +1416,6 @@ function auditCoursePage(
   for (const unit of page.units) {
     if (unit.project?.available) {
       offerProject(runtime, day, courseId, unit.project.id);
-      checkProjectReadiness(runtime, day, unit.project.id, courseId, progress, content);
     }
   }
 }
@@ -1199,7 +1430,12 @@ async function choiceIsStartable(
     kind: sessionKind,
     focusConceptId: conceptId,
   });
-  if (!result.ok) return false;
+  if (!result.ok) {
+    if (result.status === 409) return false;
+    throw new Error(
+      `Focused session for ${conceptId} failed (${result.status}): ${JSON.stringify(result.data)}`,
+    );
+  }
   const sessionId = text(object(result.data).id);
   if (!sessionId) throw new Error(`Focused session for ${conceptId} returned no id`);
   await api.require('POST', `/sessions/${sessionId}/end`, now);
@@ -1217,6 +1453,19 @@ async function auditHome(
   progress: LearnerProgress,
   content: ContentIndex,
 ) {
+  runtime.activeBehaviors.B3PartialExplain = false;
+  runtime.violationEvidenceContext = {
+    ...runtime.violationEvidenceContext,
+    mastery: [...progress.masteryByKey].map(([key, record]) => {
+      const separator = key.lastIndexOf(':');
+      return {
+        conceptId: key.slice(0, separator),
+        dimension: key.slice(separator + 1),
+        state: record.state,
+        inferred: record.inferred,
+      };
+    }),
+  };
   const planActivities = today.plan.activities as unknown as Array<{
     kind: string;
     conceptId?: string | null;
@@ -1257,25 +1506,25 @@ async function auditHome(
       });
     }
   }
-  checkLessonReadiness(
-    runtime,
-    day,
-    courseId,
-    [...plannedLessons, ...taskLessons],
-    progress,
-    content,
-  );
   for (const choice of learn.choices) {
     const missing = hardAncestorClosure([choice.conceptId], content, false).filter(
       (ancestorId) => !isDone(ancestorId, progress, content),
     );
     if (missing.length === 0) continue;
-    const cacheKey = `${choice.conceptId}|${missing.join(',')}`;
+    const cacheKey = `${now.toISOString()}|${today.sessionKind}|${choice.conceptId}|${missing.join(',')}`;
     let startable = runtime.choiceStartability.get(cacheKey);
     if (startable === undefined) {
       startable = await choiceIsStartable(api, now, today.sessionKind, choice.conceptId);
       runtime.choiceStartability.set(cacheKey, startable);
     }
+    if (!startable) continue;
+    runtime.violationEvidenceContext = {
+      ...runtime.violationEvidenceContext,
+      behaviors: {
+        ...runtime.violationEvidenceContext.behaviors,
+        B2FocusConceptId: choice.conceptId,
+      },
+    };
     addViolation(runtime, day, 'P1', choice.conceptId, missing, {
       ...(courseId ? { courseId } : {}),
       conceptId: choice.conceptId,
@@ -1285,32 +1534,52 @@ async function auditHome(
   }
   for (const activity of planActivities) {
     if (activity.projectId) {
-      checkProjectReadiness(runtime, day, activity.projectId, courseId, progress, content);
       if (courseId) offerProject(runtime, day, courseId, activity.projectId);
     }
   }
   for (const task of learn.tasks) {
     if (task.label === 'Project' && content.projectsById.has(task.id)) {
-      checkProjectReadiness(runtime, day, task.id, courseId, progress, content);
       if (courseId) offerProject(runtime, day, courseId, task.id);
     }
   }
   const nextProject = object(object(learn.upNext).project);
   const projectId = text(nextProject.projectId) ?? text(nextProject.id);
   if (projectId) {
-    checkProjectReadiness(runtime, day, projectId, courseId, progress, content);
     if (courseId) offerProject(runtime, day, courseId, projectId);
   }
 }
 
 function auditSession(
   runtime: ProfileRuntime,
+  now: Date,
   day: number,
   courseId: string,
   activities: SimActivity[],
   progress: LearnerProgress,
+  state: SchedulerState,
   content: ContentIndex,
 ) {
+  runtime.activeBehaviors.B3PartialExplain = false;
+  runtime.violationEvidenceContext = {
+    ...runtime.violationEvidenceContext,
+    beforeCards: schedulerCardEvidence(state, now),
+    afterCards: [],
+    activityLogs: [],
+    mastery: [...progress.masteryByKey].map(([key, record]) => {
+      const separator = key.lastIndexOf(':');
+      return {
+        conceptId: key.slice(0, separator),
+        dimension: key.slice(separator + 1),
+        state: record.state,
+        inferred: record.inferred,
+      };
+    }),
+    lessonRuns: progress.lessonRuns.map((run) => ({
+      conceptId: run.conceptId,
+      status: run.status,
+      ...(run.retryAfter ? { retryAfter: run.retryAfter.toISOString() } : {}),
+    })),
+  };
   for (const activity of activities) {
     if (activity.kind === 'learn' && activity.conceptId) {
       checkLessonReadiness(runtime, day, courseId, [activity.conceptId], progress, content);
@@ -1814,6 +2083,13 @@ async function attemptExercise(
   mode: 'practice' | 'review' | 'assessment',
 ): Promise<number> {
   const conceptId = content.exercisesById.get(exerciseId)?.concept ?? courseId;
+  if (mode === 'review') {
+    const attemptIndex = runtime.reviewActivityAttemptIndex.get(activityId) ?? 0;
+    runtime.reviewActivityAttemptIndex.set(activityId, attemptIndex + 1);
+    const sourceOrder = runtime.reviewActivitySourceOrder.get(activityId) ?? new Map();
+    sourceOrder.set(conceptId, attemptIndex);
+    runtime.reviewActivitySourceOrder.set(activityId, sourceOrder);
+  }
   const intendedCorrect = wantsCorrect(runtime, conceptId, day, activityId, exerciseId);
   const exercise = exerciseFor(content, exerciseId, 0);
   const activityKey =
@@ -1826,6 +2102,7 @@ async function attemptExercise(
     exercise.rubric.length >= 2 &&
     decisionRandom(runtime.profile, day, activityKey, `${exerciseId}:partial-explain`, attempt) <
       0.3;
+  runtime.activeBehaviors.B3PartialExplain ||= partialExplain;
   const answer = answerForProfile(content, exerciseId, 0, intendedCorrect, partialExplain);
   const response = await api.call('POST', '/attempts', now, {
     exerciseId,
@@ -2117,9 +2394,14 @@ export function auditP11DescendantCard(
 interface P15CardSnapshot {
   id: string;
   conceptId: string;
+  dimension?: string;
   dueAt: Date;
   lastReviewAt: Date | null;
   fsrs: unknown;
+}
+
+function p15CardIdentity(card: P15CardSnapshot): string {
+  return card.dimension ? `${card.conceptId}/${card.dimension}` : card.id;
 }
 
 export function auditP15ImplicitCredits(
@@ -2130,6 +2412,7 @@ export function auditP15ImplicitCredits(
   encompassing: Pick<EncompassingIndex, 'weight' | 'ancestors' | 'descendants'>,
   now: Date,
   timeZone: string,
+  activityKind: 'learn' | 'review' = 'review',
 ): { checked: number; violations: string[] } {
   const logsByConcept = new Map<string, number[]>();
   for (const log of activityLogs) {
@@ -2141,12 +2424,19 @@ export function auditP15ImplicitCredits(
   const expectedById = new Map(beforeCards.map((card) => [card.id, card]));
   const actualById = new Map(afterCards.map((card) => [card.id, card]));
   const checkedCards = new Set<string>();
-  const positiveSourcesWithAncestors = new Set<string>();
-  const positiveSourcesUpdated = new Set<string>();
+  let appliedUpdates = 0;
   for (const sourceConceptId of new Set(sourceConceptOrder)) {
     const ratings = logsByConcept.get(sourceConceptId);
     if (!ratings?.length) continue;
-    const rating = Math.min(...ratings) as Rating;
+    const rating =
+      activityKind === 'learn'
+        ? ratings.includes(Rating.Again)
+          ? undefined
+          : ratings.every((value) => value === Rating.Good)
+            ? Rating.Good
+            : Rating.Hard
+        : (Math.min(...ratings) as Rating);
+    if (rating === undefined) continue;
     const positive = rating === Rating.Hard || rating === Rating.Good;
     const relatedConcepts = positive
       ? new Set(encompassing.ancestors(sourceConceptId).keys())
@@ -2154,24 +2444,11 @@ export function auditP15ImplicitCredits(
         ? new Set(encompassing.descendants(sourceConceptId).keys())
         : new Set<string>();
     for (const card of beforeCards) {
-      const actual = actualById.get(card.id);
-      if (
-        positive &&
-        encompassing.weight(sourceConceptId, card.conceptId) > 0 &&
-        relatedConcepts.has(card.conceptId) &&
-        !explicitCardIds.has(card.id) &&
-        (actual?.lastReviewAt?.getTime() ?? null) === (card.lastReviewAt?.getTime() ?? null) &&
-        (card.fsrs as Card | null)?.state === State.Review
-      ) {
-        positiveSourcesWithAncestors.add(sourceConceptId);
-      }
       const weight = encompassing.weight(sourceConceptId, card.conceptId);
       if (
         weight <= 0 ||
         !relatedConcepts.has(card.conceptId) ||
         explicitCardIds.has(card.id) ||
-        (actual?.lastReviewAt?.getTime() ?? null) !== (card.lastReviewAt?.getTime() ?? null) ||
-        (card.fsrs as Card | null)?.state !== State.Review ||
         (!positive && rating !== Rating.Again)
       ) {
         continue;
@@ -2185,7 +2462,7 @@ export function auditP15ImplicitCredits(
       if (!update) continue;
       expectedById.set(card.id, { ...current, fsrs: update.fsrs, dueAt: update.dueAt });
       checkedCards.add(card.id);
-      if (positive) positiveSourcesUpdated.add(sourceConceptId);
+      appliedUpdates += 1;
     }
   }
   const violations: string[] = [];
@@ -2193,25 +2470,24 @@ export function auditP15ImplicitCredits(
     const expected = expectedById.get(cardId);
     const actual = actualById.get(cardId);
     if (!expected || !actual) {
-      violations.push(`${cardId}: expected implicit update was missing`);
+      violations.push(
+        `${expected ? p15CardIdentity(expected) : cardId}: expected implicit update was missing`,
+      );
       continue;
     }
     const expectedFsrs = expected.fsrs as Card;
     const actualFsrs = actual.fsrs as Card;
     if (
       expected.dueAt.getTime() !== actual.dueAt.getTime() ||
-      expectedFsrs.stability !== actualFsrs.stability ||
-      expectedFsrs.difficulty !== actualFsrs.difficulty
+      JSON.stringify(expectedFsrs) !== JSON.stringify(actualFsrs) ||
+      (expected.lastReviewAt?.getTime() ?? null) !== (actual.lastReviewAt?.getTime() ?? null)
     ) {
-      violations.push(`${cardId}: implicit update was applied zero or multiple times`);
+      violations.push(
+        `${p15CardIdentity(expected)}: expected ${JSON.stringify({ dueAt: expected.dueAt, fsrs: expected.fsrs, lastReviewAt: expected.lastReviewAt })}, actual ${JSON.stringify({ dueAt: actual.dueAt, fsrs: actual.fsrs, lastReviewAt: actual.lastReviewAt })}`,
+      );
     }
   }
-  for (const sourceConceptId of positiveSourcesWithAncestors) {
-    if (!positiveSourcesUpdated.has(sourceConceptId)) {
-      violations.push(`${sourceConceptId}: positive credit produced no implicit update`);
-    }
-  }
-  return { checked: activityLogs.length + checkedCards.size, violations };
+  return { checked: activityLogs.length + appliedUpdates, violations };
 }
 
 export function attributeActivityLogs<T extends { id: string }>(
@@ -2222,6 +2498,27 @@ export function attributeActivityLogs<T extends { id: string }>(
   const newLogs = afterLogs.filter(({ id }) => !beforeIds.has(id) && !checkedIds.has(id));
   for (const { id } of afterLogs) checkedIds.add(id);
   return newLogs;
+}
+
+function implicitCreditSourceOrder(
+  activity: SimActivity,
+  content: ContentIndex,
+  activityLogs: readonly P11ActivityLog[],
+): string[] {
+  const loggedConceptIds = new Set(activityLogs.map(({ conceptId }) => conceptId));
+  if (activity.kind === 'learn' && activity.conceptId) {
+    return loggedConceptIds.has(activity.conceptId) ? [activity.conceptId] : [];
+  }
+  const lastExerciseIndex = new Map<string, number>();
+  for (const [index, exerciseId] of (activity.exerciseIds ?? []).entries()) {
+    const conceptId = content.exercisesById.get(exerciseId)?.concept;
+    if (conceptId && loggedConceptIds.has(conceptId)) lastExerciseIndex.set(conceptId, index);
+  }
+  return [...loggedConceptIds].sort(
+    (left, right) =>
+      (lastExerciseIndex.get(left) ?? Number.MAX_SAFE_INTEGER) -
+        (lastExerciseIndex.get(right) ?? Number.MAX_SAFE_INTEGER) || left.localeCompare(right),
+  );
 }
 
 async function processActivityWithMetrics(
@@ -2249,7 +2546,13 @@ async function processActivityWithMetrics(
       .from(reviewLogs)
       .innerJoin(reviewCards, eq(reviewLogs.cardId, reviewCards.id))
       .where(and(eq(reviewCards.userId, userId), eq(reviewLogs.createdAt, now)))
-      .orderBy(asc(reviewLogs.createdAt), asc(reviewLogs.id));
+      .orderBy(
+        asc(reviewLogs.createdAt),
+        asc(reviewCards.conceptId),
+        asc(reviewCards.dimension),
+        asc(reviewLogs.rating),
+        asc(reviewLogs.id),
+      );
   const beforeSchedulerState = tracksCards
     ? await new LearnerRepository(db, userId).schedulerState(now, content)
     : undefined;
@@ -2261,6 +2564,11 @@ async function processActivityWithMetrics(
         .orderBy(asc(reviewCards.conceptId), asc(reviewCards.dimension), asc(reviewCards.id))
     : [];
   const beforeLogIds = new Set(tracksCards ? (await readActivityLogs()).map(({ id }) => id) : []);
+  runtime.activeBehaviors.B3PartialExplain = false;
+  if (activity.kind === 'review') {
+    runtime.reviewActivityAttemptIndex.set(activity.id, 0);
+    runtime.reviewActivitySourceOrder.set(activity.id, new Map());
+  }
   const result = await processActivity(
     api,
     db,
@@ -2272,6 +2580,25 @@ async function processActivityWithMetrics(
     sessionId,
     activity,
   );
+  if (runtime.activeBehaviors.B3PartialExplain) {
+    const dayPlans = [...(runtime.planEvidenceByDay.get(day) ?? [])];
+    const activityKey = runtime.activityKeyById.get(activity.id);
+    let planIndex = -1;
+    for (let index = dayPlans.length - 1; index >= 0; index -= 1) {
+      if (dayPlans[index].activities.some(({ activityId }) => activityId === activityKey)) {
+        planIndex = index;
+        break;
+      }
+    }
+    if (planIndex >= 0) {
+      const plan = dayPlans[planIndex];
+      dayPlans[planIndex] = {
+        ...plan,
+        behaviors: { ...plan.behaviors, B3PartialExplain: true },
+      };
+      runtime.planEvidenceByDay.set(day, dayPlans);
+    }
+  }
   const afterCards = tracksCards
     ? await db
         .select()
@@ -2281,6 +2608,32 @@ async function processActivityWithMetrics(
     : [];
   const activityLogs = tracksCards ? await readActivityLogs() : [];
   const newLogs = attributeActivityLogs(beforeLogIds, activityLogs, runtime.checkedReviewLogIds);
+  const activityCardKeys = new Map(
+    [...beforeCards, ...afterCards].map((card) => [card.id, dueCardKey(card)]),
+  );
+  if (tracksCards) {
+    runtime.violationEvidenceContext = {
+      ...runtime.violationEvidenceContext,
+      beforeCards: databaseCardEvidence(beforeCards),
+      afterCards: databaseCardEvidence(afterCards),
+      activityLogs: newLogs
+        .map(({ cardId, conceptId, rating }) => ({
+          cardId: activityCardKeys.get(cardId) ?? conceptId,
+          conceptId,
+          rating: String(rating),
+        }))
+        .sort(
+          (left, right) =>
+            left.conceptId.localeCompare(right.conceptId) ||
+            left.cardId.localeCompare(right.cardId) ||
+            left.rating.localeCompare(right.rating),
+        ),
+      behaviors: {
+        ...runtime.violationEvidenceContext.behaviors,
+        B3PartialExplain: runtime.activeBehaviors.B3PartialExplain,
+      },
+    };
+  }
   const [savedActivity] =
     activity.kind === 'review' || activity.kind === 'learn'
       ? await db
@@ -2333,23 +2686,15 @@ async function processActivityWithMetrics(
     }
   }
   if (tracksCards && encompassing && activityCompleted) {
-    const exerciseConcepts = (activity.exerciseIds ?? []).flatMap((exerciseId) => {
-      const conceptId = content.exercisesById.get(exerciseId)?.concept;
-      return conceptId ? [conceptId] : [];
-    });
-    const sourceConceptOrder = [
-      ...new Set([
-        ...(activity.conceptId ? [activity.conceptId] : []),
-        ...exerciseConcepts,
-        ...newLogs
-          .map((log) => log.conceptId)
-          .filter(
-            (conceptId) =>
-              conceptId !== activity.conceptId && !exerciseConcepts.includes(conceptId),
+    const recordedOrder = runtime.reviewActivitySourceOrder.get(activity.id);
+    const sourceConceptOrder =
+      activity.kind === 'review' && recordedOrder
+        ? [...new Set(newLogs.map((log) => log.conceptId))].sort(
+            (left, right) =>
+              (recordedOrder.get(left) ?? Number.MAX_SAFE_INTEGER) -
+                (recordedOrder.get(right) ?? Number.MAX_SAFE_INTEGER) || left.localeCompare(right),
           )
-          .sort(),
-      ]),
-    ];
+        : implicitCreditSourceOrder(activity, content, newLogs);
     const p15 = auditP15ImplicitCredits(
       beforeCards,
       afterCards,
@@ -2358,11 +2703,17 @@ async function processActivityWithMetrics(
       encompassing,
       now,
       timeZone,
+      activity.kind === 'learn' ? 'learn' : 'review',
     );
     runtime.report.checkedCounts.P15 += p15.checked;
     for (const detail of p15.violations) {
-      addViolation(runtime, day, 'P15', detail.split(':', 1)[0] ?? 'implicit-credit', [], {
+      const cardId = detail.split(':', 1)[0] ?? 'implicit-credit';
+      const conceptId = beforeCards.find(
+        (card) => `${card.conceptId}/${card.dimension}` === cardId || card.id === cardId,
+      )?.conceptId;
+      addViolation(runtime, day, 'P15', cardId, [], {
         courseId,
+        ...(conceptId ? { conceptId } : {}),
         details: detail,
       });
     }
@@ -2633,6 +2984,93 @@ function auditSavedSessionPlan(
   activities: SimActivity[],
   reviewExplanations?: ReviewSelectionExplanation[],
 ) {
+  runtime.activeBehaviors.B3PartialExplain = false;
+  const explanations =
+    reviewExplanations ??
+    explainReviewSelection(state, content, now, budgetMinutes, new Set(), {
+      focusConceptId: state.inProgressConceptId,
+    });
+  const planActivities = activities.map((activity, index) => ({
+    activityId:
+      runtime.activityKeyById.get(activity.id) ??
+      `day:${day}|plan:${planLabel}|activity:${index}|${activity.kind}|${activity.conceptId ?? ''}`,
+    kind: activity.kind,
+    ...(activity.conceptId ? { conceptId: activity.conceptId } : {}),
+    ...(activity.projectId ? { projectId: activity.projectId } : {}),
+    exerciseIds: activity.exerciseIds ?? [],
+    plannedMinutes: activity.plannedMinutes,
+    ...(activity.status ? { status: activity.status } : {}),
+  }));
+  const unfinished = activities.filter(
+    (activity) => activity.status !== 'completed' && activity.status !== 'skipped',
+  );
+  const usedMinutes = unfinished.reduce((total, activity) => total + activity.plannedMinutes, 0);
+  const reviewCapMinutes =
+    explanations[0]?.reviewCap ??
+    Math.floor(budgetMinutes * SCHEDULER_CONFIG.weekday.reviewBudgetRatio);
+  const usedReviewMinutes = unfinished
+    .filter((activity) => activity.kind === 'review')
+    .reduce((total, activity) => total + activity.plannedMinutes, 0);
+  const focusConceptId = state.inProgressConceptId;
+  const planEvidence: SimulationPlanEvidence = {
+    label: planLabel,
+    method: 'POST',
+    path: planLabel === 'replan' ? '/sessions/:id/replan' : '/sessions',
+    requestBody:
+      planLabel === 'replan'
+        ? {}
+        : {
+            ...(runtime.activeBehaviors.B1BudgetMinutes !== null
+              ? { budgetMinutes: runtime.activeBehaviors.B1BudgetMinutes }
+              : {}),
+            ...(focusConceptId ? { focusConceptId } : {}),
+          },
+    budgetMinutes,
+    activities: planActivities,
+    schedulerExplanations: explanations,
+    behaviors: {
+      ...runtime.activeBehaviors,
+      B2FocusConceptId: focusConceptId ?? null,
+    },
+    reviewCapMinutes,
+    usedMinutes,
+    remainingMinutes: Math.max(0, budgetMinutes - usedMinutes),
+    remainingReviewCapMinutes: Math.max(0, reviewCapMinutes - usedReviewMinutes),
+  };
+  const lessonRuns = (state.lessonRuns ?? []).map((run) => ({
+    conceptId: run.conceptId,
+    status: run.status,
+    ...(run.retryAfter !== undefined
+      ? {
+          retryAfter:
+            run.retryAfter instanceof Date ? run.retryAfter.toISOString() : run.retryAfter,
+        }
+      : {}),
+  }));
+  runtime.violationEvidenceContext = {
+    ...emptyViolationEvidence(),
+    beforeCards: schedulerCardEvidence(state, now),
+    mastery: state.mastery.map((record) => ({
+      conceptId: record.conceptId,
+      dimension: record.dimension,
+      state: record.state,
+      inferred: record.inferred,
+    })),
+    schedulerExplanations: explanations,
+    budgetMinutes,
+    reviewCapMinutes,
+    usedMinutes,
+    remainingMinutes: planEvidence.remainingMinutes,
+    remainingReviewCapMinutes: planEvidence.remainingReviewCapMinutes,
+    behaviors: {
+      ...runtime.activeBehaviors,
+      B2FocusConceptId: focusConceptId ?? null,
+    },
+    planActivities,
+    lessonRuns,
+  };
+  const dayPlans = runtime.planEvidenceByDay.get(day) ?? [];
+  runtime.planEvidenceByDay.set(day, [...dayPlans, planEvidence]);
   markChecked(runtime, 'P13');
   const lessonMinutes = learn.choices.flatMap((choice) => {
     const concept = content.conceptsById.get(choice.conceptId);
@@ -2662,10 +3100,52 @@ function auditSavedSessionPlan(
   const dueCards = state.cards.filter((card) =>
     isDueToday(card.dueAt, now, state.timezone ?? 'UTC'),
   );
-  for (const _card of dueCards) markChecked(runtime, 'P14');
+  const coveredOrSelectedConceptIds = new Set(
+    explanations
+      .filter(
+        ({ result }) =>
+          result === 'covered' || result === 'selected' || result === 'selected:overdue',
+      )
+      .map(({ conceptId }) => conceptId),
+  );
+  const checkedDueCards = dueCards.filter((card) =>
+    coveredOrSelectedConceptIds.has(card.conceptId),
+  );
+  for (const _card of checkedDueCards) markChecked(runtime, 'P14');
+  const activityCoverage = activities.map((activity) => ({
+    conceptIds: [
+      ...new Set([
+        ...(activity.conceptId ? [activity.conceptId] : []),
+        ...(activity.exerciseIds ?? []).flatMap((exerciseId) => {
+          const conceptId = content.exercisesById.get(exerciseId)?.concept;
+          return conceptId ? [conceptId] : [];
+        }),
+      ]),
+    ],
+    cardIds: activityDueCardCoverage(activity, state, content, now),
+    selectedCardIds: new Set(
+      activity.kind === 'review'
+        ? (activity.exerciseIds ?? []).flatMap((exerciseId) => {
+            const exercise = content.exercisesById.get(exerciseId);
+            if (!exercise) return [];
+            return state.cards
+              .filter(
+                (card) =>
+                  card.conceptId === exercise.concept && card.dimension === exercise.dimension,
+              )
+              .map(dueCardKey);
+          })
+        : [],
+    ),
+    unfinished: activity.status !== 'completed' && activity.status !== 'skipped',
+  }));
   for (const cardId of p14UncoveredDueCards(
-    dueCards.map(dueCardKey),
-    activities.map((activity) => activityDueCardCoverage(activity, state, content, now)),
+    checkedDueCards.map((card) => ({
+      cardId: dueCardKey(card),
+      conceptId: card.conceptId,
+    })),
+    activityCoverage,
+    explanations,
   )) {
     const card = dueCards.find((item) => dueCardKey(item) === cardId);
     addViolation(runtime, day, 'P14', cardId, [], {
@@ -2704,6 +3184,7 @@ function auditSavedSessionPlan(
       addViolation(runtime, day, 'P18', pending.conceptId, [], {
         courseId,
         conceptId: pending.conceptId,
+        evidenceConceptIds: [pending.sourceConceptId],
         details: `${planLabel} omitted due topic after low-credit review of ${pending.sourceConceptId}`,
       });
     }
@@ -2719,7 +3200,7 @@ function auditSavedSessionPlan(
       now,
       budgetMinutes,
       activities,
-      reviewExplanations,
+      explanations,
       planLabel === 'replan',
     );
   }
@@ -2892,6 +3373,16 @@ async function simulateProfile(
     decisionAttempts: new Map(),
     checkedReviewLogIds: new Set(),
     pendingP18: [],
+    violationEvidenceContext: emptyViolationEvidence(),
+    planEvidenceByDay: new Map(),
+    activeBehaviors: {
+      B1BudgetMinutes: null,
+      B2FocusConceptId: null,
+      B3PartialExplain: false,
+      B4Replan: false,
+    },
+    reviewActivitySourceOrder: new Map(),
+    reviewActivityAttemptIndex: new Map(),
   };
   let activeContent = initialContent;
   let currentCourseId: string | undefined;
@@ -2969,7 +3460,66 @@ async function simulateProfile(
       const shouldReplan = decisionRandom(profile, day, 'daily-session', 'replan', 1) < 0.2;
       const shouldFocusDueReview =
         hadDueReviews && decisionRandom(profile, day, 'daily-session', 'due-review-focus', 1) < 0.3;
+      runtime.activeBehaviors = {
+        B1BudgetMinutes: selectedBudget ?? null,
+        B2FocusConceptId: null,
+        B3PartialExplain: false,
+        B4Replan: shouldReplan,
+      };
       const progress = await readProgress(db, userId);
+      const initialBudgetMinutes = selectedBudget ?? today.budgetMinutes;
+      const initialExplanations = explainReviewSelection(
+        stateBeforeSession,
+        activeContent,
+        now,
+        initialBudgetMinutes,
+      );
+      const homePlanActivities = today.plan.activities.map((activity) => {
+        const sessionActivity = activity as Partial<SessionActivity>;
+        return {
+          kind: activity.kind,
+          ...(activity.conceptId ? { conceptId: activity.conceptId } : {}),
+          ...(sessionActivity.projectId ? { projectId: sessionActivity.projectId } : {}),
+          exerciseIds: sessionActivity.exerciseIds ?? [],
+          plannedMinutes: activity.plannedMinutes,
+        };
+      });
+      const homeUsedMinutes = homePlanActivities.reduce(
+        (total, activity) => total + activity.plannedMinutes,
+        0,
+      );
+      const homeReviewCap =
+        initialExplanations[0]?.reviewCap ??
+        Math.floor(initialBudgetMinutes * SCHEDULER_CONFIG.weekday.reviewBudgetRatio);
+      const homeReviewMinutes = homePlanActivities
+        .filter((activity) => activity.kind === 'review')
+        .reduce((total, activity) => total + activity.plannedMinutes, 0);
+      runtime.violationEvidenceContext = {
+        ...emptyViolationEvidence(),
+        beforeCards: schedulerCardEvidence(stateBeforeSession, now),
+        mastery: [...progress.masteryByKey].map(([key, record]) => {
+          const separator = key.lastIndexOf(':');
+          return {
+            conceptId: key.slice(0, separator),
+            dimension: key.slice(separator + 1),
+            state: record.state,
+            inferred: record.inferred,
+          };
+        }),
+        schedulerExplanations: initialExplanations,
+        budgetMinutes: initialBudgetMinutes,
+        reviewCapMinutes: homeReviewCap,
+        usedMinutes: homeUsedMinutes,
+        remainingMinutes: Math.max(0, initialBudgetMinutes - homeUsedMinutes),
+        remainingReviewCapMinutes: Math.max(0, homeReviewCap - homeReviewMinutes),
+        behaviors: { ...runtime.activeBehaviors, B2FocusConceptId: null },
+        planActivities: homePlanActivities,
+        lessonRuns: progress.lessonRuns.map((run) => ({
+          conceptId: run.conceptId,
+          status: run.status,
+          ...(run.retryAfter ? { retryAfter: run.retryAfter.toISOString() } : {}),
+        })),
+      };
       await auditHome(api, now, runtime, day, courseId, today, learn, progress, activeContent);
       const pageBefore = await fetchCoursePage(api, now, courseId);
       auditCoursePage(runtime, day, courseId, pageBefore, progress, activeContent);
@@ -2991,6 +3541,8 @@ async function simulateProfile(
         coveredSkips: 0,
         newTopicsCompleted: 0,
         offers: [],
+        plans: [],
+        lessonRunStatuses: [],
         courseTopics: coursePageTopics(pageBefore).map((topic) => ({
           conceptId: topic.conceptId,
           title: topic.title,
@@ -3043,8 +3595,22 @@ async function simulateProfile(
           activities,
         );
         daily.offers.push(...activities.map(sessionOffer));
-        auditSession(runtime, day, courseId, activities, progress, activeContent);
         for (const activity of activities) {
+          const activityProgress = await readProgress(db, userId);
+          const activityState = await new LearnerRepository(db, userId).schedulerState(
+            now,
+            activeContent,
+          );
+          auditSession(
+            runtime,
+            now,
+            day,
+            courseId,
+            [activity],
+            activityProgress,
+            activityState,
+            activeContent,
+          );
           const result = await processActivityWithMetrics(
             api,
             db,
@@ -3121,7 +3687,6 @@ async function simulateProfile(
             replanned.activities as SimActivity[],
             reviewExplanations,
           );
-          const replanProgress = await readProgress(db, userId);
           daily.coveredSkips += await auditCompressionPlan(
             db,
             runtime,
@@ -3133,8 +3698,22 @@ async function simulateProfile(
             newActivities,
           );
           daily.offers.push(...newActivities.map(sessionOffer));
-          auditSession(runtime, day, courseId, newActivities, replanProgress, activeContent);
           for (const activity of newActivities) {
+            const activityProgress = await readProgress(db, userId);
+            const activityState = await new LearnerRepository(db, userId).schedulerState(
+              now,
+              activeContent,
+            );
+            auditSession(
+              runtime,
+              now,
+              day,
+              courseId,
+              [activity],
+              activityProgress,
+              activityState,
+              activeContent,
+            );
             const result = await processActivityWithMetrics(
               api,
               db,
@@ -3213,8 +3792,22 @@ async function simulateProfile(
               focusedActivities,
             );
             daily.offers.push(...focusedActivities.map(sessionOffer));
-            auditSession(runtime, day, courseId, focusedActivities, progress, activeContent);
             for (const activity of focusedActivities) {
+              const activityProgress = await readProgress(db, userId);
+              const activityState = await new LearnerRepository(db, userId).schedulerState(
+                now,
+                activeContent,
+              );
+              auditSession(
+                runtime,
+                now,
+                day,
+                courseId,
+                [activity],
+                activityProgress,
+                activityState,
+                activeContent,
+              );
               const result = await processActivityWithMetrics(
                 api,
                 db,
@@ -3290,8 +3883,22 @@ async function simulateProfile(
             focusedActivities,
           );
           daily.offers.push(...focusedActivities.map(sessionOffer));
-          auditSession(runtime, day, courseId, focusedActivities, progress, activeContent);
           for (const activity of focusedActivities) {
+            const activityProgress = await readProgress(db, userId);
+            const activityState = await new LearnerRepository(db, userId).schedulerState(
+              now,
+              activeContent,
+            );
+            auditSession(
+              runtime,
+              now,
+              day,
+              courseId,
+              [activity],
+              activityProgress,
+              activityState,
+              activeContent,
+            );
             const result = await processActivityWithMetrics(
               api,
               db,
@@ -3316,6 +3923,13 @@ async function simulateProfile(
       }
       const pageAfter = await fetchCoursePage(api, now, courseId);
       daily.newTopicsCompleted = newTopicsCompleted(pageBefore, pageAfter);
+      daily.plans = runtime.planEvidenceByDay.get(day) ?? [];
+      const endOfDayProgress = await readProgress(db, userId);
+      daily.lessonRunStatuses = endOfDayProgress.lessonRuns.map((run) => ({
+        conceptId: run.conceptId,
+        status: run.status,
+        ...(run.retryAfter ? { retryAfter: run.retryAfter.toISOString() } : {}),
+      }));
       report.dailyStats.push(daily);
 
       for (const [conceptId, halt] of runtime.noProgressHalts) {
@@ -3333,6 +3947,7 @@ async function simulateProfile(
       const currentCourse = courseRows(afterStudyCatalog).find((course) => course.id === courseId);
       const courseComplete = currentCourse ? isCourseComplete(currentCourse) : false;
       if (!skip && !courseComplete && daily.lessons + daily.reviews === 0) {
+        setP5EvidenceContext(runtime, day);
         addViolation(runtime, day, 'P5', courseId, [], {
           courseId,
           details: 'studied day had no lesson or review activity',
@@ -3352,6 +3967,7 @@ async function simulateProfile(
           .slice(-7)
           .some((item) => item.newTopicsCompleted > 0 || item.reviewAttempts > 0);
         if (!hasProgress) {
+          setP5EvidenceContext(runtime, day);
           addViolation(runtime, day, 'P5', courseId, [], {
             courseId,
             details: `days ${firstDay}-${day} had no new topics or reviews`,

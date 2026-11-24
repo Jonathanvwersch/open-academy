@@ -182,6 +182,21 @@ describe('review budget reservation', () => {
     expect(fitPlan.activities.some((activity) => activity.kind === 'review')).toBe(true);
   });
 
+  it('includes a rejected review candidate’s adjusted minutes in its explanation', () => {
+    const state = plannerState(fixtureContent, {
+      activeCourseId: null,
+      studyCourseIds: [],
+      cards: [reviewCard('vectors', now), reviewCard('linear-models', now)],
+    });
+    const explanation = explainReviewSelection(state, fixtureContent, now, 1);
+    const rejected = explanation.find(
+      (item) => item.result === 'rejected:reviewMinuteCap' || item.result === 'rejected:budget',
+    );
+
+    expect(rejected).toBeDefined();
+    expect(rejected?.candidateMinutes).toBeGreaterThan(0);
+  });
+
   it('releases the fallback review reservation when a lesson covers that topic', () => {
     const content = lessonCrowdingContent(true);
     const state = plannerState(content, {

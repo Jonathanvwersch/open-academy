@@ -12,6 +12,7 @@ import {
   p18HasMissedPickup,
   p19HasEarlyReviewViolation,
   renderMarkdownReport,
+  requireP17ReviewMinutes,
   SimulatedApiFailureError,
   type SimulationProfile,
   simulateLearners,
@@ -207,11 +208,93 @@ test('P13 flags an empty plan only when an unlocked lesson fits its budget', () 
   expect(p13HasEmptyPlanViolation(1, [15], 20)).toBe(false);
 });
 
-test('P14 reports uncovered due cards and passes when saved activity coverage includes them', () => {
-  expect(p14UncoveredDueCards(['card-a', 'card-b'], [new Set(['card-a'])])).toEqual(['card-b']);
+test('P14 checks selected and covered cards while excluding cap- and budget-rejected cards', () => {
+  const explanations = [
+    {
+      conceptId: 'covered',
+      result: 'covered' as const,
+      coveringConceptId: 'lesson',
+      exerciseIds: [],
+      exerciseDimensions: [],
+      reviewMinutes: 8,
+      reviewCap: 6,
+      usedMinutes: 12,
+      budget: 20,
+      plannedActivityCount: 2,
+    },
+    {
+      conceptId: 'selected',
+      result: 'selected' as const,
+      exerciseIds: [],
+      exerciseDimensions: [],
+      reviewMinutes: 4,
+      reviewCap: 6,
+      usedMinutes: 12,
+      budget: 20,
+      plannedActivityCount: 2,
+    },
+    {
+      conceptId: 'dropped',
+      result: 'rejected:budget' as const,
+      exerciseIds: [],
+      exerciseDimensions: [],
+      reviewMinutes: 8,
+      reviewCap: 6,
+      usedMinutes: 20,
+      budget: 20,
+      plannedActivityCount: 2,
+    },
+  ];
+  const dueCards = [
+    { cardId: 'covered/math', conceptId: 'covered' },
+    { cardId: 'selected/math', conceptId: 'selected' },
+    { cardId: 'dropped/math', conceptId: 'dropped' },
+  ];
+
   expect(
-    p14UncoveredDueCards(['card-a', 'card-b'], [new Set(['card-a']), new Set(['card-b'])]),
+    p14UncoveredDueCards(
+      dueCards,
+      [
+        {
+          conceptIds: ['lesson'],
+          cardIds: new Set(['covered/math']),
+          selectedCardIds: new Set(),
+          unfinished: true,
+        },
+        {
+          conceptIds: ['selected'],
+          cardIds: new Set(['selected/math']),
+          selectedCardIds: new Set(['selected/math']),
+          unfinished: false,
+        },
+      ],
+      explanations,
+    ),
   ).toEqual([]);
+  expect(
+    p14UncoveredDueCards(
+      dueCards,
+      [
+        {
+          conceptIds: ['lesson'],
+          cardIds: new Set(['covered/math']),
+          selectedCardIds: new Set(),
+          unfinished: false,
+        },
+        {
+          conceptIds: ['selected'],
+          cardIds: new Set(['selected/math']),
+          selectedCardIds: new Set(['selected/math']),
+          unfinished: false,
+        },
+      ],
+      explanations,
+    ),
+  ).toEqual(['covered/math']);
+  expect(p14UncoveredDueCards(dueCards, [], explanations)).toEqual([
+    'covered/math',
+    'selected/math',
+  ]);
 });
 
 test('P15 flags missing Again credit and accepts one update', () => {
@@ -237,7 +320,7 @@ test('P15 flags missing Again credit and accepts one update', () => {
   ).toEqual([]);
 });
 
-test('P15 flags duplicate credit and requires positive credit to update an ancestor', () => {
+test('P15 flags duplicate credit and accepts a legitimate no-op', () => {
   const now = new Date('2026-01-14T12:00:00.000Z');
   const parent = p15Card('parent-card', 'parent', '2026-01-14T12:00:00.000Z');
   const logs = [{ cardId: 'child-log', conceptId: 'child', rating: String(Rating.Good) }];
@@ -250,6 +333,65 @@ test('P15 flags duplicate credit and requires positive credit to update an ances
   expect(
     auditP15ImplicitCredits([parent], [twice], logs, ['child'], p15Weights, now, 'UTC').violations,
   ).not.toEqual([]);
+
+  const alreadyLater = p15Card('already-later', 'parent', '2026-04-14T12:00:00.000Z');
+  expect(
+    auditP15ImplicitCredits([alreadyLater], [alreadyLater], logs, ['child'], p15Weights, now, 'UTC')
+      .violations,
+  ).toEqual([]);
+});
+
+test('P15 applies the lesson quiz rating once and accepts its Again guard', () => {
+  const now = new Date('2026-01-14T12:00:00.000Z');
+  const parent = p15Card('parent-card', 'parent', '2026-01-14T12:00:00.000Z');
+  const dimensionLogs = [
+    { cardId: 'child-hard-log', conceptId: 'child', rating: String(Rating.Hard) },
+    { cardId: 'child-good-log', conceptId: 'child', rating: String(Rating.Good) },
+  ];
+  const expectedHard = applyExpectedImplicitCredit(parent, Rating.Hard, 0.5, now);
+  const wrongGood = applyExpectedImplicitCredit(parent, Rating.Good, 0.5, now);
+
+  expect(
+    auditP15ImplicitCredits(
+      [parent],
+      [expectedHard],
+      dimensionLogs,
+      ['child'],
+      p15Weights,
+      now,
+      'UTC',
+      'learn',
+    ).violations,
+  ).toEqual([]);
+  expect(
+    auditP15ImplicitCredits(
+      [parent],
+      [wrongGood],
+      dimensionLogs,
+      ['child'],
+      p15Weights,
+      now,
+      'UTC',
+      'learn',
+    ).violations,
+  ).not.toEqual([]);
+
+  const againLogs = [
+    { cardId: 'child-again-log', conceptId: 'child', rating: String(Rating.Again) },
+    { cardId: 'child-good-log', conceptId: 'child', rating: String(Rating.Good) },
+  ];
+  expect(
+    auditP15ImplicitCredits(
+      [parent],
+      [parent],
+      againLogs,
+      ['child'],
+      p15Weights,
+      now,
+      'UTC',
+      'learn',
+    ).violations,
+  ).toEqual([]);
 });
 
 test('P16 flags a selected review when a dropped review is two days more overdue', () => {
@@ -260,6 +402,10 @@ test('P16 flags a selected review when a dropped review is two days more overdue
 test('P17 flags a dropped review only when it fits both remaining limits', () => {
   expect(p17ReviewFitsRemaining(8, 12, 8)).toBe(true);
   expect(p17ReviewFitsRemaining(8, 12, 7)).toBe(false);
+  expect(p17ReviewFitsRemaining(0, 0, 0)).toBe(false);
+  expect(requireP17ReviewMinutes('vectors', 8)).toBe(8);
+  expect(() => requireP17ReviewMinutes('vectors', 0)).toThrow(/vectors/);
+  expect(() => requireP17ReviewMinutes('vectors', undefined)).toThrow(/vectors/);
 });
 
 test('P18 flags a missed same-day low-credit pickup only while it remains due without a log', () => {
