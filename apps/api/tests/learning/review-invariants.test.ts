@@ -2776,6 +2776,21 @@ it('I3 replans a due prerequisite after a completed low-credit coverer', async (
   await seedLearner(now);
   await addReviewCard(now, 'gradient-descent', 'math', -1, 0);
   await addReviewCard(now, 'derivatives', 'math', -2, 1);
+  const derivativeCardBeforeReview = (
+    await db
+      .select()
+      .from(reviewCards)
+      .where(
+        and(
+          eq(reviewCards.userId, userId),
+          eq(reviewCards.conceptId, 'derivatives'),
+          eq(reviewCards.dimension, 'math'),
+        ),
+      )
+  )[0];
+  if (!derivativeCardBeforeReview) throw new Error('Missing derivatives review card');
+  const derivativeDueAtBeforeReview = derivativeCardBeforeReview.dueAt;
+  expect(isDueToday(derivativeDueAtBeforeReview, now, timezone)).toBe(true);
 
   const { response: sessionResponse, data: session } = await step('POST', '/sessions', now, {
     budgetMinutes: 600,
@@ -2832,10 +2847,6 @@ it('I3 replans a due prerequisite after a completed low-credit coverer', async (
   expect(coveringRatings.length).toBeGreaterThan(0);
   expect(Math.min(...coveringRatings.map(({ rating }) => Number(rating)))).toBe(Rating.Again);
 
-  await db
-    .update(reviewCards)
-    .set({ dueAt: now })
-    .where(and(eq(reviewCards.userId, userId), eq(reviewCards.conceptId, 'derivatives')));
   const derivativeCard = (
     await db
       .select()
@@ -2848,6 +2859,7 @@ it('I3 replans a due prerequisite after a completed low-credit coverer', async (
         ),
       )
   )[0];
+  expect(derivativeCard?.dueAt).toEqual(derivativeDueAtBeforeReview);
   expect(derivativeCard && isDueToday(derivativeCard.dueAt, now, timezone)).toBe(true);
   const derivativeLogs = await db
     .select({ createdAt: reviewLogs.createdAt })
@@ -2860,11 +2872,7 @@ it('I3 replans a due prerequisite after a completed low-credit coverer', async (
         eq(reviewCards.dimension, 'math'),
       ),
     );
-  expect(
-    derivativeLogs.some(
-      ({ createdAt }) => localDateKey(createdAt, timezone) === localDateKey(now, timezone),
-    ),
-  ).toBe(false);
+  expect(derivativeLogs).toHaveLength(0);
 
   const replanCallStart = schedulerCalls.length;
   const { response: replanResponse, data: replanned } = await step(
