@@ -486,13 +486,7 @@ async function checkI3({
   const replannedActivities = (active?.activities ?? []).filter((activity: Record<string, any>) =>
     ['planned', 'in_progress'].includes(activity.status),
   );
-  const todayPlanActivities = todayActivities(today).filter(
-    (activity: Record<string, any>) =>
-      !isReplan || ['planned', 'in_progress'].includes(activity.status),
-  );
-  const activitiesForReviewCheck = isReplan
-    ? [...todayPlanActivities, ...replannedActivities]
-    : todayActivities(today);
+  const activitiesForReviewCheck = isReplan ? replannedActivities : todayActivities(today);
   const planned = activitiesForReviewCheck
     .filter((activity: Record<string, any>) => activity.kind === 'review')
     .flatMap((activity: Record<string, any>) => activity.exerciseIds ?? []);
@@ -507,7 +501,7 @@ async function checkI3({
   const selectedCoverage = selectedTaskCoverage(
     coverageResults,
     isReplan
-      ? [...todayPlanActivities, ...replannedActivities]
+      ? replannedActivities
       : [
           ...todayActivities(today),
           ...(active?.activities ?? []).filter((activity: Record<string, any>) =>
@@ -2747,6 +2741,28 @@ vitestIt('recognizes coverage only when the covering task is planned', () => {
   );
   expect([...absent.coveredConceptIds]).toEqual([]);
   expect([...absent.coveringConceptIds]).toEqual([]);
+});
+
+it('I3 replan audit does not reuse a Home preview when the replan is empty', async () => {
+  const now = atLocalNoon(startDate);
+  await seedLearner(now);
+  await addReviewCard(now, 'derivatives', 'math', -1, 0);
+  const { data: today } = await step('GET', '/today', now);
+  expect(
+    todayActivities(today).some(
+      (activity: Record<string, any>) =>
+        activity.kind === 'review' && activityTopics(activity).includes('derivatives'),
+    ),
+  ).toBe(true);
+
+  const failures = await checkI3({
+    now,
+    label: 'POST /sessions/empty/replan',
+    today,
+    active: { activities: [] },
+    reviews: {},
+  });
+  expect(failures.some((failure) => failure.includes('derivatives/math'))).toBe(true);
 });
 
 // I1: session replan can schedule an already-covered topic again.
