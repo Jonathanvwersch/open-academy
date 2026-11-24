@@ -491,7 +491,8 @@ async function checkI3({
       return exercise ? [`${exercise.concept}/${exercise.dimension}`] : [];
     }),
   );
-  const isNextPlan = label === 'GET /today' && today.activeSessionId === null;
+  const isNextPlan =
+    (label === 'GET /today' && today.activeSessionId === null) || label.endsWith('/replan');
   const selectedCoverage = selectedTaskCoverage(coverageResults, [
     ...todayActivities(today),
     ...(active?.activities ?? []).filter((activity: Record<string, any>) =>
@@ -1056,11 +1057,21 @@ async function auditAll(now: Date, label: string) {
     readApi('/reviews', now),
   ]);
   const isNewTodayPlan = label === 'GET /today' && today.activeSessionId === null;
+  const replanCall = label.endsWith('/replan')
+    ? [...schedulerCalls]
+        .reverse()
+        .find(
+          (call) =>
+            call.kind === 'replan' && `${call.request.method} ${call.request.path}` === label,
+        )
+    : undefined;
   const selection = realDataAuditMode
     ? await plannerSelectionForAudit(now, today)
     : isNewTodayPlan
       ? await plannerSelectionAt(now, today)
-      : undefined;
+      : replanCall?.kind === 'replan'
+        ? plannerSelectionForReplanCall(replanCall)
+        : undefined;
   const coverageResults = selection?.results ?? (await plannerSelectionAt(now, today)).results;
   currentPlanActivityIds = new Set(
     [...todayActivities(today), ...(active?.activities ?? [])]
@@ -1653,6 +1664,18 @@ async function plannerSelectionAt(
     day,
   );
   return { state, budget, results: explainReviewSelection(state, content, now, budget) };
+}
+
+function plannerSelectionForReplanCall(
+  call: Extract<SchedulerCall, { kind: 'replan' }>,
+): PlannerSelection {
+  const [state, planContent, now, budget, existingActivities] = call.args;
+  return {
+    state,
+    budget,
+    results: explainReviewSelectionForReplan(state, planContent, now, budget, existingActivities)
+      .results,
+  };
 }
 
 function resumedSelectionSnapshot(): ResumedSelectionSnapshot | undefined {
@@ -2776,6 +2799,28 @@ it('I3 replans a due prerequisite after a completed low-credit coverer', async (
       ({ createdAt }) => localDateKey(createdAt, timezone) === localDateKey(now, timezone),
     ),
   ).toBe(false);
+
+  const replanCallStart = schedulerCalls.length;
+  const { response: replanResponse, data: replanned } = await step(
+    'POST',
+    `/sessions/${session.id}/replan`,
+    now,
+    {},
+  );
+  expect(replanResponse.ok).toBe(true);
+  const replanCall = schedulerCalls
+    .slice(replanCallStart)
+    .find((call): call is Extract<SchedulerCall, { kind: 'replan' }> => call.kind === 'replan');
+  if (!replanCall) throw new Error('Missing scheduler replan call');
+  const replanSelection = plannerSelectionForReplanCall(replanCall);
+  const replanActivities = todayActivities(replanned);
+  const replanCoverage = selectedTaskCoverage(replanSelection.results, replanActivities);
+  expect(
+    replanActivities.some(
+      (activity: Record<string, any>) =>
+        activity.kind === 'review' && activityTopics(activity).includes('derivatives'),
+    ) || replanCoverage.coveredConceptIds.has('derivatives'),
+  ).toBe(true);
 
   const { response: endResponse } = await step('POST', `/sessions/${session.id}/end`, now);
   expect(endResponse.ok).toBe(true);
