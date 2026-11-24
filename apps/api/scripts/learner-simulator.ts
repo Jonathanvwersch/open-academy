@@ -2196,7 +2196,7 @@ async function reviewCardAudit(
       reportedCards.add(card.id);
       addViolation(runtime, day, 'P6', card.conceptId, [], {
         conceptId: card.conceptId,
-        details: `review card ${card.id} is ${overdueDays} days overdue and its ${explanation.candidateMinutes}-minute review fits remaining capacity`,
+        details: `review card ${card.conceptId}/${card.dimension} is ${overdueDays} days overdue and its ${explanation.candidateMinutes}-minute review fits remaining capacity`,
       });
     }
   }
@@ -2851,7 +2851,7 @@ interface P15CardSnapshot {
 }
 
 function p15CardIdentity(card: P15CardSnapshot): string {
-  return card.dimension ? `${card.conceptId}/${card.dimension}` : card.id;
+  return `${card.conceptId}/${card.dimension ?? 'unknown'}`;
 }
 
 type P15TraceEvent = ImplicitRepetitionTraceEvent & { activityOrder: number | null };
