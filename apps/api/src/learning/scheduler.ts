@@ -1240,8 +1240,30 @@ function packWeekday(
     ({ candidate }) =>
       candidate.activity.conceptId && dueConceptIds.has(candidate.activity.conceptId),
   );
+  const recordCoveredDueTopic = (dueConceptId: string, coveringCandidate: Candidate) => {
+    const coveringConceptId = coveringCandidate.activity.conceptId;
+    if (!coveringConceptId || coveringConceptId === dueConceptId) return;
+    const dueCandidate = dueReviewCandidates.find(
+      ({ candidate }) => candidate.activity.conceptId === dueConceptId,
+    )?.candidate;
+    if (!dueCandidate) return;
+    const latestResult = reviewSelectionTrace?.results.get(dueConceptId);
+    if (latestResult === 'selected' || latestResult === 'selected:overdue') return;
+    recordReviewResult(dueConceptId, 'covered', dueCandidate, coveringConceptId);
+  };
+  const recordCoveredDueTopicsFromSelected = () => {
+    for (const dueConceptId of dueConceptIds) {
+      const coveringCandidate = selected.find(
+        (candidate) =>
+          candidate.activity.conceptId !== dueConceptId &&
+          taskCoversDueTopic(candidate, dueConceptId),
+      );
+      if (coveringCandidate) recordCoveredDueTopic(dueConceptId, coveringCandidate);
+    }
+  };
   while (pruneCoveredReviews()) {
     refreshUncoveredDueConcepts();
+    recordCoveredDueTopicsFromSelected();
     const attempted = new Set<Candidate>();
     while (true) {
       const candidatesToRefill = dueReviewCandidates.filter(({ candidate }) => {
@@ -1279,6 +1301,7 @@ function packWeekday(
       for (const dueId of reviewCoverage(candidate)) {
         uncoveredDueConcepts.delete(dueId);
         coveredBy.set(dueId, conceptId);
+        recordCoveredDueTopic(dueId, candidate);
       }
     }
   }
