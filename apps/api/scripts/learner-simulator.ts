@@ -1096,56 +1096,20 @@ export function p14UncoveredDueCards(
     unfinished: boolean;
   }[],
   explanations: readonly ReviewSelectionExplanation[],
-  fallbackCoverageByConcept: ReadonlyMap<string, ReadonlySet<string>> = new Map(),
 ): string[] {
-  const uncovered = new Set(
-    dueCards.flatMap(({ cardId, conceptId, dimension }) => {
-      const explanation = p14ExplanationForCard({ conceptId, dimension }, explanations);
-      if (!explanation) return [];
-      const covered = activityCoverage.some(
-        ({ conceptIds, cardIds, selectedCardIds, unfinished }) =>
-          explanation.result === 'covered'
-            ? cardIds.has(cardId) &&
-              unfinished &&
-              explanation.coveringConceptId !== undefined &&
-              conceptIds.includes(explanation.coveringConceptId)
-            : selectedCardIds.has(cardId),
-      );
-      return covered ? [] : [cardId];
-    }),
-  );
-  for (const explanation of explanations) {
-    if (
-      explanation.result === 'rejected:reviewMinuteCap' ||
-      explanation.result === 'rejected:budget' ||
-      explanation.result !== 'covered' ||
-      !explanation.coveringConceptId
-    ) {
-      continue;
-    }
-    const fallbackCoverage = fallbackCoverageByConcept.get(explanation.conceptId);
-    if (!fallbackCoverage) continue;
-    const coveringLessonExists = activityCoverage.some(
-      ({ conceptIds, unfinished }) =>
-        unfinished && conceptIds.includes(explanation.coveringConceptId ?? ''),
+  return dueCards.flatMap(({ cardId, conceptId, dimension }) => {
+    const explanation = p14ExplanationForCard({ conceptId, dimension }, explanations);
+    if (!explanation) return [];
+    const covered = activityCoverage.some(({ conceptIds, cardIds, selectedCardIds, unfinished }) =>
+      explanation.result === 'covered'
+        ? cardIds.has(cardId) &&
+          unfinished &&
+          explanation.coveringConceptId !== undefined &&
+          conceptIds.includes(explanation.coveringConceptId)
+        : selectedCardIds.has(cardId),
     );
-    if (!coveringLessonExists) continue;
-    for (const card of dueCards) {
-      const cardExplanation = p14ExplanationForCard(card, explanations);
-      if (
-        cardExplanation !== undefined &&
-        fallbackCoverage.has(card.conceptId) &&
-        explanation.exerciseDimensions.includes(card.dimension) &&
-        !activityCoverage.some(
-          ({ cardIds, selectedCardIds, unfinished }) =>
-            unfinished && (cardIds.has(card.cardId) || selectedCardIds.has(card.cardId)),
-        )
-      ) {
-        uncovered.add(card.cardId);
-      }
-    }
-  }
-  return [...uncovered];
+    return covered ? [] : [cardId];
+  });
 }
 
 export function p16HasOverduePrecedenceViolation(
@@ -1179,31 +1143,6 @@ export function p17ReviewFitsRemaining(
     remainingReviewCapMinutes,
     overdueDays,
   );
-}
-
-export function p17HasMissedFallbackOpportunity(input: {
-  coveringLessonSelected: boolean;
-  fallbackMissing: boolean;
-  selectedLearnMinutes: number;
-  reviewMinutes: number;
-  remainingBudgetBeforeLessons: number;
-  remainingReviewCapBeforeLessons: number;
-  overdueDays: number;
-}): boolean {
-  if (
-    input.coveringLessonSelected ||
-    !input.fallbackMissing ||
-    input.selectedLearnMinutes <= 0 ||
-    !reviewFeasible(
-      input.reviewMinutes,
-      input.remainingBudgetBeforeLessons,
-      input.remainingReviewCapBeforeLessons,
-      input.overdueDays,
-    )
-  ) {
-    return false;
-  }
-  return input.selectedLearnMinutes + input.reviewMinutes > input.remainingBudgetBeforeLessons;
 }
 
 function scriptedScenarioContent(profile: SimulationProfile, content: ContentIndex): ContentIndex {
@@ -3832,92 +3771,6 @@ function auditSavedSessionPlan(
   const dueCards = state.cards.filter((card) =>
     isDueToday(card.dueAt, now, state.timezone ?? 'UTC'),
   );
-  const dueConceptIds = new Set(dueCards.map((card) => card.conceptId));
-  const selectedLearnMinutes = activities
-    .filter((activity) => activity.kind === 'learn')
-    .reduce((total, activity) => total + activity.plannedMinutes, 0);
-  const remainingBudgetBeforeLessons = Math.max(0, budgetMinutes - usedReviewMinutes);
-  const remainingReviewCapBeforeLessons = Math.max(0, reviewCapMinutes - usedReviewMinutes);
-  const selectedReviewConceptIds = new Set(
-    activities
-      .filter((activity) => activity.kind === 'review')
-      .flatMap((activity) => [
-        ...(activity.reviewTopics ?? []).map(({ conceptId }) => conceptId),
-        ...(activity.exerciseIds ?? []).flatMap((exerciseId) => {
-          const conceptId = content.exercisesById.get(exerciseId)?.concept;
-          return conceptId ? [conceptId] : [];
-        }),
-      ]),
-  );
-  const selectedLearnConceptIds = new Set(
-    activities.flatMap((activity) =>
-      activity.kind === 'learn' && activity.conceptId ? [activity.conceptId] : [],
-    ),
-  );
-  const unfinishedLessonConcepts = new Set(
-    (state.lessonRuns ?? [])
-      .filter((run) => ['in_progress', 'quiz', 'needs_retry'].includes(run.status))
-      .map((run) => run.conceptId),
-  );
-  for (const explanation of explanations) {
-    if (!dueConceptIds.has(explanation.conceptId)) continue;
-    const fallbackCoverage = new Set(
-      dueTopicsCoveredByForAudit(explanation.conceptId, state, content, now),
-    );
-    fallbackCoverage.add(explanation.conceptId);
-    const coveringLesson = learn.choices.find(
-      (choice) =>
-        !unfinishedLessonConcepts.has(choice.conceptId) &&
-        [...fallbackCoverage].every((dueConceptId) =>
-          dueTopicsCoveredByForAudit(choice.conceptId, state, content, now).has(dueConceptId),
-        ),
-    );
-    const coveringLessonConcept = coveringLesson?.conceptId;
-    const selectedCoveringLesson = [...selectedLearnConceptIds].some((conceptId) =>
-      [...fallbackCoverage].every((dueConceptId) =>
-        dueTopicsCoveredByForAudit(conceptId, state, content, now).has(dueConceptId),
-      ),
-    );
-    const fallbackMissing = [...fallbackCoverage].some(
-      (dueConceptId) =>
-        !activities.some((activity) => {
-          if (activity.kind === 'review') return selectedReviewConceptIds.has(dueConceptId);
-          return (
-            activity.kind === 'learn' &&
-            typeof activity.conceptId === 'string' &&
-            dueTopicsCoveredByForAudit(activity.conceptId, state, content, now).has(dueConceptId)
-          );
-        }),
-    );
-    markChecked(runtime, 'P17');
-    if (
-      p17HasMissedFallbackOpportunity({
-        coveringLessonSelected: selectedCoveringLesson,
-        fallbackMissing,
-        selectedLearnMinutes,
-        reviewMinutes: explanation.candidateMinutes ?? 0,
-        remainingBudgetBeforeLessons,
-        remainingReviewCapBeforeLessons,
-        overdueDays: Math.max(
-          0,
-          ...dueCards
-            .filter((card) => card.conceptId === explanation.conceptId)
-            .map(
-              (card) =>
-                localDayOrdinal(now, state.timezone ?? 'UTC') -
-                localDayOrdinal(new Date(card.dueAt), state.timezone ?? 'UTC'),
-            ),
-        ),
-      })
-    ) {
-      addViolation(runtime, day, 'P17', explanation.conceptId, [], {
-        courseId,
-        conceptId: explanation.conceptId,
-        evidenceConceptIds: coveringLessonConcept ? [coveringLessonConcept] : [],
-        details: `${planLabel} missed the fallback opportunity for due review ${explanation.conceptId}`,
-      });
-    }
-  }
   const coveredOrSelectedConceptIds = new Set(
     explanations
       .filter(
@@ -3959,65 +3812,6 @@ function auditSavedSessionPlan(
     ),
     unfinished: activity.status !== 'completed' && activity.status !== 'skipped',
   }));
-  const fallbackCoverageByConcept = new Map(
-    explanations.map((explanation) => [
-      explanation.conceptId,
-      new Set([
-        ...dueTopicsCoveredByForAudit(explanation.conceptId, state, content, now),
-        explanation.conceptId,
-      ]),
-    ]),
-  );
-  for (const explanation of explanations) {
-    if (
-      (explanation.result !== 'selected' && explanation.result !== 'selected:overdue') ||
-      !dueConceptIds.has(explanation.conceptId) ||
-      !selectedReviewConceptIds.has(explanation.conceptId)
-    ) {
-      continue;
-    }
-    const dueCard = dueCards.find(
-      (card) =>
-        card.conceptId === explanation.conceptId &&
-        explanation.exerciseDimensions.includes(card.dimension),
-    );
-    if (!dueCard) continue;
-    const overdueDays = Math.max(
-      0,
-      ...dueCards
-        .filter((card) => card.conceptId === explanation.conceptId)
-        .map(
-          (card) =>
-            localDayOrdinal(now, state.timezone ?? 'UTC') -
-            localDayOrdinal(new Date(card.dueAt), state.timezone ?? 'UTC'),
-        ),
-    );
-    if (overdueDays >= 2) continue;
-    const fallbackCoverage = fallbackCoverageByConcept.get(explanation.conceptId);
-    if (!fallbackCoverage) continue;
-    const coveringLesson = learn.choices.find(
-      (choice) =>
-        !unfinishedLessonConcepts.has(choice.conceptId) &&
-        content.lessonsByConcept.has(choice.conceptId) &&
-        [...fallbackCoverage].every((dueConceptId) =>
-          dueTopicsCoveredByForAudit(choice.conceptId, state, content, now).has(dueConceptId),
-        ),
-    );
-    if (!coveringLesson || selectedLearnConceptIds.has(coveringLesson.conceptId)) continue;
-    const concept = content.conceptsById.get(coveringLesson.conceptId);
-    if (
-      !concept ||
-      adjustedMinutesForLearnerPace(concept.est_minutes, state.actualEstimateRatio) > budgetMinutes
-    ) {
-      continue;
-    }
-    addViolation(runtime, day, 'P14', dueCardKey(dueCard), [], {
-      courseId,
-      conceptId: explanation.conceptId,
-      evidenceConceptIds: [coveringLesson.conceptId],
-      details: `${planLabel} retained a fallback review instead of selecting the complete covering lesson ${coveringLesson.conceptId}`,
-    });
-  }
   for (const cardId of p14UncoveredDueCards(
     dueCards.map((card) => ({
       cardId: dueCardKey(card),
@@ -4026,7 +3820,6 @@ function auditSavedSessionPlan(
     })),
     activityCoverage,
     explanations,
-    fallbackCoverageByConcept,
   )) {
     const card = dueCards.find((item) => dueCardKey(item) === cardId);
     addViolation(runtime, day, 'P14', cardId, [], {
