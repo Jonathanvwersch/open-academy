@@ -62,11 +62,16 @@ const p11Weights = {
 
 const p15Weights = {
   weight: (sourceConceptId: string, targetConceptId: string) => {
+    if (sourceConceptId === targetConceptId) return 1;
     if (sourceConceptId === 'child' && targetConceptId === 'parent') return 0.5;
     if (sourceConceptId === 'descendant' && targetConceptId === 'prerequisite') return 0.5;
     if (sourceConceptId === 'prerequisite' && targetConceptId === 'descendant') return 0.25;
     return 0;
   },
+  ancestors: (sourceConceptId: string) =>
+    sourceConceptId === 'child' ? new Map([['parent', 0.5]]) : new Map(),
+  descendants: (sourceConceptId: string) =>
+    sourceConceptId === 'prerequisite' ? new Map([['descendant', 0.5]]) : new Map(),
 };
 
 function p11Card(dueAt: string, lastReviewAt: string | null) {
@@ -499,6 +504,17 @@ test('P15 coverage catches omitted explain-follow-up credit and accepts its trac
 
   expect(audit([event]).violations).toEqual([]);
   expect(audit([]).violations.join(' ')).toContain('coverage missing');
+});
+
+test("P15 coverage does not expect implicit credit on the source concept's own card", () => {
+  const now = new Date('2026-01-14T12:00:00.000Z');
+  const sourceCard = p15Card('source-card', 'child', now.toISOString());
+  const logs = [{ cardId: 'source-log', conceptId: 'child', rating: String(Rating.Good) }];
+
+  expect(
+    auditP15Trace([sourceCard], [sourceCard], logs, [], p15Weights, now, 'UTC', 'review')
+      .violations,
+  ).toEqual([]);
 });
 
 test('P15 preserves lesson rating semantics and the Again guard', () => {

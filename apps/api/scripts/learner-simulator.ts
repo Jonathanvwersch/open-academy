@@ -2630,7 +2630,7 @@ export function auditP15Trace(
   afterCards: readonly P15CardSnapshot[],
   activityLogs: readonly P11ActivityLog[],
   trace: readonly P15TraceEvent[],
-  encompassing: Pick<EncompassingIndex, 'weight'>,
+  encompassing: Pick<EncompassingIndex, 'weight' | 'ancestors' | 'descendants'>,
   now: Date,
   timeZone: string,
   activityKind: 'learn' | 'review',
@@ -2719,14 +2719,15 @@ export function auditP15Trace(
   for (const [sourceConceptId, rating] of minimumRatingByConcept) {
     if (activityKind === 'learn' && rating === Rating.Again) continue;
     if (rating !== Rating.Again && rating < Rating.Hard) continue;
+    const targets =
+      rating === Rating.Again
+        ? encompassing.descendants(sourceConceptId)
+        : encompassing.ancestors(sourceConceptId);
     for (const card of cardsById.values()) {
       const snapshot = beforeById.get(card.id) ?? card;
       if (!snapshot.fsrs || (snapshot.fsrs as Card).state === State.New) continue;
-      const weight =
-        rating === Rating.Again
-          ? encompassing.weight(card.conceptId, sourceConceptId)
-          : encompassing.weight(sourceConceptId, card.conceptId);
-      if (weight <= 0) continue;
+      const weight = targets.get(card.conceptId);
+      if (weight === undefined || weight <= 0) continue;
       const result = implicitRepetition(
         { dueAt: snapshot.dueAt, fsrs: snapshot.fsrs as Card },
         { weight, rating: rating as Rating, now, timeZone, enableFuzz: false },
