@@ -1,4 +1,4 @@
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, asc, eq, inArray } from 'drizzle-orm';
 import type { Card } from 'ts-fsrs';
 import { Rating } from 'ts-fsrs';
 import type { Dimension } from '../content/schemas.js';
@@ -46,7 +46,8 @@ export async function applyImplicitRepetitions(
         eq(reviewCards.userId, input.userId),
         inArray(reviewCards.conceptId, [...targets.keys()]),
       ),
-    );
+    )
+    .orderBy(asc(reviewCards.conceptId), asc(reviewCards.dimension), asc(reviewCards.id));
   for (const card of cards) {
     const result = implicitRepetition(
       { fsrs: card.fsrs as Card, dueAt: card.dueAt },
