@@ -5,7 +5,20 @@ import { loadContent } from '../../src/content/load.js';
 import { createDb } from '../../src/db/client.js';
 
 const db = createDb(env.TEST_DATABASE_URL);
-const invariants: InvariantId[] = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P8', 'P9', 'P10'];
+const invariants: InvariantId[] = [
+  'P1',
+  'P2',
+  'P3',
+  'P4',
+  'P5',
+  'P6',
+  'P7',
+  'P8',
+  'P9',
+  'P10',
+  'P11',
+  'P12',
+];
 
 afterAll(async () => {
   await db.$client.end();
@@ -48,6 +61,10 @@ test('diligent and graph-change Mathematics for ML runs produce structured repor
     expect(profile.projectsOffered).toEqual(expect.any(Array));
     expect(profile.papersRecorded).toEqual(expect.any(Array));
     expect(profile.totals.wrongPercent).toEqual(expect.any(Number));
+    expect(profile.totals.explicitReviews).toEqual(expect.any(Number));
+    expect(profile.totals.positiveImplicitCredits).toEqual(expect.any(Number));
+    expect(profile.totals.negativeImplicitCredits).toEqual(expect.any(Number));
+    expect(profile.totals.coveredSkips).toEqual(expect.any(Number));
     for (const invariant of invariants) {
       expect(profile.violationCounts[invariant]).toEqual(expect.any(Number));
     }
@@ -61,6 +78,7 @@ test('gap learner reviews logistic regression before completing the affected les
     courseIds: ['maths-for-ml', 'ml-foundations'],
   });
   const gap = report.profiles[0];
+  expect(gap?.violationCounts.P12).toBe(0);
   expect(gap?.remediation.totals.noProgressHalts).toBeGreaterThanOrEqual(1);
   expect(
     gap?.remediation.flagsOpened.some((event) => event.prerequisiteId === 'logistic-regression'),

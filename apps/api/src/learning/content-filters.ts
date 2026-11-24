@@ -29,6 +29,9 @@ export function filterSchedulerStateForContent(
     reviewedTodayConceptIds: state.reviewedTodayConceptIds.filter((conceptId) =>
       content.conceptsById.has(conceptId),
     ),
+    completedReviewRatingsToday: state.completedReviewRatingsToday?.filter(({ conceptId }) =>
+      content.conceptsById.has(conceptId),
+    ),
     recentAttempts: state.recentAttempts.filter((attempt) => {
       const exercise = content.exercisesById.get(attempt.exerciseId);
       return content.conceptsById.has(attempt.conceptId) && exercise?.concept === attempt.conceptId;

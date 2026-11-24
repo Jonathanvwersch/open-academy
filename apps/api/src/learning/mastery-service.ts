@@ -1,58 +1,71 @@
 import { and, eq, inArray } from 'drizzle-orm';
 import type { Card } from 'ts-fsrs';
+import { Rating } from 'ts-fsrs';
 import type { Dimension } from '../content/schemas.js';
 import type { ContentIndex, IndexedExercise } from '../content/types.js';
 import type { Database } from '../db/client.js';
 import type { LearnerRepository } from '../db/repository.js';
 import { masteryEvents, reviewCards } from '../db/schema.js';
+import { buildEncompassingIndex } from './encompassing.js';
 import { mapReviewRating, newReviewCard, scheduleInitialReview } from './fsrs.js';
+import { implicitRepetition } from './implicit-repetition.js';
 import { DefaultMasteryModel } from './mastery.js';
-import { layeringCredit } from './prerequisite-review.js';
 import type { LearningMode } from './types.js';
 import { masteryRank } from './types.js';
 
 type ReviewCardDatabase = Pick<Database, 'select' | 'update'>;
 
-export async function creditHardPrerequisites(
+export async function applyImplicitRepetitions(
   db: ReviewCardDatabase,
   input: {
     userId: string;
     conceptId: string;
+    rating: Rating;
     index: ContentIndex;
     now: Date;
     timeZone: string;
   },
 ) {
-  const prerequisiteIds =
-    input.index.conceptsById
-      .get(input.conceptId)
-      ?.prereqs.filter((prerequisite) => prerequisite.strength === 'hard')
-      .map((prerequisite) => prerequisite.id) ?? [];
-  if (prerequisiteIds.length === 0) return;
+  const encompassing = buildEncompassingIndex(input.index);
+  const targets =
+    input.rating === Rating.Again
+      ? encompassing.descendants(input.conceptId)
+      : encompassing.ancestors(input.conceptId);
+  if (targets.size === 0) return;
 
   const cards = await db
     .select({
       id: reviewCards.id,
+      conceptId: reviewCards.conceptId,
       dueAt: reviewCards.dueAt,
-      lastReviewAt: reviewCards.lastReviewAt,
       fsrs: reviewCards.fsrs,
     })
     .from(reviewCards)
     .where(
-      and(eq(reviewCards.userId, input.userId), inArray(reviewCards.conceptId, prerequisiteIds)),
+      and(
+        eq(reviewCards.userId, input.userId),
+        inArray(reviewCards.conceptId, [...targets.keys()]),
+      ),
     );
   for (const card of cards) {
-    const credit = layeringCredit(
-      { ...card, fsrs: card.fsrs as Card },
-      input.now,
-      input.timeZone,
-      process.env.NODE_ENV !== 'test',
+    const result = implicitRepetition(
+      { fsrs: card.fsrs as Card, dueAt: card.dueAt },
+      {
+        weight: targets.get(card.conceptId) ?? 0,
+        rating: input.rating,
+        now: input.now,
+        timeZone: input.timeZone,
+        enableFuzz: process.env.NODE_ENV !== 'test',
+      },
     );
-    if (!credit) continue;
+    if (!result) continue;
     await db
       .update(reviewCards)
-      .set({ fsrs: credit.fsrs, dueAt: credit.dueAt })
-      .where(and(eq(reviewCards.id, credit.id), eq(reviewCards.dueAt, card.dueAt)));
+      .set({
+        fsrs: result.fsrs,
+        dueAt: result.dueAt,
+      })
+      .where(and(eq(reviewCards.id, card.id), eq(reviewCards.dueAt, card.dueAt)));
   }
 }
 

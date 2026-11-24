@@ -4,12 +4,13 @@ import { afterAll, beforeAll, expect, vi, it as vitestIt } from 'vitest';
 import {
   answerFor as answerForExercise,
   seededWrongAnswerFor as seededWrongAnswerForExercise,
+  wrongAnswerFor as wrongAnswerForExercise,
 } from '../../scripts/learner-simulation-support.js';
 import { createApp } from '../../src/app.js';
 import { env } from '../../src/config.js';
 import { subjectForCourse } from '../../src/content/index.js';
 import { loadContent } from '../../src/content/load.js';
-import { instantiateExercise, isTemplate } from '../../src/content/templates.js';
+import { isTemplate } from '../../src/content/templates.js';
 import type { ContentIndex } from '../../src/content/types.js';
 import { createDb } from '../../src/db/client.js';
 import { LearnerRepository } from '../../src/db/repository.js';
@@ -102,6 +103,7 @@ const morningPlannerSelections = new Map<string, PlannerSelection>();
 const legacyAuditFindings = new Map<string, Set<string>>();
 const latestAuditStatuses = new Map<string, 'HOLDS' | 'LEGACY' | 'BUDGET-DEFERRED' | 'VIOLATED'>();
 const auditCheckpoints: Array<{ label: string; results: Array<Record<string, unknown>> }> = [];
+const lowCreditPickedUpCardKeys = new Set<string>();
 let currentPlanActivityIds = new Set<string>();
 type DueAtEvent = { at: Date; dueAt: Date; cause: string };
 const dueAtHistory = new Map<string, DueAtEvent[]>();
@@ -131,10 +133,12 @@ async function readApi(path: string, now: Date): Promise<any> {
 
 type AuditContext = {
   now: Date;
+  label: string;
   today: Record<string, any>;
   active: Record<string, any> | null;
   reviews: Record<string, any>;
   selection?: PlannerSelection;
+  coverageResults?: PlannerSelection['results'];
 };
 
 type PlannerSelection = {
@@ -182,6 +186,37 @@ function activityTopics(activity: Record<string, any>) {
 
 function todayActivities(payload: Record<string, any>) {
   return payload.plan?.activities ?? payload.activities ?? [];
+}
+
+function selectedTaskCoverage(
+  results: PlannerSelection['results'] | undefined,
+  activities: Array<Record<string, any>>,
+) {
+  const plannedTopics = new Set(
+    activities.flatMap((activity) => [
+      ...(typeof activity.conceptId === 'string' ? [activity.conceptId] : []),
+      ...activityTopics(activity),
+    ]),
+  );
+  const coveredConceptIds = new Set<string>();
+  const coveringConceptIds = new Set<string>();
+  const planningResults = activities.flatMap((activity) =>
+    typeof activity.id === 'string'
+      ? (activityPlanningEvidence.get(activity.id)?.results ?? [])
+      : [],
+  );
+  for (const result of [...(results ?? []), ...planningResults]) {
+    if (
+      result.result !== 'covered' ||
+      !result.coveringConceptId ||
+      !plannedTopics.has(result.coveringConceptId)
+    ) {
+      continue;
+    }
+    coveredConceptIds.add(result.conceptId);
+    coveringConceptIds.add(result.coveringConceptId);
+  }
+  return { coveredConceptIds, coveringConceptIds };
 }
 
 function atLocalNoon(day: string) {
@@ -439,10 +474,41 @@ async function focusedConceptIds() {
   );
 }
 
-async function checkI3({ now, today, active, selection }: AuditContext): Promise<string[]> {
-  const planned = todayActivities(today)
+async function checkI3({
+  now,
+  label,
+  today,
+  active,
+  selection,
+  coverageResults,
+}: AuditContext): Promise<string[]> {
+  const isReplan = label.endsWith('/replan');
+  const replannedActivities = (active?.activities ?? []).filter((activity: Record<string, any>) =>
+    ['planned', 'in_progress'].includes(activity.status),
+  );
+  const activitiesForReviewCheck = isReplan ? replannedActivities : todayActivities(today);
+  const planned = activitiesForReviewCheck
     .filter((activity: Record<string, any>) => activity.kind === 'review')
     .flatMap((activity: Record<string, any>) => activity.exerciseIds ?? []);
+  const plannedReviewDimensions = new Set(
+    planned.flatMap((exerciseId: string) => {
+      const exercise = content.exercisesById.get(exerciseId);
+      return exercise ? [`${exercise.concept}/${exercise.dimension}`] : [];
+    }),
+  );
+  const isNextPlan =
+    (label === 'GET /today' && today.activeSessionId === null) || label.endsWith('/replan');
+  const selectedCoverage = selectedTaskCoverage(
+    coverageResults,
+    isReplan
+      ? replannedActivities
+      : [
+          ...todayActivities(today),
+          ...(active?.activities ?? []).filter((activity: Record<string, any>) =>
+            ['planned', 'in_progress'].includes(activity.status),
+          ),
+        ],
+  );
   const cards = await db.select().from(reviewCards).where(eq(reviewCards.userId, userId));
   const todayLogs = await db
     .select({
@@ -455,6 +521,56 @@ async function checkI3({ now, today, active, selection }: AuditContext): Promise
     .from(reviewLogs)
     .innerJoin(reviewCards, eq(reviewLogs.cardId, reviewCards.id))
     .where(eq(reviewCards.userId, userId));
+  const completedReviewActivities = (active?.activities ?? []).filter(
+    (item: Record<string, any>) => item.kind === 'review' && item.status === 'completed',
+  );
+  const completedReviewActivityIds = completedReviewActivities.map(
+    (activity: Record<string, any>) => activity.id as string,
+  );
+  const ratingsByActivityConcept = new Map<string, number[]>();
+  if (completedReviewActivityIds.length > 0) {
+    const completedReviewLogs = await db
+      .select({
+        activityId: attempts.activityId,
+        conceptId: reviewCards.conceptId,
+        rating: reviewLogs.rating,
+      })
+      .from(reviewLogs)
+      .innerJoin(attempts, eq(reviewLogs.attemptId, attempts.id))
+      .innerJoin(reviewCards, eq(reviewLogs.cardId, reviewCards.id))
+      .where(
+        and(
+          eq(reviewCards.userId, userId),
+          inArray(attempts.activityId, completedReviewActivityIds),
+        ),
+      );
+    for (const log of completedReviewLogs) {
+      if (!log.activityId) continue;
+      const key = `${log.activityId}\u0000${log.conceptId}`;
+      const ratings = ratingsByActivityConcept.get(key) ?? [];
+      ratings.push(Number(log.rating));
+      ratingsByActivityConcept.set(key, ratings);
+    }
+  }
+  const lowerCreditCoveredConceptIds = new Set<string>();
+  for (const activity of completedReviewActivities) {
+    const plannedResults = activityPlanningEvidence.get(activity.id)?.results ?? [];
+    for (const result of plannedResults) {
+      if (
+        result.result !== 'covered' ||
+        !result.coveringConceptId ||
+        !activityTopics(activity).includes(result.coveringConceptId)
+      ) {
+        continue;
+      }
+      const ratings = ratingsByActivityConcept.get(
+        `${activity.id}\u0000${result.coveringConceptId}`,
+      );
+      if (ratings?.length && Math.min(...ratings) < Rating.Good) {
+        lowerCreditCoveredConceptIds.add(result.conceptId);
+      }
+    }
+  }
   const gradedToday = new Set(
     todayLogs
       .filter((log) => localDateKey(log.createdAt, timezone) === localDateKey(now, timezone))
@@ -466,25 +582,42 @@ async function checkI3({ now, today, active, selection }: AuditContext): Promise
     if (!concept || concept.status === 'stub' || !isDueToday(card.dueAt, now, timezone)) return [];
     if (focusedConcepts && !focusedConcepts.has(card.conceptId)) return [];
     const eligible = hasEligibleReviewExercise(card.conceptId, card.dimension);
-    if (
-      !eligible ||
-      planned.some((id: string) => {
-        const exercise = content.exercisesById.get(id);
-        return exercise?.concept === card.conceptId && exercise.dimension === card.dimension;
-      })
-    )
+    if (!eligible || gradedToday.has(card.conceptId)) return [];
+    const cardKey = `${card.conceptId}/${card.dimension}`;
+    const reviewSelected = plannedReviewDimensions.has(cardKey);
+    const plannerResult =
+      selection?.results.find((result) => result.conceptId === card.conceptId) ??
+      coverageResults?.find((result) => result.conceptId === card.conceptId);
+    if (lowerCreditCoveredConceptIds.has(card.conceptId)) {
+      if (!isNextPlan) return [];
+      if (reviewSelected || selectedCoverage.coveredConceptIds.has(card.conceptId)) {
+        lowCreditPickedUpCardKeys.add(cardKey);
+        return [];
+      }
+      if (
+        plannerResult?.result === 'rejected:reviewMinuteCap' &&
+        selection &&
+        !isReviewTopicOverdueByCardDueAt(card.conceptId, cards, now) &&
+        reviewMinuteCapIsActuallyBinding(selection, card.conceptId, now)
+      ) {
+        recordBudgetDeferred('I3', card, now);
+        lowCreditPickedUpCardKeys.add(cardKey);
+        return [];
+      }
+      return [
+        `${cardKey} was covered by a completed lower-credit review but not picked up by the next plan`,
+      ];
+    }
+    if (reviewSelected || selectedCoverage.coveredConceptIds.has(card.conceptId)) {
       return [];
-    const plannerResult = selection?.results.find(
-      (result) => result.conceptId === card.conceptId,
-    )?.result;
+    }
     if (
-      plannerResult === 'not_candidate:reviewedToday' &&
+      plannerResult?.result === 'not_candidate:reviewedToday' &&
       hasReviewLogForConceptToday(card.conceptId, now, todayLogs)
     )
       return [];
-    if (gradedToday.has(card.conceptId)) return [];
     if (
-      plannerResult === 'rejected:reviewMinuteCap' &&
+      plannerResult?.result === 'rejected:reviewMinuteCap' &&
       selection &&
       !isReviewTopicOverdueByCardDueAt(card.conceptId, cards, now) &&
       reviewMinuteCapIsActuallyBinding(selection, card.conceptId, now)
@@ -585,7 +718,8 @@ async function checkI4(): Promise<string[]> {
         const attemptsForExercise = activityAttempts
           .filter((attempt) => attempt.exerciseId === id)
           .sort((a, b) => b.attemptNo - a.attemptNo);
-        const final = attemptsForExercise[0]!;
+        const final = attemptsForExercise[0];
+        if (!final) throw new Error(`Missing attempt for ${id} in activity ${activity.id}`);
         return {
           correct: final.correct,
           hintsUsed: attemptsForExercise.reduce((sum, attempt) => sum + attempt.hintsUsed, 0),
@@ -654,7 +788,13 @@ async function checkI5(_now: Date): Promise<string[]> {
   return failures;
 }
 
-async function checkI6({ now, today, active, selection }: AuditContext): Promise<string[]> {
+async function checkI6({
+  now,
+  today,
+  active,
+  selection,
+  coverageResults,
+}: AuditContext): Promise<string[]> {
   const openReviews = await db
     .select()
     .from(sessionActivities)
@@ -668,6 +808,12 @@ async function checkI6({ now, today, active, selection }: AuditContext): Promise
   ]
     .filter((activity: Record<string, any>) => activity.kind === 'review')
     .flatMap((activity: Record<string, any>) => activityTopics(activity));
+  const selectedCoverage = selectedTaskCoverage(coverageResults, [
+    ...todayActivities(today),
+    ...(active?.activities ?? []).filter((activity: Record<string, any>) =>
+      ['planned', 'in_progress'].includes(activity.status),
+    ),
+  ]);
   const allAttempts = await db.select().from(attempts).where(eq(attempts.userId, userId));
   const logs = await db
     .select()
@@ -696,22 +842,26 @@ async function checkI6({ now, today, active, selection }: AuditContext): Promise
               ),
           ),
       );
-      if (!dueUngraded || planned.includes(conceptId)) return [];
+      if (
+        !dueUngraded ||
+        planned.includes(conceptId) ||
+        selectedCoverage.coveredConceptIds.has(conceptId)
+      )
+        return [];
       const dueCards = cards.filter(
         (card) => card.conceptId === conceptId && isDueToday(card.dueAt, now, timezone),
       );
-      const plannerResult = selection?.results.find(
-        (result) => result.conceptId === conceptId,
-      )?.result;
+      const plannerResult = selection?.results.find((result) => result.conceptId === conceptId);
       const hasConceptReviewLogToday = logs.some(
         ({ review_cards: logCard, review_logs: log }) =>
           logCard.conceptId === conceptId &&
           localDateKey(log.createdAt, timezone) === localDateKey(now, timezone),
       );
-      if (plannerResult === 'not_candidate:reviewedToday' && hasConceptReviewLogToday) return [];
+      if (plannerResult?.result === 'not_candidate:reviewedToday' && hasConceptReviewLogToday)
+        return [];
       if (hasConceptReviewLogToday) return [];
       if (
-        plannerResult === 'rejected:reviewMinuteCap' &&
+        plannerResult?.result === 'rejected:reviewMinuteCap' &&
         selection &&
         !isReviewTopicOverdueByCardDueAt(conceptId, cards, now) &&
         reviewMinuteCapIsActuallyBinding(selection, conceptId, now)
@@ -759,7 +909,13 @@ async function checkI6({ now, today, active, selection }: AuditContext): Promise
   });
 }
 
-async function checkI7({ now, today, active, reviews }: AuditContext): Promise<string[]> {
+async function checkI7({
+  now,
+  today,
+  active,
+  reviews,
+  coverageResults,
+}: AuditContext): Promise<string[]> {
   const learn = (await readApi('/learn', now)) as {
     tasks?: {
       activityKind?: string;
@@ -796,6 +952,13 @@ async function checkI7({ now, today, active, reviews }: AuditContext): Promise<s
       .map((topic: Record<string, any>) => topic.conceptId as string),
   );
   const homeTopics = new Set<string>(home);
+  const selectedCoverage = selectedTaskCoverage(coverageResults, [
+    ...todayActivities(today),
+    ...(active?.activities ?? []).filter((activity: Record<string, any>) =>
+      ['planned', 'in_progress'].includes(activity.status),
+    ),
+    ...home.map((conceptId) => ({ conceptId })),
+  ]);
   const activeReviewTopics = new Set(
     (active?.activities ?? [])
       .filter(
@@ -830,14 +993,19 @@ async function checkI7({ now, today, active, reviews }: AuditContext): Promise<s
           })),
       }));
   for (const conceptId of homeTopics) {
-    if (dueTodayTopics.has(conceptId) || activeReviewTopics.has(conceptId)) continue;
+    if (
+      dueTodayTopics.has(conceptId) ||
+      activeReviewTopics.has(conceptId) ||
+      selectedCoverage.coveringConceptIds.has(conceptId)
+    )
+      continue;
     failures.push(
       `I7(a) Home topic ${conceptId} is neither due today nor in an active review; card history=${JSON.stringify(cardHistory(conceptId))}`,
     );
   }
   if (!budgetNoteShown) {
     for (const conceptId of reviewsDueTopics) {
-      if (homeTopics.has(conceptId)) continue;
+      if (homeTopics.has(conceptId) || selectedCoverage.coveredConceptIds.has(conceptId)) continue;
       failures.push(
         `I7(b) Reviews due topic ${conceptId} is not on Home and the budget note is not shown; card history=${JSON.stringify(cardHistory(conceptId))}`,
       );
@@ -898,13 +1066,37 @@ async function auditAll(now: Date, label: string) {
     readApi('/sessions/active', now),
     readApi('/reviews', now),
   ]);
-  const selection = realDataAuditMode ? await plannerSelectionForAudit(now, today) : undefined;
+  const isNewTodayPlan = label === 'GET /today' && today.activeSessionId === null;
+  const replanCall = label.endsWith('/replan')
+    ? [...schedulerCalls]
+        .reverse()
+        .find(
+          (call) =>
+            call.kind === 'replan' && `${call.request.method} ${call.request.path}` === label,
+        )
+    : undefined;
+  const selection = realDataAuditMode
+    ? await plannerSelectionForAudit(now, today)
+    : isNewTodayPlan
+      ? await plannerSelectionAt(now, today)
+      : replanCall?.kind === 'replan'
+        ? plannerSelectionForReplanCall(replanCall)
+        : undefined;
+  const coverageResults = selection?.results ?? (await plannerSelectionAt(now, today)).results;
   currentPlanActivityIds = new Set(
     [...todayActivities(today), ...(active?.activities ?? [])]
       .map((activity: Record<string, any>) => activity.id)
       .filter((id: unknown): id is string => typeof id === 'string'),
   );
-  const context = { now, today, active, reviews, ...(selection ? { selection } : {}) };
+  const context = {
+    now,
+    label,
+    today,
+    active,
+    reviews,
+    coverageResults,
+    ...(selection ? { selection } : {}),
+  };
   const findings = new Map<string, string[]>();
   for (let index = 0; index < checkers.length; index += 1) {
     const name = checkerNames[index]!;
@@ -1259,6 +1451,7 @@ async function seedLearner(now: Date) {
   reviewAnswerStats.seededWrong = 0;
   reviewAnswerStats.actuallyWrong = 0;
   dueAtHistory.clear();
+  lowCreditPickedUpCardKeys.clear();
 }
 
 async function seedCards(now: Date) {
@@ -1314,6 +1507,65 @@ async function addReviewCard(
   seededReps.set(card.id, card.reps);
   dueAtHistory.set(card.id, [{ at: now, dueAt, cause: 'seeded' }]);
   return card;
+}
+
+async function withReviewCandidateScope<T>(
+  conceptIds: string[],
+  run: () => Promise<T>,
+): Promise<T> {
+  const previousContent = content;
+  const previousApp = app;
+  const allowedConcepts = new Set(conceptIds);
+  content = {
+    ...previousContent,
+    exercisesByConcept: new Map(
+      [...previousContent.exercisesByConcept].filter(([conceptId]) =>
+        allowedConcepts.has(conceptId),
+      ),
+    ),
+    lessonsByConcept: new Map(),
+  };
+  app = createApp({ db, content, tutorProvider: new FakeProvider() });
+  try {
+    return await run();
+  } finally {
+    content = previousContent;
+    app = previousApp;
+  }
+}
+
+async function activateReviewIfPlanned(
+  sessionId: string,
+  activity: Record<string, any>,
+  now: Date,
+) {
+  if (activity.status !== 'planned') return;
+  const { response, data } = await step(
+    'POST',
+    `/sessions/${sessionId}/activities/${activity.id}/progress`,
+    now,
+    {},
+  );
+  if (!response.ok) {
+    throw new Error(`Could not activate review ${activity.id}: ${JSON.stringify(data)}`);
+  }
+}
+
+async function completeReviewIfNeeded(sessionId: string, activity: Record<string, any>, now: Date) {
+  const [current] = await db
+    .select({ status: sessionActivities.status })
+    .from(sessionActivities)
+    .where(eq(sessionActivities.id, activity.id));
+  if (current?.status === 'completed') return;
+  const { response, data } = await step(
+    'POST',
+    `/sessions/${sessionId}/activities/${activity.id}/progress`,
+    now,
+    { complete: true },
+  );
+  if (!response.ok) {
+    throw new Error(`Could not complete review ${activity.id}: ${JSON.stringify(data)}`);
+  }
 }
 
 function answerFor(exerciseId: string) {
@@ -1422,6 +1674,18 @@ async function plannerSelectionAt(
     day,
   );
   return { state, budget, results: explainReviewSelection(state, content, now, budget) };
+}
+
+function plannerSelectionForReplanCall(
+  call: Extract<SchedulerCall, { kind: 'replan' }>,
+): PlannerSelection {
+  const [state, planContent, now, budget, existingActivities] = call.args;
+  return {
+    state,
+    budget,
+    results: explainReviewSelectionForReplan(state, planContent, now, budget, existingActivities)
+      .results,
+  };
 }
 
 function resumedSelectionSnapshot(): ResumedSelectionSnapshot | undefined {
@@ -2236,18 +2500,17 @@ beforeAll(async () => {
     random = (random * 1_664_525 + 1_013_904_223) >>> 0;
     return random / 0x1_0000_0000;
   };
-  for (let dateIndex = 0; dateIndex < 30; dateIndex += 1) {
-    const nowAtDay = atLocalNoon(day);
-    await step('GET', '/today', nowAtDay);
-    await step('GET', '/reviews', nowAtDay);
-    const { response, data: session } = await step('POST', '/sessions', nowAtDay, {
-      budgetMinutes: 600,
-    });
-    if (!response.ok)
-      throw new Error(`POST /sessions failed ${response.status}: ${JSON.stringify(session)}`);
-    await step('GET', '/sessions/active', nowAtDay);
-    for (const activity of session.activities ?? []) {
+  const simulateActivities = async (
+    sessionId: string,
+    activities: Array<Record<string, any>>,
+    nowAtDay: Date,
+    activatePlannedReviews = false,
+  ) => {
+    for (const activity of activities) {
       if (activity.status === 'completed') continue;
+      if (activatePlannedReviews && activity.kind === 'review') {
+        await activateReviewIfPlanned(sessionId, activity, nowAtDay);
+      }
       for (const exerciseId of activity.exerciseIds ?? []) {
         const exercise = content.exercisesById.get(exerciseId);
         if (!exercise) continue;
@@ -2260,11 +2523,7 @@ beforeAll(async () => {
             stuck: activity.kind === 'review',
           });
         const wrong = nextRandom() < 0.12;
-        const answer = wrong
-          ? exercise.type === 'mc'
-            ? 'wrong-option'
-            : 'not the answer'
-          : answerFor(exerciseId);
+        const answer = wrong ? wrongAnswerForExercise(content, exerciseId) : answerFor(exerciseId);
         const durationMs =
           exercise.target_seconds && nextRandom() < 0.2
             ? (exercise.target_seconds + 5) * 1000
@@ -2308,7 +2567,7 @@ beforeAll(async () => {
       if (activity.kind === 'review') continue;
       const progressResult = await step(
         'POST',
-        `/sessions/${session.id}/activities/${activity.id}/progress`,
+        `/sessions/${sessionId}/activities/${activity.id}/progress`,
         nowAtDay,
         { complete: true },
       );
@@ -2318,11 +2577,43 @@ beforeAll(async () => {
         );
       }
     }
+  };
+  for (let dateIndex = 0; dateIndex < 30; dateIndex += 1) {
+    lowCreditPickedUpCardKeys.clear();
+    const nowAtDay = atLocalNoon(day);
+    await step('GET', '/today', nowAtDay);
+    await step('GET', '/reviews', nowAtDay);
+    const { response, data: session } = await step('POST', '/sessions', nowAtDay, {
+      budgetMinutes: 600,
+    });
+    if (!response.ok)
+      throw new Error(`POST /sessions failed ${response.status}: ${JSON.stringify(session)}`);
+    await step('GET', '/sessions/active', nowAtDay);
+    await simulateActivities(session.id, session.activities ?? [], nowAtDay);
     if (dateIndex === 0) {
       const later = (session.activities ?? []).find(
         (activity: Record<string, any>) => activity.status === 'planned',
       );
-      if (later) await step('POST', `/sessions/${session.id}/replan`, nowAtDay, {});
+      if (later) {
+        const { response: replanResponse, data: replanned } = await step(
+          'POST',
+          `/sessions/${session.id}/replan`,
+          nowAtDay,
+          {},
+        );
+        if (!replanResponse.ok)
+          throw new Error(
+            `POST /sessions/${session.id}/replan failed ${replanResponse.status}: ${JSON.stringify(replanned)}`,
+          );
+        await simulateActivities(
+          session.id,
+          (replanned.activities ?? []).filter(
+            (activity: Record<string, any>) => activity.status === 'planned',
+          ),
+          nowAtDay,
+          true,
+        );
+      }
     }
     const endOfDayCards = await db.select().from(reviewCards).where(eq(reviewCards.userId, userId));
     const endOfDayLogs = await db
@@ -2345,7 +2636,11 @@ beforeAll(async () => {
         concept.status === 'stub' ||
         !isDueToday(card.dueAt, nowAtDay, timezone) ||
         gradedAtEndOfDay.has(card.conceptId) ||
-        !hasEligibleReviewExercise(card.conceptId, card.dimension)
+        !hasEligibleReviewExercise(card.conceptId, card.dimension) ||
+        budgetDeferralsByDay
+          .get(localDateKey(nowAtDay, timezone))
+          ?.get(`${card.conceptId}/${card.dimension}`)
+          ?.checkers.includes('I3')
       ) {
         continue;
       }
@@ -2419,19 +2714,225 @@ vitestIt('classifies findings as legacy only when every identifier predates the 
   expect(isLegacyFinding(`old ${preRunId} and new ${runCreatedId}`, preRunIds)).toBe(false);
 });
 
+vitestIt('recognizes coverage only when the covering task is planned', () => {
+  const result: PlannerSelection['results'][number] = {
+    conceptId: 'vectors',
+    result: 'covered',
+    coveringConceptId: 'linear-models',
+    exerciseIds: [],
+    exerciseDimensions: [],
+    reviewMinutes: 1,
+    reviewCap: 30,
+    usedMinutes: 1,
+    budget: 40,
+    plannedActivityCount: 1,
+  };
+
+  const planned = selectedTaskCoverage(
+    [result],
+    [{ kind: 'review', conceptId: 'linear-models', exerciseIds: [] }],
+  );
+  expect([...planned.coveredConceptIds]).toEqual(['vectors']);
+  expect([...planned.coveringConceptIds]).toEqual(['linear-models']);
+
+  const absent = selectedTaskCoverage(
+    [result],
+    [{ kind: 'review', conceptId: 'gradient-descent', exerciseIds: [] }],
+  );
+  expect([...absent.coveredConceptIds]).toEqual([]);
+  expect([...absent.coveringConceptIds]).toEqual([]);
+});
+
+it('I3 replan audit does not reuse a Home preview when the replan is empty', async () => {
+  const now = atLocalNoon(startDate);
+  await seedLearner(now);
+  await addReviewCard(now, 'derivatives', 'math', -1, 0);
+  const { data: today } = await step('GET', '/today', now);
+  expect(
+    todayActivities(today).some(
+      (activity: Record<string, any>) =>
+        activity.kind === 'review' && activityTopics(activity).includes('derivatives'),
+    ),
+  ).toBe(true);
+
+  const failures = await checkI3({
+    now,
+    label: 'POST /sessions/empty/replan',
+    today,
+    active: { activities: [] },
+    reviews: {},
+  });
+  expect(failures.some((failure) => failure.includes('derivatives/math'))).toBe(true);
+});
+
 // I1: session replan can schedule an already-covered topic again.
 it('I1 review scheduling invariant', () => assertInvariant('I1'));
 // I2: completing a review does not reliably keep its topics out of Home.
 it('I2 review scheduling invariant', () => assertInvariant('I2'));
-// I3: due cards with eligible exercises can be omitted from the plan.
+// I3: due cards with eligible exercises can be omitted unless a selected task covers them.
 it('I3 review scheduling invariant', () => assertInvariant('I3'));
+it('I3 replans a due prerequisite after a completed low-credit coverer', async () => {
+  const now = atLocalNoon(startDate);
+  await seedLearner(now);
+  await addReviewCard(now, 'gradient-descent', 'math', -1, 0);
+  await addReviewCard(now, 'derivatives', 'math', -2, 1);
+  const derivativeCardBeforeReview = (
+    await db
+      .select()
+      .from(reviewCards)
+      .where(
+        and(
+          eq(reviewCards.userId, userId),
+          eq(reviewCards.conceptId, 'derivatives'),
+          eq(reviewCards.dimension, 'math'),
+        ),
+      )
+  )[0];
+  if (!derivativeCardBeforeReview) throw new Error('Missing derivatives review card');
+  const derivativeDueAtBeforeReview = derivativeCardBeforeReview.dueAt;
+  expect(isDueToday(derivativeDueAtBeforeReview, now, timezone)).toBe(true);
+
+  const { response: sessionResponse, data: session } = await step('POST', '/sessions', now, {
+    budgetMinutes: 600,
+  });
+  expect(sessionResponse.ok).toBe(true);
+  const coverer = session.activities.find(
+    (activity: Record<string, any>) =>
+      activity.kind === 'review' && activityTopics(activity).includes('gradient-descent'),
+  );
+  if (!coverer) throw new Error('Missing gradient-descent covering review');
+  expect(activityTopics(coverer)).not.toContain('derivatives');
+  expect(
+    activityPlanningEvidence
+      .get(coverer.id)
+      ?.results.find((result) => result.conceptId === 'derivatives'),
+  ).toMatchObject({
+    result: 'covered',
+    coveringConceptId: 'gradient-descent',
+  });
+  await activateReviewIfPlanned(session.id, coverer, now);
+
+  for (const exerciseId of coverer.exerciseIds) {
+    const exercise = content.exercisesById.get(exerciseId);
+    const wrong =
+      exercise?.concept === 'gradient-descent'
+        ? wrongAnswerForExercise(content, exerciseId)
+        : undefined;
+    const answer = wrong ?? answerFor(exerciseId);
+    const { response, data } = await step('POST', '/attempts', now, {
+      exerciseId,
+      activityId: coverer.id,
+      answer,
+      mode: 'review',
+    });
+    expect(response.ok, JSON.stringify(data)).toBe(true);
+    if (data.retryAllowed && wrong) {
+      const { response: retryResponse, data: retryData } = await step('POST', '/attempts', now, {
+        exerciseId,
+        activityId: coverer.id,
+        answer: wrong,
+        mode: 'review',
+      });
+      expect(retryResponse.ok, JSON.stringify(retryData)).toBe(true);
+    }
+  }
+  await completeReviewIfNeeded(session.id, coverer, now);
+
+  const coveringRatings = await db
+    .select({ rating: reviewLogs.rating })
+    .from(reviewLogs)
+    .innerJoin(attempts, eq(reviewLogs.attemptId, attempts.id))
+    .innerJoin(reviewCards, eq(reviewLogs.cardId, reviewCards.id))
+    .where(and(eq(attempts.activityId, coverer.id), eq(reviewCards.conceptId, 'gradient-descent')));
+  expect(coveringRatings.length).toBeGreaterThan(0);
+  expect(Math.min(...coveringRatings.map(({ rating }) => Number(rating)))).toBe(Rating.Again);
+
+  const derivativeCard = (
+    await db
+      .select()
+      .from(reviewCards)
+      .where(
+        and(
+          eq(reviewCards.userId, userId),
+          eq(reviewCards.conceptId, 'derivatives'),
+          eq(reviewCards.dimension, 'math'),
+        ),
+      )
+  )[0];
+  expect(derivativeCard?.dueAt).toEqual(derivativeDueAtBeforeReview);
+  expect(derivativeCard && isDueToday(derivativeCard.dueAt, now, timezone)).toBe(true);
+  const derivativeLogs = await db
+    .select({ createdAt: reviewLogs.createdAt })
+    .from(reviewLogs)
+    .innerJoin(reviewCards, eq(reviewLogs.cardId, reviewCards.id))
+    .where(
+      and(
+        eq(reviewCards.userId, userId),
+        eq(reviewCards.conceptId, 'derivatives'),
+        eq(reviewCards.dimension, 'math'),
+      ),
+    );
+  expect(derivativeLogs).toHaveLength(0);
+
+  const replanCallStart = schedulerCalls.length;
+  const { response: replanResponse, data: replanned } = await step(
+    'POST',
+    `/sessions/${session.id}/replan`,
+    now,
+    {},
+  );
+  expect(replanResponse.ok).toBe(true);
+  const replanCall = schedulerCalls
+    .slice(replanCallStart)
+    .find((call): call is Extract<SchedulerCall, { kind: 'replan' }> => call.kind === 'replan');
+  if (!replanCall) throw new Error('Missing scheduler replan call');
+  const replanSelection = plannerSelectionForReplanCall(replanCall);
+  expect(
+    schedulerModule
+      .dueTopicsCoveredBy('gradient-descent', replanSelection.state, content, now)
+      .has('derivatives'),
+  ).toBe(true);
+  const replanActivities = todayActivities(replanned).filter((activity: Record<string, any>) =>
+    ['planned', 'in_progress'].includes(activity.status),
+  );
+  const replanCoverage = selectedTaskCoverage(replanSelection.results, replanActivities);
+  const derivativeResult = replanSelection.results.find(
+    (result) => result.conceptId === 'derivatives',
+  );
+  expect(
+    replanActivities.some(
+      (activity: Record<string, any>) =>
+        activity.kind === 'review' && activityTopics(activity).includes('derivatives'),
+    ) ||
+      (replanCoverage.coveredConceptIds.has('derivatives') &&
+        derivativeResult?.coveringConceptId !== 'gradient-descent'),
+  ).toBe(true);
+
+  const { response: endResponse } = await step('POST', `/sessions/${session.id}/end`, now);
+  expect(endResponse.ok).toBe(true);
+  const { data: today } = await step('GET', '/today', now);
+  expect(
+    todayActivities(today).some(
+      (activity: Record<string, any>) =>
+        activity.kind === 'review' && activityTopics(activity).includes('derivatives'),
+    ),
+    JSON.stringify(
+      todayActivities(today).map((activity: Record<string, any>) => ({
+        kind: activity.kind,
+        status: activity.status,
+        conceptId: activity.conceptId,
+        topics: activityTopics(activity),
+      })),
+    ),
+  ).toBe(true);
+});
 // I4: completed activities can leave covered cards ungraded.
 it('I4 review scheduling invariant', () => assertInvariant('I4'));
 // I5: double-Again can move a graded prerequisite card before tomorrow.
 it('I5 review scheduling invariant', () => assertInvariant('I5'));
-// I6: partial answers can disappear when another session starts.
+// I6: partial answers can disappear unless their due cards are covered by a selected task.
 it('I6 review scheduling invariant', () => assertInvariant('I6'));
-// I7: Home topics must be due or active, and Reviews due topics need Home or the budget note.
+// I7: Home topics must be due, active, or a selected coverer; due Reviews need Home, coverage, or the budget note.
 it('I7 review scheduling invariant', () => assertInvariant('I7'));
 // I8: mixed reviews can repeat a topic before switching to another.
 it('I8 review scheduling invariant', () => assertInvariant('I8'));
@@ -2667,140 +3168,174 @@ it('a review log on one dimension hides every due dimension for that topic today
   ).toBe(false);
 });
 
-it('S7 checks layering credit and double-Again effects on cards in the same activity', async () => {
-  const now = atLocalNoon(startDate);
-  await seedLearner(now);
-  await addReviewCard(now, 'vectors', 'math', -5, 0);
-  await addReviewCard(now, 'derivatives', 'math', -4, 1);
-  const { data: session } = await step('POST', '/sessions', now, { budgetMinutes: 600 });
-  const activity = session.activities.find(
-    (item: Record<string, any>) =>
-      item.kind === 'review' &&
-      activityTopics(item).includes('vectors') &&
-      activityTopics(item).includes('derivatives'),
-  );
-  if (!activity) throw new Error('No vectors/derivatives mixed activity');
-  for (const exerciseId of activity.exerciseIds) {
-    await step('POST', '/attempts', now, {
-      exerciseId,
-      activityId: activity.id,
-      answer: answerFor(exerciseId),
-      mode: 'review',
-    });
-  }
-  const cardRows = await db
-    .select()
-    .from(reviewCards)
-    .where(
-      and(
-        eq(reviewCards.userId, userId),
-        inArray(reviewCards.conceptId, ['vectors', 'derivatives']),
-      ),
+it('S7 checks card updates for two uncovered due topics in one mixed review', async () => {
+  await withReviewCandidateScope(['vectors', 'switching-topic'], async () => {
+    const now = atLocalNoon(startDate);
+    await seedLearner(now);
+    await addReviewCard(now, 'vectors', 'math', -5, 0);
+    await addReviewCard(now, 'switching-topic', 'math', -4, 1);
+    const { data: session } = await step('POST', '/sessions', now, { budgetMinutes: 600 });
+    const activity = session.activities.find(
+      (item: Record<string, any>) =>
+        item.kind === 'review' &&
+        activityTopics(item).includes('vectors') &&
+        activityTopics(item).includes('switching-topic'),
     );
-  const mismatch = cardRows.filter(
-    (card) =>
-      new Date((card.fsrs as { due: string | Date }).due).getTime() !== card.dueAt.getTime(),
-  );
-  expect(mismatch.map((card) => `${card.conceptId}/${card.dimension}`)).toEqual([]);
+    if (!activity) throw new Error('No vectors/switching-topic mixed activity');
+    for (const exerciseId of activity.exerciseIds) {
+      await step('POST', '/attempts', now, {
+        exerciseId,
+        activityId: activity.id,
+        answer: answerFor(exerciseId),
+        mode: 'review',
+      });
+    }
+    const cardRows = await db
+      .select()
+      .from(reviewCards)
+      .where(
+        and(
+          eq(reviewCards.userId, userId),
+          inArray(reviewCards.conceptId, ['vectors', 'switching-topic']),
+        ),
+      );
+    const mismatch = cardRows.filter(
+      (card) =>
+        new Date((card.fsrs as { due: string | Date }).due).getTime() !== card.dueAt.getTime(),
+    );
+    expect(mismatch.map((card) => `${card.conceptId}/${card.dimension}`)).toEqual([]);
+  });
 });
 
-it('S7 does not bring a prerequisite covered by the same review due now', async () => {
-  const now = atLocalNoon(startDate);
-  await seedLearner(now);
-  await addReviewCard(now, 'vectors', 'math', -5, 0);
-  await addReviewCard(now, 'derivatives', 'math', -4, 1);
-  const card = (
-    await db
-      .select()
-      .from(reviewCards)
-      .where(
-        and(
-          eq(reviewCards.userId, userId),
-          eq(reviewCards.conceptId, 'derivatives'),
-          eq(reviewCards.dimension, 'math'),
-        ),
-      )
-  )[0];
-  const priorExercise = content.exercisesById.get('derivatives-power-rule');
-  if (!card || !priorExercise) throw new Error('Missing derivatives review fixture');
-  const priorAt = new Date(now.getTime() - 2 * 86_400_000);
-  const [priorAttempt] = await db
-    .insert(attempts)
-    .values({
-      userId,
-      exerciseId: priorExercise.id,
-      exerciseVersion: priorExercise.contentVersion,
-      conceptId: 'derivatives',
-      dimension: 'math',
-      mode: 'review',
-      answer: 'incorrect',
-      correct: 0,
-      credit: 0,
-      hintsUsed: 0,
-      attemptNo: 1,
-      gradedBy: 'test',
-      feedback: {},
-      createdAt: priorAt,
-    })
-    .returning();
-  if (!priorAttempt) throw new Error('Could not create prior Again attempt');
-  await db.insert(reviewLogs).values({
-    cardId: card.id,
-    attemptId: priorAttempt.id,
-    rating: String(Rating.Again),
-    fsrsLog: {},
-    createdAt: priorAt,
-  });
-  await db
-    .update(reviewCards)
-    .set({
-      reps: card.reps + 1,
-      fsrs: { ...(card.fsrs as object), reps: card.reps + 1 },
-    })
-    .where(eq(reviewCards.id, card.id));
-  const { data: session } = await step('POST', '/sessions', now, { budgetMinutes: 600 });
-  const activity = session.activities.find(
-    (item: Record<string, any>) =>
-      item.kind === 'review' &&
-      activityTopics(item).includes('vectors') &&
-      activityTopics(item).includes('derivatives'),
-  );
-  if (!activity) throw new Error('No vectors/derivatives mixed activity');
-  for (const exerciseId of activity.exerciseIds) {
-    const conceptId = content.exercisesById.get(exerciseId)?.concept;
-    await step('POST', '/attempts', now, {
-      exerciseId,
-      activityId: activity.id,
-      answer: conceptId === 'derivatives' ? 'incorrect' : answerFor(exerciseId),
-      mode: 'review',
+it('S7 keeps a covered prerequisite out of a mixed review of uncovered topics', async () => {
+  await withReviewCandidateScope(['vectors', 'derivatives', 'switching-topic'], async () => {
+    const now = atLocalNoon(startDate);
+    await seedLearner(now);
+    await addReviewCard(now, 'vectors', 'math', -5, 0);
+    const { data: vectorSession } = await step('POST', '/sessions', now, {
+      budgetMinutes: 600,
     });
-  }
-  const prerequisite = (
+    const vectorReview = vectorSession.activities.find(
+      (activity: Record<string, any>) =>
+        activity.kind === 'review' && activityTopics(activity).includes('vectors'),
+    );
+    if (!vectorReview) throw new Error('No vectors review before prerequisite re-plan');
+    await activateReviewIfPlanned(vectorSession.id, vectorReview, now);
+    for (const exerciseId of vectorReview.exerciseIds) {
+      const { response } = await step('POST', '/attempts', now, {
+        exerciseId,
+        activityId: vectorReview.id,
+        answer: answerFor(exerciseId),
+        mode: 'review',
+      });
+      expect(response.ok).toBe(true);
+    }
+    await completeReviewIfNeeded(vectorSession.id, vectorReview, now);
+    const { response: vectorEndResponse } = await step(
+      'POST',
+      `/sessions/${vectorSession.id}/end`,
+      now,
+    );
+    expect(vectorEndResponse.ok).toBe(true);
+
+    await addReviewCard(now, 'derivatives', 'math', -4, 1);
+    await addReviewCard(now, 'switching-topic', 'math', -3, 2);
+    const card = (
+      await db
+        .select()
+        .from(reviewCards)
+        .where(
+          and(
+            eq(reviewCards.userId, userId),
+            eq(reviewCards.conceptId, 'derivatives'),
+            eq(reviewCards.dimension, 'math'),
+          ),
+        )
+    )[0];
+    const priorExercise = content.exercisesById.get('derivatives-power-rule');
+    if (!card || !priorExercise) throw new Error('Missing derivatives review fixture');
+    const priorAt = new Date(now.getTime() - 2 * 86_400_000);
+    const [priorAttempt] = await db
+      .insert(attempts)
+      .values({
+        userId,
+        exerciseId: priorExercise.id,
+        exerciseVersion: priorExercise.contentVersion,
+        conceptId: 'derivatives',
+        dimension: 'math',
+        mode: 'review',
+        answer: 'incorrect',
+        correct: 0,
+        credit: 0,
+        hintsUsed: 0,
+        attemptNo: 1,
+        gradedBy: 'test',
+        feedback: {},
+        createdAt: priorAt,
+      })
+      .returning();
+    if (!priorAttempt) throw new Error('Could not create prior Again attempt');
+    await db.insert(reviewLogs).values({
+      cardId: card.id,
+      attemptId: priorAttempt.id,
+      rating: String(Rating.Again),
+      fsrsLog: {},
+      createdAt: priorAt,
+    });
     await db
-      .select()
-      .from(reviewCards)
-      .where(
-        and(
-          eq(reviewCards.userId, userId),
-          eq(reviewCards.conceptId, 'vectors'),
-          eq(reviewCards.dimension, 'math'),
-        ),
-      )
-  )[0];
-  const currentAgain = (
-    await db
-      .select()
-      .from(reviewLogs)
-      .innerJoin(reviewCards, eq(reviewLogs.cardId, reviewCards.id))
-      .where(and(eq(reviewCards.userId, userId), eq(reviewCards.conceptId, 'derivatives')))
-  ).filter(({ review_logs: log }) => log.createdAt.getTime() >= now.getTime());
-  expect(currentAgain.some(({ review_logs: log }) => log.rating === String(Rating.Again))).toBe(
-    true,
-  );
-  expect(
-    prerequisite && new Date((prerequisite.fsrs as { due: string | Date }).due).getTime(),
-  ).toBe(prerequisite?.dueAt.getTime());
-  expect(prerequisite?.dueAt.getTime()).toBeGreaterThan(now.getTime());
+      .update(reviewCards)
+      .set({
+        reps: card.reps + 1,
+        fsrs: { ...(card.fsrs as object), reps: card.reps + 1 },
+      })
+      .where(eq(reviewCards.id, card.id));
+    const { data: session } = await step('POST', '/sessions', now, { budgetMinutes: 600 });
+    const activity = session.activities.find(
+      (item: Record<string, any>) =>
+        item.kind === 'review' &&
+        activityTopics(item).includes('derivatives') &&
+        activityTopics(item).includes('switching-topic'),
+    );
+    if (!activity) throw new Error('No derivatives/switching-topic mixed activity');
+    expect(activityTopics(activity)).not.toContain('vectors');
+    await activateReviewIfPlanned(session.id, activity, now);
+    for (const exerciseId of activity.exerciseIds) {
+      const conceptId = content.exercisesById.get(exerciseId)?.concept;
+      await step('POST', '/attempts', now, {
+        exerciseId,
+        activityId: activity.id,
+        answer: conceptId === 'derivatives' ? 'incorrect' : answerFor(exerciseId),
+        mode: 'review',
+      });
+    }
+    await completeReviewIfNeeded(session.id, activity, now);
+    const prerequisite = (
+      await db
+        .select()
+        .from(reviewCards)
+        .where(
+          and(
+            eq(reviewCards.userId, userId),
+            eq(reviewCards.conceptId, 'vectors'),
+            eq(reviewCards.dimension, 'math'),
+          ),
+        )
+    )[0];
+    const currentAgain = (
+      await db
+        .select()
+        .from(reviewLogs)
+        .innerJoin(reviewCards, eq(reviewLogs.cardId, reviewCards.id))
+        .where(and(eq(reviewCards.userId, userId), eq(reviewCards.conceptId, 'derivatives')))
+    ).filter(({ review_logs: log }) => log.createdAt.getTime() >= now.getTime());
+    expect(currentAgain.some(({ review_logs: log }) => log.rating === String(Rating.Again))).toBe(
+      true,
+    );
+    expect(
+      prerequisite && new Date((prerequisite.fsrs as { due: string | Date }).due).getTime(),
+    ).toBe(prerequisite?.dueAt.getTime());
+    expect(prerequisite?.dueAt.getTime()).toBeGreaterThan(now.getTime());
+  });
 });
 
 it('covers local midnight, DST, deterministic plans, and skipped-review advancement', async () => {

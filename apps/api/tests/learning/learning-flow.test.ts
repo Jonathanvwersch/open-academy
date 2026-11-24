@@ -1,5 +1,5 @@
 import { and, asc, eq } from 'drizzle-orm';
-import { Rating } from 'ts-fsrs';
+import { type Card, Rating, State } from 'ts-fsrs';
 import { afterAll, beforeAll, expect, test, vi } from 'vitest';
 import { createApp } from '../../src/app.js';
 import { env } from '../../src/config.js';
@@ -26,6 +26,7 @@ import {
 } from '../../src/db/schema.js';
 import { FakeProvider } from '../../src/features/tutor/provider.js';
 import { answerOptionsFor } from '../../src/learning/answer-options.js';
+import { buildEncompassingIndex } from '../../src/learning/encompassing.js';
 import {
   isDueToday,
   newReviewCard,
@@ -33,6 +34,7 @@ import {
   scheduleReview,
 } from '../../src/learning/fsrs.js';
 import { calculateCredit } from '../../src/learning/mastery.js';
+import { dueTopicsCoveredBy, type SchedulerState } from '../../src/learning/scheduler.js';
 
 const db = createDb(env.TEST_DATABASE_URL);
 const userId = '00000000-0000-4000-8000-000000000001';
@@ -40,9 +42,11 @@ const now = '2026-01-01T12:00:00.000Z';
 let app: ReturnType<typeof createApp>;
 let noTutorApp: ReturnType<typeof createApp>;
 let content: ContentIndex;
+let fullContent: ContentIndex;
 
 beforeAll(async () => {
   content = await loadContent('tests/fixtures/content');
+  fullContent = await loadContent('content');
   app = createApp({ db, content, tutorProvider: new FakeProvider() });
   noTutorApp = createApp({ db, content, tutorProvider: null });
   await db.delete(users);
@@ -375,6 +379,51 @@ async function createReviewCard(
   return card;
 }
 
+function planCoversDueConcept(
+  activities: Array<{ kind: string; conceptId?: string | null }>,
+  cards: Array<{ conceptId: string; dimension: string; dueAt: Date; fsrs: unknown }>,
+  conceptId: string,
+  now: Date,
+  timezone: string,
+) {
+  const state: SchedulerState = {
+    timezone,
+    activeCourseId: null,
+    studyCourseIds: [],
+    recentLearnMinutesByConcept: {},
+    mastery: [],
+    cards: cards.map((card) => ({
+      conceptId: card.conceptId,
+      dimension: card.dimension as SchedulerState['cards'][number]['dimension'],
+      dueAt: card.dueAt.toISOString(),
+      fsrs: card.fsrs as Card,
+    })),
+    reviewedTodayConceptIds: [],
+    recentAttempts: [],
+    remediationFlags: [],
+    projectProgress: [],
+    completedPaperIds: [],
+    startDate: now.toISOString().slice(0, 10),
+  };
+  return activities.some(
+    (activity) =>
+      activity.kind === 'learn' &&
+      activity.conceptId &&
+      dueTopicsCoveredBy(activity.conceptId, state, content, now).has(conceptId),
+  );
+}
+
+function learnedReviewFsrs(dueAt: Date, reviewedAt = new Date('2025-12-01T12:00:00.000Z')) {
+  return {
+    ...scheduleReview(newReviewCard(reviewedAt), reviewedAt, Rating.Good, 'UTC', false).card,
+    state: State.Review,
+    stability: 12,
+    difficulty: 5,
+    last_review: reviewedAt,
+    due: dueAt,
+  };
+}
+
 async function createPrerequisiteReviewCards(weakDueAt: Date, includeAlreadyDueConceptual = false) {
   const future = new Date('2026-02-01T12:00:00.000Z');
   const oldReview = new Date('2025-12-01T12:00:00.000Z');
@@ -577,7 +626,7 @@ async function createLearnActivity(now: string) {
   return { session, activity };
 }
 
-test('attempts update mastery and create a review card used by Today', async () => {
+test('Today compresses a due review when same-day learning covers its topic', async () => {
   await resetLearner();
   await enrollDefaultCourse();
   const headers = { 'content-type': 'application/json', 'X-Now': now };
@@ -633,9 +682,154 @@ test('attempts update mastery and create a review card used by Today', async () 
   });
   expect(today.status).toBe(200);
   const payload = await today.json();
-  expect(payload.plan.activities.some((item: { kind: string }) => item.kind === 'review')).toBe(
-    true,
+  const cards = await db.select().from(reviewCards).where(eq(reviewCards.userId, userId));
+  expect(
+    payload.plan.activities.some(
+      (item: { kind: string; conceptId?: string }) =>
+        item.kind === 'review' && item.conceptId === 'vectors',
+    ),
+  ).toBe(false);
+  expect(
+    planCoversDueConcept(
+      payload.plan.activities,
+      cards.filter((card) => card.conceptId === 'vectors'),
+      'vectors',
+      new Date('2026-01-15T12:00:00.000Z'),
+      'UTC',
+    ),
+  ).toBe(true);
+});
+
+test('focus mode only counts coverage from lessons kept in the session', async () => {
+  const courses = fullContent.courses.map((course) =>
+    course.id === 'maths-for-ml'
+      ? {
+          ...course,
+          units: course.units.map((unit, index) => ({
+            ...unit,
+            concepts: index === 0 ? ['vectors', 'dot-product', 'derivatives'] : [],
+          })),
+        }
+      : course,
   );
+  const focusContent: ContentIndex = {
+    ...fullContent,
+    courses,
+    coursesById: new Map(courses.map((course) => [course.id, course])),
+  };
+  const focusApp = createApp({
+    db,
+    content: focusContent,
+    tutorProvider: new FakeProvider(),
+  });
+  const seedFocusScenario = async (dotProductInProgress = false) => {
+    await resetLearner();
+    await db.insert(courseEnrollments).values({
+      userId,
+      courseId: 'maths-for-ml',
+      status: 'active',
+      startMethod: 'beginning',
+    });
+    const completedPrerequisites = new Set<string>();
+    const addHardPrerequisites = (conceptId: string) => {
+      for (const prerequisite of focusContent.conceptsById.get(conceptId)?.prereqs ?? []) {
+        if (prerequisite.strength !== 'hard' || completedPrerequisites.has(prerequisite.id)) {
+          continue;
+        }
+        completedPrerequisites.add(prerequisite.id);
+        addHardPrerequisites(prerequisite.id);
+      }
+    };
+    addHardPrerequisites('dot-product');
+    addHardPrerequisites('derivatives');
+    for (const concept of focusContent.concepts) {
+      if (concept.id !== 'dot-product' && concept.id !== 'derivatives') {
+        completedPrerequisites.add(concept.id);
+      }
+    }
+    if (completedPrerequisites.size > 0) {
+      await db.insert(lessonRuns).values(
+        [...completedPrerequisites].map((conceptId) => ({
+          userId,
+          conceptId,
+          status: 'completed' as const,
+          startedAt: new Date(now),
+        })),
+      );
+    }
+    if (dotProductInProgress) {
+      await db.insert(lessonRuns).values({
+        userId,
+        conceptId: 'dot-product',
+        status: 'in_progress',
+        startedAt: new Date(now),
+      });
+    }
+    const dueAt = new Date('2025-12-31T00:00:00.000Z');
+    await createReviewCard('vectors', 'math', dueAt, learnedReviewFsrs(dueAt));
+  };
+  const hasVectorsReview = (activities: Array<{ kind: string; exerciseIds: string[] }>) =>
+    activities.some(
+      (activity) =>
+        activity.kind === 'review' &&
+        activity.exerciseIds.some(
+          (exerciseId) => focusContent.exercisesById.get(exerciseId)?.concept === 'vectors',
+        ),
+    );
+
+  await seedFocusScenario();
+  const unfocusedResponse = await focusApp.request('/api/sessions', {
+    method: 'POST',
+    headers: headersAt(now),
+    body: JSON.stringify({ budgetMinutes: 240 }),
+  });
+  expect(unfocusedResponse.status).toBe(201);
+  const unfocusedSession = await unfocusedResponse.json();
+  expect(
+    unfocusedSession.activities.some(
+      (activity: { kind: string; conceptId?: string }) =>
+        activity.kind === 'learn' && activity.conceptId === 'dot-product',
+    ),
+  ).toBe(true);
+  expect(hasVectorsReview(unfocusedSession.activities)).toBe(false);
+
+  await seedFocusScenario();
+  const focusedResponse = await focusApp.request('/api/sessions', {
+    method: 'POST',
+    headers: headersAt(now),
+    body: JSON.stringify({ budgetMinutes: 240, focusConceptId: 'derivatives' }),
+  });
+  expect(focusedResponse.status).toBe(201);
+  const focusedSession = await focusedResponse.json();
+  expect(
+    focusedSession.activities.some(
+      (activity: { kind: string; conceptId?: string }) =>
+        activity.kind === 'learn' && activity.conceptId === 'derivatives',
+    ),
+  ).toBe(true);
+  expect(
+    focusedSession.activities.some(
+      (activity: { kind: string; conceptId?: string }) =>
+        activity.kind === 'learn' && activity.conceptId === 'dot-product',
+    ),
+  ).toBe(false);
+  expect(hasVectorsReview(focusedSession.activities)).toBe(true);
+
+  await seedFocusScenario(true);
+  const inProgressFocusResponse = await focusApp.request('/api/sessions', {
+    method: 'POST',
+    headers: headersAt(now),
+    body: JSON.stringify({ budgetMinutes: 240, focusConceptId: 'derivatives' }),
+  });
+  expect(inProgressFocusResponse.status).toBe(201);
+  const inProgressFocusSession = await inProgressFocusResponse.json();
+  expect(
+    inProgressFocusSession.activities.some(
+      (activity: { kind: string; conceptId?: string }) =>
+        activity.kind === 'learn' && activity.conceptId === 'dot-product',
+    ),
+  ).toBe(true);
+  expect(hasVectorsReview(inProgressFocusSession.activities)).toBe(false);
 });
 
 test('practice answers expose selected options and reveal correct ids only after retries end', async () => {
@@ -901,8 +1095,12 @@ test('a Good review activity credits hard prerequisites but not soft prerequisit
     .slice(0, 3);
   expect(exercises).toHaveLength(3);
   const dueAt = new Date('2025-12-31T12:00:00.000Z');
+  const reviewedAt = new Date('2025-12-01T12:00:00.000Z');
   const fsrsForDue = () => ({
-    ...newReviewCard(new Date(now)),
+    ...scheduleReview(newReviewCard(reviewedAt), reviewedAt, Rating.Good, 'UTC', false).card,
+    state: State.Review,
+    stability: 12,
+    difficulty: 5,
     due: dueAt,
     reps: 6,
     lapses: 2,
@@ -965,6 +1163,149 @@ test('a Good review activity credits hard prerequisites but not soft prerequisit
   expect(await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, softCard.id))).toHaveLength(
     0,
   );
+});
+
+test('a Good review moves a two-hop ancestor by its inferred weight', async () => {
+  await resetLearner();
+  const path = content.concepts.flatMap((leaf) => {
+    const exercise = content.exercisesByConcept
+      .get(leaf.id)
+      ?.find((candidate) => !candidate.lesson_only && !isTemplate(candidate));
+    if (!exercise) return [];
+    return leaf.prereqs
+      .filter((prereq) => prereq.strength === 'hard')
+      .flatMap((prereq) => {
+        const middle = content.conceptsById.get(prereq.id);
+        return (
+          middle?.prereqs
+            .filter((ancestor) => ancestor.strength === 'hard')
+            .map((ancestor) => ({ leaf, ancestorId: ancestor.id, exercise })) ?? []
+        );
+      });
+  })[0];
+  if (!path) throw new Error('Expected a two-hop hard-prerequisite fixture');
+  const weight = buildEncompassingIndex(content).weight(path.leaf.id, path.ancestorId);
+  expect(weight).toBe(0.25);
+  const dueAt = new Date('2026-01-01T00:00:00.000Z');
+  const ancestor = await createReviewCard(
+    path.ancestorId,
+    path.exercise.dimension,
+    dueAt,
+    learnedReviewFsrs(dueAt),
+  );
+  await createReviewCard(path.leaf.id, path.exercise.dimension, dueAt);
+  const activity = await createReviewActivity(path.leaf.id, path.exercise.id);
+  const response = await app.request('/api/attempts', {
+    method: 'POST',
+    headers: headersAt(now),
+    body: JSON.stringify({
+      exerciseId: path.exercise.id,
+      activityId: activity.id,
+      answer: correctAnswer(path.exercise.id, null),
+      mode: 'review',
+    }),
+  });
+  expect(response.status).toBe(200);
+  const [updated] = await db.select().from(reviewCards).where(eq(reviewCards.id, ancestor.id));
+  if (!updated) throw new Error('Expected the ancestor review card');
+  const full = scheduleReview(ancestor.fsrs as Card, new Date(now), Rating.Good, 'UTC', false).card;
+  const expectedDue = new Date(dueAt.getTime() + weight * (full.due.getTime() - dueAt.getTime()));
+  expect(updated.dueAt).toEqual(expectedDue);
+  expect(updated.lastReviewAt).toBeNull();
+  expect(updated.reps).toBe(ancestor.reps);
+  expect(updated.lapses).toBe(ancestor.lapses);
+});
+
+test('Again credit interpolates a full-weight descendant without changing an unrelated topic', async () => {
+  await resetLearner();
+  const edge = content.concepts.flatMap((descendant) => {
+    const exercise = content.exercisesByConcept
+      .get(descendant.id)
+      ?.find(
+        (candidate) => candidate.type === 'mc' && !candidate.lesson_only && !isTemplate(candidate),
+      );
+    return exercise
+      ? descendant.prereqs
+          .filter((prereq) => prereq.strength === 'hard')
+          .map((prereq) => ({ descendant, parentId: prereq.id, exercise }))
+      : [];
+  })[0];
+  if (!edge) throw new Error('Expected a hard-prerequisite MC fixture');
+  if (edge.exercise.type !== 'mc') throw new Error('Expected a multiple-choice exercise');
+  const concepts = content.concepts.map((concept) =>
+    concept.id === edge.descendant.id
+      ? { ...concept, encompassings: [{ id: edge.parentId, weight: 1 }] }
+      : concept,
+  );
+  const index: ContentIndex = {
+    ...content,
+    concepts,
+    conceptsById: new Map(concepts.map((concept) => [concept.id, concept])),
+  };
+  const encompassing = buildEncompassingIndex(index);
+  expect(encompassing.weight(edge.descendant.id, edge.parentId)).toBe(1);
+  const customApp = createApp({ db, content: index, tutorProvider: new FakeProvider() });
+  const future = new Date('2026-01-11T12:00:00.000Z');
+  const descendantCard = await createReviewCard(
+    edge.descendant.id,
+    edge.exercise.dimension,
+    future,
+    learnedReviewFsrs(future),
+  );
+  const unrelated = concepts.find(
+    (concept) =>
+      concept.id !== edge.parentId &&
+      concept.id !== edge.descendant.id &&
+      encompassing.weight(concept.id, edge.parentId) === 0,
+  );
+  if (!unrelated) throw new Error('Expected an unrelated topic');
+  const unrelatedCard = await createReviewCard(
+    unrelated.id,
+    edge.exercise.dimension,
+    future,
+    learnedReviewFsrs(future),
+  );
+  await createReviewCard(edge.parentId, edge.exercise.dimension, new Date(now));
+  const activity = await createReviewActivity(edge.parentId, edge.exercise.id);
+  const wrongOption = edge.exercise.options.find((option) => !option.correct)?.id;
+  if (wrongOption === undefined) throw new Error('Expected a wrong option');
+  const response = await customApp.request('/api/attempts', {
+    method: 'POST',
+    headers: headersAt(now),
+    body: JSON.stringify({
+      exerciseId: edge.exercise.id,
+      activityId: activity.id,
+      answer: wrongOption,
+      mode: 'review',
+    }),
+  });
+  expect(response.status).toBe(200);
+  const [updatedDescendant, unchangedUnrelated] = await Promise.all([
+    db
+      .select()
+      .from(reviewCards)
+      .where(eq(reviewCards.id, descendantCard.id))
+      .then((rows) => rows[0]),
+    db
+      .select()
+      .from(reviewCards)
+      .where(eq(reviewCards.id, unrelatedCard.id))
+      .then((rows) => rows[0]),
+  ]);
+  if (!updatedDescendant || !unchangedUnrelated) throw new Error('Expected seeded cards');
+  const weight = encompassing.weight(edge.descendant.id, edge.parentId);
+  const againDue = scheduleReview(
+    descendantCard.fsrs as Card,
+    new Date(now),
+    Rating.Again,
+    'UTC',
+    false,
+  ).card.due;
+  const expectedDue = new Date(
+    descendantCard.dueAt.getTime() + weight * (againDue.getTime() - descendantCard.dueAt.getTime()),
+  );
+  expect(updatedDescendant.dueAt).toEqual(expectedDue);
+  expect(unchangedUnrelated.dueAt).toEqual(unrelatedCard.dueAt);
 });
 
 test('a wrong recall plus two correct problems rates its due card Hard without logging a non-due card', async () => {
@@ -1113,7 +1454,7 @@ test('a wrong recall and a wrong problem rate its due card Again without logging
   ).toHaveLength(0);
 });
 
-test('a Hard review activity does not credit hard prerequisites', async () => {
+test('a Hard review activity credits hard prerequisites', async () => {
   await resetLearner();
   const exercises = (content.exercisesByConcept.get('linear-models') ?? [])
     .filter(
@@ -1123,7 +1464,16 @@ test('a Hard review activity does not credit hard prerequisites', async () => {
     .slice(0, 3);
   expect(exercises).toHaveLength(3);
   const dueAt = new Date('2025-12-31T12:00:00.000Z');
-  const fsrs = { ...newReviewCard(new Date(now)), due: dueAt, reps: 6, lapses: 2 };
+  const reviewedAt = new Date('2025-12-01T12:00:00.000Z');
+  const fsrs = {
+    ...scheduleReview(newReviewCard(reviewedAt), reviewedAt, Rating.Good, 'UTC', false).card,
+    state: State.Review,
+    stability: 12,
+    difficulty: 5,
+    due: dueAt,
+    reps: 6,
+    lapses: 2,
+  };
   const prerequisiteCard = await createReviewCard('vectors', 'math', dueAt, fsrs);
   const currentCard = await createReviewCard('linear-models', 'math', dueAt, fsrs);
   const activity = await createReviewActivity(
@@ -1151,15 +1501,15 @@ test('a Hard review activity does not credit hard prerequisites', async () => {
     .from(reviewLogs)
     .where(eq(reviewLogs.cardId, currentCard.id));
   expect(currentLog?.rating).toBe(String(Rating.Hard));
-  const [unchanged] = await db
+  const [updated] = await db
     .select()
     .from(reviewCards)
     .where(eq(reviewCards.id, prerequisiteCard.id));
-  if (!unchanged) throw new Error('Expected the hard-prerequisite card');
-  expect(unchanged.dueAt).toEqual(prerequisiteCard.dueAt);
-  expect(unchanged.lastReviewAt).toEqual(prerequisiteCard.lastReviewAt);
-  expect(unchanged.reps).toBe(prerequisiteCard.reps);
-  expect(unchanged.lapses).toBe(prerequisiteCard.lapses);
+  if (!updated) throw new Error('Expected the hard-prerequisite card');
+  expect(updated.dueAt.getTime()).toBeGreaterThan(prerequisiteCard.dueAt.getTime());
+  expect(updated.lastReviewAt).toEqual(prerequisiteCard.lastReviewAt);
+  expect(updated.reps).toBe(prerequisiteCard.reps);
+  expect(updated.lapses).toBe(prerequisiteCard.lapses);
   expect(
     await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, prerequisiteCard.id)),
   ).toHaveLength(0);
@@ -2011,6 +2361,125 @@ test('partial explain answers get one follow-up before the exemplar and activity
   expect(await thirdResponse.json()).toMatchObject({ error: 'No retries remain.' });
 });
 
+test('a follow-up on the final review exercise applies implicit credit once at final grading', async () => {
+  await resetLearner();
+  const exercise = content.exercisesById.get('derivatives-explain');
+  if (exercise?.type !== 'explain') throw new Error('Missing derivatives explain exercise');
+  const dueAt = new Date('2025-12-31T00:00:00.000Z');
+  const currentCard = await createReviewCard(
+    exercise.concept,
+    exercise.dimension,
+    dueAt,
+    learnedReviewFsrs(dueAt),
+  );
+  const prerequisiteCard = await createReviewCard(
+    'vectors',
+    'conceptual',
+    dueAt,
+    learnedReviewFsrs(dueAt),
+  );
+  const [session] = await db
+    .insert(studySessions)
+    .values({ userId, plannedMinutes: 15, status: 'active', kind: 'weekday' })
+    .returning();
+  if (!session) throw new Error('Could not create a review session fixture');
+  const [activity] = await db
+    .insert(sessionActivities)
+    .values({
+      sessionId: session.id,
+      idx: 0,
+      kind: 'review',
+      conceptId: exercise.concept,
+      exerciseIds: [exercise.id],
+      plannedMinutes: 5,
+      status: 'in_progress',
+    })
+    .returning();
+  if (!activity) throw new Error('Could not create a review activity fixture');
+  const partialApp = createApp({
+    db,
+    content,
+    tutorProvider: new FakeProvider(undefined, {
+      criteria: [
+        { id: 'local-rate', judgement: 'partial', evidence: 'Mentions change.' },
+        { id: 'tangent-slope', judgement: 'missing', evidence: null },
+      ],
+      feedback_md: 'Add the tangent-slope connection.',
+    }),
+  });
+  const completeApp = createApp({
+    db,
+    content,
+    tutorProvider: new FakeProvider(undefined, {
+      criteria: exercise.rubric.map(({ id }) => ({
+        id,
+        judgement: 'met' as const,
+        evidence: 'Both criteria are addressed.',
+      })),
+      feedback_md: 'Complete explanation.',
+    }),
+  });
+  const submit = (targetApp: ReturnType<typeof createApp>, answer: string) =>
+    targetApp.request('/api/attempts', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'X-Now': now },
+      body: JSON.stringify({
+        exerciseId: exercise.id,
+        activityId: activity.id,
+        answer: { text: answer },
+        mode: 'review',
+      }),
+    });
+
+  const followUpResponse = await submit(partialApp, 'A change occurs at the point.');
+  expect(followUpResponse.status).toBe(200);
+  expect(await followUpResponse.json()).toMatchObject({
+    followUp: true,
+    retryAllowed: true,
+    activityCompleted: false,
+  });
+  const [prerequisiteAfterFollowUp] = await db
+    .select()
+    .from(reviewCards)
+    .where(eq(reviewCards.id, prerequisiteCard.id));
+  expect(prerequisiteAfterFollowUp?.dueAt).toEqual(dueAt);
+  expect(
+    await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, currentCard.id)),
+  ).toHaveLength(0);
+
+  const finalResponse = await submit(completeApp, 'It is the tangent slope.');
+  expect(finalResponse.status).toBe(200);
+  expect(await finalResponse.json()).toMatchObject({
+    attemptNo: 2,
+    retryAllowed: false,
+    activityCompleted: true,
+  });
+  const [prerequisiteAfterFinal] = await db
+    .select()
+    .from(reviewCards)
+    .where(eq(reviewCards.id, prerequisiteCard.id));
+  if (!prerequisiteAfterFinal) throw new Error('Could not reload the prerequisite review card');
+  expect(prerequisiteAfterFinal.dueAt.getTime()).toBeGreaterThan(dueAt.getTime());
+  const implicitCreditDueAt = prerequisiteAfterFinal.dueAt;
+  expect(
+    await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, currentCard.id)),
+  ).toHaveLength(1);
+  expect(
+    await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, prerequisiteCard.id)),
+  ).toHaveLength(0);
+
+  const replay = await submit(completeApp, 'A replay after completion.');
+  expect(replay.status).toBe(409);
+  const [prerequisiteAfterReplay] = await db
+    .select()
+    .from(reviewCards)
+    .where(eq(reviewCards.id, prerequisiteCard.id));
+  expect(prerequisiteAfterReplay?.dueAt).toEqual(implicitCreditDueAt);
+  expect(
+    await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, currentCard.id)),
+  ).toHaveLength(1);
+});
+
 test('review mode partial explain answers get one retry before card rating and completion', async () => {
   await resetLearner();
   const exercise = content.exercisesById.get('sl-explain-setup');
@@ -2301,7 +2770,7 @@ test('opening a lesson review does not create session or attempt rows', async ()
   expect(afterMasteryEvents).toHaveLength(beforeMasteryEvents.length);
 });
 
-test('lesson-runner schedules one due review per concept, then reschedules it', async () => {
+test('lesson-runner compresses covered reviews and reschedules an uncovered due review', async () => {
   await resetLearner('America/Los_Angeles');
   const dayOne = '2026-01-01T12:00:00.000Z';
   const { activity } = await createLearnActivity(dayOne);
@@ -2317,6 +2786,23 @@ test('lesson-runner schedules one due review per concept, then reschedules it', 
     headers: headersAt(reviewNow.toISOString()),
   });
   expect(todayResponse.status).toBe(200);
+  const today = await todayResponse.json();
+  expect(
+    today.plan.activities.some(
+      (activity: { kind: string; conceptId?: string }) =>
+        activity.kind === 'review' && activity.conceptId === 'vectors',
+    ),
+  ).toBe(false);
+  expect(
+    planCoversDueConcept(
+      today.plan.activities,
+      cards.filter((card) => card.conceptId === 'vectors'),
+      'vectors',
+      reviewNow,
+      'America/Los_Angeles',
+    ),
+  ).toBe(true);
+  await createReviewCard('switching-topic', 'math', reviewNow, learnedReviewFsrs(reviewNow));
   const sessionResponse = await app.request('/api/sessions', {
     method: 'POST',
     headers: headersAt(reviewNow.toISOString()),
@@ -2324,10 +2810,14 @@ test('lesson-runner schedules one due review per concept, then reschedules it', 
   });
   expect(sessionResponse.status).toBe(201);
   const session = await sessionResponse.json();
-  const dueCards = cards.filter((card) => isDueToday(card.dueAt, reviewNow, 'America/Los_Angeles'));
+  const allCards = await db.select().from(reviewCards).where(eq(reviewCards.userId, userId));
+  const dueCards = allCards.filter((card) =>
+    isDueToday(card.dueAt, reviewNow, 'America/Los_Angeles'),
+  );
   const reviewActivities = session.activities.filter(
     (activity: { kind: string }) => activity.kind === 'review',
   );
+  expect(reviewActivities[0]?.conceptId).toBe('switching-topic');
   const plannedCardKeys = reviewActivities.flatMap((activity: { exerciseIds: string[] }) =>
     activity.exerciseIds.flatMap((exerciseId) => {
       const exercise = content.exercisesById.get(exerciseId);
@@ -2339,8 +2829,10 @@ test('lesson-runner schedules one due review per concept, then reschedules it', 
     dueCards.some((card) => plannedCardKeys.includes(`${card.conceptId}/${card.dimension}`)),
   ).toBe(true);
 
-  const card = dueCards.find((item) =>
-    plannedCardKeys.includes(`${item.conceptId}/${item.dimension}`),
+  const card = dueCards.find(
+    (item) =>
+      item.conceptId === 'switching-topic' &&
+      plannedCardKeys.includes(`${item.conceptId}/${item.dimension}`),
   );
   if (!card) throw new Error('Planned review did not match a due card');
   const reviewActivity = reviewActivities.find((activity: { exerciseIds: string[] }) =>
@@ -2370,7 +2862,7 @@ test('lesson-runner schedules one due review per concept, then reschedules it', 
   const [rescheduled] = await db.select().from(reviewCards).where(eq(reviewCards.id, card.id));
   expect(rescheduled?.dueAt.getTime()).toBeGreaterThanOrEqual(reviewNow.getTime() + 86_400_000);
   const logs = await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, card.id));
-  expect(logs).toHaveLength(2);
+  expect(logs).toHaveLength(1);
 
   const laterToday = new Date(reviewNow.getTime() + 2 * 60 * 60_000);
   const laterResponse = await app.request('/api/today', {
