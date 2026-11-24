@@ -491,7 +491,7 @@ async function checkI3({
       return exercise ? [`${exercise.concept}/${exercise.dimension}`] : [];
     }),
   );
-  const isNextPlan = label === 'GET /today' || label.endsWith('/replan');
+  const isNextPlan = label === 'GET /today' && today.activeSessionId === null;
   const selectedCoverage = selectedTaskCoverage(coverageResults, [
     ...todayActivities(today),
     ...(active?.activities ?? []).filter((activity: Record<string, any>) =>
@@ -574,21 +574,33 @@ async function checkI3({
     if (!eligible || gradedToday.has(card.conceptId)) return [];
     const cardKey = `${card.conceptId}/${card.dimension}`;
     const reviewSelected = plannedReviewDimensions.has(cardKey);
-    if (lowerCreditCoveredConceptIds.has(card.conceptId)) {
-      if (!isNextPlan) return [];
-      if (!reviewSelected) {
-        return [
-          `${cardKey} was covered by a completed lower-credit review but not picked up by the next plan`,
-        ];
-      }
-      lowCreditPickedUpCardKeys.add(cardKey);
-      return [];
-    }
-    if (reviewSelected) return [];
     const plannerResult =
       selection?.results.find((result) => result.conceptId === card.conceptId) ??
       coverageResults?.find((result) => result.conceptId === card.conceptId);
-    if (selectedCoverage.coveredConceptIds.has(card.conceptId)) return [];
+    if (lowerCreditCoveredConceptIds.has(card.conceptId)) {
+      if (!isNextPlan) return [];
+      if (reviewSelected || selectedCoverage.coveredConceptIds.has(card.conceptId)) {
+        lowCreditPickedUpCardKeys.add(cardKey);
+        return [];
+      }
+      if (
+        plannerResult?.result === 'rejected:reviewMinuteCap' &&
+        selection &&
+        !isReviewTopicOverdueByCardDueAt(card.conceptId, cards, now) &&
+        reviewMinuteCapIsActuallyBinding(selection, card.conceptId, now)
+      ) {
+        recordBudgetDeferred('I3', card, now);
+        lowCreditPickedUpCardKeys.add(cardKey);
+        return [];
+      }
+      return [
+        `${cardKey} was covered by a completed lower-credit review but not picked up by the next plan`,
+      ];
+    }
+    if (reviewSelected || selectedCoverage.coveredConceptIds.has(card.conceptId)) {
+      lowCreditPickedUpCardKeys.add(cardKey);
+      return [];
+    }
     if (
       plannerResult?.result === 'not_candidate:reviewedToday' &&
       hasReviewLogForConceptToday(card.conceptId, now, todayLogs)
@@ -1044,7 +1056,12 @@ async function auditAll(now: Date, label: string) {
     readApi('/sessions/active', now),
     readApi('/reviews', now),
   ]);
-  const selection = realDataAuditMode ? await plannerSelectionForAudit(now, today) : undefined;
+  const isNewTodayPlan = label === 'GET /today' && today.activeSessionId === null;
+  const selection = realDataAuditMode
+    ? await plannerSelectionForAudit(now, today)
+    : isNewTodayPlan
+      ? await plannerSelectionAt(now, today)
+      : undefined;
   const coverageResults = selection?.results ?? (await plannerSelectionAt(now, today)).results;
   currentPlanActivityIds = new Set(
     [...todayActivities(today), ...(active?.activities ?? [])]
@@ -2558,7 +2575,11 @@ beforeAll(async () => {
         !isDueToday(card.dueAt, nowAtDay, timezone) ||
         gradedAtEndOfDay.has(card.conceptId) ||
         !hasEligibleReviewExercise(card.conceptId, card.dimension) ||
-        lowCreditPickedUpCardKeys.has(`${card.conceptId}/${card.dimension}`)
+        lowCreditPickedUpCardKeys.has(`${card.conceptId}/${card.dimension}`) ||
+        budgetDeferralsByDay
+          .get(localDateKey(nowAtDay, timezone))
+          ?.get(`${card.conceptId}/${card.dimension}`)
+          ?.checkers.includes('I3')
       ) {
         continue;
       }
