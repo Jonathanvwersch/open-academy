@@ -4889,6 +4889,8 @@ function exampleText(violation: SimulationViolation): string {
     activityLogs: evidence.activityLogs,
     mastery: evidence.mastery,
     schedulerExplanations: evidence.schedulerExplanations,
+    implicitRepetitionTrace: evidence.implicitRepetitionTrace,
+    prerequisiteResetEvidence: evidence.prerequisiteResetEvidence,
     budgetMinutes: evidence.budgetMinutes,
     reviewCapMinutes: evidence.reviewCapMinutes,
     usedMinutes: evidence.usedMinutes,
