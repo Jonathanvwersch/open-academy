@@ -11,6 +11,7 @@ import {
   p13HasEmptyPlanViolation,
   p14UncoveredDueCards,
   p16HasOverduePrecedenceViolation,
+  p17HasMissedFallbackOpportunity,
   p17ReviewFitsRemaining,
   p18HasMissedPickup,
   p19HasEarlyReviewViolation,
@@ -369,6 +370,40 @@ test('P14 checks selected and covered cards while excluding cap- and budget-reje
   ]);
 });
 
+test('P14 checks every math due card a covered fallback review would have protected', () => {
+  expect(
+    p14UncoveredDueCards(
+      [
+        { cardId: 'vectors/math', conceptId: 'vectors', dimension: 'math' },
+        { cardId: 'linear-models/math', conceptId: 'linear-models', dimension: 'math' },
+      ],
+      [
+        {
+          conceptIds: ['supervised-learning'],
+          cardIds: new Set(['vectors/math']),
+          selectedCardIds: new Set(),
+          unfinished: true,
+        },
+      ],
+      [
+        {
+          conceptId: 'vectors',
+          result: 'covered',
+          coveringConceptId: 'supervised-learning',
+          exerciseIds: [],
+          exerciseDimensions: ['math'],
+          reviewMinutes: 0,
+          reviewCap: 6,
+          usedMinutes: 15,
+          budget: 20,
+          plannedActivityCount: 1,
+        },
+      ],
+      new Map([['vectors', new Set(['vectors', 'linear-models'])]]),
+    ),
+  ).toEqual(['linear-models/math']);
+});
+
 test('review feasibility requires positive minutes and respects budget and overdue cap bypass', () => {
   expect(reviewFeasible(8, 8, 0, 2)).toBe(true);
   expect(reviewFeasible(8, 7, 0, 2)).toBe(false);
@@ -606,6 +641,57 @@ test('P17 flags a dropped review only when it fits both remaining limits', () =>
   expect(requireP17ReviewMinutes('vectors', 8)).toBe(8);
   expect(() => requireP17ReviewMinutes('vectors', 0)).toThrow(/vectors/);
   expect(() => requireP17ReviewMinutes('vectors', undefined)).toThrow(/vectors/);
+});
+
+test('P17 detects missed due-review fallback reservations', () => {
+  expect(
+    p17HasMissedFallbackOpportunity({
+      result: 'rejected:reviewMinuteCap',
+      reviewSelected: false,
+      coveringLessonSelected: false,
+      coveringLessonAvailable: false,
+      selectedLearnMinutes: 15,
+      reviewMinutes: 8,
+      coveringLessonMinutes: 0,
+      budgetMinutes: 20,
+    }),
+  ).toBe(true);
+  expect(
+    p17HasMissedFallbackOpportunity({
+      result: 'selected',
+      reviewSelected: true,
+      coveringLessonSelected: false,
+      coveringLessonAvailable: true,
+      selectedLearnMinutes: 0,
+      reviewMinutes: 8,
+      coveringLessonMinutes: 15,
+      budgetMinutes: 20,
+    }),
+  ).toBe(true);
+  expect(
+    p17HasMissedFallbackOpportunity({
+      result: 'covered',
+      reviewSelected: false,
+      coveringLessonSelected: true,
+      coveringLessonAvailable: true,
+      selectedLearnMinutes: 15,
+      reviewMinutes: 8,
+      coveringLessonMinutes: 15,
+      budgetMinutes: 20,
+    }),
+  ).toBe(false);
+  expect(
+    p17HasMissedFallbackOpportunity({
+      result: 'rejected:reviewMinuteCap',
+      reviewSelected: false,
+      coveringLessonSelected: false,
+      coveringLessonAvailable: false,
+      selectedLearnMinutes: 15,
+      reviewMinutes: 8,
+      coveringLessonMinutes: 0,
+      budgetMinutes: 30,
+    }),
+  ).toBe(false);
 });
 
 test('P18 flags a missed same-day low-credit pickup only while it remains due without a log', () => {

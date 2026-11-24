@@ -6,6 +6,7 @@ import { createDb } from '../src/db/client.js';
 import {
   renderMarkdownReport,
   type SimulationProfile,
+  scriptedScenarioProfiles,
   simulateLearners,
   simulationProfiles,
 } from './learner-simulator.js';
@@ -59,10 +60,16 @@ async function main() {
   const db = createDb(env.TEST_DATABASE_URL);
   try {
     const content = await loadContent();
+    const scenarioContent = profiles.some((profile) =>
+      scriptedScenarioProfiles.includes(profile as (typeof scriptedScenarioProfiles)[number]),
+    )
+      ? await loadContent('tests/fixtures/content')
+      : undefined;
     const report = await simulateLearners(db, content, {
       profiles,
       days,
       ...(courseIds ? { courseIds } : {}),
+      ...(scenarioContent ? { scenarioContent } : {}),
       onProgress: (message) => {
         const match = message.match(/day (\d+)\/(\d+)/);
         if (!match || Number(match[1]) === 1 || Number(match[1]) % 10 === 0) {

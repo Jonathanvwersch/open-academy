@@ -20,7 +20,12 @@ import {
   users,
 } from '../src/db/schema.js';
 import { buildEncompassingIndex, type EncompassingIndex } from '../src/learning/encompassing.js';
-import { isDueToday, startOfNextCalendarDay } from '../src/learning/fsrs.js';
+import {
+  isDueToday,
+  newReviewCard,
+  scheduleReview,
+  startOfNextCalendarDay,
+} from '../src/learning/fsrs.js';
 import { implicitRepetition } from '../src/learning/implicit-repetition.js';
 import {
   type ImplicitRepetitionTraceEvent,
@@ -40,7 +45,7 @@ import {
   SCHEDULER_CONFIG,
   type SchedulerState,
 } from '../src/learning/scheduler.js';
-import type { MasteryState } from '../src/learning/types.js';
+import { initialMastery, type MasteryState } from '../src/learning/types.js';
 import { localDateKey } from '../src/learning/xp.js';
 import { answerFor, exerciseFor, wrongAnswerFor } from './learner-simulation-support.js';
 
@@ -52,9 +57,24 @@ export const simulationProfiles = [
   'placement',
   'graph-change',
   'gap',
+  'scenario-p14-fallback',
+  'scenario-p17-fallback',
+  'scenario-p17-covering',
 ] as const;
 
 export type SimulationProfile = (typeof simulationProfiles)[number];
+export const scriptedScenarioProfiles = [
+  'scenario-p14-fallback',
+  'scenario-p17-fallback',
+  'scenario-p17-covering',
+] as const satisfies readonly SimulationProfile[];
+const scriptedScenarioProfileSet: ReadonlySet<SimulationProfile> = new Set(
+  scriptedScenarioProfiles,
+);
+
+function isScriptedScenarioProfile(profile: SimulationProfile): boolean {
+  return scriptedScenarioProfileSet.has(profile);
+}
 export type InvariantId =
   | 'P1'
   | 'P2'
@@ -330,6 +350,7 @@ export interface LearnerSimulationOptions {
   profiles: SimulationProfile[];
   days: number;
   courseIds?: string[];
+  scenarioContent?: ContentIndex;
   timeZone?: string;
   startDate?: string;
   onProgress?: (message: string) => void;
@@ -1074,20 +1095,47 @@ export function p14UncoveredDueCards(
     unfinished: boolean;
   }[],
   explanations: readonly ReviewSelectionExplanation[],
+  fallbackCoverageByConcept: ReadonlyMap<string, ReadonlySet<string>> = new Map(),
 ): string[] {
-  return dueCards.flatMap(({ cardId, conceptId, dimension }) => {
-    const explanation = p14ExplanationForCard({ conceptId, dimension }, explanations);
-    if (!explanation) return [];
-    const covered = activityCoverage.some(({ conceptIds, cardIds, selectedCardIds, unfinished }) =>
-      explanation.result === 'covered'
-        ? cardIds.has(cardId) &&
-          unfinished &&
-          explanation.coveringConceptId !== undefined &&
-          conceptIds.includes(explanation.coveringConceptId)
-        : selectedCardIds.has(cardId),
+  const uncovered = new Set(
+    dueCards.flatMap(({ cardId, conceptId, dimension }) => {
+      const explanation = p14ExplanationForCard({ conceptId, dimension }, explanations);
+      if (!explanation) return [];
+      const covered = activityCoverage.some(
+        ({ conceptIds, cardIds, selectedCardIds, unfinished }) =>
+          explanation.result === 'covered'
+            ? cardIds.has(cardId) &&
+              unfinished &&
+              explanation.coveringConceptId !== undefined &&
+              conceptIds.includes(explanation.coveringConceptId)
+            : selectedCardIds.has(cardId),
+      );
+      return covered ? [] : [cardId];
+    }),
+  );
+  for (const explanation of explanations) {
+    if (explanation.result !== 'covered' || !explanation.coveringConceptId) continue;
+    const fallbackCoverage = fallbackCoverageByConcept.get(explanation.conceptId);
+    if (!fallbackCoverage) continue;
+    const coveringLessonExists = activityCoverage.some(
+      ({ conceptIds, unfinished }) =>
+        unfinished && conceptIds.includes(explanation.coveringConceptId ?? ''),
     );
-    return covered ? [] : [cardId];
-  });
+    if (!coveringLessonExists) continue;
+    for (const card of dueCards) {
+      if (
+        fallbackCoverage.has(card.conceptId) &&
+        explanation.exerciseDimensions.includes(card.dimension) &&
+        !activityCoverage.some(
+          ({ cardIds, selectedCardIds, unfinished }) =>
+            unfinished && (cardIds.has(card.cardId) || selectedCardIds.has(card.cardId)),
+        )
+      ) {
+        uncovered.add(card.cardId);
+      }
+    }
+  }
+  return [...uncovered];
 }
 
 export function p16HasOverduePrecedenceViolation(
@@ -1121,6 +1169,181 @@ export function p17ReviewFitsRemaining(
     remainingReviewCapMinutes,
     overdueDays,
   );
+}
+
+export function p17HasMissedFallbackOpportunity(input: {
+  result: string;
+  reviewSelected: boolean;
+  coveringLessonSelected: boolean;
+  coveringLessonAvailable: boolean;
+  selectedLearnMinutes: number;
+  reviewMinutes: number;
+  coveringLessonMinutes: number;
+  budgetMinutes: number;
+}): boolean {
+  if (
+    input.reviewMinutes <= 0 ||
+    input.reviewMinutes > input.budgetMinutes ||
+    input.coveringLessonSelected
+  ) {
+    return false;
+  }
+  if (
+    input.reviewSelected &&
+    input.coveringLessonAvailable &&
+    input.coveringLessonMinutes > 0 &&
+    input.coveringLessonMinutes <= input.budgetMinutes
+  ) {
+    return true;
+  }
+  return (
+    (input.result === 'rejected:budget' || input.result === 'rejected:reviewMinuteCap') &&
+    !input.reviewSelected &&
+    input.selectedLearnMinutes > 0 &&
+    input.selectedLearnMinutes + input.reviewMinutes > input.budgetMinutes
+  );
+}
+
+function scriptedScenarioContent(profile: SimulationProfile, content: ContentIndex): ContentIndex {
+  const concepts = content.concepts.map((concept) => {
+    if (concept.id === 'supervised-learning') {
+      const weight =
+        profile === 'scenario-p14-fallback'
+          ? 0.02
+          : profile === 'scenario-p17-covering'
+            ? 1
+            : undefined;
+      return {
+        ...concept,
+        est_minutes: 15,
+        encompassings: [
+          ...(concept.encompassings ?? []).filter(({ id }) => id !== 'vectors'),
+          ...(weight === undefined ? [] : [{ id: 'vectors', weight }]),
+        ],
+      };
+    }
+    if (profile === 'scenario-p14-fallback' && concept.id === 'vectors') {
+      return {
+        ...concept,
+        encompassings: [
+          ...(concept.encompassings ?? []).filter(({ id }) => id !== 'linear-models'),
+          { id: 'linear-models', weight: 0.1 },
+        ],
+      };
+    }
+    return concept;
+  });
+  const exercises = content.exercises.map((exercise) => {
+    if (exercise.concept === 'vectors' && exercise.dimension === 'math') {
+      return { ...exercise, est_minutes: 3 };
+    }
+    if (
+      exercise.concept === 'linear-models' &&
+      exercise.dimension === 'math' &&
+      profile === 'scenario-p14-fallback'
+    ) {
+      return { ...exercise, est_minutes: 8 };
+    }
+    return exercise;
+  });
+  const conceptsById = new Map(concepts.map((concept) => [concept.id, concept]));
+  const exercisesById = new Map(exercises.map((exercise) => [exercise.id, exercise]));
+  const updateExercises = (items: typeof exercises) =>
+    items.map((exercise) => exercisesById.get(exercise.id) ?? exercise);
+  return {
+    ...content,
+    concepts,
+    conceptsById,
+    exercises,
+    exercisesById,
+    exercisesByConcept: new Map(
+      [...content.exercisesByConcept].map(([conceptId, items]) => [
+        conceptId,
+        updateExercises(items),
+      ]),
+    ),
+    exercisesByDimension: new Map(
+      [...content.exercisesByDimension].map(([dimension, items]) => [
+        dimension,
+        updateExercises(items),
+      ]),
+    ),
+    exercisesByRole: new Map(
+      [...content.exercisesByRole].map(([role, items]) => [role, updateExercises(items)]),
+    ),
+  };
+}
+
+function scriptedScenarioReviewCard(
+  userId: string,
+  conceptId: string,
+  dueAt: Date,
+  stability: number,
+): typeof reviewCards.$inferInsert {
+  const reviewedAt = new Date(dueAt.getTime() - 45 * 86_400_000);
+  const scheduled = scheduleReview(
+    newReviewCard(reviewedAt),
+    reviewedAt,
+    Rating.Good,
+    'UTC',
+    false,
+  ).card;
+  return {
+    userId,
+    conceptId,
+    dimension: 'math',
+    fsrs: { ...scheduled, state: State.Review, stability, due: dueAt },
+    dueAt,
+    lastReviewAt: reviewedAt,
+    reps: scheduled.reps,
+    lapses: scheduled.lapses,
+  };
+}
+
+async function seedScriptedScenario(
+  db: Database,
+  userId: string,
+  profile: SimulationProfile,
+  content: ContentIndex,
+  now: Date,
+): Promise<void> {
+  const freshConceptId = 'supervised-learning';
+  await db.delete(reviewCards).where(eq(reviewCards.userId, userId));
+  await db.delete(lessonRuns).where(eq(lessonRuns.userId, userId));
+  await db.delete(mastery).where(eq(mastery.userId, userId));
+  const masteryRows = content.concepts
+    .filter((concept) => concept.id !== freshConceptId)
+    .flatMap((concept) =>
+      concept.dimensions.map((dimension) => {
+        const record = initialMastery(concept.id, dimension);
+        return {
+          userId,
+          conceptId: concept.id,
+          dimension,
+          state: 'independent' as const,
+          provisional: false,
+          inferred: false,
+          evidence: {
+            independentItemIds: record.independentItemIds,
+            independentDeterministicCount: 1,
+            lastIndependentCorrect: true,
+            attempts: record.attempts,
+          },
+          lastAssessedAt: now,
+          lastIndependentAt: now,
+          firstIndependentAt: now,
+        };
+      }),
+    );
+  await db.insert(mastery).values(masteryRows);
+  const cards =
+    profile === 'scenario-p14-fallback'
+      ? [
+          scriptedScenarioReviewCard(userId, 'vectors', now, 1),
+          scriptedScenarioReviewCard(userId, 'linear-models', now, 30),
+        ]
+      : [scriptedScenarioReviewCard(userId, 'vectors', now, 30)];
+  await db.insert(reviewCards).values(cards);
 }
 
 export function requireP17ReviewMinutes(conceptId: string, value: unknown): number {
@@ -3567,6 +3790,78 @@ function auditSavedSessionPlan(
   const dueCards = state.cards.filter((card) =>
     isDueToday(card.dueAt, now, state.timezone ?? 'UTC'),
   );
+  const dueConceptIds = new Set(dueCards.map((card) => card.conceptId));
+  const selectedLearnMinutes = activities
+    .filter((activity) => activity.kind === 'learn')
+    .reduce((total, activity) => total + activity.plannedMinutes, 0);
+  const selectedReviewConceptIds = new Set(
+    activities
+      .filter((activity) => activity.kind === 'review')
+      .flatMap((activity) => [
+        ...(activity.reviewTopics ?? []).map(({ conceptId }) => conceptId),
+        ...(activity.exerciseIds ?? []).flatMap((exerciseId) => {
+          const conceptId = content.exercisesById.get(exerciseId)?.concept;
+          return conceptId ? [conceptId] : [];
+        }),
+      ]),
+  );
+  const selectedLearnConceptIds = new Set(
+    activities.flatMap((activity) =>
+      activity.kind === 'learn' && activity.conceptId ? [activity.conceptId] : [],
+    ),
+  );
+  const unfinishedLessonConcepts = new Set(
+    (state.lessonRuns ?? [])
+      .filter((run) => ['in_progress', 'quiz', 'needs_retry'].includes(run.status))
+      .map((run) => run.conceptId),
+  );
+  for (const explanation of explanations) {
+    if (!dueConceptIds.has(explanation.conceptId)) continue;
+    const fallbackCoverage = new Set(
+      dueTopicsCoveredByForAudit(explanation.conceptId, state, content, now),
+    );
+    fallbackCoverage.add(explanation.conceptId);
+    const coveringLesson = learn.choices.find(
+      (choice) =>
+        !unfinishedLessonConcepts.has(choice.conceptId) &&
+        [...fallbackCoverage].every((dueConceptId) =>
+          dueTopicsCoveredByForAudit(choice.conceptId, state, content, now).has(dueConceptId),
+        ),
+    );
+    const coveringLessonConcept = coveringLesson?.conceptId;
+    const coveringLessonMinutes = coveringLessonConcept
+      ? adjustedMinutesForLearnerPace(
+          content.conceptsById.get(coveringLessonConcept)?.est_minutes ?? 0,
+          state.actualEstimateRatio,
+        )
+      : 0;
+    const selectedCoveringLesson = [...selectedLearnConceptIds].some((conceptId) =>
+      [...fallbackCoverage].every((dueConceptId) =>
+        dueTopicsCoveredByForAudit(conceptId, state, content, now).has(dueConceptId),
+      ),
+    );
+    const reviewSelected = selectedReviewConceptIds.has(explanation.conceptId);
+    markChecked(runtime, 'P17');
+    if (
+      p17HasMissedFallbackOpportunity({
+        result: explanation.result,
+        reviewSelected,
+        coveringLessonSelected: selectedCoveringLesson,
+        coveringLessonAvailable: coveringLessonConcept !== undefined,
+        selectedLearnMinutes,
+        reviewMinutes: explanation.candidateMinutes ?? 0,
+        coveringLessonMinutes,
+        budgetMinutes,
+      })
+    ) {
+      addViolation(runtime, day, 'P17', explanation.conceptId, [], {
+        courseId,
+        conceptId: explanation.conceptId,
+        evidenceConceptIds: coveringLessonConcept ? [coveringLessonConcept] : [],
+        details: `${planLabel} missed the fallback opportunity for due review ${explanation.conceptId}`,
+      });
+    }
+  }
   const coveredOrSelectedConceptIds = new Set(
     explanations
       .filter(
@@ -3608,14 +3903,24 @@ function auditSavedSessionPlan(
     ),
     unfinished: activity.status !== 'completed' && activity.status !== 'skipped',
   }));
+  const fallbackCoverageByConcept = new Map(
+    explanations.map((explanation) => [
+      explanation.conceptId,
+      new Set([
+        ...dueTopicsCoveredByForAudit(explanation.conceptId, state, content, now),
+        explanation.conceptId,
+      ]),
+    ]),
+  );
   for (const cardId of p14UncoveredDueCards(
-    checkedDueCards.map((card) => ({
+    dueCards.map((card) => ({
       cardId: dueCardKey(card),
       conceptId: card.conceptId,
       dimension: card.dimension,
     })),
     activityCoverage,
     explanations,
+    fallbackCoverageByConcept,
   )) {
     const card = dueCards.find((item) => dueCardKey(item) === cardId);
     addViolation(runtime, day, 'P14', cardId, [], {
@@ -3911,7 +4216,8 @@ async function simulateProfile(
       }));
     syncCourseSummaries(runtime, catalog, 0);
 
-    for (let day = 1; day <= options.days; day += 1) {
+    const dayLimit = isScriptedScenarioProfile(profile) ? 1 : options.days;
+    for (let day = 1; day <= dayLimit; day += 1) {
       const now = localNoon(dateAfter(startDate, day - 1), timeZone);
       const currentCatalog = await fetchCourseCatalog(api, now);
       syncCourseSummaries(runtime, currentCatalog, day - 1);
@@ -3936,17 +4242,24 @@ async function simulateProfile(
         await api.require('PUT', '/course/active', now, { courseId });
       }
 
+      if (day === 1 && isScriptedScenarioProfile(profile)) {
+        const userId = api.userId;
+        if (!userId) throw new Error('Simulation API did not create a learner');
+        await seedScriptedScenario(db, userId, profile, activeContent, now);
+      }
       const today = await api.require<TodayPayload>('GET', '/today', now);
       const learn = await api.require<LearnPayload>('GET', '/learn', now);
       const userId = api.userId;
       if (!userId) throw new Error('Simulation API did not create a learner');
       const budgetChoices: Array<number | undefined> = [10, 20, 30, 45, 60, undefined];
-      const selectedBudget =
-        budgetChoices[
-          Math.floor(
-            decisionRandom(profile, day, 'daily-session', 'budget', 1) * budgetChoices.length,
-          )
-        ];
+      const scriptedScenario = isScriptedScenarioProfile(profile);
+      const selectedBudget = scriptedScenario
+        ? 20
+        : budgetChoices[
+            Math.floor(
+              decisionRandom(profile, day, 'daily-session', 'budget', 1) * budgetChoices.length,
+            )
+          ];
       const budgetRequest = selectedBudget === undefined ? {} : { budgetMinutes: selectedBudget };
       const stateBeforeSession = await new LearnerRepository(db, userId).schedulerState(
         now,
@@ -3955,9 +4268,12 @@ async function simulateProfile(
       const hadDueReviews = stateBeforeSession.cards.some((card) =>
         isDueToday(card.dueAt, now, stateBeforeSession.timezone ?? timeZone),
       );
-      const shouldReplan = decisionRandom(profile, day, 'daily-session', 'replan', 1) < 0.2;
+      const shouldReplan =
+        !scriptedScenario && decisionRandom(profile, day, 'daily-session', 'replan', 1) < 0.2;
       const shouldFocusDueReview =
-        hadDueReviews && decisionRandom(profile, day, 'daily-session', 'due-review-focus', 1) < 0.3;
+        !scriptedScenario &&
+        hadDueReviews &&
+        decisionRandom(profile, day, 'daily-session', 'due-review-focus', 1) < 0.3;
       runtime.activeBehaviors = {
         B1BudgetMinutes: selectedBudget ?? null,
         B2FocusConceptId: null,
@@ -4545,7 +4861,14 @@ export async function simulateLearners(
   try {
     for (const profile of options.profiles) {
       options.onProgress?.(`Starting ${profile}`);
-      profiles.push(await simulateProfile(db, content, options, profile));
+      const scenarioProfile = isScriptedScenarioProfile(profile);
+      if (scenarioProfile && !options.scenarioContent) {
+        throw new Error(`Scripted scenario ${profile} requires fixture content`);
+      }
+      const profileContent = scenarioProfile
+        ? scriptedScenarioContent(profile, options.scenarioContent ?? content)
+        : content;
+      profiles.push(await simulateProfile(db, profileContent, options, profile));
     }
   } finally {
     if (previousNodeEnv === undefined) delete process.env.NODE_ENV;
