@@ -914,6 +914,13 @@ function packWeekday(
             localDateKey(new Date(earliestDueAt), timezone) <= shiftLocalDateKey(localToday, -2)),
       };
     });
+  const byUrgency = (
+    left: (typeof reviewCandidateDetails)[number],
+    right: (typeof reviewCandidateDetails)[number],
+  ) =>
+    right.candidate.activity.reason.terms.review - left.candidate.activity.reason.terms.review ||
+    right.candidate.score - left.candidate.score ||
+    left.index - right.index;
   const learnCandidates = candidates
     .filter((candidate) => candidate.activity.kind === 'learn')
     .filter((candidate) => !unfinishedLessonConcepts.has(candidate.activity.conceptId ?? ''));
@@ -936,6 +943,21 @@ function packWeekday(
     if (fitsReviewCap && reservedMinutes + candidate.adjustedMinutes <= budget) {
       reservedReviewMinutes += candidate.adjustedMinutes;
       reservedMinutes += candidate.adjustedMinutes;
+    }
+  }
+  if (reservedReviewMinutes === 0) {
+    const fallbackReservation = [...reviewCandidateDetails]
+      .filter(
+        ({ candidate }) =>
+          !candidate.remediation &&
+          candidate.activity.conceptId &&
+          dueConceptIds.has(candidate.activity.conceptId),
+      )
+      .sort(byUrgency)
+      .find(({ candidate }) => reservedMinutes + candidate.adjustedMinutes <= budget)?.candidate;
+    if (fallbackReservation) {
+      reservedReviewMinutes += fallbackReservation.adjustedMinutes;
+      reservedMinutes += fallbackReservation.adjustedMinutes;
     }
   }
   learnBudget = Math.max(0, budget - reservedMinutes);
@@ -1021,13 +1043,6 @@ function packWeekday(
     if (canSelectLearn(candidate) && add(candidate)) newConceptCount += 1;
   }
 
-  const byUrgency = (
-    left: (typeof reviewCandidateDetails)[number],
-    right: (typeof reviewCandidateDetails)[number],
-  ) =>
-    right.candidate.activity.reason.terms.review - left.candidate.activity.reason.terms.review ||
-    right.candidate.score - left.candidate.score ||
-    left.index - right.index;
   const coveredBy = new Map<string, string>();
   for (const candidate of selected) {
     const taskConceptId = candidate.activity.conceptId;

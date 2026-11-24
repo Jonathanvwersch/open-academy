@@ -1,5 +1,96 @@
-import { describe, expect, it } from 'vitest';
-import { sessionBudget } from '../../src/learning/scheduler.js';
+import { Rating, State } from 'ts-fsrs';
+import { beforeAll, describe, expect, it } from 'vitest';
+import { loadContent } from '../../src/content/load.js';
+import type { ContentIndex } from '../../src/content/types.js';
+import { newReviewCard, scheduleReview } from '../../src/learning/fsrs.js';
+import type { SchedulerState } from '../../src/learning/scheduler.js';
+import { planSession, sessionBudget } from '../../src/learning/scheduler.js';
+import { initialMastery } from '../../src/learning/types.js';
+
+const now = new Date('2026-01-14T12:00:00.000Z');
+let fixtureContent: ContentIndex;
+
+beforeAll(async () => {
+  fixtureContent = await loadContent('tests/fixtures/content');
+});
+
+function plannerState(
+  content: ContentIndex,
+  options: {
+    activeCourseId?: string | null;
+    studyCourseIds?: string[];
+    freshConceptId?: string;
+    cards?: SchedulerState['cards'];
+  } = {},
+): SchedulerState {
+  return {
+    timezone: 'UTC',
+    activeCourseId:
+      options.activeCourseId === undefined ? 'fixture-course' : options.activeCourseId,
+    studyCourseIds: options.studyCourseIds ?? ['fixture-course'],
+    recentLearnMinutesByConcept: {},
+    mastery: content.concepts.flatMap((concept) =>
+      concept.id === options.freshConceptId
+        ? []
+        : concept.dimensions.map((dimension) => ({
+            ...initialMastery(concept.id, dimension),
+            state: 'independent' as const,
+          })),
+    ),
+    cards: options.cards ?? [],
+    reviewedTodayConceptIds: [],
+    recentAttempts: [],
+    remediationFlags: [],
+    projectProgress: [],
+    completedPaperIds: [],
+    startDate: '2026-01-05T00:00:00.000Z',
+  };
+}
+
+function reviewCard(conceptId: string, dueAt: Date): SchedulerState['cards'][number] {
+  const reviewedAt = new Date('2025-12-01T12:00:00.000Z');
+  return {
+    conceptId,
+    dimension: 'math',
+    dueAt: dueAt.toISOString(),
+    fsrs: {
+      ...scheduleReview(newReviewCard(reviewedAt), reviewedAt, Rating.Good, 'UTC', false).card,
+      state: State.Review,
+      stability: 30,
+      due: dueAt,
+    },
+  };
+}
+
+function lessonCrowdingContent(): ContentIndex {
+  const concepts = fixtureContent.concepts.map((concept) =>
+    concept.id === 'supervised-learning' ? { ...concept, est_minutes: 15 } : concept,
+  );
+  const exercises = fixtureContent.exercises.map((exercise) =>
+    exercise.concept === 'vectors' && exercise.dimension === 'math'
+      ? { ...exercise, est_minutes: 3 }
+      : exercise,
+  );
+  const exercisesById = new Map(exercises.map((exercise) => [exercise.id, exercise]));
+  const updateExercises = (items: typeof exercises) =>
+    items.map((exercise) => exercisesById.get(exercise.id) ?? exercise);
+  return {
+    ...fixtureContent,
+    concepts,
+    conceptsById: new Map(concepts.map((concept) => [concept.id, concept])),
+    exercises,
+    exercisesById,
+    exercisesByConcept: new Map(
+      [...fixtureContent.exercisesByConcept].map(([conceptId, items]) => [
+        conceptId,
+        updateExercises(items),
+      ]),
+    ),
+    exercisesByRole: new Map(
+      [...fixtureContent.exercisesByRole].map(([role, items]) => [role, updateExercises(items)]),
+    ),
+  };
+}
 
 describe('sessionBudget', () => {
   it('uses configurable weekday and weekend defaults', () => {
@@ -11,3 +102,31 @@ describe('sessionBudget', () => {
     expect(sessionBudget('sunday', { sundayMinutes: 75 })).toBe(75);
   });
 });
+
+describe('review budget reservation', () => {
+  it('reserves the only due review before a fresh lesson uses the budget', () => {
+    const content = lessonCrowdingContent();
+    const state = plannerState(content, {
+      freshConceptId: 'supervised-learning',
+      cards: [reviewCard('vectors', now)],
+    });
+
+    const plan = planSession(state, content, now, 20);
+    const review = plan.activities.find((activity) => activity.kind === 'review');
+
+    expect(review?.conceptId).toBe('vectors');
+    expect(review?.plannedMinutes).toBeGreaterThan(6);
+    expect(plan.activities.some((activity) => activity.kind === 'learn')).toBe(false);
+    expect(
+      plan.activities.reduce((total, activity) => total + activity.plannedMinutes, 0),
+    ).toBeLessThanOrEqual(20);
+
+    const fitBudget = (review?.plannedMinutes ?? 0) + 15;
+    const fitPlan = planSession(state, content, now, fitBudget);
+
+    expect(
+      fitPlan.activities.some(
+        (activity) => activity.kind === 'learn' && activity.conceptId === 'supervised-learning',
+      ),
+    ).toBe(true);
+    expect(fitPlan.activities.some((activity) => activity.kind === 'review')).toBe(true);
