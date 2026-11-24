@@ -598,7 +598,6 @@ async function checkI3({
       ];
     }
     if (reviewSelected || selectedCoverage.coveredConceptIds.has(card.conceptId)) {
-      lowCreditPickedUpCardKeys.add(cardKey);
       return [];
     }
     if (
@@ -2575,7 +2574,6 @@ beforeAll(async () => {
         !isDueToday(card.dueAt, nowAtDay, timezone) ||
         gradedAtEndOfDay.has(card.conceptId) ||
         !hasEligibleReviewExercise(card.conceptId, card.dimension) ||
-        lowCreditPickedUpCardKeys.has(`${card.conceptId}/${card.dimension}`) ||
         budgetDeferralsByDay
           .get(localDateKey(nowAtDay, timezone))
           ?.get(`${card.conceptId}/${card.dimension}`)
