@@ -20,8 +20,12 @@ import {
   users,
 } from '../src/db/schema.js';
 import { buildEncompassingIndex, type EncompassingIndex } from '../src/learning/encompassing.js';
-import { isDueToday, scheduleReview, startOfNextCalendarDay } from '../src/learning/fsrs.js';
+import { isDueToday, startOfNextCalendarDay } from '../src/learning/fsrs.js';
 import { implicitRepetition } from '../src/learning/implicit-repetition.js';
+import {
+  type ImplicitRepetitionTraceEvent,
+  setImplicitRepetitionTrace,
+} from '../src/learning/mastery-service.js';
 import {
   bringWeakestPrerequisiteCardDueNow,
   canBringPrerequisiteDueNow,
@@ -137,6 +141,15 @@ export interface SimulationMasteryEvidence {
 export interface SimulationViolationEvidence {
   beforeCards: SimulationCardEvidence[];
   afterCards: SimulationCardEvidence[];
+  implicitRepetitionTrace: Array<ImplicitRepetitionTraceEvent & { activityOrder: number | null }>;
+  prerequisiteResetEvidence: Array<{
+    sourceCardId: string;
+    sourceConceptId: string;
+    sourceOrder: number;
+    candidateCardIds: string[];
+    eligibleCardIds: string[];
+    selectedCardId: string | null;
+  }>;
   activityLogs: Array<{
     cardId: string;
     conceptId: string;
@@ -396,7 +409,6 @@ interface ProfileRuntime {
   violationEvidenceContext: SimulationViolationEvidence;
   planEvidenceByDay: Map<number, SimulationPlanEvidence[]>;
   activeBehaviors: SimulationViolationEvidence['behaviors'];
-  reviewActivitySourceOrder: Map<string, Map<string, number>>;
   reviewActivityDimensionOrder: Map<string, Map<string, number>>;
   reviewActivityAttemptIndex: Map<string, number>;
 }
@@ -838,6 +850,11 @@ function addViolation(
       relatedConceptIds.has(conceptId) ||
       (coveringConceptId !== undefined && relatedConceptIds.has(coveringConceptId)),
   );
+  const relatedCardIds = new Set(
+    [...context.beforeCards, ...context.afterCards]
+      .filter((card) => relatedConceptIds.has(card.conceptId))
+      .map(({ cardId }) => cardId),
+  );
   for (const explanation of schedulerExplanations) {
     relatedConceptIds.add(explanation.conceptId);
     if (explanation.coveringConceptId) relatedConceptIds.add(explanation.coveringConceptId);
@@ -846,6 +863,22 @@ function addViolation(
     ...context,
     beforeCards: context.beforeCards.filter((card) => relatedConceptIds.has(card.conceptId)),
     afterCards: context.afterCards.filter((card) => relatedConceptIds.has(card.conceptId)),
+    implicitRepetitionTrace:
+      invariant === 'P15'
+        ? context.implicitRepetitionTrace.filter(
+            (event) =>
+              relatedConceptIds.has(event.sourceConceptId) &&
+              relatedCardIds.has(event.targetCardId),
+          )
+        : [],
+    prerequisiteResetEvidence:
+      invariant === 'P15'
+        ? context.prerequisiteResetEvidence.filter(
+            (reset) =>
+              relatedConceptIds.has(reset.sourceConceptId) ||
+              reset.candidateCardIds.some((cardId) => relatedCardIds.has(cardId)),
+          )
+        : [],
     activityLogs: context.activityLogs.filter((log) => relatedConceptIds.has(log.conceptId)),
     mastery: context.mastery.filter((record) => relatedConceptIds.has(record.conceptId)),
     schedulerExplanations,
@@ -865,6 +898,8 @@ function emptyViolationEvidence(): SimulationViolationEvidence {
   return {
     beforeCards: [],
     afterCards: [],
+    implicitRepetitionTrace: [],
+    prerequisiteResetEvidence: [],
     activityLogs: [],
     mastery: [],
     schedulerExplanations: [],
@@ -2221,9 +2256,6 @@ async function attemptExercise(
   if (mode === 'review') {
     const attemptIndex = runtime.reviewActivityAttemptIndex.get(activityId) ?? 0;
     runtime.reviewActivityAttemptIndex.set(activityId, attemptIndex + 1);
-    const sourceOrder = runtime.reviewActivitySourceOrder.get(activityId) ?? new Map();
-    sourceOrder.set(conceptId, attemptIndex);
-    runtime.reviewActivitySourceOrder.set(activityId, sourceOrder);
     const dimension = content.exercisesById.get(exerciseId)?.dimension;
     if (dimension) {
       const dimensionOrder = runtime.reviewActivityDimensionOrder.get(activityId) ?? new Map();
@@ -2553,121 +2585,174 @@ function p15CardIdentity(card: P15CardSnapshot): string {
   return card.dimension ? `${card.conceptId}/${card.dimension}` : card.id;
 }
 
-export function auditP15ImplicitCredits(
+type P15TraceEvent = ImplicitRepetitionTraceEvent & { activityOrder: number | null };
+
+interface P15PrerequisiteResetEvidence {
+  sourceCardId: string;
+  sourceConceptId: string;
+  sourceOrder: number;
+  candidateCardIds: string[];
+  eligibleCardIds: string[];
+  selectedCardId: string | null;
+}
+
+function p15Comparable(value: unknown): unknown {
+  if (value instanceof Date) return value.toISOString();
+  if (Array.isArray(value)) return value.map(p15Comparable);
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value)
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([key, item]) => [key, p15Comparable(item)]),
+    );
+  }
+  return value;
+}
+
+function p15TraceState(card: {
+  dueAt: Date;
+  fsrs: Card;
+  stability?: number;
+  difficulty?: number;
+}): string {
+  return JSON.stringify(
+    p15Comparable({
+      dueAt: card.dueAt,
+      stability: card.stability ?? card.fsrs.stability,
+      difficulty: card.difficulty ?? card.fsrs.difficulty,
+      fsrs: card.fsrs,
+    }),
+  );
+}
+
+export function auditP15Trace(
   beforeCards: readonly P15CardSnapshot[],
   afterCards: readonly P15CardSnapshot[],
   activityLogs: readonly P11ActivityLog[],
-  sourceConceptOrder: readonly string[],
-  encompassing: Pick<EncompassingIndex, 'weight' | 'ancestors' | 'descendants'>,
+  trace: readonly P15TraceEvent[],
+  encompassing: Pick<EncompassingIndex, 'weight'>,
   now: Date,
   timeZone: string,
-  activityKind: 'learn' | 'review' = 'review',
+  activityKind: 'learn' | 'review',
   reviewLogOrder: ReadonlyMap<string, number> = new Map(),
   prerequisiteResetContext?: P15PrerequisiteResetContext,
-): { checked: number; violations: string[] } {
-  const logsByConcept = new Map<string, number[]>();
+): {
+  checked: number;
+  violations: string[];
+  prerequisiteResetEvidence: P15PrerequisiteResetEvidence[];
+} {
+  const minimumRatingByConcept = new Map<string, number>();
   for (const log of activityLogs) {
-    const ratings = logsByConcept.get(log.conceptId) ?? [];
-    ratings.push(Number(log.rating));
-    logsByConcept.set(log.conceptId, ratings);
+    minimumRatingByConcept.set(
+      log.conceptId,
+      Math.min(minimumRatingByConcept.get(log.conceptId) ?? Infinity, Number(log.rating)),
+    );
   }
-  const expectedById = new Map(beforeCards.map((card) => [card.id, card]));
-  const actualById = new Map(afterCards.map((card) => [card.id, card]));
-  const affectedCards = new Set<string>();
-  let appliedUpdates = 0;
-  const sourceConcepts = new Set(sourceConceptOrder);
-  const sourceOrder = new Map(
-    [...new Set(sourceConceptOrder)].map((conceptId, index) => [conceptId, index]),
-  );
-  const orderedLogs = [...activityLogs].sort(
-    (left, right) =>
-      (reviewLogOrder.get(left.cardId) ?? Number.MAX_SAFE_INTEGER) -
-        (reviewLogOrder.get(right.cardId) ?? Number.MAX_SAFE_INTEGER) ||
-      (sourceOrder.get(left.conceptId) ?? Number.MAX_SAFE_INTEGER) -
-        (sourceOrder.get(right.conceptId) ?? Number.MAX_SAFE_INTEGER) ||
-      (left.dimension ?? '').localeCompare(right.dimension ?? '') ||
-      left.cardId.localeCompare(right.cardId),
-  );
-  const processedLogsByConcept = new Map<string, number>();
-  let prerequisiteResetUpdates = 0;
-  const applySourceCredit = (sourceConceptId: string) => {
-    const ratings = logsByConcept.get(sourceConceptId);
-    if (!ratings?.length) return;
-    const rating =
-      activityKind === 'learn'
-        ? ratings.includes(Rating.Again)
-          ? undefined
-          : ratings.every((value) => value === Rating.Good)
-            ? Rating.Good
-            : Rating.Hard
-        : (Math.min(...ratings) as Rating);
-    if (rating === undefined) return;
-    const positive = rating === Rating.Hard || rating === Rating.Good;
-    const relatedConcepts = positive
-      ? new Set(encompassing.ancestors(sourceConceptId).keys())
-      : rating === Rating.Again
-        ? new Set(encompassing.descendants(sourceConceptId).keys())
-        : new Set<string>();
-    for (const card of beforeCards) {
+  const cardsById = new Map<string, P15CardSnapshot>();
+  for (const card of [...beforeCards, ...afterCards]) cardsById.set(card.id, card);
+  const beforeById = new Map(beforeCards.map((card) => [card.id, card]));
+  const afterById = new Map(afterCards.map((card) => [card.id, card]));
+  const violations: string[] = [];
+  const pairCounts = new Map<string, number>();
+  let checked = 0;
+
+  for (const event of trace) {
+    checked += 4;
+    const pair = `${event.sourceConceptId}\u0000${event.targetCardId}`;
+    const target = cardsById.get(event.targetCardId);
+    const targetIdentity = target ? p15CardIdentity(target) : 'unknown target';
+    pairCounts.set(pair, (pairCounts.get(pair) ?? 0) + 1);
+    if (pairCounts.get(pair) !== 1) {
+      violations.push(`duplicate source/card pair ${event.sourceConceptId} -> ${targetIdentity}`);
+    }
+
+    const sourceRating = minimumRatingByConcept.get(event.sourceConceptId);
+    if (sourceRating === undefined) {
+      violations.push(`trace source ${event.sourceConceptId} has no activity rating`);
+    } else if (
+      event.rating === Rating.Again
+        ? sourceRating !== Rating.Again
+        : event.rating < Rating.Hard || event.rating !== sourceRating
+    ) {
+      violations.push(
+        `${event.sourceConceptId} -> ${targetIdentity}: trace rating ${event.rating} does not match activity minimum ${sourceRating}`,
+      );
+    }
+
+    if (!target) {
+      violations.push(
+        `trace target for ${event.sourceConceptId} is absent from activity snapshots`,
+      );
+      continue;
+    }
+    if (
+      event.before.stability !== event.before.fsrs.stability ||
+      event.before.difficulty !== event.before.fsrs.difficulty
+    ) {
+      violations.push(`${p15CardIdentity(target)}: trace before-state is inconsistent`);
+    }
+    const expectedWeight =
+      event.rating === Rating.Again
+        ? encompassing.weight(target.conceptId, event.sourceConceptId)
+        : encompassing.weight(event.sourceConceptId, target.conceptId);
+    if (event.weight <= 0 || event.weight !== expectedWeight) {
+      violations.push(
+        `${event.sourceConceptId} -> ${p15CardIdentity(target)}: trace weight ${event.weight} does not match ${expectedWeight}`,
+      );
+    }
+
+    const result = implicitRepetition(
+      { dueAt: event.before.dueAt, fsrs: event.before.fsrs },
+      { weight: event.weight, rating: event.rating, now, timeZone, enableFuzz: false },
+    );
+    const expectedAfter = result ?? event.before;
+    if (
+      event.applied !== (result !== undefined) ||
+      p15TraceState(expectedAfter) !== p15TraceState(event.after)
+    ) {
+      violations.push(
+        `${p15CardIdentity(target)}: trace after-state does not match implicitRepetition`,
+      );
+    }
+  }
+
+  for (const [sourceConceptId, rating] of minimumRatingByConcept) {
+    if (activityKind === 'learn' && rating === Rating.Again) continue;
+    if (rating !== Rating.Again && rating < Rating.Hard) continue;
+    for (const card of cardsById.values()) {
+      const snapshot = beforeById.get(card.id) ?? card;
+      if (!snapshot.fsrs || (snapshot.fsrs as Card).state === State.New) continue;
       const weight =
         rating === Rating.Again
           ? encompassing.weight(card.conceptId, sourceConceptId)
           : encompassing.weight(sourceConceptId, card.conceptId);
-      if (
-        weight <= 0 ||
-        !relatedConcepts.has(card.conceptId) ||
-        (!positive && rating !== Rating.Again)
-      ) {
-        continue;
-      }
-      affectedCards.add(card.id);
-      const current = expectedById.get(card.id);
-      if (!current) continue;
-      const update = implicitRepetition(
-        { fsrs: current.fsrs as Card, dueAt: current.dueAt },
-        { weight, rating, now, timeZone, enableFuzz: false },
+      if (weight <= 0) continue;
+      const result = implicitRepetition(
+        { dueAt: snapshot.dueAt, fsrs: snapshot.fsrs as Card },
+        { weight, rating: rating as Rating, now, timeZone, enableFuzz: false },
       );
-      if (!update) continue;
-      expectedById.set(card.id, { ...current, fsrs: update.fsrs, dueAt: update.dueAt });
-      appliedUpdates += 1;
-    }
-  };
-  for (const log of orderedLogs) {
-    if (activityKind === 'review') {
-      const current = expectedById.get(log.cardId);
-      if (current) {
-        const scheduled = scheduleReview(
-          current.fsrs as Card,
-          now,
-          Number(log.rating) as Rating,
-          timeZone,
-          false,
-        ).card;
-        expectedById.set(log.cardId, {
-          ...current,
-          fsrs: scheduled,
-          dueAt: scheduled.due,
-          lastReviewAt: now,
-        });
+      if (!result) continue;
+      checked += 1;
+      if (!pairCounts.has(`${sourceConceptId}\u0000${card.id}`)) {
+        violations.push(
+          `coverage missing ${sourceConceptId} -> ${p15CardIdentity(card)} with weight ${weight}`,
+        );
       }
-    }
-    const processed = (processedLogsByConcept.get(log.conceptId) ?? 0) + 1;
-    processedLogsByConcept.set(log.conceptId, processed);
-    if (
-      sourceConcepts.has(log.conceptId) &&
-      processed === (logsByConcept.get(log.conceptId)?.length ?? 0)
-    ) {
-      applySourceCredit(log.conceptId);
     }
   }
+
+  const prerequisiteResetEvidence: P15PrerequisiteResetEvidence[] = [];
+  const resetTouchedAfterTrace = new Set<string>();
   if (activityKind === 'review' && prerequisiteResetContext) {
-    for (const log of orderedLogs) {
+    for (const log of activityLogs) {
       if (Number(log.rating) !== Rating.Again || log.previousLog?.rating !== String(Rating.Again)) {
         continue;
       }
+      const sourceOrder = reviewLogOrder.get(log.cardId);
+      if (sourceOrder === undefined) continue;
       const hardPrerequisiteIds =
         prerequisiteResetContext.hardPrerequisiteIdsByConcept.get(log.conceptId) ?? [];
-      const candidates = [...expectedById.values()].filter((card) =>
+      const candidates = [...beforeById.values()].filter((card) =>
         hardPrerequisiteIds.includes(card.conceptId),
       );
       const eligible = candidates.filter((card) =>
@@ -2682,53 +2767,75 @@ export function auditP15ImplicitCredits(
             ),
         }),
       );
-      const weakest = bringWeakestPrerequisiteCardDueNow(
-        eligible.map((card) => ({
+      const eligibleStates = eligible.map((card) => {
+        const latestTrace = [...trace]
+          .reverse()
+          .find(
+            (event) =>
+              event.targetCardId === card.id &&
+              event.activityOrder !== null &&
+              event.activityOrder <= sourceOrder,
+          );
+        return {
           ...card,
           dimension: card.dimension ?? '',
-          fsrs: card.fsrs as Card,
-        })),
-        now,
-        false,
-      );
-      if (!weakest) continue;
-      const current = expectedById.get(weakest.id);
-      if (!current) continue;
-      affectedCards.add(weakest.id);
-      expectedById.set(weakest.id, {
-        ...current,
-        dueAt: weakest.dueAt,
-        fsrs: weakest.fsrs,
+          dueAt: latestTrace?.after.dueAt ?? card.dueAt,
+          fsrs: latestTrace?.after.fsrs ?? (card.fsrs as Card),
+        };
       });
-      prerequisiteResetUpdates += 1;
+      const weakest = bringWeakestPrerequisiteCardDueNow(eligibleStates, now, false);
+      prerequisiteResetEvidence.push({
+        sourceCardId: log.cardId,
+        sourceConceptId: log.conceptId,
+        sourceOrder,
+        candidateCardIds: candidates.map(({ id }) => id),
+        eligibleCardIds: eligible.map(({ id }) => id),
+        selectedCardId: weakest?.id ?? null,
+      });
+      if (!weakest) continue;
+
+      const latestTrace = [...trace].reverse().find((event) => event.targetCardId === weakest.id);
+      const actual = afterById.get(weakest.id);
+      const before = beforeById.get(weakest.id);
+      if (
+        latestTrace &&
+        latestTrace.activityOrder !== null &&
+        sourceOrder >= latestTrace.activityOrder &&
+        actual?.dueAt.getTime() === now.getTime() &&
+        actual.fsrs &&
+        new Date(String((actual.fsrs as Card).due)).getTime() === now.getTime() &&
+        before?.lastReviewAt?.getTime() === actual.lastReviewAt?.getTime()
+      ) {
+        resetTouchedAfterTrace.add(weakest.id);
+      }
     }
   }
-  const violations: string[] = [];
-  for (const cardId of affectedCards) {
-    const expected = expectedById.get(cardId);
-    const actual = actualById.get(cardId);
-    if (!expected || !actual) {
+
+  const lastTraceByCard = new Map<string, P15TraceEvent>();
+  for (const event of trace) lastTraceByCard.set(event.targetCardId, event);
+  for (const [cardId, lastTrace] of lastTraceByCard) {
+    checked += 1;
+    const actual = afterById.get(cardId);
+    if (!actual) {
+      const target = cardsById.get(cardId);
       violations.push(
-        `${expected ? p15CardIdentity(expected) : cardId}: expected implicit update was missing`,
+        `${target ? p15CardIdentity(target) : 'unknown target'}: trace target is missing from final card state`,
       );
       continue;
     }
-    const expectedFsrs = expected.fsrs as Card;
-    const actualFsrs = actual.fsrs as Card;
+    const explicitReviewAfterTrace =
+      lastTrace.activityOrder !== null &&
+      (reviewLogOrder.get(cardId) ?? Number.NEGATIVE_INFINITY) > lastTrace.activityOrder;
+    if (explicitReviewAfterTrace || resetTouchedAfterTrace.has(cardId)) continue;
     if (
-      expected.dueAt.getTime() !== actual.dueAt.getTime() ||
-      JSON.stringify(expectedFsrs) !== JSON.stringify(actualFsrs) ||
-      (expected.lastReviewAt?.getTime() ?? null) !== (actual.lastReviewAt?.getTime() ?? null)
+      p15TraceState(lastTrace.after) !==
+      p15TraceState({ dueAt: actual.dueAt, fsrs: actual.fsrs as Card })
     ) {
-      violations.push(
-        `${p15CardIdentity(expected)}: expected ${JSON.stringify({ dueAt: expected.dueAt, fsrs: expected.fsrs, lastReviewAt: expected.lastReviewAt })}, actual ${JSON.stringify({ dueAt: actual.dueAt, fsrs: actual.fsrs, lastReviewAt: actual.lastReviewAt })}`,
-      );
+      violations.push(`${p15CardIdentity(actual)}: final state differs from the last trace result`);
     }
   }
-  return {
-    checked: activityLogs.length + appliedUpdates + prerequisiteResetUpdates,
-    violations,
-  };
+
+  return { checked, violations, prerequisiteResetEvidence };
 }
 
 export function attributeActivityLogs<T extends { id: string }>(
@@ -2739,27 +2846,6 @@ export function attributeActivityLogs<T extends { id: string }>(
   const newLogs = afterLogs.filter(({ id }) => !beforeIds.has(id) && !checkedIds.has(id));
   for (const { id } of afterLogs) checkedIds.add(id);
   return newLogs;
-}
-
-function implicitCreditSourceOrder(
-  activity: SimActivity,
-  content: ContentIndex,
-  activityLogs: readonly P11ActivityLog[],
-): string[] {
-  const loggedConceptIds = new Set(activityLogs.map(({ conceptId }) => conceptId));
-  if (activity.kind === 'learn' && activity.conceptId) {
-    return loggedConceptIds.has(activity.conceptId) ? [activity.conceptId] : [];
-  }
-  const lastExerciseIndex = new Map<string, number>();
-  for (const [index, exerciseId] of (activity.exerciseIds ?? []).entries()) {
-    const conceptId = content.exercisesById.get(exerciseId)?.concept;
-    if (conceptId && loggedConceptIds.has(conceptId)) lastExerciseIndex.set(conceptId, index);
-  }
-  return [...loggedConceptIds].sort(
-    (left, right) =>
-      (lastExerciseIndex.get(left) ?? Number.MAX_SAFE_INTEGER) -
-        (lastExerciseIndex.get(right) ?? Number.MAX_SAFE_INTEGER) || left.localeCompare(right),
-  );
 }
 
 async function processActivityWithMetrics(
@@ -2856,22 +2942,39 @@ async function processActivityWithMetrics(
   }
   const beforeLogIds = new Set(tracksCards ? (await readActivityLogs()).map(({ id }) => id) : []);
   runtime.activeBehaviors.B3PartialExplain = false;
+  const implicitRepetitionTrace: P15TraceEvent[] = [];
   if (activity.kind === 'review') {
     runtime.reviewActivityAttemptIndex.set(activity.id, 0);
-    runtime.reviewActivitySourceOrder.set(activity.id, new Map());
     runtime.reviewActivityDimensionOrder.set(activity.id, new Map());
   }
-  const result = await processActivity(
-    api,
-    db,
-    content,
-    runtime,
-    now,
-    day,
-    courseId,
-    sessionId,
-    activity,
+  setImplicitRepetitionTrace(
+    tracksCards
+      ? (event) =>
+          implicitRepetitionTrace.push({
+            ...event,
+            activityOrder:
+              activity.kind === 'review'
+                ? Math.max(0, (runtime.reviewActivityAttemptIndex.get(activity.id) ?? 0) - 1)
+                : null,
+          })
+      : undefined,
   );
+  let result: Awaited<ReturnType<typeof processActivity>>;
+  try {
+    result = await processActivity(
+      api,
+      db,
+      content,
+      runtime,
+      now,
+      day,
+      courseId,
+      sessionId,
+      activity,
+    );
+  } finally {
+    setImplicitRepetitionTrace(undefined);
+  }
   if (runtime.activeBehaviors.B3PartialExplain) {
     const dayPlans = [...(runtime.planEvidenceByDay.get(day) ?? [])];
     const activityKey = runtime.activityKeyById.get(activity.id);
@@ -2912,6 +3015,10 @@ async function processActivityWithMetrics(
       ...runtime.violationEvidenceContext,
       beforeCards: databaseCardEvidence(beforeCards),
       afterCards: databaseCardEvidence(afterCards),
+      implicitRepetitionTrace: implicitRepetitionTrace.map((event) => ({
+        ...event,
+        targetCardId: activityCardKeys.get(event.targetCardId) ?? event.targetCardId,
+      })),
       activityLogs: newLogs
         .map(({ cardId, conceptId, dimension, rating }) => ({
           cardId: activityCardKeys.get(cardId) ?? conceptId,
@@ -2993,15 +3100,7 @@ async function processActivityWithMetrics(
     }
   }
   if (tracksCards && encompassing && activityCompleted) {
-    const recordedOrder = runtime.reviewActivitySourceOrder.get(activity.id);
-    const sourceConceptOrder =
-      activity.kind === 'review' && recordedOrder
-        ? [...new Set(newLogs.map((log) => log.conceptId))].sort(
-            (left, right) =>
-              (recordedOrder.get(left) ?? Number.MAX_SAFE_INTEGER) -
-                (recordedOrder.get(right) ?? Number.MAX_SAFE_INTEGER) || left.localeCompare(right),
-          )
-        : implicitCreditSourceOrder(activity, content, newLogs);
+    const sourceConcepts = [...new Set(newLogs.map((log) => log.conceptId))];
     const reviewLogOrder = new Map(
       newLogs.flatMap((log) => {
         if (!log.dimension) return [];
@@ -3011,16 +3110,7 @@ async function processActivityWithMetrics(
         return order === undefined ? [] : [[log.cardId, order] as const];
       }),
     );
-    const p15 = auditP15ImplicitCredits(
-      beforeCards,
-      afterCards,
-      p15ActivityLogs,
-      sourceConceptOrder,
-      encompassing,
-      now,
-      timeZone,
-      activity.kind === 'learn' ? 'learn' : 'review',
-      reviewLogOrder,
+    const prerequisiteResetContext =
       activity.kind === 'review'
         ? {
             hardPrerequisiteIdsByConcept: new Map(
@@ -3042,19 +3132,55 @@ async function processActivityWithMetrics(
               }),
             ),
           }
-        : undefined,
+        : undefined;
+    const p15 = auditP15Trace(
+      beforeCards,
+      afterCards,
+      p15ActivityLogs,
+      implicitRepetitionTrace,
+      encompassing,
+      now,
+      timeZone,
+      activity.kind === 'learn' ? 'learn' : 'review',
+      reviewLogOrder,
+      prerequisiteResetContext,
     );
     runtime.report.checkedCounts.P15 += p15.checked;
+    runtime.violationEvidenceContext = {
+      ...runtime.violationEvidenceContext,
+      prerequisiteResetEvidence: p15.prerequisiteResetEvidence.map((reset) => ({
+        ...reset,
+        sourceCardId: activityCardKeys.get(reset.sourceCardId) ?? reset.sourceCardId,
+        candidateCardIds: reset.candidateCardIds.map(
+          (cardId) => activityCardKeys.get(cardId) ?? cardId,
+        ),
+        eligibleCardIds: reset.eligibleCardIds.map(
+          (cardId) => activityCardKeys.get(cardId) ?? cardId,
+        ),
+        selectedCardId: reset.selectedCardId
+          ? (activityCardKeys.get(reset.selectedCardId) ?? reset.selectedCardId)
+          : null,
+      })),
+    };
     for (const detail of p15.violations) {
       const cardId = detail.split(':', 1)[0] ?? 'implicit-credit';
-      const conceptId = beforeCards.find(
-        (card) => `${card.conceptId}/${card.dimension}` === cardId || card.id === cardId,
-      )?.conceptId;
-      addViolation(runtime, day, 'P15', cardId, [], {
+      const target = beforeCards.find(
+        (card) =>
+          detail.startsWith(`${p15CardIdentity(card)}:`) ||
+          detail.includes(`-> ${p15CardIdentity(card)}`) ||
+          detail.includes(`-> ${card.id}`),
+      );
+      const conceptId = target?.conceptId;
+      const entityId = target ? p15CardIdentity(target) : cardId;
+      addViolation(runtime, day, 'P15', entityId, [], {
         courseId,
         ...(conceptId ? { conceptId } : {}),
-        evidenceConceptIds: sourceConceptOrder,
-        details: `${activity.kind} credit sources ${sourceConceptOrder.join(', ') || 'none'}: ${detail}`,
+        evidenceConceptIds: [
+          ...sourceConcepts,
+          ...implicitRepetitionTrace.map(({ sourceConceptId }) => sourceConceptId),
+          ...(conceptId ? [conceptId] : []),
+        ],
+        details: `${activity.kind} credit sources ${sourceConcepts.join(', ') || 'none'}: ${detail}`,
       });
     }
   }
@@ -3752,7 +3878,6 @@ async function simulateProfile(
       B3PartialExplain: false,
       B4Replan: false,
     },
-    reviewActivitySourceOrder: new Map(),
     reviewActivityDimensionOrder: new Map(),
     reviewActivityAttemptIndex: new Map(),
   };

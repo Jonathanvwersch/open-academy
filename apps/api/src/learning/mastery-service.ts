@@ -15,6 +15,24 @@ import { masteryRank } from './types.js';
 
 type ReviewCardDatabase = Pick<Database, 'select' | 'update'>;
 
+export type ImplicitRepetitionTraceEvent = {
+  sourceConceptId: string;
+  rating: Rating;
+  targetCardId: string;
+  weight: number;
+  before: { dueAt: Date; fsrs: Card; stability: number; difficulty: number };
+  after: { dueAt: Date; fsrs: Card; stability: number; difficulty: number };
+  applied: boolean;
+};
+
+let implicitRepetitionTrace: ((event: ImplicitRepetitionTraceEvent) => void) | undefined;
+
+export function setImplicitRepetitionTrace(
+  trace: ((event: ImplicitRepetitionTraceEvent) => void) | undefined,
+) {
+  implicitRepetitionTrace = trace;
+}
+
 export async function applyImplicitRepetitions(
   db: ReviewCardDatabase,
   input: {
@@ -49,16 +67,35 @@ export async function applyImplicitRepetitions(
     )
     .orderBy(asc(reviewCards.conceptId), asc(reviewCards.dimension), asc(reviewCards.id));
   for (const card of cards) {
-    const result = implicitRepetition(
-      { fsrs: card.fsrs as Card, dueAt: card.dueAt },
-      {
-        weight: targets.get(card.conceptId) ?? 0,
-        rating: input.rating,
-        now: input.now,
-        timeZone: input.timeZone,
-        enableFuzz: process.env.NODE_ENV !== 'test',
+    const before = { fsrs: card.fsrs as Card, dueAt: card.dueAt };
+    const weight = targets.get(card.conceptId) ?? 0;
+    const result = implicitRepetition(before, {
+      weight,
+      rating: input.rating,
+      now: input.now,
+      timeZone: input.timeZone,
+      enableFuzz: process.env.NODE_ENV !== 'test',
+    });
+    const after = result ?? before;
+    implicitRepetitionTrace?.({
+      sourceConceptId: input.conceptId,
+      rating: input.rating,
+      targetCardId: card.id,
+      weight,
+      before: {
+        ...before,
+        fsrs: { ...before.fsrs },
+        stability: before.fsrs.stability,
+        difficulty: before.fsrs.difficulty,
       },
-    );
+      after: {
+        ...after,
+        fsrs: { ...after.fsrs },
+        stability: after.fsrs.stability,
+        difficulty: after.fsrs.difficulty,
+      },
+      applied: result !== undefined,
+    });
     if (!result) continue;
     await db
       .update(reviewCards)

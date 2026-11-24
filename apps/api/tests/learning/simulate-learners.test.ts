@@ -3,7 +3,7 @@ import { afterAll, expect, test } from 'vitest';
 import {
   attributeActivityLogs,
   auditP11DescendantCard,
-  auditP15ImplicitCredits,
+  auditP15Trace,
   type InvariantId,
   p5HasNoWorkWindow,
   p6HasFeasibleOverdueReview,
@@ -61,14 +61,12 @@ const p11Weights = {
 };
 
 const p15Weights = {
-  weight: (sourceConceptId: string, targetConceptId: string) =>
-    (sourceConceptId === 'child' && targetConceptId === 'parent') ||
-    (sourceConceptId === 'descendant' && targetConceptId === 'prerequisite')
-      ? 0.5
-      : 0,
-  ancestors: (conceptId: string) => new Map(conceptId === 'child' ? [['parent', 0.5]] : []),
-  descendants: (conceptId: string) =>
-    new Map(conceptId === 'prerequisite' ? [['descendant', 0.5]] : []),
+  weight: (sourceConceptId: string, targetConceptId: string) => {
+    if (sourceConceptId === 'child' && targetConceptId === 'parent') return 0.5;
+    if (sourceConceptId === 'descendant' && targetConceptId === 'prerequisite') return 0.5;
+    if (sourceConceptId === 'prerequisite' && targetConceptId === 'descendant') return 0.25;
+    return 0;
+  },
 };
 
 function p11Card(dueAt: string, lastReviewAt: string | null) {
@@ -118,6 +116,39 @@ function applyExpectedImplicitCredit(
     { weight, rating, now, timeZone: 'UTC', enableFuzz: false },
   );
   return result ? { ...card, fsrs: result.fsrs, dueAt: result.dueAt } : card;
+}
+
+function p15TraceEvent(
+  sourceConceptId: string,
+  rating: Rating,
+  target: ReturnType<typeof p15Card>,
+  weight: number,
+  now: Date,
+  activityOrder: number | null = 0,
+) {
+  const before = { dueAt: target.dueAt, fsrs: target.fsrs };
+  const result = implicitRepetition(before, {
+    weight,
+    rating,
+    now,
+    timeZone: 'UTC',
+    enableFuzz: false,
+  });
+  const after = result ?? before;
+  return {
+    sourceConceptId,
+    rating,
+    targetCardId: target.id,
+    weight,
+    before: {
+      ...before,
+      stability: before.fsrs.stability,
+      difficulty: before.fsrs.difficulty,
+    },
+    after: { ...after, stability: after.fsrs.stability, difficulty: after.fsrs.difficulty },
+    applied: result !== undefined,
+    activityOrder,
+  };
 }
 
 function stripWallClockFields(value: unknown): unknown {
@@ -346,38 +377,162 @@ test('P6 flags only feasible reviews left overdue beyond a week', () => {
   expect(p6HasFeasibleOverdueReview(7, 8, 8, 0)).toBe(false);
 });
 
-test('P15 applies Again credit from a source to its descendant using descendant weight', () => {
+test('P15 trace rejects duplicate source/card applications', () => {
   const now = new Date('2026-01-14T12:00:00.000Z');
-  const prerequisite = p15Card('descendant-card', 'descendant', '2026-04-14T12:00:00.000Z');
-  const logs = [{ cardId: 'prerequisite-log', conceptId: 'prerequisite', rating: '1' }];
-  const once = applyExpectedImplicitCredit(prerequisite, Rating.Again, 0.5, now);
+  const parent = p15Card('parent-card', 'parent', '2026-04-14T12:00:00.000Z');
+  const logs = [{ cardId: 'child-log', conceptId: 'child', rating: String(Rating.Good) }];
+  const event = p15TraceEvent('child', Rating.Good, parent, 0.5, now);
+  const once = { ...parent, dueAt: event.after.dueAt, fsrs: event.after.fsrs };
+  const audit = (trace: (typeof event)[]) =>
+    auditP15Trace([parent], [once], logs, trace, p15Weights, now, 'UTC', 'review');
 
-  expect(
-    auditP15ImplicitCredits(
-      [prerequisite],
-      [prerequisite],
+  expect(audit([event]).violations).toEqual([]);
+  expect(audit([event, event]).violations.join(' ')).toContain('duplicate source/card pair');
+});
+
+test('P15 trace requires each source rating to match its minimum dimension rating', () => {
+  const now = new Date('2026-01-14T12:00:00.000Z');
+  const parent = p15Card('parent-card', 'parent', '2026-04-14T12:00:00.000Z');
+  const logs = [
+    { cardId: 'child-hard-log', conceptId: 'child', rating: String(Rating.Hard) },
+    { cardId: 'child-good-log', conceptId: 'child', rating: String(Rating.Good) },
+  ];
+  const wrong = p15TraceEvent('child', Rating.Good, parent, 0.5, now);
+  const right = p15TraceEvent('child', Rating.Hard, parent, 0.5, now);
+  const audit = (event: typeof wrong) =>
+    auditP15Trace(
+      [parent],
+      [{ ...parent, dueAt: event.after.dueAt, fsrs: event.after.fsrs }],
       logs,
-      ['prerequisite'],
+      [event],
       p15Weights,
       now,
       'UTC',
-    ).violations,
-  ).not.toEqual([]);
+      'review',
+    );
+
+  expect(audit(right).violations).toEqual([]);
+  expect(audit(wrong).violations.join(' ')).toContain('does not match activity minimum');
+});
+
+test('P15 trace checks Again weight in descendant-to-source orientation', () => {
+  const now = new Date('2026-01-14T12:00:00.000Z');
+  const descendant = p15Card('descendant-card', 'descendant', '2026-04-14T12:00:00.000Z');
+  const logs = [{ cardId: 'prerequisite-log', conceptId: 'prerequisite', rating: '1' }];
+  const right = p15TraceEvent('prerequisite', Rating.Again, descendant, 0.5, now);
+  const wrong = p15TraceEvent('prerequisite', Rating.Again, descendant, 0.25, now);
+  const audit = (event: typeof right) =>
+    auditP15Trace(
+      [descendant],
+      [{ ...descendant, dueAt: event.after.dueAt, fsrs: event.after.fsrs }],
+      logs,
+      [event],
+      p15Weights,
+      now,
+      'UTC',
+      'review',
+    );
+
+  expect(audit(right).violations).toEqual([]);
+  expect(audit(wrong).violations.join(' ')).toContain('trace weight');
+});
+
+test('P15 trace compares every result with pure implicitRepetition', () => {
+  const now = new Date('2026-01-14T12:00:00.000Z');
+  const parent = p15Card('parent-card', 'parent', '2026-01-14T12:00:00.000Z');
+  const logs = [{ cardId: 'child-log', conceptId: 'child', rating: String(Rating.Good) }];
+  const event = p15TraceEvent('child', Rating.Good, parent, 0.5, now);
+  const once = { ...parent, dueAt: event.after.dueAt, fsrs: event.after.fsrs };
+  const twice = applyExpectedImplicitCredit(once, Rating.Good, 0.5, now);
+  const invalidEvent = {
+    ...event,
+    after: {
+      dueAt: twice.dueAt,
+      fsrs: twice.fsrs,
+      stability: twice.fsrs.stability,
+      difficulty: twice.fsrs.difficulty,
+    },
+  };
+  const audit = (
+    trace: typeof event,
+    after: {
+      id: string;
+      conceptId: string;
+      dueAt: Date;
+      lastReviewAt: Date | null;
+      fsrs: Card;
+    },
+  ) => auditP15Trace([parent], [after], logs, [trace], p15Weights, now, 'UTC', 'review');
+
+  expect(audit(event, once).violations).toEqual([]);
+  expect(audit(invalidEvent, twice).violations.join(' ')).toContain(
+    'does not match implicitRepetition',
+  );
+
+  const alreadyLater = p15Card('already-later', 'parent', '2026-04-14T12:00:00.000Z');
+  const noOpEvent = p15TraceEvent('child', Rating.Good, alreadyLater, 0.5, now);
+  expect(noOpEvent.applied).toBe(false);
   expect(
-    auditP15ImplicitCredits([prerequisite], [once], logs, ['prerequisite'], p15Weights, now, 'UTC')
-      .violations,
+    auditP15Trace(
+      [alreadyLater],
+      [alreadyLater],
+      logs,
+      [noOpEvent],
+      p15Weights,
+      now,
+      'UTC',
+      'review',
+    ).violations,
   ).toEqual([]);
 });
 
-test('P15 predicts the prerequisite reset after a repeated Again source', () => {
+test('P15 coverage catches omitted explain-follow-up credit and accepts its trace', () => {
   const now = new Date('2026-01-14T12:00:00.000Z');
-  const descendant = p15Card(
-    'descendant-card',
-    'descendant',
-    '2026-04-14T12:00:00.000Z',
-    '2025-12-01T12:00:00.000Z',
-  );
+  const parent = p15Card('parent-card', 'parent', '2026-01-14T12:00:00.000Z');
   const logs = [
+    { cardId: 'explain-follow-up-log', conceptId: 'child', rating: String(Rating.Hard) },
+  ];
+  const event = p15TraceEvent('child', Rating.Hard, parent, 0.5, now);
+  const once = { ...parent, dueAt: event.after.dueAt, fsrs: event.after.fsrs };
+  const audit = (trace: (typeof event)[]) =>
+    auditP15Trace([parent], [once], logs, trace, p15Weights, now, 'UTC', 'learn');
+
+  expect(audit([event]).violations).toEqual([]);
+  expect(audit([]).violations.join(' ')).toContain('coverage missing');
+});
+
+test('P15 preserves lesson rating semantics and the Again guard', () => {
+  const now = new Date('2026-01-14T12:00:00.000Z');
+  const parent = p15Card('parent-card', 'parent', '2026-04-14T12:00:00.000Z');
+  const logs = [
+    { cardId: 'child-hard-log', conceptId: 'child', rating: String(Rating.Hard) },
+    { cardId: 'child-good-log', conceptId: 'child', rating: String(Rating.Good) },
+  ];
+  const event = p15TraceEvent('child', Rating.Hard, parent, 0.5, now);
+  const once = { ...parent, dueAt: event.after.dueAt, fsrs: event.after.fsrs };
+
+  expect(
+    auditP15Trace([parent], [once], logs, [event], p15Weights, now, 'UTC', 'learn').violations,
+  ).toEqual([]);
+  expect(
+    auditP15Trace(
+      [parent],
+      [parent],
+      [{ ...logs[0], rating: String(Rating.Again) }],
+      [],
+      p15Weights,
+      now,
+      'UTC',
+      'learn',
+    ).violations,
+  ).toEqual([]);
+});
+
+test('P15 exempts a prerequisite reset selected by the engine helper after a trace', () => {
+  const now = new Date('2026-01-14T12:00:00.000Z');
+  const parent = p15Card('parent-card', 'parent', '2026-04-14T12:00:00.000Z');
+  const logs = [
+    { cardId: 'child-log', conceptId: 'child', rating: String(Rating.Good) },
     {
       cardId: 'prerequisite-log',
       conceptId: 'prerequisite',
@@ -388,120 +543,35 @@ test('P15 predicts the prerequisite reset after a repeated Again source', () => 
       },
     },
   ];
-  const afterFiRe = applyExpectedImplicitCredit(descendant, Rating.Again, 0.5, now);
+  const event = p15TraceEvent('child', Rating.Good, parent, 0.5, now, 0);
   const reset = {
-    ...afterFiRe,
+    ...parent,
     dueAt: now,
-    fsrs: { ...afterFiRe.fsrs, due: now },
+    fsrs: { ...event.after.fsrs, due: now },
   };
   const resetContext = {
-    hardPrerequisiteIdsByConcept: new Map([['prerequisite', ['descendant']]]),
+    hardPrerequisiteIdsByConcept: new Map([['prerequisite', ['parent']]]),
     completedReviewConceptIds: new Set<string>(),
     coveredDimensionKeys: new Set<string>(),
   };
 
-  expect(
-    auditP15ImplicitCredits(
-      [descendant],
-      [afterFiRe],
-      logs,
-      ['prerequisite'],
-      p15Weights,
-      now,
-      'UTC',
-      'review',
-      new Map(),
-      resetContext,
-    ).violations,
-  ).not.toEqual([]);
-  expect(
-    auditP15ImplicitCredits(
-      [descendant],
-      [reset],
-      logs,
-      ['prerequisite'],
-      p15Weights,
-      now,
-      'UTC',
-      'review',
-      new Map(),
-      resetContext,
-    ).violations,
-  ).toEqual([]);
-});
-
-test('P15 flags duplicate credit and accepts a legitimate no-op', () => {
-  const now = new Date('2026-01-14T12:00:00.000Z');
-  const parent = p15Card('parent-card', 'parent', '2026-01-14T12:00:00.000Z');
-  const logs = [{ cardId: 'child-log', conceptId: 'child', rating: String(Rating.Good) }];
-  const once = applyExpectedImplicitCredit(parent, Rating.Good, 0.5, now);
-  const twice = applyExpectedImplicitCredit(once, Rating.Good, 0.5, now);
-
-  expect(
-    auditP15ImplicitCredits([parent], [once], logs, ['child'], p15Weights, now, 'UTC').violations,
-  ).toEqual([]);
-  expect(
-    auditP15ImplicitCredits([parent], [twice], logs, ['child'], p15Weights, now, 'UTC').violations,
-  ).not.toEqual([]);
-
-  const alreadyLater = p15Card('already-later', 'parent', '2026-04-14T12:00:00.000Z');
-  expect(
-    auditP15ImplicitCredits([alreadyLater], [alreadyLater], logs, ['child'], p15Weights, now, 'UTC')
-      .violations,
-  ).toEqual([]);
-});
-
-test('P15 applies the lesson quiz rating once and accepts its Again guard', () => {
-  const now = new Date('2026-01-14T12:00:00.000Z');
-  const parent = p15Card('parent-card', 'parent', '2026-01-14T12:00:00.000Z');
-  const dimensionLogs = [
-    { cardId: 'child-hard-log', conceptId: 'child', rating: String(Rating.Hard) },
-    { cardId: 'child-good-log', conceptId: 'child', rating: String(Rating.Good) },
-  ];
-  const expectedHard = applyExpectedImplicitCredit(parent, Rating.Hard, 0.5, now);
-  const wrongGood = applyExpectedImplicitCredit(parent, Rating.Good, 0.5, now);
-
-  expect(
-    auditP15ImplicitCredits(
-      [parent],
-      [expectedHard],
-      dimensionLogs,
-      ['child'],
-      p15Weights,
-      now,
-      'UTC',
-      'learn',
-    ).violations,
-  ).toEqual([]);
-  expect(
-    auditP15ImplicitCredits(
-      [parent],
-      [wrongGood],
-      dimensionLogs,
-      ['child'],
-      p15Weights,
-      now,
-      'UTC',
-      'learn',
-    ).violations,
-  ).not.toEqual([]);
-
-  const againLogs = [
-    { cardId: 'child-again-log', conceptId: 'child', rating: String(Rating.Again) },
-    { cardId: 'child-good-log', conceptId: 'child', rating: String(Rating.Good) },
-  ];
-  expect(
-    auditP15ImplicitCredits(
-      [parent],
-      [parent],
-      againLogs,
-      ['child'],
-      p15Weights,
-      now,
-      'UTC',
-      'learn',
-    ).violations,
-  ).toEqual([]);
+  const audit = auditP15Trace(
+    [parent],
+    [reset],
+    logs,
+    [event],
+    p15Weights,
+    now,
+    'UTC',
+    'review',
+    new Map([
+      ['child-log', 0],
+      ['prerequisite-log', 1],
+    ]),
+    resetContext,
+  );
+  expect(audit.violations).toEqual([]);
+  expect(audit.prerequisiteResetEvidence[0]?.selectedCardId).toBe('parent-card');
 });
 
 test('P16 flags a selected review when a dropped review is two days more overdue', () => {
