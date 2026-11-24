@@ -1080,6 +1080,21 @@ export function p6HasFeasibleOverdueReview(
   );
 }
 
+export function p18PlanCoversTopic(
+  coveringActivities: readonly Pick<SimActivity, 'kind' | 'status'>[],
+  selectedReviewMinutes: number,
+  remainingBudget: number,
+  remainingReviewCap: number,
+  overdueDays: number,
+): boolean {
+  return coveringActivities.some(
+    (activity) =>
+      activity.kind !== 'review' ||
+      activity.status === 'in_progress' ||
+      reviewFeasible(selectedReviewMinutes, remainingBudget, remainingReviewCap, overdueDays),
+  );
+}
+
 export function scenarioCourseFilterSkipReason(
   profile: SimulationProfile,
   courseIds: readonly string[] | undefined,
@@ -3890,12 +3905,17 @@ function auditSavedSessionPlan(
           activity.kind === 'review' &&
           activity.status !== 'completed' &&
           activity.status !== 'skipped' &&
-          (planLabel !== 'replan' || activity.status === 'planned'),
+          !(planLabel === 'replan' && activity.status === 'in_progress'),
       )
       .reduce((total, activity) => total + activity.plannedMinutes, 0);
-    const planCoversTopic = coveringActivities.some(
-      (activity) =>
-        activity.kind !== 'review' || selectedReviewMinutes <= Math.floor(budgetMinutes * 0.3),
+    const reviewCap = explanations[0]?.reviewCap ?? Math.floor(budgetMinutes * 0.3);
+    const usedNonReviewMinutes = Math.max(0, usedMinutes - selectedReviewMinutes);
+    const planCoversTopic = p18PlanCoversTopic(
+      coveringActivities,
+      selectedReviewMinutes,
+      Math.max(0, budgetMinutes - usedNonReviewMinutes),
+      reviewCap,
+      overdueDays,
     );
     const explanation = explanations.find((item) => item.conceptId === pending.conceptId);
     if (
@@ -3905,16 +3925,6 @@ function auditSavedSessionPlan(
     ) {
       continue;
     }
-    const overdueDays = Math.max(
-      0,
-      ...state.cards
-        .filter((card) => card.conceptId === pending.conceptId)
-        .map(
-          (card) =>
-            localDayOrdinal(now, state.timezone ?? 'UTC') -
-            localDayOrdinal(new Date(card.dueAt), state.timezone ?? 'UTC'),
-        ),
-    );
     markChecked(runtime, 'P18');
     if (
       p18HasMissedPickup(

@@ -13,6 +13,7 @@ import {
   p16HasOverduePrecedenceViolation,
   p17ReviewFitsRemaining,
   p18HasMissedPickup,
+  p18PlanCoversTopic,
   p19HasEarlyReviewViolation,
   renderMarkdownReport,
   requireP17ReviewMinutes,
@@ -297,6 +298,12 @@ test('P10 flags omitted retries after the scheduler two-day priority threshold',
   const eligible = new Set(['overdue', 'ready', 'blocked']);
   expect(p10MissingOverdueRetryConcepts(state, eligible, new Set(), now)).toEqual(['overdue']);
   expect(p10MissingOverdueRetryConcepts(state, eligible, new Set(['overdue']), now)).toEqual([]);
+});
+
+test('P18 counts an over-cap scheduled review when it is at least two days overdue', () => {
+  const review = [{ kind: 'review', status: 'planned' }] as const;
+  expect(p18PlanCoversTopic(review, 9, 20, 3, 2)).toBe(true);
+  expect(p18PlanCoversTopic(review, 9, 20, 3, 1)).toBe(false);
 });
 
 test('scripted scenarios are skipped and reported when their fixture course is filtered out', () => {
