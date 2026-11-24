@@ -584,15 +584,19 @@ function shiftLocalDateKey(localDate: string, days: number) {
   return date.toISOString().slice(0, 10);
 }
 
-export function dueTopicsCoveredBy(
-  taskConceptId: string,
+interface DueTopicCoverageContext {
+  weights: ReturnType<typeof buildEncompassingIndex>;
+  timezone: string;
+  nextLocalDay: Date;
+  dueCardsByConcept: Map<string, SchedulerState['cards']>;
+}
+
+function dueTopicCoverageContext(
   state: SchedulerState,
   content: ContentIndex,
   now: Date,
-): Set<string> {
-  const weights = buildEncompassingIndex(content);
+): DueTopicCoverageContext {
   const timezone = state.timezone ?? 'UTC';
-  const nextLocalDay = startOfNextCalendarDay(now, timezone);
   const dueCardsByConcept = new Map<string, SchedulerState['cards']>();
   for (const card of state.cards) {
     if (!isDueToday(card.dueAt, now, timezone)) continue;
@@ -600,11 +604,23 @@ export function dueTopicsCoveredBy(
     dueCards.push(card);
     dueCardsByConcept.set(card.conceptId, dueCards);
   }
+  return {
+    weights: buildEncompassingIndex(content),
+    timezone,
+    nextLocalDay: startOfNextCalendarDay(now, timezone),
+    dueCardsByConcept,
+  };
+}
 
+function dueTopicsCoveredByWithContext(
+  taskConceptId: string,
+  now: Date,
+  context: DueTopicCoverageContext,
+): Set<string> {
   const covered = new Set<string>();
-  for (const [dueConceptId, dueCards] of dueCardsByConcept) {
+  for (const [dueConceptId, dueCards] of context.dueCardsByConcept) {
     if (dueConceptId === taskConceptId) continue;
-    const weight = weights.weight(taskConceptId, dueConceptId);
+    const weight = context.weights.weight(taskConceptId, dueConceptId);
     if (weight <= 0) continue;
     if (
       dueCards.every((card) => {
@@ -615,17 +631,30 @@ export function dueTopicsCoveredBy(
             weight,
             rating: Rating.Good,
             now,
-            timeZone: timezone,
+            timeZone: context.timezone,
             enableFuzz: process.env.NODE_ENV !== 'test',
           },
         );
-        return result !== undefined && result.dueAt >= nextLocalDay;
+        return result !== undefined && result.dueAt >= context.nextLocalDay;
       })
     ) {
       covered.add(dueConceptId);
     }
   }
   return covered;
+}
+
+export function dueTopicsCoveredBy(
+  taskConceptId: string,
+  state: SchedulerState,
+  content: ContentIndex,
+  now: Date,
+): Set<string> {
+  return dueTopicsCoveredByWithContext(
+    taskConceptId,
+    now,
+    dueTopicCoverageContext(state, content, now),
+  );
 }
 
 export function learnLookAheadScore(
@@ -740,16 +769,13 @@ function packWeekday(
   const canAdd = (candidate: Candidate) => addRejectionReason(candidate) === undefined;
   const timezone = state.timezone ?? 'UTC';
   const localToday = localDateKey(now, timezone);
-  const dueConceptIds = new Set(
-    state.cards
-      .filter((card) => isDueToday(card.dueAt, now, timezone))
-      .map((card) => card.conceptId),
-  );
+  const coverageContext = dueTopicCoverageContext(state, content, now);
+  const dueConceptIds = new Set(coverageContext.dueCardsByConcept.keys());
   const dueTopicsLeftAfterLowCreditReviews = new Map<string, Set<string>>();
   for (const { conceptId, rating } of state.completedReviewRatingsToday ?? []) {
     if (rating >= Rating.Good) continue;
     const dueTopics = dueTopicsLeftAfterLowCreditReviews.get(conceptId) ?? new Set<string>();
-    for (const dueConceptId of dueTopicsCoveredBy(conceptId, state, content, now)) {
+    for (const dueConceptId of dueTopicsCoveredByWithContext(conceptId, now, coverageContext)) {
       dueTopics.add(dueConceptId);
     }
     dueTopicsLeftAfterLowCreditReviews.set(conceptId, dueTopics);
@@ -768,7 +794,7 @@ function packWeekday(
   const coveredByTaskConcept = (conceptId: string) => {
     let covered = dueTopicsByTaskConcept.get(conceptId);
     if (!covered) {
-      covered = dueTopicsCoveredBy(conceptId, state, content, now);
+      covered = dueTopicsCoveredByWithContext(conceptId, now, coverageContext);
       for (const dueConceptId of dueTopicsLeftAfterLowCreditReviews.get(conceptId) ?? []) {
         covered.delete(dueConceptId);
       }
