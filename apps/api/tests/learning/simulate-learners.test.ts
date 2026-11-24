@@ -376,6 +376,7 @@ test('P14 checks every math due card a covered fallback review would have protec
       [
         { cardId: 'vectors/math', conceptId: 'vectors', dimension: 'math' },
         { cardId: 'linear-models/math', conceptId: 'linear-models', dimension: 'math' },
+        { cardId: 'tokenization/math', conceptId: 'tokenization', dimension: 'math' },
       ],
       [
         {
@@ -398,10 +399,117 @@ test('P14 checks every math due card a covered fallback review would have protec
           budget: 20,
           plannedActivityCount: 1,
         },
+        {
+          conceptId: 'tokenization',
+          result: 'rejected:budget',
+          exerciseIds: [],
+          exerciseDimensions: ['math'],
+          reviewMinutes: 7,
+          reviewCap: 6,
+          usedMinutes: 20,
+          budget: 20,
+          plannedActivityCount: 1,
+        },
+        {
+          conceptId: 'linear-models',
+          result: 'covered',
+          coveringConceptId: 'supervised-learning',
+          exerciseIds: [],
+          exerciseDimensions: ['math'],
+          reviewMinutes: 0,
+          reviewCap: 6,
+          usedMinutes: 15,
+          budget: 20,
+          plannedActivityCount: 1,
+        },
       ],
-      new Map([['vectors', new Set(['vectors', 'linear-models'])]]),
+      new Map([['vectors', new Set(['vectors', 'linear-models', 'tokenization'])]]),
     ),
   ).toEqual(['linear-models/math']);
+});
+
+test('P14 excludes due cards whose review was rejected by the budget or review cap', () => {
+  expect(
+    p14UncoveredDueCards(
+      [
+        { cardId: 'tokenization/conceptual', conceptId: 'tokenization', dimension: 'conceptual' },
+        { cardId: 'tokenization/math', conceptId: 'tokenization', dimension: 'math' },
+      ],
+      [],
+      [
+        {
+          conceptId: 'tokenization',
+          result: 'rejected:reviewMinuteCap',
+          exerciseIds: [],
+          exerciseDimensions: ['conceptual'],
+          reviewMinutes: 7,
+          reviewCap: 6,
+          usedMinutes: 7,
+          budget: 20,
+          plannedActivityCount: 1,
+        },
+        {
+          conceptId: 'tokenization',
+          result: 'rejected:budget',
+          exerciseIds: [],
+          exerciseDimensions: ['math'],
+          reviewMinutes: 7,
+          reviewCap: 6,
+          usedMinutes: 20,
+          budget: 20,
+          plannedActivityCount: 1,
+        },
+      ],
+    ),
+  ).toEqual([]);
+});
+
+test('P14 ignores a due card whose explanation has no eligible exercise', () => {
+  expect(
+    p14UncoveredDueCards(
+      [
+        {
+          cardId: 'attention/implementation',
+          conceptId: 'attention',
+          dimension: 'implementation',
+        },
+      ],
+      [
+        {
+          conceptIds: ['lesson'],
+          cardIds: new Set(),
+          selectedCardIds: new Set(),
+          unfinished: true,
+        },
+      ],
+      [
+        {
+          conceptId: 'attention',
+          result: 'not_candidate:noEligibleExercise',
+          exerciseIds: [],
+          exerciseDimensions: [],
+          reviewMinutes: 20,
+          reviewCap: 6,
+          usedMinutes: 20,
+          budget: 20,
+          plannedActivityCount: 1,
+        },
+        {
+          conceptId: 'gaussian-distribution',
+          result: 'covered',
+          coveringConceptId: 'lesson',
+          exerciseIds: [],
+          exerciseDimensions: ['implementation'],
+          reviewMinutes: 0,
+          reviewCap: 6,
+          usedMinutes: 20,
+          budget: 20,
+          plannedActivityCount: 1,
+        },
+      ],
+      new Map([['gaussian-distribution', new Set(['attention'])]]),
+    ),
+  ).toEqual([]);
 });
 
 test('review feasibility requires positive minutes and respects budget and overdue cap bypass', () => {
@@ -643,53 +751,71 @@ test('P17 flags a dropped review only when it fits both remaining limits', () =>
   expect(() => requireP17ReviewMinutes('vectors', undefined)).toThrow(/vectors/);
 });
 
-test('P17 detects missed due-review fallback reservations', () => {
+test('P17 counts only feasible fallback reviews that remain uncovered', () => {
   expect(
     p17HasMissedFallbackOpportunity({
-      result: 'rejected:reviewMinuteCap',
-      reviewSelected: false,
       coveringLessonSelected: false,
-      coveringLessonAvailable: false,
+      fallbackMissing: true,
       selectedLearnMinutes: 15,
       reviewMinutes: 8,
-      coveringLessonMinutes: 0,
-      budgetMinutes: 20,
+      remainingBudgetBeforeLessons: 20,
+      remainingReviewCapBeforeLessons: 8,
+      overdueDays: 0,
     }),
   ).toBe(true);
   expect(
     p17HasMissedFallbackOpportunity({
-      result: 'selected',
-      reviewSelected: true,
       coveringLessonSelected: false,
-      coveringLessonAvailable: true,
-      selectedLearnMinutes: 0,
-      reviewMinutes: 8,
-      coveringLessonMinutes: 15,
-      budgetMinutes: 20,
-    }),
-  ).toBe(true);
-  expect(
-    p17HasMissedFallbackOpportunity({
-      result: 'covered',
-      reviewSelected: false,
-      coveringLessonSelected: true,
-      coveringLessonAvailable: true,
-      selectedLearnMinutes: 15,
-      reviewMinutes: 8,
-      coveringLessonMinutes: 15,
-      budgetMinutes: 20,
+      fallbackMissing: true,
+      selectedLearnMinutes: 35,
+      reviewMinutes: 9,
+      remainingBudgetBeforeLessons: 10,
+      remainingReviewCapBeforeLessons: 3,
+      overdueDays: 1,
     }),
   ).toBe(false);
   expect(
     p17HasMissedFallbackOpportunity({
-      result: 'rejected:reviewMinuteCap',
-      reviewSelected: false,
       coveringLessonSelected: false,
-      coveringLessonAvailable: false,
+      fallbackMissing: false,
+      selectedLearnMinutes: 0,
+      reviewMinutes: 8,
+      remainingBudgetBeforeLessons: 20,
+      remainingReviewCapBeforeLessons: 8,
+      overdueDays: 0,
+    }),
+  ).toBe(false);
+  expect(
+    p17HasMissedFallbackOpportunity({
+      coveringLessonSelected: false,
+      fallbackMissing: false,
       selectedLearnMinutes: 15,
       reviewMinutes: 8,
-      coveringLessonMinutes: 0,
-      budgetMinutes: 30,
+      remainingBudgetBeforeLessons: 20,
+      remainingReviewCapBeforeLessons: 8,
+      overdueDays: 0,
+    }),
+  ).toBe(false);
+  expect(
+    p17HasMissedFallbackOpportunity({
+      coveringLessonSelected: true,
+      fallbackMissing: false,
+      selectedLearnMinutes: 15,
+      reviewMinutes: 8,
+      remainingBudgetBeforeLessons: 20,
+      remainingReviewCapBeforeLessons: 8,
+      overdueDays: 0,
+    }),
+  ).toBe(false);
+  expect(
+    p17HasMissedFallbackOpportunity({
+      coveringLessonSelected: false,
+      fallbackMissing: true,
+      selectedLearnMinutes: 15,
+      reviewMinutes: 8,
+      remainingBudgetBeforeLessons: 30,
+      remainingReviewCapBeforeLessons: 8,
+      overdueDays: 0,
     }),
   ).toBe(false);
 });
