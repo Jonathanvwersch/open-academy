@@ -179,6 +179,7 @@ export interface ProfileSimulationReport {
   projectsOffered: SimulatedOffer[];
   papersRecorded: SimulatedPaper[];
   remediation: RemediationSimulationReport;
+  p11CheckedEvents: number;
   totals: {
     lessonsPerDayMean: number;
     lessonsPerDayMax: number;
@@ -1539,6 +1540,7 @@ async function processActivityWithMetrics(
     ? await db.select().from(reviewCards).where(eq(reviewCards.userId, userId))
     : [];
   const beforeById = new Map(beforeCards.map((card) => [card.id, card]));
+  const afterById = new Map(afterCards.map((card) => [card.id, card]));
   const nextLocalDay = startOfNextCalendarDay(now, timeZone);
   let positiveImplicitCredits = 0;
   let negativeImplicitCredits = 0;
@@ -1574,22 +1576,36 @@ async function processActivityWithMetrics(
     explicitReviews = newLogs.length;
 
     const encompassing = buildEncompassingIndex(content);
-    const nextDay = startOfNextCalendarDay(now, timeZone);
     for (const log of newLogs.filter(({ rating }) => rating === String(Rating.Again))) {
       for (const [descendantId, weight] of encompassing.descendants(log.conceptId)) {
-        if (weight !== 1) continue;
-        const lateCards = afterCards.filter(
-          (card) =>
-            card.conceptId === descendantId &&
-            (card.fsrs as { state: number }).state !== State.New &&
-            card.dueAt > nextDay,
-        );
-        if (lateCards.length > 0) {
-          addViolation(runtime, day, 'P11', descendantId, [], {
-            courseId,
-            conceptId: descendantId,
-            details: `Again on ${log.conceptId} left a weight-1 descendant due after the next local day`,
-          });
+        if (weight <= 0) continue;
+        for (const previous of beforeCards) {
+          if (
+            previous.conceptId !== descendantId ||
+            !previous.fsrs ||
+            (previous.fsrs as { state: number }).state !== State.Review
+          ) {
+            continue;
+          }
+          const card = afterById.get(previous.id);
+          if (!card) continue;
+          runtime.report.p11CheckedEvents += 1;
+          const previousFsrs = previous.fsrs as { stability: number; difficulty: number };
+          const currentFsrs = card.fsrs as { stability: number; difficulty: number };
+          const fiReChanged =
+            (previous.lastReviewAt?.getTime() ?? null) === (card.lastReviewAt?.getTime() ?? null) &&
+            (previous.dueAt.getTime() !== card.dueAt.getTime() ||
+              previousFsrs.stability !== currentFsrs.stability ||
+              previousFsrs.difficulty !== currentFsrs.difficulty);
+          const dueAtMovedLater = card.dueAt.getTime() > previous.dueAt.getTime();
+          const dueAtDidNotMoveEarlier = card.dueAt.getTime() >= previous.dueAt.getTime();
+          if (dueAtMovedLater || (fiReChanged && dueAtDidNotMoveEarlier)) {
+            addViolation(runtime, day, 'P11', descendantId, [], {
+              courseId,
+              conceptId: descendantId,
+              details: `Again on ${log.conceptId} with weight ${weight} changed dueAt from ${previous.dueAt.toISOString()} to ${card.dueAt.toISOString()}${fiReChanged ? ' after FIRe changed the card' : ''}`,
+            });
+          }
         }
       }
     }
@@ -1914,6 +1930,7 @@ async function simulateProfile(
       retriesStarted: [],
       lessonsCompletedAfterRetry: [],
     },
+    p11CheckedEvents: 0,
     totals: {
       lessonsPerDayMean: 0,
       lessonsPerDayMax: 0,
@@ -2300,11 +2317,11 @@ export function renderMarkdownReport(report: LearnerSimulationReport): string {
     '',
     '## Summary',
     '',
-    '| Profile | Courses finished | Days simulated | Lessons/day mean / max | Reviews/day mean / max | Explicit reviews | Implicit + / − | Covered skips | Wrong |',
-    '| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |',
+    '| Profile | Courses finished | Days simulated | Lessons/day mean / max | Reviews/day mean / max | Explicit reviews | Implicit + / − | Covered skips | P11 checks | Wrong |',
+    '| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |',
     ...report.profiles.map(
       (profile) =>
-        `| ${profile.profile} | ${profile.courses.filter((course) => course.finishedDay !== null).length}/${profile.courses.length} | ${profile.daysSimulated} | ${profile.totals.lessonsPerDayMean.toFixed(2)} / ${profile.totals.lessonsPerDayMax} | ${profile.totals.reviewsPerDayMean.toFixed(2)} / ${profile.totals.reviewsPerDayMax} | ${profile.totals.explicitReviews} | ${profile.totals.positiveImplicitCredits} / ${profile.totals.negativeImplicitCredits} | ${profile.totals.coveredSkips} | ${profile.totals.wrongPercent.toFixed(1)}% |`,
+        `| ${profile.profile} | ${profile.courses.filter((course) => course.finishedDay !== null).length}/${profile.courses.length} | ${profile.daysSimulated} | ${profile.totals.lessonsPerDayMean.toFixed(2)} / ${profile.totals.lessonsPerDayMax} | ${profile.totals.reviewsPerDayMean.toFixed(2)} / ${profile.totals.reviewsPerDayMax} | ${profile.totals.explicitReviews} | ${profile.totals.positiveImplicitCredits} / ${profile.totals.negativeImplicitCredits} | ${profile.totals.coveredSkips} | ${profile.p11CheckedEvents} | ${profile.totals.wrongPercent.toFixed(1)}% |`,
     ),
     '',
   ];
@@ -2333,6 +2350,7 @@ export function renderMarkdownReport(report: LearnerSimulationReport): string {
       '',
       `Lessons/day: mean ${profile.totals.lessonsPerDayMean.toFixed(2)}, max ${profile.totals.lessonsPerDayMax}.`,
       `Reviews/day: mean ${profile.totals.reviewsPerDayMean.toFixed(2)}, max ${profile.totals.reviewsPerDayMax}.`,
+      `P11 checked events: ${profile.p11CheckedEvents}.`,
       `Wrong answers: ${profile.totals.wrongAnswers}/${profile.totals.answers} (${profile.totals.wrongPercent.toFixed(1)}%).`,
       `Remediation: ${remediation.totals.halts} halts (${remediation.totals.noProgressHalts} no-progress); ${remediation.totals.remediationFlagsOpened} flags opened [${flagList}]; ${remediation.totals.remedialReviewsCompleted} remedial reviews completed; ${remediation.totals.retriesStarted} retries started; ${remediation.totals.lessonsCompletedAfterRetry} lessons completed after retry.`,
       '',

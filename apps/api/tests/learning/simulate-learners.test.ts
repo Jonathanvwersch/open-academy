@@ -1,5 +1,9 @@
 import { afterAll, expect, test } from 'vitest';
-import { type InvariantId, simulateLearners } from '../../scripts/learner-simulator.js';
+import {
+  type InvariantId,
+  renderMarkdownReport,
+  simulateLearners,
+} from '../../scripts/learner-simulator.js';
 import { env } from '../../src/config.js';
 import { loadContent } from '../../src/content/load.js';
 import { createDb } from '../../src/db/client.js';
@@ -48,6 +52,7 @@ test('diligent and graph-change Mathematics for ML runs produce structured repor
   expect(
     first30Days.reduce((total, stats) => total + stats.newTopicsCompleted, 0),
   ).toBeGreaterThanOrEqual(10);
+  expect(renderMarkdownReport(report)).toContain('P11 checks');
   const struggling = await simulateLearners(db, content, {
     profiles: ['struggling'],
     days: 12,
@@ -65,6 +70,7 @@ test('diligent and graph-change Mathematics for ML runs produce structured repor
     expect(profile.totals.positiveImplicitCredits).toEqual(expect.any(Number));
     expect(profile.totals.negativeImplicitCredits).toEqual(expect.any(Number));
     expect(profile.totals.coveredSkips).toEqual(expect.any(Number));
+    expect(profile.p11CheckedEvents).toEqual(expect.any(Number));
     for (const invariant of invariants) {
       expect(profile.violationCounts[invariant]).toEqual(expect.any(Number));
     }
