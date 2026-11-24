@@ -2669,7 +2669,8 @@ it('I3 review scheduling invariant', () => assertInvariant('I3'));
 it('I3 replans a due prerequisite after a completed low-credit coverer', async () => {
   const now = atLocalNoon(startDate);
   await seedLearner(now);
-  await seedCards(now);
+  await addReviewCard(now, 'gradient-descent', 'math', -1, 0);
+  await addReviewCard(now, 'derivatives', 'math', -2, 1);
 
   const { response: sessionResponse, data: session } = await step('POST', '/sessions', now, {
     budgetMinutes: 600,
@@ -2694,7 +2695,9 @@ it('I3 replans a due prerequisite after a completed low-credit coverer', async (
   for (const exerciseId of coverer.exerciseIds) {
     const exercise = content.exercisesById.get(exerciseId);
     const wrong =
-      exercise?.concept === 'gradient-descent' ? seededWrongAnswerFor(exerciseId) : undefined;
+      exercise?.concept === 'gradient-descent'
+        ? wrongAnswerForExercise(content, exerciseId)
+        : undefined;
     const answer = wrong ?? answerFor(exerciseId);
     const { response, data } = await step('POST', '/attempts', now, {
       exerciseId,

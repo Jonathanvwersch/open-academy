@@ -745,12 +745,14 @@ function packWeekday(
       .filter((card) => isDueToday(card.dueAt, now, timezone))
       .map((card) => card.conceptId),
   );
-  const dueTopicsLeftAfterLowCreditReviews = new Set<string>();
+  const dueTopicsLeftAfterLowCreditReviews = new Map<string, Set<string>>();
   for (const { conceptId, rating } of state.completedReviewRatingsToday ?? []) {
     if (rating >= Rating.Good) continue;
+    const dueTopics = dueTopicsLeftAfterLowCreditReviews.get(conceptId) ?? new Set<string>();
     for (const dueConceptId of dueTopicsCoveredBy(conceptId, state, content, now)) {
-      dueTopicsLeftAfterLowCreditReviews.add(dueConceptId);
+      dueTopics.add(dueConceptId);
     }
+    dueTopicsLeftAfterLowCreditReviews.set(conceptId, dueTopics);
   }
   const dueTopicsByTaskConcept = new Map<string, Set<string>>();
   const hasKeptLessonRun = (conceptId: string) =>
@@ -767,7 +769,7 @@ function packWeekday(
     let covered = dueTopicsByTaskConcept.get(conceptId);
     if (!covered) {
       covered = dueTopicsCoveredBy(conceptId, state, content, now);
-      for (const dueConceptId of dueTopicsLeftAfterLowCreditReviews) {
+      for (const dueConceptId of dueTopicsLeftAfterLowCreditReviews.get(conceptId) ?? []) {
         covered.delete(dueConceptId);
       }
       dueTopicsByTaskConcept.set(conceptId, covered);

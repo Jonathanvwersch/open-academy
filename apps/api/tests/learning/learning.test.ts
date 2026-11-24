@@ -1895,6 +1895,71 @@ test('a Good-credited lesson covers its due prerequisite, which is due again if 
   expect(remediationTrace.find((item) => item.conceptId === 'vectors')?.result).not.toBe('covered');
 });
 
+test('a low-credit review does not suppress coverage by a selected lesson', () => {
+  const topicsContent = schedulerContentWithTopics(
+    { 'deep-learning': ['backpropagation'] },
+    courseContent,
+  );
+  const concepts = topicsContent.concepts.map((concept) =>
+    concept.id === 'backpropagation'
+      ? { ...concept, encompassings: [{ id: 'derivatives', weight: 1 }] }
+      : concept,
+  );
+  const schedulerContent: ContentIndex = {
+    ...topicsContent,
+    concepts,
+    conceptsById: new Map(concepts.map((concept) => [concept.id, concept])),
+  };
+  const state = studyState(['deep-learning'], schedulerContent);
+  state.mastery = schedulerContent.concepts
+    .filter((concept) => concept.id !== 'backpropagation')
+    .flatMap((concept) =>
+      concept.dimensions.map((dimension) => ({
+        ...initialMastery(concept.id, dimension),
+        state: 'independent' as const,
+      })),
+    );
+  const reviewedAt = new Date('2025-12-01T12:00:00.000Z');
+  const dueAt = new Date('2026-01-14T00:00:00.000Z');
+  const fsrsCard = {
+    ...scheduleReview(newReviewCard(reviewedAt), reviewedAt, Rating.Good, 'UTC', false).card,
+    state: State.Review,
+    stability: 12,
+    due: dueAt,
+  };
+  state.cards = [
+    {
+      conceptId: 'derivatives',
+      dimension: 'math',
+      dueAt: dueAt.toISOString(),
+      retrievability: 0.5,
+      fsrs: fsrsCard,
+    },
+  ];
+  state.completedReviewRatingsToday = [{ conceptId: 'gradient-descent', rating: Rating.Again }];
+
+  expect(dueTopicsCoveredBy('gradient-descent', state, schedulerContent, now)).toContain(
+    'derivatives',
+  );
+  const excludedLearnConcepts = new Set(
+    schedulerContent.concepts
+      .filter((concept) => concept.id !== 'backpropagation')
+      .map((concept) => concept.id),
+  );
+  const plan = planSession(state, schedulerContent, now, 120, 'weekday', excludedLearnConcepts);
+  expect(plan.activities).toContainEqual(
+    expect.objectContaining({ kind: 'learn', conceptId: 'backpropagation' }),
+  );
+  expect(plannedReviewTopics(plan, schedulerContent)).not.toContain('derivatives');
+  expect(explainReviewSelection(state, schedulerContent, now, 120)).toContainEqual(
+    expect.objectContaining({
+      conceptId: 'derivatives',
+      result: 'covered',
+      coveringConceptId: 'backpropagation',
+    }),
+  );
+});
+
 test('a due covering review replaces an overdue review that it covers', () => {
   const state = studyState(['maths-for-ml'], courseContent);
   state.activeCourseId = 'maths-for-ml';
