@@ -1580,9 +1580,21 @@ async function processActivityWithMetrics(
 ) {
   const userId = api.userId ?? '';
   const tracksCards = activity.kind === 'learn' || activity.kind === 'review';
+  const readActivityLogs = () =>
+    db
+      .select({
+        id: reviewLogs.id,
+        cardId: reviewLogs.cardId,
+        rating: reviewLogs.rating,
+        conceptId: reviewCards.conceptId,
+      })
+      .from(reviewLogs)
+      .innerJoin(reviewCards, eq(reviewLogs.cardId, reviewCards.id))
+      .where(and(eq(reviewCards.userId, userId), eq(reviewLogs.createdAt, now)));
   const beforeCards = tracksCards
     ? await db.select().from(reviewCards).where(eq(reviewCards.userId, userId))
     : [];
+  const beforeLogIds = new Set(tracksCards ? (await readActivityLogs()).map(({ id }) => id) : []);
   const result = await processActivity(
     api,
     db,
@@ -1597,6 +1609,11 @@ async function processActivityWithMetrics(
   const afterCards = tracksCards
     ? await db.select().from(reviewCards).where(eq(reviewCards.userId, userId))
     : [];
+  const activityLogs = tracksCards ? await readActivityLogs() : [];
+  const newLogs = activityLogs.filter(
+    ({ id }) => !beforeLogIds.has(id) && !runtime.checkedReviewLogIds.has(id),
+  );
+  for (const { id } of activityLogs) runtime.checkedReviewLogIds.add(id);
   const beforeById = new Map(beforeCards.map((card) => [card.id, card]));
   const afterById = new Map(afterCards.map((card) => [card.id, card]));
   const nextLocalDay = startOfNextCalendarDay(now, timeZone);
@@ -1620,18 +1637,6 @@ async function processActivityWithMetrics(
 
   let explicitReviews = 0;
   if (activity.kind === 'review') {
-    const logs = await db
-      .select({
-        id: reviewLogs.id,
-        cardId: reviewLogs.cardId,
-        rating: reviewLogs.rating,
-        conceptId: reviewCards.conceptId,
-      })
-      .from(reviewLogs)
-      .innerJoin(reviewCards, eq(reviewLogs.cardId, reviewCards.id))
-      .where(and(eq(reviewCards.userId, userId), eq(reviewLogs.createdAt, now)));
-    const newLogs = logs.filter((log) => !runtime.checkedReviewLogIds.has(log.id));
-    for (const log of newLogs) runtime.checkedReviewLogIds.add(log.id);
     explicitReviews = newLogs.length;
 
     const encompassing = buildEncompassingIndex(content);
