@@ -20,7 +20,7 @@ import {
   users,
 } from '../src/db/schema.js';
 import { buildEncompassingIndex, type EncompassingIndex } from '../src/learning/encompassing.js';
-import { isDueToday, startOfNextCalendarDay } from '../src/learning/fsrs.js';
+import { isDueToday, scheduleReview, startOfNextCalendarDay } from '../src/learning/fsrs.js';
 import { implicitRepetition } from '../src/learning/implicit-repetition.js';
 import { keyPrereqsForPoint, masteryKey, prerequisiteMet } from '../src/learning/prerequisites.js';
 import {
@@ -133,7 +133,12 @@ export interface SimulationMasteryEvidence {
 export interface SimulationViolationEvidence {
   beforeCards: SimulationCardEvidence[];
   afterCards: SimulationCardEvidence[];
-  activityLogs: Array<{ cardId: string; conceptId: string; rating: string }>;
+  activityLogs: Array<{
+    cardId: string;
+    conceptId: string;
+    dimension?: string;
+    rating: string;
+  }>;
   mastery: SimulationMasteryEvidence[];
   schedulerExplanations: ReviewSelectionExplanation[];
   budgetMinutes: number | null;
@@ -387,6 +392,7 @@ interface ProfileRuntime {
   planEvidenceByDay: Map<number, SimulationPlanEvidence[]>;
   activeBehaviors: SimulationViolationEvidence['behaviors'];
   reviewActivitySourceOrder: Map<string, Map<string, number>>;
+  reviewActivityDimensionOrder: Map<string, Map<string, number>>;
   reviewActivityAttemptIndex: Map<string, number>;
 }
 
@@ -953,8 +959,74 @@ export function p13HasEmptyPlanViolation(
   );
 }
 
+// Matches the overdue review-cap bypass in scheduler.ts:1076.
+export function reviewFeasible(
+  minutes: number,
+  remainingBudget: number,
+  remainingCap: number,
+  overdueDays: number,
+): boolean {
+  return (
+    Number.isFinite(minutes) &&
+    minutes > 0 &&
+    minutes <= remainingBudget &&
+    (overdueDays >= 2 || minutes <= remainingCap)
+  );
+}
+
+export function p5HasNoWorkWindow(
+  dailyStats: readonly Pick<DailySimulationStats, 'day' | 'lessons' | 'reviewAttempts'>[],
+  endDay: number,
+  remedialReviewDays: ReadonlySet<number>,
+): boolean {
+  const statsByDay = new Map(dailyStats.map((item) => [item.day, item]));
+  for (let day = endDay - 6; day <= endDay; day += 1) {
+    const stats = statsByDay.get(day);
+    if (!stats || stats.lessons > 0 || stats.reviewAttempts > 0 || remedialReviewDays.has(day)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+export function p10IsStaleRetry(
+  status: string,
+  haltedAt: Date | null | undefined,
+  now: Date,
+): boolean {
+  return (
+    status === 'needs_retry' &&
+    haltedAt !== undefined &&
+    haltedAt !== null &&
+    now.getTime() - haltedAt.getTime() > 7 * 86_400_000
+  );
+}
+
+export function p6HasFeasibleOverdueReview(
+  overdueDays: number,
+  reviewMinutes: number,
+  remainingBudget: number,
+  remainingCap: number,
+): boolean {
+  return (
+    overdueDays > 7 && reviewFeasible(reviewMinutes, remainingBudget, remainingCap, overdueDays)
+  );
+}
+
+function p14ExplanationForCard(
+  card: { conceptId: string; dimension: string },
+  explanations: readonly ReviewSelectionExplanation[],
+): ReviewSelectionExplanation | undefined {
+  return explanations.find(
+    ({ conceptId, result, exerciseDimensions }) =>
+      conceptId === card.conceptId &&
+      exerciseDimensions.includes(card.dimension) &&
+      (result === 'covered' || result === 'selected' || result === 'selected:overdue'),
+  );
+}
+
 export function p14UncoveredDueCards(
-  dueCards: readonly { cardId: string; conceptId: string }[],
+  dueCards: readonly { cardId: string; conceptId: string; dimension: string }[],
   activityCoverage: readonly {
     conceptIds: readonly string[];
     cardIds: ReadonlySet<string>;
@@ -963,16 +1035,8 @@ export function p14UncoveredDueCards(
   }[],
   explanations: readonly ReviewSelectionExplanation[],
 ): string[] {
-  const explanationByConcept = new Map(
-    explanations
-      .filter(
-        ({ result }) =>
-          result === 'covered' || result === 'selected' || result === 'selected:overdue',
-      )
-      .map((explanation) => [explanation.conceptId, explanation]),
-  );
-  return dueCards.flatMap(({ cardId, conceptId }) => {
-    const explanation = explanationByConcept.get(conceptId);
+  return dueCards.flatMap(({ cardId, conceptId, dimension }) => {
+    const explanation = p14ExplanationForCard({ conceptId, dimension }, explanations);
     if (!explanation) return [];
     const covered = activityCoverage.some(({ conceptIds, cardIds, selectedCardIds, unfinished }) =>
       explanation.result === 'covered'
@@ -989,19 +1053,33 @@ export function p14UncoveredDueCards(
 export function p16HasOverduePrecedenceViolation(
   droppedReviewOverdueDays: number,
   selectedReviewOverdueDays: number,
+  droppedReviewMinutes: number,
+  remainingBudgetMinutes: number,
+  remainingReviewCapMinutes: number,
+  selectedReviewMinutes: number,
 ): boolean {
-  return droppedReviewOverdueDays >= selectedReviewOverdueDays + 2;
+  return (
+    droppedReviewOverdueDays >= selectedReviewOverdueDays + 2 &&
+    reviewFeasible(
+      droppedReviewMinutes,
+      remainingBudgetMinutes + selectedReviewMinutes,
+      remainingReviewCapMinutes + selectedReviewMinutes,
+      droppedReviewOverdueDays,
+    )
+  );
 }
 
 export function p17ReviewFitsRemaining(
   reviewMinutes: number,
   remainingBudgetMinutes: number,
   remainingReviewCapMinutes: number,
+  overdueDays: number,
 ): boolean {
-  return (
-    reviewMinutes > 0 &&
-    reviewMinutes <= remainingBudgetMinutes &&
-    reviewMinutes <= remainingReviewCapMinutes
+  return reviewFeasible(
+    reviewMinutes,
+    remainingBudgetMinutes,
+    remainingReviewCapMinutes,
+    overdueDays,
   );
 }
 
@@ -1018,8 +1096,29 @@ export function p18HasMissedPickup(
   remainsDue: boolean,
   hasReviewLog: boolean,
   planCoversTopic: boolean,
+  reviewMinutes: number,
+  remainingBudgetMinutes: number,
+  remainingReviewCapMinutes: number,
+  overdueDays: number,
 ): boolean {
-  return remainsDue && !hasReviewLog && !planCoversTopic;
+  return (
+    remainsDue &&
+    !hasReviewLog &&
+    !planCoversTopic &&
+    reviewFeasible(reviewMinutes, remainingBudgetMinutes, remainingReviewCapMinutes, overdueDays)
+  );
+}
+
+export function selectedReviewConceptsForAudit(
+  conceptIds: readonly string[],
+  explanations: readonly Pick<ReviewSelectionExplanation, 'conceptId' | 'result'>[],
+): string[] {
+  const selectedConcepts = new Set(
+    explanations
+      .filter(({ result }) => result === 'selected' || result === 'selected:overdue')
+      .map(({ conceptId }) => conceptId),
+  );
+  return conceptIds.filter((conceptId) => selectedConcepts.has(conceptId));
 }
 
 export function p19HasEarlyReviewViolation(
@@ -1227,13 +1326,20 @@ function auditReviewPlanInvariants(
   const unfinished = activities.filter(
     (activity) => activity.status !== 'completed' && activity.status !== 'skipped',
   );
-  const coverageByActivity = unfinished.map((activity) =>
-    activityDueCoverage(activity, state, content, now),
+  const selectedPlanActivities = unfinished.filter(
+    (activity) => !replan || activity.status === 'planned',
+  );
+  const selectedConceptsForActivity = (activity: SimActivity) =>
+    selectedReviewConceptsForAudit(reviewConceptIdsForActivity(activity), explanations);
+  const coverageByActivity = selectedPlanActivities.map((activity) =>
+    activity.kind === 'review' && selectedConceptsForActivity(activity).length === 0
+      ? new Set<string>()
+      : activityDueCoverage(activity, state, content, now),
   );
   const allCovered = new Set(coverageByActivity.flatMap((coverage) => [...coverage]));
-  const nonRemediationReviews = unfinished.flatMap((activity) =>
+  const nonRemediationReviews = selectedPlanActivities.flatMap((activity) =>
     activity.kind === 'review'
-      ? reviewConceptIdsForActivity(activity)
+      ? selectedConceptsForActivity(activity)
           .filter((conceptId) => !openRemediationConceptIds.has(conceptId))
           .map((conceptId) => ({ activity, conceptId }))
       : [],
@@ -1281,8 +1387,16 @@ function auditReviewPlanInvariants(
       explanation.conceptId,
       explanation.candidateMinutes,
     );
+    const droppedOverdueDays = overdueDays(explanation.conceptId);
     markChecked(runtime, 'P17');
-    if (p17ReviewFitsRemaining(reviewMinutes, remainingBudgetMinutes, remainingReviewCapMinutes)) {
+    if (
+      p17ReviewFitsRemaining(
+        reviewMinutes,
+        remainingBudgetMinutes,
+        remainingReviewCapMinutes,
+        droppedOverdueDays,
+      )
+    ) {
       addViolation(runtime, day, 'P17', explanation.conceptId, [], {
         courseId,
         conceptId: explanation.conceptId,
@@ -1292,14 +1406,22 @@ function auditReviewPlanInvariants(
 
     if (nonRemediationReviews.length === 0) continue;
     markChecked(runtime, 'P16');
-    const droppedOverdueDays = overdueDays(explanation.conceptId);
     for (const selected of nonRemediationReviews) {
       const selectedCoverage = activityDueCoverage(selected.activity, state, content, now);
       const selectedOverdueDays = Math.max(
         0,
         ...[...selectedCoverage].map((conceptId) => overdueDays(conceptId)),
       );
-      if (p16HasOverduePrecedenceViolation(droppedOverdueDays, selectedOverdueDays)) {
+      if (
+        p16HasOverduePrecedenceViolation(
+          droppedOverdueDays,
+          selectedOverdueDays,
+          reviewMinutes,
+          remainingBudgetMinutes,
+          remainingReviewCapMinutes,
+          selected.activity.plannedMinutes,
+        )
+      ) {
         addViolation(runtime, day, 'P16', explanation.conceptId, [], {
           courseId,
           conceptId: explanation.conceptId,
@@ -1311,10 +1433,10 @@ function auditReviewPlanInvariants(
   }
 
   const coveredBefore = new Set<string>();
-  for (const activity of unfinished) {
+  for (const activity of selectedPlanActivities) {
     const coverage = activityDueCoverage(activity, state, content, now);
     if (activity.kind === 'review') {
-      for (const conceptId of reviewConceptIdsForActivity(activity)) {
+      for (const conceptId of selectedConceptsForActivity(activity)) {
         markChecked(runtime, 'P19');
         const topicCoverage = new Set(dueTopicsCoveredByForAudit(conceptId, state, content, now));
         if (dueConceptIds.has(conceptId)) topicCoverage.add(conceptId);
@@ -1338,7 +1460,9 @@ function auditReviewPlanInvariants(
         for (const dueConceptId of topicCoverage) coveredBefore.add(dueConceptId);
       }
     }
-    for (const conceptId of coverage) coveredBefore.add(conceptId);
+    if (activity.kind !== 'review' || selectedConceptsForActivity(activity).length > 0) {
+      for (const conceptId of coverage) coveredBefore.add(conceptId);
+    }
   }
 }
 
@@ -1491,21 +1615,6 @@ async function auditHome(
       });
     }
   }
-  for (const run of progress.lessonRuns) {
-    if (
-      run.status === 'needs_retry' &&
-      run.haltedAt &&
-      now.getTime() - run.haltedAt.getTime() > 7 * 86_400_000 &&
-      !runtime.staleRetryReported.has(run.conceptId)
-    ) {
-      runtime.staleRetryReported.add(run.conceptId);
-      addViolation(runtime, day, 'P10', run.conceptId, [], {
-        ...(courseId ? { courseId } : {}),
-        conceptId: run.conceptId,
-        details: 'lesson remained needs_retry for more than seven days',
-      });
-    }
-  }
   for (const choice of learn.choices) {
     const missing = hardAncestorClosure([choice.conceptId], content, false).filter(
       (ancestorId) => !isDone(ancestorId, progress, content),
@@ -1583,6 +1692,21 @@ function auditSession(
   for (const activity of activities) {
     if (activity.kind === 'learn' && activity.conceptId) {
       checkLessonReadiness(runtime, day, courseId, [activity.conceptId], progress, content);
+      const run = progress.lessonRuns.find(
+        (candidate) => candidate.conceptId === activity.conceptId,
+      );
+      if (
+        run &&
+        p10IsStaleRetry(run.status, run.haltedAt, now) &&
+        !runtime.staleRetryReported.has(run.conceptId)
+      ) {
+        runtime.staleRetryReported.add(run.conceptId);
+        addViolation(runtime, day, 'P10', run.conceptId, [], {
+          courseId,
+          conceptId: run.conceptId,
+          details: 'lesson remained needs_retry for more than seven days when the activity started',
+        });
+      }
     }
     if (activity.projectId) {
       checkProjectReadiness(runtime, day, activity.projectId, courseId, progress, content);
@@ -1753,11 +1877,25 @@ async function reviewCardAudit(
     const dueDate = localDate(card.dueAt, timeZone);
     const overdueDays =
       (Date.parse(`${today}T00:00:00Z`) - Date.parse(`${dueDate}T00:00:00Z`)) / 86_400_000;
-    if (overdueDays > 7 && !reportedCards.has(card.id)) {
+    const explanation = runtime.violationEvidenceContext.schedulerExplanations.find(
+      (item) => item.conceptId === card.conceptId,
+    );
+    if (
+      overdueDays > 7 &&
+      explanation?.result.startsWith('rejected:') &&
+      typeof explanation.candidateMinutes === 'number' &&
+      p6HasFeasibleOverdueReview(
+        overdueDays,
+        explanation.candidateMinutes,
+        Math.max(0, explanation.budget - explanation.usedMinutes),
+        Math.max(0, explanation.reviewCap - explanation.reviewMinutes),
+      ) &&
+      !reportedCards.has(card.id)
+    ) {
       reportedCards.add(card.id);
       addViolation(runtime, day, 'P6', card.conceptId, [], {
         conceptId: card.conceptId,
-        details: `review card ${card.id} is ${overdueDays} days overdue`,
+        details: `review card ${card.id} is ${overdueDays} days overdue and its ${explanation.candidateMinutes}-minute review fits remaining capacity`,
       });
     }
   }
@@ -2089,6 +2227,12 @@ async function attemptExercise(
     const sourceOrder = runtime.reviewActivitySourceOrder.get(activityId) ?? new Map();
     sourceOrder.set(conceptId, attemptIndex);
     runtime.reviewActivitySourceOrder.set(activityId, sourceOrder);
+    const dimension = content.exercisesById.get(exerciseId)?.dimension;
+    if (dimension) {
+      const dimensionOrder = runtime.reviewActivityDimensionOrder.get(activityId) ?? new Map();
+      dimensionOrder.set(`${conceptId}/${dimension}`, attemptIndex);
+      runtime.reviewActivityDimensionOrder.set(activityId, dimensionOrder);
+    }
   }
   const intendedCorrect = wantsCorrect(runtime, conceptId, day, activityId, exerciseId);
   const exercise = exerciseFor(content, exerciseId, 0);
@@ -2335,6 +2479,7 @@ interface P11CardSnapshot {
 interface P11ActivityLog {
   cardId: string;
   conceptId: string;
+  dimension?: string;
   rating: string;
 }
 
@@ -2413,6 +2558,7 @@ export function auditP15ImplicitCredits(
   now: Date,
   timeZone: string,
   activityKind: 'learn' | 'review' = 'review',
+  reviewLogOrder: ReadonlyMap<string, number> = new Map(),
 ): { checked: number; violations: string[] } {
   const logsByConcept = new Map<string, number[]>();
   for (const log of activityLogs) {
@@ -2420,14 +2566,27 @@ export function auditP15ImplicitCredits(
     ratings.push(Number(log.rating));
     logsByConcept.set(log.conceptId, ratings);
   }
-  const explicitCardIds = new Set(activityLogs.map((log) => log.cardId));
   const expectedById = new Map(beforeCards.map((card) => [card.id, card]));
   const actualById = new Map(afterCards.map((card) => [card.id, card]));
-  const checkedCards = new Set<string>();
+  const affectedCards = new Set<string>();
   let appliedUpdates = 0;
-  for (const sourceConceptId of new Set(sourceConceptOrder)) {
+  const sourceConcepts = new Set(sourceConceptOrder);
+  const sourceOrder = new Map(
+    [...new Set(sourceConceptOrder)].map((conceptId, index) => [conceptId, index]),
+  );
+  const orderedLogs = [...activityLogs].sort(
+    (left, right) =>
+      (reviewLogOrder.get(left.cardId) ?? Number.MAX_SAFE_INTEGER) -
+        (reviewLogOrder.get(right.cardId) ?? Number.MAX_SAFE_INTEGER) ||
+      (sourceOrder.get(left.conceptId) ?? Number.MAX_SAFE_INTEGER) -
+        (sourceOrder.get(right.conceptId) ?? Number.MAX_SAFE_INTEGER) ||
+      (left.dimension ?? '').localeCompare(right.dimension ?? '') ||
+      left.cardId.localeCompare(right.cardId),
+  );
+  const processedLogsByConcept = new Map<string, number>();
+  const applySourceCredit = (sourceConceptId: string) => {
     const ratings = logsByConcept.get(sourceConceptId);
-    if (!ratings?.length) continue;
+    if (!ratings?.length) return;
     const rating =
       activityKind === 'learn'
         ? ratings.includes(Rating.Again)
@@ -2436,7 +2595,7 @@ export function auditP15ImplicitCredits(
             ? Rating.Good
             : Rating.Hard
         : (Math.min(...ratings) as Rating);
-    if (rating === undefined) continue;
+    if (rating === undefined) return;
     const positive = rating === Rating.Hard || rating === Rating.Good;
     const relatedConcepts = positive
       ? new Set(encompassing.ancestors(sourceConceptId).keys())
@@ -2448,11 +2607,11 @@ export function auditP15ImplicitCredits(
       if (
         weight <= 0 ||
         !relatedConcepts.has(card.conceptId) ||
-        explicitCardIds.has(card.id) ||
         (!positive && rating !== Rating.Again)
       ) {
         continue;
       }
+      affectedCards.add(card.id);
       const current = expectedById.get(card.id);
       if (!current) continue;
       const update = implicitRepetition(
@@ -2461,12 +2620,39 @@ export function auditP15ImplicitCredits(
       );
       if (!update) continue;
       expectedById.set(card.id, { ...current, fsrs: update.fsrs, dueAt: update.dueAt });
-      checkedCards.add(card.id);
       appliedUpdates += 1;
+    }
+  };
+  for (const log of orderedLogs) {
+    if (activityKind === 'review') {
+      const current = expectedById.get(log.cardId);
+      if (current) {
+        const scheduled = scheduleReview(
+          current.fsrs as Card,
+          now,
+          Number(log.rating) as Rating,
+          timeZone,
+          false,
+        ).card;
+        expectedById.set(log.cardId, {
+          ...current,
+          fsrs: scheduled,
+          dueAt: scheduled.due,
+          lastReviewAt: now,
+        });
+      }
+    }
+    const processed = (processedLogsByConcept.get(log.conceptId) ?? 0) + 1;
+    processedLogsByConcept.set(log.conceptId, processed);
+    if (
+      sourceConcepts.has(log.conceptId) &&
+      processed === (logsByConcept.get(log.conceptId)?.length ?? 0)
+    ) {
+      applySourceCredit(log.conceptId);
     }
   }
   const violations: string[] = [];
-  for (const cardId of checkedCards) {
+  for (const cardId of affectedCards) {
     const expected = expectedById.get(cardId);
     const actual = actualById.get(cardId);
     if (!expected || !actual) {
@@ -2542,6 +2728,7 @@ async function processActivityWithMetrics(
         cardId: reviewLogs.cardId,
         rating: reviewLogs.rating,
         conceptId: reviewCards.conceptId,
+        dimension: reviewCards.dimension,
       })
       .from(reviewLogs)
       .innerJoin(reviewCards, eq(reviewLogs.cardId, reviewCards.id))
@@ -2568,6 +2755,7 @@ async function processActivityWithMetrics(
   if (activity.kind === 'review') {
     runtime.reviewActivityAttemptIndex.set(activity.id, 0);
     runtime.reviewActivitySourceOrder.set(activity.id, new Map());
+    runtime.reviewActivityDimensionOrder.set(activity.id, new Map());
   }
   const result = await processActivity(
     api,
@@ -2617,14 +2805,16 @@ async function processActivityWithMetrics(
       beforeCards: databaseCardEvidence(beforeCards),
       afterCards: databaseCardEvidence(afterCards),
       activityLogs: newLogs
-        .map(({ cardId, conceptId, rating }) => ({
+        .map(({ cardId, conceptId, dimension, rating }) => ({
           cardId: activityCardKeys.get(cardId) ?? conceptId,
           conceptId,
+          dimension,
           rating: String(rating),
         }))
         .sort(
           (left, right) =>
             left.conceptId.localeCompare(right.conceptId) ||
+            (left.dimension ?? '').localeCompare(right.dimension ?? '') ||
             left.cardId.localeCompare(right.cardId) ||
             left.rating.localeCompare(right.rating),
         ),
@@ -2695,6 +2885,15 @@ async function processActivityWithMetrics(
                 (recordedOrder.get(right) ?? Number.MAX_SAFE_INTEGER) || left.localeCompare(right),
           )
         : implicitCreditSourceOrder(activity, content, newLogs);
+    const reviewLogOrder = new Map(
+      newLogs.flatMap((log) => {
+        if (!log.dimension) return [];
+        const order = runtime.reviewActivityDimensionOrder
+          .get(activity.id)
+          ?.get(`${log.conceptId}/${log.dimension}`);
+        return order === undefined ? [] : [[log.cardId, order] as const];
+      }),
+    );
     const p15 = auditP15ImplicitCredits(
       beforeCards,
       afterCards,
@@ -2704,6 +2903,7 @@ async function processActivityWithMetrics(
       now,
       timeZone,
       activity.kind === 'learn' ? 'learn' : 'review',
+      reviewLogOrder,
     );
     runtime.report.checkedCounts.P15 += p15.checked;
     for (const detail of p15.violations) {
@@ -2714,7 +2914,8 @@ async function processActivityWithMetrics(
       addViolation(runtime, day, 'P15', cardId, [], {
         courseId,
         ...(conceptId ? { conceptId } : {}),
-        details: detail,
+        evidenceConceptIds: sourceConceptOrder,
+        details: `${activity.kind} credit sources ${sourceConceptOrder.join(', ') || 'none'}: ${detail}`,
       });
     }
   }
@@ -3108,8 +3309,10 @@ function auditSavedSessionPlan(
       )
       .map(({ conceptId }) => conceptId),
   );
-  const checkedDueCards = dueCards.filter((card) =>
-    coveredOrSelectedConceptIds.has(card.conceptId),
+  const checkedDueCards = dueCards.filter(
+    (card) =>
+      coveredOrSelectedConceptIds.has(card.conceptId) &&
+      p14ExplanationForCard(card, explanations) !== undefined,
   );
   for (const _card of checkedDueCards) markChecked(runtime, 'P14');
   const activityCoverage = activities.map((activity) => ({
@@ -3143,6 +3346,7 @@ function auditSavedSessionPlan(
     checkedDueCards.map((card) => ({
       cardId: dueCardKey(card),
       conceptId: card.conceptId,
+      dimension: card.dimension,
     })),
     activityCoverage,
     explanations,
@@ -3155,7 +3359,6 @@ function auditSavedSessionPlan(
     });
   }
   for (const pending of runtime.pendingP18.filter((event) => event.day === day)) {
-    markChecked(runtime, 'P18');
     const remainsDue = state.cards.some(
       (card) =>
         card.conceptId === pending.conceptId &&
@@ -3180,7 +3383,36 @@ function auditSavedSessionPlan(
       (activity) =>
         activity.kind !== 'review' || selectedReviewMinutes <= Math.floor(budgetMinutes * 0.3),
     );
-    if (p18HasMissedPickup(remainsDue, false, planCoversTopic)) {
+    const explanation = explanations.find((item) => item.conceptId === pending.conceptId);
+    if (
+      typeof explanation?.candidateMinutes !== 'number' ||
+      !Number.isFinite(explanation.candidateMinutes) ||
+      explanation.candidateMinutes <= 0
+    ) {
+      continue;
+    }
+    const overdueDays = Math.max(
+      0,
+      ...state.cards
+        .filter((card) => card.conceptId === pending.conceptId)
+        .map(
+          (card) =>
+            localDayOrdinal(now, state.timezone ?? 'UTC') -
+            localDayOrdinal(new Date(card.dueAt), state.timezone ?? 'UTC'),
+        ),
+    );
+    markChecked(runtime, 'P18');
+    if (
+      p18HasMissedPickup(
+        remainsDue,
+        false,
+        planCoversTopic,
+        explanation.candidateMinutes,
+        planEvidence.remainingMinutes,
+        planEvidence.remainingReviewCapMinutes,
+        overdueDays,
+      )
+    ) {
       addViolation(runtime, day, 'P18', pending.conceptId, [], {
         courseId,
         conceptId: pending.conceptId,
@@ -3382,6 +3614,7 @@ async function simulateProfile(
       B4Replan: false,
     },
     reviewActivitySourceOrder: new Map(),
+    reviewActivityDimensionOrder: new Map(),
     reviewActivityAttemptIndex: new Map(),
   };
   let activeContent = initialContent;
@@ -3946,13 +4179,6 @@ async function simulateProfile(
       const afterStudyCatalog = await fetchCourseCatalog(api, now);
       const currentCourse = courseRows(afterStudyCatalog).find((course) => course.id === courseId);
       const courseComplete = currentCourse ? isCourseComplete(currentCourse) : false;
-      if (!skip && !courseComplete && daily.lessons + daily.reviews === 0) {
-        setP5EvidenceContext(runtime, day);
-        addViolation(runtime, day, 'P5', courseId, [], {
-          courseId,
-          details: 'studied day had no lesson or review activity',
-        });
-      }
       const noProgress =
         !courseComplete && daily.newTopicsCompleted === 0 && daily.reviewAttempts === 0;
       noProgressDays.set(courseId, noProgress ? (noProgressDays.get(courseId) ?? 0) + 1 : 0);
@@ -3963,14 +4189,12 @@ async function simulateProfile(
         )
       ) {
         const firstDay = day - 6;
-        const hasProgress = report.dailyStats
-          .slice(-7)
-          .some((item) => item.newTopicsCompleted > 0 || item.reviewAttempts > 0);
-        if (!hasProgress) {
+        const remedialReviewDays = new Set(runtime.remedialReviewEvents.map((event) => event.day));
+        if (p5HasNoWorkWindow(report.dailyStats, day, remedialReviewDays)) {
           setP5EvidenceContext(runtime, day);
           addViolation(runtime, day, 'P5', courseId, [], {
             courseId,
-            details: `days ${firstDay}-${day} had no new topics or reviews`,
+            details: `days ${firstDay}-${day} had no lesson attempts, review attempts, or remedial reviews`,
           });
         }
       }

@@ -5,6 +5,9 @@ import {
   auditP11DescendantCard,
   auditP15ImplicitCredits,
   type InvariantId,
+  p5HasNoWorkWindow,
+  p6HasFeasibleOverdueReview,
+  p10IsStaleRetry,
   p13HasEmptyPlanViolation,
   p14UncoveredDueCards,
   p16HasOverduePrecedenceViolation,
@@ -13,8 +16,10 @@ import {
   p19HasEarlyReviewViolation,
   renderMarkdownReport,
   requireP17ReviewMinutes,
+  reviewFeasible,
   SimulatedApiFailureError,
   type SimulationProfile,
+  selectedReviewConceptsForAudit,
   simulateLearners,
 } from '../../scripts/learner-simulator.js';
 import { env } from '../../src/config.js';
@@ -208,6 +213,34 @@ test('P13 flags an empty plan only when an unlocked lesson fits its budget', () 
   expect(p13HasEmptyPlanViolation(1, [15], 20)).toBe(false);
 });
 
+test('P5 requires seven days without lesson, review, or remedial attempts', () => {
+  const days = Array.from({ length: 7 }, (_, index) => ({
+    day: index + 1,
+    lessons: 0,
+    reviewAttempts: 0,
+  }));
+
+  expect(p5HasNoWorkWindow(days, 7, new Set())).toBe(true);
+  expect(
+    p5HasNoWorkWindow(
+      days.map((item, index) => ({
+        ...item,
+        lessons: index === 3 ? 1 : 0,
+      })),
+      7,
+      new Set(),
+    ),
+  ).toBe(false);
+  expect(p5HasNoWorkWindow(days, 7, new Set([7]))).toBe(false);
+});
+
+test('P10 evaluates stale retries when an activity starts from fresh run state', () => {
+  const now = new Date('2026-01-14T12:00:00.000Z');
+  expect(p10IsStaleRetry('needs_retry', new Date('2026-01-01T12:00:00.000Z'), now)).toBe(true);
+  expect(p10IsStaleRetry('needs_retry', new Date('2026-01-10T12:00:00.000Z'), now)).toBe(false);
+  expect(p10IsStaleRetry('completed', new Date('2026-01-01T12:00:00.000Z'), now)).toBe(false);
+});
+
 test('P14 checks selected and covered cards while excluding cap- and budget-rejected cards', () => {
   const explanations = [
     {
@@ -215,7 +248,7 @@ test('P14 checks selected and covered cards while excluding cap- and budget-reje
       result: 'covered' as const,
       coveringConceptId: 'lesson',
       exerciseIds: [],
-      exerciseDimensions: [],
+      exerciseDimensions: ['math'],
       reviewMinutes: 8,
       reviewCap: 6,
       usedMinutes: 12,
@@ -226,7 +259,7 @@ test('P14 checks selected and covered cards while excluding cap- and budget-reje
       conceptId: 'selected',
       result: 'selected' as const,
       exerciseIds: [],
-      exerciseDimensions: [],
+      exerciseDimensions: ['math'],
       reviewMinutes: 4,
       reviewCap: 6,
       usedMinutes: 12,
@@ -237,7 +270,7 @@ test('P14 checks selected and covered cards while excluding cap- and budget-reje
       conceptId: 'dropped',
       result: 'rejected:budget' as const,
       exerciseIds: [],
-      exerciseDimensions: [],
+      exerciseDimensions: ['math'],
       reviewMinutes: 8,
       reviewCap: 6,
       usedMinutes: 20,
@@ -246,9 +279,11 @@ test('P14 checks selected and covered cards while excluding cap- and budget-reje
     },
   ];
   const dueCards = [
-    { cardId: 'covered/math', conceptId: 'covered' },
-    { cardId: 'selected/math', conceptId: 'selected' },
-    { cardId: 'dropped/math', conceptId: 'dropped' },
+    { cardId: 'covered/math', conceptId: 'covered', dimension: 'math' },
+    { cardId: 'covered/implementation', conceptId: 'covered', dimension: 'implementation' },
+    { cardId: 'selected/math', conceptId: 'selected', dimension: 'math' },
+    { cardId: 'selected/implementation', conceptId: 'selected', dimension: 'implementation' },
+    { cardId: 'dropped/math', conceptId: 'dropped', dimension: 'math' },
   ];
 
   expect(
@@ -295,6 +330,19 @@ test('P14 checks selected and covered cards while excluding cap- and budget-reje
     'covered/math',
     'selected/math',
   ]);
+});
+
+test('review feasibility requires positive minutes and respects budget and overdue cap bypass', () => {
+  expect(reviewFeasible(8, 8, 0, 2)).toBe(true);
+  expect(reviewFeasible(8, 7, 0, 2)).toBe(false);
+  expect(reviewFeasible(8, 8, 7, 0)).toBe(false);
+  expect(reviewFeasible(0, 8, 8, 0)).toBe(false);
+});
+
+test('P6 flags only feasible reviews left overdue beyond a week', () => {
+  expect(p6HasFeasibleOverdueReview(8, 8, 8, 0)).toBe(true);
+  expect(p6HasFeasibleOverdueReview(8, 9, 8, 0)).toBe(false);
+  expect(p6HasFeasibleOverdueReview(7, 8, 8, 0)).toBe(false);
 });
 
 test('P15 flags missing Again credit and accepts one update', () => {
@@ -395,24 +443,27 @@ test('P15 applies the lesson quiz rating once and accepts its Again guard', () =
 });
 
 test('P16 flags a selected review when a dropped review is two days more overdue', () => {
-  expect(p16HasOverduePrecedenceViolation(5, 3)).toBe(true);
-  expect(p16HasOverduePrecedenceViolation(4, 3)).toBe(false);
+  expect(p16HasOverduePrecedenceViolation(5, 3, 8, 4, 0, 4)).toBe(true);
+  expect(p16HasOverduePrecedenceViolation(5, 3, 8, 3, 0, 4)).toBe(false);
+  expect(p16HasOverduePrecedenceViolation(4, 3, 8, 4, 0, 4)).toBe(false);
 });
 
 test('P17 flags a dropped review only when it fits both remaining limits', () => {
-  expect(p17ReviewFitsRemaining(8, 12, 8)).toBe(true);
-  expect(p17ReviewFitsRemaining(8, 12, 7)).toBe(false);
-  expect(p17ReviewFitsRemaining(0, 0, 0)).toBe(false);
+  expect(p17ReviewFitsRemaining(8, 12, 8, 0)).toBe(true);
+  expect(p17ReviewFitsRemaining(8, 12, 7, 0)).toBe(false);
+  expect(p17ReviewFitsRemaining(8, 8, 0, 2)).toBe(true);
+  expect(p17ReviewFitsRemaining(0, 0, 0, 0)).toBe(false);
   expect(requireP17ReviewMinutes('vectors', 8)).toBe(8);
   expect(() => requireP17ReviewMinutes('vectors', 0)).toThrow(/vectors/);
   expect(() => requireP17ReviewMinutes('vectors', undefined)).toThrow(/vectors/);
 });
 
 test('P18 flags a missed same-day low-credit pickup only while it remains due without a log', () => {
-  expect(p18HasMissedPickup(true, false, false)).toBe(true);
-  expect(p18HasMissedPickup(false, false, false)).toBe(false);
-  expect(p18HasMissedPickup(true, true, false)).toBe(false);
-  expect(p18HasMissedPickup(true, false, true)).toBe(false);
+  expect(p18HasMissedPickup(true, false, false, 8, 12, 8, 0)).toBe(true);
+  expect(p18HasMissedPickup(true, false, false, 8, 7, 8, 0)).toBe(false);
+  expect(p18HasMissedPickup(false, false, false, 8, 12, 8, 0)).toBe(false);
+  expect(p18HasMissedPickup(true, true, false, 8, 12, 8, 0)).toBe(false);
+  expect(p18HasMissedPickup(true, false, true, 8, 12, 8, 0)).toBe(false);
 });
 
 test('P19 requires an early non-remediation review to cover two new due topics', () => {
@@ -420,6 +471,19 @@ test('P19 requires an early non-remediation review to cover two new due topics',
   expect(p19HasEarlyReviewViolation(false, 2, false)).toBe(false);
   expect(p19HasEarlyReviewViolation(true, 0, false)).toBe(false);
   expect(p19HasEarlyReviewViolation(false, 0, true)).toBe(false);
+});
+
+test('P19 only audits reviews newly selected by the current plan', () => {
+  expect(
+    selectedReviewConceptsForAudit(
+      ['selected', 'covered', 'excludedByReplan'],
+      [
+        { conceptId: 'selected', result: 'selected' },
+        { conceptId: 'covered', result: 'covered' },
+        { conceptId: 'excludedByReplan', result: 'not_candidate:excludedByReplan' },
+      ],
+    ),
+  ).toEqual(['selected']);
 });
 
 test('a simulated API 5xx retains the originating request and response', () => {
