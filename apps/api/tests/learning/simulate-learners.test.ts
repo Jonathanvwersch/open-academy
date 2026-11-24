@@ -369,6 +369,67 @@ test('P15 applies Again credit from a source to its descendant using descendant 
   ).toEqual([]);
 });
 
+test('P15 predicts the prerequisite reset after a repeated Again source', () => {
+  const now = new Date('2026-01-14T12:00:00.000Z');
+  const descendant = p15Card(
+    'descendant-card',
+    'descendant',
+    '2026-04-14T12:00:00.000Z',
+    '2025-12-01T12:00:00.000Z',
+  );
+  const logs = [
+    {
+      cardId: 'prerequisite-log',
+      conceptId: 'prerequisite',
+      rating: String(Rating.Again),
+      previousLog: {
+        rating: String(Rating.Again),
+        createdAt: new Date('2026-01-07T12:00:00.000Z'),
+      },
+    },
+  ];
+  const afterFiRe = applyExpectedImplicitCredit(descendant, Rating.Again, 0.5, now);
+  const reset = {
+    ...afterFiRe,
+    dueAt: now,
+    fsrs: { ...afterFiRe.fsrs, due: now },
+  };
+  const resetContext = {
+    hardPrerequisiteIdsByConcept: new Map([['prerequisite', ['descendant']]]),
+    completedReviewConceptIds: new Set<string>(),
+    coveredDimensionKeys: new Set<string>(),
+  };
+
+  expect(
+    auditP15ImplicitCredits(
+      [descendant],
+      [afterFiRe],
+      logs,
+      ['prerequisite'],
+      p15Weights,
+      now,
+      'UTC',
+      'review',
+      new Map(),
+      resetContext,
+    ).violations,
+  ).not.toEqual([]);
+  expect(
+    auditP15ImplicitCredits(
+      [descendant],
+      [reset],
+      logs,
+      ['prerequisite'],
+      p15Weights,
+      now,
+      'UTC',
+      'review',
+      new Map(),
+      resetContext,
+    ).violations,
+  ).toEqual([]);
+});
+
 test('P15 flags duplicate credit and accepts a legitimate no-op', () => {
   const now = new Date('2026-01-14T12:00:00.000Z');
   const parent = p15Card('parent-card', 'parent', '2026-01-14T12:00:00.000Z');

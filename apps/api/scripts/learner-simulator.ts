@@ -1,6 +1,6 @@
 import type { CourseCatalogPayload, CoursePayload, LearnPayload } from '@academy/contracts/course';
 import type { SessionActivity, TodayPayload } from '@academy/contracts/sessions';
-import { and, asc, desc, eq } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray } from 'drizzle-orm';
 import type { Card } from 'ts-fsrs';
 import { Rating, State } from 'ts-fsrs';
 import { createApp } from '../src/app.js';
@@ -22,6 +22,10 @@ import {
 import { buildEncompassingIndex, type EncompassingIndex } from '../src/learning/encompassing.js';
 import { isDueToday, scheduleReview, startOfNextCalendarDay } from '../src/learning/fsrs.js';
 import { implicitRepetition } from '../src/learning/implicit-repetition.js';
+import {
+  bringWeakestPrerequisiteCardDueNow,
+  canBringPrerequisiteDueNow,
+} from '../src/learning/prerequisite-review.js';
 import { keyPrereqsForPoint, masteryKey, prerequisiteMet } from '../src/learning/prerequisites.js';
 import {
   adjustedMinutesForLearnerPace,
@@ -138,6 +142,7 @@ export interface SimulationViolationEvidence {
     conceptId: string;
     dimension?: string;
     rating: string;
+    previousLog: { rating: string; createdAt: string } | null;
   }>;
   mastery: SimulationMasteryEvidence[];
   schedulerExplanations: ReviewSelectionExplanation[];
@@ -2473,6 +2478,13 @@ interface P11ActivityLog {
   conceptId: string;
   dimension?: string;
   rating: string;
+  previousLog?: { rating: string; createdAt: Date } | null;
+}
+
+interface P15PrerequisiteResetContext {
+  hardPrerequisiteIdsByConcept: ReadonlyMap<string, readonly string[]>;
+  completedReviewConceptIds: ReadonlySet<string>;
+  coveredDimensionKeys: ReadonlySet<string>;
 }
 
 type P11DescendantAssessment =
@@ -2551,6 +2563,7 @@ export function auditP15ImplicitCredits(
   timeZone: string,
   activityKind: 'learn' | 'review' = 'review',
   reviewLogOrder: ReadonlyMap<string, number> = new Map(),
+  prerequisiteResetContext?: P15PrerequisiteResetContext,
 ): { checked: number; violations: string[] } {
   const logsByConcept = new Map<string, number[]>();
   for (const log of activityLogs) {
@@ -2576,6 +2589,7 @@ export function auditP15ImplicitCredits(
       left.cardId.localeCompare(right.cardId),
   );
   const processedLogsByConcept = new Map<string, number>();
+  let prerequisiteResetUpdates = 0;
   const applySourceCredit = (sourceConceptId: string) => {
     const ratings = logsByConcept.get(sourceConceptId);
     if (!ratings?.length) return;
@@ -2646,6 +2660,49 @@ export function auditP15ImplicitCredits(
       applySourceCredit(log.conceptId);
     }
   }
+  if (activityKind === 'review' && prerequisiteResetContext) {
+    for (const log of orderedLogs) {
+      if (Number(log.rating) !== Rating.Again || log.previousLog?.rating !== String(Rating.Again)) {
+        continue;
+      }
+      const hardPrerequisiteIds =
+        prerequisiteResetContext.hardPrerequisiteIdsByConcept.get(log.conceptId) ?? [];
+      const candidates = [...expectedById.values()].filter((card) =>
+        hardPrerequisiteIds.includes(card.conceptId),
+      );
+      const eligible = candidates.filter((card) =>
+        canBringPrerequisiteDueNow({
+          lastReviewAt: card.lastReviewAt,
+          now,
+          timeZone,
+          coveredByActivity:
+            prerequisiteResetContext.completedReviewConceptIds.has(card.conceptId) ||
+            prerequisiteResetContext.coveredDimensionKeys.has(
+              `${card.conceptId}/${card.dimension ?? ''}`,
+            ),
+        }),
+      );
+      const weakest = bringWeakestPrerequisiteCardDueNow(
+        eligible.map((card) => ({
+          ...card,
+          dimension: card.dimension ?? '',
+          fsrs: card.fsrs as Card,
+        })),
+        now,
+        false,
+      );
+      if (!weakest) continue;
+      const current = expectedById.get(weakest.id);
+      if (!current) continue;
+      affectedCards.add(weakest.id);
+      expectedById.set(weakest.id, {
+        ...current,
+        dueAt: weakest.dueAt,
+        fsrs: weakest.fsrs,
+      });
+      prerequisiteResetUpdates += 1;
+    }
+  }
   const violations: string[] = [];
   for (const cardId of affectedCards) {
     const expected = expectedById.get(cardId);
@@ -2668,7 +2725,10 @@ export function auditP15ImplicitCredits(
       );
     }
   }
-  return { checked: activityLogs.length + appliedUpdates, violations };
+  return {
+    checked: activityLogs.length + appliedUpdates + prerequisiteResetUpdates,
+    violations,
+  };
 }
 
 export function attributeActivityLogs<T extends { id: string }>(
@@ -2745,6 +2805,55 @@ async function processActivityWithMetrics(
         .where(eq(reviewCards.userId, userId))
         .orderBy(asc(reviewCards.conceptId), asc(reviewCards.dimension), asc(reviewCards.id))
     : [];
+  const previousLogsByCardId = new Map<string, { rating: string; createdAt: Date }>();
+  const completedReviewConceptIds = new Set<string>();
+  if (activity.kind === 'review') {
+    const activityCardIds = beforeCards
+      .filter((card) =>
+        activity.exerciseIds.some((exerciseId) => {
+          const exercise = content.exercisesById.get(exerciseId);
+          return exercise?.concept === card.conceptId && exercise.dimension === card.dimension;
+        }),
+      )
+      .map((card) => card.id);
+    if (activityCardIds.length > 0) {
+      const previousLogs = await db
+        .select({
+          cardId: reviewLogs.cardId,
+          rating: reviewLogs.rating,
+          createdAt: reviewLogs.createdAt,
+        })
+        .from(reviewLogs)
+        .where(inArray(reviewLogs.cardId, activityCardIds))
+        .orderBy(desc(reviewLogs.createdAt));
+      for (const log of previousLogs) {
+        if (!previousLogsByCardId.has(log.cardId)) {
+          previousLogsByCardId.set(log.cardId, { rating: log.rating, createdAt: log.createdAt });
+        }
+      }
+    }
+    const priorSessionActivities = await db
+      .select({
+        id: sessionActivities.id,
+        kind: sessionActivities.kind,
+        status: sessionActivities.status,
+        exerciseIds: sessionActivities.exerciseIds,
+      })
+      .from(sessionActivities)
+      .where(eq(sessionActivities.sessionId, sessionId));
+    for (const priorActivity of priorSessionActivities) {
+      if (
+        priorActivity.id !== activity.id &&
+        priorActivity.kind === 'review' &&
+        priorActivity.status === 'completed'
+      ) {
+        for (const exerciseId of priorActivity.exerciseIds) {
+          const conceptId = content.exercisesById.get(exerciseId)?.concept;
+          if (conceptId) completedReviewConceptIds.add(conceptId);
+        }
+      }
+    }
+  }
   const beforeLogIds = new Set(tracksCards ? (await readActivityLogs()).map(({ id }) => id) : []);
   runtime.activeBehaviors.B3PartialExplain = false;
   if (activity.kind === 'review') {
@@ -2791,6 +2900,10 @@ async function processActivityWithMetrics(
     : [];
   const activityLogs = tracksCards ? await readActivityLogs() : [];
   const newLogs = attributeActivityLogs(beforeLogIds, activityLogs, runtime.checkedReviewLogIds);
+  const p15ActivityLogs = newLogs.map((log) => ({
+    ...log,
+    previousLog: previousLogsByCardId.get(log.cardId) ?? null,
+  }));
   const activityCardKeys = new Map(
     [...beforeCards, ...afterCards].map((card) => [card.id, dueCardKey(card)]),
   );
@@ -2805,6 +2918,15 @@ async function processActivityWithMetrics(
           conceptId,
           dimension,
           rating: String(rating),
+          previousLog: (() => {
+            const previousLog = previousLogsByCardId.get(cardId);
+            return previousLog
+              ? {
+                  rating: previousLog.rating,
+                  createdAt: previousLog.createdAt.toISOString(),
+                }
+              : null;
+          })(),
         }))
         .sort(
           (left, right) =>
@@ -2892,13 +3014,35 @@ async function processActivityWithMetrics(
     const p15 = auditP15ImplicitCredits(
       beforeCards,
       afterCards,
-      newLogs,
+      p15ActivityLogs,
       sourceConceptOrder,
       encompassing,
       now,
       timeZone,
       activity.kind === 'learn' ? 'learn' : 'review',
       reviewLogOrder,
+      activity.kind === 'review'
+        ? {
+            hardPrerequisiteIdsByConcept: new Map(
+              [...new Set(p15ActivityLogs.map((log) => log.conceptId))].map((conceptId) => [
+                conceptId,
+                content.conceptsById
+                  .get(conceptId)
+                  ?.prereqs.filter((prerequisite) => prerequisite.strength === 'hard')
+                  .map((prerequisite) => prerequisite.id) ?? [],
+              ]),
+            ),
+            completedReviewConceptIds,
+            coveredDimensionKeys: new Set(
+              activity.exerciseIds.flatMap((exerciseId) => {
+                const exercise = content.exercisesById.get(exerciseId);
+                return exercise?.concept && exercise.dimension
+                  ? [`${exercise.concept}/${exercise.dimension}`]
+                  : [];
+              }),
+            ),
+          }
+        : undefined,
     );
     runtime.report.checkedCounts.P15 += p15.checked;
     for (const detail of p15.violations) {
