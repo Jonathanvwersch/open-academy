@@ -8,6 +8,7 @@ concepts:
     goal_weight: 2
     dimensions: [conceptual, math]
     prereqs: [{ id: dot-product }, { id: linear-regression, strength: soft }]
+    encompassings: [{ id: dot-product, weight: 0.12 }, { id: vectors, weight: 0.21 }]
     objectives:
       - { text: "Compute a neuron's output for given weights and inputs", dimension: math }
       - {
@@ -23,6 +24,7 @@ concepts:
     goal_weight: 3
     dimensions: [conceptual, math, transfer]
     prereqs: [{ id: perceptron }, { id: derivatives }]
+    encompassings: [{ id: perceptron, weight: 0.03 }, { id: derivatives, weight: 0.1 }]
     objectives:
       - { text: "Evaluate and differentiate ReLU and sigmoid", dimension: math }
       - {
@@ -38,6 +40,12 @@ concepts:
     goal_weight: 3
     dimensions: [conceptual, math, implementation]
     prereqs: [{ id: activation-functions }, { id: matrices }]
+    encompassings:
+      [
+        { id: activation-functions, weight: 0.12 },
+        { id: matrices, weight: 0.22 },
+        { id: perceptron, weight: 0.12 },
+      ]
     objectives:
       - { text: "Compute a 2-layer forward pass by hand", dimension: math }
       - { text: "Track tensor shapes through each layer", dimension: implementation }
@@ -50,6 +58,12 @@ concepts:
     goal_weight: 3
     dimensions: [conceptual, math]
     prereqs: [{ id: chain-rule }]
+    encompassings:
+      [
+        { id: chain-rule, weight: 0.21 },
+        { id: derivatives, weight: 0.15 },
+        { id: partial-derivatives, weight: 0.33 },
+      ]
     objectives:
       - { text: "Draw the computational graph of an expression", dimension: conceptual }
       - { text: "Compute local derivatives at each node", dimension: math }
@@ -67,6 +81,16 @@ concepts:
         { id: mlp-forward-pass },
         { id: loss-functions },
         { id: partial-derivatives },
+      ]
+    encompassings:
+      [
+        { id: computational-graphs, weight: 0.46 },
+        { id: mlp-forward-pass, weight: 0.1 },
+        { id: loss-functions, weight: 0.1 },
+        { id: partial-derivatives, weight: 0.35 },
+        { id: activation-functions, weight: 0.13 },
+        { id: derivatives, weight: 0.13 },
+        { id: matrices, weight: 0.07 },
       ]
     confused_with: [autodiff]
     objectives:
@@ -87,6 +111,12 @@ concepts:
     goal_weight: 2
     dimensions: [conceptual, implementation]
     prereqs: [{ id: backpropagation }]
+    encompassings:
+      [
+        { id: backpropagation, weight: 0.16 },
+        { id: computational-graphs, weight: 0.28 },
+        { id: partial-derivatives, weight: 0.18 },
+      ]
     objectives:
       - { text: "Explain what loss.backward() does", dimension: conceptual }
     status: authored
@@ -98,6 +128,14 @@ concepts:
     goal_weight: 3
     dimensions: [implementation]
     prereqs: [{ id: autodiff }, { id: gradient-descent }]
+    encompassings:
+      [
+        { id: autodiff, weight: 0.09 },
+        { id: gradient-descent, weight: 0.09 },
+        { id: linear-regression, weight: 0.08 },
+        { id: loss-functions, weight: 0.06 },
+        { id: matrices, weight: 0.08 },
+      ]
     objectives:
       - { text: "Write a PyTorch training loop from memory", dimension: implementation }
     status: authored
@@ -109,6 +147,12 @@ concepts:
     goal_weight: 3
     dimensions: [conceptual, math]
     prereqs: [{ id: gradient-descent }]
+    encompassings:
+      [
+        { id: gradient-descent, weight: 0.29 },
+        { id: gradients, weight: 0.05 },
+        { id: loss-functions, weight: 0.07 },
+      ]
     confused_with: [momentum-adam]
     objectives:
       - { text: "Explain the tradeoffs of batch size", dimension: conceptual }
@@ -121,6 +165,7 @@ concepts:
     goal_weight: 2
     dimensions: [conceptual, math]
     prereqs: [{ id: sgd-minibatch }]
+    encompassings: [{ id: sgd-minibatch, weight: 0.01 }, { id: gradient-descent, weight: 0.07 }]
     objectives:
       - { text: "Write the Adam update rule", dimension: math }
     status: authored
@@ -132,6 +177,14 @@ concepts:
     goal_weight: 2
     dimensions: [conceptual]
     prereqs: [{ id: backpropagation }, { id: gradient-descent }]
+    encompassings:
+      [
+        { id: backpropagation, weight: 0.03 },
+        { id: gradient-descent, weight: 0.02 },
+        { id: activation-functions, weight: 0.07 },
+        { id: dot-product, weight: 0.01 },
+        { id: mlp-forward-pass, weight: 0.11 },
+      ]
     objectives:
       - {
           text: "Explain vanishing/exploding activations and what LayerNorm does",
@@ -147,6 +200,16 @@ concepts:
     dimensions: [transfer, implementation]
     prereqs:
       [{ id: sgd-minibatch }, { id: overfitting }, { id: pytorch-basics }, { id: regularization }]
+    encompassings:
+      [
+        { id: sgd-minibatch, weight: 0.02 },
+        { id: overfitting, weight: 0.02 },
+        { id: pytorch-basics, weight: 0.03 },
+        { id: regularization, weight: 0.02 },
+        { id: gradient-descent, weight: 0.23 },
+        { id: loss-functions, weight: 0.13 },
+        { id: partial-derivatives, weight: 0.16 },
+      ]
     objectives:
       - { text: "Diagnose a failing training run from its symptoms", dimension: transfer }
     status: authored
@@ -158,6 +221,14 @@ concepts:
     goal_weight: 3
     dimensions: [conceptual, math]
     prereqs: [{ id: logistic-regression }, { id: information-theory }]
+    encompassings:
+      [
+        { id: logistic-regression, weight: 0.15 },
+        { id: information-theory, weight: 0.14 },
+        { id: derivatives, weight: 0.13 },
+        { id: gradient-descent, weight: 0.07 },
+        { id: probability-basics, weight: 0.09 },
+      ]
     objectives:
       - { text: "Compute softmax and cross-entropy for a logit vector", dimension: math }
     status: authored
@@ -170,6 +241,13 @@ concepts:
       goal_weight: 2,
       dimensions: [conceptual, math],
       prereqs: [{ id: mlp-forward-pass }, { id: images-as-tensors }],
+      encompassings:
+        [
+          { id: mlp-forward-pass, weight: 0.13 },
+          { id: images-as-tensors, weight: 0.13 },
+          { id: dot-product, weight: 0.04 },
+          { id: vectors, weight: 0.13 },
+        ],
       objectives:
         [
           {

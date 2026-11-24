@@ -9,6 +9,7 @@ concepts:
       goal_weight: 2,
       dimensions: [conceptual, math],
       prereqs: [{ id: autoregressive-lm }],
+      encompassings: [{ id: autoregressive-lm, weight: 0.06 }],
       objectives:
         [
           {
@@ -29,6 +30,13 @@ concepts:
       goal_weight: 3,
       dimensions: [conceptual, implementation],
       prereqs: [{ id: autoregressive-lm }, { id: inference-metrics }],
+      encompassings:
+        [
+          { id: autoregressive-lm, weight: 0.12 },
+          { id: inference-metrics, weight: 0.05 },
+          { id: classification-softmax, weight: 0.06 },
+          { id: probability-basics, weight: 0.12 },
+        ],
       objectives:
         [
           {
@@ -48,6 +56,12 @@ concepts:
       goal_weight: 3,
       dimensions: [conceptual, math],
       prereqs: [{ id: prefill-decode }, { id: matrices }],
+      encompassings:
+        [
+          { id: prefill-decode, weight: 0 },
+          { id: matrices, weight: 0.1 },
+          { id: inference-metrics, weight: 0 },
+        ],
       objectives:
         [
           {
@@ -70,6 +84,12 @@ concepts:
       goal_weight: 2,
       dimensions: [conceptual, math],
       prereqs: [{ id: arithmetic-intensity }, { id: pytorch-basics }],
+      encompassings:
+        [
+          { id: arithmetic-intensity, weight: 0.16 },
+          { id: pytorch-basics, weight: 0 },
+          { id: inference-metrics, weight: 0.07 },
+        ],
       objectives:
         [
           { text: "Estimate a model's memory at fp32, fp16 and int8", dimension: math },
@@ -86,6 +106,14 @@ concepts:
       goal_weight: 3,
       dimensions: [conceptual, math, implementation],
       prereqs: [{ id: prefill-decode }, { id: multi-head-attention }, { id: gpu-inference-basics }],
+      encompassings:
+        [
+          { id: prefill-decode, weight: 0.05 },
+          { id: multi-head-attention, weight: 0.04 },
+          { id: gpu-inference-basics, weight: 0.05 },
+          { id: attention, weight: 0.06 },
+          { id: causal-masking, weight: 0.03 },
+        ],
       objectives:
         [
           {
@@ -107,6 +135,14 @@ concepts:
       goal_weight: 2,
       dimensions: [conceptual, math],
       prereqs: [{ id: arithmetic-intensity }, { id: gpu-inference-basics }, { id: attention }],
+      encompassings:
+        [
+          { id: arithmetic-intensity, weight: 0.17 },
+          { id: gpu-inference-basics, weight: 0.22 },
+          { id: attention, weight: 0.28 },
+          { id: classification-softmax, weight: 0.14 },
+          { id: prefill-decode, weight: 0 },
+        ],
       objectives:
         [
           {
@@ -126,6 +162,15 @@ concepts:
       goal_weight: 3,
       dimensions: [conceptual, math, implementation],
       prereqs: [{ id: gpu-inference-basics }, { id: descriptive-statistics }],
+      encompassings:
+        [
+          { id: gpu-inference-basics, weight: 0.19 },
+          { id: descriptive-statistics, weight: 0.03 },
+          { id: arithmetic-intensity, weight: 0.09 },
+          { id: autoregressive-lm, weight: 0 },
+          { id: prefill-decode, weight: 0.01 },
+          { id: supervised-learning, weight: 0.03 },
+        ],
       objectives:
         [
           {
@@ -153,6 +198,15 @@ concepts:
       goal_weight: 2,
       dimensions: [conceptual, math],
       prereqs: [{ id: prefill-decode }, { id: arithmetic-intensity }, { id: kv-cache }],
+      encompassings:
+        [
+          { id: prefill-decode, weight: 0.06 },
+          { id: arithmetic-intensity, weight: 0.09 },
+          { id: kv-cache, weight: 0.01 },
+          { id: autoregressive-lm, weight: 0.13 },
+          { id: probability-basics, weight: 0.12 },
+          { id: tokenization, weight: 0.01 },
+        ],
       objectives:
         [
           {
@@ -175,6 +229,15 @@ concepts:
       goal_weight: 2,
       dimensions: [conceptual, transfer],
       prereqs: [{ id: kv-cache }, { id: inference-metrics }, { id: mixture-of-experts }],
+      encompassings:
+        [
+          { id: kv-cache, weight: 0.07 },
+          { id: inference-metrics, weight: 0.1 },
+          { id: mixture-of-experts, weight: 0.01 },
+          { id: arithmetic-intensity, weight: 0.06 },
+          { id: gpu-inference-basics, weight: 0.09 },
+          { id: matrices, weight: 0.01 },
+        ],
       objectives:
         [
           { text: "Explain how continuous batching raises throughput", dimension: conceptual },
@@ -194,6 +257,15 @@ concepts:
       goal_weight: 2,
       dimensions: [conceptual, implementation],
       prereqs: [{ id: fast-attention }, { id: gpu-inference-basics }, { id: computational-graphs }],
+      encompassings:
+        [
+          { id: fast-attention, weight: 0.08 },
+          { id: gpu-inference-basics, weight: 0.14 },
+          { id: computational-graphs, weight: 0.07 },
+          { id: arithmetic-intensity, weight: 0.09 },
+          { id: classification-softmax, weight: 0.01 },
+          { id: matrices, weight: 0 },
+        ],
       objectives:
         [
           {

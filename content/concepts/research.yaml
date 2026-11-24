@@ -9,6 +9,7 @@ concepts:
       goal_weight: 3,
       dimensions: [conceptual, transfer],
       prereqs: [{ id: train-test-split }],
+      encompassings: [{ id: train-test-split, weight: 0.09 }, { id: loss-functions, weight: 0.04 }],
       objectives: [{ text: "Design an ablation", dimension: transfer }],
       status: authored,
     }

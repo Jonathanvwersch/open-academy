@@ -9,6 +9,7 @@ concepts:
       goal_weight: 2,
       dimensions: [conceptual, implementation],
       prereqs: [{ id: matrices }],
+      encompassings: [{ id: matrices, weight: 0.27 }],
       objectives: [{ text: "Convert between image layouts and shapes", dimension: implementation }],
       status: authored,
     }
@@ -21,6 +22,13 @@ concepts:
       goal_weight: 2,
       dimensions: [conceptual, math, implementation],
       prereqs: [{ id: images-as-tensors }, { id: mlp-forward-pass }],
+      encompassings:
+        [
+          { id: images-as-tensors, weight: 0.2 },
+          { id: mlp-forward-pass, weight: 0.11 },
+          { id: activation-functions, weight: 0.02 },
+          { id: dot-product, weight: 0.05 },
+        ],
       objectives: [{ text: "Compute output shapes of conv layers", dimension: math }],
       projects: [image-classifier],
       status: authored,

@@ -20,6 +20,7 @@ concepts:
     goal_weight: 3
     dimensions: [conceptual, math, transfer]
     prereqs: [{ id: vectors }]
+    encompassings: [{ id: vectors, weight: 0.19 }]
     objectives:
       - { text: "Compute a dot product and cosine similarity", dimension: math }
       - { text: "Explain a dot product as a similarity score", dimension: conceptual }
@@ -33,6 +34,7 @@ concepts:
     goal_weight: 3
     dimensions: [conceptual, math, implementation]
     prereqs: [{ id: dot-product }]
+    encompassings: [{ id: dot-product, weight: 0.16 }, { id: vectors, weight: 0.06 }]
     objectives:
       - { text: "Multiply matrices and predict result shapes", dimension: math }
       - { text: "Explain a matrix as a linear transformation", dimension: conceptual }
@@ -46,6 +48,7 @@ concepts:
     goal_weight: 2
     dimensions: [conceptual, math, transfer]
     prereqs: [{ id: matrices }]
+    encompassings: [{ id: matrices, weight: 0.04 }, { id: vectors, weight: 0.03 }]
     confused_with: [rank-span]
     related: [eigen-svd]
     objectives:
@@ -66,6 +69,12 @@ concepts:
     goal_weight: 2
     dimensions: [conceptual, math, implementation]
     prereqs: [{ id: determinants }]
+    encompassings:
+      [
+        { id: determinants, weight: 0.1 },
+        { id: dot-product, weight: 0.06 },
+        { id: matrices, weight: 0.18 },
+      ]
     objectives:
       - {
           text: "Find the inverse of a 2×2 matrix and check it gives the identity",
@@ -91,6 +100,12 @@ concepts:
     goal_weight: 2
     dimensions: [conceptual, math, transfer]
     prereqs: [{ id: inverses-linear-systems }]
+    encompassings:
+      [
+        { id: inverses-linear-systems, weight: 0.06 },
+        { id: matrices, weight: 0.14 },
+        { id: vectors, weight: 0.26 },
+      ]
     objectives:
       - { text: "Decide whether a vector is in the span of others", dimension: math }
       - { text: "Test a set of vectors for linear independence", dimension: math }
@@ -117,6 +132,14 @@ concepts:
     goal_weight: 2
     dimensions: [conceptual, math, implementation]
     prereqs: [{ id: rank-span }]
+    encompassings:
+      [
+        { id: rank-span, weight: 0.05 },
+        { id: dot-product, weight: 0.27 },
+        { id: inverses-linear-systems, weight: 0.15 },
+        { id: matrices, weight: 0.33 },
+        { id: vectors, weight: 0.18 },
+      ]
     objectives:
       - {
           text: "Project a vector onto a line and find the leftover perpendicular part",
@@ -154,6 +177,7 @@ concepts:
     goal_weight: 2
     dimensions: [conceptual, math]
     prereqs: [{ id: derivatives }]
+    encompassings: [{ id: derivatives, weight: 0.24 }]
     objectives:
       - { text: "Compute partial derivatives of multivariable functions", dimension: math }
     status: authored
@@ -165,6 +189,12 @@ concepts:
     goal_weight: 3
     dimensions: [conceptual, math, transfer]
     prereqs: [{ id: partial-derivatives }, { id: vectors }, { id: dot-product }]
+    encompassings:
+      [
+        { id: partial-derivatives, weight: 0.32 },
+        { id: vectors, weight: 0.3 },
+        { id: dot-product, weight: 0.18 },
+      ]
     objectives:
       - { text: "Compute the gradient of a scalar function", dimension: math }
       - {
@@ -180,6 +210,7 @@ concepts:
     goal_weight: 3
     dimensions: [conceptual, math]
     prereqs: [{ id: derivatives }, { id: partial-derivatives }]
+    encompassings: [{ id: derivatives, weight: 0.16 }, { id: partial-derivatives, weight: 0.16 }]
     objectives:
       - { text: "Differentiate compositions with the chain rule", dimension: math }
       - { text: "Explain the chain rule as multiplying local sensitivities", dimension: conceptual }
@@ -204,6 +235,8 @@ concepts:
     goal_weight: 1
     dimensions: [conceptual, math]
     prereqs: [{ id: probability-basics }, { id: descriptive-statistics }]
+    encompassings:
+      [{ id: probability-basics, weight: 0.1 }, { id: descriptive-statistics, weight: 0.07 }]
     objectives:
       - { text: "Relate mean and variance to the normal density", dimension: math }
     projects: [gaussian-mle]
@@ -216,6 +249,13 @@ concepts:
     goal_weight: 2
     dimensions: [conceptual, math]
     prereqs: [{ id: probability-basics }, { id: gaussian-distribution }, { id: derivatives }]
+    encompassings:
+      [
+        { id: probability-basics, weight: 0.06 },
+        { id: gaussian-distribution, weight: 0.1 },
+        { id: derivatives, weight: 0.09 },
+        { id: descriptive-statistics, weight: 0.02 },
+      ]
     objectives:
       - { text: "Derive MSE as Gaussian maximum likelihood", dimension: math }
     projects: [gaussian-mle]
@@ -228,6 +268,7 @@ concepts:
     goal_weight: 2
     dimensions: [conceptual, math]
     prereqs: [{ id: probability-basics }, { id: derivatives }]
+    encompassings: [{ id: probability-basics, weight: 0.15 }, { id: derivatives, weight: 0.17 }]
     objectives:
       - { text: "Compute entropy and cross-entropy for a small distribution", dimension: math }
       - { text: "Explain why cross-entropy is the loss for classification", dimension: conceptual }
@@ -241,6 +282,7 @@ concepts:
     goal_weight: 2
     dimensions: [conceptual, math]
     prereqs: [{ id: probability-basics }]
+    encompassings: [{ id: probability-basics, weight: 0.07 }]
     objectives:
       - { text: "Compute the standard error of a mean or a success rate", dimension: math }
       - {
@@ -257,6 +299,15 @@ concepts:
     goal_weight: 2
     dimensions: [conceptual, math]
     prereqs: [{ id: matrices }, { id: orthogonality-projections }]
+    encompassings:
+      [
+        { id: matrices, weight: 0.19 },
+        { id: orthogonality-projections, weight: 0.03 },
+        { id: determinants, weight: 0.04 },
+        { id: inverses-linear-systems, weight: 0.06 },
+        { id: rank-span, weight: 0.08 },
+        { id: vectors, weight: 0.17 },
+      ]
     objectives:
       - { text: "Find the eigenvalues of a 2×2 matrix", dimension: math }
       - { text: "Explain SVD as rotate, stretch, rotate", dimension: conceptual }

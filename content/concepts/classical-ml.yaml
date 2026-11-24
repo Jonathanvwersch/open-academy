@@ -40,6 +40,12 @@ concepts:
     goal_weight: 3
     dimensions: [conceptual, math, implementation]
     prereqs: [{ id: supervised-learning }, { id: dot-product }, { id: matrices }]
+    encompassings:
+      [
+        { id: supervised-learning, weight: 0.21 },
+        { id: dot-product, weight: 0.19 },
+        { id: matrices, weight: 0.2 },
+      ]
     objectives:
       - { text: "Write the linear model in vector form", dimension: math }
       - { text: "Implement vectorised predictions in NumPy", dimension: implementation }
@@ -54,6 +60,7 @@ concepts:
     goal_weight: 3
     dimensions: [conceptual, math, transfer]
     prereqs: [{ id: supervised-learning }, { id: derivatives }]
+    encompassings: [{ id: supervised-learning, weight: 0.17 }, { id: derivatives, weight: 0.07 }]
     objectives:
       - { text: "Compute MSE and MAE for a set of predictions", dimension: math }
       - { text: "Explain how MSE's squaring treats outliers", dimension: conceptual }
@@ -67,6 +74,15 @@ concepts:
     goal_weight: 3
     dimensions: [conceptual, math, implementation, transfer]
     prereqs: [{ id: gradients }, { id: loss-functions }, { id: linear-regression }]
+    encompassings:
+      [
+        { id: gradients, weight: 0.07 },
+        { id: loss-functions, weight: 0.16 },
+        { id: linear-regression, weight: 0.06 },
+        { id: derivatives, weight: 0.07 },
+        { id: partial-derivatives, weight: 0.13 },
+        { id: vectors, weight: 0.04 },
+      ]
     objectives:
       - { text: "Perform gradient-descent updates by hand", dimension: math }
       - { text: "Explain the effect of the learning rate", dimension: conceptual }
@@ -82,6 +98,13 @@ concepts:
     goal_weight: 3
     dimensions: [conceptual, transfer]
     prereqs: [{ id: supervised-learning }, { id: gradient-descent }]
+    encompassings:
+      [
+        { id: supervised-learning, weight: 0.22 },
+        { id: gradient-descent, weight: 0 },
+        { id: linear-regression, weight: 0 },
+        { id: loss-functions, weight: 0.02 },
+      ]
     objectives:
       - { text: "Explain the purpose of each split", dimension: conceptual }
       - { text: "Spot data leakage in an evaluation setup", dimension: transfer }
@@ -95,6 +118,16 @@ concepts:
     goal_weight: 2
     dimensions: [conceptual, math, implementation]
     prereqs: [{ id: linear-regression }, { id: gradient-descent }, { id: probability-basics }]
+    encompassings:
+      [
+        { id: linear-regression, weight: 0.13 },
+        { id: gradient-descent, weight: 0.06 },
+        { id: probability-basics, weight: 0.06 },
+        { id: derivatives, weight: 0.1 },
+        { id: loss-functions, weight: 0.01 },
+        { id: partial-derivatives, weight: 0.09 },
+        { id: supervised-learning, weight: 0.07 },
+      ]
     confused_with: [classification-softmax]
     objectives:
       - { text: "Compute sigmoid outputs and binary cross-entropy", dimension: math }
@@ -107,6 +140,7 @@ concepts:
     goal_weight: 3
     dimensions: [conceptual, transfer]
     prereqs: [{ id: train-test-split }]
+    encompassings: [{ id: train-test-split, weight: 0.17 }, { id: loss-functions, weight: 0.01 }]
     objectives:
       - { text: "Diagnose over/underfitting from learning curves", dimension: transfer }
     status: authored
@@ -118,6 +152,15 @@ concepts:
     goal_weight: 2
     dimensions: [conceptual, math]
     prereqs: [{ id: overfitting }, { id: loss-functions }]
+    encompassings:
+      [
+        { id: overfitting, weight: 0.06 },
+        { id: loss-functions, weight: 0.09 },
+        { id: derivatives, weight: 0.06 },
+        { id: gradient-descent, weight: 0.05 },
+        { id: train-test-split, weight: 0.08 },
+        { id: vectors, weight: 0 },
+      ]
     objectives:
       - { text: "Explain how weight decay changes the update", dimension: math }
     status: authored
@@ -129,6 +172,12 @@ concepts:
     goal_weight: 3
     dimensions: [conceptual, transfer]
     prereqs: [{ id: overfitting }]
+    encompassings:
+      [
+        { id: overfitting, weight: 0 },
+        { id: loss-functions, weight: 0.06 },
+        { id: train-test-split, weight: 0.2 },
+      ]
     objectives:
       - { text: "Explain i.i.d. assumptions and when they break", dimension: conceptual }
     status: authored
@@ -140,6 +189,12 @@ concepts:
     goal_weight: 2
     dimensions: [conceptual, math]
     prereqs: [{ id: train-test-split }]
+    encompassings:
+      [
+        { id: train-test-split, weight: 0 },
+        { id: loss-functions, weight: 0.11 },
+        { id: supervised-learning, weight: 0.07 },
+      ]
     objectives:
       - { text: "Compute precision and recall from a confusion matrix", dimension: math }
     status: authored

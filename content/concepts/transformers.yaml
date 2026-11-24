@@ -21,6 +21,13 @@ concepts:
       goal_weight: 3,
       dimensions: [conceptual, math],
       prereqs: [{ id: tokenization }, { id: matrices }],
+      encompassings:
+        [
+          { id: tokenization, weight: 0.04 },
+          { id: matrices, weight: 0.19 },
+          { id: dot-product, weight: 0.2 },
+          { id: vectors, weight: 0.05 },
+        ],
       objectives: [{ text: "Explain an embedding as a one-hot times a matrix", dimension: math }],
       status: authored,
     }
@@ -33,6 +40,13 @@ concepts:
       goal_weight: 3,
       dimensions: [conceptual, math, implementation],
       prereqs: [{ id: embeddings }, { id: dot-product }, { id: classification-softmax }],
+      encompassings:
+        [
+          { id: embeddings, weight: 0 },
+          { id: dot-product, weight: 0.14 },
+          { id: classification-softmax, weight: 0.14 },
+          { id: vectors, weight: 0.25 },
+        ],
       objectives:
         [{ text: "Compute scaled dot-product attention for a tiny example", dimension: math }],
       status: authored,
@@ -46,6 +60,13 @@ concepts:
       goal_weight: 2,
       dimensions: [conceptual, implementation],
       prereqs: [{ id: attention }, { id: embeddings }],
+      encompassings:
+        [
+          { id: attention, weight: 0.14 },
+          { id: embeddings, weight: 0 },
+          { id: dot-product, weight: 0.07 },
+          { id: matrices, weight: 0.21 },
+        ],
       objectives:
         [{ text: "Track shapes through multi-head attention", dimension: implementation }],
       status: authored,
@@ -59,6 +80,13 @@ concepts:
       goal_weight: 2,
       dimensions: [conceptual],
       prereqs: [{ id: attention }],
+      encompassings:
+        [
+          { id: attention, weight: 0.08 },
+          { id: dot-product, weight: 0.08 },
+          { id: embeddings, weight: 0.03 },
+          { id: vectors, weight: 0.13 },
+        ],
       objectives:
         [{ text: "Explain why attention is permutation-equivariant", dimension: conceptual }],
       status: authored,
@@ -78,6 +106,17 @@ concepts:
           { id: weight-init-normalization },
           { id: mlp-forward-pass },
         ],
+      encompassings:
+        [
+          { id: multi-head-attention, weight: 0.04 },
+          { id: positional-encoding, weight: 0 },
+          { id: weight-init-normalization, weight: 0.06 },
+          { id: mlp-forward-pass, weight: 0.08 },
+          { id: activation-functions, weight: 0.03 },
+          { id: attention, weight: 0.04 },
+          { id: chain-rule, weight: 0.04 },
+          { id: vectors, weight: 0.14 },
+        ],
       objectives:
         [{ text: "Draw and explain a pre-norm transformer block", dimension: conceptual }],
       status: authored,
@@ -91,6 +130,12 @@ concepts:
       goal_weight: 3,
       dimensions: [conceptual, implementation],
       prereqs: [{ id: attention }],
+      encompassings:
+        [
+          { id: attention, weight: 0.2 },
+          { id: classification-softmax, weight: 0.14 },
+          { id: matrices, weight: 0.08 },
+        ],
       objectives:
         [{ text: "Build a causal mask and explain its effect", dimension: implementation }],
       status: authored,
@@ -104,6 +149,13 @@ concepts:
       goal_weight: 3,
       dimensions: [conceptual, implementation],
       prereqs: [{ id: causal-masking }, { id: transformer-block }, { id: classification-softmax }],
+      encompassings:
+        [
+          { id: causal-masking, weight: 0.06 },
+          { id: transformer-block, weight: 0 },
+          { id: classification-softmax, weight: 0.1 },
+          { id: probability-basics, weight: 0.07 },
+        ],
       objectives:
         [{ text: "Explain how one sequence yields many training examples", dimension: conceptual }],
       projects: [char-transformer],
@@ -118,6 +170,14 @@ concepts:
       goal_weight: 2,
       dimensions: [conceptual, math],
       prereqs: [{ id: transformer-block }, { id: classification-softmax }],
+      encompassings:
+        [
+          { id: transformer-block, weight: 0 },
+          { id: classification-softmax, weight: 0 },
+          { id: matrices, weight: 0.08 },
+          { id: mlp-forward-pass, weight: 0.02 },
+          { id: vectors, weight: 0.04 },
+        ],
       objectives:
         [
           {
@@ -137,6 +197,14 @@ concepts:
       goal_weight: 2,
       dimensions: [conceptual],
       prereqs: [{ id: autoregressive-lm }, { id: tokenization }, { id: backpropagation }],
+      encompassings:
+        [
+          { id: autoregressive-lm, weight: 0.04 },
+          { id: tokenization, weight: 0.01 },
+          { id: backpropagation, weight: 0.01 },
+          { id: matrices, weight: 0.01 },
+          { id: supervised-learning, weight: 0.02 },
+        ],
       objectives:
         [{ text: "Describe the stages of an LLM training pipeline", dimension: conceptual }],
       status: authored,

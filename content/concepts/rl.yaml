@@ -9,6 +9,7 @@ concepts:
       goal_weight: 3,
       dimensions: [conceptual, math],
       prereqs: [{ id: probability-basics }],
+      encompassings: [{ id: probability-basics, weight: 0.1 }],
       objectives: [{ text: "Formalise a task as an MDP", dimension: conceptual }],
       status: authored,
     }
@@ -21,6 +22,7 @@ concepts:
       goal_weight: 3,
       dimensions: [conceptual, math],
       prereqs: [{ id: mdp }],
+      encompassings: [{ id: mdp, weight: 0.22 }, { id: probability-basics, weight: 0.04 }],
       objectives: [{ text: "Compute a discounted return", dimension: math }],
       status: authored,
     }
@@ -33,6 +35,12 @@ concepts:
       goal_weight: 3,
       dimensions: [conceptual, math],
       prereqs: [{ id: policies-returns }],
+      encompassings:
+        [
+          { id: policies-returns, weight: 0.23 },
+          { id: mdp, weight: 0.31 },
+          { id: probability-basics, weight: 0.1 },
+        ],
       confused_with: [q-learning],
       objectives: [{ text: "Apply one Bellman backup", dimension: math }],
       status: authored,
@@ -46,6 +54,13 @@ concepts:
       goal_weight: 2,
       dimensions: [math, implementation],
       prereqs: [{ id: value-functions }],
+      encompassings:
+        [
+          { id: value-functions, weight: 0.21 },
+          { id: mdp, weight: 0.2 },
+          { id: policies-returns, weight: 0.23 },
+          { id: probability-basics, weight: 0.05 },
+        ],
       objectives: [{ text: "Perform a Q-learning update", dimension: math }],
       status: authored,
     }
@@ -58,6 +73,8 @@ concepts:
       goal_weight: 2,
       dimensions: [conceptual],
       prereqs: [{ id: policies-returns }],
+      encompassings:
+        [{ id: policies-returns, weight: 0.16 }, { id: probability-basics, weight: 0.21 }],
       objectives: [{ text: "Explain the exploration problem", dimension: conceptual }],
       status: authored,
     }
@@ -70,6 +87,14 @@ concepts:
       goal_weight: 2,
       dimensions: [conceptual, implementation],
       prereqs: [{ id: q-learning }, { id: exploration }, { id: pytorch-basics }],
+      encompassings:
+        [
+          { id: q-learning, weight: 0.18 },
+          { id: exploration, weight: 0.01 },
+          { id: pytorch-basics, weight: 0.05 },
+          { id: gradient-descent, weight: 0.02 },
+          { id: loss-functions, weight: 0.03 },
+        ],
       objectives:
         [
           {
@@ -98,6 +123,15 @@ concepts:
           { id: chain-rule },
           { id: maximum-likelihood },
         ],
+      encompassings:
+        [
+          { id: policies-returns, weight: 0.09 },
+          { id: gradient-descent, weight: 0.06 },
+          { id: chain-rule, weight: 0.02 },
+          { id: maximum-likelihood, weight: 0.03 },
+          { id: mdp, weight: 0.04 },
+          { id: probability-basics, weight: 0.14 },
+        ],
       objectives: [{ text: "Derive the REINFORCE estimator", dimension: math }],
       status: authored,
     }
@@ -110,6 +144,12 @@ concepts:
       goal_weight: 2,
       dimensions: [conceptual],
       prereqs: [{ id: policy-gradients }, { id: value-functions }],
+      encompassings:
+        [
+          { id: policy-gradients, weight: 0.14 },
+          { id: value-functions, weight: 0.13 },
+          { id: policies-returns, weight: 0.07 },
+        ],
       objectives: [{ text: "Explain what PPO's clipping prevents", dimension: conceptual }],
       projects: [rl-sim],
       status: authored,
@@ -123,6 +163,7 @@ concepts:
       goal_weight: 2,
       dimensions: [conceptual, implementation],
       prereqs: [{ id: mdp }],
+      encompassings: [{ id: mdp, weight: 0.18 }, { id: probability-basics, weight: 0.05 }],
       objectives: [{ text: "Write an environment interaction loop", dimension: implementation }],
       status: authored,
     }
@@ -135,6 +176,7 @@ concepts:
       goal_weight: 2,
       dimensions: [conceptual, transfer],
       prereqs: [{ id: mdp }],
+      encompassings: [{ id: mdp, weight: 0.36 }, { id: probability-basics, weight: 0.02 }],
       objectives: [{ text: "Identify reward hacking risks", dimension: transfer }],
       status: authored,
     }
