@@ -2595,7 +2595,10 @@ export function auditP15ImplicitCredits(
         ? new Set(encompassing.descendants(sourceConceptId).keys())
         : new Set<string>();
     for (const card of beforeCards) {
-      const weight = encompassing.weight(sourceConceptId, card.conceptId);
+      const weight =
+        rating === Rating.Again
+          ? encompassing.weight(card.conceptId, sourceConceptId)
+          : encompassing.weight(sourceConceptId, card.conceptId);
       if (
         weight <= 0 ||
         !relatedConcepts.has(card.conceptId) ||

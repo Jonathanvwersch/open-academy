@@ -63,7 +63,7 @@ const p11Weights = {
 const p15Weights = {
   weight: (sourceConceptId: string, targetConceptId: string) =>
     (sourceConceptId === 'child' && targetConceptId === 'parent') ||
-    (sourceConceptId === 'prerequisite' && targetConceptId === 'descendant')
+    (sourceConceptId === 'descendant' && targetConceptId === 'prerequisite')
       ? 0.5
       : 0,
   ancestors: (conceptId: string) => new Map(conceptId === 'child' ? [['parent', 0.5]] : []),
@@ -346,7 +346,7 @@ test('P6 flags only feasible reviews left overdue beyond a week', () => {
   expect(p6HasFeasibleOverdueReview(7, 8, 8, 0)).toBe(false);
 });
 
-test('P15 flags missing Again credit and accepts one update', () => {
+test('P15 applies Again credit from a source to its descendant using descendant weight', () => {
   const now = new Date('2026-01-14T12:00:00.000Z');
   const prerequisite = p15Card('descendant-card', 'descendant', '2026-04-14T12:00:00.000Z');
   const logs = [{ cardId: 'prerequisite-log', conceptId: 'prerequisite', rating: '1' }];
