@@ -482,7 +482,18 @@ async function checkI3({
   selection,
   coverageResults,
 }: AuditContext): Promise<string[]> {
-  const planned = todayActivities(today)
+  const isReplan = label.endsWith('/replan');
+  const replannedActivities = (active?.activities ?? []).filter((activity: Record<string, any>) =>
+    ['planned', 'in_progress'].includes(activity.status),
+  );
+  const todayPlanActivities = todayActivities(today).filter(
+    (activity: Record<string, any>) =>
+      !isReplan || ['planned', 'in_progress'].includes(activity.status),
+  );
+  const activitiesForReviewCheck = isReplan
+    ? [...todayPlanActivities, ...replannedActivities]
+    : todayActivities(today);
+  const planned = activitiesForReviewCheck
     .filter((activity: Record<string, any>) => activity.kind === 'review')
     .flatMap((activity: Record<string, any>) => activity.exerciseIds ?? []);
   const plannedReviewDimensions = new Set(
@@ -493,12 +504,17 @@ async function checkI3({
   );
   const isNextPlan =
     (label === 'GET /today' && today.activeSessionId === null) || label.endsWith('/replan');
-  const selectedCoverage = selectedTaskCoverage(coverageResults, [
-    ...todayActivities(today),
-    ...(active?.activities ?? []).filter((activity: Record<string, any>) =>
-      ['planned', 'in_progress'].includes(activity.status),
-    ),
-  ]);
+  const selectedCoverage = selectedTaskCoverage(
+    coverageResults,
+    isReplan
+      ? [...todayPlanActivities, ...replannedActivities]
+      : [
+          ...todayActivities(today),
+          ...(active?.activities ?? []).filter((activity: Record<string, any>) =>
+            ['planned', 'in_progress'].includes(activity.status),
+          ),
+        ],
+  );
   const cards = await db.select().from(reviewCards).where(eq(reviewCards.userId, userId));
   const todayLogs = await db
     .select({
@@ -2800,6 +2816,10 @@ it('I3 replans a due prerequisite after a completed low-credit coverer', async (
   expect(coveringRatings.length).toBeGreaterThan(0);
   expect(Math.min(...coveringRatings.map(({ rating }) => Number(rating)))).toBe(Rating.Again);
 
+  await db
+    .update(reviewCards)
+    .set({ dueAt: now })
+    .where(and(eq(reviewCards.userId, userId), eq(reviewCards.conceptId, 'derivatives')));
   const derivativeCard = (
     await db
       .select()
@@ -2843,13 +2863,25 @@ it('I3 replans a due prerequisite after a completed low-credit coverer', async (
     .find((call): call is Extract<SchedulerCall, { kind: 'replan' }> => call.kind === 'replan');
   if (!replanCall) throw new Error('Missing scheduler replan call');
   const replanSelection = plannerSelectionForReplanCall(replanCall);
-  const replanActivities = todayActivities(replanned);
+  expect(
+    schedulerModule
+      .dueTopicsCoveredBy('gradient-descent', replanSelection.state, content, now)
+      .has('derivatives'),
+  ).toBe(true);
+  const replanActivities = todayActivities(replanned).filter((activity: Record<string, any>) =>
+    ['planned', 'in_progress'].includes(activity.status),
+  );
   const replanCoverage = selectedTaskCoverage(replanSelection.results, replanActivities);
+  const derivativeResult = replanSelection.results.find(
+    (result) => result.conceptId === 'derivatives',
+  );
   expect(
     replanActivities.some(
       (activity: Record<string, any>) =>
         activity.kind === 'review' && activityTopics(activity).includes('derivatives'),
-    ) || replanCoverage.coveredConceptIds.has('derivatives'),
+    ) ||
+      (replanCoverage.coveredConceptIds.has('derivatives') &&
+        derivativeResult?.coveringConceptId !== 'gradient-descent'),
   ).toBe(true);
 
   const { response: endResponse } = await step('POST', `/sessions/${session.id}/end`, now);
