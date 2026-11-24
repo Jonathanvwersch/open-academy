@@ -206,6 +206,37 @@ describe('review budget reservation', () => {
     );
   });
 
+  it('plans the focused lesson before reserving a due review it covers', () => {
+    const content = lessonCrowdingContent(true);
+    const state = plannerState(content, {
+      freshConceptId: 'supervised-learning',
+      cards: [reviewCard('vectors', now)],
+    });
+    state.inProgressConceptId = 'supervised-learning';
+
+    const unforcedPlan = planSession(state, content, now, 10);
+    expect(
+      unforcedPlan.activities.some(
+        (activity) => activity.kind === 'learn' && activity.conceptId === 'supervised-learning',
+      ),
+    ).toBe(false);
+    expect(unforcedPlan.activities.some((activity) => activity.kind === 'review')).toBe(true);
+
+    const focusedPlan = planSession(state, content, now, 10, 'weekday', new Set(), new Set(), {
+      focusConceptId: 'supervised-learning',
+    });
+    const focusLesson = focusedPlan.activities[0];
+
+    expect(focusLesson).toEqual(
+      expect.objectContaining({
+        kind: 'learn',
+        conceptId: 'supervised-learning',
+        plannedMinutes: 15,
+      }),
+    );
+    expect(focusedPlan.activities.some((activity) => activity.kind === 'review')).toBe(false);
+  });
+
   it('keeps a fallback review when a lesson covers only one of its due topics', () => {
     const content = mixedFallbackContent();
     const vectorsCard = reviewCard('vectors', now);
