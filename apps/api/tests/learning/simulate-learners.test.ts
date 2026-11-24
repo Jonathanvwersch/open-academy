@@ -5,6 +5,7 @@ import {
   auditP11DescendantCard,
   auditP15Trace,
   type InvariantId,
+  newActivitiesForReplan,
   p5HasNoWorkWindow,
   p6HasFeasibleOverdueReview,
   p10MissingOverdueRetryConcepts,
@@ -320,6 +321,18 @@ test('replan budget accounting does not charge preserved in-progress activities 
     usedMinutes: 15,
     usedReviewMinutes: 5,
   });
+});
+
+test('replan includes a newly inserted in-progress prerequisite review once', () => {
+  const activities = [
+    { id: 'preserved', status: 'in_progress' },
+    { id: 'inserted-prerequisite', status: 'in_progress' },
+    { id: 'new-planned', status: 'planned' },
+    { id: 'completed', status: 'completed' },
+  ] as const;
+  expect(
+    newActivitiesForReplan(activities, new Set(['preserved', 'completed'])).map(({ id }) => id),
+  ).toEqual(['inserted-prerequisite', 'new-planned']);
 });
 
 test('scripted scenarios are skipped and reported when their fixture course is filtered out', () => {

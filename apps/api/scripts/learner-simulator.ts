@@ -1113,6 +1113,17 @@ export function p18PlanCoversTopic(
   );
 }
 
+export function newActivitiesForReplan<T extends Pick<SimActivity, 'id' | 'status'>>(
+  activities: readonly T[],
+  originalActivityIds: ReadonlySet<string>,
+): T[] {
+  return activities.filter(
+    (activity) =>
+      activity.status === 'planned' ||
+      (activity.status === 'in_progress' && !originalActivityIds.has(activity.id)),
+  );
+}
+
 export function scenarioCourseFilterSkipReason(
   profile: SimulationProfile,
   courseIds: readonly string[] | undefined,
@@ -4426,6 +4437,7 @@ async function simulateProfile(
             activeContent,
           );
           const replanLearn = await api.require<LearnPayload>('GET', '/learn', now);
+          const originalActivityIds = new Set(activities.map((activity) => activity.id));
           const existingActivities = await db
             .select()
             .from(sessionActivities)
@@ -4454,16 +4466,17 @@ async function simulateProfile(
             `/sessions/${sessionId}/replan`,
             now,
           );
-          const newActivities = replanned.activities
-            .filter((activity) => activity.status === 'planned')
-            .map((activity, index) => {
-              const parsed = activity as SimActivity;
-              runtime.activityKeyById.set(
-                parsed.id,
-                `day:${day}|session:replan|activity:${index}|${parsed.kind}|${parsed.conceptId ?? ''}`,
-              );
-              return parsed.kind === 'paper' && paperId ? { ...parsed, paperId } : parsed;
-            });
+          const newActivities = newActivitiesForReplan(
+            replanned.activities as SimActivity[],
+            originalActivityIds,
+          ).map((activity, index) => {
+            const parsed = activity as SimActivity;
+            runtime.activityKeyById.set(
+              parsed.id,
+              `day:${day}|session:replan|activity:${index}|${parsed.kind}|${parsed.conceptId ?? ''}`,
+            );
+            return parsed.kind === 'paper' && paperId ? { ...parsed, paperId } : parsed;
+          });
           auditSavedSessionPlan(
             runtime,
             day,
