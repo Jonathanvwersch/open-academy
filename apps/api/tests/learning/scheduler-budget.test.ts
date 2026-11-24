@@ -180,26 +180,31 @@ describe('review budget reservation', () => {
       concepts,
       conceptsById: new Map(concepts.map((concept) => [concept.id, concept])),
     };
+    const dueVectorCard = reviewCard('vectors', now);
+    dueVectorCard.retrievability = 0.9;
+    const advancedReviewCard = reviewCard('linear-models', new Date('2026-02-01T00:00:00.000Z'));
+    advancedReviewCard.retrievability = 0.1;
     const state = plannerState(content, {
       activeCourseId: null,
       studyCourseIds: [],
-      cards: [
-        reviewCard('vectors', now),
-        reviewCard('linear-models', new Date('2026-02-01T00:00:00.000Z')),
-      ],
+      cards: [dueVectorCard, advancedReviewCard],
     });
 
     const plan = planSession(state, content, now, 60);
+    const selectedReviewConcepts = new Set(
+      plan.activities
+        .filter((activity) => activity.kind === 'review')
+        .flatMap((activity) =>
+          activity.exerciseIds.flatMap((exerciseId) => {
+            const conceptId = content.exercisesById.get(exerciseId)?.concept;
+            return conceptId ? [conceptId] : [];
+          }),
+        ),
+    );
 
-    expect(
-      plan.activities.some(
-        (activity) => activity.kind === 'review' && activity.conceptId === 'vectors',
-      ),
-    ).toBe(true);
-    expect(
-      plan.activities.some(
-        (activity) => activity.kind === 'review' && activity.conceptId === 'linear-models',
-      ),
-    ).toBe(false);
+    expect(selectedReviewConcepts).toEqual(new Set(['vectors']));
+    expect(explainReviewSelection(state, content, now, 60)).toContainEqual(
+      expect.objectContaining({ conceptId: 'vectors', result: 'selected' }),
+    );
   });
 });
