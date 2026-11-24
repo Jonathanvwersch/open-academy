@@ -2452,6 +2452,7 @@ beforeAll(async () => {
     return random / 0x1_0000_0000;
   };
   for (let dateIndex = 0; dateIndex < 30; dateIndex += 1) {
+    lowCreditPickedUpCardKeys.clear();
     const nowAtDay = atLocalNoon(day);
     await step('GET', '/today', nowAtDay);
     await step('GET', '/reviews', nowAtDay);
