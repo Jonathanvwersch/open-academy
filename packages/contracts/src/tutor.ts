@@ -1,3 +1,6 @@
+export const tutorLessonStages = ['step', 'explain', 'quiz'] as const;
+export type TutorLessonStage = (typeof tutorLessonStages)[number];
+
 export interface TutorStatus {
   tutorEnabled: boolean;
 }

@@ -1,4 +1,8 @@
-import type { TutorThreadDetail, TutorThreadSummary } from '@academy/contracts/tutor';
+import type {
+  TutorLessonStage,
+  TutorThreadDetail,
+  TutorThreadSummary,
+} from '@academy/contracts/tutor';
 import {
   repairTutorMarkdown,
   TUTOR_QUESTION_MAX_LENGTH,
@@ -63,6 +67,7 @@ export interface TutorRequestContext {
   activityId?: string;
   exerciseId?: string;
   questionLabel?: string;
+  lessonStage?: TutorLessonStage;
   lessonProblemId?: string;
   page?: 'session' | 'lesson' | 'course' | 'map' | 'paper';
   knowledgePointId?: string;
@@ -390,6 +395,7 @@ export function TutorContextProvider({
           activityId: requestContext.activityId ?? undefined,
           exerciseId: requestContext.exerciseId ?? undefined,
           questionLabel: requestContext.questionLabel ?? undefined,
+          lessonStage: requestContext.lessonStage ?? undefined,
           lessonProblemId: requestContext.lessonProblemId ?? undefined,
           page: requestContext.page ?? undefined,
           knowledgePointId: requestContext.knowledgePointId ?? undefined,

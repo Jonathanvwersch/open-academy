@@ -7,6 +7,9 @@ export function LessonSteps({
   currentPointId,
   viewStep,
   returnToCurrentStep,
+  viewExplain,
+  viewQuiz,
+  activeStage,
   explain,
   readOnly = false,
 }: {
@@ -16,11 +19,14 @@ export function LessonSteps({
   currentPointId: string | undefined;
   viewStep: (id: string) => void;
   returnToCurrentStep: () => void;
+  viewExplain: () => void;
+  viewQuiz: () => void;
+  activeStage?: 'step' | 'explain' | 'quiz';
   explain?: 'upcoming' | 'current' | 'done';
   readOnly?: boolean;
 }) {
   const quizPassed = state.status === 'completed' || state.quiz.bestPassed;
-  const canReturnToQuiz = viewingPastStep && !readOnly && (state.status === 'quiz' || quizPassed);
+  const canReturnToQuiz = activeStage !== 'quiz' && !readOnly && (explain === 'done' || quizPassed);
   return (
     <ol
       aria-label="Lesson steps"
@@ -89,8 +95,8 @@ export function LessonSteps({
                   : 'border-border text-muted-foreground'
             }
           >
-            {explain === 'current' && viewingPastStep && !readOnly ? (
-              <button type="button" onClick={returnToCurrentStep}>
+            {explain === 'current' && activeStage !== 'explain' && !readOnly ? (
+              <button type="button" onClick={viewExplain}>
                 Explain it
               </button>
             ) : (
@@ -105,14 +111,14 @@ export function LessonSteps({
             asChild
             variant="outline"
             data-testid="lesson-quiz-chip"
-            aria-label={`Lesson quiz, ${quizPassed ? 'passed' : 'current'}`}
+            aria-label={`Lesson quiz, ${quizPassed ? 'passed' : 'available'}`}
             className={
               quizPassed
                 ? 'cursor-pointer border-green-300 bg-green-50 text-green-900 hover:brightness-95'
-                : 'cursor-pointer border-primary bg-muted text-foreground hover:brightness-95'
+                : 'cursor-pointer border-border text-muted-foreground hover:brightness-95'
             }
           >
-            <button type="button" onClick={returnToCurrentStep}>
+            <button type="button" onClick={viewQuiz}>
               {quizPassed ? '✓ Quiz' : 'Quiz'}
             </button>
           </Badge>
@@ -129,7 +135,8 @@ export function LessonSteps({
           <Badge
             variant="outline"
             data-testid="lesson-quiz-chip"
-            aria-label="Lesson quiz, current"
+            aria-label={`Lesson quiz, ${activeStage === 'quiz' ? 'current' : 'available'}`}
+            aria-current={activeStage === 'quiz' ? 'step' : undefined}
             className="border-primary bg-muted text-foreground"
           >
             Quiz

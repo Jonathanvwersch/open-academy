@@ -34,6 +34,30 @@ test('lesson, session, and map tutor context include prerequisite recap facts', 
   expect(mapContext).toContain(expectedRecap);
 });
 
+test('Explain-it tutor context separates the current question from completed lesson steps', async () => {
+  const index = await loadContent('tests/fixtures/content');
+  const lesson = index.lessonsByConcept.get('vectors');
+  const secondStep = lesson?.knowledge_points?.[1];
+  if (!lesson || !secondStep) throw new Error('Missing vectors lesson steps');
+
+  const content = buildTutorPageContent({
+    page: 'session',
+    index,
+    conceptId: 'vectors',
+    lessonStage: 'explain',
+    exerciseId: 'vec-explain',
+    questionLabel: 'Explain it',
+    exercisePrompt: 'Explain how span and rank are related.',
+  });
+
+  expect(content).toContain('## Current page: Explain it self-check');
+  expect(content).toContain('Explain how span and rank are related.');
+  expect(content).toContain(
+    `### Step 2 of ${lesson.knowledge_points?.length ?? 0}: ${secondStep.title}`,
+  );
+  expect(content).not.toContain('## Current step');
+});
+
 test('paper tutor context is ordered, omits empty notes, includes adjacent pages, and preserves selection', async () => {
   const index = await loadContent('tests/fixtures/content');
   const paper = index.papers[0];

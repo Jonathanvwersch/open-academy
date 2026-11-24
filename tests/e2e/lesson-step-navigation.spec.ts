@@ -35,9 +35,11 @@ test.afterAll(async () => {
 async function createLessonSession({
   stepsPassed,
   explainDone = false,
+  explainActive = false,
 }: {
   stepsPassed: boolean;
   explainDone?: boolean;
+  explainActive?: boolean;
 }) {
   const [session] = await db
     .insert(studySessions)
@@ -63,7 +65,9 @@ async function createLessonSession({
           finalQuestionContinued: true,
           completedExerciseIds: ['vectors-fixture-final'],
         }
-      : {},
+      : explainActive
+        ? { lessonRunnerContinued: true, finalQuestionContinued: true }
+        : {},
   });
   const [run] = await db
     .insert(lessonRuns)
@@ -158,6 +162,28 @@ test('completed lesson steps can be revisited during Explain it without losing t
   expect(changes).toEqual([]);
 });
 
+test('lesson step tabs are restored from URL and invalid steps fall back', async ({ page }) => {
+  const sessionId = await createLessonSession({ stepsPassed: true, explainActive: true });
+  await page.goto(`/session/${sessionId}?step=explain`);
+  await expect(page.getByTestId('lesson-explain-chip')).toHaveAttribute(
+    'aria-label',
+    'Explain it, current',
+  );
+  await page.getByRole('button', { name: 'Step 1 of 2, passed' }).click();
+  await expect(page).toHaveURL(/step=1/);
+  await page.reload();
+  await expect(page.getByTestId('lesson-step-content')).toContainText(
+    'A vector is an ordered list of coordinates',
+  );
+  await page.goBack();
+  await expect(page).toHaveURL(/step=explain/);
+  await page.goForward();
+  await expect(page).toHaveURL(/step=1/);
+  await page.goto(`/session/${sessionId}?step=99`);
+  await expect(page).not.toHaveURL(/step=99/);
+  await expect(page).toHaveURL(/step=explain/);
+});
+
 test('future steps stay unavailable and an active quiz cannot open lesson recaps', async ({
   page,
 }) => {
@@ -177,4 +203,16 @@ test('future steps stay unavailable and an active quiz cannot open lesson recaps
   await expect(page.getByTestId('lesson-quiz-question')).toBeVisible();
   await expect(page.getByTestId('lesson-step-chip').locator('button')).toHaveCount(0);
   await expect(page.getByTestId('explain-step-recap')).toHaveCount(0);
+});
+
+test('a lesson can open directly on its Explain-it stage', async ({ page }) => {
+  const sessionId = await createLessonSession({ stepsPassed: true });
+  await page.goto(`/session/${sessionId}?step=explain`);
+
+  await expect(page.getByTestId('lesson-steps-complete')).toBeVisible();
+  await expect(page.getByTestId('lesson-explain-chip')).toHaveAttribute(
+    'aria-label',
+    'Explain it, current',
+  );
+  await expect(page).toHaveURL(/step=explain/);
 });

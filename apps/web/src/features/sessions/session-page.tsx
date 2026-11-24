@@ -1,7 +1,7 @@
 import type { AnswerOptions, AttemptResponse } from '@academy/contracts/exercises';
 import type { SessionActivity } from '@academy/contracts/sessions';
 import { useQueries, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
-import { getRouteApi, Link, useNavigate } from '@tanstack/react-router';
+import { getRouteApi, Link, useNavigate, useRouter } from '@tanstack/react-router';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { apiFetch } from '../../api/authenticated-fetch.js';
 import { Markdown } from '../../components/markdown.js';
@@ -50,9 +50,19 @@ async function saveActivityProgress(
 }
 
 export function SessionPage() {
-  const navigate = useNavigate();
+  const navigate = useNavigate({ from: '/session/$id' });
+  const router = useRouter();
   const { id } = Route.useParams();
-  const { activity: requestedActivityId } = Route.useSearch();
+  const { activity: requestedActivityId, step: searchStep } = Route.useSearch();
+  const step = typeof searchStep === 'number' ? String(searchStep) : searchStep;
+  const navigateToLessonStep = (nextStep?: string, replace = false) => {
+    const url = new URL(window.location.href);
+    if (nextStep === undefined) url.searchParams.delete('step');
+    else url.searchParams.set('step', nextStep);
+    const href = `${url.pathname}${url.search}${url.hash}`;
+    if (replace) router.history.replace(href);
+    else router.history.push(href);
+  };
   const queryClient = useQueryClient();
   const tutorSidebar = useTutorSidebar();
   const [result, setResult] = useState<Record<string, unknown> | null>(null);
@@ -747,6 +757,8 @@ export function SessionPage() {
         lessonLink={lessonLink}
         tutorEnabled={sessionQuery.data.tutorEnabled}
         finalAnswered={Boolean(finalAnswered)}
+        step={step}
+        onStepChange={navigateToLessonStep}
         onContinue={continueLessonRunner}
       />
     );
@@ -875,6 +887,15 @@ export function SessionPage() {
             setStepRecap(null);
             window.scrollTo({ top: 0 });
           }}
+          viewExplain={() => {
+            setStepRecap(null);
+            navigateToLessonStep('explain');
+          }}
+          viewQuiz={() => {
+            setStepRecap(null);
+            navigateToLessonStep('quiz');
+          }}
+          activeStage={step === 'explain' || step === 'quiz' ? step : 'step'}
           explain="current"
         />
       ) : null}

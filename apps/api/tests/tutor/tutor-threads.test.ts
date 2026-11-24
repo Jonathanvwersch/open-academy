@@ -132,6 +132,7 @@ test('tutor request body normalizes null optional context fields', () => {
     lessonProblemId: null,
     page: null,
     knowledgePointId: null,
+    lessonStage: null,
     paperId: null,
     pageNumber: null,
     selection: null,
@@ -146,6 +147,7 @@ test('tutor request body normalizes null optional context fields', () => {
     'lessonProblemId',
     'page',
     'knowledgePointId',
+    'lessonStage',
     'paperId',
     'pageNumber',
     'selection',
@@ -168,6 +170,18 @@ test('tutor request body normalizes null optional context fields', () => {
     tutorThreadBodySchema.safeParse({
       question: 'Help me with this question.',
       questionLabel: null,
+    }).success,
+  ).toBe(false);
+  expect(
+    tutorThreadBodySchema.parse({
+      question: 'Help me with this question.',
+      lessonStage: 'explain',
+    }).lessonStage,
+  ).toBe('explain');
+  expect(
+    tutorThreadBodySchema.safeParse({
+      question: 'Help me with this question.',
+      lessonStage: 'summary',
     }).success,
   ).toBe(false);
 });

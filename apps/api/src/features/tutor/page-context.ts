@@ -1,3 +1,4 @@
+import type { TutorLessonStage } from '@academy/contracts/tutor';
 import type { ContentIndex, IndexedLesson } from '../../content/types.js';
 
 export interface CourseOutlineUnit {
@@ -55,6 +56,10 @@ export function buildTutorPageContent(input: {
   index: ContentIndex;
   conceptId?: string | null;
   knowledgePointId?: string;
+  lessonStage?: TutorLessonStage;
+  exerciseId?: string;
+  exercisePrompt?: string;
+  questionLabel?: string;
   courseUnits?: CourseOutlineUnit[];
   paper?: PaperTutorContext;
   paperId?: string;
@@ -136,6 +141,29 @@ export function buildTutorPageContent(input: {
     const recap = section('Recap', recapFor(index, lesson));
     const whereThisFits = section("What you're learning", lesson.where_this_fits ?? '');
     if (pointIndex < 0) {
+      if (input.lessonStage === 'explain' || input.lessonStage === 'quiz') {
+        const stageTitle = input.lessonStage === 'explain' ? 'Explain it self-check' : 'Quiz';
+        const question =
+          input.exerciseId && input.exercisePrompt?.trim()
+            ? `## ${input.questionLabel ?? stageTitle} prompt\n\n${input.exercisePrompt.trim()}`
+            : '';
+        const completedSteps = `## Lesson steps (completed; not on this page)\n\n${points
+          .map(
+            (point, index) =>
+              `### Step ${index + 1} of ${points.length}: ${point.title}\n\n${point.tldr ?? ''}`,
+          )
+          .join('\n\n')}`;
+        return sanitizePageContent(
+          [
+            `## Current page: ${stageTitle}`,
+            question,
+            completedSteps,
+            section('Lesson summary (not on this page)', summaryFor(lesson)),
+          ]
+            .filter(Boolean)
+            .join('\n\n'),
+        );
+      }
       return sanitizePageContent(
         [`# ${title}`, recap, whereThisFits, section('Summary', summaryFor(lesson))]
           .filter(Boolean)
