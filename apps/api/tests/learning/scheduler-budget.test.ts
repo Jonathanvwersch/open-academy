@@ -4,7 +4,11 @@ import { loadContent } from '../../src/content/load.js';
 import type { ContentIndex } from '../../src/content/types.js';
 import { newReviewCard, scheduleReview } from '../../src/learning/fsrs.js';
 import type { SchedulerState } from '../../src/learning/scheduler.js';
-import { planSession, sessionBudget } from '../../src/learning/scheduler.js';
+import {
+  explainReviewSelection,
+  planSession,
+  sessionBudget,
+} from '../../src/learning/scheduler.js';
 import { initialMastery } from '../../src/learning/types.js';
 
 const now = new Date('2026-01-14T12:00:00.000Z');
@@ -62,9 +66,18 @@ function reviewCard(conceptId: string, dueAt: Date): SchedulerState['cards'][num
   };
 }
 
-function lessonCrowdingContent(): ContentIndex {
+function lessonCrowdingContent(coversVectors = false): ContentIndex {
   const concepts = fixtureContent.concepts.map((concept) =>
-    concept.id === 'supervised-learning' ? { ...concept, est_minutes: 15 } : concept,
+    concept.id === 'supervised-learning'
+      ? {
+          ...concept,
+          est_minutes: 15,
+          encompassings: [
+            ...(concept.encompassings ?? []).filter(({ id }) => id !== 'vectors'),
+            ...(coversVectors ? [{ id: 'vectors', weight: 1 }] : []),
+          ],
+        }
+      : concept,
   );
   const exercises = fixtureContent.exercises.map((exercise) =>
     exercise.concept === 'vectors' && exercise.dimension === 'math'
@@ -104,7 +117,7 @@ describe('sessionBudget', () => {
 });
 
 describe('review budget reservation', () => {
-  it('reserves the only due review before a fresh lesson uses the budget', () => {
+  it('reserves the only due review before an unrelated fresh lesson uses the budget', () => {
     const content = lessonCrowdingContent();
     const state = plannerState(content, {
       freshConceptId: 'supervised-learning',
@@ -130,6 +143,30 @@ describe('review budget reservation', () => {
       ),
     ).toBe(true);
     expect(fitPlan.activities.some((activity) => activity.kind === 'review')).toBe(true);
+  });
+
+  it('releases the fallback review reservation when a lesson covers that topic', () => {
+    const content = lessonCrowdingContent(true);
+    const state = plannerState(content, {
+      freshConceptId: 'supervised-learning',
+      cards: [reviewCard('vectors', now)],
+    });
+
+    const plan = planSession(state, content, now, 20);
+    const lesson = plan.activities.find(
+      (activity) => activity.kind === 'learn' && activity.conceptId === 'supervised-learning',
+    );
+    const explanation = explainReviewSelection(state, content, now, 20);
+
+    expect(lesson?.plannedMinutes).toBe(15);
+    expect(plan.activities.some((activity) => activity.kind === 'review')).toBe(false);
+    expect(explanation).toContainEqual(
+      expect.objectContaining({
+        conceptId: 'vectors',
+        result: 'covered',
+        coveringConceptId: 'supervised-learning',
+      }),
+    );
   });
 
   it('requires an early review to cover two uncovered due topics', () => {

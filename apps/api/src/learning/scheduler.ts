@@ -832,8 +832,6 @@ function packWeekday(
     canAdd(candidate) &&
     usedMinutes + candidate.adjustedMinutes <= learnBudget &&
     !interferesWithLearn(candidate);
-  const canSelectFreshLearn = (candidate: Candidate) =>
-    canSelectLearn(candidate) && !dueConceptIds.has(candidate.activity.conceptId ?? '');
   const resumedLessonConcepts = new Set(
     (state.lessonRuns ?? [])
       .filter((run) => run.status === 'in_progress' || run.status === 'quiz')
@@ -952,6 +950,8 @@ function packWeekday(
     .filter((candidate) => !unfinishedLessonConcepts.has(candidate.activity.conceptId ?? ''));
   let reservedReviewMinutes = 0;
   let reservedMinutes = 0;
+  let fallbackReservation: Candidate | undefined;
+  let fallbackReservationMinutes = 0;
   for (const detail of [...reviewCandidateDetails].sort(
     (left, right) =>
       right.candidate.activity.reason.terms.review - left.candidate.activity.reason.terms.review ||
@@ -972,7 +972,7 @@ function packWeekday(
     }
   }
   if (reservedReviewMinutes === 0) {
-    const fallbackReservation = [...reviewCandidateDetails]
+    fallbackReservation = [...reviewCandidateDetails]
       .filter(
         ({ candidate }) =>
           !candidate.remediation &&
@@ -982,11 +982,41 @@ function packWeekday(
       .sort(byUrgency)
       .find(({ candidate }) => reservedMinutes + candidate.adjustedMinutes <= budget)?.candidate;
     if (fallbackReservation) {
-      reservedReviewMinutes += fallbackReservation.adjustedMinutes;
-      reservedMinutes += fallbackReservation.adjustedMinutes;
+      fallbackReservationMinutes = fallbackReservation.adjustedMinutes;
+      reservedReviewMinutes += fallbackReservationMinutes;
+      reservedMinutes += fallbackReservationMinutes;
     }
   }
   learnBudget = Math.max(0, budget - reservedMinutes);
+  const canSelectWithFallbackReservation = (candidate: Candidate) => {
+    const conceptId = candidate.activity.conceptId;
+    const fallbackConceptId = fallbackReservation?.activity.conceptId;
+    if (
+      candidate.activity.kind !== 'learn' ||
+      !conceptId ||
+      !fallbackConceptId ||
+      fallbackReservationMinutes <= 0
+    ) {
+      return false;
+    }
+    return (
+      learnTaskCanCoverDueReviews(conceptId) &&
+      coveredByTaskConcept(conceptId).has(fallbackConceptId) &&
+      usedMinutes + candidate.adjustedMinutes <= learnBudget + fallbackReservationMinutes &&
+      canAdd(candidate) &&
+      !interferesWithLearn(candidate)
+    );
+  };
+  const canSelectFreshLearn = (candidate: Candidate) =>
+    !dueConceptIds.has(candidate.activity.conceptId ?? '') &&
+    (canSelectLearn(candidate) || canSelectWithFallbackReservation(candidate));
+  const releaseFallbackReservation = () => {
+    reservedMinutes -= fallbackReservationMinutes;
+    learnBudget += fallbackReservationMinutes;
+    reservedReviewMinutes = 0;
+    fallbackReservation = undefined;
+    fallbackReservationMinutes = 0;
+  };
   const candidatesByCourse = new Map<string, Candidate[]>();
   for (const candidate of learnCandidates) {
     if (!candidate.courseId) continue;
@@ -1047,7 +1077,12 @@ function packWeekday(
         const unit = conceptId ? nextCourse.unitPositions.get(conceptId) : undefined;
         return unit !== undefined && !selectedUnits.has(unit);
       }) ?? eligibleCandidates[0];
-    if (!candidate || !add(candidate)) break;
+    if (!candidate) break;
+    if (!canSelectLearn(candidate)) {
+      if (!canSelectWithFallbackReservation(candidate)) break;
+      releaseFallbackReservation();
+    }
+    if (!canSelectLearn(candidate) || !add(candidate)) break;
     newConceptCount += 1;
     selectedLearnMinutesBySubject.set(
       nextSubject,
