@@ -94,6 +94,7 @@ The engine uses the FSRS algorithm (the `ts-fsrs` library) for spaced repetition
 - Use speed 1 until the learner has three qualifying answers. **[Ours]**
 - Add 1.6 to the success count and 2 to the trial count. Divide the first result by the second to get the accuracy estimate. **[Ours]**
 - At an accuracy of 0.8 or higher, add 5 times the difference from 0.8 to speed 1. Below 0.8, subtract 0.5 / 0.3 times the shortfall from speed 1. Limit speed to 0.5 through 2. Round it to two decimal places. **[Ours]**
+- Keep the 2.0 cap as a safeguard. In practice, speed levels off at about 1.71 when a learner gets every qualifying answer right. **[Ours]**
 - Keep speed evidence on its own topic. Use a population difficulty factor of 1. **[Ours]**
 - Speed scales the progress of successful reviews. **[MA]**
 - After a Good or Hard rating, multiply the raw FSRS interval by the topic's current speed. Include the first schedule after a lesson pass. Apply the next-local-day floor and the 60-day cap. Keep the FSRS stability and difficulty values. **[Ours]**
@@ -166,7 +167,7 @@ Rules that apply to the whole plan:
 - Keep hints, the tutor and lesson links out of the timed quiz. **[Ours]**
 - Rate each wrong answer Again. Rate a correct answer Hard when its time exceeds the question's target. Rate other correct answers Good. Apply normal FIRe credit for Good. **[Ours]**
 - Make a follow-up review due immediately for each missed topic. **[MA]**
-- Also make a follow-up review due immediately for each slow correct answer. Use speed when the quiz keeps the FSRS due date. Skip suspended cards when the quiz rates, gives FIRe credit, or schedules reviews. **[Ours]**
+- Make a follow-up review due immediately for each slow correct answer at every speed. Apply speed only when the quiz uses the FSRS due date. Skip suspended cards when the quiz rates, gives FIRe credit, or schedules reviews. **[Ours]**
 - Divide the number of correct answers by 8 to get the score. Multiply planned minutes by the score and round to the nearest whole XP. Award the XP once. **[Ours]**
 
 ### Retake
