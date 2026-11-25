@@ -46,6 +46,10 @@ type MemorySeed = {
 type StoreState = {
   learners: Map<string, LearnerState>;
   settings: Map<string, Settings>;
+  revisions: Map<string, number>;
+};
+
+type IdCounters = {
   cardCount: number;
   flagCount: number;
   xpCount: number;
@@ -98,20 +102,24 @@ export function memoryStore(seed: MemorySeed = {}): MemoryLearnerStore {
     {
       learners: new Map(),
       settings: structuredClone(new Map(seed.settings)),
-      cardCount: 0,
-      flagCount: 0,
-      xpCount: 0,
+      revisions: new Map(),
     },
     hints,
+    { cardCount: 0, flagCount: 0, xpCount: 0 },
   );
 }
 
 function scopedStore(
   data: StoreState,
   hints: ReadonlyMap<string, readonly Hint[]>,
+  ids: IdCounters,
 ): MemoryLearnerStore {
   let pending = Promise.resolve();
+  function markWrite(learnerId: string) {
+    data.revisions.set(learnerId, (data.revisions.get(learnerId) ?? 0) + 1);
+  }
   function stateFor(learnerId: string): LearnerState {
+    markWrite(learnerId);
     let state = data.learners.get(learnerId);
     if (!state) {
       state = {
@@ -133,10 +141,37 @@ function scopedStore(
   return {
     async transaction(fn) {
       const run = async () => {
+        const original = new Map(data.revisions);
         const snapshot = structuredClone(data);
-        const tx = scopedStore(snapshot, hints);
+        const tx = scopedStore(snapshot, hints, ids);
         const result = await fn(tx as typeof this);
-        Object.assign(data, snapshot);
+        const changed = new Set<string>();
+        for (const [learnerId, revision] of snapshot.revisions) {
+          if (revision === original.get(learnerId)) continue;
+          if (data.revisions.get(learnerId) !== original.get(learnerId)) {
+            throw new Error('Learner state changed outside this transaction.');
+          }
+          changed.add(learnerId);
+        }
+        if (changed.size) {
+          const attemptIds = new Set<string>();
+          for (const [learnerId, state] of data.learners) {
+            if (changed.has(learnerId)) continue;
+            for (const attempt of state.attempts) attemptIds.add(attempt.id);
+          }
+          for (const learnerId of changed) {
+            if (snapshot.learners.get(learnerId)?.attempts.some(({ id }) => attemptIds.has(id))) {
+              throw new Error('An attempt already exists with this ID.');
+            }
+          }
+        }
+        for (const learnerId of changed) {
+          const state = snapshot.learners.get(learnerId);
+          if (state) data.learners.set(learnerId, state);
+          const settings = snapshot.settings.get(learnerId);
+          if (settings) data.settings.set(learnerId, settings);
+          data.revisions.set(learnerId, snapshot.revisions.get(learnerId) ?? 0);
+        }
         return result;
       };
       const result = pending.then(run);
@@ -201,7 +236,7 @@ function scopedStore(
     async insertXpEventOnce(learnerId, event) {
       const { xpEvents } = stateFor(learnerId);
       if (xpEvents.has(event.sourceKey)) return false;
-      const id = `00000000-0000-4000-8000-${(++data.xpCount).toString(16).padStart(12, '0')}`;
+      const id = `00000000-0000-4000-8000-${(++ids.xpCount).toString(16).padStart(12, '0')}`;
       xpEvents.set(event.sourceKey, structuredClone({ ...event, id }));
       return true;
     },
@@ -216,6 +251,7 @@ function scopedStore(
           if (patch[key] !== undefined)
             Object.assign(updated, { [key]: structuredClone(patch[key]) });
         }
+        markWrite(learnerId);
         data.settings.set(learnerId, updated);
       }
     },
@@ -328,7 +364,7 @@ function scopedStore(
       if (cards.has(cardKey)) {
         throw new Error('A review card already exists for this learner, concept and dimension.');
       }
-      const stored = structuredClone({ ...card, id: `card-${++data.cardCount}` });
+      const stored = structuredClone({ ...card, id: `card-${++ids.cardCount}` });
       cards.set(cardKey, stored);
       return structuredClone(stored);
     },
@@ -337,7 +373,7 @@ function scopedStore(
       const cardKey = key(conceptId, dimension);
       const current = cards.get(cardKey);
       const { card, log } = compute(structuredClone(current));
-      const id = current?.id ?? `card-${++data.cardCount}`;
+      const id = current?.id ?? `card-${++ids.cardCount}`;
       cards.set(cardKey, structuredClone({ ...card, conceptId, dimension, id }));
       reviewLogs.push(structuredClone({ ...log, cardId: id }));
       return true;
@@ -347,6 +383,7 @@ function scopedStore(
         ({ id }) => id === cardId,
       );
       if (!card || card.dueAt.getTime() !== expectedDueAt.getTime()) return false;
+      markWrite(learnerId);
       card.fsrs = structuredClone(next.fsrs);
       card.dueAt = structuredClone(next.dueAt);
       return true;
@@ -355,12 +392,12 @@ function scopedStore(
       return structuredClone([...(data.learners.get(learnerId)?.flags.values() ?? [])]);
     },
     addRemediationFlag(learnerId, flag) {
-      const stored = { ...flag, id: `flag-${++data.flagCount}` };
+      const stored = { ...flag, id: `flag-${++ids.flagCount}` };
       stateFor(learnerId).flags.set(stored.id, stored);
       return structuredClone(stored);
     },
     resolveRemediationFlag(learnerId, id) {
-      data.learners.get(learnerId)?.flags.delete(id);
+      if (data.learners.get(learnerId)?.flags.delete(id)) markWrite(learnerId);
     },
   };
 }

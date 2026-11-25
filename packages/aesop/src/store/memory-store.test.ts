@@ -88,3 +88,35 @@ it('does not expose mutable mastery records or cards from memoryStore', async ()
   expect(await store.getMastery(learnerId, 'vectors', 'math')).toEqual(record);
   expect(await store.getReviewCard(learnerId, 'vectors', 'math')).toEqual(inserted);
 });
+
+it('preserves writes for other learners made while a transaction is open', async () => {
+  const store = memoryStore();
+  const otherLearnerId = 'other';
+  const { inside, outside } = await store.transaction(async (tx) => {
+    const inside = tx.addRemediationFlag(learnerId, {
+      conceptId: 'vectors',
+      targetPrereqId: null,
+    });
+    const outside = store.addRemediationFlag(otherLearnerId, {
+      conceptId: 'vectors',
+      targetPrereqId: null,
+    });
+    return { inside, outside };
+  });
+
+  expect(await store.listOpenRemediationFlags(learnerId)).toEqual([inside]);
+  expect(await store.listOpenRemediationFlags(otherLearnerId)).toEqual([outside]);
+  expect(inside.id).not.toBe(outside.id);
+});
+
+it('does not overwrite a parent write for the same learner on conflict', async () => {
+  const store = memoryStore();
+  const outside = initialMastery('vectors', 'math');
+  await expect(
+    store.transaction(async (tx) => {
+      await tx.saveMastery(learnerId, initialMastery('matrices', 'math'));
+      await store.saveMastery(learnerId, outside);
+    }),
+  ).rejects.toThrow('Learner state changed outside this transaction.');
+  expect(await store.listMastery(learnerId)).toEqual([outside]);
+});
