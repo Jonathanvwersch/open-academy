@@ -56,7 +56,7 @@ export interface LearnerStore {
   /** Upsert on (learnerId, conceptId, dimension). */
   saveMastery(learnerId: string, record: MasteryRecord): Promise<void>;
   addMasteryEvent(learnerId: string, event: MasteryEventRecord): Promise<void>;
-  /** All cards, or only cards whose conceptId is in conceptIds. Sorted by conceptId, dimension, id. */
+  /** Active cards, optionally filtered by conceptId. Sorted by conceptId, dimension, id. */
   listReviewCards(learnerId: string, conceptIds?: readonly string[]): Promise<StoredReviewCard[]>;
   getReviewCard(
     learnerId: string,
@@ -64,7 +64,7 @@ export interface LearnerStore {
     dimension: Dimension,
   ): Promise<StoredReviewCard | undefined>;
   insertReviewCard(learnerId: string, card: NewReviewCard): Promise<StoredReviewCard>;
-  /** Compute a review from the current card, then save the card and its log together. */
+  /** Save a review and its log together. Returns false when the card is suspended. */
   recordReview(
     learnerId: string,
     conceptId: string,
@@ -73,8 +73,8 @@ export interface LearnerStore {
       card: Omit<NewReviewCard, 'conceptId' | 'dimension'>;
       log: ReviewLogRecord;
     },
-  ): Promise<void>;
-  /** Compare-and-set: updates fsrs and dueAt only if the stored dueAt still equals expectedDueAt. Returns whether it updated. */
+  ): Promise<boolean>;
+  /** Compare-and-set: update an active card whose dueAt still equals expectedDueAt. */
   updateReviewCardIfDue(
     learnerId: string,
     cardId: string,

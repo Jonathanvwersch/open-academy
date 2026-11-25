@@ -108,6 +108,7 @@ export function memoryStore(): MemoryLearnerStore {
       const id = current?.id ?? `card-${++cardCount}`;
       cards.set(cardKey, structuredClone({ ...card, conceptId, dimension, id }));
       reviewLogs.push(structuredClone({ ...log, cardId: id }));
+      return true;
     },
     async updateReviewCardIfDue(learnerId, cardId, expectedDueAt, next) {
       const card = [...(learners.get(learnerId)?.cards.values() ?? [])].find(

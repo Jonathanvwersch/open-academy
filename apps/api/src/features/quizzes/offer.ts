@@ -80,7 +80,7 @@ export async function quizOffer(
           lte(lessonRuns.completedAt, now),
         ),
       ),
-    confirmedPlacementTopicIds(userId),
+    confirmedPlacementTopicIds(db, userId),
     db
       .select({
         topic: quizItems.conceptId,

@@ -1,7 +1,7 @@
 import type { Dimension } from '@academy/aesop/course/schemas';
 import { initialMastery, type MasteryRecord, type MasteryState } from '@academy/aesop/memory/types';
 import type { LearnerStore, StoredReviewCard } from '@academy/aesop/store/learner-store';
-import { and, asc, eq, inArray } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNull } from 'drizzle-orm';
 import type { Card } from 'ts-fsrs';
 import type { Database } from './client.js';
 import { mastery, masteryEvents, remediationFlags, reviewCards, reviewLogs } from './schema.js';
@@ -91,6 +91,7 @@ export function drizzleLearnerStore(db: Database | Transaction): LearnerStore {
         .where(
           and(
             eq(reviewCards.userId, learnerId),
+            isNull(reviewCards.suspendedAt),
             conceptIds === undefined ? undefined : inArray(reviewCards.conceptId, conceptIds),
           ),
         )
@@ -120,7 +121,7 @@ export function drizzleLearnerStore(db: Database | Transaction): LearnerStore {
       return mapReviewCard(row);
     },
     async recordReview(learnerId, conceptId, dimension, compute) {
-      await db.transaction(async (tx) => {
+      return db.transaction(async (tx) => {
         const [current] = await tx
           .select()
           .from(reviewCards)
@@ -132,6 +133,7 @@ export function drizzleLearnerStore(db: Database | Transaction): LearnerStore {
             ),
           )
           .for('update');
+        if (current?.suspendedAt) return false;
         const { card, log } = compute(current && mapReviewCard(current));
         const [saved] = await tx
           .insert(reviewCards)
@@ -139,13 +141,16 @@ export function drizzleLearnerStore(db: Database | Transaction): LearnerStore {
           .onConflictDoUpdate({
             target: [reviewCards.userId, reviewCards.conceptId, reviewCards.dimension],
             set: card,
+            setWhere: isNull(reviewCards.suspendedAt),
           })
           .returning({ id: reviewCards.id });
+        if (!saved) return false;
         await tx.insert(reviewLogs).values({
           ...log,
           cardId: saved.id,
           rating: String(log.rating),
         });
+        return true;
       });
     },
     async updateReviewCardIfDue(learnerId, cardId, expectedDueAt, next) {
@@ -157,6 +162,7 @@ export function drizzleLearnerStore(db: Database | Transaction): LearnerStore {
             eq(reviewCards.userId, learnerId),
             eq(reviewCards.id, cardId),
             eq(reviewCards.dueAt, expectedDueAt),
+            isNull(reviewCards.suspendedAt),
           ),
         )
         .returning({ id: reviewCards.id });

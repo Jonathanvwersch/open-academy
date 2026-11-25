@@ -260,7 +260,7 @@ async function applyQuizReview(
   now: Date,
   timeZone: string,
 ) {
-  await store.recordReview(learnerId, exercise.concept, exercise.dimension, (current) => {
+  return store.recordReview(learnerId, exercise.concept, exercise.dimension, (current) => {
     const scheduled = scheduleReview(
       current?.fsrs ?? newReviewCard(now),
       now,
@@ -311,7 +311,7 @@ export async function finalizeQuiz(deps: FeatureServices, request: FeatureReques
         .update(quizItems)
         .set({ correct: outcome.correct, followUp: outcome.followUp })
         .where(and(eq(quizItems.runId, run.id), eq(quizItems.position, item.position)));
-      await applyQuizReview(
+      const reviewed = await applyQuizReview(
         store,
         repo.userId,
         item.question.exercise,
@@ -319,7 +319,7 @@ export async function finalizeQuiz(deps: FeatureServices, request: FeatureReques
         now,
         request.timeZone,
       );
-      if (outcome.rating === Rating.Good) {
+      if (reviewed && outcome.rating === Rating.Good) {
         await applyImplicitRepetitions(store, {
           learnerId: repo.userId,
           conceptId: item.conceptId,
@@ -430,15 +430,15 @@ export async function startQuizFollowUps(deps: FeatureServices, request: Feature
     if (active) return serviceResult({ sessionId: active.id });
 
     const state = await repo.schedulerState(now, content);
-    const activities = items.flatMap(({ conceptId }) => {
+    const activities = items.flatMap(({ conceptId, question }) => {
+      const cards = state.cards.filter((card) => card.conceptId === conceptId);
+      if (!cards.some((card) => card.dimension === question.exercise.dimension)) return [];
       const activity = buildReviewActivityForConcept(
         { ...state, focusSubjectId: undefined, reviewedTodayConceptIds: [] },
         content,
         now,
         conceptId,
-        state.cards
-          .filter((card) => card.conceptId === conceptId)
-          .map((card) => ({ ...card, dueAt: now.toISOString() })),
+        cards.map((card) => ({ ...card, dueAt: now.toISOString() })),
       );
       return activity ? [activity] : [];
     });

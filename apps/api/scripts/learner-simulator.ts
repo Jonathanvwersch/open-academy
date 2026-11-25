@@ -42,7 +42,7 @@ import { QUIZ_XP_INTERVAL, QUIZ_XP_WINDOW } from '@academy/aesop/quizzes/mixed-q
 import type { CourseCatalogPayload, CoursePayload, LearnPayload } from '@academy/contracts/course';
 import type { QuizPayload } from '@academy/contracts/quizzes';
 import type { SessionActivity, SessionPayload, TodayPayload } from '@academy/contracts/sessions';
-import { and, asc, desc, eq, inArray, isNull } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNull, notInArray } from 'drizzle-orm';
 import type { Card } from 'ts-fsrs';
 import { Rating, State } from 'ts-fsrs';
 import { createApp } from '../src/app.js';
@@ -3023,11 +3023,23 @@ async function processTimedQuiz(
   const runItems = (id: string) =>
     db.select().from(quizItems).where(eq(quizItems.runId, id)).orderBy(asc(quizItems.position));
   const firstItems = await runItems(original.id);
-  const knownRows = await db
-    .select({ topic: lessonRuns.conceptId })
-    .from(lessonRuns)
-    .where(and(eq(lessonRuns.userId, userId), eq(lessonRuns.status, 'completed')));
-  const learned = new Set(knownRows.map(({ topic }) => topic));
+  const [lessons, confirmedGrants] = await Promise.all([
+    db
+      .select({ topic: lessonRuns.conceptId })
+      .from(lessonRuns)
+      .where(and(eq(lessonRuns.userId, userId), eq(lessonRuns.status, 'completed'))),
+    db
+      .select({ topic: placementGrants.conceptId })
+      .from(placementGrants)
+      .where(
+        and(
+          eq(placementGrants.userId, userId),
+          eq(placementGrants.state, 'confirmed'),
+          notInArray(placementGrants.reason, ['legacy_confirmed', 'legacy_provisional']),
+        ),
+      ),
+  ]);
+  const learned = new Set([...lessons, ...confirmedGrants].map(({ topic }) => topic));
   const history = await db
     .select({ question: quizItems.question, runId: quizItems.runId })
     .from(quizItems)
