@@ -6,7 +6,8 @@ import { type MasteryRecord, masteryRank } from '@academy/aesop/memory/types';
 import { buildProgress } from '@academy/aesop/progress/progress';
 import type { ProgressMasteryState, ProgressSubjectPayload } from '@academy/contracts/progress';
 import { desc, eq } from 'drizzle-orm';
-import { lessonRuns, masteryEvents, projectSubmissions, xpEvents } from '../../db/schema.js';
+import { drizzleLearnerStore } from '../../db/learner-store.js';
+import { lessonRuns, masteryEvents, projectSubmissions } from '../../db/schema.js';
 import { type FeatureRequest, type FeatureServices, serviceResult } from '../../service-context.js';
 import { courseTopicState } from '../course/service.js';
 
@@ -97,10 +98,7 @@ export async function getProgress(deps: FeatureServices, request: FeatureRequest
         .where(eq(projectSubmissions.userId, request.userId))
         .orderBy(desc(projectSubmissions.createdAt))
         .limit(50),
-      db
-        .select({ amount: xpEvents.amount, localDate: xpEvents.localDate })
-        .from(xpEvents)
-        .where(eq(xpEvents.userId, request.userId)),
+      drizzleLearnerStore(db).listXpEvents(request.userId, {}),
       db.select().from(lessonRuns).where(eq(lessonRuns.userId, request.userId)),
       repo.studyCourseIds(index),
     ]);

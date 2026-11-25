@@ -2,17 +2,18 @@ import { dailyStudyMinutes, type SessionPreferences } from '@academy/aesop/plann
 import { studyDays } from '@academy/contracts/settings';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
+import { drizzleLearnerStore } from '../../db/learner-store.js';
 import { users } from '../../db/schema.js';
 import { type FeatureRequest, type FeatureServices, serviceResult } from '../../service-context.js';
 import { quizAccommodation } from '../quizzes/offer.js';
 
 export async function getSettings(deps: FeatureServices, request: FeatureRequest) {
   const { tutorProvider } = deps;
-  const user = await request.repo.user();
+  const settings = await request.repo.settings();
   return serviceResult({
-    dailyMinutes: dailyStudyMinutes((user?.prefs ?? {}) as SessionPreferences),
+    dailyMinutes: dailyStudyMinutes((settings?.prefs ?? {}) as SessionPreferences),
     tutorEnabled: tutorProvider !== null,
-    quizTimeMultiplier: quizAccommodation(user?.prefs),
+    quizTimeMultiplier: quizAccommodation(settings?.prefs),
   });
 }
 
@@ -38,15 +39,15 @@ export async function putSettings(deps: FeatureServices, request: FeatureRequest
   if (!body.success) {
     return serviceResult({ error: 'Invalid settings' }, 400);
   }
-  const user = await request.repo.user();
+  const settings = await request.repo.settings();
   const { startDate, ...preferences } = body.data;
-  const [updated] = await db
-    .update(users)
-    .set({
+  const updated = await db.transaction(async (tx) => {
+    await drizzleLearnerStore(tx).patchSettings(request.userId, {
       ...(startDate === undefined ? {} : { startDate }),
-      prefs: { ...(user?.prefs as object), ...preferences },
-    })
-    .where(eq(users.id, request.userId))
-    .returning();
+      prefs: { ...settings?.prefs, ...preferences },
+    });
+    const [row] = await tx.select().from(users).where(eq(users.id, request.userId));
+    return row;
+  });
   return serviceResult(updated);
 }

@@ -29,9 +29,9 @@ import {
 import type { CourseQueueStatus } from '@academy/contracts/course';
 import { and, eq, inArray, or } from 'drizzle-orm';
 import type { Database } from '../../db/client.js';
+import { drizzleLearnerStore } from '../../db/learner-store.js';
 import type { LearnerRepository } from '../../db/repository.js';
 import {
-  courseEnrollments,
   lessonRuns,
   mastery,
   masteryEvents,
@@ -39,7 +39,6 @@ import {
   reviewCards,
   sessionActivities,
   studySessions,
-  users,
 } from '../../db/schema.js';
 import { initialLearnProgress } from '../../learning/initial-learn-progress.js';
 
@@ -86,16 +85,13 @@ export async function restartTopic(input: {
       .filter((course) => course.units.some((unit) => unit.concepts.includes(input.conceptId)))
       .map((course) => course.id);
     if (affectedCourseIds.length > 0) {
-      await tx
-        .update(courseEnrollments)
-        .set({ status: 'active', completedAt: null })
-        .where(
-          and(
-            eq(courseEnrollments.userId, input.userId),
-            eq(courseEnrollments.status, 'completed'),
-            inArray(courseEnrollments.courseId, affectedCourseIds),
-          ),
-        );
+      await drizzleLearnerStore(tx).writeEnrollments(input.userId, {
+        kind: 'set_status',
+        courseIds: affectedCourseIds,
+        status: 'active',
+        completedAt: null,
+        ifStatus: 'completed',
+      });
     }
 
     const sessions = await tx
@@ -306,11 +302,11 @@ export async function updateLearningFocus(input: {
   subjectId: string | null;
   now: Date;
 }) {
-  const user = await input.repo.user();
-  const prefs = { ...((user?.prefs ?? {}) as Record<string, unknown>) };
+  const settings = await input.repo.settings();
+  const prefs = { ...settings?.prefs };
   if (input.subjectId === null) delete prefs.focusSubjectId;
   else prefs.focusSubjectId = input.subjectId;
-  await input.db.update(users).set({ prefs }).where(eq(users.id, input.userId));
+  await drizzleLearnerStore(input.db).patchSettings(input.userId, { prefs });
 
   const active = await input.repo.activeSession(input.now);
   const session = active ? await input.repo.session(active.id) : undefined;

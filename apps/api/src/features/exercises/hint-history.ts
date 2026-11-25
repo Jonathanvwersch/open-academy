@@ -1,41 +1,23 @@
 import { countHintsSincePreviousAttempt } from '@academy/aesop/memory/hints';
-import { and, eq, sql } from 'drizzle-orm';
 import type { Database } from '../../db/client.js';
-import { attempts, hintEvents } from '../../db/schema.js';
+import { drizzleLearnerStore } from '../../db/learner-store.js';
 export async function hintsSincePreviousAttempt(
   db: Database,
   userId: string,
   exerciseId: string,
   activityId?: string,
 ): Promise<number> {
-  const scope = activityId ? eq(attempts.activityId, activityId) : sql`true`;
-  const hintScope = activityId ? eq(hintEvents.activityId, activityId) : sql`true`;
-  const [attemptRows, hintRows] = await Promise.all([
-    db
-      .select({
-        userId: attempts.userId,
-        exerciseId: attempts.exerciseId,
-        activityId: attempts.activityId,
-        createdAt: attempts.createdAt,
-      })
-      .from(attempts)
-      .where(and(eq(attempts.userId, userId), eq(attempts.exerciseId, exerciseId), scope)),
-    db
-      .select({
-        userId: hintEvents.userId,
-        exerciseId: hintEvents.exerciseId,
-        activityId: hintEvents.activityId,
-        createdAt: hintEvents.createdAt,
-        level: hintEvents.level,
-      })
-      .from(hintEvents)
-      .where(and(eq(hintEvents.userId, userId), eq(hintEvents.exerciseId, exerciseId), hintScope)),
-  ]);
+  const { attempts, hints } = await drizzleLearnerStore(db).readHintEvidence(
+    userId,
+    exerciseId,
+    activityId || undefined,
+  );
+  const scope = { userId, exerciseId };
   return countHintsSincePreviousAttempt({
     userId,
     exerciseId,
     activityId,
-    attempts: attemptRows,
-    hints: hintRows,
+    attempts: attempts.map((row) => ({ ...row, ...scope })),
+    hints: hints.map((row) => ({ ...row, ...scope })),
   });
 }

@@ -13,6 +13,7 @@ import {
   type SchedulerState,
 } from '@academy/aesop/planner/scheduler';
 import { localDateKey } from '@academy/aesop/progress/xp';
+import type { Enrollment } from '@academy/aesop/store/core-store';
 import { and, asc, desc, eq, gte, inArray, isNull, lt, lte, sql } from 'drizzle-orm';
 import type { Card } from 'ts-fsrs';
 import { z } from 'zod';
@@ -20,7 +21,6 @@ import type { Database } from './client.js';
 import { drizzleLearnerStore } from './learner-store.js';
 import {
   attempts,
-  courseEnrollments,
   diagnosticRuns,
   hintEvents,
   lessonRuns,
@@ -38,7 +38,7 @@ import {
 
 export class LearnerRepository {
   private userPromise: Promise<typeof users.$inferSelect | undefined> | undefined;
-  private courseEnrollmentsPromise: Promise<(typeof courseEnrollments.$inferSelect)[]> | undefined;
+  private courseEnrollmentsPromise: Promise<Enrollment[]> | undefined;
   private studyCourseIdsPromise: Promise<string[]> | undefined;
   private studySetInitialized = false;
 
@@ -61,26 +61,45 @@ export class LearnerRepository {
     return user;
   }
 
+  async settings() {
+    if (!this.requestUser && !this.userPromise) {
+      return drizzleLearnerStore(this.db).getSettings(this.userId);
+    }
+    const user = await this.user();
+    if (!user) return undefined;
+    const { activeCourseId, studySetInitializedAt, startDate, timezone, prefs } = user;
+    return {
+      activeCourseId,
+      studySetInitializedAt,
+      startDate,
+      timeZone: timezone,
+      prefs: prefs as Record<string, unknown>,
+    };
+  }
+
   async activeCourseId(): Promise<string | null> {
-    return (await this.user())?.activeCourseId ?? null;
+    return (await this.settings())?.activeCourseId ?? null;
   }
 
   async setActiveCourseId(courseId: string): Promise<void> {
-    await this.db.update(users).set({ activeCourseId: courseId }).where(eq(users.id, this.userId));
+    await drizzleLearnerStore(this.db).patchSettings(this.userId, { activeCourseId: courseId });
   }
 
-  studyCourseIds(content: ContentIndex): Promise<string[]> {
-    this.studyCourseIdsPromise ??= this.loadStudyCourseIds(content).catch((error: unknown) => {
+  studyCourseIds(
+    content: ContentIndex,
+    now = this.sessionContent?.now ?? (() => new Date()),
+  ): Promise<string[]> {
+    this.studyCourseIdsPromise ??= this.loadStudyCourseIds(content, now).catch((error: unknown) => {
       this.invalidateEnrollmentCaches();
       throw error;
     });
     return this.studyCourseIdsPromise;
   }
 
-  private async loadStudyCourseIds(content: ContentIndex): Promise<string[]> {
-    const user = await this.user();
-    if (!user) return [];
-    if (user.studySetInitializedAt) this.studySetInitialized = true;
+  private async loadStudyCourseIds(content: ContentIndex, now: () => Date): Promise<string[]> {
+    const settings = await this.settings();
+    if (!settings) return [];
+    if (settings.studySetInitializedAt) this.studySetInitialized = true;
 
     if (!this.studySetInitialized) {
       const [enrollments, masteryRows, lessonRunRows] = await Promise.all([
@@ -107,23 +126,22 @@ export class LearnerRepository {
       for (const courseId of started) startedCourseIds.add(courseId);
       const courseOrder = content.curriculum?.courses ?? content.courses.map((course) => course.id);
       const backfill = courseOrder.filter((courseId) => startedCourseIds.has(courseId));
+      const store = drizzleLearnerStore(this.db);
       if (backfill.length > 0) {
-        await this.db
-          .insert(courseEnrollments)
-          .values(
-            backfill.map((courseId) => ({
-              userId: this.userId,
-              courseId,
-              startMethod: 'beginning' as const,
-            })),
-          )
-          .onConflictDoNothing();
+        const startedAt = now();
+        await store.writeEnrollments(this.userId, {
+          kind: 'insert_missing',
+          rows: backfill.map((courseId) => ({
+            courseId,
+            status: 'active',
+            startMethod: 'beginning',
+            startedAt,
+            completedAt: null,
+          })),
+        });
         this.courseEnrollmentsPromise = undefined;
       }
-      await this.db
-        .update(users)
-        .set({ studySetInitializedAt: new Date() })
-        .where(eq(users.id, this.userId));
+      await store.patchSettings(this.userId, { studySetInitializedAt: now() });
       this.studySetInitialized = true;
     }
 
@@ -226,7 +244,7 @@ export class LearnerRepository {
         .from(paperProgress)
         .where(eq(paperProgress.userId, this.userId))
         .orderBy(asc(paperProgress.paperId)),
-      this.studyCourseIds(content),
+      this.studyCourseIds(content, this.sessionContent?.now ?? (() => now)),
       this.db
         .select({
           conceptId: sessionActivities.conceptId,
@@ -620,15 +638,8 @@ export class LearnerRepository {
   }
 
   courseEnrollments() {
-    this.courseEnrollmentsPromise ??= this.loadCourseEnrollments();
+    this.courseEnrollmentsPromise ??= drizzleLearnerStore(this.db).listEnrollments(this.userId);
     return this.courseEnrollmentsPromise;
-  }
-
-  private async loadCourseEnrollments() {
-    return this.db
-      .select()
-      .from(courseEnrollments)
-      .where(eq(courseEnrollments.userId, this.userId));
   }
 
   private invalidateEnrollmentCaches() {
@@ -637,29 +648,14 @@ export class LearnerRepository {
   }
 
   async courseEnrollment(courseId: string) {
-    const [enrollment] = await this.db
-      .select()
-      .from(courseEnrollments)
-      .where(
-        and(eq(courseEnrollments.userId, this.userId), eq(courseEnrollments.courseId, courseId)),
-      )
-      .limit(1);
-    return enrollment;
+    return (await this.courseEnrollments()).find((row) => row.courseId === courseId);
   }
 
   async startCourse(courseId: string, startMethod: 'placement' | 'beginning', startedAt: Date) {
-    await this.db
-      .insert(courseEnrollments)
-      .values({
-        userId: this.userId,
-        courseId,
-        startMethod,
-        startedAt,
-      })
-      .onConflictDoUpdate({
-        target: [courseEnrollments.userId, courseEnrollments.courseId],
-        set: { status: 'active' },
-      });
+    await drizzleLearnerStore(this.db).writeEnrollments(this.userId, {
+      kind: 'start',
+      row: { courseId, startMethod, startedAt, status: 'active', completedAt: null },
+    });
     this.invalidateEnrollmentCaches();
   }
 
@@ -668,32 +664,22 @@ export class LearnerRepository {
     status: 'active' | 'paused' | 'completed',
     completedAt: Date | null = null,
   ) {
-    await this.db
-      .update(courseEnrollments)
-      .set({ status, completedAt })
-      .where(
-        and(eq(courseEnrollments.userId, this.userId), eq(courseEnrollments.courseId, courseId)),
-      );
+    await drizzleLearnerStore(this.db).writeEnrollments(this.userId, {
+      kind: 'set_status',
+      courseIds: [courseId],
+      status,
+      completedAt,
+    });
     this.invalidateEnrollmentCaches();
   }
 
   async completeCourses(courseIds: readonly string[], completedAt: Date) {
     if (courseIds.length === 0) return;
-    await this.db
-      .insert(courseEnrollments)
-      .values(
-        courseIds.map((courseId) => ({
-          userId: this.userId,
-          courseId,
-          status: 'completed' as const,
-          startMethod: 'beginning' as const,
-          completedAt,
-        })),
-      )
-      .onConflictDoUpdate({
-        target: [courseEnrollments.userId, courseEnrollments.courseId],
-        set: { status: 'completed', completedAt },
-      });
+    await drizzleLearnerStore(this.db).writeEnrollments(this.userId, {
+      kind: 'complete',
+      courseIds,
+      now: completedAt,
+    });
     this.invalidateEnrollmentCaches();
   }
 
