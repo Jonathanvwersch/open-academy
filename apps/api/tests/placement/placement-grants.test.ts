@@ -1,6 +1,6 @@
 import type { ContentIndex, IndexedExercise } from '@academy/aesop/course/types';
 import { initialMastery, masteryRank } from '@academy/aesop/memory/types';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest';
 import { env } from '../../src/config.js';
 import { loadContent } from '../../src/content/load.js';
@@ -230,6 +230,55 @@ test('a direct wrong answer withdraws a conditional grant, cascades, and keeps h
     targetedReviews: [],
   });
   expect(await snapshot()).toEqual(after);
+});
+
+test('an interrupted withdrawal changes nothing, and a retry completes it', async () => {
+  await seedGrant('vectors', 'conditional');
+  await seedGrant('derivatives', 'conditional');
+  const before = await snapshot();
+  await db.execute(
+    sql.raw(`
+    CREATE OR REPLACE FUNCTION fail_placement_withdrawal() RETURNS trigger AS $$
+    BEGIN RAISE EXCEPTION 'interrupted withdrawal'; END $$ LANGUAGE plpgsql;
+    CREATE TRIGGER fail_placement_withdrawal BEFORE INSERT ON mastery_events
+    FOR EACH ROW WHEN (NEW.user_id = '${userId}') EXECUTE FUNCTION fail_placement_withdrawal();
+  `),
+  );
+  let failed: { input: Parameters<typeof applyPlacementGrantOutcome>[0] } | undefined;
+  try {
+    const { attemptId, exercise } = await insertAttempt('vectors', 'review', 0);
+    const input = {
+      db,
+      userId,
+      content,
+      exerciseId: exercise.id,
+      attemptId,
+      mode: 'review',
+      correct: 0,
+      hintsUsed: 0,
+      attemptNo: 1,
+      gradedBy: 'deterministic',
+      now,
+    };
+    failed = { input };
+    await expect(applyPlacementGrantOutcome(input)).rejects.toThrow();
+  } finally {
+    await db.execute(
+      sql.raw(`
+      DROP TRIGGER IF EXISTS fail_placement_withdrawal ON mastery_events;
+      DROP FUNCTION IF EXISTS fail_placement_withdrawal();
+    `),
+    );
+  }
+  const interrupted = await snapshot();
+  expect(interrupted.grants).toEqual(before.grants);
+  expect(interrupted.mastery).toEqual(before.mastery);
+  expect(interrupted.cards).toEqual(before.cards);
+  if (!failed) throw new Error('Withdrawal did not run');
+  expect((await applyPlacementGrantOutcome(failed.input)).withdrawn).toEqual([
+    'vectors',
+    'derivatives',
+  ]);
 });
 
 test('a wrong review on a dependent topic queues a targeted review before any withdrawal', async () => {

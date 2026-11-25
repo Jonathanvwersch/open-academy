@@ -241,7 +241,22 @@ async function confirmGrant(
   }
 }
 
+/** Withdraws grants, rebuilds mastery and updates the plan as one all-or-nothing change. */
 async function withdrawGrants(input: {
+  db: Database;
+  userId: string;
+  content: ContentIndex;
+  failedConceptId: string;
+  states: ReadonlyMap<string, PlacementGrantState>;
+  attemptId: string;
+  now: Date;
+}): Promise<string[]> {
+  return input.db.transaction((tx) =>
+    withdrawGrantsInTransaction({ ...input, db: tx as unknown as Database }),
+  );
+}
+
+async function withdrawGrantsInTransaction(input: {
   db: Database;
   userId: string;
   content: ContentIndex;
