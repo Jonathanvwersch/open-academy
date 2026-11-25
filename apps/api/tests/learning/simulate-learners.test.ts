@@ -8,6 +8,7 @@ import {
   newActivitiesForReplan,
   p5HasNoWorkWindow,
   p6HasFeasibleOverdueReview,
+  p10EligibleConceptIds,
   p10MissingOverdueRetryConcepts,
   p10PreservedActivityMinutes,
   p10RetryFitsCapacity,
@@ -423,6 +424,50 @@ test('P10 honors resumed lesson priority over a fitting overdue retry', () => {
   });
   expect(p10RetryFitsCapacity(20, 60, 0, 5, priority.totalMinutes)).toBe(true);
   expect(p10RetryFitsCapacity(20, 45, 0, 14, priority.totalMinutes)).toBe(false);
+});
+
+test('P10 includes ready lesson topics beyond the first five course choices', async () => {
+  const content = await loadContent();
+  const conceptIds = [...content.lessonsByConcept.keys()]
+    .filter((conceptId) => content.conceptsById.get(conceptId)?.status !== 'stub')
+    .slice(0, 6);
+  const sixthConceptId = conceptIds[5];
+  const sourceCourse = content.coursesById.get('maths-for-ml');
+  const sourceUnit = sourceCourse?.units[0];
+  if (!sixthConceptId || !sourceCourse || !sourceUnit) {
+    throw new Error('Expected six lesson topics and a course unit');
+  }
+
+  const conceptsById = new Map(content.conceptsById);
+  for (const conceptId of conceptIds) {
+    const concept = conceptsById.get(conceptId);
+    if (concept) conceptsById.set(conceptId, { ...concept, prereqs: [] });
+  }
+  const coursesById = new Map(content.coursesById);
+  coursesById.set('p10-test-course', {
+    ...sourceCourse,
+    id: 'p10-test-course',
+    units: [{ ...sourceUnit, concepts: conceptIds }],
+  });
+  const testContent = { ...content, conceptsById, coursesById };
+  const now = new Date('2026-01-14T12:00:00.000Z');
+  const state = {
+    activeCourseId: 'p10-test-course',
+    studyCourseIds: ['p10-test-course'],
+    mastery: [],
+    remediationFlags: [],
+    lessonRuns: conceptIds.map((conceptId) => ({
+      conceptId,
+      status: 'needs_retry',
+      retryAfter: new Date('2026-01-12T12:00:00.000Z'),
+    })),
+  } as unknown as SchedulerState;
+
+  const eligibleConceptIds = p10EligibleConceptIds(state, testContent, now);
+
+  expect(eligibleConceptIds.size).toBe(6);
+  expect(eligibleConceptIds.has(sixthConceptId)).toBe(true);
+  expect(conceptIds.slice(0, 5)).not.toContain(sixthConceptId);
 });
 
 test('P18 counts an over-cap scheduled review when it is at least two days overdue', () => {

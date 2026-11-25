@@ -19,6 +19,7 @@ import {
   sessionActivities,
   users,
 } from '../src/db/schema.js';
+import { topicIsComplete } from '../src/learning/course-status.js';
 import { buildEncompassingIndex, type EncompassingIndex } from '../src/learning/encompassing.js';
 import {
   retrievability as fsrsRetrievability,
@@ -28,6 +29,7 @@ import {
   startOfNextCalendarDay,
 } from '../src/learning/fsrs.js';
 import { implicitRepetition } from '../src/learning/implicit-repetition.js';
+import { isLessonRetryReady } from '../src/learning/lesson-retry.js';
 import {
   type ImplicitRepetitionTraceEvent,
   setImplicitRepetitionTrace,
@@ -36,7 +38,13 @@ import {
   bringWeakestPrerequisiteCardDueNow,
   canBringPrerequisiteDueNow,
 } from '../src/learning/prerequisite-review.js';
-import { keyPrereqsForPoint, masteryKey, prerequisiteMet } from '../src/learning/prerequisites.js';
+import {
+  courseFoundationIds,
+  createPrerequisiteChecker,
+  keyPrereqsForPoint,
+  masteryKey,
+  prerequisiteMet,
+} from '../src/learning/prerequisites.js';
 import {
   adjustedMinutesForLearnerPace,
   explainReviewSelection,
@@ -1199,6 +1207,66 @@ export function p10SchedulerPriorityLessonMinutes(
     focusLessonMinutes,
     totalMinutes: overdueRetryMinutes + resumedLessonMinutes + focusLessonMinutes,
   };
+}
+
+export function p10EligibleConceptIds(
+  state: SchedulerState,
+  content: ContentIndex,
+  now: Date,
+): Set<string> {
+  const courseIds =
+    state.studyCourseIds.length > 0
+      ? state.studyCourseIds
+      : state.activeCourseId
+        ? [state.activeCourseId]
+        : [];
+  const outlineConceptIds = new Set(
+    courseIds.flatMap((courseId) => {
+      const course = content.coursesById.get(courseId);
+      return [
+        ...(course?.units.flatMap((unit) => unit.concepts) ?? []),
+        ...courseFoundationIds(content, courseId),
+      ];
+    }),
+  );
+  const masteryByKey = new Map(
+    state.mastery.map(
+      (record) => [masteryKey(record.conceptId, record.dimension), record] as const,
+    ),
+  );
+  const lessonRuns = state.lessonRuns ?? [];
+  const runsByConcept = new Map(lessonRuns.map((run) => [run.conceptId, run]));
+  const masteryByConcept = new Map<string, SchedulerState['mastery']>();
+  for (const record of state.mastery) {
+    const records = masteryByConcept.get(record.conceptId) ?? [];
+    records.push(record);
+    masteryByConcept.set(record.conceptId, records);
+  }
+  const prerequisiteChecker = createPrerequisiteChecker(masteryByKey, lessonRuns, content);
+  return new Set(
+    [...outlineConceptIds].filter((conceptId) => {
+      const concept = content.conceptsById.get(conceptId);
+      const run = runsByConcept.get(conceptId);
+      const hasOpenFlags = (state.remediationFlags ?? []).some(
+        (flag) =>
+          flag.conceptId === conceptId && (flag.status === undefined || flag.status === 'open'),
+      );
+      const dimensionStates =
+        concept?.dimensions.map(
+          (dimension) =>
+            masteryByConcept.get(conceptId)?.find((record) => record.dimension === dimension)
+              ?.state ?? 'not_assessed',
+        ) ?? [];
+      return (
+        concept !== undefined &&
+        content.lessonsByConcept.has(conceptId) &&
+        concept.status !== 'stub' &&
+        !topicIsComplete(run?.status, dimensionStates) &&
+        prerequisiteChecker.chainReady(conceptId) &&
+        (run?.status !== 'needs_retry' || isLessonRetryReady(run.retryAfter, hasOpenFlags, now))
+      );
+    }),
+  );
 }
 
 export function p6HasFeasibleOverdueReview(
@@ -3844,12 +3912,11 @@ function retryDecisionEvidence(
   content: ContentIndex,
   now: Date,
   budgetMinutes: number,
-  learn: LearnPayload,
+  eligibleConceptIds: ReadonlySet<string>,
   activities: SimActivity[],
   explanations: ReviewSelectionExplanation[],
   carriedOverActivityIds: ReadonlySet<string> = new Set(),
 ): SimulationRetryDecisionEvidence[] {
-  const eligibleConceptIds = new Set(learn.choices.map(({ conceptId }) => conceptId));
   const dueConceptIds = new Set(
     state.cards
       .filter((card) => isDueToday(card.dueAt, now, state.timezone ?? 'UTC'))
@@ -4047,7 +4114,15 @@ function auditSavedSessionPlan(
   const focusConceptId = state.inProgressConceptId;
   const retryDecisions =
     planLabel === 'home plan'
-      ? retryDecisionEvidence(state, content, now, budgetMinutes, learn, activities, explanations)
+      ? retryDecisionEvidence(
+          state,
+          content,
+          now,
+          budgetMinutes,
+          p10EligibleConceptIds(state, content, now),
+          activities,
+          explanations,
+        )
       : [];
   const planEvidence: SimulationPlanEvidence = {
     label: planLabel,
@@ -4111,7 +4186,7 @@ function auditSavedSessionPlan(
   const dayPlans = runtime.planEvidenceByDay.get(day) ?? [];
   runtime.planEvidenceByDay.set(day, [...dayPlans, planEvidence]);
   if (planLabel === 'home plan') {
-    const eligibleConceptIds = new Set(learn.choices.map(({ conceptId }) => conceptId));
+    const eligibleConceptIds = p10EligibleConceptIds(state, content, now);
     const plannedConceptIds = new Set(
       activities.flatMap((activity) =>
         activity.kind === 'learn' && activity.conceptId ? [activity.conceptId] : [],
