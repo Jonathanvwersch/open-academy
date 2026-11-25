@@ -5,18 +5,16 @@ import { newReviewCard, scheduleReview } from '../memory/fsrs.js';
 import { countHintsSincePreviousAttempt } from '../memory/hints.js';
 import { initialMastery, type MasteryRecord } from '../memory/types.js';
 import { activeSessionForDate } from '../planner/session-state.js';
+import type { QuizExercise } from '../quizzes/mixed-quiz.js';
 import type { Attempt, CoreStore, Enrollment, NewRow, XpEvent } from './core-store.js';
+import type { FlowStore, TimedQuizItem, TimedQuizRun } from './flow-store.js';
 import type { NewReviewCard } from './learner-store.js';
 import type { LessonProblem, LessonQuizItem, LessonRun, RemediationFlag } from './lesson-store.js';
-import type {
-  DiagnosticRun,
-  PlacementGrant,
-  PlacementReviewStore,
-} from './placement-review-store.js';
+import type { DiagnosticRun, PlacementGrant } from './placement-review-store.js';
 import type { Activity, Session, SessionStore } from './session-store.js';
 
 type StoreFixture = {
-  store: PlacementReviewStore;
+  store: FlowStore;
   learnerId: string;
   otherLearnerId: string;
   activityId: string;
@@ -27,6 +25,40 @@ type StoreFixture = {
 const date = new Date('2026-01-17T12:00:00.000Z');
 const later = new Date('2026-01-18T12:00:00.000Z');
 const exerciseId = 'vectors-q1';
+
+function timedQuizRow(): NewRow<TimedQuizRun> {
+  return {
+    activityId: null,
+    retakeOf: null,
+    seed: 1,
+    difficulty: 2,
+    plannedMinutes: 12,
+    startedAt: date,
+    deadline: later,
+    finalizedAt: null,
+    score: null,
+    xpAwarded: null,
+  };
+}
+
+function timedQuizItem(
+  position: number,
+  patch: Partial<Omit<TimedQuizItem, 'runId' | 'position'>> = {},
+): Omit<TimedQuizItem, 'runId'> {
+  return {
+    position,
+    conceptId: 'vectors',
+    question: { key: exerciseId, seed: 1, exercise: { id: exerciseId } as QuizExercise },
+    reserve: null,
+    answeredAt: null,
+    latencyMs: null,
+    submission: null,
+    correct: null,
+    followUp: false,
+    followUpActivityId: null,
+    ...patch,
+  };
+}
 
 function attempt(n: number, overrides: Partial<Attempt> = {}): Attempt {
   return {
@@ -157,6 +189,162 @@ export function describeLearnerStoreContract(
   makeStore: (options?: { persistHintActivity?: boolean }) => Promise<StoreFixture>,
 ) {
   describe(name, () => {
+    it('filters timed quiz runs by ownership and sorts originals by finalize, start and seed', async () => {
+      const { store, learnerId, otherLearnerId, activityId } = await makeStore({
+        persistHintActivity: true,
+      });
+      const row = timedQuizRow();
+      const last = await store.insertTimedQuiz(learnerId, { ...row, finalizedAt: later }, []);
+      const third = await store.insertTimedQuiz(learnerId, { ...row, finalizedAt: date }, []);
+      const second = await store.insertTimedQuiz(
+        learnerId,
+        {
+          ...row,
+          startedAt: new Date(0),
+          finalizedAt: date,
+        },
+        [],
+      );
+      const first = await store.insertTimedQuiz(
+        learnerId,
+        {
+          ...row,
+          startedAt: new Date(0),
+          finalizedAt: date,
+          seed: 0,
+        },
+        [],
+      );
+      const active = await store.insertTimedQuiz(
+        learnerId,
+        { ...row, activityId, retakeOf: last.id },
+        [],
+      );
+      await store.insertTimedQuiz(otherLearnerId, row, []);
+      expect(
+        await store.listTimedQuizRuns(learnerId, { original: true, finalizedThrough: later }),
+      ).toEqual([first, second, third, last]);
+      expect(
+        await store.listTimedQuizRuns(learnerId, { original: true, finalizedThrough: date }),
+      ).toEqual([first, second, third]);
+      expect(await store.listTimedQuizRuns(learnerId, { active: true })).toEqual([active]);
+      expect(await store.listTimedQuizRuns(learnerId, { retakeOf: last.id, activityId })).toEqual([
+        active,
+      ]);
+      expect(await store.listTimedQuizRuns(otherLearnerId, { id: active.id })).toEqual([]);
+      await expect(
+        store.patchTimedQuizRun(otherLearnerId, active.id, { finalizedAt: later }),
+      ).rejects.toThrow();
+      await expect(
+        store.patchTimedQuizRun(learnerId, active.id, { finalizedAt: later, score: 1 }),
+      ).resolves.toEqual({ ...active, finalizedAt: later, score: 1 });
+      expect(await store.listTimedQuizRuns(learnerId, { active: true })).toEqual([]);
+    });
+
+    it('preserves timed quiz uniqueness on insert and update', async () => {
+      const { store, learnerId } = await makeStore();
+      const row = timedQuizRow();
+      const original = await store.insertTimedQuiz(learnerId, row, []);
+      await expect(
+        store.transaction((tx) => tx.insertTimedQuiz(learnerId, row, [])),
+      ).rejects.toThrow();
+      await store.patchTimedQuizRun(learnerId, original.id, { finalizedAt: date });
+      const retake = await store.insertTimedQuiz(learnerId, { ...row, retakeOf: original.id }, []);
+      await expect(
+        store.transaction((tx) =>
+          tx.patchTimedQuizRun(learnerId, original.id, { finalizedAt: null }),
+        ),
+      ).rejects.toThrow();
+      await store.patchTimedQuizRun(learnerId, retake.id, { finalizedAt: date });
+      await expect(
+        store.transaction((tx) =>
+          tx.insertTimedQuiz(
+            learnerId,
+            {
+              ...row,
+              retakeOf: original.id,
+            },
+            [],
+          ),
+        ),
+      ).rejects.toThrow();
+      await expect(
+        store.transaction((tx) =>
+          tx.insertTimedQuiz(learnerId, row, [timedQuizItem(0), timedQuizItem(0)]),
+        ),
+      ).rejects.toThrow();
+      expect(await store.listTimedQuizRuns(learnerId, { active: true })).toEqual([]);
+    });
+
+    it('patches owned timed quiz items by position and only links pending flagged items of finalized runs', async () => {
+      const { store, learnerId, otherLearnerId, activityId } = await makeStore({
+        persistHintActivity: true,
+      });
+      const [first, second] = [timedQuizItem(0), timedQuizItem(1)];
+      const completed = await store.insertTimedQuiz(
+        learnerId,
+        {
+          ...timedQuizRow(),
+          activityId,
+          finalizedAt: date,
+        },
+        [
+          timedQuizItem(3, { conceptId: 'other', followUp: true }),
+          { ...second, followUp: true },
+          first,
+        ],
+      );
+      const active = await store.insertTimedQuiz(learnerId, timedQuizRow(), [
+        timedQuizItem(2, { followUp: true }),
+      ]);
+      const foreign = await store.insertTimedQuiz(
+        otherLearnerId,
+        { ...timedQuizRow(), finalizedAt: date },
+        [{ ...first, followUp: true }],
+      );
+      const links = async () =>
+        (await store.listTimedQuizItems(learnerId, [completed.id, active.id, foreign.id])).map(
+          ({ runId, position, followUpActivityId }) => [runId, position, followUpActivityId],
+        );
+      expect(await store.listTimedQuizItems(learnerId, [])).toEqual([]);
+      await store.patchTimedQuizItem(otherLearnerId, completed.id, 0, { followUp: true });
+      await store.linkTimedQuizFollowUps(learnerId, [], activityId);
+      expect(await links()).toEqual([
+        [completed.id, 0, null],
+        [completed.id, 1, null],
+        [active.id, 2, null],
+        [completed.id, 3, null],
+      ]);
+      await store.linkTimedQuizFollowUps(learnerId, ['vectors'], activityId);
+      expect(await links()).toEqual([
+        [completed.id, 0, null],
+        [completed.id, 1, activityId],
+        [active.id, 2, null],
+        [completed.id, 3, null],
+      ]);
+      const session = await store.insertSession(learnerId, sessionRow(date));
+      const [replacement] = await store.insertActivities(learnerId, session.id, [activityRow(0)]);
+      await store.patchTimedQuizItem(learnerId, completed.id, 0, {
+        followUp: true,
+        answeredAt: date,
+      });
+      await store.linkTimedQuizFollowUps(learnerId, ['vectors'], replacement.id);
+      expect(await store.listTimedQuizItems(learnerId, [completed.id])).toMatchObject([
+        { position: 0, answeredAt: date, followUpActivityId: replacement.id },
+        { position: 1, followUpActivityId: activityId },
+        { position: 3, followUpActivityId: null },
+      ]);
+      await store.deleteActivities(learnerId, { ids: [activityId] });
+      expect(await store.listTimedQuizRuns(learnerId, { id: completed.id })).toMatchObject([
+        { activityId: null },
+      ]);
+      expect(await store.listTimedQuizItems(learnerId, [completed.id])).toMatchObject([
+        { followUpActivityId: replacement.id },
+        { followUpActivityId: null },
+        { followUpActivityId: null },
+      ]);
+    });
+
     it('filters and locks diagnostic runs by owner, course, id and status', async () => {
       const { store, learnerId, otherLearnerId } = await makeStore();
       const row: NewRow<DiagnosticRun> = {

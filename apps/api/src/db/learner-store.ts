@@ -3,13 +3,10 @@ import { startOfNextCalendarDay } from '@academy/aesop/memory/fsrs';
 import { TOPIC_SPEED_DECAY, TOPIC_SPEED_POLICY } from '@academy/aesop/memory/speed';
 import { initialMastery, type MasteryRecord, type MasteryState } from '@academy/aesop/memory/types';
 import type { AttemptQuery, Settings } from '@academy/aesop/store/core-store';
+import type { FlowStore } from '@academy/aesop/store/flow-store';
 import type { ReviewLogRecord, StoredReviewCard } from '@academy/aesop/store/learner-store';
 import type { FlagQuery, LessonKey } from '@academy/aesop/store/lesson-store';
-import type {
-  DiagnosticRun,
-  PlacementGrant,
-  PlacementReviewStore,
-} from '@academy/aesop/store/placement-review-store';
+import type { DiagnosticRun, PlacementGrant } from '@academy/aesop/store/placement-review-store';
 import type { ActivityQuery, SessionQuery } from '@academy/aesop/store/session-store';
 import {
   and,
@@ -44,6 +41,8 @@ import {
   paperProgress,
   placementGrants,
   projectProgress,
+  quizItems,
+  quizRuns,
   remediationFlags,
   reviewCards,
   reviewLogs,
@@ -64,6 +63,7 @@ const { userId: _flagOwner, ...flagFields } = getTableColumns(remediationFlags);
 const { userId: _lessonOwner, ...lessonRunFields } = getTableColumns(lessonRuns);
 const { userId: _diagnosticOwner, ...diagnosticFields } = getTableColumns(diagnosticRuns);
 const { userId: _grantOwner, ...placementGrantFields } = getTableColumns(placementGrants);
+const { userId: _timedQuizOwner, ...timedQuizFields } = getTableColumns(quizRuns);
 
 function attemptOrder(order: AttemptQuery['order']) {
   switch (order) {
@@ -141,7 +141,11 @@ export function drizzleLearnerStore(
     activeReviewCardsOnly?: boolean;
     schedulerTimezone?: string;
   } = {},
-): PlacementReviewStore & { connection: Database | Transaction } {
+): FlowStore & { connection: Database | Transaction } {
+  const timedQuizOwner = (learnerId: string) => eq(quizRuns.userId, learnerId);
+  const ownedTimedQuizRuns = (learnerId: string) =>
+    db.select({ id: quizRuns.id }).from(quizRuns).where(timedQuizOwner(learnerId));
+
   function lessonWhere(learnerId: string, key: LessonKey) {
     return and(
       eq(lessonRuns.userId, learnerId),
@@ -496,14 +500,16 @@ export function drizzleLearnerStore(
           },
         });
     },
-    async listReviewCards(learnerId, conceptIds) {
+    async listReviewCards(learnerId, conceptIds, options) {
       const rows = await db
         .select()
         .from(reviewCards)
         .where(
           and(
             eq(reviewCards.userId, learnerId),
-            activeReviewCardsOnly ? isNull(reviewCards.suspendedAt) : undefined,
+            activeReviewCardsOnly || options?.activeOnly
+              ? isNull(reviewCards.suspendedAt)
+              : undefined,
             conceptIds === undefined ? undefined : inArray(reviewCards.conceptId, conceptIds),
           ),
         )
@@ -566,7 +572,7 @@ export function drizzleLearnerStore(
         return true;
       });
     },
-    async updateReviewCardIfDue(learnerId, cardId, expectedDueAt, next) {
+    async updateReviewCardIfDue(learnerId, cardId, expectedDueAt, next, options) {
       const rows = await db
         .update(reviewCards)
         .set({ fsrs: next.fsrs, dueAt: next.dueAt })
@@ -575,11 +581,100 @@ export function drizzleLearnerStore(
             eq(reviewCards.userId, learnerId),
             eq(reviewCards.id, cardId),
             eq(reviewCards.dueAt, expectedDueAt),
-            activeReviewCardsOnly ? isNull(reviewCards.suspendedAt) : undefined,
+            activeReviewCardsOnly || options?.activeOnly
+              ? isNull(reviewCards.suspendedAt)
+              : undefined,
           ),
         )
         .returning({ id: reviewCards.id });
       return rows.length > 0;
+    },
+    async listTimedQuizRuns(
+      learnerId,
+      { id, activityId, retakeOf, active, original, finalizedThrough },
+    ) {
+      const query = db
+        .select(timedQuizFields)
+        .from(quizRuns)
+        .where(
+          and(
+            timedQuizOwner(learnerId),
+            id === undefined ? undefined : eq(quizRuns.id, id),
+            activityId === undefined ? undefined : eq(quizRuns.activityId, activityId),
+            retakeOf === undefined ? undefined : eq(quizRuns.retakeOf, retakeOf),
+            active ? isNull(quizRuns.finalizedAt) : undefined,
+            original ? isNull(quizRuns.retakeOf) : undefined,
+            finalizedThrough === undefined
+              ? undefined
+              : lte(quizRuns.finalizedAt, finalizedThrough),
+          ),
+        );
+      return original
+        ? query.orderBy(asc(quizRuns.finalizedAt), asc(quizRuns.startedAt), asc(quizRuns.seed))
+        : query;
+    },
+    async listTimedQuizItems(learnerId, runIds) {
+      if (!runIds.length) return [];
+      return db
+        .select()
+        .from(quizItems)
+        .where(
+          and(
+            inArray(quizItems.runId, runIds),
+            inArray(quizItems.runId, ownedTimedQuizRuns(learnerId)),
+          ),
+        )
+        .orderBy(asc(quizItems.position));
+    },
+    async insertTimedQuiz(learnerId, run, items) {
+      const [row] = await db
+        .insert(quizRuns)
+        .values({ ...run, userId: learnerId })
+        .returning(timedQuizFields);
+      if (items.length)
+        await db.insert(quizItems).values(items.map((item) => ({ ...item, runId: row.id })));
+      return row;
+    },
+    async patchTimedQuizRun(learnerId, runId, patch) {
+      const where = and(timedQuizOwner(learnerId), eq(quizRuns.id, runId));
+      const [row] = await (Object.values(patch).some((value) => value !== undefined)
+        ? db.update(quizRuns).set(patch).where(where).returning(timedQuizFields)
+        : db.select(timedQuizFields).from(quizRuns).where(where));
+      if (!row) throw new Error('Timed quiz run not found.');
+      return row;
+    },
+    async patchTimedQuizItem(learnerId, runId, position, patch) {
+      if (Object.values(patch).every((value) => value === undefined)) return;
+      await db
+        .update(quizItems)
+        .set(patch)
+        .where(
+          and(
+            eq(quizItems.runId, runId),
+            eq(quizItems.position, position),
+            inArray(quizItems.runId, ownedTimedQuizRuns(learnerId)),
+          ),
+        );
+    },
+    async linkTimedQuizFollowUps(learnerId, conceptIds, activityId) {
+      if (!conceptIds.length) return;
+      await db
+        .update(quizItems)
+        .set({ followUpActivityId: activityId })
+        .where(
+          and(
+            eq(quizItems.followUp, true),
+            isNull(quizItems.followUpActivityId),
+            inArray(quizItems.conceptId, conceptIds),
+            inArray(
+              quizItems.runId,
+              db
+                .select({ id: quizRuns.id })
+                .from(quizRuns)
+                .where(and(timedQuizOwner(learnerId), isNotNull(quizRuns.finalizedAt))),
+            ),
+          ),
+        );
     },
     async listDiagnosticRuns(learnerId, { id, courseId, status, forUpdate }) {
       const query = db

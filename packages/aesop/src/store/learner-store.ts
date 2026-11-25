@@ -73,7 +73,11 @@ export interface LearnerStore {
     now: Date,
   ): Promise<void>;
   /** All cards, or only cards whose conceptId is in conceptIds. Sorted by conceptId, dimension, id. */
-  listReviewCards(learnerId: string, conceptIds?: readonly string[]): Promise<StoredReviewCard[]>;
+  listReviewCards(
+    learnerId: string,
+    conceptIds?: readonly string[],
+    options?: { activeOnly?: boolean },
+  ): Promise<StoredReviewCard[]>;
   getReviewCard(
     learnerId: string,
     conceptId: string,
@@ -96,6 +100,7 @@ export interface LearnerStore {
     cardId: string,
     expectedDueAt: Date,
     next: { fsrs: Card; dueAt: Date },
+    options?: { activeOnly?: boolean },
   ): Promise<boolean>;
   listOpenRemediationFlags(learnerId: string): Promise<OpenRemediationFlag[]>;
 }
