@@ -721,6 +721,8 @@ function toGraphChangeContent(content: ContentIndex): ContentIndex {
 class SimulatedApi {
   private app: ReturnType<typeof createApp>;
   private now: Date;
+  private requestedAt = Number.NaN;
+  private sameTimeCalls = 0;
   private cookie: string | undefined;
   private readonly requestOrdinals = new Map<string, number>();
   readonly failedRequests: SimulatedApiFailure[] = [];
@@ -755,7 +757,11 @@ class SimulatedApi {
     return this.cookie?.match(/^academy_demo=([^;]+)/)?.[1];
   }
 
-  async call(method: string, path: string, now: Date, body?: unknown): Promise<ApiResult> {
+  async call(method: string, path: string, requestedNow: Date, body?: unknown): Promise<ApiResult> {
+    this.sameTimeCalls = requestedNow.getTime() === this.requestedAt ? this.sameTimeCalls + 1 : 0;
+    this.requestedAt = requestedNow.getTime();
+    // Calls that share a simulated time run 1 ms apart, so stored times keep their order.
+    const now = new Date(requestedNow.getTime() + this.sameTimeCalls);
     this.now = now;
     const stablePath = path.replace(
       /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi,

@@ -5,9 +5,11 @@ import { type Card, Rating, State } from 'ts-fsrs';
 import { afterAll, expect, test } from 'vitest';
 import {
   p20HasWithdrawnCreditViolation,
+  p20OpenDependentIds,
   p21HasUnboundedWithdrawalViolation,
   p22HasProtectedWithdrawalViolation,
   p23ChangedHistoryIds,
+  startedBefore,
 } from '../../scripts/learner-simulation-placement.js';
 import {
   attributeActivityLogs,
@@ -910,6 +912,32 @@ test('P20 flags withdrawn credit that counts as complete, shows as placed out or
   expect(p20HasWithdrawnCreditViolation({ ...clean, unlockedDependentIds: ['gradients'] })).toBe(
     true,
   );
+});
+
+test('P20 treats every open CourseTopic status as unlocked', () => {
+  const topics = [
+    { conceptId: 'a', status: 'locked' },
+    { conceptId: 'b', status: 'not_started' },
+    { conceptId: 'c', status: 'in_progress' },
+    { conceptId: 'd', status: 'quiz' },
+    { conceptId: 'e', status: 'complete' },
+    { conceptId: 'f', status: 'not_started' },
+  ];
+  expect(
+    p20OpenDependentIds({
+      topics,
+      dependentIds: ['a', 'b', 'c', 'd', 'e', 'f'],
+      exemptIds: new Set(['f']),
+    }),
+  ).toEqual(['b', 'c', 'd']);
+});
+
+test('P22 orders a lesson start and a withdrawal on the same day', () => {
+  const noon = Date.parse('2026-01-07T12:00:00.000Z');
+  const runs = [{ conceptId: 'a', startedAt: new Date(noon + 3) }];
+  expect(startedBefore(runs, 'a', new Date(noon + 7))).toBe(true);
+  expect(startedBefore(runs, 'a', new Date(noon + 2))).toBe(false);
+  expect(startedBefore(runs, 'b', new Date(noon + 7))).toBe(false);
 });
 
 test('P21 bounds the failures a conditional grant can survive', () => {

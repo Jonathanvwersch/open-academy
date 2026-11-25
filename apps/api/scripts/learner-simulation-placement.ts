@@ -68,6 +68,34 @@ export function p20HasWithdrawnCreditViolation(input: {
   return input.countsComplete || input.shownPlacedOut || input.unlockedDependentIds.length > 0;
 }
 
+/** Course topic states a learner can open; there is no separate "available" state. */
+const openCourseTopicStatuses = new Set(['not_started', 'in_progress', 'quiz']);
+
+/** Dependents the course page lets the learner open, except ones done or started before withdrawal. */
+export function p20OpenDependentIds(input: {
+  topics: ReadonlyArray<{ conceptId: string; status: string }>;
+  dependentIds: readonly string[];
+  exemptIds: ReadonlySet<string>;
+}): string[] {
+  return input.topics
+    .filter(
+      (topic) =>
+        input.dependentIds.includes(topic.conceptId) &&
+        !input.exemptIds.has(topic.conceptId) &&
+        openCourseTopicStatuses.has(topic.status),
+    )
+    .map((topic) => topic.conceptId);
+}
+
+/** Simulator requests get distinct times, so a strict comparison orders same-day events. */
+export function startedBefore(
+  runs: ReadonlyArray<{ conceptId: string; startedAt: Date }>,
+  conceptId: string,
+  at: Date,
+): boolean {
+  return runs.some((run) => run.conceptId === conceptId && run.startedAt.getTime() < at.getTime());
+}
+
 export function p21HasUnboundedWithdrawalViolation(input: {
   state: string;
   directFailures: number;
@@ -276,20 +304,20 @@ export async function auditPlacementGrants(input: {
       runs.filter((run) => run.status === 'completed').map((run) => run.conceptId),
     );
     const withdrawnBeforeToday = (state.withdrawnDay.get(grant.conceptId) ?? day) < day;
+    const withdrawnAt = grant.withdrawnAt ?? grant.updatedAt;
+    const exemptIds = new Set([
+      ...completedDependents,
+      ...dependents.filter((conceptId) => startedBefore(runs, conceptId, withdrawnAt)),
+    ]);
     const unlockedDependentIds = [
-      ...input.coursePageTopics
-        .filter(
-          (topic) =>
-            dependents.includes(topic.conceptId) &&
-            !completedDependents.has(topic.conceptId) &&
-            topic.status === 'available',
-        )
-        .map((topic) => topic.conceptId),
+      ...p20OpenDependentIds({
+        topics: input.coursePageTopics,
+        dependentIds: dependents,
+        exemptIds,
+      }),
       ...(withdrawnBeforeToday
         ? input.plannedLearnConceptIds.filter(
-            (conceptId) =>
-              dependents.includes(conceptId) &&
-              !runs.some((run) => run.conceptId === conceptId && run.startedAt < grant.updatedAt),
+            (conceptId) => dependents.includes(conceptId) && !exemptIds.has(conceptId),
           )
         : []),
     ];
@@ -333,8 +361,7 @@ export async function auditPlacementGrants(input: {
     input.markChecked('P22');
     const withdrawnAt = grant.withdrawnAt;
     const studiedBeforeWithdrawal =
-      withdrawnAt !== null &&
-      runs.some((run) => run.conceptId === grant.conceptId && run.startedAt < withdrawnAt);
+      withdrawnAt !== null && startedBefore(runs, grant.conceptId, withdrawnAt);
     if (
       p22HasProtectedWithdrawalViolation({
         state: grant.state,
