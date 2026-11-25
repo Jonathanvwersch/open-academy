@@ -49,7 +49,7 @@ const helpText: Record<string, string> = {
   'new course': 'academy new course <id> --title <title> [--pack <dir>]',
   'sources add': 'academy sources add <file> [--title <title>] [--kind <kind>] [--pack <dir>]',
   'sources list': 'academy sources list [--pack <dir>]',
-  'weights verify': 'academy weights verify <uses.yaml> --pack <dir>',
+  'weights verify': 'academy weights verify <uses.yaml> [--pack <dir>]',
 };
 
 function showHelp(command = 'root') {

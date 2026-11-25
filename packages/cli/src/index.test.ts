@@ -92,7 +92,7 @@ describe('academy CLI', () => {
     expect(run(['prereqs', '--help']).stdout).toContain('academy prereqs <topic-id>');
     expect(run(['sources', 'add', '--help']).stdout).toContain('academy sources add');
     expect(run(['weights', 'verify', '--help']).stdout.trim()).toBe(
-      'academy weights verify <uses.yaml> --pack <dir>',
+      'academy weights verify <uses.yaml> [--pack <dir>]',
     );
   });
 
