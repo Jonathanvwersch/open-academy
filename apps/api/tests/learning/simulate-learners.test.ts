@@ -355,9 +355,19 @@ test('P10 flags a fitting overdue retry displaced by a lower-priority lesson', (
   } as const;
   const carriedOverActivityIds = new Set<string>();
   const preservedMinutes = p10PreservedActivityMinutes([firstActivity], carriedOverActivityIds);
+  const priorityMinutes = p10SchedulerPriorityLessonMinutes(
+    state,
+    'what-is-ml',
+    now,
+    [firstActivity as unknown as Parameters<typeof p10SchedulerPriorityLessonMinutes>[3][number]],
+    carriedOverActivityIds,
+  );
 
   expect(preservedMinutes).toBe(0);
-  expect(p10RetryFitsCapacity(15, 60, preservedMinutes, 5, 0)).toBe(true);
+  expect(priorityMinutes.totalMinutes).toBe(0);
+  expect(p10RetryFitsCapacity(15, 60, preservedMinutes, 5, priorityMinutes.totalMinutes)).toBe(
+    true,
+  );
   expect(
     p10MissingOverdueRetryConcepts(
       state,
@@ -369,7 +379,7 @@ test('P10 flags a fitting overdue retry displaced by a lower-priority lesson', (
   ).toEqual(['what-is-ml']);
 });
 
-test('P10 honors resumed lesson priority over a fitting overdue retry', () => {
+test('P10 accounts for resumed and overdue-retry work ahead of a lower-priority retry', () => {
   const now = new Date('2026-01-14T12:00:00.000Z');
   const state = {
     lessonRuns: [
@@ -423,7 +433,7 @@ test('P10 honors resumed lesson priority over a fitting overdue retry', () => {
     focusLessonMinutes: 0,
     totalMinutes: 50,
   });
-  expect(p10RetryFitsCapacity(20, 60, 0, 5, priority.totalMinutes)).toBe(true);
+  expect(p10RetryFitsCapacity(20, 80, 0, 5, priority.totalMinutes)).toBe(true);
   expect(p10RetryFitsCapacity(20, 45, 0, 14, priority.totalMinutes)).toBe(false);
 });
 
