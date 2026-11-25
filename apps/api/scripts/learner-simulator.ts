@@ -1,4 +1,5 @@
 import type { ContentEdge, ContentIndex } from '@academy/aesop/course/types';
+import { filterSchedulerStateForContent } from '@academy/aesop/graph/content-filters';
 import { topicIsComplete } from '@academy/aesop/graph/course-status';
 import { buildEncompassingIndex, type EncompassingIndex } from '@academy/aesop/graph/encompassing';
 import {
@@ -40,7 +41,7 @@ import { localDateKey } from '@academy/aesop/progress/xp';
 import { QUIZ_XP_INTERVAL, QUIZ_XP_WINDOW } from '@academy/aesop/quizzes/mixed-quiz';
 import type { CourseCatalogPayload, CoursePayload, LearnPayload } from '@academy/contracts/course';
 import type { QuizPayload } from '@academy/contracts/quizzes';
-import type { SessionActivity, TodayPayload } from '@academy/contracts/sessions';
+import type { SessionActivity, SessionPayload, TodayPayload } from '@academy/contracts/sessions';
 import { and, asc, desc, eq, inArray, isNull } from 'drizzle-orm';
 import type { Card } from 'ts-fsrs';
 import { Rating, State } from 'ts-fsrs';
@@ -744,6 +745,7 @@ function toGraphChangeContent(content: ContentIndex): ContentIndex {
 }
 
 class SimulatedApi {
+  private quizTime = Number.NEGATIVE_INFINITY;
   private app: ReturnType<typeof createApp>;
   private now: Date;
   /** Runs after every request, so audits can see the order of same-day events. */
@@ -780,6 +782,11 @@ class SimulatedApi {
 
   get userId(): string | undefined {
     return this.cookie?.match(/^academy_demo=([^;]+)/)?.[1];
+  }
+
+  nextQuizTime(now: Date): Date {
+    this.quizTime = Math.max(now.getTime() + 1, this.quizTime + 1);
+    return new Date(this.quizTime);
   }
 
   async call(method: string, path: string, now: Date, body?: unknown): Promise<ApiResult> {
@@ -938,7 +945,11 @@ async function readProgress(db: Database, userId: string): Promise<LearnerProgre
   };
 }
 
-function isDone(conceptId: string, progress: LearnerProgress, content: ContentIndex): boolean {
+function isDone(
+  conceptId: string,
+  progress: Pick<LearnerProgress, 'masteryByKey' | 'lessonRuns'>,
+  content: ContentIndex,
+): boolean {
   return prerequisiteMet(conceptId, progress.masteryByKey, progress.lessonRuns, content);
 }
 
@@ -1696,14 +1707,22 @@ export function p18HasMissedPickup(
 
 export function selectedReviewConceptsForAudit(
   conceptIds: readonly string[],
-  explanations: readonly Pick<ReviewSelectionExplanation, 'conceptId' | 'result'>[],
+  explanations: readonly Pick<
+    ReviewSelectionExplanation,
+    'conceptId' | 'result' | 'selectionOrder'
+  >[],
 ): string[] {
-  const selectedConcepts = new Set(
+  const selectedConcepts = new Map(
     explanations
       .filter(({ result }) => result === 'selected' || result === 'selected:overdue')
-      .map(({ conceptId }) => conceptId),
+      .map(({ conceptId, selectionOrder }) => [conceptId, selectionOrder ?? Infinity]),
   );
-  return conceptIds.filter((conceptId) => selectedConcepts.has(conceptId));
+  return [...new Set(conceptIds)]
+    .filter((conceptId) => selectedConcepts.has(conceptId))
+    .sort(
+      (left, right) =>
+        (selectedConcepts.get(left) ?? Infinity) - (selectedConcepts.get(right) ?? Infinity),
+    );
 }
 
 export function p19HasEarlyReviewViolation(
@@ -2026,35 +2045,44 @@ function auditReviewPlanInvariants(
 
   const coveredBefore = new Set<string>();
   for (const activity of selectedPlanActivities) {
-    const coverage = activityDueCoverage(activity, state, content, now);
-    if (activity.kind === 'review') {
-      for (const conceptId of selectedConceptsForActivity(activity)) {
-        markChecked(runtime, 'P19');
-        const topicCoverage = new Set(dueTopicsCoveredByForAudit(conceptId, state, content, now));
-        if (dueConceptIds.has(conceptId)) topicCoverage.add(conceptId);
-        const newlyCovered = [...topicCoverage].filter(
-          (dueConceptId) => !coveredBefore.has(dueConceptId),
-        ).length;
-        if (
-          p19HasEarlyReviewViolation(
-            dueConceptIds.has(conceptId),
-            newlyCovered,
-            openRemediationConceptIds.has(conceptId),
-          )
-        ) {
-          addViolation(runtime, day, 'P19', conceptId, [], {
-            courseId,
-            conceptId,
-            evidenceConceptIds: [...topicCoverage],
-            details: `non-due review covered only ${newlyCovered} uncovered due topics`,
-          });
-        }
-        for (const dueConceptId of topicCoverage) coveredBefore.add(dueConceptId);
+    if (
+      activity.kind === 'learn' &&
+      (!state.inProgressConceptId ||
+        state.inProgressConceptId === activity.conceptId ||
+        state.lessonRuns?.some(
+          ({ conceptId, status }) => conceptId === activity.conceptId && status !== 'completed',
+        ))
+    ) {
+      for (const conceptId of activityDueCoverage(activity, state, content, now)) {
+        coveredBefore.add(conceptId);
       }
     }
-    if (activity.kind !== 'review' || selectedConceptsForActivity(activity).length > 0) {
-      for (const conceptId of coverage) coveredBefore.add(conceptId);
+  }
+  const reviewConceptIds = selectedPlanActivities
+    .filter(({ kind }) => kind === 'review')
+    .flatMap(reviewConceptIdsForActivity);
+  for (const conceptId of selectedReviewConceptsForAudit(reviewConceptIds, explanations)) {
+    markChecked(runtime, 'P19');
+    const topicCoverage = new Set(dueTopicsCoveredByForAudit(conceptId, state, content, now));
+    if (dueConceptIds.has(conceptId)) topicCoverage.add(conceptId);
+    const newlyCovered = [...topicCoverage].filter(
+      (dueConceptId) => !coveredBefore.has(dueConceptId),
+    ).length;
+    if (
+      p19HasEarlyReviewViolation(
+        dueConceptIds.has(conceptId),
+        newlyCovered,
+        openRemediationConceptIds.has(conceptId),
+      )
+    ) {
+      addViolation(runtime, day, 'P19', conceptId, [], {
+        courseId,
+        conceptId,
+        evidenceConceptIds: [...topicCoverage],
+        details: `non-due review covered only ${newlyCovered} uncovered due topics`,
+      });
     }
+    for (const dueConceptId of topicCoverage) coveredBefore.add(dueConceptId);
   }
 }
 
@@ -2085,7 +2113,7 @@ function checkProjectReadiness(
   day: number,
   projectId: string,
   courseId: string | undefined,
-  progress: LearnerProgress,
+  progress: Pick<LearnerProgress, 'masteryByKey' | 'lessonRuns'>,
   content: ContentIndex,
 ) {
   const project = content.projectsById.get(projectId);
@@ -2250,16 +2278,22 @@ async function auditHome(
   }
 }
 
-function auditSession(
+async function auditSessionActivity(
+  api: SimulatedApi,
   runtime: ProfileRuntime,
   now: Date,
   day: number,
   courseId: string,
-  activities: SimActivity[],
+  sessionId: string,
+  activity: SimActivity,
   progress: LearnerProgress,
   state: SchedulerState,
   content: ContentIndex,
 ) {
+  if (activity.kind === 'lab') {
+    const session = await api.require<SessionPayload>('GET', `/sessions/${sessionId}`, now);
+    if (!session.activities.some(({ id }) => id === activity.id)) return false;
+  }
   runtime.activeBehaviors.B3PartialExplain = false;
   runtime.violationEvidenceContext = {
     ...runtime.violationEvidenceContext,
@@ -2281,14 +2315,13 @@ function auditSession(
       ...(run.retryAfter ? { retryAfter: run.retryAfter.toISOString() } : {}),
     })),
   };
-  for (const activity of activities) {
-    if (activity.kind === 'learn' && activity.conceptId) {
-      checkLessonReadiness(runtime, day, courseId, [activity.conceptId], progress, content);
-    }
-    if (activity.projectId) {
-      checkProjectReadiness(runtime, day, activity.projectId, courseId, progress, content);
-    }
+  if (activity.kind === 'learn' && activity.conceptId) {
+    checkLessonReadiness(runtime, day, courseId, [activity.conceptId], progress, content);
   }
+  if (activity.projectId) {
+    checkProjectReadiness(runtime, day, activity.projectId, courseId, progress, content);
+  }
+  return true;
 }
 
 function profileAccuracy(
@@ -2966,7 +2999,7 @@ async function processTimedQuiz(
   activity: SimActivity,
 ) {
   const userId = api.userId ?? '';
-  const original = await api.require<QuizPayload>('POST', '/quizzes/start', now, {
+  const original = await api.require<QuizPayload>('POST', '/quizzes/start', api.nextQuizTime(now), {
     sessionId,
     activityId: activity.id,
   });
@@ -3057,8 +3090,9 @@ async function processTimedQuiz(
         })
       ).status;
     }
-    const result = await api.require<QuizPayload>('POST', `${path}/finalize`, received);
-    const repeated = await api.require<QuizPayload>('POST', `${path}/finalize`, received);
+    const finalizedAt = api.nextQuizTime(received);
+    const result = await api.require<QuizPayload>('POST', `${path}/finalize`, finalizedAt);
+    const repeated = await api.require<QuizPayload>('POST', `${path}/finalize`, finalizedAt);
     const awards = await db
       .select({ amount: xpEvents.amount })
       .from(xpEvents)
@@ -3075,6 +3109,7 @@ async function processTimedQuiz(
       'P27',
       {
         startedAt: start.startedAt,
+        finalizedAt: finalizedAt.toISOString(),
         deadline: start.deadline,
         afterRefresh: current.deadline,
         expectedScore,
@@ -3096,7 +3131,7 @@ async function processTimedQuiz(
         ? 'Refresh, timeout, final score, or idempotent award did not preserve the quiz'
         : undefined,
     );
-    return { result, received };
+    return { result, received: finalizedAt };
   };
   const items = await selectionEvidence(original.id, !original.retake);
   const { result, received } = await run(original, items, runtime.profile === 'scenario-quizzes');
@@ -3115,7 +3150,8 @@ async function processTimedQuiz(
   const dueNowTopics = missed.filter((topic) =>
     dueCards.some((card) => card.conceptId === topic && card.dueAt <= received),
   );
-  const followUps = await api.call('POST', `${path}/follow-ups`, received);
+  const followUpAt = api.nextQuizTime(received);
+  const followUps = await api.call('POST', `${path}/follow-ups`, followUpAt);
   let reviews = 0;
   let reviewAttempts = 0;
   if (followUps.ok) {
@@ -3124,16 +3160,17 @@ async function processTimedQuiz(
     const session = await api.require<{ activities: SimActivity[] }>(
       'GET',
       `/sessions/${id}`,
-      received,
+      followUpAt,
     );
     for (const review of session.activities) {
+      const reviewAt = api.nextQuizTime(followUpAt);
       runtime.activityKeyById.set(review.id, `day:${day}|quiz-follow-up|${review.conceptId}`);
       const result = await processActivity(
         api,
         db,
         content,
         runtime,
-        received,
+        reviewAt,
         day,
         courseId,
         id,
@@ -3142,9 +3179,9 @@ async function processTimedQuiz(
       reviews += result.reviews;
       reviewAttempts += result.reviewAttempts;
     }
-    await api.require('POST', `/sessions/${id}/end`, received);
+    await api.require('POST', `/sessions/${id}/end`, api.nextQuizTime(followUpAt));
   }
-  const after = await api.require<QuizPayload>('GET', path, received);
+  const after = await api.require<QuizPayload>('GET', path, api.nextQuizTime(followUpAt));
   const reviewed =
     after.result?.topics.filter((topic) => topic.reviewed).map((topic) => topic.conceptId) ?? [];
   const evidence = {
@@ -3167,7 +3204,11 @@ async function processTimedQuiz(
       : undefined,
   );
   if (after.result?.retake.eligible) {
-    const retake = await api.require<QuizPayload>('POST', `${path}/retake`, received);
+    const retake = await api.require<QuizPayload>(
+      'POST',
+      `${path}/retake`,
+      api.nextQuizTime(followUpAt),
+    );
     const retakeItems = await selectionEvidence(retake.id, false);
     await run(retake, retakeItems, false);
   }
@@ -4509,12 +4550,23 @@ function auditSavedSessionPlan(
   learn: LearnPayload,
   activities: SimActivity[],
   reviewExplanations?: ReviewSelectionExplanation[],
+  requestedFocusConceptId?: string,
 ) {
   runtime.activeBehaviors.B3PartialExplain = false;
+  const quiz = activities.find(
+    (activity) =>
+      activity.kind === 'mixed_quiz' &&
+      activity.status !== 'completed' &&
+      activity.status !== 'skipped',
+  );
+  state = filterSchedulerStateForContent(content, {
+    ...state,
+    pendingQuiz: quiz && { plannedMinutes: quiz.plannedMinutes },
+  });
   const explanations =
     reviewExplanations ??
     explainReviewSelection(state, content, now, budgetMinutes, new Set(), {
-      focusConceptId: state.inProgressConceptId,
+      focusConceptId: requestedFocusConceptId,
     });
   const planActivities = activities.map((activity, index) => ({
     activityId:
@@ -4531,7 +4583,7 @@ function auditSavedSessionPlan(
   const reviewCapMinutes =
     explanations[0]?.reviewCap ??
     Math.floor(budgetMinutes * SCHEDULER_CONFIG.weekday.reviewBudgetRatio);
-  const focusConceptId = state.inProgressConceptId;
+  const focusConceptId = requestedFocusConceptId;
   const retryDecisions =
     planLabel === 'home plan'
       ? retryDecisionEvidence(
@@ -4605,6 +4657,29 @@ function auditSavedSessionPlan(
   };
   const dayPlans = runtime.planEvidenceByDay.get(day) ?? [];
   runtime.planEvidenceByDay.set(day, [...dayPlans, planEvidence]);
+  for (const { projectId, status } of activities) {
+    if (
+      !projectId ||
+      (status !== 'planned' && (status !== 'in_progress' || planLabel === 'replan'))
+    )
+      continue;
+    checkProjectReadiness(
+      runtime,
+      day,
+      projectId,
+      courseId,
+      {
+        masteryByKey: new Map(
+          state.mastery.map((record) => [masteryKey(record.conceptId, record.dimension), record]),
+        ),
+        lessonRuns: (state.lessonRuns ?? []).map(({ conceptId, status }) => ({
+          conceptId,
+          status,
+        })),
+      },
+      content,
+    );
+  }
   if (planLabel === 'home plan') {
     const eligibleConceptIds = p10EligibleConceptIds(state, content, now);
     const plannedConceptIds = new Set(
@@ -5227,9 +5302,6 @@ async function simulateProfile(
           activities,
           selectedBudget ?? today.budgetMinutes,
         );
-        const timedQuiz = activities.find((activity) => activity.kind === 'mixed_quiz');
-        if (timedQuiz)
-          stateBeforeSession.pendingQuiz = { plannedMinutes: timedQuiz.plannedMinutes };
         auditSavedSessionPlan(
           runtime,
           day,
@@ -5260,16 +5332,21 @@ async function simulateProfile(
             now,
             activeContent,
           );
-          auditSession(
-            runtime,
-            now,
-            day,
-            courseId,
-            [activity],
-            activityProgress,
-            activityState,
-            activeContent,
-          );
+          if (
+            !(await auditSessionActivity(
+              api,
+              runtime,
+              now,
+              day,
+              courseId,
+              sessionId,
+              activity,
+              activityProgress,
+              activityState,
+              activeContent,
+            ))
+          )
+            continue;
           const result = await processActivityWithMetrics(
             api,
             db,
@@ -5366,16 +5443,21 @@ async function simulateProfile(
               now,
               activeContent,
             );
-            auditSession(
-              runtime,
-              now,
-              day,
-              courseId,
-              [activity],
-              activityProgress,
-              activityState,
-              activeContent,
-            );
+            if (
+              !(await auditSessionActivity(
+                api,
+                runtime,
+                now,
+                day,
+                courseId,
+                sessionId,
+                activity,
+                activityProgress,
+                activityState,
+                activeContent,
+              ))
+            )
+              continue;
             const result = await processActivityWithMetrics(
               api,
               db,
@@ -5442,6 +5524,8 @@ async function simulateProfile(
               selectedBudget ?? today.budgetMinutes,
               refreshedLearn,
               focusedActivities,
+              undefined,
+              choice.conceptId,
             );
             daily.coveredSkips += await auditCompressionPlan(
               db,
@@ -5461,16 +5545,21 @@ async function simulateProfile(
                 now,
                 activeContent,
               );
-              auditSession(
-                runtime,
-                now,
-                day,
-                courseId,
-                [activity],
-                activityProgress,
-                activityState,
-                activeContent,
-              );
+              if (
+                !(await auditSessionActivity(
+                  api,
+                  runtime,
+                  now,
+                  day,
+                  courseId,
+                  focusedSessionId,
+                  activity,
+                  activityProgress,
+                  activityState,
+                  activeContent,
+                ))
+              )
+                continue;
               const result = await processActivityWithMetrics(
                 api,
                 db,
@@ -5534,6 +5623,8 @@ async function simulateProfile(
             selectedBudget ?? today.budgetMinutes,
             refreshedLearn,
             focusedActivities,
+            undefined,
+            choice.conceptId,
           );
           daily.coveredSkips += await auditCompressionPlan(
             db,
@@ -5553,16 +5644,21 @@ async function simulateProfile(
               now,
               activeContent,
             );
-            auditSession(
-              runtime,
-              now,
-              day,
-              courseId,
-              [activity],
-              activityProgress,
-              activityState,
-              activeContent,
-            );
+            if (
+              !(await auditSessionActivity(
+                api,
+                runtime,
+                now,
+                day,
+                courseId,
+                focusedSessionId,
+                activity,
+                activityProgress,
+                activityState,
+                activeContent,
+              ))
+            )
+              continue;
             const result = await processActivityWithMetrics(
               api,
               db,

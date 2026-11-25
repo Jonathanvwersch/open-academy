@@ -173,6 +173,7 @@ export interface ReviewSelectionExplanation {
   exerciseIds: string[];
   exerciseDimensions: string[];
   candidateMinutes?: number;
+  selectionOrder?: number;
   reviewMinutes: number;
   reviewCap: number;
   usedMinutes: number;
@@ -185,6 +186,7 @@ type ReviewSelectionTrace = {
   coveringConceptIds: Map<string, string>;
   exerciseIds: Map<string, string[]>;
   candidateMinutes: Map<string, number>;
+  selectionOrder: string[];
   metrics: Map<
     string,
     Pick<
@@ -468,6 +470,7 @@ export function explainReviewSelection(
     coveringConceptIds: new Map(),
     exerciseIds: new Map(),
     candidateMinutes: new Map(),
+    selectionOrder: [],
     metrics: new Map(),
   };
   packWeekday(
@@ -488,6 +491,7 @@ export function explainReviewSelection(
       ...trace.results.keys(),
     ]),
   ].sort();
+  const reviewOrder = new Map(trace.selectionOrder.map((conceptId, index) => [conceptId, index]));
   return conceptIds.map((conceptId) => ({
     conceptId,
     result: trace.results.get(conceptId) ?? 'rejected:other',
@@ -495,6 +499,9 @@ export function explainReviewSelection(
       ? { coveringConceptId: trace.coveringConceptIds.get(conceptId) }
       : {}),
     exerciseIds: trace.exerciseIds.get(conceptId) ?? [],
+    ...(trace.results.get(conceptId)?.startsWith('selected')
+      ? { selectionOrder: reviewOrder.get(conceptId) }
+      : {}),
     ...(trace.candidateMinutes.has(conceptId)
       ? { candidateMinutes: trace.candidateMinutes.get(conceptId) }
       : {}),
@@ -853,6 +860,9 @@ function packWeekday(
   ) => {
     if (!reviewSelectionTrace) return;
     reviewSelectionTrace.results.set(conceptId, result);
+    if (result === 'selected' || result === 'selected:overdue') {
+      reviewSelectionTrace.selectionOrder.push(conceptId);
+    }
     if (coveringConceptId) {
       reviewSelectionTrace.coveringConceptIds.set(conceptId, coveringConceptId);
     }

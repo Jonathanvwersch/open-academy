@@ -95,6 +95,11 @@ test('P24–P27 observe an offered quiz, timeout, completed follow-ups, and a fr
   expect(profile.checkedCounts.P25).toBeGreaterThanOrEqual(2);
   expect(profile.checkedCounts.P26).toBeGreaterThan(0);
   expect(profile.checkedCounts.P27).toBeGreaterThanOrEqual(2);
+  const quizTimings = profile.quizEvidence?.filter(({ invariant }) => invariant === 'P27');
+  expect(quizTimings).toHaveLength(2);
+  expect(Date.parse(String(quizTimings?.[1].evidence.startedAt))).toBeGreaterThan(
+    Date.parse(String(quizTimings?.[0].evidence.finalizedAt)),
+  );
 }, 60_000);
 
 const p11Weights = {
@@ -1009,6 +1014,18 @@ test('overplaced learner loses conditional placement credit without P20-P23 viol
     expect(overplaced?.checkedCounts[invariant]).toBeGreaterThan(0);
   }
 }, 300_000);
+
+test('P19 audits mixed-review topics in selection order, not exercise order', () => {
+  expect(
+    selectedReviewConceptsForAudit(
+      ['information-theory', 'prefill-decode'],
+      [
+        { conceptId: 'information-theory', result: 'selected', selectionOrder: 2 },
+        { conceptId: 'prefill-decode', result: 'selected', selectionOrder: 1 },
+      ],
+    ),
+  ).toEqual(['prefill-decode', 'information-theory']);
+});
 
 test('a simulated API 5xx retains the originating request and response', () => {
   const failure = new SimulatedApiFailureError({
