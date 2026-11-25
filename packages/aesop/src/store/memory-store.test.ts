@@ -120,3 +120,38 @@ it('does not overwrite a parent write for the same learner on conflict', async (
   ).rejects.toThrow('Learner state changed outside this transaction.');
   expect(await store.listMastery(learnerId)).toEqual([outside]);
 });
+
+it('closes a retained transaction handle after commit', async () => {
+  const store = memoryStore();
+  const flag = { conceptId: 'vectors', targetPrereqId: null };
+  const { tx, saved } = await store.transaction(async (tx) => ({
+    tx,
+    saved: tx.addRemediationFlag(learnerId, flag),
+  }));
+
+  expect(() => tx.addRemediationFlag(learnerId, flag)).toThrow('transaction is closed');
+  await expect(tx.listOpenRemediationFlags(learnerId)).rejects.toThrow('transaction is closed');
+  const next = store.addRemediationFlag(learnerId, flag);
+  expect(next.id).not.toBe(saved.id);
+  expect(await store.listOpenRemediationFlags(learnerId)).toEqual([saved, next]);
+});
+
+it('closes a retained savepoint handle after rollback without closing its parent', async () => {
+  const store = memoryStore();
+  const flag = { conceptId: 'vectors', targetPrereqId: null };
+  await store.transaction(async (tx) => {
+    const retained: Array<typeof tx> = [];
+    await expect(
+      tx.transaction(async (savepoint) => {
+        retained.push(savepoint);
+        savepoint.addRemediationFlag(learnerId, flag);
+        throw new Error('Roll back the savepoint.');
+      }),
+    ).rejects.toThrow('Roll back the savepoint.');
+
+    await expect(retained[0].transaction(async () => {})).rejects.toThrow('transaction is closed');
+    expect(await tx.listOpenRemediationFlags(learnerId)).toEqual([]);
+    tx.addRemediationFlag(learnerId, flag);
+  });
+  expect(await store.listOpenRemediationFlags(learnerId)).toHaveLength(1);
+});

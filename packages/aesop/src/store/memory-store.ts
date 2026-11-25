@@ -113,6 +113,7 @@ function scopedStore(
   data: StoreState,
   hints: ReadonlyMap<string, readonly Hint[]>,
   ids: IdCounters,
+  assertOpen: () => void = () => {},
 ): MemoryLearnerStore {
   let pending = Promise.resolve();
   function markWrite(learnerId: string) {
@@ -140,11 +141,24 @@ function scopedStore(
 
   return {
     async transaction(fn) {
+      assertOpen();
       const run = async () => {
+        assertOpen();
         const original = new Map(data.revisions);
         const snapshot = structuredClone(data);
-        const tx = scopedStore(snapshot, hints, ids);
-        const result = await fn(tx as typeof this);
+        let open = true;
+        const tx = scopedStore(snapshot, hints, ids, () => {
+          if (!open) throw new Error('This memory store transaction is closed.');
+          assertOpen();
+        });
+        const result = await (async () => {
+          try {
+            return await fn(tx as typeof this);
+          } finally {
+            open = false;
+          }
+        })();
+        assertOpen();
         const changed = new Set<string>();
         for (const [learnerId, revision] of snapshot.revisions) {
           if (revision === original.get(learnerId)) continue;
@@ -182,9 +196,11 @@ function scopedStore(
       return result;
     },
     async lockLearner(learnerId) {
+      assertOpen();
       data.settings.get(learnerId);
     },
     async listAttempts(learnerId, query) {
+      assertOpen();
       const rows = (data.learners.get(learnerId)?.attempts ?? []).filter(
         (row) =>
           (!query.ids || query.ids.includes(row.id)) &&
@@ -199,6 +215,7 @@ function scopedStore(
       return structuredClone(query.limit === undefined ? rows : rows.slice(0, query.limit));
     },
     async insertAttempt(learnerId, attempt) {
+      assertOpen();
       if (
         [...data.learners.values()].some(({ attempts }) =>
           attempts.some(({ id }) => id === attempt.id),
@@ -210,6 +227,7 @@ function scopedStore(
       return structuredClone(attempt);
     },
     async readHintEvidence(learnerId, exerciseId, activityId) {
+      assertOpen();
       const inScope = (row: { exerciseId: string; activityId: string | null }) =>
         row.exerciseId === exerciseId &&
         (activityId === undefined || row.activityId === activityId);
@@ -223,6 +241,7 @@ function scopedStore(
       });
     },
     async listXpEvents(learnerId, query) {
+      assertOpen();
       return structuredClone(
         [...(data.learners.get(learnerId)?.xpEvents.values() ?? [])].filter(
           (row) =>
@@ -234,6 +253,7 @@ function scopedStore(
       );
     },
     async insertXpEventOnce(learnerId, event) {
+      assertOpen();
       const { xpEvents } = stateFor(learnerId);
       if (xpEvents.has(event.sourceKey)) return false;
       const id = `00000000-0000-4000-8000-${(++ids.xpCount).toString(16).padStart(12, '0')}`;
@@ -241,9 +261,11 @@ function scopedStore(
       return true;
     },
     async getSettings(learnerId) {
+      assertOpen();
       return structuredClone(data.settings.get(learnerId));
     },
     async patchSettings(learnerId, patch) {
+      assertOpen();
       const settings = data.settings.get(learnerId);
       if (settings) {
         const updated = { ...settings };
@@ -256,9 +278,11 @@ function scopedStore(
       }
     },
     async listEnrollments(learnerId) {
+      assertOpen();
       return structuredClone([...(data.learners.get(learnerId)?.enrollments.values() ?? [])]);
     },
     async writeEnrollments(learnerId, change) {
+      assertOpen();
       const { enrollments } = stateFor(learnerId);
       switch (change.kind) {
         case 'insert_missing':
@@ -307,22 +331,27 @@ function scopedStore(
       }
     },
     async listMastery(learnerId) {
+      assertOpen();
       const records = [...(data.learners.get(learnerId)?.mastery.values() ?? [])];
       return structuredClone(records.sort(compareConceptDimension));
     },
     async getMastery(learnerId, conceptId, dimension) {
+      assertOpen();
       return structuredClone(data.learners.get(learnerId)?.mastery.get(key(conceptId, dimension)));
     },
     async saveMastery(learnerId, record) {
+      assertOpen();
       stateFor(learnerId).mastery.set(
         key(record.conceptId, record.dimension),
         structuredClone(record),
       );
     },
     async addMasteryEvent(learnerId, event) {
+      assertOpen();
       stateFor(learnerId).events.push(structuredClone(event));
     },
     async listTopicSpeedEvidence(learnerId, conceptIds) {
+      assertOpen();
       const concepts = conceptIds && new Set(conceptIds);
       const records = [...(data.learners.get(learnerId)?.topicSpeed.values() ?? [])]
         .filter((record) => !concepts || concepts.has(record.conceptId))
@@ -330,9 +359,11 @@ function scopedStore(
       return structuredClone(records);
     },
     async saveTopicSpeedEvidence(learnerId, record) {
+      assertOpen();
       stateFor(learnerId).topicSpeed.set(record.conceptId, structuredClone(record));
     },
     async addTopicSpeedAnswer(learnerId, conceptId, correct, now) {
+      assertOpen();
       const records = stateFor(learnerId).topicSpeed;
       const previous = records.get(conceptId);
       records.set(conceptId, {
@@ -345,6 +376,7 @@ function scopedStore(
       });
     },
     async listReviewCards(learnerId, conceptIds) {
+      assertOpen();
       const concepts = conceptIds && new Set(conceptIds);
       const cards = [...(data.learners.get(learnerId)?.cards.values() ?? [])].filter(
         (card) => !concepts || concepts.has(card.conceptId),
@@ -356,9 +388,11 @@ function scopedStore(
       );
     },
     async getReviewCard(learnerId, conceptId, dimension) {
+      assertOpen();
       return structuredClone(data.learners.get(learnerId)?.cards.get(key(conceptId, dimension)));
     },
     async insertReviewCard(learnerId, card) {
+      assertOpen();
       const { cards } = stateFor(learnerId);
       const cardKey = key(card.conceptId, card.dimension);
       if (cards.has(cardKey)) {
@@ -369,6 +403,7 @@ function scopedStore(
       return structuredClone(stored);
     },
     async recordReview(learnerId, conceptId, dimension, compute) {
+      assertOpen();
       const { cards, reviewLogs } = stateFor(learnerId);
       const cardKey = key(conceptId, dimension);
       const current = cards.get(cardKey);
@@ -379,6 +414,7 @@ function scopedStore(
       return true;
     },
     async updateReviewCardIfDue(learnerId, cardId, expectedDueAt, next) {
+      assertOpen();
       const card = [...(data.learners.get(learnerId)?.cards.values() ?? [])].find(
         ({ id }) => id === cardId,
       );
@@ -389,14 +425,17 @@ function scopedStore(
       return true;
     },
     async listOpenRemediationFlags(learnerId) {
+      assertOpen();
       return structuredClone([...(data.learners.get(learnerId)?.flags.values() ?? [])]);
     },
     addRemediationFlag(learnerId, flag) {
+      assertOpen();
       const stored = { ...flag, id: `flag-${++ids.flagCount}` };
       stateFor(learnerId).flags.set(stored.id, stored);
       return structuredClone(stored);
     },
     resolveRemediationFlag(learnerId, id) {
+      assertOpen();
       if (data.learners.get(learnerId)?.flags.delete(id)) markWrite(learnerId);
     },
   };
