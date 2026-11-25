@@ -1,4 +1,5 @@
 import type { Dimension } from '../course/schemas.js';
+import { TOPIC_SPEED_DECAY, TOPIC_SPEED_POLICY, type TopicSpeedEvidence } from '../memory/speed.js';
 import type { MasteryRecord } from '../memory/types.js';
 import type {
   LearnerStore,
@@ -18,6 +19,7 @@ export type MemoryLearnerStore = LearnerStore & {
 
 type LearnerState = {
   mastery: Map<string, MasteryRecord>;
+  topicSpeed: Map<string, TopicSpeedEvidence>;
   events: MasteryEventRecord[];
   cards: Map<string, StoredReviewCard>;
   reviewLogs: Array<ReviewLogRecord & { cardId: string }>;
@@ -49,6 +51,7 @@ export function memoryStore(): MemoryLearnerStore {
     if (!state) {
       state = {
         mastery: new Map(),
+        topicSpeed: new Map(),
         events: [],
         cards: new Map(),
         reviewLogs: [],
@@ -75,6 +78,28 @@ export function memoryStore(): MemoryLearnerStore {
     },
     async addMasteryEvent(learnerId, event) {
       stateFor(learnerId).events.push(structuredClone(event));
+    },
+    async listTopicSpeedEvidence(learnerId, conceptIds) {
+      const concepts = conceptIds && new Set(conceptIds);
+      const records = [...(learners.get(learnerId)?.topicSpeed.values() ?? [])]
+        .filter((record) => !concepts || concepts.has(record.conceptId))
+        .sort((left, right) => compare(left.conceptId, right.conceptId));
+      return structuredClone(records);
+    },
+    async saveTopicSpeedEvidence(learnerId, record) {
+      stateFor(learnerId).topicSpeed.set(record.conceptId, structuredClone(record));
+    },
+    async addTopicSpeedAnswer(learnerId, conceptId, correct, now) {
+      const records = stateFor(learnerId).topicSpeed;
+      const previous = records.get(conceptId);
+      records.set(conceptId, {
+        conceptId,
+        successes: Math.fround((previous?.successes ?? 0) * TOPIC_SPEED_DECAY + Number(correct)),
+        trials: Math.fround((previous?.trials ?? 0) * TOPIC_SPEED_DECAY + 1),
+        answers: (previous?.answers ?? 0) + 1,
+        updatedAt: new Date(now),
+        policyVersion: TOPIC_SPEED_POLICY,
+      });
     },
     async listReviewCards(learnerId, conceptIds) {
       const concepts = conceptIds && new Set(conceptIds);

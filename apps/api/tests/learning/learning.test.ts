@@ -1902,6 +1902,11 @@ test('a Good-credited lesson covers its due prerequisite, which is due again if 
   ];
 
   expect(dueTopicsCoveredBy('linear-models', state, schedulerContent, now)).toContain('vectors');
+  const slowState = { ...state, topicSpeeds: { vectors: 0.99 } };
+  expect(dueTopicsCoveredBy('linear-models', slowState, schedulerContent, now)).not.toContain(
+    'vectors',
+  );
+  expect(learnLookAheadScore('linear-models', slowState, schedulerContent, now)).toBe(0);
   const explanations = explainReviewSelection(state, schedulerContent, now, 60);
   expect(explanations).toContainEqual(
     expect.objectContaining({
@@ -2381,6 +2386,35 @@ test('lesson look-ahead favors coverage of a weaker ancestor', () => {
       },
     ],
   };
+  expect(learnLookAheadScore('linear-models', state, index, now)).toBeGreaterThan(
+    learnLookAheadScore('supervised-learning', state, index, now),
+  );
+});
+
+test('neutral lesson look-ahead preserves credit for a prerequisite already scheduled far ahead', () => {
+  const concepts = content.concepts.map((concept) =>
+    concept.id === 'linear-models'
+      ? { ...concept, encompassings: [{ id: 'vectors', weight: 1 }] }
+      : concept,
+  );
+  const index = { ...content, concepts, conceptsById: new Map(concepts.map((c) => [c.id, c])) };
+  const reviewedAt = new Date('2025-12-01T12:00:00.000Z');
+  const due = new Date('2026-05-01T00:00:00.000Z');
+  const prior = scheduleReview(newReviewCard(reviewedAt), reviewedAt, Rating.Good, 'UTC', false);
+  const fsrs = { ...prior.card, state: State.Review, stability: 12, due };
+  const state: SchedulerState = {
+    ...emptyState(),
+    cards: [
+      {
+        conceptId: 'vectors',
+        dimension: 'math',
+        dueAt: due.toISOString(),
+        retrievability: 0.1,
+        fsrs,
+      },
+    ],
+  };
+  expect(+scheduleReview(fsrs, now, Rating.Good, 'UTC', false).card.due).toBeLessThan(+due);
   expect(learnLookAheadScore('linear-models', state, index, now)).toBeGreaterThan(
     learnLookAheadScore('supervised-learning', state, index, now),
   );

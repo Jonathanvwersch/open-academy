@@ -24,6 +24,25 @@ function reviewCard(lastReview: Date, dueAt: Date, stability = 12, difficulty = 
 }
 
 describe('implicitRepetition', () => {
+  it('gates Good and Hard below one, and uses the scaled full interval once at higher speeds', () => {
+    const card = reviewCard(new Date('2026-01-01T12:00:00.000Z'), now);
+    for (const rating of [Rating.Good, Rating.Hard]) {
+      const input = { weight: 0.4, rating, now, timeZone, enableFuzz: false };
+      expect(implicitRepetition(card, { ...input, speed: 0.99 })).toBeUndefined();
+      expect(implicitRepetition(card, { ...input, speed: 1 })).toBeDefined();
+      const full = scheduleReview(card.fsrs, now, rating, timeZone, false, 1.5).card;
+      const scaled = implicitRepetition(card, { ...input, speed: 1.5 });
+      expect(scaled?.dueAt).toEqual(new Date(+now + 0.4 * (+full.due - +now)));
+    }
+  });
+
+  it('keeps Again penalties for a slow target', () => {
+    const card = reviewCard(new Date('2026-01-01T12:00:00.000Z'), new Date('2026-02-10T12:00:00Z'));
+    const input = { weight: 0.4, rating: Rating.Again, now, timeZone, enableFuzz: false };
+    const slow = implicitRepetition(card, { ...input, speed: 0.99 });
+    expect(slow).toBeDefined();
+    expect(slow).toEqual(implicitRepetition(card, { ...input, speed: 1 }));
+  });
   it('interpolates all weights while preserving implicit-review state at weight one', () => {
     const card = reviewCard(new Date('2026-01-01T12:00:00.000Z'), now);
     const full = scheduleReview(card.fsrs, now, Rating.Good, timeZone, false).card;

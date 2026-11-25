@@ -1,10 +1,18 @@
 import type { Dimension } from '@academy/aesop/course/schemas';
+import { TOPIC_SPEED_DECAY, TOPIC_SPEED_POLICY } from '@academy/aesop/memory/speed';
 import { initialMastery, type MasteryRecord, type MasteryState } from '@academy/aesop/memory/types';
 import type { LearnerStore, StoredReviewCard } from '@academy/aesop/store/learner-store';
-import { and, asc, eq, inArray, isNull } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import type { Card } from 'ts-fsrs';
 import type { Database } from './client.js';
-import { mastery, masteryEvents, remediationFlags, reviewCards, reviewLogs } from './schema.js';
+import {
+  mastery,
+  masteryEvents,
+  remediationFlags,
+  reviewCards,
+  reviewLogs,
+  topicSpeed,
+} from './schema.js';
 
 type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0];
 
@@ -86,6 +94,51 @@ export function drizzleLearnerStore(
     },
     async addMasteryEvent(learnerId, event) {
       await db.insert(masteryEvents).values({ ...event, userId: learnerId });
+    },
+    async listTopicSpeedEvidence(learnerId, conceptIds) {
+      const rows = await db
+        .select()
+        .from(topicSpeed)
+        .where(
+          and(
+            eq(topicSpeed.userId, learnerId),
+            conceptIds === undefined ? undefined : inArray(topicSpeed.conceptId, conceptIds),
+          ),
+        )
+        .orderBy(asc(topicSpeed.conceptId));
+      return rows.map(({ userId: _, ...record }) => record);
+    },
+    async saveTopicSpeedEvidence(learnerId, record) {
+      await db
+        .insert(topicSpeed)
+        .values({ ...record, userId: learnerId })
+        .onConflictDoUpdate({
+          target: [topicSpeed.userId, topicSpeed.conceptId],
+          set: record,
+        });
+    },
+    async addTopicSpeedAnswer(learnerId, conceptId, correct, now) {
+      await db
+        .insert(topicSpeed)
+        .values({
+          userId: learnerId,
+          conceptId,
+          successes: Number(correct),
+          trials: 1,
+          answers: 1,
+          updatedAt: now,
+          policyVersion: TOPIC_SPEED_POLICY,
+        })
+        .onConflictDoUpdate({
+          target: [topicSpeed.userId, topicSpeed.conceptId],
+          set: {
+            successes: sql`${topicSpeed.successes}::double precision * ${TOPIC_SPEED_DECAY} + ${Number(correct)}`,
+            trials: sql`${topicSpeed.trials}::double precision * ${TOPIC_SPEED_DECAY} + 1`,
+            answers: sql`${topicSpeed.answers} + 1`,
+            updatedAt: now,
+            policyVersion: TOPIC_SPEED_POLICY,
+          },
+        });
     },
     async listReviewCards(learnerId, conceptIds) {
       const rows = await db

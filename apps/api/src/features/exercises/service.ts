@@ -470,6 +470,7 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
     credit,
     hintsUsed,
     attemptNo,
+    submitted: true,
     mode: body.data.mode,
     gradedBy,
     followUp,

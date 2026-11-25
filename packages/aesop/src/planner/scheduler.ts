@@ -87,6 +87,7 @@ export interface PlannedActivity {
 }
 
 export interface SchedulerState {
+  topicSpeeds?: Record<string, number>;
   pendingQuiz?: { plannedMinutes: number };
   timezone?: string;
   activeCourseId: string | null;
@@ -635,6 +636,7 @@ interface DueTopicCoverageContext {
   timezone: string;
   nextLocalDay: Date;
   dueCardsByConcept: Map<string, SchedulerState['cards']>;
+  topicSpeeds: SchedulerState['topicSpeeds'];
 }
 
 function dueTopicCoverageContext(
@@ -655,6 +657,7 @@ function dueTopicCoverageContext(
     timezone,
     nextLocalDay: startOfNextCalendarDay(now, timezone),
     dueCardsByConcept,
+    topicSpeeds: state.topicSpeeds,
   };
 }
 
@@ -679,6 +682,7 @@ function dueTopicsCoveredByWithContext(
             now,
             timeZone: context.timezone,
             enableFuzz: process.env.NODE_ENV !== 'test',
+            speed: context.topicSpeeds?.[dueConceptId],
           },
         );
         return result !== undefined && result.dueAt >= context.nextLocalDay;
@@ -710,15 +714,21 @@ export function learnLookAheadScore(
   now: Date,
 ): number {
   const weights = buildEncompassingIndex(content);
+  const enableFuzz = process.env.NODE_ENV !== 'test';
   return state.cards.reduce((total, card) => {
-    if (!card.fsrs || card.fsrs.state === State.New || card.conceptId === conceptId) {
+    if (!card.fsrs || card.fsrs.state === State.New || card.conceptId === conceptId) return total;
+    const weight = weights.weight(conceptId, card.conceptId);
+    const speed = state.topicSpeeds?.[card.conceptId] ?? 1;
+    if (
+      speed !== 1 &&
+      !implicitRepetition(
+        { fsrs: card.fsrs, dueAt: new Date(card.dueAt) },
+        { weight, rating: Rating.Good, now, timeZone: state.timezone ?? 'UTC', enableFuzz, speed },
+      )
+    ) {
       return total;
     }
-    return (
-      total +
-      weights.weight(conceptId, card.conceptId) *
-        (1 - retrievability(card.fsrs, now, process.env.NODE_ENV !== 'test'))
-    );
+    return total + weight * (1 - retrievability(card.fsrs, now, enableFuzz));
   }, 0);
 }
 

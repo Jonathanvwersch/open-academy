@@ -79,6 +79,26 @@ export function scheduleReview(
   rating: ReviewRating | Rating,
   timezone = 'UTC',
   enableFuzz = true,
+  speed = 1,
+) {
+  const { card: next, log } = scheduleReviewWithDetails(
+    card,
+    now,
+    rating,
+    timezone,
+    enableFuzz,
+    speed,
+  );
+  return { card: next, log };
+}
+
+export function scheduleReviewWithDetails(
+  card: Card,
+  now: Date,
+  rating: ReviewRating | Rating,
+  timezone: string,
+  enableFuzz: boolean,
+  speed: number,
 ) {
   const mappedRating =
     rating === 'again'
@@ -95,10 +115,25 @@ export function scheduleReview(
         ? Rating.Good
         : Rating.Again;
   const scheduled = fsrsScheduler(enableFuzz).next(card, now, safeRating);
+  const rawDueAt = scheduled.card.due;
   const earliestDue = startOfNextCalendarDay(now, timezone);
-  return scheduled.card.due >= earliestDue
-    ? scheduled
-    : { ...scheduled, card: { ...scheduled.card, due: earliestDue } };
+  const scale = speed !== 1 && safeRating !== Rating.Again;
+  const dayMs = 86_400_000;
+  const dueTime = scale
+    ? now.getTime() + Math.min(60 * dayMs, (rawDueAt.getTime() - now.getTime()) * speed)
+    : rawDueAt.getTime();
+  const due = new Date(Math.max(earliestDue.getTime(), dueTime));
+  return {
+    ...scheduled,
+    card: {
+      ...scheduled.card,
+      due,
+      scheduled_days: scale
+        ? (due.getTime() - now.getTime()) / dayMs
+        : scheduled.card.scheduled_days,
+    },
+    rawDueAt,
+  };
 }
 
 export function scheduleInitialReview(
@@ -107,8 +142,9 @@ export function scheduleInitialReview(
   rating: ReviewRating | Rating,
   timezone = 'UTC',
   enableFuzz = true,
+  speed = 1,
 ) {
-  return scheduleReview(card, now, rating, timezone, enableFuzz);
+  return scheduleReview(card, now, rating, timezone, enableFuzz, speed);
 }
 
 export function retrievability(card: Card, now: Date, enableFuzz = true): number {

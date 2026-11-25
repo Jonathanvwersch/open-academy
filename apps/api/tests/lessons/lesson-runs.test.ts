@@ -22,6 +22,7 @@ import {
   reviewLogs,
   sessionActivities,
   studySessions,
+  topicSpeed,
   tutorMessages,
   users,
   xpEvents,
@@ -1179,6 +1180,13 @@ test('asking the tutor never lowers credit or progress on a lesson answer', asyn
     content: 'Can you explain this question?',
     createdAt: new Date('2026-01-01T12:00:00.001Z'),
   });
+  await db.insert(tutorMessages).values({
+    userId,
+    lessonProblemId: pending.id,
+    role: 'assistant',
+    content: 'Compare the input features to the target.',
+    createdAt: new Date('2026-01-01T12:00:00.002Z'),
+  });
   const assistedResponse = await answerProblem(
     pending.id,
     correctAnswer(pending.exerciseId, pending.seed),
@@ -1200,6 +1208,9 @@ test('asking the tutor never lowers credit or progress on a lesson answer', asyn
     .from(attempts)
     .where(eq(attempts.id, assistedProblem?.attemptId ?? ''));
   expect(assistedAttempt).toMatchObject({ hintsUsed: 0, credit: 1 });
+  expect(await db.select().from(topicSpeed).where(eq(topicSpeed.userId, userId))).toEqual([
+    expect.objectContaining({ conceptId, answers: 1 }),
+  ]);
 
   run = (await (await startRun()).json()).run;
   pending = run.pending;
