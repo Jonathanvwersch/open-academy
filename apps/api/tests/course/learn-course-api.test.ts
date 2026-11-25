@@ -1,11 +1,14 @@
+import { orderCourseIdsBySubject } from '@academy/aesop/course/course-order';
+import { subjectForCourse } from '@academy/aesop/course/index';
+import type { ContentIndex } from '@academy/aesop/course/types';
+import { courseFoundationIds, createPrerequisiteChecker } from '@academy/aesop/graph/prerequisites';
+import { newReviewCard } from '@academy/aesop/memory/fsrs';
+import type { MasteryRecord } from '@academy/aesop/memory/types';
 import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest';
 import { createApp } from '../../src/app.js';
 import { env } from '../../src/config.js';
-import { orderCourseIdsBySubject } from '../../src/content/course-order.js';
-import { subjectForCourse } from '../../src/content/index.js';
 import { loadContent } from '../../src/content/load.js';
-import type { ContentIndex } from '../../src/content/types.js';
 import { createDb } from '../../src/db/client.js';
 import { LearnerRepository } from '../../src/db/repository.js';
 import {
@@ -28,12 +31,6 @@ import {
   users,
   xpEvents,
 } from '../../src/db/schema.js';
-import { newReviewCard } from '../../src/learning/fsrs.js';
-import {
-  courseFoundationIds,
-  createPrerequisiteChecker,
-} from '../../src/learning/prerequisites.js';
-import type { MasteryRecord } from '../../src/learning/types.js';
 import { hardPrerequisiteAncestors, withStubConcept } from '../content-test-utils.js';
 
 const db = createDb(env.TEST_DATABASE_URL);

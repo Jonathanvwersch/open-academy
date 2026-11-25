@@ -1,10 +1,10 @@
 import { readdir, readFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
+import type { Exercise } from '@academy/aesop/course/schemas';
+import { ExerciseSchema } from '@academy/aesop/course/schemas';
+import { instantiateExercise, isTemplate } from '@academy/aesop/course/templates';
+import { gradeExercise } from '@academy/aesop/lessons/grading/index';
 import { parse } from 'yaml';
-import type { Exercise } from '../src/content/schemas.js';
-import { ExerciseSchema } from '../src/content/schemas.js';
-import { instantiateExercise, isTemplate } from '../src/content/templates.js';
-import { gradeExercise } from '../src/learning/grading/index.js';
 
 const directory = resolve('content/exercises');
 const files = (await readdir(directory)).filter((file) => file.endsWith('.yaml')).sort();

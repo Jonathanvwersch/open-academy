@@ -1,21 +1,5 @@
-import { fsrs, generatorParameters, Rating, State } from 'ts-fsrs';
-import { beforeAll, expect, test } from 'vitest';
-import { loadContent } from '../../src/content/load.js';
-import { isTemplate } from '../../src/content/templates.js';
-import type { ContentIndex } from '../../src/content/types.js';
-import { deriveLearningDebt } from '../../src/learning/debt.js';
-import {
-  mapReviewRating,
-  newReviewCard,
-  scheduleInitialReview,
-  scheduleReview,
-} from '../../src/learning/fsrs.js';
-import { countHintsSincePreviousAttempt } from '../../src/learning/hints.js';
-import {
-  calculateCredit,
-  DefaultMasteryModel,
-  recordLessonViewed,
-} from '../../src/learning/mastery.js';
+import { isTemplate } from '@academy/aesop/course/templates';
+import type { ContentIndex } from '@academy/aesop/course/types';
 import {
   compareOutlinePosition,
   courseFoundationIds,
@@ -24,9 +8,23 @@ import {
   masteryKey,
   outlinePosition,
   prerequisiteMet,
-} from '../../src/learning/prerequisites.js';
-import { reviewTopicsForActivity } from '../../src/learning/review-topics.js';
-import type { Candidate, PlannedActivity, SchedulerState } from '../../src/learning/scheduler.js';
+} from '@academy/aesop/graph/prerequisites';
+import { deriveLearningDebt } from '@academy/aesop/memory/debt';
+import {
+  mapReviewRating,
+  newReviewCard,
+  scheduleInitialReview,
+  scheduleReview,
+} from '@academy/aesop/memory/fsrs';
+import { countHintsSincePreviousAttempt } from '@academy/aesop/memory/hints';
+import {
+  calculateCredit,
+  DefaultMasteryModel,
+  recordLessonViewed,
+} from '@academy/aesop/memory/mastery';
+import { initialMastery } from '@academy/aesop/memory/types';
+import { reviewTopicsForActivity } from '@academy/aesop/planner/review-topics';
+import type { Candidate, PlannedActivity, SchedulerState } from '@academy/aesop/planner/scheduler';
 import {
   buildReviewActivityForConcept,
   currentLearnerUnit,
@@ -38,8 +36,10 @@ import {
   planSession,
   replan,
   SCHEDULER_CONFIG,
-} from '../../src/learning/scheduler.js';
-import { initialMastery } from '../../src/learning/types.js';
+} from '@academy/aesop/planner/scheduler';
+import { fsrs, generatorParameters, Rating, State } from 'ts-fsrs';
+import { beforeAll, expect, test } from 'vitest';
+import { loadContent } from '../../src/content/load.js';
 import { hardPrerequisiteAncestors, withStubConcept } from '../content-test-utils.js';
 
 const now = new Date('2026-01-14T12:00:00.000Z');

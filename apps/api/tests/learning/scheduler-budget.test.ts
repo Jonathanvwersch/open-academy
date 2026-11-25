@@ -1,17 +1,17 @@
-import { Rating, State } from 'ts-fsrs';
-import { beforeAll, describe, expect, it } from 'vitest';
-import { loadContent } from '../../src/content/load.js';
-import type { ContentIndex } from '../../src/content/types.js';
-import { newReviewCard, scheduleReview } from '../../src/learning/fsrs.js';
-import type { SchedulerState } from '../../src/learning/scheduler.js';
+import type { ContentIndex } from '@academy/aesop/course/types';
+import { newReviewCard, scheduleReview } from '@academy/aesop/memory/fsrs';
+import { initialMastery } from '@academy/aesop/memory/types';
+import type { SchedulerState } from '@academy/aesop/planner/scheduler';
 import {
   dueTopicsCoveredBy,
   explainReviewSelection,
   explainReviewSelectionForReplan,
   planSession,
   sessionBudget,
-} from '../../src/learning/scheduler.js';
-import { initialMastery } from '../../src/learning/types.js';
+} from '@academy/aesop/planner/scheduler';
+import { Rating, State } from 'ts-fsrs';
+import { beforeAll, describe, expect, it } from 'vitest';
+import { loadContent } from '../../src/content/load.js';
 
 const now = new Date('2026-01-14T12:00:00.000Z');
 let fixtureContent: ContentIndex;

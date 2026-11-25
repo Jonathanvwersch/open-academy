@@ -1,10 +1,10 @@
+import type { ContentIndex } from '@academy/aesop/course/types';
+import { normalizeLearnerExpression } from '@academy/aesop/lessons/grading/expression';
+import { gradeExercise } from '@academy/aesop/lessons/grading/index';
+import { MULTIPLE_CHOICE_FALLBACK_FEEDBACK } from '@academy/aesop/lessons/grading/multiple-choice';
+import type { ExpressionExercise, NumericExercise } from '@academy/aesop/lessons/grading/types';
 import { beforeAll, expect, test } from 'vitest';
 import { loadContent } from '../../src/content/load.js';
-import type { ContentIndex } from '../../src/content/types.js';
-import { normalizeLearnerExpression } from '../../src/learning/grading/expression.js';
-import { gradeExercise } from '../../src/learning/grading/index.js';
-import { MULTIPLE_CHOICE_FALLBACK_FEEDBACK } from '../../src/learning/grading/multiple-choice.js';
-import type { ExpressionExercise, NumericExercise } from '../../src/learning/grading/types.js';
 
 let content: ContentIndex;
 

@@ -1,17 +1,17 @@
+import type { Dimension } from '@academy/aesop/course/schemas';
+import type { ContentIndex, IndexedExercise } from '@academy/aesop/course/types';
+import { buildEncompassingIndex } from '@academy/aesop/graph/encompassing';
+import { mapReviewRating, newReviewCard, scheduleInitialReview } from '@academy/aesop/memory/fsrs';
+import { implicitRepetition } from '@academy/aesop/memory/implicit-repetition';
+import { DefaultMasteryModel } from '@academy/aesop/memory/mastery';
+import type { LearningMode } from '@academy/aesop/memory/types';
+import { masteryRank } from '@academy/aesop/memory/types';
 import { and, asc, eq, inArray } from 'drizzle-orm';
 import type { Card } from 'ts-fsrs';
 import { Rating } from 'ts-fsrs';
-import type { Dimension } from '../content/schemas.js';
-import type { ContentIndex, IndexedExercise } from '../content/types.js';
 import type { Database } from '../db/client.js';
 import type { LearnerRepository } from '../db/repository.js';
 import { masteryEvents, reviewCards } from '../db/schema.js';
-import { buildEncompassingIndex } from './encompassing.js';
-import { mapReviewRating, newReviewCard, scheduleInitialReview } from './fsrs.js';
-import { implicitRepetition } from './implicit-repetition.js';
-import { DefaultMasteryModel } from './mastery.js';
-import type { LearningMode } from './types.js';
-import { masteryRank } from './types.js';
 
 type ReviewCardDatabase = Pick<Database, 'select' | 'update'>;
 

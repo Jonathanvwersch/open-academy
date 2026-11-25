@@ -1,12 +1,39 @@
+import { getLessonPrerequisites } from '@academy/aesop/course/index';
+import { serializeExercise } from '@academy/aesop/course/serialize';
+import {
+  formatTemplateNumber,
+  instantiateExercise,
+  isTemplate,
+} from '@academy/aesop/course/templates';
+import type { ContentIndex, IndexedExercise, IndexedLesson } from '@academy/aesop/course/types';
+import { keyPrereqsForPoint } from '@academy/aesop/graph/prerequisites';
+import { answerDisplay, answerText } from '@academy/aesop/lessons/answer-display';
+import { answerOptionsFor } from '@academy/aesop/lessons/answer-options';
+import { gradeExercise } from '@academy/aesop/lessons/grading/index';
+import { MULTIPLE_CHOICE_FALLBACK_FEEDBACK } from '@academy/aesop/lessons/grading/multiple-choice';
+import {
+  QUIZ_PASS_MARK,
+  scoreLessonQuiz,
+  selectQuizItems,
+} from '@academy/aesop/lessons/lesson-quiz';
+import { isLessonRetryReady } from '@academy/aesop/lessons/lesson-retry';
+import {
+  deriveLessonState,
+  selectNextProblem,
+  xpForPassedPoint,
+} from '@academy/aesop/lessons/lesson-runner';
+import {
+  newReviewCard,
+  reviewActivityRating,
+  scheduleReview,
+  startOfNextCalendarDay,
+} from '@academy/aesop/memory/fsrs';
+import { calculateCredit } from '@academy/aesop/memory/mastery';
 import { emptyAnswerMessage } from '@academy/shared/answer-validation';
 import { and, desc, eq, inArray, isNull, like } from 'drizzle-orm';
 import type { Context, Hono } from 'hono';
 import { Rating } from 'ts-fsrs';
 import { z } from 'zod';
-import { getLessonPrerequisites } from '../../content/index.js';
-import { serializeExercise } from '../../content/serialize.js';
-import { formatTemplateNumber, instantiateExercise, isTemplate } from '../../content/templates.js';
-import type { ContentIndex, IndexedExercise, IndexedLesson } from '../../content/types.js';
 import type { Database } from '../../db/client.js';
 import { LearnerRepository } from '../../db/repository.js';
 import {
@@ -23,26 +50,7 @@ import {
 } from '../../db/schema.js';
 import type { ApiEnv } from '../../http/context.js';
 import { updateActivityAndAdvance } from '../../learning/activity-completion.js';
-import { answerDisplay, answerText } from '../../learning/answer-display.js';
-import { answerOptionsFor } from '../../learning/answer-options.js';
-import {
-  newReviewCard,
-  reviewActivityRating,
-  scheduleReview,
-  startOfNextCalendarDay,
-} from '../../learning/fsrs.js';
-import { gradeExercise } from '../../learning/grading/index.js';
-import { MULTIPLE_CHOICE_FALLBACK_FEEDBACK } from '../../learning/grading/multiple-choice.js';
-import { QUIZ_PASS_MARK, scoreLessonQuiz, selectQuizItems } from '../../learning/lesson-quiz.js';
-import { isLessonRetryReady } from '../../learning/lesson-retry.js';
-import {
-  deriveLessonState,
-  selectNextProblem,
-  xpForPassedPoint,
-} from '../../learning/lesson-runner.js';
-import { calculateCredit } from '../../learning/mastery.js';
 import { applyImplicitRepetitions } from '../../learning/mastery-service.js';
-import { keyPrereqsForPoint } from '../../learning/prerequisites.js';
 import { resolveLessonCourse } from './course-context.js';
 
 type LessonContext = Context<ApiEnv>;

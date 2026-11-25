@@ -1,12 +1,12 @@
 import { mkdirSync } from 'node:fs';
+import type { IndexedExercise } from '@academy/aesop/course/types';
+import { courseFoundations } from '@academy/aesop/graph/prerequisites';
 import { onScreenOptions } from '@academy/shared/shuffle';
 import { expect, type Page, test } from '@playwright/test';
 import { env } from '../../apps/api/src/config.js';
 import { loadContent } from '../../apps/api/src/content/load.js';
-import type { IndexedExercise } from '../../apps/api/src/content/types.js';
 import { createDb } from '../../apps/api/src/db/client.js';
 import { users } from '../../apps/api/src/db/schema.js';
-import { courseFoundations } from '../../apps/api/src/learning/prerequisites.js';
 
 const db = createDb(env.TEST_DATABASE_URL);
 const contentPath =

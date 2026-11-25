@@ -1,11 +1,11 @@
-import { expect, test } from 'vitest';
-import { loadContent } from '../../src/content/load.js';
-import { ExerciseSchema } from '../../src/content/schemas.js';
+import { ExerciseSchema } from '@academy/aesop/course/schemas';
 import {
   formatTemplateNumber,
   instantiateExercise,
   isTemplate,
-} from '../../src/content/templates.js';
+} from '@academy/aesop/course/templates';
+import { expect, test } from 'vitest';
+import { loadContent } from '../../src/content/load.js';
 
 test('template instantiation is deterministic and samples different seeds', async () => {
   const content = await loadContent();

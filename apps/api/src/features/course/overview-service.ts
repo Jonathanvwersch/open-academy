@@ -1,14 +1,14 @@
-import type { StudyMapPayload } from '@academy/contracts/course';
-import { and, eq } from 'drizzle-orm';
-import { serializeConcept } from '../../content/serialize.js';
-import { diagnosticRuns, lessonRuns } from '../../db/schema.js';
-import { deriveLearningDebt } from '../../learning/debt.js';
+import { serializeConcept } from '@academy/aesop/course/serialize';
 import {
   activeCourseFor,
   compareOutlinePosition,
   courseFoundationIds,
-} from '../../learning/prerequisites.js';
-import type { MasteryRecord } from '../../learning/types.js';
+} from '@academy/aesop/graph/prerequisites';
+import { deriveLearningDebt } from '@academy/aesop/memory/debt';
+import type { MasteryRecord } from '@academy/aesop/memory/types';
+import type { StudyMapPayload } from '@academy/contracts/course';
+import { and, eq } from 'drizzle-orm';
+import { diagnosticRuns, lessonRuns } from '../../db/schema.js';
 import { type FeatureRequest, type FeatureServices, serviceResult } from '../../service-context.js';
 import { courseTopicState, placedOutConceptsFromRuns } from './service.js';
 

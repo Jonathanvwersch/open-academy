@@ -1,9 +1,9 @@
+import { instantiateExercise, isTemplate } from '@academy/aesop/course/templates';
 import { repairTutorMarkdown } from '@academy/shared/tutor';
 import { type ComponentProps, createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { beforeAll, expect, test } from 'vitest';
 import { loadContent } from '../../apps/api/src/content/load.js';
-import { instantiateExercise, isTemplate } from '../../apps/api/src/content/templates.js';
 import { Markdown } from '../../apps/web/src/components/markdown.js';
 
 test('lesson Markdown renders GFM tables', () => {

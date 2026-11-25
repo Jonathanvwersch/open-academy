@@ -1,12 +1,7 @@
-import { emptyAnswerMessage } from '@academy/shared/answer-validation';
-import { and, eq } from 'drizzle-orm';
-import { z } from 'zod';
-import { serializeExercise } from '../../content/serialize.js';
-import type { Database } from '../../db/client.js';
-import { LearnerRepository } from '../../db/repository.js';
-import { attempts, diagnosticRuns, lessonRuns, masteryEvents, users } from '../../db/schema.js';
-import { gradeExercise } from '../../learning/grading/index.js';
-import { applyMastery, ensureReviewCard } from '../../learning/mastery-service.js';
+import { serializeExercise } from '@academy/aesop/course/serialize';
+import { activeCourseFor, courseFoundations, masteryKey } from '@academy/aesop/graph/prerequisites';
+import { gradeExercise } from '@academy/aesop/lessons/grading/index';
+import { initialMastery, masteryRank } from '@academy/aesop/memory/types';
 import {
   createPlacementState,
   nextPlacementExercise,
@@ -14,12 +9,17 @@ import {
   type PlacementState,
   placementComplete,
   recordPlacementAnswer,
-} from '../../learning/placement.js';
-import { activeCourseFor, courseFoundations, masteryKey } from '../../learning/prerequisites.js';
-import { planSession, sessionBudget } from '../../learning/scheduler.js';
-import type { SessionPreferences } from '../../learning/session-budget.js';
-import { initialMastery, masteryRank } from '../../learning/types.js';
-import { localDateKey, sessionKindForDate } from '../../learning/xp.js';
+} from '@academy/aesop/placement/placement';
+import { planSession, sessionBudget } from '@academy/aesop/planner/scheduler';
+import type { SessionPreferences } from '@academy/aesop/planner/session-budget';
+import { localDateKey, sessionKindForDate } from '@academy/aesop/progress/xp';
+import { emptyAnswerMessage } from '@academy/shared/answer-validation';
+import { and, eq } from 'drizzle-orm';
+import { z } from 'zod';
+import type { Database } from '../../db/client.js';
+import { LearnerRepository } from '../../db/repository.js';
+import { attempts, diagnosticRuns, lessonRuns, masteryEvents, users } from '../../db/schema.js';
+import { applyMastery, ensureReviewCard } from '../../learning/mastery-service.js';
 import { type FeatureRequest, type FeatureServices, serviceResult } from '../../service-context.js';
 import { buildCoursePayload } from '../course/service.js';
 

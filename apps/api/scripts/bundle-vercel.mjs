@@ -6,8 +6,7 @@ import { build } from 'esbuild';
 
 const apiRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const outputDirectory = resolve(apiRoot, 'dist-vercel');
-// The API build generates this module; source-only checks must not require dist to exist.
-const { loadContent } = await import(pathToFileURL(resolve(apiRoot, 'dist/content/load.js')).href);
+const { loadContent } = await import(pathToFileURL(resolve(apiRoot, 'src/content/load.ts')).href);
 
 await rm(outputDirectory, { recursive: true, force: true });
 await mkdir(outputDirectory, { recursive: true });

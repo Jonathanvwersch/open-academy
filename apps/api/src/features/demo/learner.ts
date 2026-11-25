@@ -1,9 +1,9 @@
 import { randomUUID } from 'node:crypto';
+import { localDateKey } from '@academy/aesop/progress/xp';
 import { and, eq, lt, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import type { Database } from '../../db/client.js';
 import { users } from '../../db/schema.js';
-import { localDateKey } from '../../learning/xp.js';
 
 export function createDemoLearnerResolver(db: Database, ttlHours: number) {
   let lastCleanup = Number.NEGATIVE_INFINITY;
