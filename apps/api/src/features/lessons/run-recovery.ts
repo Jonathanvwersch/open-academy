@@ -122,14 +122,14 @@ export async function loadRunQuiz(
   const excluded = new Map<string, Set<string>>();
   const dropped = new Set<string>();
   for (const item of stale) {
-    let excludeFixedExerciseIds = excluded.get(item.quizAttemptId);
-    if (!excludeFixedExerciseIds) {
-      excludeFixedExerciseIds = new Set(
+    let excludeExerciseIds = excluded.get(item.quizAttemptId);
+    if (!excludeExerciseIds) {
+      excludeExerciseIds = new Set(
         quizItems
           .filter((row) => row.quizAttemptId === item.quizAttemptId)
           .map((row) => row.exerciseId),
       );
-      excluded.set(item.quizAttemptId, excludeFixedExerciseIds);
+      excluded.set(item.quizAttemptId, excludeExerciseIds);
     }
     const candidates = selectQuizItems({
       lesson,
@@ -138,7 +138,7 @@ export async function loadRunQuiz(
       previousAttemptItems: quizItems.filter((row) => row.quizAttemptId !== item.quizAttemptId),
       usedSeeds,
       seed: Math.floor(Math.random() * 0x80000000),
-      excludeFixedExerciseIds,
+      excludeExerciseIds,
     });
     const replacement = candidates.find((row) => row.pointId === item.knowledgePointId);
     if (!replacement) {
@@ -156,7 +156,7 @@ export async function loadRunQuiz(
       .where(and(eq(lessonQuizItems.id, item.id), isNull(lessonQuizItems.answeredAt)))
       .returning();
     Object.assign(item, updated);
-    if (replacement.seed === null) excludeFixedExerciseIds.add(replacement.exerciseId);
+    excludeExerciseIds.add(replacement.exerciseId);
     if (replacement.seed !== null) usedSeeds.add(replacement.seed);
   }
   const remaining = quizItems.filter(({ id }) => !dropped.has(id));
