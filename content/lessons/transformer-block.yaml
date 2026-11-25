@@ -166,7 +166,7 @@ knowledge_points:
 
       $$y_t=u_t+\text{MLP}(u_t).$$
 
-      $\text{Attn}(\dots)_t$ is attention's output at position $t$, and it depends on every token. The MLP is a two-layer network with a nonlinearity such as ReLU, and it reads only $u_t$. GPT-2 uses GELU, a smooth version of ReLU. Our examples use $\text{MLP}(u)=W_2\,\text{ReLU}(W_1u+b_1)+b_2$. The hidden layer is usually $4d$ wide; our example uses $4$ neurons, fewer than $4d=8$, and zero biases.
+      $\text{Attn}(\dots)_t$ is the attention output for position $t$. It mixes information from the tokens that position can read. The MLP shares its weights across positions, but each call reads only its own vector $u_t$. We use ReLU between the two MLP layers.
 
       The MLP uses the same weights at every position, just as an MLP uses the same weights for every example in a batch. Stacked together, the $T$ token vectors form a $T\times d$ matrix, and the MLP treats each row as one example.
 
@@ -231,7 +231,7 @@ knowledge_points:
 
       $$y_t=u_t+\text{MLP}\big(\text{LN}(u_t)\big).$$
 
-      On the right is **post-norm**, the layout of the original 2017 transformer, where LayerNorm comes after each addition, as in $u_t=\text{LN}\big(x_t+\text{Attn}(x_1,\dots,x_T)_t\big)$.
+      On the right is **post-norm**. LayerNorm comes after each addition: first after attention gives $u_t=\text{LN}\big(x_t+\text{Attn}(x_1,\dots,x_T)_t\big)$, then after the MLP gives $y_t=\text{LN}(u_t+\text{MLP}(u_t))$.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 400" aria-label="Two block layouts side by side, each read from top to bottom. Left, pre-norm: x goes into a green LayerNorm box, then the blue attention box, and the result is added to x carried by a grey shortcut; that sum goes into a second LayerNorm, then the orange MLP, and is added to the sum by a second shortcut, giving y. Nothing sits on the shortcuts. Right, post-norm: x goes into attention, is added to x by a shortcut, and only then goes through LayerNorm; the same happens with the MLP, so a LayerNorm sits on the shortcut path after each addition">
@@ -370,7 +370,7 @@ knowledge_points:
 
       ### Counting a block's weights
 
-      Counting parameters (weights, biases, gains and shifts) tells us memory needs. Attention has four $d\times d$ matrices: $W_Q$, $W_K$, $W_V$ for all heads together and $W_O$ to mix their outputs. Each has $d$ biases. The MLP's $W_1$ is $4d\times d$ and $W_2$ is $d\times4d$, with $4d$ and $d$ biases. Each LayerNorm has a gain and shift per entry. Count each contribution:
+      Count the learned numbers to estimate how much space it takes to store a block. Attention has three $d\times d$ projections $W_Q$, $W_K$ and $W_V$, formed by placing the individual heads' weights side by side. The fourth matrix $W_O$ mixes their outputs. In this count each matrix also has one bias per output, so each has $d$ biases. For the MLP, $W_1$ has shape $4d\times d$ with $4d$ biases; $W_2$ has shape $d\times4d$ with $d$ biases.
       $$
       \begin{aligned}
       \text{attention weights}&=4d^2 &&\text{four square matrices}\\
@@ -381,7 +381,7 @@ knowledge_points:
       \text{total}&=12d^2+9d+4d=12d^2+13d &&\text{add contributions}
       \end{aligned}
       $$
-      The $d^2$ term dominates at real sizes. GPT-2 small has $d=768$ and $12$ blocks:
+      The $d^2$ term accounts for most of the count at large widths. The smallest GPT-2 model, called GPT-2 small, uses width $d=768$ and $12$ blocks:
       $$
       \begin{aligned}
       12(768)^2+13(768)&=7{,}087{,}872 &&\text{parameters per block}\\
@@ -390,7 +390,7 @@ knowledge_points:
       $$
       That's about $85$ million of the model's $124$ million parameters. Most of the rest is in the embedding table. GPT-2 has $50{,}257$ tokens in its vocabulary, so the table has $50{,}257$ rows of width $768$. To score each possible next token, take the dot product of the final vector at that position with its embedding row. This reuse is called **weight tying**. The input lookup and output scores share the same $N\times d$ table, which counts once.
 
-      Be careful not to count a head's weights once per head at full width. Each head's $W_Q$ is only $d\times d/h$, so the $h$ heads together fill $d\times d$.
+      Each head's $W_Q$ has $d$ rows and $d/h$ columns. Place those $h$ matrices side by side: they share the same row count and have $h(d/h)=d$ columns in total. That is one $d\times d$ matrix, not one per head.
     worked: |
       Let's count the parameters of one block with width $d=4$.
 

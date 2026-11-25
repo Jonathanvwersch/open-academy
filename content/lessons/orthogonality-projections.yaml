@@ -295,7 +295,7 @@ knowledge_points:
 
       $$\begin{bmatrix}1&-1\\1&0\\1&1\end{bmatrix}\begin{bmatrix}c\\m\end{bmatrix}=\begin{bmatrix}1\\3\\2\end{bmatrix}.$$
 
-      Call the matrix $A$, the unknowns $x=(c,m)$ and the measurements $b$, so this is $Ax=b$. Test the first and third rows:
+      Call the matrix $A$. The two unknowns $x=(c,m)$ give the line, and $b$ lists the measured heights. The system $Ax=b$ asks for a line that hits every reading. Use the readings at $t=-1$ and $t=1$ to fix the only possible line, then check the reading at $t=0$.
       $$
       \begin{aligned}
       (c-m)+(c+m)&=1+2 &&\text{add the two equations}\\
@@ -444,6 +444,6 @@ summary: |
   - Two vectors are orthogonal when their dot product is zero. The projection of $x$ onto the line through $u$ is $p=\frac{u^\top x}{u^\top u}u$, the closest point on that line to $x$, and the leftover $x-p$ is orthogonal to $u$.
   - Vectors are orthonormal when each has length 1 and every pair is orthogonal. A square matrix $Q$ with orthonormal columns is an orthogonal matrix, so $Q^\top Q=I$ and $Q^{-1}=Q^\top$.
   - When $Ax=b$ has no solution, least squares finds the closest $A\hat x$ to $b$. The error $b-A\hat x$ is orthogonal to every column of $A$, which gives the normal equations $A^\top A\hat x=A^\top b$, and $\hat x$ makes the sum of squared errors as small as possible.
-  - The best line is unique when the rank of $A$ equals the number of columns. If all readings have the same time, every line with the best height at that time ties.
+  - The best line is unique when the rank of $A$ equals the number of columns. If all readings have the same time, any line through the best fitted height at that time gives the same squared error.
 
   **Next:** The eigenvalues and SVD lesson looks for the directions a matrix only stretches, and describes any matrix using two orthogonal matrices and a stretch.

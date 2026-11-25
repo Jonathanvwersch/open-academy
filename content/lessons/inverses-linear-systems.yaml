@@ -26,11 +26,11 @@ knowledge_points:
 
       To find the matrix that undoes another, we first need a matrix that leaves every input unchanged. Its main diagonal runs from the top left to the bottom right. As in the matrices lesson, entry $(i,j)$ means the number in row $i$ and column $j$.
 
-      The **identity matrix**, written $I$, has 1s down its main diagonal and 0s everywhere else:
+      The **identity matrix**, written $I$, is square and has 1s down its main diagonal and 0s everywhere else. Here is the version for two entries. For three entries, use a $3\times3$ grid with the same pattern.
 
       $$I=\begin{bmatrix}1&0\\0&1\end{bmatrix}$$
 
-      In $AI$, each column of $I$ picks out the matching entry from each row of $A$. In $IA$, each row of $I$ picks out the matching row of $A$. Both products leave $A$ unchanged:
+      For example, taking the dot product of a row $(a,b)$ with the first column $(1,0)$ gives $a$, and taking it with $(0,1)$ gives $b$. So $AI$ keeps the same rows. In $IA$, the row $(1,0)$ copies row 1 of $A$ and $(0,1)$ copies row 2.
 
       $$AI=IA=A$$
 
@@ -141,7 +141,7 @@ knowledge_points:
     explain: |
       ### Keep each equation in one row
 
-      The café orders give several equations for the same prices. A **linear system** is a set of equations in which each unknown is multiplied by a number and the results are added. Write it $Ax=b$: $A$ holds those numbers, $x$ lists the unknowns and $b$ lists the totals. When $A$ is invertible, $x=A^{-1}b$.
+      Each café order gives an equation for the same prices. In a **linear system**, each equation adds up multiples of the unknowns. Write $Ax=b$: $A$ holds the drink counts, $x$ the prices and $b$ the totals. If $A$ has an inverse, multiplying the equation by $A^{-1}$ gives $x=A^{-1}b$.
 
       To remove unknowns by subtracting equations, first write their totals next to the matrix. This **augmented matrix**, written $[A\mid b]$, has one row per equation. The vertical bar separates the numbers multiplying the unknowns from the totals.
 
@@ -162,9 +162,9 @@ knowledge_points:
 
       ### Clear below the pivots
 
-      **Elimination** subtracts multiples of equations to remove unknowns. Use the row additions and row swaps from determinants on the entire augmented row, including its total. A row addition performs the same arithmetic on both sides of an equation. Keeping the other equation lets us undo the addition, so the solution set stays the same. A row swap only reorders equations.
+      **Elimination** subtracts multiples of equations to remove unknowns. Update the total along with the other entries in each row. Row swaps only change the order. We can undo a row subtraction by adding the same multiple back, so the values that solve all the equations stay the same.
 
-      If the next pivot position is zero, swap in a row with a nonzero entry there. Clear below the pivots. When every entry below the main diagonal is zero, the matrix is **upper triangular**. Solve the last equation first, then put its value into the row above. Continuing upward is **back-substitution**.
+      Start at the first unused row and column. Use a nonzero entry as the pivot; if the entry is zero, swap in a row below with a nonzero entry in that column. Clear below each pivot so all entries below the main diagonal are zero. This is **upper triangular** form. Solve the last equation first, then use that value in the row above. This is **back-substitution**.
 
       Be careful to update the totals too. Changing only $A$ changes the equations.
 
@@ -286,7 +286,7 @@ knowledge_points:
 
       ### Symmetric matrices
 
-      A square matrix is **symmetric** when $A^\top=A$, so each entry matches its mirror image across the main diagonal. $\begin{bmatrix}2&1\\1&1\end{bmatrix}$ is one. For any matrix $A$, the product $A^\top A$ is symmetric:
+      A square matrix is **symmetric** when $A^\top=A$. The entry at $(i,j)$ matches the entry at $(j,i)$. For example, in $\begin{bmatrix}2&1\\1&1\end{bmatrix}$ both the top right and bottom left are $1$. For any matrix $A$, the product $A^\top A$ is symmetric:
       $$
       \begin{aligned}
       (A^\top A)^\top&=A^\top(A^\top)^\top &&\text{reverse the factors}\\

@@ -171,7 +171,7 @@ knowledge_points:
 
       A vector with $n$ entries can be written as an $n\times1$ matrix. That is the one-column case we used in the last step.
 
-      So $W$ turns any house's three measurements into two predictions.
+      Each house row pairs with both columns of $W$. The first dot product is a sale price and the second is a monthly rent.
 
       ### Which shapes fit together
 

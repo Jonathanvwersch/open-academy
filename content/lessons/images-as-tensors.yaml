@@ -90,7 +90,7 @@ knowledge_points:
 
       The shape lists rows first. We label a pixel by its row and column, counting from zero, so the top-left pixel is at $(0,0)$ and the row labels in the picture run from 0 to 3.
 
-      Be careful with the way image sizes are usually written. A "640×480" photo means 640 pixels wide and 480 pixels tall, so the width comes first. But the array puts the height first, so its shape is `(480, 640)`. If we mix the two up, we cut the same numbers into rows of the wrong length, and the picture comes out scrambled.
+      A “640×480” photo is 640 pixels wide and 480 tall. The grid shape is $(480,640)$ because the row count comes first. If we put 480 pixels in a row instead of 640, each row ends too early and the next starts in the wrong place.
     worked: |
       Let's read the grayscale image above.
 
@@ -125,7 +125,7 @@ knowledge_points:
 
       Our grayscale image had one brightness for each pixel. An RGB colour image has three, saying how much red, green and blue light the pixel has, and each of these is called a **channel**.
 
-      There are two common ways to arrange those numbers. On the left, each pixel of a tiny $2\times2$ image keeps its three numbers together. On the right, the same twelve numbers form three separate grids, or planes, one per channel. Only the order of the numbers changes.
+      There are two common layouts. HWC keeps the three colour values together at each pixel. CHW makes a separate grid for each colour. The picture shows both layouts for the same image.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 195" role="img" aria-label="The same 2 by 2 RGB image in HWC and CHW: RGB triples 10,20,30; 40,50,60; 70,80,90; 100,110,120 become red, green and blue planes." font-family="ui-sans-serif, system-ui, sans-serif" font-size="14">
@@ -226,7 +226,7 @@ knowledge_points:
 
       ### Centre each channel
 
-      Many models also centre each channel using **per-channel standardisation**. Across many photos we measure its **mean**, the average, and its **standard deviation**, the typical distance from that mean. If half the values are $0.3$ and half $0.7$:
+      **Per-channel standardisation** uses two numbers from the images the model learned from, separately for each colour: the mean (average) and the standard deviation. To find the standard deviation, square each value's difference from the mean, average the squares, and take the square root.
       $$
       \begin{aligned}
       \text{mean}&=(0.3+0.7)/2=0.5 &&\text{average the two values}\\
@@ -255,7 +255,7 @@ knowledge_points:
 
       The red value was above its mean, so it came out positive, and the blue value was exactly at its mean, so it became zero. A value below its mean would come out negative.
 
-      We used round numbers here, but in practice you follow the model's documentation, because not every model expects this standardisation. A pretrained model, one that someone has already trained, expects the same means and standard deviations it was trained with. Many use means (0.485, 0.456, 0.406) and standard deviations (0.229, 0.224, 0.225), measured on ImageNet, a collection of over a million labelled photos.
+      Use the same means and standard deviations that were used when the model learned its weights. Recomputing them from a new image would put its values on a different scale.
 
       Check the scale of the inputs. If the values already lie between 0 and 1, they do not need to be divided by 255.
 

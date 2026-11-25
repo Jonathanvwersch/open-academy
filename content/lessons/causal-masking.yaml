@@ -190,7 +190,7 @@ knowledge_points:
 
       - Position 1, "the", may see only itself, so its weight on itself is $1$.
       - Position 2, "cat", splits the share that went to "sat" and "on" between "the" and "cat". So "the" goes from $0.08$ to $0.27$, and "cat" goes from $0.22$ to $0.73$.
-      - Position 3, "sat", has only "on" blocked.
+      - In row 3, "sat" can read "the cat sat". Only "on" comes after it, so only that word is blocked.
       - Position 4, "on", is last, so the mask changes nothing.
     worked: |
       Let's work out the output of position 2, "cat", in "the cat sat on" with the causal mask. Its scores for the four words are $0$, $1$, $2$ and $0$. The value vectors hold the information each word passes on when it's attended to. Here we make up small ones with 2 numbers each, $v_1=(1,0)$, $v_2=(0,1)$, $v_3=(1,1)$ and $v_4=(2,0)$.

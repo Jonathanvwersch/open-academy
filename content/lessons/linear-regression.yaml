@@ -293,7 +293,7 @@ knowledge_points:
       Let's price three houses at once, $(100,2)$, $(80,3)$ and $(120,1)$, with the weights $w=(3,10)$ and bias $b=50$.
 
       1. **Check that the shapes fit.** Each row of $X$ is paired with $w$, so the number of columns must match the number of weights, and there will be one prediction per row.
-         $$X:\ 3\ \text{rows},\ 2\ \text{columns},\qquad w:\ 2\ \text{entries}\ \to\ \hat y:\ 3\ \text{entries}$$
+         Here $X$ has three rows and two columns. Its two columns match the two weights, so the result has three entries.
 
       2. **Take one dot product per row.** Each row's features are multiplied by the weights and added up.
          $$Xw=(300+20,\ 240+30,\ 360+10)=(320,\ 270,\ 370)$$
