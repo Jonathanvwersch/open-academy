@@ -393,7 +393,9 @@ async function answerAndReload(page: Page, correct: boolean, runConceptId = conc
   const response = await responsePromise;
   const body = await response.json();
   expect(response.status()).toBe(200);
-  await page.reload();
+  const quizUrl = new URL(page.url());
+  quizUrl.searchParams.delete('step');
+  await page.goto(quizUrl.toString());
   if (body.state.status === 'needs_retry') {
     await expect(page.getByText('This lesson is paused.')).toBeVisible();
   } else if (body.state.status === 'in_progress') {
@@ -928,13 +930,6 @@ test('passes every knowledge point and restores the exact problem and result aft
           problemId ?? '',
         );
         await page.screenshot({ path: `${stepReviewScreenshotDir}/desktop-current-step-pill.png` });
-        const quizUrl = new URL(page.url());
-        quizUrl.searchParams.delete('step');
-        await page.goto(quizUrl.toString());
-        await expect(page.getByTestId('lesson-problem')).toHaveAttribute(
-          'data-problem-id',
-          problemId ?? '',
-        );
       }
     }
   }
