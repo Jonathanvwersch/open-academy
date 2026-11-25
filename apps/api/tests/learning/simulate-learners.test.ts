@@ -1043,17 +1043,16 @@ test('P15 exempts a prerequisite reset selected by the engine helper after a tra
   expect(audit.prerequisiteResetEvidence[0]?.selectedCardId).toBe('parent-card');
 });
 
-test('P15 accepts one reset among equally weak prerequisite dimensions', () => {
+test('P15 exempts only the selected reset among equally weak prerequisite dimensions', () => {
   const now = new Date('2026-01-14T12:00:00.000Z');
-  const conceptual = p15Card('conceptual', 'parent', '2026-04-14T12:00:00.000Z');
-  const math = { ...conceptual, id: 'math' };
+  const conceptual = {
+    ...p15Card('conceptual', 'parent', '2026-04-14T12:00:00.000Z'),
+    dimension: 'conceptual',
+  };
+  const math = { ...conceptual, id: 'math', dimension: 'math' };
   const trace = [conceptual, math].map((card) =>
     p15TraceEvent('child', Rating.Good, card, 0.5, now, 0),
   );
-  const after = [
-    { ...conceptual, ...trace[0].after },
-    { ...math, dueAt: now, fsrs: { ...trace[1].after.fsrs, due: now } },
-  ];
   const logs = [
     { cardId: 'child-log', conceptId: 'child', rating: String(Rating.Good) },
     {
@@ -1063,27 +1062,38 @@ test('P15 accepts one reset among equally weak prerequisite dimensions', () => {
       previousLog: { rating: String(Rating.Again), createdAt: new Date('2026-01-07') },
     },
   ];
-  const audit = auditP15Trace(
-    [conceptual, math],
-    after,
-    logs,
-    trace,
-    p15Weights,
-    now,
-    'UTC',
-    'review',
-    new Map([
-      ['child-log', 0],
-      ['prerequisite-log', 1],
-    ]),
-    {
-      hardPrerequisiteIdsByConcept: new Map([['prerequisite', ['parent']]]),
-      completedReviewConceptIds: new Set<string>(),
-      coveredDimensionKeys: new Set<string>(),
-    },
-  );
-  expect(audit.violations).toEqual([]);
-  expect(audit.prerequisiteResetEvidence[0]?.selectedCardId).toBe('math');
+  const audit = (resetId: string) =>
+    auditP15Trace(
+      [math, conceptual],
+      [conceptual, math].map((card, i) =>
+        card.id === resetId
+          ? { ...card, dueAt: now, fsrs: { ...trace[i].after.fsrs, due: now } }
+          : { ...card, ...trace[i].after },
+      ),
+      logs,
+      trace,
+      p15Weights,
+      now,
+      'UTC',
+      'review',
+      new Map([
+        ['child-log', 0],
+        ['prerequisite-log', 1],
+      ]),
+      {
+        hardPrerequisiteIdsByConcept: new Map([['prerequisite', ['parent']]]),
+        completedReviewConceptIds: new Set<string>(),
+        coveredDimensionKeys: new Set<string>(),
+      },
+    );
+  const correct = audit('conceptual');
+  expect(correct.violations).toEqual([]);
+  expect(correct.prerequisiteResetEvidence[0]?.selectedCardId).toBe('conceptual');
+  const incorrect = audit('math');
+  expect(incorrect.violations).toEqual([
+    'parent/math: final state differs from the last trace result',
+  ]);
+  expect(incorrect.prerequisiteResetEvidence[0]?.selectedCardId).toBe('conceptual');
 });
 
 test('P16 flags a selected review when a dropped review is two days more overdue', () => {
