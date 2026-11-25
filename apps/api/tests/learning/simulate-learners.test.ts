@@ -71,7 +71,31 @@ const invariants: InvariantId[] = [
   'P21',
   'P22',
   'P23',
+  'P24',
+  'P25',
+  'P26',
+  'P27',
 ];
+
+test('P24–P27 observe an offered quiz, timeout, completed follow-ups, and a fresh retake', async () => {
+  const content = await loadContent('content');
+  const {
+    profiles: [profile],
+  } = await simulateLearners(db, content, {
+    profiles: ['scenario-quizzes'],
+    days: 1,
+    timeZone: 'UTC',
+  });
+  expect(
+    profile.violations.filter((violation) =>
+      ['P24', 'P25', 'P26', 'P27'].includes(violation.invariant),
+    ),
+  ).toEqual([]);
+  expect(profile.checkedCounts.P24).toBeGreaterThan(0);
+  expect(profile.checkedCounts.P25).toBeGreaterThanOrEqual(2);
+  expect(profile.checkedCounts.P26).toBeGreaterThan(0);
+  expect(profile.checkedCounts.P27).toBeGreaterThanOrEqual(2);
+}, 60_000);
 
 const p11Weights = {
   weight: (conceptId: string, ancestorId: string) =>

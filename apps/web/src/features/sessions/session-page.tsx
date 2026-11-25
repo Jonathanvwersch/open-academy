@@ -20,6 +20,7 @@ import { LessonBlock } from '../lessons/lesson-block.js';
 import { LessonMarkdown, LessonRunner, LessonSteps } from '../lessons/lesson-runner.js';
 import { lessonQueryOptions, lessonRunQueryOptions } from '../lessons/queries.js';
 import { projectQueryOptions } from '../projects/queries.js';
+import { QuizStart } from '../quizzes/quiz-start.js';
 import { TutorLauncher, useTutorSidebar } from '../tutor/tutor-sidebar.js';
 import { sessionActivityLabel } from './activity-label.js';
 import {
@@ -316,7 +317,7 @@ export function SessionPage() {
   }, [activity?.id, activity?.lastAttempt, exerciseId]);
   useEffect(() => {
     const session = sessionQuery.data;
-    if (!session?.startedAt || !session.plannedMinutes) return;
+    if (!session?.startedAt || !session.plannedMinutes || session.quizFollowUp) return;
     const elapsed =
       timeAnchor && session.startedAt
         ? Math.max(
@@ -647,7 +648,13 @@ export function SessionPage() {
         }),
         invalidateSidebarQueries(queryClient),
       ]);
-      await navigate({ to: '/' });
+      const quizId = sessionQuery.data.quizFollowUp;
+      if (quizId) {
+        await queryClient.invalidateQueries({ queryKey: ['quiz', quizId] });
+        await navigate({ to: '/quizzes/$id', params: { id: quizId }, search: {} });
+      } else {
+        await navigate({ to: '/' });
+      }
     } catch {
       setEndSessionError('Could not return Home. Please try again.');
     } finally {
@@ -664,6 +671,16 @@ export function SessionPage() {
         onFinish={endSession}
         finishing={endingSession}
         error={endSessionError}
+      />
+    );
+  }
+  if (activity.kind === 'mixed_quiz') {
+    return (
+      <QuizStart
+        key={activity.id}
+        sessionId={id}
+        activityId={activity.id}
+        minutes={activity.plannedMinutes}
       />
     );
   }

@@ -37,9 +37,11 @@ import {
   type SchedulerState,
 } from '@academy/aesop/planner/scheduler';
 import { localDateKey } from '@academy/aesop/progress/xp';
+import { QUIZ_XP_INTERVAL, QUIZ_XP_WINDOW } from '@academy/aesop/quizzes/mixed-quiz';
 import type { CourseCatalogPayload, CoursePayload, LearnPayload } from '@academy/contracts/course';
+import type { QuizPayload } from '@academy/contracts/quizzes';
 import type { SessionActivity, TodayPayload } from '@academy/contracts/sessions';
-import { and, asc, desc, eq, inArray } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNull } from 'drizzle-orm';
 import type { Card } from 'ts-fsrs';
 import { Rating, State } from 'ts-fsrs';
 import { createApp } from '../src/app.js';
@@ -51,11 +53,15 @@ import {
   lessonRuns,
   mastery,
   placementGrants,
+  quizItems,
+  quizRuns,
   remediationFlags,
   reviewCards,
   reviewLogs,
   sessionActivities,
+  studySessions,
   users,
+  xpEvents,
 } from '../src/db/schema.js';
 import {
   auditPlacementGrants,
@@ -80,6 +86,7 @@ export const simulationProfiles = [
   'scenario-p17-fallback',
   'scenario-p17-covering',
   'overplaced',
+  'scenario-quizzes',
 ] as const;
 
 export type SimulationProfile = (typeof simulationProfiles)[number];
@@ -118,8 +125,10 @@ export type InvariantId =
   | 'P20'
   | 'P21'
   | 'P22'
-  | 'P23';
+  | 'P23'
+  | QuizInvariant;
 
+type QuizInvariant = 'P24' | 'P25' | 'P26' | 'P27';
 type CheckedInvariantId =
   | 'P13'
   | 'P14'
@@ -131,7 +140,8 @@ type CheckedInvariantId =
   | 'P20'
   | 'P21'
   | 'P22'
-  | 'P23';
+  | 'P23'
+  | QuizInvariant;
 type CheckedInvariantCounts = Record<CheckedInvariantId, number>;
 
 export interface SimulationViolation {
@@ -233,6 +243,7 @@ export interface SimulationMasteryEvidence {
 
 export interface SimulationViolationEvidence {
   placementGrants?: SimulationPlacementGrantEvidence[];
+  quiz?: Record<string, unknown>;
   beforeCards: SimulationCardEvidence[];
   afterCards: SimulationCardEvidence[];
   implicitRepetitionTrace: Array<ImplicitRepetitionTraceEvent & { activityOrder: number | null }>;
@@ -382,6 +393,11 @@ export interface SimulatedPaper {
 }
 
 export interface ProfileSimulationReport {
+  quizEvidence?: Array<{
+    day: number;
+    invariant: QuizInvariant;
+    evidence: Record<string, unknown>;
+  }>;
   profile: SimulationProfile;
   seed: number;
   dayCap: number;
@@ -542,6 +558,10 @@ const invariants: InvariantId[] = [
   'P21',
   'P22',
   'P23',
+  'P24',
+  'P25',
+  'P26',
+  'P27',
 ];
 
 const checkedInvariantIds: CheckedInvariantId[] = [
@@ -556,6 +576,10 @@ const checkedInvariantIds: CheckedInvariantId[] = [
   'P21',
   'P22',
   'P23',
+  'P24',
+  'P25',
+  'P26',
+  'P27',
 ];
 
 function object(value: unknown): Record<string, unknown> {
@@ -2848,6 +2872,308 @@ async function attemptExercise(
   return correct;
 }
 
+function quizEvidence(
+  runtime: ProfileRuntime,
+  day: number,
+  invariant: QuizInvariant,
+  evidence: Record<string, unknown>,
+  violation?: string,
+) {
+  runtime.report.quizEvidence ??= [];
+  runtime.report.quizEvidence.push({ day, invariant, evidence });
+  if (evidence.applicable !== false) markChecked(runtime, invariant);
+  if (violation) {
+    runtime.violationEvidenceContext.quiz = evidence;
+    addViolation(runtime, day, invariant, 'mixed-quiz', [], { details: violation });
+    delete runtime.violationEvidenceContext.quiz;
+  }
+}
+
+async function auditQuizOffer(
+  db: Database,
+  runtime: ProfileRuntime,
+  day: number,
+  userId: string,
+  offer: TodayPayload['quizOffer'],
+  activities: SimActivity[],
+  budget: number,
+) {
+  const openRuns = await db
+    .select({ id: quizRuns.id })
+    .from(quizRuns)
+    .where(and(eq(quizRuns.userId, userId), isNull(quizRuns.finalizedAt)));
+  const positions = activities.flatMap((activity, i) =>
+    activity.kind === 'mixed_quiz' ? [i] : [],
+  );
+  const openActivities = await db
+    .select({ id: sessionActivities.id })
+    .from(sessionActivities)
+    .innerJoin(studySessions, eq(studySessions.id, sessionActivities.sessionId))
+    .where(
+      and(
+        eq(studySessions.userId, userId),
+        eq(studySessions.status, 'active'),
+        eq(sessionActivities.kind, 'mixed_quiz'),
+        inArray(sessionActivities.status, ['planned', 'in_progress']),
+      ),
+    );
+  const minutesFit = offer?.plannedMinutes != null && offer.plannedMinutes <= budget;
+  const applicable = !!offer && (offer.xpBalance >= QUIZ_XP_INTERVAL || offer.active) && minutesFit;
+  const evidence = {
+    applicable,
+    xpBalance: offer?.xpBalance,
+    insideXpWindow:
+      offer &&
+      offer.xpBalance >= QUIZ_XP_INTERVAL &&
+      offer.xpBalance <= QUIZ_XP_INTERVAL + QUIZ_XP_WINDOW,
+    plannedMinutes: offer?.plannedMinutes,
+    budget,
+    pendingRuns: openRuns.length,
+    pendingActivities: openActivities.length,
+    offerPositions: positions,
+    reason: applicable
+      ? undefined
+      : !offer || (!offer.active && offer.xpBalance < QUIZ_XP_INTERVAL)
+        ? 'below threshold'
+        : offer.plannedMinutes === null
+          ? 'fewer than eight eligible topics'
+          : 'quiz does not fit',
+  };
+  const violates =
+    openRuns.length > 1 ||
+    openActivities.length > 1 ||
+    positions.length > 1 ||
+    (applicable && positions[0] !== 0) ||
+    (!applicable && positions.length > 0);
+  quizEvidence(
+    runtime,
+    day,
+    'P24',
+    evidence,
+    violates ? 'The session did not offer exactly one fitting quiz first when eligible' : undefined,
+  );
+}
+
+async function processTimedQuiz(
+  api: SimulatedApi,
+  db: Database,
+  content: ContentIndex,
+  runtime: ProfileRuntime,
+  now: Date,
+  day: number,
+  courseId: string,
+  sessionId: string,
+  activity: SimActivity,
+) {
+  const userId = api.userId ?? '';
+  const original = await api.require<QuizPayload>('POST', '/quizzes/start', now, {
+    sessionId,
+    activityId: activity.id,
+  });
+  const runItems = (id: string) =>
+    db.select().from(quizItems).where(eq(quizItems.runId, id)).orderBy(asc(quizItems.position));
+  const firstItems = await runItems(original.id);
+  const knownRows = await db
+    .select({ topic: lessonRuns.conceptId })
+    .from(lessonRuns)
+    .where(and(eq(lessonRuns.userId, userId), eq(lessonRuns.status, 'completed')));
+  const learned = new Set(knownRows.map(({ topic }) => topic));
+  const history = await db
+    .select({ question: quizItems.question, runId: quizItems.runId })
+    .from(quizItems)
+    .innerJoin(quizRuns, eq(quizRuns.id, quizItems.runId))
+    .where(eq(quizRuns.userId, userId));
+  const fingerprint = (question: (typeof firstItems)[number]['question']) =>
+    question.exercise.prompt.trim().replace(/\s+/g, ' ');
+  const encompassing = buildEncompassingIndex(content);
+  const selectionEvidence = async (id: string, originalRun: boolean) => {
+    const items = id === original.id ? firstItems : await runItems(id);
+    const topics = items.map((item) => item.conceptId);
+    const keys = items.map((item) => fingerprint(item.question));
+    const historyKeys = new Set(
+      history.filter(({ runId }) => id !== runId).map(({ question }) => fingerprint(question)),
+    );
+    const unknownTopics = topics.filter((topic) => !learned.has(topic));
+    const repeatedQuestions = keys.filter(
+      (key, index) => keys.indexOf(key) < index || historyKeys.has(key),
+    );
+    const overlap = topics.filter((topic) =>
+      topics.some((other) => encompassing.ancestors(topic).has(other)),
+    );
+    const sameTopics =
+      originalRun || topics.every((topic, i) => topic === firstItems[i]?.conceptId);
+    quizEvidence(
+      runtime,
+      day,
+      'P25',
+      {
+        topics,
+        unknownTopics,
+        repeatedQuestions,
+        overlap,
+        sameTopics,
+        retake: !originalRun,
+      },
+      topics.length !== 8 ||
+        new Set(topics).size !== 8 ||
+        unknownTopics.length > 0 ||
+        repeatedQuestions.length > 0 ||
+        overlap.length > 0 ||
+        !sameTopics
+        ? 'Quiz contains an unlearned, overlapping or repeated question, or changed retake topics'
+        : undefined,
+    );
+    return items;
+  };
+  const run = async (start: QuizPayload, items: typeof firstItems, timeout: boolean) => {
+    const path = `/quizzes/${start.id}`;
+    const startedAt = new Date(start.startedAt);
+    let current = start;
+    let received = startedAt;
+    for (const item of items.slice(0, timeout ? 1 : items.length)) {
+      if (!current.question) break;
+      const exercise = item.question.exercise;
+      const correct = wantsCorrect(runtime, exercise.concept, day, activity.id, exercise.id);
+      const answer = correct
+        ? answerFor(content, exercise.id, item.question.seed)
+        : wrongAnswerFor(content, exercise.id, item.question.seed);
+      current = await api.require<QuizPayload>('POST', `${path}/answer`, startedAt, {
+        position: item.position,
+        answer,
+      });
+      recordOutcome(runtime, exercise.concept, day, Number(correct));
+      if (item.position === 0) current = await api.require<QuizPayload>('GET', path, startedAt);
+    }
+    const persisted = await runItems(start.id);
+    const expectedScore = persisted.filter((item) => item.correct === true).length / items.length;
+    let lateStatus: number | undefined;
+    if (timeout && current.question) {
+      const item = items[current.question.position];
+      received = new Date(start.deadline);
+      lateStatus = (
+        await api.call('POST', `${path}/answer`, received, {
+          position: item.position,
+          answer: answerFor(content, item.question.exercise.id, item.question.seed),
+        })
+      ).status;
+    }
+    const result = await api.require<QuizPayload>('POST', `${path}/finalize`, received);
+    const repeated = await api.require<QuizPayload>('POST', `${path}/finalize`, received);
+    const awards = await db
+      .select({ amount: xpEvents.amount })
+      .from(xpEvents)
+      .where(and(eq(xpEvents.userId, userId), eq(xpEvents.sourceKey, `mixed-quiz:${start.id}`)));
+    const expectedXp = start.retake
+      ? 0
+      : Math.round(
+          Math.ceil((Date.parse(start.deadline) - Date.parse(start.startedAt)) / 60_000) *
+            expectedScore,
+        );
+    quizEvidence(
+      runtime,
+      day,
+      'P27',
+      {
+        startedAt: start.startedAt,
+        deadline: start.deadline,
+        afterRefresh: current.deadline,
+        expectedScore,
+        score: result.result?.score,
+        lateStatus,
+        expectedXp,
+        xp: result.result?.xpAwarded,
+        awardCount: awards.length,
+        retake: start.retake,
+      },
+      current.id !== start.id ||
+        current.startedAt !== start.startedAt ||
+        current.deadline !== start.deadline ||
+        (timeout && lateStatus !== 409) ||
+        result.result?.score !== expectedScore ||
+        repeated.result?.score !== expectedScore ||
+        result.result?.xpAwarded !== expectedXp ||
+        awards.length !== Number(!start.retake)
+        ? 'Refresh, timeout, final score, or idempotent award did not preserve the quiz'
+        : undefined,
+    );
+    return { result, received };
+  };
+  const items = await selectionEvidence(original.id, !original.retake);
+  const { result, received } = await run(original, items, runtime.profile === 'scenario-quizzes');
+  const missed = (await runItems(original.id))
+    .filter((item) => item.correct !== true)
+    .map((item) => item.conceptId);
+  if (missed.length === 0 || original.retake) {
+    return { lessons: 0, reviews: 0, reviewAttempts: 0 };
+  }
+  const path = `/quizzes/${original.id}`;
+  const earlyRetake = await api.call('POST', `${path}/retake`, received);
+  const dueCards = await db
+    .select({ conceptId: reviewCards.conceptId, dueAt: reviewCards.dueAt })
+    .from(reviewCards)
+    .where(and(eq(reviewCards.userId, userId), inArray(reviewCards.conceptId, missed)));
+  const dueNowTopics = missed.filter((topic) =>
+    dueCards.some((card) => card.conceptId === topic && card.dueAt <= received),
+  );
+  const followUps = await api.call('POST', `${path}/follow-ups`, received);
+  let reviews = 0;
+  let reviewAttempts = 0;
+  if (followUps.ok) {
+    const id = text(object(followUps.data).sessionId);
+    if (!id) throw new Error('Follow-ups did not return a session id');
+    const session = await api.require<{ activities: SimActivity[] }>(
+      'GET',
+      `/sessions/${id}`,
+      received,
+    );
+    for (const review of session.activities) {
+      runtime.activityKeyById.set(review.id, `day:${day}|quiz-follow-up|${review.conceptId}`);
+      const result = await processActivity(
+        api,
+        db,
+        content,
+        runtime,
+        received,
+        day,
+        courseId,
+        id,
+        review,
+      );
+      reviews += result.reviews;
+      reviewAttempts += result.reviewAttempts;
+    }
+    await api.require('POST', `/sessions/${id}/end`, received);
+  }
+  const after = await api.require<QuizPayload>('GET', path, received);
+  const reviewed =
+    after.result?.topics.filter((topic) => topic.reviewed).map((topic) => topic.conceptId) ?? [];
+  const evidence = {
+    missed,
+    dueNowTopics,
+    reviewed,
+    earlyRetakeStatus: earlyRetake.status,
+    listedTopics: result.result?.topics.map((topic) => topic.conceptId),
+    eligibleAfterFollowUps: after.result?.retake.eligible,
+  };
+  quizEvidence(
+    runtime,
+    day,
+    'P26',
+    evidence,
+    earlyRetake.status !== 409 ||
+      !after.result?.retake.eligible ||
+      missed.some((topic) => !reviewed.includes(topic) || !dueNowTopics.includes(topic))
+      ? 'A missed topic lacked an immediate follow-up or the retake gate failed'
+      : undefined,
+  );
+  if (after.result?.retake.eligible) {
+    const retake = await api.require<QuizPayload>('POST', `${path}/retake`, received);
+    const retakeItems = await selectionEvidence(retake.id, false);
+    await run(retake, retakeItems, false);
+  }
+  return { lessons: 0, reviews, reviewAttempts };
+}
+
 async function processActivity(
   api: SimulatedApi,
   db: Database,
@@ -2860,6 +3186,9 @@ async function processActivity(
   activity: SimActivity,
 ): Promise<{ lessons: number; reviews: number; reviewAttempts: number }> {
   const exerciseIds = activity.exerciseIds ?? [];
+  if (activity.kind === 'mixed_quiz') {
+    return processTimedQuiz(api, db, content, runtime, now, day, courseId, sessionId, activity);
+  }
   let reviewAttempts = 0;
   if (activity.kind === 'learn' && activity.conceptId) {
     const lesson = content.lessonsByConcept.get(activity.conceptId);
@@ -4690,7 +5019,8 @@ async function simulateProfile(
       }));
     syncCourseSummaries(runtime, catalog, 0);
 
-    const dayLimit = isScriptedScenarioProfile(profile) ? 1 : options.days;
+    const dayLimit =
+      isScriptedScenarioProfile(profile) || profile === 'scenario-quizzes' ? 1 : options.days;
     for (let day = 1; day <= dayLimit; day += 1) {
       const now = localNoon(dateAfter(startDate, day - 1), timeZone);
       const currentCatalog = await fetchCourseCatalog(api, now);
@@ -4721,19 +5051,47 @@ async function simulateProfile(
         if (!userId) throw new Error('Simulation API did not create a learner');
         await seedScriptedScenario(db, userId, profile, activeContent, now);
       }
+      if (profile === 'scenario-quizzes') {
+        const userId = api.userId;
+        if (!userId) throw new Error('Simulation API did not create a learner');
+        await db
+          .insert(lessonRuns)
+          .values(
+            activeContent.lessons.map(({ concept }) => ({
+              userId,
+              conceptId: concept,
+              status: 'completed' as const,
+              startedAt: now,
+              updatedAt: now,
+              completedAt: now,
+            })),
+          )
+          .onConflictDoNothing();
+        await db.insert(xpEvents).values({
+          userId,
+          kind: 'knowledge_point',
+          sourceKey: 'scenario:quiz-xp',
+          amount: 150,
+          earnedAt: now,
+          localDate: localDate(now, timeZone),
+        });
+      }
       const today = await api.require<TodayPayload>('GET', '/today', now);
       const learn = await api.require<LearnPayload>('GET', '/learn', now);
       const userId = api.userId;
       if (!userId) throw new Error('Simulation API did not create a learner');
       const budgetChoices: Array<number | undefined> = [10, 20, 30, 45, 60, undefined];
       const scriptedScenario = isScriptedScenarioProfile(profile);
-      const selectedBudget = scriptedScenario
-        ? 20
-        : budgetChoices[
-            Math.floor(
-              decisionRandom(profile, day, 'daily-session', 'budget', 1) * budgetChoices.length,
-            )
-          ];
+      const selectedBudget =
+        profile === 'scenario-quizzes'
+          ? 60
+          : scriptedScenario
+            ? 20
+            : budgetChoices[
+                Math.floor(
+                  decisionRandom(profile, day, 'daily-session', 'budget', 1) * budgetChoices.length,
+                )
+              ];
       const budgetRequest = selectedBudget === undefined ? {} : { budgetMinutes: selectedBudget };
       const stateBeforeSession = await new LearnerRepository(db, userId).schedulerState(
         now,
@@ -4860,6 +5218,18 @@ async function simulateProfile(
           );
           return parsed.kind === 'paper' && paperId ? { ...parsed, paperId } : parsed;
         });
+        await auditQuizOffer(
+          db,
+          runtime,
+          day,
+          userId,
+          today.quizOffer,
+          activities,
+          selectedBudget ?? today.budgetMinutes,
+        );
+        const timedQuiz = activities.find((activity) => activity.kind === 'mixed_quiz');
+        if (timedQuiz)
+          stateBeforeSession.pendingQuiz = { plannedMinutes: timedQuiz.plannedMinutes };
         auditSavedSessionPlan(
           runtime,
           day,
@@ -5420,6 +5790,7 @@ function exampleText(violation: SimulationViolation): string {
     planActivities: evidence.planActivities,
     lessonRuns: evidence.lessonRuns,
     planHistory: evidence.planHistory,
+    quiz: evidence.quiz,
   });
   return `Day ${violation.day}: \`${violation.entityId}\`${context}${missing}${startable}${details}; evidence: ${evidenceText}`;
 }

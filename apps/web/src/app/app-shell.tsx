@@ -566,6 +566,16 @@ function ApplicationShell({ me, pathname }: { me: AuthPayload | undefined; pathn
   const contentRef = useCapturePageLayout();
   const { sidebarOpen, updateSidebarOpen } = useAppSidebarOpenState();
   const isPaperReader = pathname.startsWith('/papers/');
+  const isQuiz = pathname.startsWith('/quizzes/');
+  if (isQuiz) {
+    return (
+      <TutorContextProvider routeAllowed={false}>
+        <main ref={contentRef} data-page-frame className={pageFrameClassName(pathname)}>
+          <Outlet />
+        </main>
+      </TutorContextProvider>
+    );
+  }
   return (
     <TooltipProvider>
       <SidebarProvider open={sidebarOpen} onOpenChange={updateSidebarOpen} disableKeyboardShortcut>

@@ -43,6 +43,7 @@ export type ActivityKind =
   | 'lab'
   | 'reflect'
   | 'teachback'
+  | 'mixed_quiz'
   | 'paper';
 
 export const SCHEDULER_CONFIG = {
@@ -86,6 +87,7 @@ export interface PlannedActivity {
 }
 
 export interface SchedulerState {
+  pendingQuiz?: { plannedMinutes: number };
   timezone?: string;
   activeCourseId: string | null;
   studyCourseIds: string[];
@@ -424,16 +426,30 @@ export function planSession(
   excludedReviewConceptIds: ReadonlySet<string> = new Set(),
   options: { focusConceptId?: string } = {},
 ): SessionPlan {
-  return packWeekday(
+  const quiz = plannedQuiz(state, budgetMinutes);
+  const plan = packWeekday(
     state,
     content,
     now,
-    Math.max(0, budgetMinutes),
+    Math.max(0, budgetMinutes - (quiz?.plannedMinutes ?? 0)),
     excludedLearnConceptIds,
     excludedReviewConceptIds,
     undefined,
     options,
   );
+  return quiz
+    ? { activities: [quiz, ...plan.activities], reasons: [quiz.reason, ...plan.reasons] }
+    : plan;
+}
+
+function plannedQuiz(state: SchedulerState, budgetMinutes: number): PlannedActivity | undefined {
+  if (!state.pendingQuiz || state.pendingQuiz.plannedMinutes > budgetMinutes) return undefined;
+  return {
+    kind: 'mixed_quiz',
+    exerciseIds: [],
+    plannedMinutes: state.pendingQuiz.plannedMinutes,
+    reason: staticReason('Timed mixed quiz'),
+  };
 }
 
 export function explainReviewSelection(
@@ -458,7 +474,7 @@ export function explainReviewSelection(
     state,
     content,
     now,
-    Math.max(0, budgetMinutes),
+    Math.max(0, budgetMinutes - (plannedQuiz(state, budgetMinutes)?.plannedMinutes ?? 0)),
     options.excludedLearnConceptIds ?? new Set(),
     excludedReviewConceptIds,
     trace,
@@ -589,7 +605,16 @@ function replanInputs(
     ),
   );
   return {
-    state: { ...state, usedExerciseIds },
+    state: {
+      ...state,
+      usedExerciseIds,
+      pendingQuiz: [...inProgress, ...completed].some((activity) => activity.kind === 'mixed_quiz')
+        ? undefined
+        : (state.pendingQuiz ??
+          existingActivities.find(
+            (activity) => activity.kind === 'mixed_quiz' && activity.status === 'planned',
+          )),
+    },
     inProgress,
     excludedLearnConceptIds,
     coveredReviewConceptIds,

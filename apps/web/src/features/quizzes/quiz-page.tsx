@@ -1,0 +1,192 @@
+import type { QuizPayload } from '@academy/contracts/quizzes';
+import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
+import { getRouteApi, Link, useNavigate } from '@tanstack/react-router';
+import { useEffect, useRef, useState } from 'react';
+import { Markdown } from '../../components/markdown.js';
+import { Button } from '../../components/ui/button.js';
+import { Card, CardContent, CardHeader } from '../../components/ui/card.js';
+import { ExerciseForm } from '../exercises/exercise-form.js';
+import { postQuiz, quizQueryOptions } from './queries.js';
+
+const route = getRouteApi('/quizzes/$id');
+
+function Countdown({
+  deadline,
+  serverNow,
+  onExpire,
+}: {
+  deadline: string;
+  serverNow: string;
+  onExpire: () => void;
+}) {
+  const initial = Date.parse(deadline) - Date.parse(serverNow);
+  const [remaining, setRemaining] = useState(initial);
+  const expire = useRef(onExpire);
+  useEffect(() => {
+    expire.current = onExpire;
+  }, [onExpire]);
+  useEffect(() => {
+    const end = performance.now() + initial;
+    const tick = () => {
+      const time = Math.max(0, end - performance.now());
+      setRemaining(time);
+      if (time === 0) expire.current();
+      return time;
+    };
+    if (tick() === 0) return;
+    const timer = window.setInterval(() => {
+      if (tick() === 0) window.clearInterval(timer);
+    }, 200);
+    return () => window.clearInterval(timer);
+  }, [initial]);
+  const seconds = Math.ceil(remaining / 1000);
+  return (
+    <span role="timer" aria-label="Time remaining" className="tabular-nums">
+      {Math.floor(seconds / 60)}:{String(seconds % 60).padStart(2, '0')}
+    </span>
+  );
+}
+
+export function QuizPage() {
+  const { id } = route.useParams();
+  const { session } = route.useSearch();
+  const client = useQueryClient();
+  const navigate = useNavigate();
+  const query = useSuspenseQuery({ ...quizQueryOptions(id), staleTime: 0 });
+  const quiz = query.data;
+  const [localExpired, setLocalExpired] = useState(false);
+  const apply = (next: QuizPayload) =>
+    client.setQueryData(quizQueryOptions(next.id).queryKey, next);
+  const answer = useMutation({
+    mutationFn: (input: { position: number; answer: unknown }) =>
+      postQuiz<QuizPayload>(`${id}/answer`, input),
+    onSuccess: apply,
+    onError: () => {
+      void query.refetch();
+    },
+  });
+  const finalize = useMutation({
+    mutationFn: () => postQuiz<QuizPayload>(`${id}/finalize`),
+    onSuccess: (next) => {
+      apply(next);
+      void client.invalidateQueries({ queryKey: ['session'] });
+      void client.invalidateQueries({ queryKey: ['today'] });
+    },
+  });
+  const { mutate: finish, status: finishStatus } = finalize;
+  const canFinalize = (quiz.expired || localExpired || !quiz.question) && !quiz.result;
+  useEffect(() => {
+    if (canFinalize && !answer.isPending && finishStatus === 'idle') finish();
+  }, [canFinalize, answer.isPending, finish, finishStatus]);
+  const followUps = useMutation({
+    mutationFn: () => postQuiz<{ sessionId: string }>(`${id}/follow-ups`),
+    onSuccess: ({ sessionId }) => navigate({ to: '/session/$id', params: { id: sessionId } }),
+  });
+  const retake = useMutation({
+    mutationFn: () => postQuiz<QuizPayload>(`${id}/retake`),
+    onSuccess: (next) => {
+      apply(next);
+      return navigate({ to: '/quizzes/$id', params: { id: next.id }, search: { session } });
+    },
+  });
+  const error = answer.error ?? finalize.error ?? followUps.error ?? retake.error;
+  const expired = localExpired || quiz.expired;
+  return (
+    <section className="mx-auto w-full max-w-2xl space-y-4">
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <h1 className="font-semibold">
+            {quiz.result ? 'Quiz results' : quiz.retake ? 'Quiz retake' : 'Timed quiz'}
+          </h1>
+          {!quiz.result && (
+            <Countdown
+              deadline={quiz.deadline}
+              serverNow={quiz.serverNow}
+              onExpire={() => setLocalExpired(true)}
+            />
+          )}
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {quiz.result ? (
+            <>
+              <p>
+                {Math.round(quiz.result.score * 100)}% correct
+                {quiz.retake ? '' : ` · ${quiz.result.xpAwarded} XP`}
+              </p>
+              {quiz.result.topics.length > 0 && (
+                <div className="space-y-2">
+                  <h2 className="font-medium">Follow-up reviews</h2>
+                  <ul className="list-disc space-y-1 pl-5">
+                    {quiz.result.topics.map((topic) => (
+                      <li key={topic.conceptId}>
+                        {topic.title}: {topic.missed ? 'Missed' : 'Over target time'}
+                        {topic.reviewed ? ' · Reviewed' : ''}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              <div className="flex flex-wrap gap-2">
+                {quiz.result.topics.some((topic) => !topic.reviewed) && (
+                  <Button disabled={followUps.isPending} onClick={() => followUps.mutate()}>
+                    Start follow-up reviews
+                  </Button>
+                )}
+                {(quiz.result.retake.eligible || quiz.result.retake.id) && (
+                  <Button disabled={retake.isPending} onClick={() => retake.mutate()}>
+                    {quiz.result.retake.id ? 'View retake' : 'Start retake'}
+                  </Button>
+                )}
+                <Button variant="outline" asChild>
+                  {session ? (
+                    <Link to="/session/$id" params={{ id: session }}>
+                      Continue session
+                    </Link>
+                  ) : (
+                    <Link to="/">Back to Home</Link>
+                  )}
+                </Button>
+              </div>
+              {!quiz.retake &&
+                !quiz.result.retake.eligible &&
+                !quiz.result.retake.id &&
+                quiz.result.topics.some((topic) => topic.missed) && (
+                  <p className="text-sm text-muted-foreground">
+                    Complete the follow-up reviews to unlock the retake.
+                  </p>
+                )}
+            </>
+          ) : quiz.question && !expired ? (
+            <>
+              <p className="text-sm text-muted-foreground">
+                Question {quiz.question.position + 1} of {quiz.totalItems}
+              </p>
+              <div data-testid="quiz-prompt">
+                <Markdown>{quiz.question.exercise.prompt}</Markdown>
+              </div>
+              <ExerciseForm
+                key={quiz.question.position}
+                exercise={quiz.question.exercise}
+                loading={answer.isPending}
+                onSubmit={(value) => {
+                  if (!quiz.question || answer.isPending) return;
+                  answer.mutate({ position: quiz.question.position, answer: value });
+                }}
+              />
+            </>
+          ) : (
+            <p role="status">
+              {expired ? 'Time is up. Calculating results…' : 'Calculating results…'}
+            </p>
+          )}
+          {error && (
+            <p className="text-sm text-destructive" role="alert">
+              {error.message}
+            </p>
+          )}
+          {finalize.isError && <Button onClick={() => finalize.mutate()}>Try again</Button>}
+        </CardContent>
+      </Card>
+    </section>
+  );
+}

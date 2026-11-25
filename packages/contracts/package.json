@@ -15,6 +15,7 @@
     "./placement": "./src/placement.ts",
     "./progress": "./src/progress.ts",
     "./projects": "./src/projects.ts",
+    "./quizzes": "./src/quizzes.ts",
     "./reviews": "./src/reviews.ts",
     "./sessions": "./src/sessions.ts",
     "./settings": "./src/settings.ts",
