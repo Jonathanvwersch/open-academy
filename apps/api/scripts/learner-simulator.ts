@@ -38,7 +38,11 @@ import {
   type SchedulerState,
 } from '@academy/aesop/planner/scheduler';
 import { localDateKey } from '@academy/aesop/progress/xp';
-import { QUIZ_XP_INTERVAL, QUIZ_XP_WINDOW } from '@academy/aesop/quizzes/mixed-quiz';
+import {
+  QUIZ_XP_INTERVAL,
+  QUIZ_XP_WINDOW,
+  quizTargetSeconds,
+} from '@academy/aesop/quizzes/mixed-quiz';
 import type { CourseCatalogPayload, CoursePayload, LearnPayload } from '@academy/contracts/course';
 import type { QuizPayload } from '@academy/contracts/quizzes';
 import type { SessionActivity, SessionPayload, TodayPayload } from '@academy/contracts/sessions';
@@ -3172,16 +3176,22 @@ async function processTimedQuiz(
     for (const item of items.slice(0, timeout ? 1 : items.length)) {
       if (!current.question) break;
       const exercise = item.question.exercise;
-      const correct = wantsCorrect(runtime, exercise.concept, day, activity.id, exercise.id);
+      const scriptedSlowAnswer = timeout && item.position === 0;
+      const correct =
+        scriptedSlowAnswer ||
+        wantsCorrect(runtime, exercise.concept, day, activity.id, exercise.id);
+      const answeredAt = scriptedSlowAnswer
+        ? new Date(+startedAt + quizTargetSeconds(exercise) * 1000 + 1000)
+        : startedAt;
       const answer = correct
         ? answerFor(content, exercise.id, item.question.seed)
         : wrongAnswerFor(content, exercise.id, item.question.seed);
-      current = await api.require<QuizPayload>('POST', `${path}/answer`, startedAt, {
+      current = await api.require<QuizPayload>('POST', `${path}/answer`, answeredAt, {
         position: item.position,
         answer,
       });
       recordOutcome(runtime, exercise.concept, day, Number(correct));
-      if (item.position === 0) current = await api.require<QuizPayload>('GET', path, startedAt);
+      if (item.position === 0) current = await api.require<QuizPayload>('GET', path, answeredAt);
     }
     const persisted = await runItems(start.id);
     const expectedScore = persisted.filter((item) => item.correct === true).length / items.length;
@@ -3241,19 +3251,28 @@ async function processTimedQuiz(
   };
   const items = await selectionEvidence(original.id, !original.retake);
   const { result, received } = await run(original, items, runtime.profile === 'scenario-quizzes');
-  const missed = (await runItems(original.id))
+  const finalizedItems = await runItems(original.id);
+  const missed = finalizedItems
     .filter((item) => item.correct !== true)
+    .map((item) => item.conceptId);
+  const slowCorrect = finalizedItems
+    .filter(
+      (item) =>
+        item.correct === true &&
+        (item.latencyMs ?? 0) > quizTargetSeconds(item.question.exercise) * 1000,
+    )
     .map((item) => item.conceptId);
   if (missed.length === 0 || original.retake) {
     return { lessons: 0, reviews: 0, reviewAttempts: 0 };
   }
   const path = `/quizzes/${original.id}`;
   const earlyRetake = await api.call('POST', `${path}/retake`, received);
+  const followUpTopics = [...missed, ...slowCorrect];
   const dueCards = await db
     .select({ conceptId: reviewCards.conceptId, dueAt: reviewCards.dueAt })
     .from(reviewCards)
-    .where(and(eq(reviewCards.userId, userId), inArray(reviewCards.conceptId, missed)));
-  const dueNowTopics = missed.filter((topic) =>
+    .where(and(eq(reviewCards.userId, userId), inArray(reviewCards.conceptId, followUpTopics)));
+  const dueNowTopics = followUpTopics.filter((topic) =>
     dueCards.some((card) => card.conceptId === topic && card.dueAt <= received),
   );
   const followUpAt = api.nextQuizTime(received);
@@ -3292,6 +3311,7 @@ async function processTimedQuiz(
     after.result?.topics.filter((topic) => topic.reviewed).map((topic) => topic.conceptId) ?? [];
   const evidence = {
     missed,
+    slowCorrect,
     dueNowTopics,
     reviewed,
     earlyRetakeStatus: earlyRetake.status,
@@ -3305,8 +3325,8 @@ async function processTimedQuiz(
     evidence,
     earlyRetake.status !== 409 ||
       !after.result?.retake.eligible ||
-      missed.some((topic) => !reviewed.includes(topic) || !dueNowTopics.includes(topic))
-      ? 'A missed topic lacked an immediate follow-up or the retake gate failed'
+      followUpTopics.some((topic) => !reviewed.includes(topic) || !dueNowTopics.includes(topic))
+      ? 'A missed or slow topic lacked an immediate follow-up or the retake gate failed'
       : undefined,
   );
   if (after.result?.retake.eligible) {
@@ -3987,12 +4007,18 @@ class P28Audit {
     for (const log of logs) {
       if (this.logsSeen.has(log.id)) continue;
       this.logsSeen.add(log.id);
-      if (Number(log.rating) !== Rating.Good && Number(log.rating) !== Rating.Hard) continue;
+      const rating = Number(log.rating);
+      if (rating !== Rating.Good && rating !== Rating.Hard) continue;
       runtime.report.p28.successfulReviewsChecked += 1;
       markChecked(runtime, 'P28');
       const speed = this.speed(log.conceptId);
-      const effective = Date.parse(text(object(log.fsrsLog).effectiveDueAt) ?? '');
-      const expected = log.rawDueAt ? p28ExpectedDue(log.rawDueAt, now, timeZone, speed) : NaN;
+      const fsrsLog = object(log.fsrsLog);
+      const effective = Date.parse(text(fsrsLog.effectiveDueAt) ?? '');
+      const expected = !log.rawDueAt
+        ? NaN
+        : fsrsLog.source === 'mixed_quiz' && rating === Rating.Hard
+          ? +now
+          : p28ExpectedDue(log.rawDueAt, now, timeZone, speed);
       if (
         log.speed == null ||
         Math.abs(log.speed - speed) > 0.00001 ||

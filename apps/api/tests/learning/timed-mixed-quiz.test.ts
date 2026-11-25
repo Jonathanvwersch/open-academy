@@ -1,6 +1,7 @@
-import { newReviewCard } from '@academy/aesop/memory/fsrs';
-import type { QuizQuestion } from '@academy/aesop/quizzes/mixed-quiz';
+import { fsrsScheduler, newReviewCard } from '@academy/aesop/memory/fsrs';
+import { type QuizQuestion, quizTargetSeconds } from '@academy/aesop/quizzes/mixed-quiz';
 import { eq, inArray } from 'drizzle-orm';
+import { Rating } from 'ts-fsrs';
 import { afterAll, expect, test } from 'vitest';
 import { env } from '../../src/config.js';
 import { loadContent } from '../../src/content/load.js';
@@ -221,5 +222,69 @@ test.each([false, true])(
       .from(sessionActivities)
       .where(eq(sessionActivities.sessionId, followUps.body.sessionId));
     expect(activities).toEqual([{ conceptId: 'derivatives' }]);
+  },
+);
+
+test.each([1, 1.6])(
+  'a slow correct quiz answer keeps the immediate Hard schedule at speed %s',
+  async (speed) => {
+    const userId = await createLearner();
+    const content = await loadContent('content');
+    const exercise = content.exercisesByConcept.get('vectors')?.find((item) => item.type === 'mc');
+    if (exercise?.type !== 'mc') throw new Error('No vectors quiz exercise');
+    const question: QuizQuestion = { exercise, seed: 0, key: exercise.id };
+    const now = new Date('2026-01-14T12:00:00.000Z');
+    const startedAt = new Date('2026-01-14T11:55:00.000Z');
+    const latencyMs = quizTargetSeconds(exercise) * 1000 + 1000;
+    if (speed > 1) {
+      await db.insert(topicSpeed).values({
+        userId,
+        conceptId: exercise.concept,
+        successes: 2.44,
+        trials: 2.44,
+        answers: 3,
+        updatedAt: startedAt,
+      });
+    }
+    const [run] = await db
+      .insert(quizRuns)
+      .values({ userId, seed: 0, difficulty: 2, plannedMinutes: 5, startedAt, deadline: now })
+      .returning();
+    await db.insert(quizItems).values({
+      runId: run.id,
+      position: 0,
+      conceptId: exercise.concept,
+      question,
+      answeredAt: new Date(+startedAt + latencyMs),
+      latencyMs,
+      correct: true,
+      submission: { answer: 'submitted', correct: 1, gradedBy: 'deterministic' },
+    });
+
+    const response = await finalizeQuiz(
+      { db, content: async () => content, tutorProvider: null },
+      {
+        userId,
+        timeZone: 'UTC',
+        params: { id: run.id },
+        query: {},
+        body: undefined,
+        repo: new LearnerRepository(db, userId),
+        tutor: null,
+        now: () => now,
+      },
+    );
+    expect(response.status).toBe(200);
+    const [card] = await db.select().from(reviewCards).where(eq(reviewCards.userId, userId));
+    const [log] = await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, card.id));
+    const raw = fsrsScheduler(false).next(newReviewCard(now), now, Rating.Hard);
+    expect(card.dueAt).toEqual(now);
+    expect(card.fsrs).toEqual(JSON.parse(JSON.stringify({ ...raw.card, due: now })));
+    expect(log).toMatchObject({
+      rating: String(Rating.Hard),
+      rawDueAt: raw.card.due,
+      fsrsLog: { effectiveDueAt: now.toISOString() },
+    });
+    expect(log.speed).toBeCloseTo(speed, 5);
   },
 );

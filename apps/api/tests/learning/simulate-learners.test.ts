@@ -131,7 +131,7 @@ test('P24 distinguishes a missed in-window opportunity from a legitimate late of
   ).toBeUndefined();
 });
 
-test('P24–P27 observe an offered quiz, timeout, completed follow-ups, and a fresh retake', async () => {
+test('P24–P28 observe a quiz, a slow correct answer, timeout, follow-ups, and a fresh retake', async () => {
   const content = await loadContent('content');
   const {
     profiles: [profile],
@@ -142,13 +142,18 @@ test('P24–P27 observe an offered quiz, timeout, completed follow-ups, and a fr
   });
   expect(
     profile.violations.filter((violation) =>
-      ['P24', 'P25', 'P26', 'P27'].includes(violation.invariant),
+      ['P24', 'P25', 'P26', 'P27', 'P28'].includes(violation.invariant),
     ),
   ).toEqual([]);
   expect(profile.checkedCounts.P24).toBeGreaterThan(0);
   expect(profile.checkedCounts.P25).toBeGreaterThanOrEqual(2);
   expect(profile.checkedCounts.P26).toBeGreaterThan(0);
   expect(profile.checkedCounts.P27).toBeGreaterThanOrEqual(2);
+  expect(
+    profile.quizEvidence?.find(({ invariant }) => invariant === 'P26')?.evidence,
+  ).toMatchObject({
+    slowCorrect: [expect.any(String)],
+  });
   const quizTimings = profile.quizEvidence?.filter(({ invariant }) => invariant === 'P27');
   expect(quizTimings).toHaveLength(2);
   expect(Date.parse(String(quizTimings?.[1].evidence.startedAt))).toBeGreaterThan(

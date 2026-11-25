@@ -287,9 +287,9 @@ async function applyQuizReview(
       outcome.rating,
       timeZone,
       fsrsFuzzEnabled(),
-      speed,
+      outcome.followUp ? 1 : speed,
     );
-    const dueAt = outcome.rating === Rating.Again ? now : scheduled.card.due;
+    const dueAt = outcome.followUp ? now : scheduled.card.due;
     return {
       card: {
         fsrs: { ...scheduled.card, due: dueAt },
