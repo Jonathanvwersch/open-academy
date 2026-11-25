@@ -1,11 +1,11 @@
 import { dailyStudyMinutes, type SessionPreferences } from '@academy/aesop/planner/session-budget';
+import { quizAccommodation } from '@academy/aesop/quizzes/quiz-offer';
 import { studyDays } from '@academy/contracts/settings';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { drizzleLearnerStore } from '../../db/learner-store.js';
 import { users } from '../../db/schema.js';
 import { type FeatureRequest, type FeatureServices, serviceResult } from '../../service-context.js';
-import { quizAccommodation } from '../quizzes/offer.js';
 
 export async function getSettings(deps: FeatureServices, request: FeatureRequest) {
   const { tutorProvider } = deps;

@@ -7,7 +7,9 @@ import {
 } from '../graph/prerequisites.js';
 import { isLessonRetryReady } from '../lessons/lesson-retry.js';
 import { localDateKey, sessionKindForDate } from '../progress/xp.js';
+import { quizOffer } from '../quizzes/quiz-offer.js';
 import type { Id, NewRow } from '../store/core-store.js';
+import type { FlowStore } from '../store/flow-store.js';
 import type { Activity, Session, SessionStore } from '../store/session-store.js';
 import { withReviewTopics } from './home-plan.js';
 import {
@@ -51,7 +53,7 @@ export async function plannedActivityRow(
 }
 
 export async function createSession(
-  store: SessionStore,
+  store: FlowStore,
   learnerId: Id,
   index: ContentIndex,
   now: Date,
@@ -60,11 +62,6 @@ export async function createSession(
   reads: {
     schedulerState(now: Date, content: ContentIndex): Promise<SchedulerState>;
     preferences(): Promise<SessionPreferences>;
-    quizOffer(
-      content: ContentIndex,
-      now: Date,
-      courseId: string | null,
-    ): Promise<{ plannedMinutes?: number }>;
     initialProgress: InitialProgress;
   },
 ) {
@@ -131,7 +128,9 @@ export async function createSession(
     }
     state.inProgressConceptId = input.focusConceptId;
   }
-  const availableQuiz = await reads.quizOffer(index, now, state.activeCourseId);
+  const availableQuiz = await quizOffer(store, learnerId, index, now, state.activeCourseId, {
+    prefs,
+  });
   state.pendingQuiz =
     availableQuiz.plannedMinutes === undefined
       ? undefined

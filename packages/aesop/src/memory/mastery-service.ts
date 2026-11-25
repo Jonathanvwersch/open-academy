@@ -43,6 +43,7 @@ export async function applyImplicitRepetitions(
     now: Date;
     timeZone: string;
     enableFuzz: boolean;
+    activeOnly?: boolean;
   },
 ) {
   const encompassing = buildEncompassingIndex(input.index);
@@ -52,7 +53,8 @@ export async function applyImplicitRepetitions(
       : encompassing.ancestors(input.conceptId);
   if (targets.size === 0) return;
 
-  const cards = await store.listReviewCards(input.learnerId, [...targets.keys()]);
+  const options = input.activeOnly ? { activeOnly: true } : undefined;
+  const cards = await store.listReviewCards(input.learnerId, [...targets.keys()], options);
   const speeds =
     input.rating === Rating.Again || cards.length === 0
       ? new Map<string, number>()
@@ -75,7 +77,8 @@ export async function applyImplicitRepetitions(
     });
     const after = result ?? before;
     const applied =
-      !!result && (await store.updateReviewCardIfDue(input.learnerId, card.id, card.dueAt, result));
+      !!result &&
+      (await store.updateReviewCardIfDue(input.learnerId, card.id, card.dueAt, result, options));
     implicitRepetitionTrace?.({
       sourceConceptId: input.conceptId,
       rating: input.rating,

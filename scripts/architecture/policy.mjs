@@ -21,7 +21,6 @@ export const publicFeatureModules = {
   api: new Set([
     'features/course/service.ts',
     'features/papers/service.ts',
-    'features/quizzes/offer.ts',
     'features/tutor/provider.ts',
     'features/tutor/schemas.ts',
     'features/tutor/feedback-context.ts',
@@ -57,6 +56,7 @@ export const sharedPackageDependencies = new Set(['zod', '@academy/contracts', '
 
 export const aesopDependencies = new Set([
   '@academy/contracts',
+  '@academy/shared',
   'mathjs',
   'ts-fsrs',
   'yaml',

@@ -3,6 +3,7 @@ import { startOfNextCalendarDay } from '../memory/fsrs.js';
 import { TOPIC_SPEED_DECAY, TOPIC_SPEED_POLICY, type TopicSpeedEvidence } from '../memory/speed.js';
 import type { MasteryRecord } from '../memory/types.js';
 import type { Attempt, AttemptQuery, Enrollment, Settings, XpEvent } from './core-store.js';
+import type { FlowStore, TimedQuizItem, TimedQuizRun } from './flow-store.js';
 import type { MasteryEventRecord, OpenRemediationFlag, StoredReviewCard } from './learner-store.js';
 import type {
   FlagQuery,
@@ -12,11 +13,7 @@ import type {
   LessonRun,
   ReviewLogEntry,
 } from './lesson-store.js';
-import type {
-  DiagnosticRun,
-  PlacementGrant,
-  PlacementReviewStore,
-} from './placement-review-store.js';
+import type { DiagnosticRun, PlacementGrant } from './placement-review-store.js';
 import type {
   Activity,
   ActivityQuery,
@@ -25,7 +22,7 @@ import type {
   Session,
 } from './session-store.js';
 
-export type MemoryLearnerStore = PlacementReviewStore & {
+export type MemoryLearnerStore = FlowStore & {
   addRemediationFlag(
     learnerId: string,
     flag: { conceptId: string; targetPrereqId: string | null; createdAt?: Date },
@@ -51,6 +48,8 @@ type LearnerState = {
   lessonProblems: Map<string, LessonProblem>;
   lessonQuizAttempts: Map<string, LessonQuizAttempt>;
   lessonQuizItems: Map<string, LessonQuizItem>;
+  timedQuizRuns: Map<string, TimedQuizRun>;
+  timedQuizItems: Map<string, TimedQuizItem[]>;
 };
 
 type Hint = { exerciseId: string; activityId: string | null; createdAt: Date; level: number };
@@ -88,6 +87,7 @@ type IdCounters = {
   lessonProblemCount: number;
   lessonQuizCount: number;
   lessonQuizItemCount: number;
+  timedQuizCount: number;
 };
 
 const modeOrder: Attempt['mode'][] = ['practice', 'assessment', 'diagnostic', 'review'];
@@ -155,6 +155,7 @@ export function memoryStore(seed: MemorySeed = {}): MemoryLearnerStore {
       lessonProblemCount: 0,
       lessonQuizCount: 0,
       lessonQuizItemCount: 0,
+      timedQuizCount: 0,
     },
   );
 }
@@ -189,6 +190,8 @@ function scopedStore(
         lessonProblems: new Map(),
         lessonQuizAttempts: new Map(),
         lessonQuizItems: new Map(),
+        timedQuizRuns: new Map(),
+        timedQuizItems: new Map(),
       };
       data.learners.set(learnerId, state);
     }
@@ -203,6 +206,35 @@ function scopedStore(
         (!query.statuses || query.statuses.includes(row.status)) &&
         (query.conceptId === undefined || row.conceptId === query.conceptId),
     );
+  }
+
+  function checkTimedQuizRun(learnerId: string, run: TimedQuizRun) {
+    const runs = data.learners.get(learnerId)?.timedQuizRuns;
+    if (
+      run.finalizedAt === null &&
+      [...(runs?.values() ?? [])].some((other) => other.id !== run.id && other.finalizedAt === null)
+    )
+      throw new Error('An active timed quiz already exists.');
+    if (run.retakeOf !== null) {
+      const allRuns = [...data.learners.values()].flatMap((state) => [
+        ...state.timedQuizRuns.values(),
+      ]);
+      if (!allRuns.some(({ id }) => id === run.retakeOf) && run.id !== run.retakeOf) {
+        throw new Error('Original timed quiz not found.');
+      }
+      if (allRuns.some((other) => other.id !== run.id && other.retakeOf === run.retakeOf)) {
+        throw new Error('A retake already exists.');
+      }
+    }
+    checkTimedQuizActivity(run.activityId);
+  }
+
+  function checkTimedQuizActivity(activityId: string | null) {
+    if (
+      activityId !== null &&
+      ![...data.learners.values()].some((state) => state.activities.has(activityId))
+    )
+      throw new Error('Timed quiz activity not found.');
   }
 
   function matchingFlags(learnerId: string, query: FlagQuery) {
@@ -522,11 +554,13 @@ function scopedStore(
       });
       markWrite(learnerId);
     },
-    async listReviewCards(learnerId, conceptIds) {
+    async listReviewCards(learnerId, conceptIds, options) {
       assertOpen();
       const concepts = conceptIds && new Set(conceptIds);
       const cards = [...(data.learners.get(learnerId)?.cards.values() ?? [])].filter(
-        (card) => !concepts || concepts.has(card.conceptId),
+        (card) =>
+          (!concepts || concepts.has(card.conceptId)) &&
+          (!options?.activeOnly || card.suspendedAt === null),
       );
       return structuredClone(
         cards.sort(
@@ -567,16 +601,112 @@ function scopedStore(
       await this.appendReviewLog(learnerId, id, log);
       return true;
     },
-    async updateReviewCardIfDue(learnerId, cardId, expectedDueAt, next) {
+    async updateReviewCardIfDue(learnerId, cardId, expectedDueAt, next, options) {
       assertOpen();
       const card = [...(data.learners.get(learnerId)?.cards.values() ?? [])].find(
         ({ id }) => id === cardId,
       );
-      if (!card || card.dueAt.getTime() !== expectedDueAt.getTime()) return false;
+      if (
+        !card ||
+        (options?.activeOnly && card.suspendedAt !== null) ||
+        card.dueAt.getTime() !== expectedDueAt.getTime()
+      )
+        return false;
       markWrite(learnerId);
       card.fsrs = structuredClone(next.fsrs);
       card.dueAt = structuredClone(next.dueAt);
       return true;
+    },
+    async listTimedQuizRuns(
+      learnerId,
+      { id, activityId, retakeOf, active, original, finalizedThrough },
+    ) {
+      assertOpen();
+      const rows = [...(data.learners.get(learnerId)?.timedQuizRuns.values() ?? [])].filter(
+        (run) =>
+          (id === undefined || run.id === id) &&
+          (activityId === undefined || run.activityId === activityId) &&
+          (retakeOf === undefined || run.retakeOf === retakeOf) &&
+          (!active || run.finalizedAt === null) &&
+          (!original || run.retakeOf === null) &&
+          (finalizedThrough === undefined ||
+            (run.finalizedAt !== null && run.finalizedAt <= finalizedThrough)),
+      );
+      if (original) {
+        rows.sort(
+          (left, right) =>
+            (left.finalizedAt?.getTime() ?? Infinity) -
+              (right.finalizedAt?.getTime() ?? Infinity) ||
+            left.startedAt.getTime() - right.startedAt.getTime() ||
+            left.seed - right.seed,
+        );
+      }
+      return structuredClone(rows);
+    },
+    async listTimedQuizItems(learnerId, runIds) {
+      assertOpen();
+      const items = data.learners.get(learnerId)?.timedQuizItems;
+      return structuredClone(
+        [...new Set(runIds)]
+          .flatMap((runId) => items?.get(runId) ?? [])
+          .sort((left, right) => left.position - right.position),
+      );
+    },
+    async insertTimedQuiz(learnerId, run, items) {
+      assertOpen();
+      const row = structuredClone({ ...run, id: `timed-quiz-${++ids.timedQuizCount}` });
+      checkTimedQuizRun(learnerId, row);
+      if (new Set(items.map(({ position }) => position)).size !== items.length) {
+        throw new Error('A timed quiz item already exists at this position.');
+      }
+      for (const item of items) checkTimedQuizActivity(item.followUpActivityId);
+      const state = stateFor(learnerId);
+      state.timedQuizRuns.set(row.id, row);
+      state.timedQuizItems.set(
+        row.id,
+        structuredClone(items.map((item) => ({ ...item, runId: row.id }))),
+      );
+      markWrite(learnerId);
+      return structuredClone(row);
+    },
+    async patchTimedQuizRun(learnerId, runId, patch) {
+      assertOpen();
+      const runs = data.learners.get(learnerId)?.timedQuizRuns;
+      const current = runs?.get(runId);
+      if (!runs || !current) throw new Error('Timed quiz run not found.');
+      const next = applyPatch(current, patch);
+      checkTimedQuizRun(learnerId, next);
+      runs.set(runId, next);
+      markWrite(learnerId);
+      return structuredClone(next);
+    },
+    async patchTimedQuizItem(learnerId, runId, position, patch) {
+      assertOpen();
+      const items = data.learners.get(learnerId)?.timedQuizItems.get(runId);
+      const index = items?.findIndex((item) => item.position === position) ?? -1;
+      if (!items || index < 0) return;
+      const next = applyPatch(items[index], patch);
+      checkTimedQuizActivity(next.followUpActivityId);
+      items[index] = next;
+      markWrite(learnerId);
+    },
+    async linkTimedQuizFollowUps(learnerId, conceptIds, activityId) {
+      assertOpen();
+      const state = data.learners.get(learnerId);
+      if (!state) return;
+      const pending = [...state.timedQuizRuns.values()]
+        .filter((run) => run.finalizedAt !== null)
+        .flatMap((run) => state.timedQuizItems.get(run.id) ?? [])
+        .filter(
+          (item) =>
+            item.followUp &&
+            item.followUpActivityId === null &&
+            conceptIds.includes(item.conceptId),
+        );
+      if (!pending.length) return;
+      checkTimedQuizActivity(activityId);
+      for (const item of pending) item.followUpActivityId = activityId;
+      markWrite(learnerId);
     },
     async listDiagnosticRuns(learnerId, { id, courseId, status }) {
       assertOpen();
@@ -837,6 +967,18 @@ function scopedStore(
       for (const id of deleted) state.activities.delete(id);
       markWrite(learnerId);
       for (const [owner, learner] of data.learners) {
+        for (const run of learner.timedQuizRuns.values()) {
+          if (run.activityId === null || !deleted.has(run.activityId)) continue;
+          run.activityId = null;
+          markWrite(owner);
+        }
+        for (const items of learner.timedQuizItems.values()) {
+          for (const item of items) {
+            if (item.followUpActivityId === null || !deleted.has(item.followUpActivityId)) continue;
+            item.followUpActivityId = null;
+            markWrite(owner);
+          }
+        }
         for (const attempt of learner.attempts) {
           if (attempt.activityId === null || !deleted.has(attempt.activityId)) continue;
           attempt.activityId = null;

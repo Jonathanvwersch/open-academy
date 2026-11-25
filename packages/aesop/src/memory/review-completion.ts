@@ -11,6 +11,7 @@ import {
   interleaveReviewExercises,
   type SchedulerState,
 } from '../planner/scheduler.js';
+import type { FlowStore } from '../store/flow-store.js';
 import type { PlacementReviewStore } from '../store/placement-review-store.js';
 import type { Activity } from '../store/session-store.js';
 import { isDueToday, reviewActivityRating, scheduleReviewWithDetails } from './fsrs.js';
@@ -28,13 +29,6 @@ export type ReviewScheduler = {
   enableFsrsFuzz: boolean;
   schedulerState(now: Date, index: ContentIndex): Promise<SchedulerState>;
 };
-
-/** Links finalized timed-quiz items until the timed-quiz store is available. */
-export type LinkTimedQuizFollowUp = (
-  userId: string,
-  activityId: string,
-  conceptIds: string[],
-) => Promise<void>;
 
 function groupReviewExercisesByConcept(exerciseIds: string[], index: ContentIndex) {
   const groups = new Map<string, string[]>();
@@ -322,11 +316,10 @@ async function bringPrerequisiteReviewForward(
 }
 
 export async function completeReviewActivity(
-  store: PlacementReviewStore,
+  store: FlowStore,
   { index, userId, timeZone, now, session }: ReviewContext,
   activity: Activity,
   progress: unknown,
-  linkTimedQuizFollowUp: LinkTimedQuizFollowUp,
 ) {
   const { exerciseIds } = activity;
   await updateActivityAndAdvance(store, {
@@ -348,7 +341,7 @@ export async function completeReviewActivity(
     ),
   ];
   if (reviewedConceptIds.length > 0) {
-    await linkTimedQuizFollowUp(userId, activity.id, reviewedConceptIds);
+    await store.linkTimedQuizFollowUps(userId, reviewedConceptIds, activity.id);
     await store.resolveRemediationFlags(
       userId,
       { targetPrereqIds: reviewedConceptIds, excludeOpenedByActivityId: activity.id },

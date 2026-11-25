@@ -6,6 +6,7 @@ import {
 } from '../placement/grant-commands.js';
 import { updateActivityAndAdvance } from '../planner/activity-advance.js';
 import type { Attempt } from '../store/core-store.js';
+import type { FlowStore } from '../store/flow-store.js';
 import type { PlacementReviewStore } from '../store/placement-review-store.js';
 import type { Activity } from '../store/session-store.js';
 import { hintsSincePreviousAttempt } from './hint-evidence.js';
@@ -14,7 +15,6 @@ import { applyMastery } from './mastery-service.js';
 import { attemptAllowsRetry } from './retry.js';
 import {
   completeReviewActivity,
-  type LinkTimedQuizFollowUp,
   type ReviewScheduler,
   recordReviewRating,
 } from './review-completion.js';
@@ -136,12 +136,11 @@ type GradedAnswer = {
 };
 
 export async function recordExerciseAttempt(
-  store: PlacementReviewStore,
+  store: FlowStore,
   runtime: ReviewScheduler & {
     now: () => Date;
     newId: () => string;
     session: LoadSession;
-    linkTimedQuizFollowUp: LinkTimedQuizFollowUp;
   },
   prepared: PreparedExercise,
   grade: GradedAnswer,
@@ -312,7 +311,6 @@ export async function recordExerciseAttempt(
         },
         activity,
         activityProgress,
-        runtime.linkTimedQuizFollowUp,
       );
     } else {
       await updateActivityAndAdvance(store, {

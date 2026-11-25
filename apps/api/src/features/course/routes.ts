@@ -51,10 +51,12 @@ import {
   weekXp,
   xpGoalFor,
 } from '@academy/aesop/progress/xp';
+import { quizOffer } from '@academy/aesop/quizzes/quiz-offer';
 import { and, eq, inArray, isNull } from 'drizzle-orm';
 import type { Context, Hono } from 'hono';
 import { z } from 'zod';
 import type { Database } from '../../db/client.js';
+import { drizzleLearnerStore } from '../../db/learner-store.js';
 import type { LearnerRepository } from '../../db/repository.js';
 import {
   diagnosticRuns,
@@ -71,7 +73,6 @@ import {
   xpEvents,
 } from '../../db/schema.js';
 import type { ApiEnv } from '../../http/context.js';
-import { quizOffer } from '../quizzes/offer.js';
 import {
   buildCoursePayload,
   courseQueueStatus,
@@ -1360,7 +1361,14 @@ async function plannedActivities(
   const weekday = new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone }).format(now);
   const kind: SessionKind =
     weekday === 'Sat' ? 'saturday' : weekday === 'Sun' ? 'sunday' : 'weekday';
-  const { plannedMinutes } = await quizOffer(repo, index, now, state.activeCourseId);
+  const { plannedMinutes } = await quizOffer(
+    drizzleLearnerStore(repo.db),
+    repo.userId,
+    index,
+    now,
+    state.activeCourseId,
+    { prefs },
+  );
   return planSession(
     { ...state, pendingQuiz: plannedMinutes === undefined ? undefined : { plannedMinutes } },
     index,

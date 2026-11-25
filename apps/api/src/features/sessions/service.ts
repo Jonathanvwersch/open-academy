@@ -21,10 +21,8 @@ import { drizzleLearnerStore } from '../../db/learner-store.js';
 import { LearnerRepository } from '../../db/repository.js';
 import { attempts, lessonRuns, mastery, xpEvents } from '../../db/schema.js';
 import { fsrsFuzzEnabled } from '../../learning/fsrs-fuzz.js';
-import { linkTimedQuizFollowUp } from '../../learning/timed-review-follow-up.js';
 import { type FeatureRequest, type FeatureServices, serviceResult } from '../../service-context.js';
 import { replanSessionActivities } from '../course/service.js';
-import { quizOffer } from '../quizzes/offer.js';
 
 export async function getToday(deps: FeatureServices, request: FeatureRequest) {
   const index = await deps.content();
@@ -41,7 +39,6 @@ export async function getToday(deps: FeatureServices, request: FeatureRequest) {
         session: (id) => repo.session(id),
         attemptedExerciseIdsByActivity: (ids) => repo.attemptedExerciseIdsByActivity(ids),
         completeCourses: (ids, now) => repo.completeCourses(ids, now),
-        quizOffer: (content, now, courseId) => quizOffer(repo, content, now, courseId),
       },
       index,
       request.now(),
@@ -86,7 +83,6 @@ async function createSessionRequest(deps: FeatureServices, request: FeatureReque
     {
       schedulerState: (date, course) => repo.schedulerState(date, course),
       preferences: async () => ((await repo.user())?.prefs ?? {}) as SessionPreferences,
-      quizOffer: (course, date, courseId) => quizOffer(repo, course, date, courseId),
       initialProgress: (activity, lesson) =>
         initialLearnProgress(drizzleLearnerStore(db), request.userId, activity, lesson),
     },
@@ -323,8 +319,6 @@ async function updateActivityProgress(
       },
       schedulerState: (date, index) => repo.schedulerState(date, index),
       attemptedExerciseIdsByActivity: (ids) => repo.attemptedExerciseIdsByActivity(ids),
-      linkTimedQuizFollowUp: (id, activityId, concepts) =>
-        linkTimedQuizFollowUp(db, id, activityId, concepts),
       replanBlocked: (index, date, session, state, blocked, activate) =>
         replanSessionActivities({
           db,
