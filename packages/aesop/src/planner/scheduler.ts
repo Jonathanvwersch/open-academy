@@ -428,20 +428,16 @@ export function planSession(
   excludedReviewConceptIds: ReadonlySet<string> = new Set(),
   options: { focusConceptId?: string } = {},
 ): SessionPlan {
-  const quiz = plannedQuiz(state, budgetMinutes);
-  const plan = packWeekday(
+  return packWeekday(
     state,
     content,
     now,
-    Math.max(0, budgetMinutes - (quiz?.plannedMinutes ?? 0)),
+    budgetMinutes,
     excludedLearnConceptIds,
     excludedReviewConceptIds,
     undefined,
     options,
   );
-  return quiz
-    ? { activities: [quiz, ...plan.activities], reasons: [quiz.reason, ...plan.reasons] }
-    : plan;
 }
 
 function plannedQuiz(state: SchedulerState, budgetMinutes: number): PlannedActivity | undefined {
@@ -477,7 +473,7 @@ export function explainReviewSelection(
     state,
     content,
     now,
-    Math.max(0, budgetMinutes - (plannedQuiz(state, budgetMinutes)?.plannedMinutes ?? 0)),
+    budgetMinutes,
     options.excludedLearnConceptIds ?? new Set(),
     excludedReviewConceptIds,
     trace,
@@ -768,7 +764,7 @@ function packWeekday(
   state: SchedulerState,
   content: ContentIndex,
   now: Date,
-  budget: number,
+  sessionBudgetMinutes: number,
   excludedLearnConceptIds: ReadonlySet<string> = new Set(),
   excludedReviewConceptIds: ReadonlySet<string> = new Set(),
   reviewSelectionTrace?: ReviewSelectionTrace,
@@ -815,6 +811,15 @@ function packWeekday(
       reviewSelectionTrace?.results.set(conceptId, 'not_candidate:excludedByReplan');
     }
   }
+  const focusCandidate =
+    focusConceptId === undefined
+      ? undefined
+      : (candidates.find(
+          (candidate) =>
+            candidate.activity.kind === 'learn' && candidate.activity.conceptId === focusConceptId,
+        ) ?? createManualFocusCandidate(state, content, focusConceptId));
+  const quiz = plannedQuiz(state, sessionBudgetMinutes - (focusCandidate?.adjustedMinutes ?? 0));
+  const budget = Math.max(0, sessionBudgetMinutes - (quiz?.plannedMinutes ?? 0));
   const selected: Candidate[] = [];
   let usedMinutes = 0;
   let reviewMinutes = 0;
@@ -981,13 +986,6 @@ function packWeekday(
     ...resumedLessonConcepts,
     ...retryEligibleLessonConcepts,
   ]);
-  const focusCandidate =
-    focusConceptId === undefined
-      ? undefined
-      : (candidates.find(
-          (candidate) =>
-            candidate.activity.kind === 'learn' && candidate.activity.conceptId === focusConceptId,
-        ) ?? createManualFocusCandidate(state, content, focusConceptId));
   if (focusCandidate) {
     selected.push(focusCandidate);
     usedMinutes += focusCandidate.adjustedMinutes;
@@ -1625,7 +1623,8 @@ function packWeekday(
       plannedActivityCount: activities.length,
     };
   }
-  return { activities, reasons: activities.map((activity) => activity.reason) };
+  const plan = quiz ? [quiz, ...activities] : activities;
+  return { activities: plan, reasons: plan.map((activity) => activity.reason) };
 }
 
 export function mixReviewActivities(selected: Candidate[], content: ContentIndex): Candidate[] {
