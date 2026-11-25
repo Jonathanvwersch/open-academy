@@ -1096,6 +1096,47 @@ test('P15 exempts only the selected reset among equally weak prerequisite dimens
   expect(incorrect.prerequisiteResetEvidence[0]?.selectedCardId).toBe('conceptual');
 });
 
+test('P15 catches an extra prerequisite reset without a FIRe trace', () => {
+  const now = new Date('2026-01-14T12:00:00.000Z');
+  const conceptual = {
+    ...p15Card('conceptual', 'parent', '2026-04-14T12:00:00.000Z'),
+    dimension: 'conceptual',
+  };
+  const math = { ...conceptual, id: 'math', dimension: 'math' };
+  const reset = (card: typeof conceptual) => ({
+    ...card,
+    dueAt: now,
+    fsrs: { ...card.fsrs, due: now },
+  });
+  const audit = (mathAfter: typeof math) =>
+    auditP15Trace(
+      [math, conceptual],
+      [mathAfter, reset(conceptual)],
+      [
+        {
+          cardId: 'prerequisite-log',
+          conceptId: 'prerequisite',
+          rating: String(Rating.Again),
+          previousLog: { rating: String(Rating.Again), createdAt: new Date('2026-01-07') },
+        },
+      ],
+      [],
+      p15Weights,
+      now,
+      'UTC',
+      'review',
+      new Map([['prerequisite-log', 0]]),
+      {
+        hardPrerequisiteIdsByConcept: new Map([['prerequisite', ['parent']]]),
+        completedReviewConceptIds: new Set<string>(),
+        coveredDimensionKeys: new Set<string>(),
+      },
+    );
+
+  expect(audit(math).violations).toEqual([]);
+  expect(audit(reset(math)).violations).toEqual(['parent/math: unexpected prerequisite reset']);
+});
+
 test('P16 flags a selected review when a dropped review is two days more overdue', () => {
   expect(p16HasOverduePrecedenceViolation(5, 3, 8, 4, 0, 4)).toBe(true);
   expect(p16HasOverduePrecedenceViolation(5, 3, 8, 3, 0, 4)).toBe(false);

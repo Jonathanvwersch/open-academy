@@ -3801,7 +3801,9 @@ export function auditP15Trace(
   }
 
   const prerequisiteResetEvidence: P15PrerequisiteResetEvidence[] = [];
-  const resetTouchedAfterTrace = new Set<string>();
+  const observedExpectedResets = new Set<string>();
+  const lastTraceByCard = new Map<string, P15TraceEvent>();
+  for (const event of trace) lastTraceByCard.set(event.targetCardId, event);
   if (activityKind === 'review' && prerequisiteResetContext) {
     for (const log of activityLogs) {
       if (Number(log.rating) !== Rating.Again || log.previousLog?.rating !== String(Rating.Again)) {
@@ -3861,19 +3863,34 @@ export function auditP15Trace(
         continue;
       }
 
-      const latestTrace = [...trace].reverse().find((event) => event.targetCardId === weakest.id);
+      const latestTrace = lastTraceByCard.get(weakest.id);
       if (
-        latestTrace &&
-        latestTrace.activityOrder !== null &&
-        sourceOrder >= latestTrace.activityOrder
+        !latestTrace ||
+        (latestTrace.activityOrder !== null && sourceOrder >= latestTrace.activityOrder)
       ) {
-        resetTouchedAfterTrace.add(weakest.id);
+        observedExpectedResets.add(weakest.id);
       }
     }
   }
 
-  const lastTraceByCard = new Map<string, P15TraceEvent>();
-  for (const event of trace) lastTraceByCard.set(event.targetCardId, event);
+  const resetCandidateIds = new Set(
+    prerequisiteResetEvidence.flatMap((reset) => reset.candidateCardIds),
+  );
+  for (const cardId of resetCandidateIds) {
+    if (lastTraceByCard.has(cardId) || observedExpectedResets.has(cardId)) continue;
+    const before = beforeById.get(cardId);
+    const actual = afterById.get(cardId);
+    if (
+      before &&
+      actual &&
+      before.dueAt.getTime() !== now.getTime() &&
+      actual.dueAt.getTime() === now.getTime() &&
+      actual.lastReviewAt?.getTime() === before.lastReviewAt?.getTime()
+    ) {
+      violations.push(`${p15CardIdentity(actual)}: unexpected prerequisite reset`);
+    }
+  }
+
   for (const [cardId, lastTrace] of lastTraceByCard) {
     checked += 1;
     const actual = afterById.get(cardId);
@@ -3888,7 +3905,7 @@ export function auditP15Trace(
     const explicitReviewAfterTrace =
       lastTrace.activityOrder !== null &&
       (reviewLogOrder.get(cardId) ?? Number.NEGATIVE_INFINITY) > lastTrace.activityOrder;
-    if (explicitReviewAfterTrace || resetTouchedAfterTrace.has(cardId)) continue;
+    if (explicitReviewAfterTrace || observedExpectedResets.has(cardId)) continue;
     if (
       p15TraceState(lastTrace.after) !==
       p15TraceState({ dueAt: actual.dueAt, fsrs: actual.fsrs as Card })
