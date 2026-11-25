@@ -1,5 +1,5 @@
 import { newReviewCard } from '@academy/aesop/memory/fsrs';
-import { expect, type Page, test } from '@playwright/test';
+import { expect, type Page, type Response, test } from '@playwright/test';
 import { env } from '../../apps/api/src/config.js';
 import { createDb } from '../../apps/api/src/db/client.js';
 import {
@@ -137,6 +137,35 @@ async function answerCorrectly(page: Page, answer: string) {
   await expect(page.getByRole('button', { name: 'Continue', exact: true })).toBeVisible();
 }
 
+async function refetchSessionOnFocus(page: Page, sessionId: string) {
+  await page.clock.fastForward('00:31');
+  const matchesSessionResponse = (response: Response) =>
+    new URL(response.url()).pathname === `/api/sessions/${sessionId}` &&
+    response.request().method() === 'GET';
+  const focusResponsePromise = page.waitForResponse(matchesSessionResponse, { timeout: 1000 });
+  await page.evaluate(() => {
+    document.dispatchEvent(new Event('visibilitychange'));
+    window.dispatchEvent(new Event('focus'));
+  });
+  let response = await focusResponsePromise.catch(() => undefined);
+  if (!response) {
+    const invalidationResponsePromise = page.waitForResponse(matchesSessionResponse);
+    await page.evaluate(async (id) => {
+      const queryClient = (
+        window as typeof window & {
+          __academyQueryClient?: {
+            invalidateQueries: (filters: { queryKey: readonly unknown[] }) => Promise<void>;
+          };
+        }
+      ).__academyQueryClient;
+      if (!queryClient) throw new Error('Query client test hook is unavailable');
+      await queryClient.invalidateQueries({ queryKey: ['session', id] });
+    }, sessionId);
+    response = await invalidationResponsePromise;
+  }
+  expect(response.status()).toBe(200);
+}
+
 test('review questions advance immediately while session GETs are delayed', async ({ page }) => {
   const sessionId = await createReviewSession();
   await page.goto(`/session/${sessionId}`);
@@ -161,6 +190,56 @@ test('review questions advance immediately while session GETs are delayed', asyn
     'data-state',
     'correct',
   );
+});
+
+test('review feedback stays on the same question after a focus refetch until Continue', async ({
+  page,
+}) => {
+  const sessionId = await createReviewSession();
+  await page.clock.install();
+  await page.goto(`/session/${sessionId}`);
+  const prompt = page.getByTestId('exercise-prompt');
+  const progress = page.getByTestId('question-progress');
+  await expect(progress).toContainText('Question 1 of 3');
+  await expect(prompt).toContainText('Find the magnitude');
+  await answerCorrectly(page, '5');
+
+  await refetchSessionOnFocus(page, sessionId);
+  await expect(progress).toContainText('Question 1 of 3');
+  await expect(page.getByText('Correct', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Continue', exact: true })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Continue', exact: true }).click();
+  await expect(progress).toContainText('Question 2 of 3');
+  await expect(prompt).toContainText('What is the sum of the coordinates');
+});
+
+test('the last review answer stays visible after a focus refetch until Continue', async ({
+  page,
+}) => {
+  const sessionId = await createReviewSession();
+  await page.clock.install();
+  await page.goto(`/session/${sessionId}`);
+  const prompt = page.getByTestId('exercise-prompt');
+  const progress = page.getByTestId('question-progress');
+
+  await expect(progress).toContainText('Question 1 of 3');
+  await answerCorrectly(page, '5');
+  await page.getByRole('button', { name: 'Continue', exact: true }).click();
+  await expect(progress).toContainText('Question 2 of 3');
+  await answerCorrectly(page, '5');
+  await page.getByRole('button', { name: 'Continue', exact: true }).click();
+  await expect(progress).toContainText('Question 3 of 3');
+  await expect(prompt).toContainText('What does a dot product of zero indicate');
+  await answerCorrectly(page, 'orthogonal');
+
+  await refetchSessionOnFocus(page, sessionId);
+  await expect(progress).toContainText('Question 3 of 3');
+  await expect(page.getByText('Correct', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Continue', exact: true })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Continue', exact: true }).click();
+  await expect(prompt).toContainText('Which statement best describes the main idea');
 });
 
 test('slow correct review answers show the target-time feedback', async ({ page }, testInfo) => {
