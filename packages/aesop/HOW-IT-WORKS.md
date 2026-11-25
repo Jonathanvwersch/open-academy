@@ -163,6 +163,7 @@ A _withdrawn_ grant gives no credit.
 - A withdrawn topic does not unlock the topics that build on it. **[MA]**
 - The engine rebuilds its mastery from the answers that remain, without the placement answers. **[Ours]**
 - Its review cards are suspended. The planner skips them until the learner completes the lesson. **[Ours]**
+- New credit from a later placement test also ends the suspension. **[Ours]**
 - The planner puts the topic back in the plan, in prerequisite order. **[MA]**
 - Planned work that needs the topic is skipped. **[Ours]**
 - A completed course that contains the topic opens again. **[Ours]**

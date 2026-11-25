@@ -281,6 +281,35 @@ test('a direct wrong answer withdraws a conditional grant, cascades, and keeps h
   expect(await snapshot()).toEqual(after);
 });
 
+test('new placement credit for a withdrawn topic reactivates its review cards', async () => {
+  await seedGrant('vectors', 'conditional');
+  await answer('vectors', 0);
+  expect(activeCards((await snapshot()).cards)).toEqual([]);
+  const [secondRun] = await db
+    .insert(diagnosticRuns)
+    .values({
+      userId,
+      kind: 'placement',
+      status: 'completed',
+      state: {},
+      startedAt: now,
+      completedAt: now,
+    })
+    .returning();
+  const grants = await recordPlacementGrants({
+    db,
+    userId,
+    runId: secondRun?.id ?? '',
+    state: { courseId: 'fixture-course', answers: [], known: ['vectors'], unknown: [] },
+    content,
+    now,
+  });
+  expect(grants.get('vectors')).toBe('conditional');
+  const cards = (await snapshot()).cards.filter((card) => card.conceptId === 'vectors');
+  expect(cards.length).toBeGreaterThan(0);
+  expect(activeCards(cards)).toEqual(cards);
+});
+
 test('an interrupted withdrawal changes nothing, and a retry completes it', async () => {
   await seedGrant('vectors', 'conditional');
   await seedGrant('derivatives', 'conditional');

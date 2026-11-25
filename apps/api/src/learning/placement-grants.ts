@@ -96,6 +96,18 @@ export async function recordPlacementGrants(input: {
         })),
       )
       .onConflictDoNothing();
+    await input.db
+      .update(reviewCards)
+      .set({ suspendedAt: null })
+      .where(
+        and(
+          eq(reviewCards.userId, input.userId),
+          inArray(
+            reviewCards.conceptId,
+            drafts.map((draft) => draft.conceptId),
+          ),
+        ),
+      );
   }
   return new Map(drafts.map((draft) => [draft.conceptId, draft.state]));
 }
