@@ -9,7 +9,9 @@ import {
   p5HasNoWorkWindow,
   p6HasFeasibleOverdueReview,
   p10MissingOverdueRetryConcepts,
+  p10PreservedActivityMinutes,
   p10RetryFitsCapacity,
+  p10SchedulerPriorityLessonMinutes,
   p13HasEmptyPlanViolation,
   p14UncoveredDueCards,
   p16HasOverduePrecedenceViolation,
@@ -342,17 +344,85 @@ test('P10 flags a fitting overdue retry displaced by a lower-priority lesson', (
     remediationFlags: [],
   } as unknown as SchedulerState;
   const eligible = new Set(['what-is-ml']);
+  const firstActivity = {
+    id: 'fresh-first-activity',
+    kind: 'learn',
+    conceptId: 'new-lesson',
+    plannedMinutes: 30,
+    status: 'in_progress',
+  } as const;
+  const carriedOverActivityIds = new Set<string>();
+  const preservedMinutes = p10PreservedActivityMinutes([firstActivity], carriedOverActivityIds);
 
-  expect(p10RetryFitsCapacity(15, 60, 20, 5, 0)).toBe(true);
+  expect(preservedMinutes).toBe(0);
+  expect(p10RetryFitsCapacity(15, 60, preservedMinutes, 5, 0)).toBe(true);
   expect(
     p10MissingOverdueRetryConcepts(
       state,
       eligible,
-      new Set(['new-lesson']),
+      new Set([firstActivity.conceptId]),
       now,
       new Map([['what-is-ml', true]]),
     ),
   ).toEqual(['what-is-ml']);
+});
+
+test('P10 honors resumed lesson priority over a fitting overdue retry', () => {
+  const now = new Date('2026-01-14T12:00:00.000Z');
+  const state = {
+    lessonRuns: [
+      { conceptId: 'resumed-lesson', status: 'quiz' },
+      {
+        conceptId: 'retry-peer',
+        status: 'needs_retry',
+        retryAfter: new Date('2026-01-12T12:00:00.000Z'),
+      },
+    ],
+    remediationFlags: [],
+  } as unknown as SchedulerState;
+  const activities = [
+    {
+      id: 'fresh-lesson',
+      kind: 'learn',
+      conceptId: 'fresh-lesson',
+      plannedMinutes: 30,
+      exerciseIds: [],
+      status: 'in_progress',
+    },
+    {
+      id: 'resumed-lesson',
+      kind: 'learn',
+      conceptId: 'resumed-lesson',
+      plannedMinutes: 30,
+      exerciseIds: [],
+      status: 'in_progress',
+    },
+    {
+      id: 'retry-peer',
+      kind: 'learn',
+      conceptId: 'retry-peer',
+      plannedMinutes: 20,
+      exerciseIds: [],
+      status: 'in_progress',
+    },
+  ] as unknown as Parameters<typeof p10SchedulerPriorityLessonMinutes>[3];
+
+  const priority = p10SchedulerPriorityLessonMinutes(
+    state,
+    'overdue-retry',
+    now,
+    activities,
+    new Set(),
+  );
+
+  expect(priority).toEqual({
+    overdueRetryMinutes: 20,
+    resumedLessonMinutes: 30,
+    focusLessonMinutes: 0,
+    totalMinutes: 50,
+  });
+  expect(p10RetryFitsCapacity(20, 60, 0, 5, priority.totalMinutes)).toBe(true);
+  expect(p10RetryFitsCapacity(20, 45, 0, 14, priority.totalMinutes)).toBe(false);
 });
 
 test('P18 counts an over-cap scheduled review when it is at least two days overdue', () => {

@@ -166,7 +166,9 @@ export interface SimulationRetryDecisionEvidence {
   remainingCapacityMinutes: number;
   fitsRemainingCapacity: boolean | null;
   priorityRetryMinutes: number;
-  remainingAfterPriorityRetriesMinutes: number;
+  priorityResumedLessonMinutes: number;
+  priorityFocusLessonMinutes: number;
+  remainingAfterSchedulerPriorityMinutes: number;
   fitsSchedulerCapacity: boolean;
   reservedDueReviews: Array<{
     conceptId: string;
@@ -1118,7 +1120,7 @@ export function p10RetryFitsCapacity(
   budgetMinutes: number,
   preservedInProgressMinutes: number,
   reservedDueReviewMinutes: number,
-  alreadySelectedPriorityRetryMinutes: number,
+  alreadySelectedSchedulerPriorityMinutes: number,
 ): boolean {
   return (
     candidateMinutes !== null &&
@@ -1128,8 +1130,75 @@ export function p10RetryFitsCapacity(
       budgetMinutes -
         preservedInProgressMinutes -
         reservedDueReviewMinutes -
-        alreadySelectedPriorityRetryMinutes
+        alreadySelectedSchedulerPriorityMinutes
   );
+}
+
+export function p10PreservedActivityMinutes(
+  activities: readonly Pick<SimActivity, 'id' | 'status' | 'plannedMinutes'>[],
+  carriedOverActivityIds: ReadonlySet<string>,
+): number {
+  return activities
+    .filter(
+      (activity) =>
+        carriedOverActivityIds.has(activity.id) &&
+        (activity.status === 'in_progress' || activity.status === 'completed'),
+    )
+    .reduce((total, activity) => total + activity.plannedMinutes, 0);
+}
+
+export function p10SchedulerPriorityLessonMinutes(
+  state: SchedulerState,
+  retryConceptId: string,
+  now: Date,
+  activities: readonly SimActivity[],
+  carriedOverActivityIds: ReadonlySet<string>,
+): {
+  overdueRetryMinutes: number;
+  resumedLessonMinutes: number;
+  focusLessonMinutes: number;
+  totalMinutes: number;
+} {
+  const runsByConcept = new Map((state.lessonRuns ?? []).map((run) => [run.conceptId, run]));
+  const candidates = activities.filter(
+    (activity) =>
+      activity.kind === 'learn' &&
+      activity.conceptId &&
+      activity.conceptId !== retryConceptId &&
+      !carriedOverActivityIds.has(activity.id),
+  );
+  const overdueRetryActivities = candidates.filter((activity) => {
+    const conceptId = activity.conceptId;
+    return (
+      conceptId !== null &&
+      conceptId !== undefined &&
+      runsByConcept.get(conceptId)?.status === 'needs_retry' &&
+      lessonRetryOverdue(state, conceptId, now)
+    );
+  });
+  const resumedLessonActivities = candidates.filter((activity) => {
+    const status = activity.conceptId ? runsByConcept.get(activity.conceptId)?.status : undefined;
+    return status === 'in_progress' || status === 'quiz';
+  });
+  const prioritizedActivityIds = new Set([
+    ...overdueRetryActivities.map(({ id }) => id),
+    ...resumedLessonActivities.map(({ id }) => id),
+  ]);
+  const focusedLessonActivities = candidates.filter(
+    (activity) =>
+      activity.conceptId === state.inProgressConceptId && !prioritizedActivityIds.has(activity.id),
+  );
+  const minutes = (selected: readonly SimActivity[]) =>
+    selected.reduce((total, activity) => total + activity.plannedMinutes, 0);
+  const overdueRetryMinutes = minutes(overdueRetryActivities);
+  const resumedLessonMinutes = minutes(resumedLessonActivities);
+  const focusLessonMinutes = minutes(focusedLessonActivities);
+  return {
+    overdueRetryMinutes,
+    resumedLessonMinutes,
+    focusLessonMinutes,
+    totalMinutes: overdueRetryMinutes + resumedLessonMinutes + focusLessonMinutes,
+  };
 }
 
 export function p6HasFeasibleOverdueReview(
@@ -3778,6 +3847,7 @@ function retryDecisionEvidence(
   learn: LearnPayload,
   activities: SimActivity[],
   explanations: ReviewSelectionExplanation[],
+  carriedOverActivityIds: ReadonlySet<string> = new Set(),
 ): SimulationRetryDecisionEvidence[] {
   const eligibleConceptIds = new Set(learn.choices.map(({ conceptId }) => conceptId));
   const dueConceptIds = new Set(
@@ -3785,9 +3855,10 @@ function retryDecisionEvidence(
       .filter((card) => isDueToday(card.dueAt, now, state.timezone ?? 'UTC'))
       .map((card) => card.conceptId),
   );
-  const preservedInProgressMinutes = activities
-    .filter((activity) => activity.status === 'in_progress')
-    .reduce((total, activity) => total + activity.plannedMinutes, 0);
+  const preservedInProgressMinutes = p10PreservedActivityMinutes(
+    activities,
+    carriedOverActivityIds,
+  );
   const preservedReviewConceptIds = new Set(
     activities
       .filter((activity) => activity.kind === 'review' && activity.status === 'in_progress')
@@ -3836,18 +3907,15 @@ function retryDecisionEvidence(
     const candidateMinutes = concept
       ? adjustedMinutesForLearnerPace(concept.est_minutes, state.actualEstimateRatio)
       : null;
-    const priorityRetryMinutes = activities
-      .filter(
-        (activity) =>
-          activity.kind === 'learn' &&
-          activity.conceptId !== run.conceptId &&
-          activity.status !== 'in_progress' &&
-          activity.conceptId &&
-          lessonRunsByConcept.get(activity.conceptId)?.status === 'needs_retry' &&
-          lessonRetryOverdue(state, activity.conceptId, now),
-      )
-      .reduce((total, activity) => total + activity.plannedMinutes, 0);
-    const remainingAfterPriorityRetriesMinutes = remainingCapacityMinutes - priorityRetryMinutes;
+    const priorityMinutes = p10SchedulerPriorityLessonMinutes(
+      state,
+      run.conceptId,
+      now,
+      activities,
+      carriedOverActivityIds,
+    );
+    const remainingAfterSchedulerPriorityMinutes =
+      remainingCapacityMinutes - priorityMinutes.totalMinutes;
 
     return [
       {
@@ -3870,14 +3938,16 @@ function retryDecisionEvidence(
                 reservedDueReviewMinutes,
                 0,
               ),
-        priorityRetryMinutes,
-        remainingAfterPriorityRetriesMinutes,
+        priorityRetryMinutes: priorityMinutes.overdueRetryMinutes,
+        priorityResumedLessonMinutes: priorityMinutes.resumedLessonMinutes,
+        priorityFocusLessonMinutes: priorityMinutes.focusLessonMinutes,
+        remainingAfterSchedulerPriorityMinutes,
         fitsSchedulerCapacity: p10RetryFitsCapacity(
           candidateMinutes,
           budgetMinutes,
           preservedInProgressMinutes,
           reservedDueReviewMinutes,
-          priorityRetryMinutes,
+          priorityMinutes.totalMinutes,
         ),
         reservedDueReviews,
         selectedInstead: activities
