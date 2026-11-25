@@ -54,16 +54,6 @@ export function SessionPage() {
   const { id } = Route.useParams();
   const { activity: requestedActivityId, step: searchStep } = Route.useSearch();
   const step = typeof searchStep === 'number' ? String(searchStep) : searchStep;
-  const navigateToLessonStep = useCallback(
-    (nextStep?: string, replace = false) => {
-      const stepValue = nextStep && /^\d+$/.test(nextStep) ? Number(nextStep) : nextStep;
-      void navigate({
-        search: (previous) => ({ ...previous, step: stepValue }),
-        replace,
-      });
-    },
-    [navigate],
-  );
   const queryClient = useQueryClient();
   const tutorSidebar = useTutorSidebar();
   const [result, setResult] = useState<Record<string, unknown> | null>(null);
@@ -142,6 +132,16 @@ export function SessionPage() {
     Boolean(activity.conceptId) &&
     !activity.progress?.quizContinued &&
     lessonRunsByConcept.get(activity.conceptId ?? '')?.status === 'quiz';
+  const navigateToLessonStep = useCallback(
+    (nextStep?: string, replace = false) => {
+      const stepValue = nextStep && /^\d+$/.test(nextStep) ? Number(nextStep) : nextStep;
+      void navigate({
+        search: (previous) => ({ ...previous, activity: activity?.id, step: stepValue }),
+        replace,
+      });
+    },
+    [activity?.id, navigate],
+  );
   useEffect(() => {
     if (!activity) return;
     const nextActivity = activities
