@@ -664,25 +664,24 @@ export function drizzleLearnerStore(
           ),
         );
     },
-    async listReviewLogs(learnerId, { cardIds, activityId, since }) {
+    async listReviewLogs(learnerId, { cardIds, activityId, since, limit }) {
       const rows = db
         .select({ ...getTableColumns(reviewLogs), conceptId: reviewCards.conceptId })
         .from(reviewLogs)
         .innerJoin(reviewCards, eq(reviewLogs.cardId, reviewCards.id))
+        .where(
+          and(
+            eq(reviewCards.userId, learnerId),
+            cardIds === undefined ? undefined : inArray(reviewLogs.cardId, cardIds),
+            activityId === undefined ? undefined : eq(attempts.activityId, activityId),
+            since === undefined ? undefined : gte(reviewLogs.createdAt, since),
+          ),
+        )
+        .orderBy(desc(reviewLogs.createdAt))
         .$dynamic();
       if (activityId !== undefined) rows.innerJoin(attempts, eq(reviewLogs.attemptId, attempts.id));
-      return (
-        await rows
-          .where(
-            and(
-              eq(reviewCards.userId, learnerId),
-              cardIds === undefined ? undefined : inArray(reviewLogs.cardId, cardIds),
-              activityId === undefined ? undefined : eq(attempts.activityId, activityId),
-              since === undefined ? undefined : gte(reviewLogs.createdAt, since),
-            ),
-          )
-          .orderBy(desc(reviewLogs.createdAt))
-      ).map(({ fsrsLog: json, rawDueAt, speed, rating, ...row }) => {
+      if (limit !== undefined) rows.limit(limit);
+      return (await rows).map(({ fsrsLog: json, rawDueAt, speed, rating, ...row }) => {
         const fsrsLog = json as ReviewLogRecord['fsrsLog'];
         return {
           ...row,

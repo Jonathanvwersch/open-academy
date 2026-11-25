@@ -74,6 +74,7 @@ export async function recordReviewRating(
   const existingLogs = await store.listReviewLogs(userId, {
     activityId: activity.id,
     cardIds: [card.id],
+    limit: 1,
   });
   if (existingLogs.length > 0) return activity;
 
@@ -91,7 +92,9 @@ export async function recordReviewRating(
     }),
   );
   const [previousLog] =
-    rating === Rating.Again ? await store.listReviewLogs(userId, { cardIds: [card.id] }) : [];
+    rating === Rating.Again
+      ? await store.listReviewLogs(userId, { cardIds: [card.id], limit: 1 })
+      : [];
   const speed = await getTopicSpeed(store, userId, card.conceptId);
   const scheduled = scheduleReviewWithDetails(
     card.fsrs,

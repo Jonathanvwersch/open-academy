@@ -316,6 +316,9 @@ export function describeLearnerStoreContract(
         { ...linkedLog, attemptId: null, createdAt: later },
         linkedLog,
       ]);
+      expect(await store.listReviewLogs(learnerId, { cardIds: [card.id], limit: 1 })).toEqual([
+        { ...linkedLog, attemptId: null, createdAt: later },
+      ]);
       expect(
         await store.listReviewLogs(learnerId, { cardIds: [card.id], since: later }),
       ).toHaveLength(1);

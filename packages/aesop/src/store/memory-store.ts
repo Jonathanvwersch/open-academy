@@ -679,7 +679,7 @@ function scopedStore(
         markWrite(learnerId);
       }
     },
-    async listReviewLogs(learnerId, { cardIds, activityId, since }) {
+    async listReviewLogs(learnerId, { cardIds, activityId, since, limit }) {
       assertOpen();
       const linkedAttempts =
         activityId === undefined
@@ -698,7 +698,8 @@ function scopedStore(
                 (log.attemptId && linkedAttempts.has(log.attemptId))) &&
               (since === undefined || log.createdAt >= since),
           )
-          .sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime()),
+          .sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime())
+          .slice(0, limit),
       );
     },
     async patchReviewCard(learnerId, cardId, patch) {

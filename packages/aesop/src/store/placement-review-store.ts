@@ -79,7 +79,7 @@ export interface PlacementReviewStore extends LessonStore {
   /** Newest first. Activity lineage comes from the attempt linked to each log. */
   listReviewLogs(
     learnerId: Id,
-    query: { cardIds?: readonly Id[]; activityId?: Id; since?: Date },
+    query: { cardIds?: readonly Id[]; activityId?: Id; since?: Date; limit?: number },
   ): Promise<ReviewLogEntry[]>;
   patchReviewCard(
     learnerId: Id,
