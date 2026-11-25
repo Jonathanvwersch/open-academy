@@ -71,7 +71,7 @@ test('a withdrawn placement topic shows why it moved back into the plan', async 
     withdrawnAt: new Date('2026-01-06T12:00:00.000Z'),
   });
 
-  await page.goto('/course');
+  await page.goto('/courses/fixture-course');
   const row = page.getByRole('listitem').filter({ hasText: 'Vectors' }).first();
   await expect(row.getByText(note)).toBeVisible();
   await expect(row.getByText('Placed out')).toHaveCount(0);
