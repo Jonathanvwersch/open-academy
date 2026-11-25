@@ -115,6 +115,30 @@ const LazyMarkdown = lazy(() =>
   import('../../components/markdown.js').then((module) => ({ default: module.Markdown })),
 );
 
+export function renderTutorSvgCodeBlock(
+  { language, source }: { language: string; source: string },
+  isStreaming = false,
+) {
+  if (!/\blanguage-svg\b/.test(`language-${language}`)) return undefined;
+  const diagram = checkTutorSvg(source);
+  if (diagram.status !== 'valid') {
+    return (
+      <p className="text-xs text-muted-foreground">
+        {tutorSvgPlaceholder(diagram.status, isStreaming)}
+      </p>
+    );
+  }
+  return (
+    <figure className="my-3 flex w-full min-w-0 justify-center rounded-lg border border-border bg-card p-3">
+      <img
+        src={`data:image/svg+xml;utf8,${encodeURIComponent(source)}`}
+        alt={diagram.label}
+        className="h-auto w-full max-w-full"
+      />
+    </figure>
+  );
+}
+
 function TutorMarkdown({
   children,
   isStreaming = false,
@@ -130,26 +154,7 @@ function TutorMarkdown({
     >
       <LazyMarkdown
         wrapDisplayMath
-        renderCodeBlock={({ language, source }) => {
-          if (!/\blanguage-svg\b/.test(`language-${language}`)) return undefined;
-          const diagram = checkTutorSvg(source);
-          if (diagram.status !== 'valid') {
-            return (
-              <p className="text-xs text-muted-foreground">
-                {tutorSvgPlaceholder(diagram.status, isStreaming)}
-              </p>
-            );
-          }
-          return (
-            <figure className="my-3 flex w-full min-w-0 justify-center rounded-lg border border-border bg-card p-3">
-              <img
-                src={`data:image/svg+xml;utf8,${encodeURIComponent(source)}`}
-                alt={diagram.label}
-                className="h-auto w-full max-w-full"
-              />
-            </figure>
-          );
-        }}
+        renderCodeBlock={(block) => renderTutorSvgCodeBlock(block, isStreaming)}
       >
         {children}
       </LazyMarkdown>

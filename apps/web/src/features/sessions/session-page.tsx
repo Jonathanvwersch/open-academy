@@ -20,7 +20,7 @@ import { LessonBlock } from '../lessons/lesson-block.js';
 import { LessonMarkdown, LessonRunner, LessonSteps } from '../lessons/lesson-runner.js';
 import { lessonQueryOptions, lessonRunQueryOptions } from '../lessons/queries.js';
 import { projectQueryOptions } from '../projects/queries.js';
-import { TutorLauncher, useTutorSidebar } from '../tutor/tutor-sidebar.js';
+import { renderTutorSvgCodeBlock, TutorLauncher, useTutorSidebar } from '../tutor/tutor-sidebar.js';
 import { sessionActivityLabel } from './activity-label.js';
 import {
   selectSessionActivity,
@@ -1066,7 +1066,13 @@ export function SessionPage() {
                       <p className="font-medium">
                         {hint.revealedSolution ? 'Solution' : `Hint ${hint.level}`}
                       </p>
-                      <Markdown>{hint.text}</Markdown>
+                      <Markdown
+                        renderCodeBlock={
+                          hint.revealedSolution ? undefined : renderTutorSvgCodeBlock
+                        }
+                      >
+                        {hint.text}
+                      </Markdown>
                     </div>
                   ))}
                   {tutorUnavailable ? (
