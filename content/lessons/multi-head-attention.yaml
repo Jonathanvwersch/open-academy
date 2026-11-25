@@ -26,9 +26,9 @@ knowledge_points:
 
       Each of several **heads** does ordinary attention with its own query, key and value matrices. We write a superscript $(i)$ on everything that belongs to head $i$.
 
-      Take the sentence "the cat sat", with whole words as tokens, and number the tokens 1, 2 and 3. Each embedding $e_t$ has width $d=4$, and we use $h=2$ heads. Each head's three matrices are $4\times2$, so they turn a 4-entry embedding into a query, key and value with $d_k=2$ entries each.
+      Take "the cat sat" as three tokens. With embedding width $d=4$ and $h=2$ heads, each head's three matrices are $4\times2$. Write the embedding as a row on the left and dot it with each matrix column. Each product has $d_k=2$ entries.
 
-      We skip the matrices and give only their results, chosen as small whole numbers. For "sat", head 1's query matrix gives $q^{(1)}_3=(1,1)$, head 2's gives $q^{(2)}_3=(2,0)$, and the key and value matrices give:
+      Use these results of the products. The queries for "sat" are $q^{(1)}_3=(1,1)$ and $q^{(2)}_3=(2,0)$. The keys and values are:
 
       | token | head 1 key | head 1 value |
       | --- | --- | --- |
@@ -294,17 +294,19 @@ knowledge_points:
 
       Putting the $h$ query matrices side by side gives one $d\times d$ matrix, also named $W_Q$ as with one head. Then $XW_Q$ is $T\times d$, and its first $d_k$ columns are head 1's queries, the next $d_k$ are head 2's, and so on. Each column still uses all $d$ entries of the embedding. Code computes this one product, cuts it into heads, and does the same for $W_K$ and $W_V$.
 
-      The layer learns four $d\times d$ matrices, $W_Q$, $W_K$, $W_V$ and $W_O$, which is $4d^2$ numbers whatever $h$ is, so more heads add no learned numbers. With $d=4$, one head of width 4, two of width 2 and four of width 1 all learn $4\times4^2=64$ numbers. The base model in "Attention Is All You Need" (2017), the paper that introduced multi-head attention, used $d=512$ and $h=8$, so each head had $d_k=64$.
+      The four learned $d\times d$ matrices $W_Q$, $W_K$, $W_V$ and $W_O$ hold $4d^2$ numbers whatever $h$ is. With $d=4$, one head of width 4, two of width 2 and four of width 1 all learn $64$ numbers.
 
       ### What more heads cost
 
-      More heads give narrower queries and keys. A head of width 1 compares tokens using a single number from each. Every head still needs $T\times T$ attention weights, so $h$ heads need $h\times T\times T$ weights. This grows quickly for long inputs.
+      More heads give narrower queries and keys. A head of width 1 compares tokens using a single number from each. Every head still computes a $T\times T$ table of attention weights from the input. These tables change with the input; they are separate from the four learned matrices. Stack the tables head first and the shape is $(h,T,T)$: $h$ tables, each with $T$ rows and $T$ columns. This grows quickly for long inputs.
     worked: |
       First try two tokens and two heads of width one. The query rows are `[1, 2]` for token 1 and `[3, 4]` for token 2. Columns show which head each number belongs to.
 
-      In NumPy, a Python library for arrays, **reshape** fills rows in order by default. Asking for two rows still leaves `[1, 2]` together, even if our code labels that row "head 1". To give each head a row, **transpose** swaps rows and columns. Head 1 then gets `[1, 3]` and head 2 gets `[2, 4]`. Both layouts are two by two, so shape alone misses the mix-up.
+      A reshape regroups entries in the same order. A transpose swaps axes. Read the token rows in order, running left to right across each row. Cutting that list into two rows again still puts both values for token 1 in the first row. Each head needs its own numbers from both tokens to compare them. Swap the row and column axes to give head 1 the row $(1,3)$ and head 2 the row $(2,4)$.
 
-      Let's track the shapes for "the cat sat", with $T=3$ tokens, embeddings of width $d=4$ and $h=2$ heads of width $d_k=2$, and then check them in code.
+      An axis is a direction you can count along: for a stack of tables, count tables, then rows, then columns. For several sequences, read sequences in order, then tokens within a sequence, then features (entries) within a token. First split each token's entries into head groups. Then swap the token and head axes so each head gets its group from every token. A shape check only counts the entries along each axis; it cannot tell which token an entry came from.
+
+      Now use two features per head instead of one. The three tokens in “the cat sat” each have $d=4$ features, divided between $h=2$ heads of width $d_k=2$.
 
       1. **Stack the embeddings.** One row per token, one column per embedding entry.
          $$X:\ 3\times4$$
@@ -312,7 +314,7 @@ knowledge_points:
       2. **Make all the queries in one product.** $W_Q$ is head 1's and head 2's $4\times2$ query matrices side by side, so it is $4\times4$.
          $$XW_Q:\ (3\times4)(4\times4)=3\times4$$
 
-      3. **Cut it into heads.** Columns 1–2 are head 1's queries and columns 3–4 are head 2's. Keys and values are cut the same way.
+      3. **Cut it into heads.** Columns 1–2 are head 1's queries and columns 3–4 are head 2's. Keep each three-row table separate. In a stack, an extra axis picks which head's table to use. Cut keys and values the same way.
          $$Q^{(1)},\,Q^{(2)}:\ 3\times2\ \text{each}$$
 
       4. **Score every pair of tokens in each head.** A $3\times2$ matrix times a $2\times3$ one is $3\times3$, one row per token. Dividing by $\sqrt{d_k}$ and the softmax keep this shape.
@@ -323,32 +325,6 @@ knowledge_points:
 
       6. **Join and mix the heads.** Two $3\times2$ outputs side by side make $3\times4$, and $W_O$ keeps it that way.
          $$(3\times4)(4\times4)=3\times4$$
-
-      Here is the same layer in NumPy, with random matrices because only the shapes matter. NumPy arrays can have more than two axes, numbered from 0, and an array of shape `(2, 3, 2)` is a stack of two $3\times2$ matrices, one per head.
-
-      ```python
-      import numpy as np
-      T, d, h = 3, 4, 2
-      dk = d // h
-      rng = np.random.default_rng(0)
-      X = rng.normal(size=(T, d))
-      W_Q, W_K, W_V, W_O = rng.normal(size=(4, d, d))
-      Q = (X @ W_Q).reshape(T, h, dk).transpose(1, 0, 2)
-      K = (X @ W_K).reshape(T, h, dk).transpose(1, 0, 2)
-      V = (X @ W_V).reshape(T, h, dk).transpose(1, 0, 2)
-      S = Q @ K.transpose(0, 2, 1) / np.sqrt(dk)
-      A = np.exp(S) / np.exp(S).sum(axis=-1, keepdims=True)
-      heads = A @ V
-      out = heads.transpose(1, 0, 2).reshape(T, d) @ W_O
-      print(Q.shape, A.shape, heads.shape, out.shape)
-      # prints (2, 3, 2) (2, 3, 3) (2, 3, 2) (3, 4)
-      ```
-
-      - `default_rng(0)` makes a random number generator, and the 0 makes every run give the same numbers. `rng.normal(size=(4, d, d))` makes four random $d\times d$ matrices, unpacked into `W_Q`, `W_K`, `W_V` and `W_O`.
-      - `reshape(T, h, dk)` cuts each row of width 4 into 2 pieces of width 2, giving shape `(3, 2, 2)`. `transpose(1, 0, 2)` moves axis 1, the head, to the front, giving `(2, 3, 2)`.
-      - On stacks like these, `@` multiplies the matrices of each head separately. `K.transpose(0, 2, 1)` keeps axis 0, the head, and swaps axes 1 and 2, so it transposes each head's keys.
-      - `axis=-1` means the last axis, so each sum runs along a row. `keepdims=True` keeps the sums in shape `(2, 3, 1)`, so each row of `np.exp(S)` is divided by its own sum.
-      - The line before `print` joins the heads. `transpose(1, 0, 2)` turns `(2, 3, 2)` back into `(3, 2, 2)`, `reshape(T, d)` writes each token's two head outputs side by side as a row of width 4, and `@ W_O` mixes them.
 
       Each head's queries are $3\times2$, its weights $3\times3$ and its output $3\times2$, and the layer's output is $3\times4$, the same shape as $X$.
     problems:

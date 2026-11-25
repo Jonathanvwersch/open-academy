@@ -5,15 +5,15 @@ recap:
   - concept: images-as-tensors
     text: "A grayscale image is an $H\\times W$ grid of brightnesses indexed `img[r, c]` from zero. A colour image in CHW layout has shape $(3, H, W)$, with separate grids for red, green and blue."
   - concept: mlp-forward-pass
-    text: "A fully connected neuron takes a weighted sum of every input plus a bias, then applies ReLU. A layer with $d_\\text{in}$ inputs and $d_\\text{out}$ neurons has $d_\\text{out}d_\\text{in}+d_\\text{out}$ parameters."
+    text: "A neuron that reads every input is called fully connected. It takes a weighted sum, adds a bias and applies ReLU. In a layer with $d_\\text{in}$ inputs and $d_\\text{out}$ neurons, each neuron has $d_\\text{in}$ weights and one bias."
 where_this_fits: |
   ### What is a convolution?
 
   A convolution slides a small grid of weights across an image and takes a weighted sum at each position. This can locate a pattern such as an edge, where dark pixels meet bright ones.
 
-  A 224 by 224 RGB photo contains 3 times 224 times 224 numbers, or 150,528. One fully connected neuron needs that many weights, so many neurons need millions. Its weights can respond to an edge at one place but give no response when it moves. It needs separate weights for every position, while convolution reuses one grid.
+  A 224 by 224 RGB photo has 150,528 input numbers, so a neuron that reads them all needs just as many weights. Suppose the weights look for a dark-to-bright edge in the centre. If the edge moves to the corner, those weights still look at the centre. A convolution tests the same pattern at each location using one small weight grid.
 
-  We'll calculate output shapes, handle colour channels and count parameters. Then we'll shrink grids by keeping the largest nearby values, called pooling, and trace how much of the image each output depends on.
+  We'll calculate output shapes and weight counts. We'll also see how pooling reduces work and how layers combine information over larger regions.
 knowledge_points:
   - id: conv-slide
     key_prereqs: [dot-product, images-as-tensors, activation-functions]
@@ -29,7 +29,7 @@ knowledge_points:
 
       Let's use a five-by-five image where every row is $(0,0,1,1,1)$. The boundary between dark and bright columns is a vertical edge.
 
-      Every filter row is $(-1,0,1)$. The left column subtracts brightness, the middle ignores it, and the right adds it. This gives a positive sum where brightness rises left-to-right, compared with zero for a flat patch. Real networks find weights during training, which we won't cover here. We choose them by hand to see what they do.
+      This filter is a $3\times3$ grid. Every row is $(-1,0,1)$. The left column subtracts brightness and the right column adds it. The middle column contributes zero. A flat patch gives zero, and a patch that goes from dark to bright gives a positive score. We choose these weights by hand to see what they do.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 280" aria-label="Every row of the 5 by 5 image is 0 0 1 1 1. The orange 3 by 3 patch at row 0 column 0 gives the green output cell 3. Every filter row is minus 1, 0, 1. Every output row is 3 3 0." font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
@@ -90,11 +90,11 @@ knowledge_points:
 
       In “Layers and the forward pass”, a neuron's **score** is its weighted sum plus bias. **Convolution** repeats that calculation across patches. The resulting grid is a **feature map**.
 
-      For a grayscale image and square filter of side $k$, we write
+      Let $x$ hold the image pixels and $w$ hold the weights in a square filter of side $k$. Add the same bias $b$ at each location to get output $y_{i,j}$ at row $i$ and column $j$.
 
       $$y_{i,j}=\sum_{u=0}^{k-1}\sum_{v=0}^{k-1}w_{u,v}x_{i+u,j+v}+b.$$
 
-      We write $x$ for the image called img in the recap, $w$ for weights and $b$ for one shared bias. Output cell $(i,j)$ comes from the patch whose top-left pixel is at $(i,j)$. Within that patch, $u,v$ select a row and column, so $x_{i+u,j+v}$ selects that pixel. All indices start at zero.
+      The patch starts at pixel $(i,j)$. In the patch, $u$ counts how far down and $v$ how far right. The matching pixel in the image is $(i+u,j+v)$. Start counting each position at zero.
 
       The inner sum adds weighted pixels across one row, and the outer sum adds those row totals. We can apply ReLU afterwards to keep positive scores and replace negative ones with zero.
 
@@ -120,21 +120,6 @@ knowledge_points:
          $$y_{0,2}=3\big((-1)\cdot1+0\cdot1+1\cdot1\big)+0=0.$$
 
       Every image row is the same, so every output row is $(3,3,0)$. The first two cells score 3 because their patches contain the dark-to-bright boundary, while the all-bright patch scores 0. The 3s mark the patches containing the edge, not a single exact edge column.
-
-      Multiplying a Python list by 5 repeats its row five times, while multiplying by 3 makes the filter and output rows. The slice x[i:i+3, j:j+3] selects one patch, and max(0, …) applies ReLU to its weighted sum plus bias.
-
-      ```python
-      import numpy as np
-      x = np.array([[0, 0, 1, 1, 1]] * 5)
-      w = np.array([[-1, 0, 1]] * 3)
-      b = 0
-      y = np.array([[0, 0, 0]] * 3)
-      for i in range(3):
-          for j in range(3):
-              y[i, j] = max(0, (x[i:i+3, j:j+3] * w).sum() + b)
-      print(y.tolist())
-      # [[3, 3, 0], [3, 3, 0], [3, 3, 0]]
-      ```
     problems:
       [
         conv-slide-basics,
@@ -143,7 +128,6 @@ knowledge_points:
         conv-slide-template,
         conv-bias-trap,
         conv-edge-robot,
-        conv-code-patch,
       ]
   - id: conv-size
     key_prereqs: [images-as-tensors]

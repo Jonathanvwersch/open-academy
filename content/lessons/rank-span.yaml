@@ -137,13 +137,11 @@ knowledge_points:
 
       ### Testing by elimination
 
-      In the lesson on inverses and linear systems, we solved equations by elimination, subtracting a multiple of one equation from another to remove an unknown. We can do the same to the rows of a matrix. That changes the rows but keeps every relationship between the columns. A relationship such as column 3 equals column 1 plus column 2 holds in each row separately, so it still holds after we add or subtract multiples of rows.
+      Elimination subtracts multiples of rows. If column 3 equals column 1 plus column 2, that equality holds in each row. Subtracting one row from another preserves the equality. Adding that row back undoes the subtraction, so elimination can't create a new column equality either.
 
-      We make the entries below the top of column 1 zero, then the entries below the second entry of column 2, and so on. For $A$ this leaves
+      Scan columns from left to right. Use a nonzero entry as a **pivot** to clear the entries below it. After each pivot, look only in the rows below it. Skip a column if all those rows have zero there. Swap rows if needed to bring the pivot to the first unused row.
 
-      $$\begin{bmatrix}1&1&2\\0&1&1\\0&0&0\end{bmatrix}.$$
-
-      After elimination, the first nonzero entry in each row is called a **pivot**, and we say its column has a pivot. Here columns 1 and 2 have pivots. Column 3 has none, a sign that it's a combination of earlier columns. In the eliminated matrix, column 3 is column 1 plus column 2, so the same holds for the original columns.
+      In the worked example below, elimination puts pivots in columns 1 and 2. Use only those two columns and try to make zero. Row 2 forces the multiplier of column 2 to be zero. Then row 1 forces the multiplier of column 1 to be zero. So the two pivot columns are independent. Column 3 is their sum, so all three columns together are dependent.
 
       ### Rank
 
@@ -168,18 +166,7 @@ knowledge_points:
       4. **Check the relationship in the original columns.** Column 3 had no pivot, so it should be a combination of columns 1 and 2.
          $$(1,1,2)+(1,2,1)=(2,3,3)$$
 
-      So $A$ has only two independent columns, and its third column adds nothing new. In NumPy, which the matrices lesson used, `np.linalg.matrix_rank` finds the rank for us.
-
-      ```python
-      import numpy as np
-
-      A = np.array([[1, 1, 2],
-                    [1, 2, 3],
-                    [2, 1, 3]])
-      r = np.linalg.matrix_rank(A)
-      print(r)
-      # prints 2
-      ```
+      The first two columns give two independent directions. Since the third is their sum, adding it leaves the rank at 2.
     problems:
       - rsp-independence-basics
       - rspp-rank-self-explain
@@ -357,7 +344,7 @@ knowledge_points:
 
       1. Multiplying $F$ by one column of $G$ makes the matching column of $FG$.
       2. As in step 3, that multiplication combines the $k$ columns of $F$, so the result lies in their span.
-      3. Every column of $FG$ lies in that span, which holds at most $k$ independent vectors. Therefore:
+      3. Pick any $k+1$ columns of $FG$. Their columns in $G$ form a grid with $k$ rows, so at least one of its $k+1$ columns lacks a pivot. A nonzero combination of those columns gives zero. Multiplying that combination by $F$ still gives zero, so the chosen columns of $FG$ are dependent. Therefore:
 
       $$\operatorname{rank}(FG)\le k.$$
 

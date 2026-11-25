@@ -1,7 +1,7 @@
 concept: inverses-linear-systems
 version: 1
 objective: |
-  **Goal:** find and check the inverse of a $2\times2$ matrix, solve a small linear system $Ax=b$ by elimination, use the transpose rules including $(AB)^\top=B^\top A^\top$ to recognise symmetric matrices, and solve systems in NumPy with `np.linalg.solve`.
+  **Goal:** find and check a matrix inverse, solve a small linear system by elimination, and use the transpose rules to recognise symmetric matrices.
 recap:
   - concept: determinants
     text: "A nonzero determinant allows an inverse. Row additions preserve the determinant; row swaps reverse its sign. Use these row operations to clear entries below pivots, then multiply the triangular diagonal entries and account for swaps."
@@ -10,7 +10,7 @@ where_this_fits: |
 
   The inverse of a matrix is a second matrix that undoes the first one. If a matrix sends an input to an output, its inverse sends that output back to the same input.
 
-  That's useful when we know the output and want the input. At a café, suppose two coffees and a tea cost £8, and one coffee and one tea cost £5. What does each drink cost? Each total is that order's drink counts dotted with the unknown prices. So the counts form a matrix that turns prices into totals, and finding the prices means undoing it.
+  Suppose two coffees and one tea cost £8, while one of each costs £5. The first total is twice the price of coffee plus the price of tea. Each order gives one row of drink counts in a matrix. We'll use that matrix and the two totals to find the two prices.
 
   We'll also learn rules for the transpose, the matrix with rows and columns swapped. We'll need them later in the course to fit lines to data.
 knowledge_points:
@@ -24,13 +24,13 @@ knowledge_points:
     explain: |
       ### A matrix that changes nothing
 
-      To find the matrix that undoes another, we first need a matrix that leaves everything alone.
+      To find the matrix that undoes another, we first need a matrix that leaves every input unchanged. Its main diagonal runs from the top left to the bottom right. As in the matrices lesson, entry $(i,j)$ means the number in row $i$ and column $j$.
 
-      The **identity matrix**, written $I$, has 1s down its main diagonal and 0s everywhere else:
+      The **identity matrix**, written $I$, is square and has 1s down its main diagonal and 0s everywhere else. Here is the version for two entries. For three entries, use a $3\times3$ grid with the same pattern.
 
       $$I=\begin{bmatrix}1&0\\0&1\end{bmatrix}$$
 
-      In $AI$, each column of $I$ picks out the matching entry from each row of $A$. In $IA$, each row of $I$ picks out the matching row of $A$. Both products leave $A$ unchanged:
+      For example, taking the dot product of a row $(a,b)$ with the first column $(1,0)$ gives $a$, and taking it with $(0,1)$ gives $b$. So $AI$ keeps the same rows. In $IA$, the row $(1,0)$ copies row 1 of $A$ and $(0,1)$ copies row 2.
 
       $$AI=IA=A$$
 
@@ -63,7 +63,7 @@ knowledge_points:
       </g></svg>
       ```
 
-      The **inverse** of $A$, written $A^{-1}$, sends every output back to its input. A matrix with an inverse is **invertible**. Every vector $y$ then comes from exactly one input. Applying $A^{-1}$ to $y$ finds that input, and applying $A$ returns $y$. Here $x$ is a vector written as a column. In a product like $A^{-1}Ax$, the matrix next to $x$ acts first. Both orders give $I$:
+      Write $y$ for the output $Ax$. The **inverse** of $A$, written $A^{-1}$, sends $y$ back to its input $x$. We call a matrix **invertible** when it has an inverse.
 
       $$AA^{-1}=A^{-1}A=I$$
 
@@ -141,9 +141,9 @@ knowledge_points:
     explain: |
       ### Keep each equation in one row
 
-      The café orders give several equations for the same prices. A **linear system** is a set of equations in which each unknown is multiplied by a number and the results are added. Write it $Ax=b$: $A$ holds those numbers, $x$ lists the unknowns and $b$ lists the totals. When $A$ is invertible, $x=A^{-1}b$.
+      Each café order gives an equation for the same prices. In a **linear system**, each equation adds up multiples of the unknowns. Write $Ax=b$: $A$ holds the drink counts, $x$ the prices and $b$ the totals. If $A$ has an inverse, multiplying the equation by $A^{-1}$ gives $x=A^{-1}b$.
 
-      To organise elimination, put the totals beside the matrix. This **augmented matrix**, written $[A\mid b]$, has one row per equation. The vertical bar separates the numbers multiplying unknowns from the right-hand side. Keep the unknowns in the same column order. With three unknowns, a row $(2,2,0\mid10)$ means $2x_1+2x_2+0x_3=10$.
+      To remove unknowns by subtracting equations, first write their totals next to the matrix. This **augmented matrix**, written $[A\mid b]$, has one row per equation. The vertical bar separates the numbers multiplying the unknowns from the totals.
 
       The blue block holds $A$ and the orange column holds $b$. Each horizontal row keeps an equation's numbers and total together.
 
@@ -162,9 +162,9 @@ knowledge_points:
 
       ### Clear below the pivots
 
-      **Elimination** subtracts multiples of equations to remove unknowns. Use the row additions and row swaps from determinants on the entire augmented row, including its total. A row addition performs the same arithmetic on both sides of an equation. Keeping the other equation lets us undo the addition, so the solution set stays the same. A row swap only reorders equations.
+      **Elimination** subtracts multiples of equations to remove unknowns. Update the total along with the other entries in each row. Row swaps only change the order. We can undo a row subtraction by adding the same multiple back, so the values that solve all the equations stay the same.
 
-      If the next pivot position is zero, swap in a row with a nonzero entry there. Clear below each pivot until $A$ is upper triangular. Solve the last equation first, then put its value into the row above. Continuing upwards is **back-substitution**.
+      Start at the first unused row and column. Use a nonzero entry as the pivot; if the entry is zero, swap in a row below with a nonzero entry in that column. Clear below each pivot so all entries below the main diagonal are zero. This is **upper triangular** form. Solve the last equation first, then use that value in the row above. This is **back-substitution**.
 
       Be careful to update the totals too. Changing only $A$ changes the equations.
 
@@ -178,6 +178,8 @@ knowledge_points:
       \end{aligned}
       $$
       In augmented form, the resulting row is $(0,0\mid-2)$. It states a false equality, so no input satisfies both equations.
+
+      The coefficient matrix is $A=\begin{bmatrix}2&2\\1&1\end{bmatrix}$. Its determinant is $2\times1-2\times1=0$, so it has no inverse. A square matrix with no inverse is called **singular**.
     worked: |
       Let's solve for three unknowns, keeping every right-hand side with its equation:
 
@@ -186,7 +188,7 @@ knowledge_points:
       1. **Build the augmented matrix.** Use column order $x_1,x_2,x_3$, putting zero where an unknown is absent.
          $$[A\mid b]=\left[\begin{array}{ccc|c}0&2&1&8\\2&2&0&10\\4&6&5&44\end{array}\right]$$
 
-      2. **Swap in a first pivot.** The top-left entry is zero, so exchange the first two whole rows.
+      2. **Swap in a first pivot.** The top-left entry is zero, so exchange the first two whole rows. Write $R_i$ for row $i$. The double arrow means exchange two rows. The left arrow in the next steps means replace the row on its left with the expression on its right.
          $$R_1\leftrightarrow R_2:\qquad\left[\begin{array}{ccc|c}2&2&0&10\\0&2&1&8\\4&6&5&44\end{array}\right]$$
 
       3. **Clear below the first pivot.** Subtract twice row 1 from row 3, including $44-2\times10$ in the totals column.
@@ -230,13 +232,13 @@ knowledge_points:
     explain: |
       ### Rows become columns
 
-      In the matrices lesson, we used `.T` in NumPy to make shapes fit. The transpose also has rules of its own. We need them to write dot products as matrix products, and later in the course to fit a line to data.
+      In the matrices lesson, we swapped rows and columns to make shapes fit. Here we'll see what happens when we do that to a product of two matrices. We'll use the result later to fit a line to data.
 
       The **transpose** of a matrix $A$, written $A^\top$, turns each row of $A$ into a column: row 1 becomes column 1, row 2 becomes column 2, and so on. Writing $A_{ij}$ for the entry of $A$ in row $i$, column $j$:
 
       $$(A^\top)_{ij}=A_{ji}$$
 
-      In the picture, the blue row of $B$ becomes the blue column of $B^\top$, and the orange row becomes the orange column, so a $2\times3$ matrix becomes $3\times2$.
+      The picture uses a new matrix $B$ with two rows and three columns. Its blue and orange rows become the two columns of $B^\top$, a matrix with three rows and two columns.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 220" aria-label="B, a 2 by 3 matrix with rows (1, 2, 3) in blue and (4, 5, 6) in orange, becomes its 3 by 2 transpose, with columns (1, 2, 3) in blue and (4, 5, 6) in orange." font-family="ui-sans-serif, system-ui, sans-serif">
@@ -284,7 +286,7 @@ knowledge_points:
 
       ### Symmetric matrices
 
-      A square matrix is **symmetric** when $A^\top=A$, so each entry matches its mirror image across the main diagonal. $\begin{bmatrix}2&1\\1&1\end{bmatrix}$ is one. For any matrix $A$, the product $A^\top A$ is symmetric:
+      A square matrix is **symmetric** when $A^\top=A$. The entry at $(i,j)$ matches the entry at $(j,i)$. For example, in $\begin{bmatrix}2&1\\1&1\end{bmatrix}$ both the top right and bottom left are $1$. For any matrix $A$, the product $A^\top A$ is symmetric:
       $$
       \begin{aligned}
       (A^\top A)^\top&=A^\top(A^\top)^\top &&\text{reverse the factors}\\
@@ -340,85 +342,10 @@ knowledge_points:
       - inv-tr-pick-symmetric
       - inv-tr-gram-template
       - inv-tr-ratings
-  - id: inv-numpy
-    key_prereqs: [matrices, determinants]
-    title: "Solve a system in NumPy"
-    tldr: |
-      - When there is one answer, NumPy can solve a system with as many equations as unknowns.
-      - Solving directly usually takes less work and adds less rounding error than finding an inverse.
-      - Putting the answer back into the original equations checks that it works.
-    explain: |
-      ### Letting the computer eliminate
-
-      Real systems can have thousands of unknowns, so we let a computer do the elimination. In the matrices lesson, we built matrices with `np.array` and multiplied them with `@`. NumPy keeps tools for matrix problems like ours in `np.linalg`, short for linear algebra, the maths of vectors and matrices. We'll use two of them, plus `np.eye`.
-
-      - `np.linalg.solve(A, b)` returns the $x$ that solves $Ax=b$.
-      - `np.linalg.inv(A)` returns the inverse $A^{-1}$.
-      - `np.eye(3)` builds the $3\times3$ identity matrix; `eye` sounds like "I".
-
-      The order of the inputs to `solve` matters: the matrix comes first, then the right-hand side.
-
-      ### Why `solve` is the better choice
-
-      Since $x=A^{-1}b$, we could also write `np.linalg.inv(A) @ b`. For small, tidy matrices both give the same answer, but `solve` is the one to use. It runs elimination directly on the equations $Ax=b$. To use `inv`, NumPy first has to work out every entry of the whole inverse, which is more arithmetic, and then still multiply by $b$.
-
-      More arithmetic also means more rounding. A computer stores each number with a limited number of digits, so most calculations round a little. Each extra calculation can add a tiny error, which is why `solve` is usually at least as accurate as `inv(A) @ b`.
-
-      NumPy usually stores numbers to about 16 digits. The `==` check asks whether each pair of entries is exactly equal. That check can report a mismatch over a tiny error in the last digit. Because of this rounding, we use `np.allclose(A @ x, b)`. It returns `True` when the arrays match apart from tiny differences.
-
-      ### When there is no answer to find
-
-      A **singular** matrix is a square matrix with no inverse. For a $2\times2$ matrix, that means its determinant is zero. Then `np.linalg.solve(A, b)` usually raises `LinAlgError: Singular matrix`. With decimal entries, rounding can hide the zero determinant, so `solve` may return enormous, meaningless numbers. Check the determinant and whether the result reproduces $b$; a tiny computed determinant can be a rounded zero.
-
-      Be careful not to read that error as a bug in NumPy. It's telling you the equations don't pin down one answer, just as elimination did when every unknown vanished.
-    worked: |
-      Let's solve a café pricing system in NumPy. One coffee, one tea and one juice cost £9; one coffee, two teas and three juices cost £19; one coffee, three teas and six juices cost £33. The unknowns are the three drink prices:
-
-      $$\begin{bmatrix}1&1&1\\1&2&3\\1&3&6\end{bmatrix}\begin{bmatrix}x_1\\x_2\\x_3\end{bmatrix}=\begin{bmatrix}9\\19\\33\end{bmatrix}$$
-
-      1. **Build the arrays.** Each inner list of `A` is one order, and `b` holds the three totals.
-
-      2. **Solve.** `np.linalg.solve(A, b)` returns decimal (floating-point) numbers, even with whole-number inputs. NumPy prints `3.` for 3.0.
-
-      3. **Check the answer.** Multiplying the prices by `A` should give the totals back, apart from rounding.
-
-      4. **Check the inverse.** We compute `inv` here only to check it. `A @ np.linalg.inv(A)` should be the identity, `np.eye(3)`.
-
-      5. **Try a singular matrix.** The matrix with rows $(2,2)$ and $(1,1)$, from the careless till, has determinant zero, so `solve` stops with an error. Python runs the lines under `try:`, and if one raises an error, it runs the lines under `except` instead. Writing `as error` gives the error a name so we can print it.
-
-      ```python
-      import numpy as np
-
-      A = np.array([[1, 1, 1], [1, 2, 3], [1, 3, 6]])
-      b = np.array([9, 19, 33])
-
-      x = np.linalg.solve(A, b)
-      print(x)                                  # [3. 2. 4.]
-      print(np.allclose(A @ x, b))              # True
-      A_inv = np.linalg.inv(A)
-      print(np.allclose(A @ A_inv, np.eye(3)))  # True
-
-      C = np.array([[2, 2], [1, 1]])
-      try:
-          np.linalg.solve(C, np.array([8, 5]))
-      except np.linalg.LinAlgError as error:
-          print(error)                          # Singular matrix
-      ```
-
-      The code finds prices of £3, £2 and £4, and it refuses the singular system.
-    problems:
-      - inv-numpy-basics
-      - inv-np-self-explain
-      - inv-np-complete-solve
-      - inv-np-read-solve
-      - inv-np-why-solve
-      - inv-np-singular
-      - inv-np-robot-debug
 final: inv-explain-solve
 summary: |
   - The identity matrix $I$ has 1s on its main diagonal and 0s elsewhere, so $AI=IA=A$. The inverse $A^{-1}$ undoes $A$, so $AA^{-1}=A^{-1}A=I$, and for a $2\times2$ matrix $A^{-1}=\frac{1}{ad-bc}\begin{bmatrix}d&-b\\-c&a\end{bmatrix}$ when $ad-bc\neq0$. The inverse of a product reverses the order, $(AB)^{-1}=B^{-1}A^{-1}$.
   - A linear system can be written $Ax=b$. Its augmented matrix $[A\mid b]$ keeps each total beside its equation. Elimination uses whole-row swaps and additions, then back-substitution finds the unknowns; when $A$ is invertible the answer is $x=A^{-1}b$.
   - The transpose swaps rows and columns, $(A^\top)_{ij}=A_{ji}$. The dot product is $x^\top y$, and a product's transpose reverses the order, $(AB)^\top=B^\top A^\top$. A symmetric matrix has $A^\top=A$, and $A^\top A$ is always symmetric.
-  - In NumPy, `np.linalg.solve(A, b)` solves $Ax=b$. It is preferred to `np.linalg.inv(A) @ b` because it does less arithmetic and is usually at least as accurate.
 
   **Next:** We'll ask which vectors can be built from a matrix's columns, which tells us when $Ax=b$ has one solution, none or infinitely many.

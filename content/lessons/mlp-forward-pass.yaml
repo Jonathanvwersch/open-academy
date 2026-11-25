@@ -12,7 +12,7 @@ where_this_fits: |
 
   A **forward pass** is the calculation that turns a neural network input into a prediction, by running its layers in order. Each layer combines the numbers it receives and passes its outputs to the next layer.
 
-  With one weighted sum, the prediction changes at a fixed rate as an input grows. ReLU between layers lets that rate change for different inputs. We will calculate a prediction, first for one example and then for a batch, using matrix products and activations. We will also count the weights and biases, which are the numbers training must learn. Adding examples does not add more of them.
+  We'll use two measurements of a house to predict its price. A weighted sum changes at one fixed rate as a measurement grows. Adding ReLU between layers lets the rate change. We'll work out one prediction and then several together, using the same weights and biases.
 knowledge_points:
   - id: mlp-layer-of-neurons
     key_prereqs: [matrices, activation-functions, perceptron]
@@ -26,7 +26,7 @@ knowledge_points:
 
       In the activation-functions lesson, a neuron turned a weighted score into an output. Now we want several neurons to read the same measurements, so each can build a different combination of them.
 
-      Let's use two measured numbers, $x=(2,1)$. The blue neuron uses weights $(1,1)$ and bias $-1$. The orange neuron uses weights $(-1,1)$ and bias $0$. Each box shows its score before ReLU and its output after ReLU. Blue keeps its positive score, while orange turns its negative score into zero.
+      Write the two measurements as $x=(x_1,x_2)=(2,1)$. The blue neuron uses weights $(1,1)$ and a bias of $-1$. The orange neuron uses weights $(-1,1)$ and a bias of $0$. Each box shows its score before ReLU and its output after ReLU.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 260" aria-label="Input (2,1) feeds two neurons. Blue uses weights (1,1), bias minus 1, score 2 and ReLU output 2. Orange uses weights (minus 1,1), bias 0, score minus 1 and ReLU output 0.">
@@ -53,12 +53,12 @@ knowledge_points:
 
       $$h=\phi(z).$$
 
-      Here ReLU gives $(2,0)$, in neuron order. These are new numbers computed from the inputs, ready for another layer to use.
+      ReLU keeps the blue score of $2$ and replaces the orange score of $-1$ with zero. The next layer reads their outputs $(2,0)$.
 
     worked: |
       Let's compute both outputs for $x=(2,1)$ using the two neurons in the picture.
 
-      1. **Collect the weights and biases.** Keep the blue neuron (neuron 1) from the picture first in both arrays so each bias matches its row.
+      1. **Collect the weights and biases.** Put the blue neuron's weights in the first row and its bias first in the list.
          $$W=\begin{pmatrix}1&1\\-1&1\end{pmatrix},\qquad b=\begin{pmatrix}-1\\0\end{pmatrix}$$
 
       2. **Take one dot product per row.** Each neuron reads both input numbers.
@@ -95,7 +95,7 @@ knowledge_points:
     explain: |
       ### The outputs become the next inputs
 
-      Our first layer produces two numbers, but we want one prediction. We can feed those numbers into one more neuron. It uses weights $(3,2)$ and bias $1$. We leave its score unchanged so it can predict a price without being squeezed into a fixed range, as we will discuss below.
+      The first layer gives two numbers. Feed them to one more neuron, with weights $(3,2)$ and bias $1$. This final layer, called the **output layer**, predicts the price. It leaves the score unchanged so a price can be above $1$.
 
       Read the picture from top to bottom. The first layer turns $(2,1)$ into $(2,0)$ after ReLU. The output neuron reads those new values and produces $7$.
 
@@ -138,7 +138,7 @@ knowledge_points:
 
       ### Choosing the output range
 
-      Suppose we use this network to predict a house price in thousands of pounds from two measurements. Its answer must be a number like $250$, so we leave the output score unchanged. Sigmoid would squeeze every prediction between $0$ and $1$ and could never directly give that price. The hidden ReLU activations still replace negative scores with zero before the output neuron combines them.
+      Report the price in thousands of pounds. A price of £250,000 needs an output of $250$. Sigmoid would keep every answer between $0$ and $1$, so we leave this last score unchanged. The earlier layer still applies ReLU.
     worked: |
       Let's finish the prediction for $x=(2,1)$, starting from the first layer output $h=(2,0)$ we just computed.
 
@@ -204,7 +204,7 @@ knowledge_points:
 
       ### Why we transpose the weights
 
-      A matrix product pairs a row with a column. Our blue neuron's weight row $(1,1)$ becomes the first column of $W_1^\top$. For example row $(2,1)$:
+      The blue neuron's weights are $(1,1)$. Turn that row into a column of $W_1^\top$ so it can be paired with a row of measurements such as $(2,1)$.
       $$
       \begin{aligned}
       2\cdot1+1\cdot1&=3 &&\text{dot with the weight column}\\
@@ -222,7 +222,7 @@ knowledge_points:
 
       $$\hat Y=HW_2^\top+b_2.$$
 
-      Capital $H$ holds hidden values for all examples, and $\hat Y$ holds their predictions. Add bias $-1$ to the first column of scores and $0$ to the second, for every example row. NumPy calls this repeated addition **broadcasting**. ReLU acts on every entry separately.
+      The matrix $H$ holds the first layer's outputs, with one row per example. The column $\hat Y$ holds one prediction per example. For each row of first-layer scores, add $-1$ to its first entry and $0$ to its second. Then apply ReLU to each score.
 
       Be careful not to rely on compatible sizes alone to check the calculation. Without the transpose, our first row instead gives
 
@@ -238,7 +238,7 @@ knowledge_points:
 
       ### Count the weights and biases
 
-      A layer's **parameters** are its adjustable weights and biases. Each neuron has one weight per input and one bias, so its parameter count is
+      A layer's **parameters** are its adjustable weights and biases. One neuron has $d_\text{in}$ weights and one bias. With $d_\text{out}$ neurons, the whole layer has
 
       $$d_\text{out}d_\text{in}+d_\text{out}.$$
 
@@ -269,20 +269,6 @@ knowledge_points:
       | $3$ | $3\times2$ | $3\times2$ | $3\times1$ | $9$ |
       | $32$ | $32\times2$ | $32\times2$ | $32\times1$ | $9$ |
 
-      Here is the same calculation in NumPy, with one inner list per matrix row. We transpose the weights with `.T`, multiply matrices with `@` and apply ReLU with `np.maximum(0, ...)`. The additions repeat the biases across examples, and `.shape` reports each array size.
-
-      ```python
-      import numpy as np
-      X = np.array([[2, 1], [1, 2], [0, 1]])
-      W1 = np.array([[1, 1], [-1, 1]])
-      b1 = np.array([-1, 0])
-      W2 = np.array([[3, 2]])
-      H = np.maximum(0, X @ W1.T + b1)
-      Y = H @ W2.T + 1
-      print(H.shape, Y.shape)  # (3, 2) (3, 1)
-      print(Y)                # rows [7], [9], [3]
-      ```
-
       The first prediction is still $7$: batching groups the calculations without changing them.
     problems:
       - mlp-shapes-basics
@@ -298,6 +284,6 @@ summary: |
   - A layer computes one score per neuron and applies an activation to each: $h=\phi(Wx+b)$, with one row of weights and one bias per neuron.
   - A forward pass feeds each layer's outputs into the next layer; hidden values are the intermediate outputs before the final prediction.
   - With examples as rows, a layer computes $\phi(XW^\top+b)$ and changes shape from $B\times d_\text{in}$ to $B\times d_\text{out}$, keeping one row per example.
-  - A layer has $d_\text{out}d_\text{in}+d_\text{out}$ parameters, independent of batch size, because every example reuses the same weights and biases.
+  - To count the parameters, count one weight per input for every neuron and one bias per neuron, then add the counts for all layers. For each layer that is $d_\text{out}d_\text{in}+d_\text{out}$ numbers, the same for any batch size.
 
   **Next:** Computational graphs break calculations like this forward pass into small operations, ready for working out how each weight affects the loss.

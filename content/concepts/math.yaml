@@ -32,13 +32,12 @@ concepts:
     difficulty: 2
     est_minutes: 30
     goal_weight: 3
-    dimensions: [conceptual, math, implementation]
+    dimensions: [conceptual, math]
     prereqs: [{ id: dot-product }]
-    encompassings: [{ id: dot-product, weight: 0.16 }, { id: vectors, weight: 0.06 }]
+    encompassings: [{ id: dot-product, weight: 0.21 }]
     objectives:
       - { text: "Multiply matrices and predict result shapes", dimension: math }
       - { text: "Explain a matrix as a linear transformation", dimension: conceptual }
-      - { text: "Write batched matrix products in NumPy", dimension: implementation }
     status: authored
   - id: determinants
     title: Determinants
@@ -48,7 +47,7 @@ concepts:
     goal_weight: 2
     dimensions: [conceptual, math, transfer]
     prereqs: [{ id: matrices }]
-    encompassings: [{ id: matrices, weight: 0.04 }, { id: vectors, weight: 0.03 }]
+    encompassings: [{ id: matrices, weight: 0.06 }, { id: vectors, weight: 0.03 }]
     confused_with: [rank-span]
     related: [eigen-svd]
     objectives:
@@ -67,13 +66,13 @@ concepts:
     difficulty: 2
     est_minutes: 30
     goal_weight: 2
-    dimensions: [conceptual, math, implementation]
+    dimensions: [conceptual, math]
     prereqs: [{ id: determinants }]
     encompassings:
       [
-        { id: determinants, weight: 0.1 },
-        { id: dot-product, weight: 0.06 },
-        { id: matrices, weight: 0.18 },
+        { id: determinants, weight: 0.08 },
+        { id: dot-product, weight: 0.07 },
+        { id: matrices, weight: 0.19 },
       ]
     objectives:
       - {
@@ -85,7 +84,6 @@ concepts:
           text: "Apply the transpose rules, including (AB)ᵀ = BᵀAᵀ, and recognise symmetric matrices",
           dimension: math,
         }
-      - { text: "Solve linear systems in NumPy with np.linalg.solve", dimension: implementation }
     sources:
       - {
           title: "3Blue1Brown: Inverse matrices, column space and null space",
@@ -102,8 +100,8 @@ concepts:
     prereqs: [{ id: inverses-linear-systems }]
     encompassings:
       [
-        { id: inverses-linear-systems, weight: 0.06 },
-        { id: matrices, weight: 0.14 },
+        { id: inverses-linear-systems, weight: 0.11 },
+        { id: matrices, weight: 0.15 },
         { id: vectors, weight: 0.26 },
       ]
     objectives:
@@ -130,15 +128,15 @@ concepts:
     difficulty: 3
     est_minutes: 35
     goal_weight: 2
-    dimensions: [conceptual, math, implementation]
+    dimensions: [conceptual, math]
     prereqs: [{ id: rank-span }]
     encompassings:
       [
         { id: rank-span, weight: 0.05 },
-        { id: dot-product, weight: 0.27 },
-        { id: inverses-linear-systems, weight: 0.15 },
-        { id: matrices, weight: 0.33 },
-        { id: vectors, weight: 0.18 },
+        { id: dot-product, weight: 0.33 },
+        { id: inverses-linear-systems, weight: 0.26 },
+        { id: matrices, weight: 0.39 },
+        { id: vectors, weight: 0.17 },
       ]
     objectives:
       - {
@@ -150,7 +148,6 @@ concepts:
           dimension: math,
         }
       - { text: "Fit a least-squares line with the normal equations AᵀAx = Aᵀb", dimension: math }
-      - { text: "Compute projections and least-squares fits in NumPy", dimension: implementation }
     sources:
       - {
           title: "MIT 18.06 (Strang), Lecture 15: Projections onto subspaces",
@@ -301,11 +298,11 @@ concepts:
     prereqs: [{ id: matrices }, { id: orthogonality-projections }]
     encompassings:
       [
-        { id: matrices, weight: 0.19 },
-        { id: orthogonality-projections, weight: 0.03 },
+        { id: matrices, weight: 0.27 },
+        { id: orthogonality-projections, weight: 0.04 },
         { id: determinants, weight: 0.04 },
-        { id: inverses-linear-systems, weight: 0.06 },
-        { id: rank-span, weight: 0.08 },
+        { id: inverses-linear-systems, weight: 0.03 },
+        { id: rank-span, weight: 0.05 },
         { id: vectors, weight: 0.17 },
       ]
     objectives:

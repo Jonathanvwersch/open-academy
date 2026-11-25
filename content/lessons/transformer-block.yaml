@@ -118,6 +118,8 @@ knowledge_points:
 
       A transformer block has two sublayers, each with its own shortcut: first attention, which lets the tokens share information, then an MLP, which works on each token's vector by itself. For now we leave normalization out, and step 3 adds it.
 
+      The MLP often makes its hidden layer four times as wide as the input: $4d$ hidden neurons for a vector of width $d$. The small example below uses four hidden neurons at width two so we can do the sums by hand.
+
       Take the first two words of "the cat sat on the mat", one token per word, with width $d=2$. "the" has $x_1=(2,0)$ and "cat" has $x_2=(1,-2)$. Use one head, omit $W_O$ and start from given attention weights and values $v_1=(4,0)$ and $v_2=(0,4)$. Compute each mixture before adding its shortcut:
       $$
       \begin{aligned}
@@ -166,7 +168,7 @@ knowledge_points:
 
       $$y_t=u_t+\text{MLP}(u_t).$$
 
-      $\text{Attn}(\dots)_t$ is attention's output at position $t$, and it depends on every token. The MLP is a two-layer network with a nonlinearity such as ReLU, and it reads only $u_t$. GPT-2 uses GELU, a smooth version of ReLU. Our examples use $\text{MLP}(u)=W_2\,\text{ReLU}(W_1u+b_1)+b_2$. The hidden layer is usually $4d$ wide; our example uses $4$ neurons, fewer than $4d=8$, and zero biases.
+      $\text{Attn}(\dots)_t$ is the attention output for position $t$. It mixes information from the tokens that position can read. The MLP shares its weights across positions, but each call reads only its own vector $u_t$. We use ReLU between the two MLP layers.
 
       The MLP uses the same weights at every position, just as an MLP uses the same weights for every example in a batch. Stacked together, the $T$ token vectors form a $T\times d$ matrix, and the MLP treats each row as one example.
 
@@ -219,7 +221,7 @@ knowledge_points:
     explain: |
       ### Keeping the inputs a steady size
 
-      Each shortcut adds something to a token's vector, so its entries can grow as it passes through blocks. The block applies LayerNorm to each token's vector before feeding it to each sublayer. To standardize the entries by hand, subtract their mean and divide by their standard deviation. With a positive standard deviation, this gives mean $0$ and standard deviation $1$.
+      Each shortcut adds something to a token's vector, so its entries can grow as it passes through blocks. The block applies LayerNorm to each token's vector before feeding it to each sublayer. To standardize the entries by hand, subtract their mean. Square these differences, take their average and take its square root to find the standard deviation. Divide each original difference by that number. With a positive standard deviation, this gives mean $0$ and standard deviation $1$.
 
       LayerNorm then multiplies each standardized entry by its own learned gain and adds its own learned shift. These can change the mean and spread of the result.
 
@@ -231,7 +233,7 @@ knowledge_points:
 
       $$y_t=u_t+\text{MLP}\big(\text{LN}(u_t)\big).$$
 
-      On the right is **post-norm**, the layout of the original 2017 transformer, where LayerNorm comes after each addition, as in $u_t=\text{LN}\big(x_t+\text{Attn}(x_1,\dots,x_T)_t\big)$.
+      On the right is **post-norm**. LayerNorm comes after each addition: first after attention gives $u_t=\text{LN}\big(x_t+\text{Attn}(x_1,\dots,x_T)_t\big)$, then after the MLP gives $y_t=\text{LN}(u_t+\text{MLP}(u_t))$.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 400" aria-label="Two block layouts side by side, each read from top to bottom. Left, pre-norm: x goes into a green LayerNorm box, then the blue attention box, and the result is added to x carried by a grey shortcut; that sum goes into a second LayerNorm, then the orange MLP, and is added to the sum by a second shortcut, giving y. Nothing sits on the shortcuts. Right, post-norm: x goes into attention, is added to x by a shortcut, and only then goes through LayerNorm; the same happens with the MLP, so a LayerNorm sits on the shortcut path after each addition">
@@ -370,7 +372,7 @@ knowledge_points:
 
       ### Counting a block's weights
 
-      Counting parameters (weights, biases, gains and shifts) tells us memory needs. Attention has four $d\times d$ matrices: $W_Q$, $W_K$, $W_V$ for all heads together and $W_O$ to mix their outputs. Each has $d$ biases. The MLP's $W_1$ is $4d\times d$ and $W_2$ is $d\times4d$, with $4d$ and $d$ biases. Each LayerNorm has a gain and shift per entry. Count each contribution:
+      Count the learned numbers to estimate how much space it takes to store a block. Attention has three $d\times d$ projections $W_Q$, $W_K$ and $W_V$, formed by placing the individual heads' weights side by side. The fourth matrix $W_O$ mixes their outputs. In this count each matrix also has one bias per output, so each has $d$ biases. For the MLP, $W_1$ has shape $4d\times d$ with $4d$ biases; $W_2$ has shape $d\times4d$ with $d$ biases.
       $$
       \begin{aligned}
       \text{attention weights}&=4d^2 &&\text{four square matrices}\\
@@ -381,7 +383,7 @@ knowledge_points:
       \text{total}&=12d^2+9d+4d=12d^2+13d &&\text{add contributions}
       \end{aligned}
       $$
-      The $d^2$ term dominates at real sizes. GPT-2 small has $d=768$ and $12$ blocks:
+      The $d^2$ term accounts for most of the count at large widths. The smallest GPT-2 model, called GPT-2 small, uses width $d=768$ and $12$ blocks:
       $$
       \begin{aligned}
       12(768)^2+13(768)&=7{,}087{,}872 &&\text{parameters per block}\\
@@ -390,9 +392,9 @@ knowledge_points:
       $$
       That's about $85$ million of the model's $124$ million parameters. Most of the rest is in the embedding table. GPT-2 has $50{,}257$ tokens in its vocabulary, so the table has $50{,}257$ rows of width $768$. To score each possible next token, take the dot product of the final vector at that position with its embedding row. This reuse is called **weight tying**. The input lookup and output scores share the same $N\times d$ table, which counts once.
 
-      Be careful not to count a head's weights once per head at full width. Each head's $W_Q$ is only $d\times d/h$, so the $h$ heads together fill $d\times d$.
+      Each head's $W_Q$ has $d$ rows and $d/h$ columns. Place those $h$ matrices side by side: they share the same row count and have $h(d/h)=d$ columns in total. That is one $d\times d$ matrix, not one per head.
     worked: |
-      Let's count the parameters of one block with width $d=4$, the size the code below uses.
+      Let's count the parameters of one block with width $d=4$.
 
       1. **Count attention's weights and biases.** There are four $4\times4$ matrices and four bias vectors of length $4$.
          $$4\times16+4\times4=80$$
@@ -400,69 +402,17 @@ knowledge_points:
       2. **Count the MLP's weights and biases.** The hidden layer has $4d=16$ neurons, so $W_1$ is $16\times4$ with $16$ biases, and $W_2$ is $4\times16$ with $4$ biases.
          $$64+16+64+4=148$$
 
-      3. **Count the two LayerNorms.** Each has a gain and a shift for every one of the $4$ entries.
+      3. **Count the two LayerNorms.** Variance is the average squared distance from the mean. LayerNorm computes it from its input, so it does not add to the parameter count. The learned values are one gain and one shift for each of the $4$ positions in a token vector, twice per block.
          $$2\times(4+4)=16$$
 
       4. **Add them up.** This matches the formula $12d^2+13d$.
          $$80+148+16=244=12\times16+13\times4$$
 
-      Here is a pre-norm block in Python with NumPy, using one attention head. Four random token vectors stand in for "the cat sat on", and `rng.normal(0, 0.5, shape)` fills each weight array with random numbers of spread $0.5$. `np.zeros(shape)` makes an array with the given dimensions and fills every entry with zero. `np.ones(d)` makes a length-$d$ array of ones for the normalization gains, while `np.zeros(d)` makes zero-filled shifts. `x @ W` is a matrix product, `.T` transposes, `axis=-1` works along each row (one token), and `keepdims=True` keeps the result as a column so it lines up with each row. `x.var(...)` gives the variance, the average squared distance from the mean. The tiny `1e-5` prevents division by zero. `np.maximum(z, 0)` is ReLU. `make_block` returns a dictionary of named arrays, `p["Wq"]` looks one up, and `w.size` counts the numbers in an array.
+      ### Shift scores before softmax
 
-      The code shifts the scores before softmax. A common shift multiplies each exponential and their sum by the same factor. That factor cancels in the division, so the weights stay the same. Subtracting the row maximum makes the largest shifted score $0$ and its exponential $1$. The other exponentials are at most $1$, so none can grow too large for the computer to store.
+      Very large scores can give exponentials too large for a computer to store. Subtract the row maximum from each score so the largest exponential is $1$. This scales every exponential by the same factor. That factor appears in both the top and bottom of the softmax fraction, so it cancels. For scores $(2,3)$ the new scores are $(-1,0)$.
 
-      ```python
-      import numpy as np
-
-      rng = np.random.default_rng(0)
-      T, d = 4, 4  # 4 tokens, width 4
-
-      def layer_norm(x, gain, shift):
-          mu = x.mean(axis=-1, keepdims=True)
-          var = x.var(axis=-1, keepdims=True)
-          s = np.sqrt(var + 1e-5)
-          return gain * (x - mu) / s + shift
-
-      def softmax(z):
-          e = np.exp(z - z.max(axis=-1, keepdims=True))
-          return e / e.sum(axis=-1, keepdims=True)
-
-      def make_block():
-          shapes = {
-              "Wq": (d, d), "bq": (d,),
-              "Wk": (d, d), "bk": (d,),
-              "Wv": (d, d), "bv": (d,),
-              "Wo": (d, d), "bo": (d,),
-              "W1": (d, 4 * d), "b1": (4 * d,),
-              "W2": (4 * d, d), "b2": (d,),
-          }
-          p = {}
-          for name, shape in shapes.items():
-              p[name] = rng.normal(0, 0.5, shape)
-          p["g1"], p["g2"] = np.ones(d), np.ones(d)
-          p["c1"], p["c2"] = np.zeros(d), np.zeros(d)
-          return p
-
-      def block(x, p):
-          n = layer_norm(x, p["g1"], p["c1"])
-          q = n @ p["Wq"] + p["bq"]
-          k = n @ p["Wk"] + p["bk"]
-          v = n @ p["Wv"] + p["bv"]
-          a = softmax(q @ k.T / np.sqrt(d))
-          u = x + (a @ v) @ p["Wo"] + p["bo"]
-          n = layer_norm(u, p["g2"], p["c2"])
-          hid = np.maximum(n @ p["W1"] + p["b1"], 0)
-          return u + hid @ p["W2"] + p["b2"]
-
-      x = rng.normal(0, 1, (T, d))
-      blocks = [make_block() for _ in range(3)]
-      for p in blocks:
-          x = block(x, p)
-      print(x.shape)
-      print(sum(w.size for w in blocks[0].values()))
-      # prints (4, 4), then 244
-      ```
-
-      The MLP's matrices are stored here as `W1` of shape $d\times4d$ and `W2` of shape $4d\times d$, transposed from $W_1$ and $W_2$ in the count, because each token is a row of `x`. The shape stays $(4,4)$ through all three blocks, and each block has the $244$ parameters we counted.
+      $$\frac{e^2}{e^2+e^3}=\frac{e^{-1}}{e^{-1}+1}.$$
     problems:
       - tb-stack-basics
       - tbp-stack-self-explain
@@ -470,7 +420,6 @@ knowledge_points:
       - tbp-stack-shape
       - tbp-stack-mlp-share
       - tbp-stack-heads-count
-      - tbp-stack-code-read
       - tbp-stack-robot
       - tbp-stack-shifted-softmax
       - tbp-stack-tied-embedding-choice
