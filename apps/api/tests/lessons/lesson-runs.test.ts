@@ -184,6 +184,31 @@ test('an open quiz keeps deleted answered items and replaces or drops deleted un
   ).toEqual(saved);
 });
 
+test('an entirely deleted quiz is restarted without recording a failed attempt', async () => {
+  const run = await finishLessonSteps();
+  const deleted = 'sl-inputs-targets-basics';
+  const [quiz] = await db
+    .insert(lessonQuizAttempts)
+    .values({ runId: run.id, attemptNo: 1 })
+    .returning();
+  await db.insert(lessonQuizItems).values({
+    quizAttemptId: quiz.id,
+    position: 1,
+    knowledgePointId: 'removed-knowledge-point',
+    exerciseId: deleted,
+  });
+  removeExercises([deleted]);
+
+  expect((await submitQuiz()).status).toBe(404);
+  expect(
+    await db.select().from(lessonQuizAttempts).where(eq(lessonQuizAttempts.runId, run.id)),
+  ).toHaveLength(0);
+  expect((await (await getRun()).json()).run.quiz).toMatchObject({ status: 'not_started' });
+  const restarted = await startQuiz();
+  expect(restarted.status).toBe(200);
+  expect((await restarted.json()).run.quiz.current.items.length).toBeGreaterThan(0);
+});
+
 test.each([
   [true, false],
   [false, false],

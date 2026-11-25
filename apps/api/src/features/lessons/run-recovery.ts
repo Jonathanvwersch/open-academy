@@ -140,5 +140,16 @@ export async function loadRunQuiz(
     if (replacement.seed === null) excludeFixedExerciseIds.add(replacement.exerciseId);
     if (replacement.seed !== null) usedSeeds.add(replacement.seed);
   }
-  return { quizAttempts, quizItems: quizItems.filter(({ id }) => !dropped.has(id)) };
+  const remaining = quizItems.filter(({ id }) => !dropped.has(id));
+  const remainingAttemptIds = new Set(remaining.map((item) => item.quizAttemptId));
+  const emptied = [...new Set(stale.map((item) => item.quizAttemptId))].filter(
+    (id) => !remainingAttemptIds.has(id),
+  );
+  if (emptied.length > 0) {
+    await tx.delete(lessonQuizAttempts).where(inArray(lessonQuizAttempts.id, emptied));
+  }
+  return {
+    quizAttempts: quizAttempts.filter(({ id }) => !emptied.includes(id)),
+    quizItems: remaining,
+  };
 }

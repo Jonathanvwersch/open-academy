@@ -1030,11 +1030,11 @@ export function LessonRunner({
                 >
                   Next
                 </Button>
-              ) : (
+              ) : currentQuizItem ? (
                 <Button type="button" disabled={busy} onClick={() => void submitLockedQuiz()}>
                   Submit quiz
                 </Button>
-              )}
+              ) : null}
             </CardContent>
           </Card>
         )
