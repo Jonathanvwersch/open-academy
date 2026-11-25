@@ -1,7 +1,6 @@
 import type { ContentIndex } from '@academy/aesop/course/types';
 import { asc, eq } from 'drizzle-orm';
 import type { Database } from '../src/db/client.js';
-import { LearnerRepository } from '../src/db/repository.js';
 import {
   attempts,
   lessonRuns,
@@ -374,7 +373,6 @@ export async function auditPlacementGrants(input: {
   }
   state.history = history;
 
-  const repo = new LearnerRepository(db, userId);
   for (const conceptId of newlyWithdrawn) {
     const attemptId = latest.get(conceptId)?.withdrawnByAttemptId;
     if (!attemptId || state.replayedAttemptIds.has(attemptId)) continue;
@@ -385,7 +383,6 @@ export async function auditPlacementGrants(input: {
     const before = await learnerSnapshot(db, userId);
     await applyPlacementGrantOutcome({
       db,
-      repo,
       userId,
       content,
       exerciseId: attempt.exerciseId,

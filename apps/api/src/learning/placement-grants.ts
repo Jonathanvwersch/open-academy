@@ -18,12 +18,11 @@ import {
 import type { PlacementState } from '@academy/aesop/placement/placement';
 import { and, eq, inArray, ne, or } from 'drizzle-orm';
 import type { Database } from '../db/client.js';
-import type { LearnerRepository } from '../db/repository.js';
+import { drizzleLearnerStore } from '../db/learner-store.js';
 import {
   attempts,
   courseEnrollments,
   lessonRuns,
-  masteryEvents,
   placementGrants,
   remediationFlags,
   reviewCards,
@@ -109,7 +108,6 @@ export async function recordPlacementGrants(input: {
 
 export async function applyPlacementGrantOutcome(input: {
   db: Database;
-  repo: LearnerRepository;
   userId: string;
   content: ContentIndex;
   exerciseId: string;
@@ -127,10 +125,10 @@ export async function applyPlacementGrantOutcome(input: {
   if (!exercise) return none;
   const states = await placementGrantStates(input.db, input.userId);
   if (await placementCreditWithdrawn(input.db, input.userId, exercise.concept)) {
-    for (const record of await input.repo.masteryRecords()) {
+    for (const record of await drizzleLearnerStore(input.db).listMastery(input.userId)) {
       if (record.conceptId !== exercise.concept) continue;
       const capped = capWithdrawnMastery(record);
-      if (capped) await input.repo.saveMastery(capped);
+      if (capped) await drizzleLearnerStore(input.db).saveMastery(input.userId, capped);
     }
     await deletePlacementOnlyCards(input.db, input.userId, [exercise.concept]);
   }
@@ -215,7 +213,7 @@ export async function openTargetedReviews(input: {
 }
 
 async function confirmGrant(
-  input: { db: Database; repo: LearnerRepository; userId: string; attemptId: string; now: Date },
+  input: { db: Database; userId: string; attemptId: string; now: Date },
   conceptId: string,
 ) {
   await input.db
@@ -234,15 +232,17 @@ async function confirmGrant(
         eq(placementGrants.state, 'conditional'),
       ),
     );
-  for (const record of await input.repo.masteryRecords()) {
+  for (const record of await drizzleLearnerStore(input.db).listMastery(input.userId)) {
     if (record.conceptId !== conceptId || !record.provisional) continue;
-    await input.repo.saveMastery({ ...record, provisional: false });
+    await drizzleLearnerStore(input.db).saveMastery(input.userId, {
+      ...record,
+      provisional: false,
+    });
   }
 }
 
 async function withdrawGrants(input: {
   db: Database;
-  repo: LearnerRepository;
   userId: string;
   content: ContentIndex;
   failedConceptId: string;
@@ -268,7 +268,7 @@ async function withdrawGrants(input: {
         ne(placementGrants.state, 'withdrawn'),
       ),
     );
-  const mastery = await input.repo.masteryRecords();
+  const mastery = await drizzleLearnerStore(input.db).listMastery(input.userId);
   for (const { conceptId, reason } of plan) {
     const conceptGrants = grants.filter((grant) => grant.conceptId === conceptId);
     const evidence = new Set(conceptGrants.flatMap((grant) => grant.evidenceAttemptIds));
@@ -289,9 +289,8 @@ async function withdrawGrants(input: {
       );
     for (const record of mastery.filter((entry) => entry.conceptId === conceptId)) {
       const rebuilt = masteryAfterWithdrawal(record, evidence, input.now);
-      await input.repo.saveMastery(rebuilt);
-      await input.db.insert(masteryEvents).values({
-        userId: input.userId,
+      await drizzleLearnerStore(input.db).saveMastery(input.userId, rebuilt);
+      await drizzleLearnerStore(input.db).addMasteryEvent(input.userId, {
         conceptId,
         dimension: record.dimension,
         fromState: record.state,
@@ -326,7 +325,7 @@ async function deletePlacementOnlyCards(db: Database, userId: string, conceptIds
 
 /** Reopens courses that hold a withdrawn topic and skips planned work it no longer unlocks. */
 async function reopenPlanAfterWithdrawal(
-  input: { db: Database; repo: LearnerRepository; userId: string; content: ContentIndex },
+  input: { db: Database; userId: string; content: ContentIndex },
   conceptIds: string[],
 ) {
   const affectedCourseIds = input.content.courses
@@ -373,7 +372,7 @@ async function reopenPlanAfterWithdrawal(
       ),
     );
   const [masteryRecords, runRows] = await Promise.all([
-    input.repo.masteryRecords(),
+    drizzleLearnerStore(input.db).listMastery(input.userId),
     input.db
       .select({ conceptId: lessonRuns.conceptId, status: lessonRuns.status })
       .from(lessonRuns)

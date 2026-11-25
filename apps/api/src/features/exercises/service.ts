@@ -876,7 +876,6 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
   if (!followUp) {
     await applyPlacementGrantOutcome({
       db,
-      repo,
       userId: request.userId,
       content: index,
       exerciseId: exercise.id,

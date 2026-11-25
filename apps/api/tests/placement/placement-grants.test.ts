@@ -126,7 +126,6 @@ async function answer(conceptId: string, correct: number) {
   const { attemptId, exercise } = await insertAttempt(conceptId, 'review', correct);
   const input = {
     db,
-    repo,
     userId,
     content,
     exerciseId: exercise.id,
