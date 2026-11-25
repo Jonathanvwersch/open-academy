@@ -49,6 +49,9 @@ test('diagram labels have a bounded allowance separate from lesson text', () => 
   const large = sanitizePageContent(text + diagram('y'.repeat(4_000)));
   expect(large.endsWith('\n…[truncated]')).toBe(true);
   expect(large.length).toBeLessThanOrEqual(14_000 + '\n…[truncated]'.length);
+
+  const discarded = sanitizePageContent('x'.repeat(12_100) + diagram('Not in the output'));
+  expect(discarded).toBe(`${'x'.repeat(12_000)}\n…[truncated]`);
 });
 
 test('lesson, session, and map tutor context include prerequisite recap facts', async () => {
