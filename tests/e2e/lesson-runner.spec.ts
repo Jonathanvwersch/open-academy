@@ -928,6 +928,13 @@ test('passes every knowledge point and restores the exact problem and result aft
           problemId ?? '',
         );
         await page.screenshot({ path: `${stepReviewScreenshotDir}/desktop-current-step-pill.png` });
+        const quizUrl = new URL(page.url());
+        quizUrl.searchParams.delete('step');
+        await page.goto(quizUrl.toString());
+        await expect(page.getByTestId('lesson-problem')).toHaveAttribute(
+          'data-problem-id',
+          problemId ?? '',
+        );
       }
     }
   }
