@@ -941,11 +941,15 @@ test('passes every knowledge point and restores the exact problem and result aft
   await expect(page.getByRole('heading', { name: firstStepTitle, exact: true })).toBeVisible();
   await expect(page.getByTestId('lesson-problem')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Back', exact: true })).toHaveCount(0);
+  await expect(page.getByTestId('lesson-explain-chip')).toHaveAttribute(
+    'aria-label',
+    'Explain it, current',
+  );
   await expect(page.getByTestId('lesson-quiz-chip')).toHaveAttribute(
     'aria-label',
-    'Lesson quiz, current',
+    'Lesson quiz, upcoming',
   );
-  await page.getByTestId('lesson-quiz-chip').click();
+  await page.getByTestId('lesson-explain-chip').getByRole('button', { name: 'Explain it' }).click();
   await expect(page.getByTestId('lesson-steps-complete')).toBeVisible();
   await page.getByRole('button', { name: 'Continue' }).click();
   await expect(page.getByLabel('Your answer')).toBeVisible();
@@ -1459,6 +1463,15 @@ test('reloading restores progress earned before tutor-assisted answers counted',
   expect(recovered.points[0]).toMatchObject({ status: 'passed', streak: 2 });
   expect(recovered.pending.knowledgePointId).not.toBe(first.knowledgePointId);
   expect(recovered.xpEarned).toBe(10);
+  const pendingPointIndex = recovered.points.findIndex(
+    (point: { id: string }) => point.id === recovered.pending.knowledgePointId,
+  );
+  expect(pendingPointIndex).toBeGreaterThanOrEqual(0);
+  await page
+    .getByRole('button', {
+      name: `Step ${pendingPointIndex + 1} of ${recovered.points.length}, current`,
+    })
+    .click();
   await expect(page.getByTestId('lesson-problem')).toHaveAttribute(
     'data-problem-id',
     recovered.pending.id,
@@ -1875,6 +1888,8 @@ test('lesson quiz results are hidden until submit, resume after reload, and allo
   );
   let currentActivityId = prepared.activityId;
   await page.reload();
+  await page.getByTestId('lesson-explain-chip').getByRole('button', { name: 'Explain it' }).click();
+  await expect(page).toHaveURL(/step=explain/);
   await expect(page.getByTestId('lesson-steps-complete')).toBeVisible();
   await page.getByRole('button', { name: 'Continue' }).click();
   await expect(page.getByTestId('exercise-prompt')).toContainText('Pick any real problem');
@@ -2304,6 +2319,8 @@ test('lesson quiz results are hidden until submit, resume after reload, and allo
   await expect(warmupProgress).toHaveText('Warm-up before the retake · 2 of 6');
   await answerPracticeQuestion(practiceRun.pendingPracticeProblem, false, 'Next', 2);
 
+  await page.getByRole('button', { name: 'Do this later', exact: true }).click();
+  await expect(page.getByTestId('lesson-quiz-results')).toBeVisible();
   await page.reload();
   const continuedResults = page.getByTestId('lesson-quiz-results');
   await expect(continuedResults.getByRole('button', { name: 'Continue retry' })).toBeVisible();
@@ -2356,7 +2373,7 @@ test('lesson quiz results are hidden until submit, resume after reload, and allo
   await expect(page.getByRole('button', { name: 'Back', exact: true })).toHaveCount(0);
   await expect(page.getByTestId('lesson-quiz-chip')).toHaveAttribute(
     'aria-label',
-    'Lesson quiz, current',
+    'Lesson quiz, available',
   );
   await page.getByTestId('lesson-quiz-chip').click();
   await expect(page.getByTestId('lesson-quiz-results')).toBeVisible();

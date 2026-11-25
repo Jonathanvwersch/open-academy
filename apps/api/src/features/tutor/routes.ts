@@ -1,3 +1,4 @@
+import { tutorLessonStages } from '@academy/contracts/tutor';
 import { onScreenOptions } from '@academy/shared/shuffle';
 import { TUTOR_QUESTION_MAX_LENGTH, tutorQuestionTooLongMessage } from '@academy/shared/tutor';
 import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
@@ -57,6 +58,7 @@ export const tutorThreadBodySchema = z.object({
   activityId: optionalNullable(z.string().uuid()),
   exerciseId: optionalNullable(z.string()),
   questionLabel: z.string().trim().max(60).optional(),
+  lessonStage: optionalNullable(z.enum(tutorLessonStages)),
   lessonProblemId: optionalNullable(z.string().uuid()),
   page: optionalNullable(z.enum(['session', 'lesson', 'course', 'map', 'paper'])),
   knowledgePointId: optionalNullable(z.string().max(200)),
@@ -334,6 +336,10 @@ export function registerTutorThreadRoutes(
       index,
       conceptId: pageConceptId,
       knowledgePointId: lessonProblem?.knowledgePointId ?? input.knowledgePointId,
+      lessonStage: input.lessonStage,
+      exerciseId,
+      exercisePrompt: exercise?.prompt,
+      questionLabel: input.questionLabel,
       courseUnits,
       ...(input.page === 'paper'
         ? await (async () => {

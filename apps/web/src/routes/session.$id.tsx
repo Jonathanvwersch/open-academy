@@ -15,7 +15,10 @@ import { sessionQueryOptions, todayQueryOptions } from '../features/sessions/que
 
 export const Route = createFileRoute('/session/$id')({
   pendingComponent: SessionSkeleton,
-  validateSearch: z.object({ activity: z.string().optional() }),
+  validateSearch: z.object({
+    activity: z.string().optional(),
+    step: z.union([z.string(), z.number()]).optional(),
+  }),
   loaderDeps: ({ search }) => ({ activity: search.activity }),
   loader: async ({ context, params, deps }) => {
     const session = await context.queryClient.ensureQueryData(sessionQueryOptions(params.id));

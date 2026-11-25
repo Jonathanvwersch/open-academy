@@ -42,6 +42,8 @@ export function LessonRunner({
   lessonLink,
   tutorEnabled,
   finalAnswered,
+  step,
+  onStepChange,
   onContinue,
 }: {
   conceptId: string;
@@ -52,6 +54,8 @@ export function LessonRunner({
   lessonLink?: LessonLink;
   tutorEnabled: boolean;
   finalAnswered: boolean;
+  step?: string;
+  onStepChange: (step?: string, replace?: boolean) => void;
   onContinue: (status: 'quiz' | 'completed', stage: 'final' | 'done') => Promise<void>;
 }) {
   const queryClient = useQueryClient();
@@ -96,12 +100,25 @@ export function LessonRunner({
   const [busyAction, setBusyAction] = useState<'submit' | 'next' | 'continue' | null>(null);
   const [error, setError] = useState('');
   const [viewingPointId, setViewingPointId] = useState<string | null>(null);
+  const [viewingStage, setViewingStage] = useState<'explain' | 'quiz' | null>(null);
   const [practicePointId, setPracticePointId] = useState<string | null>(null);
   const [warmupActive, setWarmupActive] = useState(false);
+  const seededPendingPracticeProblemId = useRef<string | null>(null);
   const [quizReview, setQuizReview] = useState<QuizReviewPayload | null>(null);
   const [quizPosition, setQuizPosition] = useState<{ attemptId: string; index: number } | null>(
     null,
   );
+  const quizItems = state?.quiz.current?.items ?? [];
+  const unansweredQuizIndex = quizItems.findIndex((item) => !item.answered);
+  const defaultQuizQuestionIndex =
+    unansweredQuizIndex >= 0 ? unansweredQuizIndex : Math.max(0, quizItems.length - 1);
+  const quizAttemptId = state?.quiz.current?.attemptId;
+  const quizQuestionIndex =
+    quizAttemptId && quizPosition?.attemptId === quizAttemptId
+      ? Math.min(quizPosition.index, Math.max(0, quizItems.length - 1))
+      : defaultQuizQuestionIndex;
+  const currentQuizItem = quizItems[quizQuestionIndex];
+  const lastQuizQuestion = quizQuestionIndex === quizItems.length - 1;
   const activePoint = state
     ? (lesson?.knowledge_points?.find((point) => point.id === state.currentPointId) ?? undefined)
     : undefined;
@@ -130,6 +147,7 @@ export function LessonRunner({
   const practiceProblem =
     state?.pendingPracticeProblem ??
     (state?.lastAnsweredProblem?.practiceOnly ? state.lastAnsweredProblem : undefined);
+  const pendingPracticeProblemId = state?.pendingPracticeProblem?.id;
   const pendingPracticePointId = state?.pendingPracticeProblem?.knowledgePointId;
   const pendingPracticeIsWarmup = Boolean(
     state?.quiz.last &&
@@ -150,19 +168,47 @@ export function LessonRunner({
     state && currentPointIndex >= 0
       ? `${title} · step ${currentPointIndex + 1} of ${state.points.length}`
       : title;
-  const tutorContextProblem = practiceMode
-    ? practiceProblem
-    : viewingPastStep
-      ? undefined
-      : contextProblem;
+  const tutorLessonStage = viewingPastStep
+    ? 'step'
+    : (viewingStage ??
+      (state?.quiz.current
+        ? 'quiz'
+        : state?.currentPointId
+          ? 'step'
+          : finalAnswered || state?.status === 'completed'
+            ? 'quiz'
+            : 'explain'));
+  const tutorContextProblem =
+    tutorLessonStage === 'step'
+      ? practiceMode
+        ? practiceProblem
+        : viewingPastStep
+          ? undefined
+          : contextProblem
+      : undefined;
   const tutorContextQuestionLabel = tutorContextProblem
     ? problemLabel(tutorContextProblem)
     : undefined;
-  const tutorContextPointId = viewingPastStep ? viewingPointId : state?.currentPointId;
+  const tutorContextPointId =
+    tutorLessonStage === 'step'
+      ? viewingPastStep
+        ? viewingPointId
+        : state?.currentPointId
+      : undefined;
+  const tutorStageExerciseId =
+    tutorLessonStage === 'explain'
+      ? lesson?.final
+      : tutorLessonStage === 'quiz'
+        ? currentQuizItem?.exercise?.id
+        : tutorContextProblem?.exerciseId;
   const tutorContextPageLabel =
-    viewingPastStep && state && viewingPointIndex >= 0
-      ? `${title} · step ${viewingPointIndex + 1} of ${state.points.length}`
-      : pageLabel;
+    tutorLessonStage === 'explain'
+      ? `${title} · Explain it`
+      : tutorLessonStage === 'quiz'
+        ? `${title} · Quiz`
+        : viewingPastStep && state && viewingPointIndex >= 0
+          ? `${title} · step ${viewingPointIndex + 1} of ${state.points.length}`
+          : pageLabel;
 
   useEffect(() => {
     if (previousProblemId.current && visibleProblemId !== previousProblemId.current) {
@@ -181,21 +227,129 @@ export function LessonRunner({
     if (previousCurrentPointId.current === state?.currentPointId) return;
     previousCurrentPointId.current = state?.currentPointId;
     setViewingPointId(null);
-  }, [state?.currentPointId]);
+    setViewingStage(null);
+    const nextIndex = state?.points.findIndex((item) => item.id === state.currentPointId) ?? -1;
+    onStepChange(
+      nextIndex >= 0
+        ? String(nextIndex + 1)
+        : finalAnswered || state?.status === 'completed'
+          ? 'quiz'
+          : state?.status === 'quiz'
+            ? 'explain'
+            : undefined,
+      true,
+    );
+  }, [finalAnswered, onStepChange, state]);
 
   useEffect(() => {
-    if (!pendingPracticePointId || pendingPracticeIsWarmup) return;
-    setPracticePointId(pendingPracticePointId);
-    setViewingPointId(pendingPracticePointId);
-  }, [pendingPracticeIsWarmup, pendingPracticePointId]);
+    if (!state || !lesson) return;
+    const currentIndex = state.points.findIndex((item) => item.id === state.currentPointId);
+    const fallback =
+      currentIndex >= 0
+        ? String(currentIndex + 1)
+        : state.quiz.current || finalAnswered || state.status === 'completed'
+          ? 'quiz'
+          : state.status === 'quiz'
+            ? 'explain'
+            : undefined;
+    if (step === undefined) {
+      setViewingPointId(null);
+      setViewingStage(null);
+      return;
+    }
+    if (step === 'explain' || step === 'quiz') {
+      const available =
+        Boolean(lesson.final) &&
+        (step === 'explain'
+          ? !state.quiz.current && !finalAnswered && state.status === 'quiz'
+          : Boolean(state.quiz.current) || finalAnswered || state.status === 'completed');
+      if (!available) {
+        onStepChange(fallback, true);
+        setViewingPointId(null);
+        setViewingStage(null);
+        return;
+      }
+      setViewingPointId(null);
+      setViewingStage(step);
+      return;
+    }
+    if (state.quiz.current) {
+      onStepChange('quiz', true);
+      setViewingPointId(null);
+      setViewingStage('quiz');
+      return;
+    }
+    const index = Number(step) - 1;
+    const point = Number.isInteger(index) ? state.points[index] : undefined;
+    const isPendingPracticePoint = point?.id === state.pendingPracticeProblem?.knowledgePointId;
+    const isSelectedPracticePoint = point?.id === practicePointId;
+    if (
+      !point ||
+      (point.status !== 'passed' &&
+        point.id !== state.currentPointId &&
+        !isPendingPracticePoint &&
+        !isSelectedPracticePoint)
+    ) {
+      onStepChange(fallback, true);
+      setViewingPointId(null);
+      setViewingStage(null);
+      return;
+    }
+    if (isSelectedPracticePoint) {
+      setViewingPointId(point.id);
+      setViewingStage(null);
+      return;
+    }
+    if (practicePointId) {
+      setPracticePointId(null);
+      setWarmupActive(false);
+    } else if (isPendingPracticePoint) {
+      setPracticePointId(point.id);
+      setWarmupActive(pendingPracticeIsWarmup);
+    }
+    setViewingStage(null);
+    setViewingPointId(
+      isPendingPracticePoint || point.id !== state.currentPointId ? point.id : null,
+    );
+  }, [finalAnswered, lesson, onStepChange, pendingPracticeIsWarmup, practicePointId, state, step]);
+
+  useEffect(() => {
+    if (
+      !pendingPracticeProblemId ||
+      seededPendingPracticeProblemId.current === pendingPracticeProblemId
+    ) {
+      return;
+    }
+    seededPendingPracticeProblemId.current = pendingPracticeProblemId;
+    const pointIndex =
+      state?.points.findIndex((point) => point.id === pendingPracticePointId) ?? -1;
+    if (pointIndex < 0) return;
+    const pendingPracticeStep = String(pointIndex + 1);
+    if (step === undefined && !pendingPracticeIsWarmup) {
+      onStepChange(pendingPracticeStep, true);
+    }
+  }, [
+    onStepChange,
+    pendingPracticeIsWarmup,
+    pendingPracticePointId,
+    pendingPracticeProblemId,
+    state?.points,
+    step,
+  ]);
 
   useEffect(() => {
     tutorSidebar.setContext({
       conceptId,
       conceptTitle: title,
       activityId,
-      exerciseId: tutorContextProblem?.exerciseId,
-      questionLabel: tutorContextQuestionLabel,
+      exerciseId: tutorStageExerciseId,
+      questionLabel:
+        tutorLessonStage === 'explain'
+          ? 'Explain it'
+          : tutorLessonStage === 'quiz'
+            ? 'Quiz'
+            : tutorContextQuestionLabel,
+      lessonStage: tutorLessonStage,
       lessonProblemId: tutorContextProblem?.id,
       page: 'session',
       knowledgePointId: tutorContextPointId ?? undefined,
@@ -207,11 +361,12 @@ export function LessonRunner({
   }, [
     activityId,
     conceptId,
-    tutorContextProblem?.exerciseId,
     tutorContextProblem?.id,
     tutorContextPageLabel,
     tutorContextPointId,
     tutorContextQuestionLabel,
+    tutorLessonStage,
+    tutorStageExerciseId,
     state?.quiz.current,
     title,
     tutorEnabled,
@@ -387,8 +542,10 @@ export function LessonRunner({
       }
       setViewingPointId(pointId);
       setPracticePointId(pointId);
-      window.scrollTo({ top: 0 });
       await updateState(data.run);
+      const pointIndex = state?.points.findIndex((point) => point.id === pointId) ?? -1;
+      if (pointIndex >= 0) onStepChange(String(pointIndex + 1), true);
+      window.scrollTo({ top: 0 });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Could not load a practice question.');
     } finally {
@@ -408,6 +565,7 @@ export function LessonRunner({
     setWarmupActive(false);
     setPracticePointId(null);
     setViewingPointId(null);
+    onStepChange('quiz', true);
     window.scrollTo({ top: 0 });
   };
 
@@ -589,17 +747,6 @@ export function LessonRunner({
     doneReviewQuestions + (showingAnswer ? 0 : 1),
     totalReviewQuestions,
   );
-  const quizItems = state.quiz.current?.items ?? [];
-  const unansweredQuizIndex = quizItems.findIndex((item) => !item.answered);
-  const defaultQuizQuestionIndex =
-    unansweredQuizIndex >= 0 ? unansweredQuizIndex : Math.max(0, quizItems.length - 1);
-  const quizAttemptId = state.quiz.current?.attemptId;
-  const quizQuestionIndex =
-    quizAttemptId && quizPosition?.attemptId === quizAttemptId
-      ? Math.min(quizPosition.index, Math.max(0, quizItems.length - 1))
-      : defaultQuizQuestionIndex;
-  const currentQuizItem = quizItems[quizQuestionIndex];
-  const lastQuizQuestion = quizQuestionIndex === quizItems.length - 1;
   const stableHeightForCurrentPoint =
     stableCardHeights?.pointId === state.currentPointId ? stableCardHeights : null;
   const stepContent = displayedPoint ? (
@@ -627,10 +774,22 @@ export function LessonRunner({
     const nextViewingPointId = stepId === state.currentPointId ? null : stepId;
     if (viewingPointId !== nextViewingPointId) window.scrollTo({ top: 0 });
     setViewingPointId(nextViewingPointId);
+    setViewingStage(null);
+    onStepChange(String(state.points.findIndex((item) => item.id === stepId) + 1));
   };
 
   const returnToCurrentStep = () => {
     setViewingPointId(null);
+    setViewingStage(null);
+    window.scrollTo({ top: 0 });
+    const index = state.points.findIndex((item) => item.id === state.currentPointId);
+    onStepChange(index >= 0 ? String(index + 1) : undefined);
+  };
+
+  const viewStage = (stage: 'explain' | 'quiz') => {
+    setViewingPointId(null);
+    setViewingStage(stage);
+    onStepChange(stage);
     window.scrollTo({ top: 0 });
   };
 
@@ -730,11 +889,14 @@ export function LessonRunner({
         currentPointId={point?.id}
         viewStep={viewStep}
         returnToCurrentStep={returnToCurrentStep}
+        viewExplain={() => viewStage('explain')}
+        viewQuiz={() => viewStage('quiz')}
+        activeStage={tutorLessonStage}
         explain={
           lesson?.final
             ? finalAnswered || state.status === 'completed'
               ? 'done'
-              : state.status === 'quiz'
+              : viewingStage === 'explain' || state.status === 'quiz'
                 ? 'current'
                 : 'upcoming'
             : undefined

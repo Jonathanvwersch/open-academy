@@ -50,9 +50,10 @@ async function saveActivityProgress(
 }
 
 export function SessionPage() {
-  const navigate = useNavigate();
+  const navigate = useNavigate({ from: '/session/$id' });
   const { id } = Route.useParams();
-  const { activity: requestedActivityId } = Route.useSearch();
+  const { activity: requestedActivityId, step: searchStep } = Route.useSearch();
+  const step = typeof searchStep === 'number' ? String(searchStep) : searchStep;
   const queryClient = useQueryClient();
   const tutorSidebar = useTutorSidebar();
   const [result, setResult] = useState<Record<string, unknown> | null>(null);
@@ -72,7 +73,7 @@ export function SessionPage() {
   const [endingSession, setEndingSession] = useState(false);
   const [endSessionError, setEndSessionError] = useState('');
   const [markingLessonViewed, setMarkingLessonViewed] = useState(false);
-  const [stepRecap, setStepRecap] = useState<{ activityId: string; pointId: string } | null>(null);
+  const previousActivityRoute = useRef<{ sessionId: string; activityId: string } | null>(null);
   const hintButton = useRef<HTMLButtonElement>(null);
   const questionFrame = useRef<HTMLDivElement>(null);
   const questionContent = useRef<HTMLDivElement>(null);
@@ -131,6 +132,16 @@ export function SessionPage() {
     Boolean(activity.conceptId) &&
     !activity.progress?.quizContinued &&
     lessonRunsByConcept.get(activity.conceptId ?? '')?.status === 'quiz';
+  const navigateToLessonStep = useCallback(
+    (nextStep?: string, replace = false) => {
+      const stepValue = nextStep && /^\d+$/.test(nextStep) ? Number(nextStep) : nextStep;
+      void navigate({
+        search: (previous) => ({ ...previous, step: stepValue }),
+        replace,
+      });
+    },
+    [navigate],
+  );
   useEffect(() => {
     if (!activity) return;
     const nextActivity = activities
@@ -176,16 +187,53 @@ export function SessionPage() {
     ),
   );
   const lesson = lessonQuery.data;
+  const lessonRunnerActive = usesLessonRunner(activity, lesson);
+  const recapStepIndex = step !== undefined && /^\d+$/.test(step) ? Number(step) - 1 : -1;
+  const recapPointId = lesson?.knowledge_points?.[recapStepIndex]?.id;
+  const recapRun = activity?.conceptId ? lessonRunsByConcept.get(activity.conceptId) : undefined;
   const recapPoint =
-    stepRecap?.activityId === activity?.id &&
+    !lessonRunnerActive &&
     activity?.kind === 'learn' &&
     lesson?.final === exerciseId &&
-    lessonRunsByConcept
-      .get(activity.conceptId ?? '')
-      ?.points.some((point) => point.id === stepRecap?.pointId && point.status === 'passed')
-      ? lesson?.knowledge_points?.find((point) => point.id === stepRecap?.pointId)
+    recapPointId &&
+    recapRun?.points.some((point) => point.id === recapPointId && point.status === 'passed')
+      ? lesson?.knowledge_points?.find((point) => point.id === recapPointId)
       : undefined;
-  const lessonRunnerActive = usesLessonRunner(activity, lesson);
+  useEffect(() => {
+    const previous = previousActivityRoute.current;
+    const activityChanged = previous?.sessionId === id && previous.activityId !== activity?.id;
+    const isLessonActivity =
+      activity?.kind === 'learn' && Boolean(activity.conceptId) && activity.lessonAvailable;
+    const invalidExplainStep =
+      !lessonRunnerActive &&
+      step !== undefined &&
+      /^\d+$/.test(step) &&
+      activity?.kind === 'learn' &&
+      lesson?.final === exerciseId &&
+      !recapPoint;
+    if (step !== undefined && (!isLessonActivity || activityChanged)) {
+      navigateToLessonStep(undefined, true);
+    } else if (invalidExplainStep) {
+      navigateToLessonStep('explain', true);
+    }
+    if (activity?.id) {
+      previousActivityRoute.current = { sessionId: id, activityId: activity.id };
+    } else if (previous?.sessionId !== id) {
+      previousActivityRoute.current = null;
+    }
+  }, [
+    activity?.conceptId,
+    activity?.id,
+    activity?.kind,
+    activity?.lessonAvailable,
+    exerciseId,
+    id,
+    lesson?.final,
+    lessonRunnerActive,
+    navigateToLessonStep,
+    recapPoint,
+    step,
+  ]);
   const exerciseQuery = useQuery({
     ...exerciseQueryOptions(lessonRunnerActive ? null : (exerciseId ?? null)),
     throwOnError: true,
@@ -311,6 +359,11 @@ export function SessionPage() {
       activityId: activity.id,
       exerciseId: recapPoint ? undefined : exerciseId,
       knowledgePointId: recapPoint?.id,
+      lessonStage: recapPoint
+        ? 'step'
+        : activity.kind === 'learn' && lesson?.final === exerciseId
+          ? 'explain'
+          : undefined,
       questionLabel:
         activity.kind === 'learn' && lesson?.final === exerciseId
           ? 'Explain it'
@@ -747,6 +800,8 @@ export function SessionPage() {
         lessonLink={lessonLink}
         tutorEnabled={sessionQuery.data.tutorEnabled}
         finalAnswered={Boolean(finalAnswered)}
+        step={step}
+        onStepChange={navigateToLessonStep}
         onContinue={continueLessonRunner}
       />
     );
@@ -864,17 +919,24 @@ export function SessionPage() {
           viewingPointId={recapPoint?.id ?? null}
           currentPointId={explainRun.currentPointId ?? undefined}
           viewStep={(pointId) => {
-            if (
-              !explainRun.points.some((point) => point.id === pointId && point.status === 'passed')
-            )
-              return;
-            setStepRecap({ activityId: activity.id, pointId });
+            const pointIndex = explainRun.points.findIndex(
+              (point) => point.id === pointId && point.status === 'passed',
+            );
+            if (pointIndex < 0) return;
+            navigateToLessonStep(String(pointIndex + 1));
             window.scrollTo({ top: 0 });
           }}
           returnToCurrentStep={() => {
-            setStepRecap(null);
+            navigateToLessonStep('explain');
             window.scrollTo({ top: 0 });
           }}
+          viewExplain={() => {
+            navigateToLessonStep('explain');
+          }}
+          viewQuiz={() => {
+            navigateToLessonStep('quiz');
+          }}
+          activeStage={step === 'explain' || step === 'quiz' ? step : 'step'}
           explain="current"
         />
       ) : null}
@@ -883,7 +945,7 @@ export function SessionPage() {
           <Button
             type="button"
             onClick={() => {
-              setStepRecap(null);
+              navigateToLessonStep('explain');
               window.scrollTo({ top: 0 });
             }}
           >
