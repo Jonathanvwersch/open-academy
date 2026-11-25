@@ -1,14 +1,14 @@
 concept: linear-regression
 version: 5
 objective: |
-  **Goal:** predict a number with a linear regression model, which multiplies each feature by its weight, adds the results and adds a bias; say what each weight and the bias mean; and compute predictions for many examples at once with `X @ w + b`.
+  **Goal:** predict a number with a linear regression model, which multiplies each feature by its weight, adds the results and adds a bias; say what each weight and the bias mean; and compute predictions for many examples at once with $Xw+b\mathbf 1$.
 recap:
   - concept: supervised-learning
     text: "A supervised model takes an example's inputs and predicts its target, such as a price. We write the prediction as $\\hat y$ and the target as $y$, and training adjusts the model's parameters until $\\hat y$ is close to $y$."
   - concept: dot-product
     text: "The dot product multiplies the matching entries of two vectors and adds the products into one number, so $(3,10)\\cdot(100,2)=3\\times100+10\\times2=320$."
   - concept: matrices
-    text: "A matrix times a vector takes one dot product per row, so a matrix with $n$ rows gives $n$ answers. In NumPy, a matrix `X` times a vector `w` is written `X @ w`."
+    text: "A matrix times a vector takes one dot product per row, so a matrix with $n$ rows gives $n$ answers."
 where_this_fits: |
   ### What is linear regression?
 
@@ -16,7 +16,7 @@ where_this_fits: |
 
   It's often the first model people try, because it's fast and every number in it has a meaning you can read off, such as how much each extra square metre adds to a house's price.
 
-  In the dot product lesson, we turned measurements and weights into one total, and in the matrices lesson we did many dot products at once. What this lesson adds is the bias, what each weight tells us, and how to predict for a whole dataset in one line of code.
+  A model can give a prediction for every row of a matrix in one calculation. We'll see what the weights and the fixed amount called the bias mean, then predict several house prices together.
 knowledge_points:
   - id: lr-add-contributions
     key_prereqs: [dot-product]
@@ -36,7 +36,7 @@ knowledge_points:
       \begin{aligned}
       3\times100&=300 &&\text{area contribution}\\
       10\times2&=20 &&\text{bedroom contribution}\\
-      300+20&=320 &&\text{add the feature pieces}\\
+      300+20&=320 &&\text{add the two contributions}\\
       320+50&=370 &&\text{add the fixed amount once}
       \end{aligned}
       $$
@@ -225,7 +225,7 @@ knowledge_points:
 
       So far we've priced one house at a time. But a dataset can hold hundreds of houses, and training compares the prediction with the target for every one of them, so we need all their predictions, with the same weights and bias. How do we get them all in one calculation?
 
-      In the matrices lesson, a matrix times a vector took one dot product per row. So we stack the houses as rows of a matrix $X$, with features in the same order as $w$. For row 1, our house $(100,2)$:
+      Place one house in each row of a matrix $X$. Give each row the area then the bedroom count, in the same order as the weights. Our first house has area $100$ and $2$ bedrooms. Its prediction takes the dot product of row 1 with the weights, then adds the bias.
       $$
       \begin{aligned}
       w\cdot x&=3\times100+10\times2 &&\text{pair features with weights}\\
@@ -233,7 +233,7 @@ knowledge_points:
       \hat y&=320+50=370 &&\text{add the bias}
       \end{aligned}
       $$
-      The other rows give $320$ and $420$ after adding the same bias.
+      Our second house has area $80$ and $3$ bedrooms, and our third has area $120$ and $1$ bedroom. Doing the same calculation gives $320$ and $420$.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 250" aria-label="The matrix X has one house per row: (100, 2), (80, 3) and (120, 1), with columns area and bedrooms. It is multiplied by the weights w = (3, 10), and the green bias 50 is added, giving one predicted price per row: 370, 320 and 420. The first row and its price are outlined in black, with the sum 3 times 100 plus 10 times 2 plus 50 beside it">
@@ -280,22 +280,20 @@ knowledge_points:
 
       ### One formula for all the houses
 
-      Predicting for many examples in one operation is called a **batch prediction**. With $n$ examples and $d$ features each, $X$ has $n$ rows and $d$ columns, and $w$ has $d$ entries. Then
+      Predicting for many examples in one operation is called a **batch prediction**. With $n$ examples and $d$ features each, $X$ has $n$ rows and $d$ columns, and $w$ has $d$ entries. Write $\mathbf 1$ for a column of $n$ ones, one per prediction.
 
       $$\hat y=Xw+b\mathbf 1.$$
 
-      Now $\hat y$ is a vector with $n$ entries, one prediction per row. The bold $\mathbf 1$ is a vector of $n$ ones, so $b\mathbf 1$ adds $b$ to every entry. In NumPy this is `X @ w + b`, since NumPy adds a single number to every entry.
-
-      Avoid writing `X * w + b`. The `*` multiplies matching entries without adding them. Our house's row becomes two pieces, $300$ and $20$. Over all three houses, `X * w` gives three rows of two pieces each; we still need to add each row's pieces to get prices.
+      Here $\hat y$ lists the predictions in row order. Multiplying the column of ones by $b$ gives one copy of the bias for each prediction.
 
       ### Storing the bias as a weight
 
-      Some code stores the bias as one more weight instead, so the whole model is one matrix product. Code that adjusts the weights during training then adjusts the bias along with them, with no separate step. It adds a column of $1$s to $X$, like a feature that is always $1$. Then it puts $b$ last in the weights. So row 1 becomes $(100,2,1)$ and the weights become $(3,10,50)$. The extra $1$ times $50$ adds the bias to every row, so we must not add $b$ again.
+      Another way to store the bias is to give each house one extra input whose value is always $1$. The weight on that new input is $b$. The new pair contributes $1\times b$ to the same dot product as the other inputs.
     worked: |
       Let's price three houses at once, $(100,2)$, $(80,3)$ and $(120,1)$, with the weights $w=(3,10)$ and bias $b=50$.
 
       1. **Check that the shapes fit.** Each row of $X$ is paired with $w$, so the number of columns must match the number of weights, and there will be one prediction per row.
-         $$X:\ 3\ \text{rows},\ 2\ \text{columns},\qquad w:\ 2\ \text{entries}\ \to\ \hat y:\ 3\ \text{entries}$$
+         Here $X$ has three rows and two columns. Its two columns match the two weights, so the result has three entries.
 
       2. **Take one dot product per row.** Each row's features are multiplied by the weights and added up.
          $$Xw=(300+20,\ 240+30,\ 360+10)=(320,\ 270,\ 370)$$
@@ -306,27 +304,10 @@ knowledge_points:
       4. **Check the column-of-ones version on row 1.** With a $1$ appended and $b$ as the last weight, the bias comes out of the dot product.
          $$(100,2,1)\cdot(3,10,50)=300+20+50=370$$
 
-      Here is the same calculation in NumPy. `np.array` turns a Python list into a NumPy array, which is how NumPy stores a vector or a matrix. A list of lists makes a matrix, with one inner list per row. The dots in `100.` make the numbers decimals, so the prices print as decimals too. `import numpy as np` loads NumPy under the short name `np`, and `print` shows a result. `np.column_stack` adds `np.ones(3)`, three $1$s, to `X` as a new last column, so each row gets one $1$.
-
-      ```python
-      import numpy as np
-      X = np.array([[100., 2.], [80., 3.], [120., 1.]])
-      w = np.array([3., 10.])
-      b = 50.
-      print(X @ w + b)                     # one price per row
-      X1 = np.column_stack([X, np.ones(3)])
-      w1 = np.array([3., 10., 50.])
-      print(X1 @ w1)                       # the bias is now a weight
-      # prints [370. 320. 420.] twice
-      ```
-
       Both versions give the same three prices, $370$, $320$ and $420$ thousand pounds.
     problems:
       - lr-batch-predictions-basics
       - lrp-batch-self-explain
-      - lrp-why-matrix-product
-      - lrp-code
-      - lrp-shape
       - lrp-batch-template
       - lrp-augmented-template
       - lrp-bias-trick
@@ -336,6 +317,6 @@ summary: |
   - A linear regression model multiplies each feature by its weight, adds the results and adds one bias: $\hat y=w\cdot x+b$.
   - A weight is how much the prediction changes when its feature rises by one unit and the other features stay the same, so its size depends on the feature's units. The bias is the prediction when every feature is $0$.
   - Because each feature adds a fixed amount per unit, the model's predictions change in straight lines.
-  - For many examples, we put one per row of $X$, and `X @ w + b` gives one prediction per row. A column of $1$s with $b$ as its weight can carry the bias instead.
+  - For many examples, we put one per row of $X$, and $Xw+b\mathbf 1$ gives one prediction per row. A column of $1$s with $b$ as its weight can carry the bias instead.
 
-  **Next:** The loss functions lesson measures how far these predictions are from the true prices, and gradient descent then adjusts $w$ and $b$ to shrink that gap.
+  **Next:** In Loss Functions, we'll turn the differences between predictions and true prices into one score. Later we'll adjust the weights and bias to lower that score.

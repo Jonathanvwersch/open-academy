@@ -138,29 +138,6 @@ exercises:
         },
       ]
     solution: "The shared filter responds when a patch has greater right-hand brightness than left-hand brightness."
-  - id: conv-code-patch
-    dimension: implementation
-    type: mc
-    role: practice
-    difficulty: 3
-    est_minutes: 2
-    prompt:
-      A NumPy convolution selects `x[i:i+3, j:j+3]`. With `i=1` and `j=2`, which rows and columns
-      belong to the patch?
-    options:
-      - id: a
-        text: Rows 1–3 and columns 2–4.
-        correct: true
-        feedback: Slices include their start but exclude their end.
-      - id: b
-        text: Rows 1–4 and columns 2–5.
-        correct: false
-        feedback: The upper slice endpoints are excluded.
-      - id: c
-        text: Rows 0–2 and columns 0–2.
-        correct: false
-        feedback: Those would be the patch at i=0, j=0.
-    solution: The slices 1:4 and 2:5 each select three entries, starting at the requested row and column.
   - id: conv-size-basics
     dimension: "conceptual"
     type: "mc"
@@ -765,7 +742,7 @@ exercises:
         "round toward negative infinity",
         "greatest integer less than or equal to the value",
       ]
-    regex: "^\\s*(?:(?=\\$[\\s\\S]*\\$\\s*$)|(?=\\x60[\\s\\S]*\\x60\\s*$)|(?=\\\\\\([\\s\\S]*\\\\\\)\\s*$)|(?!\\$|\\x60|\\\\\\()(?![\\s\\S]*(?:\\$|\\x60|\\\\\\))\\s*$))(?:\\$|\\x60|\\\\\\()?\\s*(?:(?:(?:take|apply|use)\\s+)?(?:the\\s+)?floor(?:\\s+(?:function|operation))?|floor(?:ing)?\\s+(?:the\\s+)?(?:result|value|quotient)|round(?:ing)?\\s+down(?:\\s+to\\s+(?:an?|the(?:\\s+(?:nearest|next|lower))?)\\s+(?:whole\\s+number|integer))?|round(?:ing)?\\s+towards?\\s+(?:negative\\s+infinity|[-−]∞)|(?:the\\s+)?(?:greatest|largest)\\s+integer\\s+(?:less\\s+than\\s+or\\s+equal\\s+to|at\\s+most|no\\s+greater\\s+than)\\s+(?:the\\s+(?:value|number|result)|it|x)|(?:(?:math|np|numpy)\\.)?floor\\s*\\(\\s*(?:x|\\.{3}|…)?\\s*\\)|(?:⌊\\s*(?:x|\\.{3}|…)?\\s*⌋|\\\\lfloor\\s*(?:x|\\.{3}|…)?\\s*\\\\rfloor))\\s*(?:\\$|\\x60|\\\\\\))?\\s*$"
+    regex: "^\\s*(?:(?=\\$[\\s\\S]*\\$\\s*$)|(?=\\x60[\\s\\S]*\\x60\\s*$)|(?=\\\\\\([\\s\\S]*\\\\\\)\\s*$)|(?!\\$|\\x60|\\\\\\()(?![\\s\\S]*(?:\\$|\\x60|\\\\\\))\\s*$))(?:\\$|\\x60|\\\\\\()?\\s*(?:(?:(?:take|apply|use)\\s+)?(?:the\\s+)?floor(?:\\s+(?:function|operation))?|floor(?:ing)?\\s+(?:the\\s+)?(?:result|value|quotient)|round(?:ing)?\\s+down(?:\\s+to\\s+(?:an?|the(?:\\s+(?:nearest|next|lower))?)\\s+(?:whole\\s+number|integer))?|round(?:ing)?\\s+towards?\\s+(?:negative\\s+infinity|[-−]∞)|(?:the\\s+)?(?:greatest|largest)\\s+integer\\s+(?:less\\s+than\\s+or\\s+equal\\s+to|at\\s+most|no\\s+greater\\s+than)\\s+(?:the\\s+(?:value|number|result)|it|x)|(?:math\\.)?floor\\s*\\(\\s*(?:x|\\.{3}|…)?\\s*\\)|(?:⌊\\s*(?:x|\\.{3}|…)?\\s*⌋|\\\\lfloor\\s*(?:x|\\.{3}|…)?\\s*\\\\rfloor))\\s*(?:\\$|\\x60|\\\\\\))?\\s*$"
     solution: "Take the floor, which rounds down, then count the starting position at zero by adding $1$. The height is $\\lfloor(H+2p-k)/s\\rfloor+1$."
   - id: conv-recall-channels-say
     dimension: conceptual

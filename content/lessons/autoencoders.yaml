@@ -12,7 +12,7 @@ where_this_fits: |
 
   An autoencoder is a neural network that learns to squeeze its input into a short list of numbers and then rebuild the input from that list. The short list is called the **latent vector**, or the input's latent representation. "Latent" means hidden. The latent vector sits inside the network, between the input and its rebuilt copy.
 
-  Why would we want a network that only copies? Because the copy must pass through the short list. A camera image holds thousands of pixel values, but most follow patterns, so to rebuild it the network must find a few numbers that capture them. The summary is easier to store and compare than the raw pixels, which is why networks that steer robots read latent vectors instead of images.
+  Many pixels in an image follow the same pattern. An autoencoder can store a few numbers for that pattern instead of every pixel. A four-pixel stripe image, for example, can fit in a two-number list.
 knowledge_points:
   - id: ae-encode-decode
     key_prereqs: [dot-product, mlp-forward-pass, images-as-tensors]
@@ -25,7 +25,7 @@ knowledge_points:
     explain: |
       ### A tiny image as one vector
 
-      In the images-as-tensors lesson, we saw that a grayscale image is a grid of brightnesses, which we divide by 255 so they lie between 0 and 1. Our layer reads a vector, so first we **flatten** the image: we lay its rows end to end. NumPy's `img.reshape(H * W)` does exactly this.
+      Our grayscale image stores each pixel as a whole-number brightness from 0 to 255. Divide by 255 to put each value on a 0-to-1 scale. The encoder will read one list, so write the pixels from left to right in the first row, then in the next. This is called **flattening**.
 
       Take a $2\times2$ image with 204 and 204 in its top row and 51 and 51 below:
       $$
@@ -40,7 +40,7 @@ knowledge_points:
 
       Suppose all our images are horizontal stripes like this one, with both pixels in a row equally bright. Then two numbers, one per row, would be enough to rebuild it.
 
-      The picture shows a network built on that idea, read from left to right. The four input numbers go into the **encoder**, a layer with two neurons, so it outputs two numbers, $z=(0.8,0.2)$. This short vector in the narrow middle is the **latent vector**. Like the forward-pass lesson's hidden values, it comes out of a layer, just a much narrower one. The **decoder** is a layer with four neurons. It reads $z$ and outputs four numbers, the **reconstruction** $\hat x$ (read "x hat"). With the worked example's weights, it matches the input exactly.
+      The four pixel values go into the **encoder**, which has two neurons. Each neuron averages the two brightnesses in one row. The pixels match within each row here, so their averages are $0.8$ and $0.2$. The **latent vector** is $z=(0.8,0.2)$. The **decoder** copies each average back into both places in its row.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 290" aria-label="Autoencoder for one 2 by 2 image, read left to right. The flattened image x = (0.8, 0.8, 0.2, 0.2) enters the encoder, which narrows to a latent vector z of 2 numbers, (0.8, 0.2), shown in green. The decoder widens again to 4 numbers, the reconstruction x hat = (0.8, 0.8, 0.2, 0.2), shown in orange, matching the input">
@@ -115,7 +115,7 @@ knowledge_points:
 
       In the last step we chose the weights by hand. A real network finds its own by **training**: it changes its weights and biases in small steps, over and over, so that one error number gets smaller. This lesson only needs that number.
 
-      For an autoencoder, it measures how far the reconstruction $\hat x$ is from the input $x$. A **label** is the answer someone attaches to a training input, such as "cat" for a photo of a cat. An autoencoder's right answer is the input itself, so a pile of unlabelled photos is enough.
+      The error measures how far the reconstruction $\hat x$ is from the input $x$. A **training label** is an answer someone attaches to an image, such as its subject. In this task, the original image is the answer, so it needs no separate label.
 
       ### Measuring a bad copy
 
@@ -168,7 +168,7 @@ knowledge_points:
 
       What stops the network from simply passing every pixel straight through? Only the narrow middle stops it. Here is what three latent sizes can do for the stripe image $(0.8,0.8,0.2,0.2)$:
 
-      - **1 number:** it can't hold both row brightnesses. If it keeps only their average:
+      - **1 number:** Store the average of all four pixels. This gives only one brightness to use for both rows.
 
         1. **Average all pixels.** This is the one latent number.
            $$(0.8+0.8+0.2+0.2)/4=0.5.$$
@@ -179,9 +179,9 @@ knowledge_points:
       - **2 numbers:** one per row is enough, so every stripe image comes back exactly, with $E=0$.
       - **4 numbers:** as many as the input, so nothing is narrowed, and $E=0$ for any image at all, because each pixel can pass straight through. Nothing forces the network to find the stripe pattern, and its latent vector is as long as the image.
 
-      So the latent size should be small enough to force the network to find patterns, and big enough to rebuild the image well.
+      The **latent size** $k$ is the number of entries in the latent vector. Choose a small enough $k$ to save space and a large enough $k$ to preserve the patterns you need.
     worked: |
-      Let's work out the reconstruction error of the uneven image $x=(0.8,0.4,0.2,0.2)$, using the weights from step 1.
+      Let's work out the reconstruction error of $x=(0.8,0.4,0.2,0.2)$ using the encoder and decoder from “Shrink an image, then rebuild it”.
 
       1. **Encode.** The first latent number averages the top row, and the second averages the bottom row.
          $$z=(0.5\cdot0.8+0.5\cdot0.4,\ 0.5\cdot0.2+0.5\cdot0.2)=(0.6,0.2)$$
@@ -353,7 +353,7 @@ knowledge_points:
 
       ### Close points, similar images
 
-      The decoder only multiplies by weights and adds a bias, so nearby points rebuild into similar images. The other way round holds too. Our decoder copies each latent number into pixels, so similar copies need nearby points, and a trained autoencoder's copies look like its inputs. So images that look alike get points close together, and the distance between latent vectors is a quick way to compare images.
+      Each latent number is one row's brightness. If it rises by $0.1$, both pixels in that row get $0.1$ brighter. So nearby latent points give similar stripe images here. With another autoencoder, decode two nearby points and compare the images to see what that distance means.
 
       ### How robots use latent vectors
 
@@ -406,6 +406,6 @@ summary: |
   - An autoencoder has an encoder that squeezes an input of $n$ numbers into a latent vector of $k$ numbers, with $k<n$, $z=W_ex+b_e$, and a decoder that rebuilds it, $\hat x=W_dz+b_d$.
   - It is trained to copy its own input, so it needs no labels. Training makes the reconstruction error $E=\sum_i(\hat x_i-x_i)^2$ small, and the narrow middle forces the latent vector to keep the patterns that matter.
   - The compression factor $n/k$ compares the input and latent lengths, such as $784/32=24.5$ for a digit. The parameters, $kn+k$ for the encoder and $nk+n$ for the decoder, are shared by every image.
-  - Each latent vector is a point in latent space, where similar images land close together, so world models and policies often work with latent vectors. The latent numbers have no fixed meaning, and small details can be lost.
+  - Each latent vector is a point in latent space. Similar images can land near each other, as in the stripe example, but reconstruction training alone does not guarantee that. World models and policies can work with these shorter vectors. The latent numbers have no fixed meaning, and small details can be lost.
 
   **Next:** The world models lesson trains a network to predict what happens next in latent space, and then trains a policy inside those predictions.

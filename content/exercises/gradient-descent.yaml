@@ -901,29 +901,6 @@ exercises:
         category: incorrect_reasoning
         feedback: The loss is still falling and is far above what other runs reach, so it hasn't reached its minimum.
     solution: A loss that falls smoothly but slowly means the steps are stable but too short. Raise the learning rate, stopping before the loss starts to zigzag or grow.
-  - id: gd-code-complete
-    dimension: implementation
-    type: code_complete
-    role: core
-    difficulty: 2
-    est_minutes: 2
-    prompt: "The rows of `X` hold the inputs for `n` examples, and `y` holds their targets. For predictions `X @ w`, complete the line that gives the slope of mean squared error for each weight."
-    code: |
-      n = len(y)
-      r = X @ w - y
-      dw = ____
-      w = w - lr * dw
-    accept:
-      - 2 * X.T @ r / len(y)
-      - 2*X.T@r/len(y)
-      - 2 * X.T @ r / n
-      - 2 / len(y) * X.T @ r
-      - 2 * X.T.dot(r) / len(y)
-      - (2 / len(y)) * X.T @ r
-      - 2 * X.T @ r / X.shape[0]
-    hints:
-      - Each weight uses one input column. Its slope is twice that column's dot product with the errors, divided by the number of examples.
-    solution: "`dw = 2 * X.T @ r / len(y)`. Transposing `X` lets the matrix product take one dot product per input column, and dividing by `len(y)` averages over the examples."
   - id: gd-explain-lr
     dimension: conceptual
     type: explain
