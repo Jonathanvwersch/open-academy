@@ -113,6 +113,7 @@ export async function applyMastery(
     hintsUsed: number;
     attemptNo: number;
     submitted: boolean;
+    tutorHelped?: boolean;
     mode: LearningMode;
     gradedBy: 'deterministic' | 'llm' | 'self';
     followUp?: boolean;
@@ -124,6 +125,7 @@ export async function applyMastery(
 ) {
   if (
     input.submitted &&
+    !input.tutorHelped &&
     input.gradedBy === 'deterministic' &&
     input.hintsUsed === 0 &&
     input.attemptNo === 1

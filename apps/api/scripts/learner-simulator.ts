@@ -46,7 +46,7 @@ import {
 import type { CourseCatalogPayload, CoursePayload, LearnPayload } from '@academy/contracts/course';
 import type { QuizPayload } from '@academy/contracts/quizzes';
 import type { SessionActivity, SessionPayload, TodayPayload } from '@academy/contracts/sessions';
-import { and, asc, desc, eq, inArray, notInArray } from 'drizzle-orm';
+import { and, asc, desc, eq, exists, inArray, notInArray } from 'drizzle-orm';
 import type { Card } from 'ts-fsrs';
 import { Rating, State } from 'ts-fsrs';
 import { createApp } from '../src/app.js';
@@ -54,6 +54,7 @@ import type { Database } from '../src/db/client.js';
 import { LearnerRepository } from '../src/db/repository.js';
 import {
   attempts,
+  lessonProblems,
   lessonQuizAttempts,
   lessonQuizItems,
   lessonRuns,
@@ -66,6 +67,7 @@ import {
   reviewLogs,
   sessionActivities,
   studySessions,
+  tutorMessages,
   users,
   xpEvents,
 } from '../src/db/schema.js';
@@ -3964,6 +3966,19 @@ class P28Audit {
           hintsUsed: attempts.hintsUsed,
           attemptNo: attempts.attemptNo,
           answer: attempts.answer,
+          tutorHelped: exists(
+            db
+              .select({ id: tutorMessages.id })
+              .from(tutorMessages)
+              .innerJoin(lessonProblems, eq(lessonProblems.id, tutorMessages.lessonProblemId))
+              .where(
+                and(
+                  eq(lessonProblems.attemptId, attempts.id),
+                  eq(tutorMessages.userId, userId),
+                  eq(tutorMessages.role, 'assistant'),
+                ),
+              ),
+          ),
         })
         .from(attempts)
         .leftJoin(lessonQuizItems, eq(lessonQuizItems.attemptId, attempts.id))
@@ -3990,6 +4005,7 @@ class P28Audit {
       this.attemptsSeen.add(attempt.id);
       if (
         attempt.gradedBy !== 'deterministic' ||
+        attempt.tutorHelped ||
         attempt.hintsUsed !== 0 ||
         attempt.attemptNo !== 1 ||
         attempt.answer == null ||

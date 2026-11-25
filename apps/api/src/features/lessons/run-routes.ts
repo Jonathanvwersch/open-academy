@@ -53,6 +53,7 @@ import {
   reviewCards,
   reviewLogs,
   sessionActivities,
+  tutorMessages,
   xpEvents,
 } from '../../db/schema.js';
 import type { ApiEnv } from '../../http/context.js';
@@ -865,6 +866,17 @@ export function registerLessonRunRoutes(
       }
       const graded = await gradeExercise(exercise, body.data.answer);
       if (graded.status !== 'graded') return { kind: 'invalid' as const, graded };
+      const [tutorReply] = await tx
+        .select({ id: tutorMessages.id })
+        .from(tutorMessages)
+        .where(
+          and(
+            eq(tutorMessages.userId, userId),
+            eq(tutorMessages.lessonProblemId, joined.problem.id),
+            eq(tutorMessages.role, 'assistant'),
+          ),
+        )
+        .limit(1);
       const attemptId = crypto.randomUUID();
       const credit = calculateCredit({
         correct: graded.correct,
@@ -902,6 +914,7 @@ export function registerLessonRunRoutes(
         hintsUsed: 0,
         attemptNo: 1,
         submitted: true,
+        tutorHelped: !!tutorReply,
         mode: 'practice',
         gradedBy: graded.graded_by ?? 'deterministic',
         createReviewCard: false,

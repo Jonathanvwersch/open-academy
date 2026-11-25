@@ -88,6 +88,7 @@ The engine uses the FSRS algorithm (the `ts-fsrs` library) for spaced repetition
 
 - Each learner has one speed per topic across all dimensions. **[Ours]**
 - Count an answer when the learner submits it on the first attempt with no hints and a deterministic grader. **[Ours]**
+- Count a tutor reply on the current lesson problem as a hint for speed evidence. Keep lesson credit and progress unchanged. **[Ours]**
 - Count lesson problems, lesson quiz items, review answers, timed mixed quiz items, and other answers that meet the same rules. **[Ours]**
 - Multiply the success count and trial count by 0.8 for each qualifying answer. Add 1 to the trial count. Add 1 to the success count for a fully correct answer. Count the answer once. **[Ours]**
 - Use speed 1 until the learner has three qualifying answers. **[Ours]**

@@ -2391,6 +2391,35 @@ test('lesson look-ahead favors coverage of a weaker ancestor', () => {
   );
 });
 
+test('neutral lesson look-ahead preserves credit for a prerequisite already scheduled far ahead', () => {
+  const concepts = content.concepts.map((concept) =>
+    concept.id === 'linear-models'
+      ? { ...concept, encompassings: [{ id: 'vectors', weight: 1 }] }
+      : concept,
+  );
+  const index = { ...content, concepts, conceptsById: new Map(concepts.map((c) => [c.id, c])) };
+  const reviewedAt = new Date('2025-12-01T12:00:00.000Z');
+  const due = new Date('2026-05-01T00:00:00.000Z');
+  const prior = scheduleReview(newReviewCard(reviewedAt), reviewedAt, Rating.Good, 'UTC', false);
+  const fsrs = { ...prior.card, state: State.Review, stability: 12, due };
+  const state: SchedulerState = {
+    ...emptyState(),
+    cards: [
+      {
+        conceptId: 'vectors',
+        dimension: 'math',
+        dueAt: due.toISOString(),
+        retrievability: 0.1,
+        fsrs,
+      },
+    ],
+  };
+  expect(+scheduleReview(fsrs, now, Rating.Good, 'UTC', false).card.due).toBeLessThan(+due);
+  expect(learnLookAheadScore('linear-models', state, index, now)).toBeGreaterThan(
+    learnLookAheadScore('supervised-learning', state, index, now),
+  );
+});
+
 test('three due topics from two courses become one interleaved mixed review', () => {
   const reviews = [
     reviewCandidate('vectors', 'fixture-course', 9, ['v1', 'v2', 'v3']),

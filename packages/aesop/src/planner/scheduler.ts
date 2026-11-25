@@ -716,20 +716,19 @@ export function learnLookAheadScore(
   const weights = buildEncompassingIndex(content);
   const enableFuzz = process.env.NODE_ENV !== 'test';
   return state.cards.reduce((total, card) => {
-    if (!card.fsrs || card.conceptId === conceptId) return total;
+    if (!card.fsrs || card.fsrs.state === State.New || card.conceptId === conceptId) return total;
     const weight = weights.weight(conceptId, card.conceptId);
-    const update = implicitRepetition(
-      { fsrs: card.fsrs, dueAt: new Date(card.dueAt) },
-      {
-        weight,
-        rating: Rating.Good,
-        now,
-        timeZone: state.timezone ?? 'UTC',
-        enableFuzz,
-        speed: state.topicSpeeds?.[card.conceptId],
-      },
-    );
-    return update ? total + weight * (1 - retrievability(card.fsrs, now, enableFuzz)) : total;
+    const speed = state.topicSpeeds?.[card.conceptId] ?? 1;
+    if (
+      speed !== 1 &&
+      !implicitRepetition(
+        { fsrs: card.fsrs, dueAt: new Date(card.dueAt) },
+        { weight, rating: Rating.Good, now, timeZone: state.timezone ?? 'UTC', enableFuzz, speed },
+      )
+    ) {
+      return total;
+    }
+    return total + weight * (1 - retrievability(card.fsrs, now, enableFuzz));
   }, 0);
 }
 
