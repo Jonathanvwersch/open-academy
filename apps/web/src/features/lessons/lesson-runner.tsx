@@ -297,7 +297,9 @@ export function LessonRunner({
       setWarmupActive(false);
     }
     setViewingStage(null);
-    setViewingPointId(point.id === state.currentPointId ? null : point.id);
+    setViewingPointId(
+      isPendingPracticePoint || point.id !== state.currentPointId ? point.id : null,
+    );
   }, [finalAnswered, lesson, onStepChange, pendingPracticeIsWarmup, state, step]);
 
   useEffect(() => {

@@ -542,14 +542,16 @@ test('failed quiz Retry keeps the warm-up point in the URL', async ({ page }) =>
   await page.route('**/api/tutor/status', (route) =>
     route.fulfill({ json: { tutorEnabled: true } }),
   );
-  await page.route('**/api/lessons/vectors/run*', async (route) => {
-    const url = new URL(route.request().url());
-    if (route.request().method() === 'POST' && url.pathname.endsWith('/run/practice')) {
-      const run = lastPayload?.run as Record<string, unknown>;
-      const problem = run.lastAnsweredProblem as Record<string, unknown>;
+  await page.route('**/api/lessons/vectors/run**', async (route) => {
+    if (route.request().method() === 'POST') {
+      const run = lastPayload?.run as Record<string, unknown> | undefined;
+      const problem = run?.lastAnsweredProblem as Record<string, unknown> | undefined;
+      if (!run || !problem?.exercise)
+        throw new Error('Expected the failed quiz problem in the run');
       warmupProblem = {
         ...problem,
         id: 'warmup-problem',
+        knowledgePointId: 'vectors-fixture-1',
         practiceOnly: true,
         result: undefined,
       };
