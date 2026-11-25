@@ -2,6 +2,7 @@ import { sessionActivityIsInContent } from '@academy/aesop/graph/content-filters
 import { labActivityReady, masteryKey } from '@academy/aesop/graph/prerequisites';
 import { answerDisplay } from '@academy/aesop/lessons/answer-display';
 import { answerOptionsFor } from '@academy/aesop/lessons/answer-options';
+import { initialLearnProgress } from '@academy/aesop/lessons/initial-learn-progress';
 import { attemptAllowsRetry } from '@academy/aesop/memory/retry';
 import { loadHomePlan, withReviewTopics } from '@academy/aesop/planner/home-plan';
 import { attemptedExerciseIdsByActivity } from '@academy/aesop/planner/review-topics';
@@ -19,7 +20,6 @@ import type { Database } from '../../db/client.js';
 import { drizzleLearnerStore } from '../../db/learner-store.js';
 import { LearnerRepository } from '../../db/repository.js';
 import { attempts, lessonRuns, mastery, xpEvents } from '../../db/schema.js';
-import { initialLearnProgress } from '../../learning/initial-learn-progress.js';
 import {
   completeReviewActivity,
   recordRecoveredReviewRatings,
@@ -89,7 +89,7 @@ async function createSessionRequest(deps: FeatureServices, request: FeatureReque
       preferences: async () => ((await repo.user())?.prefs ?? {}) as SessionPreferences,
       quizOffer: (course, date, courseId) => quizOffer(repo, course, date, courseId),
       initialProgress: (activity, lesson) =>
-        initialLearnProgress(db, request.userId, activity, lesson),
+        initialLearnProgress(drizzleLearnerStore(db), request.userId, activity, lesson),
     },
   );
   return outcome.kind === 'created'
@@ -406,7 +406,7 @@ async function replanSession(
         schedulerState: (date, course) => request.repo.schedulerState(date, course),
         attemptedExerciseIdsByActivity: (ids) => request.repo.attemptedExerciseIdsByActivity(ids),
         initialProgress: (activity, lesson) =>
-          initialLearnProgress(db, request.userId, activity, lesson),
+          initialLearnProgress(drizzleLearnerStore(db), request.userId, activity, lesson),
       },
     ),
   );

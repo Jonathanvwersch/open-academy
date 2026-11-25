@@ -7,10 +7,17 @@ import { initialMastery, type MasteryRecord } from '../memory/types.js';
 import { activeSessionForDate } from '../planner/session-state.js';
 import type { Attempt, CoreStore, Enrollment, NewRow, XpEvent } from './core-store.js';
 import type { NewReviewCard } from './learner-store.js';
+import type {
+  LessonProblem,
+  LessonQuizItem,
+  LessonRun,
+  LessonStore,
+  RemediationFlag,
+} from './lesson-store.js';
 import type { Activity, Session, SessionStore } from './session-store.js';
 
 type StoreFixture = {
-  store: SessionStore;
+  store: LessonStore;
   learnerId: string;
   otherLearnerId: string;
   activityId: string;
@@ -94,11 +101,272 @@ export function activityRow(
   };
 }
 
+function lessonRun(conceptId: string): NewRow<LessonRun> {
+  return {
+    conceptId,
+    status: 'in_progress',
+    startedAt: date,
+    updatedAt: date,
+    completedAt: null,
+    quizPassedAt: null,
+    attempt: 1,
+    haltedAt: null,
+    retryAfter: null,
+    haltedPointIndex: null,
+    haltCount: 0,
+  };
+}
+
+const lessonProblem: NewRow<Omit<LessonProblem, 'runId'>> = {
+  knowledgePointId: 'point',
+  round: 1,
+  position: 1,
+  exerciseId,
+  seed: null,
+  practiceOnly: false,
+  assisted: false,
+  servedAt: date,
+  answeredAt: null,
+  correct: null,
+  attemptId: null,
+};
+
+const quizAttempt = { attemptNo: 1, startedAt: date, submittedAt: null, score: null, passed: null };
+const quizItem: NewRow<Omit<LessonQuizItem, 'quizAttemptId'>> = {
+  position: 1,
+  knowledgePointId: 'point',
+  exerciseId,
+  seed: null,
+  answer: null,
+  correct: null,
+  durationMs: null,
+  attemptId: null,
+  answeredAt: null,
+};
+
+const flag: NewRow<RemediationFlag> = {
+  conceptId: 'vectors',
+  targetPrereqId: 'scalars',
+  status: 'open',
+  openedByAttemptId: null,
+  createdAt: date,
+  resolvedAt: null,
+};
+
 export function describeLearnerStoreContract(
   name: string,
   makeStore: (options?: { persistHintActivity?: boolean }) => Promise<StoreFixture>,
 ) {
   describe(name, () => {
+    it('owns and edits runs and their problems, with conflict and position guards', async () => {
+      const { store, learnerId, otherLearnerId } = await makeStore();
+      const run = await store.insertLessonRunIfAbsent(learnerId, lessonRun('vectors'));
+      if (!run) throw new Error('Missing lesson run');
+      expect(await store.insertLessonRunIfAbsent(learnerId, lessonRun('vectors'))).toBeUndefined();
+      expect(await store.listLessonRuns(learnerId)).toEqual([run]);
+      expect(await store.getLessonRun(otherLearnerId, { runId: run.id })).toBeUndefined();
+      await expect(
+        store.patchLessonRun(otherLearnerId, run.id, { status: 'quiz' }),
+      ).rejects.toThrow();
+      const problem = await store.insertLessonProblem(learnerId, run.id, lessonProblem);
+      const second = await store.insertLessonProblem(learnerId, run.id, {
+        ...lessonProblem,
+        position: 2,
+      });
+      await expect(store.insertLessonProblem(learnerId, run.id, lessonProblem)).rejects.toThrow();
+      await expect(
+        store.insertLessonProblem(otherLearnerId, run.id, lessonProblem),
+      ).rejects.toThrow();
+      expect(await store.listLessonProblems(otherLearnerId, run.id)).toEqual([]);
+      expect(await store.lockLessonProblem(otherLearnerId, 'vectors', problem.id)).toBeUndefined();
+      expect(await store.lockLessonProblem(learnerId, 'scalars', problem.id)).toBeUndefined();
+      await store.transaction(async (tx) => {
+        expect(
+          await tx.getLessonRun(learnerId, { conceptId: 'vectors' }, { forUpdate: true }),
+        ).toEqual(run);
+        expect(await tx.lockLessonProblem(learnerId, 'vectors', problem.id)).toEqual({
+          run,
+          problem,
+        });
+        await tx.patchLessonProblem(learnerId, run.id, problem.id, {
+          answeredAt: later,
+          correct: 1,
+        });
+        await tx.patchLessonRun(learnerId, run.id, { status: 'quiz', updatedAt: later });
+        await tx.deleteLessonProblems(otherLearnerId, run.id, [problem.id, second.id]);
+      });
+      expect(await store.listLessonProblems(learnerId, run.id)).toEqual([
+        { ...problem, answeredAt: later, correct: 1 },
+        second,
+      ]);
+      expect(await store.getLessonRun(learnerId, { runId: run.id })).toEqual({
+        ...run,
+        status: 'quiz',
+        updatedAt: later,
+      });
+      await store.deleteLessonProblems(learnerId, run.id, [second.id]);
+      expect(await store.listLessonProblems(learnerId, run.id)).toHaveLength(1);
+    });
+
+    it('scopes quiz item replacement, persists edits and cascades deleted attempts', async () => {
+      const { store, learnerId, otherLearnerId } = await makeStore();
+      const run = await store.insertLessonRunIfAbsent(learnerId, lessonRun('vectors'));
+      if (!run) throw new Error('Missing lesson run');
+      const first = await store.insertLessonQuiz(learnerId, run.id, quizAttempt, [
+        { ...quizItem, position: 2 },
+        quizItem,
+      ]);
+      await expect(store.insertLessonQuiz(learnerId, run.id, quizAttempt, [])).rejects.toThrow();
+      await expect(
+        store.transaction((tx) =>
+          tx.insertLessonQuiz(learnerId, run.id, { ...quizAttempt, attemptNo: 2 }, [
+            quizItem,
+            quizItem,
+          ]),
+        ),
+      ).rejects.toThrow();
+      const second = await store.insertLessonQuiz(
+        learnerId,
+        run.id,
+        { ...quizAttempt, attemptNo: 2 },
+        [],
+      );
+      const quiz = await store.readLessonQuiz(learnerId, run.id);
+      expect(quiz.quizAttempts).toEqual([first, second]);
+      expect(quiz.quizItems.map(({ position }) => position)).toEqual([1, 2]);
+      expect(await store.readLessonQuiz(otherLearnerId, run.id)).toEqual({
+        quizAttempts: [],
+        quizItems: [],
+      });
+      const [one, two] = quiz.quizItems;
+      expect(
+        await store.getLessonRun(otherLearnerId, { conceptId: 'vectors', quizItemId: one.id }),
+      ).toBeUndefined();
+      expect(
+        await store.getLessonRun(
+          learnerId,
+          { conceptId: 'vectors', quizItemId: one.id },
+          { forUpdate: true },
+        ),
+      ).toEqual(run);
+      const replacementId = crypto.randomUUID();
+      expect(
+        await store.patchLessonQuizItem(
+          learnerId,
+          run.id,
+          one.id,
+          {
+            replacementId,
+            exerciseId: 'replacement',
+          },
+          { unanswered: true },
+        ),
+      ).toEqual({ ...one, id: replacementId, exerciseId: 'replacement' });
+      expect(
+        await store.getLessonRun(learnerId, { conceptId: 'vectors', quizItemId: one.id }),
+      ).toBeUndefined();
+      const answer = { selected: [1] };
+      await store.patchLessonQuizItem(learnerId, run.id, replacementId, {
+        answer,
+        answeredAt: later,
+      });
+      answer.selected.push(2);
+      expect(
+        await store.patchLessonQuizItem(
+          learnerId,
+          run.id,
+          replacementId,
+          { exerciseId },
+          { unanswered: true },
+        ),
+      ).toBeUndefined();
+      expect(
+        await store.patchLessonQuizItem(otherLearnerId, run.id, replacementId, { exerciseId }),
+      ).toBeUndefined();
+      await store.patchLessonQuizAttempt(learnerId, run.id, first.id, {
+        submittedAt: later,
+        score: 1,
+        passed: true,
+      });
+      await store.deleteLessonQuizRows(otherLearnerId, run.id, {
+        itemIds: [two.id],
+        attemptIds: [first.id],
+      });
+      await store.deleteLessonQuizRows(learnerId, run.id, { itemIds: [two.id] });
+      expect(await store.readLessonQuiz(learnerId, run.id)).toEqual({
+        quizAttempts: [{ ...first, submittedAt: later, score: 1, passed: true }, second],
+        quizItems: [
+          {
+            ...one,
+            id: replacementId,
+            exerciseId: 'replacement',
+            answeredAt: later,
+            answer: { selected: [1] },
+          },
+        ],
+      });
+      await store.deleteLessonQuizRows(learnerId, run.id, { attemptIds: [first.id] });
+      expect(await store.readLessonQuiz(learnerId, run.id)).toEqual({
+        quizAttempts: [second],
+        quizItems: [],
+      });
+    });
+
+    it('resolves only matching open flags and clears topic progress without deleting evidence or XP', async () => {
+      const { store, learnerId, otherLearnerId, activityId } = await makeStore();
+      const evidence = await store.insertAttempt(learnerId, attempt(1, { activityId }));
+      await store.insertXpEventOnce(learnerId, xpEvent('lesson-xp'));
+      const run = await store.insertLessonRunIfAbsent(learnerId, lessonRun('vectors'));
+      if (!run) throw new Error('Missing lesson run');
+      await store.insertLessonProblem(learnerId, run.id, lessonProblem);
+      await store.insertLessonQuiz(learnerId, run.id, quizAttempt, [quizItem]);
+      await store.insertRemediationFlags(learnerId, [
+        flag,
+        { ...flag, openedByAttemptId: evidence.id },
+        { ...flag, conceptId: 'matrices', targetPrereqId: 'vectors' },
+        { ...flag, conceptId: 'other', targetPrereqId: null },
+      ]);
+      await store.insertRemediationFlags(otherLearnerId, [flag]);
+      const query = {
+        conceptId: 'vectors',
+        targetPrereqIds: ['scalars'],
+        excludeOpenedByActivityId: activityId,
+      };
+      expect(await store.listRemediationFlags(learnerId, query)).toHaveLength(1);
+      expect(await store.listRemediationFlags(learnerId, { targetPrereqIds: [] })).toEqual([]);
+      await store.resolveRemediationFlags(learnerId, query, later);
+      await store.resolveRemediationFlags(learnerId, query, date);
+      expect(await store.listRemediationFlags(learnerId, { status: 'resolved' })).toEqual([
+        expect.objectContaining({ resolvedAt: later, openedByAttemptId: null }),
+      ]);
+      expect(await store.listOpenRemediationFlags(learnerId)).toHaveLength(3);
+      const facts = await store.readSchedulerFacts(learnerId, {
+        now: later,
+        recallExerciseIds: [],
+      });
+      expect(facts.flags).toHaveLength(3);
+      expect(facts.flags.every((flag) => flag.status === 'open')).toBe(true);
+      await expect(
+        store.transaction(async (tx) => {
+          await tx.clearTopicProgress(learnerId, 'vectors');
+          throw new Error('rollback');
+        }),
+      ).rejects.toThrow('rollback');
+      expect(await store.listLessonRuns(learnerId)).toEqual([run]);
+      await store.clearTopicProgress(learnerId, 'vectors');
+      expect(await store.listLessonRuns(learnerId)).toEqual([]);
+      expect(await store.listLessonProblems(learnerId, run.id)).toEqual([]);
+      expect(await store.readLessonQuiz(learnerId, run.id)).toEqual({
+        quizAttempts: [],
+        quizItems: [],
+      });
+      expect(await store.listRemediationFlags(learnerId, {})).toEqual([
+        expect.objectContaining({ conceptId: 'other' }),
+      ]);
+      expect(await store.listRemediationFlags(otherLearnerId, {})).toHaveLength(1);
+      expect(await store.listAttempts(learnerId, {})).toEqual([evidence]);
+      expect(await store.listXpEvents(learnerId, {})).toHaveLength(1);
+    });
     it('lists and locks owned sessions, returns copies and only replaces active sessions', async () => {
       const { store, learnerId, otherLearnerId } = await makeStore();
       const row = sessionRow(new Date(date));

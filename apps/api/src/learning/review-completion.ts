@@ -14,7 +14,7 @@ import {
   buildReviewActivityForConcept,
   interleaveReviewExercises,
 } from '@academy/aesop/planner/scheduler';
-import { and, asc, desc, eq, gt, inArray, isNotNull, isNull, notInArray, or } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, inArray, isNotNull, isNull } from 'drizzle-orm';
 import { type Card, Rating } from 'ts-fsrs';
 import type { Database } from '../db/client.js';
 import { drizzleLearnerStore } from '../db/learner-store.js';
@@ -23,7 +23,6 @@ import {
   attempts,
   quizItems,
   quizRuns,
-  remediationFlags,
   reviewCards,
   reviewLogs,
   sessionActivities,
@@ -460,26 +459,11 @@ export async function completeReviewActivity(
           ),
         ),
       );
-    await db
-      .update(remediationFlags)
-      .set({ status: 'resolved', resolvedAt: now })
-      .where(
-        and(
-          eq(remediationFlags.userId, userId),
-          eq(remediationFlags.status, 'open'),
-          inArray(remediationFlags.targetPrereqId, reviewedConceptIds),
-          or(
-            isNull(remediationFlags.openedByAttemptId),
-            notInArray(
-              remediationFlags.openedByAttemptId,
-              db
-                .select({ id: attempts.id })
-                .from(attempts)
-                .where(eq(attempts.activityId, activity.id)),
-            ),
-          ),
-        ),
-      );
+    await drizzleLearnerStore(db).resolveRemediationFlags(
+      userId,
+      { targetPrereqIds: reviewedConceptIds, excludeOpenedByActivityId: activity.id },
+      now,
+    );
   }
 }
 
