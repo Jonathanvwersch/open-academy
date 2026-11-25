@@ -164,13 +164,123 @@ test('completed lesson steps can be revisited during Explain it without losing t
 
 test('lesson step tabs are restored from URL and invalid steps fall back', async ({ page }) => {
   const sessionId = await createLessonSession({ stepsPassed: true, explainActive: true });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  let threadId = '';
+  let messageCount = 0;
+  const messages: Array<Record<string, unknown>> = [];
+  const thread = () => ({
+    id: threadId,
+    conceptId: 'vectors',
+    title: 'Lesson stage context',
+    updatedAt: '2026-01-01T12:00:00.000Z',
+    conceptTitle: 'Vectors',
+    messageCount: messages.length,
+    lastMessagePreview: String(messages.at(-1)?.content ?? ''),
+  });
+  const detail = () => ({ thread: thread(), messages: [...messages] });
+  await page.addInitScript(() => {
+    localStorage.removeItem('academy.tutor.open');
+    localStorage.removeItem('academy.tutor.thread');
+  });
+  await page.route('**/api/sessions/*', async (route) => {
+    const url = new URL(route.request().url());
+    if (route.request().method() === 'GET' && url.pathname === `/api/sessions/${sessionId}`) {
+      const response = await route.fetch();
+      const payload = (await response.json()) as Record<string, unknown>;
+      await route.fulfill({ response, json: { ...payload, tutorEnabled: true } });
+      return;
+    }
+    await route.continue();
+  });
+  await page.route('**/api/tutor/status', (route) =>
+    route.fulfill({ json: { tutorEnabled: true } }),
+  );
+  await page.route('**/api/tutor/threads**', async (route) => {
+    const url = new URL(route.request().url());
+    if (route.request().method() === 'POST') {
+      const body = route.request().postDataJSON() as {
+        question: string;
+        threadId?: string;
+        clientMessageId: string;
+      };
+      threadId = body.threadId ?? threadId;
+      messageCount += 1;
+      const userMessage = {
+        id: `user-${messageCount}`,
+        clientId: body.clientMessageId,
+        role: 'user',
+        content: body.question,
+        createdAt: `2026-01-01T12:00:00.00${messageCount * 2 - 1}Z`,
+      };
+      const assistantMessage = {
+        id: `assistant-${messageCount}`,
+        clientId: null,
+        role: 'assistant',
+        content: `Tutor reply ${messageCount}`,
+        createdAt: `2026-01-01T12:00:00.00${messageCount * 2}Z`,
+      };
+      messages.push(userMessage, assistantMessage);
+      await route.fulfill({
+        json: { thread: thread(), messages: [userMessage, assistantMessage] },
+      });
+      return;
+    }
+    if (url.pathname === '/api/tutor/threads') {
+      await route.fulfill({ json: threadId ? [thread()] : [] });
+      return;
+    }
+    if (threadId && url.pathname === `/api/tutor/threads/${threadId}`) {
+      await route.fulfill({ json: detail() });
+      return;
+    }
+    await route.continue();
+  });
   await page.goto(`/session/${sessionId}?step=explain`);
   await expect(page.getByTestId('lesson-explain-chip')).toHaveAttribute(
     'aria-label',
     'Explain it, current',
   );
+  await page.getByRole('button', { name: 'Open tutor' }).click();
+  const tutor = page.getByRole('complementary', { name: 'Tutor' });
+  await tutor.getByRole('button', { name: 'New chat' }).click();
+  const textarea = tutor.getByLabel('Ask the tutor');
+  await textarea.fill('What is this Explain it exercise asking?');
+  const explainRequestPromise = page.waitForRequest(
+    (request) => request.method() === 'POST' && request.url().includes('/api/tutor/threads'),
+  );
+  const explainResponsePromise = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'POST' && response.url().includes('/api/tutor/threads'),
+  );
+  await textarea.press('Enter');
+  const explainRequest = await explainRequestPromise;
+  await explainResponsePromise;
+  expect(explainRequest.postDataJSON()).toMatchObject({
+    lessonStage: 'explain',
+    exerciseId: 'vectors-fixture-final',
+  });
+
   await page.getByRole('button', { name: 'Step 1 of 2, passed' }).click();
   await expect(page).toHaveURL(/step=1/);
+  await expect(page.getByTestId('lesson-step-content')).toContainText(
+    'A vector is an ordered list of coordinates',
+  );
+  await textarea.fill('What does this step teach?');
+  const stepRequestPromise = page.waitForRequest(
+    (request) => request.method() === 'POST' && request.url().includes('/api/tutor/threads'),
+  );
+  const stepResponsePromise = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'POST' && response.url().includes('/api/tutor/threads'),
+  );
+  await textarea.press('Enter');
+  const stepRequest = await stepRequestPromise;
+  await stepResponsePromise;
+  expect(stepRequest.postDataJSON()).toMatchObject({
+    lessonStage: 'step',
+    knowledgePointId: 'vectors-fixture-1',
+  });
+
   await page.reload();
   await expect(page.getByTestId('lesson-step-content')).toContainText(
     'A vector is an ordered list of coordinates',
@@ -181,7 +291,31 @@ test('lesson step tabs are restored from URL and invalid steps fall back', async
   await expect(page).toHaveURL(/step=1/);
   await page.goto(`/session/${sessionId}?step=99`);
   await expect(page).not.toHaveURL(/step=99/);
-  await expect(page).toHaveURL(/step=explain/);
+  await expect(page.getByTestId('lesson-explain-chip')).toHaveAttribute(
+    'aria-label',
+    'Explain it, current',
+  );
+});
+
+test('lesson step search is cleared on another session activity', async ({ page }) => {
+  const sessionId = await createLessonSession({ stepsPassed: true });
+  const [practiceActivity] = await db
+    .insert(sessionActivities)
+    .values({
+      sessionId,
+      idx: 1,
+      kind: 'practice',
+      conceptId: 'vectors',
+      exerciseIds: ['vectors-fixture-final'],
+      status: 'planned',
+      plannedMinutes: 5,
+    })
+    .returning();
+  if (!practiceActivity) throw new Error('Could not create practice activity');
+
+  await page.goto(`/session/${sessionId}?activity=${practiceActivity.id}&step=1`);
+  await expect(page).toHaveURL(new RegExp(`activity=${practiceActivity.id}`));
+  await expect(page).not.toHaveURL(/step=/);
 });
 
 test('future steps stay unavailable and an active quiz cannot open lesson recaps', async ({

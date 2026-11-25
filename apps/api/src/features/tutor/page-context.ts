@@ -155,6 +155,7 @@ export function buildTutorPageContent(input: {
           .join('\n\n')}`;
         return sanitizePageContent(
           [
+            `# ${title}`,
             `## Current page: ${stageTitle}`,
             question,
             completedSteps,

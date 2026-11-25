@@ -1,7 +1,7 @@
 import type { AnswerOptions, AttemptResponse } from '@academy/contracts/exercises';
 import type { SessionActivity } from '@academy/contracts/sessions';
 import { useQueries, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
-import { getRouteApi, Link, useNavigate, useRouter } from '@tanstack/react-router';
+import { getRouteApi, Link, useNavigate } from '@tanstack/react-router';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { apiFetch } from '../../api/authenticated-fetch.js';
 import { Markdown } from '../../components/markdown.js';
@@ -51,18 +51,19 @@ async function saveActivityProgress(
 
 export function SessionPage() {
   const navigate = useNavigate({ from: '/session/$id' });
-  const router = useRouter();
   const { id } = Route.useParams();
   const { activity: requestedActivityId, step: searchStep } = Route.useSearch();
   const step = typeof searchStep === 'number' ? String(searchStep) : searchStep;
-  const navigateToLessonStep = (nextStep?: string, replace = false) => {
-    const url = new URL(window.location.href);
-    if (nextStep === undefined) url.searchParams.delete('step');
-    else url.searchParams.set('step', nextStep);
-    const href = `${url.pathname}${url.search}${url.hash}`;
-    if (replace) router.history.replace(href);
-    else router.history.push(href);
-  };
+  const navigateToLessonStep = useCallback(
+    (nextStep?: string, replace = false) => {
+      const stepValue = nextStep && /^\d+$/.test(nextStep) ? Number(nextStep) : nextStep;
+      void navigate({
+        search: (previous) => ({ ...previous, step: stepValue }),
+        replace,
+      });
+    },
+    [navigate],
+  );
   const queryClient = useQueryClient();
   const tutorSidebar = useTutorSidebar();
   const [result, setResult] = useState<Record<string, unknown> | null>(null);
@@ -83,6 +84,7 @@ export function SessionPage() {
   const [endSessionError, setEndSessionError] = useState('');
   const [markingLessonViewed, setMarkingLessonViewed] = useState(false);
   const [stepRecap, setStepRecap] = useState<{ activityId: string; pointId: string } | null>(null);
+  const previousActivityRoute = useRef<{ sessionId: string; activityId: string } | null>(null);
   const hintButton = useRef<HTMLButtonElement>(null);
   const questionFrame = useRef<HTMLDivElement>(null);
   const questionContent = useRef<HTMLDivElement>(null);
@@ -196,6 +198,28 @@ export function SessionPage() {
       ? lesson?.knowledge_points?.find((point) => point.id === stepRecap?.pointId)
       : undefined;
   const lessonRunnerActive = usesLessonRunner(activity, lesson);
+  useEffect(() => {
+    const previous = previousActivityRoute.current;
+    const activityChanged = previous?.sessionId === id && previous.activityId !== activity?.id;
+    const isLessonActivity =
+      activity?.kind === 'learn' && Boolean(activity.conceptId) && activity.lessonAvailable;
+    if (step !== undefined && (!isLessonActivity || activityChanged)) {
+      navigateToLessonStep(undefined, true);
+    }
+    if (activity?.id) {
+      previousActivityRoute.current = { sessionId: id, activityId: activity.id };
+    } else if (previous?.sessionId !== id) {
+      previousActivityRoute.current = null;
+    }
+  }, [
+    activity?.conceptId,
+    activity?.id,
+    activity?.kind,
+    activity?.lessonAvailable,
+    id,
+    navigateToLessonStep,
+    step,
+  ]);
   const exerciseQuery = useQuery({
     ...exerciseQueryOptions(lessonRunnerActive ? null : (exerciseId ?? null)),
     throwOnError: true,

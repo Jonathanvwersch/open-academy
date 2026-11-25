@@ -50,6 +50,10 @@ test('Explain-it tutor context separates the current question from completed les
     exercisePrompt: 'Explain how span and rank are related.',
   });
 
+  expect(content).toContain('# Vectors');
+  expect(content.indexOf('# Vectors')).toBeLessThan(
+    content.indexOf('## Current page: Explain it self-check'),
+  );
   expect(content).toContain('## Current page: Explain it self-check');
   expect(content).toContain('Explain how span and rank are related.');
   expect(content).toContain(
