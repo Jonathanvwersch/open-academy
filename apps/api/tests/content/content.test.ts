@@ -17,6 +17,7 @@ import {
 import { serializeExercise } from '../../src/content/serialize.js';
 import type { ContentIndex, ContentSourceData } from '../../src/content/types.js';
 import { validateContent } from '../../src/content/validate.js';
+import { gradeText } from '../../src/learning/grading/text.js';
 import { keyPrereqsForPoint } from '../../src/learning/prerequisites.js';
 
 function required<T>(value: T | undefined, label: string): T {
@@ -285,6 +286,17 @@ test('source citations reject duplicate IDs, unknown references, and grounded le
       }),
     ]),
   );
+});
+
+test('linear regression bias recall accepts vector notation for n ones', async () => {
+  const content = await loadContent('content');
+  const exercise = required(content.exercisesById.get('lrp-recall-batch-formula'), 'bias recall');
+  if (exercise.type !== 'text') throw new Error('Bias recall must be text type');
+
+  for (const answer of ['vector of ones', '(1, ..., 1)', '[1,1,…,1]']) {
+    expect(gradeText(exercise, answer)).toMatchObject({ status: 'graded', correct: 1 });
+  }
+  expect(gradeText(exercise, '(1, ..., 0)')).toMatchObject({ status: 'graded', correct: 0 });
 });
 
 test('real authored papers load and every course unit has reading', async () => {
