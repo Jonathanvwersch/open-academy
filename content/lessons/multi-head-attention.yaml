@@ -302,9 +302,9 @@ knowledge_points:
     worked: |
       First try two tokens and two heads of width one. The query rows are `[1, 2]` for token 1 and `[3, 4]` for token 2. Columns show which head each number belongs to.
 
-      In NumPy, a Python library for arrays, **reshape** fills rows in order by default. Asking for two rows still leaves `[1, 2]` together, even if our code labels that row "head 1". To give each head a row, **transpose** swaps rows and columns. Head 1 then gets `[1, 3]` and head 2 gets `[2, 4]`. Both layouts are two by two, so shape alone misses the mix-up.
+      A reshape cuts the entries into new groups. A transpose swaps the rows and columns. If we read the entries left to right and simply cut them into two rows again, the first row still contains both heads for token 1. To give each head its own row, transpose the table: head 1 gets $(1,3)$ and head 2 gets $(2,4)$. Both tables are $2\times2$, so we need to track what each row and column represents.
 
-      Let's track the shapes for "the cat sat", with $T=3$ tokens, embeddings of width $d=4$ and $h=2$ heads of width $d_k=2$, and then check them in code.
+      Let's track the shapes for "the cat sat", with $T=3$ tokens, embeddings of width $d=4$ and $h=2$ heads of width $d_k=2$.
 
       1. **Stack the embeddings.** One row per token, one column per embedding entry.
          $$X:\ 3\times4$$
@@ -323,32 +323,6 @@ knowledge_points:
 
       6. **Join and mix the heads.** Two $3\times2$ outputs side by side make $3\times4$, and $W_O$ keeps it that way.
          $$(3\times4)(4\times4)=3\times4$$
-
-      Here is the same layer in NumPy, with random matrices because only the shapes matter. NumPy arrays can have more than two axes, numbered from 0, and an array of shape `(2, 3, 2)` is a stack of two $3\times2$ matrices, one per head.
-
-      ```python
-      import numpy as np
-      T, d, h = 3, 4, 2
-      dk = d // h
-      rng = np.random.default_rng(0)
-      X = rng.normal(size=(T, d))
-      W_Q, W_K, W_V, W_O = rng.normal(size=(4, d, d))
-      Q = (X @ W_Q).reshape(T, h, dk).transpose(1, 0, 2)
-      K = (X @ W_K).reshape(T, h, dk).transpose(1, 0, 2)
-      V = (X @ W_V).reshape(T, h, dk).transpose(1, 0, 2)
-      S = Q @ K.transpose(0, 2, 1) / np.sqrt(dk)
-      A = np.exp(S) / np.exp(S).sum(axis=-1, keepdims=True)
-      heads = A @ V
-      out = heads.transpose(1, 0, 2).reshape(T, d) @ W_O
-      print(Q.shape, A.shape, heads.shape, out.shape)
-      # prints (2, 3, 2) (2, 3, 3) (2, 3, 2) (3, 4)
-      ```
-
-      - `default_rng(0)` makes a random number generator, and the 0 makes every run give the same numbers. `rng.normal(size=(4, d, d))` makes four random $d\times d$ matrices, unpacked into `W_Q`, `W_K`, `W_V` and `W_O`.
-      - `reshape(T, h, dk)` cuts each row of width 4 into 2 pieces of width 2, giving shape `(3, 2, 2)`. `transpose(1, 0, 2)` moves axis 1, the head, to the front, giving `(2, 3, 2)`.
-      - On stacks like these, `@` multiplies the matrices of each head separately. `K.transpose(0, 2, 1)` keeps axis 0, the head, and swaps axes 1 and 2, so it transposes each head's keys.
-      - `axis=-1` means the last axis, so each sum runs along a row. `keepdims=True` keeps the sums in shape `(2, 3, 1)`, so each row of `np.exp(S)` is divided by its own sum.
-      - The line before `print` joins the heads. `transpose(1, 0, 2)` turns `(2, 3, 2)` back into `(3, 2, 2)`, `reshape(T, d)` writes each token's two head outputs side by side as a row of width 4, and `@ W_O` mixes them.
 
       Each head's queries are $3\times2$, its weights $3\times3$ and its output $3\times2$, and the layer's output is $3\times4$, the same shape as $X$.
     problems:

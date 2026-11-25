@@ -264,19 +264,8 @@ knowledge_points:
       3. **Add the slopes for the bias.** The bias moves every prediction by the same amount.
          $$\frac{\partial L}{\partial b}=2+4=6$$
 
-      In NumPy, `X.T` is the transpose, `@` multiplies matrices and `G.sum(axis=0)` adds down each column, while `Z > 0` gives `True` or `False`, which count as $1$ or $0$.
-
-      ```python
-      import numpy as np
-      X = np.array([[1.], [2.]])    # one example per row
-      G = np.array([[2.], [4.]])    # prediction slopes
-      print(X.T @ G, G.sum(axis=0))
-      Z = np.array([[2.], [-2.]])   # saved ReLU scores
-      print(6 * (Z > 0))
-      ```
-
-      It prints `[[10.]] [6.]`, then `[[6] [0]]`: only the positive score lets the $6$ through.
-      `np.where(z > 0, g, 0)` keeps each entry of `g` where `z` is positive and puts $0$ everywhere else.
+      4. **Pass slopes through ReLU.** If the saved scores are $(2,-2)$ and a slope of $6$ arrives at each entry, only the first entry passes its slope through.
+         $\begin{pmatrix}6\\6\end{pmatrix}\odot\begin{pmatrix}1\\0\end{pmatrix}=\begin{pmatrix}6\\0\end{pmatrix}.$
     problems:
       [
         bp-arrays-basics,

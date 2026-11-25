@@ -710,23 +710,6 @@ exercises:
           feedback: "That counts only one head; include all six heads.",
         }
     solution: Each head has $24\times4=96$ query weights, giving $6\times96=576=24^2$ across the heads.
-  - id: tbp-stack-code-read
-    dimension: implementation
-    type: code_read
-    role: practice
-    difficulty: 2
-    est_minutes: 2
-    prompt: "This NumPy fragment constructs the MLP weights for a width-four transformer block, using rows for token vectors. What integer does it print?"
-    code: |
-      import numpy as np
-      d = 4
-      shapes = {"W1": (d, 4 * d), "b1": (4 * d,),
-                "W2": (4 * d, d), "b2": (d,)}
-      p = {k: np.zeros(s) for k, s in shapes.items()}
-      print(sum(w.size for w in p.values()))
-    answer: 148
-    tolerance: { abs: 0.000001 }
-    solution: "`np.zeros(s)` makes an array filled with zero whose shape is the tuple `s`. The two matrices each hold $64$ numbers, and the bias vectors hold $16$ and $4$, so the printed total is $148$."
   - id: tbp-stack-robot
     dimension: transfer
     type: numeric

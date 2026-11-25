@@ -222,7 +222,7 @@ knowledge_points:
 
       $$\hat Y=HW_2^\top+b_2.$$
 
-      Capital $H$ holds hidden values for all examples, and $\hat Y$ holds their predictions. Add bias $-1$ to the first column of scores and $0$ to the second, for every example row. NumPy calls this repeated addition **broadcasting**. ReLU acts on every entry separately.
+      Capital $H$ holds hidden values for all examples, and $\hat Y$ holds their predictions. Add bias $-1$ to the first column of scores and $0$ to the second, for every example row. ReLU acts on every entry separately.
 
       Be careful not to rely on compatible sizes alone to check the calculation. Without the transpose, our first row instead gives
 
@@ -268,20 +268,6 @@ knowledge_points:
       | $1$ | $1\times2$ | $1\times2$ | $1\times1$ | $9$ |
       | $3$ | $3\times2$ | $3\times2$ | $3\times1$ | $9$ |
       | $32$ | $32\times2$ | $32\times2$ | $32\times1$ | $9$ |
-
-      Here is the same calculation in NumPy, with one inner list per matrix row. We transpose the weights with `.T`, multiply matrices with `@` and apply ReLU with `np.maximum(0, ...)`. The additions repeat the biases across examples, and `.shape` reports each array size.
-
-      ```python
-      import numpy as np
-      X = np.array([[2, 1], [1, 2], [0, 1]])
-      W1 = np.array([[1, 1], [-1, 1]])
-      b1 = np.array([-1, 0])
-      W2 = np.array([[3, 2]])
-      H = np.maximum(0, X @ W1.T + b1)
-      Y = H @ W2.T + 1
-      print(H.shape, Y.shape)  # (3, 2) (3, 1)
-      print(Y)                # rows [7], [9], [3]
-      ```
 
       The first prediction is still $7$: batching groups the calculations without changing them.
     problems:

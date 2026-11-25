@@ -120,21 +120,6 @@ knowledge_points:
          $$y_{0,2}=3\big((-1)\cdot1+0\cdot1+1\cdot1\big)+0=0.$$
 
       Every image row is the same, so every output row is $(3,3,0)$. The first two cells score 3 because their patches contain the dark-to-bright boundary, while the all-bright patch scores 0. The 3s mark the patches containing the edge, not a single exact edge column.
-
-      Multiplying a Python list by 5 repeats its row five times, while multiplying by 3 makes the filter and output rows. The slice x[i:i+3, j:j+3] selects one patch, and max(0, …) applies ReLU to its weighted sum plus bias.
-
-      ```python
-      import numpy as np
-      x = np.array([[0, 0, 1, 1, 1]] * 5)
-      w = np.array([[-1, 0, 1]] * 3)
-      b = 0
-      y = np.array([[0, 0, 0]] * 3)
-      for i in range(3):
-          for j in range(3):
-              y[i, j] = max(0, (x[i:i+3, j:j+3] * w).sum() + b)
-      print(y.tolist())
-      # [[3, 3, 0], [3, 3, 0], [3, 3, 0]]
-      ```
     problems:
       [
         conv-slide-basics,
@@ -143,7 +128,6 @@ knowledge_points:
         conv-slide-template,
         conv-bias-trap,
         conv-edge-robot,
-        conv-code-patch,
       ]
   - id: conv-size
     key_prereqs: [images-as-tensors]

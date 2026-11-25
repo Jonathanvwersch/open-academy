@@ -36,14 +36,14 @@ exercises:
       - id: b
         text: Indices start at one, so it selects row one, column three
         correct: false
-        feedback: NumPy starts both indices at zero.
+        feedback: Image coordinates in this lesson start both indices at zero.
       - id: c
         text: The first index selects a column, so it selects column two
         correct: false
         feedback: The row index comes first.
     solution: Counting from zero makes index 1 the second row and index 3 the fourth column.
   - id: iat-pixel-count
-    dimension: implementation
+    dimension: math
     type: numeric
     role: practice
     difficulty: 2
@@ -101,22 +101,8 @@ exercises:
         correct: false
         feedback: Grayscale needs no three-channel axis.
     solution: Rows count height and columns count width, so the shape is (600, 800).
-  - id: iat-grid-code
-    dimension: implementation
-    type: code_read
-    role: practice
-    difficulty: 2
-    est_minutes: 2
-    prompt: What does this print?
-    code: |-
-      import numpy as np
-      img = np.array([[0, 51, 102], [153, 204, 255]], dtype=np.uint8)
-      print(img.shape, img[1, 0])
-    accept:
-      - (2, 3) 153
-    solution: There are two rows and three columns; row index 1, column index 0 holds 153.
   - id: iat-grid-bytes
-    dimension: implementation
+    dimension: math
     type: numeric
     role: practice
     difficulty: 3
@@ -197,7 +183,7 @@ exercises:
         feedback: Transposing preserves values rather than averaging them.
     solution: Red is the first number of each RGB triple; transpose preserves its spatial position.
   - id: iat-values-count
-    dimension: implementation
+    dimension: math
     type: numeric
     role: practice
     difficulty: 2
@@ -216,7 +202,7 @@ exercises:
     tolerance: { abs: 0.000001 }
     solution: Each of {{= h*w }} pixels has three values, giving {{= h*w*3 }} values.
   - id: iat-chw-height
-    dimension: implementation
+    dimension: math
     type: numeric
     role: practice
     difficulty: 2
@@ -261,23 +247,8 @@ exercises:
           needed to move the channel axis.
     solution: Reshape regroups the existing value sequence, so a supposed channel plane can contain
       several colours. Transpose moves the channel axis while keeping every value with its pixel.
-  - id: iat-layout-code
-    dimension: implementation
-    type: code_read
-    role: practice
-    difficulty: 2
-    est_minutes: 2
-    prompt: What does this print?
-    code: |-
-      import numpy as np
-      img = np.array([[[1, 2, 3], [4, 5, 6]]])
-      x = np.transpose(img, (2, 0, 1))
-      print(x.shape, x.ndim)
-    accept:
-      - (3, 1, 2) 3
-    solution: The channel axis moves first, giving three planes of one row and two columns, still three axes.
   - id: iat-batch-count
-    dimension: implementation
+    dimension: math
     type: numeric
     role: practice
     difficulty: 3
@@ -365,7 +336,7 @@ exercises:
         feedback: Its standard deviation is 0.1; division by zero would be invalid.
     solution: The blue value is 0.2 and its mean is 0.2, so subtraction gives zero.
   - id: iat-rescale-value
-    dimension: implementation
+    dimension: math
     type: numeric
     role: practice
     difficulty: 2
@@ -383,7 +354,7 @@ exercises:
       abs: 1.0e-06
     solution: Rescaling 8-bit brightness uses division by 255, giving ${{= k*51 }}/255={{= k/5 }}$.
   - id: iat-standard-value
-    dimension: implementation
+    dimension: math
     type: numeric
     role: practice
     difficulty: 2
@@ -397,48 +368,6 @@ exercises:
     answer_expr: (q/10-0.5)/0.25
     tolerance: { abs: 0.000001 }
     solution: "Subtract 0.5, then divide by 0.25: the result is {{= (q/10-0.5)/0.25 }}."
-  - id: iat-mean-axis
-    dimension: conceptual
-    type: mc
-    role: practice
-    difficulty: 3
-    est_minutes: 2
-    prompt: A CHW image has shape (3, 4, 3), and channel means have shape (3,). How will NumPy apply
-      `image - means`?
-    options:
-      - id: a
-        text: It subtracts one mean per width position, repeating that pattern across rows and channels.
-        correct: true
-        feedback: The one-dimensional means line up with the trailing width axis.
-      - id: b
-        text: It subtracts one mean per channel, repeating that mean across all rows and columns.
-        correct: false
-        feedback: That requires means shaped `(3, 1, 1)` so their channel axis aligns first.
-      - id: c
-        text: It rejects the subtraction because the image has three axes and the means have one.
-        correct: false
-        feedback:
-          Different axis counts can broadcast; here both trailing sizes are 3, so the subtraction
-          runs.
-    solution: NumPy aligns trailing axes, so the means match width in this shape. Reshaping means to
-      `(3, 1, 1)` aligns them with channels instead.
-  - id: iat-scale-code
-    dimension: implementation
-    type: code_read
-    role: practice
-    difficulty: 2
-    est_minutes: 2
-    prompt: What nested list does this print after subtracting the channel means?
-    code: |
-      import numpy as np
-      chw = np.array([[[0.6]], [[0.4]], [[0.2]]])
-      mean = np.array([0.5, 0.3, 0.2])
-      out = chw - mean.reshape(3, 1, 1)
-      print(np.round(out, 2).tolist())
-    accept:
-      - "[[[0.1]], [[0.1]], [[0.0]]]"
-    solution: The reshaped means align one value with each channel. Subtraction gives $0.6-0.5=0.1$,
-      $0.4-0.3=0.1$ and $0.2-0.2=0$, while the CHW shape stays `(3, 1, 1)`.
   - id: iat-pretrained
     lesson_only: true
     dimension: conceptual
@@ -467,7 +396,7 @@ exercises:
       The floating-point image already has the expected 0-to-1 scale. Apply the model's fixed
       channel statistics once, preserving the preparation used for training.
   - id: iat-robot-scale
-    dimension: implementation
+    dimension: math
     type: numeric
     role: practice
     difficulty: 3
@@ -505,20 +434,6 @@ exercises:
         required: true
     exemplar: "Transpose with axis order $(2,0,1)$ to obtain $(3,480,640)$, keeping values with their pixels. Add a front axis of size $1$ for the single-image batch $(1,3,480,640)$. Reshape regroups the default index-order sequence, so using it to move channels can mix values from different pixels."
     solution: "Transpose with axis order $(2,0,1)$ to obtain $(3,480,640)$, keeping values with their pixels. Add a front axis of size $1$ for the single-image batch $(1,3,480,640)$. Reshape regroups the default index-order sequence, so using it to move channels can mix values from different pixels."
-  - id: iat-check-layout
-    dimension: implementation
-    type: code_complete
-    role: core
-    difficulty: 2
-    est_minutes: 2
-    prompt: An RGB image img has shape (8, 11, 3). Complete the HWC-to-CHW conversion with a tuple of non-negative axis numbers in their new order.
-    code: |-
-      import numpy as np
-      chw = np.transpose(img, ____)
-    accept:
-      - (2, 0, 1)
-      - (2, 0, 1,)
-    solution: Transpose moves the last axis first, giving (3, 8, 11) while keeping each number with its own pixel.
   - id: iat-recall-grid-say
     dimension: conceptual
     type: explain
@@ -544,12 +459,12 @@ exercises:
     knowledge_point: iat-pixels-grid
     difficulty: 1
     est_minutes: 0.5
-    prompt: "An image viewer gives the size of a grayscale photo as width by height. In what order will NumPy list the two sizes in the array’s shape?"
+    prompt: "An image viewer gives the size of a grayscale photo as width by height. In what order does the image array list the two sizes in the array’s shape?"
     options:
       - id: a
         text: "Width first, then height."
         correct: false
-        feedback: "Photo dimensions often list width first. NumPy arrays list rows first."
+        feedback: "Photo dimensions often list width first. The image array lists rows first."
       - id: b
         text: "Height first, then width."
         correct: true
@@ -558,7 +473,7 @@ exercises:
         text: "The smaller size first, then the larger size."
         correct: false
         feedback: "The order is set by the axes of the array. It stays the same for tall and wide images."
-    solution: "NumPy gives the row count first and the column count second, so the shape starts with the height."
+    solution: "The image array gives the row count first and the column count second, so the shape starts with the height."
   - id: iat-recall-grid-formula
     dimension: math
     type: expression
@@ -595,18 +510,18 @@ exercises:
     knowledge_point: iat-channels-layout
     difficulty: 1
     est_minutes: 0.5
-    prompt: "An RGB array comes from a camera in HWC layout. Which NumPy operation converts it to CHW with the same values at the same pixels?"
+    prompt: "An RGB array comes from a camera in HWC layout. Which change to the axes converts it to CHW with the same values at the same pixels?"
     options:
       - id: a
-        text: "Use .T to reverse the axes."
+        text: "Reverse all three axes."
         correct: false
-        feedback: "On a three-axis array, .T gives CWH and swaps height and width."
+        feedback: "Reversing the three axes gives CWH and swaps height and width."
       - id: b
         text: "Use reshape with a new shape."
         correct: false
         feedback: "Reshape can give the target shape while mixing values from different pixels and channels."
       - id: c
-        text: "Use np.transpose with the axes listed explicitly."
+        text: "Move the channel axis first and keep the height before the width."
         correct: true
         feedback: "An explicit axis order moves the channel axis to the front and keeps height before width."
     solution: "Use an explicit axis transpose to move the channels and preserve the row and column of each value."
@@ -617,17 +532,9 @@ exercises:
     knowledge_point: iat-channels-layout
     difficulty: 1
     est_minutes: 0.5
-    prompt: "Fill in the missing axis order to convert an HWC image to CHW in `np.transpose(img, ____)`. Give the three axis numbers in order."
-    accept:
-      [
-        "(2, 0, 1)",
-        "[2, 0, 1]",
-        "2, 0, 1",
-        "2 0 1",
-        "np.transpose(img, (2, 0, 1))",
-        "img.transpose(2, 0, 1)",
-      ]
-    regex: "^\\s*(?:(?=\\$[\\s\\S]*\\$\\s*$)|(?=\\x60[\\s\\S]*\\x60\\s*$)|(?=\\\\\\([\\s\\S]*\\\\\\)\\s*$)|(?!\\$|\\x60|\\\\\\()(?![\\s\\S]*(?:\\$|\\x60|\\\\\\))\\s*$))(?:\\$|\\x60|\\\\\\()?\\s*(?:(?:\\(\\s*2\\s*,\\s*0\\s*,\\s*1\\s*,?\\s*\\)|\\[\\s*2\\s*,\\s*0\\s*,\\s*1\\s*,?\\s*\\])|2\\s*,\\s*0\\s*,\\s*1\\s*,?|2\\s+0\\s+1|(?:np|numpy)\\.transpose\\s*\\(\\s*img\\s*,\\s*(?:axes\\s*=\\s*)?(?:\\(\\s*2\\s*,\\s*0\\s*,\\s*1\\s*,?\\s*\\)|\\[\\s*2\\s*,\\s*0\\s*,\\s*1\\s*,?\\s*\\])\\s*,?\\s*\\)|img\\.transpose\\s*\\(\\s*(?:(?:\\(\\s*2\\s*,\\s*0\\s*,\\s*1\\s*,?\\s*\\)|\\[\\s*2\\s*,\\s*0\\s*,\\s*1\\s*,?\\s*\\])|2\\s*,\\s*0\\s*,\\s*1)\\s*,?\\s*\\))\\s*(?:\\$|\\x60|\\\\\\))?\\s*$"
+    prompt: "Fill in the missing axis order to convert an HWC image to CHW. Give the three axis numbers in order."
+    accept: ["(2, 0, 1)", "[2, 0, 1]", "2, 0, 1", "2 0 1"]
+    regex: '^\s*(?:\(\s*2\s*,\s*0\s*,\s*1\s*\)|\[\s*2\s*,\s*0\s*,\s*1\s*\]|2(?:\s*,\s*|\s+)0(?:\s*,\s*|\s+)1)\s*$'
     solution: "The old channel axis is 2, followed by height axis 0 and width axis 1."
   - id: iat-recall-normalize-say
     dimension: conceptual

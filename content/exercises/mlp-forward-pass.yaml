@@ -169,23 +169,6 @@ exercises:
     common_wrong:
       - { answer: 1048576, category: incomplete_explanation, feedback: "Add the 2048 biases." }
     solution: "$512\\cdot2048 + 2048 = 1{,}050{,}624$."
-  - id: mlp-code-read
-    dimension: implementation
-    type: code_read
-    role: review
-    difficulty: 2
-    est_minutes: 3
-    prompt: "What does this print?"
-    code: |
-      import numpy as np
-      X = np.array([[1., -1.], [2., 0.]])
-      W1 = np.array([[1., 2.], [0., 1.]])   # shape (in, out)
-      h = np.maximum(0, X @ W1)
-      print(h.sum())  # h.sum() adds all entries of h
-    answer: 8
-    tolerance: { abs: 0.001 }
-    hints: ["Compute `X @ W1` one row at a time: row $i$ of `X` dotted with each column of `W1`."]
-    solution: "Row 1: $(1\\cdot1 + (-1)\\cdot0,\\ 1\\cdot2 + (-1)\\cdot1) = (1, 1)$. Row 2: $(2, 4)$. ReLU keeps all of them, so the sum is $1 + 1 + 2 + 4 = 8$."
   - id: mlp-explain
     dimension: conceptual
     type: explain

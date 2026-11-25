@@ -48,8 +48,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: A grayscale image array is `[[0.1, 0.2], [0.3, 0.4]]`. Which vector results from NumPy's
-      default flattening order?
+    prompt: A grayscale image array is `[[0.1, 0.2], [0.3, 0.4]]`. Which vector results from reading the rows from top to bottom, left to right within each row?
     options:
       - id: a
         text: $(0.1,0.2,0.3,0.4)$
@@ -63,7 +62,8 @@ exercises:
         text: $(0.3,0.4,0.1,0.2)$
         correct: false
         feedback: That reverses the row order; default flattening preserves it.
-    solution: NumPy's default flattening order reads each row in order, then continues with the next
+    solution:
+      reading the rows from top to bottom, left to right within each row reads each row in order, then continues with the next
       row. The resulting vector is $(0.1,0.2,0.3,0.4)$.
   - id: aep-encode-template
     dimension: math

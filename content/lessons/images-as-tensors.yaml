@@ -4,7 +4,7 @@ objective: |
   **Goal:** read an image's shape, convert it between the height-width-channels and channels-height-width layouts, and scale its pixel values the way a model expects.
 recap:
   - concept: matrices
-    text: "A matrix is a grid with shape (rows, columns). NumPy's .shape gives that shape, .T swaps rows and columns, and broadcasting reuses a smaller array across each row."
+    text: "A matrix is a grid with shape (rows, columns). Its transpose swaps rows and columns."
 where_this_fits: |
   ### What is an image tensor?
 
@@ -17,7 +17,7 @@ knowledge_points:
     title: Turn a picture into numbers
     tldr: |
       - A grayscale image is a grid of numbers, one per pixel, from 0 for black to 255 for white.
-      - NumPy gives the grid's size as rows then columns, so height comes before width.
+      - The grid's shape gives its size as rows then columns, so height comes before width.
       - Photo sizes are usually written width first, so mixing the two up scrambles the picture.
     explain: |
       ### Brightness in a grid
@@ -80,17 +80,17 @@ knowledge_points:
       </svg>
       ```
 
-      We use 8-bit images here, whose decoded brightnesses are whole numbers from 0 to 255. Other images can use higher bit depths, meaning more bits per brightness, or floats. NumPy calls this one-byte representation **uint8**, short for "unsigned 8-bit integer". Unsigned means it has no negative values, and 8 bits make one byte, which can hold exactly 256 different values.
+      We use 8-bit images here, whose decoded brightnesses are whole numbers from 0 to 255. Other images can use higher bit depths, meaning more bits per brightness, or floats. This one-byte representation is called **uint8**, short for "unsigned 8-bit integer". Unsigned means it has no negative values, and 8 bits make one byte, which can hold exactly 256 different values.
 
       ### Height comes first
 
-      NumPy stores a grid of numbers like this as an **array**, its general name for a grid with any number of directions. An **axis** is one direction along which we count an array's entries. A matrix has two. The first axis counts rows from top to bottom, so its size is the image's height. The second counts columns from left to right, so its size is the width. So for an image with height $H$ and width $W$,
+      An **array** is a grid of numbers with any number of directions. An **axis** is one direction along which we count an array's entries. A matrix has two. The first axis counts rows from top to bottom, so its size is the image's height. The second counts columns from left to right, so its size is the width. So for an image with height $H$ and width $W$,
 
       $$\text{shape}=(H,W),\qquad\text{pixels}=H\times W.$$
 
-      NumPy's `.shape` gives these two sizes, height first, because an array lists its rows first, just like a matrix. To read one pixel, we write `img[r, c]`, where `r` is the pixel's row and `c` is its column. NumPy counts from zero, so the top-left pixel is `img[0, 0]` and the row labels in the picture run from 0 to 3.
+      The shape lists rows first. We label a pixel by its row and column, counting from zero, so the top-left pixel is at $(0,0)$ and the row labels in the picture run from 0 to 3.
 
-      Be careful with the way image sizes are usually written. A "640×480" photo means 640 pixels wide and 480 pixels tall, so the width comes first. But the array puts the height first, so its shape is `(480, 640)`. If we mix the two up, NumPy cuts the same numbers into rows of the wrong length, and the picture comes out scrambled.
+      Be careful with the way image sizes are usually written. A "640×480" photo means 640 pixels wide and 480 pixels tall, so the width comes first. But the array puts the height first, so its shape is `(480, 640)`. If we mix the two up, we cut the same numbers into rows of the wrong length, and the picture comes out scrambled.
     worked: |
       Let's read the grayscale image above.
 
@@ -99,9 +99,9 @@ knowledge_points:
       2. **Count the pixels.** Every row has five pixels.
          $$4\times5=20\text{ pixels}.$$
       3. **Read one entry.** Row 1 is the second row and column 3 is the fourth column.
-         $$\texttt{img[1, 3]}=153.$$
+         $$\text{brightness at }(1,3)=153.$$
 
-      So this small image is 20 brightness values in a $4\times5$ grid, and the pixel at `img[1, 3]` is a light grey.
+      So this small image is 20 brightness values in a $4\times5$ grid, and the pixel at $(1,3)$ is a light grey.
     problems:
       [
         iat-grid-basics,
@@ -109,7 +109,6 @@ knowledge_points:
         iat-pixel-count,
         iat-grid-index,
         iat-grid-size,
-        iat-grid-code,
         iat-grid-bytes,
         iat-depth-grid,
       ]
@@ -171,11 +170,11 @@ knowledge_points:
       </svg>
       ```
 
-      Either way, the image now has three axes: height, width and channels. In general, a **tensor** is an array with any number of axes, so a vector, a single list of numbers, and a matrix are tensors too. NumPy's `.ndim` tells us how many axes an array has.
+      Either way, the image now has three axes: height, width and channels. In general, a **tensor** is an array with any number of axes, so a vector, a single list of numbers, and a matrix are tensors too.
 
       ### Put the channels first
 
-      The left-hand order is called **HWC**, for height, width, channels, and its shape is `(H, W, 3)` for RGB. It's a common layout for NumPy arrays converted from PIL RGB images, or images loaded with matplotlib or OpenCV. (OpenCV defaults to blue, green, red, so check the colour order too.)
+      The left-hand order is called **HWC**, for height, width, channels, and its shape is `(H, W, 3)` for RGB.
 
       The right-hand order is **CHW**, with shape `(3, H, W)`, and it's the one PyTorch vision models usually expect. Models also work on several images at once, called a **batch**, which adds one more axis at the front for the number of images $N$. That gives `(N, H, W, 3)`, called NHWC, or `(N, 3, H, W)`, called NCHW. For a model expecting NCHW, a single RGB image is passed as a batch of one, with shape `(1, 3, H, W)`.
 
@@ -185,9 +184,7 @@ knowledge_points:
       2. **Put height second.** Axis 0 becomes second.
       3. **Put width last.** Axis 1 becomes third.
 
-      `np.transpose` lists the old axes in their new order: `np.transpose(img, (2, 0, 1))`.
-
-      Be careful not to use `img.reshape(3, H, W)` instead. **Reshape** reads the numbers in NumPy's default row-by-row index order and cuts them into pieces of the new shape, so the shape can be right while the pixels are wrong. A transpose moves the axes and keeps each number with its own pixel.
+      A **transpose** changes the order of the axes. A **reshape** instead reads the entries in their current order and cuts them into groups that fit the new shape. The new shape can look right while the entries are in the wrong places.
     worked: |
       Let's move the diagram's 2×2 RGB image into CHW.
 
@@ -200,19 +197,7 @@ knowledge_points:
       4. **Stack the planes.** There are three planes, each two rows by two columns.
          $$\text{CHW shape}=(3,2,2).$$
 
-      The top-left pixel is still (10, 20, 30), but now its three numbers are in the top-left corners of the red, green and blue planes. The code below does the same in NumPy. There, `.tolist()` turns an array into nested Python lists so it prints on one line, and `chw[0]` picks out the first plane, the red one. The last line shows the reshape mistake. In this array, the default index order reads pixel by pixel: 10, 20, 30, 40, 50 and so on. Reshape just cuts that line into new pieces, so its "red plane" `[[10, 20], [30, 40]]` mixes the red, green and blue of the first pixel with the red of the second.
-
-      ```python
-      import numpy as np
-      img = np.array([[[10, 20, 30], [40, 50, 60]],
-                      [[70, 80, 90], [100, 110, 120]]])
-      chw = np.transpose(img, (2, 0, 1))
-      print(chw.shape)  # (3, 2, 2)
-      print(chw[0].tolist())  # [[10, 40], [70, 100]]
-      print(img.reshape(3, 2, 2)[0].tolist())  # [[10, 20], [30, 40]]
-      ```
-
-      Why not use `.T`, the transpose from the matrices lesson? On three axes it reverses all of them, so it would give shape `(3, W, H)` and swap the height and width.
+      The top-left pixel is still (10, 20, 30), but now its three numbers are in the top-left corners of the red, green and blue planes. If we read the original entries pixel by pixel and cut that list into $2\times2$ grids, the first grid would contain $10,20,30,40$. Those numbers belong to several channels. The transpose above keeps only red values in the red grid.
 
       We used RGB here. Other formats can have more channels, such as a fourth for transparency.
     problems:
@@ -222,7 +207,6 @@ knowledge_points:
         iat-values-count,
         iat-chw-height,
         iat-reshape-trap,
-        iat-layout-code,
         iat-batch-count,
         iat-depth-layout,
       ]
@@ -238,7 +222,7 @@ knowledge_points:
 
       The channels are now in order, but our uint8 values still run from 0 to 255. A model multiplies each input by a weight and adds the results, so thousands of inputs in the hundreds can add up to huge sums, and models often learn more reliably from small inputs centred near zero.
 
-      So the first change for our uint8 images is **rescaling**: we divide every pixel value by 255, so it lies between 0 and 1. For example, 153 becomes $153/255=0.6$. The result has decimals, so NumPy stores it as a **float** rather than uint8.
+      So the first change for our uint8 images is **rescaling**: we divide every pixel value by 255, so it lies between 0 and 1. For example, 153 becomes $153/255=0.6$. The result may have a fractional part, so one-byte whole numbers can no longer represent every value.
 
       ### Centre each channel
 
@@ -258,7 +242,7 @@ knowledge_points:
 
       ### Line the means up with the channels
 
-      In the matrices lesson, the bias row had one entry per column, so NumPy could reuse it for every house. In general, broadcasting matches the small array's axes with the *last* axes of the big one, and repeats it along the rest. In HWC, the last axis is channels, so `img - mean` with a mean of shape `(3,)` subtracts the right mean from every pixel. In CHW, the last axis is the width, so we give the means shape `(3, 1, 1)` with `mean.reshape(3, 1, 1)`. Now the axis of size 3 lines up with the channels, and each mean is repeated along the two size-1 axes, over its whole grid. Here reshape is safe, because adding size-1 axes doesn't reorder the three numbers.
+      We reuse each mean at every pixel in its channel. In HWC, a pixel holds all three channels together, so we subtract red, green and blue means from the three entries of each pixel. In CHW, a plane holds one channel, so we subtract the same mean from every entry in that plane. If we keep the means in CHW order, their shape is $(3,1,1)$: one number for each channel and no variation by row or column.
     worked: |
       Let's prepare one RGB pixel (153, 102, 51), using means (0.5, 0.3, 0.2) and standard deviations (0.25, 0.2, 0.1).
 
@@ -275,40 +259,21 @@ knowledge_points:
 
       Check the loaded values first: matplotlib loads PNGs as floats already between 0 and 1, so dividing those by 255 again would be wrong.
 
-      The code below does the same for a one-pixel image, first in HWC and then in CHW. There, `dtype=np.uint8` stores the values as uint8, one byte each, like a loaded 8-bit photo, `.astype(float)` switches to floats before we divide, and `np.round(..., 2)` rounds the printed results to two decimal places.
-
-      ```python
-      import numpy as np
-      img = np.array([[[153, 102, 51]]], dtype=np.uint8)
-      mean = np.array([0.5, 0.3, 0.2])
-      std = np.array([0.25, 0.2, 0.1])
-      x = img.astype(float) / 255
-      hwc = (x - mean) / std
-      chw = np.transpose(x, (2, 0, 1))
-      out = (chw - mean.reshape(3, 1, 1)) / std.reshape(3, 1, 1)
-      print(np.round(hwc, 2).tolist())  # [[[0.4, 0.5, 0.0]]]
-      print(np.round(out, 2).tolist())  # [[[0.4]], [[0.5]], [[0.0]]]
-      ```
-
-      Both orders give the same three numbers, 0.4, 0.5 and 0, each in its own channel.
-
-      Be careful not to subtract a mean of shape `(3,)` from a CHW image. It lines up with the width, so NumPy stops with an error, unless the image happens to be 3 pixels or 1 pixel wide. Then there is no error, and it quietly subtracts the wrong means.
+      In CHW the same pixel is split into three $1\times1$ planes. The red plane contains $0.4$, the green plane contains $0.5$ and the blue plane contains $0$.
     problems:
       [
         iat-scale-basics,
         iat-scale-self-explain,
         iat-rescale-value,
         iat-standard-value,
-        iat-mean-axis,
-        iat-scale-code,
         iat-pretrained,
         iat-robot-scale,
       ]
 final: iat-explain-pipeline
 summary: |
-  - An 8-bit grayscale image is a matrix of brightnesses from 0 to 255, with shape (height, width), height first, and `img[r, c]` reads the pixel in row `r` and column `c`, counting from zero.
+  - An 8-bit grayscale image is a matrix of brightnesses from 0 to 255, with shape (height, width), height first, and $(r,c)$ names the pixel in row $r$ and column $c$, counting from zero.
   - An RGB colour image is a tensor with three channels, red, green and blue. HWC stores it as `(H, W, 3)`, CHW as `(3, H, W)`, and a batch of $N$ images adds an axis at the front.
-  - `np.transpose(img, (2, 0, 1))` turns HWC into CHW. Reshape can give the right shape but scramble the pixels, because it only cuts the default index-order sequence into new pieces.
+  - Moving the channel axis to the front turns HWC into CHW. Reshape can give the right shape but scramble the pixels, because it only cuts the default index-order sequence into new pieces.
   - For a model expecting this preparation, we divide uint8 values by 255 and then standardise each channel with $x'=(x-m_c)/s_c$, using the model's own means and positive standard deviations, with shape `(3, 1, 1)` for a CHW image. Don't rescale values already in the expected range.
 
   **Next:** The next vision lesson slides a small grid of weights across these channels to find patterns such as edges.

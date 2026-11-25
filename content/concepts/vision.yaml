@@ -7,10 +7,10 @@ concepts:
       difficulty: 1,
       est_minutes: 15,
       goal_weight: 2,
-      dimensions: [conceptual, implementation],
+      dimensions: [conceptual, math],
       prereqs: [{ id: matrices }],
       encompassings: [{ id: matrices, weight: 0.27 }],
-      objectives: [{ text: "Convert between image layouts and shapes", dimension: implementation }],
+      objectives: [{ text: "Convert between image layouts and shapes", dimension: math }],
       status: authored,
     }
   - {
@@ -20,7 +20,7 @@ concepts:
       difficulty: 3,
       est_minutes: 35,
       goal_weight: 2,
-      dimensions: [conceptual, math, implementation],
+      dimensions: [conceptual, math],
       prereqs: [{ id: images-as-tensors }, { id: mlp-forward-pass }],
       encompassings:
         [

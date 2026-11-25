@@ -118,7 +118,7 @@ knowledge_points:
       - cm-hide-copy
       - cm-hide-which-task
   - id: cm-mask-scores
-    key_prereqs: [classification-softmax, attention]
+    key_prereqs: [classification-softmax, attention, matrices]
     title: "Give later words zero weight"
     tldr: |
       - A blocked token needs exactly zero attention weight.
@@ -209,6 +209,15 @@ knowledge_points:
          $$o_2=0.27\,(1,0)+0.73\,(0,1)=(0.27,\ 0.73)$$
 
       The output of "cat" is built only from "the" and "cat". Nothing from "sat", the word it has to guess, gets in.
+      ### Mask a whole sentence
+
+      Put the scores for all $T$ tokens in one grid, with a row for each token and a column for each position it can read. For three tokens the mask is
+
+      $M=\begin{bmatrix}0&-\infty&-\infty\\0&0&-\infty\\0&0&0\end{bmatrix}.$
+
+      Add this grid to the scores. Row 2 keeps its first two scores. If those are both $0$, its weights are $(1/2,1/2,0)$. Changing the third token leaves the outputs at positions 1 and 2 unchanged. This holds in every masked layer because each position can only mix vectors from itself and earlier positions.
+
+      To score a guess we need the actual next token. If the three inputs “the cat sat” come from “the cat sat on”, their targets are “cat sat on”. If the text ends at “sat”, only the first two guesses have targets. In general, $T$ inputs give $T$ scored guesses with a following token, and $T-1$ without one.
     problems:
       - cm-zero-basics
       - cm-zero-self-explain
@@ -218,87 +227,11 @@ knowledge_points:
       - cm-zero-last-row
       - cm-zero-output
       - cm-zero-after-softmax
-  - id: cm-mask-code
-    key_prereqs: [matrices, classification-softmax, attention]
-    title: "Build the mask in code"
-    tldr: |
-      - Build one grid that blocks every position above the diagonal.
-      - Add it to the score grid before applying softmax to each row.
-      - Using this mask in every attention layer keeps later words from affecting earlier predictions throughout the model.
-      - A next-word guess counts toward training when we have its target word.
-    explain: |
-      ### All the rows at once
-
-      We've masked one row by hand. A sentence of $T$ tokens has $T$ rows, and code handles them all at once. We put the scores in a $T\times T$ grid $S$, with $s_{tj}$ in row $t$ and column $j$. The mask is a grid $M$ of the same size, with $0$ on and below the diagonal and $-\infty$ above it. For "the cat sat on",
-
-      $$M=\begin{bmatrix}0&-\infty&-\infty&-\infty\\0&0&-\infty&-\infty\\0&0&0&-\infty\\0&0&0&0\end{bmatrix}$$
-
-      We add $S+M$ and take the softmax of each row. In the grid of weights that comes out, every cell above the diagonal is $0$. The mask is the same for every sentence of length $T$, so we build it once and reuse it.
-
-      ### What the mask guarantees
-
-      Row $t$ of the weights is $0$ after column $t$, so the output $o_t$ mixes only $v_1$ to $v_t$, with weights worked out from $q_t$ and $k_1$ to $k_t$. In the first attention layer, each query, key and value comes from its own token's vector. So if we change the last word of "the cat sat on" to "by", the outputs of the first three positions stay the same.
-
-      To score a guess, check how much probability the model gave the word that actually came next. The inputs "the cat sat on" have targets "cat sat on the" if the original sentence continues with "the". If it ends at "on", that last guess has no target. In general, $T$ inputs give $T$ scored guesses with a following token and $T-1$ without one.
-
-      Every attention layer uses the mask, so each position can still read only itself and earlier positions. The model's other operations, such as rescaling a token's vector, work on one position at a time. Repeating these operations gives no route from a later word to an earlier one.
-
-      Be careful not to think the mask removes later words from the input. Every word is still there, with its own vectors and its own guess. The mask only stops earlier positions from reading them.
-    worked: |
-      Let's mask every row of a score grid for "the cat sat on" at once. Suppose attention has worked out these scores. Row 2 holds the scores of "cat" for the, cat, sat and on.
-
-      $$S=\begin{bmatrix}1&0&2&1\\0&1&2&0\\1&0&0&2\\0&1&1&0\end{bmatrix}$$
-
-      1. **Mark the blocked cells.** These are the cells with $j>t$, the six above the diagonal, written as (row, column).
-         $$(1,2),(1,3),(1,4),(2,3),(2,4),(3,4)$$
-
-      2. **Add the mask.** Each blocked cell becomes $-\infty$, and the others keep their scores.
-         $$S+M=\begin{bmatrix}1&-\infty&-\infty&-\infty\\0&1&-\infty&-\infty\\1&0&0&-\infty\\0&1&1&0\end{bmatrix}$$
-
-      3. **Take the softmax of each row.** Row 3, for example, has $e^1+e^0+e^0\approx4.72$ on the bottom, so its weights are about $0.58$, $0.21$ and $0.21$, with $0$ for "on".
-         $$(a_{31},a_{32},a_{33},a_{34})\approx(0.58,\ 0.21,\ 0.21,\ 0)$$
-
-      Here is the same calculation in NumPy, the Python library for grids of numbers, loaded under the short name `np`. We write the scores with `np.array`. `S.shape` gives the grid's size as (rows, columns), and Python counts from 0, so `S.shape[0]` is the number of rows, $T$. To build the mask, we start from a $T\times T$ grid full of $-\infty$ with `np.full((T, T), -np.inf)`. Then `np.triu(..., k=1)` keeps only the part above the diagonal and sets everything else to $0$. The name "triu" stands for the upper triangle. The `k=1` makes the triangle start one place above the diagonal, so the diagonal stays allowed. After that we add `S + M`, raise $e$ to each number with `np.exp`, and divide each row by its total. `A.sum(axis=1, keepdims=True)` adds along each row and keeps the totals as a column, one per row, so each row is divided by its own total. The loop at the end prints each row rounded to 2 decimals.
-
-      `np.where(M == 0, S, -np.inf)` keeps each score in `S` where `M` is zero and puts negative infinity in blocked cells.
-
-      ```python
-      import numpy as np
-      S = np.array([[1, 0, 2, 1],
-                    [0, 1, 2, 0],
-                    [1, 0, 0, 2],
-                    [0, 1, 1, 0]])
-      T = S.shape[0]
-      M = np.triu(np.full((T, T), -np.inf), k=1)
-      A = np.exp(S + M)
-      A = A / A.sum(axis=1, keepdims=True)
-      for row in A.round(2):
-          print(row.tolist())
-      # prints:
-      # [1.0, 0.0, 0.0, 0.0]
-      # [0.27, 0.73, 0.0, 0.0]
-      # [0.58, 0.21, 0.21, 0.0]
-      # [0.13, 0.37, 0.37, 0.13]
-      ```
-
-      `row.tolist()` converts each NumPy row to an ordinary Python list for printing.
-
-      Every number above the diagonal is $0$, and each row adds up to 1. The last row, for "on", has nothing blocked, so its weights are the softmax of all four of its scores.
-    problems:
-      - cm-code-basics
-      - cm-code-self-explain
-      - cm-code-complete
-      - cm-code-count
-      - cm-code-later-word
-      - cm-code-robot
-      - cm-code-debug
-      - cm-code-read
-      - cm-code-shifted-targets
 final: cm-explain
 summary: |
   - A causal mask lets position $t$ attend only to positions $j\le t$, itself and the words before it, so a sentence of $T$ tokens has $T(T+1)/2$ allowed pairs.
   - Masking adds $0$ to allowed scores and $-\infty$ to blocked ones before the softmax, $a_{tj}=e^{s_{tj}+m_{tj}}/\sum_i e^{s_{ti}+m_{ti}}$. Blocked weights become exactly $0$ and the allowed weights still add up to 1.
-  - In code the mask is a $T\times T$ grid with $-\infty$ above the diagonal, built once with `np.triu(..., k=1)` and added to the whole score grid.
+  - The mask is a $T\times T$ grid with $-\infty$ above the diagonal. Add it to the score grid before taking each row's softmax.
   - With the mask, each output $o_t$ depends only on the first $t$ tokens. One pass scores all guesses that have a next token to use as the target.
 
   **Next:** The next lesson builds a full language model that writes text one token at a time, each from the ones before, and shows how one masked pass over a sentence gives it many training examples.

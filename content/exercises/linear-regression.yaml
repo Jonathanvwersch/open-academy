@@ -110,23 +110,6 @@ exercises:
     tolerance:
       abs: 0.01
     solution: The area contributes $3\times120=360$ and the bedrooms contribute $10\times3=30$. Adding the bias gives $360+30+50=440$ thousand pounds, or £440,000.
-  - id: dx-ml-5
-    dimension: implementation
-    type: code_read
-    role: diagnostic
-    difficulty: 2
-    est_minutes: 2
-    prompt: "An estate agent is checking a program that predicts house prices. `X` stores two houses, with two features per house, and `w` stores their matching weights. `b` is the bias. What number does this program print?"
-    code: |
-      import numpy as np
-      X = np.array([[1., 2.], [3., 4.]])
-      w = np.array([0.5, -1.0])
-      b = 2.0
-      y_hat = X @ w + b
-      print(np.sum(y_hat))
-    answer: 0
-    tolerance: { abs: 0.001 }
-    solution: "The first row gives $1\\times0.5+2\\times(-1)+2=0.5$. The second gives $3\\times0.5+4\\times(-1)+2=-0.5$. The program adds these predictions and prints $0.0$."
   - id: lr-weight-meaning
     dimension: conceptual
     type: mc
@@ -155,18 +138,6 @@ exercises:
           feedback: "A load of 1 tonne contributes 1.5 litres, but the model also includes the distance contribution and the bias of 2 litres.",
         }
     solution: "Compare two predictions for the same distance, with the load increasing by 1 tonne. The distance contribution and bias stay the same, so only the load contribution changes. It rises by 1.5 litres. The two weights use different units, so their numbers alone do not tell you which feature matters more."
-  - id: lr-code-complete
-    dimension: implementation
-    type: code_complete
-    role: core
-    difficulty: 2
-    est_minutes: 2
-    prompt: "An estate agent wants one price for each house in `X`. Each row stores one house and each column stores one feature. With `n` houses and `d` features, `X` has shape `(n, d)` and the weights `w` have shape `(d,)`. The bias `b` is one number. Complete `predict` to return `n` prices without a Python loop."
-    code: |
-      def predict(X, w, b):
-          return ____
-    accept: ["X @ w + b", "np.dot(X, w) + b", "X.dot(w) + b", "np.matmul(X, w) + b", "b + X @ w"]
-    solution: "Use `return X @ w + b`. The matrix product adds the weighted features within each house's row, and `+ b` adds the bias to each price. The result has shape `(n,)`."
   - id: lr-bias-trick
     dimension: math
     type: mc
@@ -195,37 +166,6 @@ exercises:
           feedback: "Shapes no longer match: $X$ now has $d+1$ columns.",
         }
     solution: "Keep each original feature's weight and give the new column weight $b$. Its value is 1 for every house, so it adds $1\\times b=b$ to every prediction. This replaces the separate bias addition."
-  - id: lr-review-shape
-    dimension: implementation
-    type: mc
-    role: review
-    difficulty: 1
-    est_minutes: 1
-    prompt: "A house-price program stores 200 houses with 5 features each in `X`, with shape `(200, 5)`. Its weight vector `w` has shape `(5,)`. What is the shape of `X @ w + 0.3`, the predicted prices?"
-    options:
-      - { id: a, text: "`(200,)`", correct: true }
-      - {
-          id: b,
-          text: "`(5,)`",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "`(5,)` is the shape of `w`, which has one weight per feature. Multiplying `X @ w` combines those 5 values for each row, so the result has one prediction per house.",
-        }
-      - {
-          id: c,
-          text: "`(200, 5)`",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "`(200, 5)` is the shape of `X` itself. `X @ w` combines each row's 5 features into one weighted sum, so each house gets a single number. Multiplying every value by 5 would be `X * 5`, which does keep shape `(200, 5)`.",
-        }
-      - {
-          id: d,
-          text: "`(200, 1)`",
-          correct: false,
-          category: implementation_error,
-          feedback: "The weight vector has shape `(5,)`, so the result is a one-dimensional array of 200 numbers. A result with shape `(200, 1)` would require weights stored in a column with shape `(5, 1)`.",
-        }
-    solution: "Each of the 200 rows gives one predicted price. The result has shape `(200,)`, and adding 0.3 to each price does not change that shape."
   - id: lrp-why-bias
     dimension: conceptual
     type: mc
@@ -510,28 +450,6 @@ exercises:
     solution:
       Setting both features to zero leaves only 50, although a zero-area, zero-bedroom house is
       not a realistic sale.
-  - id: lrp-why-matrix-product
-    dimension: implementation
-    type: mc
-    role: practice
-    difficulty: 1
-    est_minutes: 2
-    prompt: "Why does `X @ w + b` give one price per house, while `X * w + b` alone does not? Here `X` stores 200 houses with area and bedrooms in two columns, `w` contains the two weights, and `b` is one bias number."
-    options:
-      - id: a
-        text: "`@` multiplies each feature by its weight and adds the results within each row. `*` leaves those contributions separate."
-        correct: true
-      - id: b
-        text: "`@` averages prices across the house rows, while `*` keeps each house separate"
-        correct: false
-        category: incorrect_reasoning
-        feedback: The matrix product sums over features within each row. It does not average or mix different houses.
-      - id: c
-        text: "`@` learns the right weights from the houses, while `*` uses the given weights"
-        correct: false
-        category: incorrect_reasoning
-        feedback: Neither operator learns weights here. Both use the supplied weights; only the matrix product also sums the feature contributions.
-    solution: For a house with area 100 m² and 2 bedrooms, the row is [100, 2]. Multiplying its features by weights [3, 10] with `*` gives [300, 20]. Adding 50 to each gives [350, 70], still two numbers rather than one price. The dot product adds 300 and 20 to get 320. Adding the bias once then gives 370 thousand pounds. Matrix multiplication repeats that calculation for each house separately.
   - id: lrp-batch-template
     dimension: math
     type: numeric
@@ -584,52 +502,6 @@ exercises:
       - answer_expr: 3*a+10*k+100
         category: math_error
         feedback: The feature that is always 1 already adds 50 through its weight. Adding a separate bias would count it twice.
-  - id: lrp-code
-    dimension: implementation
-    type: code_complete
-    role: practice
-    difficulty: 1
-    est_minutes: 2
-    prompt: An estate agent needs a function that predicts all house prices at once. `X` stores one
-      house per row and one feature per column. For `n` houses and `d` features, `X` has shape
-      `(n, d)` and `w` has shape `(d,)`. The bias `b` is one number. Complete the function.
-    code: |
-      def predict(X, w, b):
-          return ____
-    accept:
-      - X @ w + b
-      - np.dot(X, w) + b
-      - X.dot(w) + b
-      - b + X @ w
-    solution:
-      Use `X @ w + b` to compute one dot product per house row. Then add the same bias to each
-      predicted price.
-  - id: lrp-shape
-    dimension: implementation
-    type: mc
-    role: practice
-    difficulty: 1
-    est_minutes: 2
-    prompt: For 200 houses with 5 features, `X` has shape `(200, 5)` and `w` has shape `(5,)`. What
-      shape does `X @ w + 50` have?
-    options:
-      - id: a
-        text: "`(200,)`, one price per house"
-        correct: true
-      - id: b
-        text: "`(5,)`, one price per feature"
-        correct: false
-        category: incorrect_reasoning
-        feedback: The product sums over features, leaving one output per house rather than per feature.
-      - id: c
-        text: "`(200, 5)`, one price per matrix entry"
-        correct: false
-        category: incorrect_reasoning
-        feedback: The dot products combine each row into a single number.
-    solution:
-      The dot product adds the five feature contributions within each row, giving one price per
-      house. There are 200 houses, so there are 200 predicted prices. Adding 50 to each does not
-      change how many predictions there are.
   - id: lrp-bias-trick
     dimension: conceptual
     type: mc
@@ -690,16 +562,9 @@ exercises:
     difficulty: 3
     est_minutes: 3
     prompt: |
-      A delivery robot predicts trip times in minutes for three trips at once. Each row of `X1` is
-      (kilometres, parcels, 1), and the last weight in `w1` carries the bias.
-
-      ```python
-      X1 = np.array([[3., 4., 1.], [1., 0., 1.], [5., 2., 1.]])
-      w1 = np.array([2., 0.5, 1.])
-      times = X1 @ w1
-      ```
-
-      What is `np.sum(times)`, the total predicted time for the three trips, in minutes?
+      A delivery robot predicts trip times from rows $(3,4,1)$, $(1,0,1)$ and $(5,2,1)$.
+      The first two entries give kilometres and parcels. The weight vector is $(2,0.5,1)$,
+      and its last entry carries the bias. What is the total predicted time for all three trips, in minutes?
     answer: 24
     tolerance:
       abs: 0.001
@@ -719,7 +584,7 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 4
-    prompt: "An estate agent uses $3\\cdot\\text{area}+10\\cdot\\text{bedrooms}+50$ to predict prices in thousands of pounds from area in square metres and bedroom count. Explain its vector form, what the weights mean, and how NumPy can price many houses at once."
+    prompt: "An estate agent uses $3\\cdot\\text{area}+10\\cdot\\text{bedrooms}+50$ to predict prices in thousands of pounds from area in square metres and bedroom count. Explain its vector form, what the weights mean, and how a matrix product can give one price per house."
     rubric:
       - id: r1
         criterion: Write $x=(\text{area},\text{bedrooms})$, $w=(3,10)$ and $\hat y=w\cdot x+50$.
@@ -732,11 +597,11 @@ exercises:
         weight: 1
         required: true
       - id: r3
-        criterion: Use `X @ w + b` with one house per row to get one prediction per house.
+        criterion: Use $Xw+b\mathbf 1$ with one house per row to get one prediction per house.
         weight: 1
         required: true
-    exemplar: "Use $x=(\\text{area},\\text{bedrooms})$, $w=(3,10)$ and $b=50$, giving $\\hat y=w\\cdot x+b$. Holding the other feature fixed, an extra square metre adds $3$ thousand pounds and an extra bedroom adds $10$ thousand pounds. For many houses, put one house per row of $X$ and use `X @ w + b` to get one price per row."
-    solution: "Use $x=(\\text{area},\\text{bedrooms})$, $w=(3,10)$ and $b=50$, giving $\\hat y=w\\cdot x+b$. Holding the other feature fixed, an extra square metre adds $3$ thousand pounds and an extra bedroom adds $10$ thousand pounds. For many houses, put one house per row of $X$ and use `X @ w + b` to get one price per row."
+    exemplar: "Use $x=(\\text{area},\\text{bedrooms})$, $w=(3,10)$ and $b=50$, giving $\\hat y=w\\cdot x+b$. Holding the other feature fixed, an extra square metre adds $3$ thousand pounds and an extra bedroom adds $10$ thousand pounds. For many houses, put one house per row of $X$ and use $Xw+b\\mathbf 1$ to get one price per row."
+    solution: "Use $x=(\\text{area},\\text{bedrooms})$, $w=(3,10)$ and $b=50$, giving $\\hat y=w\\cdot x+b$. Holding the other feature fixed, an extra square metre adds $3$ thousand pounds and an extra bedroom adds $10$ thousand pounds. For many houses, put one house per row of $X$ and use $Xw+b\\mathbf 1$ to get one price per row."
   - id: lrp-add-self-explain
     lesson_only: true
     dimension: conceptual
@@ -1004,21 +869,21 @@ exercises:
     knowledge_point: lr-batch-predictions
     difficulty: 1
     est_minutes: 0.5
-    prompt: A feature matrix `X` already has a final column of ones, and the bias is stored as the last entry of the weights `w`. Which NumPy expression gives the predictions?
+    prompt: A feature matrix `X` already has a final column of ones, and the bias is stored as the last entry of the weights `w`. Which calculation gives the predictions?
     options:
       - id: a
-        text: "`X @ w`"
+        text: "$Xw$"
         correct: true
         feedback: The column of ones times the last weight adds the bias to every row inside the matrix product.
       - id: b
-        text: "`X @ w + b`"
+        text: "$Xw+b\\mathbf 1$"
         correct: false
         feedback: The column of ones already adds the bias, so this adds it twice.
       - id: c
-        text: "`X * w`"
+        text: "entry-by-entry multiplication"
         correct: false
-        feedback: "`*` multiplies matching entries without adding them, so each row is left as separate pieces."
-    solution: The column of ones carries the bias, so `X @ w` alone gives one prediction per row.
+        feedback: "Entry-by-entry multiplication multiplies matching entries without adding them, so each row is left as separate pieces."
+    solution: The column of ones carries the bias, so $Xw$ alone gives one prediction per row.
   - id: lrp-recall-batch-formula
     dimension: math
     type: text
@@ -1026,11 +891,6 @@ exercises:
     knowledge_point: lr-batch-predictions
     difficulty: 1
     est_minutes: 0.5
-    prompt: "Complete the NumPy expression for batch predictions with feature matrix `X`, weight vector `w` and separate bias `b`: `X ___ w + b`. Type the missing operator."
-    accept:
-      - "@"
-      - matrix multiplication
-      - matrix product
-      - matmul
-    regex: ^\s*(?:@|matrix\s+(?:multiplication|product)|matmul)\s*$
-    solution: The `@` operator takes one dot product per row, and adding `b` adds the bias to every prediction.
+    prompt: What vector multiplies the bias $b$ so that the same amount is added to each of the $n$ entries of $Xw$?
+    accept: [ones vector, vector of ones, "a vector of ones", "n ones"]
+    solution: Multiply $b$ by the vector of $n$ ones to add it to every prediction.

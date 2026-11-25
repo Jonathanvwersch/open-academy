@@ -38,7 +38,7 @@ concepts:
     difficulty: 2
     est_minutes: 30
     goal_weight: 3
-    dimensions: [conceptual, math, implementation]
+    dimensions: [conceptual, math]
     prereqs: [{ id: supervised-learning }, { id: dot-product }, { id: matrices }]
     encompassings:
       [
@@ -48,7 +48,6 @@ concepts:
       ]
     objectives:
       - { text: "Write the linear model in vector form", dimension: math }
-      - { text: "Implement vectorised predictions in NumPy", dimension: implementation }
       - { text: "Explain what each weight means", dimension: conceptual }
     projects: [linreg-numpy]
     status: authored

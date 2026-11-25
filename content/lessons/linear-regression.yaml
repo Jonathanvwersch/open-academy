@@ -1,14 +1,14 @@
 concept: linear-regression
 version: 5
 objective: |
-  **Goal:** predict a number with a linear regression model, which multiplies each feature by its weight, adds the results and adds a bias; say what each weight and the bias mean; and compute predictions for many examples at once with `X @ w + b`.
+  **Goal:** predict a number with a linear regression model, which multiplies each feature by its weight, adds the results and adds a bias; say what each weight and the bias mean; and compute predictions for many examples at once with $Xw+b\mathbf 1$.
 recap:
   - concept: supervised-learning
     text: "A supervised model takes an example's inputs and predicts its target, such as a price. We write the prediction as $\\hat y$ and the target as $y$, and training adjusts the model's parameters until $\\hat y$ is close to $y$."
   - concept: dot-product
     text: "The dot product multiplies the matching entries of two vectors and adds the products into one number, so $(3,10)\\cdot(100,2)=3\\times100+10\\times2=320$."
   - concept: matrices
-    text: "A matrix times a vector takes one dot product per row, so a matrix with $n$ rows gives $n$ answers. In NumPy, a matrix `X` times a vector `w` is written `X @ w`."
+    text: "A matrix times a vector takes one dot product per row, so a matrix with $n$ rows gives $n$ answers."
 where_this_fits: |
   ### What is linear regression?
 
@@ -284,9 +284,7 @@ knowledge_points:
 
       $$\hat y=Xw+b\mathbf 1.$$
 
-      Now $\hat y$ is a vector with $n$ entries, one prediction per row. The bold $\mathbf 1$ is a vector of $n$ ones, so $b\mathbf 1$ adds $b$ to every entry. In NumPy this is `X @ w + b`, since NumPy adds a single number to every entry.
-
-      Avoid writing `X * w + b`. The `*` multiplies matching entries without adding them. Our house's row becomes two pieces, $300$ and $20$. Over all three houses, `X * w` gives three rows of two pieces each; we still need to add each row's pieces to get prices.
+      Now $\hat y$ is a vector with $n$ entries, one prediction per row. The bold $\mathbf 1$ is a vector of $n$ ones, so $b\mathbf 1$ adds $b$ to every entry.
 
       ### Storing the bias as a weight
 
@@ -306,27 +304,10 @@ knowledge_points:
       4. **Check the column-of-ones version on row 1.** With a $1$ appended and $b$ as the last weight, the bias comes out of the dot product.
          $$(100,2,1)\cdot(3,10,50)=300+20+50=370$$
 
-      Here is the same calculation in NumPy. `np.array` turns a Python list into a NumPy array, which is how NumPy stores a vector or a matrix. A list of lists makes a matrix, with one inner list per row. The dots in `100.` make the numbers decimals, so the prices print as decimals too. `import numpy as np` loads NumPy under the short name `np`, and `print` shows a result. `np.column_stack` adds `np.ones(3)`, three $1$s, to `X` as a new last column, so each row gets one $1$.
-
-      ```python
-      import numpy as np
-      X = np.array([[100., 2.], [80., 3.], [120., 1.]])
-      w = np.array([3., 10.])
-      b = 50.
-      print(X @ w + b)                     # one price per row
-      X1 = np.column_stack([X, np.ones(3)])
-      w1 = np.array([3., 10., 50.])
-      print(X1 @ w1)                       # the bias is now a weight
-      # prints [370. 320. 420.] twice
-      ```
-
       Both versions give the same three prices, $370$, $320$ and $420$ thousand pounds.
     problems:
       - lr-batch-predictions-basics
       - lrp-batch-self-explain
-      - lrp-why-matrix-product
-      - lrp-code
-      - lrp-shape
       - lrp-batch-template
       - lrp-augmented-template
       - lrp-bias-trick
@@ -336,6 +317,6 @@ summary: |
   - A linear regression model multiplies each feature by its weight, adds the results and adds one bias: $\hat y=w\cdot x+b$.
   - A weight is how much the prediction changes when its feature rises by one unit and the other features stay the same, so its size depends on the feature's units. The bias is the prediction when every feature is $0$.
   - Because each feature adds a fixed amount per unit, the model's predictions change in straight lines.
-  - For many examples, we put one per row of $X$, and `X @ w + b` gives one prediction per row. A column of $1$s with $b$ as its weight can carry the bias instead.
+  - For many examples, we put one per row of $X$, and $Xw+b\mathbf 1$ gives one prediction per row. A column of $1$s with $b$ as its weight can carry the bias instead.
 
   **Next:** The loss functions lesson measures how far these predictions are from the true prices, and gradient descent then adjusts $w$ and $b$ to shrink that gap.

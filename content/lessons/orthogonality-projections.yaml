@@ -1,7 +1,7 @@
 concept: orthogonality-projections
 version: 1
 objective: |
-  **Goal:** project a vector onto a line, recognise an orthogonal matrix and invert it with its transpose, and fit a least-squares line with the normal equations $A^\top A\hat x=A^\top b$, by hand and in NumPy.
+  **Goal:** project a vector onto a line, invert an orthogonal matrix with its transpose, and use the normal equations to fit a least-squares line and check whether it is unique.
 recap:
   - concept: rank-span
     text: "The column space of $A$ is the span of its columns. $Ax=b$ has a solution only when $b$ is in the column space of $A$."
@@ -281,13 +281,13 @@ knowledge_points:
       - orthp-length-kept
       - orthp-robot-frame
   - id: orth-least-squares
-    key_prereqs: [inverses-linear-systems, dot-product, rank-span]
+    key_prereqs: [inverses-linear-systems, matrices, rank-span]
     title: "Find the line closest to three points"
     tldr: |
       - Measured points often do not all lie on one straight line.
       - Least squares chooses the line with the smallest sum of squared vertical errors.
-      - Those errors form a vector, one entry per measured point.
-      - At the best fit, it is perpendicular to every column of the matrix that makes the predictions.
+      - At the best fit, the vector of errors is perpendicular to every column of the matrix that makes the predictions.
+      - The line is unique when those columns are independent.
     explain: |
       ### Three points and no exact line
 
@@ -319,8 +319,6 @@ knowledge_points:
       $$
       These are the **normal equations**; normal means perpendicular.
 
-      Here $A^\top A$ has determinant $6$, so there's one solution.
-
       ### What the closest point makes smallest
 
       The squared length of $e$ is the sum of the squared errors. The closest point makes $e$ as short as possible, so $\hat x$ gives the line with the smallest such sum. That's why this is called **least squares**. In the picture, the orange line is the fit, $y=2+0.5t$, and the red dashes are the errors.
@@ -351,6 +349,7 @@ knowledge_points:
       ```
 
       Be careful not to picture the errors as the shortest distances from the points to the line. They are vertical gaps, measured in $y$ at each $t$. The right angle is between $e$ and the columns of $A$, in three dimensions, so this picture can't show it.
+
     worked: |
       Let's fit $y=c+mt$ to the points $(-1,1)$, $(0,3)$ and $(1,2)$ with the normal equations, using $A$ and $b=(1,3,2)$ from above.
 
@@ -412,6 +411,23 @@ knowledge_points:
       \end{aligned}
       $$
       Least squares guarantees that no other line has a smaller sum than 1.5.
+
+      ### When several lines fit just as well
+
+      The closest vector of fitted heights is unique. To get a unique line, we also need a unique choice of $c$ and $m$ that gives those heights. From the rank lesson, that happens when the columns of $A$ are independent, so its rank equals the number of columns.
+
+      Now suppose we get the same three readings, $1$, $3$ and $2$, all at $t=1$. Let's see what the normal equations say about the best line.
+
+      1. **Write the new matrix.** Each row is $(1,1)$ because a line's height at $t=1$ is $c+m$. Both columns are the same, so there is just one independent column.
+         $$A=\begin{bmatrix}1&1\\1&1\\1&1\end{bmatrix}$$
+
+      2. **Take the dot products.** Each column dotted with either column gives 3, and each column dotted with the readings gives 6.
+         $$\begin{bmatrix}3&3\\3&3\end{bmatrix}\begin{bmatrix}c\\m\end{bmatrix}=\begin{bmatrix}6\\6\end{bmatrix}$$
+
+      3. **Read the one equation.** Both rows say $3c+3m=6$. Divide by 3 to find the height at $t=1$.
+         $$c+m=2$$
+
+      The lines $y=2$ and $y=1+t$ both pass through $(1,2)$. Every line through that point gives the same three fitted heights and the same squared errors, so there are infinitely many best lines.
     problems:
       - orth-least-squares-basics
       - orthp-normal-self-explain
@@ -421,110 +437,13 @@ knowledge_points:
       - orthp-vertical-errors
       - orthp-shifted-fit
       - orthp-sensor-fit
-  - id: orth-numpy-fits
-    key_prereqs: [inverses-linear-systems, matrices, rank-span]
-    title: "Fit a line in NumPy"
-    tldr: |
-      - NumPy can find the least-squares line for many measurements at once.
-      - Its reported rank tells us whether that best line is unique.
-      - Checking the errors helps us spot bad measurements that pull the line away.
-    explain: |
-      ### Least squares in NumPy
-
-      Three points are easy by hand, but real data sets have thousands of rows. NumPy's `np.linalg.lstsq(A, b, rcond=None)` finds the least-squares $\hat x$. It returns four results, in order: $\hat x$, an array holding the sum of squared errors, the rank of $A$, and a fourth we won't need. `rcond=None` sets NumPy's current cut-off for tiny values.
-
-      As in the matrices lesson, `@` multiplies arrays. So `A @ x_hat` gives the fitted values, which are the projection of $b$ onto the column space of $A$. Projecting onto a line also takes one line of code, since for two vectors `u @ x` is the dot product $u^\top x$.
-
-      Be careful not to reach for `np.linalg.solve(A, b)` here. From the inverses lesson, `solve` needs a square matrix with an inverse. Our $A$ is $3\times2$, so it stops with an error.
-
-      ### When there's no single best line
-
-      The normal equations have one solution only when $A^\top A$ has an inverse. Suppose all three measurements were taken at the same time, $t=1$. Then both columns of $A$ are $(1,1,1)$, so they're dependent, and
-
-      $$A^\top A=\begin{bmatrix}3&3\\3&3\end{bmatrix},$$
-
-      whose determinant is:
-      $$
-      \begin{aligned}
-      \det(A^\top A)&=3\times3-3\times3 &&\text{use the diagonal rule}\\
-      &=0 &&\text{subtract equal products}
-      \end{aligned}
-      $$
-      Picture the three points stacked on one vertical line at $t=1$. At $t=1$ a line has one height, $c+m$, and the best height is the average of the three measurements. Every line through that height at $t=1$ has the same errors, whatever its slope, so there's no single best line. `lstsq` still returns one answer, the $\hat x=(c,m)$ with the smallest length $\sqrt{c^2+m^2}$. The rank it reports tells us when this happens. A rank below the number of columns means other answers fit just as well. Then the second result is an empty array.
-
-      ### One bad point pulls the line
-
-      Least squares squares each error, so big errors count a lot:
-      $$
-      \begin{aligned}
-      1^2&=1 &&\text{square our largest error}\\
-      (-0.5)^2&=0.25 &&\text{square either smaller error}\\
-      4^2&=16 &&\text{square a much larger error}\\
-      &=16\times1^2 &&\text{the same cost as sixteen errors of one}
-      \end{aligned}
-      $$
-      A single bad measurement, such as a sensor glitch, can drag the line towards itself. After a fit, print the errors, `b - A @ x_hat`, and check any point with a much larger error.
-    worked: |
-      Let's do the line fit and the projection from earlier in NumPy. In the code, `x_hat, sse, rank, _ = ...` stores the four results under four names (`sse` is short for sum of squared errors, and `_` is a name for a result we don't need), and `np.allclose` checks whether numbers are equal apart from tiny rounding errors.
-
-      ```python
-      import numpy as np
-
-      u = np.array([6, 8])
-      x = np.array([7, 1])
-      p = (u @ x) / (u @ u) * u
-      print(p)                         # [3. 4.]
-
-      A = np.array([[1, -1], [1, 0], [1, 1]])
-      b = np.array([1, 3, 2])
-      x_hat, sse, rank, _ = np.linalg.lstsq(A, b, rcond=None)
-      print(x_hat)                     # [2.  0.5]
-      print(sse)                       # [1.5]
-      print(rank)                      # 2
-
-      e = b - A @ x_hat
-      print(np.allclose(A.T @ e, 0))   # True
-      ```
-
-      1. **Project $x$ onto $u$.** The two dot products give the scale, then multiplication by `u` gives the shadow:
-         $$
-         \begin{aligned}
-         k&=50/100 &&\text{divide the dot products}\\
-         &=0.5 &&\text{work out the scale}\\
-         p&=0.5\times(6,8) &&\text{scale the direction vector}\\
-         &=(3,4) &&\text{multiply each component}
-         \end{aligned}
-         $$
-
-      2. **Fit the line.** Read the returned intercept and slope:
-         $$
-         \begin{aligned}
-         \hat x&=(2,0.5) &&\text{read the fitted coefficients}\\
-         y&=2+0.5t &&\text{put them into the line}\\
-         \text{sum of squared errors}&=1.5 &&\text{read the second result}
-         \end{aligned}
-         $$
-         The sum prints as `[1.5]`, an array with one entry, because $A$ has more rows than columns and its rank equals its number of columns. When either of those fails, the array is empty, so get the sum yourself with `np.sum((b - A @ x_hat) ** 2)`, where `**` raises to a power.
-
-      3. **Read the rank.** It's $2$, the number of columns, so this is the only best line.
-
-      4. **Check the right angle.** `A.T @ e` dots each column with the errors. NumPy gets tiny numbers such as $2\times10^{-16}$ in place of exact zeros, so we use `np.allclose` instead of `==`.
-
-      The code matches the hand calculation, and it would run just the same with a thousand rows in `A`.
-    problems:
-      - orth-numpy-fits-basics
-      - orthp-numpy-self-explain
-      - orthp-code-solve
-      - orthp-code-fitted
-      - orthp-outlier-weight
-      - orthp-same-time
-      - orthp-outlier
-      - orthp-code-projection
+      - orthp-unique-by-rank
+      - orthp-repeated-time-lines
 final: orth-explain
 summary: |
   - Two vectors are orthogonal when their dot product is zero. The projection of $x$ onto the line through $u$ is $p=\frac{u^\top x}{u^\top u}u$, the closest point on that line to $x$, and the leftover $x-p$ is orthogonal to $u$.
   - Vectors are orthonormal when each has length 1 and every pair is orthogonal. A square matrix $Q$ with orthonormal columns is an orthogonal matrix, so $Q^\top Q=I$ and $Q^{-1}=Q^\top$.
   - When $Ax=b$ has no solution, least squares finds the closest $A\hat x$ to $b$. The error $b-A\hat x$ is orthogonal to every column of $A$, which gives the normal equations $A^\top A\hat x=A^\top b$, and $\hat x$ makes the sum of squared errors as small as possible.
-  - In NumPy, `np.linalg.lstsq(A, b, rcond=None)` returns $\hat x$, an array holding the sum of squared errors, and the rank. A rank below the number of columns means the best fit isn't unique, and then that array is empty.
+  - The best line is unique when the rank of $A$ equals the number of columns. If all readings have the same time, every line with the best height at that time ties.
 
   **Next:** The eigenvalues and SVD lesson looks for the directions a matrix only stretches, and describes any matrix using two orthogonal matrices and a stretch.

@@ -1,7 +1,7 @@
 concept: inverses-linear-systems
 version: 1
 objective: |
-  **Goal:** find and check the inverse of a $2\times2$ matrix, solve a small linear system $Ax=b$ by elimination, use the transpose rules including $(AB)^\top=B^\top A^\top$ to recognise symmetric matrices, and solve systems in NumPy with `np.linalg.solve`.
+  **Goal:** find and check a matrix inverse, solve a small linear system by elimination, and use the transpose rules to recognise symmetric matrices.
 recap:
   - concept: determinants
     text: "A nonzero determinant allows an inverse. Row additions preserve the determinant; row swaps reverse its sign. Use these row operations to clear entries below pivots, then multiply the triangular diagonal entries and account for swaps."
@@ -178,6 +178,8 @@ knowledge_points:
       \end{aligned}
       $$
       In augmented form, the resulting row is $(0,0\mid-2)$. It states a false equality, so no input satisfies both equations.
+
+      The two rows of $A$ are multiples of each other, so its determinant is zero and it has no inverse. A square matrix with no inverse is called **singular**.
     worked: |
       Let's solve for three unknowns, keeping every right-hand side with its equation:
 
@@ -230,7 +232,7 @@ knowledge_points:
     explain: |
       ### Rows become columns
 
-      In the matrices lesson, we used `.T` in NumPy to make shapes fit. The transpose also has rules of its own. We need them to write dot products as matrix products, and later in the course to fit a line to data.
+      In the matrices lesson, we swapped rows and columns to make shapes fit. Here we'll see what happens when we do that to a product of two matrices. We'll use the result later to fit a line to data.
 
       The **transpose** of a matrix $A$, written $A^\top$, turns each row of $A$ into a column: row 1 becomes column 1, row 2 becomes column 2, and so on. Writing $A_{ij}$ for the entry of $A$ in row $i$, column $j$:
 
@@ -340,85 +342,10 @@ knowledge_points:
       - inv-tr-pick-symmetric
       - inv-tr-gram-template
       - inv-tr-ratings
-  - id: inv-numpy
-    key_prereqs: [matrices, determinants]
-    title: "Solve a system in NumPy"
-    tldr: |
-      - When there is one answer, NumPy can solve a system with as many equations as unknowns.
-      - Solving directly usually takes less work and adds less rounding error than finding an inverse.
-      - Putting the answer back into the original equations checks that it works.
-    explain: |
-      ### Letting the computer eliminate
-
-      Real systems can have thousands of unknowns, so we let a computer do the elimination. In the matrices lesson, we built matrices with `np.array` and multiplied them with `@`. NumPy keeps tools for matrix problems like ours in `np.linalg`, short for linear algebra, the maths of vectors and matrices. We'll use two of them, plus `np.eye`.
-
-      - `np.linalg.solve(A, b)` returns the $x$ that solves $Ax=b$.
-      - `np.linalg.inv(A)` returns the inverse $A^{-1}$.
-      - `np.eye(3)` builds the $3\times3$ identity matrix; `eye` sounds like "I".
-
-      The order of the inputs to `solve` matters: the matrix comes first, then the right-hand side.
-
-      ### Why `solve` is the better choice
-
-      Since $x=A^{-1}b$, we could also write `np.linalg.inv(A) @ b`. For small, tidy matrices both give the same answer, but `solve` is the one to use. It runs elimination directly on the equations $Ax=b$. To use `inv`, NumPy first has to work out every entry of the whole inverse, which is more arithmetic, and then still multiply by $b$.
-
-      More arithmetic also means more rounding. A computer stores each number with a limited number of digits, so most calculations round a little. Each extra calculation can add a tiny error, which is why `solve` is usually at least as accurate as `inv(A) @ b`.
-
-      NumPy usually stores numbers to about 16 digits. The `==` check asks whether each pair of entries is exactly equal. That check can report a mismatch over a tiny error in the last digit. Because of this rounding, we use `np.allclose(A @ x, b)`. It returns `True` when the arrays match apart from tiny differences.
-
-      ### When there is no answer to find
-
-      A **singular** matrix is a square matrix with no inverse. For a $2\times2$ matrix, that means its determinant is zero. Then `np.linalg.solve(A, b)` usually raises `LinAlgError: Singular matrix`. With decimal entries, rounding can hide the zero determinant, so `solve` may return enormous, meaningless numbers. Check the determinant and whether the result reproduces $b$; a tiny computed determinant can be a rounded zero.
-
-      Be careful not to read that error as a bug in NumPy. It's telling you the equations don't pin down one answer, just as elimination did when every unknown vanished.
-    worked: |
-      Let's solve a café pricing system in NumPy. One coffee, one tea and one juice cost £9; one coffee, two teas and three juices cost £19; one coffee, three teas and six juices cost £33. The unknowns are the three drink prices:
-
-      $$\begin{bmatrix}1&1&1\\1&2&3\\1&3&6\end{bmatrix}\begin{bmatrix}x_1\\x_2\\x_3\end{bmatrix}=\begin{bmatrix}9\\19\\33\end{bmatrix}$$
-
-      1. **Build the arrays.** Each inner list of `A` is one order, and `b` holds the three totals.
-
-      2. **Solve.** `np.linalg.solve(A, b)` returns decimal (floating-point) numbers, even with whole-number inputs. NumPy prints `3.` for 3.0.
-
-      3. **Check the answer.** Multiplying the prices by `A` should give the totals back, apart from rounding.
-
-      4. **Check the inverse.** We compute `inv` here only to check it. `A @ np.linalg.inv(A)` should be the identity, `np.eye(3)`.
-
-      5. **Try a singular matrix.** The matrix with rows $(2,2)$ and $(1,1)$, from the careless till, has determinant zero, so `solve` stops with an error. Python runs the lines under `try:`, and if one raises an error, it runs the lines under `except` instead. Writing `as error` gives the error a name so we can print it.
-
-      ```python
-      import numpy as np
-
-      A = np.array([[1, 1, 1], [1, 2, 3], [1, 3, 6]])
-      b = np.array([9, 19, 33])
-
-      x = np.linalg.solve(A, b)
-      print(x)                                  # [3. 2. 4.]
-      print(np.allclose(A @ x, b))              # True
-      A_inv = np.linalg.inv(A)
-      print(np.allclose(A @ A_inv, np.eye(3)))  # True
-
-      C = np.array([[2, 2], [1, 1]])
-      try:
-          np.linalg.solve(C, np.array([8, 5]))
-      except np.linalg.LinAlgError as error:
-          print(error)                          # Singular matrix
-      ```
-
-      The code finds prices of £3, £2 and £4, and it refuses the singular system.
-    problems:
-      - inv-numpy-basics
-      - inv-np-self-explain
-      - inv-np-complete-solve
-      - inv-np-read-solve
-      - inv-np-why-solve
-      - inv-np-singular
-      - inv-np-robot-debug
 final: inv-explain-solve
 summary: |
   - The identity matrix $I$ has 1s on its main diagonal and 0s elsewhere, so $AI=IA=A$. The inverse $A^{-1}$ undoes $A$, so $AA^{-1}=A^{-1}A=I$, and for a $2\times2$ matrix $A^{-1}=\frac{1}{ad-bc}\begin{bmatrix}d&-b\\-c&a\end{bmatrix}$ when $ad-bc\neq0$. The inverse of a product reverses the order, $(AB)^{-1}=B^{-1}A^{-1}$.
   - A linear system can be written $Ax=b$. Its augmented matrix $[A\mid b]$ keeps each total beside its equation. Elimination uses whole-row swaps and additions, then back-substitution finds the unknowns; when $A$ is invertible the answer is $x=A^{-1}b$.
   - The transpose swaps rows and columns, $(A^\top)_{ij}=A_{ji}$. The dot product is $x^\top y$, and a product's transpose reverses the order, $(AB)^\top=B^\top A^\top$. A symmetric matrix has $A^\top=A$, and $A^\top A$ is always symmetric.
-  - In NumPy, `np.linalg.solve(A, b)` solves $Ax=b$. It is preferred to `np.linalg.inv(A) @ b` because it does less arithmetic and is usually at least as accurate.
 
   **Next:** We'll ask which vectors can be built from a matrix's columns, which tells us when $Ax=b$ has one solution, none or infinitely many.
