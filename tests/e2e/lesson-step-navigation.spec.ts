@@ -596,13 +596,13 @@ test('failed quiz Retry keeps the warm-up point in the URL', async ({ page }) =>
   const quizTutorBody = (await quizTutorRequest).postDataJSON() as Record<string, unknown>;
   expect((await tutorResponsePromise).status()).toBe(200);
   expect(quizTutorBody).toMatchObject({ lessonStage: 'quiz' });
-  expect(quizTutorBody).not.toHaveProperty('lessonProblemId');
-  expect(quizTutorBody).not.toHaveProperty('knowledgePointId');
-  expect(quizTutorBody).not.toHaveProperty('exerciseId');
+  expect.soft(quizTutorBody).not.toHaveProperty('lessonProblemId');
+  expect.soft(quizTutorBody).not.toHaveProperty('knowledgePointId');
+  expect.soft(quizTutorBody).not.toHaveProperty('exerciseId');
 
   await page.getByRole('button', { name: 'Retry', exact: true }).click();
-  await expect(page).toHaveURL(/step=1/);
-  await expect(page.getByTestId('lesson-quiz-warmup')).toBeVisible();
+  await expect.soft(page).toHaveURL(/step=1/);
+  await expect.soft(page.getByTestId('lesson-quiz-warmup')).toBeVisible();
   await page.reload();
-  await expect(page.getByTestId('lesson-quiz-warmup')).toBeVisible();
+  await expect.soft(page.getByTestId('lesson-quiz-warmup')).toBeVisible();
 });
