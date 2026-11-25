@@ -284,6 +284,6 @@ summary: |
   - A layer computes one score per neuron and applies an activation to each: $h=\phi(Wx+b)$, with one row of weights and one bias per neuron.
   - A forward pass feeds each layer's outputs into the next layer; hidden values are the intermediate outputs before the final prediction.
   - With examples as rows, a layer computes $\phi(XW^\top+b)$ and changes shape from $B\times d_\text{in}$ to $B\times d_\text{out}$, keeping one row per example.
-  - A layer has $d_\text{out}d_\text{in}+d_\text{out}$ parameters, independent of batch size, because every example reuses the same weights and biases.
+  - To count the parameters, count one weight per input for every neuron and one bias per neuron, then add the counts for all layers. For each layer that is $d_\text{out}d_\text{in}+d_\text{out}$ numbers, the same for any batch size.
 
   **Next:** Computational graphs break calculations like this forward pass into small operations, ready for working out how each weight affects the loss.

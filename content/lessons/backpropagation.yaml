@@ -16,7 +16,7 @@ where_this_fits: |
 
   Backpropagation is a way of finding how the loss changes with every weight and bias of a model, in one sweep that runs backwards from the loss towards the inputs.
 
-  Gradient descent subtracts a small multiple of each slope from its weight or bias. In the example below, both the weight and the bias affect the same prediction, and that prediction affects the loss. Backpropagation computes the slope from the prediction to the loss once and uses it for both parameters.
+  To lower the loss, we can subtract a small multiple of each slope from its weight or bias. A weight and a bias can affect the same prediction. Backpropagation finds the prediction's effect on the loss once, then uses it to find both slopes.
 knowledge_points:
   - id: bp-why-backprop
     key_prereqs: [computational-graphs, loss-functions]
@@ -39,7 +39,7 @@ knowledge_points:
       \end{aligned}
       $$
 
-      Save these values for the backward pass. For example, increasing $w$ by one changes the prediction by $x=2$. That is the local derivative of the prediction with respect to $w$.
+      Save these forward values to use in the slopes. For example, the prediction is $wx+b$, so each unit added to $w$ adds $x=2$ to the prediction. The backward pass uses that saved input as the local derivative.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 230" aria-label="Computational graph for the prediction 2w plus b. Grey arrows run forward from w equals 1 and b equals 1 to the prediction 3, then to the loss 9. Blue arrows run back. The loss hands the slope 6 to the prediction once, and the prediction hands 6 times 2, which is 12, to w and 6 times 1, which is 6, to b">
@@ -216,7 +216,7 @@ knowledge_points:
       \end{aligned}
       $$
 
-      The index $i$ numbers the examples. Each squared error has derivative $2(\hat y_i-y_i)$ with respect to its prediction. The mean divides this by the batch size of two, leaving $\hat y_i-y_i$.
+      The index $i$ numbers the examples. Each squared error has slope $2(\hat y_i-y_i)$ with respect to its prediction. Changing one prediction changes only its own error term. The loss takes half of each term, so each prediction's loss slope is $\hat y_i-y_i$.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 220" aria-label="One weight w equals 2 feeds two predictions with grey arrows, 3 for the input 1 and 5 for the input 2, and both feed the mean squared error 10. The predictions get the slopes 2 and 4. In blue, the weight collects 2 times 1, which is 2, from the first example and 4 times 2, which is 8, from the second, and adds them to get 10">

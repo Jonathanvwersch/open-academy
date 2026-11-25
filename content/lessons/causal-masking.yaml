@@ -33,7 +33,7 @@ knowledge_points:
 
       ### Which positions each word may see
 
-      Give each position one row for the word making a guess and one column for the word it might read. In the picture, green cells are allowed and grey cells are blocked.
+      Rows show the words making guesses. Columns show the words they might read. In the picture, green cells are allowed and grey cells are blocked.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 470 330" aria-label="A 4 by 4 grid for the cat sat on. Each row is the word doing the attending and each column is a word it might attend to. Green cells on and below the diagonal are allowed, grey cells above it are blocked. Row 1, the, sees only the. Row 2, cat, sees the and cat. Row 3, sat, sees the, cat and sat. Row 4, on, sees all four words. 10 cells are allowed and 6 are blocked">
@@ -94,14 +94,14 @@ knowledge_points:
 
       Row $t$ allows $t$ cells. To count them across $T$ rows, write the row lengths $1,2,\dots,T$ in increasing order, then write them in decreasing order underneath. Each of the $T$ pairs adds to $T+1$. That counts every cell twice, so the mask allows $T(T+1)/2$ cells.
 
-      The diagonal runs from top left to bottom right. It holds the cells where a word reads itself. Keep them allowed because those words are already known. Blocking them would leave the first word with nothing to read.
+      The diagonal runs from top left to bottom right. Each of its cells lets the model read the word it already has at that position. Blocking those cells would leave the first word with nothing to read.
     worked: |
       Let's build the causal mask for "the cat sat on", one word per token, and check that no position can see the word it must guess.
 
       1. **List what each position may see.** Position $t$ may attend to positions $1$ to $t$. The braces hold the words each position may see.
          $$\begin{aligned}\text{the}&\to\{\text{the}\}\\ \text{cat}&\to\{\text{the},\text{cat}\}\\ \text{sat}&\to\{\text{the},\text{cat},\text{sat}\}\\ \text{on}&\to\{\text{the},\text{cat},\text{sat},\text{on}\}\end{aligned}$$
 
-      2. **Check that each answer is hidden.** The word in row 1 predicts the word in column 2. Since column 2 comes after row 1, that word is blocked. The same holds for rows 2 and 3. Row 4 predicts word 5, which lies outside the grid.
+      2. **Check that each answer is hidden.** For the guess after word 1, the cell at row 1, column 2 is blocked. Word 2 is the answer. The same rule hides the answers for rows 2 and 3. Row 4 predicts word 5, which lies outside the grid.
 
       3. **Count the cells.** Row $t$ has $t$ allowed cells, and the rest of the $4\times4=16$ cells are blocked.
          $$1+2+3+4=10\ \text{allowed},\qquad 16-10=6\ \text{blocked}$$
@@ -126,11 +126,11 @@ knowledge_points:
     explain: |
       ### Turn blocked scores into zero weights
 
-      Let $s_{tj}$ be the score in row $t$ and column $j$. Softmax takes the exponential of that score and divides it by the sum of the exponentials in row $t$.
+      In the attention score grid, $s_{tj}$ is the score the word in row $t$ gives the word in column $j$. Softmax takes its exponential and divides by the total for that row.
 
       $$a_{tj}=\frac{e^{s_{tj}}}{\sum_{i=1}^{T}e^{s_{ti}}},$$
 
-      The sum in the denominator runs through columns $1$ to $T$. Setting a blocked score to $0$ still gives it a share, because $e^0=1$. As a score becomes more negative, its exponential approaches zero. We write $-\infty$ for the value used to give a blocked entry exactly zero weight.
+      The sum runs through columns $1$ to $T$. If we try to erase a blocked score by setting it to $0$, its exponential is still $e^0=1$. More negative scores give smaller exponentials. The mask uses $-\infty$ to stand for the limit: put zero into the softmax sum for that score.
 
       ### Adding the mask to the scores
 
@@ -210,13 +210,13 @@ knowledge_points:
       The output of "cat" is built only from "the" and "cat". Nothing from "sat", the word it has to guess, gets in.
       ### Add the mask to the full score grid
 
-      Put the scores for all $T$ tokens in one grid, with a row for each token and a column for each position it can read. For three tokens the mask is
+      Put the scores for all $T$ tokens in one grid. Each row is the token making a guess, and each column is a token it might read. For the first three tokens, "the cat sat", the mask grid $M$ is
 
       $M=\begin{bmatrix}0&-\infty&-\infty\\0&0&-\infty\\0&0&0\end{bmatrix}.$
 
-      Add each mask entry to the score in the same row and column. Row 2 keeps its first two scores. If both are $0$, the weights in row 2 are $(1/2,1/2,0)$. The third token cannot affect the first two outputs. A later layer reads the previous layer's output vectors. Applying the same mask there also keeps the third token's information out of those positions.
+      Add each mask entry to the score in the same row and column. Row 2 keeps its first two scores. If both are $0$, the weights in row 2 are $(1/2,1/2,0)$. The third token cannot affect the first two outputs. A model can repeat attention, using the output vectors as inputs to another round. Each round is an attention layer. Use the same mask in each layer so the first two outputs stay free of information from the third token.
 
-      During training, compare each guess with the actual next token. These answers are the next-token targets. Compared with the input, the targets are shifted left by one position. For inputs “the cat sat” from “the cat sat on”, they are “cat sat on”. With $T$ inputs we can check $T$ guesses if one more token follows, or $T-1$ if the text ends there.
+      The model turns each output vector into a guess for the next token. During training, the actual next tokens are the answers, called targets. The next-token targets are shifted left by one. For inputs "the cat sat" from "the cat sat on", the targets are "cat sat on": "the" guesses "cat", "cat" guesses "sat" and "sat" guesses "on". If the text ends at "sat", there is no answer for the last guess. With $T$ inputs that means $T$ guesses to check when one more token follows, or $T-1$ at the end of the text.
     problems:
       - cm-zero-basics
       - cm-zero-self-explain

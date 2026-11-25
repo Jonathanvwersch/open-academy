@@ -215,7 +215,7 @@ knowledge_points:
       x&=0 &&\text{use }Q^\top Q=I
       \end{aligned}
       $$
-      Only zero amounts work, so the columns are independent. A square matrix with independent columns has an inverse. Now:
+      Only zero amounts work, so every column has a pivot after elimination. The matrix is square, so every row has a pivot too. That makes $Qx=b$ solvable for any $b$, with no free variables, so $Q$ has an inverse. Now:
       $$
       \begin{aligned}
       Q^\top QQ^{-1}&=IQ^{-1} &&\text{multiply }Q^\top Q=I\text{ by the inverse}\\
@@ -307,7 +307,7 @@ knowledge_points:
 
       ### The closest point instead
 
-      The two columns of $A$ are independent, so they span a plane through the origin in three dimensions. Picture a sheet of paper through the origin, with $b$ sticking out. Every $Ax$ lies in that plane, the column space, so we look for its point closest to $b$. We write it $A\hat x$, where $\hat x$ ("x hat") holds the best $c$ and $m$. As with a line, the leftover, now called the error $e=b-A\hat x$, at the closest point is orthogonal to the plane, so to every vector in it, including each column of $A$.
+      The independent columns of $A$ span a plane. Picture it as a sheet of paper with $b$ sticking out. Every $Ax$ lies in that plane. Write its closest point to $b$ as $A\hat x$, where $\hat x$ ("x hat") holds the best $c$ and $m$. Draw any line in the plane through that point. It must also be closest along the line, so the projection rule makes the error $e=b-A\hat x$ perpendicular to the line. This works in every direction in the plane, including both column directions.
 
       Each entry of $A^\top e$ dots a column with the error. Require these dot products to be zero:
       $$

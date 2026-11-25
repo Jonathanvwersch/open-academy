@@ -141,7 +141,7 @@ knowledge_points:
 
       Scan columns from left to right. Use a nonzero entry as a **pivot** to clear the entries below it. After each pivot, look only in the rows below it. Skip a column if all those rows have zero there. Swap rows if needed to bring the pivot to the first unused row.
 
-      The worked example shows how $A$ ends up with pivots in columns 1 and 2. Those columns are independent: only column 2 has a nonzero entry in row 2, and column 1 has a nonzero entry in row 1. Column 3 is their sum, so it adds no independent direction.
+      In the worked example below, elimination puts pivots in columns 1 and 2. A combination that gives zero must use none of column 2 to make row 2 zero, then none of column 1 to make row 1 zero. So the two pivot columns are independent. Column 3 is their sum and adds no new column to that independent set.
 
       ### Rank
 
@@ -344,7 +344,7 @@ knowledge_points:
 
       1. Multiplying $F$ by one column of $G$ makes the matching column of $FG$.
       2. As in step 3, that multiplication combines the $k$ columns of $F$, so the result lies in their span.
-      3. Every column of $FG$ lies in that span, which holds at most $k$ independent vectors. Therefore:
+      3. Pick any $k+1$ columns of $FG$. Their columns in $G$ form a grid with $k$ rows, so at least one of its $k+1$ columns lacks a pivot. A nonzero combination of those columns gives zero. Multiplying that combination by $F$ still gives zero, so the chosen columns of $FG$ are dependent. Therefore:
 
       $$\operatorname{rank}(FG)\le k.$$
 

@@ -26,9 +26,9 @@ knowledge_points:
 
       Each of several **heads** does ordinary attention with its own query, key and value matrices. We write a superscript $(i)$ on everything that belongs to head $i$.
 
-      Take the sentence "the cat sat", with whole words as tokens, and number the tokens 1, 2 and 3. Each embedding $e_t$ has width $d=4$, and we use $h=2$ heads. Each head's three matrices are $4\times2$, so they turn a 4-entry embedding into a query, key and value with $d_k=2$ entries each.
+      Take "the cat sat" as three tokens. With embedding width $d=4$ and $h=2$ heads, each head's three matrices are $4\times2$. Write the embedding as a row on the left and dot it with each matrix column. Each product has $d_k=2$ entries.
 
-      We skip the matrices and give only their results, chosen as small whole numbers. For "sat", head 1's query matrix gives $q^{(1)}_3=(1,1)$, head 2's gives $q^{(2)}_3=(2,0)$, and the key and value matrices give:
+      Use these results of the products. The queries for "sat" are $q^{(1)}_3=(1,1)$ and $q^{(2)}_3=(2,0)$. The keys and values are:
 
       | token | head 1 key | head 1 value |
       | --- | --- | --- |
@@ -294,17 +294,17 @@ knowledge_points:
 
       Putting the $h$ query matrices side by side gives one $d\times d$ matrix, also named $W_Q$ as with one head. Then $XW_Q$ is $T\times d$, and its first $d_k$ columns are head 1's queries, the next $d_k$ are head 2's, and so on. Each column still uses all $d$ entries of the embedding. Code computes this one product, cuts it into heads, and does the same for $W_K$ and $W_V$.
 
-      The layer learns four $d\times d$ matrices, $W_Q$, $W_K$, $W_V$ and $W_O$, which is $4d^2$ numbers whatever $h$ is, so more heads add no learned numbers. With $d=4$, one head of width 4, two of width 2 and four of width 1 all learn $4\times4^2=64$ numbers. The base model in "Attention Is All You Need" (2017), the paper that introduced multi-head attention, used $d=512$ and $h=8$, so each head had $d_k=64$.
+      The four learned $d\times d$ matrices $W_Q$, $W_K$, $W_V$ and $W_O$ hold $4d^2$ numbers whatever $h$ is. With $d=4$, one head of width 4, two of width 2 and four of width 1 all learn $64$ numbers.
 
       ### What more heads cost
 
-      More heads give narrower queries and keys. A head of width 1 compares tokens using a single number from each. Every head still needs $T\times T$ attention weights, so $h$ heads need $h\times T\times T$ weights. This grows quickly for long inputs.
+      More heads give narrower queries and keys. A head of width 1 compares tokens using a single number from each. Every head still computes a $T\times T$ table of attention weights from the input. These tables change with the input; they are separate from the four learned matrices. Stack the tables head first and the shape is $(h,T,T)$: $h$ tables, each with $T$ rows and $T$ columns. This grows quickly for long inputs.
     worked: |
       First try two tokens and two heads of width one. The query rows are `[1, 2]` for token 1 and `[3, 4]` for token 2. Columns show which head each number belongs to.
 
       A reshape regroups entries in the same order. A transpose swaps axes. Read the token rows in order, running left to right across each row. Cutting that list into two rows again still puts both values for token 1 in the first row. Each head needs its own numbers from both tokens to compare them. Swap the row and column axes to give head 1 the row $(1,3)$ and head 2 the row $(2,4)$.
 
-      With more axes, the same rules apply. For several sequences, read sequences in order, then tokens within a sequence, then features within a token. Split each token’s features into separate heads first. To group tokens by head, swap the token and head axes, leaving the sequence and within-head feature axes where they are.
+      An axis is a direction you can count along: for a stack of tables, count tables, then rows, then columns. For several sequences, read sequences in order, then tokens within a sequence, then features (entries) within a token. First split each token's entries into head groups. Then swap the token and head axes so each head gets its group from every token. A shape check only counts the entries along each axis; it cannot tell which token an entry came from.
 
       Now use two features per head instead of one. The three tokens in “the cat sat” each have $d=4$ features, divided between $h=2$ heads of width $d_k=2$.
 

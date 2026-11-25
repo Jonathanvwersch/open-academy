@@ -175,7 +175,7 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 4
-    prompt: "For a $2\\to2\\to1$ network, explain in 2–4 sentences what a two-layer multilayer perceptron computes from an input $x$, and how the array shapes change when you feed it a batch of $B$ examples."
+    prompt: For a two-layer multilayer perceptron with two inputs, two hidden neurons and one output neuron, explain in 2–4 sentences what it computes from an input $x$ and how the array shapes change for a batch of $B$ examples. Use ReLU in the hidden layer and leave the output score as it is.
     rubric:
       - id: r1
         criterion: Compute hidden values $h=\phi(W_1x+b_1)$ by applying the activation to each first-layer score.

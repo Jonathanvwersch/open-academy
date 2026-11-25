@@ -118,6 +118,8 @@ knowledge_points:
 
       A transformer block has two sublayers, each with its own shortcut: first attention, which lets the tokens share information, then an MLP, which works on each token's vector by itself. For now we leave normalization out, and step 3 adds it.
 
+      The MLP often makes its hidden layer four times as wide as the input: $4d$ hidden neurons for a vector of width $d$. The small example below uses four hidden neurons at width two so we can do the sums by hand.
+
       Take the first two words of "the cat sat on the mat", one token per word, with width $d=2$. "the" has $x_1=(2,0)$ and "cat" has $x_2=(1,-2)$. Use one head, omit $W_O$ and start from given attention weights and values $v_1=(4,0)$ and $v_2=(0,4)$. Compute each mixture before adding its shortcut:
       $$
       \begin{aligned}
@@ -219,7 +221,7 @@ knowledge_points:
     explain: |
       ### Keeping the inputs a steady size
 
-      Each shortcut adds something to a token's vector, so its entries can grow as it passes through blocks. The block applies LayerNorm to each token's vector before feeding it to each sublayer. To standardize the entries by hand, subtract their mean and divide by their standard deviation. With a positive standard deviation, this gives mean $0$ and standard deviation $1$.
+      Each shortcut adds something to a token's vector, so its entries can grow as it passes through blocks. The block applies LayerNorm to each token's vector before feeding it to each sublayer. To standardize the entries by hand, subtract their mean. Square these differences, take their average and take its square root to find the standard deviation. Divide each original difference by that number. With a positive standard deviation, this gives mean $0$ and standard deviation $1$.
 
       LayerNorm then multiplies each standardized entry by its own learned gain and adds its own learned shift. These can change the mean and spread of the result.
 
