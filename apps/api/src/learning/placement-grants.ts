@@ -69,19 +69,13 @@ export async function recordPlacementGrants(input: {
   );
   const drafts = classifyPlacementGrants({
     known: input.state.known.filter((conceptId) => !studied.has(conceptId)),
-    answers: input.state.answers.flatMap((answer) =>
-      answer.attemptId
-        ? [
-            {
-              conceptId: answer.conceptId,
-              attemptId: answer.attemptId,
-              correct: answer.correct,
-              durationMs: durations.get(answer.attemptId),
-              targetSeconds: input.content.exercisesById.get(answer.exerciseId)?.target_seconds,
-            },
-          ]
-        : [],
-    ),
+    answers: input.state.answers.map((answer) => ({
+      conceptId: answer.conceptId,
+      attemptId: answer.attemptId ?? undefined,
+      correct: answer.correct,
+      durationMs: answer.attemptId ? durations.get(answer.attemptId) : undefined,
+      targetSeconds: input.content.exercisesById.get(answer.exerciseId)?.target_seconds,
+    })),
     content: input.content,
   });
   if (drafts.length > 0) {

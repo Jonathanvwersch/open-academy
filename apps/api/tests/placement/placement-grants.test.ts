@@ -196,6 +196,49 @@ test('placement grants record inferred credit as conditional and on-time answers
   });
 });
 
+test('resumed pre-upgrade checks use answers without attempt ids as evidence by topic', async () => {
+  await recordPlacementGrants({
+    db,
+    userId,
+    runId,
+    state: {
+      courseId: 'fixture-course',
+      answers: [
+        { conceptId: 'vectors', exerciseId: exerciseFor('vectors').id, correct: false },
+        { conceptId: 'derivatives', exerciseId: exerciseFor('derivatives').id, correct: true },
+      ],
+      known: ['derivatives'],
+      unknown: ['vectors'],
+    },
+    content,
+    now,
+  });
+  await recordPlacementGrants({
+    db,
+    userId,
+    runId,
+    state: {
+      courseId: 'fixture-course',
+      answers: [{ conceptId: 'vectors', exerciseId: exerciseFor('vectors').id, correct: true }],
+      known: ['vectors'],
+      unknown: [],
+    },
+    content,
+    now,
+  });
+  const rows = await db
+    .select()
+    .from(placementGrants)
+    .where(eq(placementGrants.userId, userId))
+    .orderBy(placementGrants.conceptId);
+  expect(
+    rows.map((row) => [row.conceptId, row.origin, row.state, row.reason, row.evidenceAttemptIds]),
+  ).toEqual([
+    ['derivatives', 'direct', 'conditional', 'conflicting', []],
+    ['vectors', 'direct', 'confirmed', 'on_time', []],
+  ]);
+});
+
 test('a direct wrong answer withdraws a conditional grant, cascades, and keeps history', async () => {
   const placementAttempt = await insertAttempt('derivatives', 'diagnostic', 1);
   await seedGrant('vectors', 'conditional');

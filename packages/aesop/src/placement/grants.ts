@@ -26,7 +26,8 @@ export interface PlacementGrantDraft {
 
 export interface PlacementAnswerEvidence {
   conceptId: string;
-  attemptId: string;
+  /** Missing for answers recorded before attempts were linked to placement checks. */
+  attemptId?: string;
   correct: boolean;
   durationMs?: number | null;
   targetSeconds?: number;
@@ -52,7 +53,9 @@ export function classifyPlacementGrants(input: {
     const correctAnswers = input.answers.filter(
       (answer) => answer.conceptId === conceptId && answer.correct,
     );
-    const evidenceAttemptIds = correctAnswers.map((answer) => answer.attemptId);
+    const evidenceAttemptIds = correctAnswers.flatMap((answer) =>
+      answer.attemptId ? [answer.attemptId] : [],
+    );
     if (correctAnswers.length === 0) {
       return {
         conceptId,
