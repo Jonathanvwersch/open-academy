@@ -21,6 +21,7 @@ import {
   loadContentUnchecked,
 } from '@academy/api/content';
 import { isMap, isSeq, parse, parseDocument, stringify } from 'yaml';
+import { verifyWeights } from './weights.js';
 
 const cliRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const repoRoot = resolve(cliRoot, '../..');
@@ -37,7 +38,7 @@ const options = {
 } as const;
 
 const helpText: Record<string, string> = {
-  root: 'academy init <dir> --title <title> | check [dir] | prereqs <topic-id> | dev [dir] | new <topic|lesson|course> ... | sources <add|list> ...',
+  root: 'academy init <dir> --title <title> | check [dir] | prereqs <topic-id> | dev [dir] | new <topic|lesson|course> ... | sources <add|list> ... | weights verify ...',
   init: 'academy init <dir> --title <subject title>',
   check: 'academy check [dir] [--pack <dir>]',
   prereqs: 'academy prereqs <topic-id> [--pack <dir>]',
@@ -48,6 +49,7 @@ const helpText: Record<string, string> = {
   'new course': 'academy new course <id> --title <title> [--pack <dir>]',
   'sources add': 'academy sources add <file> [--title <title>] [--kind <kind>] [--pack <dir>]',
   'sources list': 'academy sources list [--pack <dir>]',
+  'weights verify': 'academy weights verify <uses.yaml> --pack <dir>',
 };
 
 function showHelp(command = 'root') {
@@ -77,6 +79,7 @@ export function packSkillText(text: string): string {
       '`.agents/skills/write-lesson/reference/lesson.yaml` is the reference lesson.',
     )
     .replaceAll('pnpm academy prereqs', 'academy prereqs')
+    .replaceAll('pnpm academy weights verify', 'academy weights verify')
     .replaceAll('pnpm content:check', 'academy check')
     .replaceAll('pnpm dev', 'academy dev')
     .replaceAll(
@@ -633,16 +636,12 @@ async function init(directory: string, title: string) {
   const writeLessonDirectory = join(directory, '.agents/skills/write-lesson');
   const referenceDirectory = join(writeLessonDirectory, 'reference');
   mkdirSync(referenceDirectory, { recursive: true });
-  writeFileSync(
-    join(writeLessonDirectory, 'SKILL.md'),
-    packSkillText(readFileSync(join(repoRoot, '.agents/skills/write-lesson/SKILL.md'), 'utf8')),
-  );
-  const writeQuestionsDirectory = join(directory, '.agents/skills/write-questions');
-  mkdirSync(writeQuestionsDirectory, { recursive: true });
-  writeFileSync(
-    join(writeQuestionsDirectory, 'SKILL.md'),
-    packSkillText(readFileSync(join(repoRoot, '.agents/skills/write-questions/SKILL.md'), 'utf8')),
-  );
+  for (const skill of ['write-lesson', 'write-questions', 'set-weights']) {
+    const file = `.agents/skills/${skill}/SKILL.md`;
+    const destination = join(directory, file);
+    mkdirSync(dirname(destination), { recursive: true });
+    writeFileSync(destination, packSkillText(readFileSync(join(repoRoot, file), 'utf8')));
+  }
   for (const [source, target] of [
     ['content/lessons/gradient-descent.yaml', 'lesson.yaml'],
     ['content/exercises/gradient-descent.yaml', 'exercises.yaml'],
@@ -1009,6 +1008,26 @@ async function main() {
   const args = process.argv.slice(2);
   if (args.length === 0 || args[0] === '--help' || args[0] === '-h') return showHelp();
   const command = args.shift();
+  if (command === 'weights') {
+    const name = 'weights verify';
+    if (args[0] === 'verify') {
+      const parsed = parseOptions(args.slice(1));
+      if (parsed.values.help) return showHelp(name);
+      const [file] = parsed.positionals;
+      if (file && parsed.positionals.length === 1) {
+        const content = await loadPack(packPath([], parsed.values.pack));
+        const uses: unknown = parse(readFileSync(resolve(invocationDirectory(), file), 'utf8'));
+        const count = verifyWeights(content, uses);
+        console.log(`Verified ${count} encompassing weight${count === 1 ? '' : 's'}.`);
+        return;
+      }
+    } else if (args[0] === '--help' || args[0] === '-h') {
+      return showHelp(name);
+    }
+    showHelp(name);
+    process.exitCode = 1;
+    return;
+  }
   if (command === 'prereqs') {
     const parsed = parseOptions(args);
     if (parsed.values.help) return showHelp(command);

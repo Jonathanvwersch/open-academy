@@ -61,7 +61,13 @@ Open the pack folder in Claude Code, Codex, or any agent that can run shell comm
 
 > Plan a 15-topic introduction to organic chemistry for a first-year student, using the lecture notes in sources/. Show me the plan, then write the lessons for unit 1.
 
-The agent reads `AGENTS.md` and follows the skills that come with the pack: `plan-course`, `write-lesson`, `write-questions` and `write-from-sources`. It creates files with the CLI and runs `academy check` until everything passes. Check the topic plan before it starts writing lessons, and spot-check the maths in what it writes.
+The agent reads `AGENTS.md` and follows the skills that come with the pack: `plan-course`, `write-lesson`, `write-questions`, `set-weights` and `write-from-sources`. It creates files with the CLI and runs `academy check` until everything passes. Check the topic plan before it starts writing lessons, and spot-check the maths in what it writes.
+
+After each topic's questions are done, use `.agents/skills/set-weights/SKILL.md` to score how much they practise each prerequisite. A separate agent or session works out its own scores before comparing with the writer. Once the two passes agree on which steps each question uses, record the weights. Before shipping, combine the reviewed uses files for the whole pack and verify them:
+
+```sh
+pnpm academy weights verify "$P/uses.yaml" --pack "$P"
+```
 
 ## 6. Use it
 
