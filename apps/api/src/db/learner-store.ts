@@ -836,10 +836,14 @@ export function drizzleLearnerStore(
       await db.update(studySessions).set(patch).where(sessionWhere(learnerId, query));
     },
     async listActivities(learnerId, query) {
+      const ids = query.ids?.filter((id) =>
+        /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(id),
+      );
+      if (ids?.length === 0) return [];
       return db
         .select()
         .from(sessionActivities)
-        .where(activityWhere(learnerId, query))
+        .where(activityWhere(learnerId, { ...query, ids }))
         .orderBy(asc(sessionActivities.sessionId), asc(sessionActivities.idx));
     },
     async insertActivities(learnerId, sessionId, rows) {

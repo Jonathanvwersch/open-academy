@@ -1,6 +1,6 @@
 import { fsrsScheduler, newReviewCard } from '@academy/aesop/memory/fsrs';
 import { type QuizQuestion, quizTargetSeconds } from '@academy/aesop/quizzes/mixed-quiz';
-import { confirmedPlacementTopicIds } from '@academy/aesop/quizzes/quiz-offer';
+import { confirmedPlacementTopicIds, quizOffer } from '@academy/aesop/quizzes/quiz-offer';
 import { eq, inArray } from 'drizzle-orm';
 import { Rating } from 'ts-fsrs';
 import { afterAll, expect, test } from 'vitest';
@@ -18,6 +18,7 @@ import {
   reviewCards,
   reviewLogs,
   sessionActivities,
+  studySessions,
   topicSpeed,
   users,
   xpEvents,
@@ -47,6 +48,32 @@ afterAll(async () => {
   } finally {
     await db.$client.end();
   }
+});
+
+test('mixed quiz cadence ignores malformed activity XP keys without losing valid activity XP', async () => {
+  const userId = await createLearner();
+  const now = new Date('2026-01-17T12:00:00Z');
+  const [session] = await db
+    .insert(studySessions)
+    .values({ userId, kind: 'custom', startedAt: now, plannedMinutes: 5 })
+    .returning();
+  const [activity] = await db
+    .insert(sessionActivities)
+    .values({ sessionId: session.id, idx: 0, kind: 'learn', plannedMinutes: 5, reason: 'test' })
+    .returning();
+  await db.insert(xpEvents).values(
+    [activity.id, 'not-a-uuid', crypto.randomUUID()].map((id) => ({
+      userId,
+      kind: 'activity' as const,
+      sourceKey: `activity:${id}`,
+      amount: 5,
+      earnedAt: now,
+      localDate: '2026-01-17',
+    })),
+  );
+  expect(
+    await quizOffer(drizzleLearnerStore(db), userId, await loadContent(), now, 'maths-for-ml'),
+  ).toEqual({ xpBalance: 5 });
 });
 
 test('mixed quizzes use only effective confirmed, non-legacy grants for the learner', async () => {

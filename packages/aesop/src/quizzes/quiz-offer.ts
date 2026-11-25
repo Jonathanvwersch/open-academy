@@ -35,10 +35,14 @@ export async function confirmedPlacementTopicIds(
 async function eligibleXp(store: SessionStore, learnerId: string, now: Date) {
   const events = await store.listXpEvents(learnerId, { through: now });
   const prefix = 'activity:';
-  const hasActivityXp = events.some(
-    ({ kind, sourceKey }) => kind === 'activity' && sourceKey.startsWith(prefix),
-  );
-  const activities = hasActivityXp ? await store.listActivities(learnerId, {}) : [];
+  const ids = [
+    ...new Set(
+      events
+        .filter(({ kind, sourceKey }) => kind === 'activity' && sourceKey.startsWith(prefix))
+        .map(({ sourceKey }) => sourceKey.slice(prefix.length)),
+    ),
+  ];
+  const activities = ids.length ? await store.listActivities(learnerId, { ids }) : [];
   const activityKeys = new Set(
     activities
       .filter(({ kind }) => kind === 'learn' || kind === 'review')

@@ -1,6 +1,6 @@
 import { fileURLToPath } from 'node:url';
 import { Rating } from 'ts-fsrs';
-import { expect, test } from 'vitest';
+import { expect, test, vi } from 'vitest';
 import { loadContentFromDirectory } from '../course/load.js';
 import { activityRow, sessionRow } from '../store/learner-store.contract.js';
 import { memoryStore } from '../store/memory-store.js';
@@ -77,6 +77,10 @@ test('offers and starts one timed quiz using eligible XP, with its accommodation
   ]);
   const start = { sessionId: session.id, activityId: quiz.id };
   expect(await startQuiz(store, context, start)).toMatchObject({ kind: 'conflict' });
+  const offer = () => quizOffer(store, learnerId, context.content, startedAt, 'maths-for-ml');
+  const activityReads = vi.spyOn(store, 'listActivities');
+  expect(await offer()).toEqual({ xpBalance: 0 });
+  expect(activityReads).not.toHaveBeenCalled();
   const xp = { conceptId: null, earnedAt: startedAt, localDate: '2026-01-17' };
   await store.insertXpEventOnce(learnerId, {
     ...xp,
@@ -109,8 +113,11 @@ test('offers and starts one timed quiz using eligible XP, with its accommodation
     amount: 20,
     earnedAt: deadline,
   });
-  const offer = () => quizOffer(store, learnerId, context.content, startedAt, 'maths-for-ml');
   expect(await offer()).toEqual({ xpBalance: 145 });
+  expect(activityReads).toHaveBeenCalledExactlyOnceWith(learnerId, {
+    ids: [review.id, lab.id, 'missing'],
+  });
+  activityReads.mockRestore();
   await store.insertXpEventOnce(learnerId, {
     ...xp,
     kind: 'review',
