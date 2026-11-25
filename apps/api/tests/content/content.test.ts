@@ -19,6 +19,7 @@ import type { ContentIndex, ContentSourceData } from '../../src/content/types.js
 import { validateContent } from '../../src/content/validate.js';
 import { gradeText } from '../../src/learning/grading/text.js';
 import { keyPrereqsForPoint } from '../../src/learning/prerequisites.js';
+import { repositoryPath } from '../../src/paths.js';
 
 function required<T>(value: T | undefined, label: string): T {
   if (value === undefined) {
@@ -399,7 +400,7 @@ test.each([
 test('Maths for ML has no NumPy steps or projects, and the standalone Gaussian lab keeps its maths prerequisites', async () => {
   const content = await loadContent('content');
   const project = ProjectSchema.parse(
-    parse(await readFile('labs/gaussian-mle/project.yaml', 'utf8')),
+    parse(await readFile(repositoryPath('labs', 'gaussian-mle', 'project.yaml'), 'utf8')),
   );
   const course = required(
     content.courses.find((candidate) => candidate.id === 'maths-for-ml'),
@@ -441,12 +442,13 @@ test('standalone NumPy labs are absent from courses and the neural-network lab k
     expect(content.courses.some((course) => course.units.some((unit) => unit.project === id))).toBe(
       false,
     );
-    expect(ProjectSchema.parse(parse(await readFile(`labs/${id}/project.yaml`, 'utf8'))).id).toBe(
-      id,
-    );
+    expect(
+      ProjectSchema.parse(parse(await readFile(repositoryPath('labs', id, 'project.yaml'), 'utf8')))
+        .id,
+    ).toBe(id);
   }
   const project = ProjectSchema.parse(
-    parse(await readFile('labs/nn-from-scratch/project.yaml', 'utf8')),
+    parse(await readFile(repositoryPath('labs', 'nn-from-scratch', 'project.yaml'), 'utf8')),
   );
 
   expect(project.status).toBe('authored');
