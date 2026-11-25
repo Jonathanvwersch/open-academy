@@ -261,3 +261,40 @@ test('studied and confirmed topics are never withdrawn', async () => {
   const grants = await db.select().from(placementGrants).where(eq(placementGrants.userId, userId));
   expect(grants.map((grant) => grant.state).sort()).toEqual(['conditional', 'confirmed']);
 });
+
+test('a failed targeted review withdraws the conditional prerequisite, once', async () => {
+  await seedGrant('vectors', 'conditional');
+  expect((await answer('derivatives', 0)).result.targetedReviews).toEqual(['vectors']);
+  const failed = await answer('vectors', 0);
+  expect(failed.result.withdrawn).toEqual(['vectors']);
+  const after = await snapshot();
+  expect(after.grants[0]).toMatchObject({ state: 'withdrawn', reason: 'direct_failure' });
+  expect(after.flags.every((flag) => flag.status === 'resolved')).toBe(true);
+  await applyPlacementGrantOutcome(failed.input);
+  expect(await snapshot()).toEqual(after);
+});
+
+test('later answers on a withdrawn topic do not restore credit before its lesson', async () => {
+  await seedGrant('vectors', 'conditional');
+  await seedGrant('linear-algebra', 'conditional');
+  await answer('vectors', 0);
+  await db.insert(reviewCards).values({
+    userId,
+    conceptId: 'vectors',
+    dimension: content.conceptsById.get('vectors')?.dimensions[0] ?? 'math',
+    fsrs: {},
+    dueAt: now,
+  });
+  for (const record of await repo.masteryRecords()) {
+    if (record.conceptId === 'vectors') await repo.saveMastery({ ...record, state: 'assisted' });
+  }
+  await answer('vectors', 1);
+  const after = await snapshot();
+  expect(after.cards.some((card) => card.conceptId === 'vectors')).toBe(false);
+  expect(
+    after.mastery
+      .filter((record) => record.conceptId === 'vectors')
+      .every((record) => masteryRank(record.state) < masteryRank('assisted') && !record.inferred),
+  ).toBe(true);
+  expect(after.grants.find((grant) => grant.conceptId === 'vectors')?.state).toBe('withdrawn');
+});
