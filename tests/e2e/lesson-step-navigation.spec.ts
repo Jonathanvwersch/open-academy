@@ -352,7 +352,6 @@ test('Explain it step recaps follow the URL and set step tutor context', async (
   await expect(page.getByLabel('Your answer')).toBeVisible();
   await page.getByRole('button', { name: 'Step 1 of 2, passed' }).click();
   await expect(page).toHaveURL(/step=1/);
-  await expect(page).toHaveURL(/activity=/);
   const recap = page.getByTestId('explain-step-recap');
   await expect(recap).toBeVisible();
   await expect(page.getByTestId('lesson-step-content')).toContainText(
@@ -707,3 +706,47 @@ test('optional practice on a missed quiz step stays on the lesson step', async (
   await expect(page.getByRole('button', { name: 'Ask the tutor', exact: true })).toBeVisible();
 });
 
+test('Continue on quiz results advances to the next activity in one click', async ({ page }) => {
+  const sessionId = await createLessonSession({ stepsPassed: true, explainDone: true });
+  await db.insert(sessionActivities).values({
+    sessionId,
+    idx: 1,
+    kind: 'practice',
+    conceptId: 'vectors',
+    exerciseIds: ['vectors-fixture-practice-1'],
+    status: 'planned',
+    plannedMinutes: 5,
+  });
+  await page.route('**/api/lessons/vectors/run*', async (route) => {
+    if (route.request().method() !== 'GET') {
+      await route.continue();
+      return;
+    }
+    const response = await route.fetch();
+    const payload = (await response.json()) as Record<string, unknown>;
+    const run = payload.run as Record<string, unknown>;
+    const quiz = run.quiz as Record<string, unknown>;
+    run.status = 'completed';
+    quiz.current = null;
+    quiz.last = {
+      attemptId: 'passed-attempt',
+      attemptNo: 1,
+      score: 1,
+      correctCount: 1,
+      total: 1,
+      passed: true,
+      perStep: [{ pointId: 'vectors-fixture-1', title: 'Vector basics', correct: 1, total: 1 }],
+    };
+    quiz.bestPassed = true;
+    quiz.reviewRequired = [];
+    await route.fulfill({ response, json: payload });
+  });
+
+  await page.goto(`/session/${sessionId}?step=explain`);
+  await expect(page).toHaveURL(/step=quiz/);
+  const results = page.getByTestId('lesson-quiz-results');
+  await expect(results).toBeVisible();
+  await results.getByRole('button', { name: 'Continue', exact: true }).click();
+
+  await expect(page.getByText('Compute 1 + 1.', { exact: true })).toBeVisible();
+});

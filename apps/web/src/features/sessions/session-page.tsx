@@ -136,11 +136,11 @@ export function SessionPage() {
     (nextStep?: string, replace = false) => {
       const stepValue = nextStep && /^\d+$/.test(nextStep) ? Number(nextStep) : nextStep;
       void navigate({
-        search: (previous) => ({ ...previous, activity: activity?.id, step: stepValue }),
+        search: (previous) => ({ ...previous, step: stepValue }),
         replace,
       });
     },
-    [activity?.id, navigate],
+    [navigate],
   );
   useEffect(() => {
     if (!activity) return;
