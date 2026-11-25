@@ -9,6 +9,7 @@ import {
   p5HasNoWorkWindow,
   p6HasFeasibleOverdueReview,
   p10MissingOverdueRetryConcepts,
+  p10RetryFitsCapacity,
   p13HasEmptyPlanViolation,
   p14UncoveredDueCards,
   p16HasOverduePrecedenceViolation,
@@ -300,6 +301,58 @@ test('P10 flags omitted retries after the scheduler two-day priority threshold',
   const eligible = new Set(['overdue', 'ready', 'blocked']);
   expect(p10MissingOverdueRetryConcepts(state, eligible, new Set(), now)).toEqual(['overdue']);
   expect(p10MissingOverdueRetryConcepts(state, eligible, new Set(['overdue']), now)).toEqual([]);
+});
+
+test('P10 ignores a case-1 retry that cannot fit after preserved in-progress work', () => {
+  const now = new Date('2026-01-14T12:00:00.000Z');
+  const state = {
+    lessonRuns: [
+      {
+        conceptId: 'probability-basics',
+        status: 'needs_retry',
+        retryAfter: new Date('2026-01-12T12:00:00.000Z'),
+      },
+    ],
+    remediationFlags: [],
+  } as unknown as SchedulerState;
+  const eligible = new Set(['probability-basics']);
+
+  expect(p10RetryFitsCapacity(30, 20, 20, 0, 0)).toBe(false);
+  expect(
+    p10MissingOverdueRetryConcepts(
+      state,
+      eligible,
+      new Set(),
+      now,
+      new Map([['probability-basics', false]]),
+    ),
+  ).toEqual([]);
+});
+
+test('P10 flags a fitting overdue retry displaced by a lower-priority lesson', () => {
+  const now = new Date('2026-01-14T12:00:00.000Z');
+  const state = {
+    lessonRuns: [
+      {
+        conceptId: 'what-is-ml',
+        status: 'needs_retry',
+        retryAfter: new Date('2026-01-12T12:00:00.000Z'),
+      },
+    ],
+    remediationFlags: [],
+  } as unknown as SchedulerState;
+  const eligible = new Set(['what-is-ml']);
+
+  expect(p10RetryFitsCapacity(15, 60, 20, 5, 0)).toBe(true);
+  expect(
+    p10MissingOverdueRetryConcepts(
+      state,
+      eligible,
+      new Set(['new-lesson']),
+      now,
+      new Map([['what-is-ml', true]]),
+    ),
+  ).toEqual(['what-is-ml']);
 });
 
 test('P18 counts an over-cap scheduled review when it is at least two days overdue', () => {

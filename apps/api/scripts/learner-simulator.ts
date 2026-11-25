@@ -131,6 +131,7 @@ export interface SimulationPlanEvidence {
     status?: string;
   }>;
   schedulerExplanations: ReviewSelectionExplanation[];
+  retryDecisions: SimulationRetryDecisionEvidence[];
   behaviors: SimulationViolationEvidence['behaviors'];
   reviewCapMinutes: number;
   usedMinutes: number;
@@ -151,6 +152,41 @@ export interface SimulationLessonRunEvidence {
   conceptId: string;
   status: string;
   retryAfter?: string | null;
+}
+
+export interface SimulationRetryDecisionEvidence {
+  conceptId: string;
+  retryAfter: string;
+  retryAfterPassed: true;
+  overduePriority: boolean;
+  eligible: boolean;
+  candidateMinutes: number | null;
+  preservedInProgressMinutes: number;
+  reservedDueReviewMinutes: number;
+  remainingCapacityMinutes: number;
+  fitsRemainingCapacity: boolean | null;
+  priorityRetryMinutes: number;
+  remainingAfterPriorityRetriesMinutes: number;
+  fitsSchedulerCapacity: boolean;
+  reservedDueReviews: Array<{
+    conceptId: string;
+    plannedMinutes: number;
+    status?: string;
+    explanationResult?: string;
+    candidateMinutes?: number;
+    reviewCap?: number;
+    reviewMinutes?: number;
+    overdueBypass: boolean;
+  }>;
+  selectedInstead: Array<{
+    kind: string;
+    conceptId: string | null;
+    plannedMinutes: number;
+    status?: string;
+    retryStatus?: string;
+    retryAfter?: string | null;
+    overduePriority: boolean;
+  }>;
 }
 
 export interface SimulationMasteryEvidence {
@@ -192,6 +228,7 @@ export interface SimulationViolationEvidence {
     B3PartialExplain: boolean | null;
     B4Replan: boolean | null;
   };
+  retryDecisions: SimulationRetryDecisionEvidence[];
   planActivities: SimulationPlanEvidence['activities'];
   lessonRuns: SimulationLessonRunEvidence[];
   planHistory: Array<{
@@ -906,6 +943,10 @@ function addViolation(
     activityLogs: context.activityLogs.filter((log) => relatedConceptIds.has(log.conceptId)),
     mastery: context.mastery.filter((record) => relatedConceptIds.has(record.conceptId)),
     schedulerExplanations,
+    retryDecisions:
+      invariant === 'P10'
+        ? context.retryDecisions.filter(({ conceptId }) => relatedConceptIds.has(conceptId))
+        : [],
   };
   runtime.report.violations.push({
     profile: runtime.profile,
@@ -938,6 +979,7 @@ function emptyViolationEvidence(): SimulationViolationEvidence {
       B3PartialExplain: null,
       B4Replan: null,
     },
+    retryDecisions: [],
     planActivities: [],
     lessonRuns: [],
     planHistory: [],
@@ -1058,15 +1100,36 @@ export function p10MissingOverdueRetryConcepts(
   eligibleConceptIds: ReadonlySet<string>,
   plannedConceptIds: ReadonlySet<string>,
   now: Date,
+  fitsSchedulerCapacity?: ReadonlyMap<string, boolean>,
 ): string[] {
   return (state.lessonRuns ?? [])
     .filter(
       ({ conceptId }) =>
         eligibleConceptIds.has(conceptId) &&
         !plannedConceptIds.has(conceptId) &&
-        lessonRetryOverdue(state, conceptId, now),
+        lessonRetryOverdue(state, conceptId, now) &&
+        (!fitsSchedulerCapacity || fitsSchedulerCapacity.get(conceptId) === true),
     )
     .map(({ conceptId }) => conceptId);
+}
+
+export function p10RetryFitsCapacity(
+  candidateMinutes: number | null,
+  budgetMinutes: number,
+  preservedInProgressMinutes: number,
+  reservedDueReviewMinutes: number,
+  alreadySelectedPriorityRetryMinutes: number,
+): boolean {
+  return (
+    candidateMinutes !== null &&
+    Number.isFinite(candidateMinutes) &&
+    candidateMinutes > 0 &&
+    candidateMinutes <=
+      budgetMinutes -
+        preservedInProgressMinutes -
+        reservedDueReviewMinutes -
+        alreadySelectedPriorityRetryMinutes
+  );
 }
 
 export function p6HasFeasibleOverdueReview(
@@ -3707,6 +3770,176 @@ async function auditCompressionPlan(
   return coveredSkips;
 }
 
+function retryDecisionEvidence(
+  state: SchedulerState,
+  content: ContentIndex,
+  now: Date,
+  budgetMinutes: number,
+  learn: LearnPayload,
+  activities: SimActivity[],
+  explanations: ReviewSelectionExplanation[],
+): SimulationRetryDecisionEvidence[] {
+  const eligibleConceptIds = new Set(learn.choices.map(({ conceptId }) => conceptId));
+  const dueConceptIds = new Set(
+    state.cards
+      .filter((card) => isDueToday(card.dueAt, now, state.timezone ?? 'UTC'))
+      .map((card) => card.conceptId),
+  );
+  const preservedInProgressMinutes = activities
+    .filter((activity) => activity.status === 'in_progress')
+    .reduce((total, activity) => total + activity.plannedMinutes, 0);
+  const preservedReviewConceptIds = new Set(
+    activities
+      .filter((activity) => activity.kind === 'review' && activity.status === 'in_progress')
+      .flatMap((activity) =>
+        activity.exerciseIds.flatMap((exerciseId) => {
+          const conceptId = content.exercisesById.get(exerciseId)?.concept;
+          return conceptId ? [conceptId] : [];
+        }),
+      ),
+  );
+  const reservedDueReviews = explanations
+    .filter(
+      (explanation) =>
+        dueConceptIds.has(explanation.conceptId) &&
+        !preservedReviewConceptIds.has(explanation.conceptId) &&
+        (explanation.result === 'selected' || explanation.result === 'selected:overdue'),
+    )
+    .map((explanation) => {
+      return {
+        conceptId: explanation.conceptId,
+        plannedMinutes: explanation.candidateMinutes ?? 0,
+        explanationResult: explanation.result,
+        ...(explanation.candidateMinutes !== undefined
+          ? { candidateMinutes: explanation.candidateMinutes }
+          : {}),
+        reviewCap: explanation.reviewCap,
+        reviewMinutes: explanation.reviewMinutes,
+        overdueBypass: explanation.result === 'selected:overdue',
+      };
+    });
+  const reservedDueReviewMinutes = reservedDueReviews.reduce(
+    (total, review) => total + review.plannedMinutes,
+    0,
+  );
+  const remainingCapacityMinutes =
+    budgetMinutes - preservedInProgressMinutes - reservedDueReviewMinutes;
+  const lessonRunsByConcept = new Map(
+    (state.lessonRuns ?? []).map((run) => [run.conceptId, run] as const),
+  );
+
+  return (state.lessonRuns ?? []).flatMap((run) => {
+    if (run.status !== 'needs_retry' || !run.retryAfter) return [];
+    const retryAfter = run.retryAfter instanceof Date ? run.retryAfter : new Date(run.retryAfter);
+    if (retryAfter.getTime() > now.getTime()) return [];
+    const concept = content.conceptsById.get(run.conceptId);
+    const candidateMinutes = concept
+      ? adjustedMinutesForLearnerPace(concept.est_minutes, state.actualEstimateRatio)
+      : null;
+    const priorityRetryMinutes = activities
+      .filter(
+        (activity) =>
+          activity.kind === 'learn' &&
+          activity.conceptId !== run.conceptId &&
+          activity.status !== 'in_progress' &&
+          activity.conceptId &&
+          lessonRunsByConcept.get(activity.conceptId)?.status === 'needs_retry' &&
+          lessonRetryOverdue(state, activity.conceptId, now),
+      )
+      .reduce((total, activity) => total + activity.plannedMinutes, 0);
+    const remainingAfterPriorityRetriesMinutes = remainingCapacityMinutes - priorityRetryMinutes;
+
+    return [
+      {
+        conceptId: run.conceptId,
+        retryAfter: retryAfter.toISOString(),
+        retryAfterPassed: true,
+        overduePriority: lessonRetryOverdue(state, run.conceptId, now),
+        eligible: eligibleConceptIds.has(run.conceptId),
+        candidateMinutes,
+        preservedInProgressMinutes,
+        reservedDueReviewMinutes,
+        remainingCapacityMinutes,
+        fitsRemainingCapacity:
+          candidateMinutes === null
+            ? null
+            : p10RetryFitsCapacity(
+                candidateMinutes,
+                budgetMinutes,
+                preservedInProgressMinutes,
+                reservedDueReviewMinutes,
+                0,
+              ),
+        priorityRetryMinutes,
+        remainingAfterPriorityRetriesMinutes,
+        fitsSchedulerCapacity: p10RetryFitsCapacity(
+          candidateMinutes,
+          budgetMinutes,
+          preservedInProgressMinutes,
+          reservedDueReviewMinutes,
+          priorityRetryMinutes,
+        ),
+        reservedDueReviews,
+        selectedInstead: activities
+          .filter((activity) => activity.kind !== 'learn' || activity.conceptId !== run.conceptId)
+          .map((activity) => {
+            const selectedRun = activity.conceptId
+              ? lessonRunsByConcept.get(activity.conceptId)
+              : undefined;
+            return {
+              kind: activity.kind,
+              conceptId: activity.conceptId ?? null,
+              plannedMinutes: activity.plannedMinutes,
+              ...(activity.status ? { status: activity.status } : {}),
+              ...(selectedRun
+                ? {
+                    retryStatus: selectedRun.status,
+                    ...(selectedRun.retryAfter
+                      ? {
+                          retryAfter:
+                            selectedRun.retryAfter instanceof Date
+                              ? selectedRun.retryAfter.toISOString()
+                              : selectedRun.retryAfter,
+                        }
+                      : {}),
+                  }
+                : {}),
+              overduePriority:
+                selectedRun?.status === 'needs_retry' &&
+                lessonRetryOverdue(state, selectedRun.conceptId, now),
+            };
+          }),
+      },
+    ];
+  });
+}
+
+function setP10EvidenceContext(
+  runtime: ProfileRuntime,
+  day: number,
+  courseId: string,
+  retryDecisions: SimulationRetryDecisionEvidence[],
+  currentLessonRuns: SimulationLessonRunEvidence[],
+) {
+  const firstDay = Math.max(1, day - 6);
+  const dailyByDay = new Map(runtime.report.dailyStats.map((daily) => [daily.day, daily]));
+  runtime.violationEvidenceContext = {
+    ...runtime.violationEvidenceContext,
+    retryDecisions,
+    planHistory: Array.from({ length: day - firstDay + 1 }, (_, index) => {
+      const historyDay = firstDay + index;
+      const daily = dailyByDay.get(historyDay);
+      return {
+        day: historyDay,
+        courseId: daily?.courseId ?? (historyDay === day ? courseId : null),
+        plans: runtime.planEvidenceByDay.get(historyDay) ?? daily?.plans ?? [],
+        lessonRunStatuses:
+          daily?.lessonRunStatuses ?? (historyDay === day ? currentLessonRuns : []),
+      };
+    }),
+  };
+}
+
 function auditSavedSessionPlan(
   runtime: ProfileRuntime,
   day: number,
@@ -3742,6 +3975,10 @@ function auditSavedSessionPlan(
     explanations[0]?.reviewCap ??
     Math.floor(budgetMinutes * SCHEDULER_CONFIG.weekday.reviewBudgetRatio);
   const focusConceptId = state.inProgressConceptId;
+  const retryDecisions =
+    planLabel === 'home plan'
+      ? retryDecisionEvidence(state, content, now, budgetMinutes, learn, activities, explanations)
+      : [];
   const planEvidence: SimulationPlanEvidence = {
     label: planLabel,
     method: 'POST',
@@ -3758,6 +3995,7 @@ function auditSavedSessionPlan(
     budgetMinutes,
     activities: planActivities,
     schedulerExplanations: explanations,
+    retryDecisions,
     behaviors: {
       ...runtime.activeBehaviors,
       B2FocusConceptId: focusConceptId ?? null,
@@ -3796,6 +4034,7 @@ function auditSavedSessionPlan(
       ...runtime.activeBehaviors,
       B2FocusConceptId: focusConceptId ?? null,
     },
+    retryDecisions,
     planActivities,
     lessonRuns,
   };
@@ -3808,14 +4047,22 @@ function auditSavedSessionPlan(
         activity.kind === 'learn' && activity.conceptId ? [activity.conceptId] : [],
       ),
     );
+    const fitsSchedulerCapacity = new Map(
+      retryDecisions.map((decision) => [decision.conceptId, decision.fitsSchedulerCapacity]),
+    );
     for (const conceptId of p10MissingOverdueRetryConcepts(
       state,
       eligibleConceptIds,
       plannedConceptIds,
       now,
+      fitsSchedulerCapacity,
     )) {
       if (runtime.overdueRetryReported.has(conceptId)) continue;
       runtime.overdueRetryReported.add(conceptId);
+      const retryDecision = retryDecisions.find((decision) => decision.conceptId === conceptId);
+      if (retryDecision) {
+        setP10EvidenceContext(runtime, day, courseId, [retryDecision], lessonRuns);
+      }
       addViolation(runtime, day, 'P10', conceptId, [], {
         courseId,
         conceptId,
@@ -4889,6 +5136,7 @@ function exampleText(violation: SimulationViolation): string {
     activityLogs: evidence.activityLogs,
     mastery: evidence.mastery,
     schedulerExplanations: evidence.schedulerExplanations,
+    retryDecisions: evidence.retryDecisions,
     implicitRepetitionTrace: evidence.implicitRepetitionTrace,
     prerequisiteResetEvidence: evidence.prerequisiteResetEvidence,
     budgetMinutes: evidence.budgetMinutes,
