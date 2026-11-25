@@ -34,6 +34,7 @@ import {
   planUsageMinutes,
   renderMarkdownReport,
   requireP17ReviewMinutes,
+  retryDecisionEvidence,
   reviewFeasible,
   reviewOverdueDaysForAudit,
   SimulatedApiFailureError,
@@ -373,6 +374,63 @@ test('P10 ignores a case-1 retry that cannot fit after preserved in-progress wor
       new Map([['probability-basics', false]]),
     ),
   ).toEqual([]);
+});
+
+test('P10 counts a newly started prerequisite review without double counting carried-over work', async () => {
+  const content = await loadContent('content');
+  const now = new Date('2026-01-14T12:00:00.000Z');
+  const state = {
+    lessonRuns: [
+      { conceptId: 'loss-functions', status: 'needs_retry', retryAfter: now },
+      {
+        conceptId: 'rank-span',
+        status: 'needs_retry',
+        retryAfter: new Date('2026-01-12T12:00:00.000Z'),
+      },
+    ],
+    cards: [],
+    remediationFlags: [{ conceptId: 'loss-functions', targetPrereqId: 'derivatives' }],
+  } as unknown as SchedulerState;
+  const activity = {
+    id: 'first-review',
+    kind: 'review',
+    conceptId: 'derivatives',
+    exerciseIds: ['der-quotient'],
+    plannedMinutes: 8,
+    status: 'in_progress',
+  } as Parameters<typeof retryDecisionEvidence>[5][number];
+  const explanations = [
+    {
+      conceptId: 'derivatives',
+      result: 'selected:overdue' as const,
+      exerciseIds: activity.exerciseIds,
+      exerciseDimensions: [],
+      candidateMinutes: 8,
+      reviewMinutes: 8,
+      reviewCap: 9,
+      usedMinutes: 8,
+      budget: 30,
+      plannedActivityCount: 1,
+    },
+  ];
+  for (const carriedOver of [false, true]) {
+    const evidence = retryDecisionEvidence(
+      state,
+      content,
+      now,
+      30,
+      new Set(['rank-span']),
+      [activity],
+      explanations,
+      new Set(carriedOver ? [activity.id] : []),
+    ).find(({ conceptId }) => conceptId === 'rank-span');
+    expect(evidence).toMatchObject({
+      preservedInProgressMinutes: carriedOver ? 8 : 0,
+      reservedDueReviewMinutes: carriedOver ? 0 : 8,
+      remainingCapacityMinutes: 22,
+      fitsSchedulerCapacity: false,
+    });
+  }
 });
 
 test('P10 flags a fitting overdue retry displaced by a lower-priority lesson', () => {

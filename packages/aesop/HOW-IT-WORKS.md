@@ -104,7 +104,7 @@ The planner makes one session for each day. The session has a time budget. The d
 The planner adds work in this order:
 
 1. **Chosen lesson.** If the learner chose a lesson, it goes in first. Its time counts against the budget.
-2. **Unfinished lessons.** A lesson in progress, or a stopped lesson that has waited 2 or more days for its retry. **[Ours]**
+2. **Unfinished lessons.** Resume lessons in progress first. Review the key prerequisites that block a stopped lesson. **[MA]** Then add eligible lesson retries that have waited 2 or more days. **[Ours]**
 3. **New lessons.** At most 2 new topics in one session. **[Ours]** The planner follows the course order. It spreads lessons across units and subjects. It does not put two easily confused topics on the same day. **[MA]**
 4. **Ready retries.** Stopped lessons that can now be tried again.
 5. **Reviews.** Due review cards, overdue cards first. Reviews can use at most 30% of the budget. **[Ours]** Overdue reviews can go past this limit.

@@ -963,6 +963,20 @@ function packWeekday(
       lessonRetryOverdue(state, conceptId, now),
     ),
   );
+  const haltedLessonConcepts = new Set(
+    state.lessonRuns
+      ?.filter(({ status }) => status === 'needs_retry')
+      .map(({ conceptId }) => conceptId),
+  );
+  const haltedPrereqIds = new Set(
+    state.remediationFlags.flatMap(({ conceptId, targetPrereqId, status }) =>
+      status !== 'resolved' && targetPrereqId && haltedLessonConcepts.has(conceptId)
+        ? [targetPrereqId]
+        : [],
+    ),
+  );
+  const priorityRemediation = new Set<Candidate>();
+  let checkedPriorityRemediation = false;
   const unfinishedLessonConcepts = new Set([
     ...resumedLessonConcepts,
     ...retryEligibleLessonConcepts,
@@ -1032,6 +1046,21 @@ function packWeekday(
     .sort(compareLearnCandidates)) {
     if (newConceptCount >= SCHEDULER_CONFIG.weekday.maxNewConcepts) break;
     const conceptId = candidate.activity.conceptId;
+    if (conceptId && overdueRetryLessonConcepts.has(conceptId) && !checkedPriorityRemediation) {
+      checkedPriorityRemediation = true;
+      for (const review of candidates
+        .filter(
+          ({ remediation, activity }) =>
+            remediation && activity.conceptId && haltedPrereqIds.has(activity.conceptId),
+        )
+        .sort((left, right) => right.score - left.score)) {
+        if (!add(review)) continue;
+        priorityRemediation.add(review);
+        reviewMinutes += review.adjustedMinutes;
+        if (review.activity.conceptId)
+          recordReviewResult(review.activity.conceptId, 'selected:overdue', review);
+      }
+    }
     const added =
       conceptId && overdueRetryLessonConcepts.has(conceptId)
         ? canSelectLearn(candidate) && add(candidate)
@@ -1091,7 +1120,7 @@ function packWeekday(
         learnTaskCanCoverDueReviews(candidate.activity.conceptId) &&
         coveredByTaskConcept(candidate.activity.conceptId).has(dueConceptId),
     );
-  let reservedReviewMinutes = 0;
+  let reservedReviewMinutes = reviewMinutes;
   let reservedMinutes = 0;
   let fallbackReservation: Candidate | undefined;
   let fallbackReservationMinutes = 0;
@@ -1102,6 +1131,7 @@ function packWeekday(
       left.index - right.index,
   )) {
     const candidate = detail.candidate;
+    if (priorityRemediation.has(candidate)) continue;
     if (!candidate.remediation && !dueConceptIds.has(candidate.activity.conceptId ?? '')) {
       continue;
     }
@@ -1360,18 +1390,19 @@ function packWeekday(
       continue;
     }
     if (candidate.remediation) {
-      const rejectionReason = addRejectionReason(candidate);
-      if (rejectionReason) {
-        recordReviewResult(conceptId, `rejected:${rejectionReason}`, candidate);
-        continue;
-      }
-      if (add(candidate)) {
+      if (!priorityRemediation.has(candidate)) {
+        const rejectionReason = addRejectionReason(candidate);
+        if (rejectionReason) {
+          recordReviewResult(conceptId, `rejected:${rejectionReason}`, candidate);
+          continue;
+        }
+        if (!add(candidate)) continue;
         reviewMinutes += candidate.adjustedMinutes;
         recordReviewResult(conceptId, next.overdue ? 'selected:overdue' : 'selected', candidate);
-        for (const dueId of reviewCoverage(candidate)) {
-          uncoveredDueConcepts.delete(dueId);
-          coveredBy.set(dueId, conceptId);
-        }
+      }
+      for (const dueId of reviewCoverage(candidate)) {
+        uncoveredDueConcepts.delete(dueId);
+        coveredBy.set(dueId, conceptId);
       }
       continue;
     }
@@ -1564,17 +1595,15 @@ function packWeekday(
       ) {
         return -1;
       }
-      if (
-        candidate.activity.kind === 'learn' &&
-        (resumedLessonConcepts.has(conceptId) || overdueRetryLessonConcepts.has(conceptId))
-      ) {
-        return 0;
-      }
-      if (candidate.activity.kind === 'review') return 1;
+      if (candidate.activity.kind === 'learn' && resumedLessonConcepts.has(conceptId)) return 0;
+      if (priorityRemediation.has(candidate)) return 1;
+      if (candidate.activity.kind === 'learn' && overdueRetryLessonConcepts.has(conceptId))
+        return 2;
+      if (candidate.activity.kind === 'review') return 3;
       if (candidate.activity.kind === 'learn' && retryEligibleLessonConcepts.has(conceptId)) {
-        return 3;
+        return 5;
       }
-      return candidate.activity.kind === 'learn' ? 2 : 4;
+      return candidate.activity.kind === 'learn' ? 4 : 6;
     };
     return priority(left) - priority(right);
   });

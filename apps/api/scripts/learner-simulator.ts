@@ -4385,7 +4385,7 @@ async function auditCompressionPlan(
   return coveredSkips;
 }
 
-function retryDecisionEvidence(
+export function retryDecisionEvidence(
   state: SchedulerState,
   content: ContentIndex,
   now: Date,
@@ -4400,13 +4400,28 @@ function retryDecisionEvidence(
       .filter((card) => isDueToday(card.dueAt, now, state.timezone ?? 'UTC'))
       .map((card) => card.conceptId),
   );
+  const haltedLessonIds = new Set(
+    state.lessonRuns
+      ?.filter(({ status }) => status === 'needs_retry')
+      .map(({ conceptId }) => conceptId),
+  );
+  for (const flag of state.remediationFlags) {
+    if (flag.status !== 'resolved' && flag.targetPrereqId && haltedLessonIds.has(flag.conceptId)) {
+      dueConceptIds.add(flag.targetPrereqId);
+    }
+  }
   const preservedInProgressMinutes = p10PreservedActivityMinutes(
     activities,
     carriedOverActivityIds,
   );
   const preservedReviewConceptIds = new Set(
     activities
-      .filter((activity) => activity.kind === 'review' && activity.status === 'in_progress')
+      .filter(
+        (activity) =>
+          activity.kind === 'review' &&
+          carriedOverActivityIds.has(activity.id) &&
+          (activity.status === 'in_progress' || activity.status === 'completed'),
+      )
       .flatMap((activity) =>
         activity.exerciseIds.flatMap((exerciseId) => {
           const conceptId = content.exercisesById.get(exerciseId)?.concept;
