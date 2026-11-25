@@ -170,7 +170,7 @@ knowledge_points:
       </svg>
       ```
 
-      An RGB image has three axes because there are three numbers per pixel. A **tensor** is a grid with any number of axes. A vector has one axis, a matrix has two, and this image has three.
+      A **tensor** is a grid with any number of axes. A vector has one axis and a matrix has two. An RGB image has three axes: one for rows, one for columns and one for channels. The channel axis has length 3 because each pixel has three entries.
 
       ### Put the channels first
 
@@ -199,7 +199,7 @@ knowledge_points:
 
       After transposing, the top-left pixel still has the values $(10,20,30)$. They sit in the top-left corners of the red, green and blue grids. A reshape would put $10,20,30,40$ in the first grid. That would mix colours.
 
-      We used RGB here. Other formats can have more channels, such as a fourth for transparency.
+      A fourth channel for transparency makes the channel axis length 4. The image still has three axes.
     problems:
       [
         iat-layout-basics,
