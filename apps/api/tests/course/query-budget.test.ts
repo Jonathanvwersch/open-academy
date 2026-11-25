@@ -83,6 +83,16 @@ test('full lesson review avoids building quiz history and XP summaries', async (
   await db.delete(schema.lessonRuns).where(eq(schema.lessonRuns.userId, userId));
 });
 
+test('loading an intact lesson run does not take a write lock', async () => {
+  await db.insert(schema.lessonRuns).values({ userId, conceptId: 'supervised-learning' });
+  statements = [];
+  const response = await app.request('/api/lessons/supervised-learning/run');
+  expect(response.status).toBe(200);
+  expect((await response.json()).run.status).toBe('in_progress');
+  expect(statements.join('\n')).not.toMatch(/for update/i);
+  await db.delete(schema.lessonRuns).where(eq(schema.lessonRuns.userId, userId));
+});
+
 test('resuming Home uses the existing session instead of rebuilding the schedule', async () => {
   const initialization = await app.request('/api/course');
   expect(initialization.status).toBe(200);

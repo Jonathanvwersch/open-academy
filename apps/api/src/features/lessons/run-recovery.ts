@@ -1,28 +1,34 @@
 import type { ContentIndex, IndexedLesson } from '@academy/aesop/course/types';
 import { selectQuizItems } from '@academy/aesop/lessons/lesson-quiz';
-import { type deriveLessonState, selectNextProblem } from '@academy/aesop/lessons/lesson-runner';
+import { deriveLessonState, selectNextProblem } from '@academy/aesop/lessons/lesson-runner';
 import { and, eq, inArray, isNull } from 'drizzle-orm';
 import type { Database } from '../../db/client.js';
 import {
   lessonProblems,
   lessonQuizAttempts,
   lessonQuizItems,
-  type lessonRuns,
+  lessonRuns,
 } from '../../db/schema.js';
 
 type Tx = Parameters<Parameters<Database['transaction']>[0]>[0];
 type Run = typeof lessonRuns.$inferSelect;
 type Problem = typeof lessonProblems.$inferSelect;
 
-export async function loadRunProblems(tx: Tx, runId: string, index: ContentIndex) {
-  const rows = await tx
+function readRunProblems(db: Database | Tx, runId: string) {
+  return db
     .select()
     .from(lessonProblems)
     .where(eq(lessonProblems.runId, runId))
     .orderBy(lessonProblems.servedAt, lessonProblems.position, lessonProblems.id);
-  const staleIds = rows
-    .filter((row) => row.answeredAt === null && !index.exercisesById.has(row.exerciseId))
-    .map((row) => row.id);
+}
+
+function isStalePending(row: Problem, index: ContentIndex) {
+  return row.answeredAt === null && !index.exercisesById.has(row.exerciseId);
+}
+
+export async function loadRunProblems(tx: Tx, runId: string, index: ContentIndex) {
+  const rows = await readRunProblems(tx, runId);
+  const staleIds = rows.filter((row) => isStalePending(row, index)).map((row) => row.id);
   if (staleIds.length === 0) return { rows, removed: false };
   await tx.delete(lessonProblems).where(inArray(lessonProblems.id, staleIds));
   const stale = new Set(staleIds);
@@ -67,30 +73,43 @@ export async function serveNextRunProblem(
   return problem;
 }
 
-export async function loadRunQuiz(
-  tx: Tx,
-  runId: string,
-  lesson: IndexedLesson,
-  index: ContentIndex,
-) {
-  const quizAttempts = await tx
+async function readRunQuiz(db: Database | Tx, runId: string) {
+  const quizAttempts = await db
     .select()
     .from(lessonQuizAttempts)
     .where(eq(lessonQuizAttempts.runId, runId))
     .orderBy(lessonQuizAttempts.attemptNo);
   const attemptIds = quizAttempts.map((attempt) => attempt.id);
   const quizItems = attemptIds.length
-    ? await tx
+    ? await db
         .select()
         .from(lessonQuizItems)
         .where(inArray(lessonQuizItems.quizAttemptId, attemptIds))
         .orderBy(lessonQuizItems.quizAttemptId, lessonQuizItems.position, lessonQuizItems.id)
     : [];
+  return { quizAttempts, quizItems };
+}
+
+function staleQuizItems(
+  { quizAttempts, quizItems }: Awaited<ReturnType<typeof readRunQuiz>>,
+  index: ContentIndex,
+) {
   const open = new Set(quizAttempts.filter((attempt) => !attempt.submittedAt).map(({ id }) => id));
-  const stale = quizItems.filter(
+  return quizItems.filter(
     (item) =>
       open.has(item.quizAttemptId) && !item.answeredAt && !index.exercisesById.has(item.exerciseId),
   );
+}
+
+export async function loadRunQuiz(
+  tx: Tx,
+  runId: string,
+  lesson: IndexedLesson,
+  index: ContentIndex,
+) {
+  const quiz = await readRunQuiz(tx, runId);
+  const { quizAttempts, quizItems } = quiz;
+  const stale = staleQuizItems(quiz, index);
   if (stale.length === 0) return { quizAttempts, quizItems };
 
   const servedProblems = await tx
@@ -152,4 +171,50 @@ export async function loadRunQuiz(
     quizAttempts: quizAttempts.filter(({ id }) => !emptied.includes(id)),
     quizItems: remaining,
   };
+}
+
+export async function loadRunSnapshot(
+  db: Database,
+  run: Run,
+  lesson: IndexedLesson,
+  index: ContentIndex,
+  now: Date,
+) {
+  const derive = (current: Run, rows: Problem[]) =>
+    deriveLessonState(lesson, rows, index.exercisesById, current.quizPassedAt, current.attempt);
+  const missingLastAnswer = (current: Run, state: ReturnType<typeof derive>) =>
+    current.status !== 'needs_retry' &&
+    state.status === 'in_progress' &&
+    !state.halted &&
+    !state.pending &&
+    state.lastAnswered &&
+    !index.exercisesById.has(state.lastAnswered.exerciseId);
+  const rows = await readRunProblems(db, run.id);
+  const quiz = await readRunQuiz(db, run.id);
+  const derived = derive(run, rows);
+  if (
+    !rows.some((row) => isStalePending(row, index)) &&
+    !missingLastAnswer(run, derived) &&
+    staleQuizItems(quiz, index).length === 0
+  ) {
+    return { current: run, rows, derived, ...quiz };
+  }
+  return db.transaction(async (tx) => {
+    const [current] = await tx
+      .select()
+      .from(lessonRuns)
+      .where(eq(lessonRuns.id, run.id))
+      .for('update');
+    if (!current) return null;
+    const { rows, removed } = await loadRunProblems(tx, current.id, index);
+    let derived = derive(current, rows);
+    if (current.status !== 'needs_retry' && (removed || missingLastAnswer(current, derived))) {
+      const next = await serveNextRunProblem(tx, current, lesson, index, rows, derived, now);
+      if (next) {
+        rows.push(next);
+        derived = derive(current, rows);
+      }
+    }
+    return { current, rows, derived, ...(await loadRunQuiz(tx, current.id, lesson, index)) };
+  });
 }

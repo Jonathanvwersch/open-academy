@@ -54,7 +54,12 @@ import type { ApiEnv } from '../../http/context.js';
 import { updateActivityAndAdvance } from '../../learning/activity-completion.js';
 import { fsrsFuzzEnabled } from '../../learning/fsrs-fuzz.js';
 import { resolveLessonCourse } from './course-context.js';
-import { loadRunProblems, loadRunQuiz, serveNextRunProblem } from './run-recovery.js';
+import {
+  loadRunProblems,
+  loadRunQuiz,
+  loadRunSnapshot,
+  serveNextRunProblem,
+} from './run-recovery.js';
 
 type LessonContext = Context<ApiEnv>;
 
@@ -125,40 +130,10 @@ export function registerLessonRunRoutes(
   ) => {
     const userId = context.get('userId');
     const now = deps.requestNow(context);
-    const loaded = await deps.db.transaction(async (tx) => {
-      const [current] = await tx
-        .select()
-        .from(lessonRuns)
-        .where(eq(lessonRuns.id, run.id))
-        .for('update');
-      if (!current) return null;
-      const { rows, removed } = await loadRunProblems(tx, current.id, index);
-      const state = deriveLessonState(
-        lesson,
-        rows,
-        index.exercisesById,
-        current.quizPassedAt,
-        current.attempt,
-      );
-      if (
-        current.status !== 'needs_retry' &&
-        (removed || (state.lastAnswered && !index.exercisesById.has(state.lastAnswered.exerciseId)))
-      ) {
-        const next = await serveNextRunProblem(tx, current, lesson, index, rows, state, now);
-        if (next) rows.push(next);
-      }
-      return { current, rows, ...(await loadRunQuiz(tx, current.id, lesson, index)) };
-    });
+    const loaded = await loadRunSnapshot(deps.db, run, lesson, index, now);
     if (!loaded) return null;
     run = loaded.current;
-    const { rows, quizAttempts, quizItems } = loaded;
-    const derived = deriveLessonState(
-      lesson,
-      rows,
-      index.exercisesById,
-      run.quizPassedAt,
-      run.attempt,
-    );
+    const { rows, derived, quizAttempts, quizItems } = loaded;
     const point = lesson.knowledge_points?.find((item) => item.id === derived.currentPointId);
     const buildInstance = (exercise: IndexedExercise, seed: number | null) => {
       if (!isTemplate(exercise)) return exercise;
