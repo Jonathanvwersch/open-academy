@@ -128,6 +128,8 @@ describe('bringWeakestPrerequisiteCardDueNow', () => {
     const lastReview = new Date(now.getTime() - daysAgo * 86_400_000);
     return {
       id,
+      conceptId: 'vectors',
+      dimension: 'math',
       dueAt,
       fsrs: {
         ...newReviewCard(lastReview),

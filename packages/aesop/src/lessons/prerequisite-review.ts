@@ -3,7 +3,8 @@ import { retrievability } from '../memory/fsrs.js';
 import { localDateKey } from '../progress/xp.js';
 
 export interface PrerequisiteReviewCard {
-  id: string;
+  conceptId: string;
+  dimension: string;
   dueAt: Date;
   fsrs: Card;
 }
@@ -17,7 +18,13 @@ export function bringWeakestPrerequisiteCardDueNow<T extends PrerequisiteReviewC
   let weakestRetrievability = Number.POSITIVE_INFINITY;
   for (const card of cards) {
     const cardRetrievability = retrievability(card.fsrs, now, enableFuzz);
-    if (cardRetrievability < weakestRetrievability) {
+    if (
+      cardRetrievability < weakestRetrievability ||
+      (weakest &&
+        cardRetrievability === weakestRetrievability &&
+        (card.conceptId < weakest.conceptId ||
+          (card.conceptId === weakest.conceptId && card.dimension < weakest.dimension)))
+    ) {
       weakest = card;
       weakestRetrievability = cardRetrievability;
     }

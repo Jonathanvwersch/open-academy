@@ -51,7 +51,7 @@ The learner does the steps in order. Each step has a worked example, then questi
 - Questions get harder after a correct answer and easier after a wrong answer.
 - A step earns 10 XP if it passes in 2 questions, 9 in 3, 8 in 4 and 7 in 5 or more. **[Ours]**
 - After 3 wrong answers on one step, the lesson stops. **[MA]** (the number 3 is ours) The learner can try the lesson again the next day.
-- If the lesson stops again at the same step or an earlier step, the engine opens a review for each key prerequisite of that step. **[MA]** The engine brings the weakest prerequisite card due now. The lesson stays locked until those reviews are done.
+- If the lesson stops again at the same step or an earlier step, the engine opens a review for each key prerequisite of that step. **[MA]** The engine brings the weakest prerequisite card due now. If cards tie, choose the alphabetically first topic, then the alphabetically first dimension. The lesson stays locked until those reviews are done.
 - After the last step, the learner answers an "Explain it" written question.
 - Then the learner takes the lesson quiz. A 1-step lesson gives 6 questions. A 2-step lesson gives 3 for each step. A 3- or 4-step lesson gives 2 for each step. **[Ours]**
 - The pass mark is 80%. **[Ours]** If the learner fails, they practise each step that had a wrong answer, then take a new quiz.
