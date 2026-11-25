@@ -304,7 +304,7 @@ export async function finalizeQuiz(deps: FeatureServices, request: FeatureReques
         quizTargetSeconds(item.question.exercise),
       ),
     );
-    const store = drizzleLearnerStore(repo.db);
+    const store = drizzleLearnerStore(repo.db, { activeReviewCardsOnly: true });
     for (const [i, item] of items.entries()) {
       const outcome = outcomes[i];
       await repo.db

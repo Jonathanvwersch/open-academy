@@ -21,7 +21,10 @@ function mapReviewCard(row: typeof reviewCards.$inferSelect): StoredReviewCard {
   };
 }
 
-export function drizzleLearnerStore(db: Database | Transaction): LearnerStore {
+export function drizzleLearnerStore(
+  db: Database | Transaction,
+  { activeReviewCardsOnly = false } = {},
+): LearnerStore {
   async function listMastery(learnerId: string): Promise<MasteryRecord[]> {
     const rows = await db
       .select()
@@ -91,7 +94,7 @@ export function drizzleLearnerStore(db: Database | Transaction): LearnerStore {
         .where(
           and(
             eq(reviewCards.userId, learnerId),
-            isNull(reviewCards.suspendedAt),
+            activeReviewCardsOnly ? isNull(reviewCards.suspendedAt) : undefined,
             conceptIds === undefined ? undefined : inArray(reviewCards.conceptId, conceptIds),
           ),
         )
@@ -162,7 +165,7 @@ export function drizzleLearnerStore(db: Database | Transaction): LearnerStore {
             eq(reviewCards.userId, learnerId),
             eq(reviewCards.id, cardId),
             eq(reviewCards.dueAt, expectedDueAt),
-            isNull(reviewCards.suspendedAt),
+            activeReviewCardsOnly ? isNull(reviewCards.suspendedAt) : undefined,
           ),
         )
         .returning({ id: reviewCards.id });

@@ -56,7 +56,7 @@ export interface LearnerStore {
   /** Upsert on (learnerId, conceptId, dimension). */
   saveMastery(learnerId: string, record: MasteryRecord): Promise<void>;
   addMasteryEvent(learnerId: string, event: MasteryEventRecord): Promise<void>;
-  /** Active cards, optionally filtered by conceptId. Sorted by conceptId, dimension, id. */
+  /** All cards, or only cards whose conceptId is in conceptIds. Sorted by conceptId, dimension, id. */
   listReviewCards(learnerId: string, conceptIds?: readonly string[]): Promise<StoredReviewCard[]>;
   getReviewCard(
     learnerId: string,
@@ -74,7 +74,7 @@ export interface LearnerStore {
       log: ReviewLogRecord;
     },
   ): Promise<boolean>;
-  /** Compare-and-set: update an active card whose dueAt still equals expectedDueAt. */
+  /** Compare-and-set: updates fsrs and dueAt only if the stored dueAt still equals expectedDueAt. Returns whether it updated. */
   updateReviewCardIfDue(
     learnerId: string,
     cardId: string,
