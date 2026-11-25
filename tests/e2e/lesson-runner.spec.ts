@@ -417,8 +417,27 @@ async function answerAndReload(page: Page, correct: boolean, runConceptId = conc
         name: `Step ${currentPointIndex + 1} of ${body.state.points.length}, current`,
       }),
     ).toBeVisible();
-  } else if (expectedStep === 'explain') {
-    await expect(page.getByRole('listitem', { name: 'Explain it, current' })).toBeVisible();
+    const problemCard = page.getByTestId('lesson-problem');
+    await expect(problemCard).toBeVisible();
+    await expect(page.getByTestId('lesson-problem-prompt')).toBeVisible();
+    if (run.currentPointId === body.state.currentPointId || !body.state.pendingProblem) {
+      await expect(problemCard).toHaveAttribute('data-problem-id', problem.id);
+      await expect(problemCard.getByRole('status')).toContainText(
+        correct ? 'Correct' : 'Not quite',
+      );
+    } else {
+      await expect(problemCard).toHaveAttribute('data-problem-id', body.state.pendingProblem.id);
+    }
+  } else if (body.state.status === 'quiz') {
+    await expect(page.getByTestId('lesson-steps-complete')).toBeVisible();
+    if (expectedStep === 'explain') {
+      await expect(page.getByTestId('lesson-explain-chip')).toHaveAttribute(
+        'aria-label',
+        'Explain it, current',
+      );
+    }
+  } else if (body.state.status === 'completed') {
+    await expect(page.getByTestId('lesson-quiz-results')).toBeVisible();
   }
   expect(await currentRun(page, runConceptId)).toEqual(body.state);
   expect(body.state.lastAnsweredProblem.id).toBe(problem.id);
