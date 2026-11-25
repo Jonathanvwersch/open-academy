@@ -132,7 +132,7 @@ export function registerLessonRunRoutes(
       .select()
       .from(lessonProblems)
       .where(eq(lessonProblems.runId, run.id))
-      .orderBy(lessonProblems.servedAt, lessonProblems.position);
+      .orderBy(lessonProblems.servedAt, lessonProblems.position, lessonProblems.id);
     const derived = deriveLessonState(
       lesson,
       rows,
@@ -210,7 +210,7 @@ export function registerLessonRunRoutes(
           .select()
           .from(lessonQuizItems)
           .where(inArray(lessonQuizItems.quizAttemptId, quizAttemptIds))
-          .orderBy(lessonQuizItems.position)
+          .orderBy(lessonQuizItems.quizAttemptId, lessonQuizItems.position, lessonQuizItems.id)
       : [];
     const itemsFor = (attemptId: string) =>
       quizItems.filter((item) => item.quizAttemptId === attemptId);
@@ -438,6 +438,7 @@ export function registerLessonRunRoutes(
       .select()
       .from(lessonRuns)
       .where(and(eq(lessonRuns.userId, context.get('userId')), eq(lessonRuns.conceptId, conceptId)))
+      .orderBy(desc(lessonRuns.updatedAt), desc(lessonRuns.id))
       .limit(1);
     return context.json({
       course: await resolveLessonCourse(
@@ -472,6 +473,7 @@ export function registerLessonRunRoutes(
         .select()
         .from(lessonRuns)
         .where(and(eq(lessonRuns.userId, userId), eq(lessonRuns.conceptId, conceptId)))
+        .orderBy(desc(lessonRuns.updatedAt), desc(lessonRuns.id))
         .for('update')
         .limit(1);
       if (!existing) {
@@ -485,6 +487,7 @@ export function registerLessonRunRoutes(
             .select()
             .from(lessonRuns)
             .where(and(eq(lessonRuns.userId, userId), eq(lessonRuns.conceptId, conceptId)))
+            .orderBy(desc(lessonRuns.updatedAt), desc(lessonRuns.id))
             .for('update')
             .limit(1);
         }
@@ -494,7 +497,7 @@ export function registerLessonRunRoutes(
         .select()
         .from(lessonProblems)
         .where(eq(lessonProblems.runId, existing.id))
-        .orderBy(lessonProblems.servedAt, lessonProblems.position);
+        .orderBy(lessonProblems.servedAt, lessonProblems.position, lessonProblems.id);
       let state = deriveLessonState(
         resolved.lesson,
         problems,
@@ -684,13 +687,21 @@ export function registerLessonRunRoutes(
         .select()
         .from(lessonRuns)
         .where(and(eq(lessonRuns.userId, userId), eq(lessonRuns.conceptId, conceptId)))
+        .orderBy(desc(lessonRuns.updatedAt), desc(lessonRuns.id))
         .for('update')
         .limit(1);
       if (!run) return { kind: 'not_found' as const };
       const problems = await tx
         .select()
         .from(lessonProblems)
-        .where(eq(lessonProblems.runId, run.id));
+        .where(eq(lessonProblems.runId, run.id))
+        .orderBy(
+          lessonProblems.servedAt,
+          lessonProblems.knowledgePointId,
+          lessonProblems.round,
+          lessonProblems.position,
+          lessonProblems.id,
+        );
       const state = deriveLessonState(
         resolved.lesson,
         problems,
@@ -717,7 +728,8 @@ export function registerLessonRunRoutes(
               correct: lessonQuizItems.correct,
             })
             .from(lessonQuizItems)
-            .where(eq(lessonQuizItems.quizAttemptId, latestQuizAttempt.id));
+            .where(eq(lessonQuizItems.quizAttemptId, latestQuizAttempt.id))
+            .orderBy(lessonQuizItems.position, lessonQuizItems.id);
           const pointWasMissed = quizItems.some(
             (item) =>
               item.knowledgePointId === body.data.pointId &&
@@ -845,7 +857,14 @@ export function registerLessonRunRoutes(
       const allProblems = await tx
         .select()
         .from(lessonProblems)
-        .where(eq(lessonProblems.runId, joined.run.id));
+        .where(eq(lessonProblems.runId, joined.run.id))
+        .orderBy(
+          lessonProblems.servedAt,
+          lessonProblems.knowledgePointId,
+          lessonProblems.round,
+          lessonProblems.position,
+          lessonProblems.id,
+        );
       const stateBeforeAnswer = deriveLessonState(
         resolved.lesson,
         allProblems,
@@ -942,7 +961,7 @@ export function registerLessonRunRoutes(
         .select()
         .from(lessonProblems)
         .where(eq(lessonProblems.runId, joined.run.id))
-        .orderBy(lessonProblems.servedAt, lessonProblems.position);
+        .orderBy(lessonProblems.servedAt, lessonProblems.position, lessonProblems.id);
       const previous = deriveLessonState(
         resolved.lesson,
         problems.filter((item) => item.id !== joined.problem.id),
@@ -1098,13 +1117,21 @@ export function registerLessonRunRoutes(
         .select()
         .from(lessonRuns)
         .where(and(eq(lessonRuns.userId, userId), eq(lessonRuns.conceptId, conceptId)))
+        .orderBy(desc(lessonRuns.updatedAt), desc(lessonRuns.id))
         .for('update')
         .limit(1);
       if (!run) return { kind: 'not_found' as const };
       const problems = await tx
         .select()
         .from(lessonProblems)
-        .where(eq(lessonProblems.runId, run.id));
+        .where(eq(lessonProblems.runId, run.id))
+        .orderBy(
+          lessonProblems.servedAt,
+          lessonProblems.knowledgePointId,
+          lessonProblems.round,
+          lessonProblems.position,
+          lessonProblems.id,
+        );
       const state = deriveLessonState(
         resolved.lesson,
         problems,
@@ -1126,7 +1153,8 @@ export function registerLessonRunRoutes(
         const failedItems = await tx
           .select()
           .from(lessonQuizItems)
-          .where(eq(lessonQuizItems.quizAttemptId, lastSubmittedAttempt.id));
+          .where(eq(lessonQuizItems.quizAttemptId, lastSubmittedAttempt.id))
+          .orderBy(lessonQuizItems.position, lessonQuizItems.id);
         const missedPointIds = new Set(
           failedItems
             .filter((item) => item.correct !== null && item.correct < 1)
@@ -1172,6 +1200,7 @@ export function registerLessonRunRoutes(
                 previousAttempts.map((attempt) => attempt.id),
               ),
             )
+            .orderBy(lessonQuizItems.quizAttemptId, lessonQuizItems.position, lessonQuizItems.id)
         : [];
       const previousAttemptItems = previousAttempt
         ? allQuizItems.filter((item) => item.quizAttemptId === previousAttempt.id)
@@ -1275,7 +1304,14 @@ export function registerLessonRunRoutes(
       const problems = await tx
         .select()
         .from(lessonProblems)
-        .where(eq(lessonProblems.runId, joined.run.id));
+        .where(eq(lessonProblems.runId, joined.run.id))
+        .orderBy(
+          lessonProblems.servedAt,
+          lessonProblems.knowledgePointId,
+          lessonProblems.round,
+          lessonProblems.position,
+          lessonProblems.id,
+        );
       const runState = deriveLessonState(
         resolved.lesson,
         problems,
@@ -1346,6 +1382,7 @@ export function registerLessonRunRoutes(
         .select()
         .from(lessonRuns)
         .where(and(eq(lessonRuns.userId, userId), eq(lessonRuns.conceptId, conceptId)))
+        .orderBy(desc(lessonRuns.updatedAt), desc(lessonRuns.id))
         .for('update')
         .limit(1);
       if (!run) return { kind: 'not_found' as const };
@@ -1363,7 +1400,7 @@ export function registerLessonRunRoutes(
         .select()
         .from(lessonQuizItems)
         .where(eq(lessonQuizItems.quizAttemptId, latestAttempt.id))
-        .orderBy(lessonQuizItems.position);
+        .orderBy(lessonQuizItems.position, lessonQuizItems.id);
       if (items.some((item) => item.answeredAt === null || item.correct === null)) {
         return { kind: 'unanswered' as const };
       }
@@ -1648,7 +1685,7 @@ export function registerLessonRunRoutes(
       .select()
       .from(lessonQuizItems)
       .where(eq(lessonQuizItems.quizAttemptId, attempt.quiz.id))
-      .orderBy(lessonQuizItems.position);
+      .orderBy(lessonQuizItems.position, lessonQuizItems.id);
     const items = rows.flatMap((item) => {
       const indexed = resolved.index.exercisesById.get(item.exerciseId);
       const exercise = indexed ? resolvedIndexedExercise(indexed, item.seed) : undefined;

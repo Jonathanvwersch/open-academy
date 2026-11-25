@@ -7,6 +7,7 @@ import type { SchedulerState } from '../../src/learning/scheduler.js';
 import {
   dueTopicsCoveredBy,
   explainReviewSelection,
+  explainReviewSelectionForReplan,
   planSession,
   sessionBudget,
 } from '../../src/learning/scheduler.js';
@@ -153,6 +154,40 @@ describe('sessionBudget', () => {
   });
 });
 
+it('uses completed failed-quiz lessons in the replan explanation exclusions', () => {
+  const content = lessonCrowdingContent(true);
+  const state = plannerState(content, { cards: [reviewCard('vectors', now)] });
+  state.lessonRuns = [
+    {
+      conceptId: 'supervised-learning',
+      status: 'needs_retry',
+      retryAfter: new Date('2026-01-12T12:00:00.000Z'),
+    },
+  ];
+  const failedQuizActivity = {
+    kind: 'learn' as const,
+    conceptId: 'supervised-learning',
+    exerciseIds: [],
+    plannedMinutes: 15,
+    status: 'completed' as const,
+    reason: {
+      terms: { goal: 0, week_fit: 0, project: 0, unlock: 0, gap: 0, review: 0, cost: 0 },
+      summary: 'completed lesson with a failed quiz',
+    },
+  };
+
+  const explained = explainReviewSelectionForReplan(state, content, now, 20, [failedQuizActivity]);
+  const withoutExclusions = explainReviewSelection(state, content, now, 20);
+  const withoutExclusionDecision = withoutExclusions.find(
+    ({ conceptId }) => conceptId === 'vectors',
+  );
+  const replanDecision = explained.results.find(({ conceptId }) => conceptId === 'vectors');
+
+  expect(explained.excludedLearnConceptIds).toEqual(['supervised-learning']);
+  expect(withoutExclusionDecision?.coveringConceptId).toBe('supervised-learning');
+  expect(replanDecision?.coveringConceptId).not.toBe('supervised-learning');
+});
+
 describe('review budget reservation', () => {
   it('reserves the only due review before an unrelated fresh lesson uses the budget', () => {
     const content = lessonCrowdingContent();
@@ -182,6 +217,21 @@ describe('review budget reservation', () => {
     expect(fitPlan.activities.some((activity) => activity.kind === 'review')).toBe(true);
   });
 
+  it('includes a rejected review candidate’s adjusted minutes in its explanation', () => {
+    const state = plannerState(fixtureContent, {
+      activeCourseId: null,
+      studyCourseIds: [],
+      cards: [reviewCard('vectors', now), reviewCard('linear-models', now)],
+    });
+    const explanation = explainReviewSelection(state, fixtureContent, now, 1);
+    const rejected = explanation.find(
+      (item) => item.result === 'rejected:reviewMinuteCap' || item.result === 'rejected:budget',
+    );
+
+    expect(rejected).toBeDefined();
+    expect(rejected?.candidateMinutes).toBeGreaterThan(0);
+  });
+
   it('releases the fallback review reservation when a lesson covers that topic', () => {
     const content = lessonCrowdingContent(true);
     const state = plannerState(content, {
@@ -204,6 +254,37 @@ describe('review budget reservation', () => {
         coveringConceptId: 'supervised-learning',
       }),
     );
+  });
+
+  it('plans the focused lesson before reserving a due review it covers', () => {
+    const content = lessonCrowdingContent(true);
+    const state = plannerState(content, {
+      freshConceptId: 'supervised-learning',
+      cards: [reviewCard('vectors', now)],
+    });
+    state.inProgressConceptId = 'supervised-learning';
+
+    const unforcedPlan = planSession(state, content, now, 10);
+    expect(
+      unforcedPlan.activities.some(
+        (activity) => activity.kind === 'learn' && activity.conceptId === 'supervised-learning',
+      ),
+    ).toBe(false);
+    expect(unforcedPlan.activities.some((activity) => activity.kind === 'review')).toBe(true);
+
+    const focusedPlan = planSession(state, content, now, 10, 'weekday', new Set(), new Set(), {
+      focusConceptId: 'supervised-learning',
+    });
+    const focusLesson = focusedPlan.activities[0];
+
+    expect(focusLesson).toEqual(
+      expect.objectContaining({
+        kind: 'learn',
+        conceptId: 'supervised-learning',
+        plannedMinutes: 15,
+      }),
+    );
+    expect(focusedPlan.activities.some((activity) => activity.kind === 'review')).toBe(false);
   });
 
   it('keeps a fallback review when a lesson covers only one of its due topics', () => {

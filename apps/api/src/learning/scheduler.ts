@@ -12,6 +12,7 @@ import type {
 import { buildEncompassingIndex } from './encompassing.js';
 import { isDueToday, retrievability, startOfNextCalendarDay } from './fsrs.js';
 import { implicitRepetition } from './implicit-repetition.js';
+import { isLessonRetryReady } from './lesson-retry.js';
 import {
   activeCourseFor,
   compareOutlinePosition,
@@ -169,6 +170,7 @@ export interface ReviewSelectionExplanation {
   coveringConceptId?: string;
   exerciseIds: string[];
   exerciseDimensions: string[];
+  candidateMinutes?: number;
   reviewMinutes: number;
   reviewCap: number;
   usedMinutes: number;
@@ -180,6 +182,7 @@ type ReviewSelectionTrace = {
   results: Map<string, ReviewSelectionResult>;
   coveringConceptIds: Map<string, string>;
   exerciseIds: Map<string, string[]>;
+  candidateMinutes: Map<string, number>;
   metrics: Map<
     string,
     Pick<
@@ -244,7 +247,7 @@ function lessonRetryEligible(state: SchedulerState, conceptId: string, now: Date
   );
 }
 
-function lessonRetryOverdue(state: SchedulerState, conceptId: string, now: Date): boolean {
+export function lessonRetryOverdue(state: SchedulerState, conceptId: string, now: Date): boolean {
   const run = state.lessonRuns?.find((candidate) => candidate.conceptId === conceptId);
   if (!run?.retryAfter || !lessonRetryEligible(state, conceptId, now)) return false;
   const retryAfter = typeof run.retryAfter === 'string' ? new Date(run.retryAfter) : run.retryAfter;
@@ -419,6 +422,7 @@ export function planSession(
   _kind: SessionKind = 'weekday',
   excludedLearnConceptIds: ReadonlySet<string> = new Set(),
   excludedReviewConceptIds: ReadonlySet<string> = new Set(),
+  options: { focusConceptId?: string } = {},
 ): SessionPlan {
   return packWeekday(
     state,
@@ -427,6 +431,8 @@ export function planSession(
     Math.max(0, budgetMinutes),
     excludedLearnConceptIds,
     excludedReviewConceptIds,
+    undefined,
+    options,
   );
 }
 
@@ -436,11 +442,16 @@ export function explainReviewSelection(
   now: Date,
   budgetMinutes: number,
   excludedReviewConceptIds: ReadonlySet<string> = new Set(),
+  options: {
+    focusConceptId?: string;
+    excludedLearnConceptIds?: ReadonlySet<string>;
+  } = {},
 ): ReviewSelectionExplanation[] {
   const trace: ReviewSelectionTrace = {
     results: new Map(),
     coveringConceptIds: new Map(),
     exerciseIds: new Map(),
+    candidateMinutes: new Map(),
     metrics: new Map(),
   };
   packWeekday(
@@ -448,17 +459,19 @@ export function explainReviewSelection(
     content,
     now,
     Math.max(0, budgetMinutes),
-    new Set(),
+    options.excludedLearnConceptIds ?? new Set(),
     excludedReviewConceptIds,
     trace,
+    options,
   );
   const conceptIds = [
-    ...new Set(
-      state.cards
+    ...new Set([
+      ...state.cards
         .filter((card) => isDueToday(card.dueAt, now, state.timezone ?? 'UTC'))
         .map((card) => card.conceptId),
-    ),
-  ];
+      ...trace.results.keys(),
+    ]),
+  ].sort();
   return conceptIds.map((conceptId) => ({
     conceptId,
     result: trace.results.get(conceptId) ?? 'rejected:other',
@@ -466,6 +479,9 @@ export function explainReviewSelection(
       ? { coveringConceptId: trace.coveringConceptIds.get(conceptId) }
       : {}),
     exerciseIds: trace.exerciseIds.get(conceptId) ?? [],
+    ...(trace.candidateMinutes.has(conceptId)
+      ? { candidateMinutes: trace.candidateMinutes.get(conceptId) }
+      : {}),
     exerciseDimensions: [
       ...new Set(
         (trace.exerciseIds.get(conceptId) ?? []).flatMap((exerciseId) => {
@@ -519,6 +535,7 @@ export function explainReviewSelectionForReplan(
   const inputs = replanInputs(state, content, existingActivities);
   return {
     budget: remainingBudgetMinutes,
+    excludedLearnConceptIds: [...inputs.excludedLearnConceptIds],
     coveredReviewConceptIds: [...inputs.coveredReviewConceptIds],
     usedExerciseIds: [...(inputs.state.usedExerciseIds ?? [])],
     results: explainReviewSelection(
@@ -527,6 +544,7 @@ export function explainReviewSelectionForReplan(
       now,
       remainingBudgetMinutes,
       inputs.coveredReviewConceptIds,
+      { excludedLearnConceptIds: inputs.excludedLearnConceptIds },
     ),
   };
 }
@@ -676,6 +694,44 @@ export function learnLookAheadScore(
   }, 0);
 }
 
+function createManualFocusCandidate(
+  state: SchedulerState,
+  content: ContentIndex,
+  conceptId: string,
+): Candidate | undefined {
+  const concept = content.conceptsById.get(conceptId);
+  const lesson = content.lessonsByConcept.get(conceptId);
+  const exercise = lesson?.final
+    ? content.exercisesById.get(lesson.final)
+    : content.exercisesByConcept
+        .get(conceptId)
+        ?.find((item) => item.role === 'core' || item.role === 'check');
+  if (!concept || !exercise) return undefined;
+  const priorEvidence = state.mastery.some(
+    (record) =>
+      record.conceptId === concept.id &&
+      (record.inferred || masteryRank(record.state) >= masteryRank('assisted')),
+  );
+  const kind = lesson ? 'learn' : priorEvidence ? 'practice' : 'learn';
+  const reason: ActivityReason = {
+    terms: noTerms(),
+    summary: 'Manual study override selected from the knowledge map.',
+  };
+  const plannedMinutes = exercise.est_minutes;
+  return {
+    activity: {
+      kind,
+      conceptId: concept.id,
+      exerciseIds: [exercise.id],
+      plannedMinutes,
+      reason,
+    },
+    score: scoreTerms(reason.terms, plannedMinutes),
+    adjustedMinutes: plannedMinutes,
+    newConcept: kind === 'learn',
+  };
+}
+
 function packWeekday(
   state: SchedulerState,
   content: ContentIndex,
@@ -684,12 +740,36 @@ function packWeekday(
   excludedLearnConceptIds: ReadonlySet<string> = new Set(),
   excludedReviewConceptIds: ReadonlySet<string> = new Set(),
   reviewSelectionTrace?: ReviewSelectionTrace,
+  options: { focusConceptId?: string } = {},
 ): SessionPlan {
+  const focusConceptId = options.focusConceptId;
   const generatedCandidates = generateCandidates(state, content, now, reviewSelectionTrace);
+  const focusAllowedLessonConcepts = new Set(
+    (state.lessonRuns ?? [])
+      .filter(
+        (run) =>
+          run.status === 'in_progress' ||
+          run.status === 'quiz' ||
+          (run.status === 'needs_retry' &&
+            isLessonRetryReady(
+              run.retryAfter ? new Date(run.retryAfter) : undefined,
+              (state.remediationFlags ?? []).some(
+                (flag) =>
+                  flag.conceptId === run.conceptId &&
+                  (flag.status === undefined || flag.status === 'open'),
+              ),
+              now,
+            )),
+      )
+      .map((run) => run.conceptId),
+  );
   const candidates = generatedCandidates.filter(
     (candidate) =>
       (candidate.activity.kind !== 'learn' ||
-        !excludedLearnConceptIds.has(candidate.activity.conceptId ?? '')) &&
+        (!excludedLearnConceptIds.has(candidate.activity.conceptId ?? '') &&
+          (!focusConceptId ||
+            candidate.activity.conceptId === focusConceptId ||
+            focusAllowedLessonConcepts.has(candidate.activity.conceptId ?? '')))) &&
       (candidate.activity.kind !== 'review' ||
         !excludedReviewConceptIds.has(candidate.activity.conceptId ?? '')),
   );
@@ -753,6 +833,7 @@ function packWeekday(
     }
     if (candidate) {
       reviewSelectionTrace.exerciseIds.set(conceptId, candidate.activity.exerciseIds);
+      reviewSelectionTrace.candidateMinutes.set(conceptId, candidate.adjustedMinutes);
     }
     reviewSelectionTrace.metrics.set(conceptId, metrics());
   };
@@ -851,6 +932,24 @@ function packWeekday(
     ...resumedLessonConcepts,
     ...retryEligibleLessonConcepts,
   ]);
+  const focusCandidate =
+    focusConceptId === undefined
+      ? undefined
+      : (candidates.find(
+          (candidate) =>
+            candidate.activity.kind === 'learn' && candidate.activity.conceptId === focusConceptId,
+        ) ?? createManualFocusCandidate(state, content, focusConceptId));
+  if (focusCandidate) {
+    selected.push(focusCandidate);
+    usedMinutes += focusCandidate.adjustedMinutes;
+    if (focusCandidate.activity.conceptId) {
+      selectedConcepts.add(focusCandidate.activity.conceptId);
+      if (focusCandidate.activity.kind === 'learn') {
+        selectedLearnConcepts.add(focusCandidate.activity.conceptId);
+      }
+    }
+    if (focusCandidate.newConcept) newConceptCount += 1;
+  }
   const courseContexts = schedulerCourseContexts(state, content);
   const courseOrder = new Map(courseContexts.map((course, index) => [course.course.id, index]));
   const compareLearnCandidates = (left: Candidate, right: Candidate) => {
@@ -947,7 +1046,16 @@ function packWeekday(
     left.index - right.index;
   const learnCandidates = candidates
     .filter((candidate) => candidate.activity.kind === 'learn')
+    .filter((candidate) => candidate.activity.conceptId !== focusConceptId)
     .filter((candidate) => !unfinishedLessonConcepts.has(candidate.activity.conceptId ?? ''));
+  const selectedLearnCoversDueConcept = (dueConceptId: string) =>
+    selected.some(
+      (candidate) =>
+        candidate.activity.kind === 'learn' &&
+        candidate.activity.conceptId &&
+        learnTaskCanCoverDueReviews(candidate.activity.conceptId) &&
+        coveredByTaskConcept(candidate.activity.conceptId).has(dueConceptId),
+    );
   let reservedReviewMinutes = 0;
   let reservedMinutes = 0;
   let fallbackReservation: Candidate | undefined;
@@ -962,11 +1070,17 @@ function packWeekday(
     if (!candidate.remediation && !dueConceptIds.has(candidate.activity.conceptId ?? '')) {
       continue;
     }
+    if (
+      candidate.activity.conceptId &&
+      selectedLearnCoversDueConcept(candidate.activity.conceptId)
+    ) {
+      continue;
+    }
     const fitsReviewCap =
       candidate.remediation ||
       detail.overdue ||
       reservedReviewMinutes + candidate.adjustedMinutes <= reviewCap;
-    if (fitsReviewCap && reservedMinutes + candidate.adjustedMinutes <= budget) {
+    if (fitsReviewCap && usedMinutes + reservedMinutes + candidate.adjustedMinutes <= budget) {
       reservedReviewMinutes += candidate.adjustedMinutes;
       reservedMinutes += candidate.adjustedMinutes;
     }
@@ -977,10 +1091,13 @@ function packWeekday(
         ({ candidate }) =>
           !candidate.remediation &&
           candidate.activity.conceptId &&
-          dueConceptIds.has(candidate.activity.conceptId),
+          dueConceptIds.has(candidate.activity.conceptId) &&
+          !selectedLearnCoversDueConcept(candidate.activity.conceptId),
       )
       .sort(byUrgency)
-      .find(({ candidate }) => reservedMinutes + candidate.adjustedMinutes <= budget)?.candidate;
+      .find(
+        ({ candidate }) => usedMinutes + reservedMinutes + candidate.adjustedMinutes <= budget,
+      )?.candidate;
     if (fallbackReservation) {
       fallbackReservationMinutes = fallbackReservation.adjustedMinutes;
       reservedReviewMinutes += fallbackReservationMinutes;
@@ -1405,6 +1522,13 @@ function packWeekday(
   selected.sort((left, right) => {
     const priority = (candidate: Candidate) => {
       const conceptId = candidate.activity.conceptId ?? '';
+      if (
+        focusConceptId &&
+        conceptId === focusConceptId &&
+        (candidate.activity.kind === 'learn' || candidate.activity.kind === 'practice')
+      ) {
+        return -1;
+      }
       if (
         candidate.activity.kind === 'learn' &&
         (resumedLessonConcepts.has(conceptId) || overdueRetryLessonConcepts.has(conceptId))

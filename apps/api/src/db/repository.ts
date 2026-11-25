@@ -133,7 +133,11 @@ export class LearnerRepository {
   }
 
   async masteryRecords(): Promise<MasteryRecord[]> {
-    const rows = await this.db.select().from(mastery).where(eq(mastery.userId, this.userId));
+    const rows = await this.db
+      .select()
+      .from(mastery)
+      .where(eq(mastery.userId, this.userId))
+      .orderBy(asc(mastery.conceptId), asc(mastery.dimension));
     return rows.map((row) => {
       const evidence = row.evidence as Partial<MasteryRecord>;
       return {
@@ -223,22 +227,39 @@ export class LearnerRepository {
       recallAttemptRows,
     ] = await Promise.all([
       loaded.mastery ?? this.masteryRecords(),
-      this.db.select().from(reviewCards).where(eq(reviewCards.userId, this.userId)),
+      this.db
+        .select()
+        .from(reviewCards)
+        .where(eq(reviewCards.userId, this.userId))
+        .orderBy(asc(reviewCards.conceptId), asc(reviewCards.dimension), asc(reviewCards.id)),
       this.db
         .select()
         .from(attempts)
         .where(eq(attempts.userId, this.userId))
-        .orderBy(desc(attempts.createdAt))
+        .orderBy(
+          desc(attempts.createdAt),
+          asc(attempts.exerciseId),
+          desc(attempts.attemptNo),
+          desc(attempts.correct),
+          asc(attempts.mode),
+          asc(attempts.id),
+        )
         .limit(100),
       this.db
         .select()
         .from(remediationFlags)
-        .where(and(eq(remediationFlags.userId, this.userId), eq(remediationFlags.status, 'open'))),
+        .where(and(eq(remediationFlags.userId, this.userId), eq(remediationFlags.status, 'open')))
+        .orderBy(
+          asc(remediationFlags.conceptId),
+          asc(remediationFlags.targetPrereqId),
+          asc(remediationFlags.id),
+        ),
       loaded.projectProgress ??
         this.db
           .select({ projectId: projectProgress.projectId, status: projectProgress.status })
           .from(projectProgress)
-          .where(eq(projectProgress.userId, this.userId)),
+          .where(eq(projectProgress.userId, this.userId))
+          .orderBy(asc(projectProgress.projectId)),
       loaded.lessonRuns ??
         this.db
           .select({
@@ -248,8 +269,13 @@ export class LearnerRepository {
             retryAfter: lessonRuns.retryAfter,
           })
           .from(lessonRuns)
-          .where(eq(lessonRuns.userId, this.userId)),
-      this.db.select().from(paperProgress).where(eq(paperProgress.userId, this.userId)),
+          .where(eq(lessonRuns.userId, this.userId))
+          .orderBy(asc(lessonRuns.conceptId), desc(lessonRuns.startedAt), desc(lessonRuns.id)),
+      this.db
+        .select()
+        .from(paperProgress)
+        .where(eq(paperProgress.userId, this.userId))
+        .orderBy(asc(paperProgress.paperId)),
       this.studyCourseIds(content),
       this.db
         .select({
@@ -316,7 +342,13 @@ export class LearnerRepository {
                 )}]::text[])`,
               ),
             )
-            .orderBy(asc(attempts.exerciseId), desc(attempts.createdAt))
+            .orderBy(
+              asc(attempts.exerciseId),
+              desc(attempts.createdAt),
+              desc(attempts.attemptNo),
+              desc(attempts.correct),
+              desc(attempts.id),
+            )
         : Promise.resolve(
             [] as Array<{
               exerciseId: string;

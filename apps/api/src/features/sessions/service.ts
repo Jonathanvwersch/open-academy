@@ -43,7 +43,6 @@ import {
   replan,
   sessionBudget,
 } from '../../learning/scheduler.js';
-import { masteryRank } from '../../learning/types.js';
 import { localDateKey, sessionKindForDate, xpGoalFor } from '../../learning/xp.js';
 import { type FeatureRequest, type FeatureServices, serviceResult } from '../../service-context.js';
 import { replanSessionActivities } from '../course/service.js';
@@ -304,84 +303,18 @@ export async function postSessions(deps: FeatureServices, request: FeatureReques
     }
     state.inProgressConceptId = body.data.focusConceptId;
   }
-  const plan = planSession(state, index, now, budgetMinutes, sessionKind);
-  if (body.data.focusConceptId) {
-    const inProgressLessonConcepts = new Set(
-      (state.lessonRuns ?? [])
-        .filter(
-          (run) =>
-            run.status === 'in_progress' ||
-            run.status === 'quiz' ||
-            (run.status === 'needs_retry' &&
-              isLessonRetryReady(
-                run.retryAfter,
-                state.remediationFlags.some(
-                  (flag) =>
-                    flag.conceptId === run.conceptId &&
-                    (flag.status === undefined || flag.status === 'open'),
-                ),
-                now,
-              )),
-        )
-        .map((run) => run.conceptId),
-    );
-    const keptActivities = plan.activities
-      .map((activity, index) => ({ activity, reason: plan.reasons[index] }))
-      .filter(
-        ({ activity }) =>
-          activity.kind !== 'learn' ||
-          activity.conceptId === body.data.focusConceptId ||
-          inProgressLessonConcepts.has(activity.conceptId ?? ''),
-      );
-    plan.activities = keptActivities.map(({ activity }) => activity);
-    plan.reasons = keptActivities.flatMap(({ reason }) => (reason ? [reason] : []));
-  }
+  const plan = planSession(state, index, now, budgetMinutes, sessionKind, undefined, undefined, {
+    focusConceptId: body.data.focusConceptId,
+  });
   if (
     body.data.focusConceptId &&
     !plan.activities.some(
-      (activity) => activity.kind === 'learn' && activity.conceptId === body.data.focusConceptId,
+      (activity) =>
+        (activity.kind === 'learn' || activity.kind === 'practice') &&
+        activity.conceptId === body.data.focusConceptId,
     )
   ) {
-    const concept = index.conceptsById.get(body.data.focusConceptId);
-    const lesson = index.lessonsByConcept.get(body.data.focusConceptId);
-    const exercise = lesson?.final
-      ? index.exercisesById.get(lesson.final)
-      : index.exercisesByConcept
-          .get(body.data.focusConceptId)
-          ?.find((item) => item.role === 'core' || item.role === 'check');
-    if (!concept || !exercise) {
-      return serviceResult({ error: 'No eligible exercise exists for this concept.' }, 409);
-    }
-    const priorEvidence = state.mastery.some(
-      (record) =>
-        record.conceptId === concept.id &&
-        (record.inferred || masteryRank(record.state) >= masteryRank('assisted')),
-    );
-    const reason = {
-      terms: { goal: 0, week_fit: 0, project: 0, unlock: 0, gap: 0, review: 0, cost: 0 },
-      summary: 'Manual study override selected from the knowledge map.',
-    };
-    plan.activities.unshift({
-      kind: lesson ? 'learn' : priorEvidence ? 'practice' : 'learn',
-      conceptId: concept.id,
-      exerciseIds: [exercise.id],
-      plannedMinutes: exercise.est_minutes,
-      reason,
-    });
-    plan.reasons.unshift(reason);
-  }
-  if (body.data.focusConceptId) {
-    const focusedIndex = plan.activities.findIndex(
-      (activity) => activity.kind === 'learn' && activity.conceptId === body.data.focusConceptId,
-    );
-    if (focusedIndex > 0) {
-      const [focusedActivity] = plan.activities.splice(focusedIndex, 1);
-      const [focusedReason] = plan.reasons.splice(focusedIndex, 1);
-      if (focusedActivity && focusedReason) {
-        plan.activities.unshift(focusedActivity);
-        plan.reasons.unshift(focusedReason);
-      }
-    }
+    return serviceResult({ error: 'No eligible exercise exists for this concept.' }, 409);
   }
   await db
     .update(studySessions)

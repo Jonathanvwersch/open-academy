@@ -34,6 +34,11 @@ import {
   scheduleReview,
 } from '../../src/learning/fsrs.js';
 import { calculateCredit } from '../../src/learning/mastery.js';
+import {
+  applyImplicitRepetitions,
+  type ImplicitRepetitionTraceEvent,
+  setImplicitRepetitionTrace,
+} from '../../src/learning/mastery-service.js';
 import { dueTopicsCoveredBy, type SchedulerState } from '../../src/learning/scheduler.js';
 
 const db = createDb(env.TEST_DATABASE_URL);
@@ -3262,4 +3267,114 @@ test('stale sessions are hidden for today, abandoned by new sessions, and keep l
     headers: headersAt(dayTwo),
   });
   expect((await activeAfterStart.json()).id).toBe(newSession.id);
+});
+
+test('concurrent implicit credits do not overwrite a newer target-card update', async () => {
+  await resetLearner();
+  const dueAt = new Date('2025-12-31T00:00:00.000Z');
+  await createReviewCard('vectors', 'math', dueAt, learnedReviewFsrs(dueAt));
+  const concepts = content.concepts.map((concept) =>
+    concept.id === 'linear-models'
+      ? { ...concept, encompassings: [{ id: 'vectors', weight: 0.2 }] }
+      : concept.id === 'supervised-learning'
+        ? { ...concept, encompassings: [{ id: 'vectors', weight: 0.8 }] }
+        : concept,
+  );
+  const index = {
+    ...content,
+    concepts,
+    conceptsById: new Map(concepts.map((concept) => [concept.id, concept])),
+  };
+  let readCount = 0;
+  let resolveReads!: () => void;
+  const bothReads = new Promise<void>((resolve) => {
+    resolveReads = resolve;
+  });
+  let updateCount = 0;
+  let resolveFirstUpdate!: () => void;
+  const firstUpdate = new Promise<void>((resolve) => {
+    resolveFirstUpdate = resolve;
+  });
+  const wrapQuery = (builder: object, kind: 'read' | 'write'): object =>
+    new Proxy(builder, {
+      get(target, property, receiver) {
+        const method = Reflect.get(target, property, receiver);
+        if (typeof method !== 'function') return method;
+        if (kind === 'read' && property === 'orderBy') {
+          return async (...args: unknown[]) => {
+            const result = await Reflect.apply(method, target, args);
+            readCount += 1;
+            if (readCount === 2) resolveReads();
+            await bothReads;
+            return result;
+          };
+        }
+        if (kind === 'write' && property === 'where') {
+          return async (...args: unknown[]) => {
+            const order = ++updateCount;
+            if (order === 2) await firstUpdate;
+            const result = await Reflect.apply(method, target, args);
+            if (order === 1) resolveFirstUpdate();
+            return result;
+          };
+        }
+        if (
+          (kind === 'read' && (property === 'from' || property === 'where')) ||
+          (kind === 'write' && property === 'set')
+        ) {
+          return (...args: unknown[]) => wrapQuery(Reflect.apply(method, target, args), kind);
+        }
+        return method.bind(target);
+      },
+    });
+  const racedDb = new Proxy(db, {
+    get(target, property, receiver) {
+      const method = Reflect.get(target, property, receiver);
+      if (property === 'select' || property === 'update') {
+        return (...args: unknown[]) =>
+          wrapQuery(Reflect.apply(method, target, args), property === 'select' ? 'read' : 'write');
+      }
+      return method;
+    },
+  }) as typeof db;
+  const events: ImplicitRepetitionTraceEvent[] = [];
+  setImplicitRepetitionTrace((event) => events.push(event));
+  try {
+    await Promise.all([
+      applyImplicitRepetitions(racedDb, {
+        userId,
+        conceptId: 'linear-models',
+        rating: Rating.Good,
+        index,
+        now: new Date(now),
+        timeZone: 'UTC',
+      }),
+      applyImplicitRepetitions(racedDb, {
+        userId,
+        conceptId: 'supervised-learning',
+        rating: Rating.Good,
+        index,
+        now: new Date(now),
+        timeZone: 'UTC',
+      }),
+    ]);
+  } finally {
+    setImplicitRepetitionTrace(undefined);
+  }
+  expect(events).toHaveLength(2);
+  expect(events[0]?.after.fsrs).not.toEqual(events[1]?.after.fsrs);
+  const [card] = await db
+    .select()
+    .from(reviewCards)
+    .where(
+      and(
+        eq(reviewCards.userId, userId),
+        eq(reviewCards.conceptId, 'vectors'),
+        eq(reviewCards.dimension, 'math'),
+      ),
+    );
+  expect(card?.fsrs).toEqual({
+    ...events[0]?.after.fsrs,
+    due: events[0]?.after.fsrs.due.toISOString(),
+  });
 });
