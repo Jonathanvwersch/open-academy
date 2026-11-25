@@ -298,27 +298,6 @@ export async function auditPlacementGrants(input: {
     const countsComplete = input.countsComplete(grant.conceptId) || topic?.status === 'complete';
     const shownPlacedOut = topic?.placedOut === true;
     if (p20HasWithdrawnCreditViolation({ countsComplete, shownPlacedOut, unlockedDependentIds })) {
-      if (process.env.SIM_DEBUG) {
-        const debugMastery = await db.select().from(mastery).where(eq(mastery.userId, userId));
-        const debugEvents = await db
-          .select()
-          .from(masteryEvents)
-          .where(eq(masteryEvents.userId, userId));
-        console.log(
-          'DEBUG',
-          grant.conceptId,
-          JSON.stringify({
-            topic,
-            m: debugMastery
-              .filter((r) => r.conceptId === grant.conceptId)
-              .map((r) => [r.dimension, r.state, r.inferred, r.provisional]),
-            e: debugEvents
-              .filter((r) => r.conceptId === grant.conceptId)
-              .map((r) => [r.dimension, r.fromState, r.toState, r.rule, r.createdAt]),
-            runs: runs.filter((r) => r.conceptId === grant.conceptId),
-          }),
-        );
-      }
       input.addViolation(
         'P20',
         grant.conceptId,
