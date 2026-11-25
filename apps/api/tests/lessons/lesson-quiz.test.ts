@@ -75,7 +75,10 @@ test('quiz recovery can use a new instance of a template already in the quiz', (
   const fixed = exercise('fixed', 1);
   const items = select(
     { knowledge_points: [point('step', [fixed.id, template.id])] },
-    new Map([[fixed.id, fixed], [template.id, template]]),
+    new Map([
+      [fixed.id, fixed],
+      [template.id, template],
+    ]),
     {
       excludeFixedExerciseIds: new Set([fixed.id, template.id]),
       usedSeeds: new Set([332584831]),
