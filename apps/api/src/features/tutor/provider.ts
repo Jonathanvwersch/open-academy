@@ -206,6 +206,40 @@ export class FakeProvider implements TutorProvider {
   }
 }
 
+const e2eDiagramReplies: ReadonlyMap<string, string> = new Map([
+  [
+    'Draw a projection onto a line.',
+    [
+      'The projection is the point Q where the perpendicular from P meets the line.',
+      '',
+      '```svg',
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 188" aria-label="Point P projects perpendicularly onto point Q on the line">',
+      '<rect width="320" height="188" rx="8" fill="#F8FAFC"/>',
+      '<path d="M24 138H296" stroke="#475569" stroke-width="2"/>',
+      '<path d="M48 138L205 40M195 41L205 40L201 50" fill="none" stroke="#2563EB" stroke-width="3" stroke-linejoin="round"/>',
+      '<path d="M205 40V138" stroke="#0F766E" stroke-width="2" stroke-dasharray="5 4"/>',
+      '<path d="M193 138V126H205" fill="none" stroke="#0F766E" stroke-width="2"/>',
+      '<circle cx="205" cy="40" r="4" fill="#2563EB"/>',
+      '<circle cx="205" cy="138" r="4" fill="#0F766E"/>',
+      '<text x="215" y="38" fill="#1E3A8A" font-size="16" font-family="sans-serif">P</text>',
+      '<text x="198" y="163" fill="#115E59" font-size="16" font-family="sans-serif">Q</text>',
+      '<text x="266" y="163" fill="#475569" font-size="14" font-family="sans-serif">line</text>',
+      '</svg>',
+      '```',
+    ].join('\n'),
+  ],
+  [
+    'Draw a projection with an incomplete SVG.',
+    [
+      'The projection is the foot of the perpendicular.',
+      '',
+      '```svg',
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 188" aria-label="Incomplete projection">',
+      '<path',
+    ].join('\n'),
+  ],
+]);
+
 export class E2ETutorProvider implements TutorProvider {
   readonly model = 'academy-e2e';
 
@@ -217,7 +251,8 @@ export class E2ETutorProvider implements TutorProvider {
   ): Promise<TutorResult<TutorReply>> {
     return {
       value: TutorReplySchema.parse({
-        message_md: `Tutor reply to: ${ctx.question ?? ''}`,
+        message_md:
+          e2eDiagramReplies.get(ctx.question ?? '') ?? `Tutor reply to: ${ctx.question ?? ''}`,
         misconception: null,
         suggests_review_of: [],
       }),

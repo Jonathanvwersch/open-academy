@@ -60,6 +60,7 @@ import {
   tutorThreadQueryOptions,
   tutorThreadsQueryOptions,
 } from './queries.js';
+import { checkTutorSvg, tutorSvgPlaceholder } from './tutor-svg.js';
 
 export interface TutorRequestContext {
   conceptId?: string;
@@ -114,14 +115,44 @@ const LazyMarkdown = lazy(() =>
   import('../../components/markdown.js').then((module) => ({ default: module.Markdown })),
 );
 
-function TutorMarkdown({ children }: { children: string }) {
+function TutorMarkdown({
+  children,
+  isStreaming = false,
+}: {
+  children: string;
+  isStreaming?: boolean;
+}) {
   return (
     <Suspense
       fallback={
         <div className="whitespace-pre-wrap break-words text-base leading-7">{children}</div>
       }
     >
-      <LazyMarkdown wrapDisplayMath>{children}</LazyMarkdown>
+      <LazyMarkdown
+        wrapDisplayMath
+        renderCodeBlock={({ language, source }) => {
+          if (!/\blanguage-svg\b/.test(`language-${language}`)) return undefined;
+          const diagram = checkTutorSvg(source);
+          if (diagram.status !== 'valid') {
+            return (
+              <p className="text-xs text-muted-foreground">
+                {tutorSvgPlaceholder(diagram.status, isStreaming)}
+              </p>
+            );
+          }
+          return (
+            <figure className="my-3 flex w-full min-w-0 justify-center rounded-lg border border-border bg-card p-3">
+              <img
+                src={`data:image/svg+xml;utf8,${encodeURIComponent(source)}`}
+                alt={diagram.label}
+                className="h-auto w-full max-w-full"
+              />
+            </figure>
+          );
+        }}
+      >
+        {children}
+      </LazyMarkdown>
     </Suspense>
   );
 }
@@ -1110,7 +1141,7 @@ export function TutorContextProvider({
                             >
                               {message.role === 'user' ? 'You' : 'Tutor'}
                             </p>
-                            <MessageContent>
+                            <MessageContent className="has-[figure]:w-full">
                               <TutorMarkdown>
                                 {message.role === 'assistant'
                                   ? repairTutorMarkdown(message.content)

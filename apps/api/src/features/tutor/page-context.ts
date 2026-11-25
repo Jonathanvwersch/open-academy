@@ -21,13 +21,26 @@ export interface PaperTutorContext {
 }
 
 const PAGE_CONTENT_LIMIT = 12_000;
+const DIAGRAM_LABEL_ALLOWANCE = 2_000;
 const TRUNCATION_SUFFIX = '\n…[truncated]';
 
 export function sanitizePageContent(content: string): string {
-  const sanitized = content.replace(/```[ \t]*svg\b[^\n]*\r?\n[\s\S]*?```/gi, '[diagram]');
-  return sanitized.length > PAGE_CONTENT_LIMIT
-    ? `${sanitized.slice(0, PAGE_CONTENT_LIMIT)}${TRUNCATION_SUFFIX}`
-    : sanitized;
+  let addedLabelLength = 0;
+  const sanitized = content.replace(
+    /```[ \t]*svg\b[^\n]*\r?\n([\s\S]*?)```/gi,
+    (_match, svg: string) => {
+      const root = svg.match(/<svg\b(?:[^>"']|"[^"]*"|'[^']*')*>/)?.[0];
+      const label = Array.from(root?.matchAll(/\s+([\w:.-]+)\s*=\s*(["'])([\s\S]*?)\2/g) ?? [])
+        .find(([, name]) => name === 'aria-label')?.[3]
+        ?.replace(/\s+/g, ' ')
+        .trim();
+      if (!label) return '[diagram]';
+      addedLabelLength += label.length + ': '.length;
+      return `[diagram: ${label}]`;
+    },
+  );
+  const limit = PAGE_CONTENT_LIMIT + Math.min(addedLabelLength, DIAGRAM_LABEL_ALLOWANCE);
+  return sanitized.length > limit ? `${sanitized.slice(0, limit)}${TRUNCATION_SUFFIX}` : sanitized;
 }
 
 function summaryFor(lesson: IndexedLesson): string {
