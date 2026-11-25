@@ -828,7 +828,9 @@ function packWeekday(
   const selectedConcepts = new Set<string>();
   const selectedLearnConcepts = new Set<string>();
   let learnBudget = budget;
-  const plannedActivityCount = (items: Candidate[]) => mixReviewActivities(items, content).length;
+  const reservedSlots = quiz ? 1 : 0;
+  const plannedActivityCount = (items: Candidate[]) =>
+    reservedSlots + mixReviewActivities(items, content).length;
   const addRejectionReason = (candidate: Candidate) => {
     const reviewAlongsideLesson =
       candidate.activity.kind === 'review' &&
@@ -1610,7 +1612,7 @@ function packWeekday(
     state,
     content,
     Math.max(0, budget - usedMinutes),
-    mixedReviewCandidates.length,
+    reservedSlots + mixedReviewCandidates.length,
     selected.find((candidate) => candidate.activity.kind === 'learn')?.courseId,
   );
   const activities = [
@@ -1620,7 +1622,7 @@ function packWeekday(
   if (reviewSelectionTrace) {
     reviewSelectionTrace.finalMetrics = {
       ...metrics(),
-      plannedActivityCount: activities.length,
+      plannedActivityCount: reservedSlots + activities.length,
     };
   }
   const plan = quiz ? [quiz, ...activities] : activities;
