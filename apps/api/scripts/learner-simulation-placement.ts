@@ -1,5 +1,5 @@
 import type { ContentIndex } from '@academy/aesop/course/types';
-import { asc, eq } from 'drizzle-orm';
+import { and, asc, eq } from 'drizzle-orm';
 import type { Database } from '../src/db/client.js';
 import {
   attempts,
@@ -38,6 +38,7 @@ export interface PlacementAuditState {
   seenAttemptIds: Set<string>;
   seenFlagIds: Set<string>;
   withdrawnDay: Map<string, number>;
+  lessonRunsAtWithdrawal: Map<string, ReadonlySet<string>>;
   replayedAttemptIds: Set<string>;
   history: { attempts: Map<string, string>; xp: Map<string, string> } | null;
 }
@@ -51,6 +52,7 @@ export function emptyPlacementAuditState(): PlacementAuditState {
     seenAttemptIds: new Set(),
     seenFlagIds: new Set(),
     withdrawnDay: new Map(),
+    lessonRunsAtWithdrawal: new Map(),
     replayedAttemptIds: new Set(),
     history: null,
   };
@@ -87,13 +89,44 @@ export function p20OpenDependentIds(input: {
     .map((topic) => topic.conceptId);
 }
 
-/** Simulator requests get distinct times, so a strict comparison orders same-day events. */
-export function startedBefore(
-  runs: ReadonlyArray<{ conceptId: string; startedAt: Date }>,
-  conceptId: string,
-  at: Date,
-): boolean {
-  return runs.some((run) => run.conceptId === conceptId && run.startedAt.getTime() < at.getTime());
+/**
+ * Topics with a lesson run when a grant was withdrawn. The simulator records this right after
+ * the withdrawing request, because same-day requests share one timestamp.
+ */
+export function lessonRunConceptsAtWithdrawal(input: {
+  recorded: ReadonlyMap<string, ReadonlySet<string>>;
+  grantId: string;
+  runs: ReadonlyArray<{ conceptId: string; startedAt: Date }>;
+  withdrawnAt: Date;
+}): ReadonlySet<string> {
+  return (
+    input.recorded.get(input.grantId) ??
+    new Set(
+      input.runs
+        .filter((run) => run.startedAt.getTime() <= input.withdrawnAt.getTime())
+        .map((run) => run.conceptId),
+    )
+  );
+}
+
+/** Called after each simulated request: snapshots lesson runs for newly withdrawn grants. */
+export async function recordLessonRunsAtWithdrawal(
+  db: Database,
+  userId: string,
+  state: PlacementAuditState,
+): Promise<void> {
+  const withdrawn = await db
+    .select({ id: placementGrants.id })
+    .from(placementGrants)
+    .where(and(eq(placementGrants.userId, userId), eq(placementGrants.state, 'withdrawn')));
+  const fresh = withdrawn.filter((grant) => !state.lessonRunsAtWithdrawal.has(grant.id));
+  if (fresh.length === 0) return;
+  const runs = await db
+    .select({ conceptId: lessonRuns.conceptId })
+    .from(lessonRuns)
+    .where(eq(lessonRuns.userId, userId));
+  const conceptIds = new Set(runs.map((run) => run.conceptId));
+  for (const grant of fresh) state.lessonRunsAtWithdrawal.set(grant.id, conceptIds);
 }
 
 export function p21HasUnboundedWithdrawalViolation(input: {
@@ -304,10 +337,15 @@ export async function auditPlacementGrants(input: {
       runs.filter((run) => run.status === 'completed').map((run) => run.conceptId),
     );
     const withdrawnBeforeToday = (state.withdrawnDay.get(grant.conceptId) ?? day) < day;
-    const withdrawnAt = grant.withdrawnAt ?? grant.updatedAt;
+    const studiedAtWithdrawal = lessonRunConceptsAtWithdrawal({
+      recorded: state.lessonRunsAtWithdrawal,
+      grantId: grant.id,
+      runs,
+      withdrawnAt: grant.withdrawnAt ?? grant.updatedAt,
+    });
     const exemptIds = new Set([
       ...completedDependents,
-      ...dependents.filter((conceptId) => startedBefore(runs, conceptId, withdrawnAt)),
+      ...dependents.filter((conceptId) => studiedAtWithdrawal.has(conceptId)),
     ]);
     const unlockedDependentIds = [
       ...p20OpenDependentIds({
@@ -361,7 +399,13 @@ export async function auditPlacementGrants(input: {
     input.markChecked('P22');
     const withdrawnAt = grant.withdrawnAt;
     const studiedBeforeWithdrawal =
-      withdrawnAt !== null && startedBefore(runs, grant.conceptId, withdrawnAt);
+      withdrawnAt !== null &&
+      lessonRunConceptsAtWithdrawal({
+        recorded: state.lessonRunsAtWithdrawal,
+        grantId: grant.id,
+        runs,
+        withdrawnAt,
+      }).has(grant.conceptId);
     if (
       p22HasProtectedWithdrawalViolation({
         state: grant.state,

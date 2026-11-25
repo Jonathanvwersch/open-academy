@@ -4,12 +4,12 @@ import type { SchedulerState } from '@academy/aesop/planner/scheduler';
 import { type Card, Rating, State } from 'ts-fsrs';
 import { afterAll, expect, test } from 'vitest';
 import {
+  lessonRunConceptsAtWithdrawal,
   p20HasWithdrawnCreditViolation,
   p20OpenDependentIds,
   p21HasUnboundedWithdrawalViolation,
   p22HasProtectedWithdrawalViolation,
   p23ChangedHistoryIds,
-  startedBefore,
 } from '../../scripts/learner-simulation-placement.js';
 import {
   attributeActivityLogs,
@@ -933,11 +933,13 @@ test('P20 treats every open CourseTopic status as unlocked', () => {
 });
 
 test('P22 orders a lesson start and a withdrawal on the same day', () => {
-  const noon = Date.parse('2026-01-07T12:00:00.000Z');
-  const runs = [{ conceptId: 'a', startedAt: new Date(noon + 3) }];
-  expect(startedBefore(runs, 'a', new Date(noon + 7))).toBe(true);
-  expect(startedBefore(runs, 'a', new Date(noon + 2))).toBe(false);
-  expect(startedBefore(runs, 'b', new Date(noon + 7))).toBe(false);
+  const noon = new Date('2026-01-07T12:00:00.000Z');
+  const runs = [{ conceptId: 'a', startedAt: noon }];
+  const studied = (recorded: ReadonlyMap<string, ReadonlySet<string>>) =>
+    lessonRunConceptsAtWithdrawal({ recorded, grantId: 'g', runs, withdrawnAt: noon }).has('a');
+  expect(studied(new Map([['g', new Set(['a'])]]))).toBe(true);
+  expect(studied(new Map([['g', new Set()]]))).toBe(false);
+  expect(studied(new Map())).toBe(true);
 });
 
 test('P21 bounds the failures a conditional grant can survive', () => {
