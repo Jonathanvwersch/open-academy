@@ -66,7 +66,7 @@ Each topic has a mastery state for each of its dimensions (conceptual, math, imp
 - An answer is _independent_ when the learner used no hints, got it right first time, and the engine graded it (not an AI grader).
 - 2 independent correct answers on different questions give `independent`.
 - If the second independent answer comes 3 or more days after the first, the state becomes `retained`.
-- An independent wrong answer moves the state down one level.
+- An independent wrong answer moves `retained` down to `independent`, and `independent` down to `assisted`. Lower states do not change. A provisional `independent` state goes back to `introduced`.
 - Hints reduce the credit for an answer. AI-graded and self-graded answers give at most half credit. **[Ours]**
 
 ## 6. Spaced reviews (`memory/fsrs.ts`)
@@ -78,6 +78,7 @@ The engine uses the FSRS algorithm (the `ts-fsrs` library) for spaced repetition
   - **Again**: wrong.
   - **Hard**: correct, but with a hint, on the second try, with partial marks, or slower than the question's target time.
   - **Good**: correct, first try, no hint, in time.
+- A review activity gives one rating for each topic. The rating is Good if every answer is correct, with no hint and in time. It is Hard if at least 2 of 3 answers are correct. Otherwise it is Again.
 - FSRS uses the rating to set the next due date.
 
 ## 7. FIRe credit through the graph (`memory/implicit-repetition.ts`, `graph/encompassing.ts`)
