@@ -121,6 +121,32 @@ it('does not overwrite a parent write for the same learner on conflict', async (
   expect(await store.listMastery(learnerId)).toEqual([outside]);
 });
 
+it('does not conflict with a parent write when a duplicate XP insert is a no-op', async () => {
+  const store = memoryStore();
+  const event = {
+    kind: 'quiz' as const,
+    sourceKey: 'quiz:one',
+    conceptId: null,
+    amount: 5,
+    earnedAt: new Date('2026-01-17T12:00:00Z'),
+    localDate: '2026-01-17',
+  };
+  const mastery = initialMastery('vectors', 'math');
+  await store.insertXpEventOnce(learnerId, event);
+
+  const inserted = await store.transaction(async (tx) => {
+    const inserted = await tx.insertXpEventOnce(learnerId, { ...event, amount: 999 });
+    await store.saveMastery(learnerId, mastery);
+    return inserted;
+  });
+
+  expect(inserted).toBe(false);
+  expect(await store.listMastery(learnerId)).toEqual([mastery]);
+  expect(await store.listXpEvents(learnerId, {})).toEqual([
+    expect.objectContaining({ sourceKey: event.sourceKey, amount: event.amount }),
+  ]);
+});
+
 it('closes a retained transaction handle after commit', async () => {
   const store = memoryStore();
   const flag = { conceptId: 'vectors', targetPrereqId: null };
