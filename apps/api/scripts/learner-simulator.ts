@@ -3116,6 +3116,7 @@ interface P15CardSnapshot {
   dueAt: Date;
   lastReviewAt: Date | null;
   fsrs: unknown;
+  suspendedAt?: Date | null;
 }
 
 function p15CardIdentity(card: P15CardSnapshot): string {
@@ -3293,8 +3294,8 @@ export function auditP15Trace(
       if (sourceOrder === undefined) continue;
       const hardPrerequisiteIds =
         prerequisiteResetContext.hardPrerequisiteIdsByConcept.get(log.conceptId) ?? [];
-      const candidates = [...beforeById.values()].filter((card) =>
-        hardPrerequisiteIds.includes(card.conceptId),
+      const candidates = [...beforeById.values()].filter(
+        (card) => hardPrerequisiteIds.includes(card.conceptId) && !card.suspendedAt,
       );
       const eligible = candidates.filter((card) =>
         canBringPrerequisiteDueNow({
