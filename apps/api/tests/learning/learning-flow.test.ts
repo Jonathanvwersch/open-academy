@@ -1,3 +1,4 @@
+import { setTimeout as delay } from 'node:timers/promises';
 import { instantiateExercise, isTemplate } from '@academy/aesop/course/templates';
 import type { ContentIndex } from '@academy/aesop/course/types';
 import { buildEncompassingIndex } from '@academy/aesop/graph/encompassing';
@@ -323,6 +324,31 @@ async function createSessionWithPreviousFinalAttempt(attempt: {
   if (!activity) throw new Error('Could not find the new vectors learn activity');
   return activity;
 }
+
+test('session creation does not block on a concurrent user foreign-key check', async () => {
+  await resetLearner();
+  await enrollDefaultCourse();
+  let request: Promise<Response> | Response | undefined;
+  const timeout = new AbortController();
+  const status = await db.transaction(async (tx) => {
+    await tx.select({ id: users.id }).from(users).where(eq(users.id, userId)).for('key share');
+    request = app.request('/api/sessions', {
+      method: 'POST',
+      headers: headersAt(now),
+      body: JSON.stringify({ budgetMinutes: 60, focusConceptId: 'vectors' }),
+    });
+    try {
+      return await Promise.race([
+        Promise.resolve(request).then((response) => response.status),
+        delay(2_000, 'blocked', { signal: timeout.signal }),
+      ]);
+    } finally {
+      timeout.abort();
+    }
+  });
+  await request;
+  expect(status).toBe(201);
+});
 
 test('session creation prefills a finalized lesson final question', async () => {
   const activity = await createSessionWithPreviousFinalAttempt({

@@ -242,7 +242,11 @@ export async function getToday(deps: FeatureServices, request: FeatureRequest) {
 
 export async function postSessions(deps: FeatureServices, request: FeatureRequest) {
   return deps.db.transaction(async (tx) => {
-    await tx.select({ id: users.id }).from(users).where(eq(users.id, request.userId)).for('update');
+    await tx
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.id, request.userId))
+      .for('no key update');
     const db = tx as unknown as Database;
     return createSession(
       { ...deps, db },

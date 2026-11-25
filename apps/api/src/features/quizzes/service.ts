@@ -44,7 +44,11 @@ function withQuizLock<T>(
   work: (repo: LearnerRepository) => Promise<T>,
 ): Promise<T> {
   return request.repo.db.transaction(async (tx) => {
-    await tx.select({ id: users.id }).from(users).where(eq(users.id, request.userId)).for('update');
+    await tx
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.id, request.userId))
+      .for('no key update');
     return work(new LearnerRepository(tx as unknown as Database, request.userId));
   });
 }
