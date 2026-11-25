@@ -6,6 +6,7 @@ import { retrievability, startOfNextCalendarDay } from '@academy/aesop/memory/fs
 import type { MasteryRecord } from '@academy/aesop/memory/types';
 import { attemptedExerciseIdsByActivity as groupAttemptedExerciseIdsByActivity } from '@academy/aesop/planner/review-topics';
 import {
+  buildRemedialReviewActivityForConcept,
   buildReviewActivityForConcept,
   effectiveFocusSubjectId,
   type SchedulerState,
@@ -507,7 +508,12 @@ export class LearnerRepository {
               (id) => !reservedTopics.has(id),
             );
         for (const topic of topics) {
-          const replacement = buildReviewActivityForConcept(
+          const reselect = state.remediationFlags.some(
+            (flag) => flag.status !== 'resolved' && flag.targetPrereqId === topic,
+          )
+            ? buildRemedialReviewActivityForConcept
+            : buildReviewActivityForConcept;
+          const replacement = reselect(
             { ...state, usedExerciseIds: [...usedExerciseIds, ...exerciseIds] },
             content,
             now,

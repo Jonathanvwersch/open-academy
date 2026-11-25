@@ -184,60 +184,68 @@ test('an open quiz keeps deleted answered items and replaces or drops deleted un
   ).toEqual(saved);
 });
 
-test.each([true, false])(
-  'recover a saved due review (has surviving question: %s)',
-  async (partial) => {
-    const now = new Date(headers['X-Now']);
-    const dueAt = new Date(now.getTime() - 86_400_000);
-    const deleted = 'sl-review-ingredients';
-    const survivor = 'sl-classify-vs-regress';
-    await db
-      .insert(reviewCards)
-      .values({ userId, conceptId, dimension: 'conceptual', dueAt, fsrs: newReviewCard(dueAt) });
-    const [session] = await db
-      .insert(studySessions)
-      .values({
-        userId,
-        status: 'active',
-        startedAt: now,
-        plannedMinutes: 15,
-      })
-      .returning();
-    const [activity] = await db
-      .insert(sessionActivities)
-      .values({
-        sessionId: session.id,
-        idx: 0,
-        kind: 'review',
-        conceptId,
-        plannedMinutes: 5,
-        exerciseIds: partial ? [deleted, survivor] : [deleted],
-        status: 'in_progress',
-      })
-      .returning();
-    removeExercises([deleted]);
+test.each([
+  [true, false],
+  [false, false],
+  [false, true],
+])('recover a saved review (surviving question: %s, remedial: %s)', async (partial, remedial) => {
+  const now = new Date(headers['X-Now']);
+  const dueAt = new Date(now.getTime() + (remedial ? 1 : -1) * 86_400_000);
+  const deleted = 'sl-review-ingredients';
+  const survivor = 'sl-classify-vs-regress';
+  await db
+    .insert(reviewCards)
+    .values({ userId, conceptId, dimension: 'conceptual', dueAt, fsrs: newReviewCard(dueAt) });
+  if (remedial) {
+    await db.insert(remediationFlags).values({
+      userId,
+      conceptId: 'linear-regression',
+      targetPrereqId: conceptId,
+    });
+  }
+  const [session] = await db
+    .insert(studySessions)
+    .values({
+      userId,
+      status: 'active',
+      startedAt: now,
+      plannedMinutes: 15,
+    })
+    .returning();
+  const [activity] = await db
+    .insert(sessionActivities)
+    .values({
+      sessionId: session.id,
+      idx: 0,
+      kind: 'review',
+      conceptId,
+      plannedMinutes: 5,
+      exerciseIds: partial ? [deleted, survivor] : [deleted],
+      status: 'in_progress',
+    })
+    .returning();
+  removeExercises([deleted]);
 
-    const active = await app.request('/api/sessions/active', { headers });
-    expect(active.status).toBe(200);
-    const [restored] = (await active.json()).activities;
-    expect(restored).toMatchObject({ id: activity.id, kind: 'review', status: 'in_progress' });
-    if (partial) expect(restored.exerciseIds).toEqual([survivor]);
-    else {
-      expect(restored.exerciseIds.length).toBeGreaterThan(0);
-      expect(restored.exerciseIds).not.toContain(deleted);
-      expect(
-        restored.exerciseIds.every(
-          (id: string) => content.exercisesById.get(id)?.concept === conceptId,
-        ),
-      ).toBe(true);
-    }
-    const resumed = await app.request(`/api/sessions/${session.id}`, { headers });
-    expect((await resumed.json()).activities[0].exerciseIds).toEqual(restored.exerciseIds);
+  const active = await app.request('/api/sessions/active', { headers });
+  expect(active.status).toBe(200);
+  const [restored] = (await active.json()).activities;
+  expect(restored).toMatchObject({ id: activity.id, kind: 'review', status: 'in_progress' });
+  if (partial) expect(restored.exerciseIds).toEqual([survivor]);
+  else {
+    expect(restored.exerciseIds.length).toBeGreaterThan(0);
+    expect(restored.exerciseIds).not.toContain(deleted);
     expect(
-      (await db.select().from(reviewCards).where(eq(reviewCards.userId, userId)))[0].dueAt,
-    ).toEqual(dueAt);
-  },
-);
+      restored.exerciseIds.every(
+        (id: string) => content.exercisesById.get(id)?.concept === conceptId,
+      ),
+    ).toBe(true);
+  }
+  const resumed = await app.request(`/api/sessions/${session.id}`, { headers });
+  expect((await resumed.json()).activities[0].exerciseIds).toEqual(restored.exerciseIds);
+  expect(
+    (await db.select().from(reviewCards).where(eq(reviewCards.userId, userId)))[0].dueAt,
+  ).toEqual(dueAt);
+});
 
 test('full lesson review carries its rendered checks and the same derived run status', async () => {
   const untouchedResponse = await app.request(`/api/lessons/${conceptId}/review`, { headers });
