@@ -22,12 +22,14 @@ import { drizzleLearnerStore } from '../../db/learner-store.js';
 import { LearnerRepository } from '../../db/repository.js';
 import { attempts, diagnosticRuns, lessonRuns, masteryEvents, users } from '../../db/schema.js';
 import { fsrsFuzzEnabled } from '../../learning/fsrs-fuzz.js';
+import { placementGrantStates, recordPlacementGrants } from '../../learning/placement-grants.js';
 import { type FeatureRequest, type FeatureServices, serviceResult } from '../../service-context.js';
 import { buildCoursePayload } from '../course/service.js';
 
+const durationMs = z.number().int().nonnegative().optional();
 const answerBody = z.union([
-  z.object({ exerciseId: z.string(), dontKnow: z.literal(true) }),
-  z.object({ exerciseId: z.string(), answer: z.unknown() }),
+  z.object({ exerciseId: z.string(), dontKnow: z.literal(true), durationMs }),
+  z.object({ exerciseId: z.string(), answer: z.unknown(), durationMs }),
 ]);
 
 async function placementProgress(request: FeatureRequest) {
@@ -44,24 +46,38 @@ function stateFor(run: { state: unknown }): PlacementState {
 
 async function creditPlacedOut(
   request: FeatureRequest,
+  runId: string,
   state: PlacementState,
   content: Awaited<ReturnType<FeatureServices['content']>>,
 ) {
   const { mastery } = await placementProgress(request);
   const now = request.now();
+  const grants = await recordPlacementGrants({
+    db: request.repo.db,
+    userId: request.userId,
+    runId,
+    state,
+    content,
+    now,
+  });
   const masteryByKey = new Map(
     mastery.map((record) => [masteryKey(record.conceptId, record.dimension), record]),
   );
   for (const conceptId of state.known) {
     const concept = content.conceptsById.get(conceptId);
-    if (!concept) continue;
+    const grant = grants.get(conceptId);
+    if (!concept || !grant) continue;
     for (const dimension of concept.dimensions) {
       const key = masteryKey(conceptId, dimension);
       const record = masteryByKey.get(key) ?? initialMastery(conceptId, dimension);
       const fromState = record.state;
+      if (grant === 'confirmed' && record.provisional) {
+        record.provisional = false;
+        await request.repo.saveMastery(record);
+      }
       if (masteryRank(record.state) < masteryRank('independent')) {
         record.state = 'independent';
-        record.provisional = true;
+        record.provisional = grant === 'conditional';
         record.lastAssessedAt = now.toISOString();
         await request.repo.saveMastery(record);
         masteryByKey.set(key, record);
@@ -97,7 +113,7 @@ async function completeRun(
   content: Awaited<ReturnType<FeatureServices['content']>>,
 ) {
   const now = request.now();
-  await creditPlacedOut(request, state, content);
+  await creditPlacedOut(request, runId, state, content);
   await request.repo.db
     .update(diagnosticRuns)
     .set({ state, status: 'completed', completedAt: now, summary: state })
@@ -237,6 +253,7 @@ async function answerPlacement(deps: FeatureServices, request: FeatureRequest) {
       attemptNo: 1,
       gradedBy: result.graded_by ?? 'deterministic',
       feedback: { message: result.feedback },
+      durationMs: body.data.durationMs,
       createdAt: now,
     })
     .returning();
@@ -260,6 +277,7 @@ async function answerPlacement(deps: FeatureServices, request: FeatureRequest) {
       conceptId: exercise.concept,
       exerciseId: exercise.id,
       correct: result.correct >= 1,
+      attemptId: attempt.id,
     },
     content,
     progress.mastery,
@@ -294,7 +312,13 @@ export async function getPlacementResults(deps: FeatureServices, request: Featur
   const course = content.coursesById.get(state.courseId);
   if (!course) return serviceResult({ error: 'Placement course not found' }, 404);
   const progress = await placementProgress(request);
-  const known = new Set(state.known);
+  const grantStates = await placementGrantStates(request.repo.db, request.userId);
+  const credited = (conceptId: string) => {
+    const grant = grantStates.get(conceptId);
+    return grant !== undefined && grant !== 'withdrawn';
+  };
+  const known = new Set(state.known.filter(credited));
+  const movedBack = state.known.filter((conceptId) => grantStates.get(conceptId) === 'withdrawn');
   const unitConcepts = [...new Set(course.units.flatMap((unit) => unit.concepts))];
   const courseProgress = buildCoursePayload(
     content,
@@ -334,6 +358,9 @@ export async function getPlacementResults(deps: FeatureServices, request: Featur
     foundationsPlacedOut: courseFoundations(content, course.id)
       .filter((concept) => known.has(concept.id))
       .map((concept) => concept.title),
+    movedBack: movedBack.map(
+      (conceptId) => content.conceptsById.get(conceptId)?.title ?? conceptId,
+    ),
     topicsTotal: courseProgress.topicsTotal,
     topicsDone: courseProgress.topicsDone,
     firstTopic: firstTopic ? (content.conceptsById.get(firstTopic)?.title ?? firstTopic) : null,

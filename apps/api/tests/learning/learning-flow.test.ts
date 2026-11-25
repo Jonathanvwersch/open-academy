@@ -27,10 +27,12 @@ import { LearnerRepository } from '../../src/db/repository.js';
 import {
   attempts,
   courseEnrollments,
+  diagnosticRuns,
   hintEvents,
   lessonQuizItems,
   lessonRuns,
   masteryEvents,
+  placementGrants,
   remediationFlags,
   reviewCards,
   reviewLogs,
@@ -1002,6 +1004,67 @@ test('completing a review resolves open remediation flags for its topics', async
   expect(flags[0]?.resolvedAt).toBeInstanceOf(Date);
 });
 
+test('a mixed review keeps the follow-up flag it opened', async () => {
+  await resetLearner();
+  const reviewable = (conceptId: string) => {
+    const exercise = content.exercisesByConcept
+      .get(conceptId)
+      ?.find(
+        (candidate) =>
+          candidate.type === 'mc' &&
+          !candidate.multi &&
+          !candidate.lesson_only &&
+          !isTemplate(candidate),
+      );
+    if (exercise?.type !== 'mc') throw new Error(`Missing ${conceptId} review exercise`);
+    return exercise;
+  };
+  const prerequisite = reviewable('vectors');
+  const dependent = reviewable('derivatives');
+  const [run] = await db
+    .insert(diagnosticRuns)
+    .values({ userId, kind: 'placement', status: 'completed', state: {}, startedAt: new Date(now) })
+    .returning();
+  if (!run) throw new Error('Could not create a placement run');
+  await db.insert(placementGrants).values({
+    userId,
+    runId: run.id,
+    conceptId: 'vectors',
+    origin: 'inferred',
+    state: 'conditional',
+    reason: 'inferred_only',
+    createdAt: new Date(now),
+    updatedAt: new Date(now),
+  });
+  const activity = await createReviewActivity(null, [prerequisite.id, dependent.id]);
+  await db.insert(hintEvents).values({
+    userId,
+    activityId: activity.id,
+    exerciseId: prerequisite.id,
+    level: 1,
+    text: 'Hint',
+    createdAt: new Date(Date.parse(now) - 1000),
+  });
+  const correctOption = prerequisite.options.find((option) => option.correct);
+  expect(await submitReviewExercise(prerequisite.id, activity.id, correctOption?.id)).toMatchObject(
+    { correct: 1 },
+  );
+  const wrongOption = dependent.options.find((option) => !option.correct);
+  if (!wrongOption) throw new Error('Missing incorrect derivatives option');
+  expect(await submitReviewExercise(dependent.id, activity.id, wrongOption.id)).toMatchObject({
+    activityCompleted: true,
+    correct: 0,
+  });
+  const flags = await db.select().from(remediationFlags).where(eq(remediationFlags.userId, userId));
+  expect(flags).toEqual([
+    expect.objectContaining({
+      status: 'open',
+      conceptId: 'derivatives',
+      targetPrereqId: 'vectors',
+    }),
+  ]);
+});
+
 test('a review activity schedules its card once after all three answers', async () => {
   await resetLearner();
   const exercises = (content.exercisesByConcept.get('vectors') ?? [])
@@ -1579,6 +1642,26 @@ test('two consecutive Again review activities pull the weakest hard-prerequisite
       (exerciseId) => content.exercisesById.get(exerciseId)?.concept === weakest.conceptId,
     ),
   ).toBe(true);
+});
+
+test('double Again skips a suspended prerequisite card and pulls the next weakest one due', async () => {
+  await resetLearner();
+  const { weakest, stronger, future } = await createPrerequisiteReviewCards(
+    new Date('2026-02-01T12:00:00.000Z'),
+  );
+  const suspendedAt = new Date('2026-01-31T12:00:00.000Z');
+  await db.update(reviewCards).set({ suspendedAt }).where(eq(reviewCards.id, weakest.id));
+  const firstActivity = await createReviewActivity('gradient-descent', 'gradient-descent-step');
+  const secondActivity = await createReviewActivity('gradient-descent', 'gradient-descent-step');
+
+  await submitReviewActivityAgain(firstActivity.id);
+  await submitReviewActivityAgain(secondActivity.id);
+
+  const [suspended] = await db.select().from(reviewCards).where(eq(reviewCards.id, weakest.id));
+  const [pulled] = await db.select().from(reviewCards).where(eq(reviewCards.id, stronger.id));
+  expect(suspended?.dueAt).toEqual(weakest.dueAt);
+  expect(pulled?.dueAt.toISOString()).toBe(now);
+  expect(pulled?.dueAt).not.toEqual(future);
 });
 
 test('double Again inserts before a skipped session activity', async () => {

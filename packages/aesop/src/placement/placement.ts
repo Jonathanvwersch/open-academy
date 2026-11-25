@@ -10,6 +10,7 @@ export interface PlacementAnswer {
   conceptId: string;
   exerciseId: string;
   correct: boolean;
+  attemptId?: string;
 }
 
 export interface PlacementState {

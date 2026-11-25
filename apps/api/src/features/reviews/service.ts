@@ -2,7 +2,7 @@ import { orderCourseIdsBySubject } from '@academy/aesop/course/course-order';
 import { courseConceptIds, courseFoundationIds } from '@academy/aesop/graph/prerequisites';
 import { isDueToday } from '@academy/aesop/memory/fsrs';
 import { localDateKey } from '@academy/aesop/progress/xp';
-import { asc, eq } from 'drizzle-orm';
+import { and, asc, eq, isNull } from 'drizzle-orm';
 import { reviewCards } from '../../db/schema.js';
 import { localDateDifference, shiftLocalDate } from '../../http/request-context.js';
 import { type FeatureRequest, type FeatureServices, serviceResult } from '../../service-context.js';
@@ -18,7 +18,7 @@ export async function getReviews(deps: FeatureServices, request: FeatureRequest)
     db
       .select()
       .from(reviewCards)
-      .where(eq(reviewCards.userId, request.userId))
+      .where(and(eq(reviewCards.userId, request.userId), isNull(reviewCards.suspendedAt)))
       .orderBy(asc(reviewCards.dueAt)),
     request.repo.activeCourseId(),
   ]);

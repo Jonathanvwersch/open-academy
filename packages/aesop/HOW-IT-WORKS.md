@@ -120,13 +120,62 @@ Rules that apply to the whole plan:
 
 A new learner can take a placement test for a course. It has at most 16 questions. **[Ours]**
 
-- The engine asks about the topic in the middle of the topics that are not yet decided.
+### The test
+
+- The engine asks about the topic in the middle of the topics that are not yet decided. **[Ours]**
 - A correct answer marks the topic as known, and also all its hard prerequisites. **[MA]**
 - A wrong answer marks the topic as unknown, and also all the topics that build on it. **[MA]**
-- At the end, each known topic gets `independent` mastery, marked _provisional_, and a review card.
-- One independent wrong answer later on a provisional topic removes that credit.
 
-Phase 4 will add the full Math Academy rule. Borderline credit will be withdrawn when the learner struggles on topics that build on it.
+### Placement credit
+
+Each known topic gets placement credit, stored as a grant. A grant has an origin and a state.
+
+- A grant is _direct_ when the learner answered a question on that topic. **[Ours]**
+- A grant is _inferred_ when only an answer on a later topic gave the credit. **[Ours]**
+- A grant is _confirmed_ when the direct answers were correct, on time and without conflict. **[Ours]**
+- A grant is _conditional_ when a correct answer was too slow. **[MA]**
+- A grant is also _conditional_ when a hard prerequisite of the topic got a wrong answer. **[MA]**
+- An inferred grant is always _conditional_. **[Ours]**
+- A question without a target time is never too slow. **[Ours]**
+- Each known topic gets `independent` mastery and a review card. **[Ours]**
+- Conditional credit gives _provisional_ mastery. **[Ours]**
+- One later independent correct answer on a conditional topic confirms its grant. **[Ours]**
+- An independent answer uses no hints, is the first attempt, and is graded without AI. **[Ours]**
+- An answer without a stored attempt still counts as evidence for its topic. **[Ours]**
+- A topic with any confirmed grant stays confirmed. A later grant does not change this. **[Ours]**
+
+### Withdrawal
+
+A _withdrawn_ grant gives no credit.
+
+- One independent wrong answer on a conditional topic withdraws its grant at once. **[MA]**
+- A wrong review answer on a later topic does not withdraw credit by itself. **[Ours]**
+- That answer queues a targeted review for each conditional key prerequisite of its step. **[Ours]**
+- A failed targeted review withdraws the grant of that prerequisite. **[Ours]**
+- Withdrawal also withdraws the conditional topics that build on that topic through hard prerequisites. **[MA]**
+- Withdrawal never removes confirmed credit. **[Ours]**
+- Withdrawal never removes a topic that has a lesson run. **[Ours]**
+- One withdrawal changes everything below together. If one part fails, nothing changes. **[Ours]**
+
+### After withdrawal
+
+- A withdrawn topic does not count as complete. **[MA]**
+- A withdrawn topic does not unlock the topics that build on it. **[MA]**
+- The engine rebuilds its mastery from the answers that remain, without the placement answers. **[Ours]**
+- Its review cards are suspended. The planner skips them until the learner completes the lesson. **[Ours]**
+- New credit from a later placement test also ends the suspension. **[Ours]**
+- The planner puts the topic back in the plan, in prerequisite order. **[MA]**
+- Planned work that needs the topic is skipped. **[Ours]**
+- A completed course that contains the topic opens again. **[Ours]**
+- The course page tells the learner why the topic came back. **[Ours]**
+- Course and placement pages show the current credit. **[Ours]**
+
+### What withdrawal keeps
+
+- Answers stay unchanged. **[Ours]**
+- Review history stays unchanged. **[Ours]**
+- XP stays unchanged. **[Ours]**
+- The placement test record stays unchanged. **[Ours]**
 
 ## 10. XP and streaks (`progress/`)
 

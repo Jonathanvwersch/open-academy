@@ -21,7 +21,7 @@ import {
 import type { AttemptResponse } from '@academy/contracts/exercises';
 import { emptyAnswerMessage } from '@academy/shared/answer-validation';
 import { onScreenOptions } from '@academy/shared/shuffle';
-import { and, asc, desc, eq, gt, inArray } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, inArray, isNull, notInArray, or } from 'drizzle-orm';
 import type { Card } from 'ts-fsrs';
 import { Rating } from 'ts-fsrs';
 import { z } from 'zod';
@@ -35,6 +35,10 @@ import {
 } from '../../db/schema.js';
 import { updateActivityAndAdvance } from '../../learning/activity-completion.js';
 import { fsrsFuzzEnabled } from '../../learning/fsrs-fuzz.js';
+import {
+  applyPlacementGrantOutcome,
+  placementCreditWithdrawn,
+} from '../../learning/placement-grants.js';
 import { type FeatureRequest, type FeatureServices, serviceResult } from '../../service-context.js';
 import {
   formatGraderFeedback,
@@ -485,6 +489,7 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
     durationMs: body.data.durationMs,
     createdAt: now,
   });
+  const withdrawnCredit = await placementCreditWithdrawn(db, request.userId, exercise.concept);
   const masteryResult = await applyMastery(drizzleLearnerStore(repo.db), {
     learnerId: request.userId,
     exercise,
@@ -499,6 +504,7 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
     now,
     timeZone: request.timeZone,
     enableFuzz: fsrsFuzzEnabled(),
+    ...(withdrawnCredit ? { createReviewCard: false } : {}),
   });
   if (body.data.mode === 'review' && !followUp) {
     const implicitCreditAppliedConceptIds = new Set<string>();
@@ -651,6 +657,7 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
                     and(
                       eq(reviewCards.userId, request.userId),
                       inArray(reviewCards.conceptId, hardPrerequisiteIds),
+                      isNull(reviewCards.suspendedAt),
                     ),
                   );
                 const coveredDimensionKeys = new Set(
@@ -867,6 +874,21 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
       }
     }
   }
+  if (!followUp) {
+    await applyPlacementGrantOutcome({
+      db,
+      userId: request.userId,
+      content: index,
+      exerciseId: exercise.id,
+      attemptId,
+      mode: body.data.mode,
+      correct: result.correct,
+      hintsUsed,
+      attemptNo,
+      gradedBy,
+      now,
+    });
+  }
   const answerOptions = answerOptionsFor(exercise, body.data.answer, !retryAllowed);
   let activityCompleted = false;
   if (activityRow && activity && !retryAllowed) {
@@ -948,6 +970,16 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
               eq(remediationFlags.userId, request.userId),
               eq(remediationFlags.status, 'open'),
               inArray(remediationFlags.targetPrereqId, reviewedConceptIds),
+              or(
+                isNull(remediationFlags.openedByAttemptId),
+                notInArray(
+                  remediationFlags.openedByAttemptId,
+                  db
+                    .select({ id: attempts.id })
+                    .from(attempts)
+                    .where(eq(attempts.activityId, activity.id)),
+                ),
+              ),
             ),
           );
       }

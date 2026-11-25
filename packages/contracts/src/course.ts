@@ -165,6 +165,7 @@ export interface CourseTopic {
     reviewFirst: Array<{ id: string; title: string }>;
   };
   placedOut: boolean;
+  movedBack?: boolean;
   mastery: 'Not started' | 'Attempted' | 'Familiar' | 'Proficient' | 'Mastered';
   needs?: Array<{ id: string; title: string; quiz?: boolean }>;
   buildsOn: Array<{ id: string; title: string }>;
