@@ -49,11 +49,12 @@ function Countdown({
 
 export function QuizPage() {
   const { id } = route.useParams();
-  const { session } = route.useSearch();
+  const search = route.useSearch();
   const client = useQueryClient();
   const navigate = useNavigate();
   const query = useSuspenseQuery({ ...quizQueryOptions(id), staleTime: 0 });
   const quiz = query.data;
+  const session = quiz.sessionId ?? search.session;
   const [localExpired, setLocalExpired] = useState(false);
   const apply = (next: QuizPayload) =>
     client.setQueryData(quizQueryOptions(next.id).queryKey, next);

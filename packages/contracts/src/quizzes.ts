@@ -2,6 +2,7 @@ import type { ClientExercise } from './exercises.js';
 
 export interface QuizPayload {
   id: string;
+  sessionId?: string;
   startedAt: string;
   deadline: string;
   serverNow: string;

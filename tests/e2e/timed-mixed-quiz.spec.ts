@@ -59,12 +59,13 @@ test('starts a quiz, preserves progress on refresh, and unlocks a fresh retake o
     }),
   );
   const session = await page.request.post('/api/sessions', {
-    data: { budgetMinutes: 60 },
+    data: { budgetMinutes: 120 },
     headers: { 'x-now': now, 'x-time-zone': 'UTC' },
   });
   expect(session.ok()).toBe(true);
   const { id: sessionId, activities } = (await session.json()) as SessionPayload & { id: string };
   expect(activities[0].kind).toBe('mixed_quiz');
+  expect(activities.length).toBeGreaterThan(1);
   await page.goto(`/session/${sessionId}`);
   await page.getByRole('button', { name: 'Open quiz' }).click();
   await expect(page.getByText('Question 1 of 8')).toBeVisible();
@@ -165,7 +166,14 @@ test('starts a quiz, preserves progress on refresh, and unlocks a fresh retake o
       if (exercises.length === 0) expect(current?.status).toBe('completed');
     }
   }
-  await page.goto(`/quizzes/${quizId}?session=${sessionId}`);
+  await page.goto(`/session/${reviewSession}`);
+  const finish = page.getByRole('button', { name: 'Finish session' });
+  await expect(finish).toBeVisible({ timeout: 15_000 });
+  await finish.click();
+  await expect(page.getByRole('link', { name: 'Continue session' })).toHaveAttribute(
+    'href',
+    `/session/${sessionId}`,
+  );
   await expect(page.getByRole('button', { name: 'Start retake' })).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath('timed-quiz-retake-mobile.png') });
   await page.getByRole('button', { name: 'Start retake' }).click();

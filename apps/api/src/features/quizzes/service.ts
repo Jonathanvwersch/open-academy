@@ -95,10 +95,18 @@ async function quizPayload(
   now: Date,
 ) {
   const items = await itemsFor(repo, run);
+  const [activity] =
+    run.finalizedAt && run.activityId
+      ? await repo.db
+          .select({ sessionId: sessionActivities.sessionId })
+          .from(sessionActivities)
+          .where(eq(sessionActivities.id, run.activityId))
+      : [];
   const next = items.find((item) => !item.answeredAt);
   const exercise = next && serializeExercise(next.question.exercise, repo.userId);
   return {
     id: run.id,
+    sessionId: activity?.sessionId,
     startedAt: run.startedAt.toISOString(),
     deadline: run.deadline.toISOString(),
     serverNow: now.toISOString(),
