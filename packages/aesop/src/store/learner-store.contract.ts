@@ -311,7 +311,9 @@ export function describeLearnerStoreContract(
         conceptId: 'vectors',
         attemptId: evidence.id,
       };
-      expect(await store.listReviewLogs(learnerId, { activityId })).toEqual([linkedLog]);
+      expect(
+        await store.listReviewLogs(learnerId, { activityId, cardIds: [card.id], limit: 1 }),
+      ).toEqual([linkedLog]);
       expect(await store.listReviewLogs(learnerId, { cardIds: [card.id], since: date })).toEqual([
         { ...linkedLog, attemptId: null, createdAt: later },
         linkedLog,
