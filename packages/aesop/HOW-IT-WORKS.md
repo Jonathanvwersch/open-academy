@@ -168,7 +168,7 @@ A _withdrawn_ grant gives no credit.
 - Planned work that needs the topic is skipped. **[Ours]**
 - A completed course that contains the topic opens again. **[Ours]**
 - The course page tells the learner why the topic came back. **[Ours]**
-- Course and placement pages show the current credit, not the credit from the test. **[Ours]**
+- Course and placement pages show the current credit. **[Ours]**
 
 ### What withdrawal keeps
 
