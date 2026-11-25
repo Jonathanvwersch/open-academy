@@ -31,7 +31,7 @@ import {
 import { calculateCredit } from '@academy/aesop/memory/mastery';
 import { applyImplicitRepetitions, type applyMastery } from '@academy/aesop/memory/mastery-service';
 import { emptyAnswerMessage } from '@academy/shared/answer-validation';
-import { and, desc, eq, inArray, isNull, like } from 'drizzle-orm';
+import { and, desc, eq, getTableColumns, inArray, isNull, like } from 'drizzle-orm';
 import type { Context, Hono } from 'hono';
 import { Rating } from 'ts-fsrs';
 import { z } from 'zod';
@@ -54,6 +54,7 @@ import type { ApiEnv } from '../../http/context.js';
 import { updateActivityAndAdvance } from '../../learning/activity-completion.js';
 import { fsrsFuzzEnabled } from '../../learning/fsrs-fuzz.js';
 import { resolveLessonCourse } from './course-context.js';
+import { loadRunProblems, loadRunQuiz, serveNextRunProblem } from './run-recovery.js';
 
 type LessonContext = Context<ApiEnv>;
 
@@ -124,11 +125,33 @@ export function registerLessonRunRoutes(
   ) => {
     const userId = context.get('userId');
     const now = deps.requestNow(context);
-    const rows = await deps.db
-      .select()
-      .from(lessonProblems)
-      .where(eq(lessonProblems.runId, run.id))
-      .orderBy(lessonProblems.servedAt, lessonProblems.position, lessonProblems.id);
+    const loaded = await deps.db.transaction(async (tx) => {
+      const [current] = await tx
+        .select()
+        .from(lessonRuns)
+        .where(eq(lessonRuns.id, run.id))
+        .for('update');
+      if (!current) return null;
+      const { rows, removed } = await loadRunProblems(tx, current.id, index);
+      const state = deriveLessonState(
+        lesson,
+        rows,
+        index.exercisesById,
+        current.quizPassedAt,
+        current.attempt,
+      );
+      if (
+        current.status !== 'needs_retry' &&
+        (removed || (state.lastAnswered && !index.exercisesById.has(state.lastAnswered.exerciseId)))
+      ) {
+        const next = await serveNextRunProblem(tx, current, lesson, index, rows, state, now);
+        if (next) rows.push(next);
+      }
+      return { current, rows, ...(await loadRunQuiz(tx, current.id, lesson, index)) };
+    });
+    if (!loaded) return null;
+    run = loaded.current;
+    const { rows, quizAttempts, quizItems } = loaded;
     const derived = deriveLessonState(
       lesson,
       rows,
@@ -195,19 +218,6 @@ export function registerLessonRunRoutes(
       practiceExercise && practicePending
         ? buildInstance(practiceExercise, practicePending.seed)
         : undefined;
-    const quizAttempts = await deps.db
-      .select()
-      .from(lessonQuizAttempts)
-      .where(eq(lessonQuizAttempts.runId, run.id))
-      .orderBy(lessonQuizAttempts.attemptNo);
-    const quizAttemptIds = quizAttempts.map((attempt) => attempt.id);
-    const quizItems = quizAttemptIds.length
-      ? await deps.db
-          .select()
-          .from(lessonQuizItems)
-          .where(inArray(lessonQuizItems.quizAttemptId, quizAttemptIds))
-          .orderBy(lessonQuizItems.quizAttemptId, lessonQuizItems.position, lessonQuizItems.id)
-      : [];
     const itemsFor = (attemptId: string) =>
       quizItems.filter((item) => item.quizAttemptId === attemptId);
     const currentAttempt = quizAttempts.find((attempt) => attempt.submittedAt === null);
@@ -229,7 +239,9 @@ export function registerLessonRunRoutes(
       seed: 0,
     });
     const currentItems = currentAttempt ? itemsFor(currentAttempt.id) : [];
-    const quizQuestionCount = currentItems.length || lastItems.length || previewItems.length;
+    const quizQuestionCount = currentAttempt
+      ? currentItems.length
+      : lastItems.length || previewItems.length;
     const quizStatus = run.quizPassedAt
       ? 'passed'
       : currentAttempt
@@ -382,7 +394,7 @@ export function registerLessonRunRoutes(
         practicePending && practiceInstance
           ? { ...practicePending, exercise: serializeExercise(practiceInstance, userId) }
           : undefined,
-      lastAnswered: lastRow,
+      lastAnswered: lastInstance ? lastRow : undefined,
       lastAnsweredProblem:
         lastRow && lastInstance
           ? {
@@ -489,11 +501,7 @@ export function registerLessonRunRoutes(
         }
       }
       if (!existing) throw new Error('Unable to create lesson run');
-      const problems = await tx
-        .select()
-        .from(lessonProblems)
-        .where(eq(lessonProblems.runId, existing.id))
-        .orderBy(lessonProblems.servedAt, lessonProblems.position, lessonProblems.id);
+      const { rows: problems } = await loadRunProblems(tx, existing.id, resolved.index);
       let state = deriveLessonState(
         resolved.lesson,
         problems,
@@ -603,44 +611,15 @@ export function registerLessonRunRoutes(
           .where(eq(lessonRuns.id, existing.id))
           .returning();
       }
-      const round = existing.attempt;
-      if (state.pending || !state.currentPointId) {
-        return { kind: 'ready' as const, run: existing };
-      }
-      const point = resolved.lesson.knowledge_points?.find(
-        (item) => item.id === state.currentPointId,
+      await serveNextRunProblem(
+        tx,
+        existing,
+        resolved.lesson,
+        resolved.index,
+        problems,
+        state,
+        now,
       );
-      if (!point) return { kind: 'ready' as const, run: existing };
-      const pointRows = problems
-        .filter((problem) => problem.knowledgePointId === point.id && problem.round === round)
-        .filter((problem) => !problem.practiceOnly)
-        .map(({ exerciseId, seed, position, correct, servedAt }) => ({
-          exerciseId,
-          seed,
-          position,
-          correct,
-          servedAt,
-        }));
-      const usedSeeds = new Set(
-        problems.flatMap((problem) => (problem.seed === null ? [] : [problem.seed])),
-      );
-      const selection = selectNextProblem(
-        point,
-        resolved.index.exercisesById,
-        pointRows,
-        Math.floor(Math.random() * 0x80000000),
-        usedSeeds,
-      );
-      if (!selection) return { kind: 'ready' as const, run: existing };
-      await tx.insert(lessonProblems).values({
-        runId: existing.id,
-        knowledgePointId: point.id,
-        round,
-        position: selection.position,
-        exerciseId: selection.exerciseId,
-        seed: selection.seed,
-        servedAt: now,
-      });
       return { kind: 'ready' as const, run: existing };
     });
     if (run.kind === 'retry_tomorrow') {
@@ -1278,8 +1257,8 @@ export function registerLessonRunRoutes(
     const userId = context.get('userId');
     const now = deps.requestNow(context);
     const result = await deps.db.transaction(async (tx) => {
-      const [joined] = await tx
-        .select({ item: lessonQuizItems, quiz: lessonQuizAttempts, run: lessonRuns })
+      const [run] = await tx
+        .select(getTableColumns(lessonRuns))
         .from(lessonQuizItems)
         .innerJoin(lessonQuizAttempts, eq(lessonQuizItems.quizAttemptId, lessonQuizAttempts.id))
         .innerJoin(lessonRuns, eq(lessonQuizAttempts.runId, lessonRuns.id))
@@ -1290,16 +1269,27 @@ export function registerLessonRunRoutes(
             eq(lessonRuns.conceptId, conceptId),
           ),
         )
-        .for('update')
+        .for('update', { of: lessonRuns })
         .limit(1);
-      if (!joined) return { kind: 'not_found' as const };
-      if (joined.item.attemptId || joined.quiz.submittedAt) {
-        return { kind: 'conflict' as const, runId: joined.run.id };
+      if (!run) return { kind: 'not_found' as const };
+      const { quizAttempts, quizItems } = await loadRunQuiz(
+        tx,
+        run.id,
+        resolved.lesson,
+        resolved.index,
+      );
+      const item = quizItems.find((row) => row.id === body.data.itemId);
+      if (!item) return { kind: 'not_found' as const };
+      if (
+        item.attemptId ||
+        quizAttempts.find((attempt) => attempt.id === item.quizAttemptId)?.submittedAt
+      ) {
+        return { kind: 'conflict' as const, runId: run.id };
       }
       const problems = await tx
         .select()
         .from(lessonProblems)
-        .where(eq(lessonProblems.runId, joined.run.id))
+        .where(eq(lessonProblems.runId, run.id))
         .orderBy(
           lessonProblems.servedAt,
           lessonProblems.knowledgePointId,
@@ -1311,19 +1301,19 @@ export function registerLessonRunRoutes(
         resolved.lesson,
         problems,
         resolved.index.exercisesById,
-        joined.run.quizPassedAt,
-        joined.run.attempt,
+        run.quizPassedAt,
+        run.attempt,
       );
       if (runState.status === 'in_progress') {
-        return { kind: 'conflict' as const, runId: joined.run.id };
+        return { kind: 'conflict' as const, runId: run.id };
       }
-      const indexed = resolved.index.exercisesById.get(joined.item.exerciseId);
-      const exercise = indexed ? resolvedIndexedExercise(indexed, joined.item.seed) : undefined;
+      const indexed = resolved.index.exercisesById.get(item.exerciseId);
+      const exercise = indexed ? resolvedIndexedExercise(indexed, item.seed) : undefined;
       if (!exercise) return { kind: 'invalid' as const };
       if (emptyAnswerMessage(exercise.type, body.data.answer)) {
         return { kind: 'invalid' as const };
       }
-      const graded = await gradeQuizAnswer(exercise, body.data.answer, joined.item.id);
+      const graded = await gradeQuizAnswer(exercise, body.data.answer, item.id);
       if (graded.status !== 'graded') return { kind: 'invalid' as const };
       await tx
         .update(lessonQuizItems)
@@ -1333,8 +1323,8 @@ export function registerLessonRunRoutes(
           durationMs: body.data.durationMs ?? null,
           answeredAt: now,
         })
-        .where(eq(lessonQuizItems.id, joined.item.id));
-      return { kind: 'answered' as const, runId: joined.run.id };
+        .where(eq(lessonQuizItems.id, item.id));
+      return { kind: 'answered' as const, runId: run.id };
     });
     if (result.kind === 'not_found') return context.json({ error: 'Quiz item not found' }, 404);
     if (result.kind === 'invalid') return context.json({ error: 'Invalid answer' }, 422);
@@ -1381,21 +1371,18 @@ export function registerLessonRunRoutes(
         .for('update')
         .limit(1);
       if (!run) return { kind: 'not_found' as const };
-      const quizAttempts = await tx
-        .select()
-        .from(lessonQuizAttempts)
-        .where(eq(lessonQuizAttempts.runId, run.id))
-        .orderBy(lessonQuizAttempts.attemptNo);
+      const { quizAttempts, quizItems } = await loadRunQuiz(
+        tx,
+        run.id,
+        resolved.lesson,
+        resolved.index,
+      );
       const latestAttempt = quizAttempts.at(-1);
       if (!latestAttempt) return { kind: 'not_found' as const };
       if (latestAttempt.submittedAt) {
         return { kind: 'already_submitted' as const, runId: run.id };
       }
-      const items = await tx
-        .select()
-        .from(lessonQuizItems)
-        .where(eq(lessonQuizItems.quizAttemptId, latestAttempt.id))
-        .orderBy(lessonQuizItems.position, lessonQuizItems.id);
+      const items = quizItems.filter((item) => item.quizAttemptId === latestAttempt.id);
       if (items.some((item) => item.answeredAt === null || item.correct === null)) {
         return { kind: 'unanswered' as const };
       }
@@ -1407,7 +1394,8 @@ export function registerLessonRunRoutes(
       for (const item of items) {
         if (item.attemptId !== null) continue;
         const indexed = resolved.index.exercisesById.get(item.exerciseId);
-        const exercise = indexed ? resolvedIndexedExercise(indexed, item.seed) : undefined;
+        if (!indexed) continue;
+        const exercise = resolvedIndexedExercise(indexed, item.seed);
         if (!exercise) return { kind: 'invalid_answer' as const };
         const graded = await gradeQuizAnswer(exercise, item.answer, item.id);
         if (graded.status !== 'graded') return { kind: 'invalid_answer' as const };

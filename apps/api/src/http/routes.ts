@@ -82,7 +82,10 @@ export function createApiRoutes(deps: {
     await next();
   });
   const withRepo = (context: Context<ApiEnv>) =>
-    new LearnerRepository(db, context.get('userId'), context.get('user'));
+    new LearnerRepository(db, context.get('userId'), context.get('user'), {
+      load: content,
+      now: () => requestNow(context),
+    });
   const tutor = (context: Context<ApiEnv>) =>
     tutorProvider &&
     new TutorService(

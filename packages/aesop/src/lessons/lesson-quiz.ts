@@ -39,6 +39,7 @@ export function selectQuizItems(input: {
   previousAttemptItems: readonly QuizItemHistory[];
   usedSeeds: ReadonlySet<number>;
   seed: number;
+  excludeExerciseIds?: ReadonlySet<string>;
 }): SelectedQuizItem[] {
   const points = input.lesson.knowledge_points ?? [];
   const quota = quizQuestionsPerStep(points.length);
@@ -78,6 +79,7 @@ export function selectQuizItems(input: {
       const exercise = input.exercises.get(exerciseId);
       if (
         !exercise ||
+        input.excludeExerciseIds?.has(exerciseId) ||
         exercise.role === 'recall' ||
         exercise.type === 'explain' ||
         exercise.lesson_only

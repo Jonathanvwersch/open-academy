@@ -554,7 +554,13 @@ export async function postSessionsByIdActivitiesByAidProgress(
     const db = tx as unknown as Database;
     return updateActivityProgress(
       { ...deps, db },
-      { ...request, repo: new LearnerRepository(db, request.userId) },
+      {
+        ...request,
+        repo: new LearnerRepository(db, request.userId, undefined, {
+          load: deps.content,
+          now: request.now,
+        }),
+      },
     );
   });
 }
@@ -582,7 +588,9 @@ async function updateActivityProgress(deps: FeatureServices, request: FeatureReq
     const missingExerciseIds = activity.exerciseIds.filter(
       (exerciseId) => !attemptedExerciseIds.has(exerciseId),
     );
-    if (activity.exerciseIds.length === 0 || missingExerciseIds.length > 0) {
+    const removedQuestions = (activity.reason as { removedQuestions?: boolean } | null)
+      ?.removedQuestions;
+    if ((activity.exerciseIds.length === 0 && !removedQuestions) || missingExerciseIds.length > 0) {
       return serviceResult(
         {
           error: 'Review activity needs an attempt for every exercise before completion.',
@@ -715,7 +723,13 @@ export async function postSessionsByIdReplan(deps: FeatureServices, request: Fea
     const db = tx as unknown as Database;
     return replanSession(
       { ...deps, db },
-      { ...request, repo: new LearnerRepository(db, request.userId) },
+      {
+        ...request,
+        repo: new LearnerRepository(db, request.userId, undefined, {
+          load: deps.content,
+          now: request.now,
+        }),
+      },
     );
   });
 }

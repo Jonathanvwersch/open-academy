@@ -1,10 +1,15 @@
 import type { Dimension } from '@academy/aesop/course/schemas';
 import type { ContentIndex } from '@academy/aesop/course/types';
+import { filterSchedulerStateForContent } from '@academy/aesop/graph/content-filters';
 import { courseHasEvidence } from '@academy/aesop/graph/course-start';
 import { retrievability, startOfNextCalendarDay } from '@academy/aesop/memory/fsrs';
 import type { MasteryRecord } from '@academy/aesop/memory/types';
 import { attemptedExerciseIdsByActivity as groupAttemptedExerciseIdsByActivity } from '@academy/aesop/planner/review-topics';
-import { effectiveFocusSubjectId, type SchedulerState } from '@academy/aesop/planner/scheduler';
+import {
+  buildReviewActivityForConcept,
+  effectiveFocusSubjectId,
+  type SchedulerState,
+} from '@academy/aesop/planner/scheduler';
 import { localDateKey } from '@academy/aesop/progress/xp';
 import { and, asc, desc, eq, gte, inArray, lt, lte, sql } from 'drizzle-orm';
 import type { Card } from 'ts-fsrs';
@@ -39,6 +44,7 @@ export class LearnerRepository {
     readonly db: Database,
     readonly userId: string,
     private readonly requestUser?: typeof users.$inferSelect,
+    private readonly sessionContent?: { load: () => Promise<ContentIndex>; now: () => Date },
   ) {}
 
   user() {
@@ -462,7 +468,79 @@ export class LearnerRepository {
       .from(sessionActivities)
       .where(eq(sessionActivities.sessionId, sessionId))
       .orderBy(asc(sessionActivities.idx));
+    if (this.sessionContent && session.status === 'active') {
+      await this.recoverReviewActivities(
+        activities,
+        await this.sessionContent.load(),
+        this.sessionContent.now(),
+      );
+    }
     return { ...session, activities };
+  }
+
+  private async recoverReviewActivities(
+    activities: (typeof sessionActivities.$inferSelect)[],
+    content: ContentIndex,
+    now: Date,
+  ) {
+    let state: SchedulerState | undefined;
+    for (const activity of activities) {
+      if (
+        activity.kind !== 'review' ||
+        (activity.status !== 'planned' && activity.status !== 'in_progress')
+      )
+        continue;
+      const survivors = activity.exerciseIds.filter((id) => content.exercisesById.has(id));
+      if (survivors.length === activity.exerciseIds.length) continue;
+      const exerciseIds = survivors;
+      if (exerciseIds.length === 0) {
+        state ??= filterSchedulerStateForContent(content, await this.schedulerState(now, content));
+        const usedExerciseIds = activities
+          .filter((other) => other.id !== activity.id)
+          .flatMap((other) => other.exerciseIds);
+        const reservedTopics = new Set(
+          usedExerciseIds.map((id) => content.exercisesById.get(id)?.concept),
+        );
+        const topics = activity.conceptId
+          ? [activity.conceptId]
+          : [...new Set(state.cards.map((card) => card.conceptId))].filter(
+              (id) => !reservedTopics.has(id),
+            );
+        for (const topic of topics) {
+          const replacement = buildReviewActivityForConcept(
+            { ...state, usedExerciseIds: [...usedExerciseIds, ...exerciseIds] },
+            content,
+            now,
+            topic,
+          );
+          if (replacement) exerciseIds.push(...replacement.exerciseIds);
+          if (exerciseIds.length >= activity.exerciseIds.length) break;
+        }
+      }
+      const [updated] = await this.db
+        .update(sessionActivities)
+        .set({
+          exerciseIds,
+          ...(exerciseIds.length === 0
+            ? { reason: { ...(activity.reason as object), removedQuestions: true } }
+            : {}),
+        })
+        .where(
+          and(
+            eq(sessionActivities.id, activity.id),
+            eq(sessionActivities.exerciseIds, activity.exerciseIds),
+          ),
+        )
+        .returning();
+      if (updated) Object.assign(activity, updated);
+      else {
+        const [current] = await this.db
+          .select()
+          .from(sessionActivities)
+          .where(eq(sessionActivities.id, activity.id));
+        if (current) Object.assign(activity, current);
+      }
+    }
   }
 
   async dueCards(now: Date, timezone: string) {
