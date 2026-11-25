@@ -35,6 +35,7 @@ import {
   renderMarkdownReport,
   requireP17ReviewMinutes,
   reviewFeasible,
+  reviewOverdueDaysForAudit,
   SimulatedApiFailureError,
   type SimulationProfile,
   scenarioCourseFilterSkipReason,
@@ -893,6 +894,18 @@ test('P16 flags a selected review when a dropped review is two days more overdue
   expect(p16HasOverduePrecedenceViolation(5, 3, 7, 0, 0, 4)).toBe(false);
   expect(p16HasOverduePrecedenceViolation(5, 3, 7, 0, 0, 6)).toBe(false);
   expect(p16HasOverduePrecedenceViolation(4, 3, 8, 4, 0, 4)).toBe(false);
+});
+
+test('P16 and P17 count overdue days only for dimensions included in the candidate', () => {
+  const now = new Date('2026-04-28T19:00:00Z');
+  const cards = [
+    { conceptId: 'vectors', dimension: 'math', dueAt: '2026-04-20T19:00:00Z' },
+    { conceptId: 'vectors', dimension: 'conceptual', dueAt: '2026-04-27T19:00:00Z' },
+  ] as const;
+  const days = reviewOverdueDaysForAudit(cards, 'vectors', now, 'UTC', ['conceptual']);
+  expect(days).toBe(1);
+  expect(p16HasOverduePrecedenceViolation(days, 5, 4, 0, 0, 6)).toBe(false);
+  expect(p17ReviewFitsRemaining(4, 4, 0, days)).toBe(false);
 });
 
 test('P17 flags a dropped review only when it fits both remaining limits', () => {

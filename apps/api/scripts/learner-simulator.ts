@@ -1464,6 +1464,26 @@ export function p14UncoveredDueCards(
   });
 }
 
+export function reviewOverdueDaysForAudit(
+  cards: readonly Pick<SchedulerState['cards'][number], 'conceptId' | 'dimension' | 'dueAt'>[],
+  conceptId: string,
+  now: Date,
+  timeZone: string,
+  exerciseDimensions?: readonly string[],
+): number {
+  const today = localDayOrdinal(now, timeZone);
+  return Math.max(
+    0,
+    ...cards
+      .filter(
+        (card) =>
+          card.conceptId === conceptId &&
+          (!exerciseDimensions || exerciseDimensions.includes(card.dimension)),
+      )
+      .map((card) => today - localDayOrdinal(new Date(card.dueAt), timeZone)),
+  );
+}
+
 export function p16HasOverduePrecedenceViolation(
   droppedReviewOverdueDays: number,
   selectedReviewOverdueDays: number,
@@ -1948,21 +1968,13 @@ function auditReviewPlanInvariants(
           .map((conceptId) => ({ activity, conceptId }))
       : [],
   );
-  const overdueDays = (conceptId: string) =>
-    Math.max(
-      0,
-      ...state.cards
-        .filter(
-          (card) =>
-            card.conceptId === conceptId && isDueToday(card.dueAt, now, state.timezone ?? 'UTC'),
-        )
-        .map((card) =>
-          Math.max(
-            0,
-            localDayOrdinal(now, state.timezone ?? 'UTC') -
-              localDayOrdinal(new Date(card.dueAt), state.timezone ?? 'UTC'),
-          ),
-        ),
+  const overdueDays = (conceptId: string, exerciseDimensions?: readonly string[]) =>
+    reviewOverdueDaysForAudit(
+      state.cards,
+      conceptId,
+      now,
+      state.timezone ?? 'UTC',
+      exerciseDimensions,
     );
   const budgetActivities = unfinished.filter(
     (activity) => !replan || activity.status === 'planned',
@@ -1991,7 +2003,7 @@ function auditReviewPlanInvariants(
       explanation.conceptId,
       explanation.candidateMinutes,
     );
-    const droppedOverdueDays = overdueDays(explanation.conceptId);
+    const droppedOverdueDays = overdueDays(explanation.conceptId, explanation.exerciseDimensions);
     markChecked(runtime, 'P17');
     if (
       p17ReviewFitsRemaining(
@@ -2021,7 +2033,12 @@ function auditReviewPlanInvariants(
       );
       const selectedOverdueDays = Math.max(
         0,
-        ...[...selectedCoverage].map((conceptId) => overdueDays(conceptId)),
+        ...[...selectedCoverage].map((conceptId) =>
+          overdueDays(
+            conceptId,
+            conceptId === selected.conceptId ? selectedExplanation?.exerciseDimensions : undefined,
+          ),
+        ),
       );
       if (
         p16HasOverduePrecedenceViolation(

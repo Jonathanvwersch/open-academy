@@ -132,6 +132,19 @@ describe('implicitRepetition', () => {
     expect(result?.dueAt.getTime()).toBeGreaterThanOrEqual(full.due.getTime());
   });
 
+  it('skips repetitions whose due date change is smaller than timestamp precision', () => {
+    const card = reviewCard(new Date('2026-01-01T12:00:00.000Z'), now);
+    expect(
+      implicitRepetition(card, {
+        weight: Number.EPSILON,
+        rating: Rating.Good,
+        now,
+        timeZone,
+        enableFuzz: false,
+      }),
+    ).toBeUndefined();
+  });
+
   it('skips new cards', () => {
     const fsrs = newReviewCard(now);
     expect(
