@@ -4,7 +4,7 @@ import type { LearnerStore, StoredReviewCard } from '@academy/aesop/store/learne
 import { and, asc, eq, inArray } from 'drizzle-orm';
 import type { Card } from 'ts-fsrs';
 import type { Database } from './client.js';
-import { mastery, masteryEvents, remediationFlags, reviewCards } from './schema.js';
+import { mastery, masteryEvents, remediationFlags, reviewCards, reviewLogs } from './schema.js';
 
 type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0];
 
@@ -118,6 +118,35 @@ export function drizzleLearnerStore(db: Database | Transaction): LearnerStore {
         .returning();
       if (!row) throw new Error('Unable to insert review card');
       return mapReviewCard(row);
+    },
+    async recordReview(learnerId, conceptId, dimension, compute) {
+      await db.transaction(async (tx) => {
+        const [current] = await tx
+          .select()
+          .from(reviewCards)
+          .where(
+            and(
+              eq(reviewCards.userId, learnerId),
+              eq(reviewCards.conceptId, conceptId),
+              eq(reviewCards.dimension, dimension),
+            ),
+          )
+          .for('update');
+        const { card, log } = compute(current && mapReviewCard(current));
+        const [saved] = await tx
+          .insert(reviewCards)
+          .values({ ...card, userId: learnerId, conceptId, dimension })
+          .onConflictDoUpdate({
+            target: [reviewCards.userId, reviewCards.conceptId, reviewCards.dimension],
+            set: card,
+          })
+          .returning({ id: reviewCards.id });
+        await tx.insert(reviewLogs).values({
+          ...log,
+          cardId: saved.id,
+          rating: String(log.rating),
+        });
+      });
     },
     async updateReviewCardIfDue(learnerId, cardId, expectedDueAt, next) {
       const rows = await db

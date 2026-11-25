@@ -1,4 +1,4 @@
-import type { Card } from 'ts-fsrs';
+import type { Card, Rating, ReviewLog } from 'ts-fsrs';
 import type { Dimension } from '../course/schemas.js';
 import type { MasteryRecord, MasteryState } from '../memory/types.js';
 
@@ -21,6 +21,12 @@ export interface NewReviewCard {
   lastReviewAt: Date | null;
   reps: number;
   lapses: number;
+}
+
+export interface ReviewLogRecord {
+  rating: Rating;
+  fsrsLog: ReviewLog & { source?: string };
+  createdAt: Date;
 }
 
 export interface MasteryEventRecord {
@@ -58,6 +64,16 @@ export interface LearnerStore {
     dimension: Dimension,
   ): Promise<StoredReviewCard | undefined>;
   insertReviewCard(learnerId: string, card: NewReviewCard): Promise<StoredReviewCard>;
+  /** Compute a review from the current card, then save the card and its log together. */
+  recordReview(
+    learnerId: string,
+    conceptId: string,
+    dimension: Dimension,
+    compute: (card: StoredReviewCard | undefined) => {
+      card: Omit<NewReviewCard, 'conceptId' | 'dimension'>;
+      log: ReviewLogRecord;
+    },
+  ): Promise<void>;
   /** Compare-and-set: updates fsrs and dueAt only if the stored dueAt still equals expectedDueAt. Returns whether it updated. */
   updateReviewCardIfDue(
     learnerId: string,

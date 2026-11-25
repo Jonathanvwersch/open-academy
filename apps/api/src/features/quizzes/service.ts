@@ -2,6 +2,7 @@ import { serializeExercise } from '@academy/aesop/course/serialize';
 import type { ContentIndex } from '@academy/aesop/course/types';
 import { gradeExercise } from '@academy/aesop/lessons/grading/index';
 import { newReviewCard, scheduleReview } from '@academy/aesop/memory/fsrs';
+import { applyImplicitRepetitions } from '@academy/aesop/memory/mastery-service';
 import { buildReviewActivityForConcept } from '@academy/aesop/planner/scheduler';
 import { localDateKey } from '@academy/aesop/progress/xp';
 import {
@@ -16,23 +17,23 @@ import {
   quizTargetSeconds,
   quizXp,
 } from '@academy/aesop/quizzes/mixed-quiz';
+import type { LearnerStore } from '@academy/aesop/store/learner-store';
 import { and, asc, eq, isNull, sql } from 'drizzle-orm';
-import { type Card, Rating } from 'ts-fsrs';
+import { Rating } from 'ts-fsrs';
 import { z } from 'zod';
 import type { Database } from '../../db/client.js';
+import { drizzleLearnerStore } from '../../db/learner-store.js';
 import { LearnerRepository } from '../../db/repository.js';
 import {
   quizItems,
   quizRuns,
-  reviewCards,
-  reviewLogs,
   sessionActivities,
   studySessions,
   users,
   xpEvents,
 } from '../../db/schema.js';
 import { updateActivityAndAdvance } from '../../learning/activity-completion.js';
-import { applyImplicitRepetitions } from '../../learning/mastery-service.js';
+import { fsrsFuzzEnabled } from '../../learning/fsrs-fuzz.js';
 import { type FeatureRequest, type FeatureServices, serviceResult } from '../../service-context.js';
 import { type QuizRun, quizAccommodation, quizOffer } from './offer.js';
 
@@ -248,52 +249,36 @@ export async function answerQuiz(deps: FeatureServices, request: FeatureRequest)
 }
 
 async function applyQuizReview(
-  repo: LearnerRepository,
+  store: LearnerStore,
+  learnerId: string,
   exercise: QuizQuestion['exercise'],
   outcome: ReturnType<typeof quizItemOutcome>,
   now: Date,
   timeZone: string,
 ) {
-  const { db, userId } = repo;
-  const cardKey = and(
-    eq(reviewCards.userId, userId),
-    eq(reviewCards.conceptId, exercise.concept),
-    eq(reviewCards.dimension, exercise.dimension),
-  );
-  const [card] = await db.select().from(reviewCards).where(cardKey).for('update');
-  const scheduled = scheduleReview(
-    card ? (card.fsrs as Card) : newReviewCard(now),
-    now,
-    outcome.rating,
-    timeZone,
-    process.env.NODE_ENV !== 'test',
-  );
-  const dueAt = outcome.followUp ? now : scheduled.card.due;
-  const update = {
-    fsrs: { ...scheduled.card, due: dueAt },
-    dueAt,
-    lastReviewAt: now,
-    reps: scheduled.card.reps,
-    lapses: scheduled.card.lapses,
-  };
-  const [saved] = await db
-    .insert(reviewCards)
-    .values({
-      ...update,
-      userId,
-      conceptId: exercise.concept,
-      dimension: exercise.dimension,
-    })
-    .onConflictDoUpdate({
-      target: [reviewCards.userId, reviewCards.conceptId, reviewCards.dimension],
-      set: update,
-    })
-    .returning({ id: reviewCards.id });
-  await db.insert(reviewLogs).values({
-    cardId: saved.id,
-    rating: String(outcome.rating),
-    fsrsLog: { ...scheduled.log, source: 'mixed_quiz' },
-    createdAt: now,
+  await store.recordReview(learnerId, exercise.concept, exercise.dimension, (current) => {
+    const scheduled = scheduleReview(
+      current?.fsrs ?? newReviewCard(now),
+      now,
+      outcome.rating,
+      timeZone,
+      fsrsFuzzEnabled(),
+    );
+    const dueAt = outcome.followUp ? now : scheduled.card.due;
+    return {
+      card: {
+        fsrs: { ...scheduled.card, due: dueAt },
+        dueAt,
+        lastReviewAt: now,
+        reps: scheduled.card.reps,
+        lapses: scheduled.card.lapses,
+      },
+      log: {
+        rating: outcome.rating,
+        fsrsLog: { ...scheduled.log, source: 'mixed_quiz' },
+        createdAt: now,
+      },
+    };
   });
 }
 
@@ -315,21 +300,30 @@ export async function finalizeQuiz(deps: FeatureServices, request: FeatureReques
         quizTargetSeconds(item.question.exercise),
       ),
     );
+    const store = drizzleLearnerStore(repo.db);
     for (const [i, item] of items.entries()) {
       const outcome = outcomes[i];
       await repo.db
         .update(quizItems)
         .set({ correct: outcome.correct, followUp: outcome.followUp })
         .where(and(eq(quizItems.runId, run.id), eq(quizItems.position, item.position)));
-      await applyQuizReview(repo, item.question.exercise, outcome, now, request.timeZone);
+      await applyQuizReview(
+        store,
+        repo.userId,
+        item.question.exercise,
+        outcome,
+        now,
+        request.timeZone,
+      );
       if (outcome.rating === Rating.Good) {
-        await applyImplicitRepetitions(repo.db, {
-          userId: repo.userId,
+        await applyImplicitRepetitions(store, {
+          learnerId: repo.userId,
           conceptId: item.conceptId,
           rating: outcome.rating,
           index: content,
           now,
           timeZone: request.timeZone,
+          enableFuzz: fsrsFuzzEnabled(),
         });
       }
     }
