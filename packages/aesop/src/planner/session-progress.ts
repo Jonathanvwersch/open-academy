@@ -4,11 +4,10 @@ import { learnActivitiesWithUnmetPrerequisites, masteryKey } from '../graph/prer
 import { recordLessonViewed } from '../memory/mastery.js';
 import {
   completeReviewActivity,
-  type LinkTimedQuizFollowUp,
   recordRecoveredReviewRatings,
 } from '../memory/review-completion.js';
 import type { Id } from '../store/core-store.js';
-import type { PlacementReviewStore } from '../store/placement-review-store.js';
+import type { FlowStore } from '../store/flow-store.js';
 import type { Activity, Session } from '../store/session-store.js';
 import { advanceActivity } from './activity-advance.js';
 import { withReviewTopics } from './home-plan.js';
@@ -22,7 +21,6 @@ interface ProgressReads {
   session(id: Id): Promise<LoadedSession | undefined>;
   schedulerState(now: Date, content: ContentIndex): Promise<SchedulerState>;
   attemptedExerciseIdsByActivity(ids: readonly Id[]): Promise<Map<Id, Set<Id>>>;
-  linkTimedQuizFollowUp: LinkTimedQuizFollowUp;
   replanBlocked(
     index: ContentIndex,
     now: Date,
@@ -34,7 +32,7 @@ interface ProgressReads {
 }
 
 export async function updateSessionProgress(
-  store: PlacementReviewStore,
+  store: FlowStore,
   learnerId: Id,
   sessionId: Id,
   activityId: Id,
@@ -99,7 +97,6 @@ export async function updateSessionProgress(
         { ...context, session: latestSession },
         activity,
         progress,
-        reads.linkTimedQuizFollowUp,
       );
       const finished = (await reads.session(activity.sessionId))?.activities.find(
         (item) => item.id === activity?.id,

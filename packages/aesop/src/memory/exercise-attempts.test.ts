@@ -51,8 +51,8 @@ test('a graded review updates mastery, records one schedule and completes the ac
     schedulerState: async () => {
       throw new Error('No prerequisite reset expected');
     },
-    linkTimedQuizFollowUp: vi.fn(async () => {}),
   };
+  const linkTimedQuizFollowUps = vi.spyOn(store, 'linkTimedQuizFollowUps');
   const prepared = await prepareExerciseAttempt(
     store,
     userId,
@@ -98,7 +98,7 @@ test('a graded review updates mastery, records one schedule and completes the ac
   expect(await store.listXpEvents(userId, {})).toMatchObject([
     { sourceKey: `activity:${review.id}`, amount: review.plannedMinutes },
   ]);
-  expect(runtime.linkTimedQuizFollowUp).toHaveBeenCalledWith(userId, review.id, [exercise.concept]);
+  expect(linkTimedQuizFollowUps).toHaveBeenCalledWith(userId, [exercise.concept], review.id);
 
   await recordRecoveredReviewRatings(
     store,

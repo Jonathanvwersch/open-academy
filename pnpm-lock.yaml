@@ -412,6 +412,9 @@ importers:
       '@academy/contracts':
         specifier: workspace:*
         version: link:../contracts
+      '@academy/shared':
+        specifier: workspace:*
+        version: link:../shared
       mathjs:
         specifier: 15.2.0
         version: 15.2.0

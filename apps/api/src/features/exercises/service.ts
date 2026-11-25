@@ -18,7 +18,6 @@ import { z } from 'zod';
 import { drizzleLearnerStore } from '../../db/learner-store.js';
 import { sessionActivities } from '../../db/schema.js';
 import { fsrsFuzzEnabled } from '../../learning/fsrs-fuzz.js';
-import { linkTimedQuizFollowUp } from '../../learning/timed-review-follow-up.js';
 import { type FeatureRequest, type FeatureServices, serviceResult } from '../../service-context.js';
 import {
   formatGraderFeedback,
@@ -346,8 +345,6 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
       enableFsrsFuzz: fsrsFuzzEnabled(),
       schedulerState: (now, content) => repo.schedulerState(now, content),
       session: (id) => repo.session(id),
-      linkTimedQuizFollowUp: (id, activityId, concepts) =>
-        linkTimedQuizFollowUp(db, id, activityId, concepts),
     },
     prepared,
     {

@@ -8,7 +8,8 @@ import { topicIsComplete } from '../graph/course-status.js';
 import { activeCourseFor } from '../graph/prerequisites.js';
 import { activePlacementRuns } from '../placement/diagnostic-commands.js';
 import { localDateKey, sessionKindForDate } from '../progress/xp.js';
-import type { PlacementReviewStore } from '../store/placement-review-store.js';
+import { quizOffer } from '../quizzes/quiz-offer.js';
+import type { FlowStore } from '../store/flow-store.js';
 import type { Activity, Session } from '../store/session-store.js';
 import { reviewTopicsForActivity } from './review-topics.js';
 import {
@@ -28,15 +29,6 @@ interface HomeReads {
   session(sessionId: string): Promise<(Session & { activities: Activity[] }) | undefined>;
   attemptedExerciseIdsByActivity(ids: readonly string[]): Promise<Map<string, Set<string>>>;
   completeCourses(ids: readonly string[], now: Date): Promise<void>;
-  quizOffer(
-    content: ContentIndex,
-    now: Date,
-    courseId: string | null,
-  ): Promise<{
-    plannedMinutes?: number;
-    xpBalance: number;
-    active?: unknown;
-  }>;
 }
 
 export function withReviewTopics<
@@ -51,7 +43,7 @@ export function withReviewTopics<
 }
 
 export async function loadHomePlan(
-  store: PlacementReviewStore,
+  store: FlowStore,
   learnerId: string,
   repo: HomeReads,
   index: ContentIndex,
@@ -65,7 +57,14 @@ export async function loadHomePlan(
   const subjectTitle = index.curriculum?.subject?.title;
   const sessionKind = sessionKindForDate(localDateKey(now, timeZone));
   const budget = sessionBudget(sessionKind, prefs, localDateKey(now, timeZone));
-  const availableQuiz = await repo.quizOffer(index, now, state.activeCourseId);
+  const availableQuiz = await quizOffer(
+    store,
+    learnerId,
+    index,
+    now,
+    state.activeCourseId,
+    user ?? null,
+  );
   state.pendingQuiz =
     availableQuiz.plannedMinutes === undefined
       ? undefined

@@ -1,11 +1,13 @@
 import { fsrsScheduler, newReviewCard } from '@academy/aesop/memory/fsrs';
 import { type QuizQuestion, quizTargetSeconds } from '@academy/aesop/quizzes/mixed-quiz';
+import { confirmedPlacementTopicIds } from '@academy/aesop/quizzes/quiz-offer';
 import { eq, inArray } from 'drizzle-orm';
 import { Rating } from 'ts-fsrs';
 import { afterAll, expect, test } from 'vitest';
 import { env } from '../../src/config.js';
 import { loadContent } from '../../src/content/load.js';
 import { createDb } from '../../src/db/client.js';
+import { drizzleLearnerStore } from '../../src/db/learner-store.js';
 import { LearnerRepository } from '../../src/db/repository.js';
 import {
   attempts,
@@ -18,12 +20,13 @@ import {
   sessionActivities,
   topicSpeed,
   users,
+  xpEvents,
 } from '../../src/db/schema.js';
-import { confirmedPlacementTopicIds } from '../../src/features/quizzes/confirmed-placement.js';
 import {
   answerQuiz,
   finalizeQuiz,
   startQuizFollowUps,
+  startQuizRetake,
 } from '../../src/features/quizzes/service.js';
 
 const db = createDb(env.TEST_DATABASE_URL);
@@ -107,7 +110,67 @@ test('mixed quizzes use only effective confirmed, non-legacy grants for the lear
     },
   ]);
 
-  expect(await confirmedPlacementTopicIds(db, userId)).toEqual(new Set(['confirmed']));
+  expect(await confirmedPlacementTopicIds(drizzleLearnerStore(db), userId)).toEqual(
+    new Set(['confirmed']),
+  );
+});
+
+test('concurrent finalization and retake requests use one original result and one retake', async () => {
+  const userId = await createLearner();
+  const content = await loadContent('content');
+  const now = new Date('2026-01-14T12:00:00.000Z');
+  const exercise = content.exercisesByConcept.get('vectors')?.find(({ type }) => type === 'mc');
+  if (!exercise) throw new Error('No multiple-choice exercise for vectors');
+  const question = { exercise: exercise as QuizQuestion['exercise'], seed: 0, key: exercise.id };
+  const [run] = await db
+    .insert(quizRuns)
+    .values({
+      userId,
+      seed: 0,
+      difficulty: 2,
+      plannedMinutes: 5,
+      startedAt: now,
+      deadline: now,
+    })
+    .returning();
+  await db.insert(quizItems).values({
+    runId: run.id,
+    position: 0,
+    conceptId: 'vectors',
+    question,
+    reserve: question,
+  });
+  const deps = { db, content: async () => content, tutorProvider: null };
+  const request = {
+    userId,
+    timeZone: 'UTC',
+    params: { id: run.id },
+    query: {},
+    body: undefined,
+    repo: new LearnerRepository(db, userId),
+    tutor: null,
+    now: () => now,
+  };
+  const results = await Promise.all([finalizeQuiz(deps, request), finalizeQuiz(deps, request)]);
+  expect(results[0]).toEqual(results[1]);
+  expect(results[0]).toMatchObject({ status: 200, body: { result: { score: 0 } } });
+  expect(await db.select().from(xpEvents).where(eq(xpEvents.userId, userId))).toHaveLength(1);
+  const followUp = await startQuizFollowUps(deps, request);
+  expect(followUp.status).toBe(201);
+  if (!('sessionId' in followUp.body)) throw new Error('Missing follow-up session');
+  const [review] = await db
+    .select()
+    .from(sessionActivities)
+    .where(eq(sessionActivities.sessionId, followUp.body.sessionId));
+  const store = drizzleLearnerStore(db);
+  await store.linkTimedQuizFollowUps(userId, ['vectors'], review.id);
+  const retakes = await Promise.all([
+    startQuizRetake(deps, request),
+    startQuizRetake(deps, request),
+  ]);
+  expect(retakes.map(({ status }) => status).sort()).toEqual([200, 201]);
+  expect(retakes[0].body).toEqual(retakes[1].body);
+  expect(await store.listTimedQuizRuns(userId, { retakeOf: run.id })).toHaveLength(1);
 });
 
 test.each([false, true])(
