@@ -1,8 +1,8 @@
+import { serializeExercise } from '@academy/aesop/course/serialize';
+import { initialMastery, masteryRank } from '@academy/aesop/memory/types';
 import { and, desc, eq } from 'drizzle-orm';
 import { z } from 'zod';
-import { serializeExercise } from '../../content/serialize.js';
 import { masteryEvents, projectProgress, projectSubmissions } from '../../db/schema.js';
-import { initialMastery, masteryRank } from '../../learning/types.js';
 import { type FeatureRequest, type FeatureServices, serviceResult } from '../../service-context.js';
 
 type ProjectVerifierResults = {

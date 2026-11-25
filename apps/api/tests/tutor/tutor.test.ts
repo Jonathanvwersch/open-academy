@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
+import type { ContentIndex } from '@academy/aesop/course/types';
+import { calculateCredit } from '@academy/aesop/memory/mastery';
 import { describe, expect, it, vi } from 'vitest';
-import type { ContentIndex } from '../../src/content/types.js';
 import type { Database } from '../../src/db/client.js';
 import {
   buildTutorInput as buildTutorInputWithContent,
@@ -21,7 +22,6 @@ import {
   TutorService,
   tutorCallAllowed,
 } from '../../src/features/tutor/service.js';
-import { calculateCredit } from '../../src/learning/mastery.js';
 
 const tutorContent = {
   subjectsByCourseId: new Map(),

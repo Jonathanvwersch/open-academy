@@ -1,9 +1,9 @@
+import type { IndexedLesson } from '@academy/aesop/course/types';
+import { attemptAllowsRetry } from '@academy/aesop/memory/retry';
+import type { PlannedActivity } from '@academy/aesop/planner/scheduler';
 import { and, desc, eq, gte } from 'drizzle-orm';
-import type { IndexedLesson } from '../content/types.js';
 import type { Database } from '../db/client.js';
 import { attempts, lessonRuns } from '../db/schema.js';
-import { attemptAllowsRetry } from './retry.js';
-import type { PlannedActivity } from './scheduler.js';
 
 export async function initialLearnProgress(
   db: Database,

@@ -1,10 +1,10 @@
-import { describe, expect, test } from 'vitest';
 import {
   lowestMasteryState,
   masteryLabel,
   topicIsComplete,
   topicStatus,
-} from '../../src/learning/course-status.js';
+} from '@academy/aesop/graph/course-status';
+import { describe, expect, test } from 'vitest';
 
 describe('course mastery and status', () => {
   test('maps mastery labels and uses the lowest dimension state', () => {

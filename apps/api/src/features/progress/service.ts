@@ -1,12 +1,12 @@
+import { orderCourseIdsBySubject } from '@academy/aesop/course/course-order';
+import { subjectForCourse } from '@academy/aesop/course/index';
+import type { ContentIndex } from '@academy/aesop/course/types';
+import { filterMasteryRecordsForContent } from '@academy/aesop/graph/content-filters';
+import { type MasteryRecord, masteryRank } from '@academy/aesop/memory/types';
+import { buildProgress } from '@academy/aesop/progress/progress';
 import type { ProgressMasteryState, ProgressSubjectPayload } from '@academy/contracts/progress';
 import { desc, eq } from 'drizzle-orm';
-import { orderCourseIdsBySubject } from '../../content/course-order.js';
-import { subjectForCourse } from '../../content/index.js';
-import type { ContentIndex } from '../../content/types.js';
 import { lessonRuns, masteryEvents, projectSubmissions, xpEvents } from '../../db/schema.js';
-import { filterMasteryRecordsForContent } from '../../learning/content-filters.js';
-import { buildProgress } from '../../learning/progress.js';
-import { type MasteryRecord, masteryRank } from '../../learning/types.js';
 import { type FeatureRequest, type FeatureServices, serviceResult } from '../../service-context.js';
 import { courseTopicState } from '../course/service.js';
 

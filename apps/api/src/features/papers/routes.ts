@@ -1,8 +1,9 @@
 import { createHash } from 'node:crypto';
+import type { ContentIndex, IndexedPaper } from '@academy/aesop/course/types';
+import { activeCourseFor } from '@academy/aesop/graph/prerequisites';
 import { and, eq, sql } from 'drizzle-orm';
 import type { Context, Hono } from 'hono';
 import { z } from 'zod';
-import type { ContentIndex, IndexedPaper } from '../../content/types.js';
 import type { Database } from '../../db/client.js';
 import type { LearnerRepository } from '../../db/repository.js';
 import {
@@ -14,7 +15,6 @@ import {
 } from '../../db/schema.js';
 import type { ApiEnv } from '../../http/context.js';
 import { updateActivityAndAdvance } from '../../learning/activity-completion.js';
-import { activeCourseFor } from '../../learning/prerequisites.js';
 import type { TutorService } from '../tutor/service.js';
 import type { PaperFetcher } from './fetcher.js';
 import { defaultPaperFetcher } from './fetcher.js';

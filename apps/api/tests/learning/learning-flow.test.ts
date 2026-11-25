@@ -1,11 +1,21 @@
+import { instantiateExercise, isTemplate } from '@academy/aesop/course/templates';
+import type { ContentIndex } from '@academy/aesop/course/types';
+import { buildEncompassingIndex } from '@academy/aesop/graph/encompassing';
+import { answerOptionsFor } from '@academy/aesop/lessons/answer-options';
+import {
+  isDueToday,
+  newReviewCard,
+  scheduleInitialReview,
+  scheduleReview,
+} from '@academy/aesop/memory/fsrs';
+import { calculateCredit } from '@academy/aesop/memory/mastery';
+import { dueTopicsCoveredBy, type SchedulerState } from '@academy/aesop/planner/scheduler';
 import { and, asc, eq } from 'drizzle-orm';
 import { type Card, Rating, State } from 'ts-fsrs';
 import { afterAll, beforeAll, expect, test, vi } from 'vitest';
 import { createApp } from '../../src/app.js';
 import { env } from '../../src/config.js';
 import { loadContent } from '../../src/content/load.js';
-import { instantiateExercise, isTemplate } from '../../src/content/templates.js';
-import type { ContentIndex } from '../../src/content/types.js';
 import { createDb } from '../../src/db/client.js';
 import { LearnerRepository } from '../../src/db/repository.js';
 import {
@@ -25,21 +35,11 @@ import {
   xpEvents,
 } from '../../src/db/schema.js';
 import { FakeProvider } from '../../src/features/tutor/provider.js';
-import { answerOptionsFor } from '../../src/learning/answer-options.js';
-import { buildEncompassingIndex } from '../../src/learning/encompassing.js';
-import {
-  isDueToday,
-  newReviewCard,
-  scheduleInitialReview,
-  scheduleReview,
-} from '../../src/learning/fsrs.js';
-import { calculateCredit } from '../../src/learning/mastery.js';
 import {
   applyImplicitRepetitions,
   type ImplicitRepetitionTraceEvent,
   setImplicitRepetitionTrace,
 } from '../../src/learning/mastery-service.js';
-import { dueTopicsCoveredBy, type SchedulerState } from '../../src/learning/scheduler.js';
 
 const db = createDb(env.TEST_DATABASE_URL);
 const userId = '00000000-0000-4000-8000-000000000001';

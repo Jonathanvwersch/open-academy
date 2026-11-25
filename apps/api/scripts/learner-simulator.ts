@@ -1,10 +1,44 @@
+import type { ContentEdge, ContentIndex } from '@academy/aesop/course/types';
+import { topicIsComplete } from '@academy/aesop/graph/course-status';
+import { buildEncompassingIndex, type EncompassingIndex } from '@academy/aesop/graph/encompassing';
+import {
+  courseFoundationIds,
+  createPrerequisiteChecker,
+  keyPrereqsForPoint,
+  masteryKey,
+  prerequisiteMet,
+} from '@academy/aesop/graph/prerequisites';
+import { isLessonRetryReady } from '@academy/aesop/lessons/lesson-retry';
+import {
+  bringWeakestPrerequisiteCardDueNow,
+  canBringPrerequisiteDueNow,
+} from '@academy/aesop/lessons/prerequisite-review';
+import {
+  retrievability as fsrsRetrievability,
+  isDueToday,
+  newReviewCard,
+  scheduleReview,
+  startOfNextCalendarDay,
+} from '@academy/aesop/memory/fsrs';
+import { implicitRepetition } from '@academy/aesop/memory/implicit-repetition';
+import { initialMastery, type MasteryState } from '@academy/aesop/memory/types';
+import {
+  adjustedMinutesForLearnerPace,
+  explainReviewSelection,
+  explainReviewSelectionForReplan,
+  lessonRetryOverdue,
+  type PlannedActivity,
+  type ReviewSelectionExplanation,
+  SCHEDULER_CONFIG,
+  type SchedulerState,
+} from '@academy/aesop/planner/scheduler';
+import { localDateKey } from '@academy/aesop/progress/xp';
 import type { CourseCatalogPayload, CoursePayload, LearnPayload } from '@academy/contracts/course';
 import type { SessionActivity, TodayPayload } from '@academy/contracts/sessions';
 import { and, asc, desc, eq, inArray } from 'drizzle-orm';
 import type { Card } from 'ts-fsrs';
 import { Rating, State } from 'ts-fsrs';
 import { createApp } from '../src/app.js';
-import type { ContentEdge, ContentIndex } from '../src/content/types.js';
 import type { Database } from '../src/db/client.js';
 import { LearnerRepository } from '../src/db/repository.js';
 import {
@@ -19,44 +53,10 @@ import {
   sessionActivities,
   users,
 } from '../src/db/schema.js';
-import { topicIsComplete } from '../src/learning/course-status.js';
-import { buildEncompassingIndex, type EncompassingIndex } from '../src/learning/encompassing.js';
-import {
-  retrievability as fsrsRetrievability,
-  isDueToday,
-  newReviewCard,
-  scheduleReview,
-  startOfNextCalendarDay,
-} from '../src/learning/fsrs.js';
-import { implicitRepetition } from '../src/learning/implicit-repetition.js';
-import { isLessonRetryReady } from '../src/learning/lesson-retry.js';
 import {
   type ImplicitRepetitionTraceEvent,
   setImplicitRepetitionTrace,
 } from '../src/learning/mastery-service.js';
-import {
-  bringWeakestPrerequisiteCardDueNow,
-  canBringPrerequisiteDueNow,
-} from '../src/learning/prerequisite-review.js';
-import {
-  courseFoundationIds,
-  createPrerequisiteChecker,
-  keyPrereqsForPoint,
-  masteryKey,
-  prerequisiteMet,
-} from '../src/learning/prerequisites.js';
-import {
-  adjustedMinutesForLearnerPace,
-  explainReviewSelection,
-  explainReviewSelectionForReplan,
-  lessonRetryOverdue,
-  type PlannedActivity,
-  type ReviewSelectionExplanation,
-  SCHEDULER_CONFIG,
-  type SchedulerState,
-} from '../src/learning/scheduler.js';
-import { initialMastery, type MasteryState } from '../src/learning/types.js';
-import { localDateKey } from '../src/learning/xp.js';
 import { answerFor, exerciseFor, wrongAnswerFor } from './learner-simulation-support.js';
 
 export const simulationProfiles = [

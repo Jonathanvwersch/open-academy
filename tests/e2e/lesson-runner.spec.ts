@@ -356,6 +356,7 @@ async function expectEnterToAdvance(page: Page, runConceptId: string, problemId:
 
 async function answerAndReload(page: Page, correct: boolean, runConceptId = conceptId) {
   const run = await currentRun(page, runConceptId);
+  const stepBeforeAnswer = new URL(page.url()).searchParams.get('step');
   const problem = run.pendingProblem;
   const hook = await page.evaluate(async (id) => {
     const response = await fetch(`/api/test/lesson-problems/${id}/answer`);
@@ -393,17 +394,50 @@ async function answerAndReload(page: Page, correct: boolean, runConceptId = conc
   const response = await responsePromise;
   const body = await response.json();
   expect(response.status()).toBe(200);
+  const currentPointIndex = body.state.points.findIndex(
+    (point: { id: string }) => point.id === body.state.currentPointId,
+  );
+  const stepFromState =
+    currentPointIndex >= 0
+      ? String(currentPointIndex + 1)
+      : body.state.status === 'completed'
+        ? 'quiz'
+        : body.state.status === 'quiz'
+          ? 'explain'
+          : null;
+  const expectedStep =
+    run.currentPointId === body.state.currentPointId ? stepBeforeAnswer : stepFromState;
+  await expect.poll(() => new URL(page.url()).searchParams.get('step')).toBe(expectedStep);
   await page.reload();
   if (body.state.status === 'needs_retry') {
     await expect(page.getByText('This lesson is paused.')).toBeVisible();
-  } else if (body.state.status === 'in_progress') {
-    await expect(page.getByTestId('lesson-problem').getByRole('status')).toContainText(
-      correct ? 'Correct' : 'Not quite',
-    );
-    await expect(page.getByTestId('lesson-problem')).toHaveAttribute('data-problem-id', problem.id);
+  } else if (body.state.status === 'in_progress' && currentPointIndex >= 0) {
+    await expect(
+      page.getByRole('button', {
+        name: `Step ${currentPointIndex + 1} of ${body.state.points.length}, current`,
+      }),
+    ).toBeVisible();
+    const problemCard = page.getByTestId('lesson-problem');
+    await expect(problemCard).toBeVisible();
     await expect(page.getByTestId('lesson-problem-prompt')).toBeVisible();
-  } else {
+    if (run.currentPointId === body.state.currentPointId || !body.state.pendingProblem) {
+      await expect(problemCard).toHaveAttribute('data-problem-id', problem.id);
+      await expect(problemCard.getByRole('status')).toContainText(
+        correct ? 'Correct' : 'Not quite',
+      );
+    } else {
+      await expect(problemCard).toHaveAttribute('data-problem-id', body.state.pendingProblem.id);
+    }
+  } else if (body.state.status === 'quiz') {
     await expect(page.getByTestId('lesson-steps-complete')).toBeVisible();
+    if (expectedStep === 'explain') {
+      await expect(page.getByTestId('lesson-explain-chip')).toHaveAttribute(
+        'aria-label',
+        'Explain it, current',
+      );
+    }
+  } else if (body.state.status === 'completed') {
+    await expect(page.getByTestId('lesson-quiz-results')).toBeVisible();
   }
   expect(await currentRun(page, runConceptId)).toEqual(body.state);
   expect(body.state.lastAnsweredProblem.id).toBe(problem.id);
@@ -928,6 +962,13 @@ test('passes every knowledge point and restores the exact problem and result aft
           problemId ?? '',
         );
         await page.screenshot({ path: `${stepReviewScreenshotDir}/desktop-current-step-pill.png` });
+        const quizUrl = new URL(page.url());
+        quizUrl.searchParams.delete('step');
+        await page.goto(quizUrl.toString());
+        await expect(page.getByTestId('lesson-problem')).toHaveAttribute(
+          'data-problem-id',
+          problemId ?? '',
+        );
       }
     }
   }

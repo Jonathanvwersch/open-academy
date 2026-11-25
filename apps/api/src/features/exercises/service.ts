@@ -1,3 +1,22 @@
+import { serializedOptionOrder, serializeExercise } from '@academy/aesop/course/serialize';
+import { isTemplate } from '@academy/aesop/course/templates';
+import type { ContentIndex, IndexedExercise } from '@academy/aesop/course/types';
+import { answerOptionsFor } from '@academy/aesop/lessons/answer-options';
+import { gradeExercise } from '@academy/aesop/lessons/grading/index';
+import { rubricFeedbackWithScoredFlags } from '@academy/aesop/lessons/grading/rubric-score';
+import {
+  bringWeakestPrerequisiteCardDueNow,
+  canBringPrerequisiteDueNow,
+} from '@academy/aesop/lessons/prerequisite-review';
+import { isDueToday, reviewActivityRating, scheduleReview } from '@academy/aesop/memory/fsrs';
+import { calculateCredit } from '@academy/aesop/memory/mastery';
+import { attemptAllowsRetry } from '@academy/aesop/memory/retry';
+import type { MasteryRecord } from '@academy/aesop/memory/types';
+import {
+  adjustedMinutesForLearnerPace,
+  buildReviewActivityForConcept,
+  interleaveReviewExercises,
+} from '@academy/aesop/planner/scheduler';
 import type { AttemptResponse } from '@academy/contracts/exercises';
 import { emptyAnswerMessage } from '@academy/shared/answer-validation';
 import { onScreenOptions } from '@academy/shared/shuffle';
@@ -5,9 +24,6 @@ import { and, asc, desc, eq, gt, inArray } from 'drizzle-orm';
 import type { Card } from 'ts-fsrs';
 import { Rating } from 'ts-fsrs';
 import { z } from 'zod';
-import { serializedOptionOrder, serializeExercise } from '../../content/serialize.js';
-import { isTemplate } from '../../content/templates.js';
-import type { ContentIndex, IndexedExercise } from '../../content/types.js';
 import {
   attempts,
   remediationFlags,
@@ -16,23 +32,7 @@ import {
   sessionActivities,
 } from '../../db/schema.js';
 import { updateActivityAndAdvance } from '../../learning/activity-completion.js';
-import { answerOptionsFor } from '../../learning/answer-options.js';
-import { isDueToday, reviewActivityRating, scheduleReview } from '../../learning/fsrs.js';
-import { gradeExercise } from '../../learning/grading/index.js';
-import { rubricFeedbackWithScoredFlags } from '../../learning/grading/rubric-score.js';
-import { calculateCredit } from '../../learning/mastery.js';
 import { applyImplicitRepetitions, applyMastery } from '../../learning/mastery-service.js';
-import {
-  bringWeakestPrerequisiteCardDueNow,
-  canBringPrerequisiteDueNow,
-} from '../../learning/prerequisite-review.js';
-import { attemptAllowsRetry } from '../../learning/retry.js';
-import {
-  adjustedMinutesForLearnerPace,
-  buildReviewActivityForConcept,
-  interleaveReviewExercises,
-} from '../../learning/scheduler.js';
-import type { MasteryRecord } from '../../learning/types.js';
 import { type FeatureRequest, type FeatureServices, serviceResult } from '../../service-context.js';
 import {
   formatGraderFeedback,

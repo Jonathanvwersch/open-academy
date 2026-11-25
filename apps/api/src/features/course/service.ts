@@ -1,8 +1,28 @@
+import { orderCourseIdsBySubject } from '@academy/aesop/course/course-order';
+import { subjectForCourse } from '@academy/aesop/course/index';
+import type { ContentIndex, IndexedConcept, IndexedCourse } from '@academy/aesop/course/types';
+import { filterSchedulerStateForContent } from '@academy/aesop/graph/content-filters';
+import { lowestMasteryState, masteryLabel, topicStatus } from '@academy/aesop/graph/course-status';
+import { courseTopicPosition } from '@academy/aesop/graph/lesson-course-context';
+import {
+  activeCourseFor,
+  compareOutlinePosition,
+  courseFoundationIds,
+  courseFoundations,
+  createPrerequisiteChecker,
+  labActivityReady,
+  masteryKey,
+  projectReady,
+} from '@academy/aesop/graph/prerequisites';
+import {
+  currentLearnerUnit,
+  effectiveFocusSubjectId,
+  type PlannedActivity,
+  replan,
+  type SchedulerState,
+} from '@academy/aesop/planner/scheduler';
 import type { CourseQueueStatus } from '@academy/contracts/course';
 import { and, eq, inArray, or } from 'drizzle-orm';
-import { orderCourseIdsBySubject } from '../../content/course-order.js';
-import { subjectForCourse } from '../../content/index.js';
-import type { ContentIndex, IndexedConcept, IndexedCourse } from '../../content/types.js';
 import type { Database } from '../../db/client.js';
 import type { LearnerRepository } from '../../db/repository.js';
 import {
@@ -16,27 +36,7 @@ import {
   studySessions,
   users,
 } from '../../db/schema.js';
-import { filterSchedulerStateForContent } from '../../learning/content-filters.js';
-import { lowestMasteryState, masteryLabel, topicStatus } from '../../learning/course-status.js';
 import { initialLearnProgress } from '../../learning/initial-learn-progress.js';
-import { courseTopicPosition } from '../../learning/lesson-course-context.js';
-import {
-  activeCourseFor,
-  compareOutlinePosition,
-  courseFoundationIds,
-  courseFoundations,
-  createPrerequisiteChecker,
-  labActivityReady,
-  masteryKey,
-  projectReady,
-} from '../../learning/prerequisites.js';
-import {
-  currentLearnerUnit,
-  effectiveFocusSubjectId,
-  type PlannedActivity,
-  replan,
-  type SchedulerState,
-} from '../../learning/scheduler.js';
 
 type MasteryRecords = Awaited<ReturnType<LearnerRepository['masteryRecords']>>;
 type RunRecords = Array<typeof lessonRuns.$inferSelect>;

@@ -1,11 +1,11 @@
-import { expect, test } from 'vitest';
-import { loadContent } from '../../src/content/load.js';
-import { type Exercise, ExerciseSchema } from '../../src/content/schemas.js';
+import { type Exercise, ExerciseSchema } from '@academy/aesop/course/schemas';
 import {
   quizQuestionsPerStep,
   scoreLessonQuiz,
   selectQuizItems,
-} from '../../src/learning/lesson-quiz.js';
+} from '@academy/aesop/lessons/lesson-quiz';
+import { expect, test } from 'vitest';
+import { loadContent } from '../../src/content/load.js';
 
 function exercise(id: string, difficulty: number, template = false): Exercise {
   return ExerciseSchema.parse({

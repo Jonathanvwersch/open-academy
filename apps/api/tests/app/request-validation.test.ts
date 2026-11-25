@@ -1,9 +1,9 @@
+import type { ContentIndex } from '@academy/aesop/course/types';
 import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest';
 import { createApp } from '../../src/app.js';
 import { env } from '../../src/config.js';
 import { loadContent } from '../../src/content/load.js';
-import type { ContentIndex } from '../../src/content/types.js';
 import { createDb } from '../../src/db/client.js';
 import {
   attempts,

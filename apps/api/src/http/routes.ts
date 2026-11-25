@@ -1,8 +1,9 @@
+import type { ContentIndex } from '@academy/aesop/course/types';
+import { localDateKey } from '@academy/aesop/progress/xp';
 import { asc, eq } from 'drizzle-orm';
 import type { Context } from 'hono';
 import { Hono } from 'hono';
 import { env } from '../config.js';
-import type { ContentIndex } from '../content/types.js';
 import type { Database } from '../db/client.js';
 import { LearnerRepository } from '../db/repository.js';
 import { users, xpEvents } from '../db/schema.js';
@@ -27,7 +28,6 @@ import {
 import { registerTutorThreadRoutes } from '../features/tutor/routes.js';
 import { TutorService } from '../features/tutor/service.js';
 import { applyMastery } from '../learning/mastery-service.js';
-import { localDateKey } from '../learning/xp.js';
 import type { ApiEnv } from './context.js';
 import { isValidTimeZone, requestNow } from './request-context.js';
 export function createApiRoutes(deps: {

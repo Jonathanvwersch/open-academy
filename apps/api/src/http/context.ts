@@ -1,5 +1,5 @@
+import type { ContentIndex } from '@academy/aesop/course/types';
 import type { Context } from 'hono';
-import type { ContentIndex } from '../content/types.js';
 import type { Database } from '../db/client.js';
 import type { LearnerRepository } from '../db/repository.js';
 import type { users } from '../db/schema.js';

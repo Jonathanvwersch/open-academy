@@ -1,5 +1,5 @@
-import type { Exercise } from '../../content/schemas.js';
-import { scoreRubricCriteria } from '../../learning/grading/rubric-score.js';
+import type { Exercise } from '@academy/aesop/course/schemas';
+import { scoreRubricCriteria } from '@academy/aesop/lessons/grading/rubric-score';
 import type { RubricJudgement } from './schemas.js';
 
 type ExplainExercise = Extract<Exercise, { type: 'explain' }>;

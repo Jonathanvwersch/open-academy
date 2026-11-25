@@ -1,3 +1,24 @@
+import { subjectForCourse } from '@academy/aesop/course/index';
+import { isTemplate } from '@academy/aesop/course/templates';
+import type { ContentIndex } from '@academy/aesop/course/types';
+import { filterSchedulerStateForContent } from '@academy/aesop/graph/content-filters';
+import { courseConceptIds, courseFoundationIds } from '@academy/aesop/graph/prerequisites';
+import {
+  isDueToday,
+  newReviewCard,
+  reviewActivityRating,
+  scheduleReview,
+} from '@academy/aesop/memory/fsrs';
+import * as schedulerModule from '@academy/aesop/planner/scheduler';
+import {
+  buildReviewActivityForConcept,
+  effectiveFocusSubjectId,
+  explainReviewSelection,
+  explainReviewSelectionForReplan,
+  SCHEDULER_CONFIG,
+  sessionBudget,
+} from '@academy/aesop/planner/scheduler';
+import { localDateKey, sessionKindForDate } from '@academy/aesop/progress/xp';
 import { and, eq, inArray } from 'drizzle-orm';
 import { Rating } from 'ts-fsrs';
 import { afterAll, beforeAll, expect, vi, it as vitestIt } from 'vitest';
@@ -8,10 +29,7 @@ import {
 } from '../../scripts/learner-simulation-support.js';
 import { createApp } from '../../src/app.js';
 import { env } from '../../src/config.js';
-import { subjectForCourse } from '../../src/content/index.js';
 import { loadContent } from '../../src/content/load.js';
-import { isTemplate } from '../../src/content/templates.js';
-import type { ContentIndex } from '../../src/content/types.js';
 import { createDb } from '../../src/db/client.js';
 import { LearnerRepository } from '../../src/db/repository.js';
 import {
@@ -26,24 +44,6 @@ import {
 } from '../../src/db/schema.js';
 import { FakeProvider } from '../../src/features/tutor/provider.js';
 import { shiftLocalDate } from '../../src/http/request-context.js';
-import { filterSchedulerStateForContent } from '../../src/learning/content-filters.js';
-import {
-  isDueToday,
-  newReviewCard,
-  reviewActivityRating,
-  scheduleReview,
-} from '../../src/learning/fsrs.js';
-import { courseConceptIds, courseFoundationIds } from '../../src/learning/prerequisites.js';
-import * as schedulerModule from '../../src/learning/scheduler.js';
-import {
-  buildReviewActivityForConcept,
-  effectiveFocusSubjectId,
-  explainReviewSelection,
-  explainReviewSelectionForReplan,
-  SCHEDULER_CONFIG,
-  sessionBudget,
-} from '../../src/learning/scheduler.js';
-import { localDateKey, sessionKindForDate } from '../../src/learning/xp.js';
 
 const db = createDb(env.TEST_DATABASE_URL);
 const realDataAuditMode = process.env.REVIEW_AUDIT_REALDATA === '1';

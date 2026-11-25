@@ -1,4 +1,3 @@
-import { describe, expect, test } from 'vitest';
 import {
   averageDailyXp,
   coursePercent,
@@ -7,7 +6,8 @@ import {
   localDateKey,
   weekXp,
   xpGoalFor,
-} from '../../src/learning/xp.js';
+} from '@academy/aesop/progress/xp';
+import { describe, expect, test } from 'vitest';
 
 describe('XP calculations', () => {
   test('uses the weekday, Saturday, and Sunday goals', () => {
