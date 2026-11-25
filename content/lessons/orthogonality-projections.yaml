@@ -414,7 +414,7 @@ knowledge_points:
 
       ### When several lines fit just as well
 
-      There is just one vector of predicted heights closest to the readings. Will just one line give those heights? That depends on whether two choices of $c$ and $m$ can give the same predictions. As we saw in Rank and Span, only one choice can give them when the columns of $A$ are independent. This means the rank equals the number of columns.
+      At the best fit, the error is perpendicular to the plane of predictions. Moving anywhere else in the plane adds a leg to that right triangle, making the total error longer. So only one prediction vector is closest. Will just one line give those heights? That depends on whether two choices of $c$ and $m$ can give the same predictions. As we saw in Rank and Span, only one choice can give them when the columns of $A$ are independent. This means the rank equals the number of columns.
 
       Imagine three sensors report heights $1$, $3$ and $2$ at the same time, $t=1$. Our line predicts the same height for all three sensors. We'll find that height first and then see which lines give it.
 

@@ -16,7 +16,7 @@ where_this_fits: |
 
   Backpropagation is a way of finding how the loss changes with every weight and bias of a model, in one sweep that runs backwards from the loss towards the inputs.
 
-  To lower the loss, we need to know which direction to adjust each weight. In the example below, both the weight and the bias affect the same prediction, and that prediction affects the loss. Backpropagation computes the slope from the prediction to the loss once and uses it for both parameters.
+  Gradient descent subtracts a small multiple of each slope from its weight or bias. In the example below, both the weight and the bias affect the same prediction, and that prediction affects the loss. Backpropagation computes the slope from the prediction to the loss once and uses it for both parameters.
 knowledge_points:
   - id: bp-why-backprop
     key_prereqs: [computational-graphs, loss-functions]

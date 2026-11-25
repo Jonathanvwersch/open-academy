@@ -53,18 +53,16 @@ exercises:
       - id: a
         text: $(0.1,0.2,0.3,0.4)$
         correct: true
-        feedback: Default flattening lays out the first row, followed by the second row.
+        feedback: Read the first row left to right, then read the second row the same way.
       - id: b
         text: $(0.1,0.3,0.2,0.4)$
         correct: false
-        feedback: That reads down each column instead of using the default row order.
+        feedback: That reads down each column instead of across each row.
       - id: c
         text: $(0.3,0.4,0.1,0.2)$
         correct: false
-        feedback: That reverses the row order; default flattening preserves it.
-    solution:
-      reading the rows from top to bottom, left to right within each row reads each row in order, then continues with the next
-      row. The resulting vector is $(0.1,0.2,0.3,0.4)$.
+        feedback: That reads the bottom row first.
+    solution: The first row contributes 0.1 and 0.2. Then the second row contributes 0.3 and 0.4, giving $(0.1,0.2,0.3,0.4)$.
   - id: aep-encode-template
     dimension: math
     type: numeric

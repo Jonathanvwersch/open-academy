@@ -4,7 +4,7 @@ objective: |
   **Goal:** read an image's shape, convert it between the height-width-channels and channels-height-width layouts, and scale its pixel values the way a model expects.
 recap:
   - concept: matrices
-    text: "A matrix is a grid with shape (rows, columns). Its transpose swaps rows and columns."
+    text: "A matrix's shape gives its row and column counts. A transpose changes the order of those axes; we'll use the same idea to put an image's colours first."
 where_this_fits: |
   ### What is an image tensor?
 
@@ -82,7 +82,7 @@ knowledge_points:
 
       In an 8-bit image, each brightness is a whole number from 0 to 255. Eight bits make one byte. Each bit has two possible values, so a byte can store $2^8=256$ brightnesses. We call this format **uint8**, short for unsigned 8-bit integer. Unsigned means that none of the numbers are negative.
 
-      ### Height comes first
+      ### Image shapes list height first
 
       An **array** is a grid of numbers. An **axis** is one way to count positions in that grid. A matrix has two axes: one counts rows from top to bottom, and the other counts columns from left to right. Write height $H$ for the row count and width $W$ for the column count.
 
@@ -178,7 +178,7 @@ knowledge_points:
 
       The right-hand order is **CHW**, so its shape is $(3,H,W)$. Some image models use this channel-first layout. Models can also read several images at once, called a **batch**. Add an axis at the front to count those $N$ images. Then NHWC has shape $(N,H,W,3)$ and NCHW has shape $(N,3,H,W)$. A single image still has a batch axis of size $1$.
 
-      In HWC, height, width and channels have axis numbers 0, 1 and 2. Change their order to CHW:
+      In HWC, height, width and channels have axis numbers 0, 1 and 2. To get CHW, move the last axis to the front and keep the other two in order.
 
       1. **Put channels first.** Axis 2 becomes first.
       2. **Put height second.** Axis 0 becomes second.
@@ -242,7 +242,7 @@ knowledge_points:
 
       ### Line the means up with the channels
 
-      We reuse each mean at every pixel in its channel. In HWC, a pixel holds all three channels together, so we subtract red, green and blue means from the three entries of each pixel. In CHW, a plane holds one channel, so we subtract the same mean from every entry in that plane. If we keep the means in CHW order, their shape is $(3,1,1)$: one number for each channel and no variation by row or column.
+      In HWC, subtract the red, green and blue means from the three entries of each pixel. In CHW, each colour has its own grid of rows and columns. Store its mean in a $1\times1$ grid and reuse that number at every position in the colour's grid. The three $1\times1$ grids of means have shape $(3,1,1)$.
     worked: |
       Let's prepare one RGB pixel (153, 102, 51), using means (0.5, 0.3, 0.2) and standard deviations (0.25, 0.2, 0.1).
 
@@ -253,13 +253,11 @@ knowledge_points:
       3. **Divide by the channel standard deviations.** Each channel has its own scale.
          $$(0.1/0.25,\ 0.1/0.2,\ 0/0.1)=(0.4,0.5,0).$$
 
-      The red value was above its mean, so it came out positive, and the blue value was exactly at its mean, so it became zero. A value below its mean would come out negative.
+      In CHW, this one pixel has three $1\times1$ grids: red contains $0.4$, green contains $0.5$ and blue contains $0$. Red was above its mean and came out positive. Blue was at its mean and came out zero. A value below its mean would come out negative.
 
       Use the same means and standard deviations that were used when the model learned its weights. Recomputing them from a new image would put its values on a different scale.
 
       Check the scale of the inputs. If the values already lie between 0 and 1, they do not need to be divided by 255.
-
-      In CHW the same pixel is split into three $1\times1$ planes. The red plane contains $0.4$, the green plane contains $0.5$ and the blue plane contains $0$.
     problems:
       [
         iat-scale-basics,

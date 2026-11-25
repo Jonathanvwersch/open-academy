@@ -137,13 +137,11 @@ knowledge_points:
 
       ### Testing by elimination
 
-      Elimination subtracts multiples of rows. If column 3 equals column 1 plus column 2, that equality holds in each row. Subtracting one row from another preserves the equality.
+      Elimination subtracts multiples of rows. If column 3 equals column 1 plus column 2, that equality holds in each row. Subtracting one row from another preserves the equality. Adding that row back undoes the subtraction, so elimination can't create a new column equality either.
 
-      Scan columns from left to right. Use a nonzero entry as a **pivot** to clear the entries below it. After each pivot, look only in the rows below it. Skip a column if all those rows have zero there. Swap rows if needed to bring the pivot to the first unused row. For $A$ the result is
+      Scan columns from left to right. Use a nonzero entry as a **pivot** to clear the entries below it. After each pivot, look only in the rows below it. Skip a column if all those rows have zero there. Swap rows if needed to bring the pivot to the first unused row.
 
-      $$\begin{bmatrix}1&1&2\\0&1&1\\0&0&0\end{bmatrix}.$$
-
-      After elimination, the first nonzero entry in each row is called a **pivot**, and we say its column has a pivot. Here columns 1 and 2 have pivots. Column 3 has none, a sign that it's a combination of earlier columns. In the eliminated matrix, column 3 is column 1 plus column 2, so the same holds for the original columns.
+      The worked example shows how $A$ ends up with pivots in columns 1 and 2. Those columns are independent: only column 2 has a nonzero entry in row 2, and column 1 has a nonzero entry in row 1. Column 3 is their sum, so it adds no independent direction.
 
       ### Rank
 

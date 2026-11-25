@@ -226,8 +226,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: An HWC RGB array contains pixel triples in row order. What goes wrong if `reshape(3, H,
-      W)` is used to make CHW planes?
+    prompt: An HWC RGB array contains pixel triples in row order. What goes wrong if you reshape it into three grids, each with height $H$ and width $W$, to make CHW planes?
     options:
       - id: a
         text: It regroups consecutive values, mixing channels within the supposed colour planes.

@@ -494,7 +494,7 @@ knowledge_points:
 
       ### Find the weight slopes for a batch
 
-      Use a group of examples, called a **batch**, to get one update that reflects several predictions. Put one example in each row of $X$. The vector $w$ holds the two weights, and $y$ holds one known answer per example. Here we leave out the bias. Subtract each answer from its prediction to get the vector of errors $r=Xw-y$. Let $n$ be the number of examples.
+      Use a group of examples, called a **batch**, to get one update that reflects several predictions. Put one example in each row of $X$. The vector $w$ holds the two weights, and $y$ holds one known answer per example. Leave out the bias so we can focus on how the two inputs contribute to the slopes. Subtract each answer from its prediction to get the vector of errors $r=Xw-y$. Let $n$ be the number of examples.
 
       1. **Make one error per row.** With inputs $(2,1)$ and $(3,2)$ and weights $(1,1)$, the predictions are 3 and 5. Both targets are 7.
          $$r=(3-7,\ 5-7)=(-4,-2).$$
@@ -502,7 +502,7 @@ knowledge_points:
       2. **Average the slopes for the first weight.** Each example contributes $2e\,x_1$, twice its first input times its error. Add those contributions and divide by the number of examples, $n=2$.
          $$\frac{2\times(-4)\times2+2\times(-2)\times3}{2}=-14.$$
 
-      3. **Get both slopes at once.** In the matrices lesson, transposing a matrix turned its columns into rows. The product $X^\top r$ takes a dot product of each of those rows with the errors. Multiplying by 2 and dividing by $n$ gives the average of $2e\,x_j$ for each weight $w_j$. The result, $\nabla_w L$, is the vector of slopes for the weights.
+      3. **Get both slopes at once.** Transposing $X$ turns the first inputs into row $(2,3)$ and the second inputs into row $(1,2)$. The product $X^\top r$ takes the dot product of each row with the errors. Multiplying by 2 and dividing by $n$ gives the average of $2e\,x_j$ for each weight $w_j$. Write $\nabla_w L$ for the resulting slopes; the subscript $w$ tells us which parameters the slopes measure.
          $$\nabla_w L=\frac{2X^\top r}{n}=\frac{2}{2}\begin{bmatrix}2&3\\1&2\end{bmatrix}\begin{bmatrix}-4\\-2\end{bmatrix}=\begin{bmatrix}-14\\-8\end{bmatrix}.$$
 
       4. **Update both weights.** Multiply each of the two slopes by the learning rate $0.05$ and subtract it from the matching weight. Write $w_{\text{new}}$ for the two updated weights.
