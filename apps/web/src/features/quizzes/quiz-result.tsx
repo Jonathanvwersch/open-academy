@@ -46,7 +46,7 @@ export function QuizResult({
       </p>
 
       {toReview.length > 0 ? (
-        <div className="space-y-4 rounded-lg border bg-muted/40 p-4">
+        <section className="space-y-4 border-t pt-6">
           <div className="space-y-1">
             <h2 className="font-medium">
               Next: review{' '}
@@ -58,12 +58,9 @@ export function QuizResult({
                 : 'A short review of what you missed or answered slowly.'}
             </p>
           </div>
-          <ul className="divide-y rounded-md border bg-card">
+          <ul className="divide-y">
             {toReview.map((topic) => (
-              <li
-                key={topic.conceptId}
-                className="flex items-center justify-between gap-3 px-3 py-2"
-              >
+              <li key={topic.conceptId} className="flex items-center justify-between gap-3 py-2">
                 <span>{topic.title}</span>
                 <span className="shrink-0 text-muted-foreground text-sm">
                   {topic.missed ? 'Incorrect' : 'Correct, but slow'}
@@ -85,9 +82,9 @@ export function QuizResult({
               )}
             </Button>
           </div>
-        </div>
+        </section>
       ) : result.retake.eligible ? (
-        <div className="space-y-4 rounded-lg border bg-muted/40 p-4">
+        <section className="space-y-4 border-t pt-6">
           <div className="space-y-1">
             <h2 className="font-medium">Reviews done. Your retake is unlocked.</h2>
             <p className="text-muted-foreground text-sm">
@@ -113,7 +110,7 @@ export function QuizResult({
           <p className="text-muted-foreground text-sm">
             If you skip it, nothing is lost. These topics stay in your normal reviews.
           </p>
-        </div>
+        </section>
       ) : result.retake.id ? (
         <div className="flex flex-wrap gap-2">
           <Button disabled={retakePending} onClick={onRetake}>
