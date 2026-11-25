@@ -43,8 +43,8 @@ concepts:
     encompassings:
       [
         { id: activation-functions, weight: 0.12 },
-        { id: matrices, weight: 0.22 },
-        { id: perceptron, weight: 0.12 },
+        { id: matrices, weight: 0.32 },
+        { id: perceptron, weight: 0.14 },
       ]
     objectives:
       - { text: "Compute a 2-layer forward pass by hand", dimension: math }
@@ -84,13 +84,13 @@ concepts:
       ]
     encompassings:
       [
-        { id: computational-graphs, weight: 0.46 },
-        { id: mlp-forward-pass, weight: 0.1 },
-        { id: loss-functions, weight: 0.1 },
-        { id: partial-derivatives, weight: 0.35 },
-        { id: activation-functions, weight: 0.13 },
-        { id: derivatives, weight: 0.13 },
-        { id: matrices, weight: 0.07 },
+        { id: computational-graphs, weight: 0.52 },
+        { id: mlp-forward-pass, weight: 0.12 },
+        { id: loss-functions, weight: 0.09 },
+        { id: partial-derivatives, weight: 0.31 },
+        { id: activation-functions, weight: 0.15 },
+        { id: derivatives, weight: 0.11 },
+        { id: matrices, weight: 0.03 },
       ]
     confused_with: [autodiff]
     objectives:
@@ -130,10 +130,10 @@ concepts:
     encompassings:
       [
         { id: autodiff, weight: 0.09 },
-        { id: gradient-descent, weight: 0.09 },
-        { id: linear-regression, weight: 0.08 },
+        { id: gradient-descent, weight: 0.12 },
+        { id: linear-regression, weight: 0.12 },
         { id: loss-functions, weight: 0.06 },
-        { id: matrices, weight: 0.08 },
+        { id: matrices, weight: 0.1 },
       ]
     objectives:
       - { text: "Write a PyTorch training loop from memory", dimension: implementation }
@@ -164,7 +164,7 @@ concepts:
     goal_weight: 2
     dimensions: [conceptual, math]
     prereqs: [{ id: sgd-minibatch }]
-    encompassings: [{ id: sgd-minibatch, weight: 0.01 }, { id: gradient-descent, weight: 0.07 }]
+    encompassings: [{ id: sgd-minibatch, weight: 0.01 }, { id: gradient-descent, weight: 0.08 }]
     objectives:
       - { text: "Write the Adam update rule", dimension: math }
     status: authored
@@ -178,11 +178,11 @@ concepts:
     prereqs: [{ id: backpropagation }, { id: gradient-descent }]
     encompassings:
       [
-        { id: backpropagation, weight: 0.03 },
+        { id: backpropagation, weight: 0.04 },
         { id: gradient-descent, weight: 0.02 },
         { id: activation-functions, weight: 0.07 },
         { id: dot-product, weight: 0.01 },
-        { id: mlp-forward-pass, weight: 0.11 },
+        { id: mlp-forward-pass, weight: 0.17 },
       ]
     objectives:
       - {
@@ -225,7 +225,7 @@ concepts:
         { id: logistic-regression, weight: 0.15 },
         { id: information-theory, weight: 0.14 },
         { id: derivatives, weight: 0.13 },
-        { id: gradient-descent, weight: 0.07 },
+        { id: gradient-descent, weight: 0.03 },
         { id: probability-basics, weight: 0.09 },
       ]
     objectives:
@@ -242,10 +242,10 @@ concepts:
       prereqs: [{ id: mlp-forward-pass }, { id: images-as-tensors }],
       encompassings:
         [
-          { id: mlp-forward-pass, weight: 0.13 },
+          { id: mlp-forward-pass, weight: 0.15 },
           { id: images-as-tensors, weight: 0.13 },
-          { id: dot-product, weight: 0.04 },
-          { id: vectors, weight: 0.13 },
+          { id: dot-product, weight: 0.06 },
+          { id: vectors, weight: 0.11 },
         ],
       objectives:
         [

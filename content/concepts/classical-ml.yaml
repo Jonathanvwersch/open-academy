@@ -44,7 +44,7 @@ concepts:
       [
         { id: supervised-learning, weight: 0.21 },
         { id: dot-product, weight: 0.19 },
-        { id: matrices, weight: 0.2 },
+        { id: matrices, weight: 0.11 },
       ]
     objectives:
       - { text: "Write the linear model in vector form", dimension: math }
@@ -73,12 +73,12 @@ concepts:
     prereqs: [{ id: gradients }, { id: loss-functions }, { id: linear-regression }]
     encompassings:
       [
-        { id: gradients, weight: 0.07 },
-        { id: loss-functions, weight: 0.16 },
-        { id: linear-regression, weight: 0.06 },
-        { id: derivatives, weight: 0.07 },
-        { id: partial-derivatives, weight: 0.13 },
-        { id: vectors, weight: 0.04 },
+        { id: gradients, weight: 0.14 },
+        { id: loss-functions, weight: 0.14 },
+        { id: linear-regression, weight: 0.08 },
+        { id: derivatives, weight: 0.11 },
+        { id: partial-derivatives, weight: 0.25 },
+        { id: vectors, weight: 0.05 },
       ]
     objectives:
       - { text: "Perform gradient-descent updates by hand", dimension: math }
@@ -115,7 +115,7 @@ concepts:
     prereqs: [{ id: linear-regression }, { id: gradient-descent }, { id: probability-basics }]
     encompassings:
       [
-        { id: linear-regression, weight: 0.13 },
+        { id: linear-regression, weight: 0.12 },
         { id: gradient-descent, weight: 0.06 },
         { id: probability-basics, weight: 0.06 },
         { id: derivatives, weight: 0.1 },
@@ -152,7 +152,7 @@ concepts:
         { id: overfitting, weight: 0.06 },
         { id: loss-functions, weight: 0.09 },
         { id: derivatives, weight: 0.06 },
-        { id: gradient-descent, weight: 0.05 },
+        { id: gradient-descent, weight: 0.16 },
         { id: train-test-split, weight: 0.08 },
         { id: vectors, weight: 0 },
       ]
