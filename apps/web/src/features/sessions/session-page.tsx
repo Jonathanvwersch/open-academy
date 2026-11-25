@@ -674,7 +674,7 @@ export function SessionPage() {
     }
   };
 
-  if (lessonRunsPending) return <SessionSkeleton />;
+  if (lessonRunsPending && !shownActivity) return <SessionSkeleton />;
 
   if (!activity) {
     return (
