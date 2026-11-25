@@ -83,6 +83,32 @@ test('full lesson review avoids building quiz history and XP summaries', async (
   await db.delete(schema.lessonRuns).where(eq(schema.lessonRuns.userId, userId));
 });
 
+test('loading an intact lesson run does not take a write lock', async () => {
+  const [run] = await db
+    .insert(schema.lessonRuns)
+    .values({ userId, conceptId: 'supervised-learning' })
+    .returning();
+  const [quiz] = await db
+    .insert(schema.lessonQuizAttempts)
+    .values({ runId: run.id, attemptNo: 1 })
+    .returning();
+  await db.insert(schema.lessonQuizItems).values({
+    quizAttemptId: quiz.id,
+    position: 1,
+    knowledgePointId: 'sl-inputs-targets',
+    exerciseId: 'sl-inputs-targets-basics',
+  });
+  statements = [];
+  const response = await app.request('/api/lessons/supervised-learning/run');
+  expect(response.status).toBe(200);
+  expect((await response.json()).run.status).toBe('in_progress');
+  expect(statements.join('\n')).not.toMatch(/for update/i);
+  const quizReads = statements.filter((sql) => /"lesson_quiz_(attempts|items)"/.test(sql));
+  expect(quizReads).toHaveLength(1);
+  expect(quizReads[0]).toMatch(/from "lesson_quiz_attempts" left join "lesson_quiz_items"/);
+  await db.delete(schema.lessonRuns).where(eq(schema.lessonRuns.userId, userId));
+});
+
 test('resuming Home uses the existing session instead of rebuilding the schedule', async () => {
   const initialization = await app.request('/api/course');
   expect(initialization.status).toBe(200);

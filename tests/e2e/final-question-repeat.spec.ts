@@ -114,6 +114,7 @@ test('continuing a final question after lesson-run query GC opens the quiz', asy
   expect(runStatus).toBe('quiz');
 
   await page.reload();
+  await page.getByRole('button', { name: /Step 1 of \d+, passed/ }).click();
   await page.getByTestId('lesson-explain-chip').getByRole('button', { name: 'Explain it' }).click();
   await expect(page).toHaveURL(/step=explain/);
   await expect(page.getByTestId('lesson-steps-complete')).toBeVisible();

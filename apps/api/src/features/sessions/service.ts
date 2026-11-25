@@ -44,6 +44,10 @@ import {
   xpEvents,
 } from '../../db/schema.js';
 import { initialLearnProgress } from '../../learning/initial-learn-progress.js';
+import {
+  completeReviewActivity,
+  recordRecoveredReviewRatings,
+} from '../../learning/review-completion.js';
 import { type FeatureRequest, type FeatureServices, serviceResult } from '../../service-context.js';
 import { replanSessionActivities } from '../course/service.js';
 
@@ -554,7 +558,13 @@ export async function postSessionsByIdActivitiesByAidProgress(
     const db = tx as unknown as Database;
     return updateActivityProgress(
       { ...deps, db },
-      { ...request, repo: new LearnerRepository(db, request.userId) },
+      {
+        ...request,
+        repo: new LearnerRepository(db, request.userId, undefined, {
+          load: deps.content,
+          now: request.now,
+        }),
+      },
     );
   });
 }
@@ -582,7 +592,9 @@ async function updateActivityProgress(deps: FeatureServices, request: FeatureReq
     const missingExerciseIds = activity.exerciseIds.filter(
       (exerciseId) => !attemptedExerciseIds.has(exerciseId),
     );
-    if (activity.exerciseIds.length === 0 || missingExerciseIds.length > 0) {
+    const removedQuestions = (activity.reason as { removedQuestions?: boolean } | null)
+      ?.removedQuestions;
+    if ((activity.exerciseIds.length === 0 && !removedQuestions) || missingExerciseIds.length > 0) {
       return serviceResult(
         {
           error: 'Review activity needs an attempt for every exercise before completion.',
@@ -590,6 +602,20 @@ async function updateActivityProgress(deps: FeatureServices, request: FeatureReq
         },
         409,
       );
+    }
+    if (removedQuestions && activity.exerciseIds.length > 0 && activity.status !== 'completed') {
+      const index = await content();
+      const context = { index, userId: request.userId, timeZone: request.timeZone, now, session };
+      activity = await recordRecoveredReviewRatings(db, request.repo, context, activity);
+      if (activity.exerciseIds.some((id) => !attemptedExerciseIds.has(id))) {
+        return serviceResult(withReviewTopics(activity, index, attemptedExerciseIds));
+      }
+      const latestSession = await request.repo.session(activity.sessionId);
+      await completeReviewActivity(db, { ...context, session: latestSession }, activity, progress);
+      const finished = (await request.repo.session(activity.sessionId))?.activities.find(
+        (item) => item.id === activity?.id,
+      );
+      return serviceResult(withReviewTopics(finished ?? activity, index, attemptedExerciseIds));
     }
   }
   if (
@@ -715,7 +741,13 @@ export async function postSessionsByIdReplan(deps: FeatureServices, request: Fea
     const db = tx as unknown as Database;
     return replanSession(
       { ...deps, db },
-      { ...request, repo: new LearnerRepository(db, request.userId) },
+      {
+        ...request,
+        repo: new LearnerRepository(db, request.userId, undefined, {
+          load: deps.content,
+          now: request.now,
+        }),
+      },
     );
   });
 }

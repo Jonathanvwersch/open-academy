@@ -1887,17 +1887,7 @@ function generateCandidates(
   for (const [prereqId, lessonConceptIds] of remediationByPrereq) {
     const prereq = content.conceptsById.get(prereqId);
     if (!prereq || prereq.status === 'stub') continue;
-    const cardsForPrereq = state.cards.filter((card) => card.conceptId === prereqId);
-    const dueCards = cardsForPrereq.length
-      ? cardsForPrereq.map((card) => ({ ...card, dueAt: now.toISOString() }))
-      : prereq.dimensions.map((dimension) => ({
-          conceptId: prereqId,
-          dimension,
-          dueAt: now.toISOString(),
-          retrievability: 0,
-        }));
-    const remedialState = { ...state, focusSubjectId: undefined };
-    const activity = buildReviewActivityForConcept(remedialState, content, now, prereqId, dueCards);
+    const activity = buildRemedialReviewActivityForConcept(state, content, now, prereqId);
     if (!activity) continue;
     const retryingConcept = content.conceptsById.get(lessonConceptIds[0] ?? '');
     activity.reason.summary = `Review ${prereq.title} before retrying ${retryingConcept?.title ?? lessonConceptIds[0] ?? 'the lesson'}`;
@@ -2173,6 +2163,28 @@ export function buildReviewActivityForConcept(
     recentIds,
     [],
   )?.activity;
+}
+
+export function buildRemedialReviewActivityForConcept(
+  state: SchedulerState,
+  content: ContentIndex,
+  now: Date,
+  conceptId: string,
+): PlannedActivity | undefined {
+  const concept = content.conceptsById.get(conceptId);
+  if (!concept) return undefined;
+  const dueAt = now.toISOString();
+  const cards = state.cards.filter((card) => card.conceptId === conceptId);
+  const dueCards = cards.length
+    ? cards.map((card) => ({ ...card, dueAt }))
+    : concept.dimensions.map((dimension) => ({ conceptId, dimension, dueAt, retrievability: 0 }));
+  return buildReviewActivityForConcept(
+    { ...state, focusSubjectId: undefined },
+    content,
+    now,
+    conceptId,
+    dueCards,
+  );
 }
 
 export function adjustedMinutesForLearnerPace(baseMinutes: number, actualEstimateRatio?: number) {

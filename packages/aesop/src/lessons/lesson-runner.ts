@@ -214,7 +214,7 @@ export function selectNextProblem(
   const countedAnswers = roundProblems
     .filter((problem) => {
       const role = exercises.get(problem.exerciseId)?.role;
-      return role !== 'basics' && role !== 'recall';
+      return role && role !== 'basics' && role !== 'recall';
     })
     .filter((problem) => problem.correct !== null)
     .sort((left, right) => right.position - left.position);
@@ -255,7 +255,7 @@ export function selectNextProblem(
     const reusable = roundProblems
       .filter((problem) => {
         const role = exercises.get(problem.exerciseId)?.role;
-        return role !== 'basics' && role !== 'recall';
+        return role && role !== 'basics' && role !== 'recall';
       })
       .sort(sortByServedTime)[0];
     const fallback =

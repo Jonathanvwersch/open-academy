@@ -250,6 +250,19 @@ async function createLessonActivitySession(
   return session.id;
 }
 
+test('resumes a lesson when its saved pending question was deleted', async ({ page }) => {
+  const sessionId = await createLessonActivitySession(
+    conceptId,
+    'sl-inputs-targets',
+    'removed-supervised-learning-question',
+  );
+  await page.goto(`/session/${sessionId}`);
+  await expect(page.getByTestId('lesson-problem-prompt')).toBeVisible();
+  const run = await currentRun(page);
+  expect(run.pendingProblem.exerciseId).toBe('sl-inputs-targets-basics');
+  await expect(page.getByRole('button', { name: 'Submit answer' })).toBeVisible();
+});
+
 async function createPracticeActivitySession() {
   const db = createDb(env.TEST_DATABASE_URL);
   const [learner] = await db.select({ id: users.id }).from(users).limit(1);
