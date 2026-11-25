@@ -55,6 +55,11 @@ export function PlacementResultsPage({ runId }: { runId?: string }) {
       ) : (
         <p>No course topics placed out — you&apos;ll start from the beginning.</p>
       )}
+      {results.movedBack.length > 0 ? (
+        <p className="text-sm text-muted-foreground">
+          Moved back into your plan: {results.movedBack.join(', ')}.
+        </p>
+      ) : null}
       {results.foundationsPlacedOut.length > 0 ? (
         <Card>
           <CardHeader>

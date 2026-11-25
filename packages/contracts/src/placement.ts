@@ -19,6 +19,7 @@ export interface PlacementResultsPayload {
   courseTitle: string;
   placedOut: string[];
   foundationsPlacedOut: string[];
+  movedBack: string[];
   topicsTotal: number;
   topicsDone: number;
   firstTopic: string | null;

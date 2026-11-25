@@ -222,6 +222,7 @@ test('placement results keep foundations separate and hide an empty foundations 
         courseTitle: 'Fixture course',
         placedOut: hasFoundation ? ['Course topic'] : [],
         foundationsPlacedOut: hasFoundation ? ['Foundation topic'] : [],
+        movedBack: [],
         topicsTotal: 9,
         topicsDone: hasFoundation ? 2 : 0,
         firstTopic: 'Next topic',

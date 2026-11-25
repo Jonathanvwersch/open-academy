@@ -1,5 +1,5 @@
 import type { Exercise, KnowledgePoint } from '../course/schemas.js';
-import { isTemplate } from '../course/templates.js';
+import { instantiateExercise, isTemplate } from '../course/templates.js';
 import type { LessonProblemRow } from './lesson-runner.js';
 
 export const QUIZ_PASS_MARK = 0.8;
@@ -39,6 +39,7 @@ export function selectQuizItems(input: {
   previousAttemptItems: readonly QuizItemHistory[];
   usedSeeds: ReadonlySet<number>;
   seed: number;
+  recoveryItems?: readonly QuizItemHistory[];
 }): SelectedQuizItem[] {
   const points = input.lesson.knowledge_points ?? [];
   const quota = quizQuestionsPerStep(points.length);
@@ -64,6 +65,22 @@ export function selectQuizItems(input: {
     input.previousAttemptItems.map((item) => `${item.exerciseId}:${item.seed ?? 'fixed'}`),
   );
   const usedSeeds = new Set(input.usedSeeds);
+  const promptKey = (prompt: string) => prompt.trim().replace(/\s+/g, ' ');
+  const existingFixedIds = new Set<string>();
+  const existingPrompts = new Set<string>();
+  for (const item of input.recoveryItems ?? []) {
+    const exercise = input.exercises.get(item.exerciseId);
+    if (!exercise) continue;
+    if (isTemplate(exercise)) {
+      if (item.seed !== null) {
+        existingPrompts.add(promptKey(instantiateExercise(exercise, item.seed).exercise.prompt));
+        usedSeeds.add(item.seed);
+      }
+    } else {
+      existingFixedIds.add(item.exerciseId);
+      existingPrompts.add(promptKey(exercise.prompt));
+    }
+  }
   const selected: SelectedQuizItem[] = [];
   type Candidate = {
     exerciseId: string;
@@ -85,6 +102,7 @@ export function selectQuizItems(input: {
         return [];
       }
       if (!isTemplate(exercise)) {
+        if (existingFixedIds.has(exerciseId)) return [];
         const wasInPreviousAttempt = previousAttempt.has(`${exerciseId}:fixed`);
         const served = runServed.has(exerciseId);
         return [
@@ -99,12 +117,20 @@ export function selectQuizItems(input: {
       }
 
       const generated: Candidate[] = [];
-      for (let index = 0; index < quota; index += 1) {
+      const sampleLimit = existingPrompts.size > 0 ? quota * 3 : quota;
+      for (let sample = 0; sample < sampleLimit && generated.length < quota; sample += 1) {
         let templateSeed = Math.floor(random() * 0x7fffffff);
         while (usedSeeds.has(templateSeed)) {
           templateSeed = (templateSeed + 1) % 0x7fffffff;
         }
         usedSeeds.add(templateSeed);
+        if (
+          existingPrompts.size > 0 &&
+          existingPrompts.has(
+            promptKey(instantiateExercise(exercise, templateSeed).exercise.prompt),
+          )
+        )
+          continue;
         generated.push({
           exerciseId,
           seed: templateSeed,

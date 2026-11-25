@@ -1003,7 +1003,38 @@ export function LessonRunner({
         ) : (
           <Card>
             <CardContent className="space-y-4">
-              <p>Could not load this quiz question.</p>
+              <p>
+                {currentQuizItem?.answered
+                  ? 'This question was removed. Your answer still counts.'
+                  : 'No questions remain in this quiz.'}
+              </p>
+              {quizAttemptId && quizQuestionIndex > 0 ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  disabled={busy}
+                  onClick={() =>
+                    setQuizPosition({ attemptId: quizAttemptId, index: quizQuestionIndex - 1 })
+                  }
+                >
+                  Back
+                </Button>
+              ) : null}
+              {quizAttemptId && currentQuizItem && !lastQuizQuestion ? (
+                <Button
+                  type="button"
+                  disabled={busy}
+                  onClick={() =>
+                    setQuizPosition({ attemptId: quizAttemptId, index: quizQuestionIndex + 1 })
+                  }
+                >
+                  Next
+                </Button>
+              ) : currentQuizItem ? (
+                <Button type="button" disabled={busy} onClick={() => void submitLockedQuiz()}>
+                  Submit quiz
+                </Button>
+              ) : null}
             </CardContent>
           </Card>
         )

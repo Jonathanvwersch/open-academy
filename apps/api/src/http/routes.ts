@@ -1,4 +1,5 @@
 import type { ContentIndex } from '@academy/aesop/course/types';
+import { applyMastery } from '@academy/aesop/memory/mastery-service';
 import { localDateKey } from '@academy/aesop/progress/xp';
 import { asc, eq } from 'drizzle-orm';
 import type { Context } from 'hono';
@@ -27,7 +28,6 @@ import {
 } from '../features/tutor/provider.js';
 import { registerTutorThreadRoutes } from '../features/tutor/routes.js';
 import { TutorService } from '../features/tutor/service.js';
-import { applyMastery } from '../learning/mastery-service.js';
 import type { ApiEnv } from './context.js';
 import { isValidTimeZone, requestNow } from './request-context.js';
 export function createApiRoutes(deps: {
@@ -82,7 +82,10 @@ export function createApiRoutes(deps: {
     await next();
   });
   const withRepo = (context: Context<ApiEnv>) =>
-    new LearnerRepository(db, context.get('userId'), context.get('user'));
+    new LearnerRepository(db, context.get('userId'), context.get('user'), {
+      load: content,
+      now: () => requestNow(context),
+    });
   const tutor = (context: Context<ApiEnv>) =>
     tutorProvider &&
     new TutorService(
