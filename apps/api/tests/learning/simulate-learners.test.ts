@@ -15,6 +15,7 @@ import {
   attributeActivityLogs,
   auditP11DescendantCard,
   auditP15Trace,
+  auditP24Offer,
   type InvariantId,
   newActivitiesForReplan,
   p5HasNoWorkWindow,
@@ -78,6 +79,40 @@ const invariants: InvariantId[] = [
   'P26',
   'P27',
 ];
+
+test('P24 distinguishes a missed in-window opportunity from a legitimate late offer', () => {
+  const check = {
+    budget: 20,
+    positions: [0],
+    pendingRuns: 0,
+    pendingActivities: 1,
+    completedOriginals: 2,
+  };
+  const early = { xpBalance: 170, plannedMinutes: 10, active: false };
+  const late = { ...early, xpBalance: 181 };
+  const missed = auditP24Offer({ ...check, offer: early, positions: [], pendingActivities: 0 });
+  expect(missed.violation).toBeDefined();
+  const history = [{ day: 4, invariant: 'P24' as const, evidence: missed.evidence }];
+  expect(auditP24Offer({ ...check, offer: late, previous: history }).violation).toContain('day 4');
+  expect(
+    auditP24Offer({ ...check, offer: late, previous: history, completedOriginals: 3 }).violation,
+  ).toBeUndefined();
+  const didNotFit = auditP24Offer({
+    ...check,
+    offer: early,
+    budget: 5,
+    positions: [],
+    pendingActivities: 0,
+  });
+  expect(didNotFit.violation).toBeUndefined();
+  expect(
+    auditP24Offer({
+      ...check,
+      offer: late,
+      previous: [{ day: 4, invariant: 'P24', evidence: didNotFit.evidence }],
+    }).violation,
+  ).toBeUndefined();
+});
 
 test('P24–P27 observe an offered quiz, timeout, completed follow-ups, and a fresh retake', async () => {
   const content = await loadContent('content');

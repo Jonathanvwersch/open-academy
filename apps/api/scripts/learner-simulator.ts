@@ -42,7 +42,7 @@ import { QUIZ_XP_INTERVAL, QUIZ_XP_WINDOW } from '@academy/aesop/quizzes/mixed-q
 import type { CourseCatalogPayload, CoursePayload, LearnPayload } from '@academy/contracts/course';
 import type { QuizPayload } from '@academy/contracts/quizzes';
 import type { SessionActivity, SessionPayload, TodayPayload } from '@academy/contracts/sessions';
-import { and, asc, desc, eq, inArray, isNull, notInArray } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, notInArray } from 'drizzle-orm';
 import type { Card } from 'ts-fsrs';
 import { Rating, State } from 'ts-fsrs';
 import { createApp } from '../src/app.js';
@@ -2948,10 +2948,10 @@ async function auditQuizOffer(
   activities: SimActivity[],
   budget: number,
 ) {
-  const openRuns = await db
-    .select({ id: quizRuns.id })
+  const runs = await db
+    .select({ finalizedAt: quizRuns.finalizedAt, retakeOf: quizRuns.retakeOf })
     .from(quizRuns)
-    .where(and(eq(quizRuns.userId, userId), isNull(quizRuns.finalizedAt)));
+    .where(eq(quizRuns.userId, userId));
   const positions = activities.flatMap((activity, i) =>
     activity.kind === 'mixed_quiz' ? [i] : [],
   );
@@ -2967,19 +2967,65 @@ async function auditQuizOffer(
         inArray(sessionActivities.status, ['planned', 'in_progress']),
       ),
     );
+  const { evidence, violation } = auditP24Offer({
+    offer,
+    budget,
+    positions,
+    pendingRuns: runs.filter(({ finalizedAt }) => finalizedAt === null).length,
+    pendingActivities: openActivities.length,
+    completedOriginals: runs.filter(({ finalizedAt, retakeOf }) => finalizedAt && !retakeOf).length,
+    previous: runtime.report.quizEvidence,
+  });
+  quizEvidence(runtime, day, 'P24', evidence, violation);
+}
+
+export function auditP24Offer({
+  offer,
+  budget,
+  positions,
+  pendingRuns,
+  pendingActivities,
+  completedOriginals,
+  previous,
+}: {
+  offer: TodayPayload['quizOffer'];
+  budget: number;
+  positions: readonly number[];
+  pendingRuns: number;
+  pendingActivities: number;
+  completedOriginals: number;
+  previous?: ProfileSimulationReport['quizEvidence'];
+}): { evidence: Record<string, unknown>; violation?: string } {
   const minutesFit = offer?.plannedMinutes != null && offer.plannedMinutes <= budget;
   const applicable = !!offer && (offer.xpBalance >= QUIZ_XP_INTERVAL || offer.active) && minutesFit;
+  const insideXpWindow =
+    offer &&
+    offer.xpBalance >= QUIZ_XP_INTERVAL &&
+    offer.xpBalance <= QUIZ_XP_INTERVAL + QUIZ_XP_WINDOW;
+  const missedWindow =
+    applicable && !offer.active && !insideXpWindow
+      ? previous?.find(
+          ({ invariant, evidence }) =>
+            invariant === 'P24' &&
+            evidence.completedOriginals === completedOriginals &&
+            evidence.insideXpWindow === true &&
+            evidence.applicable === true &&
+            evidence.active === false &&
+            Array.isArray(evidence.offerPositions) &&
+            evidence.offerPositions[0] !== 0,
+        )
+      : undefined;
   const evidence = {
     applicable,
     xpBalance: offer?.xpBalance,
-    insideXpWindow:
-      offer &&
-      offer.xpBalance >= QUIZ_XP_INTERVAL &&
-      offer.xpBalance <= QUIZ_XP_INTERVAL + QUIZ_XP_WINDOW,
+    insideXpWindow,
     plannedMinutes: offer?.plannedMinutes,
     budget,
-    pendingRuns: openRuns.length,
-    pendingActivities: openActivities.length,
+    pendingRuns,
+    pendingActivities,
+    completedOriginals,
+    active: offer?.active,
+    missedWindowDay: missedWindow?.day,
     offerPositions: positions,
     reason: applicable
       ? undefined
@@ -2990,18 +3036,19 @@ async function auditQuizOffer(
           : 'quiz does not fit',
   };
   const violates =
-    openRuns.length > 1 ||
-    openActivities.length > 1 ||
+    pendingRuns > 1 ||
+    pendingActivities > 1 ||
     positions.length > 1 ||
     (applicable && positions[0] !== 0) ||
     (!applicable && positions.length > 0);
-  quizEvidence(
-    runtime,
-    day,
-    'P24',
+  return {
     evidence,
-    violates ? 'The session did not offer exactly one fitting quiz first when eligible' : undefined,
-  );
+    violation: violates
+      ? 'The session did not offer exactly one fitting quiz first when eligible'
+      : missedWindow
+        ? `The quiz missed the 30 XP window despite a fitting opportunity on day ${missedWindow.day}`
+        : undefined,
+  };
 }
 
 async function processTimedQuiz(
