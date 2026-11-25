@@ -74,20 +74,16 @@ export async function serveNextRunProblem(
 }
 
 async function readRunQuiz(db: Database | Tx, runId: string) {
-  const quizAttempts = await db
-    .select()
+  const rows = await db
+    .select({ attempt: lessonQuizAttempts, item: lessonQuizItems })
     .from(lessonQuizAttempts)
+    .leftJoin(lessonQuizItems, eq(lessonQuizItems.quizAttemptId, lessonQuizAttempts.id))
     .where(eq(lessonQuizAttempts.runId, runId))
-    .orderBy(lessonQuizAttempts.attemptNo);
-  const attemptIds = quizAttempts.map((attempt) => attempt.id);
-  const quizItems = attemptIds.length
-    ? await db
-        .select()
-        .from(lessonQuizItems)
-        .where(inArray(lessonQuizItems.quizAttemptId, attemptIds))
-        .orderBy(lessonQuizItems.quizAttemptId, lessonQuizItems.position, lessonQuizItems.id)
-    : [];
-  return { quizAttempts, quizItems };
+    .orderBy(lessonQuizAttempts.attemptNo, lessonQuizItems.position, lessonQuizItems.id);
+  return {
+    quizAttempts: [...new Map(rows.map(({ attempt }) => [attempt.id, attempt])).values()],
+    quizItems: rows.flatMap(({ item }) => (item ? [item] : [])),
+  };
 }
 
 function staleQuizItems(
