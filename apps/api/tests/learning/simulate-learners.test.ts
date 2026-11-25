@@ -1091,12 +1091,27 @@ test('P15 exempts only the selected reset among equally weak prerequisite dimens
   expect(correct.prerequisiteResetEvidence[0]?.selectedCardId).toBe('conceptual');
   const incorrect = audit('math');
   expect(incorrect.violations).toEqual([
+    'parent/conceptual: expected prerequisite reset is missing',
     'parent/math: final state differs from the last trace result',
   ]);
   expect(incorrect.prerequisiteResetEvidence[0]?.selectedCardId).toBe('conceptual');
 });
 
-test('P15 catches an extra prerequisite reset without a FIRe trace', () => {
+test.each([
+  { label: 'accepts the expected reset', resetConceptual: true, resetMath: false, violations: [] },
+  {
+    label: 'catches an extra reset',
+    resetConceptual: true,
+    resetMath: true,
+    violations: ['parent/math: unexpected prerequisite reset'],
+  },
+  {
+    label: 'catches an omitted expected reset',
+    resetConceptual: false,
+    resetMath: false,
+    violations: ['parent/conceptual: expected prerequisite reset is missing'],
+  },
+])('P15 $label without a FIRe trace', ({ resetConceptual, resetMath, violations }) => {
   const now = new Date('2026-01-14T12:00:00.000Z');
   const conceptual = {
     ...p15Card('conceptual', 'parent', '2026-04-14T12:00:00.000Z'),
@@ -1108,33 +1123,31 @@ test('P15 catches an extra prerequisite reset without a FIRe trace', () => {
     dueAt: now,
     fsrs: { ...card.fsrs, due: now },
   });
-  const audit = (mathAfter: typeof math) =>
-    auditP15Trace(
-      [math, conceptual],
-      [mathAfter, reset(conceptual)],
-      [
-        {
-          cardId: 'prerequisite-log',
-          conceptId: 'prerequisite',
-          rating: String(Rating.Again),
-          previousLog: { rating: String(Rating.Again), createdAt: new Date('2026-01-07') },
-        },
-      ],
-      [],
-      p15Weights,
-      now,
-      'UTC',
-      'review',
-      new Map([['prerequisite-log', 0]]),
+  const audit = auditP15Trace(
+    [math, conceptual],
+    [resetMath ? reset(math) : math, resetConceptual ? reset(conceptual) : conceptual],
+    [
       {
-        hardPrerequisiteIdsByConcept: new Map([['prerequisite', ['parent']]]),
-        completedReviewConceptIds: new Set<string>(),
-        coveredDimensionKeys: new Set<string>(),
+        cardId: 'prerequisite-log',
+        conceptId: 'prerequisite',
+        rating: String(Rating.Again),
+        previousLog: { rating: String(Rating.Again), createdAt: new Date('2026-01-07') },
       },
-    );
+    ],
+    [],
+    p15Weights,
+    now,
+    'UTC',
+    'review',
+    new Map([['prerequisite-log', 0]]),
+    {
+      hardPrerequisiteIdsByConcept: new Map([['prerequisite', ['parent']]]),
+      completedReviewConceptIds: new Set<string>(),
+      coveredDimensionKeys: new Set<string>(),
+    },
+  );
 
-  expect(audit(math).violations).toEqual([]);
-  expect(audit(reset(math)).violations).toEqual(['parent/math: unexpected prerequisite reset']);
+  expect(audit.violations).toEqual(violations);
 });
 
 test('P16 flags a selected review when a dropped review is two days more overdue', () => {

@@ -3854,12 +3854,29 @@ export function auditP15Trace(
         selectedCardId: weakest?.id ?? null,
       });
       if (!weakest) continue;
-      const actual = afterById.get(weakest.id);
+      const nextTrace = trace.find(
+        (event) =>
+          event.targetCardId === weakest.id &&
+          event.activityOrder !== null &&
+          event.activityOrder > sourceOrder,
+      );
+      const explicitReviewOrder = reviewLogOrder.get(weakest.id);
       if (
-        !actual?.fsrs ||
-        actual.lastReviewAt?.getTime() !== weakest.lastReviewAt?.getTime() ||
-        p15TraceState({ dueAt: actual.dueAt, fsrs: actual.fsrs as Card }) !== p15TraceState(weakest)
+        explicitReviewOrder !== undefined &&
+        explicitReviewOrder > sourceOrder &&
+        explicitReviewOrder <= (nextTrace?.activityOrder ?? Infinity)
       ) {
+        continue;
+      }
+      const actual = afterById.get(weakest.id);
+      if (!actual && withdrawnConceptIds.has(weakest.conceptId) && !nextTrace) continue;
+      const observed =
+        nextTrace?.before ??
+        (actual?.fsrs && actual.lastReviewAt?.getTime() === weakest.lastReviewAt?.getTime()
+          ? { dueAt: actual.dueAt, fsrs: actual.fsrs as Card }
+          : undefined);
+      if (!observed || p15TraceState(observed) !== p15TraceState(weakest)) {
+        violations.push(`${p15CardIdentity(weakest)}: expected prerequisite reset is missing`);
         continue;
       }
 
