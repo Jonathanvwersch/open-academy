@@ -280,33 +280,42 @@ export function LessonRunner({
     const index = Number(step) - 1;
     const point = Number.isInteger(index) ? state.points[index] : undefined;
     const isPendingPracticePoint = point?.id === state.pendingPracticeProblem?.knowledgePointId;
+    const isSelectedPracticePoint = point?.id === practicePointId;
     if (
       !point ||
-      (point.status !== 'passed' && point.id !== state.currentPointId && !isPendingPracticePoint)
+      (point.status !== 'passed' &&
+        point.id !== state.currentPointId &&
+        !isPendingPracticePoint &&
+        !isSelectedPracticePoint)
     ) {
       onStepChange(fallback, true);
       setViewingPointId(null);
       setViewingStage(null);
       return;
     }
-    if (isPendingPracticePoint) {
-      setPracticePointId(point.id);
-      setWarmupActive(pendingPracticeIsWarmup);
-    } else {
+    if (isSelectedPracticePoint) {
+      setViewingPointId(point.id);
+      setViewingStage(null);
+      return;
+    }
+    if (practicePointId) {
       setPracticePointId(null);
       setWarmupActive(false);
+    } else if (isPendingPracticePoint) {
+      setPracticePointId(point.id);
+      setWarmupActive(pendingPracticeIsWarmup);
     }
     setViewingStage(null);
     setViewingPointId(
       isPendingPracticePoint || point.id !== state.currentPointId ? point.id : null,
     );
-  }, [finalAnswered, lesson, onStepChange, pendingPracticeIsWarmup, state, step]);
+  }, [finalAnswered, lesson, onStepChange, pendingPracticeIsWarmup, practicePointId, state, step]);
 
   useEffect(() => {
-    if (!pendingPracticePointId || pendingPracticeIsWarmup) return;
+    if (!pendingPracticePointId || pendingPracticeIsWarmup || practicePointId !== null) return;
     setPracticePointId(pendingPracticePointId);
     setViewingPointId(pendingPracticePointId);
-  }, [pendingPracticeIsWarmup, pendingPracticePointId]);
+  }, [pendingPracticeIsWarmup, pendingPracticePointId, practicePointId]);
 
   useEffect(() => {
     tutorSidebar.setContext({

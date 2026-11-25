@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 import { env } from '../../apps/api/src/config.js';
 import { createDb } from '../../apps/api/src/db/client.js';
 import {
@@ -108,6 +108,108 @@ async function createLessonSession({
     });
   }
   return session.id;
+}
+
+async function mockFailedQuizRun(page: Page, sessionId: string) {
+  let lastPayload: Record<string, unknown> | null = null;
+  let practiceProblem: Record<string, unknown> | null = null;
+  let answerSubmitted = false;
+  await page.route('**/api/sessions/*', async (route) => {
+    const url = new URL(route.request().url());
+    if (route.request().method() === 'GET' && url.pathname === `/api/sessions/${sessionId}`) {
+      const response = await route.fetch();
+      const payload = (await response.json()) as Record<string, unknown>;
+      await route.fulfill({ response, json: { ...payload, tutorEnabled: true } });
+      return;
+    }
+    await route.continue();
+  });
+  await page.route('**/api/tutor/status', (route) =>
+    route.fulfill({ json: { tutorEnabled: true } }),
+  );
+  await page.route('**/api/lessons/vectors/run**', async (route) => {
+    const url = new URL(route.request().url());
+    if (route.request().method() === 'GET' && answerSubmitted && lastPayload) {
+      await route.fulfill({ status: 200, json: lastPayload });
+      return;
+    }
+    if (route.request().method() === 'POST' && url.pathname.endsWith('/run/practice')) {
+      const run = lastPayload?.run as Record<string, unknown> | undefined;
+      const problem = run?.lastAnsweredProblem as Record<string, unknown> | undefined;
+      if (!run || !problem?.exercise)
+        throw new Error('Expected the failed quiz problem in the run');
+      practiceProblem = {
+        ...problem,
+        knowledgePointId: 'vectors-fixture-1',
+        practiceOnly: true,
+        result: undefined,
+      };
+      const payload = { ...lastPayload, run: { ...run, pendingPracticeProblem: practiceProblem } };
+      lastPayload = payload;
+      await route.fulfill({ status: 200, json: payload });
+      return;
+    }
+    if (route.request().method() === 'POST' && url.pathname.endsWith('/run/answer')) {
+      const run = lastPayload?.run as Record<string, unknown> | undefined;
+      const quiz = run?.quiz as Record<string, unknown> | undefined;
+      if (!run || !quiz || !practiceProblem) {
+        throw new Error('Expected the warm-up question in the run');
+      }
+      const reviewRequired = (quiz.reviewRequired as Array<Record<string, unknown>>).map(
+        (review) =>
+          review.pointId === practiceProblem?.knowledgePointId
+            ? { ...review, answered: 1 }
+            : review,
+      );
+      const result = {
+        attemptId: 'warmup-answer',
+        attemptNo: 1,
+        status: 'incorrect',
+        correct: 0,
+        feedback: 'Review the coordinates before the retake.',
+        solution: 'Compare each coordinate with the example.',
+        yourAnswer: '0',
+        retryAllowed: false,
+      };
+      const nextRun: Record<string, unknown> = {
+        ...run,
+        quiz: { ...quiz, reviewRequired },
+        lastAnsweredProblem: { ...practiceProblem, result },
+      };
+      delete nextRun.pendingPracticeProblem;
+      answerSubmitted = true;
+      lastPayload = { ...lastPayload, run: nextRun };
+      await route.fulfill({
+        status: 200,
+        json: {
+          correct: 0,
+          feedback: result.feedback,
+          solution: result.solution,
+          xpAwarded: 0,
+          state: nextRun,
+        },
+      });
+      return;
+    }
+    const response = await route.fetch();
+    const payload = (await response.json()) as Record<string, unknown>;
+    const run = payload.run as Record<string, unknown>;
+    const quiz = run.quiz as Record<string, unknown>;
+    run.status = 'quiz';
+    quiz.last = {
+      attemptId: 'failed-attempt',
+      attemptNo: 1,
+      score: 0,
+      passed: false,
+      correctCount: 0,
+      total: 1,
+      perStep: [{ pointId: 'vectors-fixture-1', title: 'Vector basics', correct: 0, total: 1 }],
+    };
+    quiz.reviewRequired = [{ pointId: 'vectors-fixture-1', answered: 0, needed: 1 }];
+    if (practiceProblem) run.pendingPracticeProblem = practiceProblem;
+    lastPayload = payload;
+    await route.fulfill({ response, json: payload });
+  });
 }
 
 test('completed lesson steps can be revisited during Explain it without losing the draft or changing progress', async ({
@@ -527,56 +629,7 @@ test('Explain it links fall forward to the quiz after the self-check is answered
 
 test('failed quiz Retry keeps the warm-up point in the URL', async ({ page }) => {
   const sessionId = await createLessonSession({ stepsPassed: true, explainDone: true });
-  let lastPayload: Record<string, unknown> | null = null;
-  let warmupProblem: Record<string, unknown> | null = null;
-  await page.route('**/api/sessions/*', async (route) => {
-    const url = new URL(route.request().url());
-    if (route.request().method() === 'GET' && url.pathname === `/api/sessions/${sessionId}`) {
-      const response = await route.fetch();
-      const payload = (await response.json()) as Record<string, unknown>;
-      await route.fulfill({ response, json: { ...payload, tutorEnabled: true } });
-      return;
-    }
-    await route.continue();
-  });
-  await page.route('**/api/tutor/status', (route) =>
-    route.fulfill({ json: { tutorEnabled: true } }),
-  );
-  await page.route('**/api/lessons/vectors/run**', async (route) => {
-    if (route.request().method() === 'POST') {
-      const run = lastPayload?.run as Record<string, unknown> | undefined;
-      const problem = run?.lastAnsweredProblem as Record<string, unknown> | undefined;
-      if (!run || !problem?.exercise)
-        throw new Error('Expected the failed quiz problem in the run');
-      warmupProblem = {
-        ...problem,
-        id: 'warmup-problem',
-        knowledgePointId: 'vectors-fixture-1',
-        practiceOnly: true,
-        result: undefined,
-      };
-      const payload = { ...lastPayload, run: { ...run, pendingPracticeProblem: warmupProblem } };
-      lastPayload = payload;
-      await route.fulfill({ status: 200, json: payload });
-      return;
-    }
-    const response = await route.fetch();
-    const payload = (await response.json()) as Record<string, unknown>;
-    const run = payload.run as Record<string, unknown>;
-    const quiz = run.quiz as Record<string, unknown>;
-    run.status = 'quiz';
-    quiz.last = {
-      attemptId: 'failed-attempt',
-      passed: false,
-      correctCount: 0,
-      total: 1,
-      perStep: [{ pointId: 'vectors-fixture-1', title: 'Vector basics', correct: 0, total: 1 }],
-    };
-    quiz.reviewRequired = [{ pointId: 'vectors-fixture-1', answered: 0, needed: 1 }];
-    if (warmupProblem) run.pendingPracticeProblem = warmupProblem;
-    lastPayload = payload;
-    await route.fulfill({ response, json: payload });
-  });
+  await mockFailedQuizRun(page, sessionId);
 
   await page.goto(`/session/${sessionId}`);
   await expect(page.getByTestId('lesson-quiz-results')).toBeVisible();
@@ -606,3 +659,51 @@ test('failed quiz Retry keeps the warm-up point in the URL', async ({ page }) =>
   await page.reload();
   await expect.soft(page.getByTestId('lesson-quiz-warmup')).toBeVisible();
 });
+
+test('warm-up feedback stays visible after answering the question', async ({ page }) => {
+  const sessionId = await createLessonSession({ stepsPassed: true, explainDone: true });
+  await mockFailedQuizRun(page, sessionId);
+
+  await page.goto(`/session/${sessionId}`);
+  await expect(page.getByTestId('lesson-quiz-results')).toBeVisible();
+  await page.getByRole('button', { name: 'Retry', exact: true }).click();
+  await expect(page.getByTestId('lesson-quiz-warmup')).toBeVisible();
+
+  const answer = page.getByLabel('Your answer');
+  if (await answer.count()) {
+    await answer.fill('0');
+  } else {
+    await page.getByRole('radio').first().click();
+  }
+  const answerResponsePromise = page.waitForResponse(
+    (response) => response.request().method() === 'POST' && response.url().includes('/run/answer'),
+  );
+  await page.getByRole('button', { name: 'Submit answer', exact: true }).click();
+  const answerResponse = await answerResponsePromise;
+  expect(answerResponse.status()).toBe(200);
+  expect((await answerResponse.json()).state.lastAnsweredProblem.result.feedback).toContain(
+    'Review the coordinates',
+  );
+
+  const warmup = page.getByTestId('lesson-quiz-warmup');
+  await expect(warmup).toBeVisible();
+  await expect(warmup.getByRole('status')).toContainText('Not quite');
+  await expect(warmup.getByRole('button', { name: 'Start the retake', exact: true })).toBeVisible();
+});
+
+test('optional practice on a missed quiz step stays on the lesson step', async ({ page }) => {
+  const sessionId = await createLessonSession({ stepsPassed: true, explainDone: true });
+  await mockFailedQuizRun(page, sessionId);
+
+  await page.goto(`/session/${sessionId}`);
+  await expect(page.getByTestId('lesson-quiz-results')).toBeVisible();
+  await page.getByRole('button', { name: 'Step 1 of 2, passed' }).click();
+  await expect(page.getByTestId('lesson-step-content')).toBeVisible();
+  await page.getByRole('button', { name: 'Practise this step', exact: true }).click();
+
+  await expect(page.getByTestId('lesson-step-content')).toBeVisible();
+  await expect(page.getByTestId('lesson-quiz-warmup')).toHaveCount(0);
+  await expect(page.getByTestId('lesson-problem')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Ask the tutor', exact: true })).toBeVisible();
+});
+
