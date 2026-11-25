@@ -4,7 +4,17 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseSync } from 'oxc-parser';
 import { ResolverFactory } from 'oxc-resolver';
-import { deploymentImports, publicFeatureModules, sourceEntries, sourceLayers } from './policy.mjs';
+import {
+  aesopBuiltins,
+  aesopDependencies,
+  browserForbiddenPackages,
+  cliDependencies,
+  deploymentImports,
+  publicFeatureModules,
+  sharedPackageDependencies,
+  sourceEntries,
+  sourceLayers,
+} from './policy.mjs';
 
 const builtins = new Set(builtinModules.flatMap((name) => [name, `node:${name}`]));
 const skipped = new Set(['node_modules', 'dist', '.git', '.tanstack', '.vite', '__pycache__']);
@@ -69,6 +79,28 @@ function feature(file) {
 
 function packageName(request) {
   return request.startsWith('@') ? request.split('/').slice(0, 2).join('/') : request.split('/')[0];
+}
+
+function packageExport(exports, key) {
+  if (exports?.[key]) return exports[key];
+  const patterns = Object.entries(exports ?? {})
+    .filter(([pattern]) => pattern.includes('*'))
+    .sort(([left], [right]) => right.replace('*', '').length - left.replace('*', '').length);
+  for (const [pattern, value] of patterns) {
+    const [prefix, suffix] = pattern.split('*');
+    if (!key.startsWith(prefix) || !key.endsWith(suffix)) continue;
+    const end = suffix ? key.length - suffix.length : key.length;
+    const match = key.slice(prefix.length, end);
+    if (typeof value === 'string') return value.replaceAll('*', match);
+    if (value && typeof value === 'object')
+      return Object.fromEntries(
+        Object.entries(value).map(([condition, target]) => [
+          condition,
+          typeof target === 'string' ? target.replaceAll('*', match) : target,
+        ]),
+      );
+  }
+  return undefined;
 }
 
 export function checkArchitecture(root = fileURLToPath(new URL('../../', import.meta.url))) {
@@ -158,9 +190,11 @@ export function checkArchitecture(root = fileURLToPath(new URL('../../', import.
     const targets = [];
     for (let request of importRequests(parsed.program)) {
       if (builtins.has(request)) {
+        const aesopBuiltin = own === 'packages/aesop' && aesopBuiltins.has(request);
         if (
           !isTest &&
           !file.startsWith('packages/cli/src/') &&
+          !aesopBuiltin &&
           (own.startsWith('packages/') || (own === 'apps/web' && !file.endsWith('config.ts')))
         )
           report(file, `browser-safe code cannot import ${request}`);
@@ -195,6 +229,11 @@ export function checkArchitecture(root = fileURLToPath(new URL('../../', import.
           report(file, `declare ${dependency} in ${own}/package.json`);
         const workspace = byName.get(dependency);
         if (workspace) {
+          if (own === 'apps/web' && browserForbiddenPackages.has(dependency))
+            report(
+              file,
+              'apps/web cannot import @academy/aesop because it uses Node filesystem APIs',
+            );
           if (
             workspace.dir.startsWith('apps/') &&
             !(own === 'packages/cli' && request === '@academy/api/content')
@@ -204,7 +243,7 @@ export function checkArchitecture(root = fileURLToPath(new URL('../../', import.
               'applications cannot be imported as libraries; extract a shared contract or helper',
             );
           const key = request === dependency ? '.' : `.${request.slice(dependency.length)}`;
-          const exported = workspace.manifest.exports?.[key];
+          const exported = packageExport(workspace.manifest.exports, key);
           const value =
             typeof exported === 'string' ? exported : (exported?.import ?? exported?.default);
           if (!value) {
@@ -215,12 +254,15 @@ export function checkArchitecture(root = fileURLToPath(new URL('../../', import.
           if (!existsSync(path.join(root, target)))
             report(file, `${request} exports a missing file`);
         }
-        const nodeCliDependency =
-          own === 'packages/cli' && ['@academy/api', 'tsx', 'yaml'].includes(dependency);
+        const nodeCliDependency = own === 'packages/cli' && cliDependencies.has(dependency);
+        const packageDependencyAllowed =
+          own === 'packages/aesop'
+            ? aesopDependencies.has(dependency)
+            : sharedPackageDependencies.has(dependency);
         if (
           !isTest &&
           own.startsWith('packages/') &&
-          !['zod', '@academy/contracts', '@academy/shared'].includes(dependency) &&
+          !packageDependencyAllowed &&
           !nodeCliDependency
         )
           report(file, `${dependency} does not belong in a browser-safe shared package`);
