@@ -4,8 +4,9 @@ import type { ContentIndex } from '@academy/aesop/course/types';
 import { courseFoundationIds, createPrerequisiteChecker } from '@academy/aesop/graph/prerequisites';
 import { newReviewCard } from '@academy/aesop/memory/fsrs';
 import type { MasteryRecord } from '@academy/aesop/memory/types';
-import { eq } from 'drizzle-orm';
+import { asc, eq } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest';
+import { answerFor } from '../../scripts/learner-simulation-support.js';
 import { createApp } from '../../src/app.js';
 import { env } from '../../src/config.js';
 import { loadContent } from '../../src/content/load.js';
@@ -23,6 +24,7 @@ import {
   masteryEvents,
   paperProgress,
   projectProgress,
+  quizItems,
   remediationFlags,
   reviewCards,
   reviewLogs,
@@ -2630,6 +2632,90 @@ test('done-today XP rows include lesson quiz XP and sum to the earned total', as
   ]);
   expect(learn.doneToday.reduce((total: number, item: { xp: number }) => total + item.xp, 0)).toBe(
     learn.xp.today,
+  );
+});
+
+test('done-today XP rows include XP from a finalized timed quiz', async () => {
+  const quizContent = await loadContent('content');
+  const quizApp = createApp({ db, content: quizContent, tutorProvider: null });
+  const now = '2026-01-14T12:00:00.000Z';
+  await db
+    .update(users)
+    .set({ activeCourseId: 'ml-foundations', prefs: { scheduleMinutes: 60 } })
+    .where(eq(users.id, userId));
+  await db.insert(lessonRuns).values(
+    quizContent.lessons.map(({ concept }) => ({
+      userId,
+      conceptId: concept,
+      status: 'completed' as const,
+      completedAt: new Date(now),
+    })),
+  );
+  await new LearnerRepository(db, userId).completeCourses(
+    quizContent.courses.map(({ id }) => id),
+    new Date(now),
+  );
+  await db.insert(xpEvents).values({
+    userId,
+    amount: 150,
+    kind: 'knowledge_point',
+    sourceKey: 'test:home-timed-quiz',
+    earnedAt: new Date(now),
+    localDate: '2026-01-14',
+  });
+  const headers = { 'X-Now': now, 'X-Time-Zone': 'UTC', 'Content-Type': 'application/json' };
+  const sessionResponse = await quizApp.request('/api/sessions', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ budgetMinutes: 120 }),
+  });
+  expect(sessionResponse.status).toBe(201);
+  const session = (await sessionResponse.json()) as {
+    id: string;
+    activities: Array<{ id: string; kind: string }>;
+  };
+  const quizActivity = session.activities.find((activity) => activity.kind === 'mixed_quiz');
+  if (!quizActivity) throw new Error('Could not create timed quiz activity');
+
+  const startResponse = await quizApp.request('/api/quizzes/start', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ sessionId: session.id, activityId: quizActivity.id }),
+  });
+  expect(startResponse.status).toBe(201);
+  const quiz = (await startResponse.json()) as { id: string };
+  const items = await db
+    .select()
+    .from(quizItems)
+    .where(eq(quizItems.runId, quiz.id))
+    .orderBy(asc(quizItems.position));
+  for (const item of items) {
+    const answerResponse = await quizApp.request(`/api/quizzes/${quiz.id}/answer`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        position: item.position,
+        answer: answerFor(quizContent, item.question.exercise.id, item.question.seed),
+      }),
+    });
+    expect(answerResponse.status).toBe(200);
+  }
+
+  const finalizeResponse = await quizApp.request(`/api/quizzes/${quiz.id}/finalize`, {
+    method: 'POST',
+    headers,
+  });
+  expect(finalizeResponse.status).toBe(200);
+  const finalized = (await finalizeResponse.json()) as { result: { xpAwarded: number } };
+  expect(finalized.result.xpAwarded).toBeGreaterThan(0);
+
+  const homeResponse = await quizApp.request('/api/learn', { headers });
+  expect(homeResponse.status).toBe(200);
+  const home = await homeResponse.json();
+  expect(home.doneToday).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ activityId: quizActivity.id, xp: finalized.result.xpAwarded }),
+    ]),
   );
 });
 
