@@ -55,7 +55,7 @@ def valid_split(x, y, train_x, val_x, train_y, val_y, repeated):
 
 def run(path, output):
     model = load(path)
-    project = yaml.safe_load((ROOT / "project.yaml").read_text())
+    project = yaml.safe_load((ROOT / "../../content/projects/linreg-numpy.yaml").read_text())
     thresholds = {metric["id"]: metric for metric in project["metrics"]}
     val_mse_limit = thresholds["val_mse"]["threshold"]
     weight_error_limit = thresholds["weight_error"]["threshold"]

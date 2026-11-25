@@ -31,7 +31,7 @@ python3 labs/verify.py gaussian-mle
 python3 labs/gaussian-mle/work/report.py
 ```
 
-The verifier writes `labs/gaussian-mle/work/results.json`. It reads the metric thresholds from `labs/gaussian-mle/project.yaml` and reports three metrics: the error of the fitted mean, the error of the fitted standard deviation, and the held-out average log-likelihood per reading. `report.py` prints the fit and the comparisons to other models.
+The verifier writes `labs/gaussian-mle/work/results.json`. Upload that file on the project page. It reads the metric thresholds from `content/projects/gaussian-mle.yaml` and reports three metrics: the error of the fitted mean, the error of the fitted standard deviation, and the held-out average log-likelihood per reading. `report.py` prints the fit and the comparisons the reflection questions ask about.
 
 ## Common bugs
 

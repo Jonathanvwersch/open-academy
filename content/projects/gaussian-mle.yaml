@@ -18,7 +18,7 @@ background: |
   python3 labs/verify.py gaussian-mle
   python3 labs/gaussian-mle/work/report.py
   ```
-  Review `labs/gaussian-mle/work/results.json` when you are done.
+  Upload `labs/gaussian-mle/work/results.json` on this page when you are done.
 prereqs:
   [
     probability-basics,

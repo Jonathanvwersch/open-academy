@@ -101,6 +101,7 @@ concepts:
       - { text: "Calculate gradients through a small network by hand", dimension: math }
       - { text: "Implement a backward pass", dimension: implementation }
       - { text: "Diagnose common gradient errors", dimension: transfer }
+    projects: [nn-from-scratch]
     status: authored
   - id: autodiff
     title: Automatic differentiation

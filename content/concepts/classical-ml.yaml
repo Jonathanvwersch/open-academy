@@ -49,6 +49,7 @@ concepts:
     objectives:
       - { text: "Write the linear model in vector form", dimension: math }
       - { text: "Explain what each weight means", dimension: conceptual }
+    projects: [linreg-numpy]
     status: authored
   - id: loss-functions
     title: Loss functions (MSE, MAE)
@@ -62,6 +63,7 @@ concepts:
     objectives:
       - { text: "Compute MSE and MAE for a set of predictions", dimension: math }
       - { text: "Explain how MSE's squaring treats outliers", dimension: conceptual }
+    projects: [linreg-numpy]
     status: authored
   - id: gradient-descent
     title: Gradient descent
@@ -85,6 +87,7 @@ concepts:
       - { text: "Explain the effect of the learning rate", dimension: conceptual }
       - { text: "Implement a gradient-descent loop", dimension: implementation }
       - { text: "Diagnose divergence or slow convergence from a loss curve", dimension: transfer }
+    projects: [linreg-numpy]
     status: authored
   - id: train-test-split
     title: Training and evaluation splits
@@ -104,6 +107,7 @@ concepts:
     objectives:
       - { text: "Explain the purpose of each split", dimension: conceptual }
       - { text: "Spot data leakage in an evaluation setup", dimension: transfer }
+    projects: [linreg-numpy]
     status: authored
   - id: logistic-regression
     title: Logistic regression and cross-entropy

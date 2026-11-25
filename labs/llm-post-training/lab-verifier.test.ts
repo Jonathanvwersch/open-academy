@@ -14,7 +14,7 @@ type Results = {
 };
 
 const root = resolve('labs/llm-post-training');
-const project = parse(readFileSync('labs/llm-post-training/project.yaml', 'utf8')) as {
+const project = parse(readFileSync('content/projects/llm-post-training.yaml', 'utf8')) as {
   tests: Array<{ id: string }>;
   metrics: Array<{ id: string; threshold: number; direction: 'above' | 'below' }>;
 };

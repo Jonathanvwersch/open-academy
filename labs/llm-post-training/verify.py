@@ -31,7 +31,7 @@ def main():
     try:
         model = load_module(args.implementation.resolve(), "post_training_candidate")
     except Exception as error:
-        # Report failure IDs from the lab's declared test schema.
+        # All failure IDs stay uploadable under the project's declared test schema.
         class BrokenModule:
             def __getattr__(self, name):
                 raise RuntimeError(f"Load implementation: {load_error}")

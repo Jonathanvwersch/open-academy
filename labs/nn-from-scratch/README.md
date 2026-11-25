@@ -1,6 +1,6 @@
 # Neural network and backpropagation from scratch
 
-In this standalone lab, we will build a small classifier that learns a curved boundary. The data contains two interleaved moons, so a single straight line cannot separate the classes well. One hidden layer gives the model the flexibility it needs; a hand-written backward pass gives us a way to see how each parameter learns.
+In this project, we will build a small classifier that learns a curved boundary. The data contains two interleaved moons, so a single straight line cannot separate the classes well. One hidden layer gives the model the flexibility it needs; a hand-written backward pass gives us a way to see how each parameter learns.
 
 ## Setup
 

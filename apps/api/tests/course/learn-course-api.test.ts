@@ -1,15 +1,11 @@
-import { readFile } from 'node:fs/promises';
 import { orderCourseIdsBySubject } from '@academy/aesop/course/course-order';
-import { contentVersion } from '@academy/aesop/course/hash';
 import { subjectForCourse } from '@academy/aesop/course/index';
-import { ProjectSchema } from '@academy/aesop/course/schemas';
 import type { ContentIndex } from '@academy/aesop/course/types';
 import { courseFoundationIds, createPrerequisiteChecker } from '@academy/aesop/graph/prerequisites';
 import { newReviewCard } from '@academy/aesop/memory/fsrs';
 import type { MasteryRecord } from '@academy/aesop/memory/types';
 import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest';
-import { parse } from 'yaml';
 import { createApp } from '../../src/app.js';
 import { env } from '../../src/config.js';
 import { loadContent } from '../../src/content/load.js';
@@ -94,8 +90,8 @@ async function rowCounts() {
   };
 }
 
-async function get(path: string, targetApp = app) {
-  return targetApp.request(`/api${path}`, {
+async function get(path: string) {
+  return app.request(`/api${path}`, {
     headers: { 'X-Now': '2026-01-07T12:00:00.000Z' },
   });
 }
@@ -1334,7 +1330,12 @@ test('planned Learn tasks and Course numbering are read-only', async () => {
   expect(course.units[0]).toMatchObject({
     intro:
       "You'll build the simplest model that learns: predicting a house's price from its measurements, trained on past sales. The maths topics are the tools this model needs, taught in the order it needs them.",
-    project: null,
+    project: {
+      id: 'linreg-numpy',
+      title: expect.any(String),
+      available: false,
+      status: 'not_started',
+    },
   });
   expect(
     course.units[0].topics.find((topic) => topic.conceptId === 'supervised-learning'),
@@ -2159,31 +2160,31 @@ test('a started descendant locks and its planned learn activity is skipped when 
   ).toBe('locked');
 });
 
-test('Home hides an active character decoder project until all hard prerequisite ancestors are complete', async () => {
-  await activateCourse('transformers-llms');
-  const project = content.projectsById.get('char-transformer');
-  if (!project) throw new Error('Missing character transformer project');
-  const directPrerequisites = project.prereqs;
+test('Home hides an active PCA project until all hard prerequisite ancestors are complete', async () => {
+  const directPrerequisites = ['vectors', 'dot-product', 'matrices', 'eigen-svd'];
   const hardAncestors = [
-    ...new Set(directPrerequisites.flatMap((id) => [...hardPrerequisiteAncestors(content, id)])),
-  ].filter((id) => !directPrerequisites.includes(id));
+    'determinants',
+    'inverses-linear-systems',
+    'rank-span',
+    'orthogonality-projections',
+  ];
   const [session] = await db
     .insert(studySessions)
     .values({ userId, plannedMinutes: 60, status: 'active' })
     .returning();
-  if (!session) throw new Error('Could not create active character decoder project session');
+  if (!session) throw new Error('Could not create active PCA project session');
   const [labActivity] = await db
     .insert(sessionActivities)
     .values({
       sessionId: session.id,
       idx: 0,
       kind: 'lab',
-      projectId: 'char-transformer',
+      projectId: 'pca-numpy',
       plannedMinutes: 60,
       status: 'planned',
     })
     .returning();
-  if (!labActivity) throw new Error('Could not create active character decoder lab activity');
+  if (!labActivity) throw new Error('Could not create active PCA lab activity');
   await db.insert(mastery).values(completedMasteryRows(directPrerequisites));
 
   const beforeAncestorsResponse = await get('/learn');
@@ -2191,9 +2192,7 @@ test('Home hides an active character decoder project until all hard prerequisite
   const beforeAncestors = (await beforeAncestorsResponse.json()) as {
     tasks: Array<{ title: string }>;
   };
-  expect(beforeAncestors.tasks.some((task) => task.title === 'Character-level transformer')).toBe(
-    false,
-  );
+  expect(beforeAncestors.tasks.some((task) => task.title === 'PCA from scratch')).toBe(false);
 
   await db.insert(mastery).values(completedMasteryRows(hardAncestors));
   const afterAncestorsResponse = await get('/learn');
@@ -2201,9 +2200,7 @@ test('Home hides an active character decoder project until all hard prerequisite
   const afterAncestors = (await afterAncestorsResponse.json()) as {
     tasks: Array<{ title: string }>;
   };
-  expect(afterAncestors.tasks.some((task) => task.title === 'Character-level transformer')).toBe(
-    true,
-  );
+  expect(afterAncestors.tasks.some((task) => task.title === 'PCA from scratch')).toBe(true);
 
   const beforeRestartSessionResponse = await get(`/sessions/${session.id}`);
   const beforeRestartSession = (await beforeRestartSessionResponse.json()) as {
@@ -2211,20 +2208,18 @@ test('Home hides an active character decoder project until all hard prerequisite
   };
   expect(
     beforeRestartSession.activities.some(
-      (activity) => activity.kind === 'lab' && activity.projectId === 'char-transformer',
+      (activity) => activity.kind === 'lab' && activity.projectId === 'pca-numpy',
     ),
   ).toBe(true);
 
-  const restart = await post('/concepts/matrices/restart', {});
+  const restart = await post('/concepts/orthogonality-projections/restart', {});
   expect(restart.status).toBe(200);
 
   const afterRestartHomeResponse = await get('/learn');
   const afterRestartHome = (await afterRestartHomeResponse.json()) as {
     tasks: Array<{ title: string }>;
   };
-  expect(afterRestartHome.tasks.some((task) => task.title === 'Character-level transformer')).toBe(
-    false,
-  );
+  expect(afterRestartHome.tasks.some((task) => task.title === 'PCA from scratch')).toBe(false);
 
   const afterRestartSessionResponse = await get(`/sessions/${session.id}`);
   const afterRestartSession = (await afterRestartSessionResponse.json()) as {
@@ -2235,7 +2230,7 @@ test('Home hides an active character decoder project until all hard prerequisite
       (activity) =>
         activity.id === labActivity.id &&
         activity.kind === 'lab' &&
-        activity.projectId === 'char-transformer' &&
+        activity.projectId === 'pca-numpy' &&
         activity.status === 'skipped',
     ),
   ).toBe(true);
@@ -2261,51 +2256,47 @@ test('Home hides an active character decoder project until all hard prerequisite
   expect(completedSession.activities.some((activity) => activity.id === labActivity.id)).toBe(true);
 });
 
-test('Character decoder course row stays unavailable until hard prerequisite ancestors are complete', async () => {
-  await activateCourse('transformers-llms');
-  const project = content.projectsById.get('char-transformer');
-  if (!project) throw new Error('Missing character transformer project');
-  const directPrerequisites = project.prereqs;
+test('PCA course row stays unavailable until hard prerequisite ancestors are complete', async () => {
+  const directPrerequisites = ['vectors', 'dot-product', 'matrices', 'eigen-svd'];
   const hardAncestors = [
-    ...new Set(directPrerequisites.flatMap((id) => [...hardPrerequisiteAncestors(content, id)])),
-  ].filter((id) => !directPrerequisites.includes(id));
+    'determinants',
+    'inverses-linear-systems',
+    'rank-span',
+    'orthogonality-projections',
+  ];
   await db.insert(mastery).values(completedMasteryRows(directPrerequisites));
 
-  const beforeAncestorsResponse = await get('/course?course=transformers-llms');
+  const beforeAncestorsResponse = await get('/course?course=maths-for-ml');
   expect(beforeAncestorsResponse.status).toBe(200);
   const beforeAncestors = (await beforeAncestorsResponse.json()) as {
     units: Array<{ project: { id: string; available: boolean } | null }>;
   };
-  const projectBefore = beforeAncestors.units.find(
-    (unit) => unit.project?.id === 'char-transformer',
-  )?.project;
-  expect(projectBefore?.available).toBe(false);
+  const pcaBefore = beforeAncestors.units.find((unit) => unit.project?.id === 'pca-numpy')?.project;
+  expect(pcaBefore?.available).toBe(false);
 
   await db.insert(mastery).values(completedMasteryRows(hardAncestors));
-  const afterAncestorsResponse = await get('/course?course=transformers-llms');
+  const afterAncestorsResponse = await get('/course?course=maths-for-ml');
   expect(afterAncestorsResponse.status).toBe(200);
   const afterAncestors = (await afterAncestorsResponse.json()) as {
     units: Array<{ project: { id: string; available: boolean } | null }>;
   };
-  const projectAfter = afterAncestors.units.find(
-    (unit) => unit.project?.id === 'char-transformer',
-  )?.project;
-  expect(projectAfter?.available).toBe(true);
+  const pcaAfter = afterAncestors.units.find((unit) => unit.project?.id === 'pca-numpy')?.project;
+  expect(pcaAfter?.available).toBe(true);
 });
 
 test('Course project status reflects the learner project-progress row', async () => {
   await db.insert(projectProgress).values({
     userId,
-    projectId: 'char-transformer',
+    projectId: 'linreg-numpy',
     status: 'in_progress',
   });
 
-  const response = await get('/course?course=transformers-llms');
+  const response = await get('/course');
   expect(response.status).toBe(200);
   const course = await response.json();
   expect(course.currentUnit).toBe(1);
   expect(course.units[0].project).toMatchObject({
-    id: 'char-transformer',
+    id: 'linreg-numpy',
     available: false,
     status: 'in_progress',
   });
@@ -2313,13 +2304,13 @@ test('Course project status reflects the learner project-progress row', async ()
 
 test('empty project evidence and out-of-range metrics cannot complete a project', async () => {
   const results = {
-    project: 'char-transformer',
+    project: 'linreg-numpy',
     version: 1,
     tests: [],
-    metrics: { val_loss: 999, final_loss: 999 },
+    metrics: { val_mse: 999, weight_error: 999 },
     generated_at: '2026-11-14T12:00:00.000Z',
   };
-  const submissionResponse = await app.request('/api/projects/char-transformer/results', {
+  const submissionResponse = await app.request('/api/projects/linreg-numpy/results', {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'X-Now': results.generated_at },
     body: JSON.stringify(results),
@@ -2327,10 +2318,10 @@ test('empty project evidence and out-of-range metrics cannot complete a project'
   expect(submissionResponse.status).toBe(201);
   const submission = await submissionResponse.json();
   expect(submission.evidence).toContain('No verifier tests were reported');
-  expect(submission.evidence).toContain('Held-out validation cross-entropy');
-  expect(submission.evidence).toContain('Final fixed-batch cross-entropy');
+  expect(submission.evidence).toContain('Validation MSE');
+  expect(submission.evidence).toContain('Max |w - w_true|');
 
-  const projectResponse = await get('/projects/char-transformer');
+  const projectResponse = await get('/projects/linreg-numpy');
   expect(projectResponse.status).toBe(200);
   const project = await projectResponse.json();
   expect(project.status).toBe('in_progress');
@@ -2339,39 +2330,21 @@ test('empty project evidence and out-of-range metrics cannot complete a project'
     metrics: results.metrics,
   });
 
-  const failingMetricResponse = await app.request('/api/projects/char-transformer/results', {
+  const failingMetricResponse = await app.request('/api/projects/linreg-numpy/results', {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'X-Now': results.generated_at },
     body: JSON.stringify({
       ...results,
-      tests: [{ id: 'test_tokenization', passed: true, message: 'passed' }],
+      tests: [{ id: 'test_predict_shape_and_values', passed: true, message: 'passed' }],
     }),
   });
   expect(failingMetricResponse.status).toBe(201);
-  expect((await failingMetricResponse.json()).evidence).toContain(
-    'Held-out validation cross-entropy',
-  );
-  const failedMetricProject = await (await get('/projects/char-transformer')).json();
+  expect((await failingMetricResponse.json()).evidence).toContain('Validation MSE');
+  const failedMetricProject = await (await get('/projects/linreg-numpy')).json();
   expect(failedMetricProject.status).toBe('in_progress');
 });
 
-async function nnFromScratchApp() {
-  const manifest = ProjectSchema.parse(
-    parse(await readFile('labs/nn-from-scratch/project.yaml', 'utf8')),
-  );
-  const project = { ...manifest, contentVersion: contentVersion(manifest) };
-  return createApp({
-    db,
-    content: {
-      ...content,
-      projectsById: new Map([...content.projectsById, [project.id, project]]),
-    },
-    tutorProvider: null,
-  });
-}
-
 test('project evidence requires every declared verifier test', async () => {
-  const projectApp = await nnFromScratchApp();
   const results = nnFromScratchResults([
     {
       id: nnFromScratchTestIds[0] ?? '',
@@ -2379,7 +2352,7 @@ test('project evidence requires every declared verifier test', async () => {
       message: 'passed',
     },
   ]);
-  const response = await projectApp.request('/api/projects/nn-from-scratch/results', {
+  const response = await app.request('/api/projects/nn-from-scratch/results', {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'X-Now': results.generated_at },
     body: JSON.stringify(results),
@@ -2393,17 +2366,16 @@ test('project evidence requires every declared verifier test', async () => {
     expect(submission.evidence).toContain(missingTestId);
   }
 
-  const project = await (await get('/projects/nn-from-scratch', projectApp)).json();
+  const project = await (await get('/projects/nn-from-scratch')).json();
   expect(project.status).toBe('in_progress');
 });
 
 test('all verifier tests still require every project metric to pass', async () => {
-  const projectApp = await nnFromScratchApp();
   const results = nnFromScratchResults(undefined, {
     ...nnFromScratchPassingMetrics,
     validation_accuracy: 0.89,
   });
-  const response = await projectApp.request('/api/projects/nn-from-scratch/results', {
+  const response = await app.request('/api/projects/nn-from-scratch/results', {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'X-Now': results.generated_at },
     body: JSON.stringify(results),
@@ -2411,7 +2383,7 @@ test('all verifier tests still require every project metric to pass', async () =
 
   expect(response.status).toBe(201);
   expect((await response.json()).evidence).toContain('8/8 checks passed');
-  const project = await (await get('/projects/nn-from-scratch', projectApp)).json();
+  const project = await (await get('/projects/nn-from-scratch')).json();
   expect(project.status).toBe('in_progress');
 });
 
@@ -2422,12 +2394,11 @@ test.each([
 ])(
   'project metric %s honors its inclusive or strict threshold',
   async (metricId, value, status) => {
-    const projectApp = await nnFromScratchApp();
     const results = nnFromScratchResults(undefined, {
       ...nnFromScratchPassingMetrics,
       [metricId]: value,
     });
-    const response = await projectApp.request('/api/projects/nn-from-scratch/results', {
+    const response = await app.request('/api/projects/nn-from-scratch/results', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(results),
@@ -2438,9 +2409,8 @@ test.each([
 );
 
 test('all verifier tests and metrics complete the project', async () => {
-  const projectApp = await nnFromScratchApp();
   const results = nnFromScratchResults();
-  const response = await projectApp.request('/api/projects/nn-from-scratch/results', {
+  const response = await app.request('/api/projects/nn-from-scratch/results', {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'X-Now': results.generated_at },
     body: JSON.stringify(results),
@@ -2448,14 +2418,13 @@ test('all verifier tests and metrics complete the project', async () => {
 
   expect(response.status).toBe(201);
   expect((await response.json()).evidence).toContain('8/8 checks passed');
-  const project = await (await get('/projects/nn-from-scratch', projectApp)).json();
+  const project = await (await get('/projects/nn-from-scratch')).json();
   expect(project.status).toBe('completed');
 });
 
 test('unknown project verifier test IDs are rejected with 422', async () => {
-  const projectApp = await nnFromScratchApp();
   const results = nnFromScratchResults([{ id: 'test_unknown', passed: true, message: 'passed' }]);
-  const response = await projectApp.request('/api/projects/nn-from-scratch/results', {
+  const response = await app.request('/api/projects/nn-from-scratch/results', {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'X-Now': results.generated_at },
     body: JSON.stringify(results),

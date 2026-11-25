@@ -958,10 +958,10 @@ exercises:
     role: core
     difficulty: 3
     est_minutes: 5
-    prompt: In a training run with a large learning rate, the weight takes values $2$, $-3$, $4.5$, and $-6.75$. The loss is $L(w)=w^2$. Describe how the weight and loss change, then explain why the update rule makes the overshoots grow.
+    prompt: Using your loss and parameter-trajectory plots, describe what the largest learning rate did. Then explain how the gradient-descent update rule can produce growing overshoots when the learning rate is too large.
     rubric:
       - id: r1
-        criterion: Explain that the weight alternates around zero and moves farther away each time, so the loss rises.
+        criterion: Describe the loss trend and parameter movements actually shown in your plots, whether the run improved or diverged.
         weight: 2
         required: true
       - id: r2
@@ -971,14 +971,14 @@ exercises:
       - id: r3
         criterion: Mention that on $f(w)=w^2$ each update multiplies $w$ by $1-2\eta$, so its distance grows when this multiplier is below $-1$ or above $1$.
         weight: 1
-    exemplar: The weight alternates around zero and moves farther away each time, so its square keeps rising. The slope is $2w$, and the update subtracts $\eta(2w)$. Here each step multiplies $w$ by $1-2\eta=-1.5$, so it crosses zero and lands farther away, where the slope is steeper and the next jump is larger.
+    exemplar: A diverging run's plots can show rising loss and parameters crossing back and forth with growing distance from the bottom; I would describe whether my own plots show that pattern. Each update subtracts learning rate times the current gradient. On $f(w)=w^2$, the gradient is $2w$, so a step can cross the bottom and land farther away, where the next gradient and jump are larger. With $\eta=1.25$, each step multiplies $w$ by $1-2\eta=-1.5$, so the sign alternates while the distance grows.
   - id: lab-linreg-val-vs-train
     dimension: conceptual
     type: mc
     role: core
     difficulty: 2
     est_minutes: 2
-    prompt: "A model has mean squared error 0.27 before a weight update and 0.24 after it, on the same training examples. What do the two numbers tell you about those predictions?"
+    prompt: "You start a lab run with mean squared error 0.27. After one update it's 0.24 on the same training examples. What do the two numbers tell you about those predictions?"
     options:
       - id: a
         text: The average squared error fell, and at least one prediction is still off.

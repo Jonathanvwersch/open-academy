@@ -17,7 +17,7 @@ background: |
   python3 labs/llm-post-training/run.py
   python3 labs/verify.py llm-post-training
   ```
-  Review the verifier output in `labs/llm-post-training/work/results.json`. After installing NumPy, every command works offline. Setup preserves existing work. The lab README gives the shapes and update equations for each TODO.
+  Upload `labs/llm-post-training/work/results.json` below. After installing NumPy, every command works offline. Setup preserves existing work. The lab README gives the shapes and update equations for each TODO.
 prereqs: [sft, lora, reward-models, llm-evaluation]
 tasks:
   - id: t-base

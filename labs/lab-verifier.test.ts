@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { expect, test } from 'vitest';
@@ -31,11 +31,7 @@ const verifierIdsScript = [
 test.each(failureCases)(
   '$project verifier reports declared failures when implementation has a syntax error',
   ({ project, verifier }) => {
-    const localProject = `labs/${project}/project.yaml`;
-    const projectFile = existsSync(localProject)
-      ? localProject
-      : `content/projects/${project}.yaml`;
-    const projectYaml = parse(readFileSync(projectFile, 'utf8')) as {
+    const projectYaml = parse(readFileSync(`content/projects/${project}.yaml`, 'utf8')) as {
       tests: Array<{ id: string }>;
     };
     const declaredIds = projectYaml.tests.map(({ id }) => id);

@@ -1,4 +1,3 @@
-import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { deserialize, serialize } from 'node:v8';
 import { buildContentIndex, subjectForCourse } from '@academy/aesop/course/index';
@@ -9,7 +8,6 @@ import {
   LessonSchema,
   normalizeLesson,
   PaperSchema,
-  ProjectSchema,
 } from '@academy/aesop/course/schemas';
 import { serializeExercise } from '@academy/aesop/course/serialize';
 import type { ContentIndex, ContentSourceData } from '@academy/aesop/course/types';
@@ -17,9 +15,7 @@ import { validateContent } from '@academy/aesop/course/validate';
 import { keyPrereqsForPoint } from '@academy/aesop/graph/prerequisites';
 import { gradeText } from '@academy/aesop/lessons/grading/text';
 import { expect, test } from 'vitest';
-import { parse } from 'yaml';
 import { loadContent } from '../../src/content/load.js';
-import { repositoryPath } from '../../src/paths.js';
 
 function required<T>(value: T | undefined, label: string): T {
   if (value === undefined) {
@@ -397,22 +393,12 @@ test.each([
   );
 });
 
-test('Maths for ML has no NumPy steps or projects, and the standalone Gaussian lab keeps its maths prerequisites', async () => {
+test('Maths for ML has no NumPy instruction in lesson steps', async () => {
   const content = await loadContent('content');
-  const project = ProjectSchema.parse(
-    parse(await readFile(repositoryPath('labs', 'gaussian-mle', 'project.yaml'), 'utf8')),
-  );
   const course = required(
     content.courses.find((candidate) => candidate.id === 'maths-for-ml'),
     'maths course',
   );
-  const unit = required(
-    course.units.find((candidate) => candidate.concepts.includes('gaussian-distribution')),
-    'probability unit',
-  );
-
-  expect(course.units.every((candidate) => !candidate.project)).toBe(true);
-  expect(content.projectsById.has('gaussian-mle')).toBe(false);
   for (const conceptId of course.units.flatMap((candidate) => candidate.concepts)) {
     const lesson = content.lessonsByConcept.get(conceptId);
     expect(
@@ -421,6 +407,20 @@ test('Maths for ML has no NumPy steps or projects, and the standalone Gaussian l
         .join('\n') ?? '',
     ).not.toMatch(/numpy|\bnp\./i);
   }
+});
+
+test('authored Gaussian project loads with unit prerequisites and reflection exercises', async () => {
+  const content = await loadContent('content');
+  const project = required(content.projectsById.get('gaussian-mle'), 'Gaussian project');
+  const course = required(
+    content.courses.find((candidate) => candidate.id === 'maths-for-ml'),
+    'maths course',
+  );
+  const unit = required(
+    course.units.find((candidate) => candidate.project === 'gaussian-mle'),
+    'probability unit',
+  );
+
   expect(project.status).toBe('authored');
   expect(project.prereqs).toEqual(unit.concepts);
   expect(project.tests).toHaveLength(11);
@@ -433,23 +433,11 @@ test('Maths for ML has no NumPy steps or projects, and the standalone Gaussian l
     const exercise = required(content.exercisesById.get(id), id);
     expect(exercise.lesson_only).toBeFalsy();
   }
-}, 15_000);
+});
 
-test('standalone NumPy labs are absent from courses and the neural-network lab keeps its reflection exercises', async () => {
+test('authored neural-network project loads with its reflection exercises', async () => {
   const content = await loadContent('content');
-  for (const id of ['nn-from-scratch', 'llm-post-training', 'rl-sim']) {
-    expect(content.projectsById.has(id)).toBe(false);
-    expect(content.courses.some((course) => course.units.some((unit) => unit.project === id))).toBe(
-      false,
-    );
-    expect(
-      ProjectSchema.parse(parse(await readFile(repositoryPath('labs', id, 'project.yaml'), 'utf8')))
-        .id,
-    ).toBe(id);
-  }
-  const project = ProjectSchema.parse(
-    parse(await readFile(repositoryPath('labs', 'nn-from-scratch', 'project.yaml'), 'utf8')),
-  );
+  const project = required(content.projectsById.get('nn-from-scratch'), 'neural-network project');
 
   expect(project.status).toBe('authored');
   expect(project.prereqs).toEqual(['mlp-forward-pass', 'backpropagation']);
