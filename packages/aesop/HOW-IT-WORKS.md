@@ -1,6 +1,6 @@
 # How Aesop works
 
-This guide explains the rules of the Aesop engine. It uses the Simplified Technical English style (ASD-STE100): short sentences, active voice, one idea per sentence.
+This guide explains the rules of the Aesop engine.
 
 Each rule has a source tag:
 
