@@ -58,6 +58,7 @@ export function SessionPage() {
   const queryClient = useQueryClient();
   const tutorSidebar = useTutorSidebar();
   const [result, setResult] = useState<Record<string, unknown> | null>(null);
+  const [shown, setShown] = useState<{ activityId: string; exerciseId: string } | null>(null);
   const [submitError, setSubmitError] = useState('');
   const [progressError, setProgressError] = useState('');
   const [hints, setHints] = useState<
@@ -123,11 +124,14 @@ export function SessionPage() {
     lessonRunConceptIds.map((conceptId, index) => [conceptId, lessonRunQueries[index]?.data?.run]),
   );
   const lessonRunsPending = lessonRunQueries.some((query) => query.isPending);
-  const { activity, completedFinal, requestedCompletedActivity } = selectSessionActivity(
+  const selectedActivity = selectSessionActivity(
     activities,
     lessonRunsByConcept,
     requestedActivityId,
   );
+  const { completedFinal, requestedCompletedActivity } = selectedActivity;
+  const shownActivity = shown ? activities.find((item) => item.id === shown.activityId) : undefined;
+  const activity = shownActivity ?? selectedActivity.activity;
   const showingLessonQuiz =
     activity?.kind === 'learn' &&
     Boolean(activity.conceptId) &&
@@ -170,13 +174,16 @@ export function SessionPage() {
     ...projectQueryOptions(labProjectId ?? ''),
     enabled: Boolean(labProjectId),
   });
-  const exerciseId = showingCompletedFinal
-    ? activity?.exerciseIds.find((candidate) =>
-        (activity.progress?.completedExerciseIds ?? []).includes(candidate),
-      )
-    : activity?.exerciseIds.find(
-        (candidate) => !(activity.progress?.completedExerciseIds ?? []).includes(candidate),
-      );
+  const exerciseId =
+    shownActivity && shown
+      ? shown.exerciseId
+      : showingCompletedFinal
+        ? activity?.exerciseIds.find((candidate) =>
+            (activity.progress?.completedExerciseIds ?? []).includes(candidate),
+          )
+        : activity?.exerciseIds.find(
+            (candidate) => !(activity.progress?.completedExerciseIds ?? []).includes(candidate),
+          );
   const currentResult = exerciseId && result?.exerciseId === exerciseId ? result : null;
   const lessonQuery = useSuspenseQuery(
     lessonQueryOptions(
@@ -450,6 +457,9 @@ export function SessionPage() {
       }
       if (response.ok || (response.status === 422 && data.status === 'invalid')) {
         setResult({ ...data, exerciseId, durationMs });
+        if (activity.kind !== 'learn') {
+          setShown(data.retryAllowed === true ? null : { activityId: activity.id, exerciseId });
+        }
       } else {
         setSubmitError(typeof data.error === 'string' ? data.error : 'Your answer was not saved.');
       }
@@ -524,6 +534,7 @@ export function SessionPage() {
                 ? 'correct'
                 : 'incorrect'
               : undefined;
+          setShown(null);
           queryClient.setQueryData(sessionQueryOptions(id).queryKey, (session) => {
             if (!session) return session;
             return {
@@ -562,6 +573,7 @@ export function SessionPage() {
         ...sessionQueryOptions(id),
         staleTime: 0,
       });
+      setShown(null);
       const freshActivity = freshSession.activities.find((item) => item.id === activity.id);
       let finalQuestionContinued = false;
       if (
@@ -662,7 +674,7 @@ export function SessionPage() {
     }
   };
 
-  if (lessonRunsPending) return <SessionSkeleton />;
+  if (lessonRunsPending && !shownActivity) return <SessionSkeleton />;
 
   if (!activity) {
     return (

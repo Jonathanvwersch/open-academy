@@ -25,6 +25,9 @@ const queryClient = new QueryClient({
     },
   },
 });
+if (import.meta.env.DEV && import.meta.env.VITE_E2E === '1') {
+  Object.assign(window, { __academyQueryClient: queryClient });
+}
 const router = createRouter({
   routeTree,
   context: { queryClient },
