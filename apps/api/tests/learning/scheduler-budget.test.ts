@@ -155,7 +155,8 @@ describe('sessionBudget', () => {
 });
 
 it('uses completed failed-quiz lessons in the replan explanation exclusions', () => {
-  const state = plannerState(fixtureContent);
+  const content = lessonCrowdingContent(true);
+  const state = plannerState(content, { cards: [reviewCard('vectors', now)] });
   state.lessonRuns = [
     {
       conceptId: 'supervised-learning',
@@ -175,18 +176,16 @@ it('uses completed failed-quiz lessons in the replan explanation exclusions', ()
     },
   };
 
-  const explained = explainReviewSelectionForReplan(state, fixtureContent, now, 20, [
-    failedQuizActivity,
-  ]);
-  const withoutExclusions = explainReviewSelection(state, fixtureContent, now, 20);
+  const explained = explainReviewSelectionForReplan(state, content, now, 20, [failedQuizActivity]);
+  const withoutExclusions = explainReviewSelection(state, content, now, 20);
+  const withoutExclusionDecision = withoutExclusions.find(
+    ({ conceptId }) => conceptId === 'vectors',
+  );
+  const replanDecision = explained.results.find(({ conceptId }) => conceptId === 'vectors');
 
   expect(explained.excludedLearnConceptIds).toEqual(['supervised-learning']);
-  expect(
-    withoutExclusions.some(({ coveringConceptId }) => coveringConceptId === 'supervised-learning'),
-  ).toBe(true);
-  expect(
-    explained.results.some(({ coveringConceptId }) => coveringConceptId === 'supervised-learning'),
-  ).toBe(false);
+  expect(withoutExclusionDecision?.coveringConceptId).toBe('supervised-learning');
+  expect(replanDecision?.coveringConceptId).not.toBe('supervised-learning');
 });
 
 describe('review budget reservation', () => {
