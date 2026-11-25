@@ -13,8 +13,8 @@ function verifyEdge(
   if (!isRecord(entry) || !isRecord(entry.uses)) {
     throw new Error(`${edge}: expected {weight, exercises, steps, uses}.`);
   }
-  if (exerciseIds.length === 0 || stepIds.size === 0) {
-    throw new Error(`${edge}: verification requires non-recall questions and prerequisite steps.`);
+  if (stepIds.size === 0) {
+    throw new Error(`${edge}: verification requires prerequisite steps.`);
   }
   if (entry.exercises !== exerciseIds.length || entry.steps !== stepIds.size) {
     throw new Error(`${edge}: expected ${exerciseIds.length} exercises and ${stepIds.size} steps.`);
@@ -60,6 +60,11 @@ export function verifyWeights(content: ContentIndex, uses: unknown): number {
 
   let count = 0;
   for (const concept of content.concepts) {
+    const exerciseIds = (content.exercisesByConcept.get(concept.id) ?? [])
+      .filter(({ role }) => role !== 'recall')
+      .map(({ id }) => id);
+    if (exerciseIds.length === 0) continue;
+
     const required = new Set(
       concept.prereqs.filter(({ strength }) => strength === 'hard').map(({ id }) => id),
     );
@@ -79,9 +84,6 @@ export function verifyWeights(content: ContentIndex, uses: unknown): number {
         throw new Error(`${concept.id} -> ${id}: unexpected encompassing in concept file.`);
       }
     }
-    const exerciseIds = (content.exercisesByConcept.get(concept.id) ?? [])
-      .filter(({ role }) => role !== 'recall')
-      .map(({ id }) => id);
     for (const id of required) {
       const edge = `${concept.id} -> ${id}`;
       if (!Object.hasOwn(entries, id)) throw new Error(`${edge}: missing edge in uses.`);

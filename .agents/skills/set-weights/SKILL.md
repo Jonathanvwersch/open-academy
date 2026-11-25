@@ -36,4 +36,4 @@ Have a separate agent or session work through the same exercises and write its o
 
 Only after this check, write the decided weights in `content/concepts/*.yaml` as `encompassings: [{ id: earlier-topic, weight: 0.25 }]`. Keep entries whose weight is 0.
 
-Before shipping, combine the decided batch files into one uses YAML file covering the whole pack and run `pnpm academy weights verify <uses.yaml> --pack <dir>`. It checks the edges, IDs, arithmetic and concept files. The separate review is what checks whether each solution actually uses the listed steps.
+Before shipping, combine the decided batch files into one uses YAML file covering the whole pack and run `pnpm academy weights verify <uses.yaml> --pack <dir>`. It checks the edges, IDs, arithmetic and concept files. It skips topics that have no non-recall exercises yet. The separate review is what checks whether each solution actually uses the listed steps.

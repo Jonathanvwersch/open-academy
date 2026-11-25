@@ -180,12 +180,10 @@ describe('academy CLI', () => {
         const data = parse(readFileSync(file, 'utf8')) as {
           concepts: Array<{
             id: string;
-            prereqs: Array<{ id: string }>;
             encompassings?: Array<{ id: string; weight: number }>;
           }>;
         };
         for (const concept of data.concepts) {
-          if (concept.id === 'matrix-products') concept.prereqs = [];
           concept.encompassings = Object.entries(uses[concept.id] ?? {}).map(
             ([id, { weight }]) => ({
               id,
@@ -237,6 +235,34 @@ describe('academy CLI', () => {
         entry.uses['additional-review'] = [];
         entry.weight = 0.06;
       }, 'expected encompassing weight 0.06 in concept file');
+    } finally {
+      rmSync(parent, { recursive: true, force: true });
+    }
+  });
+
+  it('skips prerequisite edges from planned topics without questions', () => {
+    const parent = temporaryDirectory();
+    try {
+      const pack = join(parent, 'pack');
+      const initialized = run(['init', pack, '--title', 'Applied Science']);
+      expect(initialized.status, initialized.stderr).toBe(0);
+      const planned = run([
+        'new',
+        'topic',
+        'second-topic',
+        '--title',
+        'Second topic',
+        '--requires',
+        'applied-science-first-topic',
+        '--pack',
+        pack,
+      ]);
+      expect(planned.status, planned.stderr).toBe(0);
+      const uses = join(parent, 'uses.yaml');
+      writeFileSync(uses, '{}\n');
+      const verified = run(['weights', 'verify', uses, '--pack', pack]);
+      expect(verified.status, verified.stderr).toBe(0);
+      expect(verified.stdout).toContain('Verified 0 encompassing weights.');
     } finally {
       rmSync(parent, { recursive: true, force: true });
     }
