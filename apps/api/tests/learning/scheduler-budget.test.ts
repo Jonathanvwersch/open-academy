@@ -178,8 +178,15 @@ it('uses completed failed-quiz lessons in the replan explanation exclusions', ()
   const explained = explainReviewSelectionForReplan(state, fixtureContent, now, 20, [
     failedQuizActivity,
   ]);
+  const withoutExclusions = explainReviewSelection(state, fixtureContent, now, 20);
 
   expect(explained.excludedLearnConceptIds).toEqual(['supervised-learning']);
+  expect(
+    withoutExclusions.some(({ coveringConceptId }) => coveringConceptId === 'supervised-learning'),
+  ).toBe(true);
+  expect(
+    explained.results.some(({ coveringConceptId }) => coveringConceptId === 'supervised-learning'),
+  ).toBe(false);
 });
 
 describe('review budget reservation', () => {
