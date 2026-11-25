@@ -54,6 +54,7 @@ type MemorySeed = {
 type StoreState = {
   learners: Map<string, LearnerState>;
   settings: Map<string, Settings>;
+  hints: Map<string, readonly Hint[]>;
   revisions: Map<string, number>;
   schedulerProjections: Map<
     string,
@@ -111,22 +112,20 @@ function key(conceptId: string, dimension: Dimension): string {
 }
 
 export function memoryStore(seed: MemorySeed = {}): MemoryLearnerStore {
-  const hints = structuredClone(new Map(seed.hints));
   return scopedStore(
     {
       learners: new Map(),
       settings: structuredClone(new Map(seed.settings)),
+      hints: structuredClone(new Map(seed.hints)),
       revisions: new Map(),
       schedulerProjections: structuredClone(new Map(seed.schedulerProjections)),
     },
-    hints,
     { cardCount: 0, flagCount: 0, xpCount: 0, sessionCount: 0, activityCount: 0 },
   );
 }
 
 function scopedStore(
   data: StoreState,
-  hints: ReadonlyMap<string, readonly Hint[]>,
   ids: IdCounters,
   assertOpen: () => void = () => {},
 ): MemoryLearnerStore {
@@ -173,7 +172,7 @@ function scopedStore(
         const original = new Map(data.revisions);
         const snapshot = structuredClone(data);
         let open = true;
-        const tx = scopedStore(snapshot, hints, ids, () => {
+        const tx = scopedStore(snapshot, ids, () => {
           if (!open) throw new Error('This memory store transaction is closed.');
           assertOpen();
         });
@@ -210,6 +209,8 @@ function scopedStore(
           if (state) data.learners.set(learnerId, state);
           const settings = snapshot.settings.get(learnerId);
           if (settings) data.settings.set(learnerId, settings);
+          const hints = snapshot.hints.get(learnerId);
+          if (hints) data.hints.set(learnerId, hints);
           data.revisions.set(learnerId, snapshot.revisions.get(learnerId) ?? 0);
         }
         return result;
@@ -262,7 +263,7 @@ function scopedStore(
         attempts: (data.learners.get(learnerId)?.attempts ?? [])
           .filter(inScope)
           .map(({ activityId, createdAt }) => ({ activityId, createdAt })),
-        hints: (hints.get(learnerId) ?? [])
+        hints: (data.hints.get(learnerId) ?? [])
           .filter(inScope)
           .map(({ activityId, createdAt, level }) => ({ activityId, createdAt, level })),
       });
@@ -577,6 +578,13 @@ function scopedStore(
         for (const attempt of learner.attempts) {
           if (attempt.activityId === null || !deleted.has(attempt.activityId)) continue;
           attempt.activityId = null;
+          markWrite(owner);
+        }
+      }
+      for (const [owner, hints] of data.hints) {
+        for (const hint of hints) {
+          if (hint.activityId === null || !deleted.has(hint.activityId)) continue;
+          hint.activityId = null;
           markWrite(owner);
         }
       }

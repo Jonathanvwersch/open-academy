@@ -62,7 +62,7 @@ function cardFor(conceptId: string, dimension: Dimension = 'math'): NewReviewCar
   };
 }
 
-function sessionRow(startedAt: Date): NewRow<Session> {
+export function sessionRow(startedAt: Date): NewRow<Session> {
   return {
     startedAt,
     kind: 'custom',
@@ -74,7 +74,7 @@ function sessionRow(startedAt: Date): NewRow<Session> {
   };
 }
 
-function activityRow(
+export function activityRow(
   idx: number,
   overrides: Partial<NewRow<Omit<Activity, 'sessionId'>>> = {},
 ): NewRow<Omit<Activity, 'sessionId'>> {
@@ -94,7 +94,10 @@ function activityRow(
   };
 }
 
-export function describeLearnerStoreContract(name: string, makeStore: () => Promise<StoreFixture>) {
+export function describeLearnerStoreContract(
+  name: string,
+  makeStore: (options?: { persistHintActivity?: boolean }) => Promise<StoreFixture>,
+) {
   describe(name, () => {
     it('lists and locks owned sessions, returns copies and only replaces active sessions', async () => {
       const { store, learnerId, otherLearnerId } = await makeStore();
@@ -416,6 +419,44 @@ export function describeLearnerStoreContract(name: string, makeStore: () => Prom
       expect(
         count(await store.readHintEvidence(learnerId, exerciseId, activityId), activityId),
       ).toBe(5);
+    });
+
+    it('clears hint activity links on deletion and preserves them on rollback', async () => {
+      const { store, learnerId, otherLearnerId, activityId } = await makeStore({
+        persistHintActivity: true,
+      });
+      const query = { ids: [activityId] };
+      const owners = [learnerId, otherLearnerId];
+      const original = await Promise.all(
+        owners.map((owner) => store.readHintEvidence(owner, exerciseId, activityId)),
+      );
+      expect(original.map(({ hints }) => hints.length)).toEqual([2, 1]);
+      const expectCleared = async (handle: SessionStore) => {
+        for (const [i, owner] of owners.entries()) {
+          expect((await handle.readHintEvidence(owner, exerciseId, activityId)).hints).toEqual([]);
+          const { hints } = await handle.readHintEvidence(owner, exerciseId);
+          expect(hints).toEqual(
+            expect.arrayContaining(
+              original[i].hints.map((hint) => ({ ...hint, activityId: null })),
+            ),
+          );
+          expect(hints).toHaveLength(original[i].hints.length);
+        }
+      };
+      await expect(
+        store.transaction(async (tx) => {
+          await tx.deleteActivities(learnerId, query);
+          await expectCleared(tx);
+          throw new Error('rollback hint links');
+        }),
+      ).rejects.toThrow('rollback hint links');
+      expect(
+        await Promise.all(
+          owners.map((owner) => store.readHintEvidence(owner, exerciseId, activityId)),
+        ),
+      ).toEqual(original);
+      await store.transaction((tx) => tx.deleteActivities(learnerId, query));
+      await expectCleared(store);
     });
 
     it('inserts XP only once per learner and source key and matches literal prefixes', async () => {

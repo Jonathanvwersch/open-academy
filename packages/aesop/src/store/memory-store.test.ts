@@ -1,14 +1,14 @@
 import { expect, it } from 'vitest';
 import { newReviewCard } from '../memory/fsrs.js';
 import { initialMastery } from '../memory/types.js';
-import { describeLearnerStoreContract } from './learner-store.contract.js';
+import { activityRow, describeLearnerStoreContract, sessionRow } from './learner-store.contract.js';
 import { memoryStore } from './memory-store.js';
 
 const learnerId = 'learner';
 
-describeLearnerStoreContract('memoryStore', async () => {
+describeLearnerStoreContract('memoryStore', async (options) => {
   const otherLearnerId = 'other';
-  const activityId = 'activity';
+  const activityId = options?.persistHintActivity ? 'activity-1' : 'activity';
   const settings = {
     activeCourseId: null,
     studySetInitializedAt: null,
@@ -52,6 +52,14 @@ describeLearnerStoreContract('memoryStore', async () => {
       ],
     ]),
   });
+  if (options?.persistHintActivity) {
+    const session = await store.insertSession(
+      learnerId,
+      sessionRow(new Date('2026-01-17T12:00:00Z')),
+    );
+    const [activity] = await store.insertActivities(learnerId, session.id, [activityRow(0)]);
+    expect(activity.id).toBe(activityId);
+  }
   return {
     store,
     learnerId,
