@@ -850,7 +850,7 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 2
-    prompt: "Two classes of points in two input features form two interleaved crescents. Why does a linear classifier on these features score lower than a network with a ReLU hidden layer?"
+    prompt: "On a graph, points with two different labels form interleaved crescents. A linear classifier assigns labels by drawing one straight line between the points. Why can a network with a ReLU hidden layer label more points correctly?"
     options:
       - {
           id: a,

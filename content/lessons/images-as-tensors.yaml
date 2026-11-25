@@ -80,11 +80,11 @@ knowledge_points:
       </svg>
       ```
 
-      We use 8-bit images here, whose decoded brightnesses are whole numbers from 0 to 255. Other images can use higher bit depths, meaning more bits per brightness, or floats. This one-byte representation is called **uint8**, short for "unsigned 8-bit integer". Unsigned means it has no negative values, and 8 bits make one byte, which can hold exactly 256 different values.
+      In an 8-bit image, each brightness is a whole number from 0 to 255. Eight bits make one byte. Each bit has two possible values, so a byte can store $2^8=256$ brightnesses. We call this format **uint8**, short for unsigned 8-bit integer. Unsigned means that none of the numbers are negative.
 
       ### Height comes first
 
-      An **array** is a grid of numbers with any number of directions. An **axis** is one direction along which we count an array's entries. A matrix has two. The first axis counts rows from top to bottom, so its size is the image's height. The second counts columns from left to right, so its size is the width. So for an image with height $H$ and width $W$,
+      An **array** is a grid of numbers. An **axis** is one way to count positions in that grid. A matrix has two axes: one counts rows from top to bottom, and the other counts columns from left to right. Write height $H$ for the row count and width $W$ for the column count.
 
       $$\text{shape}=(H,W),\qquad\text{pixels}=H\times W.$$
 
@@ -170,13 +170,13 @@ knowledge_points:
       </svg>
       ```
 
-      Either way, the image now has three axes: height, width and channels. In general, a **tensor** is an array with any number of axes, so a vector, a single list of numbers, and a matrix are tensors too.
+      An RGB image has three axes because there are three numbers per pixel. A **tensor** is a grid with any number of axes. A vector has one axis, a matrix has two, and this image has three.
 
       ### Put the channels first
 
-      The left-hand order is called **HWC**, for height, width, channels, and its shape is `(H, W, 3)` for RGB.
+      On the left of the picture, each pixel keeps its three numbers together. This is **HWC**, short for height, width and channels. In an RGB image that shape is $(H,W,3)$.
 
-      The right-hand order is **CHW**, with shape `(3, H, W)`, and it's the one PyTorch vision models usually expect. Models also work on several images at once, called a **batch**, which adds one more axis at the front for the number of images $N$. That gives `(N, H, W, 3)`, called NHWC, or `(N, 3, H, W)`, called NCHW. For a model expecting NCHW, a single RGB image is passed as a batch of one, with shape `(1, 3, H, W)`.
+      The right-hand order is **CHW**, so its shape is $(3,H,W)$. Some image models use this channel-first layout. Models can also read several images at once, called a **batch**. Add an axis at the front to count those $N$ images. Then NHWC has shape $(N,H,W,3)$ and NCHW has shape $(N,3,H,W)$. A single image still has a batch axis of size $1$.
 
       In HWC, height, width and channels have axis numbers 0, 1 and 2. Change their order to CHW:
 
@@ -184,7 +184,7 @@ knowledge_points:
       2. **Put height second.** Axis 0 becomes second.
       3. **Put width last.** Axis 1 becomes third.
 
-      A **transpose** changes the order of the axes. A **reshape** instead reads the entries in their current order and cuts them into groups that fit the new shape. The new shape can look right while the entries are in the wrong places.
+      A **transpose** moves whole axes. A **reshape** cuts the same list of entries into new groups. Write $(2,0,1)$ for the transpose above. For a reshape, read each row left to right, keeping a pixel's colours together, then cut that list into the new groups.
     worked: |
       Let's move the diagram's 2×2 RGB image into CHW.
 
@@ -197,7 +197,7 @@ knowledge_points:
       4. **Stack the planes.** There are three planes, each two rows by two columns.
          $$\text{CHW shape}=(3,2,2).$$
 
-      The top-left pixel is still (10, 20, 30), but now its three numbers are in the top-left corners of the red, green and blue planes. If we read the original entries pixel by pixel and cut that list into $2\times2$ grids, the first grid would contain $10,20,30,40$. Those numbers belong to several channels. The transpose above keeps only red values in the red grid.
+      After transposing, the top-left pixel still has the values $(10,20,30)$. They sit in the top-left corners of the red, green and blue grids. A reshape would put $10,20,30,40$ in the first grid. That would mix colours.
 
       We used RGB here. Other formats can have more channels, such as a fourth for transparency.
     problems:
@@ -222,7 +222,7 @@ knowledge_points:
 
       The channels are now in order, but our uint8 values still run from 0 to 255. A model multiplies each input by a weight and adds the results, so thousands of inputs in the hundreds can add up to huge sums, and models often learn more reliably from small inputs centred near zero.
 
-      So the first change for our uint8 images is **rescaling**: we divide every pixel value by 255, so it lies between 0 and 1. For example, 153 becomes $153/255=0.6$. The result may have a fractional part, so one-byte whole numbers can no longer represent every value.
+      To **rescale** an 8-bit image, divide each brightness by 255. This puts each value between 0 and 1. For example, 153 becomes $153/255=0.6$. Store the result as a floating-point number, a format that can represent fractional values such as $0.6$.
 
       ### Centre each channel
 
@@ -257,7 +257,7 @@ knowledge_points:
 
       We used round numbers here, but in practice you follow the model's documentation, because not every model expects this standardisation. A pretrained model, one that someone has already trained, expects the same means and standard deviations it was trained with. Many use means (0.485, 0.456, 0.406) and standard deviations (0.229, 0.224, 0.225), measured on ImageNet, a collection of over a million labelled photos.
 
-      Check the loaded values first: matplotlib loads PNGs as floats already between 0 and 1, so dividing those by 255 again would be wrong.
+      Check the scale of the inputs. If the values already lie between 0 and 1, they do not need to be divided by 255.
 
       In CHW the same pixel is split into three $1\times1$ planes. The red plane contains $0.4$, the green plane contains $0.5$ and the blue plane contains $0$.
     problems:
@@ -273,7 +273,7 @@ final: iat-explain-pipeline
 summary: |
   - An 8-bit grayscale image is a matrix of brightnesses from 0 to 255, with shape (height, width), height first, and $(r,c)$ names the pixel in row $r$ and column $c$, counting from zero.
   - An RGB colour image is a tensor with three channels, red, green and blue. HWC stores it as `(H, W, 3)`, CHW as `(3, H, W)`, and a batch of $N$ images adds an axis at the front.
-  - Moving the channel axis to the front turns HWC into CHW. Reshape can give the right shape but scramble the pixels, because it only cuts the default index-order sequence into new pieces.
+  - Moving the channel axis to the front turns HWC into CHW. Reshape can give the right shape while mixing colours because it just cuts the original sequence of entries into new groups.
   - For a model expecting this preparation, we divide uint8 values by 255 and then standardise each channel with $x'=(x-m_c)/s_c$, using the model's own means and positive standard deviations, with shape `(3, 1, 1)` for a CHW image. Don't rescale values already in the expected range.
 
   **Next:** The next vision lesson slides a small grid of weights across these channels to find patterns such as edges.

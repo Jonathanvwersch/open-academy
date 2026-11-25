@@ -414,14 +414,14 @@ knowledge_points:
 
       ### When several lines fit just as well
 
-      The closest vector of fitted heights is unique. To get a unique line, we also need a unique choice of $c$ and $m$ that gives those heights. From the rank lesson, that happens when the columns of $A$ are independent, so its rank equals the number of columns.
+      There is just one vector of predicted heights closest to the readings. Will just one line give those heights? That depends on whether two choices of $c$ and $m$ can give the same predictions. As we saw in Rank and Span, only one choice can give them when the columns of $A$ are independent. This means the rank equals the number of columns.
 
-      Now suppose we get the same three readings, $1$, $3$ and $2$, all at $t=1$. Let's see what the normal equations say about the best line.
+      Imagine three sensors report heights $1$, $3$ and $2$ at the same time, $t=1$. Our line predicts the same height for all three sensors. We'll find that height first and then see which lines give it.
 
       1. **Write the new matrix.** Each row is $(1,1)$ because a line's height at $t=1$ is $c+m$. Both columns are the same, so there is just one independent column.
          $$A=\begin{bmatrix}1&1\\1&1\\1&1\end{bmatrix}$$
 
-      2. **Take the dot products.** Each column dotted with either column gives 3, and each column dotted with the readings gives 6.
+      2. **Build the normal equations.** The two columns both contain three ones. Their dot product is $3$, and the dot product of either column with the readings is $1+3+2=6$.
          $$\begin{bmatrix}3&3\\3&3\end{bmatrix}\begin{bmatrix}c\\m\end{bmatrix}=\begin{bmatrix}6\\6\end{bmatrix}$$
 
       3. **Read the one equation.** Both rows say $3c+3m=6$. Divide by 3 to find the height at $t=1$.

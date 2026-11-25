@@ -222,7 +222,7 @@ knowledge_points:
 
       $$\hat Y=HW_2^\top+b_2.$$
 
-      Capital $H$ holds hidden values for all examples, and $\hat Y$ holds their predictions. Add bias $-1$ to the first column of scores and $0$ to the second, for every example row. ReLU acts on every entry separately.
+      The matrix $H$ holds the first layer's outputs, with one row per example. The column $\hat Y$ holds one prediction per example. For each row of first-layer scores, add $-1$ to its first entry and $0$ to its second. Then apply ReLU to each score.
 
       Be careful not to rely on compatible sizes alone to check the calculation. Without the transpose, our first row instead gives
 

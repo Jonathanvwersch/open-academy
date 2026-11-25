@@ -25,7 +25,7 @@ knowledge_points:
     explain: |
       ### A tiny image as one vector
 
-      In the images-as-tensors lesson, we saw that a grayscale image is a grid of brightnesses, which we divide by 255 so they lie between 0 and 1. Our layer reads a vector, so first we **flatten** the image: we lay its rows end to end.
+      An 8-bit grayscale image is a grid of brightness values from 0 to 255. Divide each by 255 to put it on a 0-to-1 scale. Our layer needs a single list, so read the first row from left to right, then the next row, and keep going. This is called **flattening**.
 
       Take a $2\times2$ image with 204 and 204 in its top row and 51 and 51 below:
       $$

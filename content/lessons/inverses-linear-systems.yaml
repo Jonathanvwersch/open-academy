@@ -10,7 +10,7 @@ where_this_fits: |
 
   The inverse of a matrix is a second matrix that undoes the first one. If a matrix sends an input to an output, its inverse sends that output back to the same input.
 
-  That's useful when we know the output and want the input. At a café, suppose two coffees and a tea cost £8, and one coffee and one tea cost £5. What does each drink cost? Each total is that order's drink counts dotted with the unknown prices. So the counts form a matrix that turns prices into totals, and finding the prices means undoing it.
+  Suppose two coffees and one tea cost £8, while one of each costs £5. The first total is twice the price of coffee plus the price of tea. Each order gives one row of drink counts in a matrix. We'll use that matrix and the two totals to find the two prices.
 
   We'll also learn rules for the transpose, the matrix with rows and columns swapped. We'll need them later in the course to fit lines to data.
 knowledge_points:
@@ -24,7 +24,7 @@ knowledge_points:
     explain: |
       ### A matrix that changes nothing
 
-      To find the matrix that undoes another, we first need a matrix that leaves everything alone.
+      To find the matrix that undoes another, we first need a matrix that leaves every input unchanged. Its main diagonal runs from the top left to the bottom right. As in the matrices lesson, entry $(i,j)$ means the number in row $i$ and column $j$.
 
       The **identity matrix**, written $I$, has 1s down its main diagonal and 0s everywhere else:
 
@@ -63,7 +63,7 @@ knowledge_points:
       </g></svg>
       ```
 
-      The **inverse** of $A$, written $A^{-1}$, sends every output back to its input. A matrix with an inverse is **invertible**. Every vector $y$ then comes from exactly one input. Applying $A^{-1}$ to $y$ finds that input, and applying $A$ returns $y$. Here $x$ is a vector written as a column. In a product like $A^{-1}Ax$, the matrix next to $x$ acts first. Both orders give $I$:
+      Write $y$ for the output $Ax$. The **inverse** of $A$, written $A^{-1}$, sends $y$ back to its input $x$. We call a matrix **invertible** when it has an inverse.
 
       $$AA^{-1}=A^{-1}A=I$$
 
@@ -143,7 +143,7 @@ knowledge_points:
 
       The café orders give several equations for the same prices. A **linear system** is a set of equations in which each unknown is multiplied by a number and the results are added. Write it $Ax=b$: $A$ holds those numbers, $x$ lists the unknowns and $b$ lists the totals. When $A$ is invertible, $x=A^{-1}b$.
 
-      To organise elimination, put the totals beside the matrix. This **augmented matrix**, written $[A\mid b]$, has one row per equation. The vertical bar separates the numbers multiplying unknowns from the right-hand side. Keep the unknowns in the same column order. With three unknowns, a row $(2,2,0\mid10)$ means $2x_1+2x_2+0x_3=10$.
+      To remove unknowns by subtracting equations, first write their totals next to the matrix. This **augmented matrix**, written $[A\mid b]$, has one row per equation. The vertical bar separates the numbers multiplying the unknowns from the totals.
 
       The blue block holds $A$ and the orange column holds $b$. Each horizontal row keeps an equation's numbers and total together.
 
@@ -164,7 +164,7 @@ knowledge_points:
 
       **Elimination** subtracts multiples of equations to remove unknowns. Use the row additions and row swaps from determinants on the entire augmented row, including its total. A row addition performs the same arithmetic on both sides of an equation. Keeping the other equation lets us undo the addition, so the solution set stays the same. A row swap only reorders equations.
 
-      If the next pivot position is zero, swap in a row with a nonzero entry there. Clear below each pivot until $A$ is upper triangular. Solve the last equation first, then put its value into the row above. Continuing upwards is **back-substitution**.
+      If the next pivot position is zero, swap in a row with a nonzero entry there. Clear below the pivots. When every entry below the main diagonal is zero, the matrix is **upper triangular**. Solve the last equation first, then put its value into the row above. Continuing upward is **back-substitution**.
 
       Be careful to update the totals too. Changing only $A$ changes the equations.
 
@@ -179,7 +179,7 @@ knowledge_points:
       $$
       In augmented form, the resulting row is $(0,0\mid-2)$. It states a false equality, so no input satisfies both equations.
 
-      The two rows of $A$ are multiples of each other, so its determinant is zero and it has no inverse. A square matrix with no inverse is called **singular**.
+      The coefficient matrix is $A=\begin{bmatrix}2&2\\1&1\end{bmatrix}$. Its determinant is $2\times1-2\times1=0$, so it has no inverse. A square matrix with no inverse is called **singular**.
     worked: |
       Let's solve for three unknowns, keeping every right-hand side with its equation:
 
@@ -188,7 +188,7 @@ knowledge_points:
       1. **Build the augmented matrix.** Use column order $x_1,x_2,x_3$, putting zero where an unknown is absent.
          $$[A\mid b]=\left[\begin{array}{ccc|c}0&2&1&8\\2&2&0&10\\4&6&5&44\end{array}\right]$$
 
-      2. **Swap in a first pivot.** The top-left entry is zero, so exchange the first two whole rows.
+      2. **Swap in a first pivot.** The top-left entry is zero, so exchange the first two whole rows. Write $R_i$ for row $i$. The double arrow means exchange two rows. The left arrow in the next steps means replace the row on its left with the expression on its right.
          $$R_1\leftrightarrow R_2:\qquad\left[\begin{array}{ccc|c}2&2&0&10\\0&2&1&8\\4&6&5&44\end{array}\right]$$
 
       3. **Clear below the first pivot.** Subtract twice row 1 from row 3, including $44-2\times10$ in the totals column.
@@ -238,7 +238,7 @@ knowledge_points:
 
       $$(A^\top)_{ij}=A_{ji}$$
 
-      In the picture, the blue row of $B$ becomes the blue column of $B^\top$, and the orange row becomes the orange column, so a $2\times3$ matrix becomes $3\times2$.
+      The picture uses a new matrix $B$ with two rows and three columns. Its blue and orange rows become the two columns of $B^\top$, a matrix with three rows and two columns.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 220" aria-label="B, a 2 by 3 matrix with rows (1, 2, 3) in blue and (4, 5, 6) in orange, becomes its 3 by 2 transpose, with columns (1, 2, 3) in blue and (4, 5, 6) in orange." font-family="ui-sans-serif, system-ui, sans-serif">

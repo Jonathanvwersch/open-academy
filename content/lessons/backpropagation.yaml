@@ -264,7 +264,7 @@ knowledge_points:
       3. **Add the slopes for the bias.** The bias moves every prediction by the same amount.
          $$\frac{\partial L}{\partial b}=2+4=6$$
 
-      4. **Pass slopes through ReLU.** If the saved scores are $(2,-2)$ and a slope of $6$ arrives at each entry, only the first entry passes its slope through.
+      4. **Pass slopes through ReLU.** In a separate two-entry example, the scores before ReLU are $(2,-2)$ and each output has an incoming slope of $6$. ReLU has slope $1$ at $2$ and slope $0$ at $-2$. Multiply each incoming slope by its matching ReLU slope.
          $\begin{pmatrix}6\\6\end{pmatrix}\odot\begin{pmatrix}1\\0\end{pmatrix}=\begin{pmatrix}6\\0\end{pmatrix}.$
     problems:
       [

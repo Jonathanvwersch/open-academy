@@ -400,7 +400,7 @@ knowledge_points:
       2. **Count the MLP's weights and biases.** The hidden layer has $4d=16$ neurons, so $W_1$ is $16\times4$ with $16$ biases, and $W_2$ is $4\times16$ with $4$ biases.
          $$64+16+64+4=148$$
 
-      3. **Count the two LayerNorms.** Each LayerNorm uses the variance, the average squared distance from the mean, to find the scale before applying its learned gain and shift. Each has a gain and a shift for every one of the $4$ entries.
+      3. **Count the two LayerNorms.** Variance is the average squared distance from the mean. LayerNorm computes it from its input, so it does not add to the parameter count. The learned values are one gain and one shift for each of the $4$ positions in a token vector, twice per block.
          $$2\times(4+4)=16$$
 
       4. **Add them up.** This matches the formula $12d^2+13d$.
@@ -408,9 +408,9 @@ knowledge_points:
 
       ### Shift scores before softmax
 
-      Subtracting the row maximum from every score leaves the softmax weights unchanged. The common shift multiplies every exponential and their sum by the same factor, which cancels. For scores $(2,3)$, dividing the top and bottom by $e^3$ gives the same first weight as using scores $(-1,0)$:
+      Very large scores can give exponentials too large for a computer to store. Subtract the row maximum from each score so the largest exponential is $1$. This scales every exponential by the same factor. That factor appears in both the top and bottom of the softmax fraction, so it cancels. For scores $(2,3)$ the new scores are $(-1,0)$.
 
-      $\frac{e^2}{e^2+e^3}=\frac{e^{-1}}{e^{-1}+1}.$
+      $$\frac{e^2}{e^2+e^3}=\frac{e^{-1}}{e^{-1}+1}.$$
     problems:
       - tb-stack-basics
       - tbp-stack-self-explain

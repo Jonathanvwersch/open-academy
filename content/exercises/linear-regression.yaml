@@ -16,7 +16,7 @@ exercises:
         }
       - {
           id: b,
-          text: "It draws a straight line through the two closest training examples without fitting feature weights.",
+          text: "It draws a straight line through the two closest training examples.",
           correct: false,
           feedback: "Connecting nearby examples is a nearest-neighbour idea, not how linear regression fits weights.",
         }

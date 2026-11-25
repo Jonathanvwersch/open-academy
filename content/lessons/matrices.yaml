@@ -4,13 +4,13 @@ objective: |
   **Goal:** multiply matrices by hand and use their shapes to work out how many answers each product gives.
 recap:
   - concept: dot-product
-    text: "The dot product multiplies the matching components of two vectors and adds the products into one number. A model with weights $(25,10,-1)$ prices a house with measurements $(12,3,20)$ at $25\\times12+10\\times3-1\\times20=310$."
+    text: "The dot product multiplies matching numbers in two lists and adds the products."
 where_this_fits: |
   ### What is a matrix?
 
   A matrix is a rectangular grid of numbers, arranged in rows and columns. Multiplying a matrix by a vector, or by another matrix, does many dot products in one go.
 
-  That's useful because a model often makes predictions for many examples. A house-price model might predict both sale price and monthly rent for every house we know about. In the dot product lesson, we made one prediction at a time. A matrix lets us write all of those dot products as a single multiplication.
+  We'll use two houses with known measurements. A single matrix product will give a sale price and a monthly rent for each house.
 knowledge_points:
   - id: mat-rows-shapes
     key_prereqs: [dot-product]
@@ -23,9 +23,9 @@ knowledge_points:
     explain: |
       ### Two houses in one grid
 
-      In the dot product lesson, a model priced a house from its measurements. Each house has three measurements, always in the same order: its area in tens of square metres (so 12 means 120 m²), its number of bedrooms, and its age in years. The weights are $w=(25,10,-1)$, in thousands of pounds, so each ten square metres adds £25,000, each bedroom adds £10,000 and each year of age takes away £1,000.
+      We can price a house by taking a dot product. We list its area in tens of square metres, its bedroom count and its age in years, in that order. Use weights $w=(25,10,-1)$. Every ten square metres adds £25,000. Every bedroom adds £10,000, and every year of age takes away £1,000.
 
-      Now take two houses, $(12,3,20)$ and $(8,2,5)$. Each house makes a row beside the column of weights. In the picture, each blue row is paired with the orange weights entry by entry, giving green prices of 310 and 215.
+      Put the two houses, $(12,3,20)$ and $(8,2,5)$, on separate rows. Each row runs across the page. The picture lists the weights down a column so they can be used for both houses. Each number in the grid is called an entry. The blue measurements pair with the orange weights to give prices of £310,000 and £215,000.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 235" aria-label="House rows (12, 3, 20) and (8, 2, 5) are each dotted with weights (25, 10, minus 1) to give prices 310 and 215" font-family="ui-sans-serif, system-ui, sans-serif">
@@ -60,9 +60,9 @@ knowledge_points:
 
       A **matrix** is a rectangular grid of numbers. Each number in it is an **entry**. Entries running across make a **row**, and entries running down make a **column**. A matrix's size is its **shape**, written rows $\times$ columns, so our grid of houses is a $2\times3$ matrix. We'll call it $X$, since matrices usually get capital letters.
 
-      $X\in\mathbb{R}^{m\times n}$ says $X$ is an $m\times n$ matrix of numbers.
+      We write $X\in\mathbb{R}^{m\times n}$ for a matrix of real numbers with $m$ rows and $n$ columns.
 
-      To multiply a matrix $A$ by a vector $x$, we take the dot product of each row of $A$ with $x$, and stack the answers in the same order as the rows, where $\vdots$ means and so on:
+      In general, write $Ax$ to multiply a matrix $A$ by a vector $x$. Take the dot product of each row of $A$ with $x$ and write the answers down a column. The vertical dots mean there can be more rows.
 
       $$Ax=\begin{bmatrix}(\text{row 1 of }A)\cdot x\\(\text{row 2 of }A)\cdot x\\\vdots\end{bmatrix}$$
 
@@ -74,7 +74,7 @@ knowledge_points:
 
       - One house, a $1\times3$ matrix, gives 1 price.
       - Five houses, a $5\times3$ matrix, give 5 prices from the same three weights.
-      - With only 2 weights the product isn't defined, because each row's third measurement would have no weight to pair with.
+      - With only 2 weights we can't multiply. The third measurement in each row would have no matching weight.
 
       Be careful not to expect three answers because each house has three measurements. Each row's products add up to one number, so the rows decide how many answers come out.
     worked: |
@@ -124,9 +124,9 @@ knowledge_points:
     explain: |
       ### A second prediction for each house
 
-      A model can make more than one prediction for each house. Suppose we also want each house's monthly rent, in pounds. That needs a second set of weights, $(100,50,-5)$, in pounds a month for each ten square metres, each bedroom and each year of age. Two houses and two sets of weights make four dot products. Can one multiplication do all four?
+      We already have weights for the sale price, measured in thousands of pounds. Now add weights for the monthly rent, measured in pounds. Use $(100,50,-5)$ for the rent. Every ten square metres adds £100 a month, each bedroom adds £50, and each year of age takes away £5.
 
-      It can, if we put each set of weights in its own column of a second matrix $W$, price in column 1 and rent in column 2. The picture shows one of the four dot products. Row 1 of $X$, house 1 in blue, is laid against column 2 of $W$, the rent weights in orange. That gives the green 1250, house 1's rent, in row 1, column 2 of the answer.
+      Put the price weights in column 1 of a new matrix $W$ and the rent weights in column 2. One product then gives all four predictions. In the picture, row 1 of $X$ holds the first house's measurements, and column 2 of $W$ holds the rent weights. Their dot product gives the rent of £1,250.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 250" aria-label="Row 1 of X, house 1 at (12, 3, 20) in blue, is dotted with column 2 of W, the orange rent weights (100, 50, minus 5), giving the green entry 1250 in row 1, column 2 of the 2 by 2 product XW" font-family="ui-sans-serif, system-ui, sans-serif">
@@ -165,17 +165,17 @@ knowledge_points:
 
       ### Each entry is a row times a column
 
-      To multiply two matrices $A$ and $B$, we dot every row of $A$ with every column of $B$. The answer is written $AB$, and row $i$ with column $j$ gives its entry in row $i$, column $j$, written $(AB)_{ij}$:
+      In the product $AB$, take the dot product of each row of $A$ with each column of $B$. Write $(i,j)$ for the position in row $i$ and column $j$. We write the number in that position as $(AB)_{ij}$.
 
       $$(AB)_{ij}=(\text{row }i\text{ of }A)\cdot(\text{column }j\text{ of }B)$$
 
-      A matrix times a vector, from the last step, is the case where $B$ has one column.
+      A vector with $n$ entries can be written as an $n\times1$ matrix. That is the one-column case we used in the last step.
 
       So $W$ turns any house's three measurements into two predictions.
 
       ### Which shapes fit together
 
-      Each row of $A$ needs as many entries as each column of $B$, so if $A$ is $m\times n$, $B$ must be $n\times p$ for some $p$. Written side by side as $(m\times n)(n\times p)$, the two middle numbers, the **inner sizes**, must be equal, and the two end numbers, the **outer sizes**, give the shape of $AB$, $m\times p$.
+      If $A$ has shape $m\times n$, then each row has $n$ entries. The columns of $B$ must also have $n$ entries to pair with them. If $B$ has $p$ columns, write the two shapes side by side as $(m\times n)(n\times p)$. The two middle numbers are the **inner sizes**. They must match. The numbers at the ends are the **outer sizes**. They give the shape $m\times p$ of the result.
 
       - $(2\times3)(3\times2)$ gives $2\times2$, a price and a rent for each house.
       - $(3\times2)(2\times3)$ gives $3\times3$, so swapping the order changes the answer.
@@ -186,14 +186,14 @@ knowledge_points:
     worked: |
       Let's predict the price and the rent of both houses with one product, $XW$.
 
-      $$X=\begin{bmatrix}12&3&20\\8&2&5\end{bmatrix},\qquad W=\begin{bmatrix}25&100\\10&50\\-1&-5\end{bmatrix}$$
+      $$X=\begin{bmatrix}12&3&20\\8&2&5\end{bmatrix}$$
 
-      Sometimes we get the weights as a $2\times3$ grid with one row per prediction. We can turn each row into a column, keeping its numbers in order. This gives the **transpose**, marked with a raised $\top$. Here the result is our $3\times2$ matrix $W$:
+      Start with the price weights in the first row and the rent weights in the second. To multiply by $X$, we need each set of weights in a column. Turn the rows into columns, keeping each set in order. The new matrix $W$ is the **transpose** of that grid. We mark a transpose with a raised $\top$.
 
       $$\begin{bmatrix}25&10&-1\\100&50&-5\end{bmatrix}^{\!\top}=\begin{bmatrix}25&100\\10&50\\-1&-5\end{bmatrix}.$$
 
       1. **Check the shapes.** The inner sizes are both 3, so the product exists, and the outer sizes give its shape.
-         $$(2\times3)(3\times2)\to2\times2$$
+         The product of shapes $(2\times3)(3\times2)$ has shape $2\times2$.
 
       2. **Copy the prices from the last step.** Column 1 of $W$ holds the price weights from the last step, so it gives the same prices, 310 for house 1 and 215 for house 2.
 
@@ -218,9 +218,11 @@ knowledge_points:
 
       So house 1 is predicted to sell for £310,000 or rent for £1,250 a month, and house 2 for £215,000 or £875 a month.
 
-      Suppose we also want to add a fixed £20,000 to each price and £100 to each monthly rent. Let's adjust the two predictions for each house.
+      ### Adjust each house's predictions
 
-      1. **Repeat the two amounts.** Prices are in thousands of pounds and rents are in pounds, so each house gets the row $(20,100)$.
+      Suppose the same upgrade adds £20,000 to each house's price and £100 to its monthly rent. To add matrices of the same shape, add the entries at each matching row and column.
+
+      1. **Write one adjustment row per house.** Prices are in thousands of pounds and rents are in pounds, so each house gets the row $(20,100)$.
          $$\begin{bmatrix}20&100\\20&100\end{bmatrix}$$
 
       2. **Add the matching entries.** Add each amount to the prediction in the same row and column.
@@ -246,7 +248,7 @@ knowledge_points:
 final: mat-explain-batch
 summary: |
   - A matrix is a rectangular grid of numbers with a shape, rows $\times$ columns. A matrix times a vector takes one dot product per row, so an $m\times n$ matrix and an $n$-entry vector give $m$ answers.
-  - Each entry of a matrix product $AB$ is one row of $A$ dotted with one column of $B$: $(AB)_{ij}=(\text{row }i\text{ of }A)\cdot(\text{column }j\text{ of }B)$. The inner sizes must match, and the outer sizes give the shape, $(m\times n)(n\times p)\to m\times p$.
-  - The transpose swaps rows and columns. When each set of weights starts in a row, transposing puts each set in a column for the product.
+  - To find the entry in row $i$ and column $j$ of $AB$, take the dot product of row $i$ of $A$ with column $j$ of $B$. The inner sizes must match and the outer sizes give the shape.
+  - The transpose swaps rows and columns. We used it to put each set of prediction weights in a column of $W$ before multiplying by the house matrix $X$.
 
-  **Next:** The determinants lesson uses a square matrix to see how areas change when it moves points.
+  **Next:** The determinants lesson uses matrices with the same number of rows and columns. It shows how such a matrix can move points and change the area between them.

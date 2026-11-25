@@ -4,7 +4,7 @@ objective: |
   **Goal:** build a causal mask for a sentence, add it to the attention scores before the softmax so that each position gives zero weight to every later position, and explain why this lets a language model learn to predict each next word from the words before it.
 recap:
   - concept: attention
-    text: "Attention lets each position gather information from others. Position $t$ scores $j$ with $q_t\\cdot k_j/\\sqrt{d_k}$; softmax makes weights $a_{tj}$ summing to 1, which mix values $v_j$."
+    text: "Attention scores each word a position can read. Softmax turns those scores into weights that add up to 1. The output is a weighted sum of the words’ value vectors."
 where_this_fits: |
   ### What is causal masking?
 
@@ -33,7 +33,7 @@ knowledge_points:
 
       ### Which positions each word may see
 
-      The grid has a row for each word that is looking and a column for each word it might look at. A cell is green when that word may look, and grey when it's blocked.
+      Give each position one row for the word making a guess and one column for the word it might read. In the picture, green cells are allowed and grey cells are blocked.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 470 330" aria-label="A 4 by 4 grid for the cat sat on. Each row is the word doing the attending and each column is a word it might attend to. Green cells on and below the diagonal are allowed, grey cells above it are blocked. Row 1, the, sees only the. Row 2, cat, sees the and cat. Row 3, sat, sees the, cat and sat. Row 4, on, sees all four words. 10 cells are allowed and 6 are blocked">
@@ -92,17 +92,16 @@ knowledge_points:
 
       A **causal mask** is a grid that lets position $t$ attend to position $j$ only when $j\le t$, that is, to itself and to earlier positions. It's called causal because each word can only be affected by itself and what came before it, the way a cause comes before its effect.
 
-      Row $t$ has $t$ allowed cells, so the first word has only itself to look at, while the last word sees the whole sentence. Adding up the rows gives $1+2+\dots+T=T(T+1)/2$ allowed cells out of $T^2$, a quick check on any mask you build.
+      Row $t$ allows $t$ cells. To count them across $T$ rows, write the row lengths $1,2,\dots,T$ in increasing order, then write them in decreasing order underneath. Each of the $T$ pairs adds to $T+1$. That counts every cell twice, so the mask allows $T(T+1)/2$ cells.
 
-      Be careful not to block the diagonal. A word may attend to itself, because it's already known. The word it has to guess is the next one. If we blocked it, "the" would have nothing to attend to.
+      The diagonal runs from top left to bottom right. It holds the cells where a word reads itself. Keep them allowed because those words are already known. Blocking them would leave the first word with nothing to read.
     worked: |
       Let's build the causal mask for "the cat sat on", one word per token, and check that no position can see the word it must guess.
 
       1. **List what each position may see.** Position $t$ may attend to positions $1$ to $t$. The braces hold the words each position may see.
          $$\begin{aligned}\text{the}&\to\{\text{the}\}\\ \text{cat}&\to\{\text{the},\text{cat}\}\\ \text{sat}&\to\{\text{the},\text{cat},\text{sat}\}\\ \text{on}&\to\{\text{the},\text{cat},\text{sat},\text{on}\}\end{aligned}$$
 
-      2. **Check each guess is hidden.** Position $t$ must guess token $x_{t+1}$, which sits in column $t+1$. That column is after $t$, so it's always blocked in row $t$. The answer for "on" is word 5, which is outside our four-word grid, so here are the other three guesses. Each shows the answer's column, then the guessing word's row.
-         $$\text{the}\to\text{cat}:\ 2>1,\qquad \text{cat}\to\text{sat}:\ 3>2,\qquad \text{sat}\to\text{on}:\ 4>3$$
+      2. **Check that each answer is hidden.** The word in row 1 predicts the word in column 2. Since column 2 comes after row 1, that word is blocked. The same holds for rows 2 and 3. Row 4 predicts word 5, which lies outside the grid.
 
       3. **Count the cells.** Row $t$ has $t$ allowed cells, and the rest of the $4\times4=16$ cells are blocked.
          $$1+2+3+4=10\ \text{allowed},\qquad 16-10=6\ \text{blocked}$$
@@ -125,17 +124,17 @@ knowledge_points:
       - Setting its score to zero still gives it a share after softmax.
       - Adding minus infinity before softmax removes that share and leaves the allowed weights adding up to one.
     explain: |
-      ### Why we can't just set the score to 0
+      ### Turn blocked scores into zero weights
 
-      We know which cells to block, so how do we make attention obey the grid? A natural first try is setting each blocked score to $0$. Recall how softmax turns position $t$'s scores into weights,
+      Let $s_{tj}$ be the score in row $t$ and column $j$. Softmax takes the exponential of that score and divides it by the sum of the exponentials in row $t$.
 
       $$a_{tj}=\frac{e^{s_{tj}}}{\sum_{i=1}^{T}e^{s_{ti}}},$$
 
-      where $j$ is the word whose weight we want, and on the bottom $i$ runs over every position from $1$ to $T$, adding up all the $e^{s_{ti}}$. A blocked word needs a weight of exactly $0$. Setting its score to $0$ doesn't do that, because $e^0=1$, so it still gets a share. Very negative scores get close, for example $e^{-10}\approx0.00005$. The lower the score, the closer $e^s$ gets to $0$, so we use a score of minus infinity, $-\infty$, and take $e^{-\infty}$ as exactly $0$.
+      The sum in the denominator runs through columns $1$ to $T$. Setting a blocked score to $0$ still gives it a share, because $e^0=1$. As a score becomes more negative, its exponential approaches zero. We write $-\infty$ for the value used to give a blocked entry exactly zero weight.
 
       ### Adding the mask to the scores
 
-      Look at position 2, "cat", in "the cat sat on". Its scores for the, cat, sat and on are $0$, $1$, $2$ and $0$. Without a mask, compute the share for "sat":
+      For a small example, suppose the attention scores from “cat” to the four words are $0$, $1$, $2$ and $0$. First compute the share for “sat” without a mask.
       $$
       \begin{aligned}
       e^0+e^1+e^2+e^0&\approx12.11 &&\text{add exponentials of all scores}\\
@@ -185,7 +184,7 @@ knowledge_points:
 
       Each blocked term becomes $e^{-\infty}=0$, so it drops out of the top and the bottom. The allowed weights are the softmax of the allowed scores alone, and they still add up to 1. For "cat" they are $0.27$ and $0.73$, rounded to 2 decimals.
 
-      Since every weight after column $t$ is $0$, the output sum stops at $t$, $o_t=\sum_{j=1}^{t}a_{tj}v_j$.
+      To get the output $o_t$ for position $t$, multiply each word's value vector $v_j$ by its weight $a_{tj}$ and add. Every weight after position $t$ is zero, so only positions $1$ through $t$ contribute.
 
       ### How the mask changes each row
 
@@ -209,15 +208,15 @@ knowledge_points:
          $$o_2=0.27\,(1,0)+0.73\,(0,1)=(0.27,\ 0.73)$$
 
       The output of "cat" is built only from "the" and "cat". Nothing from "sat", the word it has to guess, gets in.
-      ### Mask a whole sentence
+      ### Add the mask to the full score grid
 
       Put the scores for all $T$ tokens in one grid, with a row for each token and a column for each position it can read. For three tokens the mask is
 
       $M=\begin{bmatrix}0&-\infty&-\infty\\0&0&-\infty\\0&0&0\end{bmatrix}.$
 
-      Add this grid to the scores. Row 2 keeps its first two scores. If those are both $0$, its weights are $(1/2,1/2,0)$. Changing the third token leaves the outputs at positions 1 and 2 unchanged. This holds in every masked layer because each position can only mix vectors from itself and earlier positions.
+      Add each mask entry to the score in the same row and column. Row 2 keeps its first two scores. If both are $0$, the weights in row 2 are $(1/2,1/2,0)$. The third token cannot affect the first two outputs. A later layer reads the previous layer's output vectors. Applying the same mask there also keeps the third token's information out of those positions.
 
-      To score a guess we need the actual next token. If the three inputs “the cat sat” come from “the cat sat on”, their targets are “cat sat on”. If the text ends at “sat”, only the first two guesses have targets. In general, $T$ inputs give $T$ scored guesses with a following token, and $T-1$ without one.
+      During training, compare each guess with the actual next token. These answers are the next-token targets. Compared with the input, the targets are shifted left by one position. For inputs “the cat sat” from “the cat sat on”, they are “cat sat on”. With $T$ inputs we can check $T$ guesses if one more token follows, or $T-1$ if the text ends there.
     problems:
       - cm-zero-basics
       - cm-zero-self-explain

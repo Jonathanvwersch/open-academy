@@ -137,9 +137,9 @@ knowledge_points:
 
       ### Testing by elimination
 
-      In the lesson on inverses and linear systems, we solved equations by elimination, subtracting a multiple of one equation from another to remove an unknown. We can do the same to the rows of a matrix. That changes the rows but keeps every relationship between the columns. A relationship such as column 3 equals column 1 plus column 2 holds in each row separately, so it still holds after we add or subtract multiples of rows.
+      Elimination subtracts multiples of rows. If column 3 equals column 1 plus column 2, that equality holds in each row. Subtracting one row from another preserves the equality.
 
-      We make the entries below the top of column 1 zero, then the entries below the second entry of column 2, and so on. For $A$ this leaves
+      Scan columns from left to right. Use a nonzero entry as a **pivot** to clear the entries below it. After each pivot, look only in the rows below it. Skip a column if all those rows have zero there. Swap rows if needed to bring the pivot to the first unused row. For $A$ the result is
 
       $$\begin{bmatrix}1&1&2\\0&1&1\\0&0&0\end{bmatrix}.$$
 
