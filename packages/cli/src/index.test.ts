@@ -240,7 +240,7 @@ describe('academy CLI', () => {
     }
   });
 
-  it('makes uses optional for planned topics but checks any supplied edges and IDs', () => {
+  it('makes uses optional for planned topics but verifies any supplied entries', () => {
     const parent = temporaryDirectory();
     try {
       const pack = join(parent, 'pack');
@@ -266,11 +266,13 @@ describe('academy CLI', () => {
 
       const prerequisite = 'applied-science-first-topic';
       const entry = { weight: 0, exercises: 0, steps: 0, uses: {} };
-      for (const data of [{}, { 'second-topic': { [prerequisite]: entry } }]) {
-        const verified = verify(data);
-        expect(verified.status, verified.stderr).toBe(0);
-        expect(verified.stdout).toContain('Verified 0 encompassing weights.');
-      }
+      const omitted = verify({});
+      expect(omitted.status, omitted.stderr).toBe(0);
+      expect(omitted.stdout).toContain('Verified 0 encompassing weights.');
+      const supplied = { 'second-topic': { [prerequisite]: entry } };
+      const verified = verify(supplied);
+      expect(verified.status, verified.stderr).toBe(0);
+      expect(verified.stdout).toContain('Verified 1 encompassing weight.');
 
       for (const [data, message] of [
         [{ 'missing-topic': { [prerequisite]: entry } }, 'Unknown concept "missing-topic"'],
@@ -280,11 +282,32 @@ describe('academy CLI', () => {
           { 'second-topic': { [prerequisite]: { ...entry, uses: { 'missing-exercise': [] } } } },
           'unexpected exercise id "missing-exercise"',
         ],
+        [
+          { 'second-topic': { [prerequisite]: { ...entry, weight: 0.5 } } },
+          'expected weight 0.00 from uses',
+        ],
       ] as const) {
         const result = verify(data);
         expect(result.status).toBe(1);
         expect(result.stderr).toContain(message);
       }
+
+      const file = join(pack, 'concepts/main.yaml');
+      const data = parse(readFileSync(file, 'utf8')) as {
+        concepts: Array<{ id: string; encompassings?: Array<{ id: string; weight: number }> }>;
+      };
+      const topic = data.concepts.find(({ id }) => id === 'second-topic');
+      if (!topic) throw new Error('Missing planned topic');
+      topic.encompassings = [{ id: prerequisite, weight: 0.5 }];
+      writeFileSync(file, stringify(data));
+      const mismatch = verify(supplied);
+      expect(mismatch.status).toBe(1);
+      expect(mismatch.stderr).toContain('expected encompassing weight 0.00 in concept file');
+
+      topic.encompassings = [{ id: prerequisite, weight: 0 }];
+      writeFileSync(file, stringify(data));
+      const match = verify(supplied);
+      expect(match.status, match.stderr).toBe(0);
     } finally {
       rmSync(parent, { recursive: true, force: true });
     }

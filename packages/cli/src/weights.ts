@@ -9,7 +9,7 @@ function verifyEdge(
   exerciseIds: string[],
   stepIds: Set<string>,
   edge: string,
-): number | undefined {
+): number {
   if (!isRecord(entry) || !isRecord(entry.uses)) {
     throw new Error(`${edge}: expected {weight, exercises, steps, uses}.`);
   }
@@ -45,9 +45,10 @@ function verifyEdge(
     throw new Error(`${edge}: missing uses for ${[...eligibleExercises].join(', ')}.`);
   }
 
-  if (exerciseIds.length === 0) return undefined;
-
-  const weight = Math.round((100 * usedSteps) / (exerciseIds.length * stepIds.size)) / 100;
+  const weight =
+    exerciseIds.length === 0
+      ? 0
+      : Math.round((100 * usedSteps) / (exerciseIds.length * stepIds.size)) / 100;
   if (entry.weight !== weight) {
     throw new Error(`${edge}: expected weight ${weight.toFixed(2)} from uses.`);
   }
@@ -95,8 +96,8 @@ export function verifyWeights(content: ContentIndex, uses: unknown): number {
         content.lessonsByConcept.get(id)?.knowledge_points?.map(({ id }) => id),
       );
       const weight = verifyEdge(entries[id], exerciseIds, stepIds, edge);
-      if (weight === undefined) continue;
-      if (recorded.get(id) !== weight) {
+      const recordedWeight = recorded.get(id);
+      if ((hasExercises || recordedWeight !== undefined) && recordedWeight !== weight) {
         throw new Error(
           `${edge}: expected encompassing weight ${weight.toFixed(2)} in concept file.`,
         );
